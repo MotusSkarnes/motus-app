@@ -2948,7 +2948,7 @@ export default function App() {
                 <Badge>{currentUser.name}</Badge>
               </div>
               <div>
-               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Motus PT-app LIVE TEST</h1>
+               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Motus PT-app </h1>
                 <p className="mt-2 text-sm md:text-base text-slate-500 max-w-3xl">PT og medlem i samme app, med egen kundefane og kundekort for treneren.</p>
                 <div className="mt-2 text-xs text-slate-400">{supabaseSyncStatus}</div>
               </div>
