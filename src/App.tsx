@@ -1141,7 +1141,7 @@ function TrainerPortal(props: {
 
           <Card className="p-5">
             <SectionTitle icon={<AlertTriangle className="h-5 w-5" />} title="Kunder som bør følges opp" subtitle="Sortert etter prioritet" />
-            <div className="mt-5 space-y-4">
+            <div className="mt-4 space-y-3">
               {filteredDashboardCustomers.length === 0 ? <div className="rounded-2xl border border-dashed p-10 text-center text-slate-500">Ingen kunder matcher filtrene.</div> : null}
               {filteredDashboardCustomers.map((insight) => (
                 <DashboardCustomerCard
@@ -1159,8 +1159,8 @@ function TrainerPortal(props: {
       ) : null}
 
       {trainerTab === "customers" ? (
-        <div className="grid gap-4 sm:gap-6 lg:grid-cols-[320px_1fr]">
-          <Card className="p-5 lg:sticky lg:top-4 h-fit">
+        <div className="grid gap-3 sm:gap-4 lg:grid-cols-[280px_1fr]">
+          <Card className="p-4 lg:sticky lg:top-4 h-fit">
             <SectionTitle icon={<Users className="h-5 w-5" />} title="Kunder" subtitle="Velg kunde og jobb videre inne på kundekortet" />
             <div className="mt-5 space-y-4">
               <SearchableMemberSelect members={members} selectedMemberId={selectedMemberId} onSelect={setSelectedMemberId} />
@@ -1173,7 +1173,7 @@ function TrainerPortal(props: {
                   key={member.id}
                   type="button"
                   onClick={() => setSelectedMemberId(member.id)}
-                  className="w-full rounded-2xl border p-4 text-left transition hover:shadow-sm"
+                  className="w-full rounded-2xl border p-3 text-left transition hover:shadow-sm"
                   style={selectedMemberId === member.id ? { backgroundColor: "#f8fffd", borderColor: MOTUS.turquoise, boxShadow: "0 0 0 3px rgba(48,227,190,0.08)" } : { borderColor: "rgba(15,23,42,0.08)" }}
                 >
                   <div className="flex items-center justify-between gap-3">
@@ -1194,9 +1194,9 @@ function TrainerPortal(props: {
             <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 70%, ${MOTUS.acid} 100%)` }} />
             <div className="pointer-events-none absolute -right-16 top-10 h-40 w-40 rounded-full blur-3xl opacity-30" style={{ background: MOTUS.softTurquoise }} />
             <div className="pointer-events-none absolute right-20 top-24 h-32 w-32 rounded-full blur-3xl opacity-20" style={{ background: "#f7b3d2" }} />
-            <div className="p-5 space-y-5">
+            <div className="p-4 space-y-4">
               {selectedMember ? (
-                <div className="rounded-[28px] p-5 sm:p-6 text-white relative overflow-hidden shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.ink} 100%)` }}>
+                <div className="rounded-[24px] p-4 sm:p-5 text-white relative overflow-hidden shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.ink} 100%)` }}>
                   <div className="pointer-events-none absolute -right-6 -bottom-8 text-[120px] font-black leading-none opacity-10">M</div>
                   <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.16),transparent_35%)]" />
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1206,27 +1206,27 @@ function TrainerPortal(props: {
                       <div className="text-sm text-white/80">{selectedMember.email}</div>
                       <div className="text-sm text-white/80">Mål: {selectedMember.goal || "Ikke satt"}</div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm min-w-[220px] sm:min-w-[260px]">
-                      <div className="rounded-2xl bg-white/10 border border-white/10 p-3 backdrop-blur-sm"><div className="text-white/70 text-xs uppercase tracking-wide">Programmer</div><div className="mt-1 font-semibold text-lg">{trainerProgramsForSelected.length}</div></div>
-                      <div className="rounded-2xl bg-white/10 border border-white/10 p-3 backdrop-blur-sm"><div className="text-white/70 text-xs uppercase tracking-wide">Logger</div><div className="mt-1 font-semibold text-lg">{trainerLogsForSelected.length}</div></div>
-                      <div className="rounded-2xl bg-white/10 border border-white/10 p-3 backdrop-blur-sm"><div className="text-white/70 text-xs uppercase tracking-wide">Meldinger</div><div className="mt-1 font-semibold text-lg">{trainerMessagesForSelected.length}</div></div>
-                      <div className="rounded-2xl bg-white/10 border border-white/10 p-3 backdrop-blur-sm"><div className="text-white/70 text-xs uppercase tracking-wide">Ukeplan</div><div className="mt-1 font-semibold text-lg">{trainerScheduleForSelected.length}</div></div>
+                    <div className="grid grid-cols-2 gap-2 text-sm min-w-[200px] sm:min-w-[240px]">
+                      <div className="rounded-2xl bg-white/10 border border-white/10 p-2.5 backdrop-blur-sm"><div className="text-white/70 text-xs uppercase tracking-wide">Programmer</div><div className="mt-1 font-semibold text-lg">{trainerProgramsForSelected.length}</div></div>
+                      <div className="rounded-2xl bg-white/10 border border-white/10 p-2.5 backdrop-blur-sm"><div className="text-white/70 text-xs uppercase tracking-wide">Logger</div><div className="mt-1 font-semibold text-lg">{trainerLogsForSelected.length}</div></div>
+                      <div className="rounded-2xl bg-white/10 border border-white/10 p-2.5 backdrop-blur-sm"><div className="text-white/70 text-xs uppercase tracking-wide">Meldinger</div><div className="mt-1 font-semibold text-lg">{trainerMessagesForSelected.length}</div></div>
+                      <div className="rounded-2xl bg-white/10 border border-white/10 p-2.5 backdrop-blur-sm"><div className="text-white/70 text-xs uppercase tracking-wide">Ukeplan</div><div className="mt-1 font-semibold text-lg">{trainerScheduleForSelected.length}</div></div>
                     </div>
                   </div>
                 </div>
               ) : null}
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {selectedMember ? (
                   <>
-                    <div className="rounded-2xl border px-4 py-3 text-sm bg-white flex flex-wrap items-center justify-between gap-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="rounded-2xl border px-3 py-2.5 text-sm bg-white flex flex-wrap items-center justify-between gap-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="font-medium">{smartHint}</div>
                       <div className="flex gap-2">
                         {needsLog ? <Badge tone="yellow">Logg mangler</Badge> : null}
                         {needsReply ? <Badge tone="yellow">Svar mangler</Badge> : null}
                       </div>
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="grid gap-2 sm:grid-cols-3">
                       <OutlineButton className="w-full justify-center" onClick={openQuickProgram}>{programButtonLabel}</OutlineButton>
                       <OutlineButton className="w-full justify-center" onClick={openQuickLog}>{logButtonLabel}</OutlineButton>
                       <OutlineButton className="w-full justify-center" onClick={openQuickMessage}>{messageButtonLabel}</OutlineButton>
@@ -1292,7 +1292,7 @@ function TrainerPortal(props: {
               {!selectedMember ? (
                 <div className="rounded-2xl border border-dashed p-10 text-center text-slate-500">Velg en kunde til venstre for å åpne kundekortet.</div>
               ) : (
-                <div className="rounded-3xl border bg-slate-50/70 p-4 text-sm text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="rounded-3xl border bg-slate-50/70 p-3 text-sm text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="font-medium text-slate-800">
                     {customerTab === "profile" ? "Profil og grunninfo" : customerTab === "programs" ? "Programbygging og aktive program" : customerTab === "schedule" ? "Fast ukeplan og struktur" : customerTab === "logs" ? "Historikk og øktlogging" : "Dialog med kunden"}
                   </div>
@@ -1303,21 +1303,21 @@ function TrainerPortal(props: {
               )}
 
               {selectedMember && customerTab === "profile" ? (
-                <div className="space-y-5">
-                  <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-2xl border p-4 bg-slate-50/80 space-y-2 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Navn</div><TextInput value={selectedMember.name} onChange={(e) => updateSelectedMemberField("name", e.target.value)} /></div>
-                    <div className="rounded-2xl border p-4 bg-slate-50/80 space-y-2 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">E-post</div><TextInput value={selectedMember.email} onChange={(e) => updateSelectedMemberField("email", e.target.value)} /></div>
-                    <div className="rounded-2xl border p-4 bg-slate-50/80 space-y-2 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Telefon</div><div className="flex items-center gap-2"><Phone className="h-4 w-4 text-slate-500" /><TextInput value={selectedMember.phone} onChange={(e) => updateSelectedMemberField("phone", e.target.value)} /></div></div>
-                    <div className="rounded-2xl border p-4 bg-slate-50/80 space-y-2 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Fødselsdato</div><TextInput type="date" value={selectedMember.birthDate} onChange={(e) => updateSelectedMemberField("birthDate", e.target.value)} /></div>
-                    <div className="rounded-2xl border p-4 bg-slate-50/80 space-y-2 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Vekt (kg)</div><TextInput value={selectedMember.weight} onChange={(e) => updateSelectedMemberField("weight", e.target.value)} /></div>
-                    <div className="rounded-2xl border p-4 bg-slate-50/80 space-y-2 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Høyde (cm)</div><TextInput value={selectedMember.height} onChange={(e) => updateSelectedMemberField("height", e.target.value)} /></div>
-                    <div className="rounded-2xl border p-4 bg-slate-50/80 space-y-2 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Nivå</div><SelectBox value={selectedMember.level} onChange={(value) => updateSelectedMemberField("level", value)} options={["Nybegynner", "Litt øvet", "Øvet"]} /></div>
-                    <div className="rounded-2xl border p-4 bg-slate-50/80 space-y-2 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Medlemskap</div><SelectBox value={selectedMember.membershipType} onChange={(value) => updateSelectedMemberField("membershipType", value)} options={["Standard", "Premium"]} /></div>
-                    <div className="rounded-2xl border p-4 bg-slate-50/80 space-y-2 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Kundetype</div><SelectBox value={selectedMember.customerType} onChange={(value) => updateSelectedMemberField("customerType", value)} options={["PT-kunde", "Oppfølging", "Egentrening"]} /></div>
-                    <div className="rounded-2xl border p-4 bg-slate-50/80 space-y-2 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Dager siden aktivitet</div><TextInput value={selectedMember.daysSinceActivity} onChange={(e) => updateSelectedMemberField("daysSinceActivity", e.target.value)} /></div>
+                <div className="space-y-4">
+                  <div className="grid gap-2.5 sm:gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-2xl border p-3 bg-slate-50/80 space-y-1.5 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Navn</div><TextInput value={selectedMember.name} onChange={(e) => updateSelectedMemberField("name", e.target.value)} /></div>
+                    <div className="rounded-2xl border p-3 bg-slate-50/80 space-y-1.5 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">E-post</div><TextInput value={selectedMember.email} onChange={(e) => updateSelectedMemberField("email", e.target.value)} /></div>
+                    <div className="rounded-2xl border p-3 bg-slate-50/80 space-y-1.5 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Telefon</div><div className="flex items-center gap-2"><Phone className="h-4 w-4 text-slate-500" /><TextInput value={selectedMember.phone} onChange={(e) => updateSelectedMemberField("phone", e.target.value)} /></div></div>
+                    <div className="rounded-2xl border p-3 bg-slate-50/80 space-y-1.5 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Fødselsdato</div><TextInput type="date" value={selectedMember.birthDate} onChange={(e) => updateSelectedMemberField("birthDate", e.target.value)} /></div>
+                    <div className="rounded-2xl border p-3 bg-slate-50/80 space-y-1.5 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Vekt (kg)</div><TextInput value={selectedMember.weight} onChange={(e) => updateSelectedMemberField("weight", e.target.value)} /></div>
+                    <div className="rounded-2xl border p-3 bg-slate-50/80 space-y-1.5 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Høyde (cm)</div><TextInput value={selectedMember.height} onChange={(e) => updateSelectedMemberField("height", e.target.value)} /></div>
+                    <div className="rounded-2xl border p-3 bg-slate-50/80 space-y-1.5 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Nivå</div><SelectBox value={selectedMember.level} onChange={(value) => updateSelectedMemberField("level", value)} options={["Nybegynner", "Litt øvet", "Øvet"]} /></div>
+                    <div className="rounded-2xl border p-3 bg-slate-50/80 space-y-1.5 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Medlemskap</div><SelectBox value={selectedMember.membershipType} onChange={(value) => updateSelectedMemberField("membershipType", value)} options={["Standard", "Premium"]} /></div>
+                    <div className="rounded-2xl border p-3 bg-slate-50/80 space-y-1.5 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Kundetype</div><SelectBox value={selectedMember.customerType} onChange={(value) => updateSelectedMemberField("customerType", value)} options={["PT-kunde", "Oppfølging", "Egentrening"]} /></div>
+                    <div className="rounded-2xl border p-3 bg-slate-50/80 space-y-1.5 shadow-sm"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Dager siden aktivitet</div><TextInput value={selectedMember.daysSinceActivity} onChange={(e) => updateSelectedMemberField("daysSinceActivity", e.target.value)} /></div>
                   </div>
-                  <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-                    <details className="rounded-3xl border bg-slate-50/80 p-5 shadow-sm" open>
+                  <div className="grid gap-3 xl:grid-cols-[1.1fr_0.9fr]">
+                    <details className="rounded-3xl border bg-slate-50/80 p-4 shadow-sm" open>
                       <summary className="cursor-pointer font-semibold flex items-center gap-2"><Target className="h-4 w-4" /> Mål og fokus</summary>
                       <div className="mt-3 space-y-2">
                         <TextInput value={selectedMember.goal} onChange={(e) => updateSelectedMemberField("goal", e.target.value)} placeholder="Mål" />
@@ -1326,7 +1326,7 @@ function TrainerPortal(props: {
                         <TextArea value={selectedMember.coachNotes} onChange={(e) => updateSelectedMemberField("coachNotes", e.target.value)} className="min-h-[100px]" placeholder="PT-notater" />
                       </div>
                     </details>
-                    <details className="rounded-3xl border bg-slate-50/80 p-5 h-fit shadow-sm" open>
+                    <details className="rounded-3xl border bg-slate-50/80 p-4 h-fit shadow-sm" open>
                       <summary className="cursor-pointer font-semibold flex items-center gap-2"><HeartPulse className="h-4 w-4" /> Skader og hensyn</summary>
                       <div className="mt-3">
                         <TextArea value={selectedMember.injuries} onChange={(e) => updateSelectedMemberField("injuries", e.target.value)} className="min-h-[150px]" placeholder="Skader, hensyn og viktige detaljer" />
@@ -2125,7 +2125,7 @@ function MemberPortal(props: {
               {viewedMember ? <div className="mt-3 text-sm text-slate-500">Alder beregnes automatisk: {calculateAge(viewedMember.birthDate) || "Ikke satt"} år</div> : null}
               {viewedMember ? (
                 <div className="mt-5 space-y-5">
-                  <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-2.5 sm:gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <div className="rounded-2xl border p-4 bg-slate-50/80 space-y-2"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Navn</div><TextInput value={viewedMember.name} onChange={(e) => updateViewedMemberField("name", e.target.value)} /></div>
                     <div className="rounded-2xl border p-4 bg-slate-50/80 space-y-2"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">E-post</div><TextInput value={viewedMember.email} onChange={(e) => updateViewedMemberField("email", e.target.value)} /></div>
                     <div className="rounded-2xl border p-4 bg-slate-50/80 space-y-2"><div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Telefon</div><TextInput value={viewedMember.phone} onChange={(e) => updateViewedMemberField("phone", e.target.value)} /></div>
@@ -2681,7 +2681,7 @@ export default function App() {
       [program.id]: {
         ...(prev[program.id] ?? {}),
         [exerciseId]: {
-          ...((prev[program.id] ?? {})[exerciseId] ?? { sets: "", reps: "", weight: "", completed: false }),
+          ...((prev[program.id] ?? {})[exerciseId] ?? { sets: "", reps: "", weight: "", completed: false, setRows: [] }),
           completed: !((prev[program.id] ?? {})[exerciseId]?.completed),
         },
       },
