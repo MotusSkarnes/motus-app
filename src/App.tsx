@@ -25,6 +25,8 @@ export default function App() {
     handleLogout,
     resetAllData,
     addMember,
+    deactivateMember,
+    markMemberInvited,
     saveProgramForMember,
     deleteProgramById,
     sendTrainerMessage,
@@ -34,6 +36,7 @@ export default function App() {
     finishWorkoutMode,
     cancelWorkoutMode,
     sendMemberMessage,
+    inviteMember,
   } = useAppState();
 
   return (
@@ -90,6 +93,9 @@ export default function App() {
               trainerTab={trainerTab}
               setTrainerTab={setTrainerTab}
               addMember={addMember}
+              deactivateMember={deactivateMember}
+              markMemberInvited={markMemberInvited}
+              inviteMember={inviteMember}
               saveProgramForMember={saveProgramForMember}
               deleteProgramById={deleteProgramById}
               sendTrainerMessage={sendTrainerMessage}

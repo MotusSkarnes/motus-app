@@ -7,6 +7,8 @@ create table if not exists public.members (
   id text primary key,
   name text not null,
   email text not null,
+  is_active boolean not null default true,
+  invited_at timestamptz,
   phone text not null default '',
   birth_date text not null default '',
   weight text not null default '',
@@ -22,6 +24,9 @@ create table if not exists public.members (
   coach_notes text not null default '',
   created_at timestamptz not null default now()
 );
+
+alter table public.members add column if not exists is_active boolean not null default true;
+alter table public.members add column if not exists invited_at timestamptz;
 
 alter table public.members enable row level security;
 

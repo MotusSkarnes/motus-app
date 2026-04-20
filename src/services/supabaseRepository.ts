@@ -4,6 +4,7 @@ import {
   appendTrainerMessage,
   localAppRepository,
   type AppRepository,
+  type CreateMemberInput,
   type SaveProgramInput,
   type UpdateWorkoutResultInput,
 } from "./appRepository";
@@ -52,6 +53,8 @@ async function persistMember(member: Member) {
       id: member.id,
       name: member.name,
       email: member.email,
+      is_active: member.isActive,
+      invited_at: member.invitedAt || null,
       phone: member.phone,
       birth_date: member.birthDate,
       weight: member.weight,
@@ -207,7 +210,7 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
   const { data, error } = await supabaseClient
     .from("members")
     .select(
-      "id, name, email, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes"
+      "id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes"
     )
     .order("created_at", { ascending: true });
 
@@ -220,6 +223,8 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
     id: String(row.id),
     name: String(row.name ?? ""),
     email: String(row.email ?? ""),
+    isActive: row.is_active !== false,
+    invitedAt: String(row.invited_at ?? ""),
     phone: String(row.phone ?? ""),
     birthDate: String(row.birth_date ?? ""),
     weight: String(row.weight ?? ""),
@@ -237,11 +242,28 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
 }
 
 export const supabaseAppRepository: AppRepository = {
-  addMember(state: AppState): AppState {
-    const nextState = localAppRepository.addMember(state);
+  addMember(state: AppState, input: CreateMemberInput): AppState {
+    const nextState = localAppRepository.addMember(state, input);
     const latestMember = nextState.members[nextState.members.length - 1];
     if (latestMember) {
       void persistMember(latestMember);
+    }
+    return nextState;
+  },
+  deactivateMember(state: AppState, memberId: string): AppState {
+    const targetMember = state.members.find((member) => member.id === memberId);
+    const nextState = localAppRepository.deactivateMember(state, memberId);
+    if (targetMember) {
+      void persistMember({ ...targetMember, isActive: false });
+    }
+    return nextState;
+  },
+  markMemberInvited(state: AppState, memberId: string, invitedAtIso?: string): AppState {
+    const targetMember = state.members.find((member) => member.id === memberId);
+    const nextState = localAppRepository.markMemberInvited(state, memberId, invitedAtIso);
+    const updatedMember = nextState.members.find((member) => member.id === memberId);
+    if (targetMember && updatedMember) {
+      void persistMember(updatedMember);
     }
     return nextState;
   },

@@ -11,7 +11,10 @@ function mapSupabaseUserToAuthUser(user: {
   user_metadata?: Record<string, unknown>;
   app_metadata?: Record<string, unknown>;
 }): AuthUser {
-  const role = parseRole(user.app_metadata?.role);
+  const role =
+    parseRole(user.app_metadata?.role) === "member"
+      ? "member"
+      : parseRole(user.user_metadata?.role);
   const name =
     (typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name) ||
     (typeof user.user_metadata?.name === "string" && user.user_metadata.name) ||
@@ -52,4 +55,76 @@ export async function getSupabaseSessionUser(): Promise<AuthUser | null> {
 export async function signOutSupabase(): Promise<void> {
   if (!supabaseClient) return;
   await supabaseClient.auth.signOut();
+}
+
+export type InviteMemberResult = {
+  ok: boolean;
+  message: string;
+};
+
+async function extractFunctionErrorMessage(error: unknown): Promise<string | null> {
+  if (!error || typeof error !== "object") return null;
+  const candidate = error as { message?: unknown; context?: { json?: () => Promise<unknown> } };
+
+  if (typeof candidate.context?.json === "function") {
+    try {
+      const payload = await candidate.context.json();
+      if (payload && typeof payload === "object" && "error" in payload) {
+        const value = (payload as { error?: unknown }).error;
+        if (typeof value === "string" && value.trim()) return value;
+      }
+      if (payload && typeof payload === "object" && "message" in payload) {
+        const value = (payload as { message?: unknown }).message;
+        if (typeof value === "string" && value.trim()) return value;
+      }
+    } catch {
+      // Ignore parse errors and fall back to generic message.
+    }
+  }
+
+  if (typeof candidate.message === "string" && candidate.message.trim()) {
+    return candidate.message;
+  }
+  return null;
+}
+
+export async function inviteMemberByEmail(email: string, memberId: string): Promise<InviteMemberResult> {
+  if (!supabaseClient) {
+    return { ok: false, message: "Supabase er ikke konfigurert." };
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail || !normalizedEmail.includes("@")) {
+    return { ok: false, message: "Ugyldig e-post." };
+  }
+  if (!memberId.trim()) {
+    return { ok: false, message: "Mangler member_id for medlemmet." };
+  }
+
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabaseClient.auth.getSession();
+  if (sessionError || !session?.access_token) {
+    return { ok: false, message: "Ingen gyldig innlogging funnet. Logg ut og inn igjen." };
+  }
+
+  const { data, error } = await supabaseClient.functions.invoke("invite-member", {
+    body: {
+      email: normalizedEmail,
+      memberId: memberId.trim(),
+      accessToken: session.access_token,
+    },
+  });
+
+  if (error) {
+    const detailed = await extractFunctionErrorMessage(error);
+    return { ok: false, message: `Invitasjon feilet: ${detailed ?? "Ukjent feil fra funksjonen."}` };
+  }
+
+  if (data && typeof data === "object" && "message" in data && typeof data.message === "string") {
+    return { ok: true, message: data.message };
+  }
+
+  return { ok: true, message: "Invitasjon sendt." };
 }

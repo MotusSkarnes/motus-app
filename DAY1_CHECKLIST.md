@@ -12,6 +12,7 @@ Bruk denne sjekklisten mens du setter opp Supabase første gang.
 ## Supabase SQL
 
 - [ ] Kjør `src/supabase/messages_schema.sql`
+- [ ] (Alternativ til linjen over) Kjør `src/supabase/production_bootstrap.sql` med korrekt `OWNER_USER_ID`
 - [ ] (Valgfritt) Kjør `src/supabase/seed_minimal.sql`
 - [ ] Kjør `src/supabase/verification_checks.sql`
 
@@ -23,6 +24,9 @@ Bruk denne sjekklisten mens du setter opp Supabase første gang.
   - [ ] Trainer har `role=trainer`
   - [ ] Member har `role=member`
   - [ ] Member har riktig `member_id`
+- [ ] (Anbefalt) Deploy `invite-member` funksjon for invitasjon fra trenerportal
+  - [ ] `supabase secrets set SUPABASE_SERVICE_ROLE_KEY=...`
+  - [ ] `supabase functions deploy invite-member`
 
 ## App-verifisering
 
@@ -38,3 +42,5 @@ Bruk denne sjekklisten mens du setter opp Supabase første gang.
 
 - [ ] Kjør `src/supabase/rls_strict.sql`
 - [ ] Re-test trener/medlem etter strict RLS
+
+Merk: Hvis du brukte `production_bootstrap.sql`, er strict RLS allerede med.

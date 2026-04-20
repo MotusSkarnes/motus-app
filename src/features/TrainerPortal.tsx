@@ -3,6 +3,8 @@ import { ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, Users } from "
 import { MOTUS } from "../app/data";
 import { uid } from "../app/storage";
 import { Card, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, TextArea, TextInput } from "../app/ui";
+import type { CreateMemberInput } from "../services/appRepository";
+import type { InviteMemberResult } from "../services/supabaseAuth";
 import type { ChatMessage, CustomerSubTab, Exercise, Member, ProgramExercise, TrainerTab, TrainingProgram, WorkoutLog } from "../app/types";
 
 type TrainerPortalProps = {
@@ -15,7 +17,10 @@ type TrainerPortalProps = {
   setSelectedMemberId: (id: string) => void;
   trainerTab: TrainerTab;
   setTrainerTab: (tab: TrainerTab) => void;
-  addMember: () => void;
+  addMember: (input: CreateMemberInput) => void;
+  deactivateMember: (memberId: string) => void;
+  markMemberInvited: (memberId: string, invitedAtIso?: string) => void;
+  inviteMember: (email: string, memberId: string) => Promise<InviteMemberResult>;
   saveProgramForMember: (input: { id?: string; title: string; goal: string; notes: string; memberId: string; exercises: ProgramExercise[] }) => void;
   deleteProgramById: (programId: string) => void;
   sendTrainerMessage: (memberId: string, text: string) => void;
@@ -33,6 +38,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
     trainerTab,
     setTrainerTab,
     addMember,
+    deactivateMember,
+    markMemberInvited,
+    inviteMember,
     saveProgramForMember,
     deleteProgramById,
     sendTrainerMessage,
@@ -45,10 +53,39 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
   const [editingProgramId, setEditingProgramId] = useState<string | null>(null);
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberEmail, setNewMemberEmail] = useState("");
+  const [newMemberPhone, setNewMemberPhone] = useState("");
+  const [newMemberGoal, setNewMemberGoal] = useState("");
+  const [newMemberFocus, setNewMemberFocus] = useState("");
+  const [newMemberError, setNewMemberError] = useState<string | null>(null);
+  const [showInactiveMembers, setShowInactiveMembers] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
+  const visibleMembers = showInactiveMembers ? members : members.filter((member) => member.isActive !== false);
+  const inviteStatusTone =
+    inviteStatus?.toLowerCase().includes("sendt") || inviteStatus?.toLowerCase().includes("invitasjon sendt")
+      ? "success"
+      : inviteStatus
+      ? "error"
+      : null;
   const selectedPrograms = programs.filter((program) => program.memberId === selectedMemberId);
   const selectedLogs = logs.filter((log) => log.memberId === selectedMemberId);
   const selectedMessages = messages.filter((message) => message.memberId === selectedMemberId);
+
+  function formatInvitedAt(iso: string): string {
+    if (!iso) return "";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleString("no-NO", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
 
   function addExerciseToDraft(exercise: Exercise) {
     setProgramExercisesDraft((prev) => [
@@ -90,6 +127,53 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setProgramGoal("");
     setProgramNotes("");
     setProgramExercisesDraft([]);
+  }
+
+  function submitNewMember() {
+    const name = newMemberName.trim();
+    const email = newMemberEmail.trim().toLowerCase();
+    if (!name || !email) {
+      setNewMemberError("Navn og e-post er påkrevd.");
+      return;
+    }
+    if (!email.includes("@")) {
+      setNewMemberError("E-post må være gyldig.");
+      return;
+    }
+    if (members.some((member) => member.email.toLowerCase() === email)) {
+      setNewMemberError("E-post finnes allerede.");
+      return;
+    }
+
+    addMember({
+      name,
+      email,
+      phone: newMemberPhone,
+      goal: newMemberGoal,
+      focus: newMemberFocus,
+    });
+
+    setNewMemberName("");
+    setNewMemberEmail("");
+    setNewMemberPhone("");
+    setNewMemberGoal("");
+    setNewMemberFocus("");
+    setNewMemberError(null);
+  }
+
+  function handleDeactivateMember(memberId: string) {
+    deactivateMember(memberId);
+  }
+
+  async function handleInviteSelectedMember() {
+    if (!selectedMember) return;
+    const email = inviteEmail.trim().toLowerCase() || selectedMember.email.toLowerCase();
+    setInviteStatus("Sender invitasjon...");
+    const result = await inviteMember(email, selectedMember.id);
+    if (result.ok) {
+      markMemberInvited(selectedMember.id, new Date().toISOString());
+    }
+    setInviteStatus(result.message);
   }
 
   const followUpCount = useMemo(() => members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length, [members]);
@@ -141,7 +225,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
               </div>
             </div>
             <div className="mt-5 space-y-3">
-              {members.map((member) => (
+              {visibleMembers.map((member) => (
                 <button
                   key={member.id}
                   type="button"
@@ -150,11 +234,32 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   style={selectedMemberId === member.id ? { backgroundColor: "#f8fffd", borderColor: MOTUS.turquoise, boxShadow: "0 0 0 3px rgba(48,227,190,0.08)" } : { borderColor: "rgba(15,23,42,0.08)" }}
                 >
                   <div className="font-semibold">{member.name}</div>
-                  <div className="text-sm text-slate-500">{member.email}</div>
+                  <div className="text-sm text-slate-500">
+                    {member.email}
+                    {member.isActive === false ? " · Inaktiv" : ""}
+                  </div>
+                  <div className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${member.invitedAt ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                    {member.invitedAt ? "Invitert" : "Ikke invitert"}
+                  </div>
+                  {member.invitedAt ? (
+                    <div className="mt-1 text-[11px] text-emerald-700">Dato: {formatInvitedAt(member.invitedAt)}</div>
+                  ) : null}
                   <div className="mt-1 text-sm">Mål: {member.goal}</div>
                 </button>
               ))}
-              <OutlineButton onClick={addMember} className="w-full">Legg til testkunde</OutlineButton>
+              <OutlineButton onClick={() => setShowInactiveMembers((prev) => !prev)} className="w-full">
+                {showInactiveMembers ? "Skjul inaktive" : "Vis inaktive"}
+              </OutlineButton>
+              <div className="rounded-2xl border bg-slate-50 p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-sm font-medium text-slate-700">Nytt medlem</div>
+                <TextInput value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="Navn" />
+                <TextInput value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} placeholder="E-post" />
+                <TextInput value={newMemberPhone} onChange={(e) => setNewMemberPhone(e.target.value)} placeholder="Telefon (valgfritt)" />
+                <TextInput value={newMemberGoal} onChange={(e) => setNewMemberGoal(e.target.value)} placeholder="Hovedmål (valgfritt)" />
+                <TextInput value={newMemberFocus} onChange={(e) => setNewMemberFocus(e.target.value)} placeholder="Fokus (valgfritt)" />
+                {newMemberError ? <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{newMemberError}</div> : null}
+                <GradientButton onClick={submitNewMember} className="w-full">Opprett medlem</GradientButton>
+              </div>
             </div>
           </Card>
 
@@ -166,6 +271,34 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   <div className="mt-1 text-2xl font-bold tracking-tight">{selectedMember.name}</div>
                   <div className="mt-2 text-sm text-white/85">{selectedMember.email}</div>
                   <div className="mt-1 text-sm text-white/85">Mål: {selectedMember.goal}</div>
+                  <div className="mt-1 text-xs text-white/85">
+                    {selectedMember.invitedAt ? `Invitert: ${formatInvitedAt(selectedMember.invitedAt)}` : "Ikke invitert enda"}
+                  </div>
+                  <div className="mt-3">
+                    <OutlineButton onClick={() => handleDeactivateMember(selectedMember.id)}>
+                      Sett medlem som inaktiv
+                    </OutlineButton>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="font-semibold">Inviter medlem til appen (kun e-post)</div>
+                  <div className="text-xs text-slate-500">Bruk en ekte e-postadresse (ikke example.com) som matcher valgt medlem.</div>
+                  <TextInput
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder={selectedMember.email}
+                  />
+                  <GradientButton onClick={handleInviteSelectedMember}>
+                    {selectedMember.invitedAt ? "Send på nytt" : "Send invitasjon"}
+                  </GradientButton>
+                  {inviteStatus ? (
+                    <div
+                      className={`rounded-xl border px-3 py-2 text-sm ${inviteStatusTone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}
+                    >
+                      {inviteStatus}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

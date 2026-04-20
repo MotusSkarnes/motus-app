@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
-import { localAppRepository, type SaveProgramInput } from "../services/appRepository";
+import { localAppRepository, type CreateMemberInput, type SaveProgramInput } from "../services/appRepository";
 import { isSupabaseConfigured } from "../services/supabaseClient";
 import { fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
-import { getSupabaseSessionUser, signInWithSupabase, signOutSupabase } from "../services/supabaseAuth";
+import { getSupabaseSessionUser, inviteMemberByEmail, signInWithSupabase, signOutSupabase, type InviteMemberResult } from "../services/supabaseAuth";
 import type { AppState, MemberTab, TrainerTab } from "./types";
 
 export function useAppState() {
@@ -180,8 +180,16 @@ export function useAppState() {
     }
   }
 
-  function addMember() {
-    setAppState((prev) => repository.addMember(prev));
+  function addMember(input: CreateMemberInput) {
+    setAppState((prev) => repository.addMember(prev, input));
+  }
+
+  function deactivateMember(memberId: string) {
+    setAppState((prev) => repository.deactivateMember(prev, memberId));
+  }
+
+  function markMemberInvited(memberId: string, invitedAtIso?: string) {
+    setAppState((prev) => repository.markMemberInvited(prev, memberId, invitedAtIso));
   }
 
   function saveProgramForMember(input: SaveProgramInput) {
@@ -225,6 +233,13 @@ export function useAppState() {
     setAppState((prev) => repository.appendMemberMessage(prev, memberId, text));
   }
 
+  async function inviteMember(email: string, memberId: string): Promise<InviteMemberResult> {
+    if (!isSupabaseConfigured) {
+      return { ok: false, message: "Invitasjon krever Supabase-oppsett." };
+    }
+    return inviteMemberByEmail(email, memberId);
+  }
+
   return {
     appState,
     loginEmail,
@@ -243,6 +258,8 @@ export function useAppState() {
     handleLogout,
     resetAllData,
     addMember,
+    deactivateMember,
+    markMemberInvited,
     saveProgramForMember,
     deleteProgramById,
     sendTrainerMessage,
@@ -252,5 +269,6 @@ export function useAppState() {
     finishWorkoutMode,
     cancelWorkoutMode,
     sendMemberMessage,
+    inviteMember,
   };
 }

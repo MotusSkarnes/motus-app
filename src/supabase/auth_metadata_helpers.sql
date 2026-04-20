@@ -19,3 +19,12 @@ where email = 'emma@example.com';
 select id, email, raw_app_meta_data
 from auth.users
 order by created_at desc;
+
+-- 4) Backfill: map member role/member_id automatically by matching e-post in public.members
+-- Useful for existing users created manually in Auth.
+update auth.users as u
+set raw_app_meta_data =
+  coalesce(u.raw_app_meta_data, '{}'::jsonb)
+  || jsonb_build_object('role', 'member', 'member_id', m.id)
+from public.members m
+where lower(u.email) = lower(m.email);

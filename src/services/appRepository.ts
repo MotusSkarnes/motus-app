@@ -1,6 +1,14 @@
 import { uid } from "../app/storage";
 import type { AppState, ChatMessage, Member, ProgramExercise, TrainingProgram } from "../app/types";
 
+export type CreateMemberInput = {
+  name: string;
+  email: string;
+  phone?: string;
+  goal?: string;
+  focus?: string;
+};
+
 export type SaveProgramInput = {
   id?: string;
   title: string;
@@ -17,7 +25,9 @@ export type UpdateWorkoutResultInput = {
 };
 
 export interface AppRepository {
-  addMember(state: AppState): AppState;
+  addMember(state: AppState, input: CreateMemberInput): AppState;
+  deactivateMember(state: AppState, memberId: string): AppState;
+  markMemberInvited(state: AppState, memberId: string, invitedAtIso?: string): AppState;
   saveProgram(state: AppState, input: SaveProgramInput): AppState;
   deleteProgram(state: AppState, programId: string): AppState;
   appendTrainerMessage(state: AppState, memberId: string, text: string): AppState;
@@ -29,13 +39,14 @@ export interface AppRepository {
   finishWorkoutMode(state: AppState): AppState;
 }
 
-export function createMember(state: AppState): Member {
-  const number = state.members.length + 1;
+export function createMember(state: AppState, input: CreateMemberInput): Member {
   return {
     id: uid("member"),
-    name: `Nytt medlem ${number}`,
-    email: `medlem${number}@example.com`,
-    phone: "900 00 000",
+    name: input.name.trim(),
+    email: input.email.trim().toLowerCase(),
+    isActive: true,
+    invitedAt: "",
+    phone: input.phone?.trim() || "900 00 000",
     birthDate: "",
     level: "Nybegynner",
     membershipType: "Standard",
@@ -43,20 +54,42 @@ export function createMember(state: AppState): Member {
     daysSinceActivity: "0",
     weight: "",
     height: "",
-    goal: "Nytt mål settes her",
-    focus: "Ikke satt",
+    goal: input.goal?.trim() || "Nytt mål settes her",
+    focus: input.focus?.trim() || "Ikke satt",
     personalGoals: "",
     injuries: "Ingen info ennå",
     coachNotes: "",
   };
 }
 
-export function addMemberToState(state: AppState): AppState {
-  const nextMember = createMember(state);
+export function addMemberToState(state: AppState, input: CreateMemberInput): AppState {
+  const nextMember = createMember(state, input);
   return {
     ...state,
     members: [...state.members, nextMember],
     selectedMemberId: nextMember.id,
+  };
+}
+
+export function deactivateMemberInState(state: AppState, memberId: string): AppState {
+  const activeMembers = state.members.filter((member) => member.id !== memberId && member.isActive !== false);
+  return {
+    ...state,
+    members: state.members.map((member) =>
+      member.id === memberId ? { ...member, isActive: false } : member
+    ),
+    selectedMemberId: state.selectedMemberId === memberId ? activeMembers[0]?.id ?? "" : state.selectedMemberId,
+    memberViewId: state.memberViewId === memberId ? activeMembers[0]?.id ?? "" : state.memberViewId,
+  };
+}
+
+export function markMemberInvitedInState(state: AppState, memberId: string, invitedAtIso?: string): AppState {
+  const timestamp = invitedAtIso ?? new Date().toISOString();
+  return {
+    ...state,
+    members: state.members.map((member) =>
+      member.id === memberId ? { ...member, invitedAt: timestamp } : member
+    ),
   };
 }
 
@@ -200,6 +233,8 @@ export function finishWorkoutModeInState(state: AppState): AppState {
 
 export const localAppRepository: AppRepository = {
   addMember: addMemberToState,
+  deactivateMember: deactivateMemberInState,
+  markMemberInvited: markMemberInvitedInState,
   saveProgram: saveProgramInState,
   deleteProgram: deleteProgramInState,
   appendTrainerMessage,

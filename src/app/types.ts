@@ -35,6 +35,8 @@ export type Member = {
   id: string;
   name: string;
   email: string;
+  isActive: boolean;
+  invitedAt: string;
   phone: string;
   birthDate: string;
   weight: string;

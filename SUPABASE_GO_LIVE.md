@@ -37,6 +37,10 @@ Dette oppretter:
 
 ...med åpne dev-policies (`using (true)`), så du kan validere flyt først.
 
+Alternativt kan du kjøre alt i en fil:
+- `src/supabase/production_bootstrap.sql`
+- erstatt `OWNER_USER_ID` i filen med trenerens `auth.users.id` før kjøring
+
 ## 3) Opprett auth-brukere
 
 Lag minst:
@@ -53,6 +57,14 @@ Kjør/bruk hjelperen:
 Sett:
 - trener: `role = "trainer"`
 - medlem: `role = "member"` + `member_id = <members.id>`
+
+Alternativ med invitasjon fra appen:
+- deploy Edge Function `supabase/functions/invite-member/index.ts`
+- funksjonen inviterer på e-post og setter metadata (`role=member`, `member_id`) automatisk
+
+Eksempel deploy:
+- `supabase functions deploy invite-member`
+- `supabase secrets set SUPABASE_SERVICE_ROLE_KEY=...`
 
 ## 5) Seed minimum data (valgfritt)
 
@@ -76,6 +88,8 @@ Bruk:
 
 Når alt over fungerer:
 - kjør `src/supabase/rls_strict.sql`
+
+Hvis du brukte `production_bootstrap.sql`, er strict RLS allerede inkludert.
 
 Dette:
 - legger til `owner_user_id`-basert tilgang

@@ -1,7 +1,12 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
+
+vi.mock("./services/supabaseClient", () => ({
+  isSupabaseConfigured: false,
+  supabaseClient: null,
+}));
 
 describe("App regressions", () => {
   beforeEach(() => {
@@ -20,15 +25,17 @@ describe("App regressions", () => {
     expect(screen.getByText("Feil e-post eller passord.")).toBeInTheDocument();
   });
 
-  it("allows trainer to add a test customer", async () => {
+  it("allows trainer to add a customer from form", async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
     await user.click(screen.getAllByRole("button", { name: "Kunder" })[0]);
-    await user.click(screen.getByRole("button", { name: "Legg til testkunde" }));
+    await user.type(screen.getByPlaceholderText("Navn"), "Ny Kunde");
+    await user.type(screen.getByPlaceholderText("E-post"), "ny.kunde@example.com");
+    await user.click(screen.getByRole("button", { name: "Opprett medlem" }));
 
-    expect(screen.getAllByText("Nytt medlem 3").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Ny Kunde").length).toBeGreaterThan(0);
   });
 
   it("lets member start and finish a workout session", async () => {
@@ -90,13 +97,29 @@ describe("App regressions", () => {
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
     await user.click(screen.getAllByRole("button", { name: "Kunder" })[0]);
-    await user.click(screen.getByRole("button", { name: "Legg til testkunde" }));
-    expect(screen.getAllByText("Nytt medlem 3").length).toBeGreaterThan(0);
+    await user.type(screen.getByPlaceholderText("Navn"), "Persist Kunde");
+    await user.type(screen.getByPlaceholderText("E-post"), "persist.kunde@example.com");
+    await user.click(screen.getByRole("button", { name: "Opprett medlem" }));
+    expect(screen.getAllByText("Persist Kunde").length).toBeGreaterThan(0);
 
     firstRender.unmount();
     render(<App />);
 
     await user.click(screen.getAllByRole("button", { name: "Kunder" })[0]);
-    expect(screen.getAllByText("Nytt medlem 3").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Persist Kunde").length).toBeGreaterThan(0);
+  });
+
+  it("lets trainer deactivate a member and reveal them from inactive list", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
+    await user.click(screen.getAllByRole("button", { name: "Kunder" })[0]);
+    await user.click(screen.getByRole("button", { name: "Sett medlem som inaktiv" }));
+
+    expect(screen.queryByText("emma@example.com")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Vis inaktive" }));
+    expect(screen.getByText(/emma@example.com · Inaktiv/i)).toBeInTheDocument();
   });
 });
