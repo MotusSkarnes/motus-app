@@ -15,6 +15,7 @@ type Level = "Nybegynner" | "Litt øvet" | "Øvet";
 type MembershipType = "Standard" | "Premium";
 type CustomerType = "PT-kunde" | "Oppfølging" | "Egentrening";
 type TrainerTab = "dashboard" | "customers" | "programs" | "exerciseBank";
+type CustomerSubTab = "overview" | "profile" | "programs" | "messages";
 type MemberTab = "overview" | "programs" | "progress" | "messages" | "profile";
 
 type AuthUser = {
@@ -384,7 +385,8 @@ function TrainerPortal(props: {
   trainerTab: TrainerTab;
   setTrainerTab: (tab: TrainerTab) => void;
   addMember: () => void;
-  saveProgramForMember: (input: { title: string; goal: string; notes: string; memberId: string }) => void;
+  saveProgramForMember: (input: { id?: string; title: string; goal: string; notes: string; memberId: string; exercises: ProgramExercise[] }) => void;
+  deleteProgramById: (programId: string) => void;
   sendTrainerMessage: (memberId: string, text: string) => void;
 }) {
   const {
@@ -399,6 +401,7 @@ function TrainerPortal(props: {
     setTrainerTab,
     addMember,
     saveProgramForMember,
+    deleteProgramById,
     sendTrainerMessage,
   } = props;
 
@@ -406,10 +409,55 @@ function TrainerPortal(props: {
   const [programGoal, setProgramGoal] = useState("");
   const [programNotes, setProgramNotes] = useState("");
   const [trainerMessage, setTrainerMessage] = useState("");
+  const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
+  const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
+  const [editingProgramId, setEditingProgramId] = useState<string | null>(null);
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
   const selectedPrograms = programs.filter((program) => program.memberId === selectedMemberId);
   const selectedLogs = logs.filter((log) => log.memberId === selectedMemberId);
   const selectedMessages = messages.filter((message) => message.memberId === selectedMemberId);
+
+  function addExerciseToDraft(exercise: Exercise) {
+    setProgramExercisesDraft((prev) => [
+      ...prev,
+      {
+        id: uid("draft-ex"),
+        exerciseId: exercise.id,
+        exerciseName: exercise.name,
+        sets: "3",
+        reps: "10",
+        weight: "0",
+        restSeconds: "90",
+        notes: "",
+      },
+    ]);
+  }
+
+  function updateDraftExercise(id: string, field: keyof ProgramExercise, value: string) {
+    setProgramExercisesDraft((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
+  }
+
+  function removeDraftExercise(id: string) {
+    setProgramExercisesDraft((prev) => prev.filter((item) => item.id !== id));
+  }
+
+  function startEditProgram(program: TrainingProgram) {
+    setEditingProgramId(program.id);
+    setProgramTitle(program.title);
+    setProgramGoal(program.goal);
+    setProgramNotes(program.notes);
+    setProgramExercisesDraft(program.exercises.map((exercise) => ({ ...exercise })));
+    setCustomerSubTab("programs");
+    setTrainerTab("customers");
+  }
+
+  function resetProgramBuilder() {
+    setEditingProgramId(null);
+    setProgramTitle("Nytt treningsprogram");
+    setProgramGoal("");
+    setProgramNotes("");
+    setProgramExercisesDraft([]);
+  }
 
   const followUpCount = useMemo(() => members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length, [members]);
 
@@ -485,12 +533,156 @@ function TrainerPortal(props: {
                   <div className="mt-2 text-sm text-white/85">{selectedMember.email}</div>
                   <div className="mt-1 text-sm text-white/85">Mål: {selectedMember.goal}</div>
                 </div>
+
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <StatCard label="Programmer" value={String(selectedPrograms.length)} hint="På denne kunden" />
                   <StatCard label="Logger" value={String(selectedLogs.length)} hint="På denne kunden" />
                   <StatCard label="Meldinger" value={String(selectedMessages.length)} hint="På denne kunden" />
                   <StatCard label="Inaktivitet" value={`${selectedMember.daysSinceActivity} dager`} hint="Sist aktivitet" />
                 </div>
+
+                <div className="rounded-3xl border bg-slate-50/80 p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                    <PillButton active={customerSubTab === "overview"} onClick={() => setCustomerSubTab("overview")}>Oversikt</PillButton>
+                    <PillButton active={customerSubTab === "profile"} onClick={() => setCustomerSubTab("profile")}>Profil</PillButton>
+                    <PillButton active={customerSubTab === "programs"} onClick={() => setCustomerSubTab("programs")}>Program</PillButton>
+                    <PillButton active={customerSubTab === "messages"} onClick={() => setCustomerSubTab("messages")}>Meldinger</PillButton>
+                  </div>
+                </div>
+
+                {customerSubTab === "overview" ? (
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <div className="rounded-3xl border bg-slate-50 p-4">
+                      <div className="font-semibold">Kort status</div>
+                      <div className="mt-3 space-y-2 text-sm text-slate-600">
+                        <div><span className="font-medium text-slate-800">Fokus:</span> {selectedMember.focus}</div>
+                        <div><span className="font-medium text-slate-800">Kundetype:</span> {selectedMember.customerType}</div>
+                        <div><span className="font-medium text-slate-800">Medlemskap:</span> {selectedMember.membershipType}</div>
+                        <div><span className="font-medium text-slate-800">Skader:</span> {selectedMember.injuries}</div>
+                      </div>
+                    </div>
+                    <div className="rounded-3xl border bg-slate-50 p-4">
+                      <div className="font-semibold">Siste aktivitet</div>
+                      <div className="mt-3 space-y-2 text-sm text-slate-600">
+                        <div>{selectedLogs[0] ? `Siste logg: ${selectedLogs[0].date}` : "Ingen logger ennå"}</div>
+                        <div>{selectedMessages.length ? `Siste melding: ${selectedMessages[selectedMessages.length - 1].createdAt}` : "Ingen meldinger ennå"}</div>
+                        <div>{selectedPrograms.length ? `Siste program: ${selectedPrograms[0].title}` : "Ingen program ennå"}</div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {customerSubTab === "profile" ? (
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <div className="rounded-3xl border bg-slate-50 p-4 space-y-3">
+                      <div className="font-semibold">Kontakt og mål</div>
+                      <TextInput value={selectedMember.name} readOnly />
+                      <TextInput value={selectedMember.email} readOnly />
+                      <TextInput value={selectedMember.phone} readOnly />
+                      <TextInput value={selectedMember.goal} readOnly />
+                      <TextInput value={selectedMember.focus} readOnly />
+                    </div>
+                    <div className="rounded-3xl border bg-slate-50 p-4 space-y-3">
+                      <div className="font-semibold">Bakgrunn</div>
+                      <TextArea value={selectedMember.personalGoals} readOnly className="min-h-[120px]" />
+                      <TextArea value={selectedMember.injuries} readOnly className="min-h-[120px]" />
+                      <TextArea value={selectedMember.coachNotes} readOnly className="min-h-[120px]" />
+                    </div>
+                  </div>
+                ) : null}
+
+                {customerSubTab === "programs" ? (
+                  <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+                    <div className="rounded-3xl border bg-slate-50 p-4 space-y-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="font-semibold">{editingProgramId ? "Rediger program" : "Bygg program"}</div>
+                        {editingProgramId ? <OutlineButton onClick={resetProgramBuilder}>Avbryt redigering</OutlineButton> : null}
+                      </div>
+                      <TextInput value={programTitle} onChange={(e) => setProgramTitle(e.target.value)} placeholder="Navn på program" />
+                      <TextInput value={programGoal} onChange={(e) => setProgramGoal(e.target.value)} placeholder="Mål" />
+                      <TextArea value={programNotes} onChange={(e) => setProgramNotes(e.target.value)} className="min-h-[110px]" placeholder="Notater" />
+
+                      <div>
+                        <div className="mb-2 text-sm font-medium text-slate-700">Legg til øvelse</div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {exercises.map((exercise) => (
+                            <button key={exercise.id} type="button" onClick={() => addExerciseToDraft(exercise)} className="rounded-2xl border bg-white px-3 py-3 text-left text-sm">
+                              <div className="font-medium">{exercise.name}</div>
+                              <div className="text-slate-500">{exercise.group} · {exercise.equipment}</div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        {programExercisesDraft.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen øvelser valgt ennå.</div> : null}
+                        {programExercisesDraft.map((item) => (
+                          <div key={item.id} className="rounded-2xl border bg-white p-4 space-y-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="font-medium">{item.exerciseName}</div>
+                              <OutlineButton onClick={() => removeDraftExercise(item.id)}>Fjern</OutlineButton>
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                              <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder="Sett" />
+                              <TextInput value={item.reps} onChange={(e) => updateDraftExercise(item.id, "reps", e.target.value)} placeholder="Reps" />
+                              <TextInput value={item.weight} onChange={(e) => updateDraftExercise(item.id, "weight", e.target.value)} placeholder="Kg" />
+                              <TextInput value={item.restSeconds} onChange={(e) => updateDraftExercise(item.id, "restSeconds", e.target.value)} placeholder="Hvile sek" />
+                              <TextInput value={item.notes} onChange={(e) => updateDraftExercise(item.id, "notes", e.target.value)} placeholder="Notat" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <GradientButton
+                        onClick={() => {
+                          saveProgramForMember({ id: editingProgramId ?? undefined, title: programTitle, goal: programGoal, notes: programNotes, memberId: selectedMemberId, exercises: programExercisesDraft });
+                          resetProgramBuilder();
+                        }}
+                        className="w-full"
+                      >
+                        {editingProgramId ? "Oppdater program" : "Lagre program på kunde"}
+                      </GradientButton>
+                    </div>
+
+                    <div className="rounded-3xl border bg-slate-50 p-4">
+                      <div className="font-semibold">Eksisterende programmer</div>
+                      <div className="mt-4 space-y-3">
+                        {selectedPrograms.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen programmer ennå.</div> : null}
+                        {selectedPrograms.map((program) => (
+                          <div key={program.id} className="rounded-2xl border bg-white p-4">
+                            <div className="font-medium">{program.title}</div>
+                            <div className="mt-1 text-sm text-slate-500">{program.goal || "Uten mål"}</div>
+                            <div className="mt-2 text-xs text-slate-400">{program.exercises.length} øvelser · {program.createdAt}</div>
+
+                            <div className="mt-3 flex gap-2">
+                              <OutlineButton onClick={() => startEditProgram(program)}>
+                                Rediger
+                              </OutlineButton>
+                              <OutlineButton onClick={() => deleteProgramById(program.id)}>
+                                Slett
+                              </OutlineButton>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {customerSubTab === "messages" ? (
+                  <div className="rounded-3xl border bg-slate-50 p-4 space-y-4">
+                    <div className="font-semibold">Dialog med kunde</div>
+                    <div className="max-h-64 space-y-3 overflow-auto rounded-2xl border bg-white p-4">
+                      {selectedMessages.length === 0 ? <div className="text-sm text-slate-500">Ingen meldinger ennå.</div> : null}
+                      {selectedMessages.map((message) => (
+                        <div key={message.id} className={`max-w-[85%] rounded-2xl p-3 text-sm ${message.sender === "trainer" ? "text-white ml-auto" : "bg-slate-50 border"}`} style={message.sender === "trainer" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
+                          <div>{message.text}</div>
+                          <div className={`mt-1 text-[11px] ${message.sender === "trainer" ? "text-white/80" : "text-slate-500"}`}>{message.createdAt}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </Card>
@@ -514,10 +706,8 @@ function TrainerPortal(props: {
               <TextArea value={programNotes} onChange={(e) => setProgramNotes(e.target.value)} className="min-h-[120px]" placeholder="Notater" />
               <GradientButton
                 onClick={() => {
-                  saveProgramForMember({ title: programTitle, goal: programGoal, notes: programNotes, memberId: selectedMemberId });
-                  setProgramTitle("Nytt treningsprogram");
-                  setProgramGoal("");
-                  setProgramNotes("");
+                  saveProgramForMember({ id: editingProgramId ?? undefined, title: programTitle, goal: programGoal, notes: programNotes, memberId: selectedMemberId, exercises: programExercisesDraft });
+                  resetProgramBuilder();
                 }}
                 className="w-full"
               >
@@ -593,9 +783,12 @@ function MemberPortal(props: {
   memberTab: MemberTab;
   setMemberTab: (tab: MemberTab) => void;
   sendMemberMessage: (memberId: string, text: string) => void;
+  addWorkoutLog: (memberId: string, programTitle: string, note: string) => void;
 }) {
-  const { members, programs, logs, messages, memberViewId, setMemberViewId, memberTab, setMemberTab, sendMemberMessage } = props;
+  const { members, programs, logs, messages, memberViewId, setMemberViewId, memberTab, setMemberTab, sendMemberMessage, addWorkoutLog } = props;
   const [messageText, setMessageText] = useState("");
+  const [logProgramTitle, setLogProgramTitle] = useState("");
+  const [logNote, setLogNote] = useState("");
   const viewedMember = members.find((member) => member.id === memberViewId) ?? null;
   const memberPrograms = programs.filter((program) => program.memberId === memberViewId);
   const memberLogs = logs.filter((log) => log.memberId === memberViewId);
@@ -678,11 +871,20 @@ function MemberPortal(props: {
                 <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><TrendingUp className="h-5 w-5" /></div>
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight">Fremgang</h2>
-                  <p className="text-sm text-slate-500">Enkel historikk</p>
+                  <p className="text-sm text-slate-500">Logg økter + historikk</p>
                 </div>
               </div>
               <div className="mt-5 space-y-3">
-                {memberLogs.length === 0 ? <div className="rounded-2xl border border-dashed p-8 text-center text-slate-500">Ingen logger ennå.</div> : null}
+                <div className="grid gap-3 sm:grid-cols-3 mb-4">
+                <SelectBox value={logProgramTitle} onChange={setLogProgramTitle} options={memberPrograms.map((p) => p.title)} />
+                <TextInput value={logNote} onChange={(e) => setLogNote(e.target.value)} placeholder="Kort notat" />
+                <GradientButton onClick={() => {
+                  if (!memberViewId || !logProgramTitle) return;
+                  addWorkoutLog(memberViewId, logProgramTitle, logNote);
+                  setLogNote("");
+                }}>Logg økt</GradientButton>
+              </div>
+              {memberLogs.length === 0 ? <div className="rounded-2xl border border-dashed p-8 text-center text-slate-500">Ingen logger ennå.</div> : null}
                 {memberLogs.map((log) => (
                   <div key={log.id} className="rounded-3xl border p-4 bg-slate-50">
                     <div className="font-semibold">{log.programTitle}</div>
@@ -864,8 +1066,28 @@ export default function App() {
     }));
   }
 
-  function saveProgramForMember(input: { title: string; goal: string; notes: string; memberId: string }) {
+  function saveProgramForMember(input: { id?: string; title: string; goal: string; notes: string; memberId: string; exercises: ProgramExercise[] }) {
     if (!input.title.trim() || !input.memberId) return;
+
+    if (input.id) {
+      setAppState((prev) => ({
+        ...prev,
+        programs: prev.programs.map((program) =>
+          program.id === input.id
+            ? {
+                ...program,
+                memberId: input.memberId,
+                title: input.title.trim(),
+                goal: input.goal.trim(),
+                notes: input.notes.trim(),
+                exercises: input.exercises.map((exercise) => ({ ...exercise, id: exercise.id || uid("prog-ex") })),
+              }
+            : program
+        ),
+      }));
+      return;
+    }
+
     const newProgram: TrainingProgram = {
       id: uid("program"),
       memberId: input.memberId,
@@ -873,9 +1095,18 @@ export default function App() {
       goal: input.goal.trim(),
       notes: input.notes.trim(),
       createdAt: new Date().toLocaleDateString("no-NO"),
-      exercises: [],
+      exercises: input.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
     };
     setAppState((prev) => ({ ...prev, programs: [newProgram, ...prev.programs] }));
+  }
+
+  function deleteProgramById(programId: string) {
+    const programToDelete = appState.programs.find((program) => program.id === programId);
+    setAppState((prev) => ({
+      ...prev,
+      programs: prev.programs.filter((program) => program.id !== programId),
+      logs: programToDelete ? prev.logs.filter((log) => !(log.memberId === programToDelete.memberId && log.programTitle === programToDelete.title)) : prev.logs,
+    }));
   }
 
   function sendTrainerMessage(memberId: string, text: string) {
@@ -888,6 +1119,18 @@ export default function App() {
       createdAt: "Nå",
     };
     setAppState((prev) => ({ ...prev, messages: [...prev.messages, nextMessage] }));
+  }
+
+  function addWorkoutLog(memberId: string, programTitle: string, note: string) {
+    const newLog: WorkoutLog = {
+      id: uid("log"),
+      memberId,
+      programTitle,
+      date: new Date().toLocaleDateString("no-NO"),
+      status: "Fullført",
+      note: note.trim(),
+    };
+    setAppState((prev) => ({ ...prev, logs: [newLog, ...prev.logs] }));
   }
 
   function sendMemberMessage(memberId: string, text: string) {
@@ -956,6 +1199,7 @@ export default function App() {
               setTrainerTab={setTrainerTab}
               addMember={addMember}
               saveProgramForMember={saveProgramForMember}
+              deleteProgramById={deleteProgramById}
               sendTrainerMessage={sendTrainerMessage}
             />
           ) : (
@@ -969,6 +1213,7 @@ export default function App() {
               memberTab={memberTab}
               setMemberTab={setMemberTab}
               sendMemberMessage={sendMemberMessage}
+              addWorkoutLog={addWorkoutLog}
             />
           )}
         </div>
