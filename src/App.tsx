@@ -274,6 +274,20 @@ function PillButton({ active, children, onClick }: { active?: boolean; children:
   );
 }
 
+function MobileNavButton({ active, icon, label, onClick }: { active?: boolean; icon: React.ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-medium transition ${active ? "text-white shadow-sm" : "text-white/90"}`}
+      style={active ? { background: "rgba(15,23,42,0.22)" } : { backgroundColor: "transparent" }}
+    >
+      <span className="flex h-5 w-5 items-center justify-center">{icon}</span>
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
 const TextInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(function TextInput(props, ref) {
   return <input ref={ref} {...props} className={`h-11 w-full rounded-2xl border px-3 text-sm outline-none ${props.className ?? ""}`} style={{ borderColor: "rgba(15,23,42,0.10)" }} />;
 });
@@ -462,8 +476,9 @@ function TrainerPortal(props: {
   const followUpCount = useMemo(() => members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length, [members]);
 
   return (
+    <>
     <div className="space-y-6">
-      <Card className="p-3 hidden sm:block">
+      <Card className="p-3 hidden lg:block">
         <div className="flex gap-2 overflow-auto pb-1">
           <PillButton active={trainerTab === "dashboard"} onClick={() => setTrainerTab("dashboard")}>Oversikt</PillButton>
           <PillButton active={trainerTab === "customers"} onClick={() => setTrainerTab("customers")}>Kunder</PillButton>
@@ -542,7 +557,7 @@ function TrainerPortal(props: {
                 </div>
 
                 <div className="rounded-3xl border bg-slate-50/80 p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                     <PillButton active={customerSubTab === "overview"} onClick={() => setCustomerSubTab("overview")}>Oversikt</PillButton>
                     <PillButton active={customerSubTab === "profile"} onClick={() => setCustomerSubTab("profile")}>Profil</PillButton>
                     <PillButton active={customerSubTab === "programs"} onClick={() => setCustomerSubTab("programs")}>Program</PillButton>
@@ -721,10 +736,31 @@ function TrainerPortal(props: {
             <div className="mt-4 space-y-3">
               {selectedPrograms.length === 0 ? <div className="rounded-2xl border border-dashed p-8 text-center text-slate-500">Ingen programmer ennå.</div> : null}
               {selectedPrograms.map((program) => (
-                <div key={program.id} className="rounded-3xl border p-4 bg-slate-50">
-                  <div className="font-semibold">{program.title}</div>
-                  <div className="mt-1 text-sm text-slate-500">{program.goal || "Uten mål"}</div>
-                  <div className="mt-1 text-xs text-slate-400">Opprettet {program.createdAt}</div>
+                <div key={program.id} className="rounded-3xl border p-4 bg-slate-50 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-semibold">{program.title}</div>
+                      <div className="mt-1 text-sm text-slate-500">{program.goal || "Uten mål"}</div>
+                      <div className="mt-1 text-xs text-slate-400">Opprettet {program.createdAt}</div>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <OutlineButton onClick={() => startEditProgram(program)}>Rediger</OutlineButton>
+                      <OutlineButton onClick={() => deleteProgramById(program.id)}>Slett</OutlineButton>
+                    </div>
+                  </div>
+
+                  {program.notes ? <div className="rounded-2xl border bg-white p-3 text-sm text-slate-600">{program.notes}</div> : null}
+
+                  <div className="space-y-2">
+                    {program.exercises.length === 0 ? <div className="rounded-2xl border border-dashed p-4 text-sm text-slate-500 bg-white">Ingen øvelser i programmet ennå.</div> : null}
+                    {program.exercises.map((exercise) => (
+                      <div key={exercise.id} className="rounded-2xl border bg-white p-3">
+                        <div className="font-medium">{exercise.exerciseName}</div>
+                        <div className="mt-1 text-sm text-slate-500">{exercise.sets} sett · {exercise.reps} reps · {exercise.weight} kg · {exercise.restSeconds} sek hvile</div>
+                        {exercise.notes ? <div className="mt-1 text-xs text-slate-500">{exercise.notes}</div> : null}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
@@ -770,6 +806,7 @@ function TrainerPortal(props: {
         </div>
       </Card>
     </div>
+    </>
   );
 }
 
@@ -795,8 +832,9 @@ function MemberPortal(props: {
   const memberMessages = messages.filter((message) => message.memberId === memberViewId);
 
   return (
+    <>
     <div className="space-y-6">
-      <Card className="p-3 hidden sm:block">
+      <Card className="p-3 hidden lg:block">
         <div className="flex gap-2 overflow-auto pb-1">
           <PillButton active={memberTab === "overview"} onClick={() => setMemberTab("overview")}>Oversikt</PillButton>
           <PillButton active={memberTab === "programs"} onClick={() => setMemberTab("programs")}>Programmer</PillButton>
@@ -806,8 +844,8 @@ function MemberPortal(props: {
         </div>
       </Card>
 
-      <div className="grid gap-4 sm:gap-6 xl:grid-cols-[300px_1fr]">
-        <Card className="hidden p-5 h-fit xl:block">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-[280px_1fr]">
+        <Card className="p-4 h-fit xl:p-5">
           <div className="flex items-start gap-3">
             <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><UserCircle2 className="h-5 w-5" /></div>
             <div>
@@ -855,10 +893,30 @@ function MemberPortal(props: {
               <div className="mt-5 space-y-3">
                 {memberPrograms.length === 0 ? <div className="rounded-2xl border border-dashed p-8 text-center text-slate-500">Ingen programmer ennå.</div> : null}
                 {memberPrograms.map((program) => (
-                  <div key={program.id} className="rounded-3xl border p-4 bg-slate-50">
-                    <div className="font-semibold">{program.title}</div>
-                    <div className="mt-1 text-sm text-slate-500">{program.goal || "Uten mål"}</div>
-                    <div className="mt-2 text-xs text-slate-400">Opprettet {program.createdAt}</div>
+                  <div key={program.id} className="rounded-3xl border p-4 bg-slate-50 space-y-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-semibold">{program.title}</div>
+                        <div className="mt-1 text-sm text-slate-500">{program.goal || "Uten mål"}</div>
+                        <div className="mt-2 text-xs text-slate-400">Opprettet {program.createdAt}</div>
+                      </div>
+                      <GradientButton onClick={() => addWorkoutLog(memberViewId, program.title, `Logget fra program: ${program.title}`)}>
+                        Fullfør økt
+                      </GradientButton>
+                    </div>
+
+                    {program.notes ? <div className="rounded-2xl border bg-white p-3 text-sm text-slate-600">{program.notes}</div> : null}
+
+                    <div className="space-y-2">
+                      {program.exercises.length === 0 ? <div className="rounded-2xl border border-dashed p-4 text-sm text-slate-500 bg-white">Ingen øvelser i programmet ennå.</div> : null}
+                      {program.exercises.map((exercise) => (
+                        <div key={exercise.id} className="rounded-2xl border bg-white p-3">
+                          <div className="font-medium">{exercise.exerciseName}</div>
+                          <div className="mt-1 text-sm text-slate-500">{exercise.sets} sett · {exercise.reps} reps · {exercise.weight} kg · {exercise.restSeconds} sek hvile</div>
+                          {exercise.notes ? <div className="mt-1 text-xs text-slate-500">{exercise.notes}</div> : null}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -949,6 +1007,7 @@ function MemberPortal(props: {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
@@ -1216,6 +1275,27 @@ export default function App() {
               addWorkoutLog={addWorkoutLog}
             />
           )}
+
+          <div className="fixed inset-x-0 bottom-0 z-[9999] border-t p-2" style={{ borderColor: "rgba(15,23,42,0.08)", paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))", background: "rgba(255,255,255,0.98)" }}>
+            <div className="mx-auto flex max-w-md items-center gap-2 rounded-3xl border p-2 shadow-lg" style={{ borderColor: "rgba(15,23,42,0.06)", background: "linear-gradient(135deg, #30e3be 0%, #d91278 100%)" }}>
+              {appState.role === "trainer" ? (
+                <>
+                  <MobileNavButton active={trainerTab === "dashboard"} icon={<LayoutDashboard className="h-4 w-4" />} label="Oversikt" onClick={() => setTrainerTab("dashboard")} />
+                  <MobileNavButton active={trainerTab === "customers"} icon={<Users className="h-4 w-4" />} label="Kunder" onClick={() => setTrainerTab("customers")} />
+                  <MobileNavButton active={trainerTab === "programs"} icon={<ClipboardList className="h-4 w-4" />} label="Program" onClick={() => setTrainerTab("programs")} />
+                  <MobileNavButton active={trainerTab === "exerciseBank"} icon={<Dumbbell className="h-4 w-4" />} label="Øvelser" onClick={() => setTrainerTab("exerciseBank")} />
+                </>
+              ) : (
+                <>
+                  <MobileNavButton active={memberTab === "overview"} icon={<LayoutDashboard className="h-4 w-4" />} label="Hjem" onClick={() => setMemberTab("overview")} />
+                  <MobileNavButton active={memberTab === "programs"} icon={<ClipboardList className="h-4 w-4" />} label="Program" onClick={() => setMemberTab("programs")} />
+                  <MobileNavButton active={memberTab === "progress"} icon={<TrendingUp className="h-4 w-4" />} label="Fremgang" onClick={() => setMemberTab("progress")} />
+                  <MobileNavButton active={memberTab === "messages"} icon={<MessageSquare className="h-4 w-4" />} label="Meldinger" onClick={() => setMemberTab("messages")} />
+                  <MobileNavButton active={memberTab === "profile"} icon={<UserCircle2 className="h-4 w-4" />} label="Profil" onClick={() => setMemberTab("profile")} />
+                </>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </AppShell>
