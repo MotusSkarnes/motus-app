@@ -110,7 +110,7 @@ export default function App() {
                 </Card>
               ) : null}
               <div className="flex flex-col gap-2 sm:flex-row">
-                <OutlineButton onClick={handleResetData}>Nullstill testdata</OutlineButton>
+                {showQuickLogin ? <OutlineButton onClick={handleResetData}>Nullstill testdata</OutlineButton> : null}
                 <OutlineButton onClick={handleLogout}>Logg ut</OutlineButton>
               </div>
             </div>
