@@ -30,6 +30,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const memberLogs = logs.filter((log) => log.memberId === memberViewId);
   const memberMessages = messages.filter((message) => message.memberId === memberViewId);
   const activeWorkoutProgram = workoutMode ? memberPrograms.find((program) => program.id === workoutMode.programId) ?? null : null;
+  const nextProgram = memberPrograms[0] ?? null;
 
   const completedLogs = memberLogs.filter((log) => log.status === "Fullført");
   const uniqueTrainingDays = new Set(completedLogs.map((log) => log.date)).size;
@@ -98,16 +99,41 @@ export function MemberPortal(props: MemberPortalProps) {
 
         <div className="space-y-6">
           {memberTab === "overview" ? (
-            <Card className="p-5">
+            <Card className="p-5 space-y-5">
               <div className="rounded-[26px] p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
                 <div className="text-sm text-white/80">Hei{viewedMember ? `, ${viewedMember.name}` : ""}</div>
                 <div className="mt-1 text-3xl font-bold tracking-tight">Klar for neste økt?</div>
-                <div className="mt-2 text-sm text-white/90">Dette er en ren medlemsside som er mye enklere å bygge videre på.</div>
+                <div className="mt-2 text-sm text-white/90">Trykk pa neste steg under for a komme raskt i gang.</div>
               </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <StatCard label="Programmer" value={String(memberPrograms.length)} hint="Tildelt deg" />
                 <StatCard label="Logger" value={String(memberLogs.length)} hint="Registrert" />
                 <StatCard label="Meldinger" value={String(memberMessages.length)} hint="I chatten" />
+              </div>
+              <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-sm font-semibold text-slate-700">Neste steg</div>
+                {nextProgram ? (
+                  <div className="mt-2 space-y-3">
+                    <div className="text-sm text-slate-600">
+                      Neste program: <span className="font-medium text-slate-800">{nextProgram.title}</span>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <GradientButton onClick={() => startWorkoutMode(nextProgram.id)} className="w-full sm:w-auto">
+                        Start dagens okt
+                      </GradientButton>
+                      <OutlineButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">
+                        Se alle programmer
+                      </OutlineButton>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-2 space-y-3">
+                    <div className="text-sm text-slate-600">Du har ingen programmer enda. Send en melding til trener for a fa ditt forste oppsett.</div>
+                    <GradientButton onClick={() => setMemberTab("messages")} className="w-full sm:w-auto">
+                      Send melding til trener
+                    </GradientButton>
+                  </div>
+                )}
               </div>
             </Card>
           ) : null}

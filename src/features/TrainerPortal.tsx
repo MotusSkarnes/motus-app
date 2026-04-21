@@ -59,6 +59,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [newMemberGoal, setNewMemberGoal] = useState("");
   const [newMemberFocus, setNewMemberFocus] = useState("");
   const [newMemberError, setNewMemberError] = useState<string | null>(null);
+  const [pendingProgramMemberEmail, setPendingProgramMemberEmail] = useState<string | null>(null);
   const [showInactiveMembers, setShowInactiveMembers] = useState(false);
   const [memberSearch, setMemberSearch] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -116,6 +117,16 @@ export function TrainerPortal(props: TrainerPortalProps) {
     window.localStorage.setItem("motus.trainer.memberFilter", memberFilter);
   }, [memberFilter]);
 
+  useEffect(() => {
+    if (!pendingProgramMemberEmail) return;
+    const createdMember = members.find((member) => member.email.toLowerCase() === pendingProgramMemberEmail.toLowerCase());
+    if (!createdMember) return;
+    setSelectedMemberId(createdMember.id);
+    setTrainerTab("customers");
+    setCustomerSubTab("programs");
+    setPendingProgramMemberEmail(null);
+  }, [pendingProgramMemberEmail, members, setSelectedMemberId, setTrainerTab]);
+
   function formatInvitedAt(iso: string): string {
     if (!iso) return "";
     const date = new Date(iso);
@@ -171,7 +182,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setProgramExercisesDraft([]);
   }
 
-  function submitNewMember() {
+  function submitNewMember(openProgramAfterCreate = false) {
     const name = newMemberName.trim();
     const email = newMemberEmail.trim().toLowerCase();
     if (!name || !email) {
@@ -201,6 +212,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setNewMemberGoal("");
     setNewMemberFocus("");
     setNewMemberError(null);
+    if (openProgramAfterCreate) {
+      setPendingProgramMemberEmail(email);
+    }
   }
 
   function handleDeactivateMember(memberId: string) {
@@ -224,6 +238,10 @@ export function TrainerPortal(props: TrainerPortalProps) {
   }
 
   const followUpCount = useMemo(() => members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length, [members]);
+  const membersWithoutProgramCount = useMemo(
+    () => members.filter((member) => !programs.some((program) => program.memberId === member.id)).length,
+    [members, programs],
+  );
 
   return (
     <>
@@ -244,19 +262,36 @@ export function TrainerPortal(props: TrainerPortalProps) {
       </div>
 
       {trainerTab === "dashboard" ? (
-        <Card className="p-5">
+        <Card className="p-5 space-y-5">
           <div className="flex items-start gap-3">
             <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><LayoutDashboard className="h-5 w-5" /></div>
             <div>
               <h2 className="text-xl font-semibold tracking-tight">Oversikt</h2>
-              <p className="text-sm text-slate-500">Ren og enkel trenerstart</p>
+              <p className="text-sm text-slate-500">Start her: velg kunde, lag program, folg opp.</p>
             </div>
           </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Programmer" value={String(programs.length)} hint="Totalt" />
             <StatCard label="Logger" value={String(logs.length)} hint="Totalt" />
             <StatCard label="Meldinger" value={String(messages.length)} hint="Totalt" />
             <StatCard label="Øvelser" value={String(exercises.length)} hint="I banken" />
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <GradientButton onClick={() => setTrainerTab("customers")} className="w-full">
+              1. Velg eller opprett kunde
+            </GradientButton>
+            <GradientButton onClick={() => setTrainerTab("programs")} className="w-full">
+              2. Lag program raskt
+            </GradientButton>
+            <OutlineButton onClick={() => setTrainerTab("customers")} className="w-full">
+              3. Send oppfolging
+            </OutlineButton>
+          </div>
+          <div className="rounded-2xl border bg-slate-50 p-4 text-sm text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            {followUpCount > 0
+              ? `${followUpCount} kunder ma folges opp i dag.`
+              : "Ingen kunder trenger oppfolging akkurat na."}{" "}
+            {membersWithoutProgramCount > 0 ? `${membersWithoutProgramCount} kunder mangler program.` : "Alle aktive kunder har program."}
           </div>
         </Card>
       ) : null}
@@ -342,7 +377,10 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 <TextInput value={newMemberGoal} onChange={(e) => setNewMemberGoal(e.target.value)} placeholder="Hovedmål (valgfritt)" />
                 <TextInput value={newMemberFocus} onChange={(e) => setNewMemberFocus(e.target.value)} placeholder="Fokus (valgfritt)" />
                 {newMemberError ? <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{newMemberError}</div> : null}
-                <GradientButton onClick={submitNewMember} className="w-full">Opprett medlem</GradientButton>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <GradientButton onClick={() => submitNewMember(false)} className="w-full">Opprett medlem</GradientButton>
+                  <OutlineButton onClick={() => submitNewMember(true)} className="w-full">Opprett + lag program</OutlineButton>
+                </div>
               </div>
             </div>
           </Card>
@@ -401,9 +439,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 </div>
 
                 <div className="rounded-3xl border bg-slate-50/80 p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                  <div className="grid grid-cols-3 gap-2">
                     <PillButton active={customerSubTab === "overview"} onClick={() => setCustomerSubTab("overview")}>Oversikt</PillButton>
-                    <PillButton active={customerSubTab === "profile"} onClick={() => setCustomerSubTab("profile")}>Profil</PillButton>
                     <PillButton active={customerSubTab === "programs"} onClick={() => setCustomerSubTab("programs")}>Program</PillButton>
                     <PillButton active={customerSubTab === "messages"} onClick={() => setCustomerSubTab("messages")}>Meldinger</PillButton>
                   </div>
@@ -427,25 +464,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         <div>{selectedMessages.length ? `Siste melding: ${selectedMessages[selectedMessages.length - 1].createdAt}` : "Ingen meldinger ennå"}</div>
                         <div>{selectedPrograms.length ? `Siste program: ${selectedPrograms[0].title}` : "Ingen program ennå"}</div>
                       </div>
-                    </div>
-                  </div>
-                ) : null}
-
-                {customerSubTab === "profile" ? (
-                  <div className="grid gap-4 xl:grid-cols-2">
-                    <div className="rounded-3xl border bg-slate-50 p-4 space-y-3">
-                      <div className="font-semibold">Kontakt og mål</div>
-                      <TextInput value={selectedMember.name} readOnly />
-                      <TextInput value={selectedMember.email} readOnly />
-                      <TextInput value={selectedMember.phone} readOnly />
-                      <TextInput value={selectedMember.goal} readOnly />
-                      <TextInput value={selectedMember.focus} readOnly />
-                    </div>
-                    <div className="rounded-3xl border bg-slate-50 p-4 space-y-3">
-                      <div className="font-semibold">Bakgrunn</div>
-                      <TextArea value={selectedMember.personalGoals} readOnly className="min-h-[120px]" />
-                      <TextArea value={selectedMember.injuries} readOnly className="min-h-[120px]" />
-                      <TextArea value={selectedMember.coachNotes} readOnly className="min-h-[120px]" />
                     </div>
                   </div>
                 ) : null}
@@ -544,8 +562,16 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 ) : null}
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed bg-slate-50 p-8 text-center text-slate-500">
-                Velg en kunde i listen for å se kundekort, programmer og meldinger.
+              <div className="space-y-4 rounded-2xl border border-dashed bg-slate-50 p-8 text-center text-slate-500">
+                <div>Velg en kunde i listen for å se kundekort, programmer og meldinger.</div>
+                <div className="mx-auto max-w-sm rounded-xl border bg-white p-4 text-left text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="font-semibold text-slate-700">Forslag til neste steg</div>
+                  <ol className="mt-2 space-y-1 text-slate-600">
+                    <li>1. Opprett eller velg en kunde</li>
+                    <li>2. Gå til Program og lag en enkel plan</li>
+                    <li>3. Send en velkomstmelding</li>
+                  </ol>
+                </div>
               </div>
             )}
           </Card>
