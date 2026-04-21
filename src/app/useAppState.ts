@@ -146,7 +146,7 @@ export function useAppState() {
   }, [isRecoveryMode, recoveryAccessToken, recoveryRefreshToken]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured || isRecoveryMode) return;
     let cancelled = false;
 
     async function hydrateSession() {
@@ -165,7 +165,7 @@ export function useAppState() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isRecoveryMode]);
 
   useEffect(() => {
     if (!appState.members.length) return;

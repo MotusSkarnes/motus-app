@@ -59,7 +59,7 @@ export default function App() {
 
   return (
     <AppShell>
-      {!appState.currentUser ? (
+      {!appState.currentUser || isRecoveryMode ? (
         <LoginScreen
           email={loginEmail}
           setEmail={setLoginEmail}
