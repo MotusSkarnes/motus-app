@@ -31,11 +31,74 @@ export function MemberPortal(props: MemberPortalProps) {
   const memberMessages = messages.filter((message) => message.memberId === memberViewId);
   const activeWorkoutProgram = workoutMode ? memberPrograms.find((program) => program.id === workoutMode.programId) ?? null : null;
   const nextProgram = memberPrograms[0] ?? null;
+  const now = new Date();
+
+  function parseLogDate(value: string): Date | null {
+    if (!value) return null;
+    const isoCandidate = new Date(value);
+    if (!Number.isNaN(isoCandidate.getTime())) return isoCandidate;
+    const parts = value.split(".");
+    if (parts.length < 3) return null;
+    const day = Number(parts[0]);
+    const month = Number(parts[1]) - 1;
+    const year = Number(parts[2]);
+    const parsed = new Date(year, month, day);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  }
+
+  function getWeekKey(date: Date): string {
+    const d = new Date(date);
+    const day = (d.getDay() + 6) % 7;
+    d.setDate(d.getDate() - day + 3);
+    const firstThursday = new Date(d.getFullYear(), 0, 4);
+    const firstDay = (firstThursday.getDay() + 6) % 7;
+    firstThursday.setDate(firstThursday.getDate() - firstDay + 3);
+    const week = 1 + Math.round((d.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    return `${d.getFullYear()}-${String(week).padStart(2, "0")}`;
+  }
 
   const completedLogs = memberLogs.filter((log) => log.status === "Fullført");
-  const uniqueTrainingDays = new Set(completedLogs.map((log) => log.date)).size;
-  const streakWeeks = Math.min(12, completedLogs.length);
-  const estimatedSessionsThisMonth = completedLogs.length;
+  const completedLogDates = completedLogs.map((log) => parseLogDate(log.date)).filter((date): date is Date => Boolean(date));
+  const uniqueTrainingDays = new Set(completedLogDates.map((date) => date.toDateString())).size;
+  const estimatedSessionsThisMonth = completedLogDates.filter((date) => date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()).length;
+  const trainingWeekKeys = Array.from(new Set(completedLogDates.map((date) => getWeekKey(date)))).sort().reverse();
+  const streakWeeks = useMemo(() => {
+    if (!trainingWeekKeys.length) return 0;
+    let streak = 1;
+    let current = trainingWeekKeys[0];
+    for (let i = 1; i < trainingWeekKeys.length; i += 1) {
+      const [year, week] = current.split("-").map(Number);
+      const prevWeekDate = new Date(year, 0, 4 + (week - 2) * 7);
+      const expectedPrev = getWeekKey(prevWeekDate);
+      if (trainingWeekKeys[i] !== expectedPrev) break;
+      streak += 1;
+      current = trainingWeekKeys[i];
+    }
+    return streak;
+  }, [trainingWeekKeys]);
+  const monthlyTarget = 8;
+  const monthlyProgressPercent = Math.min(100, Math.round((estimatedSessionsThisMonth / monthlyTarget) * 100));
+  const motivationalMessage =
+    streakWeeks >= 4
+      ? "Sterk flyt! Du har holdt rytmen i flere uker."
+      : estimatedSessionsThisMonth >= 4
+      ? "Bra jobba! Du bygger solide treningsvaner."
+      : "Små steg teller. En økt i dag bygger momentum.";
+
+  const trainingDaysThisMonth = new Set(
+    completedLogDates
+      .filter((date) => date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear())
+      .map((date) => date.getDate()),
+  );
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const monthOffset = (firstDayOfMonth.getDay() + 6) % 7;
+  const calendarCells = Array.from({ length: monthOffset + daysInMonth }, (_, index) => {
+    const day = index - monthOffset + 1;
+    if (day <= 0) return null;
+    return day;
+  });
 
   const personalRecords = useMemo(() => {
     const best = new Map<string, { weight: number; reps: number; score: number }>();
@@ -140,6 +203,66 @@ export function MemberPortal(props: MemberPortalProps) {
                     </GradientButton>
                   </div>
                 )}
+              </div>
+              <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+                <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-700">Motivasjon og flyt</div>
+                      <div className="text-xs text-slate-500">{motivationalMessage}</div>
+                    </div>
+                    <div className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                      {streakWeeks} uker streak
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span>Månedsmål: {monthlyTarget} økter</span>
+                      <span>{estimatedSessionsThisMonth}/{monthlyTarget}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-slate-200">
+                      <div className="h-2 rounded-full" style={{ width: `${monthlyProgressPercent}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
+                    </div>
+                  </div>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="text-xs text-slate-500">Unike treningsdager</div>
+                      <div className="font-semibold text-slate-800">{uniqueTrainingDays}</div>
+                    </div>
+                    <div className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="text-xs text-slate-500">Økter denne måneden</div>
+                      <div className="font-semibold text-slate-800">{estimatedSessionsThisMonth}</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="text-sm font-semibold text-slate-700">Treningskalender</div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    {now.toLocaleDateString("no-NO", { month: "long", year: "numeric" })}
+                  </div>
+                  <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[11px] text-slate-500">
+                    <span>Ma</span><span>Ti</span><span>On</span><span>To</span><span>Fr</span><span>Lo</span><span>So</span>
+                  </div>
+                  <div className="mt-2 grid grid-cols-7 gap-1">
+                    {calendarCells.map((day, index) =>
+                      day ? (
+                        <div
+                          key={`${day}-${index}`}
+                          className={`rounded-lg px-1 py-2 text-center text-xs ${trainingDaysThisMonth.has(day) ? "text-white font-semibold" : "text-slate-600 bg-white"}`}
+                          style={
+                            trainingDaysThisMonth.has(day)
+                              ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
+                              : { border: "1px solid rgba(15,23,42,0.06)" }
+                          }
+                        >
+                          {day}
+                        </div>
+                      ) : (
+                        <div key={`empty-${index}`} />
+                      ),
+                    )}
+                  </div>
+                </div>
               </div>
             </Card>
           ) : null}
