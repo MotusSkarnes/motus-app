@@ -4,7 +4,7 @@ import { loadState, saveState } from "./storage";
 import { localAppRepository, type CreateMemberInput, type SaveProgramInput } from "../services/appRepository";
 import { isSupabaseConfigured } from "../services/supabaseClient";
 import { fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
-import { establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyRecoveryToken, type InviteMemberResult } from "../services/supabaseAuth";
+import { establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyRecoveryToken, type InviteMemberResult } from "../services/supabaseAuth";
 import type { AppState, MemberTab, TrainerTab } from "./types";
 
 export function useAppState() {
@@ -21,12 +21,23 @@ export function useAppState() {
   const [recoveryPasswordConfirm, setRecoveryPasswordConfirm] = useState("");
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [recoveryInfo, setRecoveryInfo] = useState<string | null>(null);
+  const [passwordRecoveryInfo, setPasswordRecoveryInfo] = useState<string | null>(null);
+  const [passwordRecoveryError, setPasswordRecoveryError] = useState<string | null>(null);
+  const [passwordRecoveryCooldownSeconds, setPasswordRecoveryCooldownSeconds] = useState(0);
   const [trainerTab, setTrainerTab] = useState<TrainerTab>("dashboard");
   const [memberTab, setMemberTab] = useState<MemberTab>("overview");
 
   useEffect(() => {
     saveState(appState);
   }, [appState]);
+
+  useEffect(() => {
+    if (passwordRecoveryCooldownSeconds <= 0) return;
+    const timer = window.setTimeout(() => {
+      setPasswordRecoveryCooldownSeconds((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [passwordRecoveryCooldownSeconds]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -262,6 +273,24 @@ export function useAppState() {
     }
   }
 
+  async function sendPasswordRecoveryEmail() {
+    if (passwordRecoveryCooldownSeconds > 0) return;
+    setPasswordRecoveryError(null);
+    setPasswordRecoveryInfo(null);
+
+    const result = await requestPasswordRecovery(loginEmail);
+    if (!result.ok) {
+      setPasswordRecoveryError(result.message);
+      if (result.message.toLowerCase().includes("for mange foresporsler")) {
+        setPasswordRecoveryCooldownSeconds(60);
+      }
+      return;
+    }
+
+    setPasswordRecoveryInfo(result.message);
+    setPasswordRecoveryCooldownSeconds(60);
+  }
+
   function handleQuickLogin(email: string) {
     setLoginEmail(email);
     setLoginPassword("123456");
@@ -376,6 +405,9 @@ export function useAppState() {
     setRecoveryPasswordConfirm,
     recoveryError,
     recoveryInfo,
+    passwordRecoveryInfo,
+    passwordRecoveryError,
+    passwordRecoveryCooldownSeconds,
     trainerTab,
     setTrainerTab,
     memberTab,
@@ -384,6 +416,7 @@ export function useAppState() {
     handleLogin,
     handleQuickLogin,
     completePasswordRecovery,
+    sendPasswordRecoveryEmail,
     showQuickLogin: true,
     handleLogout,
     resetAllData,

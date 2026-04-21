@@ -94,6 +94,28 @@ export async function updateSupabasePassword(password: string): Promise<{ ok: bo
   return { ok: true };
 }
 
+export async function requestPasswordRecovery(email: string): Promise<{ ok: boolean; message: string }> {
+  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail || !normalizedEmail.includes("@")) {
+    return { ok: false, message: "Skriv inn en gyldig e-postadresse." };
+  }
+
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(normalizedEmail);
+  if (error) {
+    const lowered = (error.message || "").toLowerCase();
+    if (lowered.includes("rate limit")) {
+      return {
+        ok: false,
+        message: "For mange foresporsler akkurat na. Vent litt og prov igjen.",
+      };
+    }
+    return { ok: false, message: `Kunne ikke sende reset-epost: ${error.message || "Ukjent feil."}` };
+  }
+
+  return { ok: true, message: "Reset-lenke sendt. Sjekk e-posten din." };
+}
+
 export type InviteMemberResult = {
   ok: boolean;
   message: string;

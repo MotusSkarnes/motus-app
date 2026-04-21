@@ -16,6 +16,10 @@ type LoginScreenProps = {
   recoveryError: string | null;
   recoveryInfo: string | null;
   onCompleteRecovery: () => void | Promise<void>;
+  passwordRecoveryInfo: string | null;
+  passwordRecoveryError: string | null;
+  passwordRecoveryCooldownSeconds: number;
+  onSendPasswordRecovery: () => void | Promise<void>;
   quickLogin: (email: string) => void;
   showQuickLogin: boolean;
 };
@@ -36,6 +40,10 @@ export function LoginScreen(props: LoginScreenProps) {
     recoveryError,
     recoveryInfo,
     onCompleteRecovery,
+    passwordRecoveryInfo,
+    passwordRecoveryError,
+    passwordRecoveryCooldownSeconds,
+    onSendPasswordRecovery,
     quickLogin,
   } = props;
 
@@ -83,6 +91,16 @@ export function LoginScreen(props: LoginScreenProps) {
               <TextInput type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Passord" />
               {loginError ? <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{loginError}</div> : null}
               <GradientButton onClick={onLogin} className="w-full">Logg inn</GradientButton>
+              <button
+                type="button"
+                onClick={onSendPasswordRecovery}
+                disabled={passwordRecoveryCooldownSeconds > 0}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {passwordRecoveryCooldownSeconds > 0 ? `Send ny reset-lenke om ${passwordRecoveryCooldownSeconds}s` : "Glemt passord?"}
+              </button>
+              {passwordRecoveryInfo ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{passwordRecoveryInfo}</div> : null}
+              {passwordRecoveryError ? <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{passwordRecoveryError}</div> : null}
 
               <div className="rounded-2xl border bg-slate-50 px-4 py-3 text-xs text-slate-600">
                 Demo-knappene under logger deg rett inn lokalt for testing, uavhengig av Supabase.
