@@ -118,7 +118,13 @@ export function MemberPortal(props: MemberPortalProps) {
                       Neste program: <span className="font-medium text-slate-800">{nextProgram.title}</span>
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row">
-                      <GradientButton onClick={() => startWorkoutMode(nextProgram.id)} className="w-full sm:w-auto">
+                      <GradientButton
+                        onClick={() => {
+                          setMemberTab("programs");
+                          startWorkoutMode(nextProgram.id);
+                        }}
+                        className="w-full sm:w-auto"
+                      >
                         Start dagens okt
                       </GradientButton>
                       <OutlineButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">
