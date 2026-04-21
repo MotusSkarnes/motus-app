@@ -71,6 +71,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [newMemberFocus, setNewMemberFocus] = useState("");
   const [newMemberError, setNewMemberError] = useState<string | null>(null);
   const [pendingProgramMemberEmail, setPendingProgramMemberEmail] = useState<string | null>(null);
+  const [pendingInviteMemberEmail, setPendingInviteMemberEmail] = useState<string | null>(null);
   const [showInactiveMembers, setShowInactiveMembers] = useState(false);
   const [memberSearch, setMemberSearch] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -225,6 +226,27 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setPendingProgramMemberEmail(null);
   }, [pendingProgramMemberEmail, members, setSelectedMemberId, setTrainerTab]);
 
+  useEffect(() => {
+    if (!pendingInviteMemberEmail) return;
+    const createdMember = members.find((member) => member.email.toLowerCase() === pendingInviteMemberEmail.toLowerCase());
+    if (!createdMember) return;
+
+    async function sendInviteForNewMember() {
+      setSelectedMemberId(createdMember.id);
+      setInviteStatus("Sender invitasjon...");
+      const result = await inviteMember(createdMember.email.toLowerCase(), createdMember.id);
+      if (result.ok) {
+        markMemberInvited(createdMember.id, new Date().toISOString());
+      }
+      setInviteStatus(result.message);
+      setTrainerTab("customers");
+      setCustomerSubTab("overview");
+      setPendingInviteMemberEmail(null);
+    }
+
+    void sendInviteForNewMember();
+  }, [pendingInviteMemberEmail, members, inviteMember, markMemberInvited, setSelectedMemberId, setTrainerTab]);
+
   function formatInvitedAt(iso: string): string {
     if (!iso) return "";
     const date = new Date(iso);
@@ -304,7 +326,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setProgramExercisesDraft([]);
   }
 
-  function submitNewMember(openProgramAfterCreate = false) {
+  function submitNewMember(options?: { openProgramAfterCreate?: boolean; inviteAfterCreate?: boolean }) {
     const name = newMemberName.trim();
     const email = newMemberEmail.trim().toLowerCase();
     if (!name || !email) {
@@ -334,8 +356,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setNewMemberGoal("");
     setNewMemberFocus("");
     setNewMemberError(null);
-    if (openProgramAfterCreate) {
+    if (options?.openProgramAfterCreate) {
       setPendingProgramMemberEmail(email);
+    }
+    if (options?.inviteAfterCreate) {
+      setPendingInviteMemberEmail(email);
     }
   }
 
@@ -741,9 +766,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 <TextInput value={newMemberFocus} onChange={(e) => setNewMemberFocus(e.target.value)} placeholder="Fokus (valgfritt)" />
                 {newMemberError ? <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{newMemberError}</div> : null}
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <GradientButton onClick={() => submitNewMember(false)} className="w-full">Opprett medlem</GradientButton>
-                  <OutlineButton onClick={() => submitNewMember(true)} className="w-full">Opprett + lag program</OutlineButton>
+                  <GradientButton onClick={() => submitNewMember()} className="w-full">Opprett medlem</GradientButton>
+                  <OutlineButton onClick={() => submitNewMember({ openProgramAfterCreate: true })} className="w-full">Opprett + lag program</OutlineButton>
                 </div>
+                <OutlineButton onClick={() => submitNewMember({ inviteAfterCreate: true })} className="w-full">
+                  Opprett + send invitasjon
+                </OutlineButton>
               </div>
             </div>
           </Card>
