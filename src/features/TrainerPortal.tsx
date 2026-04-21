@@ -80,6 +80,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [templateNotes, setTemplateNotes] = useState("");
   const [templateExercisesDraft, setTemplateExercisesDraft] = useState<ProgramExercise[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [templateAssignStatus, setTemplateAssignStatus] = useState<string | null>(null);
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
   const visibleMembers = showInactiveMembers ? members : members.filter((member) => member.isActive !== false);
   const filteredMembers = useMemo(() => {
@@ -122,6 +123,16 @@ export function TrainerPortal(props: TrainerPortalProps) {
   useEffect(() => {
     window.localStorage.setItem("motus.trainer.memberFilter", memberFilter);
   }, [memberFilter]);
+
+  useEffect(() => {
+    if (!templatePrograms.length) {
+      setSelectedTemplateId("");
+      return;
+    }
+    if (!templatePrograms.some((program) => program.id === selectedTemplateId)) {
+      setSelectedTemplateId(templatePrograms[0].id);
+    }
+  }, [templatePrograms, selectedTemplateId]);
 
   useEffect(() => {
     if (!pendingProgramMemberEmail) return;
@@ -280,12 +291,19 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setTemplateGoal("");
     setTemplateNotes("");
     setTemplateExercisesDraft([]);
+    setTemplateAssignStatus("Treningsmal lagret. Velg kunde og tildel.");
   }
 
   function assignTemplateToSelectedMember() {
-    if (!selectedTemplateId || !selectedMemberId) return;
-    const template = templatePrograms.find((program) => program.id === selectedTemplateId);
-    if (!template) return;
+    if (!selectedMemberId) {
+      setTemplateAssignStatus("Velg kunde før tildeling.");
+      return;
+    }
+    const template = templatePrograms.find((program) => program.id === selectedTemplateId) ?? templatePrograms[0];
+    if (!template) {
+      setTemplateAssignStatus("Ingen treningsmaler tilgjengelig enda.");
+      return;
+    }
     saveProgramForMember({
       title: template.title,
       goal: template.goal,
@@ -293,6 +311,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
       memberId: selectedMemberId,
       exercises: template.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
     });
+    const memberName = members.find((member) => member.id === selectedMemberId)?.name ?? "kunden";
+    setTemplateAssignStatus(`Malen ble tildelt ${memberName}.`);
     setTrainerTab("customers");
     setCustomerSubTab("programs");
   }
@@ -702,6 +722,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 <GradientButton onClick={assignTemplateToSelectedMember} className="w-full">
                   Tildel mal til valgt kunde
                 </GradientButton>
+                {templateAssignStatus ? (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                    {templateAssignStatus}
+                  </div>
+                ) : null}
                 <div className="rounded-xl border bg-white px-3 py-2 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   Medlem fyller inn utført kg selv i øktmodus, og kan justere reps ved behov.
                 </div>
