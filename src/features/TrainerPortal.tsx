@@ -6,6 +6,7 @@ import { Card, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, T
 import type { CreateMemberInput } from "../services/appRepository";
 import type { InviteMemberResult } from "../services/supabaseAuth";
 import type { ChatMessage, CustomerSubTab, Exercise, Member, ProgramExercise, TrainerTab, TrainingProgram, WorkoutLog } from "../app/types";
+import { supabaseClient } from "../services/supabaseClient";
 
 type TrainerPortalProps = {
   members: Member[];
@@ -37,6 +38,9 @@ type TrainerPortalProps = {
 };
 
 export function TrainerPortal(props: TrainerPortalProps) {
+  const EXERCISE_IMAGE_BUCKET = "exercise-images";
+  const MAX_EXERCISE_IMAGE_BYTES = 5 * 1024 * 1024;
+  const ALLOWED_EXERCISE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
   const {
     members,
     programs,
@@ -112,6 +116,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [exerciseFormLevel, setExerciseFormLevel] = useState<Exercise["level"]>("Nybegynner");
   const [exerciseFormDescription, setExerciseFormDescription] = useState("");
   const [exerciseFormImageUrl, setExerciseFormImageUrl] = useState("");
+  const [isUploadingExerciseImage, setIsUploadingExerciseImage] = useState(false);
   const [exerciseFormStatus, setExerciseFormStatus] = useState<string | null>(null);
   const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
   const [showCustomerToolsMobile, setShowCustomerToolsMobile] = useState(false);
@@ -484,6 +489,50 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
     setExerciseFormStatus(editingExerciseId ? "Øvelsen ble oppdatert." : "Ny øvelse ble lagt til i banken.");
     resetExerciseForm();
+  }
+
+  async function handleExerciseImageUpload(file: File | null) {
+    if (!file) return;
+    if (!supabaseClient) {
+      setExerciseFormStatus("Bildefunksjon krever Supabase-oppsett.");
+      return;
+    }
+    if (!ALLOWED_EXERCISE_IMAGE_TYPES.has(file.type)) {
+      setExerciseFormStatus("Kun JPG, PNG eller WEBP er tillatt.");
+      return;
+    }
+    if (file.size > MAX_EXERCISE_IMAGE_BYTES) {
+      setExerciseFormStatus("Bildet er for stort. Maks størrelse er 5 MB.");
+      return;
+    }
+
+    setIsUploadingExerciseImage(true);
+    setExerciseFormStatus("Laster opp bilde...");
+    try {
+      const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const imagePath = `exercise-bank/${uid("exercise-image")}.${extension}`;
+      const { error: uploadError } = await supabaseClient.storage
+        .from(EXERCISE_IMAGE_BUCKET)
+        .upload(imagePath, file, { cacheControl: "3600", upsert: false });
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+      const { data } = supabaseClient.storage.from(EXERCISE_IMAGE_BUCKET).getPublicUrl(imagePath);
+      if (!data.publicUrl) {
+        throw new Error("Mangler offentlig URL for opplastet bilde.");
+      }
+      setExerciseFormImageUrl(data.publicUrl);
+      setExerciseFormStatus("Bilde lastet opp. Husk å lagre øvelsen.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Ukjent feil ved opplasting.";
+      if (message.toLowerCase().includes("bucket")) {
+        setExerciseFormStatus("Opplasting feilet: bucket 'exercise-images' mangler i Supabase Storage.");
+      } else {
+        setExerciseFormStatus(`Opplasting feilet: ${message}`);
+      }
+    } finally {
+      setIsUploadingExerciseImage(false);
+    }
   }
 
   function getExerciseSketchDataUri(exercise: Exercise): string {
@@ -1137,6 +1186,50 @@ export function TrainerPortal(props: TrainerPortalProps) {
               <TextInput value={exerciseFormGroup} onChange={(e) => setExerciseFormGroup(e.target.value)} placeholder="Muskelgruppe / fokusområde" />
               <TextInput value={exerciseFormEquipment} onChange={(e) => setExerciseFormEquipment(e.target.value)} placeholder="Utstyr (f.eks. stang, manualer, kroppsvekt)" />
               <TextInput value={exerciseFormImageUrl} onChange={(e) => setExerciseFormImageUrl(e.target.value)} placeholder="Bilde-URL (valgfritt). La stå tom for auto-skisse." />
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="inline-flex">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(event) => {
+                        const selectedFile = event.currentTarget.files?.[0] ?? null;
+                        void handleExerciseImageUpload(selectedFile);
+                        event.currentTarget.value = "";
+                      }}
+                      disabled={isUploadingExerciseImage}
+                    />
+                    <span
+                      className={`cursor-pointer rounded-xl px-3 py-2 text-xs font-medium ${
+                        isUploadingExerciseImage ? "bg-slate-200 text-slate-500" : "bg-slate-900 text-white"
+                      }`}
+                    >
+                      {isUploadingExerciseImage ? "Laster opp..." : "Last opp bilde"}
+                    </span>
+                  </label>
+                  <div className="text-xs text-slate-500">JPG/PNG/WEBP, maks 5 MB.</div>
+                </div>
+                {exerciseFormImageUrl.trim() ? (
+                  <img
+                    src={exerciseFormImageUrl}
+                    alt="Forhåndsvisning av øvelsesbilde"
+                    className="h-20 w-20 rounded-xl border bg-white object-cover"
+                    style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                    onError={(event) => {
+                      event.currentTarget.src = getExerciseSketchDataUri({
+                        id: "preview",
+                        name: exerciseFormName || "preview",
+                        category: exerciseFormCategory,
+                        group: exerciseFormGroup || "",
+                        equipment: exerciseFormEquipment || "",
+                        level: exerciseFormLevel,
+                        description: exerciseFormDescription || "",
+                      });
+                    }}
+                  />
+                ) : null}
+              </div>
               <TextArea value={exerciseFormDescription} onChange={(e) => setExerciseFormDescription(e.target.value)} className="min-h-[110px]" placeholder="Forklaring av teknikk og utførelse" />
               {exerciseFormStatus ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{exerciseFormStatus}</div> : null}
               <div className="grid gap-2 sm:grid-cols-2">

@@ -112,3 +112,27 @@ Hvis noe feiler:
 - Sett backup-policy i Supabase
 - Legg på feillogging i frontend (f.eks. Sentry)
 - Gå gjennom PII/GDPR-vurdering for medlemsdata
+
+## 10) Aktivér bildeopplasting i Øvelsesbank
+
+For å bruke "Last opp bilde" i trenerens øvelsesbank, kjør:
+
+- `src/supabase/exercise_image_storage.sql`
+
+Dette gjør:
+
+- oppretter/oppdaterer bucket `exercise-images`
+- setter bucket som offentlig (slik at `getPublicUrl()` kan vises i appen)
+- begrenser filer til `image/jpeg`, `image/png`, `image/webp`
+- setter maks filstørrelse til 5 MB
+- oppretter policies for:
+  - offentlig lesing
+  - opplasting/redigering/sletting for `authenticated` brukere
+
+Rask verifisering etter kjøring:
+
+- Logg inn som trener
+- Gå til `Øvelsesbank`
+- Velg en øvelse eller lag ny
+- Klikk `Last opp bilde`
+- Bekreft at preview vises og lagring fungerer
