@@ -74,6 +74,19 @@ export async function verifyRecoveryToken(tokenHash: string): Promise<{ ok: bool
   return { ok: true };
 }
 
+export async function establishRecoverySessionFromTokens(input: {
+  accessToken: string;
+  refreshToken: string;
+}): Promise<{ ok: boolean; message?: string }> {
+  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  const { error } = await supabaseClient.auth.setSession({
+    access_token: input.accessToken,
+    refresh_token: input.refreshToken,
+  });
+  if (error) return { ok: false, message: error.message || "Kunne ikke opprette recovery-session." };
+  return { ok: true };
+}
+
 export async function updateSupabasePassword(password: string): Promise<{ ok: boolean; message?: string }> {
   if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
   const { error } = await supabaseClient.auth.updateUser({ password });

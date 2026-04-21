@@ -4,7 +4,7 @@ import { loadState, saveState } from "./storage";
 import { localAppRepository, type CreateMemberInput, type SaveProgramInput } from "../services/appRepository";
 import { isSupabaseConfigured } from "../services/supabaseClient";
 import { fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
-import { getSupabaseSessionUser, inviteMemberByEmail, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyRecoveryToken, type InviteMemberResult } from "../services/supabaseAuth";
+import { establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyRecoveryToken, type InviteMemberResult } from "../services/supabaseAuth";
 import type { AppState, MemberTab, TrainerTab } from "./types";
 
 export function useAppState() {
@@ -15,6 +15,8 @@ export function useAppState() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
   const [recoveryTokenHash, setRecoveryTokenHash] = useState<string | null>(null);
+  const [recoveryAccessToken, setRecoveryAccessToken] = useState<string | null>(null);
+  const [recoveryRefreshToken, setRecoveryRefreshToken] = useState<string | null>(null);
   const [recoveryPassword, setRecoveryPassword] = useState("");
   const [recoveryPasswordConfirm, setRecoveryPasswordConfirm] = useState("");
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
@@ -74,11 +76,19 @@ export function useAppState() {
     const query = new URLSearchParams(window.location.search);
     const type = hash.get("type") ?? query.get("type");
     const tokenHash = hash.get("token_hash") ?? query.get("token_hash");
+    const accessToken = hash.get("access_token") ?? query.get("access_token");
+    const refreshToken = hash.get("refresh_token") ?? query.get("refresh_token");
     if (type === "recovery") {
       setIsRecoveryMode(true);
       setRecoveryInfo("Recovery-lenke registrert. Velg nytt passord.");
       if (tokenHash) {
         setRecoveryTokenHash(tokenHash);
+      }
+      if (accessToken) {
+        setRecoveryAccessToken(accessToken);
+      }
+      if (refreshToken) {
+        setRecoveryRefreshToken(refreshToken);
       }
     }
   }, []);
@@ -101,6 +111,28 @@ export function useAppState() {
       cancelled = true;
     };
   }, [isRecoveryMode, recoveryTokenHash]);
+
+  useEffect(() => {
+    if (!isRecoveryMode || !recoveryAccessToken || !recoveryRefreshToken) return;
+    let cancelled = false;
+    async function hydrateRecoverySessionFromTokens() {
+      const result = await establishRecoverySessionFromTokens({
+        accessToken: recoveryAccessToken,
+        refreshToken: recoveryRefreshToken,
+      });
+      if (cancelled) return;
+      if (!result.ok) {
+        setRecoveryError(`Recovery-lenke feilet: ${result.message}`);
+        return;
+      }
+      setRecoveryError(null);
+      setRecoveryInfo("Recovery-session opprettet. Du kan sette nytt passord.");
+    }
+    void hydrateRecoverySessionFromTokens();
+    return () => {
+      cancelled = true;
+    };
+  }, [isRecoveryMode, recoveryAccessToken, recoveryRefreshToken]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -223,6 +255,8 @@ export function useAppState() {
     setRecoveryPassword("");
     setRecoveryPasswordConfirm("");
     setRecoveryTokenHash(null);
+    setRecoveryAccessToken(null);
+    setRecoveryRefreshToken(null);
     if (typeof window !== "undefined") {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
