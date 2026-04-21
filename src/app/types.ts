@@ -62,6 +62,7 @@ export type Exercise = {
   equipment: string;
   level: Level;
   description: string;
+  imageUrl?: string;
   favorite?: boolean;
 };
 

@@ -6,9 +6,13 @@ create table if not exists public.exercise_bank (
   equipment text not null default '',
   level text not null check (level in ('Nybegynner', 'Litt øvet', 'Øvet')),
   description text not null default '',
+  image_url text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.exercise_bank
+  add column if not exists image_url text not null default '';
 
 alter table public.exercise_bank enable row level security;
 

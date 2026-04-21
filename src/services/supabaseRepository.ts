@@ -90,6 +90,7 @@ async function persistExercise(exercise: Exercise) {
       equipment: exercise.equipment,
       level: exercise.level,
       description: exercise.description,
+      image_url: exercise.imageUrl ?? null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
@@ -267,7 +268,7 @@ export async function fetchExercisesFromSupabase(): Promise<Exercise[] | null> {
   if (!supabaseClient) return null;
   const { data, error } = await supabaseClient
     .from("exercise_bank")
-    .select("id, name, category, muscle_group, equipment, level, description")
+    .select("id, name, category, muscle_group, equipment, level, description, image_url")
     .order("name", { ascending: true });
 
   if (error) {
@@ -283,6 +284,7 @@ export async function fetchExercisesFromSupabase(): Promise<Exercise[] | null> {
     equipment: String(row.equipment ?? ""),
     level: row.level === "Litt øvet" || row.level === "Øvet" ? row.level : "Nybegynner",
     description: String(row.description ?? ""),
+    imageUrl: String(row.image_url ?? ""),
   }));
 }
 

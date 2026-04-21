@@ -32,6 +32,7 @@ export type SaveExerciseInput = {
   equipment: string;
   level: Exercise["level"];
   description: string;
+  imageUrl?: string;
 };
 
 export interface AppRepository {
@@ -252,6 +253,7 @@ export function finishWorkoutModeInState(state: AppState): AppState {
 export function saveExerciseInState(state: AppState, input: SaveExerciseInput): AppState {
   const normalizedName = input.name.trim();
   const normalizedDescription = input.description.trim();
+  const normalizedImageUrl = input.imageUrl?.trim() || "";
   if (!normalizedName || !normalizedDescription) return state;
 
   if (input.id) {
@@ -267,6 +269,7 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
               equipment: input.equipment.trim(),
               level: input.level,
               description: normalizedDescription,
+              imageUrl: normalizedImageUrl,
             }
           : exercise
       ),
@@ -281,6 +284,7 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
     equipment: input.equipment.trim(),
     level: input.level,
     description: normalizedDescription,
+    imageUrl: normalizedImageUrl,
   };
   return { ...state, exercises: [nextExercise, ...state.exercises] };
 }

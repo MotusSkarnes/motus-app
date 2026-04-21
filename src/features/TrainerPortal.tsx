@@ -32,6 +32,7 @@ type TrainerPortalProps = {
     equipment: string;
     level: Exercise["level"];
     description: string;
+    imageUrl?: string;
   }) => void;
 };
 
@@ -109,6 +110,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [exerciseFormEquipment, setExerciseFormEquipment] = useState("");
   const [exerciseFormLevel, setExerciseFormLevel] = useState<Exercise["level"]>("Nybegynner");
   const [exerciseFormDescription, setExerciseFormDescription] = useState("");
+  const [exerciseFormImageUrl, setExerciseFormImageUrl] = useState("");
   const [exerciseFormStatus, setExerciseFormStatus] = useState<string | null>(null);
   const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
@@ -401,6 +403,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setExerciseFormEquipment("");
     setExerciseFormLevel("Nybegynner");
     setExerciseFormDescription("");
+    setExerciseFormImageUrl("");
   }
 
   function startEditExercise(exercise: Exercise) {
@@ -411,6 +414,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setExerciseFormEquipment(exercise.equipment);
     setExerciseFormLevel(exercise.level);
     setExerciseFormDescription(exercise.description);
+    setExerciseFormImageUrl(exercise.imageUrl ?? "");
     setExerciseFormStatus(null);
   }
 
@@ -432,6 +436,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       equipment,
       level: exerciseFormLevel,
       description,
+      imageUrl: exerciseFormImageUrl.trim(),
     });
 
     setExerciseFormStatus(editingExerciseId ? "Øvelsen ble oppdatert." : "Ny øvelse ble lagt til i banken.");
@@ -447,6 +452,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
       <path d='M12 84 H84' stroke='${accent}' stroke-width='4' stroke-linecap='round'/>
     </svg>`;
     return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  }
+
+  function getExercisePreviewSrc(exercise: Exercise): string {
+    const customImage = exercise.imageUrl?.trim();
+    return customImage ? customImage : getExerciseSketchDataUri(exercise);
   }
 
   const followUpCount = useMemo(() => members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length, [members]);
@@ -1092,6 +1102,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
               </div>
               <TextInput value={exerciseFormGroup} onChange={(e) => setExerciseFormGroup(e.target.value)} placeholder="Muskelgruppe / fokusområde" />
               <TextInput value={exerciseFormEquipment} onChange={(e) => setExerciseFormEquipment(e.target.value)} placeholder="Utstyr (f.eks. stang, manualer, kroppsvekt)" />
+              <TextInput value={exerciseFormImageUrl} onChange={(e) => setExerciseFormImageUrl(e.target.value)} placeholder="Bilde-URL (valgfritt). La stå tom for auto-skisse." />
               <TextArea value={exerciseFormDescription} onChange={(e) => setExerciseFormDescription(e.target.value)} className="min-h-[110px]" placeholder="Forklaring av teknikk og utførelse" />
               {exerciseFormStatus ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{exerciseFormStatus}</div> : null}
               <div className="grid gap-2 sm:grid-cols-2">
@@ -1124,10 +1135,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   <div key={exercise.id} className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="flex items-start gap-3">
                       <img
-                        src={getExerciseSketchDataUri(exercise)}
+                        src={getExercisePreviewSrc(exercise)}
                         alt={`Skisse av ${exercise.name}`}
                         className="h-14 w-14 rounded-xl border bg-white object-cover"
                         style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                        onError={(event) => {
+                          event.currentTarget.src = getExerciseSketchDataUri(exercise);
+                        }}
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
