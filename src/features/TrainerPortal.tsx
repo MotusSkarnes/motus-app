@@ -765,10 +765,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 <TextInput value={newMemberGoal} onChange={(e) => setNewMemberGoal(e.target.value)} placeholder="Hovedmål (valgfritt)" />
                 <TextInput value={newMemberFocus} onChange={(e) => setNewMemberFocus(e.target.value)} placeholder="Fokus (valgfritt)" />
                 {newMemberError ? <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{newMemberError}</div> : null}
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <GradientButton onClick={() => submitNewMember()} className="w-full">Opprett medlem</GradientButton>
-                  <OutlineButton onClick={() => submitNewMember({ openProgramAfterCreate: true })} className="w-full">Opprett + lag program</OutlineButton>
-                </div>
+                <GradientButton onClick={() => submitNewMember()} className="w-full">Opprett medlem</GradientButton>
                 <OutlineButton onClick={() => submitNewMember({ inviteAfterCreate: true })} className="w-full">
                   Opprett + send invitasjon
                 </OutlineButton>
@@ -805,25 +802,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="font-semibold">Inviter medlem til appen (kun e-post)</div>
-                  <div className="text-xs text-slate-500">Bruk en ekte e-postadresse (ikke example.com) som matcher valgt medlem.</div>
-                  <TextInput
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    placeholder={selectedMember.email}
-                  />
-                  <GradientButton onClick={handleInviteSelectedMember}>
-                    {selectedMember.invitedAt ? "Send på nytt" : "Send invitasjon"}
-                  </GradientButton>
-                  {inviteStatus ? (
-                    <div
-                      className={`rounded-xl border px-3 py-2 text-sm ${inviteStatusTone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}
-                    >
-                      {inviteStatus}
-                    </div>
-                  ) : null}
-                </div>
+                {inviteStatus ? (
+                  <div
+                    className={`rounded-xl border px-3 py-2 text-sm ${inviteStatusTone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}
+                  >
+                    {inviteStatus}
+                  </div>
+                ) : null}
 
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <StatCard label="Programmer" value={String(selectedPrograms.length)} hint="På denne kunden" />
