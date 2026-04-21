@@ -92,7 +92,7 @@ export default function App() {
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center gap-3">
-                  <img src={motusLogo} alt="Motus logo" className="h-12 w-auto rounded-xl border border-slate-200 bg-white p-1" />
+                  <img src={motusLogo} alt="Motus logo" className="h-14 w-auto object-contain" />
                   <Badge>{appState.currentUser.role === "trainer" ? "PT" : "Medlem"}</Badge>
                   <Badge>{appState.currentUser.name}</Badge>
                 </div>
