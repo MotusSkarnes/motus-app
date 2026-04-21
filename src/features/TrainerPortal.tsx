@@ -146,8 +146,25 @@ export function TrainerPortal(props: TrainerPortalProps) {
       : null;
   const selectedPrograms = programs.filter((program) => program.memberId === selectedMemberId);
   const templatePrograms = programs.filter((program) => program.memberId === "__template__");
-  const selectedLogs = logs.filter((log) => log.memberId === selectedMemberId);
+  const selectedLogs = useMemo(() => {
+    function parseLogDate(value: string): number {
+      if (!value) return 0;
+      const iso = new Date(value);
+      if (!Number.isNaN(iso.getTime())) return iso.getTime();
+      const parts = value.split(".");
+      if (parts.length < 3) return 0;
+      const day = Number(parts[0]);
+      const month = Number(parts[1]) - 1;
+      const year = Number(parts[2]);
+      const parsed = new Date(year, month, day);
+      return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+    }
+    return logs
+      .filter((log) => log.memberId === selectedMemberId)
+      .sort((a, b) => parseLogDate(b.date) - parseLogDate(a.date));
+  }, [logs, selectedMemberId]);
   const selectedMessages = messages.filter((message) => message.memberId === selectedMemberId);
+  const latestCompletedLog = selectedLogs.find((log) => log.status === "Fullført") ?? null;
   const visibleExercises = useMemo(() => {
     const query = exerciseSearch.trim().toLowerCase();
     return exercises.filter((exercise) => {
@@ -618,6 +635,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     onClick={() => {
                       setTrainerTab("customers");
                       setSelectedMemberId(member.id);
+                      setCustomerSubTab("overview");
                     }}
                     className={`rounded-full px-3 py-1 text-xs font-semibold ${
                       priority.tone === "red"
@@ -746,6 +764,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   <div className="mt-1 text-2xl font-bold tracking-tight">{selectedMember.name}</div>
                   <div className="mt-2 text-sm text-white/85">{selectedMember.email}</div>
                   <div className="mt-1 text-sm text-white/85">Mål: {selectedMember.goal}</div>
+                  <div className="mt-1 text-sm text-white/85">
+                    Sist trening: {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}
+                  </div>
                   <div className="mt-1 text-xs text-white/85">
                     {selectedMember.invitedAt ? `Invitert: ${formatInvitedAt(selectedMember.invitedAt)}` : "Ikke invitert enda"}
                   </div>
