@@ -89,7 +89,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
     }
     return "all";
   });
-  const [inviteEmail, setInviteEmail] = useState("");
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const [templateTitle, setTemplateTitle] = useState("Ny treningsmal");
   const [templateGoal, setTemplateGoal] = useState("");
@@ -380,7 +379,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
   async function handleInviteSelectedMember() {
     if (!selectedMember) return;
-    const email = inviteEmail.trim().toLowerCase() || selectedMember.email.toLowerCase();
+    const email = selectedMember.email.trim().toLowerCase();
     setInviteStatus("Sender invitasjon...");
     const result = await inviteMember(email, selectedMember.id);
     if (result.ok) {
@@ -844,7 +843,10 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   <div className="mt-1 text-xs text-white/85">
                     {selectedMember.invitedAt ? `Invitert: ${formatInvitedAt(selectedMember.invitedAt)}` : "Ikke invitert enda"}
                   </div>
-                  <div className="mt-3">
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <OutlineButton onClick={handleInviteSelectedMember}>
+                      Send invitasjon på nytt
+                    </OutlineButton>
                     <OutlineButton onClick={() => handleDeactivateMember(selectedMember.id)}>
                       Sett medlem som inaktiv
                     </OutlineButton>

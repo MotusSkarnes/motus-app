@@ -29,9 +29,11 @@ Deno.serve(async (req) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY");
+  const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !serviceRoleKey) {
-    return jsonResponse(500, { error: "Missing Supabase environment variables" });
+    return jsonResponse(500, {
+      error: "Missing Supabase environment variables (expected SERVICE_ROLE_KEY or SUPABASE_SERVICE_ROLE_KEY)",
+    });
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
@@ -72,21 +74,57 @@ Deno.serve(async (req) => {
     return jsonResponse(400, { error: "memberId is required" });
   }
 
-  const { data: memberData, error: memberError } = await adminClient
+  const { data: memberDataById, error: memberErrorById } = await adminClient
     .from("members")
     .select("id, name, email")
     .eq("id", memberId)
     .maybeSingle();
 
-  if (memberError) {
-    return jsonResponse(500, { error: memberError.message });
+  if (memberErrorById) {
+    return jsonResponse(500, { error: memberErrorById.message });
   }
 
-  if (!memberData) {
-    return jsonResponse(404, { error: "Member not found" });
+  let resolvedMember = memberDataById;
+  if (!resolvedMember) {
+    const { data: memberDataByEmail, error: memberErrorByEmail } = await adminClient
+      .from("members")
+      .select("id, name, email")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (memberErrorByEmail) {
+      return jsonResponse(500, { error: memberErrorByEmail.message });
+    }
+
+    if (memberDataByEmail) {
+      resolvedMember = memberDataByEmail;
+    } else {
+      const fallbackName = email.split("@")[0] || "Nytt medlem";
+      const { data: insertedMember, error: insertMemberError } = await adminClient
+        .from("members")
+        .insert({
+          id: memberId,
+          name: fallbackName,
+          email,
+          is_active: true,
+          goal: "Nytt mål settes her",
+          focus: "Ikke satt",
+          phone: "",
+          days_since_activity: "0",
+        })
+        .select("id, name, email")
+        .single();
+
+      if (insertMemberError || !insertedMember) {
+        return jsonResponse(500, {
+          error: `Could not create missing member row: ${insertMemberError?.message ?? "Unknown error"}`,
+        });
+      }
+      resolvedMember = insertedMember;
+    }
   }
 
-  const memberEmail = String(memberData.email ?? "").trim().toLowerCase();
+  const memberEmail = String(resolvedMember.email ?? "").trim().toLowerCase();
   if (memberEmail !== email) {
     return jsonResponse(400, {
       error: "Email must match selected member email",
@@ -95,9 +133,9 @@ Deno.serve(async (req) => {
 
   const inviteResult = await adminClient.auth.admin.inviteUserByEmail(email, {
     data: {
-      member_id: memberId,
+      member_id: String(resolvedMember.id),
       role: "member",
-      name: String(memberData.name ?? ""),
+      name: String(resolvedMember.name ?? ""),
     },
   });
 
@@ -110,7 +148,7 @@ Deno.serve(async (req) => {
     const { error: updateError } = await adminClient.auth.admin.updateUserById(invitedUserId, {
       app_metadata: {
         role: "member",
-        member_id: memberId,
+        member_id: String(resolvedMember.id),
       },
     });
     if (updateError) {
@@ -123,7 +161,7 @@ Deno.serve(async (req) => {
   const { error: memberUpdateError } = await adminClient
     .from("members")
     .update({ invited_at: new Date().toISOString() })
-    .eq("id", memberId);
+    .eq("id", String(resolvedMember.id));
   if (memberUpdateError) {
     return jsonResponse(500, {
       error: `Invite sent, but member invite status update failed: ${memberUpdateError.message}`,
