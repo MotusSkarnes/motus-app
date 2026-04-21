@@ -41,13 +41,16 @@ export function LoginScreen(props: LoginScreenProps) {
         <div className="space-y-4">
           <div>
             <h2 className="text-xl font-semibold tracking-tight">Innlogging</h2>
-            <p className="text-sm text-slate-500">Bruk demo-bruker for testing, eller logg inn med Supabase-konto.</p>
+            <p className="text-sm text-slate-500">Skriv inn e-post/passord for vanlig Supabase-innlogging.</p>
           </div>
           <TextInput value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-post" />
           <TextInput type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Passord" />
           {loginError ? <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{loginError}</div> : null}
           <GradientButton onClick={onLogin} className="w-full">Logg inn</GradientButton>
 
+          <div className="rounded-2xl border bg-slate-50 px-4 py-3 text-xs text-slate-600">
+            Demo-knappene under logger deg rett inn lokalt for testing, uavhengig av Supabase.
+          </div>
           <div className="pt-4 space-y-2">
             <button type="button" onClick={() => quickLogin("trainer@motus.no")} className="w-full rounded-2xl border bg-slate-50 px-4 py-3 text-left text-sm">
               <div className="font-medium">Logg inn som trener</div>
