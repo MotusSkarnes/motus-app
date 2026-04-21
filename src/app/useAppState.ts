@@ -4,7 +4,7 @@ import { loadState, saveState } from "./storage";
 import { localAppRepository, type CreateMemberInput, type SaveProgramInput } from "../services/appRepository";
 import { isSupabaseConfigured } from "../services/supabaseClient";
 import { fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
-import { getSupabaseSessionUser, inviteMemberByEmail, signInWithSupabase, signOutSupabase, type InviteMemberResult } from "../services/supabaseAuth";
+import { getSupabaseSessionUser, inviteMemberByEmail, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyRecoveryToken, type InviteMemberResult } from "../services/supabaseAuth";
 import type { AppState, MemberTab, TrainerTab } from "./types";
 
 export function useAppState() {
@@ -13,6 +13,12 @@ export function useAppState() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [recoveryTokenHash, setRecoveryTokenHash] = useState<string | null>(null);
+  const [recoveryPassword, setRecoveryPassword] = useState("");
+  const [recoveryPasswordConfirm, setRecoveryPasswordConfirm] = useState("");
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [recoveryInfo, setRecoveryInfo] = useState<string | null>(null);
   const [trainerTab, setTrainerTab] = useState<TrainerTab>("dashboard");
   const [memberTab, setMemberTab] = useState<MemberTab>("overview");
 
@@ -61,6 +67,40 @@ export function useAppState() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || typeof window === "undefined") return;
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const query = new URLSearchParams(window.location.search);
+    const type = hash.get("type") ?? query.get("type");
+    const tokenHash = hash.get("token_hash") ?? query.get("token_hash");
+    if (type === "recovery") {
+      setIsRecoveryMode(true);
+      setRecoveryInfo("Recovery-lenke registrert. Velg nytt passord.");
+      if (tokenHash) {
+        setRecoveryTokenHash(tokenHash);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isRecoveryMode || !recoveryTokenHash) return;
+    let cancelled = false;
+    async function hydrateRecoverySession() {
+      const result = await verifyRecoveryToken(recoveryTokenHash);
+      if (cancelled) return;
+      if (!result.ok) {
+        setRecoveryError(`Recovery-lenke feilet: ${result.message}`);
+        return;
+      }
+      setRecoveryError(null);
+      setRecoveryInfo("Recovery-lenke verifisert. Du kan sette nytt passord.");
+    }
+    void hydrateRecoverySession();
+    return () => {
+      cancelled = true;
+    };
+  }, [isRecoveryMode, recoveryTokenHash]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -158,6 +198,34 @@ export function useAppState() {
     setTrainerTab("dashboard");
     setMemberTab("overview");
     setLoginError(null);
+  }
+
+  async function completePasswordRecovery() {
+    const password = recoveryPassword.trim();
+    if (password.length < 6) {
+      setRecoveryError("Passord ma vaere minst 6 tegn.");
+      return;
+    }
+    if (password !== recoveryPasswordConfirm.trim()) {
+      setRecoveryError("Passordene matcher ikke.");
+      return;
+    }
+
+    const result = await updateSupabasePassword(password);
+    if (!result.ok) {
+      setRecoveryError(`Kunne ikke sette nytt passord: ${result.message}`);
+      return;
+    }
+
+    setRecoveryError(null);
+    setRecoveryInfo("Passord oppdatert. Logg inn med nytt passord.");
+    setIsRecoveryMode(false);
+    setRecoveryPassword("");
+    setRecoveryPasswordConfirm("");
+    setRecoveryTokenHash(null);
+    if (typeof window !== "undefined") {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }
 
   function handleQuickLogin(email: string) {
@@ -267,6 +335,13 @@ export function useAppState() {
     loginPassword,
     setLoginPassword,
     loginError,
+    isRecoveryMode,
+    recoveryPassword,
+    setRecoveryPassword,
+    recoveryPasswordConfirm,
+    setRecoveryPasswordConfirm,
+    recoveryError,
+    recoveryInfo,
     trainerTab,
     setTrainerTab,
     memberTab,
@@ -274,6 +349,7 @@ export function useAppState() {
     patchState,
     handleLogin,
     handleQuickLogin,
+    completePasswordRecovery,
     showQuickLogin: true,
     handleLogout,
     resetAllData,

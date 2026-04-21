@@ -64,6 +64,23 @@ export async function signOutSupabase(): Promise<void> {
   await supabaseClient.auth.signOut();
 }
 
+export async function verifyRecoveryToken(tokenHash: string): Promise<{ ok: boolean; message?: string }> {
+  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  const { error } = await supabaseClient.auth.verifyOtp({
+    token_hash: tokenHash,
+    type: "recovery",
+  });
+  if (error) return { ok: false, message: error.message || "Kunne ikke verifisere recovery-lenke." };
+  return { ok: true };
+}
+
+export async function updateSupabasePassword(password: string): Promise<{ ok: boolean; message?: string }> {
+  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  const { error } = await supabaseClient.auth.updateUser({ password });
+  if (error) return { ok: false, message: error.message || "Kunne ikke oppdatere passord." };
+  return { ok: true };
+}
+
 export type InviteMemberResult = {
   ok: boolean;
   message: string;

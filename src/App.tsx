@@ -14,6 +14,13 @@ export default function App() {
     loginPassword,
     setLoginPassword,
     loginError,
+    isRecoveryMode,
+    recoveryPassword,
+    setRecoveryPassword,
+    recoveryPasswordConfirm,
+    setRecoveryPasswordConfirm,
+    recoveryError,
+    recoveryInfo,
     trainerTab,
     setTrainerTab,
     memberTab,
@@ -21,6 +28,7 @@ export default function App() {
     patchState,
     handleLogin,
     handleQuickLogin,
+    completePasswordRecovery,
     showQuickLogin,
     handleLogout,
     resetAllData,
@@ -55,6 +63,14 @@ export default function App() {
           setPassword={setLoginPassword}
           onLogin={handleLogin}
           loginError={loginError}
+          isRecoveryMode={isRecoveryMode}
+          recoveryPassword={recoveryPassword}
+          setRecoveryPassword={setRecoveryPassword}
+          recoveryPasswordConfirm={recoveryPasswordConfirm}
+          setRecoveryPasswordConfirm={setRecoveryPasswordConfirm}
+          recoveryError={recoveryError}
+          recoveryInfo={recoveryInfo}
+          onCompleteRecovery={completePasswordRecovery}
           quickLogin={handleQuickLogin}
           showQuickLogin={showQuickLogin}
         />
