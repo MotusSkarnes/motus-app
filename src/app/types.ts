@@ -25,6 +25,15 @@ export type WorkoutModeState = {
   note: string;
 };
 
+export type WorkoutCelebration = {
+  memberId: string;
+  exerciseName: string;
+  previousEstimated1RM: number;
+  newEstimated1RM: number;
+  reps: number;
+  weight: number;
+};
+
 export type AuthUser = {
   id: string;
   role: Role;
@@ -107,6 +116,7 @@ export type ChatMessage = {
 
 export type AppState = {
   workoutMode: WorkoutModeState | null;
+  workoutCelebration: WorkoutCelebration | null;
   members: Member[];
   exercises: Exercise[];
   programs: TrainingProgram[];

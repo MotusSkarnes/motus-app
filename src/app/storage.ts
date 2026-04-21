@@ -26,6 +26,7 @@ export function loadState(): AppState {
       : defaults.exercises;
     return {
       workoutMode: parsed.workoutMode ?? defaults.workoutMode,
+      workoutCelebration: parsed.workoutCelebration ?? defaults.workoutCelebration,
       members: Array.isArray(parsed.members) ? parsed.members : defaults.members,
       exercises: normalizedExercises,
       programs: Array.isArray(parsed.programs) ? parsed.programs : defaults.programs,

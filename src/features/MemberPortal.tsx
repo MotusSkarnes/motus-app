@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ClipboardList, MessageSquare, Target, TrendingUp, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { Card, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, TextArea, TextInput } from "../app/ui";
-import type { ChatMessage, Member, MemberTab, TrainingProgram, WorkoutLog, WorkoutModeState } from "../app/types";
+import type { ChatMessage, Member, MemberTab, TrainingProgram, WorkoutCelebration, WorkoutLog, WorkoutModeState } from "../app/types";
 
 type MemberPortalProps = {
   members: Member[];
@@ -20,10 +20,12 @@ type MemberPortalProps = {
   updateWorkoutModeNote: (note: string) => void;
   finishWorkoutMode: () => void;
   cancelWorkoutMode: () => void;
+  workoutCelebration: WorkoutCelebration | null;
+  dismissWorkoutCelebration: () => void;
 };
 
 export function MemberPortal(props: MemberPortalProps) {
-  const { members, programs, logs, messages, memberViewId, setMemberViewId, memberTab, setMemberTab, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, updateWorkoutModeNote, finishWorkoutMode, cancelWorkoutMode } = props;
+  const { members, programs, logs, messages, memberViewId, setMemberViewId, memberTab, setMemberTab, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, updateWorkoutModeNote, finishWorkoutMode, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
   const [messageText, setMessageText] = useState("");
   const viewedMember = members.find((member) => member.id === memberViewId) ?? null;
   const memberPrograms = programs.filter((program) => program.memberId === memberViewId);
@@ -146,6 +148,7 @@ export function MemberPortal(props: MemberPortalProps) {
       .sort((a, b) => b.score - a.score)
       .slice(0, 6);
   }, [completedLogs]);
+  const shouldShowCelebration = Boolean(workoutCelebration && workoutCelebration.memberId === memberViewId);
 
   return (
     <>
@@ -298,6 +301,22 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
             </Card>
+          ) : null}
+
+          {shouldShowCelebration ? (
+            <div className="fixed inset-0 z-[10020] bg-slate-900/45 p-4">
+              <div className="mx-auto mt-16 max-w-sm rounded-3xl border bg-white p-5 shadow-2xl" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-xs font-semibold uppercase tracking-wide text-emerald-600">Ny PR!</div>
+                <div className="mt-1 text-xl font-bold tracking-tight text-slate-900">Sterk økning i estimert 1RM</div>
+                <div className="mt-3 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-800">
+                  {workoutCelebration?.exerciseName}: {workoutCelebration?.previousEstimated1RM.toFixed(1)} kg → {workoutCelebration?.newEstimated1RM.toFixed(1)} kg
+                </div>
+                <div className="mt-2 text-xs text-slate-500">
+                  Beregnet fra {workoutCelebration?.weight} kg × {workoutCelebration?.reps} reps (omregnet til 1RM).
+                </div>
+                <GradientButton onClick={dismissWorkoutCelebration} className="mt-4 w-full">Rått! Fortsett</GradientButton>
+              </div>
+            </div>
           ) : null}
 
           {memberTab === "programs" ? (

@@ -152,6 +152,7 @@ const initialMessages: ChatMessage[] = [
 export function getDefaultState(): AppState {
   return {
     workoutMode: null,
+    workoutCelebration: null,
     members: initialMembers,
     exercises: initialExercises,
     programs: initialPrograms,

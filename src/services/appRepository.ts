@@ -1,5 +1,5 @@
 import { uid } from "../app/storage";
-import type { AppState, ChatMessage, Exercise, Member, ProgramExercise, TrainingProgram } from "../app/types";
+import type { AppState, ChatMessage, Exercise, Member, ProgramExercise, TrainingProgram, WorkoutCelebration, WorkoutLog } from "../app/types";
 
 export type CreateMemberInput = {
   name: string;
@@ -232,6 +232,46 @@ export function finishWorkoutModeInState(state: AppState): AppState {
   const program = state.programs.find((p) => p.id === current.programId);
   if (!program) return state;
 
+  function estimate1RM(weight: number, reps: number): number {
+    if (weight <= 0 || reps <= 0) return 0;
+    return weight * (1 + reps / 30);
+  }
+
+  function getBestEstimated1RM(logs: WorkoutLog[], exerciseName: string): number {
+    let best = 0;
+    logs.forEach((log) => {
+      (log.results ?? []).forEach((result) => {
+        if (!result.completed || result.exerciseName !== exerciseName) return;
+        const weight = Number(result.performedWeight) || 0;
+        const reps = Number(result.performedReps) || 0;
+        const estimated = estimate1RM(weight, reps);
+        if (estimated > best) best = estimated;
+      });
+    });
+    return best;
+  }
+
+  let bestCelebration: WorkoutCelebration | null = null;
+  current.results.forEach((result) => {
+    if (!result.completed) return;
+    const weight = Number(result.performedWeight) || 0;
+    const reps = Number(result.performedReps) || 0;
+    const newEstimated = estimate1RM(weight, reps);
+    if (newEstimated <= 0) return;
+    const previousEstimated = getBestEstimated1RM(state.logs, result.exerciseName);
+    if (newEstimated <= previousEstimated) return;
+    if (!bestCelebration || newEstimated - previousEstimated > bestCelebration.newEstimated1RM - bestCelebration.previousEstimated1RM) {
+      bestCelebration = {
+        memberId: program.memberId,
+        exerciseName: result.exerciseName,
+        previousEstimated1RM: previousEstimated,
+        newEstimated1RM: newEstimated,
+        reps,
+        weight,
+      };
+    }
+  });
+
   return {
     ...state,
     logs: [
@@ -247,6 +287,7 @@ export function finishWorkoutModeInState(state: AppState): AppState {
       ...state.logs,
     ],
     workoutMode: null,
+    workoutCelebration: bestCelebration,
   };
 }
 

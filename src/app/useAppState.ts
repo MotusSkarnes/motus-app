@@ -401,6 +401,10 @@ export function useAppState() {
     setAppState((prev) => repository.appendMemberMessage(prev, memberId, text));
   }
 
+  function dismissWorkoutCelebration() {
+    setAppState((prev) => ({ ...prev, workoutCelebration: null }));
+  }
+
   async function inviteMember(email: string, memberId: string): Promise<InviteMemberResult> {
     if (!isSupabaseConfigured) {
       return { ok: false, message: "Invitasjon krever Supabase-oppsett." };
@@ -449,6 +453,7 @@ export function useAppState() {
     updateWorkoutModeNote,
     finishWorkoutMode,
     cancelWorkoutMode,
+    dismissWorkoutCelebration,
     sendMemberMessage,
     inviteMember,
   };

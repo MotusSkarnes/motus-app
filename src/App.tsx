@@ -49,6 +49,7 @@ export default function App() {
     updateWorkoutModeNote,
     finishWorkoutMode,
     cancelWorkoutMode,
+    dismissWorkoutCelebration,
     sendMemberMessage,
     inviteMember,
   } = useAppState();
@@ -150,6 +151,8 @@ export default function App() {
               updateWorkoutModeNote={updateWorkoutModeNote}
               finishWorkoutMode={finishWorkoutMode}
               cancelWorkoutMode={cancelWorkoutMode}
+              workoutCelebration={appState.workoutCelebration}
+              dismissWorkoutCelebration={dismissWorkoutCelebration}
             />
           )}
 
