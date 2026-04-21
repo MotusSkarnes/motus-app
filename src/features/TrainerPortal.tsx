@@ -506,12 +506,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
       {trainerTab === "dashboard" ? (
         <Card className="p-5 space-y-5">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Programmer" value={String(programs.length)} hint="Totalt" />
-            <StatCard label="Logger" value={String(logs.length)} hint="Totalt" />
-            <StatCard label="Meldinger" value={String(messages.length)} hint="Totalt" />
-            <StatCard label="Øvelser" value={String(exercises.length)} hint="I banken" />
-          </div>
           <div className="grid gap-3 md:grid-cols-3">
             <GradientButton onClick={() => setTrainerTab("customers")} className="w-full">
               1. Velg eller opprett kunde
