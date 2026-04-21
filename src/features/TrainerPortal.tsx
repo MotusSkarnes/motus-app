@@ -113,6 +113,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [exerciseFormImageUrl, setExerciseFormImageUrl] = useState("");
   const [exerciseFormStatus, setExerciseFormStatus] = useState<string | null>(null);
   const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
+  const [showCustomerToolsMobile, setShowCustomerToolsMobile] = useState(false);
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
   const visibleMembers = showInactiveMembers ? members : members.filter((member) => member.isActive !== false);
   const filteredMembers = useMemo(() => {
@@ -493,7 +494,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
   return (
     <>
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <Card className="p-3 hidden lg:block">
         <div className="flex gap-2 overflow-auto pb-1">
           <PillButton active={trainerTab === "dashboard"} onClick={() => setTrainerTab("dashboard")}>Oversikt</PillButton>
@@ -643,7 +644,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
       {trainerTab === "customers" ? (
         <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-          <Card className="p-4 h-fit">
+          <div className="lg:hidden">
+            <OutlineButton onClick={() => setShowCustomerToolsMobile((prev) => !prev)} className="w-full">
+              {showCustomerToolsMobile ? "Skjul kundeliste og oppretting" : "Vis kundeliste og oppretting"}
+            </OutlineButton>
+          </div>
+          <Card className={`p-4 h-fit ${showCustomerToolsMobile ? "block" : "hidden"} lg:block`}>
             <div className="flex items-start gap-3">
               <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Users className="h-5 w-5" /></div>
               <div>
@@ -730,7 +736,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
             </div>
           </Card>
 
-          <Card className="p-5">
+          <Card className="p-4 sm:p-5">
             {selectedMember ? (
               <div className="space-y-5">
                 <div className="lg:hidden rounded-2xl border bg-slate-50 p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>

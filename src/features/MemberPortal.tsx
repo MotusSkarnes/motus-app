@@ -149,7 +149,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
   return (
     <>
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <Card className="p-3 hidden lg:block">
         <div className="flex gap-2 overflow-auto pb-1">
           <PillButton active={memberTab === "overview"} onClick={() => setMemberTab("overview")}>Oversikt</PillButton>
@@ -161,7 +161,7 @@ export function MemberPortal(props: MemberPortalProps) {
       </Card>
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-[280px_1fr]">
-        <Card className="p-4 h-fit xl:p-5">
+        <Card className="hidden p-4 h-fit xl:p-5 lg:block">
           <div className="flex items-start gap-3">
             <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><UserCircle2 className="h-5 w-5" /></div>
             <div>
@@ -185,15 +185,23 @@ export function MemberPortal(props: MemberPortalProps) {
           </div>
         </Card>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
+          <Card className="p-3 lg:hidden">
+            <div className="text-xs font-medium text-slate-600 mb-2">Bytt medlem</div>
+            <SelectBox
+              value={memberViewId}
+              onChange={setMemberViewId}
+              options={members.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
+            />
+          </Card>
           {memberTab === "overview" ? (
-            <Card className="p-5 space-y-5">
-              <div className="rounded-[26px] p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
+            <Card className="p-4 sm:p-5 space-y-4 sm:space-y-5">
+              <div className="rounded-[22px] p-4 sm:p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
                 <div className="text-sm text-white/80">Hei{viewedMember ? `, ${viewedMember.name}` : ""}</div>
-                <div className="mt-1 text-3xl font-bold tracking-tight">Klar for neste økt?</div>
+                <div className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">Klar for neste økt?</div>
                 <div className="mt-2 text-sm text-white/90">Trykk pa neste steg under for a komme raskt i gang.</div>
               </div>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="hidden sm:grid gap-3 sm:grid-cols-3">
                 <StatCard label="Programmer" value={String(memberPrograms.length)} hint="Tildelt deg" />
                 <StatCard label="Logger" value={String(memberLogs.length)} hint="Registrert" />
                 <StatCard label="Meldinger" value={String(memberMessages.length)} hint="I chatten" />
