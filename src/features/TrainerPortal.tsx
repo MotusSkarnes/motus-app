@@ -110,6 +110,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [exerciseFormLevel, setExerciseFormLevel] = useState<Exercise["level"]>("Nybegynner");
   const [exerciseFormDescription, setExerciseFormDescription] = useState("");
   const [exerciseFormStatus, setExerciseFormStatus] = useState<string | null>(null);
+  const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
   const visibleMembers = showInactiveMembers ? members : members.filter((member) => member.isActive !== false);
   const filteredMembers = useMemo(() => {
@@ -435,6 +436,17 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
     setExerciseFormStatus(editingExerciseId ? "Øvelsen ble oppdatert." : "Ny øvelse ble lagt til i banken.");
     resetExerciseForm();
+  }
+
+  function getExerciseSketchDataUri(exercise: Exercise): string {
+    const accent = exercise.category === "Kondisjon" ? "#f97316" : exercise.category === "Uttøyning" ? "#0ea5e9" : "#14b8a6";
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'>
+      <rect width='96' height='96' rx='16' fill='#ffffff'/>
+      <circle cx='48' cy='20' r='8' fill='${accent}'/>
+      <path d='M48 30 L48 50 M48 38 L30 45 M48 38 L66 45 M48 50 L35 72 M48 50 L61 72' stroke='#0f172a' stroke-width='4' stroke-linecap='round' fill='none'/>
+      <path d='M12 84 H84' stroke='${accent}' stroke-width='4' stroke-linecap='round'/>
+    </svg>`;
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   }
 
   const followUpCount = useMemo(() => members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length, [members]);
@@ -1110,14 +1122,37 @@ export function TrainerPortal(props: TrainerPortalProps) {
               <div className="grid gap-3 sm:grid-cols-2">
                 {visibleExercises.map((exercise) => (
                   <div key={exercise.id} className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="font-medium">{exercise.name}</div>
-                      <OutlineButton onClick={() => startEditExercise(exercise)} className="px-3 py-1.5 text-xs">Rediger</OutlineButton>
+                    <div className="flex items-start gap-3">
+                      <img
+                        src={getExerciseSketchDataUri(exercise)}
+                        alt={`Skisse av ${exercise.name}`}
+                        className="h-14 w-14 rounded-xl border bg-white object-cover"
+                        style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="font-medium leading-tight">{exercise.name}</div>
+                          <OutlineButton onClick={() => startEditExercise(exercise)} className="px-3 py-1.5 text-xs">Rediger</OutlineButton>
+                        </div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          {exercise.category} · {exercise.group} · Utstyr: {exercise.equipment} · {exercise.level}
+                        </div>
+                      </div>
                     </div>
-                    <div className="mt-1 text-xs text-slate-500">
-                      {exercise.category} · {exercise.group} · Utstyr: {exercise.equipment} · {exercise.level}
+                    <div className="mt-2 text-sm text-slate-700">
+                      {expandedExerciseId === exercise.id
+                        ? exercise.description
+                        : `${exercise.description.slice(0, 88)}${exercise.description.length > 88 ? "..." : ""}`}
                     </div>
-                    <div className="mt-2 text-sm text-slate-700">{exercise.description}</div>
+                    {exercise.description.length > 88 ? (
+                      <button
+                        type="button"
+                        className="mt-1 text-xs font-medium text-slate-600 underline"
+                        onClick={() => setExpandedExerciseId((prev) => (prev === exercise.id ? null : exercise.id))}
+                      >
+                        {expandedExerciseId === exercise.id ? "Vis mindre" : "Vis mer"}
+                      </button>
+                    ) : null}
                   </div>
                 ))}
               </div>
