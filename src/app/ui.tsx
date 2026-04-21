@@ -3,7 +3,7 @@ import { MOTUS } from "./data";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen p-3 sm:p-4 md:p-8 text-slate-900" style={{ background: "linear-gradient(135deg, #ffffff 0%, #f7fffd 35%, #fff3f9 100%)" }}>
+    <div className="min-h-screen p-3 sm:p-4 md:p-8 text-slate-900 bg-white">
       <div className="mx-auto max-w-7xl">{children}</div>
     </div>
   );
