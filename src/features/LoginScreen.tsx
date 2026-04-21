@@ -46,6 +46,7 @@ export function LoginScreen(props: LoginScreenProps) {
     passwordRecoveryCooldownSeconds,
     onSendPasswordRecovery,
     quickLogin,
+    showQuickLogin,
   } = props;
 
   return (
@@ -103,24 +104,28 @@ export function LoginScreen(props: LoginScreenProps) {
               {passwordRecoveryInfo ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{passwordRecoveryInfo}</div> : null}
               {passwordRecoveryError ? <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{passwordRecoveryError}</div> : null}
 
-              <div className="rounded-2xl border bg-slate-50 px-4 py-3 text-xs text-slate-600">
-                Demo-knappene under logger deg rett inn lokalt for testing, uavhengig av Supabase.
-              </div>
-              <div className="pt-4 space-y-2">
-                <button type="button" onClick={() => quickLogin("trainer@motus.no")} className="w-full rounded-2xl border bg-slate-50 px-4 py-3 text-left text-sm">
-                  <div className="font-medium">Logg inn som trener</div>
-                  <div className="text-slate-500">trainer@motus.no</div>
-                </button>
-                <button type="button" onClick={() => quickLogin("emma@example.com")} className="w-full rounded-2xl border bg-slate-50 px-4 py-3 text-left text-sm">
-                  <div className="font-medium">Logg inn som Emma</div>
-                  <div className="text-slate-500">Medlem</div>
-                </button>
-                <button type="button" onClick={() => quickLogin("martin@example.com")} className="w-full rounded-2xl border bg-slate-50 px-4 py-3 text-left text-sm">
-                  <div className="font-medium">Logg inn som Martin</div>
-                  <div className="text-slate-500">Medlem</div>
-                </button>
-              </div>
-              <div className="rounded-2xl border bg-slate-50 px-4 py-3 text-sm text-slate-600">Testpassord på alle brukere: <span className="font-semibold">123456</span></div>
+              {showQuickLogin ? (
+                <>
+                  <div className="rounded-2xl border bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                    Demo-knappene under logger deg rett inn lokalt for testing, uavhengig av Supabase.
+                  </div>
+                  <div className="pt-4 space-y-2">
+                    <button type="button" onClick={() => quickLogin("trainer@motus.no")} className="w-full rounded-2xl border bg-slate-50 px-4 py-3 text-left text-sm">
+                      <div className="font-medium">Logg inn som trener</div>
+                      <div className="text-slate-500">trainer@motus.no</div>
+                    </button>
+                    <button type="button" onClick={() => quickLogin("emma@example.com")} className="w-full rounded-2xl border bg-slate-50 px-4 py-3 text-left text-sm">
+                      <div className="font-medium">Logg inn som Emma</div>
+                      <div className="text-slate-500">Medlem</div>
+                    </button>
+                    <button type="button" onClick={() => quickLogin("martin@example.com")} className="w-full rounded-2xl border bg-slate-50 px-4 py-3 text-left text-sm">
+                      <div className="font-medium">Logg inn som Martin</div>
+                      <div className="text-slate-500">Medlem</div>
+                    </button>
+                  </div>
+                  <div className="rounded-2xl border bg-slate-50 px-4 py-3 text-sm text-slate-600">Testpassord på alle brukere: <span className="font-semibold">123456</span></div>
+                </>
+              ) : null}
             </>
           )}
         </div>

@@ -8,6 +8,7 @@ import { establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMembe
 import type { AppState, MemberTab, TrainerTab } from "./types";
 
 export function useAppState() {
+  const isDemoMode = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_MODE === "true";
   const repository = isSupabaseConfigured ? supabaseAppRepository : localAppRepository;
   const [appState, setAppState] = useState<AppState>(() => loadState());
   const [loginEmail, setLoginEmail] = useState("");
@@ -219,8 +220,8 @@ export function useAppState() {
         return;
       }
 
-      // Fallback for local demo users when Supabase login is unavailable.
-      if (matchedDemoUser) {
+      // Fallback for local demo users when demo mode is enabled.
+      if (isDemoMode && matchedDemoUser) {
         const { password: _password, ...safeUser } = matchedDemoUser;
         setAppState((prev) => ({
           ...prev,
@@ -305,6 +306,7 @@ export function useAppState() {
   }
 
   function handleQuickLogin(email: string) {
+    if (!isDemoMode) return;
     setLoginEmail(email);
     setLoginPassword("123456");
     const matchedUser = demoUsers.find((user) => user.email.toLowerCase() === email.toLowerCase());
@@ -438,7 +440,7 @@ export function useAppState() {
     handleQuickLogin,
     completePasswordRecovery,
     sendPasswordRecoveryEmail,
-    showQuickLogin: true,
+    showQuickLogin: isDemoMode,
     handleLogout,
     resetAllData,
     addMember,

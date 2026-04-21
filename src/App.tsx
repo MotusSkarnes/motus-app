@@ -101,12 +101,14 @@ export default function App() {
                   <p className="mt-2 text-sm md:text-base text-slate-500 max-w-3xl">Administrer medlemmer, programmer og oppfolging pa ett sted.</p>
                 </div>
               </div>
-              <Card className="p-1 w-full md:w-auto self-stretch md:self-auto">
-                <div className="grid w-full grid-cols-2 md:w-[280px] gap-1 rounded-2xl bg-slate-50 p-1">
-                  <PillButton active={appState.role === "trainer"} onClick={() => patchState({ role: "trainer" })}>PT-side</PillButton>
-                  <PillButton active={appState.role === "member"} onClick={() => patchState({ role: "member" })}>Medlemsside</PillButton>
-                </div>
-              </Card>
+              {showQuickLogin ? (
+                <Card className="p-1 w-full md:w-auto self-stretch md:self-auto">
+                  <div className="grid w-full grid-cols-2 md:w-[280px] gap-1 rounded-2xl bg-slate-50 p-1">
+                    <PillButton active={appState.role === "trainer"} onClick={() => patchState({ role: "trainer" })}>PT-side</PillButton>
+                    <PillButton active={appState.role === "member"} onClick={() => patchState({ role: "member" })}>Medlemsside</PillButton>
+                  </div>
+                </Card>
+              ) : null}
               <div className="flex flex-col gap-2 sm:flex-row">
                 <OutlineButton onClick={handleResetData}>Nullstill testdata</OutlineButton>
                 <OutlineButton onClick={handleLogout}>Logg ut</OutlineButton>
