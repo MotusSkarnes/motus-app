@@ -8,6 +8,8 @@ export type MemberTab = "overview" | "programs" | "progress" | "messages" | "pro
 
 export type WorkoutExerciseResult = {
   exerciseId: string;
+  programExerciseId?: string;
+  setNumber?: number;
   exerciseName: string;
   plannedSets: string;
   plannedReps: string;

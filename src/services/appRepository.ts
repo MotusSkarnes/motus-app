@@ -163,20 +163,27 @@ export function startWorkoutModeInState(state: AppState, programId: string): App
   const program = state.programs.find((p) => p.id === programId);
   if (!program) return state;
 
+  const expandedResults = program.exercises.flatMap((ex) => {
+    const setCount = Math.max(1, Math.min(12, Number(ex.sets) || 1));
+    return Array.from({ length: setCount }, (_, index) => ({
+      exerciseId: `${ex.id}-set-${index + 1}`,
+      programExerciseId: ex.id,
+      setNumber: index + 1,
+      exerciseName: ex.exerciseName,
+      plannedSets: ex.sets,
+      plannedReps: ex.reps,
+      plannedWeight: ex.weight,
+      performedWeight: ex.weight,
+      performedReps: ex.reps,
+      completed: false,
+    }));
+  });
+
   return {
     ...state,
     workoutMode: {
       programId,
-      results: program.exercises.map((ex) => ({
-        exerciseId: ex.id,
-        exerciseName: ex.exerciseName,
-        plannedSets: ex.sets,
-        plannedReps: ex.reps,
-        plannedWeight: ex.weight,
-        performedWeight: ex.weight,
-        performedReps: ex.reps,
-        completed: false,
-      })),
+      results: expandedResults,
       note: "",
     },
   };

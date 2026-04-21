@@ -31,6 +31,31 @@ export function MemberPortal(props: MemberPortalProps) {
   const memberMessages = messages.filter((message) => message.memberId === memberViewId);
   const activeWorkoutProgram = workoutMode ? memberPrograms.find((program) => program.id === workoutMode.programId) ?? null : null;
   const nextProgram = memberPrograms[0] ?? null;
+  const workoutResultGroups = useMemo(() => {
+    if (!workoutMode) return [];
+    const grouped = new Map<string, { exerciseName: string; plannedReps: string; plannedWeight: string; rows: WorkoutModeState["results"] }>();
+    workoutMode.results.forEach((result) => {
+      const groupId = result.programExerciseId ?? result.exerciseId;
+      const existing = grouped.get(groupId);
+      if (!existing) {
+        grouped.set(groupId, {
+          exerciseName: result.exerciseName,
+          plannedReps: result.plannedReps,
+          plannedWeight: result.plannedWeight,
+          rows: [result],
+        });
+        return;
+      }
+      existing.rows.push(result);
+    });
+    return Array.from(grouped.entries()).map(([groupId, value]) => ({
+      groupId,
+      exerciseName: value.exerciseName,
+      plannedReps: value.plannedReps,
+      plannedWeight: value.plannedWeight,
+      rows: value.rows.sort((a, b) => (a.setNumber ?? 0) - (b.setNumber ?? 0)),
+    }));
+  }, [workoutMode]);
   const now = new Date();
 
   function parseLogDate(value: string): Date | null {
@@ -315,46 +340,52 @@ export function MemberPortal(props: MemberPortalProps) {
                         <div>
                           <div className="text-xs uppercase tracking-wide text-slate-400">Økt-modus</div>
                           <div className="text-lg font-semibold">{activeWorkoutProgram.title}</div>
-                          <div className="mt-1 text-sm text-slate-500">{workoutMode.results.filter(r => r.completed).length}/{activeWorkoutProgram.exercises.length} øvelser fullført</div>
+                          <div className="mt-1 text-sm text-slate-500">{workoutMode.results.filter(r => r.completed).length}/{workoutMode.results.length} sett fullført</div>
                         </div>
                         <OutlineButton onClick={cancelWorkoutMode}>Lukk</OutlineButton>
                       </div>
                     </div>
 
                     <div className="flex-1 space-y-3 overflow-auto p-4">
-                      {workoutMode.results.map((result, index) => {
+                      {workoutResultGroups.map((group, groupIndex) => {
                         return (
                           <div
-                            key={result.exerciseId}
-                            className={`w-full rounded-2xl border p-4 text-left transition ${result.completed ? "bg-emerald-50" : "bg-slate-50"}`}
-                            style={{ borderColor: result.completed ? "#86efac" : "rgba(15,23,42,0.08)" }}
+                            key={group.groupId}
+                            className="w-full rounded-2xl border p-4 text-left transition bg-slate-50"
+                            style={{ borderColor: "rgba(15,23,42,0.08)" }}
                           >
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <div className="text-xs text-slate-400">Øvelse {index + 1}</div>
-                                <div className="font-medium">{result.exerciseName}</div>
-                                <div className="mt-1 text-sm text-slate-500">Plan: {result.plannedSets}×{result.plannedReps} · {result.plannedWeight}kg</div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => updateWorkoutExerciseResult(result.exerciseId, "completed", !result.completed)}
-                                className={`rounded-full px-3 py-1 text-xs font-semibold ${result.completed ? "bg-emerald-500 text-white" : "bg-white text-slate-600"}`}
-                              >
-                                {result.completed ? "Ferdig" : "Marker"}
-                              </button>
+                            <div>
+                              <div className="text-xs text-slate-400">Øvelse {groupIndex + 1}</div>
+                              <div className="font-medium">{group.exerciseName}</div>
+                              <div className="mt-1 text-sm text-slate-500">Plan: {group.rows.length} sett × {group.plannedReps} reps · {group.plannedWeight}kg</div>
                             </div>
-
-                            <div className="mt-3 grid grid-cols-2 gap-3">
-                              <TextInput
-                                value={result.performedWeight}
-                                onChange={(e) => updateWorkoutExerciseResult(result.exerciseId, "performedWeight", e.target.value)}
-                                placeholder="Kg utført"
-                              />
-                              <TextInput
-                                value={result.performedReps}
-                                onChange={(e) => updateWorkoutExerciseResult(result.exerciseId, "performedReps", e.target.value)}
-                                placeholder="Reps utført"
-                              />
+                            <div className="mt-3 space-y-2">
+                              {group.rows.map((row) => (
+                                <div key={row.exerciseId} className={`rounded-xl border bg-white p-3 ${row.completed ? "border-emerald-300" : "border-slate-200"}`}>
+                                  <div className="mb-2 flex items-center justify-between gap-2">
+                                    <div className="text-xs font-semibold text-slate-600">Sett {row.setNumber ?? 1}</div>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateWorkoutExerciseResult(row.exerciseId, "completed", !row.completed)}
+                                      className={`rounded-full px-3 py-1 text-xs font-semibold ${row.completed ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-700"}`}
+                                    >
+                                      {row.completed ? "Fullført" : "Marker"}
+                                    </button>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <TextInput
+                                      value={row.performedWeight}
+                                      onChange={(e) => updateWorkoutExerciseResult(row.exerciseId, "performedWeight", e.target.value)}
+                                      placeholder="Kg utført"
+                                    />
+                                    <TextInput
+                                      value={row.performedReps}
+                                      onChange={(e) => updateWorkoutExerciseResult(row.exerciseId, "performedReps", e.target.value)}
+                                      placeholder="Reps utført"
+                                    />
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         );
