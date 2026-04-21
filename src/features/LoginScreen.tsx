@@ -13,7 +13,7 @@ type LoginScreenProps = {
 };
 
 export function LoginScreen(props: LoginScreenProps) {
-  const { email, setEmail, password, setPassword, onLogin, loginError, quickLogin, showQuickLogin } = props;
+  const { email, setEmail, password, setPassword, onLogin, loginError, quickLogin } = props;
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -23,16 +23,16 @@ export function LoginScreen(props: LoginScreenProps) {
           <div className="flex flex-wrap items-center gap-3">
             <div className="rounded-2xl px-4 py-2 shadow-sm text-white font-black tracking-tight" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>MOTUS</div>
             <Badge>PT App</Badge>
-            <Badge>Stabil base</Badge>
+            <Badge>Klar til bruk</Badge>
           </div>
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Logg inn i Motus PT-app</h1>
-            <p className="mt-2 text-slate-500">En ny, ren og stabil startfil med trygg lokal lagring.</p>
+            <p className="mt-2 text-slate-500">Logg inn for a administrere medlemmer, programmer og oppfolging.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <StatCard label="Brukere" value="3" hint="Demo-kontoer klare" />
-            <StatCard label="Lagring" value="Stabil" hint="LocalStorage" />
-            <StatCard label="Mål" value="Ren base" hint="Bygg videre herfra" />
+            <StatCard label="Lagring" value="Lokal" hint="Lagres i nettleseren" />
+            <StatCard label="Flyt" value="Enkel" hint="Rask demo-innlogging" />
           </div>
         </div>
       </Card>
@@ -41,32 +41,28 @@ export function LoginScreen(props: LoginScreenProps) {
         <div className="space-y-4">
           <div>
             <h2 className="text-xl font-semibold tracking-tight">Innlogging</h2>
-            <p className="text-sm text-slate-500">{showQuickLogin ? "Bruk demo-bruker for testing" : "Logg inn med Supabase-konto"}</p>
+            <p className="text-sm text-slate-500">Bruk demo-bruker for testing, eller logg inn med Supabase-konto.</p>
           </div>
           <TextInput value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-post" />
           <TextInput type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Passord" />
           {loginError ? <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{loginError}</div> : null}
           <GradientButton onClick={onLogin} className="w-full">Logg inn</GradientButton>
 
-          {showQuickLogin ? (
-            <>
-              <div className="pt-4 space-y-2">
-                <button type="button" onClick={() => quickLogin("trainer@motus.no")} className="w-full rounded-2xl border bg-slate-50 px-4 py-3 text-left text-sm">
-                  <div className="font-medium">Logg inn som trener</div>
-                  <div className="text-slate-500">trainer@motus.no</div>
-                </button>
-                <button type="button" onClick={() => quickLogin("emma@example.com")} className="w-full rounded-2xl border bg-slate-50 px-4 py-3 text-left text-sm">
-                  <div className="font-medium">Logg inn som Emma</div>
-                  <div className="text-slate-500">Medlem</div>
-                </button>
-                <button type="button" onClick={() => quickLogin("martin@example.com")} className="w-full rounded-2xl border bg-slate-50 px-4 py-3 text-left text-sm">
-                  <div className="font-medium">Logg inn som Martin</div>
-                  <div className="text-slate-500">Medlem</div>
-                </button>
-              </div>
-              <div className="rounded-2xl border bg-slate-50 px-4 py-3 text-sm text-slate-600">Testpassord på alle brukere: <span className="font-semibold">123456</span></div>
-            </>
-          ) : null}
+          <div className="pt-4 space-y-2">
+            <button type="button" onClick={() => quickLogin("trainer@motus.no")} className="w-full rounded-2xl border bg-slate-50 px-4 py-3 text-left text-sm">
+              <div className="font-medium">Logg inn som trener</div>
+              <div className="text-slate-500">trainer@motus.no</div>
+            </button>
+            <button type="button" onClick={() => quickLogin("emma@example.com")} className="w-full rounded-2xl border bg-slate-50 px-4 py-3 text-left text-sm">
+              <div className="font-medium">Logg inn som Emma</div>
+              <div className="text-slate-500">Medlem</div>
+            </button>
+            <button type="button" onClick={() => quickLogin("martin@example.com")} className="w-full rounded-2xl border bg-slate-50 px-4 py-3 text-left text-sm">
+              <div className="font-medium">Logg inn som Martin</div>
+              <div className="text-slate-500">Medlem</div>
+            </button>
+          </div>
+          <div className="rounded-2xl border bg-slate-50 px-4 py-3 text-sm text-slate-600">Testpassord på alle brukere: <span className="font-semibold">123456</span></div>
         </div>
       </Card>
     </div>

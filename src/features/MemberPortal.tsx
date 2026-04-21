@@ -81,7 +81,11 @@ export function MemberPortal(props: MemberPortalProps) {
             </div>
           </div>
           <div className="mt-5 space-y-3">
-            <SelectBox value={memberViewId} onChange={setMemberViewId} options={members.map((member) => member.id)} />
+            <SelectBox
+              value={memberViewId}
+              onChange={setMemberViewId}
+              options={members.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
+            />
             {viewedMember ? (
               <div className="rounded-2xl border p-4" style={{ backgroundColor: "#f8fffd", borderColor: MOTUS.turquoise }}>
                 <div className="font-medium">{viewedMember.name}</div>

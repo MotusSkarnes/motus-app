@@ -52,10 +52,26 @@ export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
   return <textarea {...props} className={`w-full rounded-2xl border px-3 py-3 text-sm outline-none ${props.className ?? ""}`} style={{ borderColor: "rgba(15,23,42,0.10)" }} />;
 }
 
-export function SelectBox({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: string[] }) {
+type SelectOption = { value: string; label: string };
+
+export function SelectBox({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: Array<string | SelectOption> }) {
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} className="h-11 w-full rounded-2xl border px-3 text-sm outline-none bg-white" style={{ borderColor: "rgba(15,23,42,0.10)" }}>
-      {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      {options.map((option) => {
+        if (typeof option === "string") {
+          return (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          );
+        }
+
+        return (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        );
+      })}
     </select>
   );
 }

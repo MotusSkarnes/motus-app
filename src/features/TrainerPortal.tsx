@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { uid } from "../app/storage";
@@ -60,10 +60,44 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [newMemberFocus, setNewMemberFocus] = useState("");
   const [newMemberError, setNewMemberError] = useState<string | null>(null);
   const [showInactiveMembers, setShowInactiveMembers] = useState(false);
+  const [memberSearch, setMemberSearch] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return window.localStorage.getItem("motus.trainer.memberSearch") ?? "";
+  });
+  const [memberFilter, setMemberFilter] = useState<"all" | "followUp" | "invited" | "notInvited">(() => {
+    if (typeof window === "undefined") return "all";
+    const stored = window.localStorage.getItem("motus.trainer.memberFilter");
+    if (stored === "followUp" || stored === "invited" || stored === "notInvited" || stored === "all") {
+      return stored;
+    }
+    return "all";
+  });
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
   const visibleMembers = showInactiveMembers ? members : members.filter((member) => member.isActive !== false);
+  const filteredMembers = useMemo(() => {
+    const query = memberSearch.trim().toLowerCase();
+    return visibleMembers
+      .filter((member) => {
+        const matchesSearch =
+          !query ||
+          member.name.toLowerCase().includes(query) ||
+          member.email.toLowerCase().includes(query) ||
+          member.goal.toLowerCase().includes(query);
+        if (!matchesSearch) return false;
+        if (memberFilter === "followUp") return Number(member.daysSinceActivity || "0") >= 7;
+        if (memberFilter === "invited") return Boolean(member.invitedAt);
+        if (memberFilter === "notInvited") return !member.invitedAt;
+        return true;
+      })
+      .sort((a, b) => {
+        const aDays = Number(a.daysSinceActivity || "0");
+        const bDays = Number(b.daysSinceActivity || "0");
+        if (bDays !== aDays) return bDays - aDays;
+        return a.name.localeCompare(b.name, "no");
+      });
+  }, [visibleMembers, memberSearch, memberFilter]);
   const inviteStatusTone =
     inviteStatus?.toLowerCase().includes("sendt") || inviteStatus?.toLowerCase().includes("invitasjon sendt")
       ? "success"
@@ -73,6 +107,14 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const selectedPrograms = programs.filter((program) => program.memberId === selectedMemberId);
   const selectedLogs = logs.filter((log) => log.memberId === selectedMemberId);
   const selectedMessages = messages.filter((message) => message.memberId === selectedMemberId);
+
+  useEffect(() => {
+    window.localStorage.setItem("motus.trainer.memberSearch", memberSearch);
+  }, [memberSearch]);
+
+  useEffect(() => {
+    window.localStorage.setItem("motus.trainer.memberFilter", memberFilter);
+  }, [memberFilter]);
 
   function formatInvitedAt(iso: string): string {
     if (!iso) return "";
@@ -165,6 +207,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
     deactivateMember(memberId);
   }
 
+  function resetMemberListControls() {
+    setMemberSearch("");
+    setMemberFilter("all");
+  }
+
   async function handleInviteSelectedMember() {
     if (!selectedMember) return;
     const email = inviteEmail.trim().toLowerCase() || selectedMember.email.toLowerCase();
@@ -225,7 +272,37 @@ export function TrainerPortal(props: TrainerPortalProps) {
               </div>
             </div>
             <div className="mt-5 space-y-3">
-              {visibleMembers.map((member) => (
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs text-slate-500">
+                  {filteredMembers.length} treff{memberFilter !== "all" ? " med aktivt filter" : ""}
+                </div>
+                {(memberSearch.trim() || memberFilter !== "all") ? (
+                  <OutlineButton onClick={resetMemberListControls} className="px-3 py-1.5 text-xs">
+                    Nullstill sok/filter
+                  </OutlineButton>
+                ) : null}
+              </div>
+              <TextInput
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                placeholder="Sok etter navn, e-post eller mal"
+              />
+              <SelectBox
+                value={memberFilter}
+                onChange={(value) => setMemberFilter(value as "all" | "followUp" | "invited" | "notInvited")}
+                options={[
+                  { value: "all", label: "Alle kunder" },
+                  { value: "followUp", label: "Må følges opp (7+ dager)" },
+                  { value: "invited", label: "Invitert" },
+                  { value: "notInvited", label: "Ikke invitert" },
+                ]}
+              />
+              {filteredMembers.length === 0 ? (
+                <div className="rounded-2xl border border-dashed bg-slate-50 p-4 text-center text-sm text-slate-500">
+                  Ingen kunder matcher sok/filter. Proev et enklere sok eller bytt filter.
+                </div>
+              ) : null}
+              {filteredMembers.map((member) => (
                 <button
                   key={member.id}
                   type="button"
@@ -238,8 +315,15 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     {member.email}
                     {member.isActive === false ? " · Inaktiv" : ""}
                   </div>
-                  <div className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${member.invitedAt ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
-                    {member.invitedAt ? "Invitert" : "Ikke invitert"}
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <div className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${member.invitedAt ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                      {member.invitedAt ? "Invitert" : "Ikke invitert"}
+                    </div>
+                    {Number(member.daysSinceActivity || "0") >= 7 ? (
+                      <div className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                        Ma folges opp
+                      </div>
+                    ) : null}
                   </div>
                   {member.invitedAt ? (
                     <div className="mt-1 text-[11px] text-emerald-700">Dato: {formatInvitedAt(member.invitedAt)}</div>
@@ -266,6 +350,14 @@ export function TrainerPortal(props: TrainerPortalProps) {
           <Card className="p-5">
             {selectedMember ? (
               <div className="space-y-5">
+                <div className="lg:hidden rounded-2xl border bg-slate-50 p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="text-xs font-medium text-slate-600">Bytt kunde raskt</div>
+                  <SelectBox
+                    value={selectedMemberId}
+                    onChange={setSelectedMemberId}
+                    options={members.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
+                  />
+                </div>
                 <div className="rounded-[26px] p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.ink} 100%)` }}>
                   <div className="text-sm text-white/80">Kundekort</div>
                   <div className="mt-1 text-2xl font-bold tracking-tight">{selectedMember.name}</div>
@@ -451,7 +543,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   </div>
                 ) : null}
               </div>
-            ) : null}
+            ) : (
+              <div className="rounded-2xl border border-dashed bg-slate-50 p-8 text-center text-slate-500">
+                Velg en kunde i listen for å se kundekort, programmer og meldinger.
+              </div>
+            )}
           </Card>
         </div>
       ) : null}
@@ -467,7 +563,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
               </div>
             </div>
             <div className="mt-5 space-y-3">
-              <SelectBox value={selectedMemberId} onChange={setSelectedMemberId} options={members.map((member) => member.id)} />
+              <SelectBox
+                value={selectedMemberId}
+                onChange={setSelectedMemberId}
+                options={members.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
+              />
               <TextInput value={programTitle} onChange={(e) => setProgramTitle(e.target.value)} placeholder="Navn på program" />
               <TextInput value={programGoal} onChange={(e) => setProgramGoal(e.target.value)} placeholder="Mål" />
               <TextArea value={programNotes} onChange={(e) => setProgramNotes(e.target.value)} className="min-h-[120px]" placeholder="Notater" />

@@ -39,6 +39,12 @@ export default function App() {
     inviteMember,
   } = useAppState();
 
+  function handleResetData() {
+    const shouldReset = window.confirm("Dette nullstiller alle testdata i appen. Er du sikker?");
+    if (!shouldReset) return;
+    resetAllData();
+  }
+
   return (
     <AppShell>
       {!appState.currentUser ? (
@@ -65,7 +71,7 @@ export default function App() {
                 </div>
                 <div>
                   <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Motus PT-app</h1>
-                  <p className="mt-2 text-sm md:text-base text-slate-500 max-w-3xl">Ny, ren startfil med trygg lagring og enklere struktur.</p>
+                  <p className="mt-2 text-sm md:text-base text-slate-500 max-w-3xl">Administrer medlemmer, programmer og oppfolging pa ett sted.</p>
                 </div>
               </div>
               <Card className="p-1 w-full md:w-auto self-stretch md:self-auto">
@@ -75,7 +81,7 @@ export default function App() {
                 </div>
               </Card>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <OutlineButton onClick={resetAllData}>Nullstill testdata</OutlineButton>
+                <OutlineButton onClick={handleResetData}>Nullstill testdata</OutlineButton>
                 <OutlineButton onClick={handleLogout}>Logg ut</OutlineButton>
               </div>
             </div>

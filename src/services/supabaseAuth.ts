@@ -35,11 +35,18 @@ function mapSupabaseUserToAuthUser(user: {
   };
 }
 
-export async function signInWithSupabase(email: string, password: string): Promise<AuthUser | null> {
-  if (!supabaseClient) return null;
+export type SupabaseSignInResult =
+  | { ok: true; user: AuthUser }
+  | { ok: false; message: string };
+
+export async function signInWithSupabase(email: string, password: string): Promise<SupabaseSignInResult> {
+  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
   const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-  if (error || !data.user) return null;
-  return mapSupabaseUserToAuthUser(data.user);
+  if (error || !data.user) {
+    const detailedMessage = error?.message?.trim() || "Ukjent feil fra Supabase.";
+    return { ok: false, message: detailedMessage };
+  }
+  return { ok: true, user: mapSupabaseUserToAuthUser(data.user) };
 }
 
 export async function getSupabaseSessionUser(): Promise<AuthUser | null> {

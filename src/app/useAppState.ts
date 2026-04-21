@@ -103,31 +103,51 @@ export function useAppState() {
   }
 
   async function handleLogin() {
+    const normalizedEmail = loginEmail.trim().toLowerCase();
+    const matchedDemoUser = demoUsers.find((user) => user.email.toLowerCase() === normalizedEmail && user.password === loginPassword);
+
     if (isSupabaseConfigured) {
-      const supabaseUser = await signInWithSupabase(loginEmail.trim(), loginPassword);
-      if (!supabaseUser) {
-        setLoginError("Feil e-post eller passord.");
+      const supabaseResult = await signInWithSupabase(normalizedEmail, loginPassword);
+      if (supabaseResult.ok) {
+        const supabaseUser = supabaseResult.user;
+        setAppState((prev) => ({
+          ...prev,
+          currentUser: supabaseUser,
+          role: supabaseUser.role,
+          selectedMemberId: supabaseUser.memberId ?? prev.selectedMemberId,
+          memberViewId: supabaseUser.memberId ?? prev.memberViewId,
+        }));
+        setTrainerTab("dashboard");
+        setMemberTab("overview");
+        setLoginError(null);
         return;
       }
-      setAppState((prev) => ({
-        ...prev,
-        currentUser: supabaseUser,
-        role: supabaseUser.role,
-        selectedMemberId: supabaseUser.memberId ?? prev.selectedMemberId,
-        memberViewId: supabaseUser.memberId ?? prev.memberViewId,
-      }));
-      setTrainerTab("dashboard");
-      setMemberTab("overview");
-      setLoginError(null);
+
+      // Fallback for local demo users when Supabase login is unavailable.
+      if (matchedDemoUser) {
+        const { password: _password, ...safeUser } = matchedDemoUser;
+        setAppState((prev) => ({
+          ...prev,
+          currentUser: safeUser,
+          role: safeUser.role,
+          selectedMemberId: safeUser.memberId ?? prev.selectedMemberId,
+          memberViewId: safeUser.memberId ?? prev.memberViewId,
+        }));
+        setTrainerTab("dashboard");
+        setMemberTab("overview");
+        setLoginError(null);
+        return;
+      }
+
+      setLoginError(`Innlogging feilet: ${supabaseResult.message}`);
       return;
     }
 
-    const matchedUser = demoUsers.find((user) => user.email.toLowerCase() === loginEmail.trim().toLowerCase() && user.password === loginPassword);
-    if (!matchedUser) {
+    if (!matchedDemoUser) {
       setLoginError("Feil e-post eller passord.");
       return;
     }
-    const { password: _password, ...safeUser } = matchedUser;
+    const { password: _password, ...safeUser } = matchedDemoUser;
     setAppState((prev) => ({
       ...prev,
       currentUser: safeUser,
@@ -254,7 +274,7 @@ export function useAppState() {
     patchState,
     handleLogin,
     handleQuickLogin,
-    showQuickLogin: !isSupabaseConfigured,
+    showQuickLogin: true,
     handleLogout,
     resetAllData,
     addMember,
