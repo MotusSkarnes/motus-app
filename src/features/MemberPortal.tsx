@@ -373,16 +373,22 @@ export function MemberPortal(props: MemberPortalProps) {
                                     </button>
                                   </div>
                                   <div className="grid grid-cols-2 gap-3">
-                                    <TextInput
-                                      value={row.performedWeight}
-                                      onChange={(e) => updateWorkoutExerciseResult(row.exerciseId, "performedWeight", e.target.value)}
-                                      placeholder="Kg utført"
-                                    />
-                                    <TextInput
-                                      value={row.performedReps}
-                                      onChange={(e) => updateWorkoutExerciseResult(row.exerciseId, "performedReps", e.target.value)}
-                                      placeholder="Reps utført"
-                                    />
+                                    <div className="space-y-1">
+                                      <div className="text-[11px] font-medium text-slate-500">Kg utført</div>
+                                      <TextInput
+                                        value={row.performedWeight}
+                                        onChange={(e) => updateWorkoutExerciseResult(row.exerciseId, "performedWeight", e.target.value)}
+                                        placeholder="0"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <div className="text-[11px] font-medium text-slate-500">Reps utført</div>
+                                      <TextInput
+                                        value={row.performedReps}
+                                        onChange={(e) => updateWorkoutExerciseResult(row.exerciseId, "performedReps", e.target.value)}
+                                        placeholder="0"
+                                      />
+                                    </div>
                                   </div>
                                 </div>
                               ))}
