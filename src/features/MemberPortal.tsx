@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ClipboardList, MessageSquare, Target, TrendingUp, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { Card, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, TextArea, TextInput } from "../app/ui";
@@ -27,6 +27,15 @@ type MemberPortalProps = {
 export function MemberPortal(props: MemberPortalProps) {
   const { members, programs, logs, messages, memberViewId, setMemberViewId, memberTab, setMemberTab, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, updateWorkoutModeNote, finishWorkoutMode, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
   const [messageText, setMessageText] = useState("");
+  const [profileWeight, setProfileWeight] = useState("");
+  const [profileTrainingGoal, setProfileTrainingGoal] = useState("");
+  const [profileSessionsPerWeekTarget, setProfileSessionsPerWeekTarget] = useState("");
+  const [profileDailyStepsTarget, setProfileDailyStepsTarget] = useState("");
+  const [profileTargetWeight, setProfileTargetWeight] = useState("");
+  const [profileCurrentDailySteps, setProfileCurrentDailySteps] = useState("");
+  const [goalMetricDraft, setGoalMetricDraft] = useState<"sessionsPerWeek" | "dailySteps" | "targetWeight">("sessionsPerWeek");
+  const [goalMetricValueDraft, setGoalMetricValueDraft] = useState("");
+  const [profileSaveInfo, setProfileSaveInfo] = useState<string | null>(null);
   const viewedMember = members.find((member) => member.id === memberViewId) ?? null;
   const memberPrograms = programs.filter((program) => program.memberId === memberViewId);
   const memberLogs = logs.filter((log) => log.memberId === memberViewId);
@@ -150,6 +159,102 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [completedLogs]);
   const shouldShowCelebration = Boolean(workoutCelebration && workoutCelebration.memberId === memberViewId);
 
+  function getProfileStorageKey(memberId: string): string {
+    return `motus.member.profile.${memberId}`;
+  }
+
+  function getWeekStart(date: Date): Date {
+    const start = new Date(date);
+    const day = (start.getDay() + 6) % 7;
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - day);
+    return start;
+  }
+
+  useEffect(() => {
+    if (!viewedMember) return;
+    const fallbackWeight = viewedMember.weight ?? "";
+    const fallbackGoal = viewedMember.goal ?? "";
+    const fallback = {
+      weight: fallbackWeight,
+      trainingGoal: fallbackGoal,
+      sessionsPerWeekTarget: "",
+      dailyStepsTarget: "",
+      targetWeight: "",
+      currentDailySteps: "",
+    };
+    if (typeof window === "undefined") {
+      setProfileWeight(fallback.weight);
+      setProfileTrainingGoal(fallback.trainingGoal);
+      setProfileSessionsPerWeekTarget(fallback.sessionsPerWeekTarget);
+      setProfileDailyStepsTarget(fallback.dailyStepsTarget);
+      setProfileTargetWeight(fallback.targetWeight);
+      setProfileCurrentDailySteps(fallback.currentDailySteps);
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(getProfileStorageKey(viewedMember.id));
+      if (!raw) {
+        setProfileWeight(fallback.weight);
+        setProfileTrainingGoal(fallback.trainingGoal);
+        setProfileSessionsPerWeekTarget(fallback.sessionsPerWeekTarget);
+        setProfileDailyStepsTarget(fallback.dailyStepsTarget);
+        setProfileTargetWeight(fallback.targetWeight);
+        setProfileCurrentDailySteps(fallback.currentDailySteps);
+        return;
+      }
+      const parsed = JSON.parse(raw) as Partial<typeof fallback>;
+      setProfileWeight(parsed.weight ?? fallback.weight);
+      setProfileTrainingGoal(parsed.trainingGoal ?? fallback.trainingGoal);
+      setProfileSessionsPerWeekTarget(parsed.sessionsPerWeekTarget ?? "");
+      setProfileDailyStepsTarget(parsed.dailyStepsTarget ?? "");
+      setProfileTargetWeight(parsed.targetWeight ?? "");
+      setProfileCurrentDailySteps(parsed.currentDailySteps ?? "");
+    } catch {
+      setProfileWeight(fallback.weight);
+      setProfileTrainingGoal(fallback.trainingGoal);
+      setProfileSessionsPerWeekTarget(fallback.sessionsPerWeekTarget);
+      setProfileDailyStepsTarget(fallback.dailyStepsTarget);
+      setProfileTargetWeight(fallback.targetWeight);
+      setProfileCurrentDailySteps(fallback.currentDailySteps);
+    }
+  }, [viewedMember]);
+
+  function applyMetricDraftToProfile() {
+    const value = goalMetricValueDraft.trim();
+    if (!value) return;
+    if (goalMetricDraft === "sessionsPerWeek") setProfileSessionsPerWeekTarget(value);
+    if (goalMetricDraft === "dailySteps") setProfileDailyStepsTarget(value);
+    if (goalMetricDraft === "targetWeight") setProfileTargetWeight(value);
+    setGoalMetricValueDraft("");
+  }
+
+  function saveProfile() {
+    if (!viewedMember || typeof window === "undefined") return;
+    const next = {
+      weight: profileWeight.trim(),
+      trainingGoal: profileTrainingGoal.trim(),
+      sessionsPerWeekTarget: profileSessionsPerWeekTarget.trim(),
+      dailyStepsTarget: profileDailyStepsTarget.trim(),
+      targetWeight: profileTargetWeight.trim(),
+      currentDailySteps: profileCurrentDailySteps.trim(),
+    };
+    window.localStorage.setItem(getProfileStorageKey(viewedMember.id), JSON.stringify(next));
+    setProfileSaveInfo("Profil og mål lagret.");
+  }
+
+  const completedThisWeek = useMemo(() => {
+    const start = getWeekStart(new Date());
+    return completedLogDates.filter((date) => date >= start).length;
+  }, [completedLogDates]);
+
+  const sessionsTargetNumber = Number(profileSessionsPerWeekTarget) || 0;
+  const dailyStepsTargetNumber = Number(profileDailyStepsTarget) || 0;
+  const currentDailyStepsNumber = Number(profileCurrentDailySteps) || 0;
+  const targetWeightNumber = Number(profileTargetWeight) || 0;
+  const currentWeightNumber = Number(profileWeight) || 0;
+  const sessionsRemaining = Math.max(0, sessionsTargetNumber - completedThisWeek);
+
   return (
     <>
     <div className="space-y-4 sm:space-y-6">
@@ -239,6 +344,29 @@ export function MemberPortal(props: MemberPortalProps) {
                     </GradientButton>
                   </div>
                 )}
+              </div>
+              <div className="rounded-2xl border bg-slate-50 p-4 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-sm font-semibold text-slate-700">Målstatus</div>
+                {sessionsTargetNumber > 0 ? (
+                  <div className="text-sm text-slate-600">
+                    Treningsmål: {completedThisWeek}/{sessionsTargetNumber} økter denne uken
+                    {sessionsRemaining > 0 ? ` · ${sessionsRemaining} trening${sessionsRemaining === 1 ? "" : "er"} igjen` : " · Ukemålet er nådd!"}
+                  </div>
+                ) : null}
+                {dailyStepsTargetNumber > 0 ? (
+                  <div className="text-sm text-slate-600">
+                    Skrittmål: {currentDailyStepsNumber}/{dailyStepsTargetNumber} skritt i dag
+                    {currentDailyStepsNumber < dailyStepsTargetNumber ? ` · ${dailyStepsTargetNumber - currentDailyStepsNumber} igjen` : " · Skrittmålet er nådd!"}
+                  </div>
+                ) : null}
+                {targetWeightNumber > 0 && currentWeightNumber > 0 ? (
+                  <div className="text-sm text-slate-600">
+                    Vektmål: nå {currentWeightNumber} kg, mål {targetWeightNumber} kg
+                  </div>
+                ) : null}
+                {sessionsTargetNumber <= 0 && dailyStepsTargetNumber <= 0 && targetWeightNumber <= 0 ? (
+                  <div className="text-sm text-slate-500">Sett mål under Min profil for å få status her.</div>
+                ) : null}
               </div>
               <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
                 <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -528,11 +656,39 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               {viewedMember ? (
-                <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  <TextInput value={viewedMember.name} readOnly />
-                  <TextInput value={viewedMember.email} readOnly />
-                  <TextInput value={viewedMember.goal} readOnly />
-                  <TextInput value={viewedMember.focus} readOnly />
+                <div className="mt-5 space-y-4">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <TextInput value={viewedMember.name} readOnly />
+                    <TextInput value={viewedMember.email} readOnly />
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <TextInput value={profileWeight} onChange={(e) => setProfileWeight(e.target.value)} placeholder="Vekt (kg)" />
+                    <TextInput value={profileTrainingGoal} onChange={(e) => setProfileTrainingGoal(e.target.value)} placeholder="Treningsmål (tekst)" />
+                  </div>
+                  <div className="rounded-2xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="text-sm font-semibold text-slate-700">Unike mål</div>
+                    <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+                      <SelectBox
+                        value={goalMetricDraft}
+                        onChange={(value) => setGoalMetricDraft(value as "sessionsPerWeek" | "dailySteps" | "targetWeight")}
+                        options={[
+                          { value: "sessionsPerWeek", label: "Antall treninger per uke" },
+                          { value: "dailySteps", label: "Skritt per dag" },
+                          { value: "targetWeight", label: "Målvekt (kg)" },
+                        ]}
+                      />
+                      <TextInput value={goalMetricValueDraft} onChange={(e) => setGoalMetricValueDraft(e.target.value)} placeholder="Målverdi" />
+                      <OutlineButton onClick={applyMetricDraftToProfile}>Sett mål</OutlineButton>
+                    </div>
+                    <div className="grid gap-2 md:grid-cols-3 text-sm text-slate-600">
+                      <div className="rounded-xl border bg-white p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>Økter/uke: {profileSessionsPerWeekTarget || "Ikke satt"}</div>
+                      <div className="rounded-xl border bg-white p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>Skritt/dag: {profileDailyStepsTarget || "Ikke satt"}</div>
+                      <div className="rounded-xl border bg-white p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>Målvekt: {profileTargetWeight ? `${profileTargetWeight} kg` : "Ikke satt"}</div>
+                    </div>
+                    <TextInput value={profileCurrentDailySteps} onChange={(e) => setProfileCurrentDailySteps(e.target.value)} placeholder="Dagens skritt (for målstatus)" />
+                  </div>
+                  <GradientButton onClick={saveProfile} className="w-full md:w-auto">Lagre min profil</GradientButton>
+                  {profileSaveInfo ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{profileSaveInfo}</div> : null}
                 </div>
               ) : null}
             </Card>
