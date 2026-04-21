@@ -2,6 +2,7 @@ import { ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, TrendingUp, Us
 import { MOTUS } from "./app/data";
 import { useAppState } from "./app/useAppState";
 import { AppShell, Badge, Card, MobileNavButton, OutlineButton, PillButton } from "./app/ui";
+import motusLogo from "./assets/motus-logo.png";
 import { LoginScreen } from "./features/LoginScreen";
 import { MemberPortal } from "./features/MemberPortal";
 import { TrainerPortal } from "./features/TrainerPortal";
@@ -89,7 +90,7 @@ export default function App() {
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="rounded-2xl px-4 py-2 shadow-sm text-white font-black tracking-tight" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>MOTUS</div>
+                  <img src={motusLogo} alt="Motus logo" className="h-12 w-auto rounded-xl border bg-black p-1" style={{ borderColor: "rgba(15,23,42,0.08)" }} />
                   <Badge>{appState.currentUser.role === "trainer" ? "PT" : "Medlem"}</Badge>
                   <Badge>{appState.currentUser.name}</Badge>
                 </div>
