@@ -402,21 +402,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
         </div>
       </Card>
 
-      <div className="grid gap-3 sm:gap-4 md:grid-cols-3">
-        <StatCard label="Aktiv kunde" value={selectedMember?.name ?? "Ingen valgt"} hint={selectedMember?.goal ?? "Velg kunde"} />
-        <StatCard label="Kunder" value={String(members.length)} hint="Totalt i appen" />
-        <StatCard label="Må følges opp" value={String(followUpCount)} hint="7 dager eller mer uten aktivitet" />
-      </div>
-
       {trainerTab === "dashboard" ? (
         <Card className="p-5 space-y-5">
-          <div className="flex items-start gap-3">
-            <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><LayoutDashboard className="h-5 w-5" /></div>
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight">Oversikt</h2>
-              <p className="text-sm text-slate-500">Start her: velg kunde, lag program, folg opp.</p>
-            </div>
-          </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Programmer" value={String(programs.length)} hint="Totalt" />
             <StatCard label="Logger" value={String(logs.length)} hint="Totalt" />
