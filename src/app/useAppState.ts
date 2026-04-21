@@ -187,6 +187,14 @@ export function useAppState() {
 
   async function handleLogin() {
     const normalizedEmail = loginEmail.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setLoginError("Skriv inn e-post for å logge inn.");
+      return;
+    }
+    if (!loginPassword.trim()) {
+      setLoginError("Skriv inn passord for å logge inn.");
+      return;
+    }
     const matchedDemoUser = demoUsers.find((user) => user.email.toLowerCase() === normalizedEmail && user.password === loginPassword);
 
     if (isSupabaseConfigured) {
