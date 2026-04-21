@@ -43,6 +43,7 @@ export default function App() {
     saveProgramForMember,
     deleteProgramById,
     sendTrainerMessage,
+    saveExercise,
     startWorkoutMode,
     updateWorkoutExerciseResult,
     updateWorkoutModeNote,
@@ -130,6 +131,7 @@ export default function App() {
               saveProgramForMember={saveProgramForMember}
               deleteProgramById={deleteProgramById}
               sendTrainerMessage={sendTrainerMessage}
+              saveExercise={saveExercise}
             />
           ) : (
             <MemberPortal

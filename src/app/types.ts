@@ -57,9 +57,11 @@ export type Member = {
 export type Exercise = {
   id: string;
   name: string;
+  category: "Styrke" | "Kondisjon" | "Uttøyning";
   group: string;
   equipment: string;
   level: Level;
+  description: string;
   favorite?: boolean;
 };
 

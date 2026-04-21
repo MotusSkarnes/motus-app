@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
-import { localAppRepository, type CreateMemberInput, type SaveProgramInput } from "../services/appRepository";
+import { localAppRepository, type CreateMemberInput, type SaveExerciseInput, type SaveProgramInput } from "../services/appRepository";
 import { isSupabaseConfigured } from "../services/supabaseClient";
-import { fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
+import { fetchExercisesFromSupabase, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
 import { establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyRecoveryToken, type InviteMemberResult } from "../services/supabaseAuth";
 import type { AppState, MemberTab, TrainerTab } from "./types";
 
@@ -49,6 +49,7 @@ export function useAppState() {
       const remoteMessages = await fetchMessagesFromSupabase();
       const remotePrograms = await fetchProgramsFromSupabase();
       const remoteLogs = await fetchLogsFromSupabase();
+      const remoteExercises = await fetchExercisesFromSupabase();
       if (cancelled) return;
 
       setAppState((prev) => {
@@ -68,6 +69,10 @@ export function useAppState() {
 
         if (remoteLogs && prev.logs.length <= remoteLogs.length) {
           next.logs = remoteLogs;
+        }
+
+        if (remoteExercises && prev.exercises.length <= remoteExercises.length) {
+          next.exercises = remoteExercises;
         }
 
         return next;
@@ -366,6 +371,10 @@ export function useAppState() {
     setAppState((prev) => repository.appendTrainerMessage(prev, memberId, text));
   }
 
+  function saveExercise(input: SaveExerciseInput) {
+    setAppState((prev) => repository.saveExercise(prev, input));
+  }
+
   function startWorkoutMode(programId: string) {
     setAppState((prev) => repository.startWorkoutMode(prev, programId));
   }
@@ -434,6 +443,7 @@ export function useAppState() {
     saveProgramForMember,
     deleteProgramById,
     sendTrainerMessage,
+    saveExercise,
     startWorkoutMode,
     updateWorkoutExerciseResult,
     updateWorkoutModeNote,

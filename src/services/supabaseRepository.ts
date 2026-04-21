@@ -1,4 +1,4 @@
-import type { AppState, ChatMessage, Member, ProgramExercise, TrainingProgram, WorkoutExerciseResult, WorkoutLog } from "../app/types";
+import type { AppState, ChatMessage, Exercise, Member, ProgramExercise, TrainingProgram, WorkoutExerciseResult, WorkoutLog } from "../app/types";
 import {
   appendMemberMessage,
   appendTrainerMessage,
@@ -6,6 +6,7 @@ import {
   type AppRepository,
   type CreateMemberInput,
   type SaveProgramInput,
+  type SaveExerciseInput,
   type UpdateWorkoutResultInput,
 } from "./appRepository";
 import { supabaseClient } from "./supabaseClient";
@@ -75,6 +76,27 @@ async function persistMember(member: Member) {
 
   if (error) {
     console.warn("Supabase member persist failed:", error.message);
+  }
+}
+
+async function persistExercise(exercise: Exercise) {
+  if (!supabaseClient) return;
+  const { error } = await supabaseClient.from("exercise_bank").upsert(
+    {
+      id: exercise.id,
+      name: exercise.name,
+      category: exercise.category,
+      muscle_group: exercise.group,
+      equipment: exercise.equipment,
+      level: exercise.level,
+      description: exercise.description,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "id" }
+  );
+  if (error) {
+    console.warn("Supabase exercise persist failed:", error.message);
   }
 }
 
@@ -241,6 +263,29 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
   }));
 }
 
+export async function fetchExercisesFromSupabase(): Promise<Exercise[] | null> {
+  if (!supabaseClient) return null;
+  const { data, error } = await supabaseClient
+    .from("exercise_bank")
+    .select("id, name, category, muscle_group, equipment, level, description")
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.warn("Supabase exercises fetch failed:", error.message);
+    return null;
+  }
+
+  return (data ?? []).map((row) => ({
+    id: String(row.id),
+    name: String(row.name ?? ""),
+    category: row.category === "Kondisjon" || row.category === "Uttøyning" ? row.category : "Styrke",
+    group: String(row.muscle_group ?? ""),
+    equipment: String(row.equipment ?? ""),
+    level: row.level === "Litt øvet" || row.level === "Øvet" ? row.level : "Nybegynner",
+    description: String(row.description ?? ""),
+  }));
+}
+
 export const supabaseAppRepository: AppRepository = {
   addMember(state: AppState, input: CreateMemberInput): AppState {
     const nextState = localAppRepository.addMember(state, input);
@@ -308,6 +353,14 @@ export const supabaseAppRepository: AppRepository = {
     const latestLog = nextState.logs[0];
     if (latestLog) {
       void persistWorkoutLog(latestLog);
+    }
+    return nextState;
+  },
+  saveExercise(state: AppState, input: SaveExerciseInput): AppState {
+    const nextState = localAppRepository.saveExercise(state, input);
+    const exercise = nextState.exercises.find((item) => item.id === input.id) ?? nextState.exercises[0];
+    if (exercise) {
+      void persistExercise(exercise);
     }
     return nextState;
   },

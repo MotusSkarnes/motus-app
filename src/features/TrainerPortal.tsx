@@ -24,6 +24,15 @@ type TrainerPortalProps = {
   saveProgramForMember: (input: { id?: string; title: string; goal: string; notes: string; memberId: string; exercises: ProgramExercise[] }) => void;
   deleteProgramById: (programId: string) => void;
   sendTrainerMessage: (memberId: string, text: string) => void;
+  saveExercise: (input: {
+    id?: string;
+    name: string;
+    category: Exercise["category"];
+    group: string;
+    equipment: string;
+    level: Exercise["level"];
+    description: string;
+  }) => void;
 };
 
 export function TrainerPortal(props: TrainerPortalProps) {
@@ -44,6 +53,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     saveProgramForMember,
     deleteProgramById,
     sendTrainerMessage,
+    saveExercise,
   } = props;
 
   const [programTitle, setProgramTitle] = useState("Nytt treningsprogram");
@@ -90,6 +100,16 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [todos, setTodos] = useState<Array<{ id: string; title: string; date: string; done: boolean }>>([]);
   const [priorityFilter, setPriorityFilter] = useState<"all" | "red" | "orange" | "green">("all");
   const [prioritySort, setPrioritySort] = useState<"highFirst" | "lowFirst">("highFirst");
+  const [exerciseSearch, setExerciseSearch] = useState("");
+  const [exerciseCategoryFilter, setExerciseCategoryFilter] = useState<"all" | Exercise["category"]>("all");
+  const [editingExerciseId, setEditingExerciseId] = useState<string | null>(null);
+  const [exerciseFormName, setExerciseFormName] = useState("");
+  const [exerciseFormCategory, setExerciseFormCategory] = useState<Exercise["category"]>("Styrke");
+  const [exerciseFormGroup, setExerciseFormGroup] = useState("");
+  const [exerciseFormEquipment, setExerciseFormEquipment] = useState("");
+  const [exerciseFormLevel, setExerciseFormLevel] = useState<Exercise["level"]>("Nybegynner");
+  const [exerciseFormDescription, setExerciseFormDescription] = useState("");
+  const [exerciseFormStatus, setExerciseFormStatus] = useState<string | null>(null);
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
   const visibleMembers = showInactiveMembers ? members : members.filter((member) => member.isActive !== false);
   const filteredMembers = useMemo(() => {
@@ -124,6 +144,20 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const templatePrograms = programs.filter((program) => program.memberId === "__template__");
   const selectedLogs = logs.filter((log) => log.memberId === selectedMemberId);
   const selectedMessages = messages.filter((message) => message.memberId === selectedMemberId);
+  const visibleExercises = useMemo(() => {
+    const query = exerciseSearch.trim().toLowerCase();
+    return exercises.filter((exercise) => {
+      const categoryOk = exerciseCategoryFilter === "all" || exercise.category === exerciseCategoryFilter;
+      if (!categoryOk) return false;
+      if (!query) return true;
+      return (
+        exercise.name.toLowerCase().includes(query) ||
+        exercise.group.toLowerCase().includes(query) ||
+        exercise.equipment.toLowerCase().includes(query) ||
+        exercise.description.toLowerCase().includes(query)
+      );
+    });
+  }, [exercises, exerciseSearch, exerciseCategoryFilter]);
 
   useEffect(() => {
     window.localStorage.setItem("motus.trainer.memberSearch", memberSearch);
@@ -356,6 +390,51 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setTemplateAssignStatus(`Malen ble tildelt ${memberName}.`);
     setTrainerTab("customers");
     setCustomerSubTab("programs");
+  }
+
+  function resetExerciseForm() {
+    setEditingExerciseId(null);
+    setExerciseFormName("");
+    setExerciseFormCategory("Styrke");
+    setExerciseFormGroup("");
+    setExerciseFormEquipment("");
+    setExerciseFormLevel("Nybegynner");
+    setExerciseFormDescription("");
+  }
+
+  function startEditExercise(exercise: Exercise) {
+    setEditingExerciseId(exercise.id);
+    setExerciseFormName(exercise.name);
+    setExerciseFormCategory(exercise.category);
+    setExerciseFormGroup(exercise.group);
+    setExerciseFormEquipment(exercise.equipment);
+    setExerciseFormLevel(exercise.level);
+    setExerciseFormDescription(exercise.description);
+    setExerciseFormStatus(null);
+  }
+
+  function submitExerciseForm() {
+    const name = exerciseFormName.trim();
+    const group = exerciseFormGroup.trim();
+    const equipment = exerciseFormEquipment.trim();
+    const description = exerciseFormDescription.trim();
+    if (!name || !group || !equipment || !description) {
+      setExerciseFormStatus("Fyll ut navn, kategori, muskelgruppe, utstyr og forklaring.");
+      return;
+    }
+
+    saveExercise({
+      id: editingExerciseId ?? undefined,
+      name,
+      category: exerciseFormCategory,
+      group,
+      equipment,
+      level: exerciseFormLevel,
+      description,
+    });
+
+    setExerciseFormStatus(editingExerciseId ? "Øvelsen ble oppdatert." : "Ny øvelse ble lagt til i banken.");
+    resetExerciseForm();
   }
 
   const followUpCount = useMemo(() => members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length, [members]);
@@ -729,7 +808,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           {exercises.map((exercise) => (
                             <button key={exercise.id} type="button" onClick={() => addExerciseToDraft(exercise)} className="rounded-2xl border bg-white px-3 py-3 text-left text-sm">
                               <div className="font-medium">{exercise.name}</div>
-                              <div className="text-slate-500">{exercise.group} · {exercise.equipment}</div>
+                              <div className="text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
                             </button>
                           ))}
                         </div>
@@ -843,7 +922,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     {exercises.map((exercise) => (
                       <button key={exercise.id} type="button" onClick={() => addExerciseToTemplateDraft(exercise)} className="rounded-2xl border bg-white px-3 py-3 text-left text-sm">
                         <div className="font-medium">{exercise.name}</div>
-                        <div className="text-slate-500">{exercise.group} · {exercise.equipment}</div>
+                        <div className="text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
                       </button>
                     ))}
                   </div>
@@ -980,16 +1059,69 @@ export function TrainerPortal(props: TrainerPortalProps) {
             <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Dumbbell className="h-5 w-5" /></div>
             <div>
               <h2 className="text-xl font-semibold tracking-tight">Øvelsesbank</h2>
-              <p className="text-sm text-slate-500">Ren liste som ikke krasjer</p>
+              <p className="text-sm text-slate-500">Opprett og rediger øvelser med forklaring, kategori og utstyr.</p>
             </div>
           </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {exercises.map((exercise) => (
-              <div key={exercise.id} className="rounded-2xl border bg-slate-50 p-4">
-                <div className="font-medium">{exercise.name}</div>
-                <div className="mt-1 text-sm text-slate-500">{exercise.group} · {exercise.equipment} · {exercise.level}</div>
+          <div className="mt-5 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+            <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="font-semibold">{editingExerciseId ? "Rediger øvelse" : "Legg til ny øvelse"}</div>
+              <TextInput value={exerciseFormName} onChange={(e) => setExerciseFormName(e.target.value)} placeholder="Navn på øvelse" />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <SelectBox
+                  value={exerciseFormCategory}
+                  onChange={(value) => setExerciseFormCategory(value as Exercise["category"])}
+                  options={["Styrke", "Kondisjon", "Uttøyning"]}
+                />
+                <SelectBox
+                  value={exerciseFormLevel}
+                  onChange={(value) => setExerciseFormLevel(value as Exercise["level"])}
+                  options={["Nybegynner", "Litt øvet", "Øvet"]}
+                />
               </div>
-            ))}
+              <TextInput value={exerciseFormGroup} onChange={(e) => setExerciseFormGroup(e.target.value)} placeholder="Muskelgruppe / fokusområde" />
+              <TextInput value={exerciseFormEquipment} onChange={(e) => setExerciseFormEquipment(e.target.value)} placeholder="Utstyr (f.eks. stang, manualer, kroppsvekt)" />
+              <TextArea value={exerciseFormDescription} onChange={(e) => setExerciseFormDescription(e.target.value)} className="min-h-[110px]" placeholder="Forklaring av teknikk og utførelse" />
+              {exerciseFormStatus ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{exerciseFormStatus}</div> : null}
+              <div className="grid gap-2 sm:grid-cols-2">
+                <GradientButton onClick={submitExerciseForm} className="w-full">
+                  {editingExerciseId ? "Lagre endring" : "Legg til øvelse"}
+                </GradientButton>
+                {editingExerciseId ? <OutlineButton onClick={resetExerciseForm} className="w-full">Avbryt</OutlineButton> : null}
+              </div>
+              <div className="text-xs text-slate-500">
+                Øvelser lagres i felles øvelsesbank slik at alle trenere kan bruke dem.
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                <TextInput value={exerciseSearch} onChange={(e) => setExerciseSearch(e.target.value)} placeholder="Søk på navn, muskelgruppe, utstyr eller forklaring" />
+                <SelectBox
+                  value={exerciseCategoryFilter}
+                  onChange={(value) => setExerciseCategoryFilter(value as "all" | Exercise["category"])}
+                  options={[
+                    { value: "all", label: "Alle kategorier" },
+                    { value: "Styrke", label: "Styrke" },
+                    { value: "Kondisjon", label: "Kondisjon" },
+                    { value: "Uttøyning", label: "Uttøyning" },
+                  ]}
+                />
+              </div>
+              <div className="text-xs text-slate-500">{visibleExercises.length} øvelser vist</div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {visibleExercises.map((exercise) => (
+                  <div key={exercise.id} className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="font-medium">{exercise.name}</div>
+                      <OutlineButton onClick={() => startEditExercise(exercise)} className="px-3 py-1.5 text-xs">Rediger</OutlineButton>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {exercise.category} · {exercise.group} · Utstyr: {exercise.equipment} · {exercise.level}
+                    </div>
+                    <div className="mt-2 text-sm text-slate-700">{exercise.description}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </Card>
       ) : null}

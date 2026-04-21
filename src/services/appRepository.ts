@@ -1,5 +1,5 @@
 import { uid } from "../app/storage";
-import type { AppState, ChatMessage, Member, ProgramExercise, TrainingProgram } from "../app/types";
+import type { AppState, ChatMessage, Exercise, Member, ProgramExercise, TrainingProgram } from "../app/types";
 
 export type CreateMemberInput = {
   name: string;
@@ -24,6 +24,16 @@ export type UpdateWorkoutResultInput = {
   value: string | boolean;
 };
 
+export type SaveExerciseInput = {
+  id?: string;
+  name: string;
+  category: Exercise["category"];
+  group: string;
+  equipment: string;
+  level: Exercise["level"];
+  description: string;
+};
+
 export interface AppRepository {
   addMember(state: AppState, input: CreateMemberInput): AppState;
   deactivateMember(state: AppState, memberId: string): AppState;
@@ -37,6 +47,7 @@ export interface AppRepository {
   updateWorkoutNote(state: AppState, note: string): AppState;
   cancelWorkoutMode(state: AppState): AppState;
   finishWorkoutMode(state: AppState): AppState;
+  saveExercise(state: AppState, input: SaveExerciseInput): AppState;
 }
 
 export function createMember(state: AppState, input: CreateMemberInput): Member {
@@ -238,6 +249,42 @@ export function finishWorkoutModeInState(state: AppState): AppState {
   };
 }
 
+export function saveExerciseInState(state: AppState, input: SaveExerciseInput): AppState {
+  const normalizedName = input.name.trim();
+  const normalizedDescription = input.description.trim();
+  if (!normalizedName || !normalizedDescription) return state;
+
+  if (input.id) {
+    return {
+      ...state,
+      exercises: state.exercises.map((exercise) =>
+        exercise.id === input.id
+          ? {
+              ...exercise,
+              name: normalizedName,
+              category: input.category,
+              group: input.group.trim(),
+              equipment: input.equipment.trim(),
+              level: input.level,
+              description: normalizedDescription,
+            }
+          : exercise
+      ),
+    };
+  }
+
+  const nextExercise: Exercise = {
+    id: uid("ex"),
+    name: normalizedName,
+    category: input.category,
+    group: input.group.trim(),
+    equipment: input.equipment.trim(),
+    level: input.level,
+    description: normalizedDescription,
+  };
+  return { ...state, exercises: [nextExercise, ...state.exercises] };
+}
+
 export const localAppRepository: AppRepository = {
   addMember: addMemberToState,
   deactivateMember: deactivateMemberInState,
@@ -251,4 +298,5 @@ export const localAppRepository: AppRepository = {
   updateWorkoutNote: updateWorkoutNoteInState,
   cancelWorkoutMode: cancelWorkoutModeInState,
   finishWorkoutMode: finishWorkoutModeInState,
+  saveExercise: saveExerciseInState,
 };
