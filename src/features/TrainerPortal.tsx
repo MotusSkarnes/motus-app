@@ -1023,7 +1023,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       <div className="text-xs text-slate-500">{member.email} · {member.daysSinceActivity} dager siden aktivitet</div>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-1">
+                  <div className="flex flex-col items-end gap-1">
                     {memberTypeBadges(member).map((badge) => (
                       <span key={`${member.id}-${badge.label}`} className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={badge.style}>
                         {badge.label}
@@ -1144,7 +1144,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="flex flex-wrap items-center gap-1">
+                  <div className="flex flex-col items-end gap-1">
                     {memberTypeBadges(member).map((badge) => (
                       <span key={`${member.id}-${badge.label}`} className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={badge.style}>
                         {badge.label}
