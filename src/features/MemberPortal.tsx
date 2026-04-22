@@ -240,6 +240,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
   useEffect(() => {
     if (!editableMember) return;
+    setProfileSaveInfo(null);
     const fallbackWeight = editableMember.weight ?? "";
     const fallbackGoal = editableMember.goal ?? "";
     const fallback = {
@@ -314,6 +315,14 @@ export function MemberPortal(props: MemberPortalProps) {
       setMemberInjuriesDraft(editableMember.injuries);
     }
   }, [editableMember]);
+
+  useEffect(() => {
+    if (!profileSaveInfo) return;
+    const timer = window.setTimeout(() => {
+      setProfileSaveInfo(null);
+    }, 5000);
+    return () => window.clearTimeout(timer);
+  }, [profileSaveInfo]);
 
   function applyMetricDraftToProfile() {
     const value = goalMetricValueDraft.trim();
