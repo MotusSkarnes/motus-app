@@ -326,11 +326,10 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function saveProfile() {
     if (!editableMember || typeof window === "undefined") return;
-    const normalizedEmail = memberEmailDraft.trim().toLowerCase();
-    if (!normalizedEmail || !normalizedEmail.includes("@")) {
-      setProfileSaveInfo("Legg inn en gyldig e-post.");
-      return;
-    }
+    const normalizedDraftEmail = memberEmailDraft.trim().toLowerCase();
+    const fallbackEmail = editableMember.email.trim().toLowerCase();
+    const normalizedEmail =
+      normalizedDraftEmail && normalizedDraftEmail.includes("@") ? normalizedDraftEmail : fallbackEmail;
     const next = {
       weight: profileWeight.trim(),
       trainingGoal: profileTrainingGoal.trim(),
@@ -340,8 +339,22 @@ export function MemberPortal(props: MemberPortalProps) {
       currentDailySteps: profileCurrentDailySteps.trim(),
     };
     window.localStorage.setItem(getProfileStorageKey(editableMember.id), JSON.stringify(next));
-    const targetMemberIds = Array.from(new Set(relatedMemberIds.length ? relatedMemberIds : [editableMember.id]));
-    targetMemberIds.forEach((memberId) => {
+    const targetMemberIds = Array.from(
+      new Set(
+        members
+          .filter((member) => {
+            const normalizedMemberEmail = member.email.trim().toLowerCase();
+            if (member.id === editableMember.id) return true;
+            if (relatedMemberIds.includes(member.id)) return true;
+            if (normalizedMemberEmail && normalizedMemberEmail === fallbackEmail) return true;
+            if (normalizedMemberEmail && normalizedMemberEmail === normalizedEmail) return true;
+            return false;
+          })
+          .map((member) => member.id)
+      )
+    );
+    const safeTargetIds = targetMemberIds.length ? targetMemberIds : [editableMember.id];
+    safeTargetIds.forEach((memberId) => {
       updateMember({
         memberId,
         changes: {
@@ -355,6 +368,10 @@ export function MemberPortal(props: MemberPortalProps) {
         },
       });
     });
+    if (normalizedDraftEmail && !normalizedDraftEmail.includes("@")) {
+      setProfileSaveInfo("Profil lagret. E-post ble ikke endret fordi formatet var ugyldig.");
+      return;
+    }
     setProfileSaveInfo("Profil og mål lagret.");
   }
 
