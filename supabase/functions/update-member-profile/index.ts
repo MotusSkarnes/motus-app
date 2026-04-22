@@ -9,6 +9,7 @@ const corsHeaders = {
 type UpdatePayload = {
   email?: string;
   memberId?: string;
+  memberIds?: string[];
   changes?: {
     name?: string;
     phone?: string;
@@ -87,6 +88,9 @@ Deno.serve(async (req) => {
   const currentEmail = normalizeEmail(user.email);
   const requestedEmail = normalizeEmail(payload.email);
   const requestedMemberId = normalizeString(payload.memberId);
+  const requestedMemberIds = Array.isArray(payload.memberIds)
+    ? payload.memberIds.map((value) => normalizeString(value)).filter(Boolean)
+    : [];
   const authMemberId = normalizeString(
     (user.app_metadata?.member_id as string | undefined) ??
       (user.user_metadata?.member_id as string | undefined) ??
@@ -114,6 +118,7 @@ Deno.serve(async (req) => {
   const anchorClauses = [`email.eq.${currentEmail}`];
   if (authMemberId) anchorClauses.push(`id.eq.${authMemberId}`);
   if (requestedMemberId) anchorClauses.push(`id.eq.${requestedMemberId}`);
+  requestedMemberIds.forEach((id) => anchorClauses.push(`id.eq.${id}`));
   const { data: anchorRows, error: anchorError } = await adminClient
     .from("members")
     .select("id,email")

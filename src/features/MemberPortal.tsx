@@ -159,6 +159,7 @@ export function MemberPortal(props: MemberPortalProps) {
   async function syncProfileToPtBackend(payload: {
     email: string;
     memberId: string;
+    memberIds: string[];
     changes: {
       name: string;
       phone: string;
@@ -171,7 +172,14 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
 
     const invoked = await supabaseClient.functions.invoke("update-member-profile", { body: payload });
-    if (!invoked.error) return { ok: true };
+    if (!invoked.error) {
+      const updated =
+        invoked.data && typeof invoked.data === "object" && "updated" in invoked.data
+          ? Number((invoked.data as { updated?: unknown }).updated ?? 0)
+          : 0;
+      if (updated > 0) return { ok: true };
+      return { ok: false, message: "Ingen PT-rader ble oppdatert ved sync." };
+    }
 
     const invokeDetails = await extractFunctionErrorDetails(invoked.error);
     const {
@@ -194,8 +202,12 @@ export function MemberPortal(props: MemberPortalProps) {
         },
         body: JSON.stringify(payload),
       });
-      if (response.ok) return { ok: true };
-      const body = (await response.json().catch(() => null)) as { error?: string; message?: string } | null;
+      const body = (await response.json().catch(() => null)) as { error?: string; message?: string; updated?: number } | null;
+      if (response.ok) {
+        const updated = Number(body?.updated ?? 0);
+        if (updated > 0) return { ok: true };
+        return { ok: false, message: "Ingen PT-rader ble oppdatert ved sync." };
+      }
       const fallbackError = body?.error || body?.message || `HTTP ${response.status}`;
       const directUpdate = await supabaseClient
         .from("members")
@@ -482,6 +494,7 @@ export function MemberPortal(props: MemberPortalProps) {
       const syncResult = await syncProfileToPtBackend({
         email: normalizedCurrentUserEmail || normalizedEmail,
         memberId: editableMember.id,
+        memberIds: safeTargetIds,
         changes: {
           name: memberNameDraft,
           phone: memberPhoneDraft,
