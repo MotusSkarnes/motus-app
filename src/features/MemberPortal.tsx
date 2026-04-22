@@ -337,6 +337,35 @@ export function MemberPortal(props: MemberPortalProps) {
         : "Ukemålet er nådd - hold flyten videre";
     return { recent14, previous14, delta, trendLabel, trendTone, consistency, nextFocus };
   }, [completedLogDates, now, sessionsRemaining]);
+  const achievements = useMemo(() => {
+    const items: Array<{ id: string; label: string; hint: string; unlocked: boolean }> = [
+      {
+        id: "first-session",
+        label: "Første økt",
+        hint: "Logg minst 1 fullført økt",
+        unlocked: completedLogs.length >= 1,
+      },
+      {
+        id: "streak-3",
+        label: "3-ukers streak",
+        hint: "Hold flyt i 3 uker",
+        unlocked: streakWeeks >= 3,
+      },
+      {
+        id: "ten-sessions",
+        label: "10 økter",
+        hint: "Fullfør totalt 10 økter",
+        unlocked: completedLogs.length >= 10,
+      },
+      {
+        id: "five-days",
+        label: "5 treningsdager",
+        hint: "Tren på 5 ulike dager",
+        unlocked: uniqueTrainingDays >= 5,
+      },
+    ];
+    return items;
+  }, [completedLogs.length, streakWeeks, uniqueTrainingDays]);
 
   const trainingDaysInCalendarMonth = new Set(
     completedLogDates
@@ -853,6 +882,28 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="text-[11px] text-white/80">Neste fokus</div>
                     <div className="font-semibold">{progressStory.nextFocus}</div>
                   </div>
+                </div>
+              </div>
+              <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-sm font-semibold text-slate-700">Streaks + achievements</div>
+                <div className="mt-1 text-xs text-slate-500">Små milepæler som holder motivasjonen oppe.</div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  {achievements.map((achievement) => (
+                    <div
+                      key={achievement.id}
+                      className={`rounded-xl border px-3 py-2 text-sm ${
+                        achievement.unlocked
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                          : "border-slate-200 bg-white text-slate-500"
+                      }`}
+                    >
+                      <div className="font-semibold">{achievement.label}</div>
+                      <div className="mt-0.5 text-[11px]">{achievement.hint}</div>
+                      <div className="mt-1 text-[11px] font-semibold">
+                        {achievement.unlocked ? "Låst opp" : "På vei"}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
