@@ -505,6 +505,24 @@ export default function App() {
                   inviteTrainer={inviteTrainer}
                   openCustomerMessagesSignal={openCustomerMessagesSignal}
                   memberAvatarById={memberAvatarById}
+                  setMemberAvatarUrlForMember={(memberId, avatarUrl) =>
+                    setMemberAvatarById((prev) => {
+                      const targetMember = appState.members.find((member) => member.id === memberId);
+                      if (!targetMember) return prev;
+                      const normalizedEmail = targetMember.email.trim().toLowerCase();
+                      const relatedIds = normalizedEmail
+                        ? appState.members
+                            .filter((member) => member.email.trim().toLowerCase() === normalizedEmail)
+                            .map((member) => member.id)
+                        : [memberId];
+                      const uniqueIds = Array.from(new Set(relatedIds.length ? relatedIds : [memberId]));
+                      const next = { ...prev };
+                      uniqueIds.forEach((id) => {
+                        next[id] = avatarUrl;
+                      });
+                      return next;
+                    })
+                  }
                 />
               </div>
             </div>

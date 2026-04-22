@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, ShieldCheck, Star, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
+import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { uid } from "../app/storage";
 import { Card, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
@@ -45,6 +46,7 @@ type TrainerPortalProps = {
   }) => void;
   openCustomerMessagesSignal?: number;
   memberAvatarById?: Record<string, string>;
+  setMemberAvatarUrlForMember?: (memberId: string, avatarUrl: string) => void;
 };
 
 export function TrainerPortal(props: TrainerPortalProps) {
@@ -77,6 +79,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     saveExercise,
     openCustomerMessagesSignal = 0,
     memberAvatarById = {},
+    setMemberAvatarUrlForMember,
   } = props;
 
   const [programTitle, setProgramTitle] = useState("Nytt treningsprogram");
@@ -142,8 +145,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [memberLinkStatus, setMemberLinkStatus] = useState<string | null>(null);
   const [isRepairingMemberLink, setIsRepairingMemberLink] = useState(false);
   const [memberEditEmail, setMemberEditEmail] = useState("");
+  const [memberEditName, setMemberEditName] = useState("");
   const [memberEditPhone, setMemberEditPhone] = useState("");
   const [memberEditBirthDate, setMemberEditBirthDate] = useState("");
+  const [memberEditGoal, setMemberEditGoal] = useState("");
+  const [memberEditInjuries, setMemberEditInjuries] = useState("");
   const [memberEditIsPtCustomer, setMemberEditIsPtCustomer] = useState(false);
   const [memberEditIsPremiumCustomer, setMemberEditIsPremiumCustomer] = useState(false);
   const [memberEditStatus, setMemberEditStatus] = useState<string | null>(null);
@@ -388,16 +394,22 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
   useEffect(() => {
     if (!selectedMember) {
+      setMemberEditName("");
       setMemberEditEmail("");
       setMemberEditPhone("");
       setMemberEditBirthDate("");
+      setMemberEditGoal("");
+      setMemberEditInjuries("");
       setMemberEditIsPtCustomer(false);
       setMemberEditIsPremiumCustomer(false);
       return;
     }
+    setMemberEditName(selectedMember.name);
     setMemberEditEmail(selectedMember.email);
     setMemberEditPhone(selectedMember.phone);
     setMemberEditBirthDate(selectedMember.birthDate);
+    setMemberEditGoal(selectedMember.goal);
+    setMemberEditInjuries(selectedMember.injuries);
     setMemberEditIsPtCustomer(selectedMember.customerType === "PT-kunde");
     setMemberEditIsPremiumCustomer(selectedMember.membershipType === "Premium");
     setMemberEditStatus(null);
@@ -408,6 +420,38 @@ export function TrainerPortal(props: TrainerPortalProps) {
     const date = new Date(iso);
     if (Number.isNaN(date.getTime())) return "";
     return formatDateDdMmYyyy(date);
+  }
+
+  async function readFileAsDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = typeof reader.result === "string" ? reader.result : "";
+        if (!result) {
+          reject(new Error("Kunne ikke lese bildefilen."));
+          return;
+        }
+        resolve(result);
+      };
+      reader.onerror = () => reject(new Error("Kunne ikke lese bildefilen."));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleCustomerAvatarSelected(file: File | null) {
+    if (!selectedMember || !setMemberAvatarUrlForMember) return;
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setMemberEditStatus("Velg en bildefil.");
+      return;
+    }
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setMemberAvatarUrlForMember(selectedMember.id, dataUrl);
+      setMemberEditStatus("Profilbilde oppdatert.");
+    } catch {
+      setMemberEditStatus("Kunne ikke lagre profilbildet.");
+    }
   }
 
   function addExerciseToDraft(exercise: Exercise) {
@@ -645,7 +689,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
   function handleSaveSelectedMemberDetails() {
     if (!selectedMember) return;
+    const nextName = memberEditName.trim();
     const nextEmail = memberEditEmail.trim().toLowerCase();
+    if (!nextName) {
+      setMemberEditStatus("Navn må fylles ut.");
+      return;
+    }
     if (!isValidEmail(nextEmail)) {
       setMemberEditStatus("Gyldig e-post må fylles ut.");
       return;
@@ -663,9 +712,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
       updateMember({
         memberId,
         changes: {
+          name: nextName,
           email: nextEmail,
           phone: normalizePhone(memberEditPhone),
           birthDate: normalizeBirthDate(memberEditBirthDate),
+          goal: memberEditGoal,
+          injuries: memberEditInjuries,
           membershipType: memberEditIsPremiumCustomer ? "Premium" : "Standard",
           customerType: memberEditIsPtCustomer ? "PT-kunde" : "Oppfølging",
         },
@@ -1423,7 +1475,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 ) : null}
                 <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-800">Rediger kundekort</div>
-                  <div className="grid gap-3 md:grid-cols-3">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <label className="space-y-1 text-xs font-medium text-slate-600">
+                      <span>Navn</span>
+                      <TextInput value={memberEditName} onChange={(event) => setMemberEditName(event.target.value)} placeholder="f.eks. Ola Nordmann" />
+                    </label>
                     <label className="space-y-1 text-xs font-medium text-slate-600">
                       <span>E-post</span>
                       <TextInput value={memberEditEmail} onChange={(event) => setMemberEditEmail(event.target.value)} placeholder="f.eks. navn@epost.no" />
@@ -1436,6 +1492,33 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       <span>Fødselsdato</span>
                       <TextInput value={memberEditBirthDate} onChange={(event) => setMemberEditBirthDate(event.target.value)} placeholder="dd.mm.yyyy" />
                     </label>
+                  </div>
+                  <label className="space-y-1 text-xs font-medium text-slate-600">
+                    <span>Mål</span>
+                    <SelectBox
+                      value={MEMBER_GOAL_OPTIONS.includes(memberEditGoal as (typeof MEMBER_GOAL_OPTIONS)[number]) ? memberEditGoal : ""}
+                      onChange={setMemberEditGoal}
+                      options={[
+                        { value: "", label: "Velg mål" },
+                        ...MEMBER_GOAL_OPTIONS.map((goal) => ({ value: goal, label: goal })),
+                      ]}
+                    />
+                  </label>
+                  <label className="space-y-1 text-xs font-medium text-slate-600">
+                    <span>Skader/hensyn</span>
+                    <TextArea value={memberEditInjuries} onChange={(event) => setMemberEditInjuries(event.target.value)} className="min-h-[90px]" placeholder="Skader/hensyn" />
+                  </label>
+                  <div className="rounded-xl border bg-white p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="text-xs font-medium text-slate-600">Profilbilde</div>
+                    <div className="h-14 w-14 overflow-hidden rounded-full border bg-slate-100" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
+                      {resolveMemberAvatarUrl(selectedMember) ? <img src={resolveMemberAvatarUrl(selectedMember)} alt={`Profilbilde av ${selectedMember.name}`} className="h-full w-full object-cover" /> : null}
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => void handleCustomerAvatarSelected(event.target.files?.[0] ?? null)}
+                      className="block w-full text-xs text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-xs file:font-medium"
+                    />
                   </div>
                   <div className="grid gap-2 md:grid-cols-2">
                     <label className="flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -1479,10 +1562,10 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     <div className="rounded-3xl border bg-slate-50 p-4">
                       <div className="font-semibold">Kort status</div>
                       <div className="mt-3 space-y-2 text-sm text-slate-600">
-                        <div><span className="font-medium text-slate-800">Fokus:</span> {selectedMember.focus}</div>
+                        <div><span className="font-medium text-slate-800">Mål:</span> {selectedMember.goal || "Ikke satt"}</div>
                         <div><span className="font-medium text-slate-800">Kundetype:</span> {selectedMember.customerType}</div>
                         <div><span className="font-medium text-slate-800">Medlemskap:</span> {selectedMember.membershipType}</div>
-                        <div><span className="font-medium text-slate-800">Skader:</span> {selectedMember.injuries}</div>
+                        <div><span className="font-medium text-slate-800">Skader/hensyn:</span> {selectedMember.injuries || "Ingen registrerte skader"}</div>
                       </div>
                     </div>
                     <div className="rounded-3xl border bg-slate-50 p-4">
@@ -1512,8 +1595,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         <div><span className="font-medium text-slate-800">Kundetype:</span> {selectedMember.customerType || "Ikke satt"}</div>
                         <div><span className="font-medium text-slate-800">Medlemskap:</span> {selectedMember.membershipType || "Ikke satt"}</div>
                         <div><span className="font-medium text-slate-800">Mål:</span> {selectedMember.goal || "Ikke satt"}</div>
-                        <div><span className="font-medium text-slate-800">Fokus:</span> {selectedMember.focus || "Ikke satt"}</div>
-                        <div><span className="font-medium text-slate-800">Skader:</span> {selectedMember.injuries || "Ingen registrerte skader"}</div>
+                        <div><span className="font-medium text-slate-800">Skader/hensyn:</span> {selectedMember.injuries || "Ingen registrerte skader"}</div>
                       </div>
                     </div>
                   </div>

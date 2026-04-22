@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ClipboardList, MessageSquare, Target, TrendingUp, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
+import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { supabaseClient } from "../services/supabaseClient";
 import { Card, GradientButton, OutlineButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
@@ -1619,16 +1620,17 @@ export function MemberPortal(props: MemberPortalProps) {
                         <TextInput value={memberBirthDateDraft} onChange={(e) => setMemberBirthDateDraft(e.target.value)} placeholder="Fødselsdato (dd.mm.yyyy)" />
                       </label>
                     </div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <label className="space-y-1">
-                        <span className="text-sm font-semibold text-slate-700">Mål</span>
-                        <TextInput value={memberGoalDraft} onChange={(e) => setMemberGoalDraft(e.target.value)} placeholder="Mål" />
-                      </label>
-                      <label className="space-y-1">
-                        <span className="text-sm font-semibold text-slate-700">Fokus</span>
-                        <TextInput value={memberFocusDraft} onChange={(e) => setMemberFocusDraft(e.target.value)} placeholder="Fokus" />
-                      </label>
-                    </div>
+                    <label className="space-y-1">
+                      <span className="text-sm font-semibold text-slate-700">Mål</span>
+                      <SelectBox
+                        value={MEMBER_GOAL_OPTIONS.includes(memberGoalDraft as (typeof MEMBER_GOAL_OPTIONS)[number]) ? memberGoalDraft : ""}
+                        onChange={(value) => setMemberGoalDraft(value)}
+                        options={[
+                          { value: "", label: "Velg mål" },
+                          ...MEMBER_GOAL_OPTIONS.map((goal) => ({ value: goal, label: goal })),
+                        ]}
+                      />
+                    </label>
                     <label className="space-y-1">
                       <span className="text-sm font-semibold text-slate-700">Skader / hensyn</span>
                       <TextArea value={memberInjuriesDraft} onChange={(e) => setMemberInjuriesDraft(e.target.value)} className="min-h-[90px]" placeholder="Skader / hensyn" />
