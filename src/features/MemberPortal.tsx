@@ -1413,18 +1413,17 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-                <div className="rounded-3xl border bg-slate-50 p-4">
-                  <div className="font-semibold">Personlige rekorder</div>
-                  <div className="mt-4 space-y-3">
-                    {personalRecords.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen PR-er registrert ennå.</div> : null}
-                    {personalRecords.map((record) => (
-                      <div key={record.name} className="rounded-2xl border bg-white p-4">
-                        <div className="font-medium">{record.name}</div>
-                        <div className="mt-1 text-sm text-slate-500">Beste registrerte: {record.weight} kg × {record.reps}</div>
-                      </div>
-                    ))}
-                  </div>
+              <div className="mt-4 rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-sm font-semibold text-slate-700">🏋️ Personlige rekorder</div>
+                <div className="mt-1 text-xs text-slate-500">Beste løft registrert per øvelse.</div>
+                <div className="mt-4 space-y-3">
+                  {personalRecords.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen PR-er registrert ennå.</div> : null}
+                  {personalRecords.map((record) => (
+                    <div key={record.name} className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="font-medium">{record.name}</div>
+                      <div className="mt-1 text-sm text-slate-500">Beste registrerte: {record.weight} kg × {record.reps}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </Card>
