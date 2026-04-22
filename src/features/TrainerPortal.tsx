@@ -1004,6 +1004,16 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     { value: "standardFirst", label: "Type: Standard først" },
                   ]}
                 />
+                <OutlineButton
+                  onClick={() => {
+                    setPriorityFilter("all");
+                    setPrioritySort("highFirst");
+                    setPriorityMemberTypeSort("none");
+                  }}
+                  className="px-3 py-2 text-xs"
+                >
+                  Nullstill
+                </OutlineButton>
               </div>
             </div>
             <div className="space-y-2">
