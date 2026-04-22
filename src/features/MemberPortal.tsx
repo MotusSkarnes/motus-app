@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ClipboardList, MessageSquare, Target, TrendingUp, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { Card, GradientButton, OutlineButton, SelectBox, StatCard, TextArea, TextInput } from "../app/ui";
+import type { UpdateMemberInput } from "../services/appRepository";
 import type { ChatMessage, Member, MemberTab, TrainingProgram, WorkoutCelebration, WorkoutLog, WorkoutModeState } from "../app/types";
 
 type MemberPortalProps = {
@@ -13,6 +14,7 @@ type MemberPortalProps = {
   setMemberViewId: (id: string) => void;
   memberTab: MemberTab;
   setMemberTab: (tab: MemberTab) => void;
+  updateMember: (input: UpdateMemberInput) => void;
   sendMemberMessage: (memberId: string, text: string) => void;
   workoutMode: WorkoutModeState | null;
   startWorkoutMode: (programId: string) => void;
@@ -25,7 +27,7 @@ type MemberPortalProps = {
 };
 
 export function MemberPortal(props: MemberPortalProps) {
-  const { members, programs, logs, messages, memberViewId, setMemberViewId, memberTab, setMemberTab, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, updateWorkoutModeNote, finishWorkoutMode, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
+  const { members, programs, logs, messages, memberViewId, setMemberViewId, memberTab, setMemberTab, updateMember, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, updateWorkoutModeNote, finishWorkoutMode, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
   const [messageText, setMessageText] = useState("");
   const [profileWeight, setProfileWeight] = useState("");
   const [profileTrainingGoal, setProfileTrainingGoal] = useState("");
@@ -36,6 +38,9 @@ export function MemberPortal(props: MemberPortalProps) {
   const [goalMetricDraft, setGoalMetricDraft] = useState<"sessionsPerWeek" | "dailySteps" | "targetWeight">("sessionsPerWeek");
   const [goalMetricValueDraft, setGoalMetricValueDraft] = useState("");
   const [profileSaveInfo, setProfileSaveInfo] = useState<string | null>(null);
+  const [memberEmailDraft, setMemberEmailDraft] = useState("");
+  const [memberPhoneDraft, setMemberPhoneDraft] = useState("");
+  const [memberBirthDateDraft, setMemberBirthDateDraft] = useState("");
   const [workoutExerciseIndex, setWorkoutExerciseIndex] = useState(0);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const viewedMember = members.find((member) => member.id === memberViewId) ?? null;
@@ -203,6 +208,9 @@ export function MemberPortal(props: MemberPortalProps) {
       setProfileDailyStepsTarget(fallback.dailyStepsTarget);
       setProfileTargetWeight(fallback.targetWeight);
       setProfileCurrentDailySteps(fallback.currentDailySteps);
+      setMemberEmailDraft(viewedMember.email);
+      setMemberPhoneDraft(viewedMember.phone);
+      setMemberBirthDateDraft(viewedMember.birthDate);
       return;
     }
     try {
@@ -214,6 +222,9 @@ export function MemberPortal(props: MemberPortalProps) {
         setProfileDailyStepsTarget(fallback.dailyStepsTarget);
         setProfileTargetWeight(fallback.targetWeight);
         setProfileCurrentDailySteps(fallback.currentDailySteps);
+        setMemberEmailDraft(viewedMember.email);
+        setMemberPhoneDraft(viewedMember.phone);
+        setMemberBirthDateDraft(viewedMember.birthDate);
         return;
       }
       const parsed = JSON.parse(raw) as Partial<typeof fallback>;
@@ -223,6 +234,9 @@ export function MemberPortal(props: MemberPortalProps) {
       setProfileDailyStepsTarget(parsed.dailyStepsTarget ?? "");
       setProfileTargetWeight(parsed.targetWeight ?? "");
       setProfileCurrentDailySteps(parsed.currentDailySteps ?? "");
+      setMemberEmailDraft(viewedMember.email);
+      setMemberPhoneDraft(viewedMember.phone);
+      setMemberBirthDateDraft(viewedMember.birthDate);
     } catch {
       setProfileWeight(fallback.weight);
       setProfileTrainingGoal(fallback.trainingGoal);
@@ -230,6 +244,9 @@ export function MemberPortal(props: MemberPortalProps) {
       setProfileDailyStepsTarget(fallback.dailyStepsTarget);
       setProfileTargetWeight(fallback.targetWeight);
       setProfileCurrentDailySteps(fallback.currentDailySteps);
+      setMemberEmailDraft(viewedMember.email);
+      setMemberPhoneDraft(viewedMember.phone);
+      setMemberBirthDateDraft(viewedMember.birthDate);
     }
   }, [viewedMember]);
 
@@ -244,6 +261,11 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function saveProfile() {
     if (!viewedMember || typeof window === "undefined") return;
+    const normalizedEmail = memberEmailDraft.trim().toLowerCase();
+    if (!normalizedEmail || !normalizedEmail.includes("@")) {
+      setProfileSaveInfo("Legg inn en gyldig e-post.");
+      return;
+    }
     const next = {
       weight: profileWeight.trim(),
       trainingGoal: profileTrainingGoal.trim(),
@@ -253,6 +275,14 @@ export function MemberPortal(props: MemberPortalProps) {
       currentDailySteps: profileCurrentDailySteps.trim(),
     };
     window.localStorage.setItem(getProfileStorageKey(viewedMember.id), JSON.stringify(next));
+    updateMember({
+      memberId: viewedMember.id,
+      changes: {
+        email: normalizedEmail,
+        phone: memberPhoneDraft,
+        birthDate: memberBirthDateDraft,
+      },
+    });
     setProfileSaveInfo("Profil og mål lagret.");
   }
 
@@ -730,7 +760,11 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="mt-5 space-y-4">
                   <div className="grid gap-3 md:grid-cols-2">
                     <TextInput value={viewedMember.name} readOnly />
-                    <TextInput value={viewedMember.email} readOnly />
+                    <TextInput value={memberEmailDraft} onChange={(e) => setMemberEmailDraft(e.target.value)} placeholder="E-post" />
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <TextInput value={memberPhoneDraft} onChange={(e) => setMemberPhoneDraft(e.target.value)} placeholder="Telefon" />
+                    <TextInput value={memberBirthDateDraft} onChange={(e) => setMemberBirthDateDraft(e.target.value)} placeholder="Fødselsdato (YYYY-MM-DD)" />
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
                     <TextInput value={profileWeight} onChange={(e) => setProfileWeight(e.target.value)} placeholder="Vekt (kg)" />

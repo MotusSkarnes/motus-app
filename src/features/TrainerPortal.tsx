@@ -3,7 +3,7 @@ import { ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, Star, Users } 
 import { MOTUS } from "../app/data";
 import { uid } from "../app/storage";
 import { Card, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, TextArea, TextInput } from "../app/ui";
-import type { CreateMemberInput } from "../services/appRepository";
+import type { CreateMemberInput, UpdateMemberInput } from "../services/appRepository";
 import type { InviteMemberResult } from "../services/supabaseAuth";
 import type { ChatMessage, CustomerSubTab, Exercise, Member, ProgramExercise, TrainerTab, TrainingProgram, WorkoutLog } from "../app/types";
 import { supabaseClient } from "../services/supabaseClient";
@@ -21,6 +21,7 @@ type TrainerPortalProps = {
   addMember: (input: CreateMemberInput) => void;
   deactivateMember: (memberId: string) => void;
   deleteMember: (memberId: string) => void;
+  updateMember: (input: UpdateMemberInput) => void;
   markMemberInvited: (memberId: string, invitedAtIso?: string) => void;
   inviteMember: (email: string, memberId: string) => Promise<InviteMemberResult>;
   restoreMemberByEmail: (email: string) => Promise<{ ok: boolean; message: string }>;
@@ -59,6 +60,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     addMember,
     deactivateMember,
     deleteMember,
+    updateMember,
     markMemberInvited,
     inviteMember,
     restoreMemberByEmail,
@@ -125,6 +127,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const [memberLinkStatus, setMemberLinkStatus] = useState<string | null>(null);
   const [isRepairingMemberLink, setIsRepairingMemberLink] = useState(false);
+  const [memberEditEmail, setMemberEditEmail] = useState("");
+  const [memberEditPhone, setMemberEditPhone] = useState("");
+  const [memberEditBirthDate, setMemberEditBirthDate] = useState("");
+  const [memberEditIsPtCustomer, setMemberEditIsPtCustomer] = useState(false);
+  const [memberEditIsPremiumCustomer, setMemberEditIsPremiumCustomer] = useState(false);
+  const [memberEditStatus, setMemberEditStatus] = useState<string | null>(null);
   const [restoreEmail, setRestoreEmail] = useState("");
   const [restoreStatus, setRestoreStatus] = useState<string | null>(null);
   const [restoreDataStatus, setRestoreDataStatus] = useState<string | null>(null);
@@ -167,7 +175,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
           member.email.toLowerCase().includes(query) ||
           member.goal.toLowerCase().includes(query);
         if (!matchesSearch) return false;
-        if (customerTypeFilter !== "all" && member.customerType !== customerTypeFilter) return false;
+        if (customerTypeFilter === "PT-kunde" && member.customerType !== "PT-kunde") return false;
+        if (customerTypeFilter === "Premium-kunde" && member.membershipType !== "Premium") return false;
         if (memberFilter === "followUp") return Number(member.daysSinceActivity || "0") >= 7;
         if (memberFilter === "invited") return Boolean(member.invitedAt);
         if (memberFilter === "notInvited") return !member.invitedAt;
@@ -342,6 +351,23 @@ export function TrainerPortal(props: TrainerPortalProps) {
     if (!selectedMemberId || selectedMemberId === "__template__") return;
     setCustomerSubTab("messages");
   }, [openCustomerMessagesSignal, selectedMemberId]);
+
+  useEffect(() => {
+    if (!selectedMember) {
+      setMemberEditEmail("");
+      setMemberEditPhone("");
+      setMemberEditBirthDate("");
+      setMemberEditIsPtCustomer(false);
+      setMemberEditIsPremiumCustomer(false);
+      return;
+    }
+    setMemberEditEmail(selectedMember.email);
+    setMemberEditPhone(selectedMember.phone);
+    setMemberEditBirthDate(selectedMember.birthDate);
+    setMemberEditIsPtCustomer(selectedMember.customerType === "PT-kunde");
+    setMemberEditIsPremiumCustomer(selectedMember.membershipType === "Premium");
+    setMemberEditStatus(null);
+  }, [selectedMember]);
 
   function formatInvitedAt(iso: string): string {
     if (!iso) return "";
@@ -528,6 +554,26 @@ export function TrainerPortal(props: TrainerPortalProps) {
     const confirmed = window.confirm("Slette kunde permanent? Dette sletter også programmer, logger og meldinger.");
     if (!confirmed) return;
     deleteMember(memberId);
+  }
+
+  function handleSaveSelectedMemberDetails() {
+    if (!selectedMember) return;
+    const nextEmail = memberEditEmail.trim().toLowerCase();
+    if (!nextEmail || !nextEmail.includes("@")) {
+      setMemberEditStatus("Gyldig e-post må fylles ut.");
+      return;
+    }
+    updateMember({
+      memberId: selectedMember.id,
+      changes: {
+        email: nextEmail,
+        phone: memberEditPhone,
+        birthDate: memberEditBirthDate,
+        membershipType: memberEditIsPremiumCustomer ? "Premium" : "Standard",
+        customerType: memberEditIsPtCustomer ? "PT-kunde" : "Oppfølging",
+      },
+    });
+    setMemberEditStatus("Kundekort oppdatert.");
   }
 
   function resetMemberListControls() {
@@ -1163,6 +1209,32 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     {memberLinkStatus}
                   </div>
                 ) : null}
+                <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="text-sm font-semibold text-slate-800">Rediger kundekort</div>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <TextInput value={memberEditEmail} onChange={(event) => setMemberEditEmail(event.target.value)} placeholder="E-post" />
+                    <TextInput value={memberEditPhone} onChange={(event) => setMemberEditPhone(event.target.value)} placeholder="Telefon" />
+                    <TextInput value={memberEditBirthDate} onChange={(event) => setMemberEditBirthDate(event.target.value)} placeholder="Fødselsdato (YYYY-MM-DD)" />
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <label className="flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <input type="checkbox" checked={memberEditIsPtCustomer} onChange={(event) => setMemberEditIsPtCustomer(event.target.checked)} />
+                      PT-kunde
+                    </label>
+                    <label className="flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <input type="checkbox" checked={memberEditIsPremiumCustomer} onChange={(event) => setMemberEditIsPremiumCustomer(event.target.checked)} />
+                      Premium-kunde
+                    </label>
+                  </div>
+                  <OutlineButton onClick={handleSaveSelectedMemberDetails} className="w-full md:w-auto">
+                    Lagre kundedata
+                  </OutlineButton>
+                  {memberEditStatus ? (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                      {memberEditStatus}
+                    </div>
+                  ) : null}
+                </div>
                 <button
                   type="button"
                   onClick={() => handleDeleteMember(selectedMember.id)}
@@ -1778,55 +1850,32 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   ]}
                 />
               </div>
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-xs text-slate-500">{visibleExercises.length} øvelser vist</div>
-                <OutlineButton onClick={() => setCompactExerciseBank((prev) => !prev)} className="px-3 py-1.5 text-xs">
-                  {compactExerciseBank ? "Vis mer info" : "Kompakt visning"}
-                </OutlineButton>
-              </div>
-              <div className={`grid ${compactExerciseBank ? "gap-2 sm:grid-cols-2 xl:grid-cols-3" : "gap-3 sm:grid-cols-2"}`}>
+              <div className="text-xs text-slate-500">{visibleExercises.length} øvelser vist</div>
+              <div className="space-y-2">
                 {visibleExercises.map((exercise) => (
-                  <div key={exercise.id} className={`rounded-2xl border bg-slate-50 ${compactExerciseBank ? "p-3" : "p-4"}`} style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="flex items-start gap-3">
-                      {!compactExerciseBank || expandedExerciseId === exercise.id ? (
-                        <img
-                          src={getExercisePreviewSrc(exercise)}
-                          alt={`Skisse av ${exercise.name}`}
-                          className="h-14 w-14 rounded-xl border bg-white object-cover"
-                          style={{ borderColor: "rgba(15,23,42,0.08)" }}
-                          onError={(event) => {
-                            event.currentTarget.src = getExerciseSketchDataUri(exercise);
-                          }}
-                        />
-                      ) : null}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="font-medium leading-tight">{exercise.name}</div>
-                          <OutlineButton onClick={() => startEditExercise(exercise)} className="px-3 py-1.5 text-xs">Rediger</OutlineButton>
-                        </div>
-                        <div className="mt-1 text-xs text-slate-500">
-                          {exercise.category} · {exercise.group} · {exercise.level}
-                        </div>
-                        {!compactExerciseBank || expandedExerciseId === exercise.id ? (
-                          <div className="mt-1 text-xs text-slate-500">Utstyr: {exercise.equipment}</div>
-                        ) : null}
-                      </div>
-                    </div>
-                    {!compactExerciseBank || expandedExerciseId === exercise.id ? (
-                      <div className="mt-2 text-sm text-slate-700">
-                        {expandedExerciseId === exercise.id
-                          ? exercise.description
-                          : `${exercise.description.slice(0, 88)}${exercise.description.length > 88 ? "..." : ""}`}
-                      </div>
-                    ) : null}
-                    {exercise.description.length > 88 || compactExerciseBank ? (
+                  <div key={exercise.id} className="rounded-2xl border bg-slate-50 px-3 py-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="flex items-center justify-between gap-3">
                       <button
                         type="button"
-                        className="mt-1 text-xs font-medium text-slate-600 underline"
                         onClick={() => setExpandedExerciseId((prev) => (prev === exercise.id ? null : exercise.id))}
+                        className="min-w-0 flex-1 text-left"
                       >
-                        {expandedExerciseId === exercise.id ? "Vis mindre" : "Vis mer"}
+                        <div className="truncate text-sm font-medium leading-tight">{exercise.name}</div>
+                        <div className="mt-0.5 truncate text-xs text-slate-500">
+                          {exercise.category} · {exercise.group} · Utstyr: {exercise.equipment} · {exercise.level}
+                        </div>
                       </button>
+                      <div className="flex items-center gap-2">
+                        <OutlineButton onClick={() => startEditExercise(exercise)} className="px-3 py-1.5 text-xs">Rediger</OutlineButton>
+                        <OutlineButton onClick={() => setExpandedExerciseId((prev) => (prev === exercise.id ? null : exercise.id))} className="px-3 py-1.5 text-xs">
+                          {expandedExerciseId === exercise.id ? "Skjul" : "Vis"}
+                        </OutlineButton>
+                      </div>
+                    </div>
+                    {expandedExerciseId === exercise.id ? (
+                      <div className="mt-2 text-sm text-slate-700">
+                        {exercise.description}
+                      </div>
                     ) : null}
                   </div>
                 ))}

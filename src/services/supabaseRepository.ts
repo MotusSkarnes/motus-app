@@ -7,6 +7,7 @@ import {
   type CreateMemberInput,
   type SaveProgramInput,
   type SaveExerciseInput,
+  type UpdateMemberInput,
   type UpdateWorkoutResultInput,
 } from "./appRepository";
 import { supabaseClient } from "./supabaseClient";
@@ -662,6 +663,14 @@ export const supabaseAppRepository: AppRepository = {
     const exercise = nextState.exercises.find((item) => item.id === input.id) ?? nextState.exercises[0];
     if (exercise) {
       void persistExercise(exercise);
+    }
+    return nextState;
+  },
+  updateMember(state: AppState, input: UpdateMemberInput): AppState {
+    const nextState = localAppRepository.updateMember(state, input);
+    const updatedMember = nextState.members.find((member) => member.id === input.memberId);
+    if (updatedMember) {
+      void persistMember(updatedMember);
     }
     return nextState;
   },

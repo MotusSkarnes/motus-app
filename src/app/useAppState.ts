@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
-import { localAppRepository, type CreateMemberInput, type SaveExerciseInput, type SaveProgramInput } from "../services/appRepository";
+import { localAppRepository, type CreateMemberInput, type SaveExerciseInput, type SaveProgramInput, type UpdateMemberInput } from "../services/appRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { fetchExercisesFromSupabase, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
 import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult } from "../services/supabaseAuth";
@@ -597,6 +597,10 @@ export function useAppState() {
     setAppState((prev) => repository.deleteMember(prev, memberId));
   }
 
+  function updateMember(input: UpdateMemberInput) {
+    setAppState((prev) => repository.updateMember(prev, input));
+  }
+
   function markMemberInvited(memberId: string, invitedAtIso?: string) {
     setAppState((prev) => repository.markMemberInvited(prev, memberId, invitedAtIso));
   }
@@ -756,6 +760,7 @@ export function useAppState() {
     addMember,
     deactivateMember,
     deleteMember,
+    updateMember,
     markMemberInvited,
     saveProgramForMember,
     deleteProgramById,

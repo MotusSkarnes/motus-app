@@ -47,6 +47,7 @@ export default function App() {
     addMember,
     deactivateMember,
     deleteMember,
+    updateMember,
     markMemberInvited,
     saveProgramForMember,
     deleteProgramById,
@@ -405,6 +406,7 @@ export default function App() {
                   addMember={addMember}
                   deactivateMember={deactivateMember}
                   deleteMember={deleteMember}
+                  updateMember={updateMember}
                   markMemberInvited={markMemberInvited}
                   inviteMember={inviteMember}
                   restoreMemberByEmail={restoreMemberByEmail}
@@ -478,6 +480,7 @@ export default function App() {
               setMemberViewId={(id) => patchState({ memberViewId: id })}
               memberTab={memberTab}
               setMemberTab={setMemberTab}
+              updateMember={updateMember}
               sendMemberMessage={sendMemberMessage}
               workoutMode={appState.workoutMode}
               startWorkoutMode={startWorkoutMode}

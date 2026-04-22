@@ -35,6 +35,11 @@ export type SaveExerciseInput = {
   imageUrl?: string;
 };
 
+export type UpdateMemberInput = {
+  memberId: string;
+  changes: Partial<Pick<Member, "email" | "phone" | "birthDate" | "membershipType" | "customerType">>;
+};
+
 export interface AppRepository {
   addMember(state: AppState, input: CreateMemberInput): AppState;
   deactivateMember(state: AppState, memberId: string): AppState;
@@ -50,6 +55,7 @@ export interface AppRepository {
   cancelWorkoutMode(state: AppState): AppState;
   finishWorkoutMode(state: AppState): AppState;
   saveExercise(state: AppState, input: SaveExerciseInput): AppState;
+  updateMember(state: AppState, input: UpdateMemberInput): AppState;
 }
 
 export function createMember(state: AppState, input: CreateMemberInput): Member {
@@ -345,6 +351,24 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
   return { ...state, exercises: [nextExercise, ...state.exercises] };
 }
 
+export function updateMemberInState(state: AppState, input: UpdateMemberInput): AppState {
+  const normalizedEmail = input.changes.email?.trim().toLowerCase();
+  return {
+    ...state,
+    members: state.members.map((member) =>
+      member.id === input.memberId
+        ? {
+            ...member,
+            ...input.changes,
+            email: normalizedEmail ?? member.email,
+            phone: input.changes.phone !== undefined ? input.changes.phone.trim() : member.phone,
+            birthDate: input.changes.birthDate !== undefined ? input.changes.birthDate.trim() : member.birthDate,
+          }
+        : member
+    ),
+  };
+}
+
 export const localAppRepository: AppRepository = {
   addMember: addMemberToState,
   deactivateMember: deactivateMemberInState,
@@ -360,4 +384,5 @@ export const localAppRepository: AppRepository = {
   cancelWorkoutMode: cancelWorkoutModeInState,
   finishWorkoutMode: finishWorkoutModeInState,
   saveExercise: saveExerciseInState,
+  updateMember: updateMemberInState,
 };
