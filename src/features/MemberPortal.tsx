@@ -314,29 +314,6 @@ export function MemberPortal(props: MemberPortalProps) {
       : estimatedSessionsThisMonth >= 4
       ? "Bra jobba! Du bygger solide treningsvaner."
       : "Små steg teller. En økt i dag bygger momentum.";
-  const progressStory = useMemo(() => {
-    const nowMs = now.getTime();
-    const dayMs = 24 * 60 * 60 * 1000;
-    const recent14 = completedLogDates.filter((date) => nowMs - date.getTime() <= 14 * dayMs).length;
-    const previous14 = completedLogDates.filter((date) => {
-      const diff = nowMs - date.getTime();
-      return diff > 14 * dayMs && diff <= 28 * dayMs;
-    }).length;
-    const delta = recent14 - previous14;
-    const trendLabel = delta > 0 ? "opp fra forrige periode" : delta < 0 ? "ned fra forrige periode" : "stabil fra forrige periode";
-    const trendTone = delta > 0 ? "text-emerald-700" : delta < 0 ? "text-amber-700" : "text-slate-700";
-    const weekKeysRecent4 = new Set(
-      completedLogDates
-        .filter((date) => nowMs - date.getTime() <= 28 * dayMs)
-        .map((date) => getWeekKey(date)),
-    );
-    const consistency = Math.min(100, Math.round((weekKeysRecent4.size / 4) * 100));
-    const nextFocus =
-      sessionsRemaining > 0
-        ? `Mangler ${sessionsRemaining} økt${sessionsRemaining === 1 ? "" : "er"} for ukemålet`
-        : "Ukemålet er nådd - hold flyten videre";
-    return { recent14, previous14, delta, trendLabel, trendTone, consistency, nextFocus };
-  }, [completedLogDates, now, sessionsRemaining]);
   const achievements = useMemo(() => {
     const items: Array<{ id: string; label: string; hint: string; unlocked: boolean }> = [
       {
@@ -694,6 +671,29 @@ export function MemberPortal(props: MemberPortalProps) {
   const targetWeightNumber = Number(profileTargetWeight) || 0;
   const currentWeightNumber = Number(profileWeight) || 0;
   const sessionsRemaining = Math.max(0, sessionsTargetNumber - completedThisWeek);
+  const progressStory = useMemo(() => {
+    const nowMs = now.getTime();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const recent14 = completedLogDates.filter((date) => nowMs - date.getTime() <= 14 * dayMs).length;
+    const previous14 = completedLogDates.filter((date) => {
+      const diff = nowMs - date.getTime();
+      return diff > 14 * dayMs && diff <= 28 * dayMs;
+    }).length;
+    const delta = recent14 - previous14;
+    const trendLabel = delta > 0 ? "opp fra forrige periode" : delta < 0 ? "ned fra forrige periode" : "stabil fra forrige periode";
+    const trendToneClass = delta > 0 ? "text-emerald-100" : delta < 0 ? "text-amber-100" : "text-white/90";
+    const weekKeysRecent4 = new Set(
+      completedLogDates
+        .filter((date) => nowMs - date.getTime() <= 28 * dayMs)
+        .map((date) => getWeekKey(date)),
+    );
+    const consistency = Math.min(100, Math.round((weekKeysRecent4.size / 4) * 100));
+    const nextFocus =
+      sessionsRemaining > 0
+        ? `Mangler ${sessionsRemaining} økt${sessionsRemaining === 1 ? "" : "er"} for ukemålet`
+        : "Ukemålet er nådd - hold flyten videre";
+    return { recent14, previous14, delta, trendLabel, trendToneClass, consistency, nextFocus };
+  }, [completedLogDates, now, sessionsRemaining]);
   const latestCompletedLog = memberLogs.find((log) => log.status === "Fullført") ?? null;
   const customerStatusLabel = (() => {
     const isPtCustomer = viewedMember?.customerType === "PT-kunde";
@@ -870,7 +870,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     ? `${progressStory.recent14} økter siste 14 dager`
                     : "Start neste kapittel med en ny økt"}
                 </div>
-                <div className={`mt-1 text-sm ${progressStory.trendTone.replace("text-", "text-white/")}`}>
+                <div className={`mt-1 text-sm ${progressStory.trendToneClass}`}>
                   {progressStory.trendLabel}
                   {progressStory.delta !== 0 ? ` (${progressStory.delta > 0 ? "+" : ""}${progressStory.delta})` : ""}
                 </div>
