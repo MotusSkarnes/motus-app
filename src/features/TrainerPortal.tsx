@@ -121,6 +121,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     return "all";
   });
   const [customerTypeFilter, setCustomerTypeFilter] = useState<"all" | "PT-kunde" | "Premium-kunde">("all");
+  const [memberSort, setMemberSort] = useState<"activityRecent" | "nameAsc" | "nameDesc">("activityRecent");
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const [memberLinkStatus, setMemberLinkStatus] = useState<string | null>(null);
   const [isRepairingMemberLink, setIsRepairingMemberLink] = useState(false);
@@ -170,14 +171,18 @@ export function TrainerPortal(props: TrainerPortalProps) {
         if (memberFilter === "invited") return Boolean(member.invitedAt);
         if (memberFilter === "notInvited") return !member.invitedAt;
         return true;
-      })
-      .sort((a, b) => {
-        const aDays = Number(a.daysSinceActivity || "0");
-        const bDays = Number(b.daysSinceActivity || "0");
-        if (bDays !== aDays) return bDays - aDays;
-        return a.name.localeCompare(b.name, "no");
       });
   }, [visibleMembers, memberSearch, memberFilter, customerTypeFilter]);
+  const sortedMembers = useMemo(() => {
+    return [...filteredMembers].sort((a, b) => {
+      if (memberSort === "nameAsc") return a.name.localeCompare(b.name, "no");
+      if (memberSort === "nameDesc") return b.name.localeCompare(a.name, "no");
+      const aDays = Number(a.daysSinceActivity || "0");
+      const bDays = Number(b.daysSinceActivity || "0");
+      if (aDays !== bDays) return aDays - bDays;
+      return a.name.localeCompare(b.name, "no");
+    });
+  }, [filteredMembers, memberSort]);
   const inviteStatusTone =
     inviteStatus?.toLowerCase().includes("sendt") || inviteStatus?.toLowerCase().includes("invitasjon sendt")
       ? "success"
@@ -1034,7 +1039,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
             <div className="mt-5 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-xs text-slate-500">
-                  {filteredMembers.length} treff{memberFilter !== "all" || customerTypeFilter !== "all" ? " med aktivt filter" : ""}
+                  {sortedMembers.length} treff{memberFilter !== "all" || customerTypeFilter !== "all" ? " med aktivt filter" : ""}
                 </div>
                 {(memberSearch.trim() || memberFilter !== "all" || customerTypeFilter !== "all") ? (
                   <OutlineButton onClick={resetMemberListControls} className="px-3 py-1.5 text-xs">
@@ -1067,18 +1072,27 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 ]}
               />
               <SelectBox
+                value={memberSort}
+                onChange={(value) => setMemberSort(value as "activityRecent" | "nameAsc" | "nameDesc")}
+                options={[
+                  { value: "activityRecent", label: "Siste aktivitet (nyeste først)" },
+                  { value: "nameAsc", label: "Navn A-Å" },
+                  { value: "nameDesc", label: "Navn Å-A" },
+                ]}
+              />
+              <SelectBox
                 value={selectedMemberId}
                 onChange={setSelectedMemberId}
                 options={
-                  filteredMembers.length
-                    ? filteredMembers.map((member) => ({
+                  sortedMembers.length
+                    ? sortedMembers.map((member) => ({
                         value: member.id,
                         label: `${member.name} (${member.email}) · ${member.customerType}`,
                       }))
                     : [{ value: "", label: "Ingen kunder matcher filteret" }]
                 }
               />
-              {filteredMembers.length === 0 ? (
+              {sortedMembers.length === 0 ? (
                 <div className="rounded-2xl border border-dashed bg-slate-50 p-4 text-center text-sm text-slate-500">
                   Ingen kunder matcher sok/filter. Proev et enklere sok eller bytt filter.
                 </div>
@@ -1086,19 +1100,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
               <OutlineButton onClick={() => setShowInactiveMembers((prev) => !prev)} className="w-full">
                 {showInactiveMembers ? "Skjul inaktive" : "Vis inaktive"}
               </OutlineButton>
-              <div className="rounded-2xl border bg-slate-50 p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-sm font-medium text-slate-700">Nytt medlem</div>
-                <TextInput value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="Navn" />
-                <TextInput value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} placeholder="E-post" />
-                <TextInput value={newMemberPhone} onChange={(e) => setNewMemberPhone(e.target.value)} placeholder="Telefon (valgfritt)" />
-                <TextInput value={newMemberGoal} onChange={(e) => setNewMemberGoal(e.target.value)} placeholder="Hovedmål (valgfritt)" />
-                <TextInput value={newMemberFocus} onChange={(e) => setNewMemberFocus(e.target.value)} placeholder="Fokus (valgfritt)" />
-                {newMemberError ? <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{newMemberError}</div> : null}
-                <GradientButton onClick={() => submitNewMember()} className="w-full">Opprett medlem</GradientButton>
-                <OutlineButton onClick={() => submitNewMember({ inviteAfterCreate: true })} className="w-full">
-                  Opprett + send invitasjon
-                </OutlineButton>
-              </div>
               <div className="rounded-2xl border bg-slate-50 p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-sm font-medium text-slate-700">Gjenopprett slettet klient</div>
                 <TextInput value={restoreEmail} onChange={(e) => setRestoreEmail(e.target.value)} placeholder="E-post til slettet klient" />
@@ -1109,6 +1110,19 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 ) : null}
                 <OutlineButton onClick={() => void handleRestoreMember()} className="w-full">
                   Gjenopprett klient
+                </OutlineButton>
+              </div>
+              <div className="rounded-2xl border bg-slate-50 p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-sm font-medium text-slate-700">Legg til medlem</div>
+                <TextInput value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="Navn" />
+                <TextInput value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} placeholder="E-post" />
+                <TextInput value={newMemberPhone} onChange={(e) => setNewMemberPhone(e.target.value)} placeholder="Telefon (valgfritt)" />
+                <TextInput value={newMemberGoal} onChange={(e) => setNewMemberGoal(e.target.value)} placeholder="Hovedmål (valgfritt)" />
+                <TextInput value={newMemberFocus} onChange={(e) => setNewMemberFocus(e.target.value)} placeholder="Fokus (valgfritt)" />
+                {newMemberError ? <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{newMemberError}</div> : null}
+                <GradientButton onClick={() => submitNewMember()} className="w-full">Opprett medlem</GradientButton>
+                <OutlineButton onClick={() => submitNewMember({ inviteAfterCreate: true })} className="w-full">
+                  Opprett + send invitasjon
                 </OutlineButton>
               </div>
             </div>
@@ -1146,9 +1160,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     <OutlineButton onClick={() => handleDeactivateMember(selectedMember.id)}>
                       Sett medlem som inaktiv
                     </OutlineButton>
-                    <OutlineButton onClick={() => handleDeleteMember(selectedMember.id)}>
-                      Slett kunde permanent
-                    </OutlineButton>
                   </div>
                 </div>
 
@@ -1164,6 +1175,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     {memberLinkStatus}
                   </div>
                 ) : null}
+                <button
+                  type="button"
+                  onClick={() => handleDeleteMember(selectedMember.id)}
+                  className="w-full rounded-2xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+                >
+                  Slett valgt kunde permanent
+                </button>
 
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <StatCard label="Programmer" value={String(selectedPrograms.length)} hint="På denne kunden" />
