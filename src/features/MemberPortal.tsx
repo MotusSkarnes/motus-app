@@ -357,19 +357,6 @@ export function MemberPortal(props: MemberPortalProps) {
   const currentWeightNumber = Number(profileWeight) || 0;
   const sessionsRemaining = Math.max(0, sessionsTargetNumber - completedThisWeek);
   const latestCompletedLog = memberLogs.find((log) => log.status === "Fullført") ?? null;
-  const memberFirstName = viewedMember?.name?.trim().split(/\s+/)[0] || "du";
-  const profileMotivationText = useMemo(() => {
-    const options = [
-      "Klar for neste økt?",
-      "Små steg i dag bygger stor fremgang over tid.",
-      "Du er i god flyt - hold rytmen!",
-      "En økt nå gir deg energi resten av dagen.",
-      "Stabil innsats slår perfekte dager.",
-    ];
-    const daySeed = new Date().getDate();
-    const nameSeed = memberFirstName.length;
-    return options[(daySeed + nameSeed) % options.length];
-  }, [memberFirstName]);
   const customerStatusLabel = (() => {
     const isPtCustomer = viewedMember?.customerType === "PT-kunde";
     const isPremiumCustomer = viewedMember?.membershipType === "Premium";
@@ -862,8 +849,8 @@ export function MemberPortal(props: MemberPortalProps) {
               <div className="flex items-start gap-3">
                 <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Target className="h-5 w-5" /></div>
                 <div>
-                  <h2 className="text-xl font-semibold tracking-tight">Hei {memberFirstName}</h2>
-                  <p className="text-sm text-slate-500">{profileMotivationText}</p>
+                  <h2 className="text-xl font-semibold tracking-tight">Medlemsprofil</h2>
+                  <p className="text-sm text-slate-500">Se og rediger kundeinformasjon</p>
                 </div>
               </div>
               {viewedMember ? (
@@ -887,36 +874,36 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="text-sm font-semibold text-slate-700">Rediger kundeinformasjon</div>
                     <div className="grid gap-3 md:grid-cols-2">
                       <label className="space-y-1">
-                        <span className="text-xs font-medium text-slate-600">Navn</span>
+                        <span className="text-sm font-semibold text-slate-700">Navn</span>
                         <TextInput value={memberNameDraft} onChange={(e) => setMemberNameDraft(e.target.value)} placeholder="Navn" />
                       </label>
                       <label className="space-y-1">
-                        <span className="text-xs font-medium text-slate-600">E-post</span>
+                        <span className="text-sm font-semibold text-slate-700">E-post</span>
                         <TextInput value={memberEmailDraft} onChange={(e) => setMemberEmailDraft(e.target.value)} placeholder="E-post" />
                       </label>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2">
                       <label className="space-y-1">
-                        <span className="text-xs font-medium text-slate-600">Telefon</span>
+                        <span className="text-sm font-semibold text-slate-700">Telefon</span>
                         <TextInput value={memberPhoneDraft} onChange={(e) => setMemberPhoneDraft(e.target.value)} placeholder="Telefon" />
                       </label>
                       <label className="space-y-1">
-                        <span className="text-xs font-medium text-slate-600">Fødselsdato</span>
+                        <span className="text-sm font-semibold text-slate-700">Fødselsdato</span>
                         <TextInput value={memberBirthDateDraft} onChange={(e) => setMemberBirthDateDraft(e.target.value)} placeholder="Fødselsdato (YYYY-MM-DD)" />
                       </label>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2">
                       <label className="space-y-1">
-                        <span className="text-xs font-medium text-slate-600">Mål</span>
+                        <span className="text-sm font-semibold text-slate-700">Mål</span>
                         <TextInput value={memberGoalDraft} onChange={(e) => setMemberGoalDraft(e.target.value)} placeholder="Mål" />
                       </label>
                       <label className="space-y-1">
-                        <span className="text-xs font-medium text-slate-600">Fokus</span>
+                        <span className="text-sm font-semibold text-slate-700">Fokus</span>
                         <TextInput value={memberFocusDraft} onChange={(e) => setMemberFocusDraft(e.target.value)} placeholder="Fokus" />
                       </label>
                     </div>
                     <label className="space-y-1">
-                      <span className="text-xs font-medium text-slate-600">Skader / hensyn</span>
+                      <span className="text-sm font-semibold text-slate-700">Skader / hensyn</span>
                       <TextArea value={memberInjuriesDraft} onChange={(e) => setMemberInjuriesDraft(e.target.value)} className="min-h-[90px]" placeholder="Skader / hensyn" />
                     </label>
                   </div>
