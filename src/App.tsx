@@ -155,7 +155,7 @@ export default function App() {
   }));
   const memberProgramAlerts = memberPrograms.map((program) => ({
     id: `member-program-${program.id}`,
-    text: `Nytt program tildelt: ${program.title}`,
+    text: `Du har fått nytt treningsprogram: ${program.title}`,
     timestamp: program._effectiveTimestamp,
     targetTab: "programs" as const,
     unread: !seenMemberProgramIds.includes(program.id),
