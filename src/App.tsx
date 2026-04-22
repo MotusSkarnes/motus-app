@@ -361,14 +361,14 @@ export default function App() {
                   ))}
                 </div>
               </Card>
-              <div className="space-y-4">
-                <Card className="p-4 bg-gradient-to-b from-emerald-50/80 to-pink-50/60">
+              <div className="space-y-3">
+                <Card className="p-2.5 sm:p-3 bg-gradient-to-b from-emerald-50/80 to-pink-50/60">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold text-slate-800">Varsler</div>
+                    <div className="text-xs sm:text-sm font-semibold text-slate-800">Varsler</div>
                     <button
                       type="button"
                       onClick={handleTrainerBellToggle}
-                      className="relative rounded-xl border bg-white p-2 text-slate-700 hover:bg-emerald-50"
+                      className="relative rounded-lg border bg-white p-1.5 sm:p-2 text-slate-700 hover:bg-emerald-50"
                       style={{ borderColor: "rgba(20,184,166,0.25)" }}
                       aria-label="Åpne varsler"
                     >
@@ -384,7 +384,7 @@ export default function App() {
                     </button>
                   </div>
                   {trainerNotificationsOpen ? (
-                    <div className="mt-3 space-y-2">
+                    <div className="mt-2 max-h-36 overflow-y-auto space-y-1.5 pr-1">
                       {trainerMessageAlerts.map((alert) => (
                         <button
                           key={alert.id}
@@ -395,7 +395,7 @@ export default function App() {
                             setOpenCustomerMessagesSignal((prev) => prev + 1);
                             setTrainerNotificationsOpen(false);
                           }}
-                          className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50"
+                          className="w-full rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs sm:text-sm text-slate-700 hover:bg-emerald-50"
                           style={{ borderColor: "rgba(20,184,166,0.25)" }}
                         >
                           {alert.text}
@@ -408,7 +408,7 @@ export default function App() {
                             setTrainerTab("customers");
                             setTrainerNotificationsOpen(false);
                           }}
-                          className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50"
+                          className="w-full rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs sm:text-sm text-slate-700 hover:bg-emerald-50"
                           style={{ borderColor: "rgba(20,184,166,0.25)" }}
                         >
                           {missingInvitesCount} kunder mangler invitasjon
@@ -421,20 +421,20 @@ export default function App() {
                             setTrainerTab("customers");
                             setTrainerNotificationsOpen(false);
                           }}
-                          className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50"
+                          className="w-full rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs sm:text-sm text-slate-700 hover:bg-emerald-50"
                           style={{ borderColor: "rgba(20,184,166,0.25)" }}
                         >
                           {inactiveMembersCount} kunder bør følges opp
                         </button>
                       ) : null}
                       {!trainerMessageAlerts.length && !missingInvitesCount && !inactiveMembersCount ? (
-                        <div className="rounded-xl border border-dashed bg-white px-3 py-2 text-sm text-slate-500">
+                        <div className="rounded-lg border border-dashed bg-white px-2.5 py-1.5 text-xs sm:text-sm text-slate-500">
                           Ingen nye varsler akkurat nå.
                         </div>
                       ) : null}
                     </div>
                   ) : (
-                    <div className="mt-2 text-sm text-slate-500">
+                    <div className="mt-1.5 text-xs sm:text-sm text-slate-500">
                       Trykk på bjellen for å se varsler.
                     </div>
                   )}
@@ -469,14 +469,14 @@ export default function App() {
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-                <Card className="p-4 bg-gradient-to-b from-emerald-50/80 to-pink-50/60">
+            <div className="space-y-3">
+                <Card className="p-2.5 sm:p-3 bg-gradient-to-b from-emerald-50/80 to-pink-50/60">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-semibold text-slate-800">Varsler</div>
+                  <div className="text-xs sm:text-sm font-semibold text-slate-800">Varsler</div>
                   <button
                     type="button"
                     onClick={handleMemberBellToggle}
-                    className="relative rounded-xl border bg-white p-2 text-slate-700 hover:bg-emerald-50"
+                    className="relative rounded-lg border bg-white p-1.5 sm:p-2 text-slate-700 hover:bg-emerald-50"
                     style={{ borderColor: "rgba(20,184,166,0.25)" }}
                     aria-label="Åpne varsler"
                   >
@@ -492,7 +492,7 @@ export default function App() {
                   </button>
                 </div>
                 {memberNotificationsOpen ? (
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-2 max-h-36 overflow-y-auto space-y-1.5 pr-1">
                     {memberVisibleAlerts.map((alert) => (
                       <button
                         key={alert.id}
@@ -501,20 +501,20 @@ export default function App() {
                           setMemberTab(alert.targetTab);
                           setMemberNotificationsOpen(false);
                         }}
-                        className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50"
+                        className="w-full rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs sm:text-sm text-slate-700 hover:bg-emerald-50"
                         style={{ borderColor: "rgba(20,184,166,0.25)" }}
                       >
                         {alert.text}
                       </button>
                     ))}
                     {memberVisibleAlerts.length === 0 ? (
-                      <div className="rounded-xl border border-dashed bg-white px-3 py-2 text-sm text-slate-500">
+                      <div className="rounded-lg border border-dashed bg-white px-2.5 py-1.5 text-xs sm:text-sm text-slate-500">
                         Ingen nye varsler akkurat nå.
                       </div>
                     ) : null}
                   </div>
                 ) : (
-                  <div className="mt-2 text-sm text-slate-500">
+                  <div className="mt-1.5 text-xs sm:text-sm text-slate-500">
                     Trykk på bjellen for å se varsler.
                   </div>
                 )}

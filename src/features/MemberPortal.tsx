@@ -469,7 +469,7 @@ export function MemberPortal(props: MemberPortalProps) {
         <div className="space-y-4 sm:space-y-6">
           {memberTab === "overview" ? (
             <Card className="p-4 sm:p-5 space-y-4 sm:space-y-5">
-              <div className="rounded-[22px] p-4 sm:p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
+              <div className="hidden sm:block rounded-[22px] p-4 sm:p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm text-white/80">Hei{viewedMember ? `, ${viewedMember.name}` : ""}</div>
                   <div className="h-12 w-12 overflow-hidden rounded-full border border-white/40 bg-white/20">
