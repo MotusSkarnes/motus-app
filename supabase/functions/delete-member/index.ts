@@ -8,7 +8,6 @@ const corsHeaders = {
 
 type DeletePayload = {
   memberId?: string;
-  email?: string;
 };
 
 function normalizeEmail(value: string | null | undefined): string {
@@ -44,27 +43,13 @@ Deno.serve(async (req) => {
   }
 
   const memberId = payload.memberId?.trim() ?? "";
-  const email = normalizeEmail(payload.email);
-  if (!memberId && !email) {
-    return jsonResponse(400, { error: "memberId or email is required" });
+  if (!memberId) {
+    return jsonResponse(400, { error: "memberId is required" });
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-  const targetMemberIds = new Set<string>();
-  if (memberId) targetMemberIds.add(memberId);
-
-  if (email) {
-    const { data: allMembers } = await adminClient.from("members").select("id, email");
-    for (const row of allMembers ?? []) {
-      const candidate = row as { id?: string; email?: string | null };
-      const candidateId = String(candidate.id ?? "").trim();
-      if (!candidateId) continue;
-      if (normalizeEmail(candidate.email) === email) {
-        targetMemberIds.add(candidateId);
-      }
-    }
-  }
+  const targetMemberIds = new Set<string>([memberId]);
 
   for (const id of targetMemberIds) {
     await adminClient.from("members").update({ is_active: false }).eq("id", id);

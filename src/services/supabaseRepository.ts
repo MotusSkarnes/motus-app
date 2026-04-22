@@ -192,13 +192,11 @@ async function deleteProgram(programId: string) {
 async function deleteMemberFromSupabase(member: { id: string; email?: string }) {
   if (!supabaseClient) return;
   const memberId = member.id;
-  const normalizedEmail = (member.email ?? "").trim().toLowerCase();
 
   try {
     const { error } = await supabaseClient.functions.invoke("delete-member", {
       body: {
         memberId,
-        email: normalizedEmail || undefined,
       },
     });
     if (!error) return;
@@ -221,7 +219,6 @@ async function deleteMemberFromSupabase(member: { id: string; email?: string }) 
         },
         body: JSON.stringify({
           memberId,
-          email: normalizedEmail || undefined,
         }),
       });
       if (response.ok) return;
