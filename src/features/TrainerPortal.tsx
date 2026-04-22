@@ -1379,6 +1379,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
               <div>
                 <h2 className="text-xl font-semibold tracking-tight">Nytt program</h2>
                 <p className="text-sm text-slate-500">Bygg program med filtrering, favoritter og drag-and-drop</p>
+                <p className="mt-1 text-xs font-semibold text-rose-600">PROGRAM-SIDE VERSJON: PT-PROGRAM-V2</p>
               </div>
             </div>
             <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
