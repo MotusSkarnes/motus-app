@@ -83,14 +83,40 @@ async function persistMember(member: Member) {
   if (!supabaseClient) return;
   const ownerUserId = await getOwnerUserId();
   if (!ownerUserId) return;
+  const normalizedEmail = member.email.trim().toLowerCase();
+
+  // Guard against accidental reactivation from stale clients:
+  // if this member (or same email) was previously deactivated, keep it inactive.
+  let shouldStayInactive = !member.isActive;
+  if (!shouldStayInactive) {
+    const { data: existingById } = await supabaseClient
+      .from("members")
+      .select("is_active")
+      .eq("id", member.id)
+      .maybeSingle();
+    if (existingById?.is_active === false) {
+      shouldStayInactive = true;
+    }
+  }
+  if (!shouldStayInactive && normalizedEmail) {
+    const { data: existingByEmail } = await supabaseClient
+      .from("members")
+      .select("id")
+      .eq("email", normalizedEmail)
+      .eq("is_active", false)
+      .limit(1);
+    if ((existingByEmail?.length ?? 0) > 0) {
+      shouldStayInactive = true;
+    }
+  }
 
   const { error } = await supabaseClient.from("members").upsert(
     {
       id: member.id,
       owner_user_id: ownerUserId,
       name: member.name,
-      email: member.email,
-      is_active: member.isActive,
+      email: normalizedEmail,
+      is_active: shouldStayInactive ? false : member.isActive,
       invited_at: member.invitedAt || null,
       phone: member.phone,
       birth_date: member.birthDate,
@@ -362,6 +388,7 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
     .select(
       "id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes"
     )
+    .eq("is_active", true)
     .order("created_at", { ascending: true });
 
   if (error) {
