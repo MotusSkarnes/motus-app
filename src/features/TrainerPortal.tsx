@@ -1362,40 +1362,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
             </div>
           </Card>
 
-          <Card className="p-5">
-            <div className="text-xl font-semibold tracking-tight">Programmer på valgt kunde</div>
-            <div className="mt-4 space-y-3">
-              {selectedPrograms.length === 0 ? <div className="rounded-2xl border border-dashed p-8 text-center text-slate-500">Ingen programmer ennå.</div> : null}
-              {selectedPrograms.map((program) => (
-                <div key={program.id} className="rounded-3xl border p-4 bg-slate-50 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="font-semibold text-sm">{program.title}</div>
-                      <div className="mt-0.5 text-xs text-slate-500">{program.goal || "Uten mål"}</div>
-                      <div className="mt-1 text-xs text-slate-400">Opprettet {program.createdAt}</div>
-                    </div>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <OutlineButton onClick={() => startEditProgram(program)}>Rediger</OutlineButton>
-                      <OutlineButton onClick={() => deleteProgramById(program.id)}>Slett</OutlineButton>
-                    </div>
-                  </div>
-
-                  {program.notes ? <div className="rounded-2xl border bg-white p-3 text-sm text-slate-600">{program.notes}</div> : null}
-
-                  <div className="space-y-2">
-                    {program.exercises.length === 0 ? <div className="rounded-2xl border border-dashed p-4 text-sm text-slate-500 bg-white">Ingen øvelser i programmet ennå.</div> : null}
-                    {program.exercises.map((exercise) => (
-                      <div key={exercise.id} className="rounded-xl border bg-white p-2.5">
-                        <div className="font-medium text-sm">{exercise.exerciseName}</div>
-                        <div className="mt-0.5 text-xs text-slate-500">{exercise.sets}×{exercise.reps} · {exercise.weight}kg · {exercise.restSeconds}s</div>
-                        {exercise.notes ? <div className="mt-0.5 text-[11px] text-slate-500">{exercise.notes}</div> : null}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
         </div>
         </div>
       ) : null}
