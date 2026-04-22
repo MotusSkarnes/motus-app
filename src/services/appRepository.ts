@@ -24,6 +24,11 @@ export type UpdateWorkoutResultInput = {
   value: string | boolean;
 };
 
+export type ReplaceWorkoutExerciseGroupInput = {
+  programExerciseId: string;
+  nextExerciseName: string;
+};
+
 export type SaveExerciseInput = {
   id?: string;
   name: string;
@@ -51,6 +56,7 @@ export interface AppRepository {
   appendMemberMessage(state: AppState, memberId: string, text: string): AppState;
   startWorkoutMode(state: AppState, programId: string): AppState;
   updateWorkoutResult(state: AppState, input: UpdateWorkoutResultInput): AppState;
+  replaceWorkoutExerciseGroup(state: AppState, input: ReplaceWorkoutExerciseGroupInput): AppState;
   updateWorkoutNote(state: AppState, note: string): AppState;
   cancelWorkoutMode(state: AppState): AppState;
   finishWorkoutMode(state: AppState): AppState;
@@ -238,6 +244,21 @@ export function updateWorkoutResultInState(
   };
 }
 
+export function replaceWorkoutExerciseGroupInState(state: AppState, input: ReplaceWorkoutExerciseGroupInput): AppState {
+  if (!state.workoutMode) return state;
+  const normalizedName = input.nextExerciseName.trim();
+  if (!input.programExerciseId || !normalizedName) return state;
+  return {
+    ...state,
+    workoutMode: {
+      ...state.workoutMode,
+      results: state.workoutMode.results.map((result) =>
+        result.programExerciseId === input.programExerciseId ? { ...result, exerciseName: normalizedName } : result
+      ),
+    },
+  };
+}
+
 export function updateWorkoutNoteInState(state: AppState, note: string): AppState {
   if (!state.workoutMode) return state;
   return { ...state, workoutMode: { ...state.workoutMode, note } };
@@ -380,6 +401,7 @@ export const localAppRepository: AppRepository = {
   appendMemberMessage,
   startWorkoutMode: startWorkoutModeInState,
   updateWorkoutResult: (state, input) => updateWorkoutResultInState(state, input.exerciseId, input.field, input.value),
+  replaceWorkoutExerciseGroup: (state, input) => replaceWorkoutExerciseGroupInState(state, input),
   updateWorkoutNote: updateWorkoutNoteInState,
   cancelWorkoutMode: cancelWorkoutModeInState,
   finishWorkoutMode: finishWorkoutModeInState,

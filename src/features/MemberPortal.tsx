@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ClipboardList, MessageSquare, Target, TrendingUp, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { Card, GradientButton, OutlineButton, SelectBox, StatCard, TextArea, TextInput } from "../app/ui";
-import type { UpdateMemberInput } from "../services/appRepository";
-import type { ChatMessage, Member, MemberTab, TrainingProgram, WorkoutCelebration, WorkoutLog, WorkoutModeState } from "../app/types";
+import type { ReplaceWorkoutExerciseGroupInput, UpdateMemberInput } from "../services/appRepository";
+import type { ChatMessage, Exercise, Member, MemberTab, TrainingProgram, WorkoutCelebration, WorkoutLog, WorkoutModeState } from "../app/types";
 
 type MemberPortalProps = {
   members: Member[];
@@ -11,16 +11,17 @@ type MemberPortalProps = {
   logs: WorkoutLog[];
   messages: ChatMessage[];
   memberViewId: string;
-  setMemberViewId: (id: string) => void;
   memberTab: MemberTab;
   setMemberTab: (tab: MemberTab) => void;
   updateMember: (input: UpdateMemberInput) => void;
   memberAvatarUrl: string;
   setMemberAvatarUrl: (url: string) => void;
+  exercises: Exercise[];
   sendMemberMessage: (memberId: string, text: string) => void;
   workoutMode: WorkoutModeState | null;
   startWorkoutMode: (programId: string) => void;
   updateWorkoutExerciseResult: (exerciseId: string, field: "performedWeight" | "performedReps" | "completed", value: string | boolean) => void;
+  replaceWorkoutExerciseGroup: (input: ReplaceWorkoutExerciseGroupInput) => void;
   updateWorkoutModeNote: (note: string) => void;
   finishWorkoutMode: () => void;
   cancelWorkoutMode: () => void;
@@ -29,7 +30,7 @@ type MemberPortalProps = {
 };
 
 export function MemberPortal(props: MemberPortalProps) {
-  const { members, programs, logs, messages, memberViewId, setMemberViewId, memberTab, setMemberTab, updateMember, memberAvatarUrl, setMemberAvatarUrl, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, updateWorkoutModeNote, finishWorkoutMode, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
+  const { members, programs, logs, messages, memberViewId, memberTab, setMemberTab, updateMember, memberAvatarUrl, setMemberAvatarUrl, exercises, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, replaceWorkoutExerciseGroup, updateWorkoutModeNote, finishWorkoutMode, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
   const [messageText, setMessageText] = useState("");
   const [profileWeight, setProfileWeight] = useState("");
   const [profileTrainingGoal, setProfileTrainingGoal] = useState("");
@@ -43,6 +44,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [memberEmailDraft, setMemberEmailDraft] = useState("");
   const [memberPhoneDraft, setMemberPhoneDraft] = useState("");
   const [memberBirthDateDraft, setMemberBirthDateDraft] = useState("");
+  const [replacementExerciseIdDraft, setReplacementExerciseIdDraft] = useState("");
   const [workoutExerciseIndex, setWorkoutExerciseIndex] = useState(0);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const viewedMember = members.find((member) => member.id === memberViewId) ?? null;
@@ -87,6 +89,21 @@ export function MemberPortal(props: MemberPortalProps) {
     }));
   }, [workoutMode]);
   const currentWorkoutGroup = workoutResultGroups[workoutExerciseIndex] ?? null;
+  const replacementCandidates = useMemo(() => {
+    if (!activeWorkoutProgram || !currentWorkoutGroup) return [] as Exercise[];
+    const sourceProgramExercise = activeWorkoutProgram.exercises.find((exercise) => exercise.id === currentWorkoutGroup.groupId);
+    if (!sourceProgramExercise) return [];
+    const sourceExercise = exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
+    if (!sourceExercise) return [];
+    const sameGroup = exercises.filter(
+      (exercise) =>
+        exercise.id !== sourceExercise.id &&
+        exercise.group.trim().toLowerCase() === sourceExercise.group.trim().toLowerCase() &&
+        exercise.category === sourceExercise.category
+    );
+    if (sameGroup.length > 0) return sameGroup;
+    return exercises.filter((exercise) => exercise.id !== sourceExercise.id && exercise.category === sourceExercise.category);
+  }, [activeWorkoutProgram, currentWorkoutGroup, exercises]);
   const now = new Date();
 
   function parseLogDate(value: string): Date | null {
@@ -315,6 +332,14 @@ export function MemberPortal(props: MemberPortalProps) {
   const targetWeightNumber = Number(profileTargetWeight) || 0;
   const currentWeightNumber = Number(profileWeight) || 0;
   const sessionsRemaining = Math.max(0, sessionsTargetNumber - completedThisWeek);
+  const customerStatusLabel = (() => {
+    const isPtCustomer = viewedMember?.customerType === "PT-kunde";
+    const isPremiumCustomer = viewedMember?.membershipType === "Premium";
+    if (isPtCustomer && isPremiumCustomer) return "PT-kunde og Premium-kunde";
+    if (isPtCustomer) return "PT-kunde";
+    if (isPremiumCustomer) return "Premium-kunde";
+    return viewedMember?.customerType || "Ikke satt";
+  })();
 
   useEffect(() => {
     if (!workoutMode) {
@@ -329,6 +354,20 @@ export function MemberPortal(props: MemberPortalProps) {
     if (workoutExerciseIndex <= workoutResultGroups.length - 1) return;
     setWorkoutExerciseIndex(workoutResultGroups.length - 1);
   }, [workoutResultGroups, workoutExerciseIndex]);
+
+  useEffect(() => {
+    setReplacementExerciseIdDraft(replacementCandidates[0]?.id ?? "");
+  }, [replacementCandidates, currentWorkoutGroup?.groupId]);
+
+  function handleReplaceCurrentWorkoutExercise() {
+    if (!currentWorkoutGroup || !replacementExerciseIdDraft) return;
+    const replacementExercise = exercises.find((exercise) => exercise.id === replacementExerciseIdDraft);
+    if (!replacementExercise) return;
+    replaceWorkoutExerciseGroup({
+      programExerciseId: currentWorkoutGroup.groupId,
+      nextExerciseName: replacementExercise.name,
+    });
+  }
 
   return (
     <>
@@ -367,16 +406,11 @@ export function MemberPortal(props: MemberPortalProps) {
           <div className="flex items-start gap-3">
             <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><UserCircle2 className="h-5 w-5" /></div>
             <div>
-              <h2 className="text-xl font-semibold tracking-tight">Velg medlem</h2>
-              <p className="text-sm text-slate-500">Simuler medlemsportal</p>
+              <h2 className="text-xl font-semibold tracking-tight">Min profil</h2>
+              <p className="text-sm text-slate-500">Dine medlemsdata</p>
             </div>
           </div>
           <div className="mt-5 space-y-3">
-            <SelectBox
-              value={memberViewId}
-              onChange={setMemberViewId}
-              options={members.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
-            />
             {viewedMember ? (
               <div className="rounded-2xl border p-4" style={{ backgroundColor: "#f8fffd", borderColor: MOTUS.turquoise }}>
                 <div className="flex items-center gap-3">
@@ -395,14 +429,6 @@ export function MemberPortal(props: MemberPortalProps) {
         </Card>
 
         <div className="space-y-4 sm:space-y-6">
-          <Card className="p-3 lg:hidden">
-            <div className="text-xs font-medium text-slate-600 mb-2">Bytt medlem</div>
-            <SelectBox
-              value={memberViewId}
-              onChange={setMemberViewId}
-              options={members.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
-            />
-          </Card>
           {memberTab === "overview" ? (
             <Card className="p-4 sm:p-5 space-y-4 sm:space-y-5">
               <div className="rounded-[22px] p-4 sm:p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
@@ -633,6 +659,22 @@ export function MemberPortal(props: MemberPortalProps) {
                             <div className="font-medium">{currentWorkoutGroup.exerciseName}</div>
                             <div className="mt-1 text-sm text-slate-500">Plan: {currentWorkoutGroup.rows.length} sett × {currentWorkoutGroup.plannedReps} reps · {currentWorkoutGroup.plannedWeight}kg</div>
                           </div>
+                          {replacementCandidates.length > 0 ? (
+                            <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                              <div className="text-xs font-medium text-slate-600">Bytt øvelse (samme muskelgruppe)</div>
+                              <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+                                <SelectBox
+                                  value={replacementExerciseIdDraft}
+                                  onChange={setReplacementExerciseIdDraft}
+                                  options={replacementCandidates.map((exercise) => ({
+                                    value: exercise.id,
+                                    label: `${exercise.name} · ${exercise.group}`,
+                                  }))}
+                                />
+                                <OutlineButton onClick={handleReplaceCurrentWorkoutExercise}>Bytt</OutlineButton>
+                              </div>
+                            </div>
+                          ) : null}
                           <div className="mt-3 space-y-2">
                             {currentWorkoutGroup.rows.map((row) => (
                               <div key={row.exerciseId} className={`rounded-xl border bg-white p-3 ${row.completed ? "border-emerald-300" : "border-slate-200"}`}>
@@ -788,6 +830,18 @@ export function MemberPortal(props: MemberPortalProps) {
               </div>
               {viewedMember ? (
                 <div className="mt-5 space-y-4">
+                  <div className="rounded-2xl border bg-slate-50 p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="text-sm font-semibold text-slate-700">Kundeinformasjon</div>
+                    <div className="grid gap-2 text-sm text-slate-600 md:grid-cols-2">
+                      <div><span className="font-medium text-slate-800">E-post:</span> {memberEmailDraft || "Ikke satt"}</div>
+                      <div><span className="font-medium text-slate-800">Telefon:</span> {memberPhoneDraft || "Ikke satt"}</div>
+                      <div><span className="font-medium text-slate-800">Fødselsdato:</span> {memberBirthDateDraft || "Ikke satt"}</div>
+                      <div><span className="font-medium text-slate-800">Status:</span> {customerStatusLabel}</div>
+                      <div><span className="font-medium text-slate-800">Mål:</span> {viewedMember.goal || "Ikke satt"}</div>
+                      <div><span className="font-medium text-slate-800">Fokus:</span> {viewedMember.focus || "Ikke satt"}</div>
+                      <div className="md:col-span-2"><span className="font-medium text-slate-800">Skader:</span> {viewedMember.injuries || "Ingen registrerte skader"}</div>
+                    </div>
+                  </div>
                   <div className="grid gap-3 md:grid-cols-2">
                     <TextInput value={viewedMember.name} readOnly />
                     <TextInput value={memberEmailDraft} onChange={(e) => setMemberEmailDraft(e.target.value)} placeholder="E-post" />

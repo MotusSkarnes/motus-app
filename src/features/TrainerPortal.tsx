@@ -247,7 +247,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const latestCompletedLog = selectedLogs.find((log) => log.status === "Fullført") ?? null;
   const visibleExercises = useMemo(() => {
     const query = exerciseSearch.trim().toLowerCase();
-    return exercises.filter((exercise) => {
+    const filtered = exercises.filter((exercise) => {
       const categoryOk = exerciseCategoryFilter === "all" || exercise.category === exerciseCategoryFilter;
       if (!categoryOk) return false;
       if (!query) return true;
@@ -258,7 +258,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
         exercise.description.toLowerCase().includes(query)
       );
     });
-  }, [exercises, exerciseSearch, exerciseCategoryFilter]);
+    return filtered.sort((a, b) => {
+      const aFavorite = favoriteExerciseIds.includes(a.id) ? 1 : 0;
+      const bFavorite = favoriteExerciseIds.includes(b.id) ? 1 : 0;
+      if (aFavorite !== bFavorite) return bFavorite - aFavorite;
+      return a.name.localeCompare(b.name, "no");
+    });
+  }, [exercises, exerciseSearch, exerciseCategoryFilter, favoriteExerciseIds]);
   const programExerciseGroupOptions = useMemo(() => {
     const groups = Array.from(new Set(exercises.map((exercise) => exercise.group.trim()).filter(Boolean)));
     return groups.sort((a, b) => a.localeCompare(b, "no"));
@@ -1270,11 +1276,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   </div>
                   <div className="grid gap-2 md:grid-cols-2">
                     <label className="flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <input type="checkbox" checked={memberEditIsPtCustomer} onChange={(event) => setMemberEditIsPtCustomer(event.target.checked)} />
+                      <input type="checkbox" checked={memberEditIsPtCustomer} onChange={(event) => setMemberEditIsPtCustomer(event.target.checked)} style={{ accentColor: MOTUS.turquoise }} />
                       PT-kunde
                     </label>
                     <label className="flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <input type="checkbox" checked={memberEditIsPremiumCustomer} onChange={(event) => setMemberEditIsPremiumCustomer(event.target.checked)} />
+                      <input type="checkbox" checked={memberEditIsPremiumCustomer} onChange={(event) => setMemberEditIsPremiumCustomer(event.target.checked)} style={{ accentColor: MOTUS.turquoise }} />
                       Premium-kunde
                     </label>
                   </div>
@@ -1903,8 +1909,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 />
               </div>
               <div className="text-xs text-slate-500">{visibleExercises.length} øvelser vist</div>
+              <div className="text-xs text-slate-500">Favoritter vises alltid øverst.</div>
               <div className="space-y-2">
-                {visibleExercises.map((exercise) => (
+                {visibleExercises.map((exercise) => {
+                  const isFavorite = favoriteExerciseIds.includes(exercise.id);
+                  return (
                   <div key={exercise.id} className="rounded-2xl border bg-slate-50 px-3 py-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="flex items-center justify-between gap-3">
                       <button
@@ -1918,6 +1927,15 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         </div>
                       </button>
                       <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleFavoriteExercise(exercise.id)}
+                          className={`rounded-lg border p-1.5 ${isFavorite ? "border-pink-300 bg-pink-50 text-pink-600" : "border-slate-200 text-slate-400 hover:text-slate-600"}`}
+                          aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
+                          title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
+                        >
+                          <Star className={`h-4 w-4 ${isFavorite ? "fill-current" : ""}`} />
+                        </button>
                         <OutlineButton onClick={() => startEditExercise(exercise)} className="px-3 py-1.5 text-xs">Rediger</OutlineButton>
                         <OutlineButton onClick={() => setExpandedExerciseId((prev) => (prev === exercise.id ? null : exercise.id))} className="px-3 py-1.5 text-xs">
                           {expandedExerciseId === exercise.id ? "Skjul" : "Vis"}
@@ -1930,7 +1948,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       </div>
                     ) : null}
                   </div>
-                ))}
+                )})}
               </div>
             </div>
           </div>

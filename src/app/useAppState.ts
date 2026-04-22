@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
-import { localAppRepository, type CreateMemberInput, type SaveExerciseInput, type SaveProgramInput, type UpdateMemberInput } from "../services/appRepository";
+import { localAppRepository, type CreateMemberInput, type ReplaceWorkoutExerciseGroupInput, type SaveExerciseInput, type SaveProgramInput, type UpdateMemberInput } from "../services/appRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { fetchExercisesFromSupabase, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
 import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, inviteTrainerByEmail, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult, type InviteTrainerResult } from "../services/supabaseAuth";
@@ -632,6 +632,10 @@ export function useAppState() {
     setAppState((prev) => repository.updateWorkoutResult(prev, { exerciseId, field, value }));
   }
 
+  function replaceWorkoutExerciseGroup(input: ReplaceWorkoutExerciseGroupInput) {
+    setAppState((prev) => repository.replaceWorkoutExerciseGroup(prev, input));
+  }
+
   function updateWorkoutModeNote(note: string) {
     setAppState((prev) => repository.updateWorkoutNote(prev, note));
   }
@@ -775,6 +779,7 @@ export function useAppState() {
     saveExercise,
     startWorkoutMode,
     updateWorkoutExerciseResult,
+    replaceWorkoutExerciseGroup,
     updateWorkoutModeNote,
     finishWorkoutMode,
     cancelWorkoutMode,

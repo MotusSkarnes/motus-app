@@ -55,6 +55,7 @@ export default function App() {
     saveExercise,
     startWorkoutMode,
     updateWorkoutExerciseResult,
+    replaceWorkoutExerciseGroup,
     updateWorkoutModeNote,
     finishWorkoutMode,
     cancelWorkoutMode,
@@ -498,7 +499,6 @@ export default function App() {
               logs={appState.logs}
               messages={appState.messages}
               memberViewId={appState.memberViewId}
-              setMemberViewId={(id) => patchState({ memberViewId: id })}
               memberTab={memberTab}
               setMemberTab={setMemberTab}
               updateMember={updateMember}
@@ -506,10 +506,12 @@ export default function App() {
               setMemberAvatarUrl={(url) =>
                 setMemberAvatarById((prev) => (url ? { ...prev, [appState.memberViewId]: url } : Object.fromEntries(Object.entries(prev).filter(([key]) => key !== appState.memberViewId))))
               }
+              exercises={appState.exercises}
               sendMemberMessage={sendMemberMessage}
               workoutMode={appState.workoutMode}
               startWorkoutMode={startWorkoutMode}
               updateWorkoutExerciseResult={updateWorkoutExerciseResult}
+              replaceWorkoutExerciseGroup={replaceWorkoutExerciseGroup}
               updateWorkoutModeNote={updateWorkoutModeNote}
               finishWorkoutMode={finishWorkoutMode}
               cancelWorkoutMode={cancelWorkoutMode}

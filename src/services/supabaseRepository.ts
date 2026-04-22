@@ -7,6 +7,7 @@ import {
   type CreateMemberInput,
   type SaveProgramInput,
   type SaveExerciseInput,
+  type ReplaceWorkoutExerciseGroupInput,
   type UpdateMemberInput,
   type UpdateWorkoutResultInput,
 } from "./appRepository";
@@ -643,6 +644,9 @@ export const supabaseAppRepository: AppRepository = {
   },
   updateWorkoutResult(state: AppState, input: UpdateWorkoutResultInput): AppState {
     return localAppRepository.updateWorkoutResult(state, input);
+  },
+  replaceWorkoutExerciseGroup(state: AppState, input: ReplaceWorkoutExerciseGroupInput): AppState {
+    return localAppRepository.replaceWorkoutExerciseGroup(state, input);
   },
   updateWorkoutNote(state: AppState, note: string): AppState {
     return localAppRepository.updateWorkoutNote(state, note);
