@@ -60,8 +60,10 @@ export function MemberPortal(props: MemberPortalProps) {
   const [expandedRecentLogId, setExpandedRecentLogId] = useState<string | null>(null);
   const [progressShareStatus, setProgressShareStatus] = useState<string | null>(null);
   const [achievementCelebration, setAchievementCelebration] = useState<{ id: string; label: string } | null>(null);
+  const [liveWorkoutCelebration, setLiveWorkoutCelebration] = useState<WorkoutCelebration | null>(null);
   const [seenUnlockedAchievementIds, setSeenUnlockedAchievementIds] = useState<string[]>([]);
   const hasInitializedAchievementTracking = useRef(false);
+  const workoutWeightInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const nowDate = new Date();
@@ -393,7 +395,8 @@ export function MemberPortal(props: MemberPortalProps) {
       .sort((a, b) => b.score - a.score)
       .slice(0, 6);
   }, [completedLogs]);
-  const shouldShowCelebration = Boolean(workoutCelebration && workoutCelebration.memberId === activeMemberId);
+  const activeCelebration = liveWorkoutCelebration ?? workoutCelebration;
+  const shouldShowCelebration = Boolean(activeCelebration && activeCelebration.memberId === activeMemberId);
 
   function getProfileStorageKey(memberId: string): string {
     return `motus.member.profile.${memberId}`;
@@ -833,6 +836,7 @@ export function MemberPortal(props: MemberPortalProps) {
   useEffect(() => {
     if (!workoutMode) {
       setWorkoutExerciseIndex(0);
+      setLiveWorkoutCelebration(null);
       return;
     }
     setWorkoutExerciseIndex(0);
@@ -856,6 +860,76 @@ export function MemberPortal(props: MemberPortalProps) {
       programExerciseId: currentWorkoutGroup.groupId,
       nextExerciseName: replacementExercise.name,
     });
+  }
+
+  function estimate1RM(weight: number, reps: number): number {
+    if (weight <= 0 || reps <= 0) return 0;
+    return weight * (1 + reps / 30);
+  }
+
+  function getBestEstimated1RMForMember(exerciseName: string): number {
+    let best = 0;
+    memberLogs.forEach((log) => {
+      (log.results ?? []).forEach((result) => {
+        if (!result.completed || result.exerciseName !== exerciseName) return;
+        const estimated = estimate1RM(Number(result.performedWeight) || 0, Number(result.performedReps) || 0);
+        if (estimated > best) best = estimated;
+      });
+    });
+    return best;
+  }
+
+  function maybeCelebrateCurrentWorkoutGroup() {
+    if (!currentWorkoutGroup || !activeMemberId) return;
+    let bestCandidate: WorkoutCelebration | null = null;
+    currentWorkoutGroup.rows.forEach((row) => {
+      const weight = Number(row.performedWeight) || 0;
+      const reps = Number(row.performedReps) || 0;
+      const currentEstimated = estimate1RM(weight, reps);
+      if (currentEstimated <= 0) return;
+      const previousEstimated = getBestEstimated1RMForMember(row.exerciseName);
+      if (currentEstimated <= previousEstimated) return;
+      if (!bestCandidate || currentEstimated - previousEstimated > bestCandidate.newEstimated1RM - bestCandidate.previousEstimated1RM) {
+        bestCandidate = {
+          memberId: activeMemberId,
+          exerciseName: row.exerciseName,
+          previousEstimated1RM: previousEstimated,
+          newEstimated1RM: currentEstimated,
+          reps,
+          weight,
+        };
+      }
+    });
+    if (bestCandidate) setLiveWorkoutCelebration(bestCandidate);
+  }
+
+  function handleGoToNextWorkoutExercise() {
+    maybeCelebrateCurrentWorkoutGroup();
+    setWorkoutExerciseIndex((prev) => prev + 1);
+  }
+
+  function handleWorkoutResultInputChange(
+    row: WorkoutModeState["results"][number],
+    field: "performedWeight" | "performedReps",
+    value: string,
+    rowIndex: number,
+    rows: WorkoutModeState["results"],
+  ) {
+    updateWorkoutExerciseResult(row.exerciseId, field, value);
+    const nextWeight = field === "performedWeight" ? value.trim() : row.performedWeight.trim();
+    const nextReps = field === "performedReps" ? value.trim() : row.performedReps.trim();
+    const isCompleted = Number(nextWeight) > 0 && Number(nextReps) > 0;
+    if (isCompleted && !row.completed) {
+      updateWorkoutExerciseResult(row.exerciseId, "completed", true);
+    }
+    if (field === "performedReps" && isCompleted) {
+      const nextRow = rows[rowIndex + 1];
+      if (!nextRow) return;
+      const nextInput = workoutWeightInputRefs.current[nextRow.exerciseId];
+      if (nextInput) {
+        window.requestAnimationFrame(() => nextInput.focus());
+      }
+    }
   }
 
   return (
@@ -1117,12 +1191,23 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="text-xs font-semibold uppercase tracking-wide text-emerald-600">Ny PR!</div>
                 <div className="mt-1 text-xl font-bold tracking-tight text-slate-900">Sterk økning i estimert 1RM</div>
                 <div className="mt-3 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-800">
-                  {workoutCelebration?.exerciseName}: {workoutCelebration?.previousEstimated1RM.toFixed(1)} kg → {workoutCelebration?.newEstimated1RM.toFixed(1)} kg
+                  {activeCelebration?.exerciseName}: {activeCelebration?.previousEstimated1RM.toFixed(1)} kg → {activeCelebration?.newEstimated1RM.toFixed(1)} kg
                 </div>
                 <div className="mt-2 text-xs text-slate-500">
-                  Beregnet fra {workoutCelebration?.weight} kg × {workoutCelebration?.reps} reps (omregnet til 1RM).
+                  Beregnet fra {activeCelebration?.weight} kg × {activeCelebration?.reps} reps (omregnet til 1RM).
                 </div>
-                <GradientButton onClick={dismissWorkoutCelebration} className="mt-4 w-full">Rått! Fortsett</GradientButton>
+                <GradientButton
+                  onClick={() => {
+                    if (liveWorkoutCelebration) {
+                      setLiveWorkoutCelebration(null);
+                      return;
+                    }
+                    dismissWorkoutCelebration();
+                  }}
+                  className="mt-4 w-full"
+                >
+                  Rått! Fortsett
+                </GradientButton>
               </div>
             </div>
           ) : null}
@@ -1292,7 +1377,7 @@ export function MemberPortal(props: MemberPortalProps) {
                             </div>
                           ) : null}
                           <div className="mt-3 space-y-2">
-                            {currentWorkoutGroup.rows.map((row) => (
+                            {currentWorkoutGroup.rows.map((row, index) => (
                               <div key={row.exerciseId} className={`rounded-xl border bg-white p-3 ${row.completed ? "border-emerald-300" : "border-slate-200"}`}>
                                 <div className="mb-2 flex items-center justify-between gap-2">
                                   <div className="text-xs font-semibold text-slate-600">Sett {row.setNumber ?? 1}</div>
@@ -1308,8 +1393,11 @@ export function MemberPortal(props: MemberPortalProps) {
                                   <div className="space-y-1">
                                     <div className="text-[11px] font-medium text-slate-500">Kg utført</div>
                                     <TextInput
+                                      ref={(input) => {
+                                        workoutWeightInputRefs.current[row.exerciseId] = input;
+                                      }}
                                       value={row.performedWeight}
-                                      onChange={(e) => updateWorkoutExerciseResult(row.exerciseId, "performedWeight", e.target.value)}
+                                      onChange={(e) => handleWorkoutResultInputChange(row, "performedWeight", e.target.value, index, currentWorkoutGroup.rows)}
                                       placeholder="0"
                                     />
                                   </div>
@@ -1317,7 +1405,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                     <div className="text-[11px] font-medium text-slate-500">Reps utført</div>
                                     <TextInput
                                       value={row.performedReps}
-                                      onChange={(e) => updateWorkoutExerciseResult(row.exerciseId, "performedReps", e.target.value)}
+                                      onChange={(e) => handleWorkoutResultInputChange(row, "performedReps", e.target.value, index, currentWorkoutGroup.rows)}
                                       placeholder="0"
                                     />
                                   </div>
@@ -1342,7 +1430,7 @@ export function MemberPortal(props: MemberPortalProps) {
                           Forrige øvelse
                         </OutlineButton>
                         {workoutExerciseIndex < workoutResultGroups.length - 1 ? (
-                          <GradientButton className="flex-1" onClick={() => setWorkoutExerciseIndex((prev) => prev + 1)}>
+                          <GradientButton className="flex-1" onClick={handleGoToNextWorkoutExercise}>
                             Neste øvelse
                           </GradientButton>
                         ) : (
