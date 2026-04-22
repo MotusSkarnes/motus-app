@@ -52,6 +52,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [workoutExerciseIndex, setWorkoutExerciseIndex] = useState(0);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const viewedMember = members.find((member) => member.id === memberViewId) ?? null;
+  const editableMember = viewedMember ?? members[0] ?? null;
   const relatedMemberIds = useMemo(() => {
     if (!viewedMember) return [memberViewId];
     const normalizedEmail = viewedMember.email.trim().toLowerCase();
@@ -213,9 +214,9 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   useEffect(() => {
-    if (!viewedMember) return;
-    const fallbackWeight = viewedMember.weight ?? "";
-    const fallbackGoal = viewedMember.goal ?? "";
+    if (!editableMember) return;
+    const fallbackWeight = editableMember.weight ?? "";
+    const fallbackGoal = editableMember.goal ?? "";
     const fallback = {
       weight: fallbackWeight,
       trainingGoal: fallbackGoal,
@@ -231,17 +232,17 @@ export function MemberPortal(props: MemberPortalProps) {
       setProfileDailyStepsTarget(fallback.dailyStepsTarget);
       setProfileTargetWeight(fallback.targetWeight);
       setProfileCurrentDailySteps(fallback.currentDailySteps);
-      setMemberNameDraft(viewedMember.name);
-      setMemberEmailDraft(viewedMember.email);
-      setMemberPhoneDraft(viewedMember.phone);
-      setMemberBirthDateDraft(viewedMember.birthDate);
-      setMemberGoalDraft(viewedMember.goal);
-      setMemberFocusDraft(viewedMember.focus);
-      setMemberInjuriesDraft(viewedMember.injuries);
+      setMemberNameDraft(editableMember.name);
+      setMemberEmailDraft(editableMember.email);
+      setMemberPhoneDraft(editableMember.phone);
+      setMemberBirthDateDraft(editableMember.birthDate);
+      setMemberGoalDraft(editableMember.goal);
+      setMemberFocusDraft(editableMember.focus);
+      setMemberInjuriesDraft(editableMember.injuries);
       return;
     }
     try {
-      const raw = window.localStorage.getItem(getProfileStorageKey(viewedMember.id));
+      const raw = window.localStorage.getItem(getProfileStorageKey(editableMember.id));
       if (!raw) {
         setProfileWeight(fallback.weight);
         setProfileTrainingGoal(fallback.trainingGoal);
@@ -249,13 +250,13 @@ export function MemberPortal(props: MemberPortalProps) {
         setProfileDailyStepsTarget(fallback.dailyStepsTarget);
         setProfileTargetWeight(fallback.targetWeight);
         setProfileCurrentDailySteps(fallback.currentDailySteps);
-        setMemberNameDraft(viewedMember.name);
-        setMemberEmailDraft(viewedMember.email);
-        setMemberPhoneDraft(viewedMember.phone);
-        setMemberBirthDateDraft(viewedMember.birthDate);
-        setMemberGoalDraft(viewedMember.goal);
-        setMemberFocusDraft(viewedMember.focus);
-        setMemberInjuriesDraft(viewedMember.injuries);
+        setMemberNameDraft(editableMember.name);
+        setMemberEmailDraft(editableMember.email);
+        setMemberPhoneDraft(editableMember.phone);
+        setMemberBirthDateDraft(editableMember.birthDate);
+        setMemberGoalDraft(editableMember.goal);
+        setMemberFocusDraft(editableMember.focus);
+        setMemberInjuriesDraft(editableMember.injuries);
         return;
       }
       const parsed = JSON.parse(raw) as Partial<typeof fallback>;
@@ -265,13 +266,13 @@ export function MemberPortal(props: MemberPortalProps) {
       setProfileDailyStepsTarget(parsed.dailyStepsTarget ?? "");
       setProfileTargetWeight(parsed.targetWeight ?? "");
       setProfileCurrentDailySteps(parsed.currentDailySteps ?? "");
-      setMemberNameDraft(viewedMember.name);
-      setMemberEmailDraft(viewedMember.email);
-      setMemberPhoneDraft(viewedMember.phone);
-      setMemberBirthDateDraft(viewedMember.birthDate);
-      setMemberGoalDraft(viewedMember.goal);
-      setMemberFocusDraft(viewedMember.focus);
-      setMemberInjuriesDraft(viewedMember.injuries);
+      setMemberNameDraft(editableMember.name);
+      setMemberEmailDraft(editableMember.email);
+      setMemberPhoneDraft(editableMember.phone);
+      setMemberBirthDateDraft(editableMember.birthDate);
+      setMemberGoalDraft(editableMember.goal);
+      setMemberFocusDraft(editableMember.focus);
+      setMemberInjuriesDraft(editableMember.injuries);
     } catch {
       setProfileWeight(fallback.weight);
       setProfileTrainingGoal(fallback.trainingGoal);
@@ -279,15 +280,15 @@ export function MemberPortal(props: MemberPortalProps) {
       setProfileDailyStepsTarget(fallback.dailyStepsTarget);
       setProfileTargetWeight(fallback.targetWeight);
       setProfileCurrentDailySteps(fallback.currentDailySteps);
-      setMemberNameDraft(viewedMember.name);
-      setMemberEmailDraft(viewedMember.email);
-      setMemberPhoneDraft(viewedMember.phone);
-      setMemberBirthDateDraft(viewedMember.birthDate);
-      setMemberGoalDraft(viewedMember.goal);
-      setMemberFocusDraft(viewedMember.focus);
-      setMemberInjuriesDraft(viewedMember.injuries);
+      setMemberNameDraft(editableMember.name);
+      setMemberEmailDraft(editableMember.email);
+      setMemberPhoneDraft(editableMember.phone);
+      setMemberBirthDateDraft(editableMember.birthDate);
+      setMemberGoalDraft(editableMember.goal);
+      setMemberFocusDraft(editableMember.focus);
+      setMemberInjuriesDraft(editableMember.injuries);
     }
-  }, [viewedMember]);
+  }, [editableMember]);
 
   function applyMetricDraftToProfile() {
     const value = goalMetricValueDraft.trim();
@@ -299,7 +300,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   function saveProfile() {
-    if (!viewedMember || typeof window === "undefined") return;
+    if (!editableMember || typeof window === "undefined") return;
     const normalizedEmail = memberEmailDraft.trim().toLowerCase();
     if (!normalizedEmail || !normalizedEmail.includes("@")) {
       setProfileSaveInfo("Legg inn en gyldig e-post.");
@@ -313,9 +314,9 @@ export function MemberPortal(props: MemberPortalProps) {
       targetWeight: profileTargetWeight.trim(),
       currentDailySteps: profileCurrentDailySteps.trim(),
     };
-    window.localStorage.setItem(getProfileStorageKey(viewedMember.id), JSON.stringify(next));
+    window.localStorage.setItem(getProfileStorageKey(editableMember.id), JSON.stringify(next));
     updateMember({
-      memberId: viewedMember.id,
+      memberId: editableMember.id,
       changes: {
         name: memberNameDraft,
         email: normalizedEmail,
@@ -853,7 +854,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   <p className="text-sm text-slate-500">Se og rediger kundeinformasjon</p>
                 </div>
               </div>
-              {viewedMember ? (
+              {editableMember ? (
                 <div className="mt-5 space-y-4">
                   <div className="rounded-2xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="text-sm font-semibold text-slate-700">Kundeinformasjon</div>
@@ -894,7 +895,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="grid gap-2 text-sm text-slate-600 md:grid-cols-2">
                       <div><span className="font-medium text-slate-800">Status:</span> {customerStatusLabel}</div>
                       <div><span className="font-medium text-slate-800">Siste trening:</span> {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}</div>
-                      <div><span className="font-medium text-slate-800">Invitert:</span> {viewedMember.invitedAt || "Ikke invitert enda"}</div>
+                      <div><span className="font-medium text-slate-800">Invitert:</span> {editableMember.invitedAt || "Ikke invitert enda"}</div>
                     </div>
                   </div>
                   <div className="rounded-2xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -945,7 +946,11 @@ export function MemberPortal(props: MemberPortalProps) {
                   <GradientButton onClick={saveProfile} className="w-full md:w-auto">Lagre min profil</GradientButton>
                   {profileSaveInfo ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{profileSaveInfo}</div> : null}
                 </div>
-              ) : null}
+              ) : (
+                <div className="mt-4 rounded-xl border border-dashed bg-slate-50 px-3 py-3 text-sm text-slate-500">
+                  Fant ingen medlemsprofil akkurat nå. Prøv å logge ut og inn igjen.
+                </div>
+              )}
             </Card>
           ) : null}
         </div>
