@@ -1620,21 +1620,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
               </div>
             )}
           </Card>
-          <Card className="p-4">
-            <div className="rounded-2xl border bg-slate-50 p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-              <div className="text-sm font-medium text-slate-700">Legg til medlem</div>
-              <TextInput value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="Navn" />
-              <TextInput value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} placeholder="E-post" />
-              <TextInput value={newMemberPhone} onChange={(e) => setNewMemberPhone(e.target.value)} placeholder="Telefon (valgfritt)" />
-              <TextInput value={newMemberGoal} onChange={(e) => setNewMemberGoal(e.target.value)} placeholder="Hovedmål (valgfritt)" />
-              <TextInput value={newMemberFocus} onChange={(e) => setNewMemberFocus(e.target.value)} placeholder="Fokus (valgfritt)" />
-              {newMemberError ? <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{newMemberError}</div> : null}
-              <GradientButton onClick={() => submitNewMember()} className="w-full">Opprett medlem</GradientButton>
-              <OutlineButton onClick={() => submitNewMember({ inviteAfterCreate: true })} className="w-full">
-                Opprett + send invitasjon
-              </OutlineButton>
-            </div>
-          </Card>
         </div>
       ) : null}
 
@@ -2028,6 +2013,19 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 {inviteTrainerStatus}
               </div>
             ) : null}
+          </div>
+          <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="text-sm font-semibold text-slate-700">Legg til medlem</div>
+            <TextInput value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="Navn" />
+            <TextInput value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} placeholder="E-post" />
+            <TextInput value={newMemberPhone} onChange={(e) => setNewMemberPhone(e.target.value)} placeholder="Telefon (valgfritt)" />
+            <TextInput value={newMemberGoal} onChange={(e) => setNewMemberGoal(e.target.value)} placeholder="Hovedmål (valgfritt)" />
+            <TextInput value={newMemberFocus} onChange={(e) => setNewMemberFocus(e.target.value)} placeholder="Fokus (valgfritt)" />
+            {newMemberError ? <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{newMemberError}</div> : null}
+            <GradientButton onClick={() => submitNewMember()} className="w-full md:w-auto">Opprett medlem</GradientButton>
+            <OutlineButton onClick={() => submitNewMember({ inviteAfterCreate: true })} className="w-full md:w-auto">
+              Opprett + send invitasjon
+            </OutlineButton>
           </div>
         </Card>
       ) : null}
