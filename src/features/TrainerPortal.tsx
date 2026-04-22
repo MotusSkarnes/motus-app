@@ -158,6 +158,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [todos, setTodos] = useState<Array<{ id: string; title: string; date: string; done: boolean }>>([]);
   const [priorityFilter, setPriorityFilter] = useState<"all" | "red" | "orange" | "green">("all");
   const [prioritySort, setPrioritySort] = useState<"highFirst" | "lowFirst">("highFirst");
+  const [priorityMemberTypeSort, setPriorityMemberTypeSort] = useState<"none" | "ptFirst" | "premiumFirst" | "standardFirst">("none");
   const [exerciseSearch, setExerciseSearch] = useState("");
   const [exerciseCategoryFilter, setExerciseCategoryFilter] = useState<"all" | Exercise["category"]>("all");
   const [editingExerciseId, setEditingExerciseId] = useState<string | null>(null);
@@ -834,6 +835,17 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const monthLabel = formatDateDdMmYyyy(dashboardMonth);
 
   const membersWithPriority = useMemo(() => {
+    function getMemberTypeOrder(member: Member): { pt: number; premium: number; standard: number } {
+      const isPt = member.customerType === "PT-kunde";
+      const isPremium = member.membershipType === "Premium";
+      const isStandard = member.membershipType !== "Premium";
+      return {
+        pt: isPt ? 0 : 1,
+        premium: isPremium ? 0 : 1,
+        standard: isStandard ? 0 : 1,
+      };
+    }
+
     function getPriority(member: Member): { tone: "red" | "orange" | "green"; score: number; label: string } {
       const days = Number(member.daysSinceActivity || "0");
       if (days >= 10) return { tone: "red", score: 3, label: "Rød" };
@@ -844,10 +856,23 @@ export function TrainerPortal(props: TrainerPortalProps) {
     const mapped = members.map((member) => ({ member, priority: getPriority(member) }));
     const filtered = priorityFilter === "all" ? mapped : mapped.filter((item) => item.priority.tone === priorityFilter);
     return filtered.sort((a, b) => {
+      if (priorityMemberTypeSort !== "none") {
+        const aOrder = getMemberTypeOrder(a.member);
+        const bOrder = getMemberTypeOrder(b.member);
+        if (priorityMemberTypeSort === "ptFirst" && aOrder.pt !== bOrder.pt) return aOrder.pt - bOrder.pt;
+        if (priorityMemberTypeSort === "premiumFirst" && aOrder.premium !== bOrder.premium) return aOrder.premium - bOrder.premium;
+        if (priorityMemberTypeSort === "standardFirst" && aOrder.standard !== bOrder.standard) return aOrder.standard - bOrder.standard;
+      }
       if (prioritySort === "highFirst") return b.priority.score - a.priority.score;
       return a.priority.score - b.priority.score;
     });
-  }, [members, priorityFilter, prioritySort]);
+  }, [members, priorityFilter, prioritySort, priorityMemberTypeSort]);
+
+  function memberTypeTone(member: Member): { label: string; className: string } {
+    if (member.customerType === "PT-kunde") return { label: "PT-kunde", className: "bg-cyan-100 text-cyan-700" };
+    if (member.membershipType === "Premium") return { label: "Premium", className: "bg-violet-100 text-violet-700" };
+    return { label: "Standard", className: "bg-slate-100 text-slate-700" };
+  }
 
   return (
     <>
@@ -952,6 +977,16 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     { value: "lowFirst", label: "Sorter: lav prioritet først" },
                   ]}
                 />
+                <SelectBox
+                  value={priorityMemberTypeSort}
+                  onChange={(value) => setPriorityMemberTypeSort(value as "none" | "ptFirst" | "premiumFirst" | "standardFirst")}
+                  options={[
+                    { value: "none", label: "Type: ingen" },
+                    { value: "ptFirst", label: "Type: PT-kunde først" },
+                    { value: "premiumFirst", label: "Type: Premium først" },
+                    { value: "standardFirst", label: "Type: Standard først" },
+                  ]}
+                />
               </div>
             </div>
             <div className="space-y-2">
@@ -966,6 +1001,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       <div className="text-xs text-slate-500">{member.email} · {member.daysSinceActivity} dager siden aktivitet</div>
                     </div>
                   </div>
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${memberTypeTone(member).className}`}>
+                    {memberTypeTone(member).label}
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
@@ -1074,7 +1112,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     <div className="text-xs text-slate-500">{member.email} · {member.daysSinceActivity} dager siden aktivitet</div>
                   </div>
                 </div>
-                <div className="text-xs font-semibold text-slate-600">{priority.label}</div>
+                <div className="flex items-center gap-2">
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${memberTypeTone(member).className}`}>
+                    {memberTypeTone(member).label}
+                  </span>
+                  <div className="text-xs font-semibold text-slate-600">{priority.label}</div>
+                </div>
               </div>
             ))}
           </div>
