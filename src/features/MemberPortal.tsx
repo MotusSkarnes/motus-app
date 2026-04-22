@@ -844,43 +844,48 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 )}
               </div>
-              <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-sm font-semibold text-slate-700">Målstatus</div>
+              <div className="rounded-2xl border p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)", background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)" }}>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-semibold text-slate-700">Målstatus</div>
+                  <div className="rounded-full px-2.5 py-1 text-[11px] font-semibold text-slate-700" style={{ background: "rgba(15,23,42,0.08)" }}>
+                    Denne uken
+                  </div>
+                </div>
                 {sessionsTargetNumber > 0 ? (
-                  <div className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="rounded-xl border p-3 text-sm" style={{ borderColor: "rgba(0,193,212,0.25)", background: "rgba(0,193,212,0.07)" }}>
                     <div className="flex items-center justify-between text-slate-700">
-                      <span className="font-medium">Treningsmål (uke)</span>
-                      <span>{completedThisWeek}/{sessionsTargetNumber}</span>
+                      <span className="font-medium">🏋️ Treningsmål (uke)</span>
+                      <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold">{completedThisWeek}/{sessionsTargetNumber}</span>
                     </div>
                     <div className="mt-2 h-2 rounded-full bg-slate-200">
                       <div className="h-2 rounded-full" style={{ width: `${sessionsProgressPercent}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
                     </div>
-                    <div className="mt-2 text-xs text-slate-600">
+                    <div className="mt-2 text-xs font-medium text-slate-700">
                       {sessionsRemaining > 0 ? `${sessionsRemaining} trening${sessionsRemaining === 1 ? "" : "er"} igjen denne uken` : "Ukemålet er nådd!"}
                     </div>
                   </div>
                 ) : null}
                 {dailyStepsTargetNumber > 0 ? (
-                  <div className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="rounded-xl border p-3 text-sm" style={{ borderColor: "rgba(244,114,182,0.25)", background: "rgba(244,114,182,0.07)" }}>
                     <div className="flex items-center justify-between text-slate-700">
-                      <span className="font-medium">Skrittmål (i dag)</span>
-                      <span>{currentDailyStepsNumber}/{dailyStepsTargetNumber}</span>
+                      <span className="font-medium">👟 Skrittmål (i dag)</span>
+                      <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold">{currentDailyStepsNumber}/{dailyStepsTargetNumber}</span>
                     </div>
                     <div className="mt-2 h-2 rounded-full bg-slate-200">
                       <div className="h-2 rounded-full" style={{ width: `${stepsProgressPercent}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
                     </div>
-                    <div className="mt-2 text-xs text-slate-600">
+                    <div className="mt-2 text-xs font-medium text-slate-700">
                       {currentDailyStepsNumber < dailyStepsTargetNumber ? `${dailyStepsTargetNumber - currentDailyStepsNumber} skritt igjen i dag` : "Skrittmålet er nådd!"}
                     </div>
                   </div>
                 ) : null}
                 {targetWeightNumber > 0 && currentWeightNumber > 0 ? (
-                  <div className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="rounded-xl border p-3 text-sm" style={{ borderColor: "rgba(148,163,184,0.35)", background: "rgba(148,163,184,0.08)" }}>
                     <div className="flex items-center justify-between text-slate-700">
-                      <span className="font-medium">Vektmål</span>
-                      <span>{currentWeightNumber} kg / {targetWeightNumber} kg</span>
+                      <span className="font-medium">⚖️ Vektmål</span>
+                      <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold">{currentWeightNumber} / {targetWeightNumber} kg</span>
                     </div>
-                    <div className="mt-2 text-xs text-slate-600">
+                    <div className="mt-2 text-xs font-medium text-slate-700">
                       {weightGap === 0
                         ? "Du er på målet."
                         : weightDirectionDown
