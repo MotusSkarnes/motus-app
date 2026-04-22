@@ -84,7 +84,7 @@ export default function App() {
 
   function parseMessageTimestamp(value: string): number {
     const parsed = new Date(value).getTime();
-    return Number.isFinite(parsed) ? parsed : Date.now();
+    return Number.isFinite(parsed) ? parsed : 0;
   }
 
   const trainerMessageAlerts = useMemo(() => {
@@ -126,7 +126,8 @@ export default function App() {
     const willOpen = !trainerNotificationsOpen;
     setTrainerNotificationsOpen(willOpen);
     if (willOpen) {
-      setTrainerAlertsSeenAt(Date.now());
+      const latestAlertTime = trainerMessageAlerts.reduce((max, alert) => Math.max(max, alert.timestamp), 0);
+      setTrainerAlertsSeenAt(latestAlertTime);
     }
   }
 
@@ -134,7 +135,11 @@ export default function App() {
     const willOpen = !memberNotificationsOpen;
     setMemberNotificationsOpen(willOpen);
     if (willOpen) {
-      setMemberAlertsSeenAt(Date.now());
+      const latestMessageTime = memberTrainerMessages.reduce(
+        (max, message) => Math.max(max, parseMessageTimestamp(message.createdAt)),
+        0
+      );
+      setMemberAlertsSeenAt(latestMessageTime);
     }
   }
 
