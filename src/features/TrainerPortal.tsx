@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, ShieldCheck, Star, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
+import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { uid } from "../app/storage";
 import { Card, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, TextArea, TextInput } from "../app/ui";
 import type { CreateMemberInput, UpdateMemberInput } from "../services/appRepository";
@@ -543,7 +544,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       setNewMemberError("Navn og e-post er påkrevd.");
       return;
     }
-    if (!email.includes("@")) {
+    if (!isValidEmail(email)) {
       setNewMemberError("E-post må være gyldig.");
       return;
     }
@@ -555,7 +556,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     addMember({
       name,
       email,
-      phone: newMemberPhone,
+      phone: normalizePhone(newMemberPhone),
       goal: newMemberGoal,
       focus: newMemberFocus,
     });
@@ -587,8 +588,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
   function handleSaveSelectedMemberDetails() {
     if (!selectedMember) return;
     const nextEmail = memberEditEmail.trim().toLowerCase();
-    if (!nextEmail || !nextEmail.includes("@")) {
+    if (!isValidEmail(nextEmail)) {
       setMemberEditStatus("Gyldig e-post må fylles ut.");
+      return;
+    }
+    if (!isLikelyValidBirthDate(memberEditBirthDate)) {
+      setMemberEditStatus("Fødselsdato må være på formatet dd.mm.yyyy.");
       return;
     }
     const previousEmail = selectedMember.email.trim().toLowerCase();
@@ -601,8 +606,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
         memberId,
         changes: {
           email: nextEmail,
-          phone: memberEditPhone,
-          birthDate: memberEditBirthDate,
+          phone: normalizePhone(memberEditPhone),
+          birthDate: normalizeBirthDate(memberEditBirthDate),
           membershipType: memberEditIsPremiumCustomer ? "Premium" : "Standard",
           customerType: memberEditIsPtCustomer ? "PT-kunde" : "Oppfølging",
         },
@@ -619,7 +624,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
   async function handleInviteTrainer() {
     const email = newTrainerEmail.trim().toLowerCase();
-    if (!email || !email.includes("@")) {
+    if (!isValidEmail(email)) {
       setInviteTrainerStatus("Skriv inn en gyldig e-post for ny PT.");
       return;
     }
@@ -648,7 +653,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   async function handleRepairSelectedMemberLink() {
     if (!selectedMember) return;
     const email = selectedMember.email.trim().toLowerCase();
-    if (!email || !email.includes("@")) {
+    if (!isValidEmail(email)) {
       setMemberLinkStatus("Kan ikke reparere kobling: ugyldig e-post på kunden.");
       return;
     }

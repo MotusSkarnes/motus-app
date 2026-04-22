@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ClipboardList, MessageSquare, Target, TrendingUp, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
+import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { supabaseClient } from "../services/supabaseClient";
 import { Card, GradientButton, OutlineButton, SelectBox, StatCard, TextArea, TextInput } from "../app/ui";
 import type { ReplaceWorkoutExerciseGroupInput, UpdateMemberInput } from "../services/appRepository";
@@ -132,11 +133,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const now = new Date();
 
   function normalizeBirthDateToDdMmYyyy(value: string): string {
-    const trimmed = value.trim();
-    if (!trimmed) return "";
-    if (/^\d{2}\.\d{2}\.\d{4}$/.test(trimmed)) return trimmed;
-    const formatted = formatDateDdMmYyyy(trimmed);
-    return formatted || trimmed;
+    return normalizeBirthDate(value);
   }
 
   async function extractFunctionErrorDetails(error: unknown): Promise<string> {
@@ -465,6 +462,10 @@ export function MemberPortal(props: MemberPortalProps) {
 
   async function saveProfile() {
     if (!editableMember || typeof window === "undefined") return;
+    if (!isLikelyValidBirthDate(memberBirthDateDraft)) {
+      setProfileSaveInfo("Fødselsdato må være på formatet dd.mm.yyyy.");
+      return;
+    }
     const normalizedDraftEmail = memberEmailDraft.trim().toLowerCase();
     const fallbackEmail = editableMember.email.trim().toLowerCase();
     const normalizedEmail =
@@ -521,7 +522,7 @@ export function MemberPortal(props: MemberPortalProps) {
         changes: {
           name: memberNameDraft,
           email: normalizedEmail,
-          phone: memberPhoneDraft,
+          phone: normalizePhone(memberPhoneDraft),
           birthDate: normalizeBirthDateToDdMmYyyy(memberBirthDateDraft),
           goal: memberGoalDraft,
           focus: memberFocusDraft,
