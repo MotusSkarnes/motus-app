@@ -59,11 +59,12 @@ async function persistProgram(input: SaveProgramInput) {
   if (!supabaseClient) return;
   const ownerUserId = await getOwnerUserId();
   if (!ownerUserId) return;
+  const memberId = input.memberId.trim();
 
   const { error } = await supabaseClient.from("training_programs").upsert(
     {
       id: input.id ?? crypto.randomUUID(),
-      member_id: input.memberId,
+      member_id: memberId,
       owner_user_id: ownerUserId,
       title: input.title.trim(),
       goal: input.goal.trim(),
@@ -76,6 +77,31 @@ async function persistProgram(input: SaveProgramInput) {
 
   if (error) {
     console.warn("Supabase program persist failed:", error.message);
+    return;
+  }
+
+  // Keep auth.member_id aligned with selected customer row so member can read assigned programs.
+  if (memberId && memberId !== "__template__") {
+    const { data: memberRow, error: memberLookupError } = await supabaseClient
+      .from("members")
+      .select("email")
+      .eq("id", memberId)
+      .maybeSingle();
+
+    if (memberLookupError) {
+      console.warn("Supabase member lookup failed:", memberLookupError.message);
+      return;
+    }
+
+    const normalizedEmail = String(memberRow?.email ?? "").trim().toLowerCase();
+    if (!normalizedEmail) return;
+
+    const { error: linkError } = await supabaseClient.functions.invoke("link-member-auth", {
+      body: { email: normalizedEmail, memberId },
+    });
+    if (linkError) {
+      console.warn("link-member-auth invoke failed:", linkError.message);
+    }
   }
 }
 
