@@ -1211,6 +1211,19 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 )})}
               </div>
+              <div className="mt-6 rounded-3xl border bg-slate-50 p-4">
+                <div className="font-semibold">Siste økter</div>
+                <div className="mt-4 space-y-3">
+                  {completedLogs.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen økter logget ennå.</div> : null}
+                  {completedLogs.slice(0, 6).map((log) => (
+                    <div key={log.id} className="rounded-2xl border bg-white p-4">
+                      <div className="font-medium">{log.programTitle}</div>
+                      <div className="mt-1 text-sm text-slate-500">{log.date}</div>
+                      {log.note ? <div className="mt-2 text-sm text-slate-600">{log.note}</div> : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               {activeWorkoutProgram && workoutMode ? (
                 <div className="fixed inset-0 z-[10010] bg-slate-900/40 p-3 sm:p-6">
@@ -1385,20 +1398,6 @@ export function MemberPortal(props: MemberPortalProps) {
                       <div key={record.name} className="rounded-2xl border bg-white p-4">
                         <div className="font-medium">{record.name}</div>
                         <div className="mt-1 text-sm text-slate-500">Beste registrerte: {record.weight} kg × {record.reps}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border bg-slate-50 p-4">
-                  <div className="font-semibold">Siste økter</div>
-                  <div className="mt-4 space-y-3">
-                    {completedLogs.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen økter logget ennå.</div> : null}
-                    {completedLogs.slice(0, 6).map((log) => (
-                      <div key={log.id} className="rounded-2xl border bg-white p-4">
-                        <div className="font-medium">{log.programTitle}</div>
-                        <div className="mt-1 text-sm text-slate-500">{log.date}</div>
-                        {log.note ? <div className="mt-2 text-sm text-slate-600">{log.note}</div> : null}
                       </div>
                     ))}
                   </div>
