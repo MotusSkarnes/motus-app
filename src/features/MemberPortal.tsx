@@ -1638,7 +1638,6 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="grid gap-2 text-sm text-slate-600 md:grid-cols-2">
                       <div><span className="font-medium text-slate-800">Status:</span> {customerStatusLabel}</div>
                       <div><span className="font-medium text-slate-800">Siste trening:</span> {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}</div>
-                      <div><span className="font-medium text-slate-800">Invitert:</span> {editableMember.invitedAt || "Ikke invitert enda"}</div>
                     </div>
                   </div>
                   <div className="rounded-2xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
