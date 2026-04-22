@@ -319,9 +319,10 @@ export function MemberPortal(props: MemberPortalProps) {
 
   useEffect(() => {
     if (!profileSaveInfo) return;
+    if (profileSaveInfo.toLowerCase().includes("feilet")) return;
     const timer = window.setTimeout(() => {
       setProfileSaveInfo(null);
-    }, 5000);
+    }, 8000);
     return () => window.clearTimeout(timer);
   }, [profileSaveInfo]);
 
@@ -381,7 +382,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (supabaseClient) {
       const { error } = await supabaseClient.functions.invoke("update-member-profile", {
         body: {
-          email: normalizedEmail,
+          email: normalizedCurrentUserEmail || normalizedEmail,
           memberId: editableMember.id,
           changes: {
             name: memberNameDraft,
