@@ -112,17 +112,13 @@ async function persistMember(member: Member) {
   if (!supabaseClient) return;
   const normalizedEmail = member.email.trim().toLowerCase();
   const {
-    data: { session },
-  } = await supabaseClient.auth.getSession();
-  const claims = session?.access_token ? decodeJwtPayload(session.access_token) : null;
+    data: { user },
+  } = await supabaseClient.auth.getUser();
   const roleClaim = (() => {
-    const directRole = claims?.role;
-    if (directRole === "member" || directRole === "trainer") return directRole;
-    const appMetadata = claims?.app_metadata;
-    if (appMetadata && typeof appMetadata === "object") {
-      const nestedRole = (appMetadata as Record<string, unknown>).role;
-      if (nestedRole === "member" || nestedRole === "trainer") return nestedRole;
-    }
+    const appRole = user?.app_metadata?.role;
+    if (appRole === "member" || appRole === "trainer") return appRole;
+    const userRole = user?.user_metadata?.role;
+    if (userRole === "member" || userRole === "trainer") return userRole;
     return "";
   })();
 
