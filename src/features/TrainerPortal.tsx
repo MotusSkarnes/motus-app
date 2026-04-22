@@ -1260,7 +1260,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
       {trainerTab === "programs" ? (
         <div className="grid gap-4">
-          <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
           <Card className="p-5">
             <div className="flex items-start gap-3">
               <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><ClipboardList className="h-5 w-5" /></div>
@@ -1428,8 +1427,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
               ) : null}
             </div>
           </Card>
-
-        </div>
         </div>
       ) : null}
 
