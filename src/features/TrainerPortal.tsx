@@ -120,6 +120,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     }
     return "all";
   });
+  const [customerTypeFilter, setCustomerTypeFilter] = useState<"all" | "PT-kunde" | "Premium-kunde">("all");
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const [memberLinkStatus, setMemberLinkStatus] = useState<string | null>(null);
   const [isRepairingMemberLink, setIsRepairingMemberLink] = useState(false);
@@ -164,6 +165,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
           member.email.toLowerCase().includes(query) ||
           member.goal.toLowerCase().includes(query);
         if (!matchesSearch) return false;
+        if (customerTypeFilter !== "all" && member.customerType !== customerTypeFilter) return false;
         if (memberFilter === "followUp") return Number(member.daysSinceActivity || "0") >= 7;
         if (memberFilter === "invited") return Boolean(member.invitedAt);
         if (memberFilter === "notInvited") return !member.invitedAt;
@@ -175,7 +177,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
         if (bDays !== aDays) return bDays - aDays;
         return a.name.localeCompare(b.name, "no");
       });
-  }, [visibleMembers, memberSearch, memberFilter]);
+  }, [visibleMembers, memberSearch, memberFilter, customerTypeFilter]);
   const inviteStatusTone =
     inviteStatus?.toLowerCase().includes("sendt") || inviteStatus?.toLowerCase().includes("invitasjon sendt")
       ? "success"
@@ -525,6 +527,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   function resetMemberListControls() {
     setMemberSearch("");
     setMemberFilter("all");
+    setCustomerTypeFilter("all");
   }
 
   async function handleInviteSelectedMember() {
@@ -1014,26 +1017,26 @@ export function TrainerPortal(props: TrainerPortalProps) {
       ) : null}
 
       {trainerTab === "customers" ? (
-        <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+        <div className="grid gap-4">
           <div className="lg:hidden">
             <OutlineButton onClick={() => setShowCustomerToolsMobile((prev) => !prev)} className="w-full">
               {showCustomerToolsMobile ? "Skjul kundeliste og oppretting" : "Vis kundeliste og oppretting"}
             </OutlineButton>
           </div>
-          <Card className={`p-4 h-fit ${showCustomerToolsMobile ? "block" : "hidden"} lg:block`}>
+          <Card className={`p-4 ${showCustomerToolsMobile ? "block" : "hidden"} lg:block`}>
             <div className="flex items-start gap-3">
               <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Users className="h-5 w-5" /></div>
               <div>
                 <h2 className="text-xl font-semibold tracking-tight">Kunder</h2>
-                <p className="text-sm text-slate-500">Velg kunde</p>
+                <p className="text-sm text-slate-500">Velg kunde fra rullgardin og filtrer listen</p>
               </div>
             </div>
             <div className="mt-5 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-xs text-slate-500">
-                  {filteredMembers.length} treff{memberFilter !== "all" ? " med aktivt filter" : ""}
+                  {filteredMembers.length} treff{memberFilter !== "all" || customerTypeFilter !== "all" ? " med aktivt filter" : ""}
                 </div>
-                {(memberSearch.trim() || memberFilter !== "all") ? (
+                {(memberSearch.trim() || memberFilter !== "all" || customerTypeFilter !== "all") ? (
                   <OutlineButton onClick={resetMemberListControls} className="px-3 py-1.5 text-xs">
                     Nullstill sok/filter
                   </OutlineButton>
@@ -1054,49 +1057,32 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   { value: "notInvited", label: "Ikke invitert" },
                 ]}
               />
+              <SelectBox
+                value={customerTypeFilter}
+                onChange={(value) => setCustomerTypeFilter(value as "all" | "PT-kunde" | "Premium-kunde")}
+                options={[
+                  { value: "all", label: "Alle kundetyper" },
+                  { value: "PT-kunde", label: "PT-kunde" },
+                  { value: "Premium-kunde", label: "Premium-kunde" },
+                ]}
+              />
+              <SelectBox
+                value={selectedMemberId}
+                onChange={setSelectedMemberId}
+                options={
+                  filteredMembers.length
+                    ? filteredMembers.map((member) => ({
+                        value: member.id,
+                        label: `${member.name} (${member.email}) · ${member.customerType}`,
+                      }))
+                    : [{ value: "", label: "Ingen kunder matcher filteret" }]
+                }
+              />
               {filteredMembers.length === 0 ? (
                 <div className="rounded-2xl border border-dashed bg-slate-50 p-4 text-center text-sm text-slate-500">
                   Ingen kunder matcher sok/filter. Proev et enklere sok eller bytt filter.
                 </div>
               ) : null}
-              {filteredMembers.map((member) => (
-                <div
-                  key={member.id}
-                  className="w-full rounded-2xl border p-3 text-left transition hover:shadow-sm"
-                  style={selectedMemberId === member.id ? { backgroundColor: "#f8fffd", borderColor: MOTUS.turquoise, boxShadow: "0 0 0 3px rgba(48,227,190,0.08)" } : { borderColor: "rgba(15,23,42,0.08)" }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setSelectedMemberId(member.id)}
-                    className="w-full text-left"
-                  >
-                  <div className="font-semibold">{member.name}</div>
-                  <div className="text-sm text-slate-500">
-                    {member.email}
-                    {member.isActive === false ? " · Inaktiv" : ""}
-                  </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                    <div className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${member.invitedAt ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
-                      {member.invitedAt ? "Invitert" : "Ikke invitert"}
-                    </div>
-                    {Number(member.daysSinceActivity || "0") >= 7 ? (
-                      <div className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
-                        Ma folges opp
-                      </div>
-                    ) : null}
-                  </div>
-                  {member.invitedAt ? (
-                    <div className="mt-1 text-[11px] text-emerald-700">Dato: {formatInvitedAt(member.invitedAt)}</div>
-                  ) : null}
-                  <div className="mt-1 text-sm">Mål: {member.goal}</div>
-                  </button>
-                  <div className="mt-2">
-                    <OutlineButton onClick={() => handleDeleteMember(member.id)} className="w-full px-3 py-1.5 text-xs">
-                      Slett kunde
-                    </OutlineButton>
-                  </div>
-                </div>
-              ))}
               <OutlineButton onClick={() => setShowInactiveMembers((prev) => !prev)} className="w-full">
                 {showInactiveMembers ? "Skjul inaktive" : "Vis inaktive"}
               </OutlineButton>
@@ -1128,7 +1114,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
             </div>
           </Card>
 
-          <Card className="p-4 sm:p-5">
+          <Card className="p-4 sm:p-5 w-full">
             {selectedMember ? (
               <div className="space-y-5">
                 <div className="lg:hidden rounded-2xl border bg-slate-50 p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
