@@ -26,7 +26,11 @@ type MemberPortalProps = {
   sendMemberMessage: (memberId: string, text: string) => void;
   workoutMode: WorkoutModeState | null;
   startWorkoutMode: (programId: string) => void;
-  updateWorkoutExerciseResult: (exerciseId: string, field: "performedWeight" | "performedReps" | "completed", value: string | boolean) => void;
+  updateWorkoutExerciseResult: (
+    exerciseId: string,
+    field: "performedWeight" | "performedReps" | "performedDurationMinutes" | "performedSpeed" | "performedIncline" | "completed",
+    value: string | boolean,
+  ) => void;
   replaceWorkoutExerciseGroup: (input: ReplaceWorkoutExerciseGroupInput) => void;
   updateWorkoutModeNote: (note: string) => void;
   finishWorkoutMode: () => void;
@@ -124,6 +128,10 @@ export function MemberPortal(props: MemberPortalProps) {
     }));
   }, [workoutMode]);
   const currentWorkoutGroup = workoutResultGroups[workoutExerciseIndex] ?? null;
+  const exerciseByName = useMemo(
+    () => new Map(exercises.map((exercise) => [exercise.name.trim().toLowerCase(), exercise])),
+    [exercises],
+  );
   const replacementCandidates = useMemo(() => {
     if (!activeWorkoutProgram || !currentWorkoutGroup) return [] as Exercise[];
     const sourceProgramExercise = activeWorkoutProgram.exercises.find((exercise) => exercise.id === currentWorkoutGroup.groupId);
@@ -924,15 +932,21 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function handleWorkoutResultInputChange(
     row: WorkoutModeState["results"][number],
-    field: "performedWeight" | "performedReps",
+    field: "performedWeight" | "performedReps" | "performedDurationMinutes" | "performedSpeed" | "performedIncline",
     value: string,
     rowIndex: number,
     rows: WorkoutModeState["results"],
   ) {
     updateWorkoutExerciseResult(row.exerciseId, field, value);
+    const isCardio = row.exerciseCategory === "Kondisjon";
+    const isTreadmill = (row.exerciseEquipment ?? "").toLowerCase().includes("tredem");
     const nextWeight = field === "performedWeight" ? value.trim() : row.performedWeight.trim();
     const nextReps = field === "performedReps" ? value.trim() : row.performedReps.trim();
-    const isCompleted = Number(nextWeight) > 0 && Number(nextReps) > 0;
+    const nextDuration = field === "performedDurationMinutes" ? value.trim() : (row.performedDurationMinutes ?? "").trim();
+    const nextSpeed = field === "performedSpeed" ? value.trim() : (row.performedSpeed ?? "").trim();
+    const isCompleted = isCardio
+      ? Number(nextDuration) > 0 && (!isTreadmill || Number(nextSpeed) > 0)
+      : Number(nextWeight) > 0 && Number(nextReps) > 0;
     if (isCompleted && !row.completed) {
       updateWorkoutExerciseResult(row.exerciseId, "completed", true);
     }
@@ -1313,7 +1327,11 @@ export function MemberPortal(props: MemberPortalProps) {
                               {program.exercises.map((exercise) => (
                                 <div key={exercise.id} className="rounded-xl border bg-slate-50 p-2.5">
                                   <div className="font-medium text-sm">{exercise.exerciseName}</div>
-                                  <div className="mt-0.5 text-xs text-slate-500">{exercise.sets}×{exercise.reps} · {exercise.weight}kg · {exercise.restSeconds}s</div>
+                                  <div className="mt-0.5 text-xs text-slate-500">
+                                    {exercise.durationMinutes
+                                      ? `${exercise.sets} runder × ${exercise.durationMinutes} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s`
+                                      : `${exercise.sets}×${exercise.reps} · ${exercise.weight}kg · ${exercise.restSeconds}s`}
+                                  </div>
                                   {exercise.notes ? <div className="mt-0.5 text-[11px] text-slate-500">{exercise.notes}</div> : null}
                                 </div>
                               ))}
@@ -1355,7 +1373,9 @@ export function MemberPortal(props: MemberPortalProps) {
                                 <div key={`${result.exerciseId}-${result.setNumber ?? 0}-${index}`} className="rounded-lg border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                                   <div className="font-medium text-slate-800">{result.exerciseName}</div>
                                   <div className="mt-1 text-xs text-slate-600">
-                                    Utført: {result.performedWeight || "0"} kg x {result.performedReps || "0"} reps
+                                    {result.exerciseCategory === "Kondisjon"
+                                      ? `Utført: ${result.performedDurationMinutes || "0"} min${result.performedSpeed ? ` · ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` · ${result.performedIncline}% incline` : ""}`
+                                      : `Utført: ${result.performedWeight || "0"} kg x ${result.performedReps || "0"} reps`}
                                     {result.completed ? " - Fullført" : " - Ikke markert fullført"}
                                   </div>
                                 </div>
@@ -1393,7 +1413,11 @@ export function MemberPortal(props: MemberPortalProps) {
                           <div>
                             <div className="text-xs text-slate-400">Øvelse {workoutExerciseIndex + 1} av {workoutResultGroups.length}</div>
                             <div className="font-medium">{currentWorkoutGroup.exerciseName}</div>
-                            <div className="mt-1 text-sm text-slate-500">Plan: {currentWorkoutGroup.rows.length} sett × {currentWorkoutGroup.plannedReps} reps · {currentWorkoutGroup.plannedWeight}kg</div>
+                            <div className="mt-1 text-sm text-slate-500">
+                              {currentWorkoutGroup.rows[0]?.exerciseCategory === "Kondisjon"
+                                ? `Plan: ${currentWorkoutGroup.rows.length} runder × ${currentWorkoutGroup.rows[0]?.plannedDurationMinutes || "0"} min${currentWorkoutGroup.rows[0]?.plannedSpeed ? ` · ${currentWorkoutGroup.rows[0]?.plannedSpeed} km/t` : ""}${currentWorkoutGroup.rows[0]?.plannedIncline ? ` · ${currentWorkoutGroup.rows[0]?.plannedIncline}% incline` : ""}`
+                                : `Plan: ${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedReps} reps · ${currentWorkoutGroup.plannedWeight}kg`}
+                            </div>
                           </div>
                           {replacementCandidates.length > 0 ? (
                             <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -1412,7 +1436,11 @@ export function MemberPortal(props: MemberPortalProps) {
                             </div>
                           ) : null}
                           <div className="mt-3 space-y-2">
-                            {currentWorkoutGroup.rows.map((row, index) => (
+                            {currentWorkoutGroup.rows.map((row, index) => {
+                              const resolvedExercise = exerciseByName.get(row.exerciseName.trim().toLowerCase());
+                              const isCardio = (row.exerciseCategory ?? resolvedExercise?.category) === "Kondisjon";
+                              const isTreadmill = (row.exerciseEquipment ?? resolvedExercise?.equipment ?? "").toLowerCase().includes("tredem");
+                              return (
                               <div key={row.exerciseId} className={`rounded-xl border bg-white p-3 ${row.completed ? "border-emerald-300" : "border-slate-200"}`}>
                                 <div className="mb-2 flex items-center justify-between gap-2">
                                   <div className="text-xs font-semibold text-slate-600">Sett {row.setNumber ?? 1}</div>
@@ -1424,29 +1452,65 @@ export function MemberPortal(props: MemberPortalProps) {
                                     {row.completed ? "Fullført" : "Marker"}
                                   </button>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div className="space-y-1">
-                                    <div className="text-[11px] font-medium text-slate-500">Kg utført</div>
-                                    <TextInput
-                                      ref={(input) => {
-                                        workoutWeightInputRefs.current[row.exerciseId] = input;
-                                      }}
-                                      value={row.performedWeight}
-                                      onChange={(e) => handleWorkoutResultInputChange(row, "performedWeight", e.target.value, index, currentWorkoutGroup.rows)}
-                                      placeholder="0"
-                                    />
+                                {isCardio ? (
+                                  <div className={`grid gap-3 ${isTreadmill ? "grid-cols-3" : "grid-cols-1"}`}>
+                                    <div className="space-y-1">
+                                      <div className="text-[11px] font-medium text-slate-500">Tid utført (min)</div>
+                                      <TextInput
+                                        ref={(input) => {
+                                          workoutWeightInputRefs.current[row.exerciseId] = input;
+                                        }}
+                                        value={row.performedDurationMinutes ?? ""}
+                                        onChange={(e) => handleWorkoutResultInputChange(row, "performedDurationMinutes", e.target.value, index, currentWorkoutGroup.rows)}
+                                        placeholder="0"
+                                      />
+                                    </div>
+                                    {isTreadmill ? (
+                                      <>
+                                        <div className="space-y-1">
+                                          <div className="text-[11px] font-medium text-slate-500">Fart (km/t)</div>
+                                          <TextInput
+                                            value={row.performedSpeed ?? ""}
+                                            onChange={(e) => handleWorkoutResultInputChange(row, "performedSpeed", e.target.value, index, currentWorkoutGroup.rows)}
+                                            placeholder="0"
+                                          />
+                                        </div>
+                                        <div className="space-y-1">
+                                          <div className="text-[11px] font-medium text-slate-500">Incline (%)</div>
+                                          <TextInput
+                                            value={row.performedIncline ?? ""}
+                                            onChange={(e) => handleWorkoutResultInputChange(row, "performedIncline", e.target.value, index, currentWorkoutGroup.rows)}
+                                            placeholder="0"
+                                          />
+                                        </div>
+                                      </>
+                                    ) : null}
                                   </div>
-                                  <div className="space-y-1">
-                                    <div className="text-[11px] font-medium text-slate-500">Reps utført</div>
-                                    <TextInput
-                                      value={row.performedReps}
-                                      onChange={(e) => handleWorkoutResultInputChange(row, "performedReps", e.target.value, index, currentWorkoutGroup.rows)}
-                                      placeholder="0"
-                                    />
+                                ) : (
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                      <div className="text-[11px] font-medium text-slate-500">Kg utført</div>
+                                      <TextInput
+                                        ref={(input) => {
+                                          workoutWeightInputRefs.current[row.exerciseId] = input;
+                                        }}
+                                        value={row.performedWeight}
+                                        onChange={(e) => handleWorkoutResultInputChange(row, "performedWeight", e.target.value, index, currentWorkoutGroup.rows)}
+                                        placeholder="0"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <div className="text-[11px] font-medium text-slate-500">Reps utført</div>
+                                      <TextInput
+                                        value={row.performedReps}
+                                        onChange={(e) => handleWorkoutResultInputChange(row, "performedReps", e.target.value, index, currentWorkoutGroup.rows)}
+                                        placeholder="0"
+                                      />
+                                    </div>
                                   </div>
-                                </div>
+                                )}
                               </div>
-                            ))}
+                            )})}
                           </div>
                         </div>
                       ) : null}

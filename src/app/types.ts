@@ -21,11 +21,19 @@ export type WorkoutExerciseResult = {
   programExerciseId?: string;
   setNumber?: number;
   exerciseName: string;
+  exerciseCategory?: Exercise["category"];
+  exerciseEquipment?: string;
   plannedSets: string;
   plannedReps: string;
   plannedWeight: string;
+  plannedDurationMinutes?: string;
+  plannedSpeed?: string;
+  plannedIncline?: string;
   performedWeight: string;
   performedReps: string;
+  performedDurationMinutes?: string;
+  performedSpeed?: string;
+  performedIncline?: string;
   completed: boolean;
 };
 
@@ -92,6 +100,9 @@ export type ProgramExercise = {
   sets: string;
   reps: string;
   weight: string;
+  durationMinutes?: string;
+  speed?: string;
+  incline?: string;
   restSeconds: string;
   notes: string;
 };

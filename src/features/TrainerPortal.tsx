@@ -296,6 +296,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
     const groups = Array.from(new Set(exercises.map((exercise) => exercise.group.trim()).filter(Boolean)));
     return groups.sort((a, b) => a.localeCompare(b, "no"));
   }, [exercises]);
+  const exerciseFormGroupOptions = useMemo(() => {
+    const merged = new Set(programExerciseGroupOptions);
+    const currentDraftGroup = exerciseFormGroup.trim();
+    if (currentDraftGroup) merged.add(currentDraftGroup);
+    return Array.from(merged).sort((a, b) => a.localeCompare(b, "no"));
+  }, [programExerciseGroupOptions, exerciseFormGroup]);
   const visibleProgramExercises = useMemo(() => {
     const query = programExerciseSearch.trim().toLowerCase();
     const filtered = exercises.filter((exercise) => {
@@ -316,6 +322,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       return a.name.localeCompare(b.name, "no");
     });
   }, [exercises, programExerciseSearch, programExerciseCategoryFilter, programExerciseGroupFilter, favoriteExerciseIds]);
+  const exercisesById = useMemo(() => new Map(exercises.map((exercise) => [exercise.id, exercise])), [exercises]);
 
   useEffect(() => {
     window.localStorage.setItem("motus.trainer.memberSearch", memberSearch);
@@ -461,6 +468,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
   }
 
   function addExerciseToDraft(exercise: Exercise) {
+    const isCardio = exercise.category === "Kondisjon";
+    const isTreadmill = exercise.equipment.trim().toLowerCase().includes("tredem");
     setProgramExercisesDraft((prev) => [
       ...prev,
       {
@@ -468,8 +477,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
         exerciseId: exercise.id,
         exerciseName: exercise.name,
         sets: "3",
-        reps: "10",
-        weight: "0",
+        reps: isCardio ? "" : "10",
+        weight: isCardio ? "" : "0",
+        durationMinutes: isCardio ? "20" : "",
+        speed: isTreadmill ? "8" : "",
+        incline: isTreadmill ? "1" : "",
         restSeconds: "90",
         notes: "",
       },
@@ -573,8 +585,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
         exerciseId: exercise.id,
         exerciseName: exercise.name,
         sets,
-        reps,
-        weight: "0",
+        reps: exercise.category === "Kondisjon" ? "" : reps,
+        weight: exercise.category === "Kondisjon" ? "" : "0",
+        durationMinutes: exercise.category === "Kondisjon" ? "20" : "",
+        speed: exercise.equipment.trim().toLowerCase().includes("tredem") ? "8" : "",
+        incline: exercise.equipment.trim().toLowerCase().includes("tredem") ? "1" : "",
         restSeconds,
         notes: quickPlanGoal === "fettreduksjon" ? "Hold jevn puls mellom settene" : "",
       });
@@ -1735,19 +1750,45 @@ export function TrainerPortal(props: TrainerPortalProps) {
                                 <OutlineButton onClick={() => removeDraftExercise(item.id)}>Fjern</OutlineButton>
                               </div>
                             </div>
-                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                            {(() => {
+                              const linkedExercise = exercisesById.get(item.exerciseId);
+                              const isCardio = linkedExercise?.category === "Kondisjon";
+                              const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
+                              return (
+                            <div className={`grid gap-3 sm:grid-cols-2 ${isCardio ? "xl:grid-cols-5" : "xl:grid-cols-5"}`}>
                               <div className="space-y-1">
                                 <div className="text-[11px] font-medium text-slate-500">Antall sett</div>
                                 <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder="Sett" />
                               </div>
-                              <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">Antall reps</div>
-                                <TextInput value={item.reps} onChange={(e) => updateDraftExercise(item.id, "reps", e.target.value)} placeholder="Reps" />
-                              </div>
-                              <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">Kg</div>
-                                <TextInput value={item.weight} onChange={(e) => updateDraftExercise(item.id, "weight", e.target.value)} placeholder="Kg" />
-                              </div>
+                              {isCardio ? (
+                                <div className="space-y-1">
+                                  <div className="text-[11px] font-medium text-slate-500">Tid (min)</div>
+                                  <TextInput value={item.durationMinutes ?? ""} onChange={(e) => updateDraftExercise(item.id, "durationMinutes", e.target.value)} placeholder="Minutter" />
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="space-y-1">
+                                    <div className="text-[11px] font-medium text-slate-500">Antall reps</div>
+                                    <TextInput value={item.reps} onChange={(e) => updateDraftExercise(item.id, "reps", e.target.value)} placeholder="Reps" />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="text-[11px] font-medium text-slate-500">Kg</div>
+                                    <TextInput value={item.weight} onChange={(e) => updateDraftExercise(item.id, "weight", e.target.value)} placeholder="Kg" />
+                                  </div>
+                                </>
+                              )}
+                              {isCardio && isTreadmill ? (
+                                <>
+                                  <div className="space-y-1">
+                                    <div className="text-[11px] font-medium text-slate-500">Fart (km/t)</div>
+                                    <TextInput value={item.speed ?? ""} onChange={(e) => updateDraftExercise(item.id, "speed", e.target.value)} placeholder="Fart" />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="text-[11px] font-medium text-slate-500">Incline (%)</div>
+                                    <TextInput value={item.incline ?? ""} onChange={(e) => updateDraftExercise(item.id, "incline", e.target.value)} placeholder="Incline" />
+                                  </div>
+                                </>
+                              ) : null}
                               <div className="space-y-1">
                                 <div className="text-[11px] font-medium text-slate-500">Hvile (sekunder)</div>
                                 <TextInput value={item.restSeconds} onChange={(e) => updateDraftExercise(item.id, "restSeconds", e.target.value)} placeholder="Hvile sek" />
@@ -1757,6 +1798,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
                                 <TextInput value={item.notes} onChange={(e) => updateDraftExercise(item.id, "notes", e.target.value)} placeholder="Notat" />
                               </div>
                             </div>
+                              );
+                            })()}
                           </div>
                         ))}
                       </div>
@@ -2010,19 +2053,45 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           <OutlineButton onClick={() => removeDraftExercise(item.id)}>Fjern</OutlineButton>
                         </div>
                       </div>
-                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                      {(() => {
+                        const linkedExercise = exercisesById.get(item.exerciseId);
+                        const isCardio = linkedExercise?.category === "Kondisjon";
+                        const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
+                        return (
+                      <div className={`grid gap-3 sm:grid-cols-2 ${isCardio ? "xl:grid-cols-5" : "xl:grid-cols-5"}`}>
                         <div className="space-y-1">
                           <div className="text-[11px] font-medium text-slate-500">Antall sett</div>
                           <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder="Sett" />
                         </div>
-                        <div className="space-y-1">
-                          <div className="text-[11px] font-medium text-slate-500">Antall reps</div>
-                          <TextInput value={item.reps} onChange={(e) => updateDraftExercise(item.id, "reps", e.target.value)} placeholder="Reps" />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="text-[11px] font-medium text-slate-500">Kg</div>
-                          <TextInput value={item.weight} onChange={(e) => updateDraftExercise(item.id, "weight", e.target.value)} placeholder="Kg" />
-                        </div>
+                        {isCardio ? (
+                          <div className="space-y-1">
+                            <div className="text-[11px] font-medium text-slate-500">Tid (min)</div>
+                            <TextInput value={item.durationMinutes ?? ""} onChange={(e) => updateDraftExercise(item.id, "durationMinutes", e.target.value)} placeholder="Minutter" />
+                          </div>
+                        ) : (
+                          <>
+                            <div className="space-y-1">
+                              <div className="text-[11px] font-medium text-slate-500">Antall reps</div>
+                              <TextInput value={item.reps} onChange={(e) => updateDraftExercise(item.id, "reps", e.target.value)} placeholder="Reps" />
+                            </div>
+                            <div className="space-y-1">
+                              <div className="text-[11px] font-medium text-slate-500">Kg</div>
+                              <TextInput value={item.weight} onChange={(e) => updateDraftExercise(item.id, "weight", e.target.value)} placeholder="Kg" />
+                            </div>
+                          </>
+                        )}
+                        {isCardio && isTreadmill ? (
+                          <>
+                            <div className="space-y-1">
+                              <div className="text-[11px] font-medium text-slate-500">Fart (km/t)</div>
+                              <TextInput value={item.speed ?? ""} onChange={(e) => updateDraftExercise(item.id, "speed", e.target.value)} placeholder="Fart" />
+                            </div>
+                            <div className="space-y-1">
+                              <div className="text-[11px] font-medium text-slate-500">Incline (%)</div>
+                              <TextInput value={item.incline ?? ""} onChange={(e) => updateDraftExercise(item.id, "incline", e.target.value)} placeholder="Incline" />
+                            </div>
+                          </>
+                        ) : null}
                         <div className="space-y-1">
                           <div className="text-[11px] font-medium text-slate-500">Hvile (sekunder)</div>
                           <TextInput value={item.restSeconds} onChange={(e) => updateDraftExercise(item.id, "restSeconds", e.target.value)} placeholder="Hvile sek" />
@@ -2032,6 +2101,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           <TextInput value={item.notes} onChange={(e) => updateDraftExercise(item.id, "notes", e.target.value)} placeholder="Notat" />
                         </div>
                       </div>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>
@@ -2165,7 +2236,14 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   options={["Nybegynner", "Litt øvet", "Øvet"]}
                 />
               </div>
-              <TextInput value={exerciseFormGroup} onChange={(e) => setExerciseFormGroup(e.target.value)} placeholder="Muskelgruppe / fokusområde" />
+              <SelectBox
+                value={exerciseFormGroup}
+                onChange={setExerciseFormGroup}
+                options={[
+                  { value: "", label: "Velg muskelgruppe / fokusområde" },
+                  ...exerciseFormGroupOptions.map((group) => ({ value: group, label: group })),
+                ]}
+              />
               <TextInput value={exerciseFormEquipment} onChange={(e) => setExerciseFormEquipment(e.target.value)} placeholder="Utstyr (f.eks. stang, manualer, kroppsvekt)" />
               <TextInput value={exerciseFormImageUrl} onChange={(e) => setExerciseFormImageUrl(e.target.value)} placeholder="Bilde-URL (valgfritt). La stå tom for auto-skisse." />
               <div className="space-y-2">

@@ -744,7 +744,11 @@ export function useAppState() {
     setAppState((prev) => repository.startWorkoutMode(prev, programId));
   }
 
-  function updateWorkoutExerciseResult(exerciseId: string, field: "performedWeight" | "performedReps" | "completed", value: string | boolean) {
+  function updateWorkoutExerciseResult(
+    exerciseId: string,
+    field: "performedWeight" | "performedReps" | "performedDurationMinutes" | "performedSpeed" | "performedIncline" | "completed",
+    value: string | boolean,
+  ) {
     setAppState((prev) => repository.updateWorkoutResult(prev, { exerciseId, field, value }));
   }
 

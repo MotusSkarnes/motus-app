@@ -21,7 +21,7 @@ export type SaveProgramInput = {
 
 export type UpdateWorkoutResultInput = {
   exerciseId: string;
-  field: "performedWeight" | "performedReps" | "completed";
+  field: "performedWeight" | "performedReps" | "performedDurationMinutes" | "performedSpeed" | "performedIncline" | "completed";
   value: string | boolean;
 };
 
@@ -210,11 +210,19 @@ export function startWorkoutModeInState(state: AppState, programId: string): App
       programExerciseId: ex.id,
       setNumber: index + 1,
       exerciseName: ex.exerciseName,
+      exerciseCategory: state.exercises.find((item) => item.id === ex.exerciseId)?.category,
+      exerciseEquipment: state.exercises.find((item) => item.id === ex.exerciseId)?.equipment,
       plannedSets: ex.sets,
       plannedReps: ex.reps,
       plannedWeight: ex.weight,
+      plannedDurationMinutes: ex.durationMinutes ?? "",
+      plannedSpeed: ex.speed ?? "",
+      plannedIncline: ex.incline ?? "",
       performedWeight: ex.weight,
       performedReps: ex.reps,
+      performedDurationMinutes: ex.durationMinutes ?? "",
+      performedSpeed: ex.speed ?? "",
+      performedIncline: ex.incline ?? "",
       completed: false,
     }));
   });
@@ -232,7 +240,7 @@ export function startWorkoutModeInState(state: AppState, programId: string): App
 export function updateWorkoutResultInState(
   state: AppState,
   exerciseId: string,
-  field: "performedWeight" | "performedReps" | "completed",
+  field: "performedWeight" | "performedReps" | "performedDurationMinutes" | "performedSpeed" | "performedIncline" | "completed",
   value: string | boolean
 ): AppState {
   if (!state.workoutMode) return state;
