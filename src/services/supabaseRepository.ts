@@ -124,17 +124,9 @@ async function persistMember(member: Member) {
       shouldStayInactive = true;
     }
   }
-  if (!shouldStayInactive && normalizedEmail) {
-    const { data: existingByEmail } = await supabaseClient
-      .from("members")
-      .select("id")
-      .eq("email", normalizedEmail)
-      .eq("is_active", false)
-      .limit(1);
-    if ((existingByEmail?.length ?? 0) > 0) {
-      shouldStayInactive = true;
-    }
-  }
+  // Keep explicit inactive status for the same row, but do not
+  // deactivate a different active member row just because an older
+  // row with the same email was previously deactivated.
 
   const { error } = await supabaseClient.from("members").upsert(
     {
