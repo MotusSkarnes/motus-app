@@ -671,6 +671,10 @@ export function MemberPortal(props: MemberPortalProps) {
   const targetWeightNumber = Number(profileTargetWeight) || 0;
   const currentWeightNumber = Number(profileWeight) || 0;
   const sessionsRemaining = Math.max(0, sessionsTargetNumber - completedThisWeek);
+  const sessionsProgressPercent = sessionsTargetNumber > 0 ? Math.min(100, Math.round((completedThisWeek / sessionsTargetNumber) * 100)) : 0;
+  const stepsProgressPercent = dailyStepsTargetNumber > 0 ? Math.min(100, Math.round((currentDailyStepsNumber / dailyStepsTargetNumber) * 100)) : 0;
+  const weightDirectionDown = targetWeightNumber > 0 && currentWeightNumber > targetWeightNumber;
+  const weightGap = targetWeightNumber > 0 && currentWeightNumber > 0 ? Math.abs(currentWeightNumber - targetWeightNumber) : 0;
   const progressStory = useMemo(() => {
     const nowMs = now.getTime();
     const dayMs = 24 * 60 * 60 * 1000;
@@ -840,23 +844,49 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 )}
               </div>
-              <div className="rounded-2xl border bg-slate-50 p-4 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-sm font-semibold text-slate-700">Målstatus</div>
                 {sessionsTargetNumber > 0 ? (
-                  <div className="text-sm text-slate-600">
-                    Treningsmål: {completedThisWeek}/{sessionsTargetNumber} økter denne uken
-                    {sessionsRemaining > 0 ? ` · ${sessionsRemaining} trening${sessionsRemaining === 1 ? "" : "er"} igjen` : " · Ukemålet er nådd!"}
+                  <div className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="flex items-center justify-between text-slate-700">
+                      <span className="font-medium">Treningsmål (uke)</span>
+                      <span>{completedThisWeek}/{sessionsTargetNumber}</span>
+                    </div>
+                    <div className="mt-2 h-2 rounded-full bg-slate-200">
+                      <div className="h-2 rounded-full" style={{ width: `${sessionsProgressPercent}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
+                    </div>
+                    <div className="mt-2 text-xs text-slate-600">
+                      {sessionsRemaining > 0 ? `${sessionsRemaining} trening${sessionsRemaining === 1 ? "" : "er"} igjen denne uken` : "Ukemålet er nådd!"}
+                    </div>
                   </div>
                 ) : null}
                 {dailyStepsTargetNumber > 0 ? (
-                  <div className="text-sm text-slate-600">
-                    Skrittmål: {currentDailyStepsNumber}/{dailyStepsTargetNumber} skritt i dag
-                    {currentDailyStepsNumber < dailyStepsTargetNumber ? ` · ${dailyStepsTargetNumber - currentDailyStepsNumber} igjen` : " · Skrittmålet er nådd!"}
+                  <div className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="flex items-center justify-between text-slate-700">
+                      <span className="font-medium">Skrittmål (i dag)</span>
+                      <span>{currentDailyStepsNumber}/{dailyStepsTargetNumber}</span>
+                    </div>
+                    <div className="mt-2 h-2 rounded-full bg-slate-200">
+                      <div className="h-2 rounded-full" style={{ width: `${stepsProgressPercent}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
+                    </div>
+                    <div className="mt-2 text-xs text-slate-600">
+                      {currentDailyStepsNumber < dailyStepsTargetNumber ? `${dailyStepsTargetNumber - currentDailyStepsNumber} skritt igjen i dag` : "Skrittmålet er nådd!"}
+                    </div>
                   </div>
                 ) : null}
                 {targetWeightNumber > 0 && currentWeightNumber > 0 ? (
-                  <div className="text-sm text-slate-600">
-                    Vektmål: nå {currentWeightNumber} kg, mål {targetWeightNumber} kg
+                  <div className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="flex items-center justify-between text-slate-700">
+                      <span className="font-medium">Vektmål</span>
+                      <span>{currentWeightNumber} kg / {targetWeightNumber} kg</span>
+                    </div>
+                    <div className="mt-2 text-xs text-slate-600">
+                      {weightGap === 0
+                        ? "Du er på målet."
+                        : weightDirectionDown
+                        ? `${weightGap.toFixed(1)} kg igjen til mål`
+                        : `${weightGap.toFixed(1)} kg over målet`}
+                    </div>
                   </div>
                 ) : null}
                 {sessionsTargetNumber <= 0 && dailyStepsTargetNumber <= 0 && targetWeightNumber <= 0 ? (
