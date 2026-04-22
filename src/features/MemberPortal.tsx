@@ -128,6 +128,14 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [activeWorkoutProgram, currentWorkoutGroup, exercises]);
   const now = new Date();
 
+  function normalizeBirthDateToDdMmYyyy(value: string): string {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    if (/^\d{2}\.\d{2}\.\d{4}$/.test(trimmed)) return trimmed;
+    const formatted = formatDateDdMmYyyy(trimmed);
+    return formatted || trimmed;
+  }
+
   function parseLogDate(value: string): Date | null {
     if (!value) return null;
     const isoCandidate = new Date(value);
@@ -252,7 +260,7 @@ export function MemberPortal(props: MemberPortalProps) {
       setMemberNameDraft(editableMember.name);
       setMemberEmailDraft(editableMember.email);
       setMemberPhoneDraft(editableMember.phone);
-      setMemberBirthDateDraft(editableMember.birthDate);
+      setMemberBirthDateDraft(normalizeBirthDateToDdMmYyyy(editableMember.birthDate));
       setMemberGoalDraft(editableMember.goal);
       setMemberFocusDraft(editableMember.focus);
       setMemberInjuriesDraft(editableMember.injuries);
@@ -270,7 +278,7 @@ export function MemberPortal(props: MemberPortalProps) {
         setMemberNameDraft(editableMember.name);
         setMemberEmailDraft(editableMember.email);
         setMemberPhoneDraft(editableMember.phone);
-        setMemberBirthDateDraft(editableMember.birthDate);
+        setMemberBirthDateDraft(normalizeBirthDateToDdMmYyyy(editableMember.birthDate));
         setMemberGoalDraft(editableMember.goal);
         setMemberFocusDraft(editableMember.focus);
         setMemberInjuriesDraft(editableMember.injuries);
@@ -286,7 +294,7 @@ export function MemberPortal(props: MemberPortalProps) {
       setMemberNameDraft(editableMember.name);
       setMemberEmailDraft(editableMember.email);
       setMemberPhoneDraft(editableMember.phone);
-      setMemberBirthDateDraft(editableMember.birthDate);
+      setMemberBirthDateDraft(normalizeBirthDateToDdMmYyyy(editableMember.birthDate));
       setMemberGoalDraft(editableMember.goal);
       setMemberFocusDraft(editableMember.focus);
       setMemberInjuriesDraft(editableMember.injuries);
@@ -300,7 +308,7 @@ export function MemberPortal(props: MemberPortalProps) {
       setMemberNameDraft(editableMember.name);
       setMemberEmailDraft(editableMember.email);
       setMemberPhoneDraft(editableMember.phone);
-      setMemberBirthDateDraft(editableMember.birthDate);
+      setMemberBirthDateDraft(normalizeBirthDateToDdMmYyyy(editableMember.birthDate));
       setMemberGoalDraft(editableMember.goal);
       setMemberFocusDraft(editableMember.focus);
       setMemberInjuriesDraft(editableMember.injuries);
@@ -338,7 +346,7 @@ export function MemberPortal(props: MemberPortalProps) {
         name: memberNameDraft,
         email: normalizedEmail,
         phone: memberPhoneDraft,
-        birthDate: memberBirthDateDraft,
+        birthDate: normalizeBirthDateToDdMmYyyy(memberBirthDateDraft),
         goal: memberGoalDraft,
         focus: memberFocusDraft,
         injuries: memberInjuriesDraft,
@@ -953,7 +961,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       </label>
                       <label className="space-y-1">
                         <span className="text-sm font-semibold text-slate-700">Fødselsdato</span>
-                        <TextInput value={memberBirthDateDraft} onChange={(e) => setMemberBirthDateDraft(e.target.value)} placeholder="Fødselsdato (YYYY-MM-DD)" />
+                        <TextInput value={memberBirthDateDraft} onChange={(e) => setMemberBirthDateDraft(e.target.value)} placeholder="Fødselsdato (dd.mm.yyyy)" />
                       </label>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2">
