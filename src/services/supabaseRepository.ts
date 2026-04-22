@@ -151,11 +151,15 @@ async function deleteMemberFromSupabase(member: { id: string; email?: string }) 
   const normalizedEmail = (member.email ?? "").trim().toLowerCase();
   if (supabaseUrl && supabaseAnonKey) {
     try {
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession();
       const response = await fetch(`${supabaseUrl}/functions/v1/delete-member`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           apikey: supabaseAnonKey,
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
         },
         body: JSON.stringify({
           memberId,
