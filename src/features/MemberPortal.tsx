@@ -65,12 +65,12 @@ export function MemberPortal(props: MemberPortalProps) {
       ? members.find((member) => member.email.trim().toLowerCase() === normalizedCurrentUserEmail) ?? null
       : null;
   const editableMember =
-    viewedMember ??
-    currentMemberByEmail ??
-    (currentUserRole === "member" ? null : members[0] ?? null);
+    currentUserRole === "member"
+      ? currentMemberByEmail ?? viewedMember ?? null
+      : viewedMember ?? members[0] ?? null;
   const activeMemberId = editableMember?.id ?? memberViewId;
   const relatedMemberIds = useMemo(() => {
-    const sourceMember = viewedMember ?? currentMemberByEmail;
+    const sourceMember = editableMember;
     if (!sourceMember) return [activeMemberId];
     const normalizedEmail = sourceMember.email.trim().toLowerCase();
     if (!normalizedEmail) return [activeMemberId];
@@ -78,7 +78,7 @@ export function MemberPortal(props: MemberPortalProps) {
       .filter((member) => member.email.trim().toLowerCase() === normalizedEmail)
       .map((member) => member.id);
     return ids.length ? ids : [activeMemberId];
-  }, [members, viewedMember, currentMemberByEmail, activeMemberId]);
+  }, [members, editableMember, activeMemberId]);
   const relatedMemberIdSet = useMemo(() => new Set(relatedMemberIds), [relatedMemberIds]);
   const memberPrograms = programs.filter((program) => relatedMemberIdSet.has(program.memberId));
   const memberLogs = logs.filter((log) => relatedMemberIdSet.has(log.memberId));
