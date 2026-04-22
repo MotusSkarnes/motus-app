@@ -4,7 +4,7 @@ import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
 import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { supabaseClient } from "../services/supabaseClient";
-import { Card, GradientButton, OutlineButton, SelectBox, StatCard, TextArea, TextInput } from "../app/ui";
+import { Card, GradientButton, OutlineButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
 import type { ReplaceWorkoutExerciseGroupInput, UpdateMemberInput } from "../services/appRepository";
 import type { ChatMessage, Exercise, Member, MemberTab, TrainingProgram, WorkoutCelebration, WorkoutLog, WorkoutModeState } from "../app/types";
 
@@ -1256,7 +1256,13 @@ export function MemberPortal(props: MemberPortalProps) {
                     <TextInput value={profileCurrentDailySteps} onChange={(e) => setProfileCurrentDailySteps(e.target.value)} placeholder="Dagens skritt (for målstatus)" />
                   </div>
                   <GradientButton onClick={saveProfile} className="w-full md:w-auto">Lagre min profil</GradientButton>
-                  {profileSaveInfo ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{profileSaveInfo}</div> : null}
+                  {profileSaveInfo ? (
+                    <StatusMessage
+                      message={profileSaveInfo}
+                      tone={profileSaveInfo.toLowerCase().includes("feilet") ? "error" : "success"}
+                      className="!rounded-xl !px-3 !py-2 !text-xs"
+                    />
+                  ) : null}
                 </div>
               ) : (
                 <div className="mt-4 rounded-xl border border-dashed bg-slate-50 px-3 py-3 text-sm text-slate-500">

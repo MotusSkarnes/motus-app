@@ -1,5 +1,5 @@
 import { MOTUS } from "../app/data";
-import { Badge, Card, GradientButton, StatCard, TextInput } from "../app/ui";
+import { Badge, Card, GradientButton, StatCard, StatusMessage, TextInput } from "../app/ui";
 import motusLogo from "../assets/motus-logo.png";
 
 type LoginScreenProps = {
@@ -93,17 +93,17 @@ export function LoginScreen(props: LoginScreenProps) {
           </div>
           {isRecoveryMode ? (
             <>
-              {recoveryInfo ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{recoveryInfo}</div> : null}
+              {recoveryInfo ? <StatusMessage message={recoveryInfo} tone="success" /> : null}
               <TextInput type="password" value={recoveryPassword} onChange={(e) => setRecoveryPassword(e.target.value)} placeholder="Nytt passord (minst 6 tegn)" />
               <TextInput type="password" value={recoveryPasswordConfirm} onChange={(e) => setRecoveryPasswordConfirm(e.target.value)} placeholder="Gjenta nytt passord" />
-              {recoveryError ? <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{recoveryError}</div> : null}
+              {recoveryError ? <StatusMessage message={recoveryError} tone="error" /> : null}
               <GradientButton onClick={onCompleteRecovery} className="w-full">Lagre nytt passord</GradientButton>
             </>
           ) : (
             <>
               <TextInput value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-post" />
               <TextInput type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Passord" />
-              {loginError ? <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{loginError}</div> : null}
+              {loginError ? <StatusMessage message={loginError} tone="error" /> : null}
               <GradientButton onClick={onLogin} className="w-full">Logg inn</GradientButton>
               <button
                 type="button"
@@ -113,8 +113,8 @@ export function LoginScreen(props: LoginScreenProps) {
               >
                 {passwordRecoveryCooldownSeconds > 0 ? `Send ny reset-lenke om ${passwordRecoveryCooldownSeconds}s` : "Glemt passord?"}
               </button>
-              {passwordRecoveryInfo ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{passwordRecoveryInfo}</div> : null}
-              {passwordRecoveryError ? <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{passwordRecoveryError}</div> : null}
+              {passwordRecoveryInfo ? <StatusMessage message={passwordRecoveryInfo} tone="success" /> : null}
+              {passwordRecoveryError ? <StatusMessage message={passwordRecoveryError} tone="error" /> : null}
               <div className="rounded-2xl border bg-slate-50 px-4 py-3">
                 <div className="text-sm font-semibold text-slate-700">Logg inn med engangskode</div>
                 <div className="mt-1 text-xs text-slate-500">Anbefalt hvis e-postlink blir utløpt.</div>
@@ -135,8 +135,8 @@ export function LoginScreen(props: LoginScreenProps) {
                     Logg inn med kode
                   </GradientButton>
                 </div>
-                {otpInfo ? <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{otpInfo}</div> : null}
-                {otpError ? <div className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{otpError}</div> : null}
+                {otpInfo ? <StatusMessage message={otpInfo} tone="success" className="mt-2 !rounded-xl !px-3 !py-2 !text-xs" /> : null}
+                {otpError ? <StatusMessage message={otpError} tone="error" className="mt-2 !rounded-xl !px-3 !py-2 !text-xs" /> : null}
               </div>
 
               {showQuickLogin ? (

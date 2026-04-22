@@ -94,3 +94,21 @@ export function StatCard({ label, value, hint }: { label: string; value: string;
     </div>
   );
 }
+
+export function StatusMessage({
+  message,
+  tone = "info",
+  className = "",
+}: {
+  message: string;
+  tone?: "success" | "error" | "info";
+  className?: string;
+}) {
+  const toneClass =
+    tone === "success"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : tone === "error"
+      ? "border-rose-200 bg-rose-50 text-rose-700"
+      : "border-sky-200 bg-sky-50 text-sky-700";
+  return <div className={`rounded-2xl border px-4 py-3 text-sm ${toneClass} ${className}`}>{message}</div>;
+}
