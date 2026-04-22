@@ -166,6 +166,11 @@ export type InviteMemberResult = {
   message: string;
 };
 
+export type InviteTrainerResult = {
+  ok: boolean;
+  message: string;
+};
+
 async function syncMemberAuthLink(email: string, memberId: string): Promise<void> {
   if (!supabaseClient) return;
   const { error } = await supabaseClient.functions.invoke("link-member-auth", {
@@ -301,4 +306,28 @@ export async function inviteMemberByEmail(email: string, memberId: string): Prom
 
   await syncMemberAuthLink(normalizedEmail, memberId.trim());
   return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}` };
+}
+
+export async function inviteTrainerByEmail(email: string): Promise<InviteTrainerResult> {
+  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail || !normalizedEmail.includes("@")) {
+    return { ok: false, message: "Ugyldig e-post." };
+  }
+
+  const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email: normalizedEmail,
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo: redirectTo,
+      data: { role: "trainer" },
+    },
+  });
+
+  if (!error) return { ok: true, message: `PT-invitasjon sendt til ${normalizedEmail}` };
+  if (isRateLimitMessage(error.message || "")) {
+    return { ok: true, message: "Invitasjon er nylig sendt. Vent litt for ny utsending." };
+  }
+  return { ok: false, message: `Invitasjon feilet: ${error.message || "Ukjent feil."}` };
 }

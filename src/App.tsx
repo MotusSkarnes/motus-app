@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { BarChart3, Bell, CalendarDays, CheckSquare, ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, Settings, TrendingUp, UserCircle2, Users } from "lucide-react";
+import { BarChart3, Bell, CalendarDays, CheckSquare, ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, Settings, ShieldCheck, TrendingUp, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "./app/data";
 import { useAppState } from "./app/useAppState";
 import { AppShell, Badge, Card, OutlineButton, PillButton } from "./app/ui";
@@ -61,6 +61,7 @@ export default function App() {
     dismissWorkoutCelebration,
     sendMemberMessage,
     inviteMember,
+    inviteTrainer,
     restoreMemberByEmail,
     restoreMissingTestData,
     restoreOriginalExerciseBank,
@@ -100,6 +101,18 @@ export default function App() {
   const [memberVisibleAlerts, setMemberVisibleAlerts] = useState<
     Array<{ id: string; text: string; timestamp: number; targetTab: "messages" | "programs" }>
   >([]);
+  const [memberAvatarById, setMemberAvatarById] = useState<Record<string, string>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = window.localStorage.getItem("motus.member.avatarById");
+      const parsed = JSON.parse(raw ?? "{}") as Record<string, unknown>;
+      return Object.fromEntries(
+        Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[0] === "string" && typeof entry[1] === "string")
+      );
+    } catch {
+      return {};
+    }
+  });
 
   const memberById = useMemo(
     () => new Map(appState.members.map((member) => [member.id, member])),
@@ -210,6 +223,11 @@ export default function App() {
     window.localStorage.setItem("motus.notifications.memberSeenProgramIds", JSON.stringify(seenMemberProgramIds));
   }, [seenMemberProgramIds]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("motus.member.avatarById", JSON.stringify(memberAvatarById));
+  }, [memberAvatarById]);
+
   const trainerMenuItems: Array<{ key: typeof trainerTab; label: string; icon: ReactNode }> = [
     { key: "dashboard", label: "Oversikt", icon: <LayoutDashboard className="h-4 w-4" /> },
     { key: "customers", label: "Klienter", icon: <Users className="h-4 w-4" /> },
@@ -217,6 +235,7 @@ export default function App() {
     { key: "programs", label: "Programmer", icon: <ClipboardList className="h-4 w-4" /> },
     { key: "calendar", label: "Kalender", icon: <CalendarDays className="h-4 w-4" /> },
     { key: "messages", label: "Meldinger", icon: <MessageSquare className="h-4 w-4" /> },
+    { key: "admin", label: "Admin", icon: <ShieldCheck className="h-4 w-4" /> },
     { key: "tasks", label: "Oppgaver", icon: <CheckSquare className="h-4 w-4" /> },
     { key: "statistics", label: "Statistikk", icon: <BarChart3 className="h-4 w-4" /> },
     { key: "settings", label: "Innstillinger", icon: <Settings className="h-4 w-4" /> },
@@ -416,7 +435,9 @@ export default function App() {
                   deleteProgramById={deleteProgramById}
                   sendTrainerMessage={sendTrainerMessage}
                   saveExercise={saveExercise}
+                  inviteTrainer={inviteTrainer}
                   openCustomerMessagesSignal={openCustomerMessagesSignal}
+                  memberAvatarById={memberAvatarById}
                 />
               </div>
             </div>
@@ -481,6 +502,10 @@ export default function App() {
               memberTab={memberTab}
               setMemberTab={setMemberTab}
               updateMember={updateMember}
+              memberAvatarUrl={memberAvatarById[appState.memberViewId] ?? ""}
+              setMemberAvatarUrl={(url) =>
+                setMemberAvatarById((prev) => (url ? { ...prev, [appState.memberViewId]: url } : Object.fromEntries(Object.entries(prev).filter(([key]) => key !== appState.memberViewId))))
+              }
               sendMemberMessage={sendMemberMessage}
               workoutMode={appState.workoutMode}
               startWorkoutMode={startWorkoutMode}
@@ -508,6 +533,7 @@ export default function App() {
                       { id: "programs", label: "Program", icon: <ClipboardList className="h-4 w-4" /> },
                       { id: "exerciseBank", label: "Øvelser", icon: <Dumbbell className="h-4 w-4" /> },
                       { id: "messages", label: "Meldinger", icon: <MessageSquare className="h-4 w-4" /> },
+                      { id: "admin", label: "Admin", icon: <ShieldCheck className="h-4 w-4" /> },
                     ].map((tab) => {
                       const isActive = trainerTab === tab.id;
                       return (

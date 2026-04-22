@@ -7,6 +7,7 @@ export type TrainerTab =
   | "customers"
   | "programs"
   | "exerciseBank"
+  | "admin"
   | "calendar"
   | "messages"
   | "tasks"

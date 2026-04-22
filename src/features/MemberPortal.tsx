@@ -15,6 +15,8 @@ type MemberPortalProps = {
   memberTab: MemberTab;
   setMemberTab: (tab: MemberTab) => void;
   updateMember: (input: UpdateMemberInput) => void;
+  memberAvatarUrl: string;
+  setMemberAvatarUrl: (url: string) => void;
   sendMemberMessage: (memberId: string, text: string) => void;
   workoutMode: WorkoutModeState | null;
   startWorkoutMode: (programId: string) => void;
@@ -27,7 +29,7 @@ type MemberPortalProps = {
 };
 
 export function MemberPortal(props: MemberPortalProps) {
-  const { members, programs, logs, messages, memberViewId, setMemberViewId, memberTab, setMemberTab, updateMember, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, updateWorkoutModeNote, finishWorkoutMode, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
+  const { members, programs, logs, messages, memberViewId, setMemberViewId, memberTab, setMemberTab, updateMember, memberAvatarUrl, setMemberAvatarUrl, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, updateWorkoutModeNote, finishWorkoutMode, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
   const [messageText, setMessageText] = useState("");
   const [profileWeight, setProfileWeight] = useState("");
   const [profileTrainingGoal, setProfileTrainingGoal] = useState("");
@@ -286,6 +288,22 @@ export function MemberPortal(props: MemberPortalProps) {
     setProfileSaveInfo("Profil og mål lagret.");
   }
 
+  function handleAvatarFileSelected(file: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setProfileSaveInfo("Velg en bildefil.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : "";
+      if (!dataUrl) return;
+      setMemberAvatarUrl(dataUrl);
+      setProfileSaveInfo("Profilbilde lagret.");
+    };
+    reader.readAsDataURL(file);
+  }
+
   const completedThisWeek = useMemo(() => {
     const start = getWeekStart(new Date());
     return completedLogDates.filter((date) => date >= start).length;
@@ -361,8 +379,15 @@ export function MemberPortal(props: MemberPortalProps) {
             />
             {viewedMember ? (
               <div className="rounded-2xl border p-4" style={{ backgroundColor: "#f8fffd", borderColor: MOTUS.turquoise }}>
-                <div className="font-medium">{viewedMember.name}</div>
-                <div className="text-sm text-slate-500">{viewedMember.email}</div>
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 overflow-hidden rounded-full border bg-white" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+                    {memberAvatarUrl ? <img src={memberAvatarUrl} alt={viewedMember.name} className="h-full w-full object-cover" /> : null}
+                  </div>
+                  <div>
+                    <div className="font-medium">{viewedMember.name}</div>
+                    <div className="text-sm text-slate-500">{viewedMember.email}</div>
+                  </div>
+                </div>
                 <div className="mt-2 text-sm"><span className="font-medium">Mål:</span> {viewedMember.goal}</div>
               </div>
             ) : null}
@@ -381,7 +406,12 @@ export function MemberPortal(props: MemberPortalProps) {
           {memberTab === "overview" ? (
             <Card className="p-4 sm:p-5 space-y-4 sm:space-y-5">
               <div className="rounded-[22px] p-4 sm:p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
-                <div className="text-sm text-white/80">Hei{viewedMember ? `, ${viewedMember.name}` : ""}</div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm text-white/80">Hei{viewedMember ? `, ${viewedMember.name}` : ""}</div>
+                  <div className="h-12 w-12 overflow-hidden rounded-full border border-white/40 bg-white/20">
+                    {memberAvatarUrl ? <img src={memberAvatarUrl} alt="Profilbilde" className="h-full w-full object-cover" /> : null}
+                  </div>
+                </div>
                 <div className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">Klar for neste økt?</div>
                 <div className="mt-2 text-sm text-white/90">Trykk pa neste steg under for a komme raskt i gang.</div>
               </div>
@@ -761,6 +791,25 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div className="grid gap-3 md:grid-cols-2">
                     <TextInput value={viewedMember.name} readOnly />
                     <TextInput value={memberEmailDraft} onChange={(e) => setMemberEmailDraft(e.target.value)} placeholder="E-post" />
+                  </div>
+                  <div className="rounded-2xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="text-sm font-semibold text-slate-700">Profilbilde</div>
+                    {memberAvatarUrl ? (
+                      <img src={memberAvatarUrl} alt="Ditt profilbilde" className="h-24 w-24 rounded-full object-cover border" style={{ borderColor: "rgba(15,23,42,0.12)" }} />
+                    ) : (
+                      <div className="text-xs text-slate-500">Ingen bilde valgt ennå.</div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => handleAvatarFileSelected(event.target.files?.[0] ?? null)}
+                      className="block w-full text-xs text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-white file:px-3 file:py-2 file:text-xs file:font-medium"
+                    />
+                    {memberAvatarUrl ? (
+                      <OutlineButton onClick={() => setMemberAvatarUrl("")} className="w-full md:w-auto">
+                        Fjern profilbilde
+                      </OutlineButton>
+                    ) : null}
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
                     <TextInput value={memberPhoneDraft} onChange={(e) => setMemberPhoneDraft(e.target.value)} placeholder="Telefon" />

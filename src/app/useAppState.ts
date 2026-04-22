@@ -4,7 +4,7 @@ import { loadState, saveState } from "./storage";
 import { localAppRepository, type CreateMemberInput, type SaveExerciseInput, type SaveProgramInput, type UpdateMemberInput } from "../services/appRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { fetchExercisesFromSupabase, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
-import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult } from "../services/supabaseAuth";
+import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, inviteTrainerByEmail, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult, type InviteTrainerResult } from "../services/supabaseAuth";
 import type { AppState, Exercise, MemberTab, TrainerTab } from "./types";
 
 function syncExercisesWithPrograms(state: AppState): AppState {
@@ -674,6 +674,13 @@ export function useAppState() {
     return result;
   }
 
+  async function inviteTrainer(email: string): Promise<InviteTrainerResult> {
+    if (!isSupabaseConfigured) {
+      return { ok: false, message: "Invitasjon krever Supabase-oppsett." };
+    }
+    return inviteTrainerByEmail(email);
+  }
+
   async function restoreMissingTestData(): Promise<{ ok: boolean; message: string }> {
     const defaults = getDefaultState();
     let addedMembers = 0;
@@ -774,6 +781,7 @@ export function useAppState() {
     dismissWorkoutCelebration,
     sendMemberMessage,
     inviteMember,
+    inviteTrainer,
     restoreMemberByEmail,
     restoreMissingTestData,
     restoreOriginalExerciseBank,
