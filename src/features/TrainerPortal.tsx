@@ -110,12 +110,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
     return "all";
   });
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
-  const [templateTitle, setTemplateTitle] = useState("Ny treningsmal");
-  const [templateGoal, setTemplateGoal] = useState("");
-  const [templateNotes, setTemplateNotes] = useState("");
-  const [templateExercisesDraft, setTemplateExercisesDraft] = useState<ProgramExercise[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState("");
-  const [templateAssignStatus, setTemplateAssignStatus] = useState<string | null>(null);
   const [dashboardMonth, setDashboardMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -170,7 +164,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
       ? "error"
       : null;
   const selectedPrograms = programs.filter((program) => program.memberId === selectedMemberId);
-  const templatePrograms = programs.filter((program) => program.memberId === "__template__");
   const selectedLogs = useMemo(() => {
     function parseLogDate(value: string): number {
       if (!value) return 0;
@@ -260,16 +253,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
   }, [todos]);
 
   useEffect(() => {
-    if (!templatePrograms.length) {
-      setSelectedTemplateId("");
-      return;
-    }
-    if (!templatePrograms.some((program) => program.id === selectedTemplateId)) {
-      setSelectedTemplateId(templatePrograms[0].id);
-    }
-  }, [templatePrograms, selectedTemplateId]);
-
-  useEffect(() => {
     if (!pendingProgramMemberEmail) return;
     const createdMember = members.find((member) => member.email.toLowerCase() === pendingProgramMemberEmail.toLowerCase());
     if (!createdMember) return;
@@ -346,30 +329,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setFavoriteExerciseIds((prev) =>
       prev.includes(exerciseId) ? prev.filter((id) => id !== exerciseId) : [exerciseId, ...prev]
     );
-  }
-
-  function addExerciseToTemplateDraft(exercise: Exercise) {
-    setTemplateExercisesDraft((prev) => [
-      ...prev,
-      {
-        id: uid("template-ex"),
-        exerciseId: exercise.id,
-        exerciseName: exercise.name,
-        sets: "3",
-        reps: "8",
-        weight: "",
-        restSeconds: "90",
-        notes: "",
-      },
-    ]);
-  }
-
-  function updateTemplateDraftExercise(id: string, field: keyof ProgramExercise, value: string) {
-    setTemplateExercisesDraft((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
-  }
-
-  function removeTemplateDraftExercise(id: string) {
-    setTemplateExercisesDraft((prev) => prev.filter((item) => item.id !== id));
   }
 
   function updateDraftExercise(id: string, field: keyof ProgramExercise, value: string) {
@@ -462,22 +421,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setInviteStatus(result.message);
   }
 
-  function saveTemplateProgram() {
-    if (!templateTitle.trim()) return;
-    saveProgramForMember({
-      title: templateTitle,
-      goal: templateGoal,
-      notes: templateNotes,
-      memberId: "__template__",
-      exercises: templateExercisesDraft,
-    });
-    setTemplateTitle("Ny treningsmal");
-    setTemplateGoal("");
-    setTemplateNotes("");
-    setTemplateExercisesDraft([]);
-    setTemplateAssignStatus("Treningsmal lagret. Velg kunde og tildel.");
-  }
-
   function addTodoItem() {
     const title = todoTitle.trim();
     if (!title || !selectedTodoDate) return;
@@ -491,29 +434,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
   function deleteTodo(todoId: string) {
     setTodos((prev) => prev.filter((item) => item.id !== todoId));
-  }
-
-  function assignTemplateToSelectedMember() {
-    if (!selectedMemberId) {
-      setTemplateAssignStatus("Velg kunde før tildeling.");
-      return;
-    }
-    const template = templatePrograms.find((program) => program.id === selectedTemplateId) ?? templatePrograms[0];
-    if (!template) {
-      setTemplateAssignStatus("Ingen treningsmaler tilgjengelig enda.");
-      return;
-    }
-    saveProgramForMember({
-      title: template.title,
-      goal: template.goal,
-      notes: template.notes,
-      memberId: selectedMemberId,
-      exercises: template.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
-    });
-    const memberName = members.find((member) => member.id === selectedMemberId)?.name ?? "kunden";
-    setTemplateAssignStatus(`Malen ble tildelt ${memberName}.`);
-    setTrainerTab("customers");
-    setCustomerSubTab("programs");
   }
 
   function resetExerciseForm() {
@@ -1290,88 +1210,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
       {trainerTab === "programs" ? (
         <div className="grid gap-4">
-          <Card className="p-5">
-            <div className="flex items-start gap-3">
-              <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><ClipboardList className="h-5 w-5" /></div>
-              <div>
-                <h2 className="text-xl font-semibold tracking-tight">Treningsmaler</h2>
-                <p className="text-sm text-slate-500">Lag maler med sett/reps og tildel kunder med ett klikk.</p>
-              </div>
-            </div>
-            <div className="mt-5 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-              <div className="space-y-3 rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <TextInput value={templateTitle} onChange={(e) => setTemplateTitle(e.target.value)} placeholder="Navn på mal" />
-                <TextInput value={templateGoal} onChange={(e) => setTemplateGoal(e.target.value)} placeholder="Mål med malen" />
-                <TextArea value={templateNotes} onChange={(e) => setTemplateNotes(e.target.value)} className="min-h-[90px]" placeholder="Notater til trener/medlem" />
-                <div>
-                  <div className="mb-2 text-sm font-medium text-slate-700">Legg til øvelser i malen</div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {exercises.map((exercise) => (
-                      <button key={exercise.id} type="button" onClick={() => addExerciseToTemplateDraft(exercise)} className="rounded-2xl border bg-white px-3 py-3 text-left text-sm">
-                        <div className="font-medium">{exercise.name}</div>
-                        <div className="text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {templateExercisesDraft.length === 0 ? <div className="rounded-2xl border border-dashed bg-white p-4 text-sm text-slate-500">Ingen øvelser i malen enda.</div> : null}
-                  {templateExercisesDraft.map((item) => (
-                    <div key={item.id} className="rounded-2xl border bg-white p-3 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="font-medium text-sm">{item.exerciseName}</div>
-                        <OutlineButton onClick={() => removeTemplateDraftExercise(item.id)} className="px-3 py-1.5 text-xs">Fjern</OutlineButton>
-                      </div>
-                      <div className="grid gap-2 sm:grid-cols-4">
-                        <TextInput value={item.sets} onChange={(e) => updateTemplateDraftExercise(item.id, "sets", e.target.value)} placeholder="Sett" />
-                        <TextInput value={item.reps} onChange={(e) => updateTemplateDraftExercise(item.id, "reps", e.target.value)} placeholder="Reps" />
-                        <TextInput value={item.restSeconds} onChange={(e) => updateTemplateDraftExercise(item.id, "restSeconds", e.target.value)} placeholder="Hvile sek" />
-                        <TextInput value={item.notes} onChange={(e) => updateTemplateDraftExercise(item.id, "notes", e.target.value)} placeholder="Notat" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <GradientButton onClick={saveTemplateProgram} className="w-full">Lagre treningsmal</GradientButton>
-              </div>
-              <div className="space-y-3 rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="font-semibold">Tildel mal til kunde</div>
-                <SelectBox
-                  value={selectedTemplateId}
-                  onChange={setSelectedTemplateId}
-                  options={
-                    templatePrograms.length
-                      ? templatePrograms.map((program) => ({ value: program.id, label: `${program.title} (${program.exercises.length} øvelser)` }))
-                      : [{ value: "", label: "Ingen maler lagret enda" }]
-                  }
-                />
-                <SelectBox
-                  value={selectedMemberId}
-                  onChange={setSelectedMemberId}
-                  options={members.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
-                />
-                <GradientButton onClick={assignTemplateToSelectedMember} className="w-full">
-                  Tildel mal til valgt kunde
-                </GradientButton>
-                {templateAssignStatus ? (
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-                    {templateAssignStatus}
-                  </div>
-                ) : null}
-                <div className="rounded-xl border bg-white px-3 py-2 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  Medlem fyller inn utført kg selv i øktmodus, og kan justere reps ved behov.
-                </div>
-                <div className="space-y-2">
-                  {templatePrograms.length === 0 ? <div className="rounded-xl border border-dashed bg-white p-3 text-sm text-slate-500">Ingen maler ennå.</div> : null}
-                  {templatePrograms.map((program) => (
-                    <div key={program.id} className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="font-medium text-sm">{program.title}</div>
-                      <div className="mt-0.5 text-xs text-slate-500">{program.goal || "Uten mål"} · {program.exercises.length} øvelser</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Card>
           <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
           <Card className="p-5">
             <div className="flex items-start gap-3">
@@ -1379,7 +1217,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
               <div>
                 <h2 className="text-xl font-semibold tracking-tight">Nytt program</h2>
                 <p className="text-sm text-slate-500">Bygg program med filtrering, favoritter og drag-and-drop</p>
-                <p className="mt-1 text-xs font-semibold text-rose-600">PROGRAM-SIDE VERSJON: PT-PROGRAM-V2</p>
               </div>
             </div>
             <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
