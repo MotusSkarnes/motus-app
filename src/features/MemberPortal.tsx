@@ -988,7 +988,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
           {shouldShowCelebration ? (
             <div className="fixed inset-0 z-[10020] bg-slate-900/45 p-4">
-              <div className="mx-auto mt-16 max-w-sm rounded-3xl border bg-white p-5 shadow-2xl" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="motus-pop-in mx-auto mt-16 max-w-sm rounded-3xl border bg-white p-5 shadow-2xl" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-xs font-semibold uppercase tracking-wide text-emerald-600">Ny PR!</div>
                 <div className="mt-1 text-xl font-bold tracking-tight text-slate-900">Sterk økning i estimert 1RM</div>
                 <div className="mt-3 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-800">
@@ -1258,7 +1258,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                   ) : null}
                   {memberMessages.map((message) => (
-                    <div key={message.id} className={`max-w-[85%] rounded-2xl p-3 text-sm ${message.sender === "member" ? "text-white ml-auto" : "bg-white border"}`} style={message.sender === "member" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div key={message.id} className={`max-w-[85%] rounded-2xl p-3 text-sm ${message.id === memberMessages[memberMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "member" ? "text-white ml-auto" : "bg-white border"}`} style={message.sender === "member" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
                       <div>{message.text}</div>
                       <div className={`mt-1 text-[11px] ${message.sender === "member" ? "text-white/80" : "text-slate-500"}`}>{message.createdAt}</div>
                     </div>

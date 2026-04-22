@@ -110,5 +110,5 @@ export function StatusMessage({
       : tone === "error"
       ? "border-rose-200 bg-rose-50 text-rose-700"
       : "border-sky-200 bg-sky-50 text-sky-700";
-  return <div className={`rounded-2xl border px-4 py-3 text-sm ${toneClass} ${className}`}>{message}</div>;
+  return <div className={`motus-fade-in-up rounded-2xl border px-4 py-3 text-sm ${toneClass} ${className}`}>{message}</div>;
 }

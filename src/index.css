@@ -17,3 +17,37 @@ body {
   background: #ffffff;
   color: #0f172a;
 }
+
+@keyframes motusFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes motusPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.motus-fade-in-up {
+  animation: motusFadeInUp 220ms ease-out;
+}
+
+.motus-pop-in {
+  animation: motusPopIn 240ms ease-out;
+}

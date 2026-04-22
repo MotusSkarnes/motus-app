@@ -1787,7 +1787,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         </div>
                       ) : null}
                       {selectedMessages.map((message) => (
-                        <div key={message.id} className={`max-w-[85%] rounded-2xl p-3 text-sm ${message.sender === "trainer" ? "text-white ml-auto" : "bg-slate-50 border"}`} style={message.sender === "trainer" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
+                        <div key={message.id} className={`max-w-[85%] rounded-2xl p-3 text-sm ${message.id === selectedMessages[selectedMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "trainer" ? "text-white ml-auto" : "bg-slate-50 border"}`} style={message.sender === "trainer" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
                           <div>{message.text}</div>
                           <div className={`mt-1 text-[11px] ${message.sender === "trainer" ? "text-white/80" : "text-slate-500"}`}>{message.createdAt}</div>
                         </div>
