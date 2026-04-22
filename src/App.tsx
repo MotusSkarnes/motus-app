@@ -55,6 +55,7 @@ export default function App() {
     sendMemberMessage,
     inviteMember,
     restoreMemberByEmail,
+    restoreMissingTestData,
   } = useAppState();
 
   function handleResetData() {
@@ -207,6 +208,7 @@ export default function App() {
                   markMemberInvited={markMemberInvited}
                   inviteMember={inviteMember}
                   restoreMemberByEmail={restoreMemberByEmail}
+                  restoreMissingTestData={restoreMissingTestData}
                   saveProgramForMember={saveProgramForMember}
                   deleteProgramById={deleteProgramById}
                   sendTrainerMessage={sendTrainerMessage}
@@ -252,8 +254,9 @@ export default function App() {
               {appState.role === "trainer" ? (
                 <>
                   <MobileNavButton active={trainerTab === "dashboard"} icon={<LayoutDashboard className="h-4 w-4" />} label="Oversikt" onClick={() => setTrainerTab("dashboard")} />
-                  <MobileNavButton active={trainerTab === "customers"} icon={<Users className="h-4 w-4" />} label="Kunder" onClick={() => setTrainerTab("customers")} />
+                  <MobileNavButton active={trainerTab === "customers"} icon={<Users className="h-4 w-4" />} label="Klienter" onClick={() => setTrainerTab("customers")} />
                   <MobileNavButton active={trainerTab === "programs"} icon={<ClipboardList className="h-4 w-4" />} label="Program" onClick={() => setTrainerTab("programs")} />
+                  <MobileNavButton active={trainerTab === "exerciseBank"} icon={<Dumbbell className="h-4 w-4" />} label="Øvelser" onClick={() => setTrainerTab("exerciseBank")} />
                   <MobileNavButton active={trainerTab === "messages"} icon={<MessageSquare className="h-4 w-4" />} label="Meldinger" onClick={() => setTrainerTab("messages")} />
                 </>
               ) : (

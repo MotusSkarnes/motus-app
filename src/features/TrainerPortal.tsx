@@ -24,6 +24,7 @@ type TrainerPortalProps = {
   markMemberInvited: (memberId: string, invitedAtIso?: string) => void;
   inviteMember: (email: string, memberId: string) => Promise<InviteMemberResult>;
   restoreMemberByEmail: (email: string) => Promise<{ ok: boolean; message: string }>;
+  restoreMissingTestData: () => Promise<{ ok: boolean; message: string }>;
   saveProgramForMember: (input: { id?: string; title: string; goal: string; notes: string; memberId: string; exercises: ProgramExercise[] }) => void;
   deleteProgramById: (programId: string) => void;
   sendTrainerMessage: (memberId: string, text: string) => void;
@@ -59,6 +60,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     markMemberInvited,
     inviteMember,
     restoreMemberByEmail,
+    restoreMissingTestData,
     saveProgramForMember,
     deleteProgramById,
     sendTrainerMessage,
@@ -117,6 +119,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const [restoreEmail, setRestoreEmail] = useState("");
   const [restoreStatus, setRestoreStatus] = useState<string | null>(null);
+  const [restoreDataStatus, setRestoreDataStatus] = useState<string | null>(null);
+  const [isRestoringTestData, setIsRestoringTestData] = useState(false);
   const [dashboardMonth, setDashboardMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -481,6 +485,14 @@ export function TrainerPortal(props: TrainerPortalProps) {
     if (result.ok) {
       setRestoreEmail("");
     }
+  }
+
+  async function handleRestoreMissingTestData() {
+    setIsRestoringTestData(true);
+    setRestoreDataStatus("Gjenoppretter testdata...");
+    const result = await restoreMissingTestData();
+    setRestoreDataStatus(result.message);
+    setIsRestoringTestData(false);
   }
 
   function addTodoItem() {
@@ -871,11 +883,25 @@ export function TrainerPortal(props: TrainerPortalProps) {
       ) : null}
 
       {trainerTab === "settings" ? (
-        <Card className="p-5 space-y-3">
+        <Card className="p-5 space-y-4">
           <div className="font-semibold text-slate-800">Innstillinger</div>
           <div className="rounded-xl border bg-slate-50 p-3 text-sm text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             Her samles PT-innstillinger. Foreløpig kan du styre medlemsvisning via:
             søk/filter i klientlisten, vis/skjul inaktive kunder, og prioritetssortering i statistikk.
+          </div>
+          <div className="rounded-xl border bg-slate-50 p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="text-sm font-medium text-slate-700">Gjenopprett testdata</div>
+            <div className="text-xs text-slate-600">
+              Legger tilbake manglende standard-klienter og øvelser uten å overskrive det som allerede finnes.
+            </div>
+            {restoreDataStatus ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                {restoreDataStatus}
+              </div>
+            ) : null}
+            <OutlineButton onClick={() => void handleRestoreMissingTestData()} className="w-full" disabled={isRestoringTestData}>
+              {isRestoringTestData ? "Gjenoppretter..." : "Gjenopprett manglende testdata"}
+            </OutlineButton>
           </div>
         </Card>
       ) : null}

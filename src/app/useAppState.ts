@@ -75,8 +75,14 @@ export function useAppState() {
           if (remoteRows.length > 0) return true;
           return localRows.length === 0;
         };
+        // Safety guard: never let an empty remote response wipe core catalogs.
+        // Members and exercise bank should only be replaced when remote has rows.
+        const shouldAdoptNonEmptyRemoteOnly = <T,>(remoteRows: T[] | null) => {
+          if (!remoteRows) return false;
+          return remoteRows.length > 0;
+        };
 
-        if (shouldAdoptRemote(remoteMembers, prev.members)) {
+        if (shouldAdoptNonEmptyRemoteOnly(remoteMembers)) {
           next.members = remoteMembers;
         }
 
@@ -92,7 +98,7 @@ export function useAppState() {
           next.logs = remoteLogs;
         }
 
-        if (shouldAdoptRemote(remoteExercises, prev.exercises)) {
+        if (shouldAdoptNonEmptyRemoteOnly(remoteExercises)) {
           next.exercises = remoteExercises;
         }
 
@@ -455,6 +461,56 @@ export function useAppState() {
     return result;
   }
 
+  async function restoreMissingTestData(): Promise<{ ok: boolean; message: string }> {
+    const defaults = getDefaultState();
+    let addedMembers = 0;
+    let addedExercises = 0;
+
+    setAppState((prev) => {
+      const existingMemberIds = new Set(prev.members.map((member) => member.id));
+      const existingMemberEmails = new Set(prev.members.map((member) => member.email.trim().toLowerCase()));
+      const membersToAdd = defaults.members.filter((member) => {
+        const normalizedEmail = member.email.trim().toLowerCase();
+        if (existingMemberIds.has(member.id)) return false;
+        if (normalizedEmail && existingMemberEmails.has(normalizedEmail)) return false;
+        return true;
+      });
+
+      const existingExerciseIds = new Set(prev.exercises.map((exercise) => exercise.id));
+      const existingExerciseNames = new Set(prev.exercises.map((exercise) => exercise.name.trim().toLowerCase()));
+      const exercisesToAdd = defaults.exercises.filter((exercise) => {
+        const normalizedName = exercise.name.trim().toLowerCase();
+        if (existingExerciseIds.has(exercise.id)) return false;
+        if (normalizedName && existingExerciseNames.has(normalizedName)) return false;
+        return true;
+      });
+
+      addedMembers = membersToAdd.length;
+      addedExercises = exercisesToAdd.length;
+
+      const nextMembers = [...prev.members, ...membersToAdd];
+      const nextExercises = [...prev.exercises, ...exercisesToAdd];
+      const fallbackMemberId = nextMembers[0]?.id ?? "";
+
+      return {
+        ...prev,
+        members: nextMembers,
+        exercises: nextExercises,
+        selectedMemberId: prev.selectedMemberId || fallbackMemberId,
+        memberViewId: prev.memberViewId || fallbackMemberId,
+      };
+    });
+
+    const noChanges = addedMembers === 0 && addedExercises === 0;
+    if (noChanges) {
+      return { ok: true, message: "Testdata var allerede komplett." };
+    }
+    return {
+      ok: true,
+      message: `Gjenopprettet ${addedMembers} medlem${addedMembers === 1 ? "" : "mer"} og ${addedExercises} ovelse${addedExercises === 1 ? "" : "r"}.`,
+    };
+  }
+
   return {
     appState,
     loginEmail,
@@ -501,5 +557,6 @@ export function useAppState() {
     sendMemberMessage,
     inviteMember,
     restoreMemberByEmail,
+    restoreMissingTestData,
   };
 }
