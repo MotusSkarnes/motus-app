@@ -1033,30 +1033,34 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       <div className="text-xs text-slate-500">{member.email} · {member.daysSinceActivity} dager siden aktivitet</div>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                    {memberTypeBadges(member).map((badge) => (
-                      <span key={`${member.id}-${badge.label}`} className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={badge.style}>
-                        {badge.label}
-                      </span>
-                    ))}
+                  <div className="min-w-[172px] space-y-1">
+                    <div className="flex items-center justify-end gap-1">
+                      {memberTypeBadges(member).map((badge) => (
+                        <span key={`${member.id}-${badge.label}`} className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={badge.style}>
+                          {badge.label}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTrainerTab("customers");
+                          setSelectedMemberId(member.id);
+                          setCustomerSubTab("overview");
+                        }}
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          priority.tone === "red"
+                            ? "bg-rose-100 text-rose-700"
+                            : priority.tone === "orange"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-emerald-100 text-emerald-700"
+                        }`}
+                      >
+                        {priority.label}
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTrainerTab("customers");
-                      setSelectedMemberId(member.id);
-                      setCustomerSubTab("overview");
-                    }}
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      priority.tone === "red"
-                        ? "bg-rose-100 text-rose-700"
-                        : priority.tone === "orange"
-                        ? "bg-amber-100 text-amber-700"
-                        : "bg-emerald-100 text-emerald-700"
-                    }`}
-                  >
-                    {priority.label}
-                  </button>
                 </div>
               ))}
             </div>
@@ -1153,15 +1157,15 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     <div className="text-xs text-slate-500">{member.email} · {member.daysSinceActivity} dager siden aktivitet</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex flex-col items-end gap-1">
+                <div className="min-w-[172px] space-y-1">
+                  <div className="flex items-center justify-end gap-1">
                     {memberTypeBadges(member).map((badge) => (
                       <span key={`${member.id}-${badge.label}`} className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={badge.style}>
                         {badge.label}
                       </span>
                     ))}
                   </div>
-                  <div className="text-xs font-semibold text-slate-600">{priority.label}</div>
+                  <div className="text-right text-xs font-semibold text-slate-600">{priority.label}</div>
                 </div>
               </div>
             ))}
