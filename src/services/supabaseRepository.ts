@@ -143,8 +143,11 @@ async function deleteProgram(programId: string) {
   }
 }
 
-async function deleteMemberFromSupabase(memberId: string) {
+async function deleteMemberFromSupabase(member: { id: string; email?: string }) {
   if (!supabaseClient) return;
+  const memberId = member.id;
+  const normalizedEmail = (member.email ?? "").trim().toLowerCase();
+
   const { error: messagesError } = await supabaseClient.from("chat_messages").delete().eq("member_id", memberId);
   if (messagesError) {
     console.warn("Supabase member message cleanup failed:", messagesError.message);
@@ -170,6 +173,23 @@ async function deleteMemberFromSupabase(memberId: string) {
     .eq("id", memberId);
   if (softDeleteError) {
     console.warn("Supabase member soft delete failed:", softDeleteError.message);
+  }
+
+  // Clean up potential duplicates created earlier with same email and different ids.
+  if (normalizedEmail) {
+    const { error: duplicateDeleteError } = await supabaseClient
+      .from("members")
+      .delete()
+      .eq("email", normalizedEmail);
+    if (duplicateDeleteError) {
+      const { error: duplicateSoftDeleteError } = await supabaseClient
+        .from("members")
+        .update({ is_active: false })
+        .eq("email", normalizedEmail);
+      if (duplicateSoftDeleteError) {
+        console.warn("Supabase duplicate member cleanup failed:", duplicateSoftDeleteError.message);
+      }
+    }
   }
 }
 
@@ -373,8 +393,12 @@ export const supabaseAppRepository: AppRepository = {
     return nextState;
   },
   deleteMember(state: AppState, memberId: string): AppState {
+    const targetMember = state.members.find((member) => member.id === memberId);
     const nextState = localAppRepository.deleteMember(state, memberId);
-    void deleteMemberFromSupabase(memberId);
+    void deleteMemberFromSupabase({
+      id: memberId,
+      email: targetMember?.email,
+    });
     return nextState;
   },
   markMemberInvited(state: AppState, memberId: string, invitedAtIso?: string): AppState {
