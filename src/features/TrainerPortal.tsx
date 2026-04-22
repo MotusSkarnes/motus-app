@@ -121,6 +121,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
     return "all";
   });
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
+  const [memberLinkStatus, setMemberLinkStatus] = useState<string | null>(null);
+  const [isRepairingMemberLink, setIsRepairingMemberLink] = useState(false);
   const [restoreEmail, setRestoreEmail] = useState("");
   const [restoreStatus, setRestoreStatus] = useState<string | null>(null);
   const [restoreDataStatus, setRestoreDataStatus] = useState<string | null>(null);
@@ -534,6 +536,32 @@ export function TrainerPortal(props: TrainerPortalProps) {
       markMemberInvited(selectedMember.id, new Date().toISOString());
     }
     setInviteStatus(result.message);
+  }
+
+  async function handleRepairSelectedMemberLink() {
+    if (!selectedMember) return;
+    const email = selectedMember.email.trim().toLowerCase();
+    if (!email || !email.includes("@")) {
+      setMemberLinkStatus("Kan ikke reparere kobling: ugyldig e-post på kunden.");
+      return;
+    }
+    if (!supabaseClient) {
+      setMemberLinkStatus("Kan ikke reparere kobling uten Supabase-oppsett.");
+      return;
+    }
+
+    setIsRepairingMemberLink(true);
+    setMemberLinkStatus("Reparerer medlemskobling...");
+    const { error } = await supabaseClient.functions.invoke("link-member-auth", {
+      body: { email, memberId: selectedMember.id },
+    });
+    if (error) {
+      setMemberLinkStatus(`Reparasjon feilet: ${error.message}`);
+      setIsRepairingMemberLink(false);
+      return;
+    }
+    setMemberLinkStatus("Medlemskobling reparert. Be medlem logge ut og inn.");
+    setIsRepairingMemberLink(false);
   }
 
   async function handleRestoreMember() {
@@ -1126,6 +1154,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     <OutlineButton onClick={handleInviteSelectedMember}>
                       Send invitasjon på nytt
                     </OutlineButton>
+                    <OutlineButton onClick={() => void handleRepairSelectedMemberLink()} disabled={isRepairingMemberLink}>
+                      {isRepairingMemberLink ? "Reparerer kobling..." : "Reparer medlemskobling"}
+                    </OutlineButton>
                     <OutlineButton onClick={() => handleDeactivateMember(selectedMember.id)}>
                       Sett medlem som inaktiv
                     </OutlineButton>
@@ -1140,6 +1171,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     className={`rounded-xl border px-3 py-2 text-sm ${inviteStatusTone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}
                   >
                     {inviteStatus}
+                  </div>
+                ) : null}
+                {memberLinkStatus ? (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                    {memberLinkStatus}
                   </div>
                 ) : null}
 
