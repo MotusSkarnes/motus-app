@@ -1009,7 +1009,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 ) : null}
               </div>
               <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-sm font-semibold text-slate-700">Neste beste handling</div>
+                <div className="text-sm font-semibold text-slate-700">🎯 Neste beste handling</div>
                 <div className="mt-1 text-sm font-medium text-slate-800">{nextBestAction.title}</div>
                 <div className="mt-1 text-sm text-slate-600">{nextBestAction.description}</div>
                 <GradientButton
@@ -1161,7 +1161,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               <div className="mt-5 rounded-3xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="font-semibold">Programoversikt</div>
+                <div className="font-semibold">📋 Programoversikt</div>
                 <div className="mt-4 space-y-3">
                   {memberPrograms.length === 0 ? (
                     <div className="rounded-2xl border border-dashed bg-white p-6 text-center">
@@ -1217,7 +1217,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               <div className="mt-6 rounded-3xl border bg-slate-50 p-4">
-                <div className="font-semibold">Siste økter</div>
+                <div className="font-semibold">📝 Siste økter</div>
                 <div className="mt-4 space-y-3">
                   {completedLogs.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen økter logget ennå.</div> : null}
                   {completedLogs.slice(0, 6).map((log) => (
@@ -1380,7 +1380,7 @@ export function MemberPortal(props: MemberPortalProps) {
               <div className="mt-4 rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <div className="text-sm font-semibold text-slate-700">Delbar progresjonsoppsummering</div>
+                    <div className="text-sm font-semibold text-slate-700">📸 Delbar progresjonsoppsummering</div>
                     <div className="mt-1 text-xs text-slate-500">Story-format av “Denne måneden” for rask deling.</div>
                   </div>
                   <OutlineButton onClick={() => void shareMonthlyProgressSummary()} className="w-full sm:w-auto">
@@ -1396,7 +1396,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 ) : null}
               </div>
               <div className="mt-4 rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-sm font-semibold text-slate-700">Streaks + achievements</div>
+                <div className="text-sm font-semibold text-slate-700">🏆 Streaks + achievements</div>
                 <div className="mt-1 text-xs text-slate-500">Små milepæler som holder motivasjonen oppe.</div>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                   {achievements.map((achievement) => (
