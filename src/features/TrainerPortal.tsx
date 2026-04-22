@@ -432,15 +432,31 @@ export function TrainerPortal(props: TrainerPortalProps) {
       setTemplateAssignStatus("Ingen treningsmaler å tildele ennå.");
       return;
     }
-    saveProgramForMember({
-      title: template.title,
-      goal: template.goal,
-      notes: template.notes,
-      memberId: selectedMemberId,
-      exercises: template.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
+    const selected = members.find((member) => member.id === selectedMemberId) ?? null;
+    const normalizedEmail = selected?.email.trim().toLowerCase() ?? "";
+    const targetMemberIds = normalizedEmail
+      ? members
+          .filter((member) => member.email.trim().toLowerCase() === normalizedEmail && member.isActive !== false)
+          .map((member) => member.id)
+      : [selectedMemberId];
+    const uniqueTargetIds = Array.from(new Set(targetMemberIds.length ? targetMemberIds : [selectedMemberId]));
+
+    uniqueTargetIds.forEach((memberId) => {
+      saveProgramForMember({
+        title: template.title,
+        goal: template.goal,
+        notes: template.notes,
+        memberId,
+        exercises: template.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
+      });
     });
-    const memberName = members.find((member) => member.id === selectedMemberId)?.name ?? "kunden";
-    setTemplateAssignStatus(`Malen ble tildelt ${memberName}.`);
+
+    const memberName = selected?.name ?? "kunden";
+    setTemplateAssignStatus(
+      uniqueTargetIds.length > 1
+        ? `Malen ble tildelt ${memberName} (${uniqueTargetIds.length} tilknyttede profiler).`
+        : `Malen ble tildelt ${memberName}.`
+    );
   }
 
   function submitNewMember(options?: { openProgramAfterCreate?: boolean; inviteAfterCreate?: boolean }) {

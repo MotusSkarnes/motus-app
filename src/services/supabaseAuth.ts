@@ -166,6 +166,23 @@ export type InviteMemberResult = {
   message: string;
 };
 
+async function syncMemberAuthLink(email: string, memberId: string): Promise<void> {
+  if (!supabaseClient) return;
+  const { error } = await supabaseClient.functions.invoke("link-member-auth", {
+    body: { email, memberId },
+  });
+  if (error) {
+    console.warn("link-member-auth invoke failed during invite:", error.message);
+  }
+}
+
+export async function ensureMemberAuthLink(email: string, memberId: string): Promise<void> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedMemberId = memberId.trim();
+  if (!normalizedEmail || !normalizedEmail.includes("@") || !normalizedMemberId) return;
+  await syncMemberAuthLink(normalizedEmail, normalizedMemberId);
+}
+
 async function extractFunctionErrorMessage(error: unknown): Promise<string | null> {
   if (!error || typeof error !== "object") return null;
   const candidate = error as { message?: unknown; context?: { json?: () => Promise<unknown> } };
@@ -226,9 +243,11 @@ export async function inviteMemberByEmail(email: string, memberId: string): Prom
     },
   });
   if (!otpError) {
+    await syncMemberAuthLink(normalizedEmail, memberId.trim());
     return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}` };
   }
   if (isRateLimitMessage(otpError.message || "")) {
+    await syncMemberAuthLink(normalizedEmail, memberId.trim());
     return {
       ok: true,
       message: "Invitasjon er nylig sendt. Vent litt for ny utsending.",
@@ -276,8 +295,10 @@ export async function inviteMemberByEmail(email: string, memberId: string): Prom
   }
 
   if (data && typeof data === "object" && "message" in data && typeof data.message === "string") {
+    await syncMemberAuthLink(normalizedEmail, memberId.trim());
     return { ok: true, message: data.message };
   }
 
+  await syncMemberAuthLink(normalizedEmail, memberId.trim());
   return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}` };
 }
