@@ -914,7 +914,15 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               <div className="mt-5 space-y-3">
-                {memberPrograms.length === 0 ? <div className="rounded-2xl border border-dashed p-8 text-center text-slate-500">Ingen programmer ennå.</div> : null}
+                {memberPrograms.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed bg-slate-50 p-6 text-center">
+                    <div className="text-sm font-semibold text-slate-700">Ingen programmer ennå</div>
+                    <div className="mt-1 text-sm text-slate-500">Be trener tildele et program for å komme i gang.</div>
+                    <GradientButton onClick={() => setMemberTab("messages")} className="mt-3 w-full sm:w-auto">
+                      Send melding til trener
+                    </GradientButton>
+                  </div>
+                ) : null}
                 {memberPrograms.map((program) => {
                   const isExpanded = expandedProgramId === program.id;
                   return (
@@ -1124,7 +1132,11 @@ export function MemberPortal(props: MemberPortalProps) {
               </div>
               <div className="mt-5 space-y-4">
                 <div className="max-h-64 space-y-3 overflow-auto rounded-2xl border bg-slate-50 p-4">
-                  {memberMessages.length === 0 ? <div className="text-sm text-slate-500">Ingen meldinger ennå.</div> : null}
+                  {memberMessages.length === 0 ? (
+                    <div className="rounded-xl border border-dashed bg-white p-4 text-sm text-slate-500">
+                      Ingen meldinger ennå. Skriv en kort status til trener, så holder dere kontakten.
+                    </div>
+                  ) : null}
                   {memberMessages.map((message) => (
                     <div key={message.id} className={`max-w-[85%] rounded-2xl p-3 text-sm ${message.sender === "member" ? "text-white ml-auto" : "bg-white border"}`} style={message.sender === "member" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
                       <div>{message.text}</div>
@@ -1248,6 +1260,9 @@ export function MemberPortal(props: MemberPortalProps) {
               ) : (
                 <div className="mt-4 rounded-xl border border-dashed bg-slate-50 px-3 py-3 text-sm text-slate-500">
                   Fant ingen medlemsprofil akkurat nå. Prøv å logge ut og inn igjen.
+                  <OutlineButton onClick={() => setMemberTab("overview")} className="mt-3 w-full sm:w-auto">
+                    Gå til oversikt
+                  </OutlineButton>
                 </div>
               )}
             </Card>
