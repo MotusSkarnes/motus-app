@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ClipboardList, MessageSquare, Target, TrendingUp, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
+import { supabaseClient } from "../services/supabaseClient";
 import { Card, GradientButton, OutlineButton, SelectBox, StatCard, TextArea, TextInput } from "../app/ui";
 import type { ReplaceWorkoutExerciseGroupInput, UpdateMemberInput } from "../services/appRepository";
 import type { ChatMessage, Exercise, Member, MemberTab, TrainingProgram, WorkoutCelebration, WorkoutLog, WorkoutModeState } from "../app/types";
@@ -333,7 +334,7 @@ export function MemberPortal(props: MemberPortalProps) {
     setGoalMetricValueDraft("");
   }
 
-  function saveProfile() {
+  async function saveProfile() {
     if (!editableMember || typeof window === "undefined") return;
     const normalizedDraftEmail = memberEmailDraft.trim().toLowerCase();
     const fallbackEmail = editableMember.email.trim().toLowerCase();
@@ -377,6 +378,26 @@ export function MemberPortal(props: MemberPortalProps) {
         },
       });
     });
+    if (supabaseClient) {
+      const { error } = await supabaseClient.functions.invoke("update-member-profile", {
+        body: {
+          email: normalizedEmail,
+          memberId: editableMember.id,
+          changes: {
+            name: memberNameDraft,
+            phone: memberPhoneDraft,
+            birthDate: normalizeBirthDateToDdMmYyyy(memberBirthDateDraft),
+            goal: memberGoalDraft,
+            focus: memberFocusDraft,
+            injuries: memberInjuriesDraft,
+          },
+        },
+      });
+      if (error) {
+        setProfileSaveInfo(`Lokalt lagret, men synk til PT feilet: ${error.message}`);
+        return;
+      }
+    }
     if (normalizedDraftEmail && !normalizedDraftEmail.includes("@")) {
       setProfileSaveInfo("Profil lagret. E-post ble ikke endret fordi formatet var ugyldig.");
       return;
