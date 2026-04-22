@@ -871,17 +871,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
       {trainerTab === "dashboard" ? (
         <Card className="p-5 space-y-5">
-          <div className="grid gap-3 md:grid-cols-3">
-            <GradientButton onClick={() => setTrainerTab("customers")} className="w-full">
-              1. Velg eller opprett kunde
-            </GradientButton>
-            <GradientButton onClick={() => setTrainerTab("programs")} className="w-full">
-              2. Lag program raskt
-            </GradientButton>
-            <OutlineButton onClick={() => setTrainerTab("customers")} className="w-full">
-              3. Send oppfolging
-            </OutlineButton>
-          </div>
           <div className="rounded-2xl border bg-slate-50 p-4 text-sm text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             {followUpCount > 0
               ? `${followUpCount} kunder ma folges opp i dag.`
