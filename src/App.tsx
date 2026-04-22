@@ -26,6 +26,10 @@ export default function App() {
     passwordRecoveryInfo,
     passwordRecoveryError,
     passwordRecoveryCooldownSeconds,
+    otpCode,
+    setOtpCode,
+    otpInfo,
+    otpError,
     trainerTab,
     setTrainerTab,
     memberTab,
@@ -35,6 +39,8 @@ export default function App() {
     handleQuickLogin,
     completePasswordRecovery,
     sendPasswordRecoveryEmail,
+    sendEmailOtpCode,
+    loginWithEmailOtpCode,
     showQuickLogin,
     handleLogout,
     resetAllData,
@@ -135,6 +141,12 @@ export default function App() {
           passwordRecoveryError={passwordRecoveryError}
           passwordRecoveryCooldownSeconds={passwordRecoveryCooldownSeconds}
           onSendPasswordRecovery={sendPasswordRecoveryEmail}
+          otpCode={otpCode}
+          setOtpCode={setOtpCode}
+          otpInfo={otpInfo}
+          otpError={otpError}
+          onSendEmailOtpCode={sendEmailOtpCode}
+          onLoginWithEmailOtpCode={loginWithEmailOtpCode}
           quickLogin={handleQuickLogin}
           showQuickLogin={showQuickLogin}
         />

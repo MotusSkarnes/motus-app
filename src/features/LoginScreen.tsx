@@ -21,6 +21,12 @@ type LoginScreenProps = {
   passwordRecoveryError: string | null;
   passwordRecoveryCooldownSeconds: number;
   onSendPasswordRecovery: () => void | Promise<void>;
+  otpCode: string;
+  setOtpCode: (value: string) => void;
+  otpInfo: string | null;
+  otpError: string | null;
+  onSendEmailOtpCode: () => void | Promise<void>;
+  onLoginWithEmailOtpCode: () => void | Promise<void>;
   quickLogin: (email: string) => void;
   showQuickLogin: boolean;
 };
@@ -45,6 +51,12 @@ export function LoginScreen(props: LoginScreenProps) {
     passwordRecoveryError,
     passwordRecoveryCooldownSeconds,
     onSendPasswordRecovery,
+    otpCode,
+    setOtpCode,
+    otpInfo,
+    otpError,
+    onSendEmailOtpCode,
+    onLoginWithEmailOtpCode,
     quickLogin,
     showQuickLogin,
   } = props;
@@ -103,6 +115,29 @@ export function LoginScreen(props: LoginScreenProps) {
               </button>
               {passwordRecoveryInfo ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{passwordRecoveryInfo}</div> : null}
               {passwordRecoveryError ? <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{passwordRecoveryError}</div> : null}
+              <div className="rounded-2xl border bg-slate-50 px-4 py-3">
+                <div className="text-sm font-semibold text-slate-700">Logg inn med engangskode</div>
+                <div className="mt-1 text-xs text-slate-500">Anbefalt hvis e-postlink blir utløpt.</div>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={onSendEmailOtpCode}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700"
+                  >
+                    Send engangskode
+                  </button>
+                  <TextInput
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    placeholder="Skriv engangskode"
+                  />
+                  <GradientButton onClick={onLoginWithEmailOtpCode} className="w-full sm:w-auto">
+                    Logg inn med kode
+                  </GradientButton>
+                </div>
+                {otpInfo ? <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{otpInfo}</div> : null}
+                {otpError ? <div className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{otpError}</div> : null}
+              </div>
 
               {showQuickLogin ? (
                 <>

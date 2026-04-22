@@ -4,7 +4,7 @@ import { loadState, saveState } from "./storage";
 import { localAppRepository, type CreateMemberInput, type SaveExerciseInput, type SaveProgramInput } from "../services/appRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { fetchExercisesFromSupabase, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
-import { establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyRecoveryToken, type InviteMemberResult } from "../services/supabaseAuth";
+import { establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult } from "../services/supabaseAuth";
 import type { AppState, MemberTab, TrainerTab } from "./types";
 
 export function useAppState() {
@@ -25,6 +25,9 @@ export function useAppState() {
   const [passwordRecoveryInfo, setPasswordRecoveryInfo] = useState<string | null>(null);
   const [passwordRecoveryError, setPasswordRecoveryError] = useState<string | null>(null);
   const [passwordRecoveryCooldownSeconds, setPasswordRecoveryCooldownSeconds] = useState(0);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpInfo, setOtpInfo] = useState<string | null>(null);
+  const [otpError, setOtpError] = useState<string | null>(null);
   const [trainerTab, setTrainerTab] = useState<TrainerTab>("dashboard");
   const [memberTab, setMemberTab] = useState<MemberTab>("overview");
 
@@ -427,6 +430,57 @@ export function useAppState() {
     setPasswordRecoveryCooldownSeconds(60);
   }
 
+  async function sendEmailOtpCode() {
+    setOtpError(null);
+    setOtpInfo(null);
+    const result = await requestEmailOtpSignIn(loginEmail);
+    if (!result.ok) {
+      setOtpError(result.message);
+      return;
+    }
+    setOtpInfo(result.message);
+  }
+
+  async function loginWithEmailOtpCode() {
+    setOtpError(null);
+    setOtpInfo(null);
+    const result = await verifyEmailOtpSignIn(loginEmail, otpCode);
+    if (!result.ok) {
+      setOtpError(result.message);
+      return;
+    }
+    const user = result.user;
+    setAppState((prev) => ({
+      ...prev,
+      currentUser: user,
+      role: user.role,
+      selectedMemberId:
+        user.role === "member"
+          ? resolveMemberViewIdForUser({
+              role: user.role,
+              memberId: user.memberId,
+              email: user.email,
+              members: prev.members,
+              programs: prev.programs,
+              fallbackId: user.memberId ?? prev.selectedMemberId,
+            })
+          : user.memberId ?? prev.selectedMemberId,
+      memberViewId: resolveMemberViewIdForUser({
+        role: user.role,
+        memberId: user.memberId,
+        email: user.email,
+        members: prev.members,
+        programs: prev.programs,
+        fallbackId: user.memberId ?? prev.memberViewId,
+      }),
+    }));
+    setTrainerTab("dashboard");
+    setMemberTab("overview");
+    setLoginError(null);
+    setOtpCode("");
+    setOtpInfo("Innlogging med engangskode fullført.");
+  }
+
   function handleQuickLogin(email: string) {
     if (!isDemoMode) return;
     setLoginEmail(email);
@@ -618,6 +672,10 @@ export function useAppState() {
     passwordRecoveryInfo,
     passwordRecoveryError,
     passwordRecoveryCooldownSeconds,
+    otpCode,
+    setOtpCode,
+    otpInfo,
+    otpError,
     trainerTab,
     setTrainerTab,
     memberTab,
@@ -627,6 +685,8 @@ export function useAppState() {
     handleQuickLogin,
     completePasswordRecovery,
     sendPasswordRecoveryEmail,
+    sendEmailOtpCode,
+    loginWithEmailOtpCode,
     showQuickLogin: isDemoMode,
     handleLogout,
     resetAllData,

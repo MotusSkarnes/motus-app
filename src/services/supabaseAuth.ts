@@ -49,6 +49,47 @@ export async function signInWithSupabase(email: string, password: string): Promi
   return { ok: true, user: mapSupabaseUserToAuthUser(data.user) };
 }
 
+export async function requestEmailOtpSignIn(email: string): Promise<{ ok: boolean; message: string }> {
+  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail || !normalizedEmail.includes("@")) {
+    return { ok: false, message: "Skriv inn en gyldig e-postadresse." };
+  }
+  const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email: normalizedEmail,
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo: redirectTo,
+    },
+  });
+  if (error) {
+    return { ok: false, message: `Kunne ikke sende engangskode: ${error.message || "Ukjent feil."}` };
+  }
+  return { ok: true, message: "Engangskode sendt. Sjekk e-posten din." };
+}
+
+export async function verifyEmailOtpSignIn(email: string, token: string): Promise<SupabaseSignInResult> {
+  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedToken = token.trim();
+  if (!normalizedEmail || !normalizedEmail.includes("@")) {
+    return { ok: false, message: "Skriv inn en gyldig e-postadresse." };
+  }
+  if (!normalizedToken) {
+    return { ok: false, message: "Skriv inn engangskoden fra e-posten." };
+  }
+  const { data, error } = await supabaseClient.auth.verifyOtp({
+    email: normalizedEmail,
+    token: normalizedToken,
+    type: "email",
+  });
+  if (error || !data.user) {
+    return { ok: false, message: error?.message || "Ugyldig eller utløpt engangskode." };
+  }
+  return { ok: true, user: mapSupabaseUserToAuthUser(data.user) };
+}
+
 export async function getSupabaseSessionUser(): Promise<AuthUser | null> {
   if (!supabaseClient) return null;
   const {
