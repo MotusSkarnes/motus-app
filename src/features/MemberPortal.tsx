@@ -197,9 +197,42 @@ export function MemberPortal(props: MemberPortalProps) {
       if (response.ok) return { ok: true };
       const body = (await response.json().catch(() => null)) as { error?: string; message?: string } | null;
       const fallbackError = body?.error || body?.message || `HTTP ${response.status}`;
-      return { ok: false, message: fallbackError };
+      const directUpdate = await supabaseClient
+        .from("members")
+        .update({
+          name: payload.changes.name.trim(),
+          email: payload.email.trim().toLowerCase(),
+          phone: payload.changes.phone.trim(),
+          birth_date: payload.changes.birthDate.trim(),
+          goal: payload.changes.goal.trim(),
+          focus: payload.changes.focus.trim(),
+          injuries: payload.changes.injuries.trim(),
+        })
+        .eq("id", payload.memberId)
+        .select("id")
+        .maybeSingle();
+      if (!directUpdate.error) return { ok: true };
+      return { ok: false, message: `${fallbackError} | fallback: ${directUpdate.error.message}` };
     } catch {
-      return { ok: false, message: invokeDetails || invoked.error.message || "Kunne ikke nå sync-tjenesten." };
+      const directUpdate = await supabaseClient
+        .from("members")
+        .update({
+          name: payload.changes.name.trim(),
+          email: payload.email.trim().toLowerCase(),
+          phone: payload.changes.phone.trim(),
+          birth_date: payload.changes.birthDate.trim(),
+          goal: payload.changes.goal.trim(),
+          focus: payload.changes.focus.trim(),
+          injuries: payload.changes.injuries.trim(),
+        })
+        .eq("id", payload.memberId)
+        .select("id")
+        .maybeSingle();
+      if (!directUpdate.error) return { ok: true };
+      return {
+        ok: false,
+        message: `${invokeDetails || invoked.error.message || "Kunne ikke nå sync-tjenesten."} | fallback: ${directUpdate.error.message}`,
+      };
     }
   }
 
