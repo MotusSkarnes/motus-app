@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
   if (memberId) {
+    await adminClient.from("members").update({ is_active: false }).eq("id", memberId);
     await adminClient.from("chat_messages").delete().eq("member_id", memberId);
     await adminClient.from("workout_logs").delete().eq("member_id", memberId);
     await adminClient.from("training_programs").delete().eq("member_id", memberId);
@@ -55,14 +56,15 @@ Deno.serve(async (req) => {
   }
 
   if (email) {
-    const { data: membersByEmail } = await adminClient.from("members").select("id").eq("email", email);
+    await adminClient.from("members").update({ is_active: false }).ilike("email", email);
+    const { data: membersByEmail } = await adminClient.from("members").select("id").ilike("email", email);
     const ids = (membersByEmail ?? []).map((row) => String((row as { id: string }).id));
     for (const id of ids) {
       await adminClient.from("chat_messages").delete().eq("member_id", id);
       await adminClient.from("workout_logs").delete().eq("member_id", id);
       await adminClient.from("training_programs").delete().eq("member_id", id);
     }
-    await adminClient.from("members").delete().eq("email", email);
+    await adminClient.from("members").delete().ilike("email", email);
   }
 
   return jsonResponse(200, { message: "Member deletion completed" });
