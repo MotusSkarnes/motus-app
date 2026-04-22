@@ -246,7 +246,10 @@ export default function App() {
                     >
                       <Bell className="h-4 w-4" />
                       {trainerUnreadCount > 0 ? (
-                        <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-500 px-1 text-[10px] font-bold text-white">
+                        <span
+                          className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
+                          style={{ backgroundColor: MOTUS.pink }}
+                        >
                           {trainerUnreadCount}
                         </span>
                       ) : null}
@@ -348,7 +351,10 @@ export default function App() {
                   >
                     <Bell className="h-4 w-4" />
                     {memberUnreadCount > 0 ? (
-                      <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-500 px-1 text-[10px] font-bold text-white">
+                      <span
+                        className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
+                        style={{ backgroundColor: MOTUS.pink }}
+                      >
                         {memberUnreadCount}
                       </span>
                     ) : null}
