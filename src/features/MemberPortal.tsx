@@ -1342,12 +1342,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <StatCard label="Treningsuker" value={String(streakWeeks)} hint="Sammenhengende flyt" />
-                <StatCard label="Økter logget" value={String(completedLogs.length)} hint="Totalt fullført" />
-                <StatCard label="Treningsdager" value={String(uniqueTrainingDays)} hint="Unike dager" />
-                <StatCard label="Denne perioden" value={String(estimatedSessionsThisMonth)} hint="Loggede økter" />
-              </div>
               <div className="mt-4 rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>

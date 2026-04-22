@@ -1730,7 +1730,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                                 <button
                                   type="button"
                                   onClick={() => toggleFavoriteExercise(exercise.id)}
-                                  className={`rounded-lg border p-1.5 ${isFavorite ? "border-amber-300 bg-amber-50 text-amber-600" : "border-slate-200 text-slate-400 hover:text-slate-600"}`}
+                                  className={`rounded-lg border p-1.5 ${isFavorite ? "border-cyan-300 bg-cyan-50 text-cyan-600" : "border-slate-200 text-slate-400 hover:text-pink-600"}`}
                                   aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                                   title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                                 >
@@ -1991,7 +1991,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           <button
                             type="button"
                             onClick={() => toggleFavoriteExercise(exercise.id)}
-                            className={`rounded-lg border p-1.5 ${isFavorite ? "border-amber-300 bg-amber-50 text-amber-600" : "border-slate-200 text-slate-400 hover:text-slate-600"}`}
+                            className={`rounded-lg border p-1.5 ${isFavorite ? "border-cyan-300 bg-cyan-50 text-cyan-600" : "border-slate-200 text-slate-400 hover:text-pink-600"}`}
                             aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                             title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                           >
@@ -2155,7 +2155,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         <button
                           type="button"
                           onClick={() => toggleFavoriteExercise(exercise.id)}
-                          className={`rounded-lg border p-1.5 ${isFavorite ? "border-pink-300 bg-pink-50 text-pink-600" : "border-slate-200 text-slate-400 hover:text-slate-600"}`}
+                          className={`rounded-lg border p-1.5 ${isFavorite ? "border-cyan-300 bg-cyan-50 text-cyan-600" : "border-slate-200 text-slate-400 hover:text-pink-600"}`}
                           aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                           title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                         >
