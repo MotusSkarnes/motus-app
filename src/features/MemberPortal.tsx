@@ -57,6 +57,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [memberInjuriesDraft, setMemberInjuriesDraft] = useState("");
   const [replacementExerciseIdDraft, setReplacementExerciseIdDraft] = useState("");
   const [workoutExerciseIndex, setWorkoutExerciseIndex] = useState(0);
+  const [expandedRecentLogId, setExpandedRecentLogId] = useState<string | null>(null);
   const [progressShareStatus, setProgressShareStatus] = useState<string | null>(null);
   const [achievementCelebration, setAchievementCelebration] = useState<{ id: string; label: string } | null>(null);
   const [seenUnlockedAchievementIds, setSeenUnlockedAchievementIds] = useState<string[]>([]);
@@ -1217,9 +1218,39 @@ export function MemberPortal(props: MemberPortalProps) {
                   {completedLogs.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen økter logget ennå.</div> : null}
                   {completedLogs.slice(0, 6).map((log) => (
                     <div key={log.id} className="rounded-2xl border bg-white p-4">
-                      <div className="font-medium">{log.programTitle}</div>
-                      <div className="mt-1 text-sm text-slate-500">{log.date}</div>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="font-medium">{log.programTitle}</div>
+                          <div className="mt-1 text-sm text-slate-500">{log.date}</div>
+                        </div>
+                        <OutlineButton
+                          className="px-3 py-1.5 text-xs"
+                          onClick={() => setExpandedRecentLogId((prev) => (prev === log.id ? null : log.id))}
+                        >
+                          {expandedRecentLogId === log.id ? "Skjul detaljer" : "Se detaljer"}
+                        </OutlineButton>
+                      </div>
                       {log.note ? <div className="mt-2 text-sm text-slate-600">{log.note}</div> : null}
+                      {expandedRecentLogId === log.id ? (
+                        <div className="mt-3 rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Utført i økta</div>
+                          <div className="mt-2 space-y-2">
+                            {(log.results ?? []).length === 0 ? (
+                              <div className="text-sm text-slate-500">Ingen settdata registrert for denne økta.</div>
+                            ) : (
+                              (log.results ?? []).map((result, index) => (
+                                <div key={`${result.exerciseId}-${result.setNumber ?? 0}-${index}`} className="rounded-lg border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                  <div className="font-medium text-slate-800">{result.exerciseName}</div>
+                                  <div className="mt-1 text-xs text-slate-600">
+                                    Utført: {result.performedWeight || "0"} kg x {result.performedReps || "0"} reps
+                                    {result.completed ? " - Fullført" : " - Ikke markert fullført"}
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
