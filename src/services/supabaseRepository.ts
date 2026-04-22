@@ -297,6 +297,109 @@ function mapIsoToProgramDate(iso: string): string {
   return date.toLocaleDateString("no-NO");
 }
 
+export type HydratedTrainerData = {
+  members: Member[];
+  messages: ChatMessage[];
+  programs: TrainingProgram[];
+  logs: WorkoutLog[];
+  exercises: Exercise[];
+};
+
+export async function fetchHydratedTrainerData(ownerUserId: string): Promise<HydratedTrainerData | null> {
+  if (!supabaseClient) return null;
+  if (!ownerUserId) return null;
+
+  const { data, error } = await supabaseClient.functions.invoke("hydrate-trainer-data", {
+    body: { ownerUserId },
+  });
+  if (error || !data || typeof data !== "object") {
+    if (error) {
+      console.warn("hydrate-trainer-data invoke failed:", error.message);
+    }
+    return null;
+  }
+
+  const payload = data as Record<string, unknown>;
+  const membersRows = Array.isArray(payload.members) ? payload.members : [];
+  const messagesRows = Array.isArray(payload.messages) ? payload.messages : [];
+  const programsRows = Array.isArray(payload.programs) ? payload.programs : [];
+  const logsRows = Array.isArray(payload.logs) ? payload.logs : [];
+  const exercisesRows = Array.isArray(payload.exercises) ? payload.exercises : [];
+
+  return {
+    members: membersRows.map((row) => {
+      const member = row as Record<string, unknown>;
+      return {
+        id: String(member.id ?? ""),
+        name: String(member.name ?? ""),
+        email: String(member.email ?? ""),
+        isActive: member.is_active !== false,
+        invitedAt: String(member.invited_at ?? ""),
+        phone: String(member.phone ?? ""),
+        birthDate: String(member.birth_date ?? ""),
+        weight: String(member.weight ?? ""),
+        height: String(member.height ?? ""),
+        level: member.level === "Litt øvet" || member.level === "Øvet" ? member.level : "Nybegynner",
+        membershipType: member.membership_type === "Premium" ? "Premium" : "Standard",
+        customerType: member.customer_type === "PT-kunde" || member.customer_type === "Egentrening" ? member.customer_type : "Oppfølging",
+        daysSinceActivity: String(member.days_since_activity ?? "0"),
+        goal: String(member.goal ?? ""),
+        focus: String(member.focus ?? ""),
+        personalGoals: String(member.personal_goals ?? ""),
+        injuries: String(member.injuries ?? ""),
+        coachNotes: String(member.coach_notes ?? ""),
+      } as Member;
+    }),
+    messages: messagesRows.map((row) => {
+      const message = row as Record<string, unknown>;
+      return {
+        id: String(message.id ?? ""),
+        memberId: String(message.member_id ?? ""),
+        sender: message.sender === "member" ? "member" : "trainer",
+        text: String(message.text ?? ""),
+        createdAt: mapIsoToCreatedAt(String(message.created_at ?? "")),
+      } as ChatMessage;
+    }),
+    programs: programsRows.map((row) => {
+      const program = row as Record<string, unknown>;
+      return {
+        id: String(program.id ?? ""),
+        memberId: String(program.member_id ?? ""),
+        title: String(program.title ?? ""),
+        goal: String(program.goal ?? ""),
+        notes: String(program.notes ?? ""),
+        createdAt: mapIsoToProgramDate(String(program.created_at ?? "")),
+        exercises: Array.isArray(program.exercises) ? (program.exercises as ProgramExercise[]) : [],
+      } as TrainingProgram;
+    }),
+    logs: logsRows.map((row) => {
+      const log = row as Record<string, unknown>;
+      return {
+        id: String(log.id ?? ""),
+        memberId: String(log.member_id ?? ""),
+        programTitle: String(log.program_title ?? ""),
+        date: String(log.date ?? ""),
+        status: log.status === "Planlagt" ? "Planlagt" : "Fullført",
+        note: String(log.note ?? ""),
+        results: Array.isArray(log.results) ? (log.results as WorkoutExerciseResult[]) : undefined,
+      } as WorkoutLog;
+    }),
+    exercises: exercisesRows.map((row) => {
+      const exercise = row as Record<string, unknown>;
+      return {
+        id: String(exercise.id ?? ""),
+        name: String(exercise.name ?? ""),
+        category: exercise.category === "Kondisjon" || exercise.category === "Uttøyning" ? exercise.category : "Styrke",
+        group: String(exercise.muscle_group ?? ""),
+        equipment: String(exercise.equipment ?? ""),
+        level: exercise.level === "Litt øvet" || exercise.level === "Øvet" ? exercise.level : "Nybegynner",
+        description: String(exercise.description ?? ""),
+        imageUrl: String(exercise.image_url ?? ""),
+      } as Exercise;
+    }),
+  };
+}
+
 export async function fetchMessagesFromSupabase(): Promise<ChatMessage[] | null> {
   if (!supabaseClient) return null;
 

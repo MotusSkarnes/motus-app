@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
 import { localAppRepository, type CreateMemberInput, type SaveExerciseInput, type SaveProgramInput } from "../services/appRepository";
-import { isSupabaseConfigured } from "../services/supabaseClient";
-import { fetchExercisesFromSupabase, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
+import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
+import { fetchExercisesFromSupabase, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
 import { establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyRecoveryToken, type InviteMemberResult } from "../services/supabaseAuth";
 import type { AppState, MemberTab, TrainerTab } from "./types";
 
@@ -46,11 +46,26 @@ export function useAppState() {
     let cancelled = false;
 
     async function hydrateRemoteData() {
-      const remoteMembers = await fetchMembersFromSupabase();
-      const remoteMessages = await fetchMessagesFromSupabase();
-      const remotePrograms = await fetchProgramsFromSupabase();
-      const remoteLogs = await fetchLogsFromSupabase();
-      const remoteExercises = await fetchExercisesFromSupabase();
+      const {
+        data: { session },
+      } = supabaseClient ? await supabaseClient.auth.getSession() : { data: { session: null } };
+      const ownerUserId = (() => {
+        const token = session?.access_token;
+        if (!token) return "";
+        try {
+          const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))) as { sub?: string };
+          return String(payload.sub ?? "");
+        } catch {
+          return "";
+        }
+      })();
+
+      const hydrated = ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
+      const remoteMembers = hydrated?.members ?? (await fetchMembersFromSupabase());
+      const remoteMessages = hydrated?.messages ?? (await fetchMessagesFromSupabase());
+      const remotePrograms = hydrated?.programs ?? (await fetchProgramsFromSupabase());
+      const remoteLogs = hydrated?.logs ?? (await fetchLogsFromSupabase());
+      const remoteExercises = hydrated?.exercises ?? (await fetchExercisesFromSupabase());
       if (cancelled) return;
 
       setAppState((prev) => {
