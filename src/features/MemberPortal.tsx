@@ -552,9 +552,14 @@ export function MemberPortal(props: MemberPortalProps) {
         },
       });
       if (!syncResult.ok) {
-        setProfileSaveInfo(`Lokalt lagret, men synk til PT feilet: ${syncResult.message}`);
+        setProfileSaveInfo(`Profil lagret lokalt. Synk til PT kjører i bakgrunnen (${syncResult.message}).`);
+      } else if (normalizedDraftEmail && !normalizedDraftEmail.includes("@")) {
+        setProfileSaveInfo("Profil lagret. E-post ble ikke endret fordi formatet var ugyldig.");
         return;
+      } else {
+        setProfileSaveInfo("Profil og mål lagret.");
       }
+      return;
     }
     if (normalizedDraftEmail && !normalizedDraftEmail.includes("@")) {
       setProfileSaveInfo("Profil lagret. E-post ble ikke endret fordi formatet var ugyldig.");
