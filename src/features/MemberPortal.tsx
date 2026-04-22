@@ -357,6 +357,19 @@ export function MemberPortal(props: MemberPortalProps) {
   const currentWeightNumber = Number(profileWeight) || 0;
   const sessionsRemaining = Math.max(0, sessionsTargetNumber - completedThisWeek);
   const latestCompletedLog = memberLogs.find((log) => log.status === "Fullført") ?? null;
+  const memberFirstName = viewedMember?.name?.trim().split(/\s+/)[0] || "du";
+  const profileMotivationText = useMemo(() => {
+    const options = [
+      "Klar for neste økt?",
+      "Små steg i dag bygger stor fremgang over tid.",
+      "Du er i god flyt - hold rytmen!",
+      "En økt nå gir deg energi resten av dagen.",
+      "Stabil innsats slår perfekte dager.",
+    ];
+    const daySeed = new Date().getDate();
+    const nameSeed = memberFirstName.length;
+    return options[(daySeed + nameSeed) % options.length];
+  }, [memberFirstName]);
   const customerStatusLabel = (() => {
     const isPtCustomer = viewedMember?.customerType === "PT-kunde";
     const isPremiumCustomer = viewedMember?.membershipType === "Premium";
@@ -849,8 +862,8 @@ export function MemberPortal(props: MemberPortalProps) {
               <div className="flex items-start gap-3">
                 <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Target className="h-5 w-5" /></div>
                 <div>
-                  <h2 className="text-xl font-semibold tracking-tight">Min profil</h2>
-                  <p className="text-sm text-slate-500">Enkel medlemsprofil</p>
+                  <h2 className="text-xl font-semibold tracking-tight">Hei {memberFirstName}</h2>
+                  <p className="text-sm text-slate-500">{profileMotivationText}</p>
                 </div>
               </div>
               {viewedMember ? (
@@ -870,9 +883,42 @@ export function MemberPortal(props: MemberPortalProps) {
                       <div className="md:col-span-2"><span className="font-medium text-slate-800">Skader:</span> {memberInjuriesDraft || "Ingen registrerte skader"}</div>
                     </div>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <TextInput value={memberNameDraft} onChange={(e) => setMemberNameDraft(e.target.value)} placeholder="Navn" />
-                    <TextInput value={memberEmailDraft} onChange={(e) => setMemberEmailDraft(e.target.value)} placeholder="E-post" />
+                  <div className="rounded-2xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="text-sm font-semibold text-slate-700">Rediger kundeinformasjon</div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-slate-600">Navn</span>
+                        <TextInput value={memberNameDraft} onChange={(e) => setMemberNameDraft(e.target.value)} placeholder="Navn" />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-slate-600">E-post</span>
+                        <TextInput value={memberEmailDraft} onChange={(e) => setMemberEmailDraft(e.target.value)} placeholder="E-post" />
+                      </label>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-slate-600">Telefon</span>
+                        <TextInput value={memberPhoneDraft} onChange={(e) => setMemberPhoneDraft(e.target.value)} placeholder="Telefon" />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-slate-600">Fødselsdato</span>
+                        <TextInput value={memberBirthDateDraft} onChange={(e) => setMemberBirthDateDraft(e.target.value)} placeholder="Fødselsdato (YYYY-MM-DD)" />
+                      </label>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-slate-600">Mål</span>
+                        <TextInput value={memberGoalDraft} onChange={(e) => setMemberGoalDraft(e.target.value)} placeholder="Mål" />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-slate-600">Fokus</span>
+                        <TextInput value={memberFocusDraft} onChange={(e) => setMemberFocusDraft(e.target.value)} placeholder="Fokus" />
+                      </label>
+                    </div>
+                    <label className="space-y-1">
+                      <span className="text-xs font-medium text-slate-600">Skader / hensyn</span>
+                      <TextArea value={memberInjuriesDraft} onChange={(e) => setMemberInjuriesDraft(e.target.value)} className="min-h-[90px]" placeholder="Skader / hensyn" />
+                    </label>
                   </div>
                   <div className="rounded-2xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="text-sm font-semibold text-slate-700">Profilbilde</div>
@@ -893,15 +939,6 @@ export function MemberPortal(props: MemberPortalProps) {
                       </OutlineButton>
                     ) : null}
                   </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <TextInput value={memberPhoneDraft} onChange={(e) => setMemberPhoneDraft(e.target.value)} placeholder="Telefon" />
-                    <TextInput value={memberBirthDateDraft} onChange={(e) => setMemberBirthDateDraft(e.target.value)} placeholder="Fødselsdato (YYYY-MM-DD)" />
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <TextInput value={memberGoalDraft} onChange={(e) => setMemberGoalDraft(e.target.value)} placeholder="Mål" />
-                    <TextInput value={memberFocusDraft} onChange={(e) => setMemberFocusDraft(e.target.value)} placeholder="Fokus" />
-                  </div>
-                  <TextArea value={memberInjuriesDraft} onChange={(e) => setMemberInjuriesDraft(e.target.value)} className="min-h-[90px]" placeholder="Skader / hensyn" />
                   <div className="grid gap-3 md:grid-cols-2">
                     <TextInput value={profileWeight} onChange={(e) => setProfileWeight(e.target.value)} placeholder="Vekt (kg)" />
                     <TextInput value={profileTrainingGoal} onChange={(e) => setProfileTrainingGoal(e.target.value)} placeholder="Treningsmål (tekst)" />
