@@ -96,6 +96,9 @@ export default function App() {
       return [];
     }
   });
+  const [memberVisibleAlerts, setMemberVisibleAlerts] = useState<
+    Array<{ id: string; text: string; timestamp: number; targetTab: "messages" | "programs" }>
+  >([]);
 
   const memberById = useMemo(
     () => new Map(appState.members.map((member) => [member.id, member])),
@@ -179,12 +182,15 @@ export default function App() {
     const willOpen = !memberNotificationsOpen;
     setMemberNotificationsOpen(willOpen);
     if (willOpen) {
+      setMemberVisibleAlerts(memberUnreadAlerts);
       const latestAlertTime = [...memberMessageAlerts, ...memberProgramAlerts].reduce(
         (max, alert) => Math.max(max, alert.timestamp),
         0
       );
       setMemberAlertsSeenAt(latestAlertTime);
       setSeenMemberProgramIds((prev) => Array.from(new Set([...prev, ...memberPrograms.map((program) => program.id)])));
+    } else {
+      setMemberVisibleAlerts([]);
     }
   }
 
@@ -437,7 +443,7 @@ export default function App() {
                 </div>
                 {memberNotificationsOpen ? (
                   <div className="mt-3 space-y-2">
-                    {memberUnreadAlerts.map((alert) => (
+                    {memberVisibleAlerts.map((alert) => (
                       <button
                         key={alert.id}
                         type="button"
@@ -451,6 +457,11 @@ export default function App() {
                         {alert.text}
                       </button>
                     ))}
+                    {memberVisibleAlerts.length === 0 ? (
+                      <div className="rounded-xl border border-dashed bg-white px-3 py-2 text-sm text-slate-500">
+                        Ingen nye varsler akkurat nå.
+                      </div>
+                    ) : null}
                   </div>
                 ) : (
                   <div className="mt-2 text-sm text-slate-500">
