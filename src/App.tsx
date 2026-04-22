@@ -241,6 +241,23 @@ export default function App() {
     { key: "statistics", label: "Statistikk", icon: <BarChart3 className="h-4 w-4" /> },
     { key: "settings", label: "Innstillinger", icon: <Settings className="h-4 w-4" /> },
   ];
+  const memberFirstName = useMemo(() => {
+    const rawName = appState.currentUser?.name?.trim() ?? "";
+    if (!rawName) return "du";
+    return rawName.split(/\s+/)[0] || "du";
+  }, [appState.currentUser?.name]);
+  const memberMotivationText = useMemo(() => {
+    const options = [
+      "Klar for neste økt?",
+      "Små steg i dag gir stor fremgang i morgen.",
+      "Du er nærmere målet enn i går.",
+      "En økt nå er en seier senere i uka.",
+      "Bygg vanen - kroppen vil takke deg.",
+    ];
+    const daySeed = new Date().getDate();
+    const nameSeed = memberFirstName.length;
+    return options[(daySeed + nameSeed) % options.length];
+  }, [memberFirstName]);
 
   return (
     <AppShell>
@@ -285,8 +302,17 @@ export default function App() {
                   <Badge>{appState.currentUser.name}</Badge>
                 </div>
                 <div>
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Motus PT-app</h1>
-                  <p className="mt-2 text-sm md:text-base text-slate-500 max-w-3xl">Administrer medlemmer, programmer og oppfolging pa ett sted.</p>
+                  {appState.currentUser.role === "member" ? (
+                    <>
+                      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Hei {memberFirstName}</h1>
+                      <p className="mt-2 text-sm md:text-base text-slate-500 max-w-3xl">{memberMotivationText}</p>
+                    </>
+                  ) : (
+                    <>
+                      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Motus PT-app</h1>
+                      <p className="mt-2 text-sm md:text-base text-slate-500 max-w-3xl">Administrer medlemmer, programmer og oppfolging pa ett sted.</p>
+                    </>
+                  )}
                 </div>
               </div>
               {showQuickLogin ? (
