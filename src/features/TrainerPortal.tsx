@@ -994,7 +994,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 <div key={member.id} className="flex items-center justify-between gap-2 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-center gap-2">
                     <div className="h-9 w-9 overflow-hidden rounded-full border bg-slate-100" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
-                      {resolveMemberAvatarUrl(member) ? <img src={resolveMemberAvatarUrl(member)} alt={member.name} className="h-full w-full object-cover" /> : null}
+                      {resolveMemberAvatarUrl(member) ? <img src={resolveMemberAvatarUrl(member)} alt={member.name} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-slate-800">{member.name}</div>
@@ -1105,7 +1105,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
               <div key={member.id} className="flex items-center justify-between gap-2 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center gap-2">
                   <div className="h-9 w-9 overflow-hidden rounded-full border bg-slate-100" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
-                    {resolveMemberAvatarUrl(member) ? <img src={resolveMemberAvatarUrl(member)} alt={member.name} className="h-full w-full object-cover" /> : null}
+                    {resolveMemberAvatarUrl(member) ? <img src={resolveMemberAvatarUrl(member)} alt={member.name} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-slate-800">{member.name}</div>
@@ -1262,7 +1262,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     <div className="text-sm text-white/80">Kundekort</div>
                     <div className="h-14 w-14 overflow-hidden rounded-full border border-white/40 bg-white/20">
                       {resolveMemberAvatarUrl(selectedMember) ? (
-                        <img src={resolveMemberAvatarUrl(selectedMember)} alt={`Profilbilde av ${selectedMember.name}`} className="h-full w-full object-cover" />
+                        <img src={resolveMemberAvatarUrl(selectedMember)} alt={`Profilbilde av ${selectedMember.name}`} className="h-full w-full object-cover" loading="eager" decoding="async" />
                       ) : null}
                     </div>
                   </div>
