@@ -125,15 +125,34 @@ export default function App() {
 
   const inactiveMembersCount = appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length;
   const missingInvitesCount = appState.members.filter((member) => !member.invitedAt).length;
-  const memberProgramsCount = appState.programs.filter((program) => program.memberId === appState.memberViewId).length;
+  const memberPrograms = appState.programs
+    .map((program, index) => ({
+      ...program,
+      _effectiveTimestamp: parseMessageTimestamp(program.createdAt, index + 1),
+    }))
+    .filter((program) => program.memberId === appState.memberViewId);
   const memberTrainerMessages = appState.messages
     .map((message, index) => ({
       ...message,
       _effectiveTimestamp: parseMessageTimestamp(message.createdAt, index + 1),
     }))
     .filter((message) => message.memberId === appState.memberViewId && message.sender === "trainer");
-  const memberInboxCount = memberTrainerMessages.length;
-  const memberUnreadCount = memberTrainerMessages.filter((message) => message._effectiveTimestamp > memberAlertsSeenAt).length;
+  const memberMessageAlerts = memberTrainerMessages.map((message) => ({
+    id: `member-msg-${message.id}`,
+    text: "Ny melding fra trener",
+    timestamp: message._effectiveTimestamp,
+    targetTab: "messages" as const,
+  }));
+  const memberProgramAlerts = memberPrograms.map((program) => ({
+    id: `member-program-${program.id}`,
+    text: `Nytt program tildelt: ${program.title}`,
+    timestamp: program._effectiveTimestamp,
+    targetTab: "programs" as const,
+  }));
+  const memberUnreadAlerts = [...memberMessageAlerts, ...memberProgramAlerts]
+    .filter((alert) => alert.timestamp > memberAlertsSeenAt)
+    .sort((a, b) => b.timestamp - a.timestamp);
+  const memberUnreadCount = memberUnreadAlerts.length;
   const trainerUnreadCount = trainerMessageAlerts.filter((alert) => alert.timestamp > trainerAlertsSeenAt).length;
 
   function handleTrainerBellToggle() {
@@ -149,11 +168,11 @@ export default function App() {
     const willOpen = !memberNotificationsOpen;
     setMemberNotificationsOpen(willOpen);
     if (willOpen) {
-      const latestMessageTime = memberTrainerMessages.reduce(
-        (max, message) => Math.max(max, message._effectiveTimestamp),
+      const latestAlertTime = [...memberMessageAlerts, ...memberProgramAlerts].reduce(
+        (max, alert) => Math.max(max, alert.timestamp),
         0
       );
-      setMemberAlertsSeenAt(latestMessageTime);
+      setMemberAlertsSeenAt(latestAlertTime);
     }
   }
 
@@ -401,30 +420,20 @@ export default function App() {
                 </div>
                 {memberNotificationsOpen ? (
                   <div className="mt-3 space-y-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMemberTab("programs");
-                        setMemberNotificationsOpen(false);
-                      }}
-                      className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50"
-                      style={{ borderColor: "rgba(20,184,166,0.25)" }}
-                    >
-                      {memberProgramsCount > 0 ? `${memberProgramsCount} aktive programmer` : "Ingen programmer tildelt ennå"}
-                    </button>
-                    {memberInboxCount > 0 ? (
+                    {memberUnreadAlerts.map((alert) => (
                       <button
+                        key={alert.id}
                         type="button"
                         onClick={() => {
-                          setMemberTab("messages");
+                          setMemberTab(alert.targetTab);
                           setMemberNotificationsOpen(false);
                         }}
                         className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50"
                         style={{ borderColor: "rgba(20,184,166,0.25)" }}
                       >
-                        Du har {memberInboxCount} nye meldinger fra trener
+                        {alert.text}
                       </button>
-                    ) : null}
+                    ))}
                   </div>
                 ) : (
                   <div className="mt-2 text-sm text-slate-500">
