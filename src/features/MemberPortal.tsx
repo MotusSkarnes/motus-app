@@ -863,7 +863,10 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div className="text-sm text-slate-500">Sett mål under Min profil for å få status her.</div>
                 ) : null}
               </div>
-              <div className="rounded-2xl border p-4 text-white" style={{ background: "linear-gradient(135deg, rgba(0,193,212,0.9) 0%, rgba(244,114,182,0.9) 100%)", borderColor: "rgba(255,255,255,0.3)" }}>
+              <div
+                className="rounded-2xl border p-4 text-white"
+                style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, borderColor: "rgba(255,255,255,0.3)" }}
+              >
                 <div className="text-xs uppercase tracking-wide text-white/85">Progress Story</div>
                 <div className="mt-1 text-lg font-semibold">
                   {progressStory.recent14 > 0
