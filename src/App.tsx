@@ -74,13 +74,18 @@ export default function App() {
   const [trainerNotificationsOpen, setTrainerNotificationsOpen] = useState(false);
   const [memberNotificationsOpen, setMemberNotificationsOpen] = useState(false);
   const [openCustomerMessagesSignal, setOpenCustomerMessagesSignal] = useState(0);
-  const [seenTrainerAlertIds, setSeenTrainerAlertIds] = useState<string[]>([]);
-  const [seenMemberMessageIds, setSeenMemberMessageIds] = useState<string[]>([]);
+  const [trainerAlertsSeenAt, setTrainerAlertsSeenAt] = useState(0);
+  const [memberAlertsSeenAt, setMemberAlertsSeenAt] = useState(0);
 
   const memberById = useMemo(
     () => new Map(appState.members.map((member) => [member.id, member])),
     [appState.members]
   );
+
+  function parseMessageTimestamp(value: string): number {
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : Date.now();
+  }
 
   const trainerMessageAlerts = useMemo(() => {
     const latestByMember = new Map<string, (typeof appState.messages)[number]>();
@@ -98,7 +103,12 @@ export default function App() {
       .map((message) => {
         const member = memberById.get(message.memberId);
         const name = member?.name || "Et medlem";
-        return { id: `msg-${message.id}`, memberId: message.memberId, text: `${name} har sendt deg en ny melding` };
+        return {
+          id: `msg-${message.id}`,
+          memberId: message.memberId,
+          text: `${name} har sendt deg en ny melding`,
+          timestamp: parseMessageTimestamp(message.createdAt),
+        };
       });
   }, [appState.messages, memberById]);
 
@@ -109,14 +119,14 @@ export default function App() {
     (message) => message.memberId === appState.memberViewId && message.sender === "trainer"
   );
   const memberInboxCount = memberTrainerMessages.length;
-  const memberUnreadCount = memberTrainerMessages.filter((message) => !seenMemberMessageIds.includes(message.id)).length;
-  const trainerUnreadCount = trainerMessageAlerts.filter((alert) => !seenTrainerAlertIds.includes(alert.id)).length;
+  const memberUnreadCount = memberTrainerMessages.filter((message) => parseMessageTimestamp(message.createdAt) > memberAlertsSeenAt).length;
+  const trainerUnreadCount = trainerMessageAlerts.filter((alert) => alert.timestamp > trainerAlertsSeenAt).length;
 
   function handleTrainerBellToggle() {
     const willOpen = !trainerNotificationsOpen;
     setTrainerNotificationsOpen(willOpen);
     if (willOpen) {
-      setSeenTrainerAlertIds((prev) => Array.from(new Set([...prev, ...trainerMessageAlerts.map((alert) => alert.id)])));
+      setTrainerAlertsSeenAt(Date.now());
     }
   }
 
@@ -124,7 +134,7 @@ export default function App() {
     const willOpen = !memberNotificationsOpen;
     setMemberNotificationsOpen(willOpen);
     if (willOpen) {
-      setSeenMemberMessageIds((prev) => Array.from(new Set([...prev, ...memberTrainerMessages.map((message) => message.id)])));
+      setMemberAlertsSeenAt(Date.now());
     }
   }
 
