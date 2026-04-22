@@ -82,32 +82,33 @@ export default function App() {
     [appState.members]
   );
 
-  function parseMessageTimestamp(value: string): number {
+  function parseMessageTimestamp(value: string, fallbackOrder: number): number {
     const parsed = new Date(value).getTime();
-    return Number.isFinite(parsed) ? parsed : 0;
+    return Number.isFinite(parsed) ? parsed : fallbackOrder;
   }
 
   const trainerMessageAlerts = useMemo(() => {
-    const latestByMember = new Map<string, (typeof appState.messages)[number]>();
+    const latestByMember = new Map<string, { message: (typeof appState.messages)[number]; timestamp: number }>();
     appState.messages
       .filter((message) => message.sender === "member")
-      .forEach((message) => {
+      .forEach((message, index) => {
+        const timestamp = parseMessageTimestamp(message.createdAt, index + 1);
         const previous = latestByMember.get(message.memberId);
-        if (!previous || new Date(message.createdAt).getTime() > new Date(previous.createdAt).getTime()) {
-          latestByMember.set(message.memberId, message);
+        if (!previous || timestamp > previous.timestamp) {
+          latestByMember.set(message.memberId, { message, timestamp });
         }
       });
 
     return Array.from(latestByMember.values())
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .map((message) => {
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .map(({ message, timestamp }) => {
         const member = memberById.get(message.memberId);
         const name = member?.name || "Et medlem";
         return {
           id: `msg-${message.id}`,
           memberId: message.memberId,
           text: `${name} har sendt deg en ny melding`,
-          timestamp: parseMessageTimestamp(message.createdAt),
+          timestamp,
         };
       });
   }, [appState.messages, memberById]);
@@ -115,11 +116,14 @@ export default function App() {
   const inactiveMembersCount = appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length;
   const missingInvitesCount = appState.members.filter((member) => !member.invitedAt).length;
   const memberProgramsCount = appState.programs.filter((program) => program.memberId === appState.memberViewId).length;
-  const memberTrainerMessages = appState.messages.filter(
-    (message) => message.memberId === appState.memberViewId && message.sender === "trainer"
-  );
+  const memberTrainerMessages = appState.messages
+    .map((message, index) => ({
+      ...message,
+      _effectiveTimestamp: parseMessageTimestamp(message.createdAt, index + 1),
+    }))
+    .filter((message) => message.memberId === appState.memberViewId && message.sender === "trainer");
   const memberInboxCount = memberTrainerMessages.length;
-  const memberUnreadCount = memberTrainerMessages.filter((message) => parseMessageTimestamp(message.createdAt) > memberAlertsSeenAt).length;
+  const memberUnreadCount = memberTrainerMessages.filter((message) => message._effectiveTimestamp > memberAlertsSeenAt).length;
   const trainerUnreadCount = trainerMessageAlerts.filter((alert) => alert.timestamp > trainerAlertsSeenAt).length;
 
   function handleTrainerBellToggle() {
@@ -136,7 +140,7 @@ export default function App() {
     setMemberNotificationsOpen(willOpen);
     if (willOpen) {
       const latestMessageTime = memberTrainerMessages.reduce(
-        (max, message) => Math.max(max, parseMessageTimestamp(message.createdAt)),
+        (max, message) => Math.max(max, message._effectiveTimestamp),
         0
       );
       setMemberAlertsSeenAt(latestMessageTime);
