@@ -130,6 +130,7 @@ async function persistMember(member: Member) {
     const { error: profileSyncError } = await supabaseClient.functions.invoke("update-member-profile", {
       body: {
         email: authenticatedEmail || normalizedEmail,
+        memberId: member.id,
         changes: {
           name: member.name,
           phone: member.phone,

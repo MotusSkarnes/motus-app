@@ -8,6 +8,7 @@ const corsHeaders = {
 
 type UpdatePayload = {
   email?: string;
+  memberId?: string;
   changes?: {
     name?: string;
     phone?: string;
@@ -87,6 +88,12 @@ Deno.serve(async (req) => {
 
   const currentEmail = normalizeEmail(user.email);
   const requestedEmail = normalizeEmail(payload.email);
+  const requestedMemberId = normalizeString(payload.memberId);
+  const authMemberId = normalizeString(
+    (user.app_metadata?.member_id as string | undefined) ??
+      (user.user_metadata?.member_id as string | undefined) ??
+      ""
+  );
   if (!currentEmail || !currentEmail.includes("@")) {
     return jsonResponse(400, { error: "Logged-in user is missing a valid email" });
   }
@@ -106,11 +113,55 @@ Deno.serve(async (req) => {
   };
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
-  const { data, error } = await adminClient
+  const anchorClauses = [`email.eq.${currentEmail}`];
+  if (authMemberId) anchorClauses.push(`id.eq.${authMemberId}`);
+  if (requestedMemberId) anchorClauses.push(`id.eq.${requestedMemberId}`);
+  const { data: anchorRows, error: anchorError } = await adminClient
     .from("members")
-    .update(updateFields)
-    .eq("email", currentEmail)
-    .select("id");
+    .select("id,email")
+    .or(anchorClauses.join(","));
+
+  if (anchorError) {
+    return jsonResponse(500, { error: `Could not resolve member anchors: ${anchorError.message}` });
+  }
+
+  const targetIds = Array.from(
+    new Set(
+      (anchorRows ?? [])
+        .map((row) => normalizeString(row.id))
+        .filter(Boolean)
+    )
+  );
+  const targetEmails = Array.from(
+    new Set(
+      [currentEmail, ...(anchorRows ?? []).map((row) => normalizeEmail(row.email))]
+        .filter((value) => value && value.includes("@"))
+    )
+  );
+  if (!targetIds.length && !targetEmails.length) {
+    return jsonResponse(200, { message: "No matching member rows found", updated: 0 });
+  }
+
+  const query = adminClient.from("members").update(updateFields);
+  let data: Array<{ id: string }> | null = null;
+  let error: { message: string } | null = null;
+  if (targetIds.length && targetEmails.length) {
+    const combinedClauses = [
+      ...targetIds.map((id) => `id.eq.${id}`),
+      ...targetEmails.map((email) => `email.eq.${email}`),
+    ];
+    const result = await query.or(combinedClauses.join(",")).select("id");
+    data = result.data as Array<{ id: string }> | null;
+    error = result.error ? { message: result.error.message } : null;
+  } else if (targetIds.length) {
+    const result = await query.in("id", targetIds).select("id");
+    data = result.data as Array<{ id: string }> | null;
+    error = result.error ? { message: result.error.message } : null;
+  } else {
+    const result = await query.in("email", targetEmails).select("id");
+    data = result.data as Array<{ id: string }> | null;
+    error = result.error ? { message: result.error.message } : null;
+  }
 
   if (error) {
     return jsonResponse(500, { error: `Could not update member rows: ${error.message}` });
