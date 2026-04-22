@@ -55,24 +55,29 @@ export function useAppState() {
 
       setAppState((prev) => {
         const next = { ...prev };
+        const shouldAdoptRemote = <T,>(remoteRows: T[] | null, localRows: T[]) => {
+          if (!remoteRows) return false;
+          if (remoteRows.length > 0) return true;
+          return localRows.length === 0;
+        };
 
-        if (remoteMembers) {
+        if (shouldAdoptRemote(remoteMembers, prev.members)) {
           next.members = remoteMembers;
         }
 
-        if (remoteMessages) {
+        if (shouldAdoptRemote(remoteMessages, prev.messages)) {
           next.messages = remoteMessages;
         }
 
-        if (remotePrograms) {
+        if (shouldAdoptRemote(remotePrograms, prev.programs)) {
           next.programs = remotePrograms;
         }
 
-        if (remoteLogs) {
+        if (shouldAdoptRemote(remoteLogs, prev.logs)) {
           next.logs = remoteLogs;
         }
 
-        if (remoteExercises) {
+        if (shouldAdoptRemote(remoteExercises, prev.exercises)) {
           next.exercises = remoteExercises;
         }
 
