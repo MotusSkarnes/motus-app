@@ -226,13 +226,6 @@ async function deleteMemberFromSupabase(member: { id: string; email?: string }) 
   if (programsError) {
     console.warn("Supabase member program cleanup failed:", programsError.message);
   }
-  const { error: memberError } = await supabaseClient
-    .from("members")
-    .delete()
-    .eq("id", memberId);
-  if (!memberError) return;
-
-  console.warn("Supabase member hard delete failed, trying soft delete:", memberError.message);
   const { error: softDeleteError } = await supabaseClient
     .from("members")
     .update({ is_active: false })
@@ -241,20 +234,14 @@ async function deleteMemberFromSupabase(member: { id: string; email?: string }) 
     console.warn("Supabase member soft delete failed:", softDeleteError.message);
   }
 
-  // Clean up potential duplicates created earlier with same email and different ids.
+  // Keep same-email duplicates permanently inactive too.
   if (normalizedEmail) {
-    const { error: duplicateDeleteError } = await supabaseClient
+    const { error: duplicateSoftDeleteError } = await supabaseClient
       .from("members")
-      .delete()
+      .update({ is_active: false })
       .eq("email", normalizedEmail);
-    if (duplicateDeleteError) {
-      const { error: duplicateSoftDeleteError } = await supabaseClient
-        .from("members")
-        .update({ is_active: false })
-        .eq("email", normalizedEmail);
-      if (duplicateSoftDeleteError) {
-        console.warn("Supabase duplicate member cleanup failed:", duplicateSoftDeleteError.message);
-      }
+    if (duplicateSoftDeleteError) {
+      console.warn("Supabase duplicate member cleanup failed:", duplicateSoftDeleteError.message);
     }
   }
 }

@@ -71,7 +71,6 @@ Deno.serve(async (req) => {
     await adminClient.from("chat_messages").delete().eq("member_id", id);
     await adminClient.from("workout_logs").delete().eq("member_id", id);
     await adminClient.from("training_programs").delete().eq("member_id", id);
-    await adminClient.from("members").delete().eq("id", id);
   }
 
   return jsonResponse(200, { message: "Member deletion completed" });
