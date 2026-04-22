@@ -1189,11 +1189,26 @@ export function TrainerPortal(props: TrainerPortalProps) {
                               <OutlineButton onClick={() => removeDraftExercise(item.id)}>Fjern</OutlineButton>
                             </div>
                             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                              <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder="Sett" />
-                              <TextInput value={item.reps} onChange={(e) => updateDraftExercise(item.id, "reps", e.target.value)} placeholder="Reps" />
-                              <TextInput value={item.weight} onChange={(e) => updateDraftExercise(item.id, "weight", e.target.value)} placeholder="Kg" />
-                              <TextInput value={item.restSeconds} onChange={(e) => updateDraftExercise(item.id, "restSeconds", e.target.value)} placeholder="Hvile sek" />
-                              <TextInput value={item.notes} onChange={(e) => updateDraftExercise(item.id, "notes", e.target.value)} placeholder="Notat" />
+                              <div className="space-y-1">
+                                <div className="text-[11px] font-medium text-slate-500">Antall sett</div>
+                                <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder="Sett" />
+                              </div>
+                              <div className="space-y-1">
+                                <div className="text-[11px] font-medium text-slate-500">Antall reps</div>
+                                <TextInput value={item.reps} onChange={(e) => updateDraftExercise(item.id, "reps", e.target.value)} placeholder="Reps" />
+                              </div>
+                              <div className="space-y-1">
+                                <div className="text-[11px] font-medium text-slate-500">Planlagt vekt (kg)</div>
+                                <TextInput value={item.weight} onChange={(e) => updateDraftExercise(item.id, "weight", e.target.value)} placeholder="Kg" />
+                              </div>
+                              <div className="space-y-1">
+                                <div className="text-[11px] font-medium text-slate-500">Hvile (sekunder)</div>
+                                <TextInput value={item.restSeconds} onChange={(e) => updateDraftExercise(item.id, "restSeconds", e.target.value)} placeholder="Hvile sek" />
+                              </div>
+                              <div className="space-y-1">
+                                <div className="text-[11px] font-medium text-slate-500">Notat til øvelsen</div>
+                                <TextInput value={item.notes} onChange={(e) => updateDraftExercise(item.id, "notes", e.target.value)} placeholder="Notat" />
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -1397,11 +1412,26 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         <OutlineButton onClick={() => removeDraftExercise(item.id)}>Fjern</OutlineButton>
                       </div>
                       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                        <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder="Sett" />
-                        <TextInput value={item.reps} onChange={(e) => updateDraftExercise(item.id, "reps", e.target.value)} placeholder="Reps" />
-                        <TextInput value={item.weight} onChange={(e) => updateDraftExercise(item.id, "weight", e.target.value)} placeholder="Kg" />
-                        <TextInput value={item.restSeconds} onChange={(e) => updateDraftExercise(item.id, "restSeconds", e.target.value)} placeholder="Hvile sek" />
-                        <TextInput value={item.notes} onChange={(e) => updateDraftExercise(item.id, "notes", e.target.value)} placeholder="Notat" />
+                        <div className="space-y-1">
+                          <div className="text-[11px] font-medium text-slate-500">Antall sett</div>
+                          <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder="Sett" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-[11px] font-medium text-slate-500">Antall reps</div>
+                          <TextInput value={item.reps} onChange={(e) => updateDraftExercise(item.id, "reps", e.target.value)} placeholder="Reps" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-[11px] font-medium text-slate-500">Planlagt vekt (kg)</div>
+                          <TextInput value={item.weight} onChange={(e) => updateDraftExercise(item.id, "weight", e.target.value)} placeholder="Kg" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-[11px] font-medium text-slate-500">Hvile (sekunder)</div>
+                          <TextInput value={item.restSeconds} onChange={(e) => updateDraftExercise(item.id, "restSeconds", e.target.value)} placeholder="Hvile sek" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-[11px] font-medium text-slate-500">Notat til øvelsen</div>
+                          <TextInput value={item.notes} onChange={(e) => updateDraftExercise(item.id, "notes", e.target.value)} placeholder="Notat" />
+                        </div>
                       </div>
                     </div>
                   ))}

@@ -36,6 +36,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [goalMetricDraft, setGoalMetricDraft] = useState<"sessionsPerWeek" | "dailySteps" | "targetWeight">("sessionsPerWeek");
   const [goalMetricValueDraft, setGoalMetricValueDraft] = useState("");
   const [profileSaveInfo, setProfileSaveInfo] = useState<string | null>(null);
+  const [workoutExerciseIndex, setWorkoutExerciseIndex] = useState(0);
   const viewedMember = members.find((member) => member.id === memberViewId) ?? null;
   const relatedMemberIds = useMemo(() => {
     if (!viewedMember) return [memberViewId];
@@ -77,6 +78,7 @@ export function MemberPortal(props: MemberPortalProps) {
       rows: value.rows.sort((a, b) => (a.setNumber ?? 0) - (b.setNumber ?? 0)),
     }));
   }, [workoutMode]);
+  const currentWorkoutGroup = workoutResultGroups[workoutExerciseIndex] ?? null;
   const now = new Date();
 
   function parseLogDate(value: string): Date | null {
@@ -264,6 +266,20 @@ export function MemberPortal(props: MemberPortalProps) {
   const targetWeightNumber = Number(profileTargetWeight) || 0;
   const currentWeightNumber = Number(profileWeight) || 0;
   const sessionsRemaining = Math.max(0, sessionsTargetNumber - completedThisWeek);
+
+  useEffect(() => {
+    if (!workoutMode) {
+      setWorkoutExerciseIndex(0);
+      return;
+    }
+    setWorkoutExerciseIndex(0);
+  }, [workoutMode?.programId]);
+
+  useEffect(() => {
+    if (!workoutResultGroups.length) return;
+    if (workoutExerciseIndex <= workoutResultGroups.length - 1) return;
+    setWorkoutExerciseIndex(workoutResultGroups.length - 1);
+  }, [workoutResultGroups, workoutExerciseIndex]);
 
   return (
     <>
@@ -512,55 +528,53 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
 
                     <div className="flex-1 space-y-3 overflow-auto p-4">
-                      {workoutResultGroups.map((group, groupIndex) => {
-                        return (
-                          <div
-                            key={group.groupId}
-                            className="w-full rounded-2xl border p-4 text-left transition bg-slate-50"
-                            style={{ borderColor: "rgba(15,23,42,0.08)" }}
-                          >
-                            <div>
-                              <div className="text-xs text-slate-400">Øvelse {groupIndex + 1}</div>
-                              <div className="font-medium">{group.exerciseName}</div>
-                              <div className="mt-1 text-sm text-slate-500">Plan: {group.rows.length} sett × {group.plannedReps} reps · {group.plannedWeight}kg</div>
-                            </div>
-                            <div className="mt-3 space-y-2">
-                              {group.rows.map((row) => (
-                                <div key={row.exerciseId} className={`rounded-xl border bg-white p-3 ${row.completed ? "border-emerald-300" : "border-slate-200"}`}>
-                                  <div className="mb-2 flex items-center justify-between gap-2">
-                                    <div className="text-xs font-semibold text-slate-600">Sett {row.setNumber ?? 1}</div>
-                                    <button
-                                      type="button"
-                                      onClick={() => updateWorkoutExerciseResult(row.exerciseId, "completed", !row.completed)}
-                                      className={`rounded-full px-3 py-1 text-xs font-semibold ${row.completed ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-700"}`}
-                                    >
-                                      {row.completed ? "Fullført" : "Marker"}
-                                    </button>
+                      {currentWorkoutGroup ? (
+                        <div
+                          key={currentWorkoutGroup.groupId}
+                          className="w-full rounded-2xl border p-4 text-left transition bg-slate-50"
+                          style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                        >
+                          <div>
+                            <div className="text-xs text-slate-400">Øvelse {workoutExerciseIndex + 1} av {workoutResultGroups.length}</div>
+                            <div className="font-medium">{currentWorkoutGroup.exerciseName}</div>
+                            <div className="mt-1 text-sm text-slate-500">Plan: {currentWorkoutGroup.rows.length} sett × {currentWorkoutGroup.plannedReps} reps · {currentWorkoutGroup.plannedWeight}kg</div>
+                          </div>
+                          <div className="mt-3 space-y-2">
+                            {currentWorkoutGroup.rows.map((row) => (
+                              <div key={row.exerciseId} className={`rounded-xl border bg-white p-3 ${row.completed ? "border-emerald-300" : "border-slate-200"}`}>
+                                <div className="mb-2 flex items-center justify-between gap-2">
+                                  <div className="text-xs font-semibold text-slate-600">Sett {row.setNumber ?? 1}</div>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateWorkoutExerciseResult(row.exerciseId, "completed", !row.completed)}
+                                    className={`rounded-full px-3 py-1 text-xs font-semibold ${row.completed ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-700"}`}
+                                  >
+                                    {row.completed ? "Fullført" : "Marker"}
+                                  </button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="space-y-1">
+                                    <div className="text-[11px] font-medium text-slate-500">Kg utført</div>
+                                    <TextInput
+                                      value={row.performedWeight}
+                                      onChange={(e) => updateWorkoutExerciseResult(row.exerciseId, "performedWeight", e.target.value)}
+                                      placeholder="0"
+                                    />
                                   </div>
-                                  <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                      <div className="text-[11px] font-medium text-slate-500">Kg utført</div>
-                                      <TextInput
-                                        value={row.performedWeight}
-                                        onChange={(e) => updateWorkoutExerciseResult(row.exerciseId, "performedWeight", e.target.value)}
-                                        placeholder="0"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <div className="text-[11px] font-medium text-slate-500">Reps utført</div>
-                                      <TextInput
-                                        value={row.performedReps}
-                                        onChange={(e) => updateWorkoutExerciseResult(row.exerciseId, "performedReps", e.target.value)}
-                                        placeholder="0"
-                                      />
-                                    </div>
+                                  <div className="space-y-1">
+                                    <div className="text-[11px] font-medium text-slate-500">Reps utført</div>
+                                    <TextInput
+                                      value={row.performedReps}
+                                      onChange={(e) => updateWorkoutExerciseResult(row.exerciseId, "performedReps", e.target.value)}
+                                      placeholder="0"
+                                    />
                                   </div>
                                 </div>
-                              ))}
-                            </div>
+                              </div>
+                            ))}
                           </div>
-                        );
-                      })}
+                        </div>
+                      ) : null}
 
                       <TextArea value={workoutMode.note} onChange={(e) => updateWorkoutModeNote(e.target.value)} className="min-h-[110px]" placeholder="Hvordan gikk økta?" />
                     </div>
@@ -568,7 +582,13 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="border-t p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="flex gap-3">
                         <OutlineButton className="flex-1" onClick={cancelWorkoutMode}>Avbryt</OutlineButton>
-                        <GradientButton className="flex-1" onClick={finishWorkoutMode}>Logg økt</GradientButton>
+                        {workoutExerciseIndex < workoutResultGroups.length - 1 ? (
+                          <GradientButton className="flex-1" onClick={() => setWorkoutExerciseIndex((prev) => prev + 1)}>
+                            Neste øvelse
+                          </GradientButton>
+                        ) : (
+                          <GradientButton className="flex-1" onClick={finishWorkoutMode}>Ferdig og logg økt</GradientButton>
+                        )}
                       </div>
                     </div>
                   </div>
