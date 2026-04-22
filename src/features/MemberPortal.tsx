@@ -1149,7 +1149,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   <p className="text-sm text-slate-500">Enkel oversikt</p>
                 </div>
               </div>
-              <div className="mt-5 rounded-3xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="mt-5 rounded-3xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="font-semibold">📋 Programoversikt</div>
                 <div className="mt-4 space-y-3">
                   {memberPrograms.length === 0 ? (
@@ -1205,23 +1205,23 @@ export function MemberPortal(props: MemberPortalProps) {
                   })}
                 </div>
               </div>
-              <div className="mt-6 rounded-3xl border bg-slate-50 p-4">
+              <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="font-semibold">📝 Siste økter</div>
                 <div className="mt-4 space-y-3">
                   {completedLogs.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen økter logget ennå.</div> : null}
                   {completedLogs.slice(0, 6).map((log) => (
-                    <div key={log.id} className="rounded-2xl border bg-white p-4">
+                    <div key={log.id} className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="font-medium">{log.programTitle}</div>
                           <div className="mt-1 text-sm text-slate-500">{log.date}</div>
                         </div>
-                        <OutlineButton
+                        <GradientButton
                           className="px-3 py-1.5 text-xs"
                           onClick={() => setExpandedRecentLogId((prev) => (prev === log.id ? null : log.id))}
                         >
                           {expandedRecentLogId === log.id ? "Skjul detaljer" : "Se detaljer"}
-                        </OutlineButton>
+                        </GradientButton>
                       </div>
                       {log.note ? <div className="mt-2 text-sm text-slate-600">{log.note}</div> : null}
                       {expandedRecentLogId === log.id ? (
