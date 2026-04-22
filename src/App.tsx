@@ -1,4 +1,5 @@
-import { Bell, ClipboardList, LayoutDashboard, MessageSquare, TrendingUp, UserCircle2, Users } from "lucide-react";
+import type { ReactNode } from "react";
+import { BarChart3, Bell, CalendarDays, CheckSquare, ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, Settings, TrendingUp, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "./app/data";
 import { useAppState } from "./app/useAppState";
 import { AppShell, Badge, Card, MobileNavButton, OutlineButton, PillButton } from "./app/ui";
@@ -80,16 +81,16 @@ export default function App() {
       : null,
   ].filter((item): item is string => Boolean(item));
 
-  const trainerMenuItems: Array<{ key: typeof trainerTab; label: string }> = [
-    { key: "dashboard", label: "Oversikt" },
-    { key: "customers", label: "Klienter" },
-    { key: "programs", label: "Programmer" },
-    { key: "calendar", label: "Kalender" },
-    { key: "messages", label: "Meldinger" },
-    { key: "tasks", label: "Oppgaver" },
-    { key: "statistics", label: "Statistikk" },
-    { key: "settings", label: "Innstillinger" },
-    { key: "exerciseBank", label: "Øvelsesbank" },
+  const trainerMenuItems: Array<{ key: typeof trainerTab; label: string; icon: ReactNode }> = [
+    { key: "dashboard", label: "Oversikt", icon: <LayoutDashboard className="h-4 w-4" /> },
+    { key: "customers", label: "Klienter", icon: <Users className="h-4 w-4" /> },
+    { key: "programs", label: "Programmer", icon: <ClipboardList className="h-4 w-4" /> },
+    { key: "calendar", label: "Kalender", icon: <CalendarDays className="h-4 w-4" /> },
+    { key: "messages", label: "Meldinger", icon: <MessageSquare className="h-4 w-4" /> },
+    { key: "tasks", label: "Oppgaver", icon: <CheckSquare className="h-4 w-4" /> },
+    { key: "statistics", label: "Statistikk", icon: <BarChart3 className="h-4 w-4" /> },
+    { key: "settings", label: "Innstillinger", icon: <Settings className="h-4 w-4" /> },
+    { key: "exerciseBank", label: "Øvelsesbank", icon: <Dumbbell className="h-4 w-4" /> },
   ];
 
   return (
@@ -151,19 +152,30 @@ export default function App() {
           {appState.role === "trainer" ? (
             <div className="grid gap-4 md:grid-cols-[220px_1fr]">
               <Card className="hidden h-fit p-3 md:block">
-                <div className="space-y-1">
+                <div className="mb-2 px-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">PT-meny</div>
+                </div>
+                <div className="space-y-1.5">
                   {trainerMenuItems.map((item) => (
                     <button
                       key={item.key}
                       type="button"
                       onClick={() => setTrainerTab(item.key)}
-                      className={`w-full rounded-xl px-3 py-2 text-left text-sm font-medium whitespace-nowrap ${
+                      className={`w-full rounded-xl border px-3 py-2.5 text-left text-sm font-medium whitespace-nowrap transition ${
                         trainerTab === item.key
-                          ? "bg-slate-900 text-white"
-                          : "bg-slate-50 text-slate-700 hover:bg-slate-100"
+                          ? "border-transparent text-white shadow-sm"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                       }`}
+                      style={
+                        trainerTab === item.key
+                          ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
+                          : undefined
+                      }
                     >
-                      {item.label}
+                      <span className="inline-flex items-center gap-2">
+                        {item.icon}
+                        <span>{item.label}</span>
+                      </span>
                     </button>
                   ))}
                 </div>
