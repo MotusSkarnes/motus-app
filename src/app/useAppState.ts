@@ -78,6 +78,45 @@ export function useAppState() {
   const [trainerTab, setTrainerTab] = useState<TrainerTab>("dashboard");
   const [memberTab, setMemberTab] = useState<MemberTab>("overview");
 
+  function ensureMemberRecordForUser(state: AppState, user: AuthUser, preferredMemberId?: string): AppState {
+    if (user.role !== "member") return state;
+    const normalizedEmail = user.email.trim().toLowerCase();
+    const resolvedMemberId = (preferredMemberId || user.memberId || `auth-${user.id}`).trim();
+    if (!resolvedMemberId && !normalizedEmail) return state;
+
+    const existingById = resolvedMemberId ? state.members.find((member) => member.id === resolvedMemberId) : null;
+    const existingByEmail =
+      normalizedEmail ? state.members.find((member) => member.email.trim().toLowerCase() === normalizedEmail) : null;
+    const existing = existingById ?? existingByEmail ?? null;
+    if (existing) return state;
+
+    const fallbackMember = {
+      id: resolvedMemberId || `auth-${user.id}`,
+      name: user.name || "Medlem",
+      email: normalizedEmail || "",
+      isActive: true,
+      invitedAt: "",
+      phone: "",
+      birthDate: "",
+      weight: "",
+      height: "",
+      level: "Nybegynner" as const,
+      membershipType: "Standard" as const,
+      customerType: "Oppfølging" as const,
+      daysSinceActivity: "0",
+      goal: "",
+      focus: "",
+      personalGoals: "",
+      injuries: "",
+      coachNotes: "",
+    };
+
+    return {
+      ...state,
+      members: [...state.members, fallbackMember],
+    };
+  }
+
   function resolveMemberViewIdForUser(input: {
     role: AppState["role"];
     memberId?: string;
@@ -270,30 +309,35 @@ export function useAppState() {
     async function hydrateSession() {
       const user = await getSupabaseSessionUser();
       if (!user || cancelled) return;
-      setAppState((prev) => ({
-        ...prev,
-        currentUser: user,
-        role: user.role,
-        selectedMemberId:
+      setAppState((prev) => {
+        const baseState = ensureMemberRecordForUser(prev, user, user.memberId ?? prev.memberViewId);
+        const resolvedSelectedMemberId =
           user.role === "member"
             ? resolveMemberViewIdForUser({
                 role: user.role,
                 memberId: user.memberId,
                 email: user.email,
-                members: prev.members,
-                programs: prev.programs,
-                fallbackId: user.memberId ?? prev.selectedMemberId,
+                members: baseState.members,
+                programs: baseState.programs,
+                fallbackId: user.memberId ?? baseState.selectedMemberId || `auth-${user.id}`,
               })
-            : user.memberId ?? prev.selectedMemberId,
-        memberViewId: resolveMemberViewIdForUser({
+            : user.memberId ?? baseState.selectedMemberId;
+        const resolvedMemberViewId = resolveMemberViewIdForUser({
           role: user.role,
           memberId: user.memberId,
           email: user.email,
-          members: prev.members,
-          programs: prev.programs,
-          fallbackId: user.memberId ?? prev.memberViewId,
-        }),
-      }));
+          members: baseState.members,
+          programs: baseState.programs,
+          fallbackId: user.memberId ?? baseState.memberViewId || `auth-${user.id}`,
+        });
+        return {
+          ...baseState,
+          currentUser: user,
+          role: user.role,
+          selectedMemberId: resolvedSelectedMemberId,
+          memberViewId: resolvedMemberViewId,
+        };
+      });
     }
 
     void hydrateSession();
@@ -362,38 +406,48 @@ export function useAppState() {
       const supabaseResult = await signInWithSupabase(normalizedEmail, loginPassword);
       if (supabaseResult.ok) {
         const supabaseUser = supabaseResult.user;
-        const resolvedSelectedMemberId =
-          supabaseUser.role === "member"
-            ? resolveMemberViewIdForUser({
-                role: supabaseUser.role,
-                memberId: supabaseUser.memberId,
-                email: supabaseUser.email,
-                members: appState.members,
-                programs: appState.programs,
-                fallbackId: supabaseUser.memberId ?? appState.selectedMemberId,
-              })
-            : supabaseUser.memberId ?? appState.selectedMemberId;
-        const resolvedMemberViewId = resolveMemberViewIdForUser({
-          role: supabaseUser.role,
-          memberId: supabaseUser.memberId,
-          email: supabaseUser.email,
-          members: appState.members,
-          programs: appState.programs,
-          fallbackId: supabaseUser.memberId ?? appState.memberViewId,
+        setAppState((prev) => {
+          const baseState = ensureMemberRecordForUser(prev, supabaseUser, supabaseUser.memberId ?? prev.memberViewId);
+          const resolvedSelectedMemberId =
+            supabaseUser.role === "member"
+              ? resolveMemberViewIdForUser({
+                  role: supabaseUser.role,
+                  memberId: supabaseUser.memberId,
+                  email: supabaseUser.email,
+                  members: baseState.members,
+                  programs: baseState.programs,
+                  fallbackId: supabaseUser.memberId ?? baseState.selectedMemberId || `auth-${supabaseUser.id}`,
+                })
+              : supabaseUser.memberId ?? baseState.selectedMemberId;
+          const resolvedMemberViewId = resolveMemberViewIdForUser({
+            role: supabaseUser.role,
+            memberId: supabaseUser.memberId,
+            email: supabaseUser.email,
+            members: baseState.members,
+            programs: baseState.programs,
+            fallbackId: supabaseUser.memberId ?? baseState.memberViewId || `auth-${supabaseUser.id}`,
+          });
+          return {
+            ...baseState,
+            currentUser: supabaseUser,
+            role: supabaseUser.role,
+            selectedMemberId: resolvedSelectedMemberId,
+            memberViewId: resolvedMemberViewId,
+          };
         });
         if (supabaseUser.role === "member") {
-          const linkMemberId = resolvedMemberViewId || resolvedSelectedMemberId;
+          const linkMemberId = resolveMemberViewIdForUser({
+            role: supabaseUser.role,
+            memberId: supabaseUser.memberId,
+            email: supabaseUser.email,
+            members: ensureMemberRecordForUser(appState, supabaseUser, supabaseUser.memberId ?? appState.memberViewId).members,
+            programs: appState.programs,
+            fallbackId: supabaseUser.memberId ?? appState.memberViewId || `auth-${supabaseUser.id}`,
+          });
           if (linkMemberId) {
             await ensureMemberAuthLink(supabaseUser.email, linkMemberId);
           }
         }
-        setAppState((prev) => ({
-          ...prev,
-          currentUser: supabaseUser,
-          role: supabaseUser.role,
-          selectedMemberId: resolvedSelectedMemberId,
-          memberViewId: resolvedMemberViewId,
-        }));
         setTrainerTab("dashboard");
         setMemberTab("overview");
         setLoginError(null);
@@ -505,24 +559,25 @@ export function useAppState() {
       return;
     }
     const user = result.user;
+    const baseState = ensureMemberRecordForUser(appState, user, user.memberId ?? appState.memberViewId);
     const resolvedSelectedMemberId =
       user.role === "member"
         ? resolveMemberViewIdForUser({
             role: user.role,
             memberId: user.memberId,
             email: user.email,
-            members: appState.members,
-            programs: appState.programs,
-            fallbackId: user.memberId ?? appState.selectedMemberId,
+            members: baseState.members,
+            programs: baseState.programs,
+            fallbackId: user.memberId ?? baseState.selectedMemberId || `auth-${user.id}`,
           })
-        : user.memberId ?? appState.selectedMemberId;
+        : user.memberId ?? baseState.selectedMemberId;
     const resolvedMemberViewId = resolveMemberViewIdForUser({
       role: user.role,
       memberId: user.memberId,
       email: user.email,
-      members: appState.members,
-      programs: appState.programs,
-      fallbackId: user.memberId ?? appState.memberViewId,
+      members: baseState.members,
+      programs: baseState.programs,
+      fallbackId: user.memberId ?? baseState.memberViewId || `auth-${user.id}`,
     });
     if (user.role === "member") {
       const linkMemberId = resolvedMemberViewId || resolvedSelectedMemberId;
@@ -530,13 +585,16 @@ export function useAppState() {
         await ensureMemberAuthLink(user.email, linkMemberId);
       }
     }
-    setAppState((prev) => ({
-      ...prev,
-      currentUser: user,
-      role: user.role,
-      selectedMemberId: resolvedSelectedMemberId,
-      memberViewId: resolvedMemberViewId,
-    }));
+    setAppState((prev) => {
+      const nextBase = ensureMemberRecordForUser(prev, user, resolvedMemberViewId || resolvedSelectedMemberId);
+      return {
+        ...nextBase,
+        currentUser: user,
+        role: user.role,
+        selectedMemberId: resolvedSelectedMemberId,
+        memberViewId: resolvedMemberViewId,
+      };
+    });
     setTrainerTab("dashboard");
     setMemberTab("overview");
     setLoginError(null);
