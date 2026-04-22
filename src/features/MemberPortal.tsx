@@ -367,11 +367,16 @@ export function MemberPortal(props: MemberPortalProps) {
     return items;
   }, [completedLogs.length, streakWeeks, uniqueTrainingDays]);
 
-  const trainingDaysInCalendarMonth = new Set(
-    completedLogDates
-      .filter((date) => date.getMonth() === calendarMonth.getMonth() && date.getFullYear() === calendarMonth.getFullYear())
-      .map((date) => date.getDate()),
-  );
+  const calendarDayLoad = useMemo(() => {
+    const byDay = new Map<number, number>();
+    completedLogDates.forEach((date) => {
+      if (date.getMonth() !== calendarMonth.getMonth() || date.getFullYear() !== calendarMonth.getFullYear()) return;
+      const day = date.getDate();
+      byDay.set(day, (byDay.get(day) ?? 0) + 1);
+    });
+    return byDay;
+  }, [completedLogDates, calendarMonth]);
+  const maxCalendarDayLoad = Math.max(0, ...Array.from(calendarDayLoad.values()));
   const firstDayOfMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
   const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
   const monthOffset = (firstDayOfMonth.getDay() + 6) % 7;
@@ -970,12 +975,21 @@ export function MemberPortal(props: MemberPortalProps) {
                       day ? (
                         <div
                           key={`${day}-${index}`}
-                          className={`rounded-lg px-1 py-2 text-center text-xs ${trainingDaysInCalendarMonth.has(day) ? "text-white font-semibold" : "text-slate-600 bg-white"}`}
+                          className={`rounded-lg px-1 py-2 text-center text-xs ${calendarDayLoad.has(day) ? "text-white font-semibold" : "text-slate-600 bg-white"}`}
                           style={
-                            trainingDaysInCalendarMonth.has(day)
-                              ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
+                            calendarDayLoad.has(day)
+                              ? {
+                                  background: `linear-gradient(135deg, rgba(0,193,212,${Math.max(
+                                    0.25,
+                                    ((calendarDayLoad.get(day) ?? 1) / Math.max(1, maxCalendarDayLoad)) * 0.95,
+                                  )}) 0%, rgba(244,114,182,${Math.max(
+                                    0.2,
+                                    ((calendarDayLoad.get(day) ?? 1) / Math.max(1, maxCalendarDayLoad)) * 0.8,
+                                  )}) 100%)`,
+                                }
                               : { border: "1px solid rgba(15,23,42,0.06)" }
                           }
+                          title={calendarDayLoad.has(day) ? `${calendarDayLoad.get(day)} økt${calendarDayLoad.get(day) === 1 ? "" : "er"} logget` : "Ingen økter logget"}
                         >
                           {day}
                         </div>
@@ -983,6 +997,13 @@ export function MemberPortal(props: MemberPortalProps) {
                         <div key={`empty-${index}`} />
                       ),
                     )}
+                  </div>
+                  <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
+                    <span>Lav</span>
+                    <div className="h-2 w-20 rounded-full" style={{ background: "linear-gradient(90deg, rgba(0,193,212,0.25) 0%, rgba(244,114,182,0.2) 100%)" }} />
+                    <div className="h-2 w-20 rounded-full" style={{ background: "linear-gradient(90deg, rgba(0,193,212,0.6) 0%, rgba(244,114,182,0.55) 100%)" }} />
+                    <div className="h-2 w-20 rounded-full" style={{ background: "linear-gradient(90deg, rgba(0,193,212,0.95) 0%, rgba(244,114,182,0.8) 100%)" }} />
+                    <span>Høy</span>
                   </div>
                 </div>
               </div>
