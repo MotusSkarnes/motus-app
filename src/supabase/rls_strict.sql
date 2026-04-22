@@ -39,24 +39,32 @@ create policy "members_update_own"
   with check (owner_user_id = auth.uid());
 
 drop policy if exists "chat_messages_select_dev" on public.chat_messages;
+drop policy if exists "chat_messages_select_own" on public.chat_messages;
 drop policy if exists "chat_messages_insert_dev" on public.chat_messages;
-create policy "chat_messages_select_own"
+create policy "chat_messages_select_trainer_or_member"
   on public.chat_messages
   for select to authenticated
-  using (owner_user_id = auth.uid());
+  using (
+    owner_user_id = auth.uid()
+    or member_id = coalesce(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+  );
 create policy "chat_messages_insert_own"
   on public.chat_messages
   for insert to authenticated
   with check (owner_user_id = auth.uid());
 
 drop policy if exists "training_programs_select_dev" on public.training_programs;
+drop policy if exists "training_programs_select_own" on public.training_programs;
 drop policy if exists "training_programs_insert_dev" on public.training_programs;
 drop policy if exists "training_programs_update_dev" on public.training_programs;
 drop policy if exists "training_programs_delete_dev" on public.training_programs;
-create policy "training_programs_select_own"
+create policy "training_programs_select_trainer_or_member"
   on public.training_programs
   for select to authenticated
-  using (owner_user_id = auth.uid());
+  using (
+    owner_user_id = auth.uid()
+    or member_id = coalesce(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+  );
 create policy "training_programs_insert_own"
   on public.training_programs
   for insert to authenticated
@@ -72,13 +80,17 @@ create policy "training_programs_delete_own"
   using (owner_user_id = auth.uid());
 
 drop policy if exists "workout_logs_select_dev" on public.workout_logs;
+drop policy if exists "workout_logs_select_own" on public.workout_logs;
 drop policy if exists "workout_logs_insert_dev" on public.workout_logs;
 drop policy if exists "workout_logs_update_dev" on public.workout_logs;
 drop policy if exists "workout_logs_delete_dev" on public.workout_logs;
-create policy "workout_logs_select_own"
+create policy "workout_logs_select_trainer_or_member"
   on public.workout_logs
   for select to authenticated
-  using (owner_user_id = auth.uid());
+  using (
+    owner_user_id = auth.uid()
+    or member_id = coalesce(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+  );
 create policy "workout_logs_insert_own"
   on public.workout_logs
   for insert to authenticated

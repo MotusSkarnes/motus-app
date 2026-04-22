@@ -99,12 +99,17 @@ Dette:
 
 Sjekk:
 - trener A ser ikke trener B sine data
-- medlem ser kun egne data
+- medlem ser kun egne data (basert på `member_id` i auth metadata)
 - insert/update/delete funker fortsatt for eier
 
 Hvis noe feiler:
 - sjekk at metadata (`role`, `member_id`) er satt riktig
 - sjekk at data har riktig `owner_user_id`
+
+Vanlig symptom og løsning:
+- symptom: PT ser tildelte programmer, men medlem ser ingenting
+- årsak: select-policy tillater kun `owner_user_id = auth.uid()`
+- løsning: bruk select-policy som tillater enten trener-eier eller medlem med matching `auth.jwt()->app_metadata.member_id`
 
 ## 9) Før produksjon
 

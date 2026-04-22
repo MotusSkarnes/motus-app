@@ -37,9 +37,19 @@ export function MemberPortal(props: MemberPortalProps) {
   const [goalMetricValueDraft, setGoalMetricValueDraft] = useState("");
   const [profileSaveInfo, setProfileSaveInfo] = useState<string | null>(null);
   const viewedMember = members.find((member) => member.id === memberViewId) ?? null;
-  const memberPrograms = programs.filter((program) => program.memberId === memberViewId);
-  const memberLogs = logs.filter((log) => log.memberId === memberViewId);
-  const memberMessages = messages.filter((message) => message.memberId === memberViewId);
+  const relatedMemberIds = useMemo(() => {
+    if (!viewedMember) return [memberViewId];
+    const normalizedEmail = viewedMember.email.trim().toLowerCase();
+    if (!normalizedEmail) return [memberViewId];
+    const ids = members
+      .filter((member) => member.email.trim().toLowerCase() === normalizedEmail)
+      .map((member) => member.id);
+    return ids.length ? ids : [memberViewId];
+  }, [members, viewedMember, memberViewId]);
+  const relatedMemberIdSet = useMemo(() => new Set(relatedMemberIds), [relatedMemberIds]);
+  const memberPrograms = programs.filter((program) => relatedMemberIdSet.has(program.memberId));
+  const memberLogs = logs.filter((log) => relatedMemberIdSet.has(log.memberId));
+  const memberMessages = messages.filter((message) => relatedMemberIdSet.has(message.memberId));
   const activeWorkoutProgram = workoutMode ? memberPrograms.find((program) => program.id === workoutMode.programId) ?? null : null;
   const nextProgram = memberPrograms[0] ?? null;
   const workoutResultGroups = useMemo(() => {
