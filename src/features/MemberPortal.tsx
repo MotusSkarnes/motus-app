@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ClipboardList, MessageSquare, Target, TrendingUp, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
@@ -57,6 +57,10 @@ export function MemberPortal(props: MemberPortalProps) {
   const [memberInjuriesDraft, setMemberInjuriesDraft] = useState("");
   const [replacementExerciseIdDraft, setReplacementExerciseIdDraft] = useState("");
   const [workoutExerciseIndex, setWorkoutExerciseIndex] = useState(0);
+  const [progressShareStatus, setProgressShareStatus] = useState<string | null>(null);
+  const [achievementCelebration, setAchievementCelebration] = useState<{ id: string; label: string } | null>(null);
+  const [seenUnlockedAchievementIds, setSeenUnlockedAchievementIds] = useState<string[]>([]);
+  const hasInitializedAchievementTracking = useRef(false);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const nowDate = new Date();
@@ -477,6 +481,21 @@ export function MemberPortal(props: MemberPortalProps) {
     return () => window.clearTimeout(timer);
   }, [profileSaveInfo]);
 
+  useEffect(() => {
+    const unlockedIds = achievements.filter((achievement) => achievement.unlocked).map((achievement) => achievement.id);
+    if (!hasInitializedAchievementTracking.current) {
+      setSeenUnlockedAchievementIds(unlockedIds);
+      hasInitializedAchievementTracking.current = true;
+      return;
+    }
+    const newlyUnlocked = achievements.find(
+      (achievement) => achievement.unlocked && !seenUnlockedAchievementIds.includes(achievement.id),
+    );
+    if (!newlyUnlocked) return;
+    setAchievementCelebration({ id: newlyUnlocked.id, label: newlyUnlocked.label });
+    setSeenUnlockedAchievementIds((prev) => [...prev, newlyUnlocked.id]);
+  }, [achievements, seenUnlockedAchievementIds]);
+
   function applyMetricDraftToProfile() {
     const value = goalMetricValueDraft.trim();
     if (!value) return;
@@ -484,6 +503,80 @@ export function MemberPortal(props: MemberPortalProps) {
     if (goalMetricDraft === "dailySteps") setProfileDailyStepsTarget(value);
     if (goalMetricDraft === "targetWeight") setProfileTargetWeight(value);
     setGoalMetricValueDraft("");
+  }
+
+  async function shareMonthlyProgressSummary() {
+    if (typeof window === "undefined") return;
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1080;
+      canvas.height = 1920;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        setProgressShareStatus("Kunne ikke lage bilde akkurat nå.");
+        return;
+      }
+
+      const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+      gradient.addColorStop(0, MOTUS.turquoise);
+      gradient.addColorStop(1, MOTUS.pink);
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      context.fillStyle = "rgba(255,255,255,0.95)";
+      context.fillRect(60, 120, canvas.width - 120, canvas.height - 240);
+      context.fillStyle = "#0f172a";
+      context.font = "bold 56px Inter, sans-serif";
+      context.fillText("Motus - Denne måneden", 110, 220);
+      context.font = "32px Inter, sans-serif";
+      context.fillStyle = "#475569";
+      context.fillText(`${viewedMember?.name ?? "Medlem"} sin progresjon`, 110, 275);
+
+      const lines = [
+        `Økter logget: ${estimatedSessionsThisMonth}`,
+        `Treningsdager: ${uniqueTrainingDays}`,
+        `Streak: ${streakWeeks} uker`,
+        `Konsistens: ${progressStory.consistency}%`,
+      ];
+      context.font = "bold 42px Inter, sans-serif";
+      context.fillStyle = "#0f172a";
+      lines.forEach((line, index) => {
+        context.fillText(line, 120, 430 + index * 110);
+      });
+      context.font = "30px Inter, sans-serif";
+      context.fillStyle = "#64748b";
+      context.fillText(`Trend: ${progressStory.trendLabel}`, 120, 930);
+      context.fillText(`Neste fokus: ${progressStory.nextFocus}`, 120, 995);
+
+      const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) {
+        setProgressShareStatus("Kunne ikke lage bilde akkurat nå.");
+        return;
+      }
+
+      const file = new File([blob], "motus-denne-maneden.png", { type: "image/png" });
+      const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };
+      const canShareFile = typeof nav.canShare === "function" ? nav.canShare({ files: [file] }) : false;
+      if (typeof nav.share === "function" && canShareFile) {
+        await nav.share({
+          title: "Motus progresjon",
+          text: "Min progresjon denne måneden",
+          files: [file],
+        });
+        setProgressShareStatus("Progresjonskort delt.");
+        return;
+      }
+
+      const imageUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = imageUrl;
+      link.download = "motus-denne-maneden.png";
+      link.click();
+      URL.revokeObjectURL(imageUrl);
+      setProgressShareStatus("Bilde lastet ned. Del det fra galleriet.");
+    } catch {
+      setProgressShareStatus("Deling ble avbrutt.");
+    }
   }
 
   async function saveProfile() {
@@ -690,6 +783,30 @@ export function MemberPortal(props: MemberPortalProps) {
         : "Ukemålet er nådd - hold flyten videre";
     return { recent14, previous14, delta, trendLabel, trendToneClass, consistency, nextFocus };
   }, [completedLogDates, now, sessionsRemaining]);
+  const nextBestAction = useMemo(() => {
+    if (!memberPrograms.length) {
+      return {
+        title: "Be om første program",
+        description: "Du har ingen aktive programmer. Send melding til trener for å få et oppsett.",
+        cta: "Send melding",
+        action: "messages" as const,
+      };
+    }
+    if (sessionsTargetNumber > 0 && sessionsRemaining > 0 && nextProgram) {
+      return {
+        title: `Du mangler ${sessionsRemaining} økt${sessionsRemaining === 1 ? "" : "er"} denne uken`,
+        description: "Start neste program nå for å holde flyten og nå ukemålet.",
+        cta: "Start neste økt",
+        action: "start-workout" as const,
+      };
+    }
+    return {
+      title: "Ukemålet er nådd",
+      description: "Sterkt! Ta en bonusøkt eller sjekk fremgangen din.",
+      cta: "Se fremgang",
+      action: "progress" as const,
+    };
+  }, [memberPrograms.length, sessionsTargetNumber, sessionsRemaining, nextProgram]);
   const latestCompletedLog = memberLogs.find((log) => log.status === "Fullført") ?? null;
   const customerStatusLabel = (() => {
     const isPtCustomer = viewedMember?.customerType === "PT-kunde";
@@ -890,6 +1007,24 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div className="text-sm text-slate-500">Sett mål under Min profil for å få status her.</div>
                 ) : null}
               </div>
+              <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-sm font-semibold text-slate-700">Neste beste handling</div>
+                <div className="mt-1 text-sm font-medium text-slate-800">{nextBestAction.title}</div>
+                <div className="mt-1 text-sm text-slate-600">{nextBestAction.description}</div>
+                <GradientButton
+                  onClick={() => {
+                    if (nextBestAction.action === "messages") setMemberTab("messages");
+                    if (nextBestAction.action === "progress") setMemberTab("progress");
+                    if (nextBestAction.action === "start-workout" && nextProgram) {
+                      setMemberTab("programs");
+                      startWorkoutMode(nextProgram.id);
+                    }
+                  }}
+                  className="mt-3 w-full sm:w-auto"
+                >
+                  {nextBestAction.cta}
+                </GradientButton>
+              </div>
               <div
                 className="rounded-2xl border p-4 text-white"
                 style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, borderColor: "rgba(255,255,255,0.3)" }}
@@ -998,6 +1133,19 @@ export function MemberPortal(props: MemberPortalProps) {
                   Beregnet fra {workoutCelebration?.weight} kg × {workoutCelebration?.reps} reps (omregnet til 1RM).
                 </div>
                 <GradientButton onClick={dismissWorkoutCelebration} className="mt-4 w-full">Rått! Fortsett</GradientButton>
+              </div>
+            </div>
+          ) : null}
+          {achievementCelebration ? (
+            <div className="fixed inset-0 z-[10030] bg-slate-900/35 p-4">
+              <div className="motus-pop-in mx-auto mt-20 max-w-sm rounded-3xl border bg-white p-5 text-center shadow-2xl" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-3xl">🎉</div>
+                <div className="mt-2 text-xs font-semibold uppercase tracking-wide text-emerald-600">Achievement unlock</div>
+                <div className="mt-1 text-xl font-bold tracking-tight text-slate-900">{achievementCelebration.label}</div>
+                <div className="mt-2 text-sm text-slate-600">Låst opp! Fortsett den gode flyten.</div>
+                <GradientButton onClick={() => setAchievementCelebration(null)} className="mt-4 w-full">
+                  Rått!
+                </GradientButton>
               </div>
             </div>
           ) : null}
@@ -1186,6 +1334,24 @@ export function MemberPortal(props: MemberPortalProps) {
                 <StatCard label="Økter logget" value={String(completedLogs.length)} hint="Totalt fullført" />
                 <StatCard label="Treningsdager" value={String(uniqueTrainingDays)} hint="Unike dager" />
                 <StatCard label="Denne perioden" value={String(estimatedSessionsThisMonth)} hint="Loggede økter" />
+              </div>
+              <div className="mt-4 rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-700">Delbar progresjonsoppsummering</div>
+                    <div className="mt-1 text-xs text-slate-500">Story-format av “Denne måneden” for rask deling.</div>
+                  </div>
+                  <OutlineButton onClick={() => void shareMonthlyProgressSummary()} className="w-full sm:w-auto">
+                    Del denne måneden
+                  </OutlineButton>
+                </div>
+                {progressShareStatus ? (
+                  <StatusMessage
+                    message={progressShareStatus}
+                    tone={progressShareStatus.toLowerCase().includes("kunne ikke") ? "error" : "success"}
+                    className="mt-3 !rounded-xl !px-3 !py-2 !text-xs"
+                  />
+                ) : null}
               </div>
               <div className="mt-4 rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-sm font-semibold text-slate-700">Streaks + achievements</div>
