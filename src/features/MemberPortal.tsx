@@ -7,6 +7,8 @@ import type { ChatMessage, Exercise, Member, MemberTab, TrainingProgram, Workout
 
 type MemberPortalProps = {
   members: Member[];
+  currentUserRole: "trainer" | "member";
+  currentUserEmail: string;
   programs: TrainingProgram[];
   logs: WorkoutLog[];
   messages: ChatMessage[];
@@ -30,7 +32,7 @@ type MemberPortalProps = {
 };
 
 export function MemberPortal(props: MemberPortalProps) {
-  const { members, programs, logs, messages, memberViewId, memberTab, setMemberTab, updateMember, memberAvatarUrl, setMemberAvatarUrl, exercises, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, replaceWorkoutExerciseGroup, updateWorkoutModeNote, finishWorkoutMode, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
+  const { members, currentUserRole, currentUserEmail, programs, logs, messages, memberViewId, memberTab, setMemberTab, updateMember, memberAvatarUrl, setMemberAvatarUrl, exercises, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, replaceWorkoutExerciseGroup, updateWorkoutModeNote, finishWorkoutMode, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
   const [messageText, setMessageText] = useState("");
   const [profileWeight, setProfileWeight] = useState("");
   const [profileTrainingGoal, setProfileTrainingGoal] = useState("");
@@ -51,17 +53,27 @@ export function MemberPortal(props: MemberPortalProps) {
   const [replacementExerciseIdDraft, setReplacementExerciseIdDraft] = useState("");
   const [workoutExerciseIndex, setWorkoutExerciseIndex] = useState(0);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
+  const normalizedCurrentUserEmail = currentUserEmail.trim().toLowerCase();
   const viewedMember = members.find((member) => member.id === memberViewId) ?? null;
-  const editableMember = viewedMember ?? members[0] ?? null;
+  const currentMemberByEmail =
+    currentUserRole === "member" && normalizedCurrentUserEmail
+      ? members.find((member) => member.email.trim().toLowerCase() === normalizedCurrentUserEmail) ?? null
+      : null;
+  const editableMember =
+    viewedMember ??
+    currentMemberByEmail ??
+    (currentUserRole === "member" ? null : members[0] ?? null);
+  const activeMemberId = editableMember?.id ?? memberViewId;
   const relatedMemberIds = useMemo(() => {
-    if (!viewedMember) return [memberViewId];
-    const normalizedEmail = viewedMember.email.trim().toLowerCase();
-    if (!normalizedEmail) return [memberViewId];
+    const sourceMember = viewedMember ?? currentMemberByEmail;
+    if (!sourceMember) return [activeMemberId];
+    const normalizedEmail = sourceMember.email.trim().toLowerCase();
+    if (!normalizedEmail) return [activeMemberId];
     const ids = members
       .filter((member) => member.email.trim().toLowerCase() === normalizedEmail)
       .map((member) => member.id);
-    return ids.length ? ids : [memberViewId];
-  }, [members, viewedMember, memberViewId]);
+    return ids.length ? ids : [activeMemberId];
+  }, [members, viewedMember, currentMemberByEmail, activeMemberId]);
   const relatedMemberIdSet = useMemo(() => new Set(relatedMemberIds), [relatedMemberIds]);
   const memberPrograms = programs.filter((program) => relatedMemberIdSet.has(program.memberId));
   const memberLogs = logs.filter((log) => relatedMemberIdSet.has(log.memberId));
@@ -199,7 +211,7 @@ export function MemberPortal(props: MemberPortalProps) {
       .sort((a, b) => b.score - a.score)
       .slice(0, 6);
   }, [completedLogs]);
-  const shouldShowCelebration = Boolean(workoutCelebration && workoutCelebration.memberId === memberViewId);
+  const shouldShowCelebration = Boolean(workoutCelebration && workoutCelebration.memberId === activeMemberId);
 
   function getProfileStorageKey(memberId: string): string {
     return `motus.member.profile.${memberId}`;
@@ -836,8 +848,8 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="flex flex-col sm:flex-row gap-3">
                   <TextInput value={messageText} onChange={(e) => setMessageText(e.target.value)} placeholder="Skriv melding til trener" />
                   <GradientButton onClick={() => {
-                    if (!memberViewId || !messageText.trim()) return;
-                    sendMemberMessage(memberViewId, messageText);
+                    if (!activeMemberId || !messageText.trim()) return;
+                    sendMemberMessage(activeMemberId, messageText);
                     setMessageText("");
                   }}>Send</GradientButton>
                 </div>

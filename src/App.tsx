@@ -521,6 +521,8 @@ export default function App() {
               </Card>
             <MemberPortal
               members={appState.members}
+              currentUserRole={appState.currentUser.role}
+              currentUserEmail={appState.currentUser.email}
               programs={appState.programs}
               logs={appState.logs}
               messages={appState.messages}
