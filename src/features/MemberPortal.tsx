@@ -53,6 +53,10 @@ export function MemberPortal(props: MemberPortalProps) {
   const [replacementExerciseIdDraft, setReplacementExerciseIdDraft] = useState("");
   const [workoutExerciseIndex, setWorkoutExerciseIndex] = useState(0);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const nowDate = new Date();
+    return new Date(nowDate.getFullYear(), nowDate.getMonth(), 1);
+  });
   const normalizedCurrentUserEmail = currentUserEmail.trim().toLowerCase();
   const viewedMember = members.find((member) => member.id === memberViewId) ?? null;
   const currentMemberByEmail =
@@ -176,13 +180,13 @@ export function MemberPortal(props: MemberPortalProps) {
       ? "Bra jobba! Du bygger solide treningsvaner."
       : "Små steg teller. En økt i dag bygger momentum.";
 
-  const trainingDaysThisMonth = new Set(
+  const trainingDaysInCalendarMonth = new Set(
     completedLogDates
-      .filter((date) => date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear())
+      .filter((date) => date.getMonth() === calendarMonth.getMonth() && date.getFullYear() === calendarMonth.getFullYear())
       .map((date) => date.getDate()),
   );
-  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const firstDayOfMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
+  const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
   const monthOffset = (firstDayOfMonth.getDay() + 6) % 7;
   const calendarCells = Array.from({ length: monthOffset + daysInMonth }, (_, index) => {
     const day = index - monthOffset + 1;
@@ -613,7 +617,27 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Treningskalender</div>
                   <div className="mt-1 text-xs text-slate-500">
-                    {now.toLocaleDateString("no-NO", { month: "long", year: "numeric" })}
+                    {calendarMonth.toLocaleDateString("no-NO", { month: "long", year: "numeric" })}
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <OutlineButton
+                      className="px-3 py-1.5 text-xs"
+                      onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                    >
+                      Forrige
+                    </OutlineButton>
+                    <OutlineButton
+                      className="px-3 py-1.5 text-xs"
+                      onClick={() => setCalendarMonth(new Date(now.getFullYear(), now.getMonth(), 1))}
+                    >
+                      I dag
+                    </OutlineButton>
+                    <OutlineButton
+                      className="px-3 py-1.5 text-xs"
+                      onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                    >
+                      Neste
+                    </OutlineButton>
                   </div>
                   <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[11px] text-slate-500">
                     <span>Ma</span><span>Ti</span><span>On</span><span>To</span><span>Fr</span><span>Lo</span><span>So</span>
@@ -623,9 +647,9 @@ export function MemberPortal(props: MemberPortalProps) {
                       day ? (
                         <div
                           key={`${day}-${index}`}
-                          className={`rounded-lg px-1 py-2 text-center text-xs ${trainingDaysThisMonth.has(day) ? "text-white font-semibold" : "text-slate-600 bg-white"}`}
+                          className={`rounded-lg px-1 py-2 text-center text-xs ${trainingDaysInCalendarMonth.has(day) ? "text-white font-semibold" : "text-slate-600 bg-white"}`}
                           style={
-                            trainingDaysThisMonth.has(day)
+                            trainingDaysInCalendarMonth.has(day)
                               ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
                               : { border: "1px solid rgba(15,23,42,0.06)" }
                           }
