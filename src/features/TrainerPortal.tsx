@@ -4,7 +4,7 @@ import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
 import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { uid } from "../app/storage";
-import { Card, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, TextArea, TextInput } from "../app/ui";
+import { Card, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
 import type { CreateMemberInput, UpdateMemberInput } from "../services/appRepository";
 import type { InviteMemberResult, InviteTrainerResult } from "../services/supabaseAuth";
 import type { ChatMessage, CustomerSubTab, Exercise, Member, ProgramExercise, TrainerTab, TrainingProgram, WorkoutLog } from "../app/types";
@@ -222,12 +222,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
     if (!normalizedEmail) return "";
     return memberAvatarByEmail[normalizedEmail] ?? "";
   }
-  const inviteStatusTone =
-    inviteStatus?.toLowerCase().includes("sendt") || inviteStatus?.toLowerCase().includes("invitasjon sendt")
-      ? "success"
-      : inviteStatus
-      ? "error"
-      : null;
   const selectedPrograms = programs.filter((program) => program.memberId === selectedMemberId);
   const templatePrograms = programs.filter((program) => program.memberId === "__template__");
   const selectedLogs = useMemo(() => {
@@ -1259,16 +1253,18 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 </div>
 
                 {inviteStatus ? (
-                  <div
-                    className={`rounded-xl border px-3 py-2 text-sm ${inviteStatusTone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}
-                  >
-                    {inviteStatus}
-                  </div>
+                  <StatusMessage
+                    message={inviteStatus}
+                    tone={inviteStatus.toLowerCase().includes("sendt") || inviteStatus.toLowerCase().includes("invitasjon sendt") ? "success" : "error"}
+                    className="!rounded-xl !px-3 !py-2"
+                  />
                 ) : null}
                 {memberLinkStatus ? (
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                    {memberLinkStatus}
-                  </div>
+                  <StatusMessage
+                    message={memberLinkStatus}
+                    tone={memberLinkStatus.toLowerCase().includes("feilet") ? "error" : "success"}
+                    className="!rounded-xl !px-3 !py-2"
+                  />
                 ) : null}
                 <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-800">Rediger kundekort</div>
@@ -1283,7 +1279,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     </label>
                     <label className="space-y-1 text-xs font-medium text-slate-600">
                       <span>Fødselsdato</span>
-                      <TextInput value={memberEditBirthDate} onChange={(event) => setMemberEditBirthDate(event.target.value)} placeholder="YYYY-MM-DD" />
+                      <TextInput value={memberEditBirthDate} onChange={(event) => setMemberEditBirthDate(event.target.value)} placeholder="dd.mm.yyyy" />
                     </label>
                   </div>
                   <div className="grid gap-2 md:grid-cols-2">
@@ -1300,9 +1296,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     Lagre kundedata
                   </OutlineButton>
                   {memberEditStatus ? (
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-                      {memberEditStatus}
-                    </div>
+                    <StatusMessage
+                      message={memberEditStatus}
+                      tone={memberEditStatus.toLowerCase().includes("feilet") ? "error" : "success"}
+                      className="!rounded-xl !px-3 !py-2 !text-xs"
+                    />
                   ) : null}
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -2021,9 +2019,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
               {isInvitingTrainer ? "Sender..." : "Send PT-invitasjon"}
             </GradientButton>
             {inviteTrainerStatus ? (
-              <div className={`rounded-xl border px-3 py-2 text-sm ${inviteTrainerStatus.toLowerCase().includes("sendt") || inviteTrainerStatus.toLowerCase().includes("nylig") ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>
-                {inviteTrainerStatus}
-              </div>
+              <StatusMessage
+                message={inviteTrainerStatus}
+                tone={inviteTrainerStatus.toLowerCase().includes("sendt") || inviteTrainerStatus.toLowerCase().includes("nylig") ? "success" : "error"}
+                className="!rounded-xl !px-3 !py-2"
+              />
             ) : null}
           </div>
           <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -2033,7 +2033,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
             <TextInput value={newMemberPhone} onChange={(e) => setNewMemberPhone(e.target.value)} placeholder="Telefon (valgfritt)" />
             <TextInput value={newMemberGoal} onChange={(e) => setNewMemberGoal(e.target.value)} placeholder="Hovedmål (valgfritt)" />
             <TextInput value={newMemberFocus} onChange={(e) => setNewMemberFocus(e.target.value)} placeholder="Fokus (valgfritt)" />
-            {newMemberError ? <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{newMemberError}</div> : null}
+            {newMemberError ? <StatusMessage message={newMemberError} tone="error" className="!rounded-xl !px-3 !py-2 !text-xs" /> : null}
             <GradientButton onClick={() => submitNewMember()} className="w-full md:w-auto">Opprett medlem</GradientButton>
             <OutlineButton onClick={() => submitNewMember({ inviteAfterCreate: true })} className="w-full md:w-auto">
               Opprett + send invitasjon
@@ -2043,9 +2043,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
             <div className="text-sm font-semibold text-slate-700">Gjenopprett slettet klient</div>
             <TextInput value={restoreEmail} onChange={(e) => setRestoreEmail(e.target.value)} placeholder="E-post til slettet klient" />
             {restoreStatus ? (
-              <div className={`rounded-xl border px-3 py-2 text-xs ${restoreStatus.toLowerCase().includes("feilet") ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
-                {restoreStatus}
-              </div>
+              <StatusMessage
+                message={restoreStatus}
+                tone={restoreStatus.toLowerCase().includes("feilet") ? "error" : "success"}
+                className="!rounded-xl !px-3 !py-2 !text-xs"
+              />
             ) : null}
             <OutlineButton onClick={() => void handleRestoreMember()} className="w-full md:w-auto">
               Gjenopprett klient
