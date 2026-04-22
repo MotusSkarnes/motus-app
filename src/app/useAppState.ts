@@ -33,15 +33,28 @@ export function useAppState() {
     memberId?: string;
     email: string;
     members: AppState["members"];
+    programs: AppState["programs"];
     fallbackId: string;
   }): string {
-    const { role, memberId, email, members, fallbackId } = input;
+    const { role, memberId, email, members, programs, fallbackId } = input;
     if (role !== "member") return fallbackId;
     const normalizedEmail = email.trim().toLowerCase();
-    const byEmail = normalizedEmail
-      ? members.find((member) => member.email.trim().toLowerCase() === normalizedEmail && member.isActive !== false)
-      : null;
-    if (byEmail) return byEmail.id;
+    const byEmailCandidates = normalizedEmail
+      ? members.filter((member) => member.email.trim().toLowerCase() === normalizedEmail && member.isActive !== false)
+      : [];
+    if (byEmailCandidates.length > 0) {
+      const programCountByMemberId = new Map<string, number>();
+      programs.forEach((program) => {
+        programCountByMemberId.set(program.memberId, (programCountByMemberId.get(program.memberId) ?? 0) + 1);
+      });
+      const bestCandidate = [...byEmailCandidates].sort((a, b) => {
+        const aCount = programCountByMemberId.get(a.id) ?? 0;
+        const bCount = programCountByMemberId.get(b.id) ?? 0;
+        if (bCount !== aCount) return bCount - aCount;
+        return a.id.localeCompare(b.id);
+      })[0];
+      if (bestCandidate) return bestCandidate.id;
+    }
     if (memberId && members.some((member) => member.id === memberId)) return memberId;
     return fallbackId;
   }
@@ -217,6 +230,7 @@ export function useAppState() {
                 memberId: user.memberId,
                 email: user.email,
                 members: prev.members,
+                programs: prev.programs,
                 fallbackId: user.memberId ?? prev.selectedMemberId,
               })
             : user.memberId ?? prev.selectedMemberId,
@@ -225,6 +239,7 @@ export function useAppState() {
           memberId: user.memberId,
           email: user.email,
           members: prev.members,
+          programs: prev.programs,
           fallbackId: user.memberId ?? prev.memberViewId,
         }),
       }));
@@ -281,6 +296,7 @@ export function useAppState() {
                   memberId: supabaseUser.memberId,
                   email: supabaseUser.email,
                   members: prev.members,
+                  programs: prev.programs,
                   fallbackId: supabaseUser.memberId ?? prev.selectedMemberId,
                 })
               : supabaseUser.memberId ?? prev.selectedMemberId,
@@ -289,6 +305,7 @@ export function useAppState() {
             memberId: supabaseUser.memberId,
             email: supabaseUser.email,
             members: prev.members,
+            programs: prev.programs,
             fallbackId: supabaseUser.memberId ?? prev.memberViewId,
           }),
         }));
