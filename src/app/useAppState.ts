@@ -7,6 +7,60 @@ import { fetchExercisesFromSupabase, fetchHydratedTrainerData, fetchLogsFromSupa
 import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, inviteTrainerByEmail, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult, type InviteTrainerResult } from "../services/supabaseAuth";
 import type { AppState, Exercise, MemberTab, TrainerTab } from "./types";
 
+const MEMBER_PROFILE_OVERRIDES_KEY = "motus.member.profileOverridesByEmail";
+
+function applyLocalMemberProfileOverridesToState(state: AppState): AppState {
+  if (typeof window === "undefined") return state;
+  try {
+    const raw = window.localStorage.getItem(MEMBER_PROFILE_OVERRIDES_KEY);
+    if (!raw) return state;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object") return state;
+    let hasChanges = false;
+    const nextMembers = state.members.map((member) => {
+      const key = member.email.trim().toLowerCase();
+      if (!key) return member;
+      const overrideRaw = parsed[key];
+      if (!overrideRaw || typeof overrideRaw !== "object") return member;
+      const override = overrideRaw as Partial<{
+        name: string;
+        phone: string;
+        birthDate: string;
+        goal: string;
+        focus: string;
+        injuries: string;
+      }>;
+      const next = {
+        ...member,
+        name: typeof override.name === "string" && override.name.trim() ? override.name : member.name,
+        phone: typeof override.phone === "string" ? override.phone : member.phone,
+        birthDate: typeof override.birthDate === "string" ? override.birthDate : member.birthDate,
+        goal: typeof override.goal === "string" ? override.goal : member.goal,
+        focus: typeof override.focus === "string" ? override.focus : member.focus,
+        injuries: typeof override.injuries === "string" ? override.injuries : member.injuries,
+      };
+      if (
+        next.name !== member.name ||
+        next.phone !== member.phone ||
+        next.birthDate !== member.birthDate ||
+        next.goal !== member.goal ||
+        next.focus !== member.focus ||
+        next.injuries !== member.injuries
+      ) {
+        hasChanges = true;
+      }
+      return next;
+    });
+    if (!hasChanges) return state;
+    return {
+      ...state,
+      members: nextMembers,
+    };
+  } catch {
+    return state;
+  }
+}
+
 function syncExercisesWithPrograms(state: AppState): AppState {
   const exercisesById = new Map(state.exercises.map((exercise) => [exercise.id, exercise]));
   const exercisesByName = new Map(state.exercises.map((exercise) => [exercise.name.trim().toLowerCase(), exercise]));
@@ -222,7 +276,7 @@ export function useAppState() {
           next.exercises = remoteExercises;
         }
 
-        return syncExercisesWithPrograms(next);
+        return applyLocalMemberProfileOverridesToState(syncExercisesWithPrograms(next));
       });
     }
 
@@ -345,6 +399,10 @@ export function useAppState() {
       cancelled = true;
     };
   }, [isRecoveryMode]);
+
+  useEffect(() => {
+    setAppState((prev) => applyLocalMemberProfileOverridesToState(prev));
+  }, []);
 
   useEffect(() => {
     if (!appState.members.length) return;
