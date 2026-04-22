@@ -149,6 +149,20 @@ async function deleteMemberFromSupabase(member: { id: string; email?: string }) 
   if (!supabaseClient) return;
   const memberId = member.id;
   const normalizedEmail = (member.email ?? "").trim().toLowerCase();
+
+  try {
+    const { error } = await supabaseClient.functions.invoke("delete-member", {
+      body: {
+        memberId,
+        email: normalizedEmail || undefined,
+      },
+    });
+    if (!error) return;
+    console.warn("delete-member invoke failed, trying fetch fallback:", error.message);
+  } catch (error) {
+    console.warn("delete-member invoke threw, trying fetch fallback:", error);
+  }
+
   if (supabaseUrl && supabaseAnonKey) {
     try {
       const {
