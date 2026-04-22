@@ -153,6 +153,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [isUploadingExerciseImage, setIsUploadingExerciseImage] = useState(false);
   const [exerciseFormStatus, setExerciseFormStatus] = useState<string | null>(null);
   const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
+  const [compactExerciseBank, setCompactExerciseBank] = useState(true);
   const [showCustomerToolsMobile, setShowCustomerToolsMobile] = useState(false);
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
   const visibleMembers = showInactiveMembers ? members : members.filter((member) => member.isActive !== false);
@@ -1112,19 +1113,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   Gjenopprett klient
                 </OutlineButton>
               </div>
-              <div className="rounded-2xl border bg-slate-50 p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-sm font-medium text-slate-700">Legg til medlem</div>
-                <TextInput value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="Navn" />
-                <TextInput value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} placeholder="E-post" />
-                <TextInput value={newMemberPhone} onChange={(e) => setNewMemberPhone(e.target.value)} placeholder="Telefon (valgfritt)" />
-                <TextInput value={newMemberGoal} onChange={(e) => setNewMemberGoal(e.target.value)} placeholder="Hovedmål (valgfritt)" />
-                <TextInput value={newMemberFocus} onChange={(e) => setNewMemberFocus(e.target.value)} placeholder="Fokus (valgfritt)" />
-                {newMemberError ? <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{newMemberError}</div> : null}
-                <GradientButton onClick={() => submitNewMember()} className="w-full">Opprett medlem</GradientButton>
-                <OutlineButton onClick={() => submitNewMember({ inviteAfterCreate: true })} className="w-full">
-                  Opprett + send invitasjon
-                </OutlineButton>
-              </div>
             </div>
           </Card>
 
@@ -1471,6 +1459,21 @@ export function TrainerPortal(props: TrainerPortalProps) {
               </div>
             )}
           </Card>
+          <Card className="p-4">
+            <div className="rounded-2xl border bg-slate-50 p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="text-sm font-medium text-slate-700">Legg til medlem</div>
+              <TextInput value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="Navn" />
+              <TextInput value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} placeholder="E-post" />
+              <TextInput value={newMemberPhone} onChange={(e) => setNewMemberPhone(e.target.value)} placeholder="Telefon (valgfritt)" />
+              <TextInput value={newMemberGoal} onChange={(e) => setNewMemberGoal(e.target.value)} placeholder="Hovedmål (valgfritt)" />
+              <TextInput value={newMemberFocus} onChange={(e) => setNewMemberFocus(e.target.value)} placeholder="Fokus (valgfritt)" />
+              {newMemberError ? <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{newMemberError}</div> : null}
+              <GradientButton onClick={() => submitNewMember()} className="w-full">Opprett medlem</GradientButton>
+              <OutlineButton onClick={() => submitNewMember({ inviteAfterCreate: true })} className="w-full">
+                Opprett + send invitasjon
+              </OutlineButton>
+            </div>
+          </Card>
         </div>
       ) : null}
 
@@ -1775,36 +1778,48 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   ]}
                 />
               </div>
-              <div className="text-xs text-slate-500">{visibleExercises.length} øvelser vist</div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs text-slate-500">{visibleExercises.length} øvelser vist</div>
+                <OutlineButton onClick={() => setCompactExerciseBank((prev) => !prev)} className="px-3 py-1.5 text-xs">
+                  {compactExerciseBank ? "Vis mer info" : "Kompakt visning"}
+                </OutlineButton>
+              </div>
+              <div className={`grid ${compactExerciseBank ? "gap-2 sm:grid-cols-2 xl:grid-cols-3" : "gap-3 sm:grid-cols-2"}`}>
                 {visibleExercises.map((exercise) => (
-                  <div key={exercise.id} className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div key={exercise.id} className={`rounded-2xl border bg-slate-50 ${compactExerciseBank ? "p-3" : "p-4"}`} style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="flex items-start gap-3">
-                      <img
-                        src={getExercisePreviewSrc(exercise)}
-                        alt={`Skisse av ${exercise.name}`}
-                        className="h-14 w-14 rounded-xl border bg-white object-cover"
-                        style={{ borderColor: "rgba(15,23,42,0.08)" }}
-                        onError={(event) => {
-                          event.currentTarget.src = getExerciseSketchDataUri(exercise);
-                        }}
-                      />
+                      {!compactExerciseBank || expandedExerciseId === exercise.id ? (
+                        <img
+                          src={getExercisePreviewSrc(exercise)}
+                          alt={`Skisse av ${exercise.name}`}
+                          className="h-14 w-14 rounded-xl border bg-white object-cover"
+                          style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                          onError={(event) => {
+                            event.currentTarget.src = getExerciseSketchDataUri(exercise);
+                          }}
+                        />
+                      ) : null}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
                           <div className="font-medium leading-tight">{exercise.name}</div>
                           <OutlineButton onClick={() => startEditExercise(exercise)} className="px-3 py-1.5 text-xs">Rediger</OutlineButton>
                         </div>
                         <div className="mt-1 text-xs text-slate-500">
-                          {exercise.category} · {exercise.group} · Utstyr: {exercise.equipment} · {exercise.level}
+                          {exercise.category} · {exercise.group} · {exercise.level}
                         </div>
+                        {!compactExerciseBank || expandedExerciseId === exercise.id ? (
+                          <div className="mt-1 text-xs text-slate-500">Utstyr: {exercise.equipment}</div>
+                        ) : null}
                       </div>
                     </div>
-                    <div className="mt-2 text-sm text-slate-700">
-                      {expandedExerciseId === exercise.id
-                        ? exercise.description
-                        : `${exercise.description.slice(0, 88)}${exercise.description.length > 88 ? "..." : ""}`}
-                    </div>
-                    {exercise.description.length > 88 ? (
+                    {!compactExerciseBank || expandedExerciseId === exercise.id ? (
+                      <div className="mt-2 text-sm text-slate-700">
+                        {expandedExerciseId === exercise.id
+                          ? exercise.description
+                          : `${exercise.description.slice(0, 88)}${exercise.description.length > 88 ? "..." : ""}`}
+                      </div>
+                    ) : null}
+                    {exercise.description.length > 88 || compactExerciseBank ? (
                       <button
                         type="button"
                         className="mt-1 text-xs font-medium text-slate-600 underline"

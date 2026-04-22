@@ -5,7 +5,54 @@ import { localAppRepository, type CreateMemberInput, type SaveExerciseInput, typ
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { fetchExercisesFromSupabase, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
 import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult } from "../services/supabaseAuth";
-import type { AppState, MemberTab, TrainerTab } from "./types";
+import type { AppState, Exercise, MemberTab, TrainerTab } from "./types";
+
+function syncExercisesWithPrograms(state: AppState): AppState {
+  const exercisesById = new Map(state.exercises.map((exercise) => [exercise.id, exercise]));
+  const exercisesByName = new Map(state.exercises.map((exercise) => [exercise.name.trim().toLowerCase(), exercise]));
+  const appendedExercises: Exercise[] = [];
+
+  state.programs.forEach((program) => {
+    program.exercises.forEach((programExercise) => {
+      const exerciseId = programExercise.exerciseId.trim();
+      const exerciseName = programExercise.exerciseName.trim();
+      if (!exerciseId && !exerciseName) return;
+      if (exerciseId && exercisesById.has(exerciseId)) return;
+      if (exerciseName && exercisesByName.has(exerciseName.toLowerCase())) return;
+
+      const nextExercise: Exercise = {
+        id: exerciseId || `ex_${exerciseName.toLowerCase().replace(/\s+/g, "_")}`,
+        name: exerciseName || "Ny øvelse",
+        category: "Styrke",
+        group: "Fra program",
+        equipment: "Uspesifisert",
+        level: "Nybegynner",
+        description: "Lagt til automatisk fra program.",
+      };
+      appendedExercises.push(nextExercise);
+      exercisesById.set(nextExercise.id, nextExercise);
+      exercisesByName.set(nextExercise.name.trim().toLowerCase(), nextExercise);
+    });
+  });
+
+  let hasProgramNameFix = false;
+  const normalizedPrograms = state.programs.map((program) => ({
+    ...program,
+    exercises: program.exercises.map((programExercise) => {
+      const source = exercisesById.get(programExercise.exerciseId.trim());
+      if (!source || source.name === programExercise.exerciseName) return programExercise;
+      hasProgramNameFix = true;
+      return { ...programExercise, exerciseName: source.name };
+    }),
+  }));
+
+  if (!appendedExercises.length && !hasProgramNameFix) return state;
+  return {
+    ...state,
+    exercises: [...state.exercises, ...appendedExercises],
+    programs: normalizedPrograms,
+  };
+}
 
 export function useAppState() {
   const isDemoMode = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_MODE === "true";
@@ -136,7 +183,7 @@ export function useAppState() {
           next.exercises = remoteExercises;
         }
 
-        return next;
+        return syncExercisesWithPrograms(next);
       });
     }
 
@@ -557,7 +604,7 @@ export function useAppState() {
   function saveProgramForMember(input: SaveProgramInput) {
     if (!input.title.trim() || !input.memberId) return;
 
-    setAppState((prev) => repository.saveProgram(prev, input));
+    setAppState((prev) => syncExercisesWithPrograms(repository.saveProgram(prev, input)));
   }
 
   function deleteProgramById(programId: string) {
