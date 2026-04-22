@@ -28,6 +28,24 @@ export function useAppState() {
   const [trainerTab, setTrainerTab] = useState<TrainerTab>("dashboard");
   const [memberTab, setMemberTab] = useState<MemberTab>("overview");
 
+  function resolveMemberViewIdForUser(input: {
+    role: AppState["role"];
+    memberId?: string;
+    email: string;
+    members: AppState["members"];
+    fallbackId: string;
+  }): string {
+    const { role, memberId, email, members, fallbackId } = input;
+    if (role !== "member") return fallbackId;
+    const normalizedEmail = email.trim().toLowerCase();
+    const byEmail = normalizedEmail
+      ? members.find((member) => member.email.trim().toLowerCase() === normalizedEmail && member.isActive !== false)
+      : null;
+    if (byEmail) return byEmail.id;
+    if (memberId && members.some((member) => member.id === memberId)) return memberId;
+    return fallbackId;
+  }
+
   useEffect(() => {
     saveState(appState);
   }, [appState]);
@@ -192,8 +210,23 @@ export function useAppState() {
         ...prev,
         currentUser: user,
         role: user.role,
-        selectedMemberId: user.memberId ?? prev.selectedMemberId,
-        memberViewId: user.memberId ?? prev.memberViewId,
+        selectedMemberId:
+          user.role === "member"
+            ? resolveMemberViewIdForUser({
+                role: user.role,
+                memberId: user.memberId,
+                email: user.email,
+                members: prev.members,
+                fallbackId: user.memberId ?? prev.selectedMemberId,
+              })
+            : user.memberId ?? prev.selectedMemberId,
+        memberViewId: resolveMemberViewIdForUser({
+          role: user.role,
+          memberId: user.memberId,
+          email: user.email,
+          members: prev.members,
+          fallbackId: user.memberId ?? prev.memberViewId,
+        }),
       }));
     }
 
@@ -241,8 +274,23 @@ export function useAppState() {
           ...prev,
           currentUser: supabaseUser,
           role: supabaseUser.role,
-          selectedMemberId: supabaseUser.memberId ?? prev.selectedMemberId,
-          memberViewId: supabaseUser.memberId ?? prev.memberViewId,
+          selectedMemberId:
+            supabaseUser.role === "member"
+              ? resolveMemberViewIdForUser({
+                  role: supabaseUser.role,
+                  memberId: supabaseUser.memberId,
+                  email: supabaseUser.email,
+                  members: prev.members,
+                  fallbackId: supabaseUser.memberId ?? prev.selectedMemberId,
+                })
+              : supabaseUser.memberId ?? prev.selectedMemberId,
+          memberViewId: resolveMemberViewIdForUser({
+            role: supabaseUser.role,
+            memberId: supabaseUser.memberId,
+            email: supabaseUser.email,
+            members: prev.members,
+            fallbackId: supabaseUser.memberId ?? prev.memberViewId,
+          }),
         }));
         setTrainerTab("dashboard");
         setMemberTab("overview");
