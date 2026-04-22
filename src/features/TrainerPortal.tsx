@@ -813,13 +813,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   <div className="mt-1 text-sm">Mål: {member.goal}</div>
                   </button>
                   <div className="mt-2">
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteMember(member.id)}
-                      className="w-full rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700"
-                    >
-                      SLETT KUNDE (NY)
-                    </button>
+                    <OutlineButton onClick={() => handleDeleteMember(member.id)} className="w-full px-3 py-1.5 text-xs">
+                      Slett kunde
+                    </OutlineButton>
                   </div>
                 </div>
               ))}
@@ -871,13 +867,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     <OutlineButton onClick={() => handleDeactivateMember(selectedMember.id)}>
                       Sett medlem som inaktiv
                     </OutlineButton>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteMember(selectedMember.id)}
-                      className="rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700"
-                    >
-                      SLETT KUNDE PERMANENT (NY)
-                    </button>
+                    <OutlineButton onClick={() => handleDeleteMember(selectedMember.id)}>
+                      Slett kunde permanent
+                    </OutlineButton>
                   </div>
                 </div>
 
