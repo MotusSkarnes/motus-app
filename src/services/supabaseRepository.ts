@@ -10,6 +10,8 @@ import {
   type UpdateWorkoutResultInput,
 } from "./appRepository";
 import { supabaseClient } from "./supabaseClient";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split(".");
@@ -147,6 +149,26 @@ async function deleteMemberFromSupabase(member: { id: string; email?: string }) 
   if (!supabaseClient) return;
   const memberId = member.id;
   const normalizedEmail = (member.email ?? "").trim().toLowerCase();
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/delete-member`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabaseAnonKey,
+        },
+        body: JSON.stringify({
+          memberId,
+          email: normalizedEmail || undefined,
+        }),
+      });
+      if (response.ok) return;
+      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+      console.warn("delete-member function failed, falling back to direct delete:", payload?.error ?? response.status);
+    } catch (error) {
+      console.warn("delete-member function call failed, falling back to direct delete:", error);
+    }
+  }
 
   const { error: messagesError } = await supabaseClient.from("chat_messages").delete().eq("member_id", memberId);
   if (messagesError) {
