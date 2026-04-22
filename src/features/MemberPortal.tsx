@@ -936,35 +936,30 @@ export function MemberPortal(props: MemberPortalProps) {
                 <StatCard label="Meldinger" value={String(memberMessages.length)} hint="I chatten" />
               </div>
               <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-sm font-semibold text-slate-700">Neste steg</div>
+                <div className="text-sm font-semibold text-slate-700">🎯 Neste steg</div>
+                <div className="mt-1 text-sm font-medium text-slate-800">{nextBestAction.title}</div>
+                <div className="mt-1 text-sm text-slate-600">{nextBestAction.description}</div>
                 {nextProgram ? (
-                  <div className="mt-2 space-y-3">
-                    <div className="text-sm text-slate-600">
-                      Neste program: <span className="font-medium text-slate-800">{nextProgram.title}</span>
-                    </div>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <GradientButton
-                        onClick={() => {
-                          setMemberTab("programs");
-                          startWorkoutMode(nextProgram.id);
-                        }}
-                        className="w-full sm:w-auto"
-                      >
-                        Start dagens okt
-                      </GradientButton>
-                      <OutlineButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">
-                        Se alle programmer
-                      </OutlineButton>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-2 space-y-3">
-                    <div className="text-sm text-slate-600">Du har ingen programmer enda. Send en melding til trener for a fa ditt forste oppsett.</div>
-                    <GradientButton onClick={() => setMemberTab("messages")} className="w-full sm:w-auto">
-                      Send melding til trener
-                    </GradientButton>
-                  </div>
-                )}
+                  <div className="mt-2 text-xs text-slate-500">Neste program: {nextProgram.title}</div>
+                ) : null}
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <GradientButton
+                    onClick={() => {
+                      if (nextBestAction.action === "messages") setMemberTab("messages");
+                      if (nextBestAction.action === "progress") setMemberTab("progress");
+                      if (nextBestAction.action === "start-workout" && nextProgram) {
+                        setMemberTab("programs");
+                        startWorkoutMode(nextProgram.id);
+                      }
+                    }}
+                    className="w-full sm:w-auto"
+                  >
+                    {nextBestAction.cta}
+                  </GradientButton>
+                  <OutlineButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">
+                    Se alle programmer
+                  </OutlineButton>
+                </div>
               </div>
               <div className="rounded-2xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center justify-between gap-2">
@@ -1019,24 +1014,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 {sessionsTargetNumber <= 0 && dailyStepsTargetNumber <= 0 && targetWeightNumber <= 0 ? (
                   <div className="text-sm text-slate-500">Sett mål under Min profil for å få status her.</div>
                 ) : null}
-              </div>
-              <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-sm font-semibold text-slate-700">🎯 Neste beste handling</div>
-                <div className="mt-1 text-sm font-medium text-slate-800">{nextBestAction.title}</div>
-                <div className="mt-1 text-sm text-slate-600">{nextBestAction.description}</div>
-                <GradientButton
-                  onClick={() => {
-                    if (nextBestAction.action === "messages") setMemberTab("messages");
-                    if (nextBestAction.action === "progress") setMemberTab("progress");
-                    if (nextBestAction.action === "start-workout" && nextProgram) {
-                      setMemberTab("programs");
-                      startWorkoutMode(nextProgram.id);
-                    }
-                  }}
-                  className="mt-3 w-full sm:w-auto"
-                >
-                  {nextBestAction.cta}
-                </GradientButton>
               </div>
               <div
                 className="rounded-2xl border p-4 text-white"
