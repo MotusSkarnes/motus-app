@@ -919,28 +919,6 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 </div>
               </div>
-              <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-sm font-semibold text-slate-700">Streaks + achievements</div>
-                <div className="mt-1 text-xs text-slate-500">Små milepæler som holder motivasjonen oppe.</div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                  {achievements.map((achievement) => (
-                    <div
-                      key={achievement.id}
-                      className={`rounded-xl border px-3 py-2 text-sm ${
-                        achievement.unlocked
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                          : "border-slate-200 bg-white text-slate-500"
-                      }`}
-                    >
-                      <div className="font-semibold">{achievement.label}</div>
-                      <div className="mt-0.5 text-[11px]">{achievement.hint}</div>
-                      <div className="mt-1 text-[11px] font-semibold">
-                        {achievement.unlocked ? "Låst opp" : "På vei"}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
               <div className="grid gap-4">
                 <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Treningskalender</div>
@@ -1208,6 +1186,28 @@ export function MemberPortal(props: MemberPortalProps) {
                 <StatCard label="Økter logget" value={String(completedLogs.length)} hint="Totalt fullført" />
                 <StatCard label="Treningsdager" value={String(uniqueTrainingDays)} hint="Unike dager" />
                 <StatCard label="Denne perioden" value={String(estimatedSessionsThisMonth)} hint="Loggede økter" />
+              </div>
+              <div className="mt-4 rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-sm font-semibold text-slate-700">Streaks + achievements</div>
+                <div className="mt-1 text-xs text-slate-500">Små milepæler som holder motivasjonen oppe.</div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  {achievements.map((achievement) => (
+                    <div
+                      key={achievement.id}
+                      className={`rounded-xl border px-3 py-2 text-sm ${
+                        achievement.unlocked
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                          : "border-slate-200 bg-white text-slate-500"
+                      }`}
+                    >
+                      <div className="font-semibold">{achievement.label}</div>
+                      <div className="mt-0.5 text-[11px]">{achievement.hint}</div>
+                      <div className="mt-1 text-[11px] font-semibold">
+                        {achievement.unlocked ? "Låst opp" : "På vei"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="mt-6 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
