@@ -42,7 +42,7 @@ export type SaveExerciseInput = {
 
 export type UpdateMemberInput = {
   memberId: string;
-  changes: Partial<Pick<Member, "email" | "phone" | "birthDate" | "membershipType" | "customerType">>;
+  changes: Partial<Pick<Member, "name" | "email" | "phone" | "birthDate" | "goal" | "focus" | "injuries" | "membershipType" | "customerType">>;
 };
 
 export interface AppRepository {
@@ -381,9 +381,13 @@ export function updateMemberInState(state: AppState, input: UpdateMemberInput): 
         ? {
             ...member,
             ...input.changes,
+            name: input.changes.name !== undefined ? input.changes.name.trim() : member.name,
             email: normalizedEmail ?? member.email,
             phone: input.changes.phone !== undefined ? input.changes.phone.trim() : member.phone,
             birthDate: input.changes.birthDate !== undefined ? input.changes.birthDate.trim() : member.birthDate,
+            goal: input.changes.goal !== undefined ? input.changes.goal.trim() : member.goal,
+            focus: input.changes.focus !== undefined ? input.changes.focus.trim() : member.focus,
+            injuries: input.changes.injuries !== undefined ? input.changes.injuries.trim() : member.injuries,
           }
         : member
     ),

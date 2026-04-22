@@ -41,9 +41,13 @@ export function MemberPortal(props: MemberPortalProps) {
   const [goalMetricDraft, setGoalMetricDraft] = useState<"sessionsPerWeek" | "dailySteps" | "targetWeight">("sessionsPerWeek");
   const [goalMetricValueDraft, setGoalMetricValueDraft] = useState("");
   const [profileSaveInfo, setProfileSaveInfo] = useState<string | null>(null);
+  const [memberNameDraft, setMemberNameDraft] = useState("");
   const [memberEmailDraft, setMemberEmailDraft] = useState("");
   const [memberPhoneDraft, setMemberPhoneDraft] = useState("");
   const [memberBirthDateDraft, setMemberBirthDateDraft] = useState("");
+  const [memberGoalDraft, setMemberGoalDraft] = useState("");
+  const [memberFocusDraft, setMemberFocusDraft] = useState("");
+  const [memberInjuriesDraft, setMemberInjuriesDraft] = useState("");
   const [replacementExerciseIdDraft, setReplacementExerciseIdDraft] = useState("");
   const [workoutExerciseIndex, setWorkoutExerciseIndex] = useState(0);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
@@ -227,9 +231,13 @@ export function MemberPortal(props: MemberPortalProps) {
       setProfileDailyStepsTarget(fallback.dailyStepsTarget);
       setProfileTargetWeight(fallback.targetWeight);
       setProfileCurrentDailySteps(fallback.currentDailySteps);
+      setMemberNameDraft(viewedMember.name);
       setMemberEmailDraft(viewedMember.email);
       setMemberPhoneDraft(viewedMember.phone);
       setMemberBirthDateDraft(viewedMember.birthDate);
+      setMemberGoalDraft(viewedMember.goal);
+      setMemberFocusDraft(viewedMember.focus);
+      setMemberInjuriesDraft(viewedMember.injuries);
       return;
     }
     try {
@@ -241,9 +249,13 @@ export function MemberPortal(props: MemberPortalProps) {
         setProfileDailyStepsTarget(fallback.dailyStepsTarget);
         setProfileTargetWeight(fallback.targetWeight);
         setProfileCurrentDailySteps(fallback.currentDailySteps);
+        setMemberNameDraft(viewedMember.name);
         setMemberEmailDraft(viewedMember.email);
         setMemberPhoneDraft(viewedMember.phone);
         setMemberBirthDateDraft(viewedMember.birthDate);
+        setMemberGoalDraft(viewedMember.goal);
+        setMemberFocusDraft(viewedMember.focus);
+        setMemberInjuriesDraft(viewedMember.injuries);
         return;
       }
       const parsed = JSON.parse(raw) as Partial<typeof fallback>;
@@ -253,9 +265,13 @@ export function MemberPortal(props: MemberPortalProps) {
       setProfileDailyStepsTarget(parsed.dailyStepsTarget ?? "");
       setProfileTargetWeight(parsed.targetWeight ?? "");
       setProfileCurrentDailySteps(parsed.currentDailySteps ?? "");
+      setMemberNameDraft(viewedMember.name);
       setMemberEmailDraft(viewedMember.email);
       setMemberPhoneDraft(viewedMember.phone);
       setMemberBirthDateDraft(viewedMember.birthDate);
+      setMemberGoalDraft(viewedMember.goal);
+      setMemberFocusDraft(viewedMember.focus);
+      setMemberInjuriesDraft(viewedMember.injuries);
     } catch {
       setProfileWeight(fallback.weight);
       setProfileTrainingGoal(fallback.trainingGoal);
@@ -263,9 +279,13 @@ export function MemberPortal(props: MemberPortalProps) {
       setProfileDailyStepsTarget(fallback.dailyStepsTarget);
       setProfileTargetWeight(fallback.targetWeight);
       setProfileCurrentDailySteps(fallback.currentDailySteps);
+      setMemberNameDraft(viewedMember.name);
       setMemberEmailDraft(viewedMember.email);
       setMemberPhoneDraft(viewedMember.phone);
       setMemberBirthDateDraft(viewedMember.birthDate);
+      setMemberGoalDraft(viewedMember.goal);
+      setMemberFocusDraft(viewedMember.focus);
+      setMemberInjuriesDraft(viewedMember.injuries);
     }
   }, [viewedMember]);
 
@@ -297,9 +317,13 @@ export function MemberPortal(props: MemberPortalProps) {
     updateMember({
       memberId: viewedMember.id,
       changes: {
+        name: memberNameDraft,
         email: normalizedEmail,
         phone: memberPhoneDraft,
         birthDate: memberBirthDateDraft,
+        goal: memberGoalDraft,
+        focus: memberFocusDraft,
+        injuries: memberInjuriesDraft,
       },
     });
     setProfileSaveInfo("Profil og mål lagret.");
@@ -332,6 +356,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const targetWeightNumber = Number(profileTargetWeight) || 0;
   const currentWeightNumber = Number(profileWeight) || 0;
   const sessionsRemaining = Math.max(0, sessionsTargetNumber - completedThisWeek);
+  const latestCompletedLog = memberLogs.find((log) => log.status === "Fullført") ?? null;
   const customerStatusLabel = (() => {
     const isPtCustomer = viewedMember?.customerType === "PT-kunde";
     const isPremiumCustomer = viewedMember?.membershipType === "Premium";
@@ -833,17 +858,20 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div className="rounded-2xl border bg-slate-50 p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="text-sm font-semibold text-slate-700">Kundeinformasjon</div>
                     <div className="grid gap-2 text-sm text-slate-600 md:grid-cols-2">
+                      <div><span className="font-medium text-slate-800">Navn:</span> {memberNameDraft || "Ikke satt"}</div>
                       <div><span className="font-medium text-slate-800">E-post:</span> {memberEmailDraft || "Ikke satt"}</div>
                       <div><span className="font-medium text-slate-800">Telefon:</span> {memberPhoneDraft || "Ikke satt"}</div>
                       <div><span className="font-medium text-slate-800">Fødselsdato:</span> {memberBirthDateDraft || "Ikke satt"}</div>
                       <div><span className="font-medium text-slate-800">Status:</span> {customerStatusLabel}</div>
-                      <div><span className="font-medium text-slate-800">Mål:</span> {viewedMember.goal || "Ikke satt"}</div>
-                      <div><span className="font-medium text-slate-800">Fokus:</span> {viewedMember.focus || "Ikke satt"}</div>
-                      <div className="md:col-span-2"><span className="font-medium text-slate-800">Skader:</span> {viewedMember.injuries || "Ingen registrerte skader"}</div>
+                      <div><span className="font-medium text-slate-800">Mål:</span> {memberGoalDraft || "Ikke satt"}</div>
+                      <div><span className="font-medium text-slate-800">Fokus:</span> {memberFocusDraft || "Ikke satt"}</div>
+                      <div><span className="font-medium text-slate-800">Siste trening:</span> {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}</div>
+                      <div><span className="font-medium text-slate-800">Invitert:</span> {viewedMember.invitedAt || "Ikke invitert enda"}</div>
+                      <div className="md:col-span-2"><span className="font-medium text-slate-800">Skader:</span> {memberInjuriesDraft || "Ingen registrerte skader"}</div>
                     </div>
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
-                    <TextInput value={viewedMember.name} readOnly />
+                    <TextInput value={memberNameDraft} onChange={(e) => setMemberNameDraft(e.target.value)} placeholder="Navn" />
                     <TextInput value={memberEmailDraft} onChange={(e) => setMemberEmailDraft(e.target.value)} placeholder="E-post" />
                   </div>
                   <div className="rounded-2xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -869,6 +897,11 @@ export function MemberPortal(props: MemberPortalProps) {
                     <TextInput value={memberPhoneDraft} onChange={(e) => setMemberPhoneDraft(e.target.value)} placeholder="Telefon" />
                     <TextInput value={memberBirthDateDraft} onChange={(e) => setMemberBirthDateDraft(e.target.value)} placeholder="Fødselsdato (YYYY-MM-DD)" />
                   </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <TextInput value={memberGoalDraft} onChange={(e) => setMemberGoalDraft(e.target.value)} placeholder="Mål" />
+                    <TextInput value={memberFocusDraft} onChange={(e) => setMemberFocusDraft(e.target.value)} placeholder="Fokus" />
+                  </div>
+                  <TextArea value={memberInjuriesDraft} onChange={(e) => setMemberInjuriesDraft(e.target.value)} className="min-h-[90px]" placeholder="Skader / hensyn" />
                   <div className="grid gap-3 md:grid-cols-2">
                     <TextInput value={profileWeight} onChange={(e) => setProfileWeight(e.target.value)} placeholder="Vekt (kg)" />
                     <TextInput value={profileTrainingGoal} onChange={(e) => setProfileTrainingGoal(e.target.value)} placeholder="Treningsmål (tekst)" />
