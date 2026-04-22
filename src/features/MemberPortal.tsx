@@ -855,23 +855,8 @@ export function MemberPortal(props: MemberPortalProps) {
               </div>
               {viewedMember ? (
                 <div className="mt-5 space-y-4">
-                  <div className="rounded-2xl border bg-slate-50 p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="text-sm font-semibold text-slate-700">Kundeinformasjon</div>
-                    <div className="grid gap-2 text-sm text-slate-600 md:grid-cols-2">
-                      <div><span className="font-medium text-slate-800">Navn:</span> {memberNameDraft || "Ikke satt"}</div>
-                      <div><span className="font-medium text-slate-800">E-post:</span> {memberEmailDraft || "Ikke satt"}</div>
-                      <div><span className="font-medium text-slate-800">Telefon:</span> {memberPhoneDraft || "Ikke satt"}</div>
-                      <div><span className="font-medium text-slate-800">Fødselsdato:</span> {memberBirthDateDraft || "Ikke satt"}</div>
-                      <div><span className="font-medium text-slate-800">Status:</span> {customerStatusLabel}</div>
-                      <div><span className="font-medium text-slate-800">Mål:</span> {memberGoalDraft || "Ikke satt"}</div>
-                      <div><span className="font-medium text-slate-800">Fokus:</span> {memberFocusDraft || "Ikke satt"}</div>
-                      <div><span className="font-medium text-slate-800">Siste trening:</span> {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}</div>
-                      <div><span className="font-medium text-slate-800">Invitert:</span> {viewedMember.invitedAt || "Ikke invitert enda"}</div>
-                      <div className="md:col-span-2"><span className="font-medium text-slate-800">Skader:</span> {memberInjuriesDraft || "Ingen registrerte skader"}</div>
-                    </div>
-                  </div>
                   <div className="rounded-2xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="text-sm font-semibold text-slate-700">Rediger kundeinformasjon</div>
+                    <div className="text-sm font-semibold text-slate-700">Kundeinformasjon</div>
                     <div className="grid gap-3 md:grid-cols-2">
                       <label className="space-y-1">
                         <span className="text-sm font-semibold text-slate-700">Navn</span>
@@ -906,6 +891,11 @@ export function MemberPortal(props: MemberPortalProps) {
                       <span className="text-sm font-semibold text-slate-700">Skader / hensyn</span>
                       <TextArea value={memberInjuriesDraft} onChange={(e) => setMemberInjuriesDraft(e.target.value)} className="min-h-[90px]" placeholder="Skader / hensyn" />
                     </label>
+                    <div className="grid gap-2 text-sm text-slate-600 md:grid-cols-2">
+                      <div><span className="font-medium text-slate-800">Status:</span> {customerStatusLabel}</div>
+                      <div><span className="font-medium text-slate-800">Siste trening:</span> {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}</div>
+                      <div><span className="font-medium text-slate-800">Invitert:</span> {viewedMember.invitedAt || "Ikke invitert enda"}</div>
+                    </div>
                   </div>
                   <div className="rounded-2xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="text-sm font-semibold text-slate-700">Profilbilde</div>
