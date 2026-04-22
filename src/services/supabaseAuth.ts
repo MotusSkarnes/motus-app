@@ -189,7 +189,27 @@ export async function inviteMemberByEmail(email: string, memberId: string): Prom
 
   if (error) {
     const detailed = await extractFunctionErrorMessage(error);
-    return { ok: false, message: `Invitasjon feilet: ${detailed ?? "Ukjent feil fra funksjonen."}` };
+    const message = detailed ?? "Ukjent feil fra funksjonen.";
+    if (message.toLowerCase().includes("unsupported jwt algorithm es256")) {
+      const redirectTo =
+        typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+      const { error: otpError } = await supabaseClient.auth.signInWithOtp({
+        email: normalizedEmail,
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: redirectTo,
+          data: { member_id: memberId.trim(), role: "member" },
+        },
+      });
+      if (!otpError) {
+        return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}` };
+      }
+      return {
+        ok: false,
+        message: `Invitasjon feilet: ${otpError.message || message}`,
+      };
+    }
+    return { ok: false, message: `Invitasjon feilet: ${message}` };
   }
 
   if (data && typeof data === "object" && "message" in data && typeof data.message === "string") {
