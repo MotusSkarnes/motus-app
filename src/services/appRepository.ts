@@ -280,9 +280,10 @@ export function finishWorkoutModeInState(state: AppState): AppState {
     return weight * (1 + reps / 30);
   }
 
-  function getBestEstimated1RM(logs: WorkoutLog[], exerciseName: string): number {
+  function getBestEstimated1RM(logs: WorkoutLog[], exerciseName: string, memberId: string): number {
     let best = 0;
     logs.forEach((log) => {
+      if (log.memberId !== memberId) return;
       (log.results ?? []).forEach((result) => {
         if (!result.completed || result.exerciseName !== exerciseName) return;
         const weight = Number(result.performedWeight) || 0;
@@ -301,7 +302,7 @@ export function finishWorkoutModeInState(state: AppState): AppState {
     const reps = Number(result.performedReps) || 0;
     const newEstimated = estimate1RM(weight, reps);
     if (newEstimated <= 0) return;
-    const previousEstimated = getBestEstimated1RM(state.logs, result.exerciseName);
+    const previousEstimated = getBestEstimated1RM(state.logs, result.exerciseName, program.memberId);
     if (newEstimated <= previousEstimated) return;
     if (!bestCelebration || newEstimated - previousEstimated > bestCelebration.newEstimated1RM - bestCelebration.previousEstimated1RM) {
       bestCelebration = {
