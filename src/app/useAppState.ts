@@ -265,6 +265,32 @@ export function useAppState() {
     }
   }, [appState.members, appState.selectedMemberId, appState.memberViewId]);
 
+  useEffect(() => {
+    if (!appState.currentUser) return;
+    if (appState.currentUser.role !== "member") return;
+    const resolvedMemberId = resolveMemberViewIdForUser({
+      role: appState.currentUser.role,
+      memberId: appState.currentUser.memberId,
+      email: appState.currentUser.email,
+      members: appState.members,
+      programs: appState.programs,
+      fallbackId: appState.memberViewId,
+    });
+    if (!resolvedMemberId) return;
+    if (resolvedMemberId === appState.memberViewId && resolvedMemberId === appState.selectedMemberId) return;
+    setAppState((prev) => ({
+      ...prev,
+      memberViewId: resolvedMemberId,
+      selectedMemberId: resolvedMemberId,
+    }));
+  }, [
+    appState.currentUser,
+    appState.members,
+    appState.programs,
+    appState.memberViewId,
+    appState.selectedMemberId,
+  ]);
+
   function patchState(patch: Partial<AppState>) {
     setAppState((prev) => ({ ...prev, ...patch }));
   }
