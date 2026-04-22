@@ -375,7 +375,7 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
     .select(
       "id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes"
     )
-    .neq("is_active", false)
+    .or("is_active.is.null,is_active.eq.true")
     .order("created_at", { ascending: true });
 
   if (error) {
