@@ -982,13 +982,11 @@ export function MemberPortal(props: MemberPortalProps) {
                           style={
                             calendarDayLoad.has(day)
                               ? {
-                                  background: `linear-gradient(135deg, rgba(0,193,212,${Math.max(
-                                    0.25,
-                                    ((calendarDayLoad.get(day) ?? 1) / Math.max(1, maxCalendarDayLoad)) * 0.95,
-                                  )}) 0%, rgba(244,114,182,${Math.max(
-                                    0.2,
-                                    ((calendarDayLoad.get(day) ?? 1) / Math.max(1, maxCalendarDayLoad)) * 0.8,
-                                  )}) 100%)`,
+                                  background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
+                                  opacity: Math.max(
+                                    0.3,
+                                    (calendarDayLoad.get(day) ?? 1) / Math.max(1, maxCalendarDayLoad),
+                                  ),
                                 }
                               : { border: "1px solid rgba(15,23,42,0.06)" }
                           }
@@ -1003,9 +1001,9 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                   <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
                     <span>Lav</span>
-                    <div className="h-2 w-20 rounded-full" style={{ background: "linear-gradient(90deg, rgba(0,193,212,0.25) 0%, rgba(244,114,182,0.2) 100%)" }} />
-                    <div className="h-2 w-20 rounded-full" style={{ background: "linear-gradient(90deg, rgba(0,193,212,0.6) 0%, rgba(244,114,182,0.55) 100%)" }} />
-                    <div className="h-2 w-20 rounded-full" style={{ background: "linear-gradient(90deg, rgba(0,193,212,0.95) 0%, rgba(244,114,182,0.8) 100%)" }} />
+                    <div className="h-2 w-20 rounded-full" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, opacity: 0.3 }} />
+                    <div className="h-2 w-20 rounded-full" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, opacity: 0.6 }} />
+                    <div className="h-2 w-20 rounded-full" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, opacity: 1 }} />
                     <span>Høy</span>
                   </div>
                 </div>
