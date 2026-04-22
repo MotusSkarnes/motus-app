@@ -1198,7 +1198,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                                 <TextInput value={item.reps} onChange={(e) => updateDraftExercise(item.id, "reps", e.target.value)} placeholder="Reps" />
                               </div>
                               <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">Planlagt vekt (kg)</div>
+                                <div className="text-[11px] font-medium text-slate-500">Kg</div>
                                 <TextInput value={item.weight} onChange={(e) => updateDraftExercise(item.id, "weight", e.target.value)} placeholder="Kg" />
                               </div>
                               <div className="space-y-1">
@@ -1421,7 +1421,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           <TextInput value={item.reps} onChange={(e) => updateDraftExercise(item.id, "reps", e.target.value)} placeholder="Reps" />
                         </div>
                         <div className="space-y-1">
-                          <div className="text-[11px] font-medium text-slate-500">Planlagt vekt (kg)</div>
+                          <div className="text-[11px] font-medium text-slate-500">Kg</div>
                           <TextInput value={item.weight} onChange={(e) => updateDraftExercise(item.id, "weight", e.target.value)} placeholder="Kg" />
                         </div>
                         <div className="space-y-1">
