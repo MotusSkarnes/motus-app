@@ -312,30 +312,42 @@ export function MemberPortal(props: MemberPortalProps) {
     return streak;
   }, [trainingWeekKeys]);
   const achievements = useMemo(() => {
-    const items: Array<{ id: string; label: string; hint: string; unlocked: boolean }> = [
+    const items: Array<{ id: string; label: string; hint: string; unlocked: boolean; current: number; target: number; icon: string }> = [
       {
         id: "first-session",
         label: "Første økt",
         hint: "Logg minst 1 fullført økt",
         unlocked: completedLogs.length >= 1,
+        current: completedLogs.length,
+        target: 1,
+        icon: "🚀",
       },
       {
         id: "streak-3",
         label: "3-ukers streak",
         hint: "Hold flyt i 3 uker",
         unlocked: streakWeeks >= 3,
+        current: streakWeeks,
+        target: 3,
+        icon: "🔥",
       },
       {
         id: "ten-sessions",
         label: "10 økter",
         hint: "Fullfør totalt 10 økter",
         unlocked: completedLogs.length >= 10,
+        current: completedLogs.length,
+        target: 10,
+        icon: "💪",
       },
       {
         id: "five-days",
         label: "5 treningsdager",
         hint: "Tren på 5 ulike dager",
         unlocked: uniqueTrainingDays >= 5,
+        current: uniqueTrainingDays,
+        target: 5,
+        icon: "📅",
       },
     ];
     return items;
@@ -1400,18 +1412,24 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="mt-1 text-xs text-slate-500">Små milepæler som holder motivasjonen oppe.</div>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                   {achievements.map((achievement) => (
-                    <div
-                      key={achievement.id}
-                      className={`rounded-xl border px-3 py-2 text-sm ${
-                        achievement.unlocked
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                          : "border-slate-200 bg-white text-slate-500"
-                      }`}
-                    >
-                      <div className="font-semibold">{achievement.label}</div>
+                    <div key={achievement.id} className={`rounded-xl border px-3 py-2 text-sm ${achievement.unlocked ? "border-emerald-300 bg-emerald-50/80 text-emerald-900" : "border-slate-200 bg-white text-slate-600"}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-semibold">{achievement.label}</div>
+                        <div className="text-lg">{achievement.icon}</div>
+                      </div>
                       <div className="mt-0.5 text-[11px]">{achievement.hint}</div>
-                      <div className="mt-1 text-[11px] font-semibold">
-                        {achievement.unlocked ? "Låst opp" : "På vei"}
+                      <div className="mt-2 h-1.5 rounded-full bg-slate-200">
+                        <div
+                          className="h-1.5 rounded-full"
+                          style={{
+                            width: `${Math.min(100, Math.round((Math.min(achievement.current, achievement.target) / achievement.target) * 100))}%`,
+                            background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
+                          }}
+                        />
+                      </div>
+                      <div className="mt-1 flex items-center justify-between text-[11px] font-semibold">
+                        <span>{Math.min(achievement.current, achievement.target)}/{achievement.target}</span>
+                        <span>{achievement.unlocked ? "Låst opp ✨" : "På vei"}</span>
                       </div>
                     </div>
                   ))}
