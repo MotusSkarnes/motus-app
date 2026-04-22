@@ -1550,7 +1550,15 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     <div className="rounded-3xl border bg-slate-50 p-4">
                       <div className="font-semibold">Eksisterende programmer</div>
                       <div className="mt-4 space-y-3">
-                        {selectedPrograms.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen programmer ennå.</div> : null}
+                        {selectedPrograms.length === 0 ? (
+                          <div className="rounded-2xl border border-dashed bg-white p-6 text-center">
+                            <div className="text-sm font-semibold text-slate-700">Ingen programmer ennå</div>
+                            <div className="mt-1 text-sm text-slate-500">Lag et enkelt program for å komme i gang med kunden.</div>
+                            <GradientButton onClick={() => setCustomerSubTab("programs")} className="mt-3 w-full sm:w-auto">
+                              Opprett program
+                            </GradientButton>
+                          </div>
+                        ) : null}
                         {selectedPrograms.map((program) => (
                           <div key={program.id} className="rounded-2xl border bg-white p-4">
                             <div className="font-medium">{program.title}</div>
@@ -1576,7 +1584,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   <div className="rounded-3xl border bg-slate-50 p-4 space-y-4">
                     <div className="font-semibold">Dialog med kunde</div>
                     <div className="max-h-64 space-y-3 overflow-auto rounded-2xl border bg-white p-4">
-                      {selectedMessages.length === 0 ? <div className="text-sm text-slate-500">Ingen meldinger ennå.</div> : null}
+                      {selectedMessages.length === 0 ? (
+                        <div className="rounded-xl border border-dashed bg-slate-50 p-4 text-sm text-slate-500">
+                          Ingen meldinger ennå. Send en kort velkomstmelding for bedre oppstart.
+                        </div>
+                      ) : null}
                       {selectedMessages.map((message) => (
                         <div key={message.id} className={`max-w-[85%] rounded-2xl p-3 text-sm ${message.sender === "trainer" ? "text-white ml-auto" : "bg-slate-50 border"}`} style={message.sender === "trainer" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
                           <div>{message.text}</div>
@@ -1614,6 +1626,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     <li>3. Send en velkomstmelding</li>
                   </ol>
                 </div>
+                <OutlineButton onClick={() => setTrainerTab("customers")} className="w-full sm:w-auto">
+                  Gå til kunder
+                </OutlineButton>
               </div>
             )}
           </Card>
