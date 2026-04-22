@@ -161,6 +161,7 @@ export function MemberPortal(props: MemberPortalProps) {
     emails: string[];
     memberId: string;
     memberIds: string[];
+    expectedMinUpdated: number;
     changes: {
       name: string;
       phone: string;
@@ -178,8 +179,11 @@ export function MemberPortal(props: MemberPortalProps) {
         invoked.data && typeof invoked.data === "object" && "updated" in invoked.data
           ? Number((invoked.data as { updated?: unknown }).updated ?? 0)
           : 0;
-      if (updated > 0) return { ok: true };
-      return { ok: false, message: "Ingen PT-rader ble oppdatert ved sync." };
+      if (updated >= payload.expectedMinUpdated) return { ok: true };
+      return {
+        ok: false,
+        message: `Sync oppdaterte ${updated} av ${payload.expectedMinUpdated} forventede rader.`,
+      };
     }
 
     const invokeDetails = await extractFunctionErrorDetails(invoked.error);
@@ -206,8 +210,11 @@ export function MemberPortal(props: MemberPortalProps) {
       const body = (await response.json().catch(() => null)) as { error?: string; message?: string; updated?: number } | null;
       if (response.ok) {
         const updated = Number(body?.updated ?? 0);
-        if (updated > 0) return { ok: true };
-        return { ok: false, message: "Ingen PT-rader ble oppdatert ved sync." };
+        if (updated >= payload.expectedMinUpdated) return { ok: true };
+        return {
+          ok: false,
+          message: `Sync oppdaterte ${updated} av ${payload.expectedMinUpdated} forventede rader.`,
+        };
       }
       const fallbackError = body?.error || body?.message || `HTTP ${response.status}`;
       const directUpdate = await supabaseClient
@@ -221,11 +228,16 @@ export function MemberPortal(props: MemberPortalProps) {
           focus: payload.changes.focus.trim(),
           injuries: payload.changes.injuries.trim(),
         })
-        .eq("id", payload.memberId)
-        .select("id")
-        .maybeSingle();
-      if (!directUpdate.error) return { ok: true };
-      return { ok: false, message: `${fallbackError} | fallback: ${directUpdate.error.message}` };
+        .in("id", payload.memberIds)
+        .select("id");
+      const fallbackUpdated = directUpdate.data?.length ?? 0;
+      if (!directUpdate.error && fallbackUpdated >= payload.expectedMinUpdated) return { ok: true };
+      return {
+        ok: false,
+        message: `${fallbackError} | fallback oppdaterte ${fallbackUpdated} av ${payload.expectedMinUpdated}${
+          directUpdate.error ? ` (${directUpdate.error.message})` : ""
+        }`,
+      };
     } catch {
       const directUpdate = await supabaseClient
         .from("members")
@@ -238,13 +250,15 @@ export function MemberPortal(props: MemberPortalProps) {
           focus: payload.changes.focus.trim(),
           injuries: payload.changes.injuries.trim(),
         })
-        .eq("id", payload.memberId)
-        .select("id")
-        .maybeSingle();
-      if (!directUpdate.error) return { ok: true };
+        .in("id", payload.memberIds)
+        .select("id");
+      const fallbackUpdated = directUpdate.data?.length ?? 0;
+      if (!directUpdate.error && fallbackUpdated >= payload.expectedMinUpdated) return { ok: true };
       return {
         ok: false,
-        message: `${invokeDetails || invoked.error.message || "Kunne ikke nå sync-tjenesten."} | fallback: ${directUpdate.error.message}`,
+        message: `${invokeDetails || invoked.error.message || "Kunne ikke nå sync-tjenesten."} | fallback oppdaterte ${fallbackUpdated} av ${payload.expectedMinUpdated}${
+          directUpdate.error ? ` (${directUpdate.error.message})` : ""
+        }`,
       };
     }
   }
@@ -503,6 +517,7 @@ export function MemberPortal(props: MemberPortalProps) {
         ),
         memberId: editableMember.id,
         memberIds: safeTargetIds,
+        expectedMinUpdated: safeTargetIds.length,
         changes: {
           name: memberNameDraft,
           phone: memberPhoneDraft,
