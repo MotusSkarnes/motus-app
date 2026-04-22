@@ -1730,7 +1730,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
                                 <button
                                   type="button"
                                   onClick={() => toggleFavoriteExercise(exercise.id)}
-                                  className={`rounded-lg border p-1.5 ${isFavorite ? "border-cyan-300 bg-cyan-50 text-cyan-600" : "border-slate-200 text-slate-400 hover:text-pink-600"}`}
+                                  className={`rounded-lg border p-1.5 ${isFavorite ? "" : "border-slate-200 text-slate-400"}`}
+                                  style={
+                                    isFavorite
+                                      ? { borderColor: "rgba(244,114,182,0.45)", backgroundColor: "rgba(244,114,182,0.12)", color: MOTUS.pink }
+                                      : { borderColor: "rgba(148,163,184,0.45)" }
+                                  }
                                   aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                                   title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                                 >
@@ -1991,7 +1996,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           <button
                             type="button"
                             onClick={() => toggleFavoriteExercise(exercise.id)}
-                            className={`rounded-lg border p-1.5 ${isFavorite ? "border-cyan-300 bg-cyan-50 text-cyan-600" : "border-slate-200 text-slate-400 hover:text-pink-600"}`}
+                            className={`rounded-lg border p-1.5 ${isFavorite ? "" : "border-slate-200 text-slate-400"}`}
+                            style={
+                              isFavorite
+                                ? { borderColor: "rgba(244,114,182,0.45)", backgroundColor: "rgba(244,114,182,0.12)", color: MOTUS.pink }
+                                : { borderColor: "rgba(148,163,184,0.45)" }
+                            }
                             aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                             title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                           >
@@ -2155,7 +2165,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         <button
                           type="button"
                           onClick={() => toggleFavoriteExercise(exercise.id)}
-                          className={`rounded-lg border p-1.5 ${isFavorite ? "border-cyan-300 bg-cyan-50 text-cyan-600" : "border-slate-200 text-slate-400 hover:text-pink-600"}`}
+                          className={`rounded-lg border p-1.5 ${isFavorite ? "" : "border-slate-200 text-slate-400"}`}
+                          style={
+                            isFavorite
+                              ? { borderColor: "rgba(244,114,182,0.45)", backgroundColor: "rgba(244,114,182,0.12)", color: MOTUS.pink }
+                              : { borderColor: "rgba(148,163,184,0.45)" }
+                          }
                           aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                           title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                         >
