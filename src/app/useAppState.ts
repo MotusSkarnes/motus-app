@@ -153,10 +153,11 @@ export function useAppState() {
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     const query = new URLSearchParams(window.location.search);
     const type = hash.get("type") ?? query.get("type");
+    const recoveryFlag = hash.get("recovery") ?? query.get("recovery");
     const tokenHash = hash.get("token_hash") ?? query.get("token_hash");
     const accessToken = hash.get("access_token") ?? query.get("access_token");
     const refreshToken = hash.get("refresh_token") ?? query.get("refresh_token");
-    if (type === "recovery") {
+    if (type === "recovery" || recoveryFlag === "1") {
       setIsRecoveryMode(true);
       setRecoveryInfo("Recovery-lenke registrert. Velg nytt passord.");
       if (tokenHash) {

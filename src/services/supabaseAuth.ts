@@ -101,7 +101,11 @@ export async function requestPasswordRecovery(email: string): Promise<{ ok: bool
     return { ok: false, message: "Skriv inn en gyldig e-postadresse." };
   }
 
-  const { error } = await supabaseClient.auth.resetPasswordForEmail(normalizedEmail);
+  const redirectTo =
+    typeof window !== "undefined" ? `${window.location.origin}/?type=recovery&recovery=1` : undefined;
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(normalizedEmail, {
+    redirectTo,
+  });
   if (error) {
     const lowered = (error.message || "").toLowerCase();
     if (lowered.includes("rate limit")) {
@@ -147,6 +151,16 @@ async function extractFunctionErrorMessage(error: unknown): Promise<string | nul
   return null;
 }
 
+function isRateLimitMessage(message: string): boolean {
+  const normalized = message.trim().toLowerCase();
+  return (
+    normalized.includes("rate limit") ||
+    normalized.includes("too many requests") ||
+    normalized.includes("for mange foresporsler") ||
+    normalized.includes("request rate limit reached")
+  );
+}
+
 export async function inviteMemberByEmail(email: string, memberId: string): Promise<InviteMemberResult> {
   if (!supabaseClient) {
     return { ok: false, message: "Supabase er ikke konfigurert." };
@@ -172,6 +186,12 @@ export async function inviteMemberByEmail(email: string, memberId: string): Prom
   });
   if (!otpError) {
     return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}` };
+  }
+  if (isRateLimitMessage(otpError.message || "")) {
+    return {
+      ok: true,
+      message: "Invitasjon er nylig sendt. Vent litt for ny utsending.",
+    };
   }
 
   const {
@@ -202,6 +222,12 @@ export async function inviteMemberByEmail(email: string, memberId: string): Prom
   if (error) {
     const detailed = await extractFunctionErrorMessage(error);
     const message = detailed ?? "Ukjent feil fra funksjonen.";
+    if (isRateLimitMessage(message)) {
+      return {
+        ok: true,
+        message: "Invitasjon er nylig sendt. Vent litt for ny utsending.",
+      };
+    }
     if (message.toLowerCase().includes("unsupported jwt algorithm es256")) {
       return { ok: false, message: `Invitasjon feilet: ${otpError.message || message}` };
     }
