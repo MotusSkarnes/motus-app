@@ -11,6 +11,10 @@ type DeletePayload = {
   email?: string;
 };
 
+function normalizeEmail(value: string | null | undefined): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -40,31 +44,34 @@ Deno.serve(async (req) => {
   }
 
   const memberId = payload.memberId?.trim() ?? "";
-  const email = payload.email?.trim().toLowerCase() ?? "";
+  const email = normalizeEmail(payload.email);
   if (!memberId && !email) {
     return jsonResponse(400, { error: "memberId or email is required" });
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-  if (memberId) {
-    await adminClient.from("members").update({ is_active: false }).eq("id", memberId);
-    await adminClient.from("chat_messages").delete().eq("member_id", memberId);
-    await adminClient.from("workout_logs").delete().eq("member_id", memberId);
-    await adminClient.from("training_programs").delete().eq("member_id", memberId);
-    await adminClient.from("members").delete().eq("id", memberId);
-  }
+  const targetMemberIds = new Set<string>();
+  if (memberId) targetMemberIds.add(memberId);
 
   if (email) {
-    await adminClient.from("members").update({ is_active: false }).ilike("email", email);
-    const { data: membersByEmail } = await adminClient.from("members").select("id").ilike("email", email);
-    const ids = (membersByEmail ?? []).map((row) => String((row as { id: string }).id));
-    for (const id of ids) {
-      await adminClient.from("chat_messages").delete().eq("member_id", id);
-      await adminClient.from("workout_logs").delete().eq("member_id", id);
-      await adminClient.from("training_programs").delete().eq("member_id", id);
+    const { data: allMembers } = await adminClient.from("members").select("id, email");
+    for (const row of allMembers ?? []) {
+      const candidate = row as { id?: string; email?: string | null };
+      const candidateId = String(candidate.id ?? "").trim();
+      if (!candidateId) continue;
+      if (normalizeEmail(candidate.email) === email) {
+        targetMemberIds.add(candidateId);
+      }
     }
-    await adminClient.from("members").delete().ilike("email", email);
+  }
+
+  for (const id of targetMemberIds) {
+    await adminClient.from("members").update({ is_active: false }).eq("id", id);
+    await adminClient.from("chat_messages").delete().eq("member_id", id);
+    await adminClient.from("workout_logs").delete().eq("member_id", id);
+    await adminClient.from("training_programs").delete().eq("member_id", id);
+    await adminClient.from("members").delete().eq("id", id);
   }
 
   return jsonResponse(200, { message: "Member deletion completed" });
