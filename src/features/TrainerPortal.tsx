@@ -389,6 +389,19 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setProgramExercisesDraft((prev) => prev.filter((item) => item.id !== id));
   }
 
+  function moveDraftExerciseByOffset(exerciseId: string, offset: -1 | 1) {
+    setProgramExercisesDraft((prev) => {
+      const index = prev.findIndex((item) => item.id === exerciseId);
+      if (index < 0) return prev;
+      const nextIndex = index + offset;
+      if (nextIndex < 0 || nextIndex >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(index, 1);
+      next.splice(nextIndex, 0, moved);
+      return next;
+    });
+  }
+
   function startEditProgram(program: TrainingProgram) {
     setEditingProgramId(program.id);
     setProgramTitle(program.title);
@@ -1198,7 +1211,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         }}
                       >
                         {programExercisesDraft.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen øvelser valgt ennå.</div> : null}
-                        {programExercisesDraft.map((item) => (
+                        {programExercisesDraft.map((item, index) => (
                           <div
                             key={item.id}
                             draggable
@@ -1226,7 +1239,23 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           >
                             <div className="flex items-center justify-between gap-3">
                               <div className="font-medium">{item.exerciseName}</div>
-                              <OutlineButton onClick={() => removeDraftExercise(item.id)}>Fjern</OutlineButton>
+                              <div className="flex items-center gap-2">
+                                <OutlineButton
+                                  onClick={() => moveDraftExerciseByOffset(item.id, -1)}
+                                  className="px-3 py-1.5 text-xs"
+                                  disabled={index === 0}
+                                >
+                                  Opp
+                                </OutlineButton>
+                                <OutlineButton
+                                  onClick={() => moveDraftExerciseByOffset(item.id, 1)}
+                                  className="px-3 py-1.5 text-xs"
+                                  disabled={index === programExercisesDraft.length - 1}
+                                >
+                                  Ned
+                                </OutlineButton>
+                                <OutlineButton onClick={() => removeDraftExercise(item.id)}>Fjern</OutlineButton>
+                              </div>
                             </div>
                             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                               <div className="space-y-1">
@@ -1437,7 +1466,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   }}
                 >
                   {programExercisesDraft.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen øvelser valgt ennå.</div> : null}
-                  {programExercisesDraft.map((item) => (
+                  {programExercisesDraft.map((item, index) => (
                     <div
                       key={item.id}
                       draggable
@@ -1465,7 +1494,23 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="font-medium">{item.exerciseName}</div>
-                        <OutlineButton onClick={() => removeDraftExercise(item.id)}>Fjern</OutlineButton>
+                        <div className="flex items-center gap-2">
+                          <OutlineButton
+                            onClick={() => moveDraftExerciseByOffset(item.id, -1)}
+                            className="px-3 py-1.5 text-xs"
+                            disabled={index === 0}
+                          >
+                            Opp
+                          </OutlineButton>
+                          <OutlineButton
+                            onClick={() => moveDraftExerciseByOffset(item.id, 1)}
+                            className="px-3 py-1.5 text-xs"
+                            disabled={index === programExercisesDraft.length - 1}
+                          >
+                            Ned
+                          </OutlineButton>
+                          <OutlineButton onClick={() => removeDraftExercise(item.id)}>Fjern</OutlineButton>
+                        </div>
                       </div>
                       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                         <div className="space-y-1">
