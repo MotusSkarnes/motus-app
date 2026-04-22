@@ -990,6 +990,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
               </div>
             </div>
             <div className="space-y-2">
+              {membersWithPriority.length === 0 ? (
+                <div className="rounded-xl border border-dashed bg-white p-4 text-sm text-slate-500">
+                  Ingen kunder matcher valgt prioritet/type-sortering akkurat nå.
+                </div>
+              ) : null}
               {membersWithPriority.map(({ member, priority }) => (
                 <div key={member.id} className="flex items-center justify-between gap-2 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-center gap-2">
@@ -1101,6 +1106,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
             <StatCard label="Filtrerte kunder" value={String(filteredMembers.length)} hint="Etter søk/filter" />
           </div>
           <div className="space-y-2">
+            {membersWithPriority.length === 0 ? (
+              <div className="rounded-xl border border-dashed bg-white p-4 text-sm text-slate-500">
+                Ingen kunder matcher valgt prioritet/type-sortering akkurat nå.
+              </div>
+            ) : null}
             {membersWithPriority.map(({ member, priority }) => (
               <div key={member.id} className="flex items-center justify-between gap-2 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center gap-2">
