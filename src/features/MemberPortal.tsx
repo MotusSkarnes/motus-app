@@ -306,14 +306,6 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     return streak;
   }, [trainingWeekKeys]);
-  const monthlyTarget = 8;
-  const monthlyProgressPercent = Math.min(100, Math.round((estimatedSessionsThisMonth / monthlyTarget) * 100));
-  const motivationalMessage =
-    streakWeeks >= 4
-      ? "Sterk flyt! Du har holdt rytmen i flere uker."
-      : estimatedSessionsThisMonth >= 4
-      ? "Bra jobba! Du bygger solide treningsvaner."
-      : "Små steg teller. En økt i dag bygger momentum.";
   const achievements = useMemo(() => {
     const items: Array<{ id: string; label: string; hint: string; unlocked: boolean }> = [
       {
@@ -844,7 +836,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 )}
               </div>
-              <div className="rounded-2xl border p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)", background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)" }}>
+              <div className="rounded-2xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-sm font-semibold text-slate-700">Målstatus</div>
                   <div className="rounded-full px-2.5 py-1 text-[11px] font-semibold text-slate-700" style={{ background: "rgba(15,23,42,0.08)" }}>
@@ -852,7 +844,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 </div>
                 {sessionsTargetNumber > 0 ? (
-                  <div className="rounded-xl border p-3 text-sm" style={{ borderColor: "rgba(0,193,212,0.25)", background: "rgba(0,193,212,0.07)" }}>
+                  <div className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="flex items-center justify-between text-slate-700">
                       <span className="font-medium">🏋️ Treningsmål (uke)</span>
                       <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold">{completedThisWeek}/{sessionsTargetNumber}</span>
@@ -866,7 +858,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 ) : null}
                 {dailyStepsTargetNumber > 0 ? (
-                  <div className="rounded-xl border p-3 text-sm" style={{ borderColor: "rgba(244,114,182,0.25)", background: "rgba(244,114,182,0.07)" }}>
+                  <div className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="flex items-center justify-between text-slate-700">
                       <span className="font-medium">👟 Skrittmål (i dag)</span>
                       <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold">{currentDailyStepsNumber}/{dailyStepsTargetNumber}</span>
@@ -880,7 +872,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 ) : null}
                 {targetWeightNumber > 0 && currentWeightNumber > 0 ? (
-                  <div className="rounded-xl border p-3 text-sm" style={{ borderColor: "rgba(148,163,184,0.35)", background: "rgba(148,163,184,0.08)" }}>
+                  <div className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="flex items-center justify-between text-slate-700">
                       <span className="font-medium">⚖️ Vektmål</span>
                       <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold">{currentWeightNumber} / {targetWeightNumber} kg</span>
@@ -949,37 +941,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   ))}
                 </div>
               </div>
-              <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-                <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-700">Motivasjon og flyt</div>
-                      <div className="text-xs text-slate-500">{motivationalMessage}</div>
-                    </div>
-                    <div className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                      {streakWeeks} uker streak
-                    </div>
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    <div className="flex items-center justify-between text-xs text-slate-500">
-                      <span>Månedsmål: {monthlyTarget} økter</span>
-                      <span>{estimatedSessionsThisMonth}/{monthlyTarget}</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-slate-200">
-                      <div className="h-2 rounded-full" style={{ width: `${monthlyProgressPercent}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
-                    </div>
-                  </div>
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                    <div className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="text-xs text-slate-500">Unike treningsdager</div>
-                      <div className="font-semibold text-slate-800">{uniqueTrainingDays}</div>
-                    </div>
-                    <div className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="text-xs text-slate-500">Økter denne måneden</div>
-                      <div className="font-semibold text-slate-800">{estimatedSessionsThisMonth}</div>
-                    </div>
-                  </div>
-                </div>
+              <div className="grid gap-4">
                 <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Treningskalender</div>
                   <div className="mt-1 text-xs text-slate-500">
