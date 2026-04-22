@@ -593,11 +593,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
   return (
     <>
     <div className="space-y-4 sm:space-y-6">
-      <Card className="p-3 hidden lg:block">
+      <Card className="p-3 md:hidden">
         <div className="flex gap-2 overflow-auto pb-1">
           <PillButton active={trainerTab === "dashboard"} onClick={() => setTrainerTab("dashboard")}>Oversikt</PillButton>
           <PillButton active={trainerTab === "customers"} onClick={() => setTrainerTab("customers")}>Kunder</PillButton>
           <PillButton active={trainerTab === "programs"} onClick={() => setTrainerTab("programs")}>Programmer</PillButton>
+          <PillButton active={trainerTab === "messages"} onClick={() => setTrainerTab("messages")}>Meldinger</PillButton>
           <PillButton active={trainerTab === "exerciseBank"} onClick={() => setTrainerTab("exerciseBank")}>Øvelsesbank</PillButton>
         </div>
       </Card>
@@ -731,6 +732,102 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 </div>
               ))}
             </div>
+          </div>
+        </Card>
+      ) : null}
+
+      {trainerTab === "calendar" ? (
+        <Card className="p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="font-semibold text-slate-800">Kalender</div>
+            <div className="flex items-center gap-2">
+              <OutlineButton onClick={() => setDashboardMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))} className="px-3 py-1.5 text-xs">Forrige</OutlineButton>
+              <OutlineButton onClick={() => setDashboardMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))} className="px-3 py-1.5 text-xs">Neste</OutlineButton>
+            </div>
+          </div>
+          <div className="text-sm text-slate-600">{monthLabel}</div>
+          <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-slate-500">
+            <span>Ma</span><span>Ti</span><span>On</span><span>To</span><span>Fr</span><span>Lo</span><span>So</span>
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {dashboardCalendarCells.map((day, index) => {
+              if (!day) return <div key={`cal-empty-${index}`} />;
+              const dateIso = `${dashboardMonth.getFullYear()}-${String(dashboardMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+              const hasTodo = todoDateSet.has(dateIso);
+              const isSelected = selectedTodoDate === dateIso;
+              return (
+                <button
+                  key={dateIso}
+                  type="button"
+                  onClick={() => setSelectedTodoDate(dateIso)}
+                  className={`rounded-lg px-1 py-2 text-center text-xs ${isSelected ? "text-white font-semibold" : "text-slate-600 bg-white"}`}
+                  style={
+                    isSelected
+                      ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
+                      : hasTodo
+                      ? { border: `1px solid ${MOTUS.turquoise}` }
+                      : { border: "1px solid rgba(15,23,42,0.06)" }
+                  }
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+      ) : null}
+
+      {trainerTab === "tasks" ? (
+        <Card className="p-5 space-y-4">
+          <div className="font-semibold text-slate-800">Oppgaver</div>
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+            <TextInput value={todoTitle} onChange={(e) => setTodoTitle(e.target.value)} placeholder="Ny oppgave (f.eks. ring Martin)" />
+            <TextInput type="date" value={selectedTodoDate} onChange={(e) => setSelectedTodoDate(e.target.value)} />
+            <GradientButton onClick={addTodoItem}>Legg til</GradientButton>
+          </div>
+          <div className="space-y-2">
+            {todoItemsForSelectedDate.length === 0 ? <div className="rounded-xl border border-dashed bg-white p-3 text-sm text-slate-500">Ingen oppgaver for valgt dag.</div> : null}
+            {todoItemsForSelectedDate.map((todo) => (
+              <div key={todo.id} className="flex items-center justify-between gap-2 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <button type="button" onClick={() => toggleTodoDone(todo.id)} className={`text-left text-sm ${todo.done ? "line-through text-slate-400" : "text-slate-700"}`}>
+                  {todo.title}
+                </button>
+                <OutlineButton onClick={() => deleteTodo(todo.id)} className="px-3 py-1.5 text-xs">Slett</OutlineButton>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
+
+      {trainerTab === "statistics" ? (
+        <Card className="p-5 space-y-4">
+          <div className="font-semibold text-slate-800">Statistikk og prioritering</div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard label="Totalt kunder" value={String(members.length)} hint="Alle kunder" />
+            <StatCard label="Må følges opp" value={String(followUpCount)} hint="7+ dager inaktiv" />
+            <StatCard label="Uten program" value={String(membersWithoutProgramCount)} hint="Mangler aktiv plan" />
+            <StatCard label="Filtrerte kunder" value={String(filteredMembers.length)} hint="Etter søk/filter" />
+          </div>
+          <div className="space-y-2">
+            {membersWithPriority.map(({ member, priority }) => (
+              <div key={member.id} className="flex items-center justify-between gap-2 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div>
+                  <div className="text-sm font-semibold text-slate-800">{member.name}</div>
+                  <div className="text-xs text-slate-500">{member.email} · {member.daysSinceActivity} dager siden aktivitet</div>
+                </div>
+                <div className="text-xs font-semibold text-slate-600">{priority.label}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
+
+      {trainerTab === "settings" ? (
+        <Card className="p-5 space-y-3">
+          <div className="font-semibold text-slate-800">Innstillinger</div>
+          <div className="rounded-xl border bg-slate-50 p-3 text-sm text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            Her samles PT-innstillinger. Foreløpig kan du styre medlemsvisning via:
+            søk/filter i klientlisten, vis/skjul inaktive kunder, og prioritetssortering i statistikk.
           </div>
         </Card>
       ) : null}
@@ -1324,6 +1421,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
         </Card>
       ) : null}
 
+      {trainerTab === "messages" ? (
       <Card className="p-5">
         <div className="flex items-start gap-3">
           <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><MessageSquare className="h-5 w-5" /></div>
@@ -1341,6 +1439,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
           }}>Send</GradientButton>
         </div>
       </Card>
+      ) : null}
     </div>
     </>
   );

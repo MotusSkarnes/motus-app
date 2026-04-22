@@ -2,7 +2,16 @@ export type Role = "trainer" | "member";
 export type Level = "Nybegynner" | "Litt øvet" | "Øvet";
 export type MembershipType = "Standard" | "Premium";
 export type CustomerType = "PT-kunde" | "Oppfølging" | "Egentrening";
-export type TrainerTab = "dashboard" | "customers" | "programs" | "exerciseBank";
+export type TrainerTab =
+  | "dashboard"
+  | "customers"
+  | "programs"
+  | "exerciseBank"
+  | "calendar"
+  | "messages"
+  | "tasks"
+  | "statistics"
+  | "settings";
 export type CustomerSubTab = "overview" | "profile" | "programs" | "messages";
 export type MemberTab = "overview" | "programs" | "progress" | "messages" | "profile";
 

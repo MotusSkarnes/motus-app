@@ -161,6 +161,17 @@ export async function inviteMemberByEmail(email: string, memberId: string): Prom
     .eq("id", memberId.trim());
 
   if (memberUpdateError) {
+    const lowered = memberUpdateError.message.toLowerCase();
+    const missingInvitedAtColumn =
+      lowered.includes("could not find") &&
+      lowered.includes("invited_at") &&
+      lowered.includes("schema cache");
+    if (missingInvitedAtColumn) {
+      return {
+        ok: true,
+        message: `Invitasjon sendt til ${normalizedEmail}. Merk: invited_at mangler i databasen, så invitert-dato lagres ikke ennå.`,
+      };
+    }
     return { ok: false, message: `Invitasjon sendt, men kunne ikke oppdatere medlem: ${memberUpdateError.message}` };
   }
 

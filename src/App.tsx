@@ -1,4 +1,4 @@
-import { ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, TrendingUp, UserCircle2, Users } from "lucide-react";
+import { Bell, ClipboardList, LayoutDashboard, MessageSquare, TrendingUp, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "./app/data";
 import { useAppState } from "./app/useAppState";
 import { AppShell, Badge, Card, MobileNavButton, OutlineButton, PillButton } from "./app/ui";
@@ -61,6 +61,25 @@ export default function App() {
     resetAllData();
   }
 
+  const trainerNotifications = [
+    appState.members.filter((member) => !member.invitedAt).length > 0
+      ? `${appState.members.filter((member) => !member.invitedAt).length} kunder mangler invitasjon`
+      : null,
+    appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length > 0
+      ? `${appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length} kunder bør følges opp`
+      : null,
+    appState.messages.length > 0 ? `${appState.messages.length} meldinger i dialoger` : null,
+  ].filter((item): item is string => Boolean(item));
+
+  const memberNotifications = [
+    appState.programs.filter((program) => program.memberId === appState.memberViewId).length > 0
+      ? `${appState.programs.filter((program) => program.memberId === appState.memberViewId).length} aktive programmer`
+      : "Ingen programmer tildelt ennå",
+    appState.messages.filter((message) => message.memberId === appState.memberViewId && message.sender === "trainer").length > 0
+      ? `${appState.messages.filter((message) => message.memberId === appState.memberViewId && message.sender === "trainer").length} meldinger fra trener`
+      : null,
+  ].filter((item): item is string => Boolean(item));
+
   return (
     <AppShell>
       {!appState.currentUser || isRecoveryMode ? (
@@ -118,27 +137,63 @@ export default function App() {
           </Card>
 
           {appState.role === "trainer" ? (
-            <TrainerPortal
-              members={appState.members}
-              programs={appState.programs}
-              logs={appState.logs}
-              messages={appState.messages}
-              exercises={appState.exercises}
-              selectedMemberId={appState.selectedMemberId}
-              setSelectedMemberId={(id) => patchState({ selectedMemberId: id })}
-              trainerTab={trainerTab}
-              setTrainerTab={setTrainerTab}
-              addMember={addMember}
-              deactivateMember={deactivateMember}
-              deleteMember={deleteMember}
-              markMemberInvited={markMemberInvited}
-              inviteMember={inviteMember}
-              saveProgramForMember={saveProgramForMember}
-              deleteProgramById={deleteProgramById}
-              sendTrainerMessage={sendTrainerMessage}
-              saveExercise={saveExercise}
-            />
+            <div className="grid gap-4 md:grid-cols-[220px_1fr]">
+              <Card className="hidden h-fit p-3 md:block">
+                <div className="space-y-1">
+                  <PillButton active={trainerTab === "dashboard"} onClick={() => setTrainerTab("dashboard")}>Oversikt</PillButton>
+                  <PillButton active={trainerTab === "customers"} onClick={() => setTrainerTab("customers")}>Klienter</PillButton>
+                  <PillButton active={trainerTab === "programs"} onClick={() => setTrainerTab("programs")}>Programmer</PillButton>
+                  <PillButton active={trainerTab === "calendar"} onClick={() => setTrainerTab("calendar")}>Kalender</PillButton>
+                  <PillButton active={trainerTab === "messages"} onClick={() => setTrainerTab("messages")}>Meldinger</PillButton>
+                  <PillButton active={trainerTab === "tasks"} onClick={() => setTrainerTab("tasks")}>Oppgaver</PillButton>
+                  <PillButton active={trainerTab === "statistics"} onClick={() => setTrainerTab("statistics")}>Statistikk</PillButton>
+                  <PillButton active={trainerTab === "settings"} onClick={() => setTrainerTab("settings")}>Innstillinger</PillButton>
+                  <PillButton active={trainerTab === "exerciseBank"} onClick={() => setTrainerTab("exerciseBank")}>Øvelsesbank</PillButton>
+                </div>
+              </Card>
+              <div className="space-y-4">
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                    <Bell className="h-4 w-4" />
+                    Varslingsoversikt
+                  </div>
+                  <div className="mt-2 space-y-1 text-sm text-slate-600">
+                    {trainerNotifications.length ? trainerNotifications.map((item) => <div key={item}>• {item}</div>) : <div>Ingen nye varsler akkurat nå.</div>}
+                  </div>
+                </Card>
+                <TrainerPortal
+                  members={appState.members}
+                  programs={appState.programs}
+                  logs={appState.logs}
+                  messages={appState.messages}
+                  exercises={appState.exercises}
+                  selectedMemberId={appState.selectedMemberId}
+                  setSelectedMemberId={(id) => patchState({ selectedMemberId: id })}
+                  trainerTab={trainerTab}
+                  setTrainerTab={setTrainerTab}
+                  addMember={addMember}
+                  deactivateMember={deactivateMember}
+                  deleteMember={deleteMember}
+                  markMemberInvited={markMemberInvited}
+                  inviteMember={inviteMember}
+                  saveProgramForMember={saveProgramForMember}
+                  deleteProgramById={deleteProgramById}
+                  sendTrainerMessage={sendTrainerMessage}
+                  saveExercise={saveExercise}
+                />
+              </div>
+            </div>
           ) : (
+            <div className="space-y-4">
+              <Card className="p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  <Bell className="h-4 w-4" />
+                  Varslingsoversikt
+                </div>
+                <div className="mt-2 space-y-1 text-sm text-slate-600">
+                  {memberNotifications.map((item) => <div key={item}>• {item}</div>)}
+                </div>
+              </Card>
             <MemberPortal
               members={appState.members}
               programs={appState.programs}
@@ -158,16 +213,17 @@ export default function App() {
               workoutCelebration={appState.workoutCelebration}
               dismissWorkoutCelebration={dismissWorkoutCelebration}
             />
+            </div>
           )}
 
-          <div className="fixed inset-x-0 bottom-0 z-[9999] border-t bg-white/95 px-2 pt-2 backdrop-blur lg:hidden" style={{ borderColor: "rgba(15,23,42,0.08)", paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))" }}>
+          <div className="fixed inset-x-0 bottom-0 z-[9999] border-t bg-white/95 px-2 pt-2 backdrop-blur md:hidden" style={{ borderColor: "rgba(15,23,42,0.08)", paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))" }}>
             <div className="mx-auto flex max-w-md items-center gap-1.5 rounded-[22px] border bg-slate-50/90 p-1.5 shadow-lg" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
               {appState.role === "trainer" ? (
                 <>
                   <MobileNavButton active={trainerTab === "dashboard"} icon={<LayoutDashboard className="h-4 w-4" />} label="Oversikt" onClick={() => setTrainerTab("dashboard")} />
                   <MobileNavButton active={trainerTab === "customers"} icon={<Users className="h-4 w-4" />} label="Kunder" onClick={() => setTrainerTab("customers")} />
                   <MobileNavButton active={trainerTab === "programs"} icon={<ClipboardList className="h-4 w-4" />} label="Program" onClick={() => setTrainerTab("programs")} />
-                  <MobileNavButton active={trainerTab === "exerciseBank"} icon={<Dumbbell className="h-4 w-4" />} label="Øvelser" onClick={() => setTrainerTab("exerciseBank")} />
+                  <MobileNavButton active={trainerTab === "messages"} icon={<MessageSquare className="h-4 w-4" />} label="Meldinger" onClick={() => setTrainerTab("messages")} />
                 </>
               ) : (
                 <>
