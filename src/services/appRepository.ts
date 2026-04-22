@@ -38,6 +38,7 @@ export type SaveExerciseInput = {
 export interface AppRepository {
   addMember(state: AppState, input: CreateMemberInput): AppState;
   deactivateMember(state: AppState, memberId: string): AppState;
+  deleteMember(state: AppState, memberId: string): AppState;
   markMemberInvited(state: AppState, memberId: string, invitedAtIso?: string): AppState;
   saveProgram(state: AppState, input: SaveProgramInput): AppState;
   deleteProgram(state: AppState, programId: string): AppState;
@@ -102,6 +103,20 @@ export function markMemberInvitedInState(state: AppState, memberId: string, invi
     members: state.members.map((member) =>
       member.id === memberId ? { ...member, invitedAt: timestamp } : member
     ),
+  };
+}
+
+export function deleteMemberInState(state: AppState, memberId: string): AppState {
+  const remainingMembers = state.members.filter((member) => member.id !== memberId);
+  const fallbackMemberId = remainingMembers[0]?.id ?? "";
+  return {
+    ...state,
+    members: remainingMembers,
+    programs: state.programs.filter((program) => program.memberId !== memberId),
+    logs: state.logs.filter((log) => log.memberId !== memberId),
+    messages: state.messages.filter((message) => message.memberId !== memberId),
+    selectedMemberId: state.selectedMemberId === memberId ? fallbackMemberId : state.selectedMemberId,
+    memberViewId: state.memberViewId === memberId ? fallbackMemberId : state.memberViewId,
   };
 }
 
@@ -333,6 +348,7 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
 export const localAppRepository: AppRepository = {
   addMember: addMemberToState,
   deactivateMember: deactivateMemberInState,
+  deleteMember: deleteMemberInState,
   markMemberInvited: markMemberInvitedInState,
   saveProgram: saveProgramInState,
   deleteProgram: deleteProgramInState,

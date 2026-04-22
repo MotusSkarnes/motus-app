@@ -20,6 +20,7 @@ type TrainerPortalProps = {
   setTrainerTab: (tab: TrainerTab) => void;
   addMember: (input: CreateMemberInput) => void;
   deactivateMember: (memberId: string) => void;
+  deleteMember: (memberId: string) => void;
   markMemberInvited: (memberId: string, invitedAtIso?: string) => void;
   inviteMember: (email: string, memberId: string) => Promise<InviteMemberResult>;
   saveProgramForMember: (input: { id?: string; title: string; goal: string; notes: string; memberId: string; exercises: ProgramExercise[] }) => void;
@@ -53,6 +54,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setTrainerTab,
     addMember,
     deactivateMember,
+    deleteMember,
     markMemberInvited,
     inviteMember,
     saveProgramForMember,
@@ -370,6 +372,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
   function handleDeactivateMember(memberId: string) {
     deactivateMember(memberId);
+  }
+
+  function handleDeleteMember(memberId: string) {
+    const confirmed = window.confirm("Slette kunde permanent? Dette sletter også programmer, logger og meldinger.");
+    if (!confirmed) return;
+    deleteMember(memberId);
   }
 
   function resetMemberListControls() {
@@ -774,13 +782,16 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 </div>
               ) : null}
               {filteredMembers.map((member) => (
-                <button
+                <div
                   key={member.id}
-                  type="button"
-                  onClick={() => setSelectedMemberId(member.id)}
                   className="w-full rounded-2xl border p-3 text-left transition hover:shadow-sm"
                   style={selectedMemberId === member.id ? { backgroundColor: "#f8fffd", borderColor: MOTUS.turquoise, boxShadow: "0 0 0 3px rgba(48,227,190,0.08)" } : { borderColor: "rgba(15,23,42,0.08)" }}
                 >
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMemberId(member.id)}
+                    className="w-full text-left"
+                  >
                   <div className="font-semibold">{member.name}</div>
                   <div className="text-sm text-slate-500">
                     {member.email}
@@ -800,7 +811,17 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     <div className="mt-1 text-[11px] text-emerald-700">Dato: {formatInvitedAt(member.invitedAt)}</div>
                   ) : null}
                   <div className="mt-1 text-sm">Mål: {member.goal}</div>
-                </button>
+                  </button>
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteMember(member.id)}
+                      className="w-full rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700"
+                    >
+                      SLETT KUNDE (NY)
+                    </button>
+                  </div>
+                </div>
               ))}
               <OutlineButton onClick={() => setShowInactiveMembers((prev) => !prev)} className="w-full">
                 {showInactiveMembers ? "Skjul inaktive" : "Vis inaktive"}
@@ -850,6 +871,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     <OutlineButton onClick={() => handleDeactivateMember(selectedMember.id)}>
                       Sett medlem som inaktiv
                     </OutlineButton>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteMember(selectedMember.id)}
+                      className="rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700"
+                    >
+                      SLETT KUNDE PERMANENT (NY)
+                    </button>
                   </div>
                 </div>
 

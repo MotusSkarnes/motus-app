@@ -56,23 +56,23 @@ export function useAppState() {
       setAppState((prev) => {
         const next = { ...prev };
 
-        if (remoteMembers && prev.members.length <= remoteMembers.length) {
+        if (remoteMembers) {
           next.members = remoteMembers;
         }
 
-        if (remoteMessages && prev.messages.length <= remoteMessages.length) {
+        if (remoteMessages) {
           next.messages = remoteMessages;
         }
 
-        if (remotePrograms && prev.programs.length <= remotePrograms.length) {
+        if (remotePrograms) {
           next.programs = remotePrograms;
         }
 
-        if (remoteLogs && prev.logs.length <= remoteLogs.length) {
+        if (remoteLogs) {
           next.logs = remoteLogs;
         }
 
-        if (remoteExercises && prev.exercises.length <= remoteExercises.length) {
+        if (remoteExercises) {
           next.exercises = remoteExercises;
         }
 
@@ -81,9 +81,13 @@ export function useAppState() {
     }
 
     void hydrateRemoteData();
+    const interval = window.setInterval(() => {
+      void hydrateRemoteData();
+    }, 15000);
 
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
     };
   }, []);
 
@@ -354,6 +358,10 @@ export function useAppState() {
     setAppState((prev) => repository.deactivateMember(prev, memberId));
   }
 
+  function deleteMember(memberId: string) {
+    setAppState((prev) => repository.deleteMember(prev, memberId));
+  }
+
   function markMemberInvited(memberId: string, invitedAtIso?: string) {
     setAppState((prev) => repository.markMemberInvited(prev, memberId, invitedAtIso));
   }
@@ -445,6 +453,7 @@ export function useAppState() {
     resetAllData,
     addMember,
     deactivateMember,
+    deleteMember,
     markMemberInvited,
     saveProgramForMember,
     deleteProgramById,

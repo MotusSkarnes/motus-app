@@ -121,37 +121,10 @@ export type InviteMemberResult = {
   message: string;
 };
 
-async function extractFunctionErrorMessage(error: unknown): Promise<string | null> {
-  if (!error || typeof error !== "object") return null;
-  const candidate = error as { message?: unknown; context?: { json?: () => Promise<unknown> } };
-
-  if (typeof candidate.context?.json === "function") {
-    try {
-      const payload = await candidate.context.json();
-      if (payload && typeof payload === "object" && "error" in payload) {
-        const value = (payload as { error?: unknown }).error;
-        if (typeof value === "string" && value.trim()) return value;
-      }
-      if (payload && typeof payload === "object" && "message" in payload) {
-        const value = (payload as { message?: unknown }).message;
-        if (typeof value === "string" && value.trim()) return value;
-      }
-    } catch {
-      // Ignore parse errors and fall back to generic message.
-    }
-  }
-
-  if (typeof candidate.message === "string" && candidate.message.trim()) {
-    return candidate.message;
-  }
-  return null;
-}
-
 export async function inviteMemberByEmail(email: string, memberId: string): Promise<InviteMemberResult> {
   if (!supabaseClient) {
     return { ok: false, message: "Supabase er ikke konfigurert." };
   }
-
   const normalizedEmail = email.trim().toLowerCase();
   if (!normalizedEmail || !normalizedEmail.includes("@")) {
     return { ok: false, message: "Ugyldig e-post." };
@@ -168,22 +141,28 @@ export async function inviteMemberByEmail(email: string, memberId: string): Prom
     return { ok: false, message: "Ingen gyldig innlogging funnet. Logg ut og inn igjen." };
   }
 
-  const { data, error } = await supabaseClient.functions.invoke("invite-member", {
-    body: {
-      email: normalizedEmail,
-      memberId: memberId.trim(),
-      accessToken: session.access_token,
+  const { error: otpError } = await supabaseClient.auth.signInWithOtp({
+    email: normalizedEmail,
+    options: {
+      shouldCreateUser: true,
+      data: {
+        role: "member",
+        member_id: memberId.trim(),
+      },
     },
   });
-
-  if (error) {
-    const detailed = await extractFunctionErrorMessage(error);
-    return { ok: false, message: `Invitasjon feilet: ${detailed ?? "Ukjent feil fra funksjonen."}` };
+  if (otpError) {
+    return { ok: false, message: `Invitasjon feilet: ${otpError.message || "Kunne ikke sende e-post."}` };
   }
 
-  if (data && typeof data === "object" && "message" in data && typeof data.message === "string") {
-    return { ok: true, message: data.message };
+  const { error: memberUpdateError } = await supabaseClient
+    .from("members")
+    .update({ invited_at: new Date().toISOString() })
+    .eq("id", memberId.trim());
+
+  if (memberUpdateError) {
+    return { ok: false, message: `Invitasjon sendt, men kunne ikke oppdatere medlem: ${memberUpdateError.message}` };
   }
 
-  return { ok: true, message: "Invitasjon sendt." };
+  return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}` };
 }

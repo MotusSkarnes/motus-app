@@ -7,6 +7,8 @@ import { LoginScreen } from "./features/LoginScreen";
 import { MemberPortal } from "./features/MemberPortal";
 import { TrainerPortal } from "./features/TrainerPortal";
 
+const BUILD_MARKER = "build-2026-04-22-01";
+
 export default function App() {
   const {
     appState,
@@ -39,6 +41,7 @@ export default function App() {
     resetAllData,
     addMember,
     deactivateMember,
+    deleteMember,
     markMemberInvited,
     saveProgramForMember,
     deleteProgramById,
@@ -99,6 +102,7 @@ export default function App() {
                 <div>
                   <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Motus PT-app</h1>
                   <p className="mt-2 text-sm md:text-base text-slate-500 max-w-3xl">Administrer medlemmer, programmer og oppfolging pa ett sted.</p>
+                  <p className="mt-1 text-xs font-semibold text-rose-600">Versjon: {BUILD_MARKER}</p>
                 </div>
               </div>
               {showQuickLogin ? (
@@ -129,6 +133,7 @@ export default function App() {
               setTrainerTab={setTrainerTab}
               addMember={addMember}
               deactivateMember={deactivateMember}
+              deleteMember={deleteMember}
               markMemberInvited={markMemberInvited}
               inviteMember={inviteMember}
               saveProgramForMember={saveProgramForMember}

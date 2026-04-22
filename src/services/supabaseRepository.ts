@@ -11,10 +11,38 @@ import {
 } from "./appRepository";
 import { supabaseClient } from "./supabaseClient";
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+  try {
+    const decoded = atob(padded);
+    const parsed = JSON.parse(decoded);
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getOwnerUserId(): Promise<string | null> {
+  if (!supabaseClient) return null;
+  const {
+    data: { session },
+    error,
+  } = await supabaseClient.auth.getSession();
+  if (error || !session?.access_token) return null;
+  const claims = decodeJwtPayload(session.access_token);
+  return claims && typeof claims.sub === "string" ? claims.sub : null;
+}
+
 async function persistMessage(memberId: string, sender: "trainer" | "member", text: string) {
   if (!supabaseClient) return;
+  const ownerUserId = await getOwnerUserId();
+  if (!ownerUserId) return;
   const { error } = await supabaseClient.from("chat_messages").insert({
     member_id: memberId,
+    owner_user_id: ownerUserId,
     sender,
     text,
     created_at: new Date().toISOString(),
@@ -27,11 +55,14 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
 
 async function persistProgram(input: SaveProgramInput) {
   if (!supabaseClient) return;
+  const ownerUserId = await getOwnerUserId();
+  if (!ownerUserId) return;
 
   const { error } = await supabaseClient.from("training_programs").upsert(
     {
       id: input.id ?? crypto.randomUUID(),
       member_id: input.memberId,
+      owner_user_id: ownerUserId,
       title: input.title.trim(),
       goal: input.goal.trim(),
       notes: input.notes.trim(),
@@ -48,10 +79,13 @@ async function persistProgram(input: SaveProgramInput) {
 
 async function persistMember(member: Member) {
   if (!supabaseClient) return;
+  const ownerUserId = await getOwnerUserId();
+  if (!ownerUserId) return;
 
   const { error } = await supabaseClient.from("members").upsert(
     {
       id: member.id,
+      owner_user_id: ownerUserId,
       name: member.name,
       email: member.email,
       is_active: member.isActive,
@@ -109,13 +143,36 @@ async function deleteProgram(programId: string) {
   }
 }
 
+async function deleteMemberFromSupabase(memberId: string) {
+  if (!supabaseClient) return;
+  const { error: messagesError } = await supabaseClient.from("chat_messages").delete().eq("member_id", memberId);
+  if (messagesError) {
+    console.warn("Supabase member message cleanup failed:", messagesError.message);
+  }
+  const { error: logsError } = await supabaseClient.from("workout_logs").delete().eq("member_id", memberId);
+  if (logsError) {
+    console.warn("Supabase member log cleanup failed:", logsError.message);
+  }
+  const { error: programsError } = await supabaseClient.from("training_programs").delete().eq("member_id", memberId);
+  if (programsError) {
+    console.warn("Supabase member program cleanup failed:", programsError.message);
+  }
+  const { error: memberError } = await supabaseClient.from("members").delete().eq("id", memberId);
+  if (memberError) {
+    console.warn("Supabase member delete failed:", memberError.message);
+  }
+}
+
 async function persistWorkoutLog(log: WorkoutLog) {
   if (!supabaseClient) return;
+  const ownerUserId = await getOwnerUserId();
+  if (!ownerUserId) return;
 
   const { error } = await supabaseClient.from("workout_logs").upsert(
     {
       id: log.id,
       member_id: log.memberId,
+      owner_user_id: ownerUserId,
       program_title: log.programTitle,
       date: log.date,
       status: log.status,
@@ -303,6 +360,11 @@ export const supabaseAppRepository: AppRepository = {
     if (targetMember) {
       void persistMember({ ...targetMember, isActive: false });
     }
+    return nextState;
+  },
+  deleteMember(state: AppState, memberId: string): AppState {
+    const nextState = localAppRepository.deleteMember(state, memberId);
+    void deleteMemberFromSupabase(memberId);
     return nextState;
   },
   markMemberInvited(state: AppState, memberId: string, invitedAtIso?: string): AppState {

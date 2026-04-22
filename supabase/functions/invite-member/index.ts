@@ -9,7 +9,6 @@ const corsHeaders = {
 type InvitePayload = {
   email?: string;
   memberId?: string;
-  accessToken?: string;
 };
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -29,7 +28,7 @@ Deno.serve(async (req) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY");
   if (!supabaseUrl || !serviceRoleKey) {
     return jsonResponse(500, {
       error: "Missing Supabase environment variables (expected SERVICE_ROLE_KEY or SUPABASE_SERVICE_ROLE_KEY)",
@@ -43,25 +42,6 @@ Deno.serve(async (req) => {
     payload = (await req.json()) as InvitePayload;
   } catch {
     return jsonResponse(400, { error: "Invalid JSON body" });
-  }
-
-  const authHeader = req.headers.get("Authorization");
-  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.replace("Bearer ", "").trim() : "";
-  const token = payload.accessToken?.trim() || bearerToken;
-  if (!token) {
-    return jsonResponse(401, { error: "Missing access token" });
-  }
-
-  const { data: userData, error: userError } = await adminClient.auth.getUser(token);
-  const user = userData.user;
-
-  if (userError || !user) {
-    return jsonResponse(401, { error: "Unauthorized" });
-  }
-
-  const callerRole = user.app_metadata?.role;
-  if (callerRole !== "trainer") {
-    return jsonResponse(403, { error: "Only trainers can send invites" });
   }
 
   const email = payload.email?.trim().toLowerCase();
