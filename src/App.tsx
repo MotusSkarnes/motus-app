@@ -226,7 +226,12 @@ export default function App() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem("motus.member.avatarById", JSON.stringify(memberAvatarById));
+    try {
+      window.localStorage.setItem("motus.member.avatarById", JSON.stringify(memberAvatarById));
+    } catch {
+      // Prevent runtime crash if storage quota is exceeded.
+      // Avatar still works in current session even without persistence.
+    }
   }, [memberAvatarById]);
 
   const trainerMenuItems: Array<{ key: typeof trainerTab; label: string; icon: ReactNode }> = [

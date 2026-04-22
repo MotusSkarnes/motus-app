@@ -342,20 +342,61 @@ export function MemberPortal(props: MemberPortalProps) {
     setProfileSaveInfo("Profil og mål lagret.");
   }
 
-  function handleAvatarFileSelected(file: File | null) {
+  async function readFileAsDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = typeof reader.result === "string" ? reader.result : "";
+        if (!dataUrl) {
+          reject(new Error("Kunne ikke lese bildefilen."));
+          return;
+        }
+        resolve(dataUrl);
+      };
+      reader.onerror = () => reject(new Error("Kunne ikke lese bildefilen."));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function compressImageDataUrl(dataUrl: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxSide = 1024;
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
+        if (!context) {
+          reject(new Error("Kunne ikke behandle bildefilen."));
+          return;
+        }
+        context.drawImage(img, 0, 0, width, height);
+        const compressed = canvas.toDataURL("image/jpeg", 0.8);
+        resolve(compressed || dataUrl);
+      };
+      img.onerror = () => reject(new Error("Kunne ikke behandle bildefilen."));
+      img.src = dataUrl;
+    });
+  }
+
+  async function handleAvatarFileSelected(file: File | null) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       setProfileSaveInfo("Velg en bildefil.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = typeof reader.result === "string" ? reader.result : "";
-      if (!dataUrl) return;
-      setMemberAvatarUrl(dataUrl);
+    try {
+      const originalDataUrl = await readFileAsDataUrl(file);
+      const compressedDataUrl = await compressImageDataUrl(originalDataUrl);
+      setMemberAvatarUrl(compressedDataUrl);
       setProfileSaveInfo("Profilbilde lagret.");
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      setProfileSaveInfo("Kunne ikke lagre profilbildet. Prøv et annet bilde.");
+    }
   }
 
   const completedThisWeek = useMemo(() => {
