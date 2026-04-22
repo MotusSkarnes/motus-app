@@ -110,9 +110,44 @@ async function persistProgram(input: SaveProgramInput) {
 
 async function persistMember(member: Member) {
   if (!supabaseClient) return;
+  const normalizedEmail = member.email.trim().toLowerCase();
+  const {
+    data: { session },
+  } = await supabaseClient.auth.getSession();
+  const claims = session?.access_token ? decodeJwtPayload(session.access_token) : null;
+  const roleClaim = (() => {
+    const directRole = claims?.role;
+    if (directRole === "member" || directRole === "trainer") return directRole;
+    const appMetadata = claims?.app_metadata;
+    if (appMetadata && typeof appMetadata === "object") {
+      const nestedRole = (appMetadata as Record<string, unknown>).role;
+      if (nestedRole === "member" || nestedRole === "trainer") return nestedRole;
+    }
+    return "";
+  })();
+
+  if (roleClaim === "member") {
+    const { error: profileSyncError } = await supabaseClient.functions.invoke("update-member-profile", {
+      body: {
+        email: normalizedEmail,
+        changes: {
+          name: member.name,
+          phone: member.phone,
+          birthDate: member.birthDate,
+          goal: member.goal,
+          focus: member.focus,
+          injuries: member.injuries,
+        },
+      },
+    });
+    if (profileSyncError) {
+      console.warn("update-member-profile invoke failed:", profileSyncError.message);
+    }
+    return;
+  }
+
   const ownerUserId = await getOwnerUserId();
   if (!ownerUserId) return;
-  const normalizedEmail = member.email.trim().toLowerCase();
 
   // Guard against accidental reactivation from stale clients:
   // if this member (or same email) was previously deactivated, keep it inactive.
