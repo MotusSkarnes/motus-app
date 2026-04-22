@@ -158,6 +158,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
   async function syncProfileToPtBackend(payload: {
     email: string;
+    emails: string[];
     memberId: string;
     memberIds: string[];
     changes: {
@@ -493,6 +494,13 @@ export function MemberPortal(props: MemberPortalProps) {
     if (supabaseClient) {
       const syncResult = await syncProfileToPtBackend({
         email: normalizedCurrentUserEmail || normalizedEmail,
+        emails: Array.from(
+          new Set(
+            [normalizedCurrentUserEmail, normalizedEmail, fallbackEmail]
+              .map((value) => value.trim().toLowerCase())
+              .filter((value) => value && value.includes("@"))
+          )
+        ),
         memberId: editableMember.id,
         memberIds: safeTargetIds,
         changes: {

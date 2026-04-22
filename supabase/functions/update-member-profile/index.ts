@@ -8,6 +8,7 @@ const corsHeaders = {
 
 type UpdatePayload = {
   email?: string;
+  emails?: string[];
   memberId?: string;
   memberIds?: string[];
   changes?: {
@@ -87,6 +88,9 @@ Deno.serve(async (req) => {
 
   const currentEmail = normalizeEmail(user.email);
   const requestedEmail = normalizeEmail(payload.email);
+  const requestedEmails = Array.isArray(payload.emails)
+    ? payload.emails.map((value) => normalizeEmail(value)).filter((value) => value && value.includes("@"))
+    : [];
   const requestedMemberId = normalizeString(payload.memberId);
   const requestedMemberIds = Array.isArray(payload.memberIds)
     ? payload.memberIds.map((value) => normalizeString(value)).filter(Boolean)
@@ -100,7 +104,9 @@ Deno.serve(async (req) => {
     return jsonResponse(400, { error: "Logged-in user is missing a valid email" });
   }
   if (requestedEmail && requestedEmail !== currentEmail) {
-    return jsonResponse(403, { error: "Email mismatch for member profile update" });
+    if (!requestedEmails.includes(currentEmail)) {
+      return jsonResponse(403, { error: "Email mismatch for member profile update" });
+    }
   }
 
   const changes = payload.changes ?? {};
@@ -116,6 +122,7 @@ Deno.serve(async (req) => {
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
   const anchorClauses = [`email.eq.${currentEmail}`];
+  requestedEmails.forEach((email) => anchorClauses.push(`email.eq.${email}`));
   if (authMemberId) anchorClauses.push(`id.eq.${authMemberId}`);
   if (requestedMemberId) anchorClauses.push(`id.eq.${requestedMemberId}`);
   requestedMemberIds.forEach((id) => anchorClauses.push(`id.eq.${id}`));
