@@ -58,6 +58,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [replacementExerciseIdDraft, setReplacementExerciseIdDraft] = useState("");
   const [workoutExerciseIndex, setWorkoutExerciseIndex] = useState(0);
   const [expandedRecentLogId, setExpandedRecentLogId] = useState<string | null>(null);
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState<number | null>(null);
   const [progressShareStatus, setProgressShareStatus] = useState<string | null>(null);
   const [achievementCelebration, setAchievementCelebration] = useState<{ id: string; label: string } | null>(null);
   const [liveWorkoutCelebration, setLiveWorkoutCelebration] = useState<WorkoutCelebration | null>(null);
@@ -364,6 +365,18 @@ export function MemberPortal(props: MemberPortalProps) {
     });
     return byDay;
   }, [completedLogDates, calendarMonth]);
+  const calendarLogsByDay = useMemo(() => {
+    const byDay = new Map<number, WorkoutLog[]>();
+    completedLogs.forEach((log) => {
+      const parsed = parseLogDate(log.date);
+      if (!parsed) return;
+      if (parsed.getMonth() !== calendarMonth.getMonth() || parsed.getFullYear() !== calendarMonth.getFullYear()) return;
+      const day = parsed.getDate();
+      const previous = byDay.get(day) ?? [];
+      byDay.set(day, [...previous, log]);
+    });
+    return byDay;
+  }, [completedLogs, calendarMonth]);
   const maxCalendarDayLoad = Math.max(0, ...Array.from(calendarDayLoad.values()));
   const firstDayOfMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
   const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
@@ -1150,24 +1163,26 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div className="mt-2 grid grid-cols-7 gap-1">
                     {calendarCells.map((day, index) =>
                       day ? (
-                        <div
+                        <button
+                          type="button"
                           key={`${day}-${index}`}
+                          onClick={() => setSelectedCalendarDay((prev) => (prev === day ? null : day))}
                           className={`rounded-lg px-1 py-2 text-center text-xs ${calendarDayLoad.has(day) ? "text-white font-semibold" : "text-slate-600 bg-white"}`}
                           style={
                             calendarDayLoad.has(day)
                               ? {
                                   background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
-                                  opacity: Math.max(
-                                    0.3,
-                                    (calendarDayLoad.get(day) ?? 1) / Math.max(1, maxCalendarDayLoad),
-                                  ),
+                                  boxShadow: selectedCalendarDay === day ? "0 0 0 2px rgba(15,23,42,0.2) inset" : "none",
                                 }
-                              : { border: "1px solid rgba(15,23,42,0.06)" }
+                              : {
+                                  border: "1px solid rgba(15,23,42,0.06)",
+                                  boxShadow: selectedCalendarDay === day ? "0 0 0 2px rgba(15,23,42,0.12) inset" : "none",
+                                }
                           }
                           title={calendarDayLoad.has(day) ? `${calendarDayLoad.get(day)} økt${calendarDayLoad.get(day) === 1 ? "" : "er"} logget` : "Ingen økter logget"}
                         >
                           {day}
-                        </div>
+                        </button>
                       ) : (
                         <div key={`empty-${index}`} />
                       ),
@@ -1180,6 +1195,25 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="h-2 w-20 rounded-full" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, opacity: 1 }} />
                     <span>Høy</span>
                   </div>
+                  {selectedCalendarDay ? (
+                    <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Økter {String(selectedCalendarDay).padStart(2, "0")}.{String(calendarMonth.getMonth() + 1).padStart(2, "0")}.{calendarMonth.getFullYear()}
+                      </div>
+                      <div className="mt-2 space-y-2">
+                        {(calendarLogsByDay.get(selectedCalendarDay) ?? []).length === 0 ? (
+                          <div className="text-sm text-slate-500">Ingen logg på valgt dag.</div>
+                        ) : (
+                          (calendarLogsByDay.get(selectedCalendarDay) ?? []).map((log) => (
+                            <div key={log.id} className="rounded-lg border bg-slate-50 px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                              <div className="font-medium text-slate-800">{log.programTitle}</div>
+                              {log.note ? <div className="mt-1 text-xs text-slate-600">{log.note}</div> : null}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </Card>
@@ -1291,10 +1325,10 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
-                <div className="font-semibold">📝 Siste økter</div>
+                <div className="font-semibold">📝 Siste 5 økter</div>
                 <div className="mt-4 space-y-3">
                   {completedLogs.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen økter logget ennå.</div> : null}
-                  {completedLogs.slice(0, 6).map((log) => (
+                  {completedLogs.slice(0, 5).map((log) => (
                     <div key={log.id} className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="flex items-start justify-between gap-3">
                         <div>
