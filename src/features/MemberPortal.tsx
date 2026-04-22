@@ -156,6 +156,53 @@ export function MemberPortal(props: MemberPortalProps) {
     return "";
   }
 
+  async function syncProfileToPtBackend(payload: {
+    email: string;
+    memberId: string;
+    changes: {
+      name: string;
+      phone: string;
+      birthDate: string;
+      goal: string;
+      focus: string;
+      injuries: string;
+    };
+  }): Promise<{ ok: true } | { ok: false; message: string }> {
+    if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+
+    const invoked = await supabaseClient.functions.invoke("update-member-profile", { body: payload });
+    if (!invoked.error) return { ok: true };
+
+    const invokeDetails = await extractFunctionErrorDetails(invoked.error);
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession();
+    const accessToken = session?.access_token ?? "";
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+    if (!supabaseUrl || !supabaseAnonKey || !accessToken) {
+      return { ok: false, message: invokeDetails || invoked.error.message || "Kunne ikke nå sync-tjenesten." };
+    }
+
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/update-member-profile`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (response.ok) return { ok: true };
+      const body = (await response.json().catch(() => null)) as { error?: string; message?: string } | null;
+      const fallbackError = body?.error || body?.message || `HTTP ${response.status}`;
+      return { ok: false, message: fallbackError };
+    } catch {
+      return { ok: false, message: invokeDetails || invoked.error.message || "Kunne ikke nå sync-tjenesten." };
+    }
+  }
+
   function parseLogDate(value: string): Date | null {
     if (!value) return null;
     const isoCandidate = new Date(value);
@@ -399,23 +446,20 @@ export function MemberPortal(props: MemberPortalProps) {
       });
     });
     if (supabaseClient) {
-      const { error } = await supabaseClient.functions.invoke("update-member-profile", {
-        body: {
-          email: normalizedCurrentUserEmail || normalizedEmail,
-          memberId: editableMember.id,
-          changes: {
-            name: memberNameDraft,
-            phone: memberPhoneDraft,
-            birthDate: normalizeBirthDateToDdMmYyyy(memberBirthDateDraft),
-            goal: memberGoalDraft,
-            focus: memberFocusDraft,
-            injuries: memberInjuriesDraft,
-          },
+      const syncResult = await syncProfileToPtBackend({
+        email: normalizedCurrentUserEmail || normalizedEmail,
+        memberId: editableMember.id,
+        changes: {
+          name: memberNameDraft,
+          phone: memberPhoneDraft,
+          birthDate: normalizeBirthDateToDdMmYyyy(memberBirthDateDraft),
+          goal: memberGoalDraft,
+          focus: memberFocusDraft,
+          injuries: memberInjuriesDraft,
         },
       });
-      if (error) {
-        const detailed = await extractFunctionErrorDetails(error);
-        setProfileSaveInfo(`Lokalt lagret, men synk til PT feilet: ${detailed || error.message}`);
+      if (!syncResult.ok) {
+        setProfileSaveInfo(`Lokalt lagret, men synk til PT feilet: ${syncResult.message}`);
         return;
       }
     }
