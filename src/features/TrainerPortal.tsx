@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, Users } from "lucide-react";
+import { ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, Star, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { uid } from "../app/storage";
 import { Card, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, TextArea, TextInput } from "../app/ui";
@@ -69,6 +69,24 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [trainerMessage, setTrainerMessage] = useState("");
   const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
+  const [draggedExerciseIdFromLibrary, setDraggedExerciseIdFromLibrary] = useState<string | null>(null);
+  const [draggedDraftExerciseId, setDraggedDraftExerciseId] = useState<string | null>(null);
+  const [isDraftDropZoneActive, setIsDraftDropZoneActive] = useState(false);
+  const [dragOverDraftExerciseId, setDragOverDraftExerciseId] = useState<string | null>(null);
+  const [programExerciseSearch, setProgramExerciseSearch] = useState("");
+  const [programExerciseCategoryFilter, setProgramExerciseCategoryFilter] = useState<"all" | "Styrke" | "Kondisjon">("all");
+  const [programExerciseGroupFilter, setProgramExerciseGroupFilter] = useState("all");
+  const [favoriteExerciseIds, setFavoriteExerciseIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem("motus.trainer.favoriteExerciseIds");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as string[];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
   const [editingProgramId, setEditingProgramId] = useState<string | null>(null);
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberEmail, setNewMemberEmail] = useState("");
@@ -186,6 +204,30 @@ export function TrainerPortal(props: TrainerPortalProps) {
       );
     });
   }, [exercises, exerciseSearch, exerciseCategoryFilter]);
+  const programExerciseGroupOptions = useMemo(() => {
+    const groups = Array.from(new Set(exercises.map((exercise) => exercise.group.trim()).filter(Boolean)));
+    return groups.sort((a, b) => a.localeCompare(b, "no"));
+  }, [exercises]);
+  const visibleProgramExercises = useMemo(() => {
+    const query = programExerciseSearch.trim().toLowerCase();
+    const filtered = exercises.filter((exercise) => {
+      if (programExerciseCategoryFilter !== "all" && exercise.category !== programExerciseCategoryFilter) return false;
+      if (programExerciseGroupFilter !== "all" && exercise.group !== programExerciseGroupFilter) return false;
+      if (!query) return true;
+      return (
+        exercise.name.toLowerCase().includes(query) ||
+        exercise.group.toLowerCase().includes(query) ||
+        exercise.equipment.toLowerCase().includes(query) ||
+        exercise.description.toLowerCase().includes(query)
+      );
+    });
+    return filtered.sort((a, b) => {
+      const aFavorite = favoriteExerciseIds.includes(a.id) ? 1 : 0;
+      const bFavorite = favoriteExerciseIds.includes(b.id) ? 1 : 0;
+      if (aFavorite !== bFavorite) return bFavorite - aFavorite;
+      return a.name.localeCompare(b.name, "no");
+    });
+  }, [exercises, programExerciseSearch, programExerciseCategoryFilter, programExerciseGroupFilter, favoriteExerciseIds]);
 
   useEffect(() => {
     window.localStorage.setItem("motus.trainer.memberSearch", memberSearch);
@@ -194,6 +236,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
   useEffect(() => {
     window.localStorage.setItem("motus.trainer.memberFilter", memberFilter);
   }, [memberFilter]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("motus.trainer.favoriteExerciseIds", JSON.stringify(favoriteExerciseIds));
+  }, [favoriteExerciseIds]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -280,6 +327,25 @@ export function TrainerPortal(props: TrainerPortalProps) {
         notes: "",
       },
     ]);
+  }
+
+  function moveDraftExercise(sourceId: string, targetId: string) {
+    if (sourceId === targetId) return;
+    setProgramExercisesDraft((prev) => {
+      const sourceIndex = prev.findIndex((item) => item.id === sourceId);
+      const targetIndex = prev.findIndex((item) => item.id === targetId);
+      if (sourceIndex < 0 || targetIndex < 0) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(sourceIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
+  }
+
+  function toggleFavoriteExercise(exerciseId: string) {
+    setFavoriteExerciseIds((prev) =>
+      prev.includes(exerciseId) ? prev.filter((id) => id !== exerciseId) : [exerciseId, ...prev]
+    );
   }
 
   function addExerciseToTemplateDraft(exercise: Exercise) {
@@ -1016,7 +1082,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 ) : null}
 
                 {customerSubTab === "programs" ? (
-                  <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+                  <div className="space-y-4">
+                    <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
                     <div className="rounded-3xl border bg-slate-50 p-4 space-y-4">
                       <div className="flex items-center justify-between gap-3">
                         <div className="font-semibold">{editingProgramId ? "Rediger program" : "Bygg program"}</div>
@@ -1026,22 +1093,51 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       <TextInput value={programGoal} onChange={(e) => setProgramGoal(e.target.value)} placeholder="Mål" />
                       <TextArea value={programNotes} onChange={(e) => setProgramNotes(e.target.value)} className="min-h-[110px]" placeholder="Notater" />
 
-                      <div>
-                        <div className="mb-2 text-sm font-medium text-slate-700">Legg til øvelse</div>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          {exercises.map((exercise) => (
-                            <button key={exercise.id} type="button" onClick={() => addExerciseToDraft(exercise)} className="rounded-2xl border bg-white px-3 py-3 text-left text-sm">
-                              <div className="font-medium">{exercise.name}</div>
-                              <div className="text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
+                      <div
+                        className={`space-y-3 rounded-2xl p-1 transition ${
+                          isDraftDropZoneActive ? "bg-emerald-50 ring-2 ring-emerald-300" : ""
+                        }`}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          if (draggedExerciseIdFromLibrary) setIsDraftDropZoneActive(true);
+                        }}
+                        onDragLeave={() => setIsDraftDropZoneActive(false)}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          if (!draggedExerciseIdFromLibrary) return;
+                          const exercise = exercises.find((item) => item.id === draggedExerciseIdFromLibrary);
+                          if (exercise) addExerciseToDraft(exercise);
+                          setDraggedExerciseIdFromLibrary(null);
+                          setIsDraftDropZoneActive(false);
+                        }}
+                      >
                         {programExercisesDraft.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen øvelser valgt ennå.</div> : null}
                         {programExercisesDraft.map((item) => (
-                          <div key={item.id} className="rounded-2xl border bg-white p-4 space-y-3">
+                          <div
+                            key={item.id}
+                            draggable
+                            onDragStart={() => setDraggedDraftExerciseId(item.id)}
+                            onDragEnd={() => {
+                              setDraggedDraftExerciseId(null);
+                              setDragOverDraftExerciseId(null);
+                            }}
+                            onDragOver={(event) => {
+                              event.preventDefault();
+                              if (draggedDraftExerciseId) setDragOverDraftExerciseId(item.id);
+                            }}
+                            onDragLeave={() => {
+                              if (dragOverDraftExerciseId === item.id) setDragOverDraftExerciseId(null);
+                            }}
+                            onDrop={(event) => {
+                              event.preventDefault();
+                              if (!draggedDraftExerciseId) return;
+                              moveDraftExercise(draggedDraftExerciseId, item.id);
+                              setDragOverDraftExerciseId(null);
+                            }}
+                            className={`rounded-2xl border bg-white p-4 space-y-3 cursor-move transition ${
+                              dragOverDraftExerciseId === item.id ? "ring-2 ring-emerald-300 border-emerald-300" : ""
+                            }`}
+                          >
                             <div className="flex items-center justify-between gap-3">
                               <div className="font-medium">{item.exerciseName}</div>
                               <OutlineButton onClick={() => removeDraftExercise(item.id)}>Fjern</OutlineButton>
@@ -1066,6 +1162,73 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       >
                         {editingProgramId ? "Oppdater program" : "Lagre program på kunde"}
                       </GradientButton>
+                    </div>
+
+                    <div className="rounded-3xl border bg-slate-50 p-4 space-y-3">
+                      <div className="font-semibold">Øvelser</div>
+                      <TextInput
+                        value={programExerciseSearch}
+                        onChange={(e) => setProgramExerciseSearch(e.target.value)}
+                        placeholder="Søk øvelse, muskelgruppe eller utstyr"
+                      />
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <SelectBox
+                          value={programExerciseCategoryFilter}
+                          onChange={(value) => setProgramExerciseCategoryFilter(value as "all" | "Styrke" | "Kondisjon")}
+                          options={[
+                            { value: "all", label: "Alle typer" },
+                            { value: "Styrke", label: "Styrke" },
+                            { value: "Kondisjon", label: "Kondisjon" },
+                          ]}
+                        />
+                        <SelectBox
+                          value={programExerciseGroupFilter}
+                          onChange={setProgramExerciseGroupFilter}
+                          options={[
+                            { value: "all", label: "Alle muskelgrupper" },
+                            ...programExerciseGroupOptions.map((group) => ({ value: group, label: group })),
+                          ]}
+                        />
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        Favoritter vises alltid øverst, resten sorteres alfabetisk.
+                      </div>
+                      <div className="max-h-[560px] space-y-2 overflow-auto pr-1">
+                        {visibleProgramExercises.length === 0 ? (
+                          <div className="rounded-2xl border border-dashed p-4 text-sm text-slate-500 bg-white">
+                            Ingen øvelser matcher søk/filter.
+                          </div>
+                        ) : null}
+                        {visibleProgramExercises.map((exercise) => {
+                          const isFavorite = favoriteExerciseIds.includes(exercise.id);
+                          return (
+                            <div
+                              key={exercise.id}
+                              draggable
+                              onDragStart={() => setDraggedExerciseIdFromLibrary(exercise.id)}
+                              onDragEnd={() => setDraggedExerciseIdFromLibrary(null)}
+                              className="rounded-2xl border bg-white p-3 cursor-grab active:cursor-grabbing"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <button type="button" onClick={() => addExerciseToDraft(exercise)} className="flex-1 text-left">
+                                  <div className="font-medium text-sm">{exercise.name}</div>
+                                  <div className="text-xs text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleFavoriteExercise(exercise.id)}
+                                  className={`rounded-lg border p-1.5 ${isFavorite ? "border-amber-300 bg-amber-50 text-amber-600" : "border-slate-200 text-slate-400 hover:text-slate-600"}`}
+                                  aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
+                                  title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
+                                >
+                                  <Star className={`h-4 w-4 ${isFavorite ? "fill-current" : ""}`} />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                     </div>
 
                     <div className="rounded-3xl border bg-slate-50 p-4">
