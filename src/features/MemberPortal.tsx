@@ -285,9 +285,9 @@ export function MemberPortal(props: MemberPortalProps) {
   return (
     <>
     <div className="space-y-4 sm:space-y-6">
-      <Card className="p-3 hidden lg:block">
+      <Card className="hidden overflow-hidden lg:block">
         <div
-          className="flex gap-2 overflow-auto rounded-2xl p-2"
+          className="flex gap-2 overflow-auto px-3 py-3"
           style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
         >
           {[
