@@ -56,6 +56,7 @@ export default function App() {
     inviteMember,
     restoreMemberByEmail,
     restoreMissingTestData,
+    restoreOriginalExerciseBank,
   } = useAppState();
 
   function handleResetData() {
@@ -86,13 +87,13 @@ export default function App() {
   const trainerMenuItems: Array<{ key: typeof trainerTab; label: string; icon: ReactNode }> = [
     { key: "dashboard", label: "Oversikt", icon: <LayoutDashboard className="h-4 w-4" /> },
     { key: "customers", label: "Klienter", icon: <Users className="h-4 w-4" /> },
+    { key: "exerciseBank", label: "Øvelsesbank", icon: <Dumbbell className="h-4 w-4" /> },
     { key: "programs", label: "Programmer", icon: <ClipboardList className="h-4 w-4" /> },
     { key: "calendar", label: "Kalender", icon: <CalendarDays className="h-4 w-4" /> },
     { key: "messages", label: "Meldinger", icon: <MessageSquare className="h-4 w-4" /> },
     { key: "tasks", label: "Oppgaver", icon: <CheckSquare className="h-4 w-4" /> },
     { key: "statistics", label: "Statistikk", icon: <BarChart3 className="h-4 w-4" /> },
     { key: "settings", label: "Innstillinger", icon: <Settings className="h-4 w-4" /> },
-    { key: "exerciseBank", label: "Øvelsesbank", icon: <Dumbbell className="h-4 w-4" /> },
   ];
 
   return (
@@ -209,6 +210,7 @@ export default function App() {
                   inviteMember={inviteMember}
                   restoreMemberByEmail={restoreMemberByEmail}
                   restoreMissingTestData={restoreMissingTestData}
+                  restoreOriginalExerciseBank={restoreOriginalExerciseBank}
                   saveProgramForMember={saveProgramForMember}
                   deleteProgramById={deleteProgramById}
                   sendTrainerMessage={sendTrainerMessage}

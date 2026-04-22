@@ -464,7 +464,6 @@ export function useAppState() {
   async function restoreMissingTestData(): Promise<{ ok: boolean; message: string }> {
     const defaults = getDefaultState();
     let addedMembers = 0;
-    let addedExercises = 0;
 
     setAppState((prev) => {
       const existingMemberIds = new Set(prev.members.map((member) => member.id));
@@ -476,38 +475,37 @@ export function useAppState() {
         return true;
       });
 
-      const existingExerciseIds = new Set(prev.exercises.map((exercise) => exercise.id));
-      const existingExerciseNames = new Set(prev.exercises.map((exercise) => exercise.name.trim().toLowerCase()));
-      const exercisesToAdd = defaults.exercises.filter((exercise) => {
-        const normalizedName = exercise.name.trim().toLowerCase();
-        if (existingExerciseIds.has(exercise.id)) return false;
-        if (normalizedName && existingExerciseNames.has(normalizedName)) return false;
-        return true;
-      });
-
       addedMembers = membersToAdd.length;
-      addedExercises = exercisesToAdd.length;
-
       const nextMembers = [...prev.members, ...membersToAdd];
-      const nextExercises = [...prev.exercises, ...exercisesToAdd];
       const fallbackMemberId = nextMembers[0]?.id ?? "";
 
       return {
         ...prev,
         members: nextMembers,
-        exercises: nextExercises,
         selectedMemberId: prev.selectedMemberId || fallbackMemberId,
         memberViewId: prev.memberViewId || fallbackMemberId,
       };
     });
 
-    const noChanges = addedMembers === 0 && addedExercises === 0;
+    const noChanges = addedMembers === 0;
     if (noChanges) {
-      return { ok: true, message: "Testdata var allerede komplett." };
+      return { ok: true, message: "Testmedlemmer var allerede komplette." };
     }
     return {
       ok: true,
-      message: `Gjenopprettet ${addedMembers} medlem${addedMembers === 1 ? "" : "mer"} og ${addedExercises} ovelse${addedExercises === 1 ? "" : "r"}.`,
+      message: `Gjenopprettet ${addedMembers} testmedlem${addedMembers === 1 ? "" : "mer"}.`,
+    };
+  }
+
+  async function restoreOriginalExerciseBank(): Promise<{ ok: boolean; message: string }> {
+    const defaults = getDefaultState();
+    setAppState((prev) => ({
+      ...prev,
+      exercises: defaults.exercises,
+    }));
+    return {
+      ok: true,
+      message: `Original øvelsesbank gjenopprettet (${defaults.exercises.length} øvelser).`,
     };
   }
 
@@ -558,5 +556,6 @@ export function useAppState() {
     inviteMember,
     restoreMemberByEmail,
     restoreMissingTestData,
+    restoreOriginalExerciseBank,
   };
 }
