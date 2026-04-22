@@ -69,6 +69,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [trainerMessage, setTrainerMessage] = useState("");
   const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
+  const [templateProgramTitle, setTemplateProgramTitle] = useState("Ny treningsmal");
+  const [selectedTemplateProgramId, setSelectedTemplateProgramId] = useState("");
+  const [templateAssignStatus, setTemplateAssignStatus] = useState<string | null>(null);
   const [draggedExerciseIdFromLibrary, setDraggedExerciseIdFromLibrary] = useState<string | null>(null);
   const [draggedDraftExerciseId, setDraggedDraftExerciseId] = useState<string | null>(null);
   const [isDraftDropZoneActive, setIsDraftDropZoneActive] = useState(false);
@@ -164,6 +167,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       ? "error"
       : null;
   const selectedPrograms = programs.filter((program) => program.memberId === selectedMemberId);
+  const templatePrograms = programs.filter((program) => program.memberId === "__template__");
   const selectedLogs = useMemo(() => {
     function parseLogDate(value: string): number {
       if (!value) return 0;
@@ -251,6 +255,16 @@ export function TrainerPortal(props: TrainerPortalProps) {
     if (typeof window === "undefined") return;
     window.localStorage.setItem("motus.trainer.todos", JSON.stringify(todos));
   }, [todos]);
+
+  useEffect(() => {
+    if (!templatePrograms.length) {
+      setSelectedTemplateProgramId("");
+      return;
+    }
+    if (!templatePrograms.some((program) => program.id === selectedTemplateProgramId)) {
+      setSelectedTemplateProgramId(templatePrograms[0].id);
+    }
+  }, [templatePrograms, selectedTemplateProgramId]);
 
   useEffect(() => {
     if (!pendingProgramMemberEmail) return;
@@ -355,6 +369,42 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setProgramGoal("");
     setProgramNotes("");
     setProgramExercisesDraft([]);
+  }
+
+  function saveTemplateFromProgramsTab() {
+    const title = templateProgramTitle.trim();
+    if (!title) return;
+    saveProgramForMember({
+      title,
+      goal: "",
+      notes: "",
+      memberId: "__template__",
+      exercises: programExercisesDraft.map((exercise) => ({ ...exercise, id: uid("template-ex") })),
+    });
+    setTemplateProgramTitle("Ny treningsmal");
+    setProgramExercisesDraft([]);
+    setTemplateAssignStatus("Treningsmal lagret.");
+  }
+
+  function assignSelectedTemplateToMember() {
+    if (!selectedMemberId) {
+      setTemplateAssignStatus("Velg kunde før tildeling.");
+      return;
+    }
+    const template = templatePrograms.find((program) => program.id === selectedTemplateProgramId) ?? templatePrograms[0];
+    if (!template) {
+      setTemplateAssignStatus("Ingen treningsmaler å tildele ennå.");
+      return;
+    }
+    saveProgramForMember({
+      title: template.title,
+      goal: template.goal,
+      notes: template.notes,
+      memberId: selectedMemberId,
+      exercises: template.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
+    });
+    const memberName = members.find((member) => member.id === selectedMemberId)?.name ?? "kunden";
+    setTemplateAssignStatus(`Malen ble tildelt ${memberName}.`);
   }
 
   function submitNewMember(options?: { openProgramAfterCreate?: boolean; inviteAfterCreate?: boolean }) {
@@ -1215,20 +1265,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
             <div className="flex items-start gap-3">
               <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><ClipboardList className="h-5 w-5" /></div>
               <div>
-                <h2 className="text-xl font-semibold tracking-tight">Nytt program</h2>
-                <p className="text-sm text-slate-500">Bygg program med filtrering, favoritter og drag-and-drop</p>
+                <h2 className="text-xl font-semibold tracking-tight">Lag treningsmal</h2>
+                <p className="text-sm text-slate-500">Bygg mal med filtrering, favoritter og drag-and-drop</p>
               </div>
             </div>
             <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
               <div className="space-y-3">
-                <SelectBox
-                  value={selectedMemberId}
-                  onChange={setSelectedMemberId}
-                  options={members.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
-                />
-                <TextInput value={programTitle} onChange={(e) => setProgramTitle(e.target.value)} placeholder="Navn på program" />
-                <TextInput value={programGoal} onChange={(e) => setProgramGoal(e.target.value)} placeholder="Mål" />
-                <TextArea value={programNotes} onChange={(e) => setProgramNotes(e.target.value)} className="min-h-[120px]" placeholder="Notater" />
+                <TextInput value={templateProgramTitle} onChange={(e) => setTemplateProgramTitle(e.target.value)} placeholder="Navn på treningsmal" />
                 <div
                   className={`space-y-3 rounded-2xl p-1 transition ${
                     isDraftDropZoneActive ? "bg-emerald-50 ring-2 ring-emerald-300" : ""
@@ -1289,13 +1332,10 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   ))}
                 </div>
                 <GradientButton
-                  onClick={() => {
-                    saveProgramForMember({ id: editingProgramId ?? undefined, title: programTitle, goal: programGoal, notes: programNotes, memberId: selectedMemberId, exercises: programExercisesDraft });
-                    resetProgramBuilder();
-                  }}
+                  onClick={saveTemplateFromProgramsTab}
                   className="w-full"
                 >
-                  Lagre program
+                  Lagre treningsmal
                 </GradientButton>
               </div>
               <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -1359,6 +1399,33 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   })}
                 </div>
               </div>
+            </div>
+            <div className="mt-5 rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="font-semibold">Tildel mal til kunde</div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <SelectBox
+                  value={selectedMemberId}
+                  onChange={setSelectedMemberId}
+                  options={members.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
+                />
+                <SelectBox
+                  value={selectedTemplateProgramId}
+                  onChange={setSelectedTemplateProgramId}
+                  options={
+                    templatePrograms.length
+                      ? templatePrograms.map((program) => ({ value: program.id, label: program.title }))
+                      : [{ value: "", label: "Ingen treningsmaler lagret ennå" }]
+                  }
+                />
+              </div>
+              <GradientButton onClick={assignSelectedTemplateToMember} className="w-full md:w-auto">
+                Tildel mal til valgt kunde
+              </GradientButton>
+              {templateAssignStatus ? (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                  {templateAssignStatus}
+                </div>
+              ) : null}
             </div>
           </Card>
 
