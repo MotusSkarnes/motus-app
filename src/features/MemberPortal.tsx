@@ -1189,11 +1189,11 @@ export function MemberPortal(props: MemberPortalProps) {
                     )}
                   </div>
                   <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
-                    <span>Lav</span>
+                    <span>Lav aktivitet</span>
                     <div className="h-2 w-20 rounded-full" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, opacity: 0.3 }} />
                     <div className="h-2 w-20 rounded-full" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, opacity: 0.6 }} />
                     <div className="h-2 w-20 rounded-full" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, opacity: 1 }} />
-                    <span>Høy</span>
+                    <span>Høy aktivitet</span>
                   </div>
                   {selectedCalendarDay ? (
                     <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
