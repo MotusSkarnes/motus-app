@@ -80,6 +80,18 @@ export default function App() {
       : null,
   ].filter((item): item is string => Boolean(item));
 
+  const trainerMenuItems: Array<{ key: typeof trainerTab; label: string }> = [
+    { key: "dashboard", label: "Oversikt" },
+    { key: "customers", label: "Klienter" },
+    { key: "programs", label: "Programmer" },
+    { key: "calendar", label: "Kalender" },
+    { key: "messages", label: "Meldinger" },
+    { key: "tasks", label: "Oppgaver" },
+    { key: "statistics", label: "Statistikk" },
+    { key: "settings", label: "Innstillinger" },
+    { key: "exerciseBank", label: "Øvelsesbank" },
+  ];
+
   return (
     <AppShell>
       {!appState.currentUser || isRecoveryMode ? (
@@ -140,15 +152,20 @@ export default function App() {
             <div className="grid gap-4 md:grid-cols-[220px_1fr]">
               <Card className="hidden h-fit p-3 md:block">
                 <div className="space-y-1">
-                  <PillButton active={trainerTab === "dashboard"} onClick={() => setTrainerTab("dashboard")}>Oversikt</PillButton>
-                  <PillButton active={trainerTab === "customers"} onClick={() => setTrainerTab("customers")}>Klienter</PillButton>
-                  <PillButton active={trainerTab === "programs"} onClick={() => setTrainerTab("programs")}>Programmer</PillButton>
-                  <PillButton active={trainerTab === "calendar"} onClick={() => setTrainerTab("calendar")}>Kalender</PillButton>
-                  <PillButton active={trainerTab === "messages"} onClick={() => setTrainerTab("messages")}>Meldinger</PillButton>
-                  <PillButton active={trainerTab === "tasks"} onClick={() => setTrainerTab("tasks")}>Oppgaver</PillButton>
-                  <PillButton active={trainerTab === "statistics"} onClick={() => setTrainerTab("statistics")}>Statistikk</PillButton>
-                  <PillButton active={trainerTab === "settings"} onClick={() => setTrainerTab("settings")}>Innstillinger</PillButton>
-                  <PillButton active={trainerTab === "exerciseBank"} onClick={() => setTrainerTab("exerciseBank")}>Øvelsesbank</PillButton>
+                  {trainerMenuItems.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setTrainerTab(item.key)}
+                      className={`w-full rounded-xl px-3 py-2 text-left text-sm font-medium whitespace-nowrap ${
+                        trainerTab === item.key
+                          ? "bg-slate-900 text-white"
+                          : "bg-slate-50 text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
                 </div>
               </Card>
               <div className="space-y-4">
