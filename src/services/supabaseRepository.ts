@@ -375,7 +375,7 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
     .select(
       "id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes"
     )
-    .eq("is_active", true)
+    .neq("is_active", false)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -415,11 +415,19 @@ export async function restoreMemberByEmailFromSupabase(email: string): Promise<{
     return { ok: false, message: "Skriv inn en gyldig e-post." };
   }
 
-  const { error } = await supabaseClient
-    .from("members")
-    .update({ is_active: true })
-    .eq("email", normalizedEmail)
-    .eq("is_active", false);
+  try {
+    const { error } = await supabaseClient.functions.invoke("restore-member", {
+      body: { email: normalizedEmail },
+    });
+    if (!error) {
+      return { ok: true, message: "Klient gjenopprettet. Oppdaterer liste..." };
+    }
+    console.warn("restore-member invoke failed, trying direct update:", error.message);
+  } catch (error) {
+    console.warn("restore-member invoke threw, trying direct update:", error);
+  }
+
+  const { error } = await supabaseClient.from("members").update({ is_active: true }).eq("email", normalizedEmail).eq("is_active", false);
 
   if (error) {
     return { ok: false, message: `Gjenoppretting feilet: ${error.message}` };
