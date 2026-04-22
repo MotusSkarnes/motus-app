@@ -54,6 +54,7 @@ export default function App() {
     dismissWorkoutCelebration,
     sendMemberMessage,
     inviteMember,
+    restoreMemberByEmail,
   } = useAppState();
 
   function handleResetData() {
@@ -205,6 +206,7 @@ export default function App() {
                   deleteMember={deleteMember}
                   markMemberInvited={markMemberInvited}
                   inviteMember={inviteMember}
+                  restoreMemberByEmail={restoreMemberByEmail}
                   saveProgramForMember={saveProgramForMember}
                   deleteProgramById={deleteProgramById}
                   sendTrainerMessage={sendTrainerMessage}

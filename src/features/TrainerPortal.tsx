@@ -23,6 +23,7 @@ type TrainerPortalProps = {
   deleteMember: (memberId: string) => void;
   markMemberInvited: (memberId: string, invitedAtIso?: string) => void;
   inviteMember: (email: string, memberId: string) => Promise<InviteMemberResult>;
+  restoreMemberByEmail: (email: string) => Promise<{ ok: boolean; message: string }>;
   saveProgramForMember: (input: { id?: string; title: string; goal: string; notes: string; memberId: string; exercises: ProgramExercise[] }) => void;
   deleteProgramById: (programId: string) => void;
   sendTrainerMessage: (memberId: string, text: string) => void;
@@ -57,6 +58,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     deleteMember,
     markMemberInvited,
     inviteMember,
+    restoreMemberByEmail,
     saveProgramForMember,
     deleteProgramById,
     sendTrainerMessage,
@@ -113,6 +115,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
     return "all";
   });
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
+  const [restoreEmail, setRestoreEmail] = useState("");
+  const [restoreStatus, setRestoreStatus] = useState<string | null>(null);
   const [dashboardMonth, setDashboardMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -469,6 +473,14 @@ export function TrainerPortal(props: TrainerPortalProps) {
       markMemberInvited(selectedMember.id, new Date().toISOString());
     }
     setInviteStatus(result.message);
+  }
+
+  async function handleRestoreMember() {
+    const result = await restoreMemberByEmail(restoreEmail);
+    setRestoreStatus(result.message);
+    if (result.ok) {
+      setRestoreEmail("");
+    }
   }
 
   function addTodoItem() {
@@ -966,6 +978,18 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 <GradientButton onClick={() => submitNewMember()} className="w-full">Opprett medlem</GradientButton>
                 <OutlineButton onClick={() => submitNewMember({ inviteAfterCreate: true })} className="w-full">
                   Opprett + send invitasjon
+                </OutlineButton>
+              </div>
+              <div className="rounded-2xl border bg-slate-50 p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-sm font-medium text-slate-700">Gjenopprett slettet klient</div>
+                <TextInput value={restoreEmail} onChange={(e) => setRestoreEmail(e.target.value)} placeholder="E-post til slettet klient" />
+                {restoreStatus ? (
+                  <div className={`rounded-xl border px-3 py-2 text-xs ${restoreStatus.toLowerCase().includes("feilet") ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
+                    {restoreStatus}
+                  </div>
+                ) : null}
+                <OutlineButton onClick={() => void handleRestoreMember()} className="w-full">
+                  Gjenopprett klient
                 </OutlineButton>
               </div>
             </div>

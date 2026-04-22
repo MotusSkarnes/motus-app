@@ -3,7 +3,7 @@ import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
 import { localAppRepository, type CreateMemberInput, type SaveExerciseInput, type SaveProgramInput } from "../services/appRepository";
 import { isSupabaseConfigured } from "../services/supabaseClient";
-import { fetchExercisesFromSupabase, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
+import { fetchExercisesFromSupabase, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
 import { establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyRecoveryToken, type InviteMemberResult } from "../services/supabaseAuth";
 import type { AppState, MemberTab, TrainerTab } from "./types";
 
@@ -422,6 +422,19 @@ export function useAppState() {
     return inviteMemberByEmail(email, memberId);
   }
 
+  async function restoreMemberByEmail(email: string): Promise<{ ok: boolean; message: string }> {
+    if (!isSupabaseConfigured) {
+      return { ok: false, message: "Gjenoppretting krever Supabase-oppsett." };
+    }
+    const result = await restoreMemberByEmailFromSupabase(email);
+    if (!result.ok) return result;
+    const remoteMembers = await fetchMembersFromSupabase();
+    if (remoteMembers) {
+      setAppState((prev) => ({ ...prev, members: remoteMembers }));
+    }
+    return result;
+  }
+
   return {
     appState,
     loginEmail,
@@ -467,5 +480,6 @@ export function useAppState() {
     dismissWorkoutCelebration,
     sendMemberMessage,
     inviteMember,
+    restoreMemberByEmail,
   };
 }

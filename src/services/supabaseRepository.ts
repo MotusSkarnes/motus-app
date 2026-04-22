@@ -405,6 +405,29 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
   }));
 }
 
+export async function restoreMemberByEmailFromSupabase(email: string): Promise<{ ok: boolean; message: string }> {
+  if (!supabaseClient) {
+    return { ok: false, message: "Supabase er ikke konfigurert." };
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail || !normalizedEmail.includes("@")) {
+    return { ok: false, message: "Skriv inn en gyldig e-post." };
+  }
+
+  const { error } = await supabaseClient
+    .from("members")
+    .update({ is_active: true })
+    .eq("email", normalizedEmail)
+    .eq("is_active", false);
+
+  if (error) {
+    return { ok: false, message: `Gjenoppretting feilet: ${error.message}` };
+  }
+
+  return { ok: true, message: "Klient gjenopprettet. Oppdaterer liste..." };
+}
+
 export async function fetchExercisesFromSupabase(): Promise<Exercise[] | null> {
   if (!supabaseClient) return null;
   const { data, error } = await supabaseClient
