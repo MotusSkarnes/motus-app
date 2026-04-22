@@ -74,6 +74,8 @@ export default function App() {
   const [trainerNotificationsOpen, setTrainerNotificationsOpen] = useState(false);
   const [memberNotificationsOpen, setMemberNotificationsOpen] = useState(false);
   const [openCustomerMessagesSignal, setOpenCustomerMessagesSignal] = useState(0);
+  const [seenTrainerAlertIds, setSeenTrainerAlertIds] = useState<string[]>([]);
+  const [seenMemberMessageIds, setSeenMemberMessageIds] = useState<string[]>([]);
 
   const memberById = useMemo(
     () => new Map(appState.members.map((member) => [member.id, member])),
@@ -103,9 +105,28 @@ export default function App() {
   const inactiveMembersCount = appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length;
   const missingInvitesCount = appState.members.filter((member) => !member.invitedAt).length;
   const memberProgramsCount = appState.programs.filter((program) => program.memberId === appState.memberViewId).length;
-  const memberInboxCount = appState.messages.filter(
+  const memberTrainerMessages = appState.messages.filter(
     (message) => message.memberId === appState.memberViewId && message.sender === "trainer"
-  ).length;
+  );
+  const memberInboxCount = memberTrainerMessages.length;
+  const memberUnreadCount = memberTrainerMessages.filter((message) => !seenMemberMessageIds.includes(message.id)).length;
+  const trainerUnreadCount = trainerMessageAlerts.filter((alert) => !seenTrainerAlertIds.includes(alert.id)).length;
+
+  function handleTrainerBellToggle() {
+    const willOpen = !trainerNotificationsOpen;
+    setTrainerNotificationsOpen(willOpen);
+    if (willOpen) {
+      setSeenTrainerAlertIds((prev) => Array.from(new Set([...prev, ...trainerMessageAlerts.map((alert) => alert.id)])));
+    }
+  }
+
+  function handleMemberBellToggle() {
+    const willOpen = !memberNotificationsOpen;
+    setMemberNotificationsOpen(willOpen);
+    if (willOpen) {
+      setSeenMemberMessageIds((prev) => Array.from(new Set([...prev, ...memberTrainerMessages.map((message) => message.id)])));
+    }
+  }
 
   const trainerMenuItems: Array<{ key: typeof trainerTab; label: string; icon: ReactNode }> = [
     { key: "dashboard", label: "Oversikt", icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -213,20 +234,20 @@ export default function App() {
                 </div>
               </Card>
               <div className="space-y-4">
-                <Card className="p-4">
+                <Card className="p-4 bg-gradient-to-b from-emerald-50/80 to-pink-50/60">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-semibold text-slate-800">Varsler</div>
                     <button
                       type="button"
-                      onClick={() => setTrainerNotificationsOpen((prev) => !prev)}
-                      className="relative rounded-xl border bg-white p-2 text-slate-700 hover:bg-slate-50"
-                      style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                      onClick={handleTrainerBellToggle}
+                      className="relative rounded-xl border bg-white p-2 text-slate-700 hover:bg-emerald-50"
+                      style={{ borderColor: "rgba(20,184,166,0.25)" }}
                       aria-label="Åpne varsler"
                     >
                       <Bell className="h-4 w-4" />
-                      {trainerMessageAlerts.length > 0 ? (
+                      {trainerUnreadCount > 0 ? (
                         <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
-                          {trainerMessageAlerts.length}
+                          {trainerUnreadCount}
                         </span>
                       ) : null}
                     </button>
@@ -243,8 +264,8 @@ export default function App() {
                             setOpenCustomerMessagesSignal((prev) => prev + 1);
                             setTrainerNotificationsOpen(false);
                           }}
-                          className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-                          style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                          className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50"
+                          style={{ borderColor: "rgba(20,184,166,0.25)" }}
                         >
                           {alert.text}
                         </button>
@@ -256,8 +277,8 @@ export default function App() {
                             setTrainerTab("customers");
                             setTrainerNotificationsOpen(false);
                           }}
-                          className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-                          style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                          className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50"
+                          style={{ borderColor: "rgba(20,184,166,0.25)" }}
                         >
                           {missingInvitesCount} kunder mangler invitasjon
                         </button>
@@ -269,8 +290,8 @@ export default function App() {
                             setTrainerTab("customers");
                             setTrainerNotificationsOpen(false);
                           }}
-                          className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-                          style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                          className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50"
+                          style={{ borderColor: "rgba(20,184,166,0.25)" }}
                         >
                           {inactiveMembersCount} kunder bør følges opp
                         </button>
@@ -315,20 +336,20 @@ export default function App() {
             </div>
           ) : (
             <div className="space-y-4">
-              <Card className="p-4">
+                <Card className="p-4 bg-gradient-to-b from-emerald-50/80 to-pink-50/60">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-semibold text-slate-800">Varsler</div>
                   <button
                     type="button"
-                    onClick={() => setMemberNotificationsOpen((prev) => !prev)}
-                    className="relative rounded-xl border bg-white p-2 text-slate-700 hover:bg-slate-50"
-                    style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                    onClick={handleMemberBellToggle}
+                    className="relative rounded-xl border bg-white p-2 text-slate-700 hover:bg-emerald-50"
+                    style={{ borderColor: "rgba(20,184,166,0.25)" }}
                     aria-label="Åpne varsler"
                   >
                     <Bell className="h-4 w-4" />
-                    {memberInboxCount > 0 ? (
+                    {memberUnreadCount > 0 ? (
                       <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
-                        {memberInboxCount}
+                        {memberUnreadCount}
                       </span>
                     ) : null}
                   </button>
@@ -341,8 +362,8 @@ export default function App() {
                         setMemberTab("programs");
                         setMemberNotificationsOpen(false);
                       }}
-                      className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-                      style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                      className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50"
+                      style={{ borderColor: "rgba(20,184,166,0.25)" }}
                     >
                       {memberProgramsCount > 0 ? `${memberProgramsCount} aktive programmer` : "Ingen programmer tildelt ennå"}
                     </button>
@@ -353,8 +374,8 @@ export default function App() {
                           setMemberTab("messages");
                           setMemberNotificationsOpen(false);
                         }}
-                        className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-                        style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                        className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50"
+                        style={{ borderColor: "rgba(20,184,166,0.25)" }}
                       >
                         Du har {memberInboxCount} nye meldinger fra trener
                       </button>
