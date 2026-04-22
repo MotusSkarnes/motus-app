@@ -114,6 +114,7 @@ async function persistMember(member: Member) {
   const {
     data: { user },
   } = await supabaseClient.auth.getUser();
+  const authenticatedEmail = String(user?.email ?? "").trim().toLowerCase();
   const roleClaim = (() => {
     const appRole = user?.app_metadata?.role;
     if (appRole === "member" || appRole === "trainer") return appRole;
@@ -122,10 +123,13 @@ async function persistMember(member: Member) {
     return "";
   })();
 
-  if (roleClaim === "member") {
+  const shouldUseMemberProfileSync =
+    roleClaim === "member" || (authenticatedEmail && authenticatedEmail === normalizedEmail);
+
+  if (shouldUseMemberProfileSync) {
     const { error: profileSyncError } = await supabaseClient.functions.invoke("update-member-profile", {
       body: {
-        email: normalizedEmail,
+        email: authenticatedEmail || normalizedEmail,
         changes: {
           name: member.name,
           phone: member.phone,

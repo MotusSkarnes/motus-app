@@ -79,7 +79,9 @@ Deno.serve(async (req) => {
     if (userRoleValue === "member" || userRoleValue === "trainer") return userRoleValue;
     return "";
   })();
-  if (userRole !== "member") {
+  // Some existing auth users may be missing explicit role metadata.
+  // Authorization is still enforced by validating authenticated email below.
+  if (userRole && userRole !== "member") {
     return jsonResponse(403, { error: "Only members can update profile through this endpoint" });
   }
 
