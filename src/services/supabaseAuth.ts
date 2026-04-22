@@ -159,24 +159,36 @@ export async function inviteMemberByEmail(email: string, memberId: string): Prom
     return { ok: false, message: "Mangler member_id for medlemmet." };
   }
 
+  // Prefer OTP invite flow first to avoid edge-function JWT algorithm issues.
+  const redirectTo =
+    typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+  const { error: otpError } = await supabaseClient.auth.signInWithOtp({
+    email: normalizedEmail,
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo: redirectTo,
+      data: { member_id: memberId.trim(), role: "member" },
+    },
+  });
+  if (!otpError) {
+    return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}` };
+  }
+
   const {
     data: { session: initialSession },
     error: sessionError,
   } = await supabaseClient.auth.getSession();
   if (sessionError) {
-    return { ok: false, message: "Ingen gyldig innlogging funnet. Logg ut og inn igjen." };
+    return { ok: false, message: `Invitasjon feilet: ${otpError.message || "Ukjent feil."}` };
   }
 
   let activeSession = initialSession;
   if (!activeSession?.access_token) {
-    const { data: refreshedData, error: refreshError } = await supabaseClient.auth.refreshSession();
-    if (refreshError) {
-      return { ok: false, message: "Ingen gyldig innlogging funnet. Logg ut og inn igjen." };
-    }
+    const { data: refreshedData } = await supabaseClient.auth.refreshSession();
     activeSession = refreshedData.session;
   }
   if (!activeSession?.access_token) {
-    return { ok: false, message: "Ingen gyldig innlogging funnet. Logg ut og inn igjen." };
+    return { ok: false, message: `Invitasjon feilet: ${otpError.message || "Ingen gyldig innlogging funnet."}` };
   }
 
   const { data, error } = await supabaseClient.functions.invoke("invite-member", {
@@ -191,23 +203,7 @@ export async function inviteMemberByEmail(email: string, memberId: string): Prom
     const detailed = await extractFunctionErrorMessage(error);
     const message = detailed ?? "Ukjent feil fra funksjonen.";
     if (message.toLowerCase().includes("unsupported jwt algorithm es256")) {
-      const redirectTo =
-        typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
-      const { error: otpError } = await supabaseClient.auth.signInWithOtp({
-        email: normalizedEmail,
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: redirectTo,
-          data: { member_id: memberId.trim(), role: "member" },
-        },
-      });
-      if (!otpError) {
-        return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}` };
-      }
-      return {
-        ok: false,
-        message: `Invitasjon feilet: ${otpError.message || message}`,
-      };
+      return { ok: false, message: `Invitasjon feilet: ${otpError.message || message}` };
     }
     return { ok: false, message: `Invitasjon feilet: ${message}` };
   }
