@@ -340,17 +340,20 @@ export function MemberPortal(props: MemberPortalProps) {
       currentDailySteps: profileCurrentDailySteps.trim(),
     };
     window.localStorage.setItem(getProfileStorageKey(editableMember.id), JSON.stringify(next));
-    updateMember({
-      memberId: editableMember.id,
-      changes: {
-        name: memberNameDraft,
-        email: normalizedEmail,
-        phone: memberPhoneDraft,
-        birthDate: normalizeBirthDateToDdMmYyyy(memberBirthDateDraft),
-        goal: memberGoalDraft,
-        focus: memberFocusDraft,
-        injuries: memberInjuriesDraft,
-      },
+    const targetMemberIds = Array.from(new Set(relatedMemberIds.length ? relatedMemberIds : [editableMember.id]));
+    targetMemberIds.forEach((memberId) => {
+      updateMember({
+        memberId,
+        changes: {
+          name: memberNameDraft,
+          email: normalizedEmail,
+          phone: memberPhoneDraft,
+          birthDate: normalizeBirthDateToDdMmYyyy(memberBirthDateDraft),
+          goal: memberGoalDraft,
+          focus: memberFocusDraft,
+          injuries: memberInjuriesDraft,
+        },
+      });
     });
     setProfileSaveInfo("Profil og mål lagret.");
   }
