@@ -43,9 +43,8 @@ Deno.serve(async (req) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+  if (!supabaseUrl || !serviceRoleKey) {
     return jsonResponse(500, { error: "Missing Supabase environment variables" });
   }
 
@@ -62,13 +61,12 @@ Deno.serve(async (req) => {
     return jsonResponse(400, { error: "Invalid JSON body" });
   }
 
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
+  const userClient = createClient(supabaseUrl, serviceRoleKey);
   const {
-    data: { user },
+    data,
     error: userError,
-  } = await userClient.auth.getUser();
+  } = await userClient.auth.getUser(token);
+  const user = data?.user ?? null;
   if (userError || !user) {
     return jsonResponse(401, { error: "Invalid user session" });
   }

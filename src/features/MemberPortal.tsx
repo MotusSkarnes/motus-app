@@ -137,6 +137,25 @@ export function MemberPortal(props: MemberPortalProps) {
     return formatted || trimmed;
   }
 
+  async function extractFunctionErrorDetails(error: unknown): Promise<string> {
+    if (!error || typeof error !== "object") return "";
+    const candidate = error as { message?: unknown; context?: { json?: () => Promise<unknown> } };
+    if (typeof candidate.context?.json === "function") {
+      try {
+        const payload = await candidate.context.json();
+        if (payload && typeof payload === "object") {
+          const withError = payload as { error?: unknown; message?: unknown };
+          if (typeof withError.error === "string" && withError.error.trim()) return withError.error;
+          if (typeof withError.message === "string" && withError.message.trim()) return withError.message;
+        }
+      } catch {
+        // Fall through to message fallback.
+      }
+    }
+    if (typeof candidate.message === "string" && candidate.message.trim()) return candidate.message;
+    return "";
+  }
+
   function parseLogDate(value: string): Date | null {
     if (!value) return null;
     const isoCandidate = new Date(value);
@@ -395,7 +414,8 @@ export function MemberPortal(props: MemberPortalProps) {
         },
       });
       if (error) {
-        setProfileSaveInfo(`Lokalt lagret, men synk til PT feilet: ${error.message}`);
+        const detailed = await extractFunctionErrorDetails(error);
+        setProfileSaveInfo(`Lokalt lagret, men synk til PT feilet: ${detailed || error.message}`);
         return;
       }
     }
