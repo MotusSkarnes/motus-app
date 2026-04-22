@@ -46,6 +46,12 @@ create policy "chat_messages_select_trainer_or_member"
   for select to authenticated
   using (
     owner_user_id = auth.uid()
+    or exists (
+      select 1
+      from public.members m
+      where m.id = chat_messages.member_id
+        and m.owner_user_id = auth.uid()
+    )
     or member_id = coalesce(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
   );
 create policy "chat_messages_insert_own"

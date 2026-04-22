@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ClipboardList, MessageSquare, Target, TrendingUp, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
-import { Card, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, TextArea, TextInput } from "../app/ui";
+import { Card, GradientButton, OutlineButton, SelectBox, StatCard, TextArea, TextInput } from "../app/ui";
 import type { ChatMessage, Member, MemberTab, TrainingProgram, WorkoutCelebration, WorkoutLog, WorkoutModeState } from "../app/types";
 
 type MemberPortalProps = {
@@ -285,12 +285,31 @@ export function MemberPortal(props: MemberPortalProps) {
     <>
     <div className="space-y-4 sm:space-y-6">
       <Card className="p-3 hidden lg:block">
-        <div className="flex gap-2 overflow-auto pb-1">
-          <PillButton active={memberTab === "overview"} onClick={() => setMemberTab("overview")}>Oversikt</PillButton>
-          <PillButton active={memberTab === "programs"} onClick={() => setMemberTab("programs")}>Programmer</PillButton>
-          <PillButton active={memberTab === "progress"} onClick={() => setMemberTab("progress")}>Fremgang</PillButton>
-          <PillButton active={memberTab === "messages"} onClick={() => setMemberTab("messages")}>Meldinger</PillButton>
-          <PillButton active={memberTab === "profile"} onClick={() => setMemberTab("profile")}>Profil</PillButton>
+        <div
+          className="flex gap-2 overflow-auto rounded-2xl p-2"
+          style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+        >
+          {[
+            { id: "overview", label: "Oversikt" },
+            { id: "programs", label: "Programmer" },
+            { id: "progress", label: "Fremgang" },
+            { id: "messages", label: "Meldinger" },
+            { id: "profile", label: "Profil" },
+          ].map((tab) => {
+            const isActive = memberTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setMemberTab(tab.id as MemberTab)}
+                className={`shrink-0 rounded-2xl px-4 py-2 text-sm font-medium transition ${
+                  isActive ? "bg-white text-slate-900 shadow-sm" : "bg-white/20 text-white hover:bg-white/30"
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </Card>
 

@@ -1,8 +1,8 @@
-import type { ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { BarChart3, Bell, CalendarDays, CheckSquare, ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, Settings, TrendingUp, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "./app/data";
 import { useAppState } from "./app/useAppState";
-import { AppShell, Badge, Card, MobileNavButton, OutlineButton, PillButton } from "./app/ui";
+import { AppShell, Badge, Card, OutlineButton, PillButton } from "./app/ui";
 import motusLogo from "./assets/motus-logo.png";
 import { LoginScreen } from "./features/LoginScreen";
 import { MemberPortal } from "./features/MemberPortal";
@@ -65,24 +65,41 @@ export default function App() {
     resetAllData();
   }
 
-  const trainerNotifications = [
-    appState.members.filter((member) => !member.invitedAt).length > 0
-      ? `${appState.members.filter((member) => !member.invitedAt).length} kunder mangler invitasjon`
-      : null,
-    appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length > 0
-      ? `${appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length} kunder bør følges opp`
-      : null,
-    appState.messages.length > 0 ? `${appState.messages.length} meldinger i dialoger` : null,
-  ].filter((item): item is string => Boolean(item));
+  const [trainerNotificationsOpen, setTrainerNotificationsOpen] = useState(false);
+  const [memberNotificationsOpen, setMemberNotificationsOpen] = useState(false);
+  const [openCustomerMessagesSignal, setOpenCustomerMessagesSignal] = useState(0);
 
-  const memberNotifications = [
-    appState.programs.filter((program) => program.memberId === appState.memberViewId).length > 0
-      ? `${appState.programs.filter((program) => program.memberId === appState.memberViewId).length} aktive programmer`
-      : "Ingen programmer tildelt ennå",
-    appState.messages.filter((message) => message.memberId === appState.memberViewId && message.sender === "trainer").length > 0
-      ? `${appState.messages.filter((message) => message.memberId === appState.memberViewId && message.sender === "trainer").length} meldinger fra trener`
-      : null,
-  ].filter((item): item is string => Boolean(item));
+  const memberById = useMemo(
+    () => new Map(appState.members.map((member) => [member.id, member])),
+    [appState.members]
+  );
+
+  const trainerMessageAlerts = useMemo(() => {
+    const latestByMember = new Map<string, (typeof appState.messages)[number]>();
+    appState.messages
+      .filter((message) => message.sender === "member")
+      .forEach((message) => {
+        const previous = latestByMember.get(message.memberId);
+        if (!previous || new Date(message.createdAt).getTime() > new Date(previous.createdAt).getTime()) {
+          latestByMember.set(message.memberId, message);
+        }
+      });
+
+    return Array.from(latestByMember.values())
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .map((message) => {
+        const member = memberById.get(message.memberId);
+        const name = member?.name || "Et medlem";
+        return { id: `msg-${message.id}`, memberId: message.memberId, text: `${name} har sendt deg en ny melding` };
+      });
+  }, [appState.messages, memberById]);
+
+  const inactiveMembersCount = appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length;
+  const missingInvitesCount = appState.members.filter((member) => !member.invitedAt).length;
+  const memberProgramsCount = appState.programs.filter((program) => program.memberId === appState.memberViewId).length;
+  const memberInboxCount = appState.messages.filter(
+    (message) => message.memberId === appState.memberViewId && message.sender === "trainer"
+  ).length;
 
   const trainerMenuItems: Array<{ key: typeof trainerTab; label: string; icon: ReactNode }> = [
     { key: "dashboard", label: "Oversikt", icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -185,13 +202,78 @@ export default function App() {
               </Card>
               <div className="space-y-4">
                 <Card className="p-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                    <Bell className="h-4 w-4" />
-                    Varslingsoversikt
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-semibold text-slate-800">Varsler</div>
+                    <button
+                      type="button"
+                      onClick={() => setTrainerNotificationsOpen((prev) => !prev)}
+                      className="relative rounded-xl border bg-white p-2 text-slate-700 hover:bg-slate-50"
+                      style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                      aria-label="Åpne varsler"
+                    >
+                      <Bell className="h-4 w-4" />
+                      {trainerMessageAlerts.length > 0 ? (
+                        <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                          {trainerMessageAlerts.length}
+                        </span>
+                      ) : null}
+                    </button>
                   </div>
-                  <div className="mt-2 space-y-1 text-sm text-slate-600">
-                    {trainerNotifications.length ? trainerNotifications.map((item) => <div key={item}>• {item}</div>) : <div>Ingen nye varsler akkurat nå.</div>}
-                  </div>
+                  {trainerNotificationsOpen ? (
+                    <div className="mt-3 space-y-2">
+                      {trainerMessageAlerts.map((alert) => (
+                        <button
+                          key={alert.id}
+                          type="button"
+                          onClick={() => {
+                            patchState({ selectedMemberId: alert.memberId });
+                            setTrainerTab("customers");
+                            setOpenCustomerMessagesSignal((prev) => prev + 1);
+                            setTrainerNotificationsOpen(false);
+                          }}
+                          className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                          style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                        >
+                          {alert.text}
+                        </button>
+                      ))}
+                      {missingInvitesCount > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTrainerTab("customers");
+                            setTrainerNotificationsOpen(false);
+                          }}
+                          className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                          style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                        >
+                          {missingInvitesCount} kunder mangler invitasjon
+                        </button>
+                      ) : null}
+                      {inactiveMembersCount > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTrainerTab("customers");
+                            setTrainerNotificationsOpen(false);
+                          }}
+                          className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                          style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                        >
+                          {inactiveMembersCount} kunder bør følges opp
+                        </button>
+                      ) : null}
+                      {!trainerMessageAlerts.length && !missingInvitesCount && !inactiveMembersCount ? (
+                        <div className="rounded-xl border border-dashed bg-white px-3 py-2 text-sm text-slate-500">
+                          Ingen nye varsler akkurat nå.
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-sm text-slate-500">
+                      Trykk på bjellen for å se varsler.
+                    </div>
+                  )}
                 </Card>
                 <TrainerPortal
                   members={appState.members}
@@ -215,19 +297,62 @@ export default function App() {
                   deleteProgramById={deleteProgramById}
                   sendTrainerMessage={sendTrainerMessage}
                   saveExercise={saveExercise}
+                  openCustomerMessagesSignal={openCustomerMessagesSignal}
                 />
               </div>
             </div>
           ) : (
             <div className="space-y-4">
               <Card className="p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                  <Bell className="h-4 w-4" />
-                  Varslingsoversikt
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-slate-800">Varsler</div>
+                  <button
+                    type="button"
+                    onClick={() => setMemberNotificationsOpen((prev) => !prev)}
+                    className="relative rounded-xl border bg-white p-2 text-slate-700 hover:bg-slate-50"
+                    style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                    aria-label="Åpne varsler"
+                  >
+                    <Bell className="h-4 w-4" />
+                    {memberInboxCount > 0 ? (
+                      <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                        {memberInboxCount}
+                      </span>
+                    ) : null}
+                  </button>
                 </div>
-                <div className="mt-2 space-y-1 text-sm text-slate-600">
-                  {memberNotifications.map((item) => <div key={item}>• {item}</div>)}
-                </div>
+                {memberNotificationsOpen ? (
+                  <div className="mt-3 space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMemberTab("programs");
+                        setMemberNotificationsOpen(false);
+                      }}
+                      className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                      style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                    >
+                      {memberProgramsCount > 0 ? `${memberProgramsCount} aktive programmer` : "Ingen programmer tildelt ennå"}
+                    </button>
+                    {memberInboxCount > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMemberTab("messages");
+                          setMemberNotificationsOpen(false);
+                        }}
+                        className="w-full rounded-xl border bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                        style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                      >
+                        Du har {memberInboxCount} nye meldinger fra trener
+                      </button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="mt-2 text-sm text-slate-500">
+                    Trykk på bjellen for å se varsler.
+                  </div>
+                )}
               </Card>
             <MemberPortal
               members={appState.members}
@@ -255,19 +380,63 @@ export default function App() {
             <div className="mx-auto flex max-w-md items-center gap-1.5 rounded-[22px] border bg-slate-50/90 p-1.5 shadow-lg" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
               {appState.role === "trainer" ? (
                 <>
-                  <MobileNavButton active={trainerTab === "dashboard"} icon={<LayoutDashboard className="h-4 w-4" />} label="Oversikt" onClick={() => setTrainerTab("dashboard")} />
-                  <MobileNavButton active={trainerTab === "customers"} icon={<Users className="h-4 w-4" />} label="Klienter" onClick={() => setTrainerTab("customers")} />
-                  <MobileNavButton active={trainerTab === "programs"} icon={<ClipboardList className="h-4 w-4" />} label="Program" onClick={() => setTrainerTab("programs")} />
-                  <MobileNavButton active={trainerTab === "exerciseBank"} icon={<Dumbbell className="h-4 w-4" />} label="Øvelser" onClick={() => setTrainerTab("exerciseBank")} />
-                  <MobileNavButton active={trainerTab === "messages"} icon={<MessageSquare className="h-4 w-4" />} label="Meldinger" onClick={() => setTrainerTab("messages")} />
+                  <div
+                    className="flex w-full items-center gap-1.5 rounded-[18px] p-1.5"
+                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                  >
+                    {[
+                      { id: "dashboard", label: "Oversikt", icon: <LayoutDashboard className="h-4 w-4" /> },
+                      { id: "customers", label: "Klienter", icon: <Users className="h-4 w-4" /> },
+                      { id: "programs", label: "Program", icon: <ClipboardList className="h-4 w-4" /> },
+                      { id: "exerciseBank", label: "Øvelser", icon: <Dumbbell className="h-4 w-4" /> },
+                      { id: "messages", label: "Meldinger", icon: <MessageSquare className="h-4 w-4" /> },
+                    ].map((tab) => {
+                      const isActive = trainerTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setTrainerTab(tab.id as typeof trainerTab)}
+                          className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-semibold transition ${
+                            isActive ? "bg-white text-slate-900 shadow-sm" : "bg-white/20 text-white hover:bg-white/30"
+                          }`}
+                        >
+                          {tab.icon}
+                          <span className="truncate">{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </>
               ) : (
                 <>
-                  <MobileNavButton active={memberTab === "overview"} icon={<LayoutDashboard className="h-4 w-4" />} label="Hjem" onClick={() => setMemberTab("overview")} />
-                  <MobileNavButton active={memberTab === "programs"} icon={<ClipboardList className="h-4 w-4" />} label="Program" onClick={() => setMemberTab("programs")} />
-                  <MobileNavButton active={memberTab === "progress"} icon={<TrendingUp className="h-4 w-4" />} label="Fremgang" onClick={() => setMemberTab("progress")} />
-                  <MobileNavButton active={memberTab === "messages"} icon={<MessageSquare className="h-4 w-4" />} label="Meldinger" onClick={() => setMemberTab("messages")} />
-                  <MobileNavButton active={memberTab === "profile"} icon={<UserCircle2 className="h-4 w-4" />} label="Profil" onClick={() => setMemberTab("profile")} />
+                  <div
+                    className="flex w-full items-center gap-1.5 rounded-[18px] p-1.5"
+                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                  >
+                    {[
+                      { id: "overview", label: "Hjem", icon: <LayoutDashboard className="h-4 w-4" /> },
+                      { id: "programs", label: "Program", icon: <ClipboardList className="h-4 w-4" /> },
+                      { id: "progress", label: "Fremgang", icon: <TrendingUp className="h-4 w-4" /> },
+                      { id: "messages", label: "Meldinger", icon: <MessageSquare className="h-4 w-4" /> },
+                      { id: "profile", label: "Profil", icon: <UserCircle2 className="h-4 w-4" /> },
+                    ].map((tab) => {
+                      const isActive = memberTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setMemberTab(tab.id as typeof memberTab)}
+                          className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-semibold transition ${
+                            isActive ? "bg-white text-slate-900 shadow-sm" : "bg-white/20 text-white hover:bg-white/30"
+                          }`}
+                        >
+                          {tab.icon}
+                          <span className="truncate">{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </>
               )}
             </div>

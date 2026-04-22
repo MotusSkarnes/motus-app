@@ -39,6 +39,7 @@ type TrainerPortalProps = {
     description: string;
     imageUrl?: string;
   }) => void;
+  openCustomerMessagesSignal?: number;
 };
 
 export function TrainerPortal(props: TrainerPortalProps) {
@@ -67,6 +68,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     deleteProgramById,
     sendTrainerMessage,
     saveExercise,
+    openCustomerMessagesSignal = 0,
   } = props;
 
   const [programTitle, setProgramTitle] = useState("Nytt treningsprogram");
@@ -197,7 +199,24 @@ export function TrainerPortal(props: TrainerPortalProps) {
       .filter((log) => log.memberId === selectedMemberId)
       .sort((a, b) => parseLogDate(b.date) - parseLogDate(a.date));
   }, [logs, selectedMemberId]);
-  const selectedMessages = messages.filter((message) => message.memberId === selectedMemberId);
+  const selectedMemberRelatedIds = useMemo(() => {
+    if (selectedMemberId === "__template__") return [];
+    if (!selectedMemberId) return [];
+    const selected = members.find((member) => member.id === selectedMemberId);
+    if (!selected) return [selectedMemberId];
+    const normalizedEmail = selected.email.trim().toLowerCase();
+    if (!normalizedEmail) return [selectedMemberId];
+    return members
+      .filter((member) => member.email.trim().toLowerCase() === normalizedEmail)
+      .map((member) => member.id);
+  }, [members, selectedMemberId]);
+  const selectedMessages = useMemo(
+    () =>
+      messages.filter((message) =>
+        selectedMemberRelatedIds.includes(message.memberId)
+      ),
+    [messages, selectedMemberRelatedIds]
+  );
   const latestCompletedLog = selectedLogs.find((log) => log.status === "Fullført") ?? null;
   const visibleExercises = useMemo(() => {
     const query = exerciseSearch.trim().toLowerCase();
@@ -308,6 +327,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
     void sendInviteForNewMember();
   }, [pendingInviteMemberEmail, members, inviteMember, markMemberInvited, setSelectedMemberId, setTrainerTab]);
+
+  useEffect(() => {
+    if (!selectedMemberId || selectedMemberId === "__template__") return;
+    setCustomerSubTab("messages");
+  }, [openCustomerMessagesSignal, selectedMemberId]);
 
   function formatInvitedAt(iso: string): string {
     if (!iso) return "";
@@ -1328,6 +1352,22 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           <div className={`mt-1 text-[11px] ${message.sender === "trainer" ? "text-white/80" : "text-slate-500"}`}>{message.createdAt}</div>
                         </div>
                       ))}
+                    </div>
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <TextInput
+                        value={trainerMessage}
+                        onChange={(e) => setTrainerMessage(e.target.value)}
+                        placeholder="Skriv melding til kunden"
+                      />
+                      <GradientButton
+                        onClick={() => {
+                          if (!selectedMemberId || selectedMemberId === "__template__" || !trainerMessage.trim()) return;
+                          sendTrainerMessage(selectedMemberId, trainerMessage);
+                          setTrainerMessage("");
+                        }}
+                      >
+                        Send
+                      </GradientButton>
                     </div>
                   </div>
                 ) : null}
