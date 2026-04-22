@@ -152,6 +152,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [memberEditInjuries, setMemberEditInjuries] = useState("");
   const [memberEditIsPtCustomer, setMemberEditIsPtCustomer] = useState(false);
   const [memberEditIsPremiumCustomer, setMemberEditIsPremiumCustomer] = useState(false);
+  const [isEditingCustomerCard, setIsEditingCustomerCard] = useState(false);
   const [memberEditStatus, setMemberEditStatus] = useState<string | null>(null);
   const [restoreEmail, setRestoreEmail] = useState("");
   const [restoreStatus, setRestoreStatus] = useState<string | null>(null);
@@ -392,8 +393,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setCustomerSubTab("messages");
   }, [openCustomerMessagesSignal, selectedMemberId]);
 
-  useEffect(() => {
-    if (!selectedMember) {
+  function resetMemberEditDraftFromSelected(member: Member | null) {
+    if (!member) {
       setMemberEditName("");
       setMemberEditEmail("");
       setMemberEditPhone("");
@@ -404,15 +405,20 @@ export function TrainerPortal(props: TrainerPortalProps) {
       setMemberEditIsPremiumCustomer(false);
       return;
     }
-    setMemberEditName(selectedMember.name);
-    setMemberEditEmail(selectedMember.email);
-    setMemberEditPhone(selectedMember.phone);
-    setMemberEditBirthDate(selectedMember.birthDate);
-    setMemberEditGoal(selectedMember.goal);
-    setMemberEditInjuries(selectedMember.injuries);
-    setMemberEditIsPtCustomer(selectedMember.customerType === "PT-kunde");
-    setMemberEditIsPremiumCustomer(selectedMember.membershipType === "Premium");
+    setMemberEditName(member.name);
+    setMemberEditEmail(member.email);
+    setMemberEditPhone(member.phone);
+    setMemberEditBirthDate(member.birthDate);
+    setMemberEditGoal(member.goal);
+    setMemberEditInjuries(member.injuries);
+    setMemberEditIsPtCustomer(member.customerType === "PT-kunde");
+    setMemberEditIsPremiumCustomer(member.membershipType === "Premium");
+  }
+
+  useEffect(() => {
+    resetMemberEditDraftFromSelected(selectedMember);
     setMemberEditStatus(null);
+    setIsEditingCustomerCard(false);
   }, [selectedMember]);
 
   function formatInvitedAt(iso: string): string {
@@ -1431,15 +1437,89 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     </div>
                   </div>
                   <div className="mt-1 text-2xl font-bold tracking-tight">{selectedMember.name}</div>
-                  <div className="mt-2 text-sm text-white/85">{selectedMember.email}</div>
-                  <div className="mt-1 text-sm text-white/85">Mål: {selectedMember.goal}</div>
-                  <div className="mt-1 text-sm text-white/85">
-                    Sist trening: {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}
-                  </div>
-                  <div className="mt-1 text-xs text-white/85">
-                    {selectedMember.invitedAt ? `Invitert: ${formatInvitedAt(selectedMember.invitedAt)}` : "Ikke invitert enda"}
-                  </div>
+                  {isEditingCustomerCard ? (
+                    <div className="mt-3 space-y-3 rounded-2xl border border-white/25 bg-white/10 p-3">
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <label className="space-y-1 text-xs font-medium text-white">
+                          <span>Navn</span>
+                          <TextInput value={memberEditName} onChange={(event) => setMemberEditName(event.target.value)} placeholder="f.eks. Ola Nordmann" />
+                        </label>
+                        <label className="space-y-1 text-xs font-medium text-white">
+                          <span>E-post</span>
+                          <TextInput value={memberEditEmail} onChange={(event) => setMemberEditEmail(event.target.value)} placeholder="f.eks. navn@epost.no" />
+                        </label>
+                        <label className="space-y-1 text-xs font-medium text-white">
+                          <span>Telefon</span>
+                          <TextInput value={memberEditPhone} onChange={(event) => setMemberEditPhone(event.target.value)} placeholder="f.eks. 900 00 000" />
+                        </label>
+                        <label className="space-y-1 text-xs font-medium text-white">
+                          <span>Fødselsdato</span>
+                          <TextInput value={memberEditBirthDate} onChange={(event) => setMemberEditBirthDate(event.target.value)} placeholder="dd.mm.yyyy" />
+                        </label>
+                      </div>
+                      <label className="space-y-1 text-xs font-medium text-white">
+                        <span>Mål</span>
+                        <SelectBox
+                          value={MEMBER_GOAL_OPTIONS.includes(memberEditGoal as (typeof MEMBER_GOAL_OPTIONS)[number]) ? memberEditGoal : ""}
+                          onChange={setMemberEditGoal}
+                          options={[
+                            { value: "", label: "Velg mål" },
+                            ...MEMBER_GOAL_OPTIONS.map((goal) => ({ value: goal, label: goal })),
+                          ]}
+                        />
+                      </label>
+                      <label className="space-y-1 text-xs font-medium text-white">
+                        <span>Skader/hensyn</span>
+                        <TextArea value={memberEditInjuries} onChange={(event) => setMemberEditInjuries(event.target.value)} className="min-h-[90px]" placeholder="Skader/hensyn" />
+                      </label>
+                      <div className="rounded-xl border border-white/25 bg-white/10 p-3 space-y-2">
+                        <div className="text-xs font-medium text-white">Profilbilde</div>
+                        <div className="h-14 w-14 overflow-hidden rounded-full border border-white/40 bg-white/20">
+                          {resolveMemberAvatarUrl(selectedMember) ? <img src={resolveMemberAvatarUrl(selectedMember)} alt={`Profilbilde av ${selectedMember.name}`} className="h-full w-full object-cover" /> : null}
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(event) => void handleCustomerAvatarSelected(event.target.files?.[0] ?? null)}
+                          className="block w-full text-xs text-white/90 file:mr-3 file:rounded-xl file:border-0 file:bg-white/80 file:px-3 file:py-2 file:text-xs file:font-medium file:text-slate-800"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mt-2 text-sm text-white/85">{selectedMember.email}</div>
+                      <div className="mt-1 text-sm text-white/85">Telefon: {selectedMember.phone || "Ikke satt"}</div>
+                      <div className="mt-1 text-sm text-white/85">Fødselsdato: {selectedMember.birthDate || "Ikke satt"}</div>
+                      <div className="mt-1 text-sm text-white/85">Mål: {selectedMember.goal || "Ikke satt"}</div>
+                      <div className="mt-1 text-sm text-white/85">Skader/hensyn: {selectedMember.injuries || "Ingen registrerte skader"}</div>
+                      <div className="mt-1 text-sm text-white/85">
+                        Sist trening: {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}
+                      </div>
+                      <div className="mt-1 text-xs text-white/85">
+                        {selectedMember.invitedAt ? `Invitert: ${formatInvitedAt(selectedMember.invitedAt)}` : "Ikke invitert enda"}
+                      </div>
+                    </>
+                  )}
                   <div className="mt-3 flex flex-wrap gap-2">
+                    {isEditingCustomerCard ? (
+                      <>
+                        <GradientButton onClick={handleSaveSelectedMemberDetails}>
+                          Lagre endringer
+                        </GradientButton>
+                        <OutlineButton
+                          onClick={() => {
+                            resetMemberEditDraftFromSelected(selectedMember);
+                            setIsEditingCustomerCard(false);
+                          }}
+                        >
+                          Avbryt redigering
+                        </OutlineButton>
+                      </>
+                    ) : (
+                      <OutlineButton onClick={() => setIsEditingCustomerCard(true)}>
+                        Rediger kundekort
+                      </OutlineButton>
+                    )}
                     <OutlineButton onClick={handleInviteSelectedMember}>
                       Send invitasjon på nytt
                     </OutlineButton>
@@ -1473,74 +1553,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     className="!rounded-xl !px-3 !py-2"
                   />
                 ) : null}
-                <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="text-sm font-semibold text-slate-800">Rediger kundekort</div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <label className="space-y-1 text-xs font-medium text-slate-600">
-                      <span>Navn</span>
-                      <TextInput value={memberEditName} onChange={(event) => setMemberEditName(event.target.value)} placeholder="f.eks. Ola Nordmann" />
-                    </label>
-                    <label className="space-y-1 text-xs font-medium text-slate-600">
-                      <span>E-post</span>
-                      <TextInput value={memberEditEmail} onChange={(event) => setMemberEditEmail(event.target.value)} placeholder="f.eks. navn@epost.no" />
-                    </label>
-                    <label className="space-y-1 text-xs font-medium text-slate-600">
-                      <span>Telefon</span>
-                      <TextInput value={memberEditPhone} onChange={(event) => setMemberEditPhone(event.target.value)} placeholder="f.eks. 900 00 000" />
-                    </label>
-                    <label className="space-y-1 text-xs font-medium text-slate-600">
-                      <span>Fødselsdato</span>
-                      <TextInput value={memberEditBirthDate} onChange={(event) => setMemberEditBirthDate(event.target.value)} placeholder="dd.mm.yyyy" />
-                    </label>
-                  </div>
-                  <label className="space-y-1 text-xs font-medium text-slate-600">
-                    <span>Mål</span>
-                    <SelectBox
-                      value={MEMBER_GOAL_OPTIONS.includes(memberEditGoal as (typeof MEMBER_GOAL_OPTIONS)[number]) ? memberEditGoal : ""}
-                      onChange={setMemberEditGoal}
-                      options={[
-                        { value: "", label: "Velg mål" },
-                        ...MEMBER_GOAL_OPTIONS.map((goal) => ({ value: goal, label: goal })),
-                      ]}
-                    />
-                  </label>
-                  <label className="space-y-1 text-xs font-medium text-slate-600">
-                    <span>Skader/hensyn</span>
-                    <TextArea value={memberEditInjuries} onChange={(event) => setMemberEditInjuries(event.target.value)} className="min-h-[90px]" placeholder="Skader/hensyn" />
-                  </label>
-                  <div className="rounded-xl border bg-white p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="text-xs font-medium text-slate-600">Profilbilde</div>
-                    <div className="h-14 w-14 overflow-hidden rounded-full border bg-slate-100" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
-                      {resolveMemberAvatarUrl(selectedMember) ? <img src={resolveMemberAvatarUrl(selectedMember)} alt={`Profilbilde av ${selectedMember.name}`} className="h-full w-full object-cover" /> : null}
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(event) => void handleCustomerAvatarSelected(event.target.files?.[0] ?? null)}
-                      className="block w-full text-xs text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-xs file:font-medium"
-                    />
-                  </div>
-                  <div className="grid gap-2 md:grid-cols-2">
-                    <label className="flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <input type="checkbox" checked={memberEditIsPtCustomer} onChange={(event) => setMemberEditIsPtCustomer(event.target.checked)} style={{ accentColor: MOTUS.turquoise }} />
-                      PT-kunde
-                    </label>
-                    <label className="flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <input type="checkbox" checked={memberEditIsPremiumCustomer} onChange={(event) => setMemberEditIsPremiumCustomer(event.target.checked)} style={{ accentColor: MOTUS.turquoise }} />
-                      Premium-kunde
-                    </label>
-                  </div>
-                  <OutlineButton onClick={handleSaveSelectedMemberDetails} className="w-full md:w-auto">
-                    Lagre kundedata
-                  </OutlineButton>
-                  {memberEditStatus ? (
-                    <StatusMessage
-                      message={memberEditStatus}
-                      tone={memberEditStatus.toLowerCase().includes("feilet") ? "error" : "success"}
-                      className="!rounded-xl !px-3 !py-2 !text-xs"
-                    />
-                  ) : null}
-                </div>
+                {memberEditStatus ? (
+                  <StatusMessage
+                    message={memberEditStatus}
+                    tone={memberEditStatus.toLowerCase().includes("feilet") ? "error" : "success"}
+                    className="!rounded-xl !px-3 !py-2 !text-xs"
+                  />
+                ) : null}
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <StatCard label="Programmer" value={String(selectedPrograms.length)} hint="På denne kunden" />
                   <StatCard label="Logger" value={String(selectedLogs.length)} hint="På denne kunden" />
