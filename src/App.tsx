@@ -86,6 +86,16 @@ export default function App() {
     const parsed = Number(raw ?? "0");
     return Number.isFinite(parsed) ? parsed : 0;
   });
+  const [seenMemberProgramIds, setSeenMemberProgramIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem("motus.notifications.memberSeenProgramIds");
+      const parsed = JSON.parse(raw ?? "[]");
+      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+    } catch {
+      return [];
+    }
+  });
 
   const memberById = useMemo(
     () => new Map(appState.members.map((member) => [member.id, member])),
@@ -148,9 +158,10 @@ export default function App() {
     text: `Nytt program tildelt: ${program.title}`,
     timestamp: program._effectiveTimestamp,
     targetTab: "programs" as const,
+    unread: !seenMemberProgramIds.includes(program.id),
   }));
   const memberUnreadAlerts = [...memberMessageAlerts, ...memberProgramAlerts]
-    .filter((alert) => alert.timestamp > memberAlertsSeenAt)
+    .filter((alert) => ("unread" in alert ? alert.unread : alert.timestamp > memberAlertsSeenAt))
     .sort((a, b) => b.timestamp - a.timestamp);
   const memberUnreadCount = memberUnreadAlerts.length;
   const trainerUnreadCount = trainerMessageAlerts.filter((alert) => alert.timestamp > trainerAlertsSeenAt).length;
@@ -173,6 +184,7 @@ export default function App() {
         0
       );
       setMemberAlertsSeenAt(latestAlertTime);
+      setSeenMemberProgramIds((prev) => Array.from(new Set([...prev, ...memberPrograms.map((program) => program.id)])));
     }
   }
 
@@ -185,6 +197,11 @@ export default function App() {
     if (typeof window === "undefined") return;
     window.localStorage.setItem("motus.notifications.memberSeenAt", String(memberAlertsSeenAt));
   }, [memberAlertsSeenAt]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("motus.notifications.memberSeenProgramIds", JSON.stringify(seenMemberProgramIds));
+  }, [seenMemberProgramIds]);
 
   const trainerMenuItems: Array<{ key: typeof trainerTab; label: string; icon: ReactNode }> = [
     { key: "dashboard", label: "Oversikt", icon: <LayoutDashboard className="h-4 w-4" /> },
