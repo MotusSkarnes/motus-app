@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { BarChart3, Bell, CalendarDays, CheckSquare, ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, Settings, TrendingUp, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "./app/data";
 import { useAppState } from "./app/useAppState";
@@ -74,8 +74,18 @@ export default function App() {
   const [trainerNotificationsOpen, setTrainerNotificationsOpen] = useState(false);
   const [memberNotificationsOpen, setMemberNotificationsOpen] = useState(false);
   const [openCustomerMessagesSignal, setOpenCustomerMessagesSignal] = useState(0);
-  const [trainerAlertsSeenAt, setTrainerAlertsSeenAt] = useState(0);
-  const [memberAlertsSeenAt, setMemberAlertsSeenAt] = useState(0);
+  const [trainerAlertsSeenAt, setTrainerAlertsSeenAt] = useState(() => {
+    if (typeof window === "undefined") return 0;
+    const raw = window.localStorage.getItem("motus.notifications.trainerSeenAt");
+    const parsed = Number(raw ?? "0");
+    return Number.isFinite(parsed) ? parsed : 0;
+  });
+  const [memberAlertsSeenAt, setMemberAlertsSeenAt] = useState(() => {
+    if (typeof window === "undefined") return 0;
+    const raw = window.localStorage.getItem("motus.notifications.memberSeenAt");
+    const parsed = Number(raw ?? "0");
+    return Number.isFinite(parsed) ? parsed : 0;
+  });
 
   const memberById = useMemo(
     () => new Map(appState.members.map((member) => [member.id, member])),
@@ -146,6 +156,16 @@ export default function App() {
       setMemberAlertsSeenAt(latestMessageTime);
     }
   }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("motus.notifications.trainerSeenAt", String(trainerAlertsSeenAt));
+  }, [trainerAlertsSeenAt]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("motus.notifications.memberSeenAt", String(memberAlertsSeenAt));
+  }, [memberAlertsSeenAt]);
 
   const trainerMenuItems: Array<{ key: typeof trainerTab; label: string; icon: ReactNode }> = [
     { key: "dashboard", label: "Oversikt", icon: <LayoutDashboard className="h-4 w-4" /> },
