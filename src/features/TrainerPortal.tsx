@@ -201,6 +201,25 @@ export function TrainerPortal(props: TrainerPortalProps) {
       return a.name.localeCompare(b.name, "no");
     });
   }, [filteredMembers, memberSort]);
+  const memberAvatarByEmail = useMemo(() => {
+    const byEmail: Record<string, string> = {};
+    members.forEach((member) => {
+      const normalizedEmail = member.email.trim().toLowerCase();
+      if (!normalizedEmail) return;
+      const avatarUrl = memberAvatarById[member.id];
+      if (avatarUrl && !byEmail[normalizedEmail]) {
+        byEmail[normalizedEmail] = avatarUrl;
+      }
+    });
+    return byEmail;
+  }, [members, memberAvatarById]);
+  function resolveMemberAvatarUrl(member: Member): string {
+    const direct = memberAvatarById[member.id];
+    if (direct) return direct;
+    const normalizedEmail = member.email.trim().toLowerCase();
+    if (!normalizedEmail) return "";
+    return memberAvatarByEmail[normalizedEmail] ?? "";
+  }
   const inviteStatusTone =
     inviteStatus?.toLowerCase().includes("sendt") || inviteStatus?.toLowerCase().includes("invitasjon sendt")
       ? "success"
@@ -957,7 +976,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 <div key={member.id} className="flex items-center justify-between gap-2 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-center gap-2">
                     <div className="h-9 w-9 overflow-hidden rounded-full border bg-slate-100" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
-                      {memberAvatarById[member.id] ? <img src={memberAvatarById[member.id]} alt={member.name} className="h-full w-full object-cover" /> : null}
+                      {resolveMemberAvatarUrl(member) ? <img src={resolveMemberAvatarUrl(member)} alt={member.name} className="h-full w-full object-cover" /> : null}
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-slate-800">{member.name}</div>
@@ -1065,7 +1084,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
               <div key={member.id} className="flex items-center justify-between gap-2 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center gap-2">
                   <div className="h-9 w-9 overflow-hidden rounded-full border bg-slate-100" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
-                    {memberAvatarById[member.id] ? <img src={memberAvatarById[member.id]} alt={member.name} className="h-full w-full object-cover" /> : null}
+                    {resolveMemberAvatarUrl(member) ? <img src={resolveMemberAvatarUrl(member)} alt={member.name} className="h-full w-full object-cover" /> : null}
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-slate-800">{member.name}</div>
@@ -1143,39 +1162,41 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   </OutlineButton>
                 ) : null}
               </div>
-              <TextInput
-                value={memberSearch}
-                onChange={(e) => setMemberSearch(e.target.value)}
-                placeholder="Sok etter navn, e-post eller mal"
-              />
-              <SelectBox
-                value={memberFilter}
-                onChange={(value) => setMemberFilter(value as "all" | "followUp" | "invited" | "notInvited")}
-                options={[
-                  { value: "all", label: "Alle kunder" },
-                  { value: "followUp", label: "Må følges opp (7+ dager)" },
-                  { value: "invited", label: "Invitert" },
-                  { value: "notInvited", label: "Ikke invitert" },
-                ]}
-              />
-              <SelectBox
-                value={customerTypeFilter}
-                onChange={(value) => setCustomerTypeFilter(value as "all" | "PT-kunde" | "Premium-kunde")}
-                options={[
-                  { value: "all", label: "Alle kundetyper" },
-                  { value: "PT-kunde", label: "PT-kunde" },
-                  { value: "Premium-kunde", label: "Premium-kunde" },
-                ]}
-              />
-              <SelectBox
-                value={memberSort}
-                onChange={(value) => setMemberSort(value as "activityRecent" | "nameAsc" | "nameDesc")}
-                options={[
-                  { value: "activityRecent", label: "Siste aktivitet (nyeste først)" },
-                  { value: "nameAsc", label: "Navn A-Å" },
-                  { value: "nameDesc", label: "Navn Å-A" },
-                ]}
-              />
+              <div className="grid gap-2 md:grid-cols-2">
+                <TextInput
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                  placeholder="Sok etter navn, e-post eller mal"
+                />
+                <SelectBox
+                  value={memberFilter}
+                  onChange={(value) => setMemberFilter(value as "all" | "followUp" | "invited" | "notInvited")}
+                  options={[
+                    { value: "all", label: "Alle kunder" },
+                    { value: "followUp", label: "Må følges opp (7+ dager)" },
+                    { value: "invited", label: "Invitert" },
+                    { value: "notInvited", label: "Ikke invitert" },
+                  ]}
+                />
+                <SelectBox
+                  value={customerTypeFilter}
+                  onChange={(value) => setCustomerTypeFilter(value as "all" | "PT-kunde" | "Premium-kunde")}
+                  options={[
+                    { value: "all", label: "Alle kundetyper" },
+                    { value: "PT-kunde", label: "PT-kunde" },
+                    { value: "Premium-kunde", label: "Premium-kunde" },
+                  ]}
+                />
+                <SelectBox
+                  value={memberSort}
+                  onChange={(value) => setMemberSort(value as "activityRecent" | "nameAsc" | "nameDesc")}
+                  options={[
+                    { value: "activityRecent", label: "Siste aktivitet (nyeste først)" },
+                    { value: "nameAsc", label: "Navn A-Å" },
+                    { value: "nameDesc", label: "Navn Å-A" },
+                  ]}
+                />
+              </div>
               <SelectBox
                 value={selectedMemberId}
                 onChange={setSelectedMemberId}
@@ -1214,8 +1235,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div className="text-sm text-white/80">Kundekort</div>
                     <div className="h-14 w-14 overflow-hidden rounded-full border border-white/40 bg-white/20">
-                      {memberAvatarById[selectedMember.id] ? (
-                        <img src={memberAvatarById[selectedMember.id]} alt={`Profilbilde av ${selectedMember.name}`} className="h-full w-full object-cover" />
+                      {resolveMemberAvatarUrl(selectedMember) ? (
+                        <img src={resolveMemberAvatarUrl(selectedMember)} alt={`Profilbilde av ${selectedMember.name}`} className="h-full w-full object-cover" />
                       ) : null}
                     </div>
                   </div>
