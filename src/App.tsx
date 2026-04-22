@@ -119,6 +119,24 @@ export default function App() {
     () => new Map(appState.members.map((member) => [member.id, member])),
     [appState.members]
   );
+  const currentMemberAvatarTargetIds = useMemo(() => {
+    if (!appState.currentUser || appState.currentUser.role !== "member") return [] as string[];
+    const normalizedEmail = appState.currentUser.email.trim().toLowerCase();
+    if (!normalizedEmail) return [appState.memberViewId].filter(Boolean);
+    const ids = appState.members
+      .filter((member) => member.email.trim().toLowerCase() === normalizedEmail)
+      .map((member) => member.id);
+    return ids.length ? ids : [appState.memberViewId].filter(Boolean);
+  }, [appState.currentUser, appState.members, appState.memberViewId]);
+  const currentMemberAvatarUrl = useMemo(() => {
+    const direct = memberAvatarById[appState.memberViewId];
+    if (direct) return direct;
+    for (const memberId of currentMemberAvatarTargetIds) {
+      const avatar = memberAvatarById[memberId];
+      if (avatar) return avatar;
+    }
+    return "";
+  }, [memberAvatarById, appState.memberViewId, currentMemberAvatarTargetIds]);
 
   function parseMessageTimestamp(value: string, fallbackOrder: number): number {
     const parsed = new Date(value).getTime();
@@ -233,6 +251,23 @@ export default function App() {
       // Avatar still works in current session even without persistence.
     }
   }, [memberAvatarById]);
+
+  useEffect(() => {
+    if (appState.currentUser?.role !== "member") return;
+    if (!currentMemberAvatarUrl) return;
+    if (!currentMemberAvatarTargetIds.length) return;
+    setMemberAvatarById((prev) => {
+      let hasChanges = false;
+      const next = { ...prev };
+      currentMemberAvatarTargetIds.forEach((memberId) => {
+        if (!memberId) return;
+        if (next[memberId] === currentMemberAvatarUrl) return;
+        next[memberId] = currentMemberAvatarUrl;
+        hasChanges = true;
+      });
+      return hasChanges ? next : prev;
+    });
+  }, [appState.currentUser, currentMemberAvatarUrl, currentMemberAvatarTargetIds]);
 
   const trainerMenuItems: Array<{ key: typeof trainerTab; label: string; icon: ReactNode }> = [
     { key: "dashboard", label: "Oversikt", icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -535,9 +570,30 @@ export default function App() {
               memberTab={memberTab}
               setMemberTab={setMemberTab}
               updateMember={updateMember}
-              memberAvatarUrl={memberAvatarById[appState.memberViewId] ?? ""}
+              memberAvatarUrl={currentMemberAvatarUrl}
               setMemberAvatarUrl={(url) =>
-                setMemberAvatarById((prev) => (url ? { ...prev, [appState.memberViewId]: url } : Object.fromEntries(Object.entries(prev).filter(([key]) => key !== appState.memberViewId))))
+                setMemberAvatarById((prev) => {
+                  if (url) {
+                    const next = { ...prev };
+                    currentMemberAvatarTargetIds.forEach((memberId) => {
+                      if (!memberId) return;
+                      next[memberId] = url;
+                    });
+                    if (!currentMemberAvatarTargetIds.length && appState.memberViewId) {
+                      next[appState.memberViewId] = url;
+                    }
+                    return next;
+                  }
+                  if (!currentMemberAvatarTargetIds.length && !appState.memberViewId) return prev;
+                  return Object.fromEntries(
+                    Object.entries(prev).filter(([key]) => {
+                      if (currentMemberAvatarTargetIds.length) {
+                        return !currentMemberAvatarTargetIds.includes(key);
+                      }
+                      return key !== appState.memberViewId;
+                    })
+                  );
+                })
               }
               exercises={appState.exercises}
               sendMemberMessage={sendMemberMessage}
