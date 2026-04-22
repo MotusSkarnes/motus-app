@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ClipboardList, MessageSquare, Target, TrendingUp, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
+import { formatDateDdMmYyyy } from "../app/dateFormat";
 import { Card, GradientButton, OutlineButton, SelectBox, StatCard, TextArea, TextInput } from "../app/ui";
 import type { ReplaceWorkoutExerciseGroupInput, UpdateMemberInput } from "../services/appRepository";
 import type { ChatMessage, Exercise, Member, MemberTab, TrainingProgram, WorkoutCelebration, WorkoutLog, WorkoutModeState } from "../app/types";
@@ -617,7 +618,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Treningskalender</div>
                   <div className="mt-1 text-xs text-slate-500">
-                    {calendarMonth.toLocaleDateString("no-NO", { month: "long", year: "numeric" })}
+                    {formatDateDdMmYyyy(calendarMonth)}
                   </div>
                   <div className="mt-3 flex items-center gap-2">
                     <OutlineButton

@@ -1,4 +1,5 @@
 import type { AppState, AuthUser, ChatMessage, Exercise, Member, TrainingProgram, WorkoutLog } from "./types";
+import { formatDateDdMmYyyy } from "./dateFormat";
 
 export const MOTUS = {
   turquoise: "#30e3be",
@@ -124,7 +125,7 @@ const initialPrograms: TrainingProgram[] = [
     title: "Helkropp 2 dager i uka",
     goal: "Bygge grunnstyrke",
     notes: "Start rolig og fokuser på teknikk.",
-    createdAt: new Date().toLocaleDateString("no-NO"),
+    createdAt: formatDateDdMmYyyy(new Date()),
     exercises: [
       { id: "pe1", exerciseId: "e1", exerciseName: "Knebøy", sets: "3", reps: "8", weight: "40", restSeconds: "120", notes: "Kontrollert tempo" },
       { id: "pe2", exerciseId: "e3", exerciseName: "Nedtrekk", sets: "3", reps: "10", weight: "35", restSeconds: "75", notes: "Trekk til bryst" },
@@ -137,16 +138,16 @@ const initialLogs: WorkoutLog[] = [
     id: "l1",
     memberId: "m1",
     programTitle: "Helkropp 2 dager i uka",
-    date: new Date().toLocaleDateString("no-NO"),
+    date: formatDateDdMmYyyy(new Date()),
     status: "Fullført",
     note: "Fin økt.",
   },
 ];
 
 const initialMessages: ChatMessage[] = [
-  { id: "c1", memberId: "m1", sender: "trainer", text: "Husk rolig start denne uka.", createdAt: "I dag 09:10" },
-  { id: "c2", memberId: "m1", sender: "member", text: "Supert, jeg logger økten i kveld.", createdAt: "I dag 09:14" },
-  { id: "c3", memberId: "m2", sender: "member", text: "Kan du se over ukeplanen min?", createdAt: "I dag 08:21" },
+  { id: "c1", memberId: "m1", sender: "trainer", text: "Husk rolig start denne uka.", createdAt: formatDateDdMmYyyy(new Date()) },
+  { id: "c2", memberId: "m1", sender: "member", text: "Supert, jeg logger økten i kveld.", createdAt: formatDateDdMmYyyy(new Date()) },
+  { id: "c3", memberId: "m2", sender: "member", text: "Kan du se over ukeplanen min?", createdAt: formatDateDdMmYyyy(new Date()) },
 ];
 
 export function getDefaultState(): AppState {

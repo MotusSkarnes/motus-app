@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, ShieldCheck, Star, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
+import { formatDateDdMmYyyy } from "../app/dateFormat";
 import { uid } from "../app/storage";
 import { Card, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, TextArea, TextInput } from "../app/ui";
 import type { CreateMemberInput, UpdateMemberInput } from "../services/appRepository";
@@ -406,13 +407,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     if (!iso) return "";
     const date = new Date(iso);
     if (Number.isNaN(date.getTime())) return "";
-    return date.toLocaleString("no-NO", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return formatDateDdMmYyyy(date);
   }
 
   function addExerciseToDraft(exercise: Exercise) {
@@ -584,7 +579,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   }
 
   function handleDeleteMember(memberId: string) {
-    const confirmed = window.confirm("Slette kunde permanent? Dette sletter også programmer, logger og meldinger.");
+    const confirmed = window.confirm("Er du sikker på at du vil slette kunden permanent? Dette sletter også programmer, logger og meldinger, og kan ikke angres.");
     if (!confirmed) return;
     deleteMember(memberId);
   }
@@ -837,7 +832,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     return day;
   });
   const todoDateSet = new Set(todos.map((todo) => todo.date));
-  const monthLabel = dashboardMonth.toLocaleDateString("no-NO", { month: "long", year: "numeric" });
+  const monthLabel = formatDateDdMmYyyy(dashboardMonth);
 
   const membersWithPriority = useMemo(() => {
     function getPriority(member: Member): { tone: "red" | "orange" | "green"; score: number; label: string } {
@@ -1248,6 +1243,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     <OutlineButton onClick={() => handleDeactivateMember(selectedMember.id)}>
                       Sett medlem som inaktiv
                     </OutlineButton>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteMember(selectedMember.id)}
+                      className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+                    >
+                      Slett kunde permanent
+                    </button>
                   </div>
                 </div>
 
@@ -1298,14 +1300,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     </div>
                   ) : null}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteMember(selectedMember.id)}
-                  className="w-full rounded-2xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
-                >
-                  Slett valgt kunde permanent
-                </button>
-
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <StatCard label="Programmer" value={String(selectedPrograms.length)} hint="På denne kunden" />
                   <StatCard label="Logger" value={String(selectedLogs.length)} hint="På denne kunden" />

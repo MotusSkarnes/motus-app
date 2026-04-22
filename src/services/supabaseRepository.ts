@@ -1,4 +1,5 @@
 import type { AppState, ChatMessage, Exercise, Member, ProgramExercise, TrainingProgram, WorkoutExerciseResult, WorkoutLog } from "../app/types";
+import { formatDateDdMmYyyy } from "../app/dateFormat";
 import {
   appendMemberMessage,
   appendTrainerMessage,
@@ -302,16 +303,16 @@ async function deleteLogsForProgram(memberId: string, programTitle: string) {
 
 function mapIsoToCreatedAt(iso: string): string {
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "Nå";
-  return date.toLocaleString("no-NO", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" });
+  if (Number.isNaN(date.getTime())) return formatDateDdMmYyyy(new Date());
+  return formatDateDdMmYyyy(date);
 }
 
 function mapIsoToProgramDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
-    return new Date().toLocaleDateString("no-NO");
+    return formatDateDdMmYyyy(new Date());
   }
-  return date.toLocaleDateString("no-NO");
+  return formatDateDdMmYyyy(date);
 }
 
 export type HydratedTrainerData = {

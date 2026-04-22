@@ -1,5 +1,6 @@
 import { uid } from "../app/storage";
 import type { AppState, ChatMessage, Exercise, Member, ProgramExercise, TrainingProgram, WorkoutCelebration, WorkoutLog } from "../app/types";
+import { formatDateDdMmYyyy } from "../app/dateFormat";
 
 export type CreateMemberInput = {
   name: string;
@@ -160,7 +161,7 @@ export function saveProgramInState(
     title: input.title.trim(),
     goal: input.goal.trim(),
     notes: input.notes.trim(),
-    createdAt: new Date().toLocaleDateString("no-NO"),
+    createdAt: formatDateDdMmYyyy(new Date()),
     exercises: input.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
   };
 
@@ -182,7 +183,7 @@ export function appendTrainerMessage(state: AppState, memberId: string, text: st
     memberId,
     sender: "trainer",
     text: text.trim(),
-    createdAt: "Nå",
+    createdAt: formatDateDdMmYyyy(new Date()),
   };
   return { ...state, messages: [...state.messages, nextMessage] };
 }
@@ -193,7 +194,7 @@ export function appendMemberMessage(state: AppState, memberId: string, text: str
     memberId,
     sender: "member",
     text: text.trim(),
-    createdAt: "Nå",
+    createdAt: formatDateDdMmYyyy(new Date()),
   };
   return { ...state, messages: [...state.messages, nextMessage] };
 }
@@ -321,7 +322,7 @@ export function finishWorkoutModeInState(state: AppState): AppState {
         id: uid("log"),
         memberId: program.memberId,
         programTitle: program.title,
-        date: new Date().toLocaleDateString("no-NO"),
+        date: formatDateDdMmYyyy(new Date()),
         status: "Fullført",
         note: current.note,
         results: current.results,
