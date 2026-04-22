@@ -319,7 +319,7 @@ export function useAppState() {
                 email: user.email,
                 members: baseState.members,
                 programs: baseState.programs,
-                fallbackId: user.memberId ?? baseState.selectedMemberId || `auth-${user.id}`,
+                fallbackId: user.memberId ?? (baseState.selectedMemberId || `auth-${user.id}`),
               })
             : user.memberId ?? baseState.selectedMemberId;
         const resolvedMemberViewId = resolveMemberViewIdForUser({
@@ -328,7 +328,7 @@ export function useAppState() {
           email: user.email,
           members: baseState.members,
           programs: baseState.programs,
-          fallbackId: user.memberId ?? baseState.memberViewId || `auth-${user.id}`,
+          fallbackId: user.memberId ?? (baseState.memberViewId || `auth-${user.id}`),
         });
         return {
           ...baseState,
@@ -416,7 +416,7 @@ export function useAppState() {
                   email: supabaseUser.email,
                   members: baseState.members,
                   programs: baseState.programs,
-                  fallbackId: supabaseUser.memberId ?? baseState.selectedMemberId || `auth-${supabaseUser.id}`,
+                  fallbackId: supabaseUser.memberId ?? (baseState.selectedMemberId || `auth-${supabaseUser.id}`),
                 })
               : supabaseUser.memberId ?? baseState.selectedMemberId;
           const resolvedMemberViewId = resolveMemberViewIdForUser({
@@ -425,7 +425,7 @@ export function useAppState() {
             email: supabaseUser.email,
             members: baseState.members,
             programs: baseState.programs,
-            fallbackId: supabaseUser.memberId ?? baseState.memberViewId || `auth-${supabaseUser.id}`,
+            fallbackId: supabaseUser.memberId ?? (baseState.memberViewId || `auth-${supabaseUser.id}`),
           });
           return {
             ...baseState,
@@ -442,7 +442,7 @@ export function useAppState() {
             email: supabaseUser.email,
             members: ensureMemberRecordForUser(appState, supabaseUser, supabaseUser.memberId ?? appState.memberViewId).members,
             programs: appState.programs,
-            fallbackId: supabaseUser.memberId ?? appState.memberViewId || `auth-${supabaseUser.id}`,
+            fallbackId: supabaseUser.memberId ?? (appState.memberViewId || `auth-${supabaseUser.id}`),
           });
           if (linkMemberId) {
             await ensureMemberAuthLink(supabaseUser.email, linkMemberId);
@@ -568,7 +568,7 @@ export function useAppState() {
             email: user.email,
             members: baseState.members,
             programs: baseState.programs,
-            fallbackId: user.memberId ?? baseState.selectedMemberId || `auth-${user.id}`,
+            fallbackId: user.memberId ?? (baseState.selectedMemberId || `auth-${user.id}`),
           })
         : user.memberId ?? baseState.selectedMemberId;
     const resolvedMemberViewId = resolveMemberViewIdForUser({
@@ -577,7 +577,7 @@ export function useAppState() {
       email: user.email,
       members: baseState.members,
       programs: baseState.programs,
-      fallbackId: user.memberId ?? baseState.memberViewId || `auth-${user.id}`,
+      fallbackId: user.memberId ?? (baseState.memberViewId || `auth-${user.id}`),
     });
     if (user.role === "member") {
       const linkMemberId = resolvedMemberViewId || resolvedSelectedMemberId;

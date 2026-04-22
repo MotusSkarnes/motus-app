@@ -845,8 +845,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
           <PillButton active={trainerTab === "customers"} onClick={() => setTrainerTab("customers")}>Kunder</PillButton>
           <PillButton active={trainerTab === "programs"} onClick={() => setTrainerTab("programs")}>Programmer</PillButton>
           <PillButton active={trainerTab === "messages"} onClick={() => setTrainerTab("messages")}>Meldinger</PillButton>
-          <PillButton active={trainerTab === "admin"} onClick={() => setTrainerTab("admin")}>Admin</PillButton>
           <PillButton active={trainerTab === "exerciseBank"} onClick={() => setTrainerTab("exerciseBank")}>Øvelsesbank</PillButton>
+          <PillButton active={trainerTab === "admin"} onClick={() => setTrainerTab("admin")}>Admin</PillButton>
         </div>
       </Card>
 
@@ -1196,18 +1196,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
               <OutlineButton onClick={() => setShowInactiveMembers((prev) => !prev)} className="w-full">
                 {showInactiveMembers ? "Skjul inaktive" : "Vis inaktive"}
               </OutlineButton>
-              <div className="rounded-2xl border bg-slate-50 p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-sm font-medium text-slate-700">Gjenopprett slettet klient</div>
-                <TextInput value={restoreEmail} onChange={(e) => setRestoreEmail(e.target.value)} placeholder="E-post til slettet klient" />
-                {restoreStatus ? (
-                  <div className={`rounded-xl border px-3 py-2 text-xs ${restoreStatus.toLowerCase().includes("feilet") ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
-                    {restoreStatus}
-                  </div>
-                ) : null}
-                <OutlineButton onClick={() => void handleRestoreMember()} className="w-full">
-                  Gjenopprett klient
-                </OutlineButton>
-              </div>
             </div>
           </Card>
 
@@ -2025,6 +2013,18 @@ export function TrainerPortal(props: TrainerPortalProps) {
             <GradientButton onClick={() => submitNewMember()} className="w-full md:w-auto">Opprett medlem</GradientButton>
             <OutlineButton onClick={() => submitNewMember({ inviteAfterCreate: true })} className="w-full md:w-auto">
               Opprett + send invitasjon
+            </OutlineButton>
+          </div>
+          <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="text-sm font-semibold text-slate-700">Gjenopprett slettet klient</div>
+            <TextInput value={restoreEmail} onChange={(e) => setRestoreEmail(e.target.value)} placeholder="E-post til slettet klient" />
+            {restoreStatus ? (
+              <div className={`rounded-xl border px-3 py-2 text-xs ${restoreStatus.toLowerCase().includes("feilet") ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
+                {restoreStatus}
+              </div>
+            ) : null}
+            <OutlineButton onClick={() => void handleRestoreMember()} className="w-full md:w-auto">
+              Gjenopprett klient
             </OutlineButton>
           </div>
         </Card>

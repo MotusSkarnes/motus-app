@@ -236,10 +236,10 @@ export default function App() {
     { key: "programs", label: "Programmer", icon: <ClipboardList className="h-4 w-4" /> },
     { key: "calendar", label: "Kalender", icon: <CalendarDays className="h-4 w-4" /> },
     { key: "messages", label: "Meldinger", icon: <MessageSquare className="h-4 w-4" /> },
-    { key: "admin", label: "Admin", icon: <ShieldCheck className="h-4 w-4" /> },
     { key: "tasks", label: "Oppgaver", icon: <CheckSquare className="h-4 w-4" /> },
     { key: "statistics", label: "Statistikk", icon: <BarChart3 className="h-4 w-4" /> },
     { key: "settings", label: "Innstillinger", icon: <Settings className="h-4 w-4" /> },
+    { key: "admin", label: "Admin", icon: <ShieldCheck className="h-4 w-4" /> },
   ];
   const memberFirstName = useMemo(() => {
     const rawName = appState.currentUser?.name?.trim() ?? "";
