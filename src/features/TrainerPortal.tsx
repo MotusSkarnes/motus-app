@@ -868,10 +868,27 @@ export function TrainerPortal(props: TrainerPortalProps) {
     });
   }, [members, priorityFilter, prioritySort, priorityMemberTypeSort]);
 
-  function memberTypeTone(member: Member): { label: string; className: string } {
-    if (member.customerType === "PT-kunde") return { label: "PT-kunde", className: "bg-cyan-100 text-cyan-700" };
-    if (member.membershipType === "Premium") return { label: "Premium", className: "bg-violet-100 text-violet-700" };
-    return { label: "Standard", className: "bg-slate-100 text-slate-700" };
+  function memberTypeBadges(member: Member): Array<{ label: string; style: { backgroundColor: string; color: string } }> {
+    const badges: Array<{ label: string; style: { backgroundColor: string; color: string } }> = [];
+    if (member.customerType === "PT-kunde") {
+      badges.push({
+        label: "PT-kunde",
+        style: { backgroundColor: "rgba(0, 193, 212, 0.16)", color: "#0F5C66" },
+      });
+    }
+    if (member.membershipType === "Premium") {
+      badges.push({
+        label: "Premium",
+        style: { backgroundColor: "rgba(244, 114, 182, 0.16)", color: "#9D2F67" },
+      });
+    }
+    if (badges.length === 0) {
+      badges.push({
+        label: "Standard",
+        style: { backgroundColor: "rgba(148, 163, 184, 0.16)", color: "#475569" },
+      });
+    }
+    return badges;
   }
 
   return (
@@ -1006,9 +1023,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       <div className="text-xs text-slate-500">{member.email} · {member.daysSinceActivity} dager siden aktivitet</div>
                     </div>
                   </div>
-                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${memberTypeTone(member).className}`}>
-                    {memberTypeTone(member).label}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1">
+                    {memberTypeBadges(member).map((badge) => (
+                      <span key={`${member.id}-${badge.label}`} className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={badge.style}>
+                        {badge.label}
+                      </span>
+                    ))}
+                  </div>
                   <button
                     type="button"
                     onClick={() => {
@@ -1123,9 +1144,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${memberTypeTone(member).className}`}>
-                    {memberTypeTone(member).label}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1">
+                    {memberTypeBadges(member).map((badge) => (
+                      <span key={`${member.id}-${badge.label}`} className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={badge.style}>
+                        {badge.label}
+                      </span>
+                    ))}
+                  </div>
                   <div className="text-xs font-semibold text-slate-600">{priority.label}</div>
                 </div>
               </div>
