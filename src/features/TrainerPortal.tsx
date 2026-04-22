@@ -577,15 +577,22 @@ export function TrainerPortal(props: TrainerPortalProps) {
       setMemberEditStatus("Gyldig e-post må fylles ut.");
       return;
     }
-    updateMember({
-      memberId: selectedMember.id,
-      changes: {
-        email: nextEmail,
-        phone: memberEditPhone,
-        birthDate: memberEditBirthDate,
-        membershipType: memberEditIsPremiumCustomer ? "Premium" : "Standard",
-        customerType: memberEditIsPtCustomer ? "PT-kunde" : "Oppfølging",
-      },
+    const previousEmail = selectedMember.email.trim().toLowerCase();
+    const targetMemberIds = members
+      .filter((member) => member.email.trim().toLowerCase() === previousEmail)
+      .map((member) => member.id);
+    const uniqueTargetIds = Array.from(new Set(targetMemberIds.length ? targetMemberIds : [selectedMember.id]));
+    uniqueTargetIds.forEach((memberId) => {
+      updateMember({
+        memberId,
+        changes: {
+          email: nextEmail,
+          phone: memberEditPhone,
+          birthDate: memberEditBirthDate,
+          membershipType: memberEditIsPremiumCustomer ? "Premium" : "Standard",
+          customerType: memberEditIsPtCustomer ? "PT-kunde" : "Oppfølging",
+        },
+      });
     });
     setMemberEditStatus("Kundekort oppdatert.");
   }
@@ -1309,8 +1316,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 </div>
 
                 <div className="rounded-3xl border bg-slate-50/80 p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     <PillButton active={customerSubTab === "overview"} onClick={() => setCustomerSubTab("overview")}>Oversikt</PillButton>
+                    <PillButton active={customerSubTab === "profile"} onClick={() => setCustomerSubTab("profile")}>Profil</PillButton>
                     <PillButton active={customerSubTab === "programs"} onClick={() => setCustomerSubTab("programs")}>Program</PillButton>
                     <PillButton active={customerSubTab === "messages"} onClick={() => setCustomerSubTab("messages")}>Meldinger</PillButton>
                   </div>
@@ -1333,6 +1341,29 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         <div>{selectedLogs[0] ? `Siste logg: ${selectedLogs[0].date}` : "Ingen logger ennå"}</div>
                         <div>{selectedMessages.length ? `Siste melding: ${selectedMessages[selectedMessages.length - 1].createdAt}` : "Ingen meldinger ennå"}</div>
                         <div>{selectedPrograms.length ? `Siste program: ${selectedPrograms[0].title}` : "Ingen program ennå"}</div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {customerSubTab === "profile" ? (
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <div className="rounded-3xl border bg-slate-50 p-4">
+                      <div className="font-semibold">Kontakt</div>
+                      <div className="mt-3 space-y-2 text-sm text-slate-600">
+                        <div><span className="font-medium text-slate-800">E-post:</span> {selectedMember.email || "Ikke satt"}</div>
+                        <div><span className="font-medium text-slate-800">Telefon:</span> {selectedMember.phone || "Ikke satt"}</div>
+                        <div><span className="font-medium text-slate-800">Fødselsdato:</span> {selectedMember.birthDate || "Ikke satt"}</div>
+                      </div>
+                    </div>
+                    <div className="rounded-3xl border bg-slate-50 p-4">
+                      <div className="font-semibold">Kundestatus</div>
+                      <div className="mt-3 space-y-2 text-sm text-slate-600">
+                        <div><span className="font-medium text-slate-800">Kundetype:</span> {selectedMember.customerType || "Ikke satt"}</div>
+                        <div><span className="font-medium text-slate-800">Medlemskap:</span> {selectedMember.membershipType || "Ikke satt"}</div>
+                        <div><span className="font-medium text-slate-800">Mål:</span> {selectedMember.goal || "Ikke satt"}</div>
+                        <div><span className="font-medium text-slate-800">Fokus:</span> {selectedMember.focus || "Ikke satt"}</div>
+                        <div><span className="font-medium text-slate-800">Skader:</span> {selectedMember.injuries || "Ingen registrerte skader"}</div>
                       </div>
                     </div>
                   </div>
