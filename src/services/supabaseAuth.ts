@@ -329,5 +329,18 @@ export async function inviteTrainerByEmail(email: string): Promise<InviteTrainer
   if (isRateLimitMessage(error.message || "")) {
     return { ok: true, message: "Invitasjon er nylig sendt. Vent litt for ny utsending." };
   }
-  return { ok: false, message: `Invitasjon feilet: ${error.message || "Ukjent feil."}` };
+
+  // Fallback: some projects reject custom metadata in OTP payload.
+  const { error: fallbackError } = await supabaseClient.auth.signInWithOtp({
+    email: normalizedEmail,
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo: redirectTo,
+    },
+  });
+  if (!fallbackError) return { ok: true, message: `PT-invitasjon sendt til ${normalizedEmail}` };
+  if (isRateLimitMessage(fallbackError.message || "")) {
+    return { ok: true, message: "Invitasjon er nylig sendt. Vent litt for ny utsending." };
+  }
+  return { ok: false, message: `Kunne ikke sende engangskode: ${fallbackError.message || error.message || "Ukjent feil."}` };
 }
