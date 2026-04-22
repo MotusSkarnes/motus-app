@@ -145,6 +145,8 @@ async function deleteProgram(programId: string) {
 
 async function deleteMemberFromSupabase(memberId: string) {
   if (!supabaseClient) return;
+  const ownerUserId = await getOwnerUserId();
+  if (!ownerUserId) return;
   const { error: messagesError } = await supabaseClient.from("chat_messages").delete().eq("member_id", memberId);
   if (messagesError) {
     console.warn("Supabase member message cleanup failed:", messagesError.message);
@@ -157,9 +159,21 @@ async function deleteMemberFromSupabase(memberId: string) {
   if (programsError) {
     console.warn("Supabase member program cleanup failed:", programsError.message);
   }
-  const { error: memberError } = await supabaseClient.from("members").delete().eq("id", memberId);
-  if (memberError) {
-    console.warn("Supabase member delete failed:", memberError.message);
+  const { error: memberError } = await supabaseClient
+    .from("members")
+    .delete()
+    .eq("id", memberId)
+    .eq("owner_user_id", ownerUserId);
+  if (!memberError) return;
+
+  console.warn("Supabase member hard delete failed, trying soft delete:", memberError.message);
+  const { error: softDeleteError } = await supabaseClient
+    .from("members")
+    .update({ is_active: false })
+    .eq("id", memberId)
+    .eq("owner_user_id", ownerUserId);
+  if (softDeleteError) {
+    console.warn("Supabase member soft delete failed:", softDeleteError.message);
   }
 }
 
