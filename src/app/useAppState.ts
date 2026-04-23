@@ -264,6 +264,22 @@ export function useAppState() {
           next.exercises = remoteExercises;
         }
 
+        if (prev.currentUser?.role === "member") {
+          const normalizedCurrentEmail = prev.currentUser.email.trim().toLowerCase();
+          const hydratedMember =
+            next.members.find((member) => member.id === next.memberViewId) ??
+            next.members.find((member) => member.id === next.selectedMemberId) ??
+            next.members.find((member) => member.email.trim().toLowerCase() === normalizedCurrentEmail) ??
+            null;
+          const hydratedName = hydratedMember?.name.trim() ?? "";
+          if (hydratedName && hydratedName !== prev.currentUser.name) {
+            next.currentUser = {
+              ...prev.currentUser,
+              name: hydratedName,
+            };
+          }
+        }
+
         return syncExercisesWithPrograms(next);
       });
     }
@@ -696,7 +712,29 @@ export function useAppState() {
   }
 
   function updateMember(input: UpdateMemberInput) {
-    setAppState((prev) => repository.updateMember(prev, input));
+    setAppState((prev) => {
+      const nextState = repository.updateMember(prev, input);
+      const currentUser = prev.currentUser;
+      if (!currentUser || currentUser.role !== "member") return nextState;
+      const updatedMember = nextState.members.find((member) => member.id === input.memberId);
+      if (!updatedMember) return nextState;
+      const normalizedCurrentEmail = currentUser.email.trim().toLowerCase();
+      const normalizedUpdatedEmail = updatedMember.email.trim().toLowerCase();
+      const isCurrentMember =
+        updatedMember.id === prev.memberViewId ||
+        updatedMember.id === prev.selectedMemberId ||
+        (normalizedCurrentEmail && normalizedUpdatedEmail === normalizedCurrentEmail);
+      if (!isCurrentMember) return nextState;
+      const nextName = updatedMember.name.trim();
+      if (!nextName || nextName === currentUser.name) return nextState;
+      return {
+        ...nextState,
+        currentUser: {
+          ...currentUser,
+          name: nextName,
+        },
+      };
+    });
   }
 
   function markMemberInvited(memberId: string, invitedAtIso?: string) {

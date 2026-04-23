@@ -329,27 +329,43 @@ export function TrainerPortal(props: TrainerPortalProps) {
   }, [filteredMembers, memberSort]);
   const memberAvatarByEmail = useMemo(() => {
     const byEmail: Record<string, string> = {};
+    const byName: Record<string, string> = {};
     members.forEach((member) => {
       const normalizedEmail = member.email.trim().toLowerCase();
-      if (!normalizedEmail) return;
-      const emailKeyAvatar = memberAvatarById[`email:${normalizedEmail}`];
-      if (emailKeyAvatar && !byEmail[normalizedEmail]) {
-        byEmail[normalizedEmail] = emailKeyAvatar;
-        return;
+      const normalizedName = member.name.trim().toLowerCase();
+      if (normalizedEmail) {
+        const emailKeyAvatar = memberAvatarById[`email:${normalizedEmail}`];
+        if (emailKeyAvatar && !byEmail[normalizedEmail]) {
+          byEmail[normalizedEmail] = emailKeyAvatar;
+        }
+      }
+      if (normalizedName) {
+        const nameKeyAvatar = memberAvatarById[`name:${normalizedName}`];
+        if (nameKeyAvatar && !byName[normalizedName]) {
+          byName[normalizedName] = nameKeyAvatar;
+        }
       }
       const avatarUrl = memberAvatarById[member.id];
-      if (avatarUrl && !byEmail[normalizedEmail]) {
+      if (normalizedEmail && avatarUrl && !byEmail[normalizedEmail]) {
         byEmail[normalizedEmail] = avatarUrl;
       }
+      if (normalizedName && avatarUrl && !byName[normalizedName]) {
+        byName[normalizedName] = avatarUrl;
+      }
     });
-    return byEmail;
+    return { byEmail, byName };
   }, [members, memberAvatarById]);
   function resolveMemberAvatarUrl(member: Member): string {
     const direct = memberAvatarById[member.id];
     if (direct) return direct;
     const normalizedEmail = member.email.trim().toLowerCase();
-    if (!normalizedEmail) return "";
-    return memberAvatarByEmail[normalizedEmail] ?? "";
+    if (normalizedEmail) {
+      const byEmail = memberAvatarByEmail.byEmail[normalizedEmail];
+      if (byEmail) return byEmail;
+    }
+    const normalizedName = member.name.trim().toLowerCase();
+    if (!normalizedName) return "";
+    return memberAvatarByEmail.byName[normalizedName] ?? "";
   }
   const selectedMemberRelatedIds = useMemo(() => {
     if (selectedMemberId === "__template__") return [];

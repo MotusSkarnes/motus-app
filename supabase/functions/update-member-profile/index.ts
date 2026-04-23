@@ -110,15 +110,15 @@ Deno.serve(async (req) => {
   }
 
   const changes = payload.changes ?? {};
-  const updateFields = {
-    name: normalizeString(changes.name),
+  const updateFields: Record<string, string> = {
     email: currentEmail,
-    phone: normalizeString(changes.phone),
-    birth_date: normalizeString(changes.birthDate),
-    goal: normalizeString(changes.goal),
-    focus: normalizeString(changes.focus),
-    injuries: normalizeString(changes.injuries),
   };
+  if (changes.name !== undefined) updateFields.name = normalizeString(changes.name);
+  if (changes.phone !== undefined) updateFields.phone = normalizeString(changes.phone);
+  if (changes.birthDate !== undefined) updateFields.birth_date = normalizeString(changes.birthDate);
+  if (changes.goal !== undefined) updateFields.goal = normalizeString(changes.goal);
+  if (changes.focus !== undefined) updateFields.focus = normalizeString(changes.focus);
+  if (changes.injuries !== undefined) updateFields.injuries = normalizeString(changes.injuries);
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
   const anchorClauses = [`email.eq.${currentEmail}`];
@@ -152,30 +152,28 @@ Deno.serve(async (req) => {
     return jsonResponse(200, { message: "No matching member rows found", updated: 0 });
   }
 
-  const query = adminClient.from("members").update(updateFields);
-  let data: Array<{ id: string }> | null = null;
-  let error: { message: string } | null = null;
-  if (targetIds.length && targetEmails.length) {
-    const combinedClauses = [
-      ...targetIds.map((id) => `id.eq.${id}`),
-      ...targetEmails.map((email) => `email.eq.${email}`),
-    ];
-    const result = await query.or(combinedClauses.join(",")).select("id");
-    data = result.data as Array<{ id: string }> | null;
-    error = result.error ? { message: result.error.message } : null;
-  } else if (targetIds.length) {
-    const result = await query.in("id", targetIds).select("id");
-    data = result.data as Array<{ id: string }> | null;
-    error = result.error ? { message: result.error.message } : null;
-  } else {
-    const result = await query.in("email", targetEmails).select("id");
-    data = result.data as Array<{ id: string }> | null;
-    error = result.error ? { message: result.error.message } : null;
+  const updatedIds = new Set<string>();
+  if (targetIds.length) {
+    const byIdResult = await adminClient.from("members").update(updateFields).in("id", targetIds).select("id");
+    if (byIdResult.error) {
+      return jsonResponse(500, { error: `Could not update member rows by id: ${byIdResult.error.message}` });
+    }
+    (byIdResult.data ?? []).forEach((row) => {
+      const id = normalizeString((row as { id?: string }).id);
+      if (id) updatedIds.add(id);
+    });
   }
 
-  if (error) {
-    return jsonResponse(500, { error: `Could not update member rows: ${error.message}` });
+  if (targetEmails.length) {
+    const byEmailResult = await adminClient.from("members").update(updateFields).in("email", targetEmails).select("id");
+    if (byEmailResult.error) {
+      return jsonResponse(500, { error: `Could not update member rows by email: ${byEmailResult.error.message}` });
+    }
+    (byEmailResult.data ?? []).forEach((row) => {
+      const id = normalizeString((row as { id?: string }).id);
+      if (id) updatedIds.add(id);
+    });
   }
 
-  return jsonResponse(200, { message: "Member profile synced", updated: data?.length ?? 0 });
+  return jsonResponse(200, { message: "Member profile synced", updated: updatedIds.size });
 });

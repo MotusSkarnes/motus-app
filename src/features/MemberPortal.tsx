@@ -806,7 +806,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   async function handleAvatarFileSelected(file: File | null) {
-    if (!file) return;
+    if (!file || !editableMember) return;
     if (!file.type.startsWith("image/")) {
       setProfileSaveInfo("Velg en bildefil.");
       return;
@@ -815,6 +815,29 @@ export function MemberPortal(props: MemberPortalProps) {
       const originalDataUrl = await readFileAsDataUrl(file);
       const compressedDataUrl = await compressImageDataUrl(originalDataUrl);
       setMemberAvatarUrl(compressedDataUrl);
+      const normalizedEditableEmail = editableMember.email.trim().toLowerCase();
+      const avatarTargetIds = Array.from(
+        new Set(
+          members
+            .filter((member) => {
+              const normalizedMemberEmail = member.email.trim().toLowerCase();
+              if (member.id === editableMember.id) return true;
+              if (relatedMemberIds.includes(member.id)) return true;
+              if (normalizedEditableEmail && normalizedMemberEmail === normalizedEditableEmail) return true;
+              return false;
+            })
+            .map((member) => member.id)
+        )
+      );
+      const safeAvatarTargetIds = avatarTargetIds.length ? avatarTargetIds : [editableMember.id];
+      safeAvatarTargetIds.forEach((memberId) => {
+        updateMember({
+          memberId,
+          changes: {
+            avatarUrl: compressedDataUrl,
+          },
+        });
+      });
       setProfileSaveInfo("Profilbilde lagret.");
     } catch {
       setProfileSaveInfo("Kunne ikke lagre profilbildet. Prøv et annet bilde.");

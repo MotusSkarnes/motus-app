@@ -71,6 +71,7 @@ export type Member = {
   id: string;
   name: string;
   email: string;
+  avatarUrl?: string;
   isActive: boolean;
   invitedAt: string;
   phone: string;
