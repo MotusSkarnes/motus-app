@@ -200,10 +200,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [programExerciseSearch, setProgramExerciseSearch] = useState("");
   const [programExerciseCategoryFilter, setProgramExerciseCategoryFilter] = useState<"all" | "Styrke" | "Kondisjon">("all");
   const [programExerciseGroupFilter, setProgramExerciseGroupFilter] = useState("all");
-  const [quickPlanGoal, setQuickPlanGoal] = useState<"styrke" | "muskelvekst" | "fettreduksjon">("styrke");
-  const [quickPlanLevel, setQuickPlanLevel] = useState<"nybegynner" | "middels" | "avansert">("nybegynner");
-  const [quickPlanMinutes, setQuickPlanMinutes] = useState<"30" | "45" | "60">("45");
-  const [quickPlanStatus, setQuickPlanStatus] = useState<string | null>(null);
   const intervalPresets = useMemo<IntervalPreset[]>(
     () => [
       {
@@ -1007,69 +1003,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setProgramExercisesDraft([]);
   }
 
-  function generateQuickWeeklyPlan() {
-    if (!selectedMemberId || selectedMemberId === "__template__") {
-      setQuickPlanStatus("Velg en kunde før du lager ukesoppsett.");
-      return;
-    }
-    const preferredGroupsByGoal: Record<"styrke" | "muskelvekst" | "fettreduksjon", string[]> = {
-      styrke: ["Bein", "Rygg", "Bryst", "Skuldre", "Kjerne"],
-      muskelvekst: ["Bryst", "Rygg", "Bein", "Skuldre", "Armer"],
-      fettreduksjon: ["Bein", "Kjerne", "Rygg", "Kondisjon", "Helkropp"],
-    };
-    const availableStrength = exercises.filter((exercise) => exercise.category === "Styrke");
-    const availableConditioning = exercises.filter((exercise) => exercise.category === "Kondisjon");
-    const preferredGroups = preferredGroupsByGoal[quickPlanGoal];
-
-    function pickExerciseForGroup(group: string, usedIds: Set<string>): Exercise | null {
-      const direct = availableStrength.find((exercise) => exercise.group === group && !usedIds.has(exercise.id));
-      if (direct) return direct;
-      const fallbackStrength = availableStrength.find((exercise) => !usedIds.has(exercise.id));
-      if (fallbackStrength) return fallbackStrength;
-      return availableConditioning.find((exercise) => !usedIds.has(exercise.id)) ?? null;
-    }
-
-    const used = new Set<string>();
-    const targetExerciseCount = quickPlanMinutes === "30" ? 4 : quickPlanMinutes === "45" ? 5 : 6;
-    const pickedExercises: ProgramExercise[] = [];
-    const sets = quickPlanLevel === "nybegynner" ? "3" : quickPlanLevel === "middels" ? "4" : "5";
-    const reps = quickPlanGoal === "styrke" ? "5-8" : quickPlanGoal === "muskelvekst" ? "8-12" : "10-15";
-    const restSeconds = quickPlanGoal === "styrke" ? "120" : quickPlanGoal === "muskelvekst" ? "90" : "60";
-
-    for (let index = 0; index < targetExerciseCount; index += 1) {
-      const group = preferredGroups[index % preferredGroups.length];
-      const exercise = pickExerciseForGroup(group, used);
-      if (!exercise) continue;
-      used.add(exercise.id);
-      pickedExercises.push({
-        id: uid("draft-ex"),
-        exerciseId: exercise.id,
-        exerciseName: exercise.name,
-        sets,
-        reps: exercise.category === "Kondisjon" ? "" : reps,
-        weight: exercise.category === "Kondisjon" ? "" : "0",
-        durationMinutes: exercise.category === "Kondisjon" ? "20" : "",
-        speed: exercise.equipment.trim().toLowerCase().includes("tredem") ? "8" : "",
-        incline: exercise.equipment.trim().toLowerCase().includes("tredem") ? "1" : "",
-        restSeconds,
-        notes: quickPlanGoal === "fettreduksjon" ? "Hold jevn puls mellom settene" : "",
-      });
-    }
-
-    if (!pickedExercises.length) {
-      setQuickPlanStatus("Fant ingen øvelser å bygge program fra.");
-      return;
-    }
-
-    const goalLabel = quickPlanGoal === "styrke" ? "Styrke" : quickPlanGoal === "muskelvekst" ? "Muskelvekst" : "Fettreduksjon";
-    setProgramTitle(`Ukesoppsett - ${goalLabel}`);
-    setProgramGoal(`${goalLabel} (${quickPlanLevel}, ${quickPlanMinutes} min)`);
-    setProgramNotes("Generert forslag. Juster øvelser, sett og notater før lagring.");
-    setProgramExercisesDraft(pickedExercises);
-    setQuickPlanStatus(`Ukesoppsett klart: ${pickedExercises.length} øvelser lagt inn.`);
-  }
-
-  function generateIntervalProgramDraft() {
+  function generateIntervalTemplateDraft() {
     const preset = intervalPresets.find((item) => item.id === selectedIntervalPresetId) ?? intervalPresets[0];
     if (!preset) return;
     const treadmillExercise =
@@ -1077,7 +1011,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       exercises.find((exercise) => exercise.category === "Kondisjon") ??
       exercises[0];
     if (!treadmillExercise) {
-      setQuickPlanStatus("Fant ingen øvelse å bygge intervallprogram fra.");
+      setTemplateAssignStatus("Fant ingen kondisjonsøvelse å bygge nedtellingsmal fra.");
       return;
     }
     const draftExercises: ProgramExercise[] = preset.steps.map((step) => ({
@@ -1093,11 +1027,10 @@ export function TrainerPortal(props: TrainerPortalProps) {
       restSeconds: step.restSeconds,
       notes: "Intervallsteg",
     }));
-    setProgramTitle(`Intervall: ${preset.name}`);
-    setProgramGoal("Mølleintervall med nedtelling");
-    setProgramNotes(`${preset.description} Du kan redigere fart, incline og varighet før lagring.`);
+    setTemplateProgramTitle(`Intervall: ${preset.name}`);
     setProgramExercisesDraft(draftExercises);
-    setQuickPlanStatus(`Intervallutkast klart: ${preset.name}. Lagre for å tildele kunden.`);
+    setEditingTemplateProgramId(null);
+    setTemplateAssignStatus(`Kondisjonsmal klar: ${preset.name}. Lagre malen og tildel kunden.`);
   }
 
   function handlePeriodPlanWeeksDraftChange(value: string) {
@@ -2746,67 +2679,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         <div className="font-semibold">{editingProgramId ? "Rediger program" : "Bygg program"}</div>
                         {editingProgramId ? <OutlineButton onClick={resetProgramBuilder}>Avbryt redigering</OutlineButton> : null}
                       </div>
-                      <div className="rounded-2xl border bg-white p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                        <div className="text-sm font-semibold text-slate-700">One-click weekly plan</div>
-                        <div className="grid gap-2 md:grid-cols-3">
-                          <SelectBox
-                            value={quickPlanGoal}
-                            onChange={(value) => setQuickPlanGoal(value as "styrke" | "muskelvekst" | "fettreduksjon")}
-                            options={[
-                              { value: "styrke", label: "Mål: Styrke" },
-                              { value: "muskelvekst", label: "Mål: Muskelvekst" },
-                              { value: "fettreduksjon", label: "Mål: Fettreduksjon" },
-                            ]}
-                          />
-                          <SelectBox
-                            value={quickPlanLevel}
-                            onChange={(value) => setQuickPlanLevel(value as "nybegynner" | "middels" | "avansert")}
-                            options={[
-                              { value: "nybegynner", label: "Nivå: Nybegynner" },
-                              { value: "middels", label: "Nivå: Middels" },
-                              { value: "avansert", label: "Nivå: Avansert" },
-                            ]}
-                          />
-                          <SelectBox
-                            value={quickPlanMinutes}
-                            onChange={(value) => setQuickPlanMinutes(value as "30" | "45" | "60")}
-                            options={[
-                              { value: "30", label: "Tid: 30 min" },
-                              { value: "45", label: "Tid: 45 min" },
-                              { value: "60", label: "Tid: 60 min" },
-                            ]}
-                          />
-                        </div>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                          <GradientButton onClick={generateQuickWeeklyPlan} className="w-full sm:w-auto">
-                            Lag ukesoppsett automatisk
-                          </GradientButton>
-                          {quickPlanStatus ? (
-                            <StatusMessage
-                              message={quickPlanStatus}
-                              tone={quickPlanStatus.toLowerCase().includes("ingen") || quickPlanStatus.toLowerCase().includes("velg") ? "error" : "success"}
-                              className="w-full !rounded-xl !px-3 !py-2 !text-xs"
-                            />
-                          ) : null}
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border bg-white p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                        <div className="text-sm font-semibold text-slate-700">Mølleintervall som treningsprogram</div>
-                        <div className="grid gap-2 md:grid-cols-[1fr_auto]">
-                          <SelectBox
-                            value={selectedIntervalPresetId}
-                            onChange={setSelectedIntervalPresetId}
-                            options={intervalPresets.map((preset) => ({ value: preset.id, label: preset.name }))}
-                          />
-                          <GradientButton onClick={generateIntervalProgramDraft} className="w-full md:w-auto">
-                            Lag intervallutkast
-                          </GradientButton>
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {intervalPresets.find((preset) => preset.id === selectedIntervalPresetId)?.description}
-                          {" "}Utkastet kan redigeres før lagring/tildeling.
-                        </div>
-                      </div>
                       <div className="rounded-2xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                         <div className="text-sm font-semibold text-slate-700">Periodeplan + ukesplan (per dag)</div>
                         <div className="grid gap-2 md:grid-cols-2">
@@ -3400,6 +3272,23 @@ export function TrainerPortal(props: TrainerPortalProps) {
             <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
               <div className="space-y-3">
                 <TextInput value={templateProgramTitle} onChange={(e) => setTemplateProgramTitle(e.target.value)} placeholder="Navn på treningsmal" />
+                <div className="rounded-2xl border bg-white p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="text-sm font-semibold text-slate-700">Kondisjonsmal med nedtelling</div>
+                  <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+                    <SelectBox
+                      value={selectedIntervalPresetId}
+                      onChange={setSelectedIntervalPresetId}
+                      options={intervalPresets.map((preset) => ({ value: preset.id, label: preset.name }))}
+                    />
+                    <GradientButton onClick={generateIntervalTemplateDraft} className="w-full md:w-auto">
+                      Lag kondisjonsmal
+                    </GradientButton>
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {intervalPresets.find((preset) => preset.id === selectedIntervalPresetId)?.description}
+                    {" "}Lager malutkast med nedtelling som kan lagres og tildeles kunde.
+                  </div>
+                </div>
                 <div
                   className={`space-y-3 rounded-2xl p-1 transition ${
                     isDraftDropZoneActive ? "bg-emerald-50 ring-2 ring-emerald-300" : ""
