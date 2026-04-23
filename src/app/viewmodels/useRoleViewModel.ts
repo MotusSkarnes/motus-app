@@ -3,11 +3,9 @@ import { AppHeader } from "../../features/AppHeader";
 import { MemberLayout } from "../../features/MemberLayout";
 import { TrainerLayout } from "../../features/TrainerLayout";
 import { buildAppHeaderProps, buildMemberLayoutProps, buildTrainerLayoutProps } from "./viewModelBuilders";
+import type { AppStateHookResult } from "./types";
 import { useMemberAvatarStore } from "../useMemberAvatarStore";
 import { useNotifications } from "../useNotifications";
-import type { useAppState } from "../useAppState";
-
-type AppStateHookResult = ReturnType<typeof useAppState>;
 
 export function useRoleViewModel(state: AppStateHookResult) {
   function handleResetData() {
