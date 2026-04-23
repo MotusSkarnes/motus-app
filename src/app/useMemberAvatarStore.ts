@@ -23,6 +23,17 @@ function decodeEmailFromPath(value: string): string {
   }
 }
 
+function decodeNameFromPath(value: string): string {
+  const normalized = value.trim();
+  if (!normalized) return "";
+  const padded = normalized.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (normalized.length % 4)) % 4);
+  try {
+    return decodeURIComponent(escape(atob(padded))).trim().toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
 export function useMemberAvatarStore({
   currentUser,
   members,
@@ -97,17 +108,32 @@ export function useMemberAvatarStore({
         let changed = false;
         const next = { ...prev };
         data.forEach((entry) => {
-          const dotIndex = entry.name.lastIndexOf(".");
-          const encoded = dotIndex >= 0 ? entry.name.slice(0, dotIndex) : entry.name;
-          const decodedEmail = decodeEmailFromPath(encoded);
-          if (!decodedEmail) return;
-          const key = emailAvatarKey(decodedEmail);
           const path = `${MEMBER_AVATAR_PREFIX}/${entry.name}`;
           const { data: publicData } = supabaseClient.storage.from(MEMBER_AVATAR_BUCKET).getPublicUrl(path);
           if (!publicData.publicUrl) return;
           const versionedUrl = `${publicData.publicUrl}?v=${entry.updated_at ?? entry.created_at ?? Date.now()}`;
-          if (next[key] === versionedUrl) return;
-          next[key] = versionedUrl;
+          const dotIndex = entry.name.lastIndexOf(".");
+          const rawName = dotIndex >= 0 ? entry.name.slice(0, dotIndex) : entry.name;
+          const emailEncoded = rawName.startsWith("email-") ? rawName.slice("email-".length) : rawName;
+          const nameEncoded = rawName.startsWith("name-") ? rawName.slice("name-".length) : "";
+          const decodedEmail = decodeEmailFromPath(emailEncoded);
+          const decodedName = decodeNameFromPath(nameEncoded);
+          let didSet = false;
+          if (decodedEmail) {
+            const emailKey = emailAvatarKey(decodedEmail);
+            if (next[emailKey] !== versionedUrl) {
+              next[emailKey] = versionedUrl;
+              didSet = true;
+            }
+          }
+          if (decodedName) {
+            const nameKey = nameAvatarKey(decodedName);
+            if (next[nameKey] !== versionedUrl) {
+              next[nameKey] = versionedUrl;
+              didSet = true;
+            }
+          }
+          if (!didSet && !decodedEmail && !decodedName) return;
           changed = true;
         });
         return changed ? next : prev;

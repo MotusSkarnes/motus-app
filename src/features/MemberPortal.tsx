@@ -51,6 +51,13 @@ function encodeEmailForPath(email: string): string {
   return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
+function encodeNameForPath(name: string): string {
+  const normalized = name.trim().toLowerCase();
+  if (!normalized) return "";
+  const base64 = btoa(unescape(encodeURIComponent(normalized)));
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
 function dataUrlToBlob(dataUrl: string): Blob | null {
   const parts = dataUrl.split(",");
   if (parts.length < 2) return null;
@@ -839,11 +846,21 @@ export function MemberPortal(props: MemberPortalProps) {
           ].filter((value) => value && value.includes("@"))
         )
       );
-      if (supabaseClient && avatarEmails.length) {
+      const avatarNames = Array.from(
+        new Set(
+          [
+            editableMember.name.trim().toLowerCase(),
+            ...members
+              .filter((member) => relatedMemberIds.includes(member.id))
+              .map((member) => member.name.trim().toLowerCase()),
+          ].filter(Boolean)
+        )
+      );
+      if (supabaseClient && (avatarEmails.length || avatarNames.length)) {
         for (const email of avatarEmails) {
           const encodedEmail = encodeEmailForPath(email);
           if (!encodedEmail) continue;
-          const avatarPath = `${MEMBER_AVATAR_PREFIX}/${encodedEmail}.jpg`;
+          const avatarPath = `${MEMBER_AVATAR_PREFIX}/email-${encodedEmail}.jpg`;
           const { error: uploadError } = await supabaseClient.storage
             .from(MEMBER_AVATAR_BUCKET)
             .upload(avatarPath, uploadBody, {
@@ -857,6 +874,18 @@ export function MemberPortal(props: MemberPortalProps) {
               syncedAvatarUrl = `${data.publicUrl}?v=${Date.now()}`;
             }
           }
+        }
+        for (const name of avatarNames) {
+          const encodedName = encodeNameForPath(name);
+          if (!encodedName) continue;
+          const avatarPath = `${MEMBER_AVATAR_PREFIX}/name-${encodedName}.jpg`;
+          await supabaseClient.storage
+            .from(MEMBER_AVATAR_BUCKET)
+            .upload(avatarPath, uploadBody, {
+              cacheControl: "3600",
+              upsert: true,
+              contentType: "image/jpeg",
+            });
         }
       }
       setMemberAvatarUrl(syncedAvatarUrl);

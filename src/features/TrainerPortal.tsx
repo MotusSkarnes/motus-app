@@ -56,6 +56,23 @@ type FollowUpDetail = {
   note: string;
 };
 
+const MEMBER_AVATAR_BUCKET = "exercise-images";
+const MEMBER_AVATAR_PREFIX = "member-avatars";
+
+function encodeEmailForPath(email: string): string {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return "";
+  const base64 = btoa(unescape(encodeURIComponent(normalized)));
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function encodeNameForPath(name: string): string {
+  const normalized = name.trim().toLowerCase();
+  if (!normalized) return "";
+  const base64 = btoa(unescape(encodeURIComponent(normalized)));
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
 function parseLogDateMs(value: string): number {
   if (!value) return 0;
   const iso = new Date(value);
@@ -377,7 +394,20 @@ export function TrainerPortal(props: TrainerPortalProps) {
       const byName = memberAvatarByEmail.byName[normalizedName];
       if (byName) return byName;
     }
-    return memberAvatarByEmail.byIdentity[getMemberIdentityKey(member)] ?? "";
+    const byIdentity = memberAvatarByEmail.byIdentity[getMemberIdentityKey(member)];
+    if (byIdentity) return byIdentity;
+    if (!supabaseClient || !normalizedEmail || !normalizedEmail.includes("@")) return "";
+    const encodedEmail = encodeEmailForPath(normalizedEmail);
+    if (encodedEmail) {
+      const path = `${MEMBER_AVATAR_PREFIX}/email-${encodedEmail}.jpg`;
+      const { data } = supabaseClient.storage.from(MEMBER_AVATAR_BUCKET).getPublicUrl(path);
+      if (data.publicUrl) return `${data.publicUrl}?v=1`;
+    }
+    const encodedName = encodeNameForPath(member.name);
+    if (!encodedName) return "";
+    const namePath = `${MEMBER_AVATAR_PREFIX}/name-${encodedName}.jpg`;
+    const { data: nameData } = supabaseClient.storage.from(MEMBER_AVATAR_BUCKET).getPublicUrl(namePath);
+    return nameData.publicUrl ? `${nameData.publicUrl}?v=1` : "";
   }
   const selectedMemberRelatedIds = useMemo(() => {
     if (selectedMemberId === "__template__") return [];
