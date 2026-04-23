@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { useMemberAvatarStore } from "./app/useMemberAvatarStore";
 import { useNotifications } from "./app/useNotifications";
 import { useAppState } from "./app/useAppState";
@@ -101,37 +101,91 @@ export default function App() {
     setMemberTab,
   });
 
+  const loginScreenProps: ComponentProps<typeof LoginScreen> = {
+    email: loginEmail,
+    setEmail: setLoginEmail,
+    password: loginPassword,
+    setPassword: setLoginPassword,
+    onLogin: handleLogin,
+    loginError,
+    isRecoveryMode,
+    recoveryPassword,
+    setRecoveryPassword,
+    recoveryPasswordConfirm,
+    setRecoveryPasswordConfirm,
+    recoveryError,
+    recoveryInfo,
+    onCompleteRecovery: completePasswordRecovery,
+    passwordRecoveryInfo,
+    passwordRecoveryError,
+    passwordRecoveryCooldownSeconds,
+    onSendPasswordRecovery: sendPasswordRecoveryEmail,
+    otpCode,
+    setOtpCode,
+    otpInfo,
+    otpError,
+    onSendEmailOtpCode: sendEmailOtpCode,
+    onLoginWithEmailOtpCode: loginWithEmailOtpCode,
+    quickLogin: handleQuickLogin,
+    showQuickLogin,
+  };
+
+  const trainerLayoutProps: ComponentProps<typeof TrainerLayout> = {
+    appState,
+    trainerTab,
+    setTrainerTab,
+    patchState,
+    addMember,
+    deactivateMember,
+    deleteMember,
+    updateMember,
+    markMemberInvited,
+    inviteMember,
+    inviteTrainer,
+    restoreMemberByEmail,
+    restoreMissingTestData,
+    restoreOriginalExerciseBank,
+    saveProgramForMember,
+    deleteProgramById,
+    sendTrainerMessage,
+    saveExercise,
+    openCustomerMessagesSignal,
+    setOpenCustomerMessagesSignal,
+    memberAvatarById,
+    setMemberAvatarUrlForMember,
+    trainerNotificationsOpen,
+    setTrainerNotificationsOpen,
+    trainerUnreadCount,
+    trainerMessageAlerts,
+    handleTrainerBellToggle,
+  };
+
+  const memberLayoutProps: ComponentProps<typeof MemberLayout> = {
+    appState,
+    memberTab,
+    setMemberTab,
+    updateMember,
+    currentMemberAvatarUrl,
+    setCurrentMemberAvatarUrl,
+    sendMemberMessage,
+    startWorkoutMode,
+    updateWorkoutExerciseResult,
+    replaceWorkoutExerciseGroup,
+    updateWorkoutModeNote,
+    finishWorkoutMode,
+    cancelWorkoutMode,
+    dismissWorkoutCelebration,
+    memberNotificationsOpen,
+    memberUnreadCount,
+    memberVisibleAlerts,
+    handleMemberBellToggle,
+    openAlert,
+  };
+
   return (
     <AppShell>
       {!appState.currentUser || isRecoveryMode ? (
-        <LoginScreen
-          email={loginEmail}
-          setEmail={setLoginEmail}
-          password={loginPassword}
-          setPassword={setLoginPassword}
-          onLogin={handleLogin}
-          loginError={loginError}
-          isRecoveryMode={isRecoveryMode}
-          recoveryPassword={recoveryPassword}
-          setRecoveryPassword={setRecoveryPassword}
-          recoveryPasswordConfirm={recoveryPasswordConfirm}
-          setRecoveryPasswordConfirm={setRecoveryPasswordConfirm}
-          recoveryError={recoveryError}
-          recoveryInfo={recoveryInfo}
-          onCompleteRecovery={completePasswordRecovery}
-          passwordRecoveryInfo={passwordRecoveryInfo}
-          passwordRecoveryError={passwordRecoveryError}
-          passwordRecoveryCooldownSeconds={passwordRecoveryCooldownSeconds}
-          onSendPasswordRecovery={sendPasswordRecoveryEmail}
-          otpCode={otpCode}
-          setOtpCode={setOtpCode}
-          otpInfo={otpInfo}
-          otpError={otpError}
-          onSendEmailOtpCode={sendEmailOtpCode}
-          onLoginWithEmailOtpCode={loginWithEmailOtpCode}
-          quickLogin={handleQuickLogin}
-          showQuickLogin={showQuickLogin}
-        />
+        <LoginScreen {...loginScreenProps} />
       ) : (
         <div className="space-y-6 pb-20 sm:pb-6">
           <AppHeader
@@ -143,59 +197,7 @@ export default function App() {
             onLogout={handleLogout}
           />
 
-          {appState.role === "trainer" ? (
-            <TrainerLayout
-              appState={appState}
-              trainerTab={trainerTab}
-              setTrainerTab={setTrainerTab}
-              patchState={patchState}
-              addMember={addMember}
-              deactivateMember={deactivateMember}
-              deleteMember={deleteMember}
-              updateMember={updateMember}
-              markMemberInvited={markMemberInvited}
-              inviteMember={inviteMember}
-              inviteTrainer={inviteTrainer}
-              restoreMemberByEmail={restoreMemberByEmail}
-              restoreMissingTestData={restoreMissingTestData}
-              restoreOriginalExerciseBank={restoreOriginalExerciseBank}
-              saveProgramForMember={saveProgramForMember}
-              deleteProgramById={deleteProgramById}
-              sendTrainerMessage={sendTrainerMessage}
-              saveExercise={saveExercise}
-              openCustomerMessagesSignal={openCustomerMessagesSignal}
-              setOpenCustomerMessagesSignal={setOpenCustomerMessagesSignal}
-              memberAvatarById={memberAvatarById}
-              setMemberAvatarUrlForMember={setMemberAvatarUrlForMember}
-              trainerNotificationsOpen={trainerNotificationsOpen}
-              setTrainerNotificationsOpen={setTrainerNotificationsOpen}
-              trainerUnreadCount={trainerUnreadCount}
-              trainerMessageAlerts={trainerMessageAlerts}
-              handleTrainerBellToggle={handleTrainerBellToggle}
-            />
-          ) : (
-            <MemberLayout
-              appState={appState}
-              memberTab={memberTab}
-              setMemberTab={setMemberTab}
-              updateMember={updateMember}
-              currentMemberAvatarUrl={currentMemberAvatarUrl}
-              setCurrentMemberAvatarUrl={setCurrentMemberAvatarUrl}
-              sendMemberMessage={sendMemberMessage}
-              startWorkoutMode={startWorkoutMode}
-              updateWorkoutExerciseResult={updateWorkoutExerciseResult}
-              replaceWorkoutExerciseGroup={replaceWorkoutExerciseGroup}
-              updateWorkoutModeNote={updateWorkoutModeNote}
-              finishWorkoutMode={finishWorkoutMode}
-              cancelWorkoutMode={cancelWorkoutMode}
-              dismissWorkoutCelebration={dismissWorkoutCelebration}
-              memberNotificationsOpen={memberNotificationsOpen}
-              memberUnreadCount={memberUnreadCount}
-              memberVisibleAlerts={memberVisibleAlerts}
-              handleMemberBellToggle={handleMemberBellToggle}
-              openAlert={openAlert}
-            />
-          )}
+          {appState.role === "trainer" ? <TrainerLayout {...trainerLayoutProps} /> : <MemberLayout {...memberLayoutProps} />}
         </div>
       )}
     </AppShell>
