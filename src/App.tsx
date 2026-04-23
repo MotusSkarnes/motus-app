@@ -1,5 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { BarChart3, Bell, CalendarDays, CheckSquare, ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, Settings, ShieldCheck, TrendingUp, UserCircle2, Users } from "lucide-react";
+import { useMemo, useState } from "react";
 import { MOTUS } from "./app/data";
 import { useMemberAvatarStore } from "./app/useMemberAvatarStore";
 import { useNotifications } from "./app/useNotifications";
@@ -7,8 +6,8 @@ import { useAppState } from "./app/useAppState";
 import { AppShell, Badge, Card, OutlineButton, PillButton } from "./app/ui";
 import motusLogo from "./assets/motus-logo.png";
 import { LoginScreen } from "./features/LoginScreen";
-import { MemberPortal } from "./features/MemberPortal";
-import { TrainerPortal } from "./features/TrainerPortal";
+import { MemberLayout } from "./features/MemberLayout";
+import { TrainerLayout } from "./features/TrainerLayout";
 
 export default function App() {
   const {
@@ -84,8 +83,6 @@ export default function App() {
       memberViewId: appState.memberViewId,
     });
 
-  const inactiveMembersCount = appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length;
-  const missingInvitesCount = appState.members.filter((member) => !member.invitedAt).length;
   const {
     trainerNotificationsOpen,
     setTrainerNotificationsOpen,
@@ -105,18 +102,6 @@ export default function App() {
     setMemberTab,
   });
 
-  const trainerMenuItems: Array<{ key: typeof trainerTab; label: string; icon: ReactNode }> = [
-    { key: "dashboard", label: "Oversikt", icon: <LayoutDashboard className="h-4 w-4" /> },
-    { key: "customers", label: "Klienter", icon: <Users className="h-4 w-4" /> },
-    { key: "exerciseBank", label: "Øvelsesbank", icon: <Dumbbell className="h-4 w-4" /> },
-    { key: "programs", label: "Programmer", icon: <ClipboardList className="h-4 w-4" /> },
-    { key: "calendar", label: "Kalender", icon: <CalendarDays className="h-4 w-4" /> },
-    { key: "messages", label: "Meldinger", icon: <MessageSquare className="h-4 w-4" /> },
-    { key: "tasks", label: "Oppgaver", icon: <CheckSquare className="h-4 w-4" /> },
-    { key: "statistics", label: "Statistikk", icon: <BarChart3 className="h-4 w-4" /> },
-    { key: "settings", label: "Innstillinger", icon: <Settings className="h-4 w-4" /> },
-    { key: "admin", label: "Admin", icon: <ShieldCheck className="h-4 w-4" /> },
-  ];
   const memberFirstName = useMemo(() => {
     const rawName = appState.currentUser?.name?.trim() ?? "";
     if (!rawName) return "du";
@@ -207,286 +192,58 @@ export default function App() {
           </Card>
 
           {appState.role === "trainer" ? (
-            <div className="grid gap-4 md:grid-cols-[220px_1fr]">
-              <Card className="hidden h-fit p-3 md:block">
-                <div className="mb-2 px-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">PT-meny</div>
-                </div>
-                <div className="space-y-1.5">
-                  {trainerMenuItems.map((item) => (
-                    <button
-                      key={item.key}
-                      type="button"
-                      onClick={() => setTrainerTab(item.key)}
-                      className={`w-full rounded-xl border px-3 py-2.5 text-left text-sm font-medium whitespace-nowrap transition ${
-                        trainerTab === item.key
-                          ? "border-transparent text-white shadow-sm"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                      }`}
-                      style={
-                        trainerTab === item.key
-                          ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
-                          : undefined
-                      }
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        {item.icon}
-                        <span>{item.label}</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </Card>
-              <div className="space-y-3">
-                <Card className="p-2.5 sm:p-3 bg-gradient-to-b from-emerald-50/80 to-pink-50/60">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-xs sm:text-sm font-semibold text-slate-800">Varsler</div>
-                    <button
-                      type="button"
-                      onClick={handleTrainerBellToggle}
-                      className="relative rounded-lg border bg-white p-1.5 sm:p-2 text-slate-700 hover:bg-emerald-50"
-                      style={{ borderColor: "rgba(20,184,166,0.25)" }}
-                      aria-label="Åpne varsler"
-                    >
-                      <Bell className="h-4 w-4" />
-                      {trainerUnreadCount > 0 ? (
-                        <span
-                          className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
-                          style={{ backgroundColor: MOTUS.pink }}
-                        >
-                          {trainerUnreadCount}
-                        </span>
-                      ) : null}
-                    </button>
-                  </div>
-                  {trainerNotificationsOpen ? (
-                    <div className="mt-2 max-h-36 overflow-y-auto space-y-1.5 pr-1">
-                      {trainerMessageAlerts.map((alert) => (
-                        <button
-                          key={alert.id}
-                          type="button"
-                          onClick={() => {
-                            patchState({ selectedMemberId: alert.memberId });
-                            setTrainerTab("customers");
-                            setOpenCustomerMessagesSignal((prev) => prev + 1);
-                            setTrainerNotificationsOpen(false);
-                          }}
-                          className="w-full rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs sm:text-sm text-slate-700 hover:bg-emerald-50"
-                          style={{ borderColor: "rgba(20,184,166,0.25)" }}
-                        >
-                          {alert.text}
-                        </button>
-                      ))}
-                      {missingInvitesCount > 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setTrainerTab("customers");
-                            setTrainerNotificationsOpen(false);
-                          }}
-                          className="w-full rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs sm:text-sm text-slate-700 hover:bg-emerald-50"
-                          style={{ borderColor: "rgba(20,184,166,0.25)" }}
-                        >
-                          {missingInvitesCount} kunder mangler invitasjon
-                        </button>
-                      ) : null}
-                      {inactiveMembersCount > 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setTrainerTab("customers");
-                            setTrainerNotificationsOpen(false);
-                          }}
-                          className="w-full rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs sm:text-sm text-slate-700 hover:bg-emerald-50"
-                          style={{ borderColor: "rgba(20,184,166,0.25)" }}
-                        >
-                          {inactiveMembersCount} kunder bør følges opp
-                        </button>
-                      ) : null}
-                      {!trainerMessageAlerts.length && !missingInvitesCount && !inactiveMembersCount ? (
-                        <div className="rounded-lg border border-dashed bg-white px-2.5 py-1.5 text-xs sm:text-sm text-slate-500">
-                          Ingen nye varsler akkurat nå.
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <div className="mt-1.5 text-xs sm:text-sm text-slate-500">
-                      Trykk på bjellen for å se varsler.
-                    </div>
-                  )}
-                </Card>
-                <TrainerPortal
-                  members={appState.members}
-                  programs={appState.programs}
-                  logs={appState.logs}
-                  messages={appState.messages}
-                  exercises={appState.exercises}
-                  selectedMemberId={appState.selectedMemberId}
-                  setSelectedMemberId={(id) => patchState({ selectedMemberId: id })}
-                  trainerTab={trainerTab}
-                  setTrainerTab={setTrainerTab}
-                  addMember={addMember}
-                  deactivateMember={deactivateMember}
-                  deleteMember={deleteMember}
-                  updateMember={updateMember}
-                  markMemberInvited={markMemberInvited}
-                  inviteMember={inviteMember}
-                  restoreMemberByEmail={restoreMemberByEmail}
-                  restoreMissingTestData={restoreMissingTestData}
-                  restoreOriginalExerciseBank={restoreOriginalExerciseBank}
-                  saveProgramForMember={saveProgramForMember}
-                  deleteProgramById={deleteProgramById}
-                  sendTrainerMessage={sendTrainerMessage}
-                  saveExercise={saveExercise}
-                  inviteTrainer={inviteTrainer}
-                  openCustomerMessagesSignal={openCustomerMessagesSignal}
-                  memberAvatarById={memberAvatarById}
-                  setMemberAvatarUrlForMember={setMemberAvatarUrlForMember}
-                />
-              </div>
-            </div>
+            <TrainerLayout
+              appState={appState}
+              trainerTab={trainerTab}
+              setTrainerTab={setTrainerTab}
+              patchState={patchState}
+              addMember={addMember}
+              deactivateMember={deactivateMember}
+              deleteMember={deleteMember}
+              updateMember={updateMember}
+              markMemberInvited={markMemberInvited}
+              inviteMember={inviteMember}
+              inviteTrainer={inviteTrainer}
+              restoreMemberByEmail={restoreMemberByEmail}
+              restoreMissingTestData={restoreMissingTestData}
+              restoreOriginalExerciseBank={restoreOriginalExerciseBank}
+              saveProgramForMember={saveProgramForMember}
+              deleteProgramById={deleteProgramById}
+              sendTrainerMessage={sendTrainerMessage}
+              saveExercise={saveExercise}
+              openCustomerMessagesSignal={openCustomerMessagesSignal}
+              setOpenCustomerMessagesSignal={setOpenCustomerMessagesSignal}
+              memberAvatarById={memberAvatarById}
+              setMemberAvatarUrlForMember={setMemberAvatarUrlForMember}
+              trainerNotificationsOpen={trainerNotificationsOpen}
+              setTrainerNotificationsOpen={setTrainerNotificationsOpen}
+              trainerUnreadCount={trainerUnreadCount}
+              trainerMessageAlerts={trainerMessageAlerts}
+              handleTrainerBellToggle={handleTrainerBellToggle}
+            />
           ) : (
-            <div className="space-y-3">
-                <Card className="p-2.5 sm:p-3 bg-gradient-to-b from-emerald-50/80 to-pink-50/60">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-xs sm:text-sm font-semibold text-slate-800">Varsler</div>
-                  <button
-                    type="button"
-                    onClick={handleMemberBellToggle}
-                    className="relative rounded-lg border bg-white p-1.5 sm:p-2 text-slate-700 hover:bg-emerald-50"
-                    style={{ borderColor: "rgba(20,184,166,0.25)" }}
-                    aria-label="Åpne varsler"
-                  >
-                    <Bell className="h-4 w-4" />
-                    {memberUnreadCount > 0 ? (
-                      <span
-                        className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
-                        style={{ backgroundColor: MOTUS.pink }}
-                      >
-                        {memberUnreadCount}
-                      </span>
-                    ) : null}
-                  </button>
-                </div>
-                {memberNotificationsOpen ? (
-                  <div className="mt-2 max-h-36 overflow-y-auto space-y-1.5 pr-1">
-                    {memberVisibleAlerts.map((alert) => (
-                      <button
-                        key={alert.id}
-                        type="button"
-                        onClick={() => openAlert(alert)}
-                        className="w-full rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs sm:text-sm text-slate-700 hover:bg-emerald-50"
-                        style={{ borderColor: "rgba(20,184,166,0.25)" }}
-                      >
-                        {alert.text}
-                      </button>
-                    ))}
-                    {memberVisibleAlerts.length === 0 ? (
-                      <div className="rounded-lg border border-dashed bg-white px-2.5 py-1.5 text-xs sm:text-sm text-slate-500">
-                        Ingen nye varsler akkurat nå.
-                      </div>
-                    ) : null}
-                  </div>
-                ) : (
-                  <div className="mt-1.5 text-xs sm:text-sm text-slate-500">
-                    Trykk på bjellen for å se varsler.
-                  </div>
-                )}
-              </Card>
-            <MemberPortal
-              members={appState.members}
-              currentUserRole={appState.currentUser.role}
-              currentUserEmail={appState.currentUser.email}
-              programs={appState.programs}
-              logs={appState.logs}
-              messages={appState.messages}
-              memberViewId={appState.memberViewId}
+            <MemberLayout
+              appState={appState}
               memberTab={memberTab}
               setMemberTab={setMemberTab}
               updateMember={updateMember}
-              memberAvatarUrl={currentMemberAvatarUrl}
-              setMemberAvatarUrl={setCurrentMemberAvatarUrl}
-              exercises={appState.exercises}
+              currentMemberAvatarUrl={currentMemberAvatarUrl}
+              setCurrentMemberAvatarUrl={setCurrentMemberAvatarUrl}
               sendMemberMessage={sendMemberMessage}
-              workoutMode={appState.workoutMode}
               startWorkoutMode={startWorkoutMode}
               updateWorkoutExerciseResult={updateWorkoutExerciseResult}
               replaceWorkoutExerciseGroup={replaceWorkoutExerciseGroup}
               updateWorkoutModeNote={updateWorkoutModeNote}
               finishWorkoutMode={finishWorkoutMode}
               cancelWorkoutMode={cancelWorkoutMode}
-              workoutCelebration={appState.workoutCelebration}
               dismissWorkoutCelebration={dismissWorkoutCelebration}
+              memberNotificationsOpen={memberNotificationsOpen}
+              memberUnreadCount={memberUnreadCount}
+              memberVisibleAlerts={memberVisibleAlerts}
+              handleMemberBellToggle={handleMemberBellToggle}
+              openAlert={openAlert}
             />
-            </div>
           )}
-
-          <div className="fixed inset-x-0 bottom-0 z-[9999] border-t bg-white/95 px-2 pt-2 backdrop-blur md:hidden" style={{ borderColor: "rgba(15,23,42,0.08)", paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))" }}>
-            <div className="mx-auto flex max-w-md items-center gap-1.5 rounded-[22px] border bg-slate-50/90 p-1.5 shadow-lg" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
-              {appState.role === "trainer" ? (
-                <>
-                  <div
-                    className="flex w-full items-center gap-1.5 rounded-[18px] p-1.5"
-                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                  >
-                    {[
-                      { id: "dashboard", label: "Oversikt", icon: <LayoutDashboard className="h-4 w-4" /> },
-                      { id: "customers", label: "Klienter", icon: <Users className="h-4 w-4" /> },
-                      { id: "programs", label: "Program", icon: <ClipboardList className="h-4 w-4" /> },
-                      { id: "exerciseBank", label: "Øvelser", icon: <Dumbbell className="h-4 w-4" /> },
-                      { id: "messages", label: "Meldinger", icon: <MessageSquare className="h-4 w-4" /> },
-                      { id: "admin", label: "Admin", icon: <ShieldCheck className="h-4 w-4" /> },
-                    ].map((tab) => {
-                      const isActive = trainerTab === tab.id;
-                      return (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          onClick={() => setTrainerTab(tab.id as typeof trainerTab)}
-                          className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-semibold transition ${
-                            isActive ? "bg-white text-slate-900 shadow-sm" : "bg-white/20 text-white hover:bg-white/30"
-                          }`}
-                        >
-                          {tab.icon}
-                          <span className="truncate">{tab.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div
-                    className="flex w-full items-center gap-1.5 rounded-[18px] p-1.5"
-                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                  >
-                    {[
-                      { id: "overview", label: "Hjem", icon: <LayoutDashboard className="h-4 w-4" /> },
-                      { id: "programs", label: "Program", icon: <ClipboardList className="h-4 w-4" /> },
-                      { id: "progress", label: "Fremgang", icon: <TrendingUp className="h-4 w-4" /> },
-                      { id: "messages", label: "Meldinger", icon: <MessageSquare className="h-4 w-4" /> },
-                      { id: "profile", label: "Profil", icon: <UserCircle2 className="h-4 w-4" /> },
-                    ].map((tab) => {
-                      const isActive = memberTab === tab.id;
-                      return (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          onClick={() => setMemberTab(tab.id as typeof memberTab)}
-                          className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-semibold transition ${
-                            isActive ? "bg-white text-slate-900 shadow-sm" : "bg-white/20 text-white hover:bg-white/30"
-                          }`}
-                        >
-                          {tab.icon}
-                          <span className="truncate">{tab.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
         </div>
       )}
     </AppShell>
