@@ -1154,9 +1154,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="min-w-0 w-full overflow-hidden rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Treningskalender</div>
                   <div className="mt-1 text-base font-semibold text-slate-800 capitalize">{calendarMonthLabel}</div>
-                  <div className="mt-1 text-xs text-slate-500">
-                    {formatDateDdMmYyyy(calendarMonth)}
-                  </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <OutlineButton
                       className="px-3 py-1.5 text-xs"
