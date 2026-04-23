@@ -601,7 +601,10 @@ export function TrainerPortal(props: TrainerPortalProps) {
     resetMemberEditDraftFromSelected(selectedMember);
     setMemberEditStatus(null);
     setIsEditingCustomerCard(false);
-  }, [selectedMember]);
+    // Only reset edit mode when selected customer actually changes.
+    // Background hydration can replace member objects and should not close the editor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMemberId]);
 
   function formatInvitedAt(iso: string): string {
     if (!iso) return "";
