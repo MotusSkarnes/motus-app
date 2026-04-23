@@ -7,6 +7,7 @@ import {
   type AppRepository,
   type CreateMemberInput,
   type FinishWorkoutInput,
+  type LogGroupWorkoutInput,
   type SaveProgramInput,
   type SaveExerciseInput,
   type ReplaceWorkoutExerciseGroupInput,
@@ -806,6 +807,14 @@ export const supabaseAppRepository: AppRepository = {
   },
   finishWorkoutMode(state: AppState, input?: FinishWorkoutInput): AppState {
     const nextState = localAppRepository.finishWorkoutMode(state, input);
+    const latestLog = nextState.logs[0];
+    if (latestLog) {
+      void persistWorkoutLog(latestLog);
+    }
+    return nextState;
+  },
+  logGroupWorkout(state: AppState, input: LogGroupWorkoutInput): AppState {
+    const nextState = localAppRepository.logGroupWorkout(state, input);
     const latestLog = nextState.logs[0];
     if (latestLog) {
       void persistWorkoutLog(latestLog);

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
-import { localAppRepository, type CreateMemberInput, type FinishWorkoutInput, type ReplaceWorkoutExerciseGroupInput, type SaveExerciseInput, type SaveProgramInput, type UpdateMemberInput } from "../services/appRepository";
+import { localAppRepository, type CreateMemberInput, type FinishWorkoutInput, type LogGroupWorkoutInput, type ReplaceWorkoutExerciseGroupInput, type SaveExerciseInput, type SaveProgramInput, type UpdateMemberInput } from "../services/appRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { fetchExercisesFromSupabase, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
 import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, inviteTrainerByEmail, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult, type InviteTrainerResult } from "../services/supabaseAuth";
@@ -494,17 +494,7 @@ export function useAppState() {
           };
         });
         if (supabaseUser.role === "member") {
-          const linkMemberId = resolveMemberViewIdForUser({
-            role: supabaseUser.role,
-            memberId: supabaseUser.memberId,
-            email: supabaseUser.email,
-            members: ensureMemberRecordForUser(appState, supabaseUser, supabaseUser.memberId ?? appState.memberViewId).members,
-            programs: appState.programs,
-            fallbackId: supabaseUser.memberId ?? (appState.memberViewId || `auth-${supabaseUser.id}`),
-          });
-          if (linkMemberId) {
-            await ensureMemberAuthLink(supabaseUser.email, linkMemberId);
-          }
+          await ensureMemberAuthLink(supabaseUser.email);
         }
         setTrainerTab("dashboard");
         setMemberTab("overview");
@@ -638,10 +628,7 @@ export function useAppState() {
       fallbackId: user.memberId ?? (baseState.memberViewId || `auth-${user.id}`),
     });
     if (user.role === "member") {
-      const linkMemberId = resolvedMemberViewId || resolvedSelectedMemberId;
-      if (linkMemberId) {
-        await ensureMemberAuthLink(user.email, linkMemberId);
-      }
+      await ensureMemberAuthLink(user.email);
     }
     setAppState((prev) => {
       const nextBase = ensureMemberRecordForUser(prev, user, resolvedMemberViewId || resolvedSelectedMemberId);
@@ -766,6 +753,11 @@ export function useAppState() {
 
   function finishWorkoutMode(input?: FinishWorkoutInput) {
     setAppState((prev) => repository.finishWorkoutMode(prev, input));
+    setMemberTab("progress");
+  }
+
+  function logGroupWorkout(input: LogGroupWorkoutInput) {
+    setAppState((prev) => repository.logGroupWorkout(prev, input));
     setMemberTab("progress");
   }
 
@@ -902,6 +894,7 @@ export function useAppState() {
     replaceWorkoutExerciseGroup,
     updateWorkoutModeNote,
     finishWorkoutMode,
+    logGroupWorkout,
     cancelWorkoutMode,
     dismissWorkoutCelebration,
     sendMemberMessage,

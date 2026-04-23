@@ -34,6 +34,7 @@ type MemberPortalProps = {
   replaceWorkoutExerciseGroup: (input: ReplaceWorkoutExerciseGroupInput) => void;
   updateWorkoutModeNote: (note: string) => void;
   finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
+  logGroupWorkout: (input: { memberId: string; className: string; note?: string; reflection: WorkoutReflection }) => void;
   cancelWorkoutMode: () => void;
   workoutCelebration: WorkoutCelebration | null;
   dismissWorkoutCelebration: () => void;
@@ -42,7 +43,20 @@ type MemberPortalProps = {
 const MEMBER_PROFILE_OVERRIDES_KEY = "motus.member.profileOverridesByEmail";
 
 export function MemberPortal(props: MemberPortalProps) {
-  const { members, currentUserRole, currentUserEmail, programs, logs, messages, memberViewId, memberTab, setMemberTab, updateMember, memberAvatarUrl, setMemberAvatarUrl, exercises, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, replaceWorkoutExerciseGroup, updateWorkoutModeNote, finishWorkoutMode, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
+  const groupWorkoutClassOptions = [
+    "Smilepuls",
+    "Sykkel 45",
+    "Mølle 45",
+    "Sterk",
+    "Sirkeltrening",
+    "Stram opp",
+    "Dansemix",
+    "Yoga",
+    "Tabata",
+    "Godt voksen",
+    "Step styrke",
+  ];
+  const { members, currentUserRole, currentUserEmail, programs, logs, messages, memberViewId, memberTab, setMemberTab, updateMember, memberAvatarUrl, setMemberAvatarUrl, exercises, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, replaceWorkoutExerciseGroup, updateWorkoutModeNote, finishWorkoutMode, logGroupWorkout, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
   const [messageText, setMessageText] = useState("");
   const [profileWeight, setProfileWeight] = useState("");
   const [profileTrainingGoal, setProfileTrainingGoal] = useState("");
@@ -61,6 +75,12 @@ export function MemberPortal(props: MemberPortalProps) {
   const [memberFocusDraft, setMemberFocusDraft] = useState("");
   const [memberInjuriesDraft, setMemberInjuriesDraft] = useState("");
   const [showReplacementOptions, setShowReplacementOptions] = useState(false);
+  const [groupWorkoutClassName, setGroupWorkoutClassName] = useState("Smilepuls");
+  const [groupWorkoutEnergyLevel, setGroupWorkoutEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [groupWorkoutDifficultyLevel, setGroupWorkoutDifficultyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [groupWorkoutMotivationLevel, setGroupWorkoutMotivationLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [groupWorkoutNote, setGroupWorkoutNote] = useState("");
+  const [groupWorkoutStatus, setGroupWorkoutStatus] = useState<string | null>(null);
   const [showWorkoutReflection, setShowWorkoutReflection] = useState(false);
   const [reflectionEnergyLevel, setReflectionEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [reflectionDifficultyLevel, setReflectionDifficultyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
@@ -69,6 +89,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [workoutExerciseIndex, setWorkoutExerciseIndex] = useState(0);
   const [expandedRecentLogId, setExpandedRecentLogId] = useState<string | null>(null);
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<number | null>(null);
+  const [selectedCalendarLogId, setSelectedCalendarLogId] = useState<string | null>(null);
   const [progressShareStatus, setProgressShareStatus] = useState<string | null>(null);
   const [achievementCelebration, setAchievementCelebration] = useState<{ id: string; label: string } | null>(null);
   const [liveWorkoutCelebration, setLiveWorkoutCelebration] = useState<WorkoutCelebration | null>(null);
@@ -412,6 +433,15 @@ export function MemberPortal(props: MemberPortalProps) {
     });
     return byDay;
   }, [completedLogs, calendarMonth]);
+  const selectedCalendarLogs = useMemo(() => {
+    if (!selectedCalendarDay) return [];
+    return calendarLogsByDay.get(selectedCalendarDay) ?? [];
+  }, [calendarLogsByDay, selectedCalendarDay]);
+  const selectedCalendarLog = useMemo(() => {
+    if (!selectedCalendarLogs.length) return null;
+    if (!selectedCalendarLogId) return selectedCalendarLogs[0];
+    return selectedCalendarLogs.find((log) => log.id === selectedCalendarLogId) ?? selectedCalendarLogs[0];
+  }, [selectedCalendarLogs, selectedCalendarLogId]);
   const maxCalendarDayLoad = Math.max(0, ...Array.from(calendarDayLoad.values()));
   const firstDayOfMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
   const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
@@ -901,6 +931,10 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [workoutMode?.programId]);
 
   useEffect(() => {
+    setSelectedCalendarLogId(null);
+  }, [selectedCalendarDay, calendarMonth]);
+
+  useEffect(() => {
     if (!workoutResultGroups.length) return;
     if (workoutExerciseIndex <= workoutResultGroups.length - 1) return;
     setWorkoutExerciseIndex(workoutResultGroups.length - 1);
@@ -936,6 +970,30 @@ export function MemberPortal(props: MemberPortalProps) {
       motivationLevel: reflectionMotivationLevel,
       note: reflectionNote.trim(),
     };
+  }
+
+  function buildGroupWorkoutReflection(): WorkoutReflection {
+    return {
+      energyLevel: groupWorkoutEnergyLevel,
+      difficultyLevel: groupWorkoutDifficultyLevel,
+      motivationLevel: groupWorkoutMotivationLevel,
+      note: groupWorkoutNote.trim(),
+    };
+  }
+
+  function handleLogGroupWorkout() {
+    if (!activeMemberId || !groupWorkoutClassName.trim()) return;
+    logGroupWorkout({
+      memberId: activeMemberId,
+      className: groupWorkoutClassName.trim(),
+      note: groupWorkoutNote.trim(),
+      reflection: buildGroupWorkoutReflection(),
+    });
+    setGroupWorkoutStatus("Gruppetime lagret. PT kan nå se denne økta.");
+    setGroupWorkoutEnergyLevel(3);
+    setGroupWorkoutDifficultyLevel(3);
+    setGroupWorkoutMotivationLevel(3);
+    setGroupWorkoutNote("");
   }
 
   function estimate1RM(weight: number, reps: number): number {
@@ -1268,15 +1326,53 @@ export function MemberPortal(props: MemberPortalProps) {
                         Økter {String(selectedCalendarDay).padStart(2, "0")}.{String(calendarMonth.getMonth() + 1).padStart(2, "0")}.{calendarMonth.getFullYear()}
                       </div>
                       <div className="mt-2 space-y-2">
-                        {(calendarLogsByDay.get(selectedCalendarDay) ?? []).length === 0 ? (
+                        {selectedCalendarLogs.length === 0 ? (
                           <div className="text-sm text-slate-500">Ingen logg på valgt dag.</div>
                         ) : (
-                          (calendarLogsByDay.get(selectedCalendarDay) ?? []).map((log) => (
-                            <div key={log.id} className="rounded-lg border bg-slate-50 px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                              <div className="font-medium text-slate-800">{log.programTitle}</div>
-                              {log.note ? <div className="mt-1 text-xs text-slate-600">{log.note}</div> : null}
+                          <>
+                            <div className="space-y-2">
+                              {selectedCalendarLogs.map((log) => (
+                                <button
+                                  key={log.id}
+                                  type="button"
+                                  onClick={() => setSelectedCalendarLogId(log.id)}
+                                  className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition ${
+                                    selectedCalendarLog?.id === log.id ? "bg-slate-100" : "bg-slate-50 hover:bg-slate-100"
+                                  }`}
+                                  style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                                >
+                                  <div className="font-medium text-slate-800">{log.programTitle}</div>
+                                  {log.note ? <div className="mt-1 text-xs text-slate-600">{log.note}</div> : null}
+                                </button>
+                              ))}
                             </div>
-                          ))
+                            {selectedCalendarLog ? (
+                              <div className="rounded-lg border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Detaljer fra økta</div>
+                                {selectedCalendarLog.results?.length ? (
+                                  <div className="mt-2 space-y-2">
+                                    {selectedCalendarLog.results.map((result, index) => (
+                                      <div key={`${selectedCalendarLog.id}-${result.exerciseId}-${index}`} className="rounded-lg border bg-white p-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                        <div className="text-sm font-medium text-slate-800">{result.exerciseName}</div>
+                                        <div className="mt-1 text-xs text-slate-600">
+                                          {result.performedDurationMinutes
+                                            ? `Utført: ${result.performedDurationMinutes || "-"} min${result.performedSpeed ? ` · ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` · ${result.performedIncline}% incline` : ""}`
+                                            : `Utført: ${result.performedReps || "-"} reps @ ${result.performedWeight || "-"} kg`}
+                                        </div>
+                                        <div className="text-[11px] text-slate-500">
+                                          Plan: {result.plannedDurationMinutes
+                                            ? `${result.plannedDurationMinutes} min${result.plannedSpeed ? ` · ${result.plannedSpeed} km/t` : ""}${result.plannedIncline ? ` · ${result.plannedIncline}% incline` : ""}`
+                                            : `${result.plannedSets}x${result.plannedReps} @ ${result.plannedWeight || "0"} kg`}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="mt-2 text-sm text-slate-500">Ingen detaljerte sett registrert på denne økten.</div>
+                                )}
+                              </div>
+                            ) : null}
+                          </>
                         )}
                       </div>
                     </div>
@@ -1336,7 +1432,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               <div className="mt-5 rounded-3xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
-                <div className="font-semibold">📋 Programoversikt</div>
+                <div className="font-semibold">📋 Mine treningsprogram</div>
                 <div className="mt-4 space-y-3">
                   {memberPrograms.length === 0 ? (
                     <div className="rounded-2xl border border-dashed bg-white p-6 text-center">
@@ -1713,6 +1809,73 @@ export function MemberPortal(props: MemberPortalProps) {
                     className="mt-3 !rounded-xl !px-3 !py-2 !text-xs"
                   />
                 ) : null}
+              </div>
+              <div className="mt-4 rounded-2xl border bg-slate-50 p-4 space-y-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div>
+                  <div className="text-sm font-semibold text-slate-700">🧾 Logg gruppetime selv</div>
+                  <div className="mt-1 text-xs text-slate-500">Legg inn økter du har gjort utenfor programmet, så PT ser alt.</div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="space-y-1">
+                    <span className="text-xs font-medium text-slate-600">Gruppetime</span>
+                    <SelectBox
+                      value={groupWorkoutClassName}
+                      onChange={(value) => setGroupWorkoutClassName(value)}
+                      options={groupWorkoutClassOptions.map((className) => ({ value: className, label: className }))}
+                    />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-xs font-medium text-slate-600">Notat (valgfritt)</span>
+                    <TextInput value={groupWorkoutNote} onChange={(event) => setGroupWorkoutNote(event.target.value)} placeholder="Hvordan gikk timen?" />
+                  </label>
+                </div>
+                {[
+                  {
+                    key: "group-energy",
+                    question: "Hvordan føles energinivået nå?",
+                    value: groupWorkoutEnergyLevel,
+                    setValue: setGroupWorkoutEnergyLevel,
+                  },
+                  {
+                    key: "group-difficulty",
+                    question: "Hvor tung opplevdes timen?",
+                    value: groupWorkoutDifficultyLevel,
+                    setValue: setGroupWorkoutDifficultyLevel,
+                  },
+                  {
+                    key: "group-motivation",
+                    question: "Hvordan er motivasjonen videre?",
+                    value: groupWorkoutMotivationLevel,
+                    setValue: setGroupWorkoutMotivationLevel,
+                  },
+                ].map((item) => (
+                  <div key={item.key} className="space-y-2">
+                    <div className="text-xs font-medium text-slate-700">{item.question}</div>
+                    <div className="grid grid-cols-5 gap-2">
+                      {[1, 2, 3, 4, 5].map((level) => {
+                        const numericLevel = level as 1 | 2 | 3 | 4 | 5;
+                        const active = item.value === numericLevel;
+                        return (
+                          <button
+                            key={level}
+                            type="button"
+                            onClick={() => item.setValue(numericLevel)}
+                            className={`rounded-xl border px-2 py-2 text-lg transition ${
+                              active ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                            }`}
+                            aria-label={`Velg nivå ${level}`}
+                          >
+                            {getReflectionEmoji(numericLevel)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                <div className="flex flex-wrap items-center gap-3">
+                  <GradientButton onClick={handleLogGroupWorkout} className="w-full sm:w-auto">Lagre gruppetime</GradientButton>
+                  {groupWorkoutStatus ? <div className="text-xs text-emerald-700">{groupWorkoutStatus}</div> : null}
+                </div>
               </div>
               <div className="mt-4 rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-sm font-semibold text-slate-700">🏆 Streaks + achievements</div>

@@ -44,15 +44,29 @@ Deno.serve(async (req) => {
   }
 
   const email = normalizeEmail(payload.email);
-  const memberId = String(payload.memberId ?? "").trim();
+  let memberId = String(payload.memberId ?? "").trim();
   if (!email || !email.includes("@")) {
     return jsonResponse(400, { error: "Valid email is required" });
   }
-  if (!memberId) {
-    return jsonResponse(400, { error: "memberId is required" });
-  }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+  if (!memberId) {
+    const { data: memberRows, error: memberLookupError } = await adminClient
+      .from("members")
+      .select("id, is_active, created_at")
+      .eq("email", email)
+      .order("is_active", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (memberLookupError) {
+      return jsonResponse(500, { error: `Could not resolve member by email: ${memberLookupError.message}` });
+    }
+    memberId = String(memberRows?.[0]?.id ?? "").trim();
+  }
+  if (!memberId) {
+    return jsonResponse(404, { error: "No member row found for email" });
+  }
 
   const { data: listData, error: listError } = await adminClient.auth.admin.listUsers({
     page: 1,

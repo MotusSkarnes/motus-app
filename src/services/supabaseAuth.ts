@@ -171,20 +171,20 @@ export type InviteTrainerResult = {
   message: string;
 };
 
-async function syncMemberAuthLink(email: string, memberId: string): Promise<void> {
+async function syncMemberAuthLink(email: string, memberId?: string): Promise<void> {
   if (!supabaseClient) return;
   const { error } = await supabaseClient.functions.invoke("link-member-auth", {
-    body: { email, memberId },
+    body: memberId ? { email, memberId } : { email },
   });
   if (error) {
     console.warn("link-member-auth invoke failed during invite:", error.message);
   }
 }
 
-export async function ensureMemberAuthLink(email: string, memberId: string): Promise<void> {
+export async function ensureMemberAuthLink(email: string, memberId?: string): Promise<void> {
   const normalizedEmail = email.trim().toLowerCase();
-  const normalizedMemberId = memberId.trim();
-  if (!normalizedEmail || !normalizedEmail.includes("@") || !normalizedMemberId) return;
+  const normalizedMemberId = memberId?.trim();
+  if (!normalizedEmail || !normalizedEmail.includes("@")) return;
   await syncMemberAuthLink(normalizedEmail, normalizedMemberId);
 }
 

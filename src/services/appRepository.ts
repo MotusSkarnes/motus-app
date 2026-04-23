@@ -29,6 +29,13 @@ export type FinishWorkoutInput = {
   reflection?: WorkoutReflection;
 };
 
+export type LogGroupWorkoutInput = {
+  memberId: string;
+  className: string;
+  note?: string;
+  reflection: WorkoutReflection;
+};
+
 export type ReplaceWorkoutExerciseGroupInput = {
   programExerciseId: string;
   nextExerciseName: string;
@@ -65,6 +72,7 @@ export interface AppRepository {
   updateWorkoutNote(state: AppState, note: string): AppState;
   cancelWorkoutMode(state: AppState): AppState;
   finishWorkoutMode(state: AppState, input?: FinishWorkoutInput): AppState;
+  logGroupWorkout(state: AppState, input: LogGroupWorkoutInput): AppState;
   saveExercise(state: AppState, input: SaveExerciseInput): AppState;
   updateMember(state: AppState, input: UpdateMemberInput): AppState;
 }
@@ -348,6 +356,28 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
   };
 }
 
+export function logGroupWorkoutInState(state: AppState, input: LogGroupWorkoutInput): AppState {
+  const memberId = input.memberId.trim();
+  const className = input.className.trim();
+  if (!memberId || !className) return state;
+  return {
+    ...state,
+    logs: [
+      {
+        id: uid("log"),
+        memberId,
+        programTitle: `Gruppetime: ${className}`,
+        date: formatDateDdMmYyyy(new Date()),
+        status: "Fullført",
+        note: input.note?.trim() ?? "",
+        reflection: input.reflection,
+        results: [],
+      },
+      ...state.logs,
+    ],
+  };
+}
+
 export function saveExerciseInState(state: AppState, input: SaveExerciseInput): AppState {
   const normalizedName = input.name.trim();
   const normalizedDescription = input.description.trim();
@@ -424,6 +454,7 @@ export const localAppRepository: AppRepository = {
   updateWorkoutNote: updateWorkoutNoteInState,
   cancelWorkoutMode: cancelWorkoutModeInState,
   finishWorkoutMode: finishWorkoutModeInState,
+  logGroupWorkout: logGroupWorkoutInState,
   saveExercise: saveExerciseInState,
   updateMember: updateMemberInState,
 };
