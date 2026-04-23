@@ -2,75 +2,76 @@ import type { ComponentProps, Dispatch, SetStateAction } from "react";
 import { AppHeader, LoginScreen, MemberLayout, TrainerLayout } from "../../features";
 import type { AppState } from "../types";
 
+type LoginScreenProps = ComponentProps<typeof LoginScreen>;
+type AppHeaderProps = ComponentProps<typeof AppHeader>;
+type AppHeaderPropsWithUser = Omit<AppHeaderProps, "currentUser"> & {
+  currentUser: NonNullable<AppState["currentUser"]>;
+};
+type TrainerLayoutProps = ComponentProps<typeof TrainerLayout>;
+type MemberLayoutProps = ComponentProps<typeof MemberLayout>;
+
 export function buildLoginScreenProps(
-  input: ComponentProps<typeof LoginScreen>
-): ComponentProps<typeof LoginScreen> {
+  input: LoginScreenProps
+): LoginScreenProps {
   return input;
 }
 
-export function buildAppHeaderProps(input: {
-  currentUser: NonNullable<AppState["currentUser"]>;
-  role: AppState["role"];
-  showQuickLogin: boolean;
-  onSwitchRole: (role: AppState["role"]) => void;
-  onResetData: () => void;
-  onLogout: () => void;
-}): ComponentProps<typeof AppHeader> {
+export function buildAppHeaderProps(input: AppHeaderPropsWithUser): AppHeaderProps {
   return input;
 }
 
 export function buildTrainerLayoutProps(input: {
   appState: AppState;
-  trainerTab: ComponentProps<typeof TrainerLayout>["trainerTab"];
-  setTrainerTab: ComponentProps<typeof TrainerLayout>["setTrainerTab"];
-  patchState: ComponentProps<typeof TrainerLayout>["patchState"];
-  addMember: ComponentProps<typeof TrainerLayout>["addMember"];
-  deactivateMember: ComponentProps<typeof TrainerLayout>["deactivateMember"];
-  deleteMember: ComponentProps<typeof TrainerLayout>["deleteMember"];
-  updateMember: ComponentProps<typeof TrainerLayout>["updateMember"];
-  markMemberInvited: ComponentProps<typeof TrainerLayout>["markMemberInvited"];
-  inviteMember: ComponentProps<typeof TrainerLayout>["inviteMember"];
-  inviteTrainer: ComponentProps<typeof TrainerLayout>["inviteTrainer"];
-  restoreMemberByEmail: ComponentProps<typeof TrainerLayout>["restoreMemberByEmail"];
-  restoreMissingTestData: ComponentProps<typeof TrainerLayout>["restoreMissingTestData"];
-  restoreOriginalExerciseBank: ComponentProps<typeof TrainerLayout>["restoreOriginalExerciseBank"];
-  saveProgramForMember: ComponentProps<typeof TrainerLayout>["saveProgramForMember"];
-  deleteProgramById: ComponentProps<typeof TrainerLayout>["deleteProgramById"];
-  sendTrainerMessage: ComponentProps<typeof TrainerLayout>["sendTrainerMessage"];
-  saveExercise: ComponentProps<typeof TrainerLayout>["saveExercise"];
+  trainerTab: TrainerLayoutProps["trainerTab"];
+  setTrainerTab: TrainerLayoutProps["setTrainerTab"];
+  patchState: TrainerLayoutProps["patchState"];
+  addMember: TrainerLayoutProps["addMember"];
+  deactivateMember: TrainerLayoutProps["deactivateMember"];
+  deleteMember: TrainerLayoutProps["deleteMember"];
+  updateMember: TrainerLayoutProps["updateMember"];
+  markMemberInvited: TrainerLayoutProps["markMemberInvited"];
+  inviteMember: TrainerLayoutProps["inviteMember"];
+  inviteTrainer: TrainerLayoutProps["inviteTrainer"];
+  restoreMemberByEmail: TrainerLayoutProps["restoreMemberByEmail"];
+  restoreMissingTestData: TrainerLayoutProps["restoreMissingTestData"];
+  restoreOriginalExerciseBank: TrainerLayoutProps["restoreOriginalExerciseBank"];
+  saveProgramForMember: TrainerLayoutProps["saveProgramForMember"];
+  deleteProgramById: TrainerLayoutProps["deleteProgramById"];
+  sendTrainerMessage: TrainerLayoutProps["sendTrainerMessage"];
+  saveExercise: TrainerLayoutProps["saveExercise"];
   openCustomerMessagesSignal: number;
   setOpenCustomerMessagesSignal: Dispatch<SetStateAction<number>>;
-  memberAvatarById: ComponentProps<typeof TrainerLayout>["memberAvatarById"];
-  setMemberAvatarUrlForMember: ComponentProps<typeof TrainerLayout>["setMemberAvatarUrlForMember"];
+  memberAvatarById: TrainerLayoutProps["memberAvatarById"];
+  setMemberAvatarUrlForMember: TrainerLayoutProps["setMemberAvatarUrlForMember"];
   trainerNotificationsOpen: boolean;
   setTrainerNotificationsOpen: (open: boolean) => void;
   trainerUnreadCount: number;
-  trainerMessageAlerts: ComponentProps<typeof TrainerLayout>["trainerMessageAlerts"];
+  trainerMessageAlerts: TrainerLayoutProps["trainerMessageAlerts"];
   handleTrainerBellToggle: () => void;
-}): ComponentProps<typeof TrainerLayout> {
+}): TrainerLayoutProps {
   return input;
 }
 
 export function buildMemberLayoutProps(input: {
   appState: AppState;
-  memberTab: ComponentProps<typeof MemberLayout>["memberTab"];
-  setMemberTab: ComponentProps<typeof MemberLayout>["setMemberTab"];
-  updateMember: ComponentProps<typeof MemberLayout>["updateMember"];
+  memberTab: MemberLayoutProps["memberTab"];
+  setMemberTab: MemberLayoutProps["setMemberTab"];
+  updateMember: MemberLayoutProps["updateMember"];
   currentMemberAvatarUrl: string;
   setCurrentMemberAvatarUrl: (url: string) => void;
-  sendMemberMessage: ComponentProps<typeof MemberLayout>["sendMemberMessage"];
-  startWorkoutMode: ComponentProps<typeof MemberLayout>["startWorkoutMode"];
-  updateWorkoutExerciseResult: ComponentProps<typeof MemberLayout>["updateWorkoutExerciseResult"];
-  replaceWorkoutExerciseGroup: ComponentProps<typeof MemberLayout>["replaceWorkoutExerciseGroup"];
-  updateWorkoutModeNote: ComponentProps<typeof MemberLayout>["updateWorkoutModeNote"];
-  finishWorkoutMode: ComponentProps<typeof MemberLayout>["finishWorkoutMode"];
-  cancelWorkoutMode: ComponentProps<typeof MemberLayout>["cancelWorkoutMode"];
-  dismissWorkoutCelebration: ComponentProps<typeof MemberLayout>["dismissWorkoutCelebration"];
+  sendMemberMessage: MemberLayoutProps["sendMemberMessage"];
+  startWorkoutMode: MemberLayoutProps["startWorkoutMode"];
+  updateWorkoutExerciseResult: MemberLayoutProps["updateWorkoutExerciseResult"];
+  replaceWorkoutExerciseGroup: MemberLayoutProps["replaceWorkoutExerciseGroup"];
+  updateWorkoutModeNote: MemberLayoutProps["updateWorkoutModeNote"];
+  finishWorkoutMode: MemberLayoutProps["finishWorkoutMode"];
+  cancelWorkoutMode: MemberLayoutProps["cancelWorkoutMode"];
+  dismissWorkoutCelebration: MemberLayoutProps["dismissWorkoutCelebration"];
   memberNotificationsOpen: boolean;
   memberUnreadCount: number;
-  memberVisibleAlerts: ComponentProps<typeof MemberLayout>["memberVisibleAlerts"];
+  memberVisibleAlerts: MemberLayoutProps["memberVisibleAlerts"];
   handleMemberBellToggle: () => void;
-  openAlert: ComponentProps<typeof MemberLayout>["openAlert"];
-}): ComponentProps<typeof MemberLayout> {
+  openAlert: MemberLayoutProps["openAlert"];
+}): MemberLayoutProps {
   return input;
 }
