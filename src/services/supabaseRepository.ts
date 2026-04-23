@@ -508,6 +508,8 @@ export type HydratedTrainerData = {
 };
 
 export type HydratedTrainerDebug = {
+  status?: "ok" | "invoke_error" | "invalid_payload";
+  message?: string;
   ownerUserId: string;
   ownedMemberIds: string[];
   memberIdsFromMembersQuery: string[];
@@ -544,20 +546,87 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
   const { data, error } = await supabaseClient.functions.invoke("hydrate-trainer-data", {
     body: { ownerUserId, includeDebug: true },
   });
-  if (error || !data || typeof data !== "object") {
-    if (error) {
-      console.warn("hydrate-trainer-data invoke failed:", error.message);
-    }
-    return null;
+  if (error) {
+    console.warn("hydrate-trainer-data invoke failed:", error.message);
+    return {
+      members: [],
+      messages: [],
+      programs: [],
+      logs: [],
+      exercises: [],
+      debug: {
+        status: "invoke_error",
+        message: error.message,
+        ownerUserId,
+        ownedMemberIds: [],
+        memberIdsFromMembersQuery: [],
+        logMemberIdsByOwnerQuery: [],
+        logMemberIdsByMemberQuery: [],
+        logIdsByOwnerQuery: [],
+        logIdsByMemberQuery: [],
+        mergedLogIds: [],
+        counts: {
+          members: 0,
+          programsByOwner: 0,
+          programsByMember: 0,
+          logsByOwner: 0,
+          logsByMember: 0,
+          mergedLogs: 0,
+          messagesByOwner: 0,
+          messagesByMember: 0,
+          mergedMessages: 0,
+        },
+        generatedAt: new Date().toISOString(),
+      },
+    };
   }
-
+  if (!data || typeof data !== "object") {
+    console.warn("hydrate-trainer-data returned invalid payload");
+    return {
+      members: [],
+      messages: [],
+      programs: [],
+      logs: [],
+      exercises: [],
+      debug: {
+        status: "invalid_payload",
+        message: "Function returned empty or non-object payload.",
+        ownerUserId,
+        ownedMemberIds: [],
+        memberIdsFromMembersQuery: [],
+        logMemberIdsByOwnerQuery: [],
+        logMemberIdsByMemberQuery: [],
+        logIdsByOwnerQuery: [],
+        logIdsByMemberQuery: [],
+        mergedLogIds: [],
+        counts: {
+          members: 0,
+          programsByOwner: 0,
+          programsByMember: 0,
+          logsByOwner: 0,
+          logsByMember: 0,
+          mergedLogs: 0,
+          messagesByOwner: 0,
+          messagesByMember: 0,
+          mergedMessages: 0,
+        },
+        generatedAt: new Date().toISOString(),
+      },
+    };
+  }
   const payload = data as Record<string, unknown>;
   const membersRows = Array.isArray(payload.members) ? payload.members : [];
   const messagesRows = Array.isArray(payload.messages) ? payload.messages : [];
   const programsRows = Array.isArray(payload.programs) ? payload.programs : [];
   const logsRows = Array.isArray(payload.logs) ? payload.logs : [];
   const exercisesRows = Array.isArray(payload.exercises) ? payload.exercises : [];
-  const debug = payload.debug && typeof payload.debug === "object" ? (payload.debug as HydratedTrainerDebug) : null;
+  const debugBase = payload.debug && typeof payload.debug === "object" ? (payload.debug as HydratedTrainerDebug) : null;
+  const debug = debugBase
+    ? {
+        ...debugBase,
+        status: debugBase.status ?? "ok",
+      }
+    : null;
 
   return {
     members: membersRows.map((row) => {

@@ -255,9 +255,41 @@ export function useAppState() {
 
       const isTrainerSession = sessionRole === "trainer";
       const isMemberLikeSession = Boolean(sessionUser) && !isTrainerSession;
+      if (isTrainerSession && !ownerUserId) {
+        setTrainerHydrationDebug({
+          status: "invalid_payload",
+          message: "Trainer session mangler ownerUserId (JWT sub er tom).",
+          ownerUserId: "",
+          ownedMemberIds: [],
+          memberIdsFromMembersQuery: [],
+          logMemberIdsByOwnerQuery: [],
+          logMemberIdsByMemberQuery: [],
+          logIdsByOwnerQuery: [],
+          logIdsByMemberQuery: [],
+          mergedLogIds: [],
+          counts: {
+            members: 0,
+            programsByOwner: 0,
+            programsByMember: 0,
+            logsByOwner: 0,
+            logsByMember: 0,
+            mergedLogs: 0,
+            messagesByOwner: 0,
+            messagesByMember: 0,
+            mergedMessages: 0,
+          },
+          generatedAt: new Date().toISOString(),
+        });
+      }
       const hydratedTrainer = isTrainerSession && ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
       const hydratedMember = isMemberLikeSession ? await fetchHydratedMemberData() : null;
-      setTrainerHydrationDebug(hydratedTrainer?.debug ?? null);
+      if (isTrainerSession) {
+        if (ownerUserId) {
+          setTrainerHydrationDebug(hydratedTrainer?.debug ?? null);
+        }
+      } else {
+        setTrainerHydrationDebug(null);
+      }
       const remoteMembers = hydratedTrainer?.members ?? hydratedMember?.members ?? (await fetchMembersFromSupabase());
       const remoteMessages = hydratedTrainer?.messages ?? hydratedMember?.messages ?? (await fetchMessagesFromSupabase());
       const remotePrograms = hydratedTrainer?.programs ?? hydratedMember?.programs ?? (await fetchProgramsFromSupabase());
