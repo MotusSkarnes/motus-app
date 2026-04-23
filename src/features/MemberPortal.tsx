@@ -1147,12 +1147,12 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               <div className="grid gap-4">
-                <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="min-w-0 w-full overflow-hidden rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Treningskalender</div>
                   <div className="mt-1 text-xs text-slate-500">
                     {formatDateDdMmYyyy(calendarMonth)}
                   </div>
-                  <div className="mt-3 flex items-center gap-2">
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
                     <OutlineButton
                       className="px-3 py-1.5 text-xs"
                       onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
@@ -1203,11 +1203,11 @@ export function MemberPortal(props: MemberPortalProps) {
                       ),
                     )}
                   </div>
-                  <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
                     <span>Lav aktivitet</span>
-                    <div className="h-2 w-20 rounded-full" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, opacity: 0.3 }} />
-                    <div className="h-2 w-20 rounded-full" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, opacity: 0.6 }} />
-                    <div className="h-2 w-20 rounded-full" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, opacity: 1 }} />
+                    <div className="h-2 w-12 sm:w-20 rounded-full" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, opacity: 0.3 }} />
+                    <div className="h-2 w-12 sm:w-20 rounded-full" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, opacity: 0.6 }} />
+                    <div className="h-2 w-12 sm:w-20 rounded-full" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, opacity: 1 }} />
                     <span>Høy aktivitet</span>
                   </div>
                   {selectedCalendarDay ? (
