@@ -191,7 +191,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
   const [compactExerciseBank, setCompactExerciseBank] = useState(true);
   const [showCustomerToolsMobile, setShowCustomerToolsMobile] = useState(false);
-  const [workoutDateRangeFilter, setWorkoutDateRangeFilter] = useState<"7d" | "30d" | "all">("30d");
+  const [workoutDateRangeFilter, setWorkoutDateRangeFilter] = useState<"7d" | "30d" | "all">("all");
   const [workoutTypeFilter, setWorkoutTypeFilter] = useState<"all" | "program" | "group">("all");
   const [workoutSearchQuery, setWorkoutSearchQuery] = useState("");
   const [workoutSortOrder, setWorkoutSortOrder] = useState<"newest" | "oldest">("newest");
@@ -306,9 +306,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
     };
     const withParsedDate = selectedLogs.map((log) => ({ log, dateMs: parseLogDateMs(log.date) }));
     const filtered = withParsedDate.filter(({ log, dateMs }) => {
-      if (workoutDateRangeFilter !== "all") {
+      if (workoutDateRangeFilter !== "all" && dateMs > 0) {
         const maxAgeMs = workoutDateRangeFilter === "7d" ? 7 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
-        if (!dateMs || now - dateMs > maxAgeMs) return false;
+        if (now - dateMs > maxAgeMs) return false;
       }
       const isGroupWorkout = log.programTitle.trim().toLowerCase().startsWith("gruppetime:");
       if (workoutTypeFilter === "group" && !isGroupWorkout) return false;
@@ -472,6 +472,14 @@ export function TrainerPortal(props: TrainerPortalProps) {
       setSelectedWorkoutLogId(filteredWorkoutLogs[0].id);
     }
   }, [filteredWorkoutLogs, selectedWorkoutLogId]);
+
+  useEffect(() => {
+    // Reset workout list controls when changing customer so prior filters/search do not hide fresh logs.
+    setWorkoutDateRangeFilter("all");
+    setWorkoutTypeFilter("all");
+    setWorkoutSearchQuery("");
+    setWorkoutSortOrder("newest");
+  }, [selectedMemberId]);
 
   function resetMemberEditDraftFromSelected(member: Member | null) {
     if (!member) {
