@@ -3,6 +3,12 @@ import { AppHeader } from "../features/AppHeader";
 import { LoginScreen } from "../features/LoginScreen";
 import { MemberLayout } from "../features/MemberLayout";
 import { TrainerLayout } from "../features/TrainerLayout";
+import {
+  buildAppHeaderProps,
+  buildLoginScreenProps,
+  buildMemberLayoutProps,
+  buildTrainerLayoutProps,
+} from "./viewModelBuilders";
 import { useAppState } from "./useAppState";
 import { useMemberAvatarStore } from "./useMemberAvatarStore";
 import { useNotifications } from "./useNotifications";
@@ -100,7 +106,7 @@ export function useAppViewModel() {
     setMemberTab,
   });
 
-  const loginScreenProps: ComponentProps<typeof LoginScreen> = {
+  const loginScreenProps: ComponentProps<typeof LoginScreen> = buildLoginScreenProps({
     email: loginEmail,
     setEmail: setLoginEmail,
     password: loginPassword,
@@ -127,18 +133,18 @@ export function useAppViewModel() {
     onLoginWithEmailOtpCode: loginWithEmailOtpCode,
     quickLogin: handleQuickLogin,
     showQuickLogin,
-  };
+  });
 
-  const appHeaderProps: ComponentProps<typeof AppHeader> = {
+  const appHeaderProps: ComponentProps<typeof AppHeader> = buildAppHeaderProps({
     currentUser: appState.currentUser!,
     role: appState.role,
     showQuickLogin,
     onSwitchRole: (role) => patchState({ role }),
     onResetData: handleResetData,
     onLogout: handleLogout,
-  };
+  });
 
-  const trainerLayoutProps: ComponentProps<typeof TrainerLayout> = {
+  const trainerLayoutProps: ComponentProps<typeof TrainerLayout> = buildTrainerLayoutProps({
     appState,
     trainerTab,
     setTrainerTab,
@@ -166,9 +172,9 @@ export function useAppViewModel() {
     trainerUnreadCount,
     trainerMessageAlerts,
     handleTrainerBellToggle,
-  };
+  });
 
-  const memberLayoutProps: ComponentProps<typeof MemberLayout> = {
+  const memberLayoutProps: ComponentProps<typeof MemberLayout> = buildMemberLayoutProps({
     appState,
     memberTab,
     setMemberTab,
@@ -188,7 +194,7 @@ export function useAppViewModel() {
     memberVisibleAlerts,
     handleMemberBellToggle,
     openAlert,
-  };
+  });
 
   return {
     appState,
