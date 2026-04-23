@@ -8,6 +8,7 @@ const corsHeaders = {
 
 type HydratePayload = {
   ownerUserId?: string;
+  includeDebug?: boolean;
 };
 
 type RowWithId = { id?: string };
@@ -53,6 +54,7 @@ Deno.serve(async (req) => {
   }
 
   const ownerUserId = String(payload.ownerUserId ?? "").trim();
+  const includeDebug = payload.includeDebug === true;
   if (!ownerUserId) {
     return jsonResponse(400, { error: "ownerUserId is required" });
   }
@@ -87,7 +89,6 @@ Deno.serve(async (req) => {
     .from("members")
     .select("id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, created_at")
     .eq("owner_user_id", ownerUserId)
-    .or("is_active.is.null,is_active.eq.true")
     .order("created_at", { ascending: true });
 
   const { data: programsByOwner, error: programsByOwnerError } = await adminClient
@@ -173,5 +174,33 @@ Deno.serve(async (req) => {
     logs: mergedLogs,
     messages: mergedMessages,
     exercises: exercises ?? [],
+    debug: includeDebug
+      ? {
+          ownerUserId,
+          ownedMemberIds,
+          memberIdsFromMembersQuery: (members ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean),
+          logMemberIdsByOwnerQuery: (logsByOwner ?? [])
+            .map((row) => String((row as { member_id?: string }).member_id ?? ""))
+            .filter(Boolean),
+          logMemberIdsByMemberQuery: logsByMember
+            .map((row) => String((row as { member_id?: string }).member_id ?? ""))
+            .filter(Boolean),
+          logIdsByOwnerQuery: (logsByOwner ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean),
+          logIdsByMemberQuery: logsByMember.map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean),
+          mergedLogIds: mergedLogs.map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean),
+          counts: {
+            members: (members ?? []).length,
+            programsByOwner: (programsByOwner ?? []).length,
+            programsByMember: programsByMember.length,
+            logsByOwner: (logsByOwner ?? []).length,
+            logsByMember: logsByMember.length,
+            mergedLogs: mergedLogs.length,
+            messagesByOwner: (messagesByOwner ?? []).length,
+            messagesByMember: messagesByMember.length,
+            mergedMessages: mergedMessages.length,
+          },
+          generatedAt: new Date().toISOString(),
+        }
+      : null,
   });
 });

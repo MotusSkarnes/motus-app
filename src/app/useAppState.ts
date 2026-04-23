@@ -3,7 +3,7 @@ import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
 import { localAppRepository, type CreateMemberInput, type FinishWorkoutInput, type LogGroupWorkoutInput, type ReplaceWorkoutExerciseGroupInput, type SaveExerciseInput, type SaveProgramInput, type UpdateMemberInput } from "../services/appRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
-import { fetchExercisesFromSupabase, fetchHydratedMemberData, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
+import { fetchExercisesFromSupabase, fetchHydratedMemberData, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository, type HydratedTrainerDebug } from "../services/supabaseRepository";
 import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, inviteTrainerByEmail, refreshSupabaseSessionUser, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult, type InviteTrainerResult } from "../services/supabaseAuth";
 import type { AppState, Exercise, MemberTab, TrainerTab } from "./types";
 
@@ -132,6 +132,7 @@ export function useAppState() {
   const [trainerTab, setTrainerTab] = useState<TrainerTab>("dashboard");
   const [memberTab, setMemberTab] = useState<MemberTab>("overview");
   const [isLocalDemoSession, setIsLocalDemoSession] = useState(false);
+  const [trainerHydrationDebug, setTrainerHydrationDebug] = useState<HydratedTrainerDebug | null>(null);
 
   function ensureMemberRecordForUser(state: AppState, user: AuthUser, preferredMemberId?: string): AppState {
     if (user.role !== "member") return state;
@@ -256,6 +257,7 @@ export function useAppState() {
       const isMemberLikeSession = Boolean(sessionUser) && !isTrainerSession;
       const hydratedTrainer = isTrainerSession && ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
       const hydratedMember = isMemberLikeSession ? await fetchHydratedMemberData() : null;
+      setTrainerHydrationDebug(hydratedTrainer?.debug ?? null);
       const remoteMembers = hydratedTrainer?.members ?? hydratedMember?.members ?? (await fetchMembersFromSupabase());
       const remoteMessages = hydratedTrainer?.messages ?? hydratedMember?.messages ?? (await fetchMessagesFromSupabase());
       const remotePrograms = hydratedTrainer?.programs ?? hydratedMember?.programs ?? (await fetchProgramsFromSupabase());
@@ -911,6 +913,7 @@ export function useAppState() {
     loginWithEmailOtpCode,
     showQuickLogin: isDemoMode,
     isLocalDemoSession,
+    trainerHydrationDebug,
     handleLogout,
     resetAllData,
     addMember,

@@ -408,10 +408,26 @@ async function deleteMemberFromSupabase(member: { id: string; email?: string }) 
 
 async function persistWorkoutLog(log: WorkoutLog) {
   if (!supabaseClient) return;
+  const serializedNote = serializeWorkoutNote(log.note, log.reflection);
+  const invokeResult = await supabaseClient.functions.invoke("persist-workout-log", {
+    body: {
+      id: log.id,
+      memberId: log.memberId,
+      programTitle: log.programTitle,
+      date: log.date,
+      status: log.status,
+      note: serializedNote,
+      results: log.results ?? [],
+    },
+  });
+  if (!invokeResult.error) {
+    return;
+  }
+  console.warn("persist-workout-log invoke failed, falling back to client upsert:", invokeResult.error.message);
+
   const fallbackOwnerUserId = await getOwnerUserId();
   const ownerUserId = await resolveOwnerUserIdForMember(log.memberId, fallbackOwnerUserId);
   if (!ownerUserId) return;
-  const serializedNote = serializeWorkoutNote(log.note, log.reflection);
 
   const { error } = await supabaseClient.from("workout_logs").upsert(
     {
@@ -488,6 +504,30 @@ export type HydratedTrainerData = {
   programs: TrainingProgram[];
   logs: WorkoutLog[];
   exercises: Exercise[];
+  debug: HydratedTrainerDebug | null;
+};
+
+export type HydratedTrainerDebug = {
+  ownerUserId: string;
+  ownedMemberIds: string[];
+  memberIdsFromMembersQuery: string[];
+  logMemberIdsByOwnerQuery: string[];
+  logMemberIdsByMemberQuery: string[];
+  logIdsByOwnerQuery: string[];
+  logIdsByMemberQuery: string[];
+  mergedLogIds: string[];
+  counts: {
+    members: number;
+    programsByOwner: number;
+    programsByMember: number;
+    logsByOwner: number;
+    logsByMember: number;
+    mergedLogs: number;
+    messagesByOwner: number;
+    messagesByMember: number;
+    mergedMessages: number;
+  };
+  generatedAt: string;
 };
 
 export type HydratedMemberData = {
@@ -502,7 +542,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
   if (!ownerUserId) return null;
 
   const { data, error } = await supabaseClient.functions.invoke("hydrate-trainer-data", {
-    body: { ownerUserId },
+    body: { ownerUserId, includeDebug: true },
   });
   if (error || !data || typeof data !== "object") {
     if (error) {
@@ -517,6 +557,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
   const programsRows = Array.isArray(payload.programs) ? payload.programs : [];
   const logsRows = Array.isArray(payload.logs) ? payload.logs : [];
   const exercisesRows = Array.isArray(payload.exercises) ? payload.exercises : [];
+  const debug = payload.debug && typeof payload.debug === "object" ? (payload.debug as HydratedTrainerDebug) : null;
 
   return {
     members: membersRows.map((row) => {
@@ -591,6 +632,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
         imageUrl: String(exercise.image_url ?? ""),
       } as Exercise;
     }),
+    debug,
   };
 }
 

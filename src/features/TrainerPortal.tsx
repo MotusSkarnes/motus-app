@@ -9,6 +9,7 @@ import { Card, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, S
 import type { CreateMemberInput, UpdateMemberInput } from "../services/appRepository";
 import type { InviteMemberResult, InviteTrainerResult } from "../services/supabaseAuth";
 import type { ChatMessage, CustomerSubTab, Exercise, Member, ProgramExercise, TrainerTab, TrainingProgram, WorkoutLog } from "../app/types";
+import type { HydratedTrainerDebug } from "../services/supabaseRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
 type TrainerPortalProps = {
@@ -48,6 +49,7 @@ type TrainerPortalProps = {
   memberAvatarById?: Record<string, string>;
   setMemberAvatarUrlForMember?: (memberId: string, avatarUrl: string) => void;
   isLocalDemoSession?: boolean;
+  trainerHydrationDebug?: HydratedTrainerDebug | null;
 };
 
 export function TrainerPortal(props: TrainerPortalProps) {
@@ -82,6 +84,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     memberAvatarById = {},
     setMemberAvatarUrlForMember,
     isLocalDemoSession = false,
+    trainerHydrationDebug = null,
   } = props;
 
   const [programTitle, setProgramTitle] = useState("Nytt treningsprogram");
@@ -2745,6 +2748,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 <div className="font-semibold text-slate-800">{isLocalDemoSession ? "Demo (lokal)" : "Ekte innlogging"}</div>
               </div>
             </div>
+          </div>
+          <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="text-sm font-semibold text-slate-700">Hydrering debug (PT)</div>
+            <div className="text-xs text-slate-500">Viser rå data fra `hydrate-trainer-data` før visning i UI.</div>
+            <pre className="max-h-64 overflow-auto rounded-xl border bg-white p-3 text-[11px] leading-relaxed text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              {JSON.stringify(trainerHydrationDebug, null, 2)}
+            </pre>
           </div>
           <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <TextInput value={newTrainerName} onChange={(event) => setNewTrainerName(event.target.value)} placeholder="Navn (valgfritt)" />
