@@ -202,6 +202,15 @@ export function useAppState() {
     return fallbackId;
   }
 
+  function toLinkableMemberId(memberId: string | undefined): string | undefined {
+    if (!memberId) return undefined;
+    const trimmed = memberId.trim();
+    if (!trimmed) return undefined;
+    // Never sync auth metadata to synthetic local fallback IDs.
+    if (trimmed.startsWith("auth-")) return undefined;
+    return trimmed;
+  }
+
   useEffect(() => {
     saveState(appState);
   }, [appState]);
@@ -494,15 +503,11 @@ export function useAppState() {
           };
         });
         if (supabaseUser.role === "member") {
-          const linkMemberId = resolveMemberViewIdForUser({
-            role: supabaseUser.role,
-            memberId: resolvedMemberViewId || resolvedSelectedMemberId || supabaseUser.memberId,
-            email: supabaseUser.email,
-            members: baseState.members,
-            programs: baseState.programs,
-            fallbackId: resolvedMemberViewId || resolvedSelectedMemberId || supabaseUser.memberId || `auth-${supabaseUser.id}`,
-          });
-          await ensureMemberAuthLink(supabaseUser.email, linkMemberId);
+          const candidateMemberId =
+            toLinkableMemberId(supabaseUser.memberId) ??
+            toLinkableMemberId(resolvedMemberViewId) ??
+            toLinkableMemberId(resolvedSelectedMemberId);
+          await ensureMemberAuthLink(supabaseUser.email, candidateMemberId);
           const refreshedUser = await refreshSupabaseSessionUser();
           if (refreshedUser) {
             setAppState((prev) => ({
@@ -644,15 +649,11 @@ export function useAppState() {
       fallbackId: user.memberId ?? (baseState.memberViewId || `auth-${user.id}`),
     });
     if (user.role === "member") {
-      const linkMemberId = resolveMemberViewIdForUser({
-        role: user.role,
-        memberId: resolvedMemberViewId || resolvedSelectedMemberId || user.memberId,
-        email: user.email,
-        members: baseState.members,
-        programs: baseState.programs,
-        fallbackId: resolvedMemberViewId || resolvedSelectedMemberId || user.memberId || `auth-${user.id}`,
-      });
-      await ensureMemberAuthLink(user.email, linkMemberId);
+      const candidateMemberId =
+        toLinkableMemberId(user.memberId) ??
+        toLinkableMemberId(resolvedMemberViewId) ??
+        toLinkableMemberId(resolvedSelectedMemberId);
+      await ensureMemberAuthLink(user.email, candidateMemberId);
       const refreshedUser = await refreshSupabaseSessionUser();
       if (refreshedUser) {
         user.memberId = refreshedUser.memberId;
