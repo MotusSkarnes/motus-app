@@ -683,6 +683,46 @@ export function TrainerPortal(props: TrainerPortalProps) {
     );
   }
 
+  function saveProgramToSelectedMemberProfiles(input: {
+    id?: string;
+    title: string;
+    goal: string;
+    notes: string;
+    exercises: ProgramExercise[];
+  }) {
+    if (!selectedMemberId || selectedMemberId === "__template__") return;
+    const selected = members.find((member) => member.id === selectedMemberId) ?? null;
+    const normalizedEmail = selected?.email.trim().toLowerCase() ?? "";
+    const targetMemberIds = normalizedEmail
+      ? members
+          .filter((member) => member.email.trim().toLowerCase() === normalizedEmail && member.isActive !== false)
+          .map((member) => member.id)
+      : [selectedMemberId];
+    const uniqueTargetIds = Array.from(new Set(targetMemberIds.length ? targetMemberIds : [selectedMemberId]));
+
+    if (input.id) {
+      saveProgramForMember({
+        id: input.id,
+        title: input.title,
+        goal: input.goal,
+        notes: input.notes,
+        memberId: selectedMemberId,
+        exercises: input.exercises,
+      });
+      return;
+    }
+
+    uniqueTargetIds.forEach((memberId) => {
+      saveProgramForMember({
+        title: input.title,
+        goal: input.goal,
+        notes: input.notes,
+        memberId,
+        exercises: input.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
+      });
+    });
+  }
+
   function submitNewMember(options?: { openProgramAfterCreate?: boolean; inviteAfterCreate?: boolean }) {
     const name = newMemberName.trim();
     const email = newMemberEmail.trim().toLowerCase();
@@ -1895,7 +1935,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
                       <GradientButton
                         onClick={() => {
-                          saveProgramForMember({ id: editingProgramId ?? undefined, title: programTitle, goal: programGoal, notes: programNotes, memberId: selectedMemberId, exercises: programExercisesDraft });
+                          saveProgramToSelectedMemberProfiles({
+                            id: editingProgramId ?? undefined,
+                            title: programTitle,
+                            goal: programGoal,
+                            notes: programNotes,
+                            exercises: programExercisesDraft,
+                          });
                           resetProgramBuilder();
                         }}
                         className="w-full"
