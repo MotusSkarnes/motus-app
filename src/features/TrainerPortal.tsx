@@ -177,6 +177,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [isRestoringMember, setIsRestoringMember] = useState(false);
   const [memberDedupeStatus, setMemberDedupeStatus] = useState<string | null>(null);
   const [isRunningMemberDedupe, setIsRunningMemberDedupe] = useState(false);
+  const [adminHealthStatus, setAdminHealthStatus] = useState<string | null>(null);
+  const [isRefreshingAdminHealth, setIsRefreshingAdminHealth] = useState(false);
+  const [adminDuplicateGroupCount, setAdminDuplicateGroupCount] = useState<number | null>(null);
+  const [lastMemberCleanupAt, setLastMemberCleanupAt] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return window.localStorage.getItem("motus.admin.lastMemberCleanupAt") ?? "";
+  });
   const [restoreDataStatus, setRestoreDataStatus] = useState<string | null>(null);
   const [isRestoringTestData, setIsRestoringTestData] = useState(false);
   const [restoreExerciseBankStatus, setRestoreExerciseBankStatus] = useState<string | null>(null);
@@ -1057,6 +1064,37 @@ export function TrainerPortal(props: TrainerPortalProps) {
     }
   }
 
+  async function handleRefreshAdminHealthCheck() {
+    if (!isSupabaseConfigured || !supabaseClient) {
+      setAdminHealthStatus("Helsesjekk krever Supabase-oppsett.");
+      return;
+    }
+    setIsRefreshingAdminHealth(true);
+    setAdminHealthStatus(null);
+    try {
+      const ownerUserId = await resolveOwnerUserIdFromSession();
+      if (!ownerUserId) {
+        setAdminHealthStatus("Fant ikke owner-id i aktiv trener-session.");
+        return;
+      }
+      const dryRunResult = await supabaseClient.functions.invoke("dedupe-members", {
+        body: { ownerUserId, apply: false },
+      });
+      if (dryRunResult.error) {
+        setAdminHealthStatus(`Helsesjekk feilet: ${dryRunResult.error.message}`);
+        return;
+      }
+      const dryRunData = (dryRunResult.data ?? {}) as { duplicateGroupCount?: number };
+      const duplicateGroups = Number(dryRunData.duplicateGroupCount ?? 0);
+      setAdminDuplicateGroupCount(duplicateGroups);
+      setAdminHealthStatus(`Helsesjekk oppdatert. Fant ${duplicateGroups} duplikatgruppe${duplicateGroups === 1 ? "" : "r"}.`);
+    } catch (error) {
+      setAdminHealthStatus(`Helsesjekk feilet: ${String(error)}`);
+    } finally {
+      setIsRefreshingAdminHealth(false);
+    }
+  }
+
   async function handleRunSafeMemberCleanup() {
     if (!isSupabaseConfigured || !supabaseClient) {
       setMemberDedupeStatus("Opprydding krever Supabase-oppsett.");
@@ -1099,6 +1137,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
       setMemberDedupeStatus(
         `Opprydding fullført: ${duplicateGroups} duplikatgruppe${duplicateGroups === 1 ? "" : "r"}, ${deactivatedTotal} rader satt inaktive.`
       );
+      const cleanedAt = new Date().toISOString();
+      setLastMemberCleanupAt(cleanedAt);
+      setAdminDuplicateGroupCount(0);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("motus.admin.lastMemberCleanupAt", cleanedAt);
+      }
     } catch (error) {
       setMemberDedupeStatus(`Opprydding feilet: ${String(error)}`);
     } finally {
@@ -2890,6 +2934,35 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 <div className="font-semibold text-slate-800">{isLocalDemoSession ? "Demo (lokal)" : "Ekte innlogging"}</div>
               </div>
             </div>
+          </div>
+          <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="text-sm font-semibold text-slate-700">Helsesjekk</div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div className="rounded-xl border bg-white px-3 py-2 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-slate-500">Aktive kunder</div>
+                <div className="font-semibold text-slate-800">{deduplicatedMembers.filter((member) => member.isActive !== false).length}</div>
+              </div>
+              <div className="rounded-xl border bg-white px-3 py-2 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-slate-500">Duplikatgrupper</div>
+                <div className="font-semibold text-slate-800">{adminDuplicateGroupCount ?? "Ukjent"}</div>
+              </div>
+              <div className="rounded-xl border bg-white px-3 py-2 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-slate-500">Siste opprydding</div>
+                <div className="font-semibold text-slate-800">
+                  {lastMemberCleanupAt ? formatDateDdMmYyyy(new Date(lastMemberCleanupAt)) : "Ikke kjørt"}
+                </div>
+              </div>
+            </div>
+            {adminHealthStatus ? (
+              <StatusMessage
+                message={adminHealthStatus}
+                tone={adminHealthStatus.toLowerCase().includes("feilet") ? "error" : "success"}
+                className="!rounded-xl !px-3 !py-2 !text-xs"
+              />
+            ) : null}
+            <OutlineButton onClick={() => void handleRefreshAdminHealthCheck()} className="w-full md:w-auto" disabled={isRefreshingAdminHealth}>
+              {isRefreshingAdminHealth ? "Oppdaterer helsesjekk..." : "Oppdater helsesjekk"}
+            </OutlineButton>
           </div>
           <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <TextInput value={newTrainerName} onChange={(event) => setNewTrainerName(event.target.value)} placeholder="Navn (valgfritt)" />
