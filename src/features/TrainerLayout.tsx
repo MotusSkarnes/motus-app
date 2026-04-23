@@ -49,7 +49,6 @@ const trainerMenuItems: Array<{ key: TrainerTab; label: string; icon: LucideIcon
   { key: "exerciseBank", label: "Øvelsesbank", icon: Dumbbell },
   { key: "programs", label: "Programmer", icon: ClipboardList },
   { key: "calendar", label: "Kalender", icon: CalendarDays },
-  { key: "messages", label: "Meldinger", icon: MessageSquare },
   { key: "tasks", label: "Oppgaver", icon: CheckSquare },
   { key: "statistics", label: "Statistikk", icon: BarChart3 },
   { key: "settings", label: "Innstillinger", icon: Settings },
