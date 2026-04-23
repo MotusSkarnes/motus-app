@@ -48,14 +48,15 @@ Deno.serve(async (req) => {
     return jsonResponse(400, { error: "Authenticated user email is missing" });
   }
 
-  const { data: members, error: membersError } = await adminClient
+  const { data: allMembers, error: membersError } = await adminClient
     .from("members")
     .select("id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, created_at")
-    .ilike("email", requesterEmail)
     .order("created_at", { ascending: false });
   if (membersError) {
     return jsonResponse(500, { error: membersError.message });
   }
+
+  const members = (allMembers ?? []).filter((row) => normalizeEmail((row as { email?: string }).email) === requesterEmail);
 
   const memberIds = (members ?? [])
     .map((row) => String((row as { id?: string }).id ?? "").trim())
