@@ -1,2 +1,2 @@
 export { useAppViewModel } from "./useAppViewModel";
-export type { AppStateHookResult } from "./types";
+export type { AppStateHookResult, AppViewModel, AuthViewModel, RoleViewModel } from "./types";

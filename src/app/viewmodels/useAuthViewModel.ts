@@ -1,9 +1,9 @@
 import type { ComponentProps } from "react";
 import { LoginScreen } from "../../features";
 import { buildLoginScreenProps } from "./viewModelBuilders";
-import type { AppStateHookResult } from "./types";
+import type { AppStateHookResult, AuthViewModel } from "./types";
 
-export function useAuthViewModel(state: AppStateHookResult) {
+export function useAuthViewModel(state: AppStateHookResult): AuthViewModel {
   const loginScreenProps: ComponentProps<typeof LoginScreen> = buildLoginScreenProps({
     email: state.loginEmail,
     setEmail: state.setLoginEmail,

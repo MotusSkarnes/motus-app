@@ -1,11 +1,11 @@
 import { useState, type ComponentProps } from "react";
 import { AppHeader, MemberLayout, TrainerLayout } from "../../features";
 import { buildAppHeaderProps, buildMemberLayoutProps, buildTrainerLayoutProps } from "./viewModelBuilders";
-import type { AppStateHookResult } from "./types";
+import type { AppStateHookResult, RoleViewModel } from "./types";
 import { useMemberAvatarStore } from "../useMemberAvatarStore";
 import { useNotifications } from "../useNotifications";
 
-export function useRoleViewModel(state: AppStateHookResult) {
+export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
   function handleResetData() {
     const shouldReset = window.confirm("Dette nullstiller alle testdata i appen. Er du sikker?");
     if (!shouldReset) return;
