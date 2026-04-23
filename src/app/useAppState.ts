@@ -224,7 +224,28 @@ export function useAppState() {
         };
 
         if (shouldAdoptNonEmptyRemoteOnly(remoteMembers)) {
-          next.members = remoteMembers;
+          let mergedMembers = remoteMembers;
+          const currentUser = prev.currentUser;
+          if (currentUser?.role === "member") {
+            const normalizedUserEmail = currentUser.email.trim().toLowerCase();
+            const localMember =
+              prev.members.find((member) => member.id === prev.memberViewId) ??
+              prev.members.find((member) => member.id === prev.selectedMemberId) ??
+              prev.members.find((member) => member.email.trim().toLowerCase() === normalizedUserEmail) ??
+              null;
+            if (localMember) {
+              const remoteIndex = mergedMembers.findIndex(
+                (member) =>
+                  member.id === localMember.id || member.email.trim().toLowerCase() === localMember.email.trim().toLowerCase()
+              );
+              if (remoteIndex >= 0) {
+                mergedMembers = mergedMembers.map((member, index) => (index === remoteIndex ? { ...member, ...localMember } : member));
+              } else {
+                mergedMembers = [...mergedMembers, localMember];
+              }
+            }
+          }
+          next.members = mergedMembers;
         }
 
         if (shouldAdoptRemote(remoteMessages, prev.messages)) {
