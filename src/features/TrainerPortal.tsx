@@ -698,35 +698,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
     exercises: ProgramExercise[];
   }) {
     if (!selectedMemberId || selectedMemberId === "__template__") return;
-    const selected = members.find((member) => member.id === selectedMemberId) ?? null;
-    const normalizedEmail = selected?.email.trim().toLowerCase() ?? "";
-    const targetMemberIds = normalizedEmail
-      ? members
-          .filter((member) => member.email.trim().toLowerCase() === normalizedEmail && member.isActive !== false)
-          .map((member) => member.id)
-      : [selectedMemberId];
-    const uniqueTargetIds = Array.from(new Set(targetMemberIds.length ? targetMemberIds : [selectedMemberId]));
-
-    if (input.id) {
-      saveProgramForMember({
-        id: input.id,
-        title: input.title,
-        goal: input.goal,
-        notes: input.notes,
-        memberId: selectedMemberId,
-        exercises: input.exercises,
-      });
-      return;
-    }
-
-    uniqueTargetIds.forEach((memberId) => {
-      saveProgramForMember({
-        title: input.title,
-        goal: input.goal,
-        notes: input.notes,
-        memberId,
-        exercises: input.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
-      });
+    saveProgramForMember({
+      id: input.id,
+      title: input.title,
+      goal: input.goal,
+      notes: input.notes,
+      memberId: selectedMemberId,
+      exercises: input.id ? input.exercises : input.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
     });
   }
 

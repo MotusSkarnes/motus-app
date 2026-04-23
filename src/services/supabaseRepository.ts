@@ -42,6 +42,39 @@ async function getOwnerUserId(): Promise<string | null> {
   return claims && typeof claims.sub === "string" ? claims.sub : null;
 }
 
+async function resolveRelatedMemberIds(memberId: string): Promise<string[]> {
+  if (!supabaseClient) return [memberId];
+  const trimmedMemberId = memberId.trim();
+  if (!trimmedMemberId) return [];
+  const { data: memberRow, error: memberLookupError } = await supabaseClient
+    .from("members")
+    .select("email")
+    .eq("id", trimmedMemberId)
+    .maybeSingle();
+  if (memberLookupError) {
+    console.warn("Supabase member lookup failed:", memberLookupError.message);
+    return [trimmedMemberId];
+  }
+  const normalizedEmail = String(memberRow?.email ?? "").trim().toLowerCase();
+  if (!normalizedEmail) return [trimmedMemberId];
+  const { data: relatedRows, error: relatedError } = await supabaseClient
+    .from("members")
+    .select("id")
+    .eq("email", normalizedEmail);
+  if (relatedError) {
+    console.warn("Supabase related member lookup failed:", relatedError.message);
+    return [trimmedMemberId];
+  }
+  const ids = Array.from(
+    new Set(
+      (relatedRows ?? [])
+        .map((row) => String((row as { id?: string }).id ?? "").trim())
+        .filter(Boolean)
+    )
+  );
+  return ids.length ? ids : [trimmedMemberId];
+}
+
 async function persistMessage(memberId: string, sender: "trainer" | "member", text: string) {
   if (!supabaseClient) return;
   const ownerUserId = await getOwnerUserId();
@@ -64,24 +97,46 @@ async function persistProgram(input: SaveProgramInput) {
   const ownerUserId = await getOwnerUserId();
   if (!ownerUserId) return;
   const memberId = input.memberId.trim();
+  const targetMemberIds = memberId === "__template__" ? [memberId] : await resolveRelatedMemberIds(memberId);
+  const isEdit = Boolean(input.id);
 
-  const { error } = await supabaseClient.from("training_programs").upsert(
-    {
-      id: input.id ?? crypto.randomUUID(),
-      member_id: memberId,
-      owner_user_id: ownerUserId,
-      title: input.title.trim(),
-      goal: input.goal.trim(),
-      notes: input.notes.trim(),
-      exercises: input.exercises,
-      created_at: new Date().toISOString(),
-    },
-    { onConflict: "id" }
-  );
-
-  if (error) {
-    console.warn("Supabase program persist failed:", error.message);
-    return;
+  if (isEdit) {
+    const { error } = await supabaseClient.from("training_programs").upsert(
+      {
+        id: input.id,
+        member_id: memberId,
+        owner_user_id: ownerUserId,
+        title: input.title.trim(),
+        goal: input.goal.trim(),
+        notes: input.notes.trim(),
+        exercises: input.exercises,
+        created_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
+    if (error) {
+      console.warn("Supabase program persist failed:", error.message);
+      return;
+    }
+  } else {
+    for (const targetMemberId of targetMemberIds) {
+      const { error } = await supabaseClient.from("training_programs").upsert(
+        {
+          id: crypto.randomUUID(),
+          member_id: targetMemberId,
+          owner_user_id: ownerUserId,
+          title: input.title.trim(),
+          goal: input.goal.trim(),
+          notes: input.notes.trim(),
+          exercises: input.exercises,
+          created_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+      if (error) {
+        console.warn("Supabase program persist failed:", error.message);
+      }
+    }
   }
 
   // Keep auth.member_id aligned with selected customer row so member can read assigned programs.
@@ -223,9 +278,40 @@ async function persistExercise(exercise: Exercise) {
 
 async function deleteProgram(programId: string) {
   if (!supabaseClient) return;
-  const { error } = await supabaseClient.from("training_programs").delete().eq("id", programId);
+  const { data: programRow, error: lookupError } = await supabaseClient
+    .from("training_programs")
+    .select("id, member_id, title")
+    .eq("id", programId)
+    .maybeSingle();
+  if (lookupError) {
+    console.warn("Supabase program lookup before delete failed:", lookupError.message);
+  }
+
+  if (!programRow) {
+    const { error } = await supabaseClient.from("training_programs").delete().eq("id", programId);
+    if (error) {
+      console.warn("Supabase program delete failed:", error.message);
+    }
+    return;
+  }
+
+  const memberId = String(programRow.member_id ?? "").trim();
+  const title = String(programRow.title ?? "");
+  const relatedMemberIds = memberId && memberId !== "__template__" ? await resolveRelatedMemberIds(memberId) : [memberId];
+  const validMemberIds = relatedMemberIds.filter(Boolean);
+  if (!validMemberIds.length) return;
+
+  const { error } = await supabaseClient
+    .from("training_programs")
+    .delete()
+    .in("member_id", validMemberIds)
+    .eq("title", title);
   if (error) {
-    console.warn("Supabase program delete failed:", error.message);
+    console.warn("Supabase linked program delete failed:", error.message);
+  }
+
+  for (const relatedMemberId of validMemberIds) {
+    await deleteLogsForProgram(relatedMemberId, title);
   }
 }
 
@@ -689,12 +775,8 @@ export const supabaseAppRepository: AppRepository = {
     return nextState;
   },
   deleteProgram(state: AppState, programId: string): AppState {
-    const program = state.programs.find((item) => item.id === programId);
     const nextState = localAppRepository.deleteProgram(state, programId);
     void deleteProgram(programId);
-    if (program) {
-      void deleteLogsForProgram(program.memberId, program.title);
-    }
     return nextState;
   },
   appendTrainerMessage(state: AppState, memberId: string, text: string): AppState {
