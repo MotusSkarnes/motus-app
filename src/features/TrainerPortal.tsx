@@ -56,8 +56,47 @@ type FollowUpDetail = {
   note: string;
 };
 
+type WeekdayPlanKey = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+type WeeklyDayPlan = Record<WeekdayPlanKey, string>;
+type WeeklySchedulePlan = {
+  id: string;
+  weekNumber: number;
+  days: WeeklyDayPlan;
+};
+type PeriodSchedulePlan = {
+  id: string;
+  title: string;
+  notes: string;
+  startDate: string;
+  weeks: number;
+  createdAt: string;
+  weeklyPlans: WeeklySchedulePlan[];
+};
+
 const MEMBER_AVATAR_BUCKET = "exercise-images";
 const MEMBER_AVATAR_PREFIX = "member-avatars";
+const PERIOD_PLANS_STORAGE_KEY = "motus.trainer.periodPlansByMemberId";
+const WEEKDAY_PLAN_FIELDS: Array<{ key: WeekdayPlanKey; label: string }> = [
+  { key: "monday", label: "Mandag" },
+  { key: "tuesday", label: "Tirsdag" },
+  { key: "wednesday", label: "Onsdag" },
+  { key: "thursday", label: "Torsdag" },
+  { key: "friday", label: "Fredag" },
+  { key: "saturday", label: "Lørdag" },
+  { key: "sunday", label: "Søndag" },
+];
+
+function createEmptyWeeklyDayPlan(): WeeklyDayPlan {
+  return {
+    monday: "",
+    tuesday: "",
+    wednesday: "",
+    thursday: "",
+    friday: "",
+    saturday: "",
+    sunday: "",
+  };
+}
 
 function encodeEmailForPath(email: string): string {
   const normalized = email.trim().toLowerCase();
@@ -141,6 +180,26 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [quickPlanLevel, setQuickPlanLevel] = useState<"nybegynner" | "middels" | "avansert">("nybegynner");
   const [quickPlanMinutes, setQuickPlanMinutes] = useState<"30" | "45" | "60">("45");
   const [quickPlanStatus, setQuickPlanStatus] = useState<string | null>(null);
+  const [periodPlansByMemberId, setPeriodPlansByMemberId] = useState<Record<string, PeriodSchedulePlan[]>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = window.localStorage.getItem(PERIOD_PLANS_STORAGE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as Record<string, PeriodSchedulePlan[]>;
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  });
+  const [periodPlanTitleDraft, setPeriodPlanTitleDraft] = useState("Periodeplan");
+  const [periodPlanNotesDraft, setPeriodPlanNotesDraft] = useState("");
+  const [periodPlanStartDateDraft, setPeriodPlanStartDateDraft] = useState(() => new Date().toISOString().slice(0, 10));
+  const [periodPlanWeeksDraft, setPeriodPlanWeeksDraft] = useState("4");
+  const [periodWeeklyPlansDraft, setPeriodWeeklyPlansDraft] = useState<WeeklySchedulePlan[]>([
+    { id: uid("period-week"), weekNumber: 1, days: createEmptyWeeklyDayPlan() },
+  ]);
+  const [activePeriodWeekId, setActivePeriodWeekId] = useState<string>(periodWeeklyPlansDraft[0]?.id ?? "");
+  const [periodPlanStatus, setPeriodPlanStatus] = useState<string | null>(null);
   const [favoriteExerciseIds, setFavoriteExerciseIds] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -439,6 +498,10 @@ export function TrainerPortal(props: TrainerPortalProps) {
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [programs, selectedMemberRelatedIdSet]
   );
+  const selectedPeriodPlans = useMemo(
+    () => (selectedMemberId && selectedMemberId !== "__template__" ? periodPlansByMemberId[selectedMemberId] ?? [] : []),
+    [periodPlansByMemberId, selectedMemberId],
+  );
   const templatePrograms = programs.filter((program) => program.memberId === "__template__");
   const selectedLogs = useMemo(() => {
     return logs
@@ -588,6 +651,10 @@ export function TrainerPortal(props: TrainerPortalProps) {
     });
   }, [exercises, programExerciseSearch, programExerciseCategoryFilter, programExerciseGroupFilter, favoriteExerciseIds]);
   const exercisesById = useMemo(() => new Map(exercises.map((exercise) => [exercise.id, exercise])), [exercises]);
+  const activePeriodWeek = useMemo(
+    () => periodWeeklyPlansDraft.find((week) => week.id === activePeriodWeekId) ?? periodWeeklyPlansDraft[0] ?? null,
+    [periodWeeklyPlansDraft, activePeriodWeekId],
+  );
 
   useEffect(() => {
     window.localStorage.setItem("motus.trainer.memberSearch", memberSearch);
@@ -601,6 +668,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
     if (typeof window === "undefined") return;
     window.localStorage.setItem("motus.trainer.favoriteExerciseIds", JSON.stringify(favoriteExerciseIds));
   }, [favoriteExerciseIds]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(PERIOD_PLANS_STORAGE_KEY, JSON.stringify(periodPlansByMemberId));
+  }, [periodPlansByMemberId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -681,6 +753,14 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setWorkoutTypeFilter("all");
     setWorkoutSearchQuery("");
     setWorkoutSortOrder("newest");
+    setPeriodPlanStatus(null);
+    setPeriodPlanTitleDraft("Periodeplan");
+    setPeriodPlanNotesDraft("");
+    setPeriodPlanStartDateDraft(new Date().toISOString().slice(0, 10));
+    setPeriodPlanWeeksDraft("4");
+    const firstWeek = { id: uid("period-week"), weekNumber: 1, days: createEmptyWeeklyDayPlan() };
+    setPeriodWeeklyPlansDraft([firstWeek]);
+    setActivePeriodWeekId(firstWeek.id);
   }, [selectedMemberId]);
 
   function resetMemberEditDraftFromSelected(member: Member | null) {
@@ -892,6 +972,85 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setProgramNotes("Generert forslag. Juster øvelser, sett og notater før lagring.");
     setProgramExercisesDraft(pickedExercises);
     setQuickPlanStatus(`Ukesoppsett klart: ${pickedExercises.length} øvelser lagt inn.`);
+  }
+
+  function handlePeriodPlanWeeksDraftChange(value: string) {
+    setPeriodPlanWeeksDraft(value);
+    const parsed = Math.max(1, Math.min(12, Number(value) || 1));
+    setPeriodWeeklyPlansDraft((prev) => {
+      const normalized = prev.slice(0, parsed).map((week, index) => ({ ...week, weekNumber: index + 1 }));
+      while (normalized.length < parsed) {
+        normalized.push({
+          id: uid("period-week"),
+          weekNumber: normalized.length + 1,
+          days: createEmptyWeeklyDayPlan(),
+        });
+      }
+      return normalized;
+    });
+  }
+
+  function updateActivePeriodWeekDay(day: WeekdayPlanKey, value: string) {
+    if (!activePeriodWeek) return;
+    setPeriodWeeklyPlansDraft((prev) =>
+      prev.map((week) =>
+        week.id === activePeriodWeek.id
+          ? {
+              ...week,
+              days: {
+                ...week.days,
+                [day]: value,
+              },
+            }
+          : week,
+      ),
+    );
+  }
+
+  function savePeriodPlanForSelectedMember() {
+    if (!selectedMemberId || selectedMemberId === "__template__") {
+      setPeriodPlanStatus("Velg en kunde før du lagrer periodeplan.");
+      return;
+    }
+    const title = periodPlanTitleDraft.trim();
+    if (!title) {
+      setPeriodPlanStatus("Legg inn navn på periodeplanen.");
+      return;
+    }
+    const weeks = Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1));
+    const weeklyPlans = periodWeeklyPlansDraft.slice(0, weeks).map((week, index) => ({
+      ...week,
+      weekNumber: index + 1,
+    }));
+    const newPeriodPlan: PeriodSchedulePlan = {
+      id: uid("period-plan"),
+      title,
+      notes: periodPlanNotesDraft.trim(),
+      startDate: periodPlanStartDateDraft || new Date().toISOString().slice(0, 10),
+      weeks,
+      createdAt: formatDateDdMmYyyy(new Date()),
+      weeklyPlans,
+    };
+    setPeriodPlansByMemberId((prev) => {
+      const previous = prev[selectedMemberId] ?? [];
+      return {
+        ...prev,
+        [selectedMemberId]: [newPeriodPlan, ...previous],
+      };
+    });
+    setPeriodPlanStatus("Periodeplan lagret.");
+  }
+
+  function removePeriodPlan(planId: string) {
+    if (!selectedMemberId || selectedMemberId === "__template__") return;
+    setPeriodPlansByMemberId((prev) => {
+      const previous = prev[selectedMemberId] ?? [];
+      return {
+        ...prev,
+        [selectedMemberId]: previous.filter((plan) => plan.id !== planId),
+      };
+    });
+    setPeriodPlanStatus("Periodeplan slettet.");
   }
 
   function saveTemplateFromProgramsTab() {
@@ -2423,6 +2582,103 @@ export function TrainerPortal(props: TrainerPortalProps) {
                               className="w-full !rounded-xl !px-3 !py-2 !text-xs"
                             />
                           ) : null}
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                        <div className="text-sm font-semibold text-slate-700">Periodeplan + ukesplan (per dag)</div>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          <TextInput value={periodPlanTitleDraft} onChange={(e) => setPeriodPlanTitleDraft(e.target.value)} placeholder="Navn (f.eks. Sommerblokk uke 1-4)" />
+                          <TextInput value={periodPlanStartDateDraft} onChange={(e) => setPeriodPlanStartDateDraft(e.target.value)} type="date" />
+                        </div>
+                        <div className="grid gap-2 md:grid-cols-[160px_1fr]">
+                          <TextInput
+                            value={periodPlanWeeksDraft}
+                            onChange={(e) => handlePeriodPlanWeeksDraftChange(e.target.value)}
+                            placeholder="Antall uker"
+                            type="number"
+                          />
+                          <TextArea
+                            value={periodPlanNotesDraft}
+                            onChange={(e) => setPeriodPlanNotesDraft(e.target.value)}
+                            className="min-h-[70px]"
+                            placeholder="Overordnet fokus for perioden"
+                          />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {periodWeeklyPlansDraft.map((week) => (
+                            <button
+                              key={week.id}
+                              type="button"
+                              onClick={() => setActivePeriodWeekId(week.id)}
+                              className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition ${
+                                activePeriodWeek?.id === week.id
+                                  ? "border-transparent text-white"
+                                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                              }`}
+                              style={activePeriodWeek?.id === week.id ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : undefined}
+                            >
+                              Uke {week.weekNumber}
+                            </button>
+                          ))}
+                        </div>
+                        {activePeriodWeek ? (
+                          <div className="grid gap-2 md:grid-cols-2">
+                            {WEEKDAY_PLAN_FIELDS.map((field) => (
+                              <label key={field.key} className="space-y-1">
+                                <span className="text-xs font-medium text-slate-600">{field.label}</span>
+                                <TextArea
+                                  value={activePeriodWeek.days[field.key]}
+                                  onChange={(event) => updateActivePeriodWeekDay(field.key, event.target.value)}
+                                  className="min-h-[58px]"
+                                  placeholder="Plan for dagen"
+                                />
+                              </label>
+                            ))}
+                          </div>
+                        ) : null}
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                          <GradientButton onClick={savePeriodPlanForSelectedMember} className="w-full sm:w-auto">
+                            Lagre periodeplan
+                          </GradientButton>
+                          {periodPlanStatus ? (
+                            <StatusMessage
+                              message={periodPlanStatus}
+                              tone={periodPlanStatus.toLowerCase().includes("lagret") || periodPlanStatus.toLowerCase().includes("slettet") ? "success" : "error"}
+                              className="w-full !rounded-xl !px-3 !py-2 !text-xs"
+                            />
+                          ) : null}
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Lagrede periodeplaner</div>
+                          {selectedPeriodPlans.length === 0 ? (
+                            <div className="rounded-xl border border-dashed bg-slate-50 p-3 text-xs text-slate-500">
+                              Ingen periodeplan lagret for kunden ennå.
+                            </div>
+                          ) : (
+                            selectedPeriodPlans.slice(0, 4).map((plan) => (
+                              <div key={plan.id} className="rounded-xl border bg-slate-50 p-3 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div>
+                                    <div className="font-semibold text-slate-800">{plan.title}</div>
+                                    <div className="mt-0.5">Start: {plan.startDate} · {plan.weeks} uker · Lagret {plan.createdAt}</div>
+                                  </div>
+                                  <OutlineButton className="px-2 py-1 text-xs" onClick={() => removePeriodPlan(plan.id)}>
+                                    Slett
+                                  </OutlineButton>
+                                </div>
+                                <div className="mt-2 grid gap-1 sm:grid-cols-2">
+                                  {plan.weeklyPlans.slice(0, 2).map((week) => (
+                                    <div key={week.id} className="rounded-lg border bg-white px-2 py-1" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                      <div className="font-medium text-slate-700">Uke {week.weekNumber}</div>
+                                      <div className="mt-0.5 text-[11px] text-slate-500">
+                                        {WEEKDAY_PLAN_FIELDS.map((field) => week.days[field.key]).filter((entry) => entry.trim()).length} planlagte dager
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))
+                          )}
                         </div>
                       </div>
                       <TextInput value={programTitle} onChange={(e) => setProgramTitle(e.target.value)} placeholder="Navn på program" />

@@ -43,6 +43,7 @@ type MemberPortalProps = {
 
 const MEMBER_AVATAR_BUCKET = "exercise-images";
 const MEMBER_AVATAR_PREFIX = "member-avatars";
+const STREAK_FREEZE_STORAGE_PREFIX = "motus.member.streakFreeze";
 
 function encodeEmailForPath(email: string): string {
   const normalized = email.trim().toLowerCase();
@@ -74,6 +75,21 @@ function dataUrlToBlob(dataUrl: string): Blob | null {
     return null;
   }
 }
+
+type TreadmillIntervalStep = {
+  label: string;
+  durationSeconds: number;
+  speedHint: string;
+  inclineHint: string;
+  tone: "warmup" | "work" | "rest" | "cooldown";
+};
+
+type TreadmillIntervalPreset = {
+  id: string;
+  name: string;
+  description: string;
+  steps: TreadmillIntervalStep[];
+};
 
 export function MemberPortal(props: MemberPortalProps) {
   const groupWorkoutClassOptions = [
@@ -126,6 +142,60 @@ export function MemberPortal(props: MemberPortalProps) {
   const [achievementCelebration, setAchievementCelebration] = useState<{ id: string; label: string } | null>(null);
   const [liveWorkoutCelebration, setLiveWorkoutCelebration] = useState<WorkoutCelebration | null>(null);
   const [seenUnlockedAchievementIds, setSeenUnlockedAchievementIds] = useState<string[]>([]);
+  const [activeStreakFreezeMonthKey, setActiveStreakFreezeMonthKey] = useState<string | null>(null);
+  const [activeStreakFreezeWeekKey, setActiveStreakFreezeWeekKey] = useState<string | null>(null);
+  const [streakFreezeStatus, setStreakFreezeStatus] = useState<string | null>(null);
+  const treadmillPresets = useMemo<TreadmillIntervalPreset[]>(
+    () => [
+      {
+        id: "classic-4x4",
+        name: "4x4 klassisk",
+        description: "10 min oppvarming, 4x4 min drag med 3 min pause, 5 min nedjogg.",
+        steps: [
+          { label: "Oppvarming", durationSeconds: 10 * 60, speedHint: "6-8 km/t", inclineHint: "1%", tone: "warmup" },
+          { label: "Drag 1 av 4", durationSeconds: 4 * 60, speedHint: "12-15 km/t", inclineHint: "1-2%", tone: "work" },
+          { label: "Pause 1", durationSeconds: 3 * 60, speedHint: "6-7 km/t", inclineHint: "0-1%", tone: "rest" },
+          { label: "Drag 2 av 4", durationSeconds: 4 * 60, speedHint: "12-15 km/t", inclineHint: "1-2%", tone: "work" },
+          { label: "Pause 2", durationSeconds: 3 * 60, speedHint: "6-7 km/t", inclineHint: "0-1%", tone: "rest" },
+          { label: "Drag 3 av 4", durationSeconds: 4 * 60, speedHint: "12-15 km/t", inclineHint: "1-2%", tone: "work" },
+          { label: "Pause 3", durationSeconds: 3 * 60, speedHint: "6-7 km/t", inclineHint: "0-1%", tone: "rest" },
+          { label: "Drag 4 av 4", durationSeconds: 4 * 60, speedHint: "12-15 km/t", inclineHint: "1-2%", tone: "work" },
+          { label: "Nedjogg", durationSeconds: 5 * 60, speedHint: "5-6 km/t", inclineHint: "0%", tone: "cooldown" },
+        ],
+      },
+      {
+        id: "tempo-ladder",
+        name: "Tempo-ladder 30",
+        description: "Progressiv fart med korte pauser. Fin for terskelarbeid.",
+        steps: [
+          { label: "Oppvarming", durationSeconds: 8 * 60, speedHint: "6-8 km/t", inclineHint: "1%", tone: "warmup" },
+          { label: "Drag 1", durationSeconds: 3 * 60, speedHint: "10-11 km/t", inclineHint: "1%", tone: "work" },
+          { label: "Pause 1", durationSeconds: 90, speedHint: "6-7 km/t", inclineHint: "0%", tone: "rest" },
+          { label: "Drag 2", durationSeconds: 4 * 60, speedHint: "11-12 km/t", inclineHint: "1%", tone: "work" },
+          { label: "Pause 2", durationSeconds: 90, speedHint: "6-7 km/t", inclineHint: "0%", tone: "rest" },
+          { label: "Drag 3", durationSeconds: 5 * 60, speedHint: "12-13 km/t", inclineHint: "1%", tone: "work" },
+          { label: "Nedjogg", durationSeconds: 5 * 60, speedHint: "5-6 km/t", inclineHint: "0%", tone: "cooldown" },
+        ],
+      },
+      {
+        id: "short-hiit",
+        name: "Kort HIIT 20",
+        description: "Kort og effektiv intervalløkt med 10 raske drag.",
+        steps: [
+          { label: "Oppvarming", durationSeconds: 6 * 60, speedHint: "6-8 km/t", inclineHint: "1%", tone: "warmup" },
+          { label: "10x (45 sek på / 75 sek rolig)", durationSeconds: 20 * 60, speedHint: "På: 13-16 / rolig: 6-7", inclineHint: "1%", tone: "work" },
+          { label: "Nedjogg", durationSeconds: 4 * 60, speedHint: "5-6 km/t", inclineHint: "0%", tone: "cooldown" },
+        ],
+      },
+    ],
+    [],
+  );
+  const [selectedTreadmillPresetId, setSelectedTreadmillPresetId] = useState("classic-4x4");
+  const [isTreadmillRunning, setIsTreadmillRunning] = useState(false);
+  const [isTreadmillPaused, setIsTreadmillPaused] = useState(false);
+  const [treadmillStepIndex, setTreadmillStepIndex] = useState(0);
+  const [treadmillRemainingSeconds, setTreadmillRemainingSeconds] = useState(0);
+  const [treadmillStatus, setTreadmillStatus] = useState<string | null>(null);
   const hasInitializedAchievementTracking = useRef(false);
   const workoutWeightInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
@@ -227,6 +297,22 @@ export function MemberPortal(props: MemberPortalProps) {
     return exercises.filter((exercise) => exercise.id !== sourceExercise.id && exercise.category === sourceExercise.category);
   }, [activeWorkoutProgram, currentWorkoutGroup, exercises]);
   const now = new Date();
+  const selectedTreadmillPreset = treadmillPresets.find((preset) => preset.id === selectedTreadmillPresetId) ?? treadmillPresets[0];
+  const currentTreadmillStep = selectedTreadmillPreset?.steps[treadmillStepIndex] ?? null;
+  const treadmillTotalSeconds = useMemo(
+    () => selectedTreadmillPreset?.steps.reduce((sum, step) => sum + step.durationSeconds, 0) ?? 0,
+    [selectedTreadmillPreset],
+  );
+  const treadmillElapsedSeconds = useMemo(() => {
+    if (!selectedTreadmillPreset) return 0;
+    const completed = selectedTreadmillPreset.steps
+      .slice(0, treadmillStepIndex)
+      .reduce((sum, step) => sum + step.durationSeconds, 0);
+    const currentStepDuration = currentTreadmillStep?.durationSeconds ?? 0;
+    const currentProgress = Math.max(0, currentStepDuration - treadmillRemainingSeconds);
+    return Math.min(treadmillTotalSeconds, completed + currentProgress);
+  }, [selectedTreadmillPreset, treadmillStepIndex, currentTreadmillStep, treadmillRemainingSeconds, treadmillTotalSeconds]);
+  const treadmillProgressPercent = treadmillTotalSeconds > 0 ? Math.min(100, Math.round((treadmillElapsedSeconds / treadmillTotalSeconds) * 100)) : 0;
 
   function normalizeBirthDateToDdMmYyyy(value: string): string {
     return normalizeBirthDate(value);
@@ -382,8 +468,25 @@ export function MemberPortal(props: MemberPortalProps) {
     const week = 1 + Math.round((d.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000));
     return `${d.getFullYear()}-${String(week).padStart(2, "0")}`;
   }
+  function getPreviousWeekKey(weekKey: string): string {
+    const [yearPart, weekPart] = weekKey.split("-");
+    const year = Number(yearPart);
+    const week = Number(weekPart);
+    if (!Number.isFinite(year) || !Number.isFinite(week) || week <= 0) return weekKey;
+    const referenceDate = new Date(year, 0, 4 + (week - 1) * 7);
+    referenceDate.setDate(referenceDate.getDate() - 7);
+    return getWeekKey(referenceDate);
+  }
+  function getMonthKey(date: Date): string {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  }
+  const streakFreezeStorageKey = useMemo(() => {
+    const uniquePart = (normalizedCurrentUserEmail || activeMemberId || "default").trim().toLowerCase();
+    return `${STREAK_FREEZE_STORAGE_PREFIX}.${uniquePart}`;
+  }, [normalizedCurrentUserEmail, activeMemberId]);
 
   const completedLogs = memberLogs.filter((log) => log.status === "Fullført");
+  const latestCompletedLog = completedLogs[0] ?? null;
   const completedLogDates = completedLogs.map((log) => parseLogDate(log.date)).filter((date): date is Date => Boolean(date));
   const uniqueTrainingDays = new Set(completedLogDates.map((date) => date.toDateString())).size;
   const estimatedSessionsThisMonth = completedLogDates.filter((date) => date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()).length;
@@ -402,47 +505,81 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     return streak;
   }, [trainingWeekKeys]);
+  const currentWeekKey = getWeekKey(now);
+  const previousWeekKey = getPreviousWeekKey(currentWeekKey);
+  const currentMonthKey = getMonthKey(now);
+  const hasWorkoutThisWeek = trainingWeekKeys.includes(currentWeekKey);
+  const hadWorkoutLastWeek = trainingWeekKeys.includes(previousWeekKey);
+  const hasUsedFreezeThisMonth = activeStreakFreezeMonthKey === currentMonthKey;
+  const freezeActiveThisWeek = hasUsedFreezeThisMonth && activeStreakFreezeWeekKey === currentWeekKey;
+  const canUseStreakFreeze = !hasWorkoutThisWeek && hadWorkoutLastWeek && !hasUsedFreezeThisMonth;
+  const streakWeeksWithFreeze = freezeActiveThisWeek ? streakWeeks + 1 : streakWeeks;
+  const achievementMaxLevel = 10;
+  const achievedLevel = useMemo(() => {
+    let highestUnlockedLevel = 0;
+    for (let level = 1; level <= achievementMaxLevel; level += 1) {
+      const sessionsTarget = 10 + (level - 1) * 5;
+      const streakTarget = 3 + (level - 1);
+      const trainingDaysTarget = 5 + (level - 1) * 2;
+      const firstSessionTarget = level;
+      const isLevelUnlocked =
+        completedLogs.length >= sessionsTarget &&
+        streakWeeksWithFreeze >= streakTarget &&
+        uniqueTrainingDays >= trainingDaysTarget &&
+        completedLogs.length >= firstSessionTarget;
+      if (!isLevelUnlocked) break;
+      highestUnlockedLevel = level;
+    }
+    return highestUnlockedLevel;
+  }, [completedLogs.length, streakWeeksWithFreeze, uniqueTrainingDays]);
+  const achievementLevel = achievedLevel >= achievementMaxLevel ? achievementMaxLevel : achievedLevel + 1;
+  const hasCompletedAllAchievementLevels = achievedLevel >= achievementMaxLevel;
   const achievements = useMemo(() => {
+    const firstSessionTarget = achievementLevel;
+    const streakTarget = 3 + (achievementLevel - 1);
+    const sessionsTarget = 10 + (achievementLevel - 1) * 5;
+    const trainingDaysTarget = 5 + (achievementLevel - 1) * 2;
+    const levelHint = `(Nivå ${achievementLevel})`;
     const items: Array<{ id: string; label: string; hint: string; unlocked: boolean; current: number; target: number; icon: string }> = [
       {
-        id: "first-session",
-        label: "Første økt",
-        hint: "Logg minst 1 fullført økt",
-        unlocked: completedLogs.length >= 1,
+        id: `first-session-level-${achievementLevel}`,
+        label: "Økter logget",
+        hint: `${levelHint} Logg minst ${firstSessionTarget} fullførte økter`,
+        unlocked: completedLogs.length >= firstSessionTarget,
         current: completedLogs.length,
-        target: 1,
+        target: firstSessionTarget,
         icon: "🚀",
       },
       {
-        id: "streak-3",
-        label: "3-ukers streak",
-        hint: "Hold flyt i 3 uker",
-        unlocked: streakWeeks >= 3,
-        current: streakWeeks,
-        target: 3,
+        id: `streak-level-${achievementLevel}`,
+        label: "Streak",
+        hint: `${levelHint} Hold flyt i ${streakTarget} uker`,
+        unlocked: streakWeeksWithFreeze >= streakTarget,
+        current: streakWeeksWithFreeze,
+        target: streakTarget,
         icon: "🔥",
       },
       {
-        id: "ten-sessions",
-        label: "10 økter",
-        hint: "Fullfør totalt 10 økter",
-        unlocked: completedLogs.length >= 10,
+        id: `sessions-level-${achievementLevel}`,
+        label: "Total økter",
+        hint: `${levelHint} Fullfør totalt ${sessionsTarget} økter`,
+        unlocked: completedLogs.length >= sessionsTarget,
         current: completedLogs.length,
-        target: 10,
+        target: sessionsTarget,
         icon: "💪",
       },
       {
-        id: "five-days",
-        label: "5 treningsdager",
-        hint: "Tren på 5 ulike dager",
-        unlocked: uniqueTrainingDays >= 5,
+        id: `days-level-${achievementLevel}`,
+        label: "Treningsdager",
+        hint: `${levelHint} Tren på ${trainingDaysTarget} ulike dager`,
+        unlocked: uniqueTrainingDays >= trainingDaysTarget,
         current: uniqueTrainingDays,
-        target: 5,
+        target: trainingDaysTarget,
         icon: "📅",
       },
     ];
     return items;
-  }, [completedLogs.length, streakWeeks, uniqueTrainingDays]);
+  }, [achievementLevel, completedLogs.length, streakWeeksWithFreeze, uniqueTrainingDays]);
 
   const calendarDayLoad = useMemo(() => {
     const byDay = new Map<number, number>();
@@ -509,11 +646,76 @@ export function MemberPortal(props: MemberPortalProps) {
       .sort((a, b) => b.score - a.score)
       .slice(0, 6);
   }, [completedLogs]);
+  const progressionSuggestions = useMemo(() => {
+    if (!latestCompletedLog?.results?.length) return [] as Array<{ exerciseName: string; recommendation: string; reason: string }>;
+    const previousLogs = completedLogs.filter((log) => log.id !== latestCompletedLog.id);
+    function getBestSetFromResults(results: WorkoutLog["results"] | undefined, exerciseName: string): { weight: number; reps: number } | null {
+      if (!results?.length) return null;
+      let best: { weight: number; reps: number } | null = null;
+      results.forEach((row) => {
+        if (!row.completed || row.exerciseName !== exerciseName) return;
+        if (row.exerciseCategory === "Kondisjon") return;
+        const weight = Number(row.performedWeight) || 0;
+        const reps = Number(row.performedReps) || 0;
+        if (weight <= 0 || reps <= 0) return;
+        if (!best || weight > best.weight || (weight === best.weight && reps > best.reps)) best = { weight, reps };
+      });
+      return best;
+    }
+    const exerciseNames = Array.from(
+      new Set(
+        latestCompletedLog.results
+          .filter((row) => row.completed && row.exerciseCategory !== "Kondisjon")
+          .map((row) => row.exerciseName),
+      ),
+    );
+    return exerciseNames
+      .map((exerciseName) => {
+        const latestBest = getBestSetFromResults(latestCompletedLog.results, exerciseName);
+        if (!latestBest) return null;
+        let previousBest: { weight: number; reps: number } | null = null;
+        previousLogs.forEach((log) => {
+          const candidate = getBestSetFromResults(log.results, exerciseName);
+          if (!candidate) return;
+          if (!previousBest || candidate.weight > previousBest.weight || (candidate.weight === previousBest.weight && candidate.reps > previousBest.reps)) {
+            previousBest = candidate;
+          }
+        });
+        if (!previousBest) {
+          return {
+            exerciseName,
+            recommendation: `Neste gang: prøv ${Number((latestBest.weight + 2.5).toFixed(1))} kg`,
+            reason: "Første logg for denne øvelsen - fin base å bygge videre på.",
+          };
+        }
+        if (latestBest.weight > previousBest.weight || (latestBest.weight === previousBest.weight && latestBest.reps >= 10)) {
+          return {
+            exerciseName,
+            recommendation: `Neste gang: prøv ${Number((latestBest.weight + 2.5).toFixed(1))} kg`,
+            reason: "Du løfter tyngre/sterkere enn før - klar for liten progresjon.",
+          };
+        }
+        const targetReps = Math.max(10, previousBest.reps);
+        return {
+          exerciseName,
+          recommendation: `Neste gang: hold ${latestBest.weight} kg og jobb mot ${targetReps} reps`,
+          reason: "Bygg mer reps på samme vekt før neste hopp.",
+        };
+      })
+      .filter((item): item is { exerciseName: string; recommendation: string; reason: string } => Boolean(item))
+      .slice(0, 5);
+  }, [completedLogs, latestCompletedLog]);
   const activeCelebration = liveWorkoutCelebration ?? workoutCelebration;
   const shouldShowCelebration = Boolean(activeCelebration && activeCelebration.memberId === activeMemberId);
 
   function getProfileStorageKey(memberId: string): string {
     return `motus.member.profile.${memberId}`;
+  }
+  function formatSeconds(seconds: number): string {
+    const safe = Math.max(0, Math.floor(seconds));
+    const minutesPart = String(Math.floor(safe / 60)).padStart(2, "0");
+    const secondsPart = String(safe % 60).padStart(2, "0");
+    return `${minutesPart}:${secondsPart}`;
   }
 
   function getWeekStart(date: Date): Date {
@@ -598,6 +800,53 @@ export function MemberPortal(props: MemberPortalProps) {
     }, 8000);
     return () => window.clearTimeout(timer);
   }, [profileSaveInfo]);
+  useEffect(() => {
+    setStreakFreezeStatus(null);
+    if (typeof window === "undefined") {
+      setActiveStreakFreezeMonthKey(null);
+      setActiveStreakFreezeWeekKey(null);
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(streakFreezeStorageKey);
+      if (!raw) {
+        setActiveStreakFreezeMonthKey(null);
+        setActiveStreakFreezeWeekKey(null);
+        return;
+      }
+      const parsed = JSON.parse(raw) as { monthKey?: string; weekKey?: string };
+      setActiveStreakFreezeMonthKey(parsed.monthKey ?? null);
+      setActiveStreakFreezeWeekKey(parsed.weekKey ?? null);
+    } catch {
+      setActiveStreakFreezeMonthKey(null);
+      setActiveStreakFreezeWeekKey(null);
+    }
+  }, [streakFreezeStorageKey]);
+  useEffect(() => {
+    if (!selectedTreadmillPreset || isTreadmillRunning) return;
+    const firstStep = selectedTreadmillPreset.steps[0] ?? null;
+    setTreadmillStepIndex(0);
+    setTreadmillRemainingSeconds(firstStep?.durationSeconds ?? 0);
+  }, [selectedTreadmillPresetId, selectedTreadmillPreset, isTreadmillRunning]);
+  useEffect(() => {
+    if (!isTreadmillRunning || isTreadmillPaused || !selectedTreadmillPreset) return;
+    const timer = window.setInterval(() => {
+      setTreadmillRemainingSeconds((previous) => {
+        if (previous > 1) return previous - 1;
+        const nextIndex = treadmillStepIndex + 1;
+        const nextStep = selectedTreadmillPreset.steps[nextIndex];
+        if (!nextStep) {
+          setIsTreadmillRunning(false);
+          setIsTreadmillPaused(false);
+          setTreadmillStatus("Intervalløkten er fullført. Sterkt jobba!");
+          return 0;
+        }
+        setTreadmillStepIndex(nextIndex);
+        return nextStep.durationSeconds;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [isTreadmillRunning, isTreadmillPaused, selectedTreadmillPreset, treadmillStepIndex]);
 
   useEffect(() => {
     const unlockedIds = achievements.filter((achievement) => achievement.unlocked).map((achievement) => achievement.id);
@@ -621,6 +870,39 @@ export function MemberPortal(props: MemberPortalProps) {
     if (goalMetricDraft === "dailySteps") setProfileDailyStepsTarget(value);
     if (goalMetricDraft === "targetWeight") setProfileTargetWeight(value);
     setGoalMetricValueDraft("");
+  }
+  function activateStreakFreeze() {
+    if (!canUseStreakFreeze || typeof window === "undefined") return;
+    const payload = { monthKey: currentMonthKey, weekKey: currentWeekKey, usedAt: new Date().toISOString() };
+    try {
+      window.localStorage.setItem(streakFreezeStorageKey, JSON.stringify(payload));
+      setActiveStreakFreezeMonthKey(payload.monthKey);
+      setActiveStreakFreezeWeekKey(payload.weekKey);
+      setStreakFreezeStatus("Comeback-pass aktivert. Streaken holdes levende denne uken.");
+    } catch {
+      setStreakFreezeStatus("Kunne ikke aktivere comeback-pass akkurat nå.");
+    }
+  }
+  function handleStartTreadmillWorkout() {
+    if (!selectedTreadmillPreset) return;
+    const firstStep = selectedTreadmillPreset.steps[0] ?? null;
+    setTreadmillStatus(null);
+    setIsTreadmillPaused(false);
+    setTreadmillStepIndex(0);
+    setTreadmillRemainingSeconds(firstStep?.durationSeconds ?? 0);
+    setIsTreadmillRunning(true);
+  }
+  function handlePauseResumeTreadmillWorkout() {
+    if (!isTreadmillRunning) return;
+    setIsTreadmillPaused((previous) => !previous);
+  }
+  function handleResetTreadmillWorkout() {
+    if (!selectedTreadmillPreset) return;
+    setIsTreadmillRunning(false);
+    setIsTreadmillPaused(false);
+    setTreadmillStepIndex(0);
+    setTreadmillRemainingSeconds(selectedTreadmillPreset.steps[0]?.durationSeconds ?? 0);
+    setTreadmillStatus("Intervalløkten er nullstilt.");
   }
 
   async function shareMonthlyProgressSummary() {
@@ -980,7 +1262,6 @@ export function MemberPortal(props: MemberPortalProps) {
       action: "progress" as const,
     };
   }, [memberPrograms.length, sessionsTargetNumber, sessionsRemaining, nextProgram]);
-  const latestCompletedLog = memberLogs.find((log) => log.status === "Fullført") ?? null;
   const customerStatusLabel = (() => {
     const isPtCustomer = viewedMember?.customerType === "PT-kunde";
     const isPremiumCustomer = viewedMember?.membershipType === "Premium";
@@ -1567,6 +1848,62 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+                <div className="font-semibold">🏃 Mølleintervaller med nedtelling</div>
+                <div className="mt-1 text-xs text-slate-500">Velg intervallprogram og trykk start. Appen teller ned hele økta automatisk.</div>
+                <div className="mt-4 rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <SelectBox
+                    value={selectedTreadmillPresetId}
+                    onChange={setSelectedTreadmillPresetId}
+                    options={treadmillPresets.map((preset) => ({
+                      value: preset.id,
+                      label: preset.name,
+                    }))}
+                  />
+                  <div className="text-xs text-slate-500">{selectedTreadmillPreset?.description}</div>
+                  <div className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-sm font-semibold text-slate-800">
+                        {currentTreadmillStep ? currentTreadmillStep.label : "Klar"}
+                      </div>
+                      <div className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
+                        Del {Math.min(treadmillStepIndex + 1, selectedTreadmillPreset?.steps.length ?? 1)} / {selectedTreadmillPreset?.steps.length ?? 1}
+                      </div>
+                    </div>
+                    <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{formatSeconds(treadmillRemainingSeconds)}</div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      Fart: {currentTreadmillStep?.speedHint || "-"} · Incline: {currentTreadmillStep?.inclineHint || "-"}
+                    </div>
+                    <div className="mt-3 h-2 rounded-full bg-slate-200">
+                      <div
+                        className="h-2 rounded-full"
+                        style={{ width: `${treadmillProgressPercent}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                      />
+                    </div>
+                    <div className="mt-1 text-[11px] text-slate-500">
+                      Total tid: {formatSeconds(treadmillElapsedSeconds)} / {formatSeconds(treadmillTotalSeconds)}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <GradientButton onClick={handleStartTreadmillWorkout} className="w-full sm:w-auto">
+                      Start økt
+                    </GradientButton>
+                    <OutlineButton onClick={handlePauseResumeTreadmillWorkout} disabled={!isTreadmillRunning} className="w-full sm:w-auto">
+                      {isTreadmillPaused ? "Fortsett" : "Pause"}
+                    </OutlineButton>
+                    <OutlineButton onClick={handleResetTreadmillWorkout} className="w-full sm:w-auto">
+                      Nullstill
+                    </OutlineButton>
+                  </div>
+                  {treadmillStatus ? (
+                    <StatusMessage
+                      message={treadmillStatus}
+                      tone={treadmillStatus.toLowerCase().includes("fullført") ? "success" : "info"}
+                      className="!rounded-xl !px-3 !py-2 !text-xs"
+                    />
+                  ) : null}
+                </div>
+              </div>
+              <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="font-semibold">🧾 Logg gruppetrening</div>
@@ -1962,7 +2299,32 @@ export function MemberPortal(props: MemberPortalProps) {
               </div>
               <div className="mt-4 rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-sm font-semibold text-slate-700">🏆 Streaks + achievements</div>
-                <div className="mt-1 text-xs text-slate-500">Små milepæler som holder motivasjonen oppe.</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  Små milepæler som holder motivasjonen oppe. Nivå {achievementLevel} av {achievementMaxLevel}
+                  {hasCompletedAllAchievementLevels ? " · Maksnivå nådd ✨" : ""}
+                </div>
+                <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-sm font-semibold text-slate-700">Streak denne perioden: {streakWeeksWithFreeze} uker</div>
+                    <div className="text-xs text-slate-500">Comeback-pass: {hasUsedFreezeThisMonth ? "Brukt denne måneden" : "Tilgjengelig"}</div>
+                  </div>
+                  <div className="mt-2 text-xs text-slate-500">
+                    Én gang per måned kan du redde streaken hvis du hopper over en uke.
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <OutlineButton onClick={activateStreakFreeze} disabled={!canUseStreakFreeze}>
+                      Aktiver comeback-pass
+                    </OutlineButton>
+                    {freezeActiveThisWeek ? <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Aktiv denne uken</span> : null}
+                  </div>
+                  {streakFreezeStatus ? (
+                    <StatusMessage
+                      message={streakFreezeStatus}
+                      tone={streakFreezeStatus.toLowerCase().includes("kunne ikke") ? "error" : "success"}
+                      className="mt-3 !rounded-xl !px-3 !py-2 !text-xs"
+                    />
+                  ) : null}
+                </div>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                   {achievements.map((achievement) => (
                     <div key={achievement.id} className={`rounded-xl border px-3 py-2 text-sm ${achievement.unlocked ? "border-emerald-300 bg-emerald-50/80 text-emerald-900" : "border-slate-200 bg-white text-slate-600"}`}>
@@ -1998,6 +2360,24 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div key={record.name} className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="font-medium">{record.name}</div>
                       <div className="mt-1 text-sm text-slate-500">Beste registrerte: {record.weight} kg × {record.reps}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-4 rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-sm font-semibold text-slate-700">🧠 Smart progresjonsforslag</div>
+                <div className="mt-1 text-xs text-slate-500">Basert på siste økt: hva du bør gjøre neste gang per øvelse.</div>
+                <div className="mt-4 space-y-3">
+                  {progressionSuggestions.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">
+                      Logg en styrkeøkt med settdata for å få smarte forslag her.
+                    </div>
+                  ) : null}
+                  {progressionSuggestions.map((suggestion) => (
+                    <div key={suggestion.exerciseName} className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="font-medium text-slate-800">{suggestion.exerciseName}</div>
+                      <div className="mt-1 text-sm font-semibold text-slate-700">{suggestion.recommendation}</div>
+                      <div className="mt-1 text-xs text-slate-500">{suggestion.reason}</div>
                     </div>
                   ))}
                 </div>
