@@ -3,7 +3,7 @@ import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
 import { localAppRepository, type CreateMemberInput, type FinishWorkoutInput, type LogGroupWorkoutInput, type ReplaceWorkoutExerciseGroupInput, type SaveExerciseInput, type SaveProgramInput, type UpdateMemberInput } from "../services/appRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
-import { fetchExercisesFromSupabase, fetchHydratedMemberData, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository, type HydratedTrainerDebug } from "../services/supabaseRepository";
+import { fetchExercisesFromSupabase, fetchHydratedMemberData, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
 import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, inviteTrainerByEmail, refreshSupabaseSessionUser, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult, type InviteTrainerResult } from "../services/supabaseAuth";
 import type { AppState, Exercise, MemberTab, TrainerTab } from "./types";
 
@@ -132,7 +132,6 @@ export function useAppState() {
   const [trainerTab, setTrainerTab] = useState<TrainerTab>("dashboard");
   const [memberTab, setMemberTab] = useState<MemberTab>("overview");
   const [isLocalDemoSession, setIsLocalDemoSession] = useState(false);
-  const [trainerHydrationDebug, setTrainerHydrationDebug] = useState<HydratedTrainerDebug | null>(null);
 
   function ensureMemberRecordForUser(state: AppState, user: AuthUser, preferredMemberId?: string): AppState {
     if (user.role !== "member") return state;
@@ -255,41 +254,8 @@ export function useAppState() {
 
       const isTrainerSession = sessionRole === "trainer";
       const isMemberLikeSession = Boolean(sessionUser) && !isTrainerSession;
-      if (isTrainerSession && !ownerUserId) {
-        setTrainerHydrationDebug({
-          status: "invalid_payload",
-          message: "Trainer session mangler ownerUserId (JWT sub er tom).",
-          ownerUserId: "",
-          ownedMemberIds: [],
-          memberIdsFromMembersQuery: [],
-          logMemberIdsByOwnerQuery: [],
-          logMemberIdsByMemberQuery: [],
-          logIdsByOwnerQuery: [],
-          logIdsByMemberQuery: [],
-          mergedLogIds: [],
-          counts: {
-            members: 0,
-            programsByOwner: 0,
-            programsByMember: 0,
-            logsByOwner: 0,
-            logsByMember: 0,
-            mergedLogs: 0,
-            messagesByOwner: 0,
-            messagesByMember: 0,
-            mergedMessages: 0,
-          },
-          generatedAt: new Date().toISOString(),
-        });
-      }
       const hydratedTrainer = isTrainerSession && ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
       const hydratedMember = isMemberLikeSession ? await fetchHydratedMemberData() : null;
-      if (isTrainerSession) {
-        if (ownerUserId) {
-          setTrainerHydrationDebug(hydratedTrainer?.debug ?? null);
-        }
-      } else {
-        setTrainerHydrationDebug(null);
-      }
       const remoteMembers = hydratedTrainer?.members ?? hydratedMember?.members ?? (await fetchMembersFromSupabase());
       const remoteMessages = hydratedTrainer?.messages ?? hydratedMember?.messages ?? (await fetchMessagesFromSupabase());
       const remotePrograms = hydratedTrainer?.programs ?? hydratedMember?.programs ?? (await fetchProgramsFromSupabase());
@@ -945,7 +911,6 @@ export function useAppState() {
     loginWithEmailOtpCode,
     showQuickLogin: isDemoMode,
     isLocalDemoSession,
-    trainerHydrationDebug,
     handleLogout,
     resetAllData,
     addMember,

@@ -4,7 +4,6 @@ import { MOTUS } from "../app/data";
 import type { AppState, TrainerTab } from "../app/types";
 import { Card } from "../app/ui";
 import { TrainerPortal } from "./TrainerPortal";
-import type { HydratedTrainerDebug } from "../services/supabaseRepository";
 
 type TrainerAlert = {
   id: string;
@@ -42,7 +41,6 @@ type TrainerLayoutProps = {
   trainerMessageAlerts: TrainerAlert[];
   handleTrainerBellToggle: () => void;
   isLocalDemoSession: boolean;
-  trainerHydrationDebug: HydratedTrainerDebug | null;
 };
 
 const trainerMenuItems: Array<{ key: TrainerTab; label: string; icon: LucideIcon }> = [
@@ -96,7 +94,6 @@ export function TrainerLayout({
   trainerMessageAlerts,
   handleTrainerBellToggle,
   isLocalDemoSession,
-  trainerHydrationDebug,
 }: TrainerLayoutProps) {
   const inactiveMembersCount = appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length;
   const missingInvitesCount = appState.members.filter((member) => !member.invitedAt).length;
@@ -128,7 +125,6 @@ export function TrainerLayout({
     memberAvatarById,
     setMemberAvatarUrlForMember,
     isLocalDemoSession,
-    trainerHydrationDebug,
   };
 
   return (
