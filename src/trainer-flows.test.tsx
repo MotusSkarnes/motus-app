@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
+import { TrainerPortal } from "./features/TrainerPortal";
+import type { Exercise, Member, WorkoutLog } from "./app/types";
 
 vi.mock("./services/supabaseClient", () => ({
   isSupabaseConfigured: false,
@@ -64,5 +66,92 @@ describe("Trainer flows", () => {
 
     await user.click(screen.getByRole("button", { name: "Vis inaktive" }));
     expect(screen.getByRole("button", { name: "Skjul inaktive" })).toBeInTheDocument();
+  });
+
+  it("shows workouts from legacy related member ids on customer workouts tab", async () => {
+    const user = userEvent.setup();
+    const members: Member[] = [
+      {
+        id: "m2",
+        name: "Emma Hansen",
+        email: "emma@motus.no",
+        isActive: true,
+        invitedAt: "",
+        phone: "",
+        birthDate: "",
+        weight: "",
+        height: "",
+        level: "Nybegynner",
+        membershipType: "Standard",
+        customerType: "Oppfølging",
+        daysSinceActivity: "0",
+        goal: "",
+        focus: "",
+        personalGoals: "",
+        injuries: "",
+        coachNotes: "",
+      },
+      {
+        id: "m1",
+        name: "Emma Hansen",
+        email: "legacy+emma@motus.no",
+        isActive: false,
+        invitedAt: "",
+        phone: "",
+        birthDate: "",
+        weight: "",
+        height: "",
+        level: "Nybegynner",
+        membershipType: "Standard",
+        customerType: "Oppfølging",
+        daysSinceActivity: "0",
+        goal: "",
+        focus: "",
+        personalGoals: "",
+        injuries: "",
+        coachNotes: "",
+      },
+    ];
+    const logs: WorkoutLog[] = [
+      {
+        id: "legacy-log-1",
+        memberId: "m1",
+        programTitle: "Legacy styrkeøkt",
+        date: "23.04.2026",
+        status: "Fullført",
+        note: "Fra legacy member-id",
+      },
+    ];
+
+    render(
+      <TrainerPortal
+        members={members}
+        programs={[]}
+        logs={logs}
+        messages={[]}
+        exercises={[] as Exercise[]}
+        selectedMemberId="m2"
+        setSelectedMemberId={() => {}}
+        trainerTab="customers"
+        setTrainerTab={() => {}}
+        addMember={() => {}}
+        deactivateMember={() => {}}
+        deleteMember={() => {}}
+        updateMember={() => {}}
+        markMemberInvited={() => {}}
+        inviteMember={async () => ({ ok: true, message: "ok" })}
+        inviteTrainer={async () => ({ ok: true, message: "ok" })}
+        restoreMemberByEmail={async () => ({ ok: true, message: "ok" })}
+        restoreMissingTestData={async () => ({ ok: true, message: "ok" })}
+        restoreOriginalExerciseBank={async () => ({ ok: true, message: "ok" })}
+        saveProgramForMember={() => {}}
+        deleteProgramById={() => {}}
+        sendTrainerMessage={() => {}}
+        saveExercise={() => {}}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Økter" }));
+    expect(screen.getAllByText("Legacy styrkeøkt").length).toBeGreaterThan(0);
   });
 });
