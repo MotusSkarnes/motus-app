@@ -108,8 +108,20 @@ export function MemberPortal(props: MemberPortalProps) {
         .map((member) => member.id);
       if (idsFromEditable.length) return idsFromEditable;
     }
+    if (currentUserRole === "member") {
+      // Under strict RLS, member users may not be able to read the full members table.
+      // In that case, derive visible member IDs from data rows the member can read.
+      const idsFromVisibleData = Array.from(
+        new Set(
+          [...programs.map((program) => program.memberId), ...logs.map((log) => log.memberId), ...messages.map((message) => message.memberId)]
+            .map((id) => id.trim())
+            .filter(Boolean)
+        )
+      );
+      if (idsFromVisibleData.length) return idsFromVisibleData;
+    }
     return [activeMemberId];
-  }, [members, currentUserRole, normalizedCurrentUserEmail, editableMember, activeMemberId]);
+  }, [members, currentUserRole, normalizedCurrentUserEmail, editableMember, activeMemberId, programs, logs, messages]);
   const relatedMemberIdSet = useMemo(() => new Set(relatedMemberIds), [relatedMemberIds]);
   const memberPrograms = programs.filter((program) => relatedMemberIdSet.has(program.memberId));
   const memberLogs = logs.filter((log) => relatedMemberIdSet.has(log.memberId));
