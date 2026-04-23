@@ -41,8 +41,6 @@ type MemberPortalProps = {
   dismissWorkoutCelebration: () => void;
 };
 
-const MEMBER_PROFILE_OVERRIDES_KEY = "motus.member.profileOverridesByEmail";
-
 export function MemberPortal(props: MemberPortalProps) {
   const groupWorkoutClassOptions = [
     "Smilepuls",
@@ -698,28 +696,6 @@ export function MemberPortal(props: MemberPortalProps) {
       currentDailySteps: profileCurrentDailySteps.trim(),
     };
     window.localStorage.setItem(getProfileStorageKey(editableMember.id), JSON.stringify(next));
-    try {
-      const existingRaw = window.localStorage.getItem(MEMBER_PROFILE_OVERRIDES_KEY);
-      const existing = existingRaw ? (JSON.parse(existingRaw) as Record<string, unknown>) : {};
-      const safeExisting = existing && typeof existing === "object" ? existing : {};
-      const overrideEmail = (normalizedCurrentUserEmail || normalizedEmail || fallbackEmail).trim().toLowerCase();
-      if (overrideEmail && overrideEmail.includes("@")) {
-        const nextOverrides = {
-          ...safeExisting,
-          [overrideEmail]: {
-            name: memberNameDraft.trim(),
-            phone: memberPhoneDraft.trim(),
-            birthDate: normalizeBirthDateToDdMmYyyy(memberBirthDateDraft),
-            goal: memberGoalDraft.trim(),
-            focus: memberFocusDraft.trim(),
-            injuries: memberInjuriesDraft.trim(),
-          },
-        };
-        window.localStorage.setItem(MEMBER_PROFILE_OVERRIDES_KEY, JSON.stringify(nextOverrides));
-      }
-    } catch {
-      // Ignore local override cache write errors.
-    }
     const targetMemberIds = Array.from(
       new Set(
         members
