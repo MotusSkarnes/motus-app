@@ -2877,9 +2877,22 @@ export function TrainerPortal(props: TrainerPortalProps) {
                               className="rounded-2xl border bg-white p-3 cursor-grab active:cursor-grabbing"
                             >
                               <div className="flex items-start justify-between gap-2">
-                                <button type="button" onClick={() => addExerciseToDraft(exercise)} className="flex-1 text-left">
-                                  <div className="font-medium text-sm">{exercise.name}</div>
-                                  <div className="text-xs text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
+                                <button type="button" onClick={() => addExerciseToDraft(exercise)} className="flex flex-1 items-start gap-2 text-left">
+                                  <img
+                                    src={getExercisePreviewSrc(exercise)}
+                                    alt={exercise.name}
+                                    className="mt-0.5 h-10 w-10 shrink-0 rounded-lg border object-cover bg-white"
+                                    style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                                    loading="lazy"
+                                    decoding="async"
+                                    onError={(event) => {
+                                      event.currentTarget.src = getExerciseSketchDataUri(exercise);
+                                    }}
+                                  />
+                                  <div className="min-w-0">
+                                    <div className="font-medium text-sm">{exercise.name}</div>
+                                    <div className="text-xs text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
+                                  </div>
                                 </button>
                                 <button
                                   type="button"
@@ -2915,10 +2928,31 @@ export function TrainerPortal(props: TrainerPortalProps) {
                             </GradientButton>
                           </div>
                         ) : null}
-                        {selectedPrograms.map((program) => (
+                        {selectedPrograms.map((program) => {
+                          const firstExercise = exercisesById.get(program.exercises[0]?.exerciseId ?? "");
+                          return (
                           <div key={program.id} className="rounded-2xl border bg-white p-4">
-                            <div className="font-medium">{program.title}</div>
-                            <div className="mt-0.5 text-xs text-slate-500">{program.goal || "Uten mål"}</div>
+                            <div className="flex items-start gap-2">
+                              {firstExercise ? (
+                                <img
+                                  src={getExercisePreviewSrc(firstExercise)}
+                                  alt={program.title}
+                                  className="mt-0.5 h-10 w-10 shrink-0 rounded-lg border object-cover bg-white"
+                                  style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                                  loading="lazy"
+                                  decoding="async"
+                                  onError={(event) => {
+                                    event.currentTarget.src = getExerciseSketchDataUri(firstExercise);
+                                  }}
+                                />
+                              ) : (
+                                <div className="mt-0.5 h-10 w-10 shrink-0 rounded-lg border bg-slate-50" style={{ borderColor: "rgba(15,23,42,0.08)" }} />
+                              )}
+                              <div className="min-w-0">
+                                <div className="font-medium">{program.title}</div>
+                                <div className="mt-0.5 text-xs text-slate-500">{program.goal || "Uten mål"}</div>
+                              </div>
+                            </div>
                             <div className="mt-2 text-xs text-slate-400">{program.exercises.length} øvelser · {program.createdAt}</div>
 
                             <div className="mt-3 flex gap-2">
@@ -2930,7 +2964,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                               </OutlineButton>
                             </div>
                           </div>
-                        ))}
+                        )})}
                       </div>
                     </div>
                   </div>
@@ -3282,9 +3316,22 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         className="rounded-2xl border bg-white p-3 cursor-grab active:cursor-grabbing"
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <button type="button" onClick={() => addExerciseToDraft(exercise)} className="flex-1 text-left">
-                            <div className="font-medium text-sm">{exercise.name}</div>
-                            <div className="text-xs text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
+                          <button type="button" onClick={() => addExerciseToDraft(exercise)} className="flex flex-1 items-start gap-2 text-left">
+                            <img
+                              src={getExercisePreviewSrc(exercise)}
+                              alt={exercise.name}
+                              className="mt-0.5 h-10 w-10 shrink-0 rounded-lg border object-cover bg-white"
+                              style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                              loading="lazy"
+                              decoding="async"
+                              onError={(event) => {
+                                event.currentTarget.src = getExerciseSketchDataUri(exercise);
+                              }}
+                            />
+                            <div className="min-w-0">
+                              <div className="font-medium text-sm">{exercise.name}</div>
+                              <div className="text-xs text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
+                            </div>
                           </button>
                           <button
                             type="button"
@@ -3454,15 +3501,28 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     className="rounded-2xl border bg-slate-50 px-3 py-2.5"
                     style={{ borderColor: "rgba(15,23,42,0.08)" }}
                   >
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-start justify-between gap-3">
                       <button
                         type="button"
                         onClick={() => setExpandedExerciseId((prev) => (prev === exercise.id ? null : exercise.id))}
-                        className="min-w-0 flex-1 text-left"
+                        className="min-w-0 flex flex-1 items-start gap-2 text-left"
                       >
-                        <div className="truncate text-sm font-medium leading-tight">{exercise.name}</div>
-                        <div className="mt-0.5 truncate text-xs text-slate-500">
-                          {exercise.category} · {exercise.group} · Utstyr: {exercise.equipment} · {exercise.level}
+                        <img
+                          src={getExercisePreviewSrc(exercise)}
+                          alt={exercise.name}
+                          className="mt-0.5 h-10 w-10 shrink-0 rounded-lg border object-cover bg-white"
+                          style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                          loading="lazy"
+                          decoding="async"
+                          onError={(event) => {
+                            event.currentTarget.src = getExerciseSketchDataUri(exercise);
+                          }}
+                        />
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium leading-tight">{exercise.name}</div>
+                          <div className="mt-0.5 truncate text-xs text-slate-500">
+                            {exercise.category} · {exercise.group} · Utstyr: {exercise.equipment} · {exercise.level}
+                          </div>
                         </div>
                       </button>
                       <div className="flex items-center gap-2">

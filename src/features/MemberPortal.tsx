@@ -1906,7 +1906,7 @@ export function MemberPortal(props: MemberPortalProps) {
               <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <div className="font-semibold">🧾 Logg gruppetrening</div>
+                    <div className="font-semibold">👥 Logg gruppetrening</div>
                     <div className="mt-1 text-xs text-slate-500">Registrer gruppetimer slik at PT ser all aktivitet.</div>
                   </div>
                   <OutlineButton onClick={() => setShowGroupWorkoutLogger((prev) => !prev)} className="w-full sm:w-auto">
