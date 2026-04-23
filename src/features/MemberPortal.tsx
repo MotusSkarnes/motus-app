@@ -184,12 +184,13 @@ export function MemberPortal(props: MemberPortalProps) {
     // Member view should follow the authenticated member email first, not only the current memberViewId.
     // This keeps assigned programs visible even when member_id links are being synchronized.
     const primaryEmail = currentUserRole === "member" ? normalizedCurrentUserEmail : editableMember?.email.trim().toLowerCase() ?? "";
+    let scopedByPrimaryEmail = false;
     if (primaryEmail) {
-      members
-        .filter((member) => member.email.trim().toLowerCase() === primaryEmail)
-        .forEach((member) => {
-          collectedIds.add(member.id);
-        });
+      const matchedByPrimary = members.filter((member) => member.email.trim().toLowerCase() === primaryEmail);
+      scopedByPrimaryEmail = matchedByPrimary.length > 0;
+      matchedByPrimary.forEach((member) => {
+        collectedIds.add(member.id);
+      });
     }
     const fallbackEmail = editableMember?.email.trim().toLowerCase() ?? "";
     if (fallbackEmail) {
@@ -199,9 +200,10 @@ export function MemberPortal(props: MemberPortalProps) {
           collectedIds.add(member.id);
         });
     }
-    if (currentUserRole === "member") {
+    if (currentUserRole === "member" && !scopedByPrimaryEmail) {
       // Under strict RLS, member users may not be able to read the full members table.
       // In that case, derive visible member IDs from data rows the member can read.
+      // When we already resolved profiles by email, do not widen scope from unrelated program rows.
       [...programs.map((program) => program.memberId), ...logs.map((log) => log.memberId), ...messages.map((message) => message.memberId)]
         .map((id) => id.trim())
         .filter(Boolean)
