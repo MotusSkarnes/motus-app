@@ -350,4 +350,91 @@ describe("Trainer flows", () => {
 
     expect(screen.getAllByText(/lene@example\.com/i).length).toBe(1);
   });
+
+  it("allows marking follow-up from suggested contact list", async () => {
+    const user = userEvent.setup();
+    const formatDate = (date: Date) =>
+      `${String(date.getDate()).padStart(2, "0")}.${String(date.getMonth() + 1).padStart(2, "0")}.${date.getFullYear()}`;
+    const now = new Date();
+    const tenDaysAgo = new Date(now);
+    tenDaysAgo.setDate(now.getDate() - 10);
+    const threeDaysAgo = new Date(now);
+    threeDaysAgo.setDate(now.getDate() - 3);
+
+    const members: Member[] = [
+      {
+        id: "m-followup",
+        name: "Lene",
+        email: "lene@example.com",
+        isActive: true,
+        invitedAt: "",
+        phone: "",
+        birthDate: "",
+        weight: "",
+        height: "",
+        level: "Nybegynner",
+        membershipType: "Standard",
+        customerType: "Oppfølging",
+        daysSinceActivity: "10",
+        goal: "",
+        focus: "",
+        personalGoals: "",
+        injuries: "",
+        coachNotes: "",
+      },
+    ];
+    const logs: WorkoutLog[] = [
+      {
+        id: "hard-log-1",
+        memberId: "m-followup",
+        programTitle: "Styrke A",
+        date: formatDate(tenDaysAgo),
+        status: "Fullført",
+        note: "",
+        reflection: { energyLevel: 3, difficultyLevel: 4, motivationLevel: 3, note: "" },
+      },
+      {
+        id: "hard-log-2",
+        memberId: "m-followup",
+        programTitle: "Styrke B",
+        date: formatDate(threeDaysAgo),
+        status: "Fullført",
+        note: "",
+        reflection: { energyLevel: 3, difficultyLevel: 5, motivationLevel: 3, note: "" },
+      },
+    ];
+
+    render(
+      <TrainerPortal
+        members={members}
+        programs={[]}
+        logs={logs}
+        messages={[]}
+        exercises={[] as Exercise[]}
+        selectedMemberId="m-followup"
+        setSelectedMemberId={() => {}}
+        trainerTab="dashboard"
+        setTrainerTab={() => {}}
+        addMember={() => {}}
+        deactivateMember={() => {}}
+        deleteMember={() => {}}
+        updateMember={() => {}}
+        markMemberInvited={() => {}}
+        inviteMember={async () => ({ ok: true, message: "ok" })}
+        inviteTrainer={async () => ({ ok: true, message: "ok" })}
+        restoreMemberByEmail={async () => ({ ok: true, message: "ok" })}
+        restoreMissingTestData={async () => ({ ok: true, message: "ok" })}
+        restoreOriginalExerciseBank={async () => ({ ok: true, message: "ok" })}
+        saveProgramForMember={() => {}}
+        deleteProgramById={() => {}}
+        sendTrainerMessage={() => {}}
+        saveExercise={() => {}}
+      />
+    );
+
+    expect(screen.getByText("Bør kontaktes nå")).toBeInTheDocument();
+    expect(screen.getByText("Sist fulgt opp: Aldri")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Marker fulgt opp" }));
+    expect(screen.queryByText("Sist fulgt opp: Aldri")).not.toBeInTheDocument();
+  });
 });

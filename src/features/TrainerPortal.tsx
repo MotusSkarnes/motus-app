@@ -195,6 +195,20 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [selectedTodoDate, setSelectedTodoDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [todoTitle, setTodoTitle] = useState("");
   const [todos, setTodos] = useState<Array<{ id: string; title: string; date: string; done: boolean }>>([]);
+  const [lastFollowUpByMemberId, setLastFollowUpByMemberId] = useState<Record<string, string>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = window.localStorage.getItem("motus.trainer.lastFollowUpByMemberId");
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      if (!parsed || typeof parsed !== "object") return {};
+      return Object.fromEntries(
+        Object.entries(parsed).filter(([key, value]) => typeof key === "string" && typeof value === "string")
+      );
+    } catch {
+      return {};
+    }
+  });
   const [priorityFilter, setPriorityFilter] = useState<"all" | "red" | "orange" | "green">("all");
   const [prioritySort, setPrioritySort] = useState<"highFirst" | "lowFirst">("highFirst");
   const [priorityMemberTypeSort, setPriorityMemberTypeSort] = useState<"none" | "ptFirst" | "premiumFirst" | "standardFirst">("none");
@@ -1291,6 +1305,84 @@ export function TrainerPortal(props: TrainerPortalProps) {
   });
   const todoDateSet = new Set(todos.map((todo) => todo.date));
   const monthLabel = formatDateDdMmYyyy(dashboardMonth);
+  const memberRelatedIdSetByCanonicalId = useMemo(() => {
+    const byCanonicalId = new Map<string, Set<string>>();
+    deduplicatedMembers.forEach((member) => {
+      const normalizedEmail = member.email.trim().toLowerCase();
+      const normalizedName = member.name.trim().toLowerCase();
+      const byEmailIds = normalizedEmail
+        ? members
+            .filter((row) => row.email.trim().toLowerCase() === normalizedEmail)
+            .map((row) => row.id)
+        : [];
+      const byNameIds = normalizedName
+        ? members
+            .filter((row) => row.name.trim().toLowerCase() === normalizedName)
+            .map((row) => row.id)
+        : [];
+      byCanonicalId.set(member.id, new Set([...byEmailIds, ...byNameIds, member.id]));
+    });
+    return byCanonicalId;
+  }, [deduplicatedMembers, members]);
+  const followUpCandidates = useMemo(() => {
+    const nowMs = Date.now();
+    const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+    return deduplicatedMembers
+      .map((member) => {
+        const relatedIds = Array.from(memberRelatedIdSetByCanonicalId.get(member.id) ?? new Set([member.id]));
+        const relatedIdSet = new Set(relatedIds);
+        const memberLogs = logs.filter((log) => relatedIdSet.has(log.memberId));
+        const recentHardLogs = memberLogs.filter((log) => {
+          const dateMs = parseLogDateMs(log.date);
+          return dateMs > 0 && nowMs - dateMs <= fourteenDaysMs && (log.reflection?.difficultyLevel ?? 0) >= 4;
+        }).length;
+        const recentUnfinishedLogs = memberLogs.filter((log) => {
+          const dateMs = parseLogDateMs(log.date);
+          return dateMs > 0 && nowMs - dateMs <= thirtyDaysMs && log.status !== "Fullført";
+        }).length;
+        const bestLastFollowUpIso = relatedIds
+          .map((id) => lastFollowUpByMemberId[id] ?? "")
+          .filter(Boolean)
+          .sort((a, b) => b.localeCompare(a))[0] ?? "";
+        const lastFollowUpMs = bestLastFollowUpIso ? new Date(bestLastFollowUpIso).getTime() : 0;
+        const daysInactive = Number(member.daysSinceActivity || "0");
+        let score = 0;
+        const reasons: string[] = [];
+        if (daysInactive >= 7) {
+          score += 2;
+          reasons.push(`${daysInactive} dager siden aktivitet`);
+        }
+        if (recentHardLogs >= 2) {
+          score += 2;
+          reasons.push(`${recentHardLogs} harde økter siste 14 dager`);
+        }
+        if (recentUnfinishedLogs >= 2) {
+          score += 1;
+          reasons.push(`${recentUnfinishedLogs} ikke fullførte økter siste 30 dager`);
+        }
+        if (!lastFollowUpMs || nowMs - lastFollowUpMs > sevenDaysMs) {
+          score += 1;
+          reasons.push("ikke fulgt opp siste 7 dager");
+        }
+        return {
+          member,
+          score,
+          reasons,
+          lastFollowUpIso: bestLastFollowUpIso,
+        };
+      })
+      .filter((item) => item.score >= 2)
+      .sort((a, b) => b.score - a.score || b.member.daysSinceActivity.localeCompare(a.member.daysSinceActivity))
+      .slice(0, 6);
+  }, [deduplicatedMembers, logs, memberRelatedIdSetByCanonicalId, lastFollowUpByMemberId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("motus.trainer.lastFollowUpByMemberId", JSON.stringify(lastFollowUpByMemberId));
+  }, [lastFollowUpByMemberId]);
 
   const membersWithPriority = useMemo(() => {
     function getMemberTypeOrder(member: Member): { pt: number; premium: number; standard: number } {
@@ -1347,6 +1439,25 @@ export function TrainerPortal(props: TrainerPortalProps) {
       });
     }
     return badges;
+  }
+
+  function handleQuickFollowUpMessage(member: Member) {
+    setSelectedMemberId(member.id);
+    setCustomerSubTab("messages");
+    setTrainerTab("customers");
+    setTrainerMessage(`Hei ${member.name}! Hvordan går treningen denne uka?`);
+  }
+
+  function markMemberFollowedUp(member: Member) {
+    const relatedIds = Array.from(memberRelatedIdSetByCanonicalId.get(member.id) ?? new Set([member.id]));
+    const nowIso = new Date().toISOString();
+    setLastFollowUpByMemberId((prev) => {
+      const next = { ...prev };
+      relatedIds.forEach((id) => {
+        next[id] = nowIso;
+      });
+      return next;
+    });
   }
 
   return (
@@ -1522,6 +1633,40 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 </div>
               ))}
             </div>
+          </div>
+          <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="font-semibold text-slate-800">Bør kontaktes nå</div>
+            {followUpCandidates.length === 0 ? (
+              <div className="rounded-xl border border-dashed bg-white p-3 text-sm text-slate-500">
+                Ingen kunder trenger ekstra oppfølging akkurat nå.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {followUpCandidates.map((item) => (
+                  <div key={`followup-${item.member.id}`} className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-800">{item.member.name}</div>
+                        <div className="text-xs text-slate-500">{item.member.email}</div>
+                        <div className="mt-1 text-xs text-slate-600">{item.reasons.join(" · ")}</div>
+                        <div className="mt-1 text-[11px] text-slate-500">
+                          Sist fulgt opp: {item.lastFollowUpIso ? formatDateDdMmYyyy(new Date(item.lastFollowUpIso)) : "Aldri"}
+                        </div>
+                      </div>
+                      <span className="rounded-full bg-rose-100 px-2 py-1 text-[11px] font-semibold text-rose-700">Prioritet {item.score}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <OutlineButton onClick={() => handleQuickFollowUpMessage(item.member)} className="px-3 py-1.5 text-xs">
+                        Send melding
+                      </OutlineButton>
+                      <OutlineButton onClick={() => markMemberFollowedUp(item.member)} className="px-3 py-1.5 text-xs">
+                        Marker fulgt opp
+                      </OutlineButton>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </Card>
       ) : null}
