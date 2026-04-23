@@ -180,38 +180,41 @@ export function MemberPortal(props: MemberPortalProps) {
       : viewedMember ?? members[0] ?? null;
   const activeMemberId = editableMember?.id ?? memberViewId;
   const relatedMemberIds = useMemo(() => {
+    const collectedIds = new Set<string>();
     // Member view should follow the authenticated member email first, not only the current memberViewId.
     // This keeps assigned programs visible even when member_id links are being synchronized.
     const primaryEmail = currentUserRole === "member" ? normalizedCurrentUserEmail : editableMember?.email.trim().toLowerCase() ?? "";
     if (primaryEmail) {
-      const idsFromEmail = members
+      members
         .filter((member) => member.email.trim().toLowerCase() === primaryEmail)
-        .map((member) => member.id);
-      if (idsFromEmail.length) return idsFromEmail;
+        .forEach((member) => {
+          collectedIds.add(member.id);
+        });
     }
     const fallbackEmail = editableMember?.email.trim().toLowerCase() ?? "";
     if (fallbackEmail) {
-      const idsFromEditable = members
+      members
         .filter((member) => member.email.trim().toLowerCase() === fallbackEmail)
-        .map((member) => member.id);
-      if (idsFromEditable.length) return idsFromEditable;
+        .forEach((member) => {
+          collectedIds.add(member.id);
+        });
     }
     if (currentUserRole === "member") {
       // Under strict RLS, member users may not be able to read the full members table.
       // In that case, derive visible member IDs from data rows the member can read.
-      const idsFromVisibleData = Array.from(
-        new Set(
-          [...programs.map((program) => program.memberId), ...logs.map((log) => log.memberId), ...messages.map((message) => message.memberId)]
-            .map((id) => id.trim())
-            .filter(Boolean)
-        )
-      );
-      if (idsFromVisibleData.length) return idsFromVisibleData;
+      [...programs.map((program) => program.memberId), ...logs.map((log) => log.memberId), ...messages.map((message) => message.memberId)]
+        .map((id) => id.trim())
+        .filter(Boolean)
+        .forEach((id) => {
+          collectedIds.add(id);
+        });
     }
     if (currentUserRole === "member" && currentUserMemberId?.trim()) {
-      return [currentUserMemberId.trim()];
+      collectedIds.add(currentUserMemberId.trim());
     }
-    return [activeMemberId];
+    if (activeMemberId.trim()) collectedIds.add(activeMemberId.trim());
+    const merged = Array.from(collectedIds);
+    return merged.length ? merged : [activeMemberId];
   }, [members, currentUserRole, normalizedCurrentUserEmail, editableMember, activeMemberId, programs, logs, messages, currentUserMemberId]);
   const relatedMemberIdSet = useMemo(() => new Set(relatedMemberIds), [relatedMemberIds]);
   const memberPrograms = programs.filter((program) => relatedMemberIdSet.has(program.memberId));
