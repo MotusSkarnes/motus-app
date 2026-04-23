@@ -826,14 +826,24 @@ export function MemberPortal(props: MemberPortalProps) {
       const originalDataUrl = await readFileAsDataUrl(file);
       const compressedDataUrl = await compressImageDataUrl(originalDataUrl);
       let syncedAvatarUrl = compressedDataUrl;
-      const normalizedAvatarEmail =
-        normalizedCurrentUserEmail || editableMember.email.trim().toLowerCase();
-      if (supabaseClient && normalizedAvatarEmail && normalizedAvatarEmail.includes("@")) {
-        const encodedEmail = encodeEmailForPath(normalizedAvatarEmail);
-        if (encodedEmail) {
+      const compressedBlob = dataUrlToBlob(compressedDataUrl);
+      const uploadBody: Blob | File = compressedBlob ?? file;
+      const avatarEmails = Array.from(
+        new Set(
+          [
+            normalizedCurrentUserEmail,
+            editableMember.email.trim().toLowerCase(),
+            ...members
+              .filter((member) => relatedMemberIds.includes(member.id))
+              .map((member) => member.email.trim().toLowerCase()),
+          ].filter((value) => value && value.includes("@"))
+        )
+      );
+      if (supabaseClient && avatarEmails.length) {
+        for (const email of avatarEmails) {
+          const encodedEmail = encodeEmailForPath(email);
+          if (!encodedEmail) continue;
           const avatarPath = `${MEMBER_AVATAR_PREFIX}/${encodedEmail}.jpg`;
-          const compressedBlob = dataUrlToBlob(compressedDataUrl);
-          const uploadBody: Blob | File = compressedBlob ?? file;
           const { error: uploadError } = await supabaseClient.storage
             .from(MEMBER_AVATAR_BUCKET)
             .upload(avatarPath, uploadBody, {
@@ -841,7 +851,7 @@ export function MemberPortal(props: MemberPortalProps) {
               upsert: true,
               contentType: "image/jpeg",
             });
-          if (!uploadError) {
+          if (!uploadError && email === editableMember.email.trim().toLowerCase()) {
             const { data } = supabaseClient.storage.from(MEMBER_AVATAR_BUCKET).getPublicUrl(avatarPath);
             if (data.publicUrl) {
               syncedAvatarUrl = `${data.publicUrl}?v=${Date.now()}`;
