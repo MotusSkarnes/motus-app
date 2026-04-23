@@ -1022,7 +1022,7 @@ export function MemberPortal(props: MemberPortalProps) {
         <div className="space-y-4 sm:space-y-6">
           {memberTab === "overview" ? (
             <Card className="w-full p-4 sm:p-5 space-y-4 sm:space-y-5">
-              <div className="hidden sm:block rounded-[22px] p-4 sm:p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
+              <div className="hidden w-full sm:block rounded-[22px] p-4 sm:p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm text-white/80">Hei{viewedMember ? `, ${viewedMember.name}` : ""}</div>
                   <div className="h-12 w-12 overflow-hidden rounded-full border border-white/40 bg-white/20">
@@ -1032,7 +1032,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">Klar for neste økt?</div>
                 <div className="mt-2 text-sm text-white/90">Trykk pa neste steg under for a komme raskt i gang.</div>
               </div>
-              <div className="hidden sm:grid gap-3 sm:grid-cols-3">
+              <div className="hidden w-full sm:grid gap-3 sm:grid-cols-3">
                 <StatCard label="Programmer" value={String(memberPrograms.length)} hint="Tildelt deg" />
                 <StatCard label="Logger" value={String(memberLogs.length)} hint="Registrert" />
                 <StatCard label="Meldinger" value={String(memberMessages.length)} hint="I chatten" />
