@@ -1487,26 +1487,40 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         <span>Skader/hensyn</span>
                         <TextArea value={memberEditInjuries} onChange={(event) => setMemberEditInjuries(event.target.value)} className="min-h-[90px]" placeholder="Skader/hensyn" />
                       </label>
-                      <div className="rounded-xl border border-white/25 bg-white/10 p-3 space-y-2">
+                      <div className="rounded-xl border border-white/25 bg-white/10 p-3 space-y-2.5">
                         <div className="text-xs font-medium text-white">Kundetype og medlemskap</div>
-                        <label className="flex items-center gap-2 text-xs text-white">
+                        <div className="grid gap-2 sm:grid-cols-2">
+                        <label
+                          className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition ${
+                            memberEditIsPtCustomer
+                              ? "border-white/70 bg-white/25 text-white"
+                              : "border-white/30 bg-white/10 text-white/90 hover:bg-white/20"
+                          }`}
+                        >
                           <input
                             type="checkbox"
                             checked={memberEditIsPtCustomer}
                             onChange={(event) => setMemberEditIsPtCustomer(event.target.checked)}
-                            className="h-4 w-4 rounded border-white/40 bg-white/20"
+                            className="h-4 w-4 rounded border-white/40 bg-white/20 accent-emerald-500"
                           />
                           PT-kunde
                         </label>
-                        <label className="flex items-center gap-2 text-xs text-white">
+                        <label
+                          className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition ${
+                            memberEditIsPremiumCustomer
+                              ? "border-white/70 bg-white/25 text-white"
+                              : "border-white/30 bg-white/10 text-white/90 hover:bg-white/20"
+                          }`}
+                        >
                           <input
                             type="checkbox"
                             checked={memberEditIsPremiumCustomer}
                             onChange={(event) => setMemberEditIsPremiumCustomer(event.target.checked)}
-                            className="h-4 w-4 rounded border-white/40 bg-white/20"
+                            className="h-4 w-4 rounded border-white/40 bg-white/20 accent-emerald-500"
                           />
                           Premium-kunde
                         </label>
+                        </div>
                       </div>
                       <div className="rounded-xl border border-white/25 bg-white/10 p-3 space-y-2">
                         <div className="text-xs font-medium text-white">Profilbilde</div>
