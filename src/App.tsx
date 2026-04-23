@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { BarChart3, Bell, CalendarDays, CheckSquare, ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, Settings, ShieldCheck, TrendingUp, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "./app/data";
+import { useMemberAvatarStore } from "./app/useMemberAvatarStore";
+import { useNotifications } from "./app/useNotifications";
 import { useAppState } from "./app/useAppState";
 import { AppShell, Badge, Card, OutlineButton, PillButton } from "./app/ui";
 import motusLogo from "./assets/motus-logo.png";
@@ -74,200 +76,34 @@ export default function App() {
     resetAllData();
   }
 
-  const [trainerNotificationsOpen, setTrainerNotificationsOpen] = useState(false);
-  const [memberNotificationsOpen, setMemberNotificationsOpen] = useState(false);
   const [openCustomerMessagesSignal, setOpenCustomerMessagesSignal] = useState(0);
-  const [trainerAlertsSeenAt, setTrainerAlertsSeenAt] = useState(() => {
-    if (typeof window === "undefined") return 0;
-    const raw = window.localStorage.getItem("motus.notifications.trainerSeenAt");
-    const parsed = Number(raw ?? "0");
-    return Number.isFinite(parsed) ? parsed : 0;
-  });
-  const [memberAlertsSeenAt, setMemberAlertsSeenAt] = useState(() => {
-    if (typeof window === "undefined") return 0;
-    const raw = window.localStorage.getItem("motus.notifications.memberSeenAt");
-    const parsed = Number(raw ?? "0");
-    return Number.isFinite(parsed) ? parsed : 0;
-  });
-  const [seenMemberProgramIds, setSeenMemberProgramIds] = useState<string[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const raw = window.localStorage.getItem("motus.notifications.memberSeenProgramIds");
-      const parsed = JSON.parse(raw ?? "[]");
-      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
-    } catch {
-      return [];
-    }
-  });
-  const [memberVisibleAlerts, setMemberVisibleAlerts] = useState<
-    Array<{ id: string; text: string; timestamp: number; targetTab: "messages" | "programs" }>
-  >([]);
-  const [memberAvatarById, setMemberAvatarById] = useState<Record<string, string>>(() => {
-    if (typeof window === "undefined") return {};
-    try {
-      const raw = window.localStorage.getItem("motus.member.avatarById");
-      const parsed = JSON.parse(raw ?? "{}") as Record<string, unknown>;
-      return Object.fromEntries(
-        Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[0] === "string" && typeof entry[1] === "string")
-      );
-    } catch {
-      return {};
-    }
-  });
-
-  const memberById = useMemo(
-    () => new Map(appState.members.map((member) => [member.id, member])),
-    [appState.members]
-  );
-  const currentMemberAvatarTargetIds = useMemo(() => {
-    if (!appState.currentUser || appState.currentUser.role !== "member") return [] as string[];
-    const normalizedEmail = appState.currentUser.email.trim().toLowerCase();
-    if (!normalizedEmail) return [appState.memberViewId].filter(Boolean);
-    const ids = appState.members
-      .filter((member) => member.email.trim().toLowerCase() === normalizedEmail)
-      .map((member) => member.id);
-    return ids.length ? ids : [appState.memberViewId].filter(Boolean);
-  }, [appState.currentUser, appState.members, appState.memberViewId]);
-  const currentMemberAvatarUrl = useMemo(() => {
-    const direct = memberAvatarById[appState.memberViewId];
-    if (direct) return direct;
-    for (const memberId of currentMemberAvatarTargetIds) {
-      const avatar = memberAvatarById[memberId];
-      if (avatar) return avatar;
-    }
-    return "";
-  }, [memberAvatarById, appState.memberViewId, currentMemberAvatarTargetIds]);
-
-  function parseMessageTimestamp(value: string, fallbackOrder: number): number {
-    const parsed = new Date(value).getTime();
-    return Number.isFinite(parsed) ? parsed : fallbackOrder;
-  }
-
-  const trainerMessageAlerts = useMemo(() => {
-    const latestByMember = new Map<string, { message: (typeof appState.messages)[number]; timestamp: number }>();
-    appState.messages
-      .filter((message) => message.sender === "member")
-      .forEach((message, index) => {
-        const timestamp = parseMessageTimestamp(message.createdAt, index + 1);
-        const previous = latestByMember.get(message.memberId);
-        if (!previous || timestamp > previous.timestamp) {
-          latestByMember.set(message.memberId, { message, timestamp });
-        }
-      });
-
-    return Array.from(latestByMember.values())
-      .sort((a, b) => b.timestamp - a.timestamp)
-      .map(({ message, timestamp }) => {
-        const member = memberById.get(message.memberId);
-        const name = member?.name || "Et medlem";
-        return {
-          id: `msg-${message.id}`,
-          memberId: message.memberId,
-          text: `${name} har sendt deg en ny melding`,
-          timestamp,
-        };
-      });
-  }, [appState.messages, memberById]);
+  const { memberAvatarById, currentMemberAvatarUrl, setMemberAvatarUrlForMember, setCurrentMemberAvatarUrl } =
+    useMemberAvatarStore({
+      currentUser: appState.currentUser,
+      members: appState.members,
+      memberViewId: appState.memberViewId,
+    });
 
   const inactiveMembersCount = appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length;
   const missingInvitesCount = appState.members.filter((member) => !member.invitedAt).length;
-  const memberPrograms = appState.programs
-    .map((program, index) => ({
-      ...program,
-      _effectiveTimestamp: parseMessageTimestamp(program.createdAt, index + 1),
-    }))
-    .filter((program) => program.memberId === appState.memberViewId);
-  const memberTrainerMessages = appState.messages
-    .map((message, index) => ({
-      ...message,
-      _effectiveTimestamp: parseMessageTimestamp(message.createdAt, index + 1),
-    }))
-    .filter((message) => message.memberId === appState.memberViewId && message.sender === "trainer");
-  const memberMessageAlerts = memberTrainerMessages.map((message) => ({
-    id: `member-msg-${message.id}`,
-    text: "Ny melding fra trener",
-    timestamp: message._effectiveTimestamp,
-    targetTab: "messages" as const,
-  }));
-  const memberProgramAlerts = memberPrograms.map((program) => ({
-    id: `member-program-${program.id}`,
-    text: `Du har fått nytt treningsprogram: ${program.title}`,
-    timestamp: program._effectiveTimestamp,
-    targetTab: "programs" as const,
-    unread: !seenMemberProgramIds.includes(program.id),
-  }));
-  const memberUnreadAlerts = [...memberMessageAlerts, ...memberProgramAlerts]
-    .filter((alert) => ("unread" in alert ? alert.unread : alert.timestamp > memberAlertsSeenAt))
-    .sort((a, b) => b.timestamp - a.timestamp);
-  const memberUnreadCount = memberUnreadAlerts.length;
-  const trainerUnreadCount = trainerMessageAlerts.filter((alert) => alert.timestamp > trainerAlertsSeenAt).length;
-
-  function handleTrainerBellToggle() {
-    const willOpen = !trainerNotificationsOpen;
-    setTrainerNotificationsOpen(willOpen);
-    if (willOpen) {
-      const latestAlertTime = trainerMessageAlerts.reduce((max, alert) => Math.max(max, alert.timestamp), 0);
-      setTrainerAlertsSeenAt(latestAlertTime);
-    }
-  }
-
-  function handleMemberBellToggle() {
-    const willOpen = !memberNotificationsOpen;
-    setMemberNotificationsOpen(willOpen);
-    if (willOpen) {
-      setMemberVisibleAlerts(memberUnreadAlerts);
-      const latestAlertTime = [...memberMessageAlerts, ...memberProgramAlerts].reduce(
-        (max, alert) => Math.max(max, alert.timestamp),
-        0
-      );
-      setMemberAlertsSeenAt(latestAlertTime);
-      setSeenMemberProgramIds((prev) => Array.from(new Set([...prev, ...memberPrograms.map((program) => program.id)])));
-    } else {
-      setMemberVisibleAlerts([]);
-    }
-  }
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("motus.notifications.trainerSeenAt", String(trainerAlertsSeenAt));
-  }, [trainerAlertsSeenAt]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("motus.notifications.memberSeenAt", String(memberAlertsSeenAt));
-  }, [memberAlertsSeenAt]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("motus.notifications.memberSeenProgramIds", JSON.stringify(seenMemberProgramIds));
-  }, [seenMemberProgramIds]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem("motus.member.avatarById", JSON.stringify(memberAvatarById));
-    } catch {
-      // Prevent runtime crash if storage quota is exceeded.
-      // Avatar still works in current session even without persistence.
-    }
-  }, [memberAvatarById]);
-
-  useEffect(() => {
-    if (appState.currentUser?.role !== "member") return;
-    if (!currentMemberAvatarUrl) return;
-    if (!currentMemberAvatarTargetIds.length) return;
-    setMemberAvatarById((prev) => {
-      let hasChanges = false;
-      const next = { ...prev };
-      currentMemberAvatarTargetIds.forEach((memberId) => {
-        if (!memberId) return;
-        if (next[memberId] === currentMemberAvatarUrl) return;
-        next[memberId] = currentMemberAvatarUrl;
-        hasChanges = true;
-      });
-      return hasChanges ? next : prev;
-    });
-  }, [appState.currentUser, currentMemberAvatarUrl, currentMemberAvatarTargetIds]);
+  const {
+    trainerNotificationsOpen,
+    setTrainerNotificationsOpen,
+    memberNotificationsOpen,
+    trainerMessageAlerts,
+    memberVisibleAlerts,
+    trainerUnreadCount,
+    memberUnreadCount,
+    handleTrainerBellToggle,
+    handleMemberBellToggle,
+    openAlert,
+  } = useNotifications({
+    messages: appState.messages,
+    programs: appState.programs,
+    members: appState.members,
+    memberViewId: appState.memberViewId,
+    setMemberTab,
+  });
 
   const trainerMenuItems: Array<{ key: typeof trainerTab; label: string; icon: ReactNode }> = [
     { key: "dashboard", label: "Oversikt", icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -505,24 +341,7 @@ export default function App() {
                   inviteTrainer={inviteTrainer}
                   openCustomerMessagesSignal={openCustomerMessagesSignal}
                   memberAvatarById={memberAvatarById}
-                  setMemberAvatarUrlForMember={(memberId, avatarUrl) =>
-                    setMemberAvatarById((prev) => {
-                      const targetMember = appState.members.find((member) => member.id === memberId);
-                      if (!targetMember) return prev;
-                      const normalizedEmail = targetMember.email.trim().toLowerCase();
-                      const relatedIds = normalizedEmail
-                        ? appState.members
-                            .filter((member) => member.email.trim().toLowerCase() === normalizedEmail)
-                            .map((member) => member.id)
-                        : [memberId];
-                      const uniqueIds = Array.from(new Set(relatedIds.length ? relatedIds : [memberId]));
-                      const next = { ...prev };
-                      uniqueIds.forEach((id) => {
-                        next[id] = avatarUrl;
-                      });
-                      return next;
-                    })
-                  }
+                  setMemberAvatarUrlForMember={setMemberAvatarUrlForMember}
                 />
               </div>
             </div>
@@ -555,10 +374,7 @@ export default function App() {
                       <button
                         key={alert.id}
                         type="button"
-                        onClick={() => {
-                          setMemberTab(alert.targetTab);
-                          setMemberNotificationsOpen(false);
-                        }}
+                        onClick={() => openAlert(alert)}
                         className="w-full rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs sm:text-sm text-slate-700 hover:bg-emerald-50"
                         style={{ borderColor: "rgba(20,184,166,0.25)" }}
                       >
@@ -589,30 +405,7 @@ export default function App() {
               setMemberTab={setMemberTab}
               updateMember={updateMember}
               memberAvatarUrl={currentMemberAvatarUrl}
-              setMemberAvatarUrl={(url) =>
-                setMemberAvatarById((prev) => {
-                  if (url) {
-                    const next = { ...prev };
-                    currentMemberAvatarTargetIds.forEach((memberId) => {
-                      if (!memberId) return;
-                      next[memberId] = url;
-                    });
-                    if (!currentMemberAvatarTargetIds.length && appState.memberViewId) {
-                      next[appState.memberViewId] = url;
-                    }
-                    return next;
-                  }
-                  if (!currentMemberAvatarTargetIds.length && !appState.memberViewId) return prev;
-                  return Object.fromEntries(
-                    Object.entries(prev).filter(([key]) => {
-                      if (currentMemberAvatarTargetIds.length) {
-                        return !currentMemberAvatarTargetIds.includes(key);
-                      }
-                      return key !== appState.memberViewId;
-                    })
-                  );
-                })
-              }
+              setMemberAvatarUrl={setCurrentMemberAvatarUrl}
               exercises={appState.exercises}
               sendMemberMessage={sendMemberMessage}
               workoutMode={appState.workoutMode}
