@@ -831,8 +831,7 @@ export function MemberPortal(props: MemberPortalProps) {
       if (supabaseClient && normalizedAvatarEmail && normalizedAvatarEmail.includes("@")) {
         const encodedEmail = encodeEmailForPath(normalizedAvatarEmail);
         if (encodedEmail) {
-          const extension = file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg";
-          const avatarPath = `${MEMBER_AVATAR_PREFIX}/${encodedEmail}.${extension}`;
+          const avatarPath = `${MEMBER_AVATAR_PREFIX}/${encodedEmail}.jpg`;
           const compressedBlob = dataUrlToBlob(compressedDataUrl);
           const uploadBody: Blob | File = compressedBlob ?? file;
           const { error: uploadError } = await supabaseClient.storage
@@ -840,7 +839,7 @@ export function MemberPortal(props: MemberPortalProps) {
             .upload(avatarPath, uploadBody, {
               cacheControl: "3600",
               upsert: true,
-              contentType: compressedBlob?.type || file.type || "image/jpeg",
+              contentType: "image/jpeg",
             });
           if (!uploadError) {
             const { data } = supabaseClient.storage.from(MEMBER_AVATAR_BUCKET).getPublicUrl(avatarPath);

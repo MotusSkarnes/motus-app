@@ -102,21 +102,26 @@ export function useMemberAvatarStore({
           const decodedEmail = decodeEmailFromPath(encoded);
           if (!decodedEmail) return;
           const key = emailAvatarKey(decodedEmail);
-          if (next[key]) return;
           const path = `${MEMBER_AVATAR_PREFIX}/${entry.name}`;
           const { data: publicData } = supabaseClient.storage.from(MEMBER_AVATAR_BUCKET).getPublicUrl(path);
           if (!publicData.publicUrl) return;
-          next[key] = publicData.publicUrl;
+          const versionedUrl = `${publicData.publicUrl}?v=${entry.updated_at ?? entry.created_at ?? Date.now()}`;
+          if (next[key] === versionedUrl) return;
+          next[key] = versionedUrl;
           changed = true;
         });
         return changed ? next : prev;
       });
     }
     void hydrateRemoteAvatars();
+    const intervalId = window.setInterval(() => {
+      void hydrateRemoteAvatars();
+    }, 15000);
     return () => {
       cancelled = true;
+      window.clearInterval(intervalId);
     };
-  }, []);
+  }, [members, currentUser]);
 
   useEffect(() => {
     if (!members.length) return;
