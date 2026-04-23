@@ -494,7 +494,15 @@ export function useAppState() {
           };
         });
         if (supabaseUser.role === "member") {
-          await ensureMemberAuthLink(supabaseUser.email);
+          const linkMemberId = resolveMemberViewIdForUser({
+            role: supabaseUser.role,
+            memberId: resolvedMemberViewId || resolvedSelectedMemberId || supabaseUser.memberId,
+            email: supabaseUser.email,
+            members: baseState.members,
+            programs: baseState.programs,
+            fallbackId: resolvedMemberViewId || resolvedSelectedMemberId || supabaseUser.memberId || `auth-${supabaseUser.id}`,
+          });
+          await ensureMemberAuthLink(supabaseUser.email, linkMemberId);
           const refreshedUser = await refreshSupabaseSessionUser();
           if (refreshedUser) {
             setAppState((prev) => ({
@@ -636,7 +644,15 @@ export function useAppState() {
       fallbackId: user.memberId ?? (baseState.memberViewId || `auth-${user.id}`),
     });
     if (user.role === "member") {
-      await ensureMemberAuthLink(user.email);
+      const linkMemberId = resolveMemberViewIdForUser({
+        role: user.role,
+        memberId: resolvedMemberViewId || resolvedSelectedMemberId || user.memberId,
+        email: user.email,
+        members: baseState.members,
+        programs: baseState.programs,
+        fallbackId: resolvedMemberViewId || resolvedSelectedMemberId || user.memberId || `auth-${user.id}`,
+      });
+      await ensureMemberAuthLink(user.email, linkMemberId);
       const refreshedUser = await refreshSupabaseSessionUser();
       if (refreshedUser) {
         user.memberId = refreshedUser.memberId;
