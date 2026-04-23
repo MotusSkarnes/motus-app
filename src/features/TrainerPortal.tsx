@@ -235,7 +235,25 @@ export function TrainerPortal(props: TrainerPortalProps) {
     if (!normalizedEmail) return "";
     return memberAvatarByEmail[normalizedEmail] ?? "";
   }
-  const selectedPrograms = programs.filter((program) => program.memberId === selectedMemberId);
+  const selectedMemberRelatedIds = useMemo(() => {
+    if (selectedMemberId === "__template__") return [];
+    if (!selectedMemberId) return [];
+    const selected = members.find((member) => member.id === selectedMemberId);
+    if (!selected) return [selectedMemberId];
+    const normalizedEmail = selected.email.trim().toLowerCase();
+    if (!normalizedEmail) return [selectedMemberId];
+    return members
+      .filter((member) => member.email.trim().toLowerCase() === normalizedEmail)
+      .map((member) => member.id);
+  }, [members, selectedMemberId]);
+  const selectedMemberRelatedIdSet = useMemo(() => new Set(selectedMemberRelatedIds), [selectedMemberRelatedIds]);
+  const selectedPrograms = useMemo(
+    () =>
+      programs
+        .filter((program) => selectedMemberRelatedIdSet.has(program.memberId))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [programs, selectedMemberRelatedIdSet]
+  );
   const templatePrograms = programs.filter((program) => program.memberId === "__template__");
   const selectedLogs = useMemo(() => {
     function parseLogDate(value: string): number {
@@ -251,26 +269,15 @@ export function TrainerPortal(props: TrainerPortalProps) {
       return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
     }
     return logs
-      .filter((log) => log.memberId === selectedMemberId)
+      .filter((log) => selectedMemberRelatedIdSet.has(log.memberId))
       .sort((a, b) => parseLogDate(b.date) - parseLogDate(a.date));
-  }, [logs, selectedMemberId]);
-  const selectedMemberRelatedIds = useMemo(() => {
-    if (selectedMemberId === "__template__") return [];
-    if (!selectedMemberId) return [];
-    const selected = members.find((member) => member.id === selectedMemberId);
-    if (!selected) return [selectedMemberId];
-    const normalizedEmail = selected.email.trim().toLowerCase();
-    if (!normalizedEmail) return [selectedMemberId];
-    return members
-      .filter((member) => member.email.trim().toLowerCase() === normalizedEmail)
-      .map((member) => member.id);
-  }, [members, selectedMemberId]);
+  }, [logs, selectedMemberRelatedIdSet]);
   const selectedMessages = useMemo(
     () =>
       messages.filter((message) =>
-        selectedMemberRelatedIds.includes(message.memberId)
+        selectedMemberRelatedIdSet.has(message.memberId)
       ),
-    [messages, selectedMemberRelatedIds]
+    [messages, selectedMemberRelatedIdSet]
   );
   const latestCompletedLog = selectedLogs.find((log) => log.status === "Fullført") ?? null;
   const selectedWorkoutLog = useMemo(() => {
@@ -769,6 +776,25 @@ export function TrainerPortal(props: TrainerPortalProps) {
     const confirmed = window.confirm("Er du sikker på at du vil slette kunden permanent? Dette sletter også programmer, logger og meldinger, og kan ikke angres.");
     if (!confirmed) return;
     deleteMember(memberId);
+  }
+
+  function buildProgramFingerprint(program: ProgramExercise[] | undefined, title: string, goal: string, notes: string): string {
+    const exerciseFingerprint = (program ?? [])
+      .map((item) => `${item.exerciseName}|${item.sets}|${item.reps}|${item.weight}|${item.durationMinutes ?? ""}|${item.speed ?? ""}|${item.incline ?? ""}|${item.restSeconds}|${item.notes}`)
+      .join("||");
+    return `${title.trim()}::${goal.trim()}::${notes.trim()}::${exerciseFingerprint}`;
+  }
+
+  function handleDeleteProgram(programId: string) {
+    const target = selectedPrograms.find((program) => program.id === programId);
+    if (!target) return;
+    const fingerprint = buildProgramFingerprint(target.exercises, target.title, target.goal, target.notes);
+    const duplicateIds = selectedPrograms
+      .filter((program) => program.id !== target.id)
+      .filter((program) => buildProgramFingerprint(program.exercises, program.title, program.goal, program.notes) === fingerprint)
+      .map((program) => program.id);
+    deleteProgramById(target.id);
+    duplicateIds.forEach((id) => deleteProgramById(id));
   }
 
   function handleSaveSelectedMemberDetails() {
@@ -1993,26 +2019,28 @@ export function TrainerPortal(props: TrainerPortalProps) {
                               draggable
                               onDragStart={() => setDraggedExerciseIdFromLibrary(exercise.id)}
                               onDragEnd={() => setDraggedExerciseIdFromLibrary(null)}
-                              className="rounded-2xl border bg-white p-3 cursor-grab active:cursor-grabbing"
+                              className={`rounded-2xl border p-3 cursor-grab active:cursor-grabbing ${
+                                isFavorite ? "border-transparent bg-gradient-to-r from-[#ec4899] via-[#f97316] to-[#22c55e]" : "bg-white"
+                              }`}
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <button type="button" onClick={() => addExerciseToDraft(exercise)} className="flex-1 text-left">
-                                  <div className="font-medium text-sm">{exercise.name}</div>
-                                  <div className="text-xs text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
+                                  <div className={`font-medium text-sm ${isFavorite ? "text-white" : ""}`}>{exercise.name}</div>
+                                  <div className={`text-xs ${isFavorite ? "text-white/90" : "text-slate-500"}`}>{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => toggleFavoriteExercise(exercise.id)}
-                                  className={`rounded-lg border p-1.5 ${isFavorite ? "" : "border-slate-200 text-slate-400"}`}
+                                  className={`rounded-lg border p-1.5 ${isFavorite ? "border-white/60 bg-white/10 text-white" : "border-slate-200 text-slate-400"}`}
                                   style={
                                     isFavorite
-                                      ? { borderColor: "rgba(244,114,182,0.45)", backgroundColor: "rgba(244,114,182,0.12)", color: MOTUS.pink }
+                                      ? {}
                                       : { borderColor: "rgba(148,163,184,0.45)" }
                                   }
                                   aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                                   title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                                 >
-                                  <Star className={`h-4 w-4 ${isFavorite ? "fill-current" : ""}`} />
+                                  <Star className={`h-4 w-4 ${isFavorite ? "text-white" : ""}`} />
                                 </button>
                               </div>
                             </div>
@@ -2044,7 +2072,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                               <OutlineButton onClick={() => startEditProgram(program)}>
                                 Rediger
                               </OutlineButton>
-                              <OutlineButton onClick={() => deleteProgramById(program.id)}>
+                              <OutlineButton onClick={() => handleDeleteProgram(program.id)}>
                                 Slett
                               </OutlineButton>
                             </div>
@@ -2360,26 +2388,28 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         draggable
                         onDragStart={() => setDraggedExerciseIdFromLibrary(exercise.id)}
                         onDragEnd={() => setDraggedExerciseIdFromLibrary(null)}
-                        className="rounded-2xl border bg-white p-3 cursor-grab active:cursor-grabbing"
+                        className={`rounded-2xl border p-3 cursor-grab active:cursor-grabbing ${
+                          isFavorite ? "border-transparent bg-gradient-to-r from-[#ec4899] via-[#f97316] to-[#22c55e]" : "bg-white"
+                        }`}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <button type="button" onClick={() => addExerciseToDraft(exercise)} className="flex-1 text-left">
-                            <div className="font-medium text-sm">{exercise.name}</div>
-                            <div className="text-xs text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
+                            <div className={`font-medium text-sm ${isFavorite ? "text-white" : ""}`}>{exercise.name}</div>
+                            <div className={`text-xs ${isFavorite ? "text-white/90" : "text-slate-500"}`}>{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
                           </button>
                           <button
                             type="button"
                             onClick={() => toggleFavoriteExercise(exercise.id)}
-                            className={`rounded-lg border p-1.5 ${isFavorite ? "" : "border-slate-200 text-slate-400"}`}
+                            className={`rounded-lg border p-1.5 ${isFavorite ? "border-white/60 bg-white/10 text-white" : "border-slate-200 text-slate-400"}`}
                             style={
                               isFavorite
-                                ? { borderColor: "rgba(244,114,182,0.45)", backgroundColor: "rgba(244,114,182,0.12)", color: MOTUS.pink }
+                                ? {}
                                 : { borderColor: "rgba(148,163,184,0.45)" }
                             }
                             aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                             title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                           >
-                            <Star className={`h-4 w-4 ${isFavorite ? "fill-current" : ""}`} />
+                            <Star className={`h-4 w-4 ${isFavorite ? "text-white" : ""}`} />
                           </button>
                         </div>
                       </div>
@@ -2530,15 +2560,21 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 {visibleExercises.map((exercise) => {
                   const isFavorite = favoriteExerciseIds.includes(exercise.id);
                   return (
-                  <div key={exercise.id} className="rounded-2xl border bg-slate-50 px-3 py-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div
+                    key={exercise.id}
+                    className={`rounded-2xl border px-3 py-2.5 ${
+                      isFavorite ? "border-transparent bg-gradient-to-r from-[#ec4899] via-[#f97316] to-[#22c55e]" : "bg-slate-50"
+                    }`}
+                    style={isFavorite ? undefined : { borderColor: "rgba(15,23,42,0.08)" }}
+                  >
                     <div className="flex items-center justify-between gap-3">
                       <button
                         type="button"
                         onClick={() => setExpandedExerciseId((prev) => (prev === exercise.id ? null : exercise.id))}
                         className="min-w-0 flex-1 text-left"
                       >
-                        <div className="truncate text-sm font-medium leading-tight">{exercise.name}</div>
-                        <div className="mt-0.5 truncate text-xs text-slate-500">
+                        <div className={`truncate text-sm font-medium leading-tight ${isFavorite ? "text-white" : ""}`}>{exercise.name}</div>
+                        <div className={`mt-0.5 truncate text-xs ${isFavorite ? "text-white/90" : "text-slate-500"}`}>
                           {exercise.category} · {exercise.group} · Utstyr: {exercise.equipment} · {exercise.level}
                         </div>
                       </button>
@@ -2546,16 +2582,16 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         <button
                           type="button"
                           onClick={() => toggleFavoriteExercise(exercise.id)}
-                          className={`rounded-lg border p-1.5 ${isFavorite ? "" : "border-slate-200 text-slate-400"}`}
+                          className={`rounded-lg border p-1.5 ${isFavorite ? "border-white/60 bg-white/10 text-white" : "border-slate-200 text-slate-400"}`}
                           style={
                             isFavorite
-                              ? { borderColor: "rgba(244,114,182,0.45)", backgroundColor: "rgba(244,114,182,0.12)", color: MOTUS.pink }
+                              ? {}
                               : { borderColor: "rgba(148,163,184,0.45)" }
                           }
                           aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                           title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                         >
-                          <Star className={`h-4 w-4 ${isFavorite ? "fill-current" : ""}`} />
+                          <Star className={`h-4 w-4 ${isFavorite ? "text-white" : ""}`} />
                         </button>
                         <OutlineButton onClick={() => startEditExercise(exercise)} className="px-3 py-1.5 text-xs">Rediger</OutlineButton>
                         <OutlineButton onClick={() => setExpandedExerciseId((prev) => (prev === exercise.id ? null : exercise.id))} className="px-3 py-1.5 text-xs">
@@ -2564,7 +2600,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       </div>
                     </div>
                     {expandedExerciseId === exercise.id ? (
-                      <div className="mt-2 text-sm text-slate-700">
+                      <div className={`mt-2 text-sm ${isFavorite ? "text-white/95" : "text-slate-700"}`}>
                         {exercise.description}
                       </div>
                     ) : null}
