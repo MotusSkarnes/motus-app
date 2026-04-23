@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
-import { LoginScreen } from "../features/LoginScreen";
+import { LoginScreen } from "../../features/LoginScreen";
 import { buildLoginScreenProps } from "./viewModelBuilders";
-import type { useAppState } from "./useAppState";
+import type { useAppState } from "../useAppState";
 
 type AppStateHookResult = ReturnType<typeof useAppState>;
 

@@ -1,11 +1,11 @@
 import { useState, type ComponentProps } from "react";
-import { AppHeader } from "../features/AppHeader";
-import { MemberLayout } from "../features/MemberLayout";
-import { TrainerLayout } from "../features/TrainerLayout";
+import { AppHeader } from "../../features/AppHeader";
+import { MemberLayout } from "../../features/MemberLayout";
+import { TrainerLayout } from "../../features/TrainerLayout";
 import { buildAppHeaderProps, buildMemberLayoutProps, buildTrainerLayoutProps } from "./viewModelBuilders";
-import { useMemberAvatarStore } from "./useMemberAvatarStore";
-import { useNotifications } from "./useNotifications";
-import type { useAppState } from "./useAppState";
+import { useMemberAvatarStore } from "../useMemberAvatarStore";
+import { useNotifications } from "../useNotifications";
+import type { useAppState } from "../useAppState";
 
 type AppStateHookResult = ReturnType<typeof useAppState>;
 

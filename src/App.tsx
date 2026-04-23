@@ -1,4 +1,4 @@
-import { useAppViewModel } from "./app/useAppViewModel";
+import { useAppViewModel } from "./app/viewmodels/useAppViewModel";
 import { AppShell } from "./app/ui";
 import { AppHeader } from "./features/AppHeader";
 import { LoginScreen } from "./features/LoginScreen";
