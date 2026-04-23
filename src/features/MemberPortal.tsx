@@ -296,7 +296,11 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!activeIntervalProgram) return [] as IntervalTimerStep[];
     return activeIntervalProgram.exercises.flatMap((exercise, index) => {
       const workDurationSeconds = Math.max(0, Math.round((Number(exercise.durationMinutes) || 0) * 60));
-      const restDurationSeconds = Math.max(0, Number(exercise.restSeconds) || 0);
+      const rawRestValue = Number(exercise.restSeconds) || 0;
+      const normalizedRestSeconds =
+        rawRestValue > 0 && rawRestValue <= 15
+          ? Math.round(rawRestValue * 60)
+          : Math.round(rawRestValue);
       const steps: IntervalTimerStep[] = [];
       if (workDurationSeconds > 0) {
         const lowerName = exercise.exerciseName.toLowerCase();
@@ -310,6 +314,8 @@ export function MemberPortal(props: MemberPortalProps) {
           tone,
         });
       }
+      const isClassic4x4Drag = /4x4/i.test(activeIntervalProgram.name) && /drag/i.test(exercise.exerciseName);
+      const restDurationSeconds = normalizedRestSeconds > 0 ? normalizedRestSeconds : isClassic4x4Drag ? 180 : 0;
       if (restDurationSeconds > 0 && index < activeIntervalProgram.exercises.length - 1) {
         steps.push({
           label: `Pause etter ${exercise.exerciseName || `intervall ${index + 1}`}`,
@@ -1049,6 +1055,21 @@ export function MemberPortal(props: MemberPortalProps) {
     setIntervalTimerStepIndex(0);
     setIntervalTimerRemainingSeconds(intervalProgramSteps[0]?.durationSeconds ?? 0);
     setIntervalTimerStatus("Intervalløkten er nullstilt.");
+  }
+  function handleSkipIntervalProgramStep() {
+    if (!intervalProgramSteps.length) return;
+    const nextIndex = intervalTimerStepIndex + 1;
+    const nextStep = intervalProgramSteps[nextIndex];
+    if (!nextStep) {
+      setIsIntervalTimerRunning(false);
+      setIsIntervalTimerPaused(false);
+      setIntervalTimerRemainingSeconds(0);
+      setIntervalTimerStatus("Siste fase hoppet over. Intervalløkten er fullført.");
+      return;
+    }
+    setIntervalTimerStepIndex(nextIndex);
+    setIntervalTimerRemainingSeconds(nextStep.durationSeconds);
+    setIntervalTimerStatus(`Hoppet til: ${nextStep.label}`);
   }
 
   async function shareMonthlyProgressSummary() {
@@ -2313,12 +2334,15 @@ export function MemberPortal(props: MemberPortalProps) {
                       ) : null}
                     </div>
                     <div className="border-t p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="grid gap-2 sm:grid-cols-3">
+                      <div className="grid gap-2 sm:grid-cols-4">
                         <GradientButton onClick={handleStartIntervalProgramTimer} disabled={!intervalProgramSteps.length}>
                           Start økt
                         </GradientButton>
                         <OutlineButton onClick={handlePauseResumeIntervalProgramTimer} disabled={!isIntervalTimerRunning}>
                           {isIntervalTimerPaused ? "Fortsett" : "Pause"}
+                        </OutlineButton>
+                        <OutlineButton onClick={handleSkipIntervalProgramStep} disabled={!intervalProgramSteps.length}>
+                          Hopp over
                         </OutlineButton>
                         <OutlineButton onClick={handleResetIntervalProgramTimer} disabled={!intervalProgramSteps.length}>
                           Nullstill
