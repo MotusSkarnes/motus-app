@@ -152,7 +152,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [liveWorkoutCelebration, setLiveWorkoutCelebration] = useState<WorkoutCelebration | null>(null);
   const [seenUnlockedAchievementIds, setSeenUnlockedAchievementIds] = useState<string[]>([]);
   const [periodPlans, setPeriodPlans] = useState<PeriodSchedulePlan[]>([]);
-  const [showPeriodPlanPanel, setShowPeriodPlanPanel] = useState(false);
+  const [showPeriodPlanPanel, setShowPeriodPlanPanel] = useState(true);
   const [selectedIntervalProgramId, setSelectedIntervalProgramId] = useState("");
   const [suggestedWeightOverridesByProgramExerciseId, setSuggestedWeightOverridesByProgramExerciseId] = useState<Record<string, string>>({});
   const [showIntervalTimerModal, setShowIntervalTimerModal] = useState(false);
@@ -208,8 +208,11 @@ export function MemberPortal(props: MemberPortalProps) {
       );
       if (idsFromVisibleData.length) return idsFromVisibleData;
     }
+    if (currentUserRole === "member" && currentUserMemberId?.trim()) {
+      return [currentUserMemberId.trim()];
+    }
     return [activeMemberId];
-  }, [members, currentUserRole, normalizedCurrentUserEmail, editableMember, activeMemberId, programs, logs, messages]);
+  }, [members, currentUserRole, normalizedCurrentUserEmail, editableMember, activeMemberId, programs, logs, messages, currentUserMemberId]);
   const relatedMemberIdSet = useMemo(() => new Set(relatedMemberIds), [relatedMemberIds]);
   const memberPrograms = programs.filter((program) => relatedMemberIdSet.has(program.memberId));
   const memberLogs = logs.filter((log) => relatedMemberIdSet.has(log.memberId));
@@ -947,7 +950,13 @@ export function MemberPortal(props: MemberPortalProps) {
         return;
       }
       const merged = relatedMemberIds.flatMap((memberId) => parsed[memberId] ?? []);
-      setPeriodPlans(merged);
+      const deduplicated = new Map<string, PeriodSchedulePlan>();
+      merged.forEach((plan) => {
+        if (!deduplicated.has(plan.id)) deduplicated.set(plan.id, plan);
+      });
+      const uniquePlans = Array.from(deduplicated.values());
+      uniquePlans.sort((a, b) => (parseDateOnly(b.startDate)?.getTime() ?? 0) - (parseDateOnly(a.startDate)?.getTime() ?? 0));
+      setPeriodPlans(uniquePlans);
     } catch {
       setPeriodPlans([]);
     }

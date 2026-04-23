@@ -3540,7 +3540,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     Ingen treningsmaler lagret ennå.
                   </div>
                 ) : null}
-                <div className="space-y-2">
+                <div className="max-h-[360px] space-y-2 overflow-auto pr-1">
                   {templatePrograms.map((program) => {
                     const isExpanded = expandedTemplateProgramId === program.id;
                     return (
@@ -3548,7 +3548,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-slate-800">{program.title}</div>
-                          <div className="mt-0.5 text-xs text-slate-500">{program.exercises.length} øvelse(r) · {program.createdAt}</div>
+                          <div className="mt-0.5 text-xs text-slate-500">
+                            {program.exercises.length} øvelse(r){program.createdAt ? ` · ${program.createdAt}` : ""}
+                          </div>
                         </div>
                         <div className="flex flex-wrap items-center justify-end gap-2">
                           <OutlineButton onClick={() => setExpandedTemplateProgramId((prev) => (prev === program.id ? null : program.id))} className="px-3 py-1.5 text-xs">
@@ -3580,8 +3582,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
                                   <div className="font-medium text-slate-800">{exercise.exerciseName}</div>
                                   <div className="mt-0.5 text-slate-500">
                                     {exercise.durationMinutes
-                                      ? `${exercise.sets} runder × ${exercise.durationMinutes} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds}s`
-                                      : `${exercise.sets}×${exercise.reps} · ${exercise.weight}kg · ${exercise.restSeconds}s`}
+                                      ? `${exercise.sets || "-"} runder × ${exercise.durationMinutes || "-"} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s`
+                                      : `${exercise.sets || "-"}×${exercise.reps || "-"} · ${exercise.weight || "0"}kg · ${exercise.restSeconds || "0"}s`}
                                   </div>
                                 </div>
                               ))}
