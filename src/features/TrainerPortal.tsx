@@ -715,7 +715,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
       memberId: selectedMemberId,
       exercises: input.id ? input.exercises : input.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
     });
-    setProgramSaveStatus("Program lagret.");
+    const selectedMemberName = members.find((member) => member.id === selectedMemberId)?.name ?? "kunden";
+    setProgramSaveStatus(`Program lagret på ${selectedMemberName}.`);
     return true;
   }
 
