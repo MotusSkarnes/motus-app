@@ -1488,6 +1488,27 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         <TextArea value={memberEditInjuries} onChange={(event) => setMemberEditInjuries(event.target.value)} className="min-h-[90px]" placeholder="Skader/hensyn" />
                       </label>
                       <div className="rounded-xl border border-white/25 bg-white/10 p-3 space-y-2">
+                        <div className="text-xs font-medium text-white">Kundetype og medlemskap</div>
+                        <label className="flex items-center gap-2 text-xs text-white">
+                          <input
+                            type="checkbox"
+                            checked={memberEditIsPtCustomer}
+                            onChange={(event) => setMemberEditIsPtCustomer(event.target.checked)}
+                            className="h-4 w-4 rounded border-white/40 bg-white/20"
+                          />
+                          PT-kunde
+                        </label>
+                        <label className="flex items-center gap-2 text-xs text-white">
+                          <input
+                            type="checkbox"
+                            checked={memberEditIsPremiumCustomer}
+                            onChange={(event) => setMemberEditIsPremiumCustomer(event.target.checked)}
+                            className="h-4 w-4 rounded border-white/40 bg-white/20"
+                          />
+                          Premium-kunde
+                        </label>
+                      </div>
+                      <div className="rounded-xl border border-white/25 bg-white/10 p-3 space-y-2">
                         <div className="text-xs font-medium text-white">Profilbilde</div>
                         <div className="h-14 w-14 overflow-hidden rounded-full border border-white/40 bg-white/20">
                           {resolveMemberAvatarUrl(selectedMember) ? <img src={resolveMemberAvatarUrl(selectedMember)} alt={`Profilbilde av ${selectedMember.name}`} className="h-full w-full object-cover" /> : null}
