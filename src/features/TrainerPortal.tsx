@@ -967,6 +967,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       });
     });
     setMemberEditStatus("Kundekort oppdatert.");
+    setIsEditingCustomerCard(false);
   }
 
   function resetMemberListControls() {
