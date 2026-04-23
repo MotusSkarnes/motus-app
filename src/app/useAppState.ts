@@ -3,7 +3,7 @@ import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
 import { localAppRepository, type CreateMemberInput, type FinishWorkoutInput, type LogGroupWorkoutInput, type ReplaceWorkoutExerciseGroupInput, type SaveExerciseInput, type SaveProgramInput, type UpdateMemberInput } from "../services/appRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
-import { fetchExercisesFromSupabase, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
+import { fetchExercisesFromSupabase, fetchHydratedMemberData, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
 import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, inviteTrainerByEmail, refreshSupabaseSessionUser, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult, type InviteTrainerResult } from "../services/supabaseAuth";
 import type { AppState, Exercise, MemberTab, TrainerTab } from "./types";
 
@@ -232,6 +232,14 @@ export function useAppState() {
       const {
         data: { session },
       } = supabaseClient ? await supabaseClient.auth.getSession() : { data: { session: null } };
+      const sessionUser = session?.user ?? null;
+      const sessionRole = (() => {
+        const appRole = sessionUser?.app_metadata?.role;
+        if (appRole === "member" || appRole === "trainer") return appRole;
+        const userRole = sessionUser?.user_metadata?.role;
+        if (userRole === "member" || userRole === "trainer") return userRole;
+        return "";
+      })();
       const ownerUserId = (() => {
         const token = session?.access_token;
         if (!token) return "";
@@ -243,12 +251,13 @@ export function useAppState() {
         }
       })();
 
-      const hydrated = ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
-      const remoteMembers = hydrated?.members ?? (await fetchMembersFromSupabase());
-      const remoteMessages = hydrated?.messages ?? (await fetchMessagesFromSupabase());
-      const remotePrograms = hydrated?.programs ?? (await fetchProgramsFromSupabase());
-      const remoteLogs = hydrated?.logs ?? (await fetchLogsFromSupabase());
-      const remoteExercises = hydrated?.exercises ?? (await fetchExercisesFromSupabase());
+      const hydratedTrainer = sessionRole === "trainer" && ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
+      const hydratedMember = sessionRole === "member" ? await fetchHydratedMemberData() : null;
+      const remoteMembers = hydratedTrainer?.members ?? hydratedMember?.members ?? (await fetchMembersFromSupabase());
+      const remoteMessages = hydratedTrainer?.messages ?? hydratedMember?.messages ?? (await fetchMessagesFromSupabase());
+      const remotePrograms = hydratedTrainer?.programs ?? hydratedMember?.programs ?? (await fetchProgramsFromSupabase());
+      const remoteLogs = hydratedTrainer?.logs ?? hydratedMember?.logs ?? (await fetchLogsFromSupabase());
+      const remoteExercises = hydratedTrainer?.exercises ?? (await fetchExercisesFromSupabase());
       if (cancelled) return;
 
       setAppState((prev) => {
