@@ -50,6 +50,19 @@ type TrainerPortalProps = {
   isLocalDemoSession?: boolean;
 };
 
+function parseLogDateMs(value: string): number {
+  if (!value) return 0;
+  const iso = new Date(value);
+  if (!Number.isNaN(iso.getTime())) return iso.getTime();
+  const parts = value.split(".");
+  if (parts.length < 3) return 0;
+  const day = Number(parts[0]);
+  const month = Number(parts[1]) - 1;
+  const year = Number(parts[2]);
+  const parsed = new Date(year, month, day);
+  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+}
+
 export function TrainerPortal(props: TrainerPortalProps) {
   const EXERCISE_IMAGE_BUCKET = "exercise-images";
   const MAX_EXERCISE_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -276,21 +289,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
   );
   const templatePrograms = programs.filter((program) => program.memberId === "__template__");
   const selectedLogs = useMemo(() => {
-    function parseLogDate(value: string): number {
-      if (!value) return 0;
-      const iso = new Date(value);
-      if (!Number.isNaN(iso.getTime())) return iso.getTime();
-      const parts = value.split(".");
-      if (parts.length < 3) return 0;
-      const day = Number(parts[0]);
-      const month = Number(parts[1]) - 1;
-      const year = Number(parts[2]);
-      const parsed = new Date(year, month, day);
-      return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
-    }
     return logs
       .filter((log) => selectedMemberRelatedIdSet.has(log.memberId))
-      .sort((a, b) => parseLogDate(b.date) - parseLogDate(a.date));
+      .sort((a, b) => parseLogDateMs(b.date) - parseLogDateMs(a.date));
   }, [logs, selectedMemberRelatedIdSet]);
   const selectedMessages = useMemo(
     () =>
@@ -303,18 +304,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const filteredWorkoutLogs = useMemo(() => {
     const now = Date.now();
     const query = workoutSearchQuery.trim().toLowerCase();
-    const parseLogDateMs = (value: string): number => {
-      if (!value) return 0;
-      const iso = new Date(value);
-      if (!Number.isNaN(iso.getTime())) return iso.getTime();
-      const parts = value.split(".");
-      if (parts.length < 3) return 0;
-      const day = Number(parts[0]);
-      const month = Number(parts[1]) - 1;
-      const year = Number(parts[2]);
-      const parsed = new Date(year, month, day);
-      return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
-    };
     const withParsedDate = selectedLogs.map((log) => ({ log, dateMs: parseLogDateMs(log.date) }));
     const filtered = withParsedDate.filter(({ log, dateMs }) => {
       if (workoutDateRangeFilter !== "all" && dateMs > 0) {
@@ -333,6 +322,45 @@ export function TrainerPortal(props: TrainerPortalProps) {
     filtered.sort((a, b) => (workoutSortOrder === "newest" ? b.dateMs - a.dateMs : a.dateMs - b.dateMs));
     return filtered.map((entry) => entry.log);
   }, [selectedLogs, workoutDateRangeFilter, workoutTypeFilter, workoutSearchQuery, workoutSortOrder]);
+  const workoutInsights = useMemo(() => {
+    const now = Date.now();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    let workoutsLast7Days = 0;
+    let groupWorkoutsLast30Days = 0;
+    let difficultySum = 0;
+    let difficultyCount = 0;
+
+    selectedLogs.forEach((log) => {
+      const dateMs = parseLogDateMs(log.date);
+      if (dateMs > 0) {
+        const ageMs = now - dateMs;
+        if (ageMs <= sevenDaysMs) {
+          workoutsLast7Days += 1;
+        }
+        if (ageMs <= thirtyDaysMs) {
+          const isGroupWorkout = log.programTitle.trim().toLowerCase().startsWith("gruppetime:");
+          if (isGroupWorkout) {
+            groupWorkoutsLast30Days += 1;
+          }
+          const difficulty = log.reflection?.difficultyLevel;
+          if (difficulty && difficulty >= 1 && difficulty <= 5) {
+            difficultySum += difficulty;
+            difficultyCount += 1;
+          }
+        }
+      }
+    });
+
+    return {
+      workoutsLast7Days,
+      groupWorkoutsLast30Days,
+      averageDifficulty:
+        difficultyCount > 0
+          ? `${(difficultySum / difficultyCount).toFixed(1)} / 5`
+          : "Ingen data",
+    };
+  }, [selectedLogs]);
   const filteredSelectedWorkoutLog = useMemo(() => {
     if (!filteredWorkoutLogs.length) return null;
     if (!selectedWorkoutLogId) return filteredWorkoutLogs[0];
@@ -2154,6 +2182,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 {customerSubTab === "workouts" ? (
                   <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
                     <div className="rounded-3xl border bg-slate-50 p-4">
+                      <div className="mb-3 grid gap-2 sm:grid-cols-3">
+                        <StatCard label="Økter siste 7 dager" value={String(workoutInsights.workoutsLast7Days)} hint="Alle økter" />
+                        <StatCard label="Gruppetimer siste 30 dager" value={String(workoutInsights.groupWorkoutsLast30Days)} hint="Kun gruppetimer" />
+                        <StatCard label="Snitt belastning 30 dager" value={workoutInsights.averageDifficulty} hint="Basert på refleksjon" />
+                      </div>
                       <div className="mb-3 grid gap-2 sm:grid-cols-2">
                         <SelectBox
                           value={workoutDateRangeFilter}

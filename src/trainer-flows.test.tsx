@@ -154,4 +154,103 @@ describe("Trainer flows", () => {
     await user.click(screen.getByRole("button", { name: "Økter" }));
     expect(screen.getAllByText("Legacy styrkeøkt").length).toBeGreaterThan(0);
   });
+
+  it("shows workout insight cards for last 7 and 30 days", async () => {
+    const user = userEvent.setup();
+    const formatDate = (date: Date) =>
+      `${String(date.getDate()).padStart(2, "0")}.${String(date.getMonth() + 1).padStart(2, "0")}.${date.getFullYear()}`;
+    const now = new Date();
+    const threeDaysAgo = new Date(now);
+    threeDaysAgo.setDate(now.getDate() - 3);
+    const tenDaysAgo = new Date(now);
+    tenDaysAgo.setDate(now.getDate() - 10);
+
+    const members: Member[] = [
+      {
+        id: "m2",
+        name: "Emma Hansen",
+        email: "emma@motus.no",
+        isActive: true,
+        invitedAt: "",
+        phone: "",
+        birthDate: "",
+        weight: "",
+        height: "",
+        level: "Nybegynner",
+        membershipType: "Standard",
+        customerType: "Oppfølging",
+        daysSinceActivity: "0",
+        goal: "",
+        focus: "",
+        personalGoals: "",
+        injuries: "",
+        coachNotes: "",
+      },
+    ];
+    const logs: WorkoutLog[] = [
+      {
+        id: "recent-program-log",
+        memberId: "m2",
+        programTitle: "Helkropp A",
+        date: formatDate(threeDaysAgo),
+        status: "Fullført",
+        note: "",
+        reflection: {
+          energyLevel: 3,
+          difficultyLevel: 4,
+          motivationLevel: 3,
+          note: "",
+        },
+      },
+      {
+        id: "group-log",
+        memberId: "m2",
+        programTitle: "Gruppetime: Yoga",
+        date: formatDate(tenDaysAgo),
+        status: "Fullført",
+        note: "",
+        reflection: {
+          energyLevel: 4,
+          difficultyLevel: 2,
+          motivationLevel: 4,
+          note: "",
+        },
+      },
+    ];
+
+    render(
+      <TrainerPortal
+        members={members}
+        programs={[]}
+        logs={logs}
+        messages={[]}
+        exercises={[] as Exercise[]}
+        selectedMemberId="m2"
+        setSelectedMemberId={() => {}}
+        trainerTab="customers"
+        setTrainerTab={() => {}}
+        addMember={() => {}}
+        deactivateMember={() => {}}
+        deleteMember={() => {}}
+        updateMember={() => {}}
+        markMemberInvited={() => {}}
+        inviteMember={async () => ({ ok: true, message: "ok" })}
+        inviteTrainer={async () => ({ ok: true, message: "ok" })}
+        restoreMemberByEmail={async () => ({ ok: true, message: "ok" })}
+        restoreMissingTestData={async () => ({ ok: true, message: "ok" })}
+        restoreOriginalExerciseBank={async () => ({ ok: true, message: "ok" })}
+        saveProgramForMember={() => {}}
+        deleteProgramById={() => {}}
+        sendTrainerMessage={() => {}}
+        saveExercise={() => {}}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Økter" }));
+    expect(screen.getByText("Økter siste 7 dager")).toBeInTheDocument();
+    expect(screen.getByText("Gruppetimer siste 30 dager")).toBeInTheDocument();
+    expect(screen.getByText("Snitt belastning 30 dager")).toBeInTheDocument();
+    expect(screen.getAllByText(/^1$/).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("3.0 / 5")).toBeInTheDocument();
+  });
 });
