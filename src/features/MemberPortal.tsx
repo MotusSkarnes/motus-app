@@ -1940,38 +1940,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 ) : null}
               </div>
               <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
-                <div className="font-semibold">🏃 Intervallprogram med nedtelling</div>
-                <div className="mt-1 text-xs text-slate-500">Intervalløkter håndteres som vanlige treningsprogrammer. Trykk Start økt for å åpne intervallvinduet.</div>
-                <div className="mt-4 rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  {intervalPrograms.length > 0 ? (
-                    <>
-                      <SelectBox
-                        value={activeIntervalProgram?.id ?? ""}
-                        onChange={setSelectedIntervalProgramId}
-                        options={intervalPrograms.map((program) => ({
-                          value: program.id,
-                          label: program.title,
-                        }))}
-                      />
-                      <div className="text-xs text-slate-500">{activeIntervalProgram?.goal || "Intervalløkt fra PT-program"}</div>
-                      <GradientButton
-                        onClick={() => {
-                          if (!activeIntervalProgram) return;
-                          openIntervalTimerModal(activeIntervalProgram.id);
-                        }}
-                        className="w-full sm:w-auto"
-                      >
-                        Start økt i intervallvindu
-                      </GradientButton>
-                    </>
-                  ) : (
-                    <div className="rounded-xl border border-dashed bg-white p-3 text-xs text-slate-500">
-                      Ingen intervallprogram tildelt ennå. Be PT lage et intervallprogram og tildele det som vanlig program.
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="font-semibold">👥 Logg gruppetrening</div>
