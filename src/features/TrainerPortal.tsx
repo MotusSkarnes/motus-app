@@ -50,6 +50,12 @@ type TrainerPortalProps = {
   isLocalDemoSession?: boolean;
 };
 
+type FollowUpDetail = {
+  at: string;
+  method: "melding" | "telefon" | "mote";
+  note: string;
+};
+
 function parseLogDateMs(value: string): number {
   if (!value) return 0;
   const iso = new Date(value);
@@ -209,6 +215,34 @@ export function TrainerPortal(props: TrainerPortalProps) {
       return {};
     }
   });
+  const [followUpDetailsByMemberId, setFollowUpDetailsByMemberId] = useState<Record<string, FollowUpDetail>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = window.localStorage.getItem("motus.trainer.followUpDetailsByMemberId");
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      if (!parsed || typeof parsed !== "object") return {};
+      const entries = Object.entries(parsed)
+        .map(([key, value]) => {
+          if (!key || !value || typeof value !== "object") return null;
+          const row = value as Partial<FollowUpDetail>;
+          const at = String(row.at ?? "");
+          const methodRaw = String(row.method ?? "");
+          const note = String(row.note ?? "");
+          if (!at) return null;
+          const method: FollowUpDetail["method"] =
+            methodRaw === "telefon" || methodRaw === "mote" ? methodRaw : "melding";
+          return [key, { at, method, note }] as const;
+        })
+        .filter(Boolean) as Array<readonly [string, FollowUpDetail]>;
+      return Object.fromEntries(entries);
+    } catch {
+      return {};
+    }
+  });
+  const [followUpMethodDraft, setFollowUpMethodDraft] = useState<FollowUpDetail["method"]>("melding");
+  const [followUpNoteDraft, setFollowUpNoteDraft] = useState("");
+  const [followUpSaveStatus, setFollowUpSaveStatus] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<"all" | "red" | "orange" | "green">("all");
   const [prioritySort, setPrioritySort] = useState<"highFirst" | "lowFirst">("highFirst");
   const [priorityMemberTypeSort, setPriorityMemberTypeSort] = useState<"none" | "ptFirst" | "premiumFirst" | "standardFirst">("none");
@@ -354,6 +388,17 @@ export function TrainerPortal(props: TrainerPortalProps) {
         selectedMemberRelatedIdSet.has(message.memberId)
       ),
     [messages, selectedMemberRelatedIdSet]
+  );
+  function resolveLatestFollowUpDetail(memberIds: string[]): FollowUpDetail | null {
+    const details = memberIds
+      .map((id) => followUpDetailsByMemberId[id])
+      .filter((item): item is FollowUpDetail => Boolean(item));
+    if (!details.length) return null;
+    return [...details].sort((a, b) => b.at.localeCompare(a.at))[0];
+  }
+  const selectedMemberLatestFollowUp = useMemo(
+    () => resolveLatestFollowUpDetail(selectedMemberRelatedIds),
+    [selectedMemberRelatedIds, followUpDetailsByMemberId]
   );
   const latestCompletedLog = selectedLogs.find((log) => log.status === "Fullført") ?? null;
   const filteredWorkoutLogs = useMemo(() => {
@@ -1387,6 +1432,23 @@ export function TrainerPortal(props: TrainerPortalProps) {
     if (typeof window === "undefined") return;
     window.localStorage.setItem("motus.trainer.lastFollowUpByMemberId", JSON.stringify(lastFollowUpByMemberId));
   }, [lastFollowUpByMemberId]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("motus.trainer.followUpDetailsByMemberId", JSON.stringify(followUpDetailsByMemberId));
+  }, [followUpDetailsByMemberId]);
+  useEffect(() => {
+    const latest = resolveLatestFollowUpDetail(selectedMemberRelatedIds);
+    if (!latest) {
+      setFollowUpMethodDraft("melding");
+      setFollowUpNoteDraft("");
+      setFollowUpSaveStatus(null);
+      return;
+    }
+    setFollowUpMethodDraft(latest.method);
+    setFollowUpNoteDraft(latest.note);
+    setFollowUpSaveStatus(null);
+    // only when customer changes / details update
+  }, [selectedMemberRelatedIds, followUpDetailsByMemberId]);
 
   const membersWithPriority = useMemo(() => {
     function getMemberTypeOrder(member: Member): { pt: number; premium: number; standard: number } {
@@ -1445,6 +1507,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
     return badges;
   }
 
+  function followUpMethodLabel(method: FollowUpDetail["method"]): string {
+    if (method === "telefon") return "Telefon";
+    if (method === "mote") return "Møte";
+    return "Melding";
+  }
+
   function handleQuickFollowUpMessage(member: Member) {
     setSelectedMemberId(member.id);
     setCustomerSubTab("messages");
@@ -1462,6 +1530,42 @@ export function TrainerPortal(props: TrainerPortalProps) {
       });
       return next;
     });
+    setFollowUpDetailsByMemberId((prev) => {
+      const next = { ...prev };
+      relatedIds.forEach((id) => {
+        next[id] = {
+          at: nowIso,
+          method: "melding",
+          note: "Markert fra oppfølgingsliste.",
+        };
+      });
+      return next;
+    });
+  }
+
+  function saveSelectedMemberFollowUpEntry() {
+    if (!selectedMember || !selectedMemberRelatedIds.length) return;
+    const nowIso = new Date().toISOString();
+    const detail: FollowUpDetail = {
+      at: nowIso,
+      method: followUpMethodDraft,
+      note: followUpNoteDraft.trim(),
+    };
+    setLastFollowUpByMemberId((prev) => {
+      const next = { ...prev };
+      selectedMemberRelatedIds.forEach((id) => {
+        next[id] = nowIso;
+      });
+      return next;
+    });
+    setFollowUpDetailsByMemberId((prev) => {
+      const next = { ...prev };
+      selectedMemberRelatedIds.forEach((id) => {
+        next[id] = detail;
+      });
+      return next;
+    });
+    setFollowUpSaveStatus("Oppfølging lagret.");
   }
 
   return (
@@ -2162,6 +2266,46 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       ) : (
                         <div className="mt-3 text-sm text-slate-500">Ingen økter logget ennå.</div>
                       )}
+                    </div>
+                    <div className="rounded-3xl border bg-slate-50 p-4">
+                      <div className="font-semibold">Oppfølgingslogg</div>
+                      <div className="mt-3 grid gap-3 md:grid-cols-[220px_1fr]">
+                        <SelectBox
+                          value={followUpMethodDraft}
+                          onChange={(value) => setFollowUpMethodDraft(value as FollowUpDetail["method"])}
+                          options={[
+                            { value: "melding", label: "Melding" },
+                            { value: "telefon", label: "Telefon" },
+                            { value: "mote", label: "Møte" },
+                          ]}
+                        />
+                        <TextArea
+                          value={followUpNoteDraft}
+                          onChange={(event) => setFollowUpNoteDraft(event.target.value)}
+                          aria-label="Oppfølgingsnotat"
+                          placeholder="Kort notat fra oppfølgingen..."
+                          className="min-h-[92px]"
+                        />
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <GradientButton onClick={saveSelectedMemberFollowUpEntry} className="px-4 py-2 text-xs">
+                          Lagre oppfølging
+                        </GradientButton>
+                        {followUpSaveStatus ? (
+                          <span className="text-xs text-emerald-700">{followUpSaveStatus}</span>
+                        ) : null}
+                      </div>
+                      <div className="mt-3 rounded-2xl border bg-white p-3 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                        {selectedMemberLatestFollowUp ? (
+                          <>
+                            <div><span className="font-semibold text-slate-800">Sist fulgt opp:</span> {formatDateDdMmYyyy(new Date(selectedMemberLatestFollowUp.at))}</div>
+                            <div><span className="font-semibold text-slate-800">Metode:</span> {followUpMethodLabel(selectedMemberLatestFollowUp.method)}</div>
+                            <div><span className="font-semibold text-slate-800">Notat:</span> {selectedMemberLatestFollowUp.note || "Ingen notat."}</div>
+                          </>
+                        ) : (
+                          <div>Ingen oppfølging registrert ennå.</div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ) : null}

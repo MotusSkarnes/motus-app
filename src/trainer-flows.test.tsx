@@ -437,4 +437,5 @@ describe("Trainer flows", () => {
     await user.click(screen.getByRole("button", { name: "Marker fulgt opp" }));
     expect(screen.queryByText("Sist fulgt opp: Aldri")).not.toBeInTheDocument();
   });
+
 });
