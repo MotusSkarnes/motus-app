@@ -2019,22 +2019,20 @@ export function TrainerPortal(props: TrainerPortalProps) {
                               draggable
                               onDragStart={() => setDraggedExerciseIdFromLibrary(exercise.id)}
                               onDragEnd={() => setDraggedExerciseIdFromLibrary(null)}
-                              className={`rounded-2xl border p-3 cursor-grab active:cursor-grabbing ${
-                                isFavorite ? "border-transparent bg-gradient-to-r from-[#ec4899] via-[#f97316] to-[#22c55e]" : "bg-white"
-                              }`}
+                              className="rounded-2xl border bg-white p-3 cursor-grab active:cursor-grabbing"
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <button type="button" onClick={() => addExerciseToDraft(exercise)} className="flex-1 text-left">
-                                  <div className={`font-medium text-sm ${isFavorite ? "text-white" : ""}`}>{exercise.name}</div>
-                                  <div className={`text-xs ${isFavorite ? "text-white/90" : "text-slate-500"}`}>{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
+                                  <div className="font-medium text-sm">{exercise.name}</div>
+                                  <div className="text-xs text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => toggleFavoriteExercise(exercise.id)}
-                                  className={`rounded-lg border p-1.5 ${isFavorite ? "border-white/60 bg-white/10 text-white" : "border-slate-200 text-slate-400"}`}
+                                  className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent text-white" : "border-slate-200 text-slate-400"}`}
                                   style={
                                     isFavorite
-                                      ? {}
+                                      ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
                                       : { borderColor: "rgba(148,163,184,0.45)" }
                                   }
                                   aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
@@ -2388,22 +2386,20 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         draggable
                         onDragStart={() => setDraggedExerciseIdFromLibrary(exercise.id)}
                         onDragEnd={() => setDraggedExerciseIdFromLibrary(null)}
-                        className={`rounded-2xl border p-3 cursor-grab active:cursor-grabbing ${
-                          isFavorite ? "border-transparent bg-gradient-to-r from-[#ec4899] via-[#f97316] to-[#22c55e]" : "bg-white"
-                        }`}
+                        className="rounded-2xl border bg-white p-3 cursor-grab active:cursor-grabbing"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <button type="button" onClick={() => addExerciseToDraft(exercise)} className="flex-1 text-left">
-                            <div className={`font-medium text-sm ${isFavorite ? "text-white" : ""}`}>{exercise.name}</div>
-                            <div className={`text-xs ${isFavorite ? "text-white/90" : "text-slate-500"}`}>{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
+                            <div className="font-medium text-sm">{exercise.name}</div>
+                            <div className="text-xs text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
                           </button>
                           <button
                             type="button"
                             onClick={() => toggleFavoriteExercise(exercise.id)}
-                            className={`rounded-lg border p-1.5 ${isFavorite ? "border-white/60 bg-white/10 text-white" : "border-slate-200 text-slate-400"}`}
+                            className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent text-white" : "border-slate-200 text-slate-400"}`}
                             style={
                               isFavorite
-                                ? {}
+                                ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
                                 : { borderColor: "rgba(148,163,184,0.45)" }
                             }
                             aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
@@ -2562,10 +2558,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   return (
                   <div
                     key={exercise.id}
-                    className={`rounded-2xl border px-3 py-2.5 ${
-                      isFavorite ? "border-transparent bg-gradient-to-r from-[#ec4899] via-[#f97316] to-[#22c55e]" : "bg-slate-50"
-                    }`}
-                    style={isFavorite ? undefined : { borderColor: "rgba(15,23,42,0.08)" }}
+                    className="rounded-2xl border bg-slate-50 px-3 py-2.5"
+                    style={{ borderColor: "rgba(15,23,42,0.08)" }}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <button
@@ -2573,8 +2567,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         onClick={() => setExpandedExerciseId((prev) => (prev === exercise.id ? null : exercise.id))}
                         className="min-w-0 flex-1 text-left"
                       >
-                        <div className={`truncate text-sm font-medium leading-tight ${isFavorite ? "text-white" : ""}`}>{exercise.name}</div>
-                        <div className={`mt-0.5 truncate text-xs ${isFavorite ? "text-white/90" : "text-slate-500"}`}>
+                        <div className="truncate text-sm font-medium leading-tight">{exercise.name}</div>
+                        <div className="mt-0.5 truncate text-xs text-slate-500">
                           {exercise.category} · {exercise.group} · Utstyr: {exercise.equipment} · {exercise.level}
                         </div>
                       </button>
@@ -2582,10 +2576,10 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         <button
                           type="button"
                           onClick={() => toggleFavoriteExercise(exercise.id)}
-                          className={`rounded-lg border p-1.5 ${isFavorite ? "border-white/60 bg-white/10 text-white" : "border-slate-200 text-slate-400"}`}
+                          className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent text-white" : "border-slate-200 text-slate-400"}`}
                           style={
                             isFavorite
-                              ? {}
+                              ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
                               : { borderColor: "rgba(148,163,184,0.45)" }
                           }
                           aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
@@ -2600,7 +2594,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       </div>
                     </div>
                     {expandedExerciseId === exercise.id ? (
-                      <div className={`mt-2 text-sm ${isFavorite ? "text-white/95" : "text-slate-700"}`}>
+                      <div className="mt-2 text-sm text-slate-700">
                         {exercise.description}
                       </div>
                     ) : null}
