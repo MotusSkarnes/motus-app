@@ -389,6 +389,10 @@ export function MemberPortal(props: MemberPortalProps) {
   const maxCalendarDayLoad = Math.max(0, ...Array.from(calendarDayLoad.values()));
   const firstDayOfMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
   const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
+  const calendarMonthLabel = calendarMonth.toLocaleDateString("no-NO", {
+    month: "long",
+    year: "numeric",
+  });
   const monthOffset = (firstDayOfMonth.getDay() + 6) % 7;
   const calendarCells = Array.from({ length: monthOffset + daysInMonth }, (_, index) => {
     const day = index - monthOffset + 1;
@@ -1149,6 +1153,7 @@ export function MemberPortal(props: MemberPortalProps) {
               <div className="grid gap-4">
                 <div className="min-w-0 w-full overflow-hidden rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Treningskalender</div>
+                  <div className="mt-1 text-base font-semibold text-slate-800 capitalize">{calendarMonthLabel}</div>
                   <div className="mt-1 text-xs text-slate-500">
                     {formatDateDdMmYyyy(calendarMonth)}
                   </div>
