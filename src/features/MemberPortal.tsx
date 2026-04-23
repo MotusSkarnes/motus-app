@@ -43,7 +43,6 @@ type MemberPortalProps = {
 
 const MEMBER_AVATAR_BUCKET = "exercise-images";
 const MEMBER_AVATAR_PREFIX = "member-avatars";
-const STREAK_FREEZE_STORAGE_PREFIX = "motus.member.streakFreeze";
 const PERIOD_PLANS_STORAGE_KEY = "motus.trainer.periodPlansByMemberId";
 
 function encodeEmailForPath(email: string): string {
@@ -152,9 +151,6 @@ export function MemberPortal(props: MemberPortalProps) {
   const [achievementCelebration, setAchievementCelebration] = useState<{ id: string; label: string } | null>(null);
   const [liveWorkoutCelebration, setLiveWorkoutCelebration] = useState<WorkoutCelebration | null>(null);
   const [seenUnlockedAchievementIds, setSeenUnlockedAchievementIds] = useState<string[]>([]);
-  const [activeStreakFreezeMonthKey, setActiveStreakFreezeMonthKey] = useState<string | null>(null);
-  const [activeStreakFreezeWeekKey, setActiveStreakFreezeWeekKey] = useState<string | null>(null);
-  const [streakFreezeStatus, setStreakFreezeStatus] = useState<string | null>(null);
   const [periodPlans, setPeriodPlans] = useState<PeriodSchedulePlan[]>([]);
   const [showPeriodPlanPanel, setShowPeriodPlanPanel] = useState(false);
   const [selectedIntervalProgramId, setSelectedIntervalProgramId] = useState("");
@@ -494,23 +490,6 @@ export function MemberPortal(props: MemberPortalProps) {
     const week = 1 + Math.round((d.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000));
     return `${d.getFullYear()}-${String(week).padStart(2, "0")}`;
   }
-  function getPreviousWeekKey(weekKey: string): string {
-    const [yearPart, weekPart] = weekKey.split("-");
-    const year = Number(yearPart);
-    const week = Number(weekPart);
-    if (!Number.isFinite(year) || !Number.isFinite(week) || week <= 0) return weekKey;
-    const referenceDate = new Date(year, 0, 4 + (week - 1) * 7);
-    referenceDate.setDate(referenceDate.getDate() - 7);
-    return getWeekKey(referenceDate);
-  }
-  function getMonthKey(date: Date): string {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-  }
-  const streakFreezeStorageKey = useMemo(() => {
-    const uniquePart = (normalizedCurrentUserEmail || activeMemberId || "default").trim().toLowerCase();
-    return `${STREAK_FREEZE_STORAGE_PREFIX}.${uniquePart}`;
-  }, [normalizedCurrentUserEmail, activeMemberId]);
-
   const completedLogs = memberLogs.filter((log) => log.status === "Fullført");
   const latestCompletedLog = completedLogs[0] ?? null;
   const completedLogDates = completedLogs.map((log) => parseLogDate(log.date)).filter((date): date is Date => Boolean(date));
@@ -531,15 +510,6 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     return streak;
   }, [trainingWeekKeys]);
-  const currentWeekKey = getWeekKey(now);
-  const previousWeekKey = getPreviousWeekKey(currentWeekKey);
-  const currentMonthKey = getMonthKey(now);
-  const hasWorkoutThisWeek = trainingWeekKeys.includes(currentWeekKey);
-  const hadWorkoutLastWeek = trainingWeekKeys.includes(previousWeekKey);
-  const hasUsedFreezeThisMonth = activeStreakFreezeMonthKey === currentMonthKey;
-  const freezeActiveThisWeek = hasUsedFreezeThisMonth && activeStreakFreezeWeekKey === currentWeekKey;
-  const canUseStreakFreeze = !hasWorkoutThisWeek && hadWorkoutLastWeek && !hasUsedFreezeThisMonth;
-  const streakWeeksWithFreeze = freezeActiveThisWeek ? streakWeeks + 1 : streakWeeks;
   const achievementMaxLevel = 10;
   const achievedLevel = useMemo(() => {
     let highestUnlockedLevel = 0;
@@ -550,14 +520,14 @@ export function MemberPortal(props: MemberPortalProps) {
       const firstSessionTarget = level;
       const isLevelUnlocked =
         completedLogs.length >= sessionsTarget &&
-        streakWeeksWithFreeze >= streakTarget &&
+        streakWeeks >= streakTarget &&
         uniqueTrainingDays >= trainingDaysTarget &&
         completedLogs.length >= firstSessionTarget;
       if (!isLevelUnlocked) break;
       highestUnlockedLevel = level;
     }
     return highestUnlockedLevel;
-  }, [completedLogs.length, streakWeeksWithFreeze, uniqueTrainingDays]);
+  }, [completedLogs.length, streakWeeks, uniqueTrainingDays]);
   const achievementLevel = achievedLevel >= achievementMaxLevel ? achievementMaxLevel : achievedLevel + 1;
   const hasCompletedAllAchievementLevels = achievedLevel >= achievementMaxLevel;
   const achievements = useMemo(() => {
@@ -580,8 +550,8 @@ export function MemberPortal(props: MemberPortalProps) {
         id: `streak-level-${achievementLevel}`,
         label: "Streak",
         hint: `${levelHint} Hold flyt i ${streakTarget} uker`,
-        unlocked: streakWeeksWithFreeze >= streakTarget,
-        current: streakWeeksWithFreeze,
+        unlocked: streakWeeks >= streakTarget,
+        current: streakWeeks,
         target: streakTarget,
         icon: "🔥",
       },
@@ -605,7 +575,7 @@ export function MemberPortal(props: MemberPortalProps) {
       },
     ];
     return items;
-  }, [achievementLevel, completedLogs.length, streakWeeksWithFreeze, uniqueTrainingDays]);
+  }, [achievementLevel, completedLogs.length, streakWeeks, uniqueTrainingDays]);
 
   const calendarDayLoad = useMemo(() => {
     const byDay = new Map<number, number>();
@@ -827,28 +797,6 @@ export function MemberPortal(props: MemberPortalProps) {
     return () => window.clearTimeout(timer);
   }, [profileSaveInfo]);
   useEffect(() => {
-    setStreakFreezeStatus(null);
-    if (typeof window === "undefined") {
-      setActiveStreakFreezeMonthKey(null);
-      setActiveStreakFreezeWeekKey(null);
-      return;
-    }
-    try {
-      const raw = window.localStorage.getItem(streakFreezeStorageKey);
-      if (!raw) {
-        setActiveStreakFreezeMonthKey(null);
-        setActiveStreakFreezeWeekKey(null);
-        return;
-      }
-      const parsed = JSON.parse(raw) as { monthKey?: string; weekKey?: string };
-      setActiveStreakFreezeMonthKey(parsed.monthKey ?? null);
-      setActiveStreakFreezeWeekKey(parsed.weekKey ?? null);
-    } catch {
-      setActiveStreakFreezeMonthKey(null);
-      setActiveStreakFreezeWeekKey(null);
-    }
-  }, [streakFreezeStorageKey]);
-  useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       const raw = window.localStorage.getItem(PERIOD_PLANS_STORAGE_KEY);
@@ -916,18 +864,6 @@ export function MemberPortal(props: MemberPortalProps) {
     if (goalMetricDraft === "dailySteps") setProfileDailyStepsTarget(value);
     if (goalMetricDraft === "targetWeight") setProfileTargetWeight(value);
     setGoalMetricValueDraft("");
-  }
-  function activateStreakFreeze() {
-    if (!canUseStreakFreeze || typeof window === "undefined") return;
-    const payload = { monthKey: currentMonthKey, weekKey: currentWeekKey, usedAt: new Date().toISOString() };
-    try {
-      window.localStorage.setItem(streakFreezeStorageKey, JSON.stringify(payload));
-      setActiveStreakFreezeMonthKey(payload.monthKey);
-      setActiveStreakFreezeWeekKey(payload.weekKey);
-      setStreakFreezeStatus("Comeback-pass aktivert. Streaken holdes levende denne uken.");
-    } catch {
-      setStreakFreezeStatus("Kunne ikke aktivere comeback-pass akkurat nå.");
-    }
   }
   function handleStartIntervalProgramTimer() {
     if (!activeIntervalProgram || !intervalProgramSteps.length) return;
@@ -2501,26 +2437,8 @@ export function MemberPortal(props: MemberPortalProps) {
                   {hasCompletedAllAchievementLevels ? " · Maksnivå nådd ✨" : ""}
                 </div>
                 <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="text-sm font-semibold text-slate-700">Streak denne perioden: {streakWeeksWithFreeze} uker</div>
-                    <div className="text-xs text-slate-500">Comeback-pass: {hasUsedFreezeThisMonth ? "Brukt denne måneden" : "Tilgjengelig"}</div>
-                  </div>
-                  <div className="mt-2 text-xs text-slate-500">
-                    Én gang per måned kan du redde streaken hvis du hopper over en uke.
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <OutlineButton onClick={activateStreakFreeze} disabled={!canUseStreakFreeze}>
-                      Aktiver comeback-pass
-                    </OutlineButton>
-                    {freezeActiveThisWeek ? <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Aktiv denne uken</span> : null}
-                  </div>
-                  {streakFreezeStatus ? (
-                    <StatusMessage
-                      message={streakFreezeStatus}
-                      tone={streakFreezeStatus.toLowerCase().includes("kunne ikke") ? "error" : "success"}
-                      className="mt-3 !rounded-xl !px-3 !py-2 !text-xs"
-                    />
-                  ) : null}
+                  <div className="text-sm font-semibold text-slate-700">Streak denne perioden: {streakWeeks} uker</div>
+                  <div className="mt-2 text-xs text-slate-500">Streak teller sammenhengende treningsuker med fullførte økter.</div>
                 </div>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                   {achievements.map((achievement) => (
