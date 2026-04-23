@@ -40,6 +40,7 @@ type TrainerLayoutProps = {
   trainerUnreadCount: number;
   trainerMessageAlerts: TrainerAlert[];
   handleTrainerBellToggle: () => void;
+  isLocalDemoSession: boolean;
 };
 
 const trainerMenuItems: Array<{ key: TrainerTab; label: string; icon: LucideIcon }> = [
@@ -92,6 +93,7 @@ export function TrainerLayout({
   trainerUnreadCount,
   trainerMessageAlerts,
   handleTrainerBellToggle,
+  isLocalDemoSession,
 }: TrainerLayoutProps) {
   const inactiveMembersCount = appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length;
   const missingInvitesCount = appState.members.filter((member) => !member.invitedAt).length;
@@ -122,6 +124,7 @@ export function TrainerLayout({
     openCustomerMessagesSignal,
     memberAvatarById,
     setMemberAvatarUrlForMember,
+    isLocalDemoSession,
   };
 
   return (
@@ -160,6 +163,14 @@ export function TrainerLayout({
           </div>
         </Card>
         <div className="space-y-3">
+          {isLocalDemoSession ? (
+            <Card className="border-amber-200 bg-amber-50 p-2.5 sm:p-3">
+              <div className="text-xs sm:text-sm font-semibold text-amber-900">Demo-innlogging aktiv</div>
+              <div className="mt-1 text-xs sm:text-sm text-amber-800">
+                Data lagres kun lokalt i denne sesjonen. Logg inn med ekte konto for synk mot medlemssiden.
+              </div>
+            </Card>
+          ) : null}
           <Card className="p-2.5 sm:p-3 bg-gradient-to-b from-emerald-50/80 to-pink-50/60">
             <div className="flex items-center justify-between gap-3">
               <div className="text-xs sm:text-sm font-semibold text-slate-800">Varsler</div>

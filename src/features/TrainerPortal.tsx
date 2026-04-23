@@ -9,7 +9,7 @@ import { Card, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, S
 import type { CreateMemberInput, UpdateMemberInput } from "../services/appRepository";
 import type { InviteMemberResult, InviteTrainerResult } from "../services/supabaseAuth";
 import type { ChatMessage, CustomerSubTab, Exercise, Member, ProgramExercise, TrainerTab, TrainingProgram, WorkoutLog } from "../app/types";
-import { supabaseClient } from "../services/supabaseClient";
+import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
 type TrainerPortalProps = {
   members: Member[];
@@ -47,6 +47,7 @@ type TrainerPortalProps = {
   openCustomerMessagesSignal?: number;
   memberAvatarById?: Record<string, string>;
   setMemberAvatarUrlForMember?: (memberId: string, avatarUrl: string) => void;
+  isLocalDemoSession?: boolean;
 };
 
 export function TrainerPortal(props: TrainerPortalProps) {
@@ -80,6 +81,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     openCustomerMessagesSignal = 0,
     memberAvatarById = {},
     setMemberAvatarUrlForMember,
+    isLocalDemoSession = false,
   } = props;
 
   const [programTitle, setProgramTitle] = useState("Nytt treningsprogram");
@@ -115,6 +117,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     }
   });
   const [editingProgramId, setEditingProgramId] = useState<string | null>(null);
+  const [programSaveStatus, setProgramSaveStatus] = useState<string | null>(null);
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [newMemberPhone, setNewMemberPhone] = useState("");
@@ -143,6 +146,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [customerTypeFilter, setCustomerTypeFilter] = useState<"all" | "PT-kunde" | "Premium-kunde">("all");
   const [memberSort, setMemberSort] = useState<"activityRecent" | "nameAsc" | "nameDesc">("activityRecent");
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
+  const [isInvitingMember, setIsInvitingMember] = useState(false);
   const [memberLinkStatus, setMemberLinkStatus] = useState<string | null>(null);
   const [isRepairingMemberLink, setIsRepairingMemberLink] = useState(false);
   const [memberEditEmail, setMemberEditEmail] = useState("");
@@ -157,6 +161,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [memberEditStatus, setMemberEditStatus] = useState<string | null>(null);
   const [restoreEmail, setRestoreEmail] = useState("");
   const [restoreStatus, setRestoreStatus] = useState<string | null>(null);
+  const [isRestoringMember, setIsRestoringMember] = useState(false);
   const [restoreDataStatus, setRestoreDataStatus] = useState<string | null>(null);
   const [isRestoringTestData, setIsRestoringTestData] = useState(false);
   const [restoreExerciseBankStatus, setRestoreExerciseBankStatus] = useState<string | null>(null);
@@ -696,8 +701,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
     goal: string;
     notes: string;
     exercises: ProgramExercise[];
-  }) {
-    if (!selectedMemberId || selectedMemberId === "__template__") return;
+  }): boolean {
+    if (isLocalDemoSession) {
+      setProgramSaveStatus("Demo-innlogging: program lagres ikke til medlem. Logg inn med ekte konto.");
+      return false;
+    }
+    if (!selectedMemberId || selectedMemberId === "__template__") return false;
     saveProgramForMember({
       id: input.id,
       title: input.title,
@@ -706,6 +715,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
       memberId: selectedMemberId,
       exercises: input.id ? input.exercises : input.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
     });
+    setProgramSaveStatus("Program lagret.");
+    return true;
   }
 
   function submitNewMember(options?: { openProgramAfterCreate?: boolean; inviteAfterCreate?: boolean }) {
@@ -840,12 +851,18 @@ export function TrainerPortal(props: TrainerPortalProps) {
   async function handleInviteSelectedMember() {
     if (!selectedMember) return;
     const email = selectedMember.email.trim().toLowerCase();
-    setInviteStatus("Sender invitasjon...");
+    if (!isValidEmail(email)) {
+      setInviteStatus("Kan ikke sende invitasjon: ugyldig e-post på kunden.");
+      return;
+    }
+    setIsInvitingMember(true);
+    setInviteStatus(null);
     const result = await inviteMember(email, selectedMember.id);
     if (result.ok) {
       markMemberInvited(selectedMember.id, new Date().toISOString());
     }
     setInviteStatus(result.message);
+    setIsInvitingMember(false);
   }
 
   async function handleRepairSelectedMemberLink() {
@@ -875,11 +892,18 @@ export function TrainerPortal(props: TrainerPortalProps) {
   }
 
   async function handleRestoreMember() {
+    if (!restoreEmail.trim()) {
+      setRestoreStatus("Skriv inn e-post før gjenoppretting.");
+      return;
+    }
+    setIsRestoringMember(true);
+    setRestoreStatus(null);
     const result = await restoreMemberByEmail(restoreEmail);
     setRestoreStatus(result.message);
     if (result.ok) {
       setRestoreEmail("");
     }
+    setIsRestoringMember(false);
   }
 
   async function handleRestoreMissingTestData() {
@@ -1654,8 +1678,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         Rediger kundekort
                       </OutlineButton>
                     )}
-                    <OutlineButton onClick={handleInviteSelectedMember}>
-                      Send invitasjon på nytt
+                    <OutlineButton onClick={() => void handleInviteSelectedMember()} disabled={isInvitingMember}>
+                      {isInvitingMember ? "Sender invitasjon..." : "Send invitasjon på nytt"}
                     </OutlineButton>
                     <OutlineButton onClick={() => void handleRepairSelectedMemberLink()} disabled={isRepairingMemberLink}>
                       {isRepairingMemberLink ? "Reparerer kobling..." : "Reparer medlemskobling"}
@@ -1939,19 +1963,29 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
                       <GradientButton
                         onClick={() => {
-                          saveProgramToSelectedMemberProfiles({
+                          const didSave = saveProgramToSelectedMemberProfiles({
                             id: editingProgramId ?? undefined,
                             title: programTitle,
                             goal: programGoal,
                             notes: programNotes,
                             exercises: programExercisesDraft,
                           });
-                          resetProgramBuilder();
+                          if (didSave) {
+                            resetProgramBuilder();
+                          }
                         }}
                         className="w-full"
+                        disabled={isLocalDemoSession}
                       >
                         {editingProgramId ? "Oppdater program" : "Lagre program på kunde"}
                       </GradientButton>
+                      {programSaveStatus ? (
+                        <StatusMessage
+                          message={programSaveStatus}
+                          tone={programSaveStatus.toLowerCase().includes("lagret") ? "success" : "error"}
+                          className="!rounded-xl !px-3 !py-2 !text-xs"
+                        />
+                      ) : null}
                     </div>
 
                     <div className="rounded-3xl border bg-slate-50 p-4 space-y-3">
@@ -2616,6 +2650,23 @@ export function TrainerPortal(props: TrainerPortalProps) {
             </div>
           </div>
           <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="text-sm font-semibold text-slate-700">Driftsstatus</div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div className="rounded-xl border bg-white px-3 py-2 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-slate-500">Backend</div>
+                <div className="font-semibold text-slate-800">{isSupabaseConfigured ? "Supabase tilkoblet" : "Lokal modus"}</div>
+              </div>
+              <div className="rounded-xl border bg-white px-3 py-2 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-slate-500">Rolle</div>
+                <div className="font-semibold text-slate-800">Trener</div>
+              </div>
+              <div className="rounded-xl border bg-white px-3 py-2 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-slate-500">Sesjon</div>
+                <div className="font-semibold text-slate-800">{isLocalDemoSession ? "Demo (lokal)" : "Ekte innlogging"}</div>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <TextInput value={newTrainerName} onChange={(event) => setNewTrainerName(event.target.value)} placeholder="Navn (valgfritt)" />
             <TextInput value={newTrainerEmail} onChange={(event) => setNewTrainerEmail(event.target.value)} placeholder="E-post til ny PT" />
             <GradientButton onClick={() => void handleInviteTrainer()} disabled={isInvitingTrainer} className="w-full md:w-auto">
@@ -2652,8 +2703,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 className="!rounded-xl !px-3 !py-2 !text-xs"
               />
             ) : null}
-            <OutlineButton onClick={() => void handleRestoreMember()} className="w-full md:w-auto">
-              Gjenopprett klient
+            <OutlineButton onClick={() => void handleRestoreMember()} className="w-full md:w-auto" disabled={isRestoringMember}>
+              {isRestoringMember ? "Gjenoppretter..." : "Gjenopprett klient"}
             </OutlineButton>
           </div>
         </Card>

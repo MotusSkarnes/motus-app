@@ -48,6 +48,7 @@ export function buildTrainerLayoutProps(input: {
   trainerUnreadCount: number;
   trainerMessageAlerts: TrainerLayoutProps["trainerMessageAlerts"];
   handleTrainerBellToggle: () => void;
+  isLocalDemoSession: boolean;
 }): TrainerLayoutProps {
   return input;
 }

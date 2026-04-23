@@ -131,6 +131,7 @@ export function useAppState() {
   const [otpError, setOtpError] = useState<string | null>(null);
   const [trainerTab, setTrainerTab] = useState<TrainerTab>("dashboard");
   const [memberTab, setMemberTab] = useState<MemberTab>("overview");
+  const [isLocalDemoSession, setIsLocalDemoSession] = useState(false);
 
   function ensureMemberRecordForUser(state: AppState, user: AuthUser, preferredMemberId?: string): AppState {
     if (user.role !== "member") return state;
@@ -383,6 +384,7 @@ export function useAppState() {
     async function hydrateSession() {
       const user = await getSupabaseSessionUser();
       if (!user || cancelled) return;
+      setIsLocalDemoSession(false);
       setAppState((prev) => {
         const baseState = ensureMemberRecordForUser(prev, user, user.memberId ?? prev.memberViewId);
         const resolvedSelectedMemberId =
@@ -531,22 +533,7 @@ export function useAppState() {
         setTrainerTab("dashboard");
         setMemberTab("overview");
         setLoginError(null);
-        return;
-      }
-
-      // Fallback for local demo users when demo mode is enabled.
-      if (isDemoMode && matchedDemoUser) {
-        const { password: _password, ...safeUser } = matchedDemoUser;
-        setAppState((prev) => ({
-          ...prev,
-          currentUser: safeUser,
-          role: safeUser.role,
-          selectedMemberId: safeUser.memberId ?? prev.selectedMemberId,
-          memberViewId: safeUser.memberId ?? prev.memberViewId,
-        }));
-        setTrainerTab("dashboard");
-        setMemberTab("overview");
-        setLoginError(null);
+        setIsLocalDemoSession(false);
         return;
       }
 
@@ -569,6 +556,7 @@ export function useAppState() {
     setTrainerTab("dashboard");
     setMemberTab("overview");
     setLoginError(null);
+    setIsLocalDemoSession(true);
   }
 
   async function completePasswordRecovery() {
@@ -685,6 +673,7 @@ export function useAppState() {
     setLoginError(null);
     setOtpCode("");
     setOtpInfo("Innlogging med engangskode fullført.");
+    setIsLocalDemoSession(false);
   }
 
   function handleQuickLogin(email: string) {
@@ -704,6 +693,7 @@ export function useAppState() {
     setTrainerTab("dashboard");
     setMemberTab("overview");
     setLoginError(null);
+    setIsLocalDemoSession(true);
   }
 
   async function handleLogout() {
@@ -714,6 +704,7 @@ export function useAppState() {
     setLoginEmail("");
     setLoginPassword("");
     setLoginError(null);
+    setIsLocalDemoSession(false);
   }
 
   function resetAllData() {
@@ -723,6 +714,7 @@ export function useAppState() {
     setLoginEmail("");
     setLoginPassword("");
     setLoginError(null);
+    setIsLocalDemoSession(false);
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
     }
@@ -918,6 +910,7 @@ export function useAppState() {
     sendEmailOtpCode,
     loginWithEmailOtpCode,
     showQuickLogin: isDemoMode,
+    isLocalDemoSession,
     handleLogout,
     resetAllData,
     addMember,

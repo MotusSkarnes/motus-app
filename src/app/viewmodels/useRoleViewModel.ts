@@ -76,6 +76,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     trainerUnreadCount,
     trainerMessageAlerts,
     handleTrainerBellToggle,
+    isLocalDemoSession: state.isLocalDemoSession,
   });
 
   const memberLayoutProps: ComponentProps<typeof MemberLayout> = buildMemberLayoutProps({
