@@ -1,8 +1,5 @@
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
-import { AppHeader } from "../../features/AppHeader";
-import { LoginScreen } from "../../features/LoginScreen";
-import { MemberLayout } from "../../features/MemberLayout";
-import { TrainerLayout } from "../../features/TrainerLayout";
+import { AppHeader, LoginScreen, MemberLayout, TrainerLayout } from "../../features";
 import type { AppState } from "../types";
 
 export function buildLoginScreenProps(

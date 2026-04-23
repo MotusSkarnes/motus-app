@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { LoginScreen } from "../../features/LoginScreen";
+import { LoginScreen } from "../../features";
 import { buildLoginScreenProps } from "./viewModelBuilders";
 import type { AppStateHookResult } from "./types";
 

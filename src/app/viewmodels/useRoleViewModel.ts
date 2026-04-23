@@ -1,7 +1,5 @@
 import { useState, type ComponentProps } from "react";
-import { AppHeader } from "../../features/AppHeader";
-import { MemberLayout } from "../../features/MemberLayout";
-import { TrainerLayout } from "../../features/TrainerLayout";
+import { AppHeader, MemberLayout, TrainerLayout } from "../../features";
 import { buildAppHeaderProps, buildMemberLayoutProps, buildTrainerLayoutProps } from "./viewModelBuilders";
 import type { AppStateHookResult } from "./types";
 import { useMemberAvatarStore } from "../useMemberAvatarStore";
