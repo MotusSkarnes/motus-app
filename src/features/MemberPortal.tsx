@@ -261,13 +261,24 @@ export function MemberPortal(props: MemberPortalProps) {
     return exercises.filter((exercise) => exercise.id !== sourceExercise.id && exercise.category === sourceExercise.category);
   }, [activeWorkoutProgram, currentWorkoutGroup, exercises]);
   const now = new Date();
+  const exerciseCategoryById = useMemo(() => {
+    const byId = new Map<string, Exercise["category"]>();
+    exercises.forEach((exercise) => {
+      byId.set(exercise.id, exercise.category);
+    });
+    return byId;
+  }, [exercises]);
   const intervalPrograms = useMemo(
     () =>
       memberPrograms.filter((program) => {
-        const hasTimedSteps = program.exercises.some((exercise) => Number(exercise.durationMinutes) > 0);
-        return hasTimedSteps;
+        if (program.exercises.length === 0) return false;
+        return program.exercises.every((exercise) => {
+          const category = exerciseCategoryById.get(exercise.exerciseId);
+          const hasTimedStep = Number(exercise.durationMinutes) > 0;
+          return category === "Kondisjon" && hasTimedStep;
+        });
       }),
-    [memberPrograms],
+    [memberPrograms, exerciseCategoryById],
   );
   const intervalProgramIdSet = useMemo(() => new Set(intervalPrograms.map((program) => program.id)), [intervalPrograms]);
   const activeIntervalProgram = useMemo(
@@ -1840,14 +1851,6 @@ export function MemberPortal(props: MemberPortalProps) {
                             >
                               {isExpanded ? "Skjul økt" : "Se hele økt"}
                             </OutlineButton>
-                            {intervalProgramIdSet.has(program.id) ? (
-                              <OutlineButton
-                                className="px-3 py-2 text-xs"
-                                onClick={() => openIntervalTimerModal(program.id)}
-                              >
-                                Åpne intervallvindu
-                              </OutlineButton>
-                            ) : null}
                             <GradientButton
                               className="px-3 py-2 text-xs"
                               onClick={() => {

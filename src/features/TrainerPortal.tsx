@@ -563,10 +563,17 @@ export function TrainerPortal(props: TrainerPortalProps) {
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [programs, selectedMemberRelatedIdSet]
   );
-  const selectedPeriodPlans = useMemo(
-    () => (selectedMemberId && selectedMemberId !== "__template__" ? periodPlansByMemberId[selectedMemberId] ?? [] : []),
-    [periodPlansByMemberId, selectedMemberId],
-  );
+  const selectedPeriodPlans = useMemo(() => {
+    if (!selectedMemberRelatedIds.length) return [] as PeriodSchedulePlan[];
+    const merged = selectedMemberRelatedIds.flatMap((memberId) => periodPlansByMemberId[memberId] ?? []);
+    const deduplicated = new Map<string, PeriodSchedulePlan>();
+    merged.forEach((plan) => {
+      if (!deduplicated.has(plan.id)) {
+        deduplicated.set(plan.id, plan);
+      }
+    });
+    return Array.from(deduplicated.values());
+  }, [periodPlansByMemberId, selectedMemberRelatedIds]);
   const templatePrograms = programs.filter((program) => program.memberId === "__template__");
   const selectedLogs = useMemo(() => {
     return logs
@@ -1126,7 +1133,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   }
 
   function savePeriodPlanForSelectedMember() {
-    if (!selectedMemberId || selectedMemberId === "__template__") {
+    if (!selectedMemberId || selectedMemberId === "__template__" || selectedMemberRelatedIds.length === 0) {
       setPeriodPlanStatus("Velg en kunde før du lagrer periodeplan.");
       return;
     }
@@ -1150,11 +1157,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
       weeklyPlans,
     };
     setPeriodPlansByMemberId((prev) => {
-      const previous = prev[selectedMemberId] ?? [];
-      return {
-        ...prev,
-        [selectedMemberId]: [newPeriodPlan, ...previous],
-      };
+      const next = { ...prev };
+      selectedMemberRelatedIds.forEach((memberId) => {
+        const previous = next[memberId] ?? [];
+        next[memberId] = [newPeriodPlan, ...previous];
+      });
+      return next;
     });
     setPeriodPlanStatus("Periodeplan lagret.");
   }
@@ -1182,13 +1190,14 @@ export function TrainerPortal(props: TrainerPortalProps) {
   }
 
   function removePeriodPlan(planId: string) {
-    if (!selectedMemberId || selectedMemberId === "__template__") return;
+    if (!selectedMemberId || selectedMemberId === "__template__" || selectedMemberRelatedIds.length === 0) return;
     setPeriodPlansByMemberId((prev) => {
-      const previous = prev[selectedMemberId] ?? [];
-      return {
-        ...prev,
-        [selectedMemberId]: previous.filter((plan) => plan.id !== planId),
-      };
+      const next = { ...prev };
+      selectedMemberRelatedIds.forEach((memberId) => {
+        const previous = next[memberId] ?? [];
+        next[memberId] = previous.filter((plan) => plan.id !== planId);
+      });
+      return next;
     });
     setPeriodPlanStatus("Periodeplan slettet.");
   }
