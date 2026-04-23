@@ -202,9 +202,19 @@ async function persistMember(member: Member) {
     roleClaim === "member" || (authenticatedEmail && authenticatedEmail === normalizedEmail);
 
   if (shouldUseMemberProfileSync) {
+    const relatedMemberIds = await resolveRelatedMemberIds(member.id);
+    const syncEmails = Array.from(
+      new Set(
+        [normalizedEmail, authenticatedEmail]
+          .map((value) => String(value ?? "").trim().toLowerCase())
+          .filter((value) => value && value.includes("@"))
+      )
+    );
     const syncPayload = {
       email: authenticatedEmail || normalizedEmail,
+      emails: syncEmails,
       memberId: member.id,
+      memberIds: relatedMemberIds,
       changes: {
         name: member.name,
         phone: member.phone,
@@ -256,6 +266,10 @@ async function persistMember(member: Member) {
     }
 
     if (!synced) {
+      const directClauses = [
+        `id.eq.${member.id.trim()}`,
+        ...syncEmails.map((email) => `email.eq.${email}`),
+      ];
       const directUpdate = await supabaseClient
         .from("members")
         .update({
@@ -267,7 +281,7 @@ async function persistMember(member: Member) {
           focus: member.focus,
           injuries: member.injuries,
         })
-        .eq("id", member.id)
+        .or(directClauses.join(","))
         .select("id");
       if (directUpdate.error || (directUpdate.data?.length ?? 0) === 0) {
         console.warn(
