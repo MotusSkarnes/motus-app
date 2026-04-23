@@ -62,23 +62,36 @@ export function LoginScreen(props: LoginScreenProps) {
   } = props;
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-      <Card className="overflow-hidden p-6 sm:p-8">
+    <div className="grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
+      <Card className="relative overflow-hidden p-6 sm:p-8">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-10"
+          style={{ background: `radial-gradient(circle at 15% 20%, ${MOTUS.turquoise} 0%, transparent 38%), radial-gradient(circle at 85% 15%, ${MOTUS.pink} 0%, transparent 40%), radial-gradient(circle at 80% 90%, ${MOTUS.acid} 0%, transparent 34%)` }}
+        />
         <div className="h-1.5 -mx-6 sm:-mx-8 -mt-6 sm:-mt-8 mb-6" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 70%, ${MOTUS.acid} 100%)` }} />
-        <div className="max-w-2xl space-y-5">
+        <div className="relative max-w-2xl space-y-6">
           <div className="flex flex-wrap items-center gap-3">
             <img src={motusLogo} alt="Motus logo" className="h-16 w-auto object-contain" />
-            <Badge>PT App</Badge>
-            <Badge>Klar til bruk</Badge>
+            <Badge>Motus Coach</Badge>
+            <Badge>Profesjonell PT-flyt</Badge>
           </div>
           <div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Logg inn i Motus PT-app</h1>
-            <p className="mt-2 text-slate-500">Logg inn for a administrere medlemmer, programmer og oppfolging.</p>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">Velkommen til Motus Coach</h1>
+            <p className="mt-2 max-w-xl text-slate-600">Logg inn for a styre kunder, programmer, periodeplaner, fremgang og oppfolging i en samlet arbeidsflate.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
-            <StatCard label="Brukere" value="3" hint="Demo-kontoer klare" />
-            <StatCard label="Lagring" value="Lokal" hint="Lagres i nettleseren" />
-            <StatCard label="Flyt" value="Enkel" hint="Rask demo-innlogging" />
+            <StatCard label="Kunder" value="Full kontroll" hint="Profiler, meldinger, planer" />
+            <StatCard label="Trening" value="Smart flyt" hint="Program + intervalltimer" />
+            <StatCard label="Oppfølging" value="Daglig" hint="Mål og progresjon" />
+          </div>
+          <div className="rounded-2xl border bg-white/80 p-4 backdrop-blur-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="text-sm font-semibold text-slate-800">Hva er nytt i appen</div>
+            <div className="mt-2 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+              <div>• Periodeplan med uke-for-uke styring</div>
+              <div>• Tildelbare intervallprogrammer</div>
+              <div>• Smart progresjonsforslag</div>
+              <div>• Streaks og achievements nivå 1-10</div>
+            </div>
           </div>
         </div>
       </Card>

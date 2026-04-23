@@ -44,6 +44,7 @@ type MemberPortalProps = {
 const MEMBER_AVATAR_BUCKET = "exercise-images";
 const MEMBER_AVATAR_PREFIX = "member-avatars";
 const STREAK_FREEZE_STORAGE_PREFIX = "motus.member.streakFreeze";
+const PERIOD_PLANS_STORAGE_KEY = "motus.trainer.periodPlansByMemberId";
 
 function encodeEmailForPath(email: string): string {
   const normalized = email.trim().toLowerCase();
@@ -82,6 +83,22 @@ type IntervalTimerStep = {
   speedHint: string;
   inclineHint: string;
   tone: "warmup" | "work" | "rest" | "cooldown";
+};
+type WeekdayPlanKey = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+type WeeklyDayPlan = Record<WeekdayPlanKey, string>;
+type WeeklySchedulePlan = {
+  id: string;
+  weekNumber: number;
+  days: WeeklyDayPlan;
+};
+type PeriodSchedulePlan = {
+  id: string;
+  title: string;
+  notes: string;
+  startDate: string;
+  weeks: number;
+  createdAt: string;
+  weeklyPlans: WeeklySchedulePlan[];
 };
 
 export function MemberPortal(props: MemberPortalProps) {
@@ -138,7 +155,10 @@ export function MemberPortal(props: MemberPortalProps) {
   const [activeStreakFreezeMonthKey, setActiveStreakFreezeMonthKey] = useState<string | null>(null);
   const [activeStreakFreezeWeekKey, setActiveStreakFreezeWeekKey] = useState<string | null>(null);
   const [streakFreezeStatus, setStreakFreezeStatus] = useState<string | null>(null);
+  const [periodPlans, setPeriodPlans] = useState<PeriodSchedulePlan[]>([]);
+  const [showPeriodPlanPanel, setShowPeriodPlanPanel] = useState(false);
   const [selectedIntervalProgramId, setSelectedIntervalProgramId] = useState("");
+  const [showIntervalTimerModal, setShowIntervalTimerModal] = useState(false);
   const [isIntervalTimerRunning, setIsIntervalTimerRunning] = useState(false);
   const [isIntervalTimerPaused, setIsIntervalTimerPaused] = useState(false);
   const [intervalTimerStepIndex, setIntervalTimerStepIndex] = useState(0);
@@ -248,14 +268,12 @@ export function MemberPortal(props: MemberPortalProps) {
   const intervalPrograms = useMemo(
     () =>
       memberPrograms.filter((program) => {
-        const taggedInterval = program.notes.toLowerCase().includes("[interval_timer]");
-        const hasTimedTreadmillSteps = program.exercises.some(
-          (exercise) => Number(exercise.durationMinutes) > 0 && (exercise.incline || exercise.speed),
-        );
-        return taggedInterval || hasTimedTreadmillSteps;
+        const hasTimedSteps = program.exercises.some((exercise) => Number(exercise.durationMinutes) > 0);
+        return hasTimedSteps;
       }),
     [memberPrograms],
   );
+  const intervalProgramIdSet = useMemo(() => new Set(intervalPrograms.map((program) => program.id)), [intervalPrograms]);
   const activeIntervalProgram = useMemo(
     () => intervalPrograms.find((program) => program.id === selectedIntervalProgramId) ?? intervalPrograms[0] ?? null,
     [intervalPrograms, selectedIntervalProgramId],
@@ -305,6 +323,22 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [intervalProgramSteps, intervalTimerStepIndex, currentIntervalProgramStep, intervalTimerRemainingSeconds, intervalTimerTotalSeconds]);
   const intervalTimerProgressPercent =
     intervalTimerTotalSeconds > 0 ? Math.min(100, Math.round((intervalTimerElapsedSeconds / intervalTimerTotalSeconds) * 100)) : 0;
+  const currentWeekdayKey: WeekdayPlanKey = useMemo(() => {
+    const day = now.getDay();
+    if (day === 0) return "sunday";
+    if (day === 1) return "monday";
+    if (day === 2) return "tuesday";
+    if (day === 3) return "wednesday";
+    if (day === 4) return "thursday";
+    if (day === 5) return "friday";
+    return "saturday";
+  }, [now]);
+  const activePeriodPlan = periodPlans[0] ?? null;
+  const activeWeeklyPlan = activePeriodPlan?.weeklyPlans[0] ?? null;
+  const todayPlanEntry = activeWeeklyPlan?.days[currentWeekdayKey]?.trim() ?? "";
+  const todayProgramMatch = todayPlanEntry
+    ? memberPrograms.find((program) => program.title.trim().toLowerCase() === todayPlanEntry.toLowerCase()) ?? null
+    : null;
 
   function normalizeBirthDateToDdMmYyyy(value: string): string {
     return normalizeBirthDate(value);
@@ -815,6 +849,25 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }, [streakFreezeStorageKey]);
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(PERIOD_PLANS_STORAGE_KEY);
+      if (!raw) {
+        setPeriodPlans([]);
+        return;
+      }
+      const parsed = JSON.parse(raw) as Record<string, PeriodSchedulePlan[]>;
+      if (!parsed || typeof parsed !== "object") {
+        setPeriodPlans([]);
+        return;
+      }
+      const merged = relatedMemberIds.flatMap((memberId) => parsed[memberId] ?? []);
+      setPeriodPlans(merged);
+    } catch {
+      setPeriodPlans([]);
+    }
+  }, [relatedMemberIds]);
+  useEffect(() => {
     if (!activeIntervalProgram || isIntervalTimerRunning) return;
     const firstStep = intervalProgramSteps[0] ?? null;
     setSelectedIntervalProgramId(activeIntervalProgram.id);
@@ -884,6 +937,21 @@ export function MemberPortal(props: MemberPortalProps) {
     setIntervalTimerStepIndex(0);
     setIntervalTimerRemainingSeconds(firstStep?.durationSeconds ?? 0);
     setIsIntervalTimerRunning(true);
+  }
+  function openIntervalTimerModal(programId: string) {
+    setSelectedIntervalProgramId(programId);
+    setShowIntervalTimerModal(true);
+    setIntervalTimerStatus(null);
+    setIsIntervalTimerRunning(false);
+    setIsIntervalTimerPaused(false);
+    setIntervalTimerStepIndex(0);
+  }
+  function closeIntervalTimerModal() {
+    setShowIntervalTimerModal(false);
+    setIsIntervalTimerRunning(false);
+    setIsIntervalTimerPaused(false);
+    setIntervalTimerStepIndex(0);
+    setIntervalTimerRemainingSeconds(intervalProgramSteps[0]?.durationSeconds ?? 0);
   }
   function handlePauseResumeIntervalProgramTimer() {
     if (!isIntervalTimerRunning) return;
@@ -1524,6 +1592,33 @@ export function MemberPortal(props: MemberPortalProps) {
                   </OutlineButton>
                 </div>
               </div>
+              {todayPlanEntry ? (
+                <div className="min-w-0 w-full rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="text-sm font-semibold text-slate-700">📅 Dagens økt (fra periodeplan)</div>
+                  <div className="mt-1 text-sm text-slate-700">{todayPlanEntry}</div>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    {todayProgramMatch ? (
+                      <GradientButton
+                        onClick={() => {
+                          setMemberTab("programs");
+                          if (intervalProgramIdSet.has(todayProgramMatch.id)) {
+                            openIntervalTimerModal(todayProgramMatch.id);
+                            return;
+                          }
+                          startWorkoutMode(todayProgramMatch.id);
+                        }}
+                        className="w-full sm:w-auto"
+                      >
+                        Start dagens økt
+                      </GradientButton>
+                    ) : (
+                      <OutlineButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">
+                        Se dagens plan
+                      </OutlineButton>
+                    )}
+                  </div>
+                </div>
+              ) : null}
               <div className="min-w-0 w-full rounded-2xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-sm font-semibold text-slate-700">Målstatus</div>
@@ -1809,19 +1904,24 @@ export function MemberPortal(props: MemberPortalProps) {
                             >
                               {isExpanded ? "Skjul økt" : "Se hele økt"}
                             </OutlineButton>
-                            {(program.notes.toLowerCase().includes("[interval_timer]") ||
-                              program.exercises.some((exercise) => Number(exercise.durationMinutes) > 0 && (exercise.speed || exercise.incline))) ? (
+                            {intervalProgramIdSet.has(program.id) ? (
                               <OutlineButton
                                 className="px-3 py-2 text-xs"
-                                onClick={() => {
-                                  setSelectedIntervalProgramId(program.id);
-                                  setIntervalTimerStatus(null);
-                                }}
+                                onClick={() => openIntervalTimerModal(program.id)}
                               >
-                                Intervalltimer
+                                Åpne intervallvindu
                               </OutlineButton>
                             ) : null}
-                            <GradientButton className="px-3 py-2 text-xs" onClick={() => startWorkoutMode(program.id)}>
+                            <GradientButton
+                              className="px-3 py-2 text-xs"
+                              onClick={() => {
+                                if (intervalProgramIdSet.has(program.id)) {
+                                  openIntervalTimerModal(program.id);
+                                  return;
+                                }
+                                startWorkoutMode(program.id);
+                              }}
+                            >
                               Start økt
                             </GradientButton>
                           </div>
@@ -1853,8 +1953,59 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="font-semibold">🗓️ Periodeplan fra PT</div>
+                    <div className="mt-1 text-xs text-slate-500">Viser hva som er planlagt dag for dag.</div>
+                  </div>
+                  <OutlineButton onClick={() => setShowPeriodPlanPanel((prev) => !prev)} className="w-full sm:w-auto">
+                    {showPeriodPlanPanel ? "Skjul periodeplan" : "Vis periodeplan"}
+                  </OutlineButton>
+                </div>
+                {showPeriodPlanPanel ? (
+                  <div className="mt-4 space-y-3">
+                    {periodPlans.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed bg-slate-50 p-4 text-sm text-slate-500">
+                        Ingen periodeplan er tilgjengelig ennå.
+                      </div>
+                    ) : (
+                      periodPlans.slice(0, 1).map((plan) => (
+                        <div key={plan.id} className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                          <div className="font-medium text-slate-800">{plan.title}</div>
+                          <div className="mt-1 text-xs text-slate-500">Start: {plan.startDate} · {plan.weeks} uker · Lagret {plan.createdAt}</div>
+                          {plan.notes ? <div className="mt-2 text-sm text-slate-600">{plan.notes}</div> : null}
+                          <div className="mt-3 space-y-2">
+                            {(plan.weeklyPlans ?? []).map((week) => (
+                              <div key={week.id} className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Uke {week.weekNumber}</div>
+                                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                  {([
+                                    { key: "monday", label: "Mandag" },
+                                    { key: "tuesday", label: "Tirsdag" },
+                                    { key: "wednesday", label: "Onsdag" },
+                                    { key: "thursday", label: "Torsdag" },
+                                    { key: "friday", label: "Fredag" },
+                                    { key: "saturday", label: "Lørdag" },
+                                    { key: "sunday", label: "Søndag" },
+                                  ] as Array<{ key: WeekdayPlanKey; label: string }>).map((day) => (
+                                    <div key={`${week.id}-${day.key}`} className="rounded-lg border bg-slate-50 px-2 py-1.5 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                      <span className="font-semibold text-slate-700">{day.label}:</span>{" "}
+                                      <span className="text-slate-600">{week.days[day.key] || "Ingen plan"}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ) : null}
+              </div>
+              <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="font-semibold">🏃 Intervallprogram med nedtelling</div>
-                <div className="mt-1 text-xs text-slate-500">Velg ett av tildelte intervallprogram og trykk start. Appen teller ned hele økta automatisk.</div>
+                <div className="mt-1 text-xs text-slate-500">Intervalløkter håndteres som vanlige treningsprogrammer. Trykk Start økt for å åpne intervallvinduet.</div>
                 <div className="mt-4 rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   {intervalPrograms.length > 0 ? (
                     <>
@@ -1867,53 +2018,21 @@ export function MemberPortal(props: MemberPortalProps) {
                         }))}
                       />
                       <div className="text-xs text-slate-500">{activeIntervalProgram?.goal || "Intervalløkt fra PT-program"}</div>
+                      <GradientButton
+                        onClick={() => {
+                          if (!activeIntervalProgram) return;
+                          openIntervalTimerModal(activeIntervalProgram.id);
+                        }}
+                        className="w-full sm:w-auto"
+                      >
+                        Start økt i intervallvindu
+                      </GradientButton>
                     </>
                   ) : (
                     <div className="rounded-xl border border-dashed bg-white p-3 text-xs text-slate-500">
-                      Ingen intervallprogram tildelt ennå. Be PT lage et intervallprogram og markere det som intervalltimer.
+                      Ingen intervallprogram tildelt ennå. Be PT lage et intervallprogram og tildele det som vanlig program.
                     </div>
                   )}
-                  <div className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="text-sm font-semibold text-slate-800">
-                        {currentIntervalProgramStep ? currentIntervalProgramStep.label : "Klar"}
-                      </div>
-                      <div className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
-                        Del {Math.min(intervalTimerStepIndex + 1, intervalProgramSteps.length || 1)} / {intervalProgramSteps.length || 1}
-                      </div>
-                    </div>
-                    <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{formatSeconds(intervalTimerRemainingSeconds)}</div>
-                    <div className="mt-1 text-xs text-slate-500">
-                      Fart: {currentIntervalProgramStep?.speedHint || "-"} · Incline: {currentIntervalProgramStep?.inclineHint || "-"}
-                    </div>
-                    <div className="mt-3 h-2 rounded-full bg-slate-200">
-                      <div
-                        className="h-2 rounded-full"
-                        style={{ width: `${intervalTimerProgressPercent}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                      />
-                    </div>
-                    <div className="mt-1 text-[11px] text-slate-500">
-                      Total tid: {formatSeconds(intervalTimerElapsedSeconds)} / {formatSeconds(intervalTimerTotalSeconds)}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <GradientButton onClick={handleStartIntervalProgramTimer} className="w-full sm:w-auto" disabled={!intervalProgramSteps.length}>
-                      Start økt
-                    </GradientButton>
-                    <OutlineButton onClick={handlePauseResumeIntervalProgramTimer} disabled={!isIntervalTimerRunning} className="w-full sm:w-auto">
-                      {isIntervalTimerPaused ? "Fortsett" : "Pause"}
-                    </OutlineButton>
-                    <OutlineButton onClick={handleResetIntervalProgramTimer} className="w-full sm:w-auto" disabled={!intervalProgramSteps.length}>
-                      Nullstill
-                    </OutlineButton>
-                  </div>
-                  {intervalTimerStatus ? (
-                    <StatusMessage
-                      message={intervalTimerStatus}
-                      tone={intervalTimerStatus.toLowerCase().includes("fullført") ? "success" : "info"}
-                      className="!rounded-xl !px-3 !py-2 !text-xs"
-                    />
-                  ) : null}
                 </div>
               </div>
               <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
@@ -2037,6 +2156,71 @@ export function MemberPortal(props: MemberPortalProps) {
                   ))}
                 </div>
               </div>
+              {showIntervalTimerModal ? (
+                <div className="fixed inset-0 z-[10012] bg-slate-900/60 p-3 sm:p-6">
+                  <div className="mx-auto flex h-full w-full max-w-2xl flex-col rounded-[30px] bg-white shadow-2xl">
+                    <div className="border-b p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-xs uppercase tracking-wide text-slate-400">Intervallvindu</div>
+                          <div className="text-xl font-semibold text-slate-900">{activeIntervalProgram?.title || "Intervalløkt"}</div>
+                          <div className="mt-1 text-xs text-slate-500">{activeIntervalProgram?.goal || "Nedtelling per intervallsteg"}</div>
+                        </div>
+                        <OutlineButton onClick={closeIntervalTimerModal}>Lukk</OutlineButton>
+                      </div>
+                    </div>
+                    <div className="flex-1 space-y-4 overflow-auto p-4 sm:p-6">
+                      <div
+                        className="rounded-3xl p-5 text-white"
+                        style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                      >
+                        <div className="text-sm uppercase tracking-wide text-white/90">
+                          {currentIntervalProgramStep?.label || "Klar"}
+                        </div>
+                        <div className="mt-2 text-6xl font-black tracking-tight">{formatSeconds(intervalTimerRemainingSeconds)}</div>
+                        <div className="mt-2 text-sm text-white/90">
+                          Fart: {currentIntervalProgramStep?.speedHint || "-"} · Incline: {currentIntervalProgramStep?.inclineHint || "-"}
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                        <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
+                          <span>Del {Math.min(intervalTimerStepIndex + 1, intervalProgramSteps.length || 1)} / {intervalProgramSteps.length || 1}</span>
+                          <span>{intervalTimerProgressPercent}%</span>
+                        </div>
+                        <div className="mt-2 h-3 rounded-full bg-slate-200">
+                          <div
+                            className="h-3 rounded-full"
+                            style={{ width: `${intervalTimerProgressPercent}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                          />
+                        </div>
+                        <div className="mt-2 text-xs text-slate-500">
+                          Total tid: {formatSeconds(intervalTimerElapsedSeconds)} / {formatSeconds(intervalTimerTotalSeconds)}
+                        </div>
+                      </div>
+                      {intervalTimerStatus ? (
+                        <StatusMessage
+                          message={intervalTimerStatus}
+                          tone={intervalTimerStatus.toLowerCase().includes("fullført") ? "success" : "info"}
+                          className="!rounded-xl !px-3 !py-2 !text-xs"
+                        />
+                      ) : null}
+                    </div>
+                    <div className="border-t p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <GradientButton onClick={handleStartIntervalProgramTimer} disabled={!intervalProgramSteps.length}>
+                          Start økt
+                        </GradientButton>
+                        <OutlineButton onClick={handlePauseResumeIntervalProgramTimer} disabled={!isIntervalTimerRunning}>
+                          {isIntervalTimerPaused ? "Fortsett" : "Pause"}
+                        </OutlineButton>
+                        <OutlineButton onClick={handleResetIntervalProgramTimer} disabled={!intervalProgramSteps.length}>
+                          Nullstill
+                        </OutlineButton>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               {activeWorkoutProgram && workoutMode ? (
                 <div className="fixed inset-0 z-[10010] bg-slate-900/40 p-3 sm:p-6">
                   <div className="mx-auto flex h-full max-w-xl flex-col rounded-[28px] bg-white shadow-2xl">

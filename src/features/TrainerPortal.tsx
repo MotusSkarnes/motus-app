@@ -1084,7 +1084,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     }));
     setProgramTitle(`Intervall: ${preset.name}`);
     setProgramGoal("Mølleintervall med nedtelling");
-    setProgramNotes(`[INTERVAL_TIMER] ${preset.description} Du kan redigere fart, incline og varighet før lagring.`);
+    setProgramNotes(`${preset.description} Du kan redigere fart, incline og varighet før lagring.`);
     setProgramExercisesDraft(draftExercises);
     setQuickPlanStatus(`Intervallutkast klart: ${preset.name}. Lagre for å tildele kunden.`);
   }

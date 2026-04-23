@@ -59,7 +59,7 @@ export function AppHeader({
               </>
             ) : (
               <>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Motus PT-app</h1>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Motus Coach</h1>
                 <p className="mt-2 text-sm md:text-base text-slate-500 max-w-3xl">
                   Administrer medlemmer, programmer og oppfolging pa ett sted.
                 </p>
