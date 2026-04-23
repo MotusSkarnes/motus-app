@@ -69,6 +69,7 @@ export function MemberLayout({
     members: appState.members,
     currentUserRole: appState.currentUser!.role,
     currentUserEmail: appState.currentUser!.email,
+    currentUserMemberId: appState.currentUser?.memberId,
     programs: appState.programs,
     logs: appState.logs,
     messages: appState.messages,

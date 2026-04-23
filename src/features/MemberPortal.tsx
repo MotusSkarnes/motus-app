@@ -13,6 +13,7 @@ type MemberPortalProps = {
   members: Member[];
   currentUserRole: "trainer" | "member";
   currentUserEmail: string;
+  currentUserMemberId?: string;
   programs: TrainingProgram[];
   logs: WorkoutLog[];
   messages: ChatMessage[];
@@ -56,7 +57,7 @@ export function MemberPortal(props: MemberPortalProps) {
     "Godt voksen",
     "Step styrke",
   ];
-  const { members, currentUserRole, currentUserEmail, programs, logs, messages, memberViewId, memberTab, setMemberTab, updateMember, memberAvatarUrl, setMemberAvatarUrl, exercises, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, replaceWorkoutExerciseGroup, updateWorkoutModeNote, finishWorkoutMode, logGroupWorkout, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
+  const { members, currentUserRole, currentUserEmail, currentUserMemberId, programs, logs, messages, memberViewId, memberTab, setMemberTab, updateMember, memberAvatarUrl, setMemberAvatarUrl, exercises, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, replaceWorkoutExerciseGroup, updateWorkoutModeNote, finishWorkoutMode, logGroupWorkout, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
   const [messageText, setMessageText] = useState("");
   const [profileWeight, setProfileWeight] = useState("");
   const [profileTrainingGoal, setProfileTrainingGoal] = useState("");
@@ -82,6 +83,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [groupWorkoutNote, setGroupWorkoutNote] = useState("");
   const [groupWorkoutStatus, setGroupWorkoutStatus] = useState<string | null>(null);
   const [showGroupWorkoutLogger, setShowGroupWorkoutLogger] = useState(false);
+  const [showProgramDebugPanel, setShowProgramDebugPanel] = useState(false);
   const [showWorkoutReflection, setShowWorkoutReflection] = useState(false);
   const [reflectionEnergyLevel, setReflectionEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [reflectionDifficultyLevel, setReflectionDifficultyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
@@ -1613,6 +1615,37 @@ export function MemberPortal(props: MemberPortalProps) {
                   ))}
                 </div>
               </div>
+              {currentUserRole === "member" ? (
+                <div className="mt-6 rounded-3xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-700">Debug: programtilgang medlem</div>
+                      <div className="mt-1 text-xs text-slate-500">Midlertidig panel for feilsøking av synlighet på treningsprogram.</div>
+                    </div>
+                    <OutlineButton onClick={() => setShowProgramDebugPanel((prev) => !prev)} className="w-full sm:w-auto">
+                      {showProgramDebugPanel ? "Skjul debug" : "Vis debug"}
+                    </OutlineButton>
+                  </div>
+                  {showProgramDebugPanel ? (
+                    <div className="mt-3 space-y-2 rounded-2xl border bg-white p-3 text-xs text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div><span className="font-semibold">currentUserEmail:</span> {currentUserEmail || "mangler"}</div>
+                      <div><span className="font-semibold">currentUserMemberId claim:</span> {currentUserMemberId || "mangler"}</div>
+                      <div><span className="font-semibold">memberViewId:</span> {memberViewId || "mangler"}</div>
+                      <div><span className="font-semibold">activeMemberId:</span> {activeMemberId || "mangler"}</div>
+                      <div><span className="font-semibold">relatedMemberIds:</span> {relatedMemberIds.join(", ") || "ingen"}</div>
+                      <div><span className="font-semibold">totalt programmer i state:</span> {programs.length}</div>
+                      <div><span className="font-semibold">programmer i Mine treningsprogram:</span> {memberPrograms.length}</div>
+                      <div className="space-y-1">
+                        {(memberPrograms.length ? memberPrograms : programs).slice(0, 20).map((program) => (
+                          <div key={program.id} className="rounded-lg border bg-slate-50 px-2 py-1" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                            {program.title} · memberId={program.memberId}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
 
               {activeWorkoutProgram && workoutMode ? (
                 <div className="fixed inset-0 z-[10010] bg-slate-900/40 p-3 sm:p-6">

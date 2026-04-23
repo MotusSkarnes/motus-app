@@ -251,8 +251,10 @@ export function useAppState() {
         }
       })();
 
-      const hydratedTrainer = sessionRole === "trainer" && ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
-      const hydratedMember = sessionRole === "member" ? await fetchHydratedMemberData() : null;
+      const isTrainerSession = sessionRole === "trainer";
+      const isMemberLikeSession = Boolean(sessionUser) && !isTrainerSession;
+      const hydratedTrainer = isTrainerSession && ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
+      const hydratedMember = isMemberLikeSession ? await fetchHydratedMemberData() : null;
       const remoteMembers = hydratedTrainer?.members ?? hydratedMember?.members ?? (await fetchMembersFromSupabase());
       const remoteMessages = hydratedTrainer?.messages ?? hydratedMember?.messages ?? (await fetchMessagesFromSupabase());
       const remotePrograms = hydratedTrainer?.programs ?? hydratedMember?.programs ?? (await fetchProgramsFromSupabase());

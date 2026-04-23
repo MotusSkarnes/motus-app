@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   const { data: members, error: membersError } = await adminClient
     .from("members")
     .select("id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, created_at")
-    .eq("email", requesterEmail)
+    .ilike("email", requesterEmail)
     .order("created_at", { ascending: false });
   if (membersError) {
     return jsonResponse(500, { error: membersError.message });
