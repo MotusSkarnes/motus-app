@@ -100,6 +100,15 @@ export async function getSupabaseSessionUser(): Promise<AuthUser | null> {
   return mapSupabaseUserToAuthUser(session.user);
 }
 
+export async function refreshSupabaseSessionUser(): Promise<AuthUser | null> {
+  if (!supabaseClient) return null;
+  const { data, error } = await supabaseClient.auth.refreshSession();
+  if (error) return null;
+  const user = data.user ?? data.session?.user ?? null;
+  if (!user) return null;
+  return mapSupabaseUserToAuthUser(user);
+}
+
 export async function signOutSupabase(): Promise<void> {
   if (!supabaseClient) return;
   await supabaseClient.auth.signOut();
