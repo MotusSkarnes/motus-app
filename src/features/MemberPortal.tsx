@@ -2281,9 +2281,12 @@ export function MemberPortal(props: MemberPortalProps) {
                         <div className="text-sm uppercase tracking-wide text-white/90">
                           {currentIntervalProgramStep?.label || "Klar"}
                         </div>
-                        <div className="mt-2 text-6xl font-black tracking-tight">{formatSeconds(intervalTimerRemainingSeconds)}</div>
+                        <div className="mt-2 text-7xl font-black tracking-tight sm:text-8xl">{formatSeconds(intervalTimerRemainingSeconds)}</div>
                         <div className="mt-2 text-sm text-white/90">
                           Fart: {currentIntervalProgramStep?.speedHint || "-"} · Incline: {currentIntervalProgramStep?.inclineHint || "-"}
+                        </div>
+                        <div className="mt-2 text-sm text-white/90">
+                          Neste: {intervalProgramSteps[intervalTimerStepIndex + 1]?.label || "Siste steg"}
                         </div>
                       </div>
                       <div className="rounded-2xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
