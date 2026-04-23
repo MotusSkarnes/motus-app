@@ -189,6 +189,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [selectedWorkoutLogId, setSelectedWorkoutLogId] = useState<string | null>(null);
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
   const [templateProgramTitle, setTemplateProgramTitle] = useState("Ny treningsmal");
+  const [editingTemplateProgramId, setEditingTemplateProgramId] = useState<string | null>(null);
   const [selectedTemplateProgramId, setSelectedTemplateProgramId] = useState("");
   const [templateAssignStatus, setTemplateAssignStatus] = useState<string | null>(null);
   const [draggedExerciseIdFromLibrary, setDraggedExerciseIdFromLibrary] = useState<string | null>(null);
@@ -1194,17 +1195,59 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
   function saveTemplateFromProgramsTab() {
     const title = templateProgramTitle.trim();
-    if (!title) return;
+    if (!title) {
+      setTemplateAssignStatus("Skriv inn navn på treningsmalen.");
+      return;
+    }
+    if (programExercisesDraft.length === 0) {
+      setTemplateAssignStatus("Legg til minst én øvelse før du lagrer malen.");
+      return;
+    }
     saveProgramForMember({
+      id: editingTemplateProgramId ?? undefined,
       title,
       goal: "",
       notes: "",
       memberId: "__template__",
-      exercises: programExercisesDraft.map((exercise) => ({ ...exercise, id: uid("template-ex") })),
+      exercises: editingTemplateProgramId
+        ? programExercisesDraft.map((exercise) => ({ ...exercise }))
+        : programExercisesDraft.map((exercise) => ({ ...exercise, id: uid("template-ex") })),
     });
+    if (editingTemplateProgramId) {
+      setTemplateAssignStatus("Treningsmal oppdatert.");
+    } else {
+      setTemplateAssignStatus("Treningsmal lagret.");
+    }
+    setEditingTemplateProgramId(null);
     setTemplateProgramTitle("Ny treningsmal");
     setProgramExercisesDraft([]);
-    setTemplateAssignStatus("Treningsmal lagret.");
+  }
+
+  function startEditTemplateProgram(program: TrainingProgram) {
+    setEditingTemplateProgramId(program.id);
+    setTemplateProgramTitle(program.title);
+    setProgramExercisesDraft(program.exercises.map((exercise) => ({ ...exercise })));
+    setTemplateAssignStatus(`Redigerer mal: ${program.title}`);
+  }
+
+  function resetTemplateProgramBuilder() {
+    setEditingTemplateProgramId(null);
+    setTemplateProgramTitle("Ny treningsmal");
+    setProgramExercisesDraft([]);
+    setTemplateAssignStatus(null);
+  }
+
+  function deleteTemplateProgram(program: TrainingProgram) {
+    const shouldDelete = window.confirm(`Slette treningsmalen "${program.title}"?`);
+    if (!shouldDelete) return;
+    deleteProgramById(program.id);
+    if (editingTemplateProgramId === program.id) {
+      resetTemplateProgramBuilder();
+    }
+    if (selectedTemplateProgramId === program.id) {
+      setSelectedTemplateProgramId("");
+    }
+    setTemplateAssignStatus(`Treningsmalen "${program.title}" ble slettet.`);
   }
 
   function assignSelectedTemplateToMember() {
@@ -3465,8 +3508,41 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   onClick={saveTemplateFromProgramsTab}
                   className="w-full"
                 >
-                  Lagre treningsmal
+                  {editingTemplateProgramId ? "Lagre endringer i mal" : "Lagre treningsmal"}
                 </GradientButton>
+                {editingTemplateProgramId ? (
+                  <OutlineButton onClick={resetTemplateProgramBuilder} className="w-full">
+                    Avbryt redigering
+                  </OutlineButton>
+                ) : null}
+              </div>
+              <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="font-semibold">Lagrede treningsmaler</div>
+                {templatePrograms.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed bg-white p-4 text-sm text-slate-500">
+                    Ingen treningsmaler lagret ennå.
+                  </div>
+                ) : null}
+                <div className="space-y-2">
+                  {templatePrograms.map((program) => (
+                    <div key={program.id} className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-slate-800">{program.title}</div>
+                          <div className="mt-0.5 text-xs text-slate-500">{program.exercises.length} øvelse(r)</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <OutlineButton onClick={() => startEditTemplateProgram(program)} className="px-3 py-1.5 text-xs">
+                            Rediger
+                          </OutlineButton>
+                          <OutlineButton onClick={() => deleteTemplateProgram(program)} className="px-3 py-1.5 text-xs text-rose-700">
+                            Slett
+                          </OutlineButton>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="font-semibold">Øvelser</div>
