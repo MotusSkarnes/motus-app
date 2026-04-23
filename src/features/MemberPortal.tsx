@@ -7,7 +7,7 @@ import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../a
 import { supabaseClient } from "../services/supabaseClient";
 import { Card, GradientButton, OutlineButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
 import type { ReplaceWorkoutExerciseGroupInput, UpdateMemberInput } from "../services/appRepository";
-import type { ChatMessage, Exercise, Member, MemberTab, TrainingProgram, WorkoutCelebration, WorkoutLog, WorkoutModeState } from "../app/types";
+import type { ChatMessage, Exercise, Member, MemberTab, TrainingProgram, WorkoutCelebration, WorkoutLog, WorkoutModeState, WorkoutReflection } from "../app/types";
 
 type MemberPortalProps = {
   members: Member[];
@@ -33,7 +33,7 @@ type MemberPortalProps = {
   ) => void;
   replaceWorkoutExerciseGroup: (input: ReplaceWorkoutExerciseGroupInput) => void;
   updateWorkoutModeNote: (note: string) => void;
-  finishWorkoutMode: () => void;
+  finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
   cancelWorkoutMode: () => void;
   workoutCelebration: WorkoutCelebration | null;
   dismissWorkoutCelebration: () => void;
@@ -61,6 +61,11 @@ export function MemberPortal(props: MemberPortalProps) {
   const [memberFocusDraft, setMemberFocusDraft] = useState("");
   const [memberInjuriesDraft, setMemberInjuriesDraft] = useState("");
   const [showReplacementOptions, setShowReplacementOptions] = useState(false);
+  const [showWorkoutReflection, setShowWorkoutReflection] = useState(false);
+  const [reflectionEnergyLevel, setReflectionEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [reflectionDifficultyLevel, setReflectionDifficultyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [reflectionMotivationLevel, setReflectionMotivationLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [reflectionNote, setReflectionNote] = useState("");
   const [workoutExerciseIndex, setWorkoutExerciseIndex] = useState(0);
   const [expandedRecentLogId, setExpandedRecentLogId] = useState<string | null>(null);
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<number | null>(null);
@@ -863,9 +868,15 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!workoutMode) {
       setWorkoutExerciseIndex(0);
       setLiveWorkoutCelebration(null);
+      setShowWorkoutReflection(false);
       return;
     }
     setWorkoutExerciseIndex(0);
+    setShowWorkoutReflection(false);
+    setReflectionEnergyLevel(3);
+    setReflectionDifficultyLevel(3);
+    setReflectionMotivationLevel(3);
+    setReflectionNote("");
   }, [workoutMode?.programId]);
 
   useEffect(() => {
@@ -887,6 +898,23 @@ export function MemberPortal(props: MemberPortalProps) {
       nextExerciseName: replacementExercise.name,
     });
     setShowReplacementOptions(false);
+  }
+
+  function getReflectionEmoji(level: 1 | 2 | 3 | 4 | 5): string {
+    if (level <= 1) return "🥳";
+    if (level === 2) return "🙂";
+    if (level === 3) return "😌";
+    if (level === 4) return "😮‍💨";
+    return "🥵";
+  }
+
+  function buildWorkoutReflection(): WorkoutReflection {
+    return {
+      energyLevel: reflectionEnergyLevel,
+      difficultyLevel: reflectionDifficultyLevel,
+      motivationLevel: reflectionMotivationLevel,
+      note: reflectionNote.trim(),
+    };
   }
 
   function estimate1RM(weight: number, reps: number): number {
@@ -1540,7 +1568,65 @@ export function MemberPortal(props: MemberPortalProps) {
                         </div>
                       ) : null}
 
-                      <TextArea value={workoutMode.note} onChange={(e) => updateWorkoutModeNote(e.target.value)} className="min-h-[110px]" placeholder="Hvordan gikk økta?" />
+                      {!showWorkoutReflection ? (
+                        <TextArea value={workoutMode.note} onChange={(e) => updateWorkoutModeNote(e.target.value)} className="min-h-[110px]" placeholder="Hvordan gikk økta?" />
+                      ) : (
+                        <div className="rounded-2xl border bg-slate-50 p-4 space-y-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                          <div>
+                            <div className="text-sm font-semibold text-slate-800">Etter økta</div>
+                            <div className="text-xs text-slate-500">Svar med emoji før økta lagres.</div>
+                          </div>
+                          {[
+                            {
+                              key: "energy",
+                              question: "Hvordan føles energinivået nå?",
+                              value: reflectionEnergyLevel,
+                              setValue: setReflectionEnergyLevel,
+                            },
+                            {
+                              key: "difficulty",
+                              question: "Hvor tung opplevdes økta?",
+                              value: reflectionDifficultyLevel,
+                              setValue: setReflectionDifficultyLevel,
+                            },
+                            {
+                              key: "motivation",
+                              question: "Hvordan er motivasjonen videre?",
+                              value: reflectionMotivationLevel,
+                              setValue: setReflectionMotivationLevel,
+                            },
+                          ].map((item) => (
+                            <div key={item.key} className="space-y-2">
+                              <div className="text-xs font-medium text-slate-700">{item.question}</div>
+                              <div className="grid grid-cols-5 gap-2">
+                                {[1, 2, 3, 4, 5].map((level) => {
+                                  const numericLevel = level as 1 | 2 | 3 | 4 | 5;
+                                  const active = item.value === numericLevel;
+                                  return (
+                                    <button
+                                      key={level}
+                                      type="button"
+                                      onClick={() => item.setValue(numericLevel)}
+                                      className={`rounded-xl border px-2 py-2 text-lg transition ${
+                                        active ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                                      }`}
+                                      aria-label={`Velg nivå ${level}`}
+                                    >
+                                      {getReflectionEmoji(numericLevel)}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                          <TextArea
+                            value={reflectionNote}
+                            onChange={(e) => setReflectionNote(e.target.value)}
+                            className="min-h-[90px]"
+                            placeholder="Notat til PT (valgfritt)"
+                          />
+                        </div>
+                      )}
                     </div>
 
                     <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -1558,7 +1644,18 @@ export function MemberPortal(props: MemberPortalProps) {
                             Neste øvelse
                           </GradientButton>
                         ) : (
-                          <GradientButton className="flex-1" onClick={finishWorkoutMode}>Ferdig og logg økt</GradientButton>
+                          <GradientButton
+                            className="flex-1"
+                            onClick={() => {
+                              if (!showWorkoutReflection) {
+                                setShowWorkoutReflection(true);
+                                return;
+                              }
+                              finishWorkoutMode({ reflection: buildWorkoutReflection() });
+                            }}
+                          >
+                            {showWorkoutReflection ? "Lagre økt" : "Til oppsummering"}
+                          </GradientButton>
                         )}
                       </div>
                     </div>

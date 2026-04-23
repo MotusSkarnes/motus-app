@@ -87,6 +87,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [programNotes, setProgramNotes] = useState("");
   const [trainerMessage, setTrainerMessage] = useState("");
   const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
+  const [selectedWorkoutLogId, setSelectedWorkoutLogId] = useState<string | null>(null);
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
   const [templateProgramTitle, setTemplateProgramTitle] = useState("Ny treningsmal");
   const [selectedTemplateProgramId, setSelectedTemplateProgramId] = useState("");
@@ -272,6 +273,18 @@ export function TrainerPortal(props: TrainerPortalProps) {
     [messages, selectedMemberRelatedIds]
   );
   const latestCompletedLog = selectedLogs.find((log) => log.status === "Fullført") ?? null;
+  const selectedWorkoutLog = useMemo(() => {
+    if (!selectedWorkoutLogId) return selectedLogs[0] ?? null;
+    return selectedLogs.find((log) => log.id === selectedWorkoutLogId) ?? selectedLogs[0] ?? null;
+  }, [selectedLogs, selectedWorkoutLogId]);
+  function reflectionEmoji(level?: 1 | 2 | 3 | 4 | 5): string {
+    if (!level) return "—";
+    if (level <= 1) return "🥳";
+    if (level === 2) return "🙂";
+    if (level === 3) return "😌";
+    if (level === 4) return "😮‍💨";
+    return "🥵";
+  }
   const visibleExercises = useMemo(() => {
     const query = exerciseSearch.trim().toLowerCase();
     const filtered = exercises.filter((exercise) => {
@@ -399,6 +412,16 @@ export function TrainerPortal(props: TrainerPortalProps) {
     if (!selectedMemberId || selectedMemberId === "__template__") return;
     setCustomerSubTab("messages");
   }, [openCustomerMessagesSignal, selectedMemberId]);
+
+  useEffect(() => {
+    if (!selectedLogs.length) {
+      setSelectedWorkoutLogId(null);
+      return;
+    }
+    if (!selectedWorkoutLogId || !selectedLogs.some((log) => log.id === selectedWorkoutLogId)) {
+      setSelectedWorkoutLogId(selectedLogs[0].id);
+    }
+  }, [selectedLogs, selectedWorkoutLogId]);
 
   function resetMemberEditDraftFromSelected(member: Member | null) {
     if (!member) {
@@ -1635,15 +1658,17 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 </div>
 
                 <div className="rounded-3xl border bg-slate-50/80 p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     <PillButton active={customerSubTab === "overview"} onClick={() => setCustomerSubTab("overview")}>Oversikt</PillButton>
                     <PillButton active={customerSubTab === "programs"} onClick={() => setCustomerSubTab("programs")}>Program</PillButton>
+                    <PillButton active={customerSubTab === "workouts"} onClick={() => setCustomerSubTab("workouts")}>Økter</PillButton>
                     <PillButton active={customerSubTab === "messages"} onClick={() => setCustomerSubTab("messages")}>Meldinger</PillButton>
                   </div>
                 </div>
 
                 {customerSubTab === "overview" ? (
-                  <div className="grid gap-4 xl:grid-cols-2">
+                  <div className="space-y-4">
+                    <div className="grid gap-4 xl:grid-cols-2">
                     <div className="rounded-3xl border bg-slate-50 p-4">
                       <div className="font-semibold">Kort status</div>
                       <div className="mt-3 space-y-2 text-sm text-slate-600">
@@ -1660,6 +1685,35 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         <div>{selectedMessages.length ? `Siste melding: ${selectedMessages[selectedMessages.length - 1].createdAt}` : "Ingen meldinger ennå"}</div>
                         <div>{selectedPrograms.length ? `Siste program: ${selectedPrograms[0].title}` : "Ingen program ennå"}</div>
                       </div>
+                    </div>
+                    </div>
+                    <div className="rounded-3xl border bg-slate-50 p-4">
+                      <div className="font-semibold">Siste økter og tilbakemeldinger</div>
+                      {selectedLogs.length ? (
+                        <div className="mt-3 space-y-3">
+                          {selectedLogs.slice(0, 5).map((log) => (
+                            <div key={log.id} className="rounded-2xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="font-medium text-slate-800">{log.programTitle}</div>
+                                <div className="text-xs text-slate-500">{log.date}</div>
+                              </div>
+                              <div className="mt-1 text-xs text-slate-500">{log.status}</div>
+                              {log.results?.length ? (
+                                <div className="mt-2 text-xs text-slate-600">
+                                  Utførte sett: {log.results.filter((result) => result.completed).length}/{log.results.length}
+                                </div>
+                              ) : null}
+                              <div className="mt-2 text-xs text-slate-700">
+                                Følelse: {reflectionEmoji(log.reflection?.energyLevel)} · Belastning: {reflectionEmoji(log.reflection?.difficultyLevel)} · Motivasjon: {reflectionEmoji(log.reflection?.motivationLevel)}
+                              </div>
+                              {log.note ? <div className="mt-2 text-xs text-slate-600">Øktnotat: {log.note}</div> : null}
+                              {log.reflection?.note ? <div className="mt-1 text-xs text-slate-600">Til PT: {log.reflection.note}</div> : null}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="mt-3 text-sm text-slate-500">Ingen økter logget ennå.</div>
+                      )}
                     </div>
                   </div>
                 ) : null}
@@ -1951,6 +2005,79 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           </div>
                         ))}
                       </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {customerSubTab === "workouts" ? (
+                  <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+                    <div className="rounded-3xl border bg-slate-50 p-4">
+                      <div className="font-semibold">Siste økter</div>
+                      {selectedLogs.length ? (
+                        <div className="mt-3 space-y-2">
+                          {selectedLogs.slice(0, 12).map((log) => (
+                            <button
+                              key={log.id}
+                              type="button"
+                              onClick={() => setSelectedWorkoutLogId(log.id)}
+                              className={`w-full rounded-2xl border px-3 py-3 text-left text-sm transition ${
+                                selectedWorkoutLog?.id === log.id
+                                  ? "border-emerald-300 bg-emerald-50"
+                                  : "border-slate-200 bg-white hover:bg-slate-100"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="font-medium text-slate-800">{log.programTitle}</div>
+                                <div className="text-xs text-slate-500">{log.date}</div>
+                              </div>
+                              <div className="mt-1 text-xs text-slate-500">{log.status}</div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="mt-3 text-sm text-slate-500">Ingen økter logget ennå.</div>
+                      )}
+                    </div>
+                    <div className="rounded-3xl border bg-slate-50 p-4">
+                      <div className="font-semibold">Øktdetaljer</div>
+                      {selectedWorkoutLog ? (
+                        <div className="mt-3 space-y-3">
+                          <div className="rounded-2xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="font-medium text-slate-800">{selectedWorkoutLog.programTitle}</div>
+                              <div className="text-xs text-slate-500">{selectedWorkoutLog.date}</div>
+                            </div>
+                            <div className="mt-1 text-xs text-slate-500">{selectedWorkoutLog.status}</div>
+                            <div className="mt-2 text-xs text-slate-700">
+                              Følelse: {reflectionEmoji(selectedWorkoutLog.reflection?.energyLevel)} · Belastning: {reflectionEmoji(selectedWorkoutLog.reflection?.difficultyLevel)} · Motivasjon: {reflectionEmoji(selectedWorkoutLog.reflection?.motivationLevel)}
+                            </div>
+                            {selectedWorkoutLog.note ? <div className="mt-2 text-xs text-slate-600">Øktnotat: {selectedWorkoutLog.note}</div> : null}
+                            {selectedWorkoutLog.reflection?.note ? <div className="mt-1 text-xs text-slate-600">Til PT: {selectedWorkoutLog.reflection.note}</div> : null}
+                          </div>
+                          {selectedWorkoutLog.results?.length ? (
+                            <div className="space-y-2">
+                              {selectedWorkoutLog.results.map((result, index) => (
+                                <div key={`${selectedWorkoutLog.id}-${result.exerciseId}-${index}`} className="rounded-2xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="font-medium text-slate-800">{result.exerciseName}</div>
+                                    <div className={`text-xs font-semibold ${result.completed ? "text-emerald-600" : "text-slate-500"}`}>
+                                      {result.completed ? "Fullført" : "Ikke fullført"}
+                                    </div>
+                                  </div>
+                                  <div className="mt-2 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+                                    <div>Plan: {result.plannedSets} x {result.plannedReps} @ {result.plannedWeight || "0"} kg</div>
+                                    <div>Utført: {result.performedReps || "-"} reps @ {result.performedWeight || "-"} kg</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-slate-500">Ingen detaljerte sett registrert på denne økten.</div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="mt-3 text-sm text-slate-500">Velg en økt for å se detaljer.</div>
+                      )}
                     </div>
                   </div>
                 ) : null}

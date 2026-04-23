@@ -1,5 +1,5 @@
 import { uid } from "../app/storage";
-import type { AppState, ChatMessage, Exercise, Member, ProgramExercise, TrainingProgram, WorkoutCelebration, WorkoutLog } from "../app/types";
+import type { AppState, ChatMessage, Exercise, Member, ProgramExercise, TrainingProgram, WorkoutCelebration, WorkoutLog, WorkoutReflection } from "../app/types";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
 
 export type CreateMemberInput = {
@@ -23,6 +23,10 @@ export type UpdateWorkoutResultInput = {
   exerciseId: string;
   field: "performedWeight" | "performedReps" | "performedDurationMinutes" | "performedSpeed" | "performedIncline" | "completed";
   value: string | boolean;
+};
+
+export type FinishWorkoutInput = {
+  reflection?: WorkoutReflection;
 };
 
 export type ReplaceWorkoutExerciseGroupInput = {
@@ -60,7 +64,7 @@ export interface AppRepository {
   replaceWorkoutExerciseGroup(state: AppState, input: ReplaceWorkoutExerciseGroupInput): AppState;
   updateWorkoutNote(state: AppState, note: string): AppState;
   cancelWorkoutMode(state: AppState): AppState;
-  finishWorkoutMode(state: AppState): AppState;
+  finishWorkoutMode(state: AppState, input?: FinishWorkoutInput): AppState;
   saveExercise(state: AppState, input: SaveExerciseInput): AppState;
   updateMember(state: AppState, input: UpdateMemberInput): AppState;
 }
@@ -277,7 +281,7 @@ export function cancelWorkoutModeInState(state: AppState): AppState {
   return { ...state, workoutMode: null };
 }
 
-export function finishWorkoutModeInState(state: AppState): AppState {
+export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutInput): AppState {
   const current = state.workoutMode;
   if (!current) return state;
   const program = state.programs.find((p) => p.id === current.programId);
@@ -334,6 +338,7 @@ export function finishWorkoutModeInState(state: AppState): AppState {
         date: formatDateDdMmYyyy(new Date()),
         status: "Fullført",
         note: current.note,
+        reflection: input?.reflection,
         results: current.results,
       },
       ...state.logs,

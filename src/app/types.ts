@@ -13,7 +13,7 @@ export type TrainerTab =
   | "tasks"
   | "statistics"
   | "settings";
-export type CustomerSubTab = "overview" | "profile" | "programs" | "messages";
+export type CustomerSubTab = "overview" | "profile" | "programs" | "workouts" | "messages";
 export type MemberTab = "overview" | "programs" | "progress" | "messages" | "profile";
 
 export type WorkoutExerciseResult = {
@@ -50,6 +50,13 @@ export type WorkoutCelebration = {
   newEstimated1RM: number;
   reps: number;
   weight: number;
+};
+
+export type WorkoutReflection = {
+  energyLevel: 1 | 2 | 3 | 4 | 5;
+  difficultyLevel: 1 | 2 | 3 | 4 | 5;
+  motivationLevel: 1 | 2 | 3 | 4 | 5;
+  note: string;
 };
 
 export type AuthUser = {
@@ -124,6 +131,7 @@ export type WorkoutLog = {
   date: string;
   status: "Planlagt" | "Fullført";
   note: string;
+  reflection?: WorkoutReflection;
   results?: WorkoutExerciseResult[];
 };
 

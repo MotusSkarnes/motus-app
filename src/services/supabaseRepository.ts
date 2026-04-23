@@ -6,6 +6,7 @@ import {
   localAppRepository,
   type AppRepository,
   type CreateMemberInput,
+  type FinishWorkoutInput,
   type SaveProgramInput,
   type SaveExerciseInput,
   type ReplaceWorkoutExerciseGroupInput,
@@ -304,6 +305,7 @@ async function persistWorkoutLog(log: WorkoutLog) {
   if (!supabaseClient) return;
   const ownerUserId = await getOwnerUserId();
   if (!ownerUserId) return;
+  const serializedNote = serializeWorkoutNote(log.note, log.reflection);
 
   const { error } = await supabaseClient.from("workout_logs").upsert(
     {
@@ -313,7 +315,7 @@ async function persistWorkoutLog(log: WorkoutLog) {
       program_title: log.programTitle,
       date: log.date,
       status: log.status,
-      note: log.note,
+      note: serializedNote,
       results: log.results ?? [],
       created_at: new Date().toISOString(),
     },
@@ -349,6 +351,29 @@ function mapIsoToProgramDate(iso: string): string {
     return formatDateDdMmYyyy(new Date());
   }
   return formatDateDdMmYyyy(date);
+}
+
+const WORKOUT_REFLECTION_PREFIX = "__MOTUS_REFLECTION__";
+
+function serializeWorkoutNote(note: string, reflection?: WorkoutLog["reflection"]): string {
+  const cleanNote = note.trim();
+  if (!reflection) return cleanNote;
+  const payload = JSON.stringify(reflection);
+  return `${WORKOUT_REFLECTION_PREFIX}${payload}\n${cleanNote}`;
+}
+
+function parseWorkoutNote(rawNote: unknown): { note: string; reflection?: WorkoutLog["reflection"] } {
+  const note = String(rawNote ?? "");
+  if (!note.startsWith(WORKOUT_REFLECTION_PREFIX)) return { note };
+  const newlineIndex = note.indexOf("\n");
+  const payload = newlineIndex >= 0 ? note.slice(WORKOUT_REFLECTION_PREFIX.length, newlineIndex) : note.slice(WORKOUT_REFLECTION_PREFIX.length);
+  const plainNote = newlineIndex >= 0 ? note.slice(newlineIndex + 1) : "";
+  try {
+    const parsed = JSON.parse(payload) as WorkoutLog["reflection"];
+    return { note: plainNote, reflection: parsed };
+  } catch {
+    return { note: plainNote };
+  }
 }
 
 export type HydratedTrainerData = {
@@ -428,13 +453,15 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
     }),
     logs: logsRows.map((row) => {
       const log = row as Record<string, unknown>;
+      const parsedNote = parseWorkoutNote(log.note);
       return {
         id: String(log.id ?? ""),
         memberId: String(log.member_id ?? ""),
         programTitle: String(log.program_title ?? ""),
         date: String(log.date ?? ""),
         status: log.status === "Planlagt" ? "Planlagt" : "Fullført",
-        note: String(log.note ?? ""),
+        note: parsedNote.note,
+        reflection: parsedNote.reflection,
         results: Array.isArray(log.results) ? (log.results as WorkoutExerciseResult[]) : undefined,
       } as WorkoutLog;
     }),
@@ -513,15 +540,19 @@ export async function fetchLogsFromSupabase(): Promise<WorkoutLog[] | null> {
     return null;
   }
 
-  return (data ?? []).map((row) => ({
-    id: String(row.id),
-    memberId: String(row.member_id),
-    programTitle: String(row.program_title ?? ""),
-    date: String(row.date ?? ""),
-    status: row.status === "Planlagt" ? "Planlagt" : "Fullført",
-    note: String(row.note ?? ""),
-    results: Array.isArray(row.results) ? (row.results as WorkoutExerciseResult[]) : undefined,
-  }));
+  return (data ?? []).map((row) => {
+    const parsedNote = parseWorkoutNote(row.note);
+    return {
+      id: String(row.id),
+      memberId: String(row.member_id),
+      programTitle: String(row.program_title ?? ""),
+      date: String(row.date ?? ""),
+      status: row.status === "Planlagt" ? "Planlagt" : "Fullført",
+      note: parsedNote.note,
+      reflection: parsedNote.reflection,
+      results: Array.isArray(row.results) ? (row.results as WorkoutExerciseResult[]) : undefined,
+    };
+  });
 }
 
 export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
@@ -691,8 +722,8 @@ export const supabaseAppRepository: AppRepository = {
   cancelWorkoutMode(state: AppState): AppState {
     return localAppRepository.cancelWorkoutMode(state);
   },
-  finishWorkoutMode(state: AppState): AppState {
-    const nextState = localAppRepository.finishWorkoutMode(state);
+  finishWorkoutMode(state: AppState, input?: FinishWorkoutInput): AppState {
+    const nextState = localAppRepository.finishWorkoutMode(state, input);
     const latestLog = nextState.logs[0];
     if (latestLog) {
       void persistWorkoutLog(latestLog);
