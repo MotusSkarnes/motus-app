@@ -92,15 +92,24 @@ export function MemberPortal(props: MemberPortalProps) {
       : viewedMember ?? members[0] ?? null;
   const activeMemberId = editableMember?.id ?? memberViewId;
   const relatedMemberIds = useMemo(() => {
-    const sourceMember = editableMember;
-    if (!sourceMember) return [activeMemberId];
-    const normalizedEmail = sourceMember.email.trim().toLowerCase();
-    if (!normalizedEmail) return [activeMemberId];
-    const ids = members
-      .filter((member) => member.email.trim().toLowerCase() === normalizedEmail)
-      .map((member) => member.id);
-    return ids.length ? ids : [activeMemberId];
-  }, [members, editableMember, activeMemberId]);
+    // Member view should follow the authenticated member email first, not only the current memberViewId.
+    // This keeps assigned programs visible even when member_id links are being synchronized.
+    const primaryEmail = currentUserRole === "member" ? normalizedCurrentUserEmail : editableMember?.email.trim().toLowerCase() ?? "";
+    if (primaryEmail) {
+      const idsFromEmail = members
+        .filter((member) => member.email.trim().toLowerCase() === primaryEmail)
+        .map((member) => member.id);
+      if (idsFromEmail.length) return idsFromEmail;
+    }
+    const fallbackEmail = editableMember?.email.trim().toLowerCase() ?? "";
+    if (fallbackEmail) {
+      const idsFromEditable = members
+        .filter((member) => member.email.trim().toLowerCase() === fallbackEmail)
+        .map((member) => member.id);
+      if (idsFromEditable.length) return idsFromEditable;
+    }
+    return [activeMemberId];
+  }, [members, currentUserRole, normalizedCurrentUserEmail, editableMember, activeMemberId]);
   const relatedMemberIdSet = useMemo(() => new Set(relatedMemberIds), [relatedMemberIds]);
   const memberPrograms = programs.filter((program) => relatedMemberIdSet.has(program.memberId));
   const memberLogs = logs.filter((log) => relatedMemberIdSet.has(log.memberId));
