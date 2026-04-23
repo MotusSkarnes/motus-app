@@ -748,7 +748,7 @@ export function MemberPortal(props: MemberPortalProps) {
         },
       });
       if (!syncResult.ok) {
-        setProfileSaveInfo(`Profil lagret lokalt. Synk til PT kjører i bakgrunnen (${syncResult.message}).`);
+        setProfileSaveInfo("Profil lagret. Synk mot PT er midlertidig forsinket og forsøkes igjen automatisk.");
       } else if (normalizedDraftEmail && !normalizedDraftEmail.includes("@")) {
         setProfileSaveInfo("Profil lagret. E-post ble ikke endret fordi formatet var ugyldig.");
         return;
