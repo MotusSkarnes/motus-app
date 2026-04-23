@@ -332,6 +332,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
     members.forEach((member) => {
       const normalizedEmail = member.email.trim().toLowerCase();
       if (!normalizedEmail) return;
+      const emailKeyAvatar = memberAvatarById[`email:${normalizedEmail}`];
+      if (emailKeyAvatar && !byEmail[normalizedEmail]) {
+        byEmail[normalizedEmail] = emailKeyAvatar;
+        return;
+      }
       const avatarUrl = memberAvatarById[member.id];
       if (avatarUrl && !byEmail[normalizedEmail]) {
         byEmail[normalizedEmail] = avatarUrl;

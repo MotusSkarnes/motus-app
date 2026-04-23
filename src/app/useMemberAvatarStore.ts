@@ -10,6 +10,11 @@ export function useMemberAvatarStore({
   members: Member[];
   memberViewId: string;
 }) {
+  function emailAvatarKey(email: string): string {
+    const normalized = email.trim().toLowerCase();
+    return normalized ? `email:${normalized}` : "";
+  }
+
   const [memberAvatarById, setMemberAvatarById] = useState<Record<string, string>>(() => {
     if (typeof window === "undefined") return {};
     try {
@@ -36,6 +41,8 @@ export function useMemberAvatarStore({
   const currentMemberAvatarUrl = useMemo(() => {
     const direct = memberAvatarById[memberViewId];
     if (direct) return direct;
+    const directByEmail = currentUser?.email ? memberAvatarById[emailAvatarKey(currentUser.email)] : "";
+    if (directByEmail) return directByEmail;
     for (const memberId of currentMemberAvatarTargetIds) {
       const avatar = memberAvatarById[memberId];
       if (avatar) return avatar;
@@ -77,11 +84,15 @@ export function useMemberAvatarStore({
       const relatedIds = normalizedEmail
         ? members.filter((member) => member.email.trim().toLowerCase() === normalizedEmail).map((member) => member.id)
         : [memberId];
+      const emailKey = emailAvatarKey(normalizedEmail);
       const uniqueIds = Array.from(new Set(relatedIds.length ? relatedIds : [memberId]));
       const next = { ...prev };
       uniqueIds.forEach((id) => {
         next[id] = avatarUrl;
       });
+      if (emailKey) {
+        next[emailKey] = avatarUrl;
+      }
       return next;
     });
   }
@@ -90,6 +101,7 @@ export function useMemberAvatarStore({
     setMemberAvatarById((prev) => {
       if (url) {
         const next = { ...prev };
+        const currentEmailKey = currentUser?.email ? emailAvatarKey(currentUser.email) : "";
         currentMemberAvatarTargetIds.forEach((memberId) => {
           if (!memberId) return;
           next[memberId] = url;
@@ -97,11 +109,16 @@ export function useMemberAvatarStore({
         if (!currentMemberAvatarTargetIds.length && memberViewId) {
           next[memberViewId] = url;
         }
+        if (currentEmailKey) {
+          next[currentEmailKey] = url;
+        }
         return next;
       }
       if (!currentMemberAvatarTargetIds.length && !memberViewId) return prev;
+      const currentEmailKey = currentUser?.email ? emailAvatarKey(currentUser.email) : "";
       return Object.fromEntries(
         Object.entries(prev).filter(([key]) => {
+          if (currentEmailKey && key === currentEmailKey) return false;
           if (currentMemberAvatarTargetIds.length) {
             return !currentMemberAvatarTargetIds.includes(key);
           }
