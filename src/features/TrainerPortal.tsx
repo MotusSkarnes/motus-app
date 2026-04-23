@@ -191,6 +191,10 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
   const [compactExerciseBank, setCompactExerciseBank] = useState(true);
   const [showCustomerToolsMobile, setShowCustomerToolsMobile] = useState(false);
+  const [workoutDateRangeFilter, setWorkoutDateRangeFilter] = useState<"7d" | "30d" | "all">("30d");
+  const [workoutTypeFilter, setWorkoutTypeFilter] = useState<"all" | "program" | "group">("all");
+  const [workoutSearchQuery, setWorkoutSearchQuery] = useState("");
+  const [workoutSortOrder, setWorkoutSortOrder] = useState<"newest" | "oldest">("newest");
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
   const visibleMembers = showInactiveMembers ? members : members.filter((member) => member.isActive !== false);
   const filteredMembers = useMemo(() => {
@@ -285,10 +289,44 @@ export function TrainerPortal(props: TrainerPortalProps) {
     [messages, selectedMemberRelatedIdSet]
   );
   const latestCompletedLog = selectedLogs.find((log) => log.status === "Fullført") ?? null;
-  const selectedWorkoutLog = useMemo(() => {
-    if (!selectedWorkoutLogId) return selectedLogs[0] ?? null;
-    return selectedLogs.find((log) => log.id === selectedWorkoutLogId) ?? selectedLogs[0] ?? null;
-  }, [selectedLogs, selectedWorkoutLogId]);
+  const filteredWorkoutLogs = useMemo(() => {
+    const now = Date.now();
+    const query = workoutSearchQuery.trim().toLowerCase();
+    const parseLogDateMs = (value: string): number => {
+      if (!value) return 0;
+      const iso = new Date(value);
+      if (!Number.isNaN(iso.getTime())) return iso.getTime();
+      const parts = value.split(".");
+      if (parts.length < 3) return 0;
+      const day = Number(parts[0]);
+      const month = Number(parts[1]) - 1;
+      const year = Number(parts[2]);
+      const parsed = new Date(year, month, day);
+      return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+    };
+    const withParsedDate = selectedLogs.map((log) => ({ log, dateMs: parseLogDateMs(log.date) }));
+    const filtered = withParsedDate.filter(({ log, dateMs }) => {
+      if (workoutDateRangeFilter !== "all") {
+        const maxAgeMs = workoutDateRangeFilter === "7d" ? 7 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
+        if (!dateMs || now - dateMs > maxAgeMs) return false;
+      }
+      const isGroupWorkout = log.programTitle.trim().toLowerCase().startsWith("gruppetime:");
+      if (workoutTypeFilter === "group" && !isGroupWorkout) return false;
+      if (workoutTypeFilter === "program" && isGroupWorkout) return false;
+      if (query) {
+        const haystack = `${log.programTitle} ${log.note ?? ""} ${log.reflection?.note ?? ""}`.toLowerCase();
+        if (!haystack.includes(query)) return false;
+      }
+      return true;
+    });
+    filtered.sort((a, b) => (workoutSortOrder === "newest" ? b.dateMs - a.dateMs : a.dateMs - b.dateMs));
+    return filtered.map((entry) => entry.log);
+  }, [selectedLogs, workoutDateRangeFilter, workoutTypeFilter, workoutSearchQuery, workoutSortOrder]);
+  const filteredSelectedWorkoutLog = useMemo(() => {
+    if (!filteredWorkoutLogs.length) return null;
+    if (!selectedWorkoutLogId) return filteredWorkoutLogs[0];
+    return filteredWorkoutLogs.find((log) => log.id === selectedWorkoutLogId) ?? filteredWorkoutLogs[0];
+  }, [filteredWorkoutLogs, selectedWorkoutLogId]);
   function reflectionEmoji(level?: 1 | 2 | 3 | 4 | 5): string {
     if (!level) return "—";
     if (level <= 1) return "🥳";
@@ -426,14 +464,14 @@ export function TrainerPortal(props: TrainerPortalProps) {
   }, [openCustomerMessagesSignal, selectedMemberId]);
 
   useEffect(() => {
-    if (!selectedLogs.length) {
+    if (!filteredWorkoutLogs.length) {
       setSelectedWorkoutLogId(null);
       return;
     }
-    if (!selectedWorkoutLogId || !selectedLogs.some((log) => log.id === selectedWorkoutLogId)) {
-      setSelectedWorkoutLogId(selectedLogs[0].id);
+    if (!selectedWorkoutLogId || !filteredWorkoutLogs.some((log) => log.id === selectedWorkoutLogId)) {
+      setSelectedWorkoutLogId(filteredWorkoutLogs[0].id);
     }
-  }, [selectedLogs, selectedWorkoutLogId]);
+  }, [filteredWorkoutLogs, selectedWorkoutLogId]);
 
   function resetMemberEditDraftFromSelected(member: Member | null) {
     if (!member) {
@@ -2097,16 +2135,49 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 {customerSubTab === "workouts" ? (
                   <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
                     <div className="rounded-3xl border bg-slate-50 p-4">
+                      <div className="mb-3 grid gap-2 sm:grid-cols-2">
+                        <SelectBox
+                          value={workoutDateRangeFilter}
+                          onChange={(value) => setWorkoutDateRangeFilter(value as "7d" | "30d" | "all")}
+                          options={[
+                            { value: "7d", label: "Periode: 7 dager" },
+                            { value: "30d", label: "Periode: 30 dager" },
+                            { value: "all", label: "Periode: Alle" },
+                          ]}
+                        />
+                        <SelectBox
+                          value={workoutTypeFilter}
+                          onChange={(value) => setWorkoutTypeFilter(value as "all" | "program" | "group")}
+                          options={[
+                            { value: "all", label: "Type: Alle" },
+                            { value: "program", label: "Type: Programøkt" },
+                            { value: "group", label: "Type: Gruppetime" },
+                          ]}
+                        />
+                        <TextInput
+                          value={workoutSearchQuery}
+                          onChange={(event) => setWorkoutSearchQuery(event.target.value)}
+                          placeholder="Søk tittel eller notat"
+                        />
+                        <SelectBox
+                          value={workoutSortOrder}
+                          onChange={(value) => setWorkoutSortOrder(value as "newest" | "oldest")}
+                          options={[
+                            { value: "newest", label: "Sorter: Nyeste først" },
+                            { value: "oldest", label: "Sorter: Eldste først" },
+                          ]}
+                        />
+                      </div>
                       <div className="font-semibold">Siste økter</div>
-                      {selectedLogs.length ? (
+                      {filteredWorkoutLogs.length ? (
                         <div className="mt-3 space-y-2">
-                          {selectedLogs.slice(0, 12).map((log) => (
+                          {filteredWorkoutLogs.slice(0, 12).map((log) => (
                             <button
                               key={log.id}
                               type="button"
                               onClick={() => setSelectedWorkoutLogId(log.id)}
                               className={`w-full rounded-2xl border px-3 py-3 text-left text-sm transition ${
-                                selectedWorkoutLog?.id === log.id
+                                filteredSelectedWorkoutLog?.id === log.id
                                   ? "border-emerald-300 bg-emerald-50"
                                   : "border-slate-200 bg-white hover:bg-slate-100"
                               }`}
@@ -2120,29 +2191,29 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           ))}
                         </div>
                       ) : (
-                        <div className="mt-3 text-sm text-slate-500">Ingen økter logget ennå.</div>
+                        <div className="mt-3 text-sm text-slate-500">Ingen økter matcher filtrene.</div>
                       )}
                     </div>
                     <div className="rounded-3xl border bg-slate-50 p-4">
                       <div className="font-semibold">Øktdetaljer</div>
-                      {selectedWorkoutLog ? (
+                      {filteredSelectedWorkoutLog ? (
                         <div className="mt-3 space-y-3">
                           <div className="rounded-2xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                             <div className="flex items-center justify-between gap-3">
-                              <div className="font-medium text-slate-800">{selectedWorkoutLog.programTitle}</div>
-                              <div className="text-xs text-slate-500">{selectedWorkoutLog.date}</div>
+                              <div className="font-medium text-slate-800">{filteredSelectedWorkoutLog.programTitle}</div>
+                              <div className="text-xs text-slate-500">{filteredSelectedWorkoutLog.date}</div>
                             </div>
-                            <div className="mt-1 text-xs text-slate-500">{selectedWorkoutLog.status}</div>
+                            <div className="mt-1 text-xs text-slate-500">{filteredSelectedWorkoutLog.status}</div>
                             <div className="mt-2 text-xs text-slate-700">
-                              Følelse: {reflectionEmoji(selectedWorkoutLog.reflection?.energyLevel)} · Belastning: {reflectionEmoji(selectedWorkoutLog.reflection?.difficultyLevel)} · Motivasjon: {reflectionEmoji(selectedWorkoutLog.reflection?.motivationLevel)}
+                              Følelse: {reflectionEmoji(filteredSelectedWorkoutLog.reflection?.energyLevel)} · Belastning: {reflectionEmoji(filteredSelectedWorkoutLog.reflection?.difficultyLevel)} · Motivasjon: {reflectionEmoji(filteredSelectedWorkoutLog.reflection?.motivationLevel)}
                             </div>
-                            {selectedWorkoutLog.note ? <div className="mt-2 text-xs text-slate-600">Øktnotat: {selectedWorkoutLog.note}</div> : null}
-                            {selectedWorkoutLog.reflection?.note ? <div className="mt-1 text-xs text-slate-600">Til PT: {selectedWorkoutLog.reflection.note}</div> : null}
+                            {filteredSelectedWorkoutLog.note ? <div className="mt-2 text-xs text-slate-600">Øktnotat: {filteredSelectedWorkoutLog.note}</div> : null}
+                            {filteredSelectedWorkoutLog.reflection?.note ? <div className="mt-1 text-xs text-slate-600">Til PT: {filteredSelectedWorkoutLog.reflection.note}</div> : null}
                           </div>
-                          {selectedWorkoutLog.results?.length ? (
+                          {filteredSelectedWorkoutLog.results?.length ? (
                             <div className="space-y-2">
-                              {selectedWorkoutLog.results.map((result, index) => (
-                                <div key={`${selectedWorkoutLog.id}-${result.exerciseId}-${index}`} className="rounded-2xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                              {filteredSelectedWorkoutLog.results.map((result, index) => (
+                                <div key={`${filteredSelectedWorkoutLog.id}-${result.exerciseId}-${index}`} className="rounded-2xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                                   <div className="flex items-center justify-between gap-3">
                                     <div className="font-medium text-slate-800">{result.exerciseName}</div>
                                     <div className={`text-xs font-semibold ${result.completed ? "text-emerald-600" : "text-slate-500"}`}>
