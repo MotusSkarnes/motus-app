@@ -655,6 +655,23 @@ export function TrainerPortal(props: TrainerPortalProps) {
     () => periodWeeklyPlansDraft.find((week) => week.id === activePeriodWeekId) ?? periodWeeklyPlansDraft[0] ?? null,
     [periodWeeklyPlansDraft, activePeriodWeekId],
   );
+  const periodPlanProgramOptions = useMemo(() => {
+    const baseOptions = [
+      { value: "", label: "Ingen plan valgt" },
+      { value: "Hvile / restitusjon", label: "Hvile / restitusjon" },
+      { value: "Aktiv restitusjon", label: "Aktiv restitusjon" },
+      { value: "Valgfri økt", label: "Valgfri økt" },
+    ];
+    const programOptions = selectedPrograms.map((program) => ({
+      value: program.title,
+      label: program.title,
+    }));
+    const uniqueByValue = new Map<string, { value: string; label: string }>();
+    [...baseOptions, ...programOptions].forEach((option) => {
+      if (!uniqueByValue.has(option.value)) uniqueByValue.set(option.value, option);
+    });
+    return Array.from(uniqueByValue.values());
+  }, [selectedPrograms]);
 
   useEffect(() => {
     window.localStorage.setItem("motus.trainer.memberSearch", memberSearch);
@@ -2623,17 +2640,23 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         </div>
                         {activePeriodWeek ? (
                           <div className="grid gap-2 md:grid-cols-2">
-                            {WEEKDAY_PLAN_FIELDS.map((field) => (
-                              <label key={field.key} className="space-y-1">
-                                <span className="text-xs font-medium text-slate-600">{field.label}</span>
-                                <TextArea
-                                  value={activePeriodWeek.days[field.key]}
-                                  onChange={(event) => updateActivePeriodWeekDay(field.key, event.target.value)}
-                                  className="min-h-[58px]"
-                                  placeholder="Plan for dagen"
-                                />
-                              </label>
-                            ))}
+                            {WEEKDAY_PLAN_FIELDS.map((field) => {
+                              const currentValue = activePeriodWeek.days[field.key];
+                              const hasCurrentValueInOptions = periodPlanProgramOptions.some((option) => option.value === currentValue);
+                              const options = hasCurrentValueInOptions
+                                ? periodPlanProgramOptions
+                                : [...periodPlanProgramOptions, { value: currentValue, label: `${currentValue} (tilpasset)` }];
+                              return (
+                                <label key={field.key} className="space-y-1">
+                                  <span className="text-xs font-medium text-slate-600">{field.label}</span>
+                                  <SelectBox
+                                    value={currentValue}
+                                    onChange={(value) => updateActivePeriodWeekDay(field.key, value)}
+                                    options={options}
+                                  />
+                                </label>
+                              );
+                            })}
                           </div>
                         ) : null}
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
