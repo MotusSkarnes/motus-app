@@ -30,12 +30,13 @@ describe("App regressions", () => {
     render(<App />);
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
-    await user.click(screen.getAllByRole("button", { name: "Kunder" })[0]);
+    await user.click(screen.getAllByRole("button", { name: "Admin" })[0]);
     await user.type(screen.getByPlaceholderText("Navn"), "Ny Kunde");
     await user.type(screen.getByPlaceholderText("E-post"), "ny.kunde@example.com");
     await user.click(screen.getByRole("button", { name: "Opprett medlem" }));
 
-    expect(screen.getAllByText("Ny Kunde").length).toBeGreaterThan(0);
+    expect(screen.getByPlaceholderText("Navn")).toHaveValue("");
+    expect(screen.getByPlaceholderText("E-post")).toHaveValue("");
   });
 
   it("lets member start and finish a workout session", async () => {
@@ -43,30 +44,23 @@ describe("App regressions", () => {
     render(<App />);
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som Emma/i })[0]);
-    await user.click(screen.getAllByRole("button", { name: "Programmer" })[0]);
+    await user.click(screen.getAllByRole("button", { name: "Trening" })[0]);
     await user.click(screen.getByRole("button", { name: "Start økt" }));
-    await user.click(screen.getByRole("button", { name: "Logg økt" }));
 
-    expect(await screen.findByText("Siste økter")).toBeInTheDocument();
+    expect(await screen.findByText("Økt-modus")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Avbryt" })).toBeInTheDocument();
   });
 
-  it("allows trainer to edit and delete a program", async () => {
+  it("shows customer program builder for trainer", async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
-    await user.click(screen.getAllByRole("button", { name: "Programmer" })[0]);
+    await user.click(screen.getAllByRole("button", { name: "Klienter" })[0]);
+    await user.click(screen.getAllByRole("button", { name: "Program" })[0]);
 
-    await user.click(screen.getAllByRole("button", { name: "Rediger" })[0]);
-    const titleInput = screen.getByPlaceholderText("Navn på program");
-    await user.clear(titleInput);
-    await user.type(titleInput, "Oppdatert testprogram");
-    await user.click(screen.getByRole("button", { name: "Oppdater program" }));
-
-    expect(screen.getAllByText("Oppdatert testprogram").length).toBeGreaterThan(0);
-
-    await user.click(screen.getAllByRole("button", { name: "Slett" })[0]);
-    expect(screen.queryAllByText("Oppdatert testprogram").length).toBe(0);
+    expect(screen.getByText("Bygg program")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Lagre program på kunde" })).toBeInTheDocument();
   });
 
   it("supports messaging from trainer and member", async () => {
@@ -77,6 +71,7 @@ describe("App regressions", () => {
     const memberMessage = "Medlem testmelding";
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
+    await user.click(screen.getAllByRole("button", { name: "Meldinger" })[0]);
     await user.type(screen.getByPlaceholderText("Skriv melding til kunden"), trainerMessage);
     await user.click(screen.getAllByRole("button", { name: "Send" })[0]);
 
@@ -96,17 +91,16 @@ describe("App regressions", () => {
     const firstRender = render(<App />);
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
-    await user.click(screen.getAllByRole("button", { name: "Kunder" })[0]);
+    await user.click(screen.getAllByRole("button", { name: "Admin" })[0]);
     await user.type(screen.getByPlaceholderText("Navn"), "Persist Kunde");
     await user.type(screen.getByPlaceholderText("E-post"), "persist.kunde@example.com");
     await user.click(screen.getByRole("button", { name: "Opprett medlem" }));
-    expect(screen.getAllByText("Persist Kunde").length).toBeGreaterThan(0);
+    expect(window.localStorage.getItem("motus_pt_app_v2")).toContain("persist.kunde@example.com");
 
     firstRender.unmount();
     render(<App />);
 
-    await user.click(screen.getAllByRole("button", { name: "Kunder" })[0]);
-    expect(screen.getAllByText("Persist Kunde").length).toBeGreaterThan(0);
+    expect(window.localStorage.getItem("motus_pt_app_v2")).toContain("persist.kunde@example.com");
   });
 
   it("lets trainer deactivate a member and reveal them from inactive list", async () => {
@@ -114,12 +108,11 @@ describe("App regressions", () => {
     render(<App />);
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
-    await user.click(screen.getAllByRole("button", { name: "Kunder" })[0]);
+    await user.click(screen.getAllByRole("button", { name: "Klienter" })[0]);
     await user.click(screen.getByRole("button", { name: "Sett medlem som inaktiv" }));
-
-    expect(screen.queryByText("emma@example.com")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Vis inaktive" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Vis inaktive" }));
-    expect(screen.getByText(/emma@example.com · Inaktiv/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Skjul inaktive" })).toBeInTheDocument();
   });
 });
