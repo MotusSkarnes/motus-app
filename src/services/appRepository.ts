@@ -29,6 +29,10 @@ export type FinishWorkoutInput = {
   reflection?: WorkoutReflection;
 };
 
+export type StartWorkoutModeOptions = {
+  suggestedWeightByProgramExerciseId?: Record<string, string>;
+};
+
 export type LogGroupWorkoutInput = {
   memberId: string;
   className: string;
@@ -66,7 +70,7 @@ export interface AppRepository {
   deleteProgram(state: AppState, programId: string): AppState;
   appendTrainerMessage(state: AppState, memberId: string, text: string): AppState;
   appendMemberMessage(state: AppState, memberId: string, text: string): AppState;
-  startWorkoutMode(state: AppState, programId: string): AppState;
+  startWorkoutMode(state: AppState, programId: string, options?: StartWorkoutModeOptions): AppState;
   updateWorkoutResult(state: AppState, input: UpdateWorkoutResultInput): AppState;
   replaceWorkoutExerciseGroup(state: AppState, input: ReplaceWorkoutExerciseGroupInput): AppState;
   updateWorkoutNote(state: AppState, note: string): AppState;
@@ -212,11 +216,14 @@ export function appendMemberMessage(state: AppState, memberId: string, text: str
   return { ...state, messages: [...state.messages, nextMessage] };
 }
 
-export function startWorkoutModeInState(state: AppState, programId: string): AppState {
+export function startWorkoutModeInState(state: AppState, programId: string, options?: StartWorkoutModeOptions): AppState {
   const program = state.programs.find((p) => p.id === programId);
   if (!program) return state;
 
   const expandedResults = program.exercises.flatMap((ex) => {
+    const suggestedWeightRaw = options?.suggestedWeightByProgramExerciseId?.[ex.id];
+    const suggestedWeight = suggestedWeightRaw !== undefined ? suggestedWeightRaw.trim() : "";
+    const initialWeight = suggestedWeight || ex.weight;
     const setCount = Math.max(1, Math.min(12, Number(ex.sets) || 1));
     return Array.from({ length: setCount }, (_, index) => ({
       exerciseId: `${ex.id}-set-${index + 1}`,
@@ -227,11 +234,11 @@ export function startWorkoutModeInState(state: AppState, programId: string): App
       exerciseEquipment: state.exercises.find((item) => item.id === ex.exerciseId)?.equipment,
       plannedSets: ex.sets,
       plannedReps: ex.reps,
-      plannedWeight: ex.weight,
+      plannedWeight: initialWeight,
       plannedDurationMinutes: ex.durationMinutes ?? "",
       plannedSpeed: ex.speed ?? "",
       plannedIncline: ex.incline ?? "",
-      performedWeight: ex.weight,
+      performedWeight: initialWeight,
       performedReps: ex.reps,
       performedDurationMinutes: ex.durationMinutes ?? "",
       performedSpeed: ex.speed ?? "",
@@ -463,7 +470,7 @@ export const localAppRepository: AppRepository = {
   deleteProgram: deleteProgramInState,
   appendTrainerMessage,
   appendMemberMessage,
-  startWorkoutMode: startWorkoutModeInState,
+  startWorkoutMode: (state, programId, options) => startWorkoutModeInState(state, programId, options),
   updateWorkoutResult: (state, input) => updateWorkoutResultInState(state, input.exerciseId, input.field, input.value),
   replaceWorkoutExerciseGroup: (state, input) => replaceWorkoutExerciseGroupInState(state, input),
   updateWorkoutNote: updateWorkoutNoteInState,

@@ -11,6 +11,7 @@ import {
   type SaveProgramInput,
   type SaveExerciseInput,
   type ReplaceWorkoutExerciseGroupInput,
+  type StartWorkoutModeOptions,
   type UpdateMemberInput,
   type UpdateWorkoutResultInput,
 } from "./appRepository";
@@ -1104,8 +1105,8 @@ export const supabaseAppRepository: AppRepository = {
     void persistMessage(memberId, "member", text.trim());
     return nextState;
   },
-  startWorkoutMode(state: AppState, programId: string): AppState {
-    return localAppRepository.startWorkoutMode(state, programId);
+  startWorkoutMode(state: AppState, programId: string, options?: StartWorkoutModeOptions): AppState {
+    return localAppRepository.startWorkoutMode(state, programId, options);
   },
   updateWorkoutResult(state: AppState, input: UpdateWorkoutResultInput): AppState {
     return localAppRepository.updateWorkoutResult(state, input);

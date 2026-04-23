@@ -6,7 +6,7 @@ import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { supabaseClient } from "../services/supabaseClient";
 import { Card, GradientButton, OutlineButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
-import type { ReplaceWorkoutExerciseGroupInput, UpdateMemberInput } from "../services/appRepository";
+import type { ReplaceWorkoutExerciseGroupInput, StartWorkoutModeOptions, UpdateMemberInput } from "../services/appRepository";
 import type { ChatMessage, Exercise, Member, MemberTab, TrainingProgram, WorkoutCelebration, WorkoutLog, WorkoutModeState, WorkoutReflection } from "../app/types";
 
 type MemberPortalProps = {
@@ -26,7 +26,7 @@ type MemberPortalProps = {
   exercises: Exercise[];
   sendMemberMessage: (memberId: string, text: string) => void;
   workoutMode: WorkoutModeState | null;
-  startWorkoutMode: (programId: string) => void;
+  startWorkoutMode: (programId: string, options?: StartWorkoutModeOptions) => void;
   updateWorkoutExerciseResult: (
     exerciseId: string,
     field: "performedWeight" | "performedReps" | "performedDurationMinutes" | "performedSpeed" | "performedIncline" | "completed",
@@ -154,6 +154,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [periodPlans, setPeriodPlans] = useState<PeriodSchedulePlan[]>([]);
   const [showPeriodPlanPanel, setShowPeriodPlanPanel] = useState(false);
   const [selectedIntervalProgramId, setSelectedIntervalProgramId] = useState("");
+  const [suggestedWeightOverridesByProgramExerciseId, setSuggestedWeightOverridesByProgramExerciseId] = useState<Record<string, string>>({});
   const [showIntervalTimerModal, setShowIntervalTimerModal] = useState(false);
   const [isIntervalTimerRunning, setIsIntervalTimerRunning] = useState(false);
   const [isIntervalTimerPaused, setIsIntervalTimerPaused] = useState(false);
@@ -341,11 +342,46 @@ export function MemberPortal(props: MemberPortalProps) {
     return "saturday";
   }, [now]);
   const activePeriodPlan = periodPlans[0] ?? null;
-  const activeWeeklyPlan = activePeriodPlan?.weeklyPlans[0] ?? null;
+  const activePeriodPlanStartDate = activePeriodPlan ? parseDateOnly(activePeriodPlan.startDate) : null;
+  const activePeriodWeekIndex = useMemo(() => {
+    if (!activePeriodPlan || !activePeriodPlanStartDate) return null;
+    const daysSinceStart = Math.floor((getStartOfDay(now).getTime() - getStartOfDay(activePeriodPlanStartDate).getTime()) / (24 * 60 * 60 * 1000));
+    if (daysSinceStart < 0) return 0;
+    const weekIndex = Math.floor(daysSinceStart / 7);
+    if (weekIndex >= activePeriodPlan.weeks) return null;
+    return weekIndex;
+  }, [activePeriodPlan, activePeriodPlanStartDate, now]);
+  const activeWeeklyPlan = useMemo(() => {
+    if (!activePeriodPlan || activePeriodWeekIndex === null) return null;
+    return (
+      activePeriodPlan.weeklyPlans.find((week) => week.weekNumber === activePeriodWeekIndex + 1) ??
+      activePeriodPlan.weeklyPlans[activePeriodWeekIndex] ??
+      null
+    );
+  }, [activePeriodPlan, activePeriodWeekIndex]);
   const todayPlanEntry = activeWeeklyPlan?.days[currentWeekdayKey]?.trim() ?? "";
   const todayProgramMatch = todayPlanEntry
     ? memberPrograms.find((program) => program.title.trim().toLowerCase() === todayPlanEntry.toLowerCase()) ?? null
     : null;
+
+  function resolveSuggestedWorkoutWeight(programExercise: TrainingProgram["exercises"][number]): string {
+    const override = suggestedWeightOverridesByProgramExerciseId[programExercise.id];
+    if (override !== undefined) return override;
+    const fromHistory = suggestedWeightByExerciseName.get(programExercise.exerciseName.trim().toLowerCase());
+    if (fromHistory !== undefined) return fromHistory;
+    return programExercise.weight;
+  }
+
+  function buildStartWorkoutOptions(program: TrainingProgram): StartWorkoutModeOptions {
+    const suggestedWeightByProgramExerciseId: Record<string, string> = {};
+    program.exercises.forEach((exercise) => {
+      if (Number(exercise.durationMinutes) > 0) return;
+      const suggestedWeight = resolveSuggestedWorkoutWeight(exercise).trim();
+      if (!suggestedWeight) return;
+      suggestedWeightByProgramExerciseId[exercise.id] = suggestedWeight;
+    });
+    return { suggestedWeightByProgramExerciseId };
+  }
 
   function normalizeBirthDateToDdMmYyyy(value: string): string {
     return normalizeBirthDate(value);
@@ -490,6 +526,22 @@ export function MemberPortal(props: MemberPortalProps) {
     if (Number.isNaN(parsed.getTime())) return null;
     return parsed;
   }
+  function parseDateOnly(value: string): Date | null {
+    if (!value) return null;
+    const isoLike = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoLike) {
+      const year = Number(isoLike[1]);
+      const month = Number(isoLike[2]) - 1;
+      const day = Number(isoLike[3]);
+      const parsed = new Date(year, month, day);
+      if (Number.isNaN(parsed.getTime())) return null;
+      return parsed;
+    }
+    return parseLogDate(value);
+  }
+  function getStartOfDay(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
 
   function getWeekKey(date: Date): string {
     const d = new Date(date);
@@ -503,6 +555,25 @@ export function MemberPortal(props: MemberPortalProps) {
   }
   const completedLogs = memberLogs.filter((log) => log.status === "Fullført");
   const latestCompletedLog = completedLogs[0] ?? null;
+  const suggestedWeightByExerciseName = useMemo(() => {
+    const byExerciseName = new Map<string, string>();
+    const sorted = [...completedLogs].sort((a, b) => {
+      const aDate = parseLogDate(a.date)?.getTime() ?? 0;
+      const bDate = parseLogDate(b.date)?.getTime() ?? 0;
+      return bDate - aDate;
+    });
+    sorted.forEach((log) => {
+      (log.results ?? []).forEach((result) => {
+        if (!result.completed) return;
+        const normalizedName = result.exerciseName.trim().toLowerCase();
+        if (!normalizedName || byExerciseName.has(normalizedName)) return;
+        const parsedWeight = Number(result.performedWeight);
+        if (!Number.isFinite(parsedWeight) || parsedWeight <= 0) return;
+        byExerciseName.set(normalizedName, String(parsedWeight));
+      });
+    });
+    return byExerciseName;
+  }, [completedLogs]);
   const completedLogDates = completedLogs.map((log) => parseLogDate(log.date)).filter((date): date is Date => Boolean(date));
   const uniqueTrainingDays = new Set(completedLogDates.map((date) => date.toDateString())).size;
   const estimatedSessionsThisMonth = completedLogDates.filter((date) => date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()).length;
@@ -609,10 +680,65 @@ export function MemberPortal(props: MemberPortalProps) {
     });
     return byDay;
   }, [completedLogs, calendarMonth]);
+  const calendarPlannedEntriesByDay = useMemo(() => {
+    const weekdayIndexByKey: Record<WeekdayPlanKey, number> = {
+      monday: 0,
+      tuesday: 1,
+      wednesday: 2,
+      thursday: 3,
+      friday: 4,
+      saturday: 5,
+      sunday: 6,
+    };
+    const byDay = new Map<number, string[]>();
+    periodPlans.forEach((plan) => {
+      const startDate = parseDateOnly(plan.startDate);
+      if (!startDate) return;
+      (plan.weeklyPlans ?? []).forEach((week) => {
+        const weekIndex = Math.max(0, (week.weekNumber || 1) - 1);
+        (Object.keys(weekdayIndexByKey) as WeekdayPlanKey[]).forEach((weekdayKey) => {
+          const plannedEntry = week.days[weekdayKey]?.trim() ?? "";
+          if (!plannedEntry) return;
+          const dayOffset = weekIndex * 7 + weekdayIndexByKey[weekdayKey];
+          const plannedDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + dayOffset);
+          if (plannedDate.getMonth() !== calendarMonth.getMonth() || plannedDate.getFullYear() !== calendarMonth.getFullYear()) return;
+          const day = plannedDate.getDate();
+          const previous = byDay.get(day) ?? [];
+          byDay.set(day, [...previous, plannedEntry]);
+        });
+      });
+    });
+    return byDay;
+  }, [periodPlans, calendarMonth]);
+  const calendarDayStatusByDay = useMemo(() => {
+    const statusByDay = new Map<number, "completed" | "planned" | "missed">();
+    const todayStart = getStartOfDay(now);
+    calendarPlannedEntriesByDay.forEach((_entries, day) => {
+      const candidateDate = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day);
+      const hasCompleted = calendarDayLoad.has(day);
+      if (hasCompleted) {
+        statusByDay.set(day, "completed");
+        return;
+      }
+      if (candidateDate.getTime() < todayStart.getTime()) {
+        statusByDay.set(day, "missed");
+      } else {
+        statusByDay.set(day, "planned");
+      }
+    });
+    calendarDayLoad.forEach((_count, day) => {
+      statusByDay.set(day, "completed");
+    });
+    return statusByDay;
+  }, [calendarPlannedEntriesByDay, calendarDayLoad, calendarMonth, now]);
   const selectedCalendarLogs = useMemo(() => {
     if (!selectedCalendarDay) return [];
     return calendarLogsByDay.get(selectedCalendarDay) ?? [];
   }, [calendarLogsByDay, selectedCalendarDay]);
+  const selectedCalendarPlannedEntries = useMemo(() => {
+    if (!selectedCalendarDay) return [];
+    return calendarPlannedEntriesByDay.get(selectedCalendarDay) ?? [];
+  }, [calendarPlannedEntriesByDay, selectedCalendarDay]);
   const selectedCalendarLog = useMemo(() => {
     if (!selectedCalendarLogs.length) return null;
     if (!selectedCalendarLogId) return selectedCalendarLogs[0];
@@ -1527,7 +1653,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       if (nextBestAction.action === "progress") setMemberTab("progress");
                       if (nextBestAction.action === "start-workout" && nextProgram) {
                         setMemberTab("programs");
-                        startWorkoutMode(nextProgram.id);
+                        startWorkoutMode(nextProgram.id, buildStartWorkoutOptions(nextProgram));
                       }
                     }}
                     className="w-full sm:w-auto"
@@ -1552,7 +1678,7 @@ export function MemberPortal(props: MemberPortalProps) {
                             openIntervalTimerModal(todayProgramMatch.id);
                             return;
                           }
-                          startWorkoutMode(todayProgramMatch.id);
+                          startWorkoutMode(todayProgramMatch.id, buildStartWorkoutOptions(todayProgramMatch));
                         }}
                         className="w-full sm:w-auto"
                       >
@@ -1683,19 +1809,45 @@ export function MemberPortal(props: MemberPortalProps) {
                           type="button"
                           key={`${day}-${index}`}
                           onClick={() => setSelectedCalendarDay((prev) => (prev === day ? null : day))}
-                          className={`rounded-lg px-1 py-2 text-center text-xs ${calendarDayLoad.has(day) ? "text-white font-semibold" : "text-slate-600 bg-white"}`}
-                          style={
-                            calendarDayLoad.has(day)
-                              ? {
-                                  background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
-                                  boxShadow: selectedCalendarDay === day ? "0 0 0 2px rgba(15,23,42,0.2) inset" : "none",
-                                }
-                              : {
-                                  border: "1px solid rgba(15,23,42,0.06)",
-                                  boxShadow: selectedCalendarDay === day ? "0 0 0 2px rgba(15,23,42,0.12) inset" : "none",
-                                }
+                          className={`rounded-lg px-1 py-2 text-center text-xs ${
+                            calendarDayStatusByDay.get(day) === "completed" ? "text-white font-semibold" : "text-slate-700 bg-white"
+                          }`}
+                          style={(() => {
+                            const status = calendarDayStatusByDay.get(day);
+                            if (status === "completed") {
+                              return {
+                                background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
+                                boxShadow: selectedCalendarDay === day ? "0 0 0 2px rgba(15,23,42,0.2) inset" : "none",
+                              };
+                            }
+                            if (status === "missed") {
+                              return {
+                                border: "1px solid rgba(244,63,94,0.45)",
+                                backgroundColor: "rgba(254,226,226,0.7)",
+                                boxShadow: selectedCalendarDay === day ? "0 0 0 2px rgba(244,63,94,0.25) inset" : "none",
+                              };
+                            }
+                            if (status === "planned") {
+                              return {
+                                border: "1px dashed rgba(20,184,166,0.55)",
+                                backgroundColor: "rgba(236,253,245,0.85)",
+                                boxShadow: selectedCalendarDay === day ? "0 0 0 2px rgba(20,184,166,0.2) inset" : "none",
+                              };
+                            }
+                            return {
+                              border: "1px solid rgba(15,23,42,0.06)",
+                              boxShadow: selectedCalendarDay === day ? "0 0 0 2px rgba(15,23,42,0.12) inset" : "none",
+                            };
+                          })()}
+                          title={
+                            calendarDayStatusByDay.get(day) === "completed"
+                              ? `${calendarDayLoad.get(day)} økt${calendarDayLoad.get(day) === 1 ? "" : "er"} fullført`
+                              : calendarDayStatusByDay.get(day) === "missed"
+                                ? "Planlagt økt ble ikke fullført"
+                                : calendarDayStatusByDay.get(day) === "planned"
+                                  ? "Planlagt økt"
+                                  : "Ingen økter logget"
                           }
-                          title={calendarDayLoad.has(day) ? `${calendarDayLoad.get(day)} økt${calendarDayLoad.get(day) === 1 ? "" : "er"} logget` : "Ingen økter logget"}
                         >
                           {day}
                         </button>
@@ -1704,12 +1856,19 @@ export function MemberPortal(props: MemberPortalProps) {
                       ),
                     )}
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                    <span>Lav aktivitet</span>
-                    <div className="h-2 w-12 sm:w-20 rounded-full" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, opacity: 0.3 }} />
-                    <div className="h-2 w-12 sm:w-20 rounded-full" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, opacity: 0.6 }} />
-                    <div className="h-2 w-12 sm:w-20 rounded-full" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, opacity: 1 }} />
-                    <span>Høy aktivitet</span>
+                  <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+                    <div className="inline-flex items-center gap-1.5">
+                      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
+                      <span>Fullført</span>
+                    </div>
+                    <div className="inline-flex items-center gap-1.5">
+                      <span className="inline-block h-2.5 w-2.5 rounded-full border border-dashed" style={{ borderColor: "rgba(20,184,166,0.75)", backgroundColor: "rgba(236,253,245,0.9)" }} />
+                      <span>Planlagt</span>
+                    </div>
+                    <div className="inline-flex items-center gap-1.5">
+                      <span className="inline-block h-2.5 w-2.5 rounded-full border" style={{ borderColor: "rgba(244,63,94,0.55)", backgroundColor: "rgba(254,226,226,0.9)" }} />
+                      <span>Misset</span>
+                    </div>
                   </div>
                   {selectedCalendarDay ? (
                     <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -1717,6 +1876,16 @@ export function MemberPortal(props: MemberPortalProps) {
                         Økter {String(selectedCalendarDay).padStart(2, "0")}.{String(calendarMonth.getMonth() + 1).padStart(2, "0")}.{calendarMonth.getFullYear()}
                       </div>
                       <div className="mt-2 space-y-2">
+                        {selectedCalendarPlannedEntries.length > 0 ? (
+                          <div className="rounded-lg border bg-emerald-50/60 px-3 py-2 text-xs text-emerald-800" style={{ borderColor: "rgba(20,184,166,0.25)" }}>
+                            <div className="font-semibold">Planlagt økt</div>
+                            {selectedCalendarPlannedEntries.map((entry, entryIndex) => (
+                              <div key={`${selectedCalendarDay}-planned-${entryIndex}`} className="mt-1">
+                                {entry}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
                         {selectedCalendarLogs.length === 0 ? (
                           <div className="text-sm text-slate-500">Ingen logg på valgt dag.</div>
                         ) : (
@@ -1858,7 +2027,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                   openIntervalTimerModal(program.id);
                                   return;
                                 }
-                                startWorkoutMode(program.id);
+                                startWorkoutMode(program.id, buildStartWorkoutOptions(program));
                               }}
                             >
                               Start økt
@@ -1880,6 +2049,22 @@ export function MemberPortal(props: MemberPortalProps) {
                                       ? `${exercise.sets} runder × ${exercise.durationMinutes} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s`
                                       : `${exercise.sets}×${exercise.reps} · ${exercise.weight}kg · ${exercise.restSeconds}s`}
                                   </div>
+                                  {!exercise.durationMinutes ? (
+                                    <div className="mt-2 rounded-lg border bg-white px-2.5 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                      <div className="text-[11px] text-slate-500">Foreslått vekt fra forrige gang (kan endres)</div>
+                                      <TextInput
+                                        value={resolveSuggestedWorkoutWeight(exercise)}
+                                        onChange={(event) =>
+                                          setSuggestedWeightOverridesByProgramExerciseId((prev) => ({
+                                            ...prev,
+                                            [exercise.id]: event.target.value,
+                                          }))
+                                        }
+                                        placeholder="Kg"
+                                        className="mt-1"
+                                      />
+                                    </div>
+                                  ) : null}
                                   {exercise.notes ? <div className="mt-0.5 text-[11px] text-slate-500">{exercise.notes}</div> : null}
                                 </div>
                               ))}
@@ -2019,10 +2204,10 @@ export function MemberPortal(props: MemberPortalProps) {
                 ) : null}
               </div>
               <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
-                <div className="font-semibold">📝 Siste 5 økter</div>
+                <div className="font-semibold">📝 Siste 3 økter</div>
                 <div className="mt-4 space-y-3">
                   {completedLogs.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen økter logget ennå.</div> : null}
-                  {completedLogs.slice(0, 5).map((log) => (
+                  {completedLogs.slice(0, 3).map((log) => (
                     <div key={log.id} className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="flex items-start justify-between gap-3">
                         <div>

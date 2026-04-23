@@ -190,6 +190,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
   const [templateProgramTitle, setTemplateProgramTitle] = useState("Ny treningsmal");
   const [editingTemplateProgramId, setEditingTemplateProgramId] = useState<string | null>(null);
+  const [expandedTemplateProgramId, setExpandedTemplateProgramId] = useState<string | null>(null);
   const [selectedTemplateProgramId, setSelectedTemplateProgramId] = useState("");
   const [templateAssignStatus, setTemplateAssignStatus] = useState<string | null>(null);
   const [draggedExerciseIdFromLibrary, setDraggedExerciseIdFromLibrary] = useState<string | null>(null);
@@ -1234,6 +1235,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
   function startEditTemplateProgram(program: TrainingProgram) {
     setEditingTemplateProgramId(program.id);
+    setExpandedTemplateProgramId(program.id);
     setTemplateProgramTitle(program.title);
     setProgramExercisesDraft(program.exercises.map((exercise) => ({ ...exercise })));
     setTemplateAssignStatus(`Redigerer mal: ${program.title}`);
@@ -1255,6 +1257,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
     }
     if (selectedTemplateProgramId === program.id) {
       setSelectedTemplateProgramId("");
+    }
+    if (expandedTemplateProgramId === program.id) {
+      setExpandedTemplateProgramId(null);
     }
     setTemplateAssignStatus(`Treningsmalen "${program.title}" ble slettet.`);
   }
@@ -3526,21 +3531,29 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 ) : null}
               </div>
               <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="font-semibold">Lagrede treningsmaler</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-semibold">Lagrede treningsmaler</div>
+                  <div className="text-xs text-slate-500">{templatePrograms.length} maler</div>
+                </div>
                 {templatePrograms.length === 0 ? (
                   <div className="rounded-2xl border border-dashed bg-white p-4 text-sm text-slate-500">
                     Ingen treningsmaler lagret ennå.
                   </div>
                 ) : null}
                 <div className="space-y-2">
-                  {templatePrograms.map((program) => (
+                  {templatePrograms.map((program) => {
+                    const isExpanded = expandedTemplateProgramId === program.id;
+                    return (
                     <div key={program.id} className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-slate-800">{program.title}</div>
-                          <div className="mt-0.5 text-xs text-slate-500">{program.exercises.length} øvelse(r)</div>
+                          <div className="mt-0.5 text-xs text-slate-500">{program.exercises.length} øvelse(r) · {program.createdAt}</div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <OutlineButton onClick={() => setExpandedTemplateProgramId((prev) => (prev === program.id ? null : program.id))} className="px-3 py-1.5 text-xs">
+                            {isExpanded ? "Skjul" : "Vis"}
+                          </OutlineButton>
                           <OutlineButton onClick={() => startEditTemplateProgram(program)} className="px-3 py-1.5 text-xs">
                             Rediger
                           </OutlineButton>
@@ -3549,8 +3562,35 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           </OutlineButton>
                         </div>
                       </div>
+                      {isExpanded ? (
+                        <div className="mt-3 space-y-2">
+                          {program.notes ? (
+                            <div className="rounded-lg border bg-slate-50 px-2.5 py-2 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                              {program.notes}
+                            </div>
+                          ) : null}
+                          {program.exercises.length === 0 ? (
+                            <div className="rounded-lg border border-dashed bg-slate-50 px-2.5 py-2 text-xs text-slate-500">
+                              Ingen øvelser i malen ennå.
+                            </div>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {program.exercises.map((exercise) => (
+                                <div key={exercise.id} className="rounded-lg border bg-slate-50 px-2.5 py-2 text-xs text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                  <div className="font-medium text-slate-800">{exercise.exerciseName}</div>
+                                  <div className="mt-0.5 text-slate-500">
+                                    {exercise.durationMinutes
+                                      ? `${exercise.sets} runder × ${exercise.durationMinutes} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds}s`
+                                      : `${exercise.sets}×${exercise.reps} · ${exercise.weight}kg · ${exercise.restSeconds}s`}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
               <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
