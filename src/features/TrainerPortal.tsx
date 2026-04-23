@@ -175,6 +175,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [restoreEmail, setRestoreEmail] = useState("");
   const [restoreStatus, setRestoreStatus] = useState<string | null>(null);
   const [isRestoringMember, setIsRestoringMember] = useState(false);
+  const [memberDedupeStatus, setMemberDedupeStatus] = useState<string | null>(null);
+  const [isRunningMemberDedupe, setIsRunningMemberDedupe] = useState(false);
   const [restoreDataStatus, setRestoreDataStatus] = useState<string | null>(null);
   const [isRestoringTestData, setIsRestoringTestData] = useState(false);
   const [restoreExerciseBankStatus, setRestoreExerciseBankStatus] = useState<string | null>(null);
@@ -1038,6 +1040,70 @@ export function TrainerPortal(props: TrainerPortalProps) {
     const result = await restoreOriginalExerciseBank();
     setRestoreExerciseBankStatus(result.message);
     setIsRestoringExerciseBank(false);
+  }
+
+  async function resolveOwnerUserIdFromSession(): Promise<string> {
+    if (!supabaseClient) return "";
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession();
+    const token = session?.access_token ?? "";
+    if (!token) return "";
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))) as { sub?: string };
+      return String(payload.sub ?? "");
+    } catch {
+      return "";
+    }
+  }
+
+  async function handleRunSafeMemberCleanup() {
+    if (!isSupabaseConfigured || !supabaseClient) {
+      setMemberDedupeStatus("Opprydding krever Supabase-oppsett.");
+      return;
+    }
+    setIsRunningMemberDedupe(true);
+    setMemberDedupeStatus(null);
+    try {
+      const ownerUserId = await resolveOwnerUserIdFromSession();
+      if (!ownerUserId) {
+        setMemberDedupeStatus("Fant ikke owner-id i aktiv trener-session.");
+        return;
+      }
+
+      const dryRunResult = await supabaseClient.functions.invoke("dedupe-members", {
+        body: { ownerUserId, apply: false },
+      });
+      if (dryRunResult.error) {
+        setMemberDedupeStatus(`Dry-run feilet: ${dryRunResult.error.message}`);
+        return;
+      }
+
+      const dryRunData = (dryRunResult.data ?? {}) as { duplicateGroupCount?: number };
+      const duplicateGroups = Number(dryRunData.duplicateGroupCount ?? 0);
+      if (duplicateGroups <= 0) {
+        setMemberDedupeStatus("Ingen duplikater funnet. Alt ser ryddig ut.");
+        return;
+      }
+
+      const applyResult = await supabaseClient.functions.invoke("dedupe-members", {
+        body: { ownerUserId, apply: true },
+      });
+      if (applyResult.error) {
+        setMemberDedupeStatus(`Opprydding feilet: ${applyResult.error.message}`);
+        return;
+      }
+
+      const applyData = (applyResult.data ?? {}) as { groups?: Array<{ deactivatedMembers?: number }> };
+      const deactivatedTotal = (applyData.groups ?? []).reduce((sum, group) => sum + Number(group.deactivatedMembers ?? 0), 0);
+      setMemberDedupeStatus(
+        `Opprydding fullført: ${duplicateGroups} duplikatgruppe${duplicateGroups === 1 ? "" : "r"}, ${deactivatedTotal} rader satt inaktive.`
+      );
+    } catch (error) {
+      setMemberDedupeStatus(`Opprydding feilet: ${String(error)}`);
+    } finally {
+      setIsRunningMemberDedupe(false);
+    }
   }
 
   function addTodoItem() {
@@ -2864,6 +2930,22 @@ export function TrainerPortal(props: TrainerPortalProps) {
             ) : null}
             <OutlineButton onClick={() => void handleRestoreMember()} className="w-full md:w-auto" disabled={isRestoringMember}>
               {isRestoringMember ? "Gjenoppretter..." : "Gjenopprett klient"}
+            </OutlineButton>
+          </div>
+          <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="text-sm font-semibold text-slate-700">Sikker opprydding av duplikatkunder</div>
+            <div className="text-xs text-slate-600">
+              Kjører dry-run først og deretter sikker sammenslåing av duplikater per e-post (ingen hard delete).
+            </div>
+            {memberDedupeStatus ? (
+              <StatusMessage
+                message={memberDedupeStatus}
+                tone={memberDedupeStatus.toLowerCase().includes("feilet") ? "error" : "success"}
+                className="!rounded-xl !px-3 !py-2 !text-xs"
+              />
+            ) : null}
+            <OutlineButton onClick={() => void handleRunSafeMemberCleanup()} className="w-full md:w-auto" disabled={isRunningMemberDedupe}>
+              {isRunningMemberDedupe ? "Kjører opprydding..." : "Kjør sikker opprydding"}
             </OutlineButton>
           </div>
         </Card>

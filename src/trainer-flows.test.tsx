@@ -30,6 +30,17 @@ describe("Trainer flows", () => {
     expect(screen.getByPlaceholderText("E-post")).toHaveValue("");
   });
 
+  it("shows dedupe helper message when Supabase is unavailable", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
+    await user.click(screen.getAllByRole("button", { name: "Admin" })[0]);
+    await user.click(screen.getByRole("button", { name: "Kjør sikker opprydding" }));
+
+    expect(screen.getByText("Opprydding krever Supabase-oppsett.")).toBeInTheDocument();
+  });
+
   it("shows customer program builder for trainer", async () => {
     const user = userEvent.setup();
     render(<App />);
