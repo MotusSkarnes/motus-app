@@ -72,6 +72,12 @@ type PeriodSchedulePlan = {
   createdAt: string;
   weeklyPlans: WeeklySchedulePlan[];
 };
+type IntervalPreset = {
+  id: string;
+  name: string;
+  description: string;
+  steps: Array<{ name: string; minutes: number; speed: string; incline: string; restSeconds: string }>;
+};
 
 const MEMBER_AVATAR_BUCKET = "exercise-images";
 const MEMBER_AVATAR_PREFIX = "member-avatars";
@@ -84,6 +90,20 @@ const WEEKDAY_PLAN_FIELDS: Array<{ key: WeekdayPlanKey; label: string }> = [
   { key: "friday", label: "Fredag" },
   { key: "saturday", label: "Lørdag" },
   { key: "sunday", label: "Søndag" },
+];
+const GROUP_WORKOUT_PLAN_OPTIONS = [
+  "Gruppetime",
+  "Gruppetime: Smilepuls",
+  "Gruppetime: Sykkel 45",
+  "Gruppetime: Mølle 45",
+  "Gruppetime: Sterk",
+  "Gruppetime: Sirkeltrening",
+  "Gruppetime: Stram opp",
+  "Gruppetime: Dansemix",
+  "Gruppetime: Yoga",
+  "Gruppetime: Tabata",
+  "Gruppetime: Godt voksen",
+  "Gruppetime: Step styrke",
 ];
 
 function createEmptyWeeklyDayPlan(): WeeklyDayPlan {
@@ -180,6 +200,47 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [quickPlanLevel, setQuickPlanLevel] = useState<"nybegynner" | "middels" | "avansert">("nybegynner");
   const [quickPlanMinutes, setQuickPlanMinutes] = useState<"30" | "45" | "60">("45");
   const [quickPlanStatus, setQuickPlanStatus] = useState<string | null>(null);
+  const intervalPresets = useMemo<IntervalPreset[]>(
+    () => [
+      {
+        id: "classic-4x4",
+        name: "4x4 klassisk",
+        description: "10 min oppvarming, 4x4 min med 3 min pause, 5 min nedjogg.",
+        steps: [
+          { name: "Oppvarming", minutes: 10, speed: "7", incline: "1", restSeconds: "0" },
+          { name: "Drag 1", minutes: 4, speed: "13", incline: "1.5", restSeconds: "180" },
+          { name: "Drag 2", minutes: 4, speed: "13", incline: "1.5", restSeconds: "180" },
+          { name: "Drag 3", minutes: 4, speed: "13", incline: "1.5", restSeconds: "180" },
+          { name: "Drag 4", minutes: 4, speed: "13", incline: "1.5", restSeconds: "0" },
+          { name: "Nedjogg", minutes: 5, speed: "5.5", incline: "0", restSeconds: "0" },
+        ],
+      },
+      {
+        id: "tempo-30",
+        name: "Tempo 30",
+        description: "8 min oppvarming, 3 tempo-drag, 5 min nedjogg.",
+        steps: [
+          { name: "Oppvarming", minutes: 8, speed: "7", incline: "1", restSeconds: "0" },
+          { name: "Tempo 1", minutes: 3, speed: "11", incline: "1", restSeconds: "90" },
+          { name: "Tempo 2", minutes: 4, speed: "11.5", incline: "1", restSeconds: "90" },
+          { name: "Tempo 3", minutes: 5, speed: "12", incline: "1", restSeconds: "0" },
+          { name: "Nedjogg", minutes: 5, speed: "5.5", incline: "0", restSeconds: "0" },
+        ],
+      },
+      {
+        id: "short-hiit-20",
+        name: "Kort HIIT 20",
+        description: "6 min oppvarming, 10 korte drag, 4 min nedjogg.",
+        steps: [
+          { name: "Oppvarming", minutes: 6, speed: "7", incline: "1", restSeconds: "0" },
+          { name: "10x kortintervall", minutes: 20, speed: "13-16", incline: "1", restSeconds: "0" },
+          { name: "Nedjogg", minutes: 4, speed: "5.5", incline: "0", restSeconds: "0" },
+        ],
+      },
+    ],
+    [],
+  );
+  const [selectedIntervalPresetId, setSelectedIntervalPresetId] = useState("classic-4x4");
   const [periodPlansByMemberId, setPeriodPlansByMemberId] = useState<Record<string, PeriodSchedulePlan[]>>(() => {
     if (typeof window === "undefined") return {};
     try {
@@ -199,6 +260,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     { id: uid("period-week"), weekNumber: 1, days: createEmptyWeeklyDayPlan() },
   ]);
   const [activePeriodWeekId, setActivePeriodWeekId] = useState<string>(periodWeeklyPlansDraft[0]?.id ?? "");
+  const [matchingWeekIdsDraft, setMatchingWeekIdsDraft] = useState<string[]>([]);
   const [periodPlanStatus, setPeriodPlanStatus] = useState<string | null>(null);
   const [favoriteExerciseIds, setFavoriteExerciseIds] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
@@ -661,6 +723,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       { value: "Hvile / restitusjon", label: "Hvile / restitusjon" },
       { value: "Aktiv restitusjon", label: "Aktiv restitusjon" },
       { value: "Valgfri økt", label: "Valgfri økt" },
+      ...GROUP_WORKOUT_PLAN_OPTIONS.map((label) => ({ value: label, label })),
     ];
     const programOptions = selectedPrograms.map((program) => ({
       value: program.title,
@@ -690,6 +753,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(PERIOD_PLANS_STORAGE_KEY, JSON.stringify(periodPlansByMemberId));
   }, [periodPlansByMemberId]);
+  useEffect(() => {
+    setMatchingWeekIdsDraft((prev) => prev.filter((id) => periodWeeklyPlansDraft.some((week) => week.id === id)));
+  }, [periodWeeklyPlansDraft]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -778,6 +844,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     const firstWeek = { id: uid("period-week"), weekNumber: 1, days: createEmptyWeeklyDayPlan() };
     setPeriodWeeklyPlansDraft([firstWeek]);
     setActivePeriodWeekId(firstWeek.id);
+    setMatchingWeekIdsDraft([]);
   }, [selectedMemberId]);
 
   function resetMemberEditDraftFromSelected(member: Member | null) {
@@ -991,6 +1058,37 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setQuickPlanStatus(`Ukesoppsett klart: ${pickedExercises.length} øvelser lagt inn.`);
   }
 
+  function generateIntervalProgramDraft() {
+    const preset = intervalPresets.find((item) => item.id === selectedIntervalPresetId) ?? intervalPresets[0];
+    if (!preset) return;
+    const treadmillExercise =
+      exercises.find((exercise) => exercise.equipment.trim().toLowerCase().includes("tredem")) ??
+      exercises.find((exercise) => exercise.category === "Kondisjon") ??
+      exercises[0];
+    if (!treadmillExercise) {
+      setQuickPlanStatus("Fant ingen øvelse å bygge intervallprogram fra.");
+      return;
+    }
+    const draftExercises: ProgramExercise[] = preset.steps.map((step) => ({
+      id: uid("draft-ex"),
+      exerciseId: treadmillExercise.id,
+      exerciseName: step.name,
+      sets: "1",
+      reps: "",
+      weight: "",
+      durationMinutes: String(step.minutes),
+      speed: step.speed,
+      incline: step.incline,
+      restSeconds: step.restSeconds,
+      notes: "Intervallsteg",
+    }));
+    setProgramTitle(`Intervall: ${preset.name}`);
+    setProgramGoal("Mølleintervall med nedtelling");
+    setProgramNotes(`[INTERVAL_TIMER] ${preset.description} Du kan redigere fart, incline og varighet før lagring.`);
+    setProgramExercisesDraft(draftExercises);
+    setQuickPlanStatus(`Intervallutkast klart: ${preset.name}. Lagre for å tildele kunden.`);
+  }
+
   function handlePeriodPlanWeeksDraftChange(value: string) {
     setPeriodPlanWeeksDraft(value);
     const parsed = Math.max(1, Math.min(12, Number(value) || 1));
@@ -1056,6 +1154,28 @@ export function TrainerPortal(props: TrainerPortalProps) {
       };
     });
     setPeriodPlanStatus("Periodeplan lagret.");
+  }
+
+  function toggleMatchingWeek(weekId: string) {
+    setMatchingWeekIdsDraft((prev) => (prev.includes(weekId) ? prev.filter((id) => id !== weekId) : [...prev, weekId]));
+  }
+
+  function applyActiveWeekToMatchingWeeks() {
+    if (!activePeriodWeek || matchingWeekIdsDraft.length === 0) {
+      setPeriodPlanStatus("Velg minst én uke å kopiere til.");
+      return;
+    }
+    setPeriodWeeklyPlansDraft((prev) =>
+      prev.map((week) =>
+        matchingWeekIdsDraft.includes(week.id)
+          ? {
+              ...week,
+              days: { ...activePeriodWeek.days },
+            }
+          : week,
+      ),
+    );
+    setPeriodPlanStatus(`Kopierte uke ${activePeriodWeek.weekNumber} til ${matchingWeekIdsDraft.length} uke(r).`);
   }
 
   function removePeriodPlan(planId: string) {
@@ -2601,6 +2721,23 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           ) : null}
                         </div>
                       </div>
+                      <div className="rounded-2xl border bg-white p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                        <div className="text-sm font-semibold text-slate-700">Mølleintervall som treningsprogram</div>
+                        <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+                          <SelectBox
+                            value={selectedIntervalPresetId}
+                            onChange={setSelectedIntervalPresetId}
+                            options={intervalPresets.map((preset) => ({ value: preset.id, label: preset.name }))}
+                          />
+                          <GradientButton onClick={generateIntervalProgramDraft} className="w-full md:w-auto">
+                            Lag intervallutkast
+                          </GradientButton>
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {intervalPresets.find((preset) => preset.id === selectedIntervalPresetId)?.description}
+                          {" "}Utkastet kan redigeres før lagring/tildeling.
+                        </div>
+                      </div>
                       <div className="rounded-2xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                         <div className="text-sm font-semibold text-slate-700">Periodeplan + ukesplan (per dag)</div>
                         <div className="grid gap-2 md:grid-cols-2">
@@ -2657,6 +2794,28 @@ export function TrainerPortal(props: TrainerPortalProps) {
                                 </label>
                               );
                             })}
+                          </div>
+                        ) : null}
+                        {activePeriodWeek && periodWeeklyPlansDraft.length > 1 ? (
+                          <div className="rounded-xl border bg-slate-50 p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Kopier ukeplan til flere uker</div>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {periodWeeklyPlansDraft
+                                .filter((week) => week.id !== activePeriodWeek.id)
+                                .map((week) => (
+                                  <label key={week.id} className="inline-flex items-center gap-2 rounded-lg border bg-white px-2 py-1.5 text-xs text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={matchingWeekIdsDraft.includes(week.id)}
+                                      onChange={() => toggleMatchingWeek(week.id)}
+                                    />
+                                    <span>Uke {week.weekNumber}</span>
+                                  </label>
+                                ))}
+                            </div>
+                            <OutlineButton onClick={applyActiveWeekToMatchingWeeks} className="w-full sm:w-auto">
+                              Bruk samme plan på valgte uker
+                            </OutlineButton>
                           </div>
                         ) : null}
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

@@ -76,19 +76,12 @@ function dataUrlToBlob(dataUrl: string): Blob | null {
   }
 }
 
-type TreadmillIntervalStep = {
+type IntervalTimerStep = {
   label: string;
   durationSeconds: number;
   speedHint: string;
   inclineHint: string;
   tone: "warmup" | "work" | "rest" | "cooldown";
-};
-
-type TreadmillIntervalPreset = {
-  id: string;
-  name: string;
-  description: string;
-  steps: TreadmillIntervalStep[];
 };
 
 export function MemberPortal(props: MemberPortalProps) {
@@ -145,57 +138,12 @@ export function MemberPortal(props: MemberPortalProps) {
   const [activeStreakFreezeMonthKey, setActiveStreakFreezeMonthKey] = useState<string | null>(null);
   const [activeStreakFreezeWeekKey, setActiveStreakFreezeWeekKey] = useState<string | null>(null);
   const [streakFreezeStatus, setStreakFreezeStatus] = useState<string | null>(null);
-  const treadmillPresets = useMemo<TreadmillIntervalPreset[]>(
-    () => [
-      {
-        id: "classic-4x4",
-        name: "4x4 klassisk",
-        description: "10 min oppvarming, 4x4 min drag med 3 min pause, 5 min nedjogg.",
-        steps: [
-          { label: "Oppvarming", durationSeconds: 10 * 60, speedHint: "6-8 km/t", inclineHint: "1%", tone: "warmup" },
-          { label: "Drag 1 av 4", durationSeconds: 4 * 60, speedHint: "12-15 km/t", inclineHint: "1-2%", tone: "work" },
-          { label: "Pause 1", durationSeconds: 3 * 60, speedHint: "6-7 km/t", inclineHint: "0-1%", tone: "rest" },
-          { label: "Drag 2 av 4", durationSeconds: 4 * 60, speedHint: "12-15 km/t", inclineHint: "1-2%", tone: "work" },
-          { label: "Pause 2", durationSeconds: 3 * 60, speedHint: "6-7 km/t", inclineHint: "0-1%", tone: "rest" },
-          { label: "Drag 3 av 4", durationSeconds: 4 * 60, speedHint: "12-15 km/t", inclineHint: "1-2%", tone: "work" },
-          { label: "Pause 3", durationSeconds: 3 * 60, speedHint: "6-7 km/t", inclineHint: "0-1%", tone: "rest" },
-          { label: "Drag 4 av 4", durationSeconds: 4 * 60, speedHint: "12-15 km/t", inclineHint: "1-2%", tone: "work" },
-          { label: "Nedjogg", durationSeconds: 5 * 60, speedHint: "5-6 km/t", inclineHint: "0%", tone: "cooldown" },
-        ],
-      },
-      {
-        id: "tempo-ladder",
-        name: "Tempo-ladder 30",
-        description: "Progressiv fart med korte pauser. Fin for terskelarbeid.",
-        steps: [
-          { label: "Oppvarming", durationSeconds: 8 * 60, speedHint: "6-8 km/t", inclineHint: "1%", tone: "warmup" },
-          { label: "Drag 1", durationSeconds: 3 * 60, speedHint: "10-11 km/t", inclineHint: "1%", tone: "work" },
-          { label: "Pause 1", durationSeconds: 90, speedHint: "6-7 km/t", inclineHint: "0%", tone: "rest" },
-          { label: "Drag 2", durationSeconds: 4 * 60, speedHint: "11-12 km/t", inclineHint: "1%", tone: "work" },
-          { label: "Pause 2", durationSeconds: 90, speedHint: "6-7 km/t", inclineHint: "0%", tone: "rest" },
-          { label: "Drag 3", durationSeconds: 5 * 60, speedHint: "12-13 km/t", inclineHint: "1%", tone: "work" },
-          { label: "Nedjogg", durationSeconds: 5 * 60, speedHint: "5-6 km/t", inclineHint: "0%", tone: "cooldown" },
-        ],
-      },
-      {
-        id: "short-hiit",
-        name: "Kort HIIT 20",
-        description: "Kort og effektiv intervalløkt med 10 raske drag.",
-        steps: [
-          { label: "Oppvarming", durationSeconds: 6 * 60, speedHint: "6-8 km/t", inclineHint: "1%", tone: "warmup" },
-          { label: "10x (45 sek på / 75 sek rolig)", durationSeconds: 20 * 60, speedHint: "På: 13-16 / rolig: 6-7", inclineHint: "1%", tone: "work" },
-          { label: "Nedjogg", durationSeconds: 4 * 60, speedHint: "5-6 km/t", inclineHint: "0%", tone: "cooldown" },
-        ],
-      },
-    ],
-    [],
-  );
-  const [selectedTreadmillPresetId, setSelectedTreadmillPresetId] = useState("classic-4x4");
-  const [isTreadmillRunning, setIsTreadmillRunning] = useState(false);
-  const [isTreadmillPaused, setIsTreadmillPaused] = useState(false);
-  const [treadmillStepIndex, setTreadmillStepIndex] = useState(0);
-  const [treadmillRemainingSeconds, setTreadmillRemainingSeconds] = useState(0);
-  const [treadmillStatus, setTreadmillStatus] = useState<string | null>(null);
+  const [selectedIntervalProgramId, setSelectedIntervalProgramId] = useState("");
+  const [isIntervalTimerRunning, setIsIntervalTimerRunning] = useState(false);
+  const [isIntervalTimerPaused, setIsIntervalTimerPaused] = useState(false);
+  const [intervalTimerStepIndex, setIntervalTimerStepIndex] = useState(0);
+  const [intervalTimerRemainingSeconds, setIntervalTimerRemainingSeconds] = useState(0);
+  const [intervalTimerStatus, setIntervalTimerStatus] = useState<string | null>(null);
   const hasInitializedAchievementTracking = useRef(false);
   const workoutWeightInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
@@ -297,22 +245,66 @@ export function MemberPortal(props: MemberPortalProps) {
     return exercises.filter((exercise) => exercise.id !== sourceExercise.id && exercise.category === sourceExercise.category);
   }, [activeWorkoutProgram, currentWorkoutGroup, exercises]);
   const now = new Date();
-  const selectedTreadmillPreset = treadmillPresets.find((preset) => preset.id === selectedTreadmillPresetId) ?? treadmillPresets[0];
-  const currentTreadmillStep = selectedTreadmillPreset?.steps[treadmillStepIndex] ?? null;
-  const treadmillTotalSeconds = useMemo(
-    () => selectedTreadmillPreset?.steps.reduce((sum, step) => sum + step.durationSeconds, 0) ?? 0,
-    [selectedTreadmillPreset],
+  const intervalPrograms = useMemo(
+    () =>
+      memberPrograms.filter((program) => {
+        const taggedInterval = program.notes.toLowerCase().includes("[interval_timer]");
+        const hasTimedTreadmillSteps = program.exercises.some(
+          (exercise) => Number(exercise.durationMinutes) > 0 && (exercise.incline || exercise.speed),
+        );
+        return taggedInterval || hasTimedTreadmillSteps;
+      }),
+    [memberPrograms],
   );
-  const treadmillElapsedSeconds = useMemo(() => {
-    if (!selectedTreadmillPreset) return 0;
-    const completed = selectedTreadmillPreset.steps
-      .slice(0, treadmillStepIndex)
+  const activeIntervalProgram = useMemo(
+    () => intervalPrograms.find((program) => program.id === selectedIntervalProgramId) ?? intervalPrograms[0] ?? null,
+    [intervalPrograms, selectedIntervalProgramId],
+  );
+  const intervalProgramSteps = useMemo(() => {
+    if (!activeIntervalProgram) return [] as IntervalTimerStep[];
+    return activeIntervalProgram.exercises.flatMap((exercise, index) => {
+      const workDurationSeconds = Math.max(0, Math.round((Number(exercise.durationMinutes) || 0) * 60));
+      const restDurationSeconds = Math.max(0, Number(exercise.restSeconds) || 0);
+      const steps: IntervalTimerStep[] = [];
+      if (workDurationSeconds > 0) {
+        const lowerName = exercise.exerciseName.toLowerCase();
+        const tone: IntervalTimerStep["tone"] =
+          lowerName.includes("oppvarm") ? "warmup" : lowerName.includes("nedjogg") ? "cooldown" : "work";
+        steps.push({
+          label: exercise.exerciseName || `Intervall ${index + 1}`,
+          durationSeconds: workDurationSeconds,
+          speedHint: exercise.speed ? `${exercise.speed} km/t` : "-",
+          inclineHint: exercise.incline ? `${exercise.incline}%` : "-",
+          tone,
+        });
+      }
+      if (restDurationSeconds > 0 && index < activeIntervalProgram.exercises.length - 1) {
+        steps.push({
+          label: `Pause etter ${exercise.exerciseName || `intervall ${index + 1}`}`,
+          durationSeconds: restDurationSeconds,
+          speedHint: "Rolig",
+          inclineHint: "0-1%",
+          tone: "rest",
+        });
+      }
+      return steps;
+    });
+  }, [activeIntervalProgram]);
+  const currentIntervalProgramStep = intervalProgramSteps[intervalTimerStepIndex] ?? null;
+  const intervalTimerTotalSeconds = useMemo(
+    () => intervalProgramSteps.reduce((sum, step) => sum + step.durationSeconds, 0),
+    [intervalProgramSteps],
+  );
+  const intervalTimerElapsedSeconds = useMemo(() => {
+    const completed = intervalProgramSteps
+      .slice(0, intervalTimerStepIndex)
       .reduce((sum, step) => sum + step.durationSeconds, 0);
-    const currentStepDuration = currentTreadmillStep?.durationSeconds ?? 0;
-    const currentProgress = Math.max(0, currentStepDuration - treadmillRemainingSeconds);
-    return Math.min(treadmillTotalSeconds, completed + currentProgress);
-  }, [selectedTreadmillPreset, treadmillStepIndex, currentTreadmillStep, treadmillRemainingSeconds, treadmillTotalSeconds]);
-  const treadmillProgressPercent = treadmillTotalSeconds > 0 ? Math.min(100, Math.round((treadmillElapsedSeconds / treadmillTotalSeconds) * 100)) : 0;
+    const currentStepDuration = currentIntervalProgramStep?.durationSeconds ?? 0;
+    const currentProgress = Math.max(0, currentStepDuration - intervalTimerRemainingSeconds);
+    return Math.min(intervalTimerTotalSeconds, completed + currentProgress);
+  }, [intervalProgramSteps, intervalTimerStepIndex, currentIntervalProgramStep, intervalTimerRemainingSeconds, intervalTimerTotalSeconds]);
+  const intervalTimerProgressPercent =
+    intervalTimerTotalSeconds > 0 ? Math.min(100, Math.round((intervalTimerElapsedSeconds / intervalTimerTotalSeconds) * 100)) : 0;
 
   function normalizeBirthDateToDdMmYyyy(value: string): string {
     return normalizeBirthDate(value);
@@ -823,30 +815,31 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }, [streakFreezeStorageKey]);
   useEffect(() => {
-    if (!selectedTreadmillPreset || isTreadmillRunning) return;
-    const firstStep = selectedTreadmillPreset.steps[0] ?? null;
-    setTreadmillStepIndex(0);
-    setTreadmillRemainingSeconds(firstStep?.durationSeconds ?? 0);
-  }, [selectedTreadmillPresetId, selectedTreadmillPreset, isTreadmillRunning]);
+    if (!activeIntervalProgram || isIntervalTimerRunning) return;
+    const firstStep = intervalProgramSteps[0] ?? null;
+    setSelectedIntervalProgramId(activeIntervalProgram.id);
+    setIntervalTimerStepIndex(0);
+    setIntervalTimerRemainingSeconds(firstStep?.durationSeconds ?? 0);
+  }, [activeIntervalProgram, intervalProgramSteps, isIntervalTimerRunning]);
   useEffect(() => {
-    if (!isTreadmillRunning || isTreadmillPaused || !selectedTreadmillPreset) return;
+    if (!isIntervalTimerRunning || isIntervalTimerPaused || !intervalProgramSteps.length) return;
     const timer = window.setInterval(() => {
-      setTreadmillRemainingSeconds((previous) => {
+      setIntervalTimerRemainingSeconds((previous) => {
         if (previous > 1) return previous - 1;
-        const nextIndex = treadmillStepIndex + 1;
-        const nextStep = selectedTreadmillPreset.steps[nextIndex];
+        const nextIndex = intervalTimerStepIndex + 1;
+        const nextStep = intervalProgramSteps[nextIndex];
         if (!nextStep) {
-          setIsTreadmillRunning(false);
-          setIsTreadmillPaused(false);
-          setTreadmillStatus("Intervalløkten er fullført. Sterkt jobba!");
+          setIsIntervalTimerRunning(false);
+          setIsIntervalTimerPaused(false);
+          setIntervalTimerStatus("Intervalløkten er fullført. Sterkt jobba!");
           return 0;
         }
-        setTreadmillStepIndex(nextIndex);
+        setIntervalTimerStepIndex(nextIndex);
         return nextStep.durationSeconds;
       });
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [isTreadmillRunning, isTreadmillPaused, selectedTreadmillPreset, treadmillStepIndex]);
+  }, [isIntervalTimerRunning, isIntervalTimerPaused, intervalProgramSteps, intervalTimerStepIndex]);
 
   useEffect(() => {
     const unlockedIds = achievements.filter((achievement) => achievement.unlocked).map((achievement) => achievement.id);
@@ -883,26 +876,26 @@ export function MemberPortal(props: MemberPortalProps) {
       setStreakFreezeStatus("Kunne ikke aktivere comeback-pass akkurat nå.");
     }
   }
-  function handleStartTreadmillWorkout() {
-    if (!selectedTreadmillPreset) return;
-    const firstStep = selectedTreadmillPreset.steps[0] ?? null;
-    setTreadmillStatus(null);
-    setIsTreadmillPaused(false);
-    setTreadmillStepIndex(0);
-    setTreadmillRemainingSeconds(firstStep?.durationSeconds ?? 0);
-    setIsTreadmillRunning(true);
+  function handleStartIntervalProgramTimer() {
+    if (!activeIntervalProgram || !intervalProgramSteps.length) return;
+    const firstStep = intervalProgramSteps[0] ?? null;
+    setIntervalTimerStatus(null);
+    setIsIntervalTimerPaused(false);
+    setIntervalTimerStepIndex(0);
+    setIntervalTimerRemainingSeconds(firstStep?.durationSeconds ?? 0);
+    setIsIntervalTimerRunning(true);
   }
-  function handlePauseResumeTreadmillWorkout() {
-    if (!isTreadmillRunning) return;
-    setIsTreadmillPaused((previous) => !previous);
+  function handlePauseResumeIntervalProgramTimer() {
+    if (!isIntervalTimerRunning) return;
+    setIsIntervalTimerPaused((previous) => !previous);
   }
-  function handleResetTreadmillWorkout() {
-    if (!selectedTreadmillPreset) return;
-    setIsTreadmillRunning(false);
-    setIsTreadmillPaused(false);
-    setTreadmillStepIndex(0);
-    setTreadmillRemainingSeconds(selectedTreadmillPreset.steps[0]?.durationSeconds ?? 0);
-    setTreadmillStatus("Intervalløkten er nullstilt.");
+  function handleResetIntervalProgramTimer() {
+    if (!intervalProgramSteps.length) return;
+    setIsIntervalTimerRunning(false);
+    setIsIntervalTimerPaused(false);
+    setIntervalTimerStepIndex(0);
+    setIntervalTimerRemainingSeconds(intervalProgramSteps[0]?.durationSeconds ?? 0);
+    setIntervalTimerStatus("Intervalløkten er nullstilt.");
   }
 
   async function shareMonthlyProgressSummary() {
@@ -1816,6 +1809,18 @@ export function MemberPortal(props: MemberPortalProps) {
                             >
                               {isExpanded ? "Skjul økt" : "Se hele økt"}
                             </OutlineButton>
+                            {(program.notes.toLowerCase().includes("[interval_timer]") ||
+                              program.exercises.some((exercise) => Number(exercise.durationMinutes) > 0 && (exercise.speed || exercise.incline))) ? (
+                              <OutlineButton
+                                className="px-3 py-2 text-xs"
+                                onClick={() => {
+                                  setSelectedIntervalProgramId(program.id);
+                                  setIntervalTimerStatus(null);
+                                }}
+                              >
+                                Intervalltimer
+                              </OutlineButton>
+                            ) : null}
                             <GradientButton className="px-3 py-2 text-xs" onClick={() => startWorkoutMode(program.id)}>
                               Start økt
                             </GradientButton>
@@ -1848,56 +1853,64 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
-                <div className="font-semibold">🏃 Mølleintervaller med nedtelling</div>
-                <div className="mt-1 text-xs text-slate-500">Velg intervallprogram og trykk start. Appen teller ned hele økta automatisk.</div>
+                <div className="font-semibold">🏃 Intervallprogram med nedtelling</div>
+                <div className="mt-1 text-xs text-slate-500">Velg ett av tildelte intervallprogram og trykk start. Appen teller ned hele økta automatisk.</div>
                 <div className="mt-4 rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <SelectBox
-                    value={selectedTreadmillPresetId}
-                    onChange={setSelectedTreadmillPresetId}
-                    options={treadmillPresets.map((preset) => ({
-                      value: preset.id,
-                      label: preset.name,
-                    }))}
-                  />
-                  <div className="text-xs text-slate-500">{selectedTreadmillPreset?.description}</div>
+                  {intervalPrograms.length > 0 ? (
+                    <>
+                      <SelectBox
+                        value={activeIntervalProgram?.id ?? ""}
+                        onChange={setSelectedIntervalProgramId}
+                        options={intervalPrograms.map((program) => ({
+                          value: program.id,
+                          label: program.title,
+                        }))}
+                      />
+                      <div className="text-xs text-slate-500">{activeIntervalProgram?.goal || "Intervalløkt fra PT-program"}</div>
+                    </>
+                  ) : (
+                    <div className="rounded-xl border border-dashed bg-white p-3 text-xs text-slate-500">
+                      Ingen intervallprogram tildelt ennå. Be PT lage et intervallprogram og markere det som intervalltimer.
+                    </div>
+                  )}
                   <div className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="text-sm font-semibold text-slate-800">
-                        {currentTreadmillStep ? currentTreadmillStep.label : "Klar"}
+                        {currentIntervalProgramStep ? currentIntervalProgramStep.label : "Klar"}
                       </div>
                       <div className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
-                        Del {Math.min(treadmillStepIndex + 1, selectedTreadmillPreset?.steps.length ?? 1)} / {selectedTreadmillPreset?.steps.length ?? 1}
+                        Del {Math.min(intervalTimerStepIndex + 1, intervalProgramSteps.length || 1)} / {intervalProgramSteps.length || 1}
                       </div>
                     </div>
-                    <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{formatSeconds(treadmillRemainingSeconds)}</div>
+                    <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{formatSeconds(intervalTimerRemainingSeconds)}</div>
                     <div className="mt-1 text-xs text-slate-500">
-                      Fart: {currentTreadmillStep?.speedHint || "-"} · Incline: {currentTreadmillStep?.inclineHint || "-"}
+                      Fart: {currentIntervalProgramStep?.speedHint || "-"} · Incline: {currentIntervalProgramStep?.inclineHint || "-"}
                     </div>
                     <div className="mt-3 h-2 rounded-full bg-slate-200">
                       <div
                         className="h-2 rounded-full"
-                        style={{ width: `${treadmillProgressPercent}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                        style={{ width: `${intervalTimerProgressPercent}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
                       />
                     </div>
                     <div className="mt-1 text-[11px] text-slate-500">
-                      Total tid: {formatSeconds(treadmillElapsedSeconds)} / {formatSeconds(treadmillTotalSeconds)}
+                      Total tid: {formatSeconds(intervalTimerElapsedSeconds)} / {formatSeconds(intervalTimerTotalSeconds)}
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <GradientButton onClick={handleStartTreadmillWorkout} className="w-full sm:w-auto">
+                    <GradientButton onClick={handleStartIntervalProgramTimer} className="w-full sm:w-auto" disabled={!intervalProgramSteps.length}>
                       Start økt
                     </GradientButton>
-                    <OutlineButton onClick={handlePauseResumeTreadmillWorkout} disabled={!isTreadmillRunning} className="w-full sm:w-auto">
-                      {isTreadmillPaused ? "Fortsett" : "Pause"}
+                    <OutlineButton onClick={handlePauseResumeIntervalProgramTimer} disabled={!isIntervalTimerRunning} className="w-full sm:w-auto">
+                      {isIntervalTimerPaused ? "Fortsett" : "Pause"}
                     </OutlineButton>
-                    <OutlineButton onClick={handleResetTreadmillWorkout} className="w-full sm:w-auto">
+                    <OutlineButton onClick={handleResetIntervalProgramTimer} className="w-full sm:w-auto" disabled={!intervalProgramSteps.length}>
                       Nullstill
                     </OutlineButton>
                   </div>
-                  {treadmillStatus ? (
+                  {intervalTimerStatus ? (
                     <StatusMessage
-                      message={treadmillStatus}
-                      tone={treadmillStatus.toLowerCase().includes("fullført") ? "success" : "info"}
+                      message={intervalTimerStatus}
+                      tone={intervalTimerStatus.toLowerCase().includes("fullført") ? "success" : "info"}
                       className="!rounded-xl !px-3 !py-2 !text-xs"
                     />
                   ) : null}
