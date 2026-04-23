@@ -10,6 +10,20 @@ type HydratePayload = {
   ownerUserId?: string;
 };
 
+type RowWithId = { id?: string };
+
+function uniqueById<T extends RowWithId>(rows: T[]): T[] {
+  const byId = new Map<string, T>();
+  rows.forEach((row) => {
+    const id = String(row.id ?? "").trim();
+    if (!id) return;
+    if (!byId.has(id)) {
+      byId.set(id, row);
+    }
+  });
+  return Array.from(byId.values());
+}
+
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -76,39 +90,88 @@ Deno.serve(async (req) => {
     .or("is_active.is.null,is_active.eq.true")
     .order("created_at", { ascending: true });
 
-  const { data: programs, error: programsError } = await adminClient
+  const { data: programsByOwner, error: programsByOwnerError } = await adminClient
     .from("training_programs")
     .select("id, member_id, title, goal, notes, exercises, created_at")
     .eq("owner_user_id", ownerUserId)
     .order("created_at", { ascending: false });
 
-  const { data: logs, error: logsError } = await adminClient
+  const { data: logsByOwner, error: logsByOwnerError } = await adminClient
     .from("workout_logs")
     .select("id, member_id, program_title, date, status, note, results, created_at")
     .eq("owner_user_id", ownerUserId)
     .order("created_at", { ascending: false });
 
-  const { data: messages, error: messagesError } = await adminClient
+  const { data: messagesByOwner, error: messagesByOwnerError } = await adminClient
     .from("chat_messages")
     .select("id, member_id, sender, text, created_at")
     .eq("owner_user_id", ownerUserId)
     .order("created_at", { ascending: true });
+
+  let programsByMember: Array<Record<string, unknown>> = [];
+  let logsByMember: Array<Record<string, unknown>> = [];
+  let messagesByMember: Array<Record<string, unknown>> = [];
+  let programsByMemberError: { message: string } | null = null;
+  let logsByMemberError: { message: string } | null = null;
+  let messagesByMemberError: { message: string } | null = null;
+
+  if (ownedMemberIds.length > 0) {
+    const { data, error } = await adminClient
+      .from("training_programs")
+      .select("id, member_id, title, goal, notes, exercises, created_at")
+      .in("member_id", ownedMemberIds)
+      .order("created_at", { ascending: false });
+    programsByMember = (data ?? []) as Array<Record<string, unknown>>;
+    programsByMemberError = error;
+  }
+
+  if (ownedMemberIds.length > 0) {
+    const { data, error } = await adminClient
+      .from("workout_logs")
+      .select("id, member_id, program_title, date, status, note, results, created_at")
+      .in("member_id", ownedMemberIds)
+      .order("created_at", { ascending: false });
+    logsByMember = (data ?? []) as Array<Record<string, unknown>>;
+    logsByMemberError = error;
+  }
+
+  if (ownedMemberIds.length > 0) {
+    const { data, error } = await adminClient
+      .from("chat_messages")
+      .select("id, member_id, sender, text, created_at")
+      .in("member_id", ownedMemberIds)
+      .order("created_at", { ascending: true });
+    messagesByMember = (data ?? []) as Array<Record<string, unknown>>;
+    messagesByMemberError = error;
+  }
 
   const { data: exercises, error: exercisesError } = await adminClient
     .from("exercise_bank")
     .select("id, name, category, muscle_group, equipment, level, description, image_url")
     .order("name", { ascending: true });
 
-  const firstError = membersError ?? programsError ?? logsError ?? messagesError ?? exercisesError;
+  const firstError =
+    membersError ??
+    programsByOwnerError ??
+    logsByOwnerError ??
+    messagesByOwnerError ??
+    programsByMemberError ??
+    logsByMemberError ??
+    messagesByMemberError ??
+    exercisesError;
   if (firstError) {
     return jsonResponse(500, { error: firstError.message });
   }
 
+  const mergedPrograms = uniqueById([...(programsByOwner ?? []), ...programsByMember]);
+  const mergedLogs = uniqueById([...(logsByOwner ?? []), ...logsByMember]);
+  const mergedMessages = uniqueById([...(messagesByOwner ?? []), ...messagesByMember]);
+
   return jsonResponse(200, {
     members: members ?? [],
-    programs: programs ?? [],
-    logs: logs ?? [],
-    messages: messages ?? [],
+    programs: mergedPrograms,
+    logs: mergedLogs,
+    messages: mergedMessages,
     exercises: exercises ?? [],
   });
 });
