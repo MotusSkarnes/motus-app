@@ -209,7 +209,39 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [workoutSearchQuery, setWorkoutSearchQuery] = useState("");
   const [workoutSortOrder, setWorkoutSortOrder] = useState<"newest" | "oldest">("newest");
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
-  const visibleMembers = showInactiveMembers ? members : members.filter((member) => member.isActive !== false);
+  const deduplicatedMembers = useMemo(() => {
+    function memberScore(member: Member): number {
+      let score = 0;
+      if (member.isActive !== false) score += 8;
+      if (member.invitedAt) score += 2;
+      if (member.customerType === "PT-kunde") score += 1;
+      if (member.membershipType === "Premium") score += 1;
+      const days = Number(member.daysSinceActivity || "9999");
+      if (Number.isFinite(days)) {
+        score += Math.max(0, 100 - Math.min(100, days));
+      }
+      return score;
+    }
+
+    const byIdentity = new Map<string, Member>();
+    members.forEach((member) => {
+      const emailKey = member.email.trim().toLowerCase();
+      const nameKey = member.name.trim().toLowerCase();
+      const identityKey = emailKey || `name:${nameKey}`;
+      const existing = byIdentity.get(identityKey);
+      if (!existing) {
+        byIdentity.set(identityKey, member);
+        return;
+      }
+      if (memberScore(member) > memberScore(existing)) {
+        byIdentity.set(identityKey, member);
+      }
+    });
+    return Array.from(byIdentity.values());
+  }, [members]);
+  const visibleMembers = showInactiveMembers
+    ? deduplicatedMembers
+    : deduplicatedMembers.filter((member) => member.isActive !== false);
   const filteredMembers = useMemo(() => {
     const query = memberSearch.trim().toLowerCase();
     return visibleMembers
@@ -1131,10 +1163,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
     return customImage ? customImage : getExerciseSketchDataUri(exercise);
   }
 
-  const followUpCount = useMemo(() => members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length, [members]);
+  const followUpCount = useMemo(
+    () => deduplicatedMembers.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length,
+    [deduplicatedMembers]
+  );
   const membersWithoutProgramCount = useMemo(
-    () => members.filter((member) => !programs.some((program) => program.memberId === member.id)).length,
-    [members, programs],
+    () => deduplicatedMembers.filter((member) => !programs.some((program) => program.memberId === member.id)).length,
+    [deduplicatedMembers, programs],
   );
   const todoItemsForSelectedDate = todos.filter((todo) => todo.date === selectedTodoDate);
   const firstDayOffset = (dashboardMonth.getDay() + 6) % 7;
@@ -1166,7 +1201,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       return { tone: "green", score: 1, label: "Grønn" };
     }
 
-    const mapped = members.map((member) => ({ member, priority: getPriority(member) }));
+    const mapped = deduplicatedMembers.map((member) => ({ member, priority: getPriority(member) }));
     const filtered = priorityFilter === "all" ? mapped : mapped.filter((item) => item.priority.tone === priorityFilter);
     return filtered.sort((a, b) => {
       if (priorityMemberTypeSort !== "none") {
@@ -1179,7 +1214,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       if (prioritySort === "highFirst") return b.priority.score - a.priority.score;
       return a.priority.score - b.priority.score;
     });
-  }, [members, priorityFilter, prioritySort, priorityMemberTypeSort]);
+  }, [deduplicatedMembers, priorityFilter, prioritySort, priorityMemberTypeSort]);
 
   function memberTypeBadges(member: Member): Array<{ label: string; style: { backgroundColor: string; color: string } }> {
     const badges: Array<{ label: string; style: { backgroundColor: string; color: string } }> = [];
@@ -1448,7 +1483,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
         <Card className="p-5 space-y-4">
           <div className="font-semibold text-slate-800">Statistikk og prioritering</div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Totalt kunder" value={String(members.length)} hint="Alle kunder" />
+            <StatCard label="Totalt kunder" value={String(deduplicatedMembers.length)} hint="Alle kunder" />
             <StatCard label="Må følges opp" value={String(followUpCount)} hint="7+ dager inaktiv" />
             <StatCard label="Uten program" value={String(membersWithoutProgramCount)} hint="Mangler aktiv plan" />
             <StatCard label="Filtrerte kunder" value={String(filteredMembers.length)} hint="Etter søk/filter" />
@@ -1616,7 +1651,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   <SelectBox
                     value={selectedMemberId}
                     onChange={setSelectedMemberId}
-                    options={members.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
+                    options={deduplicatedMembers.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
                   />
                 </div>
                 <div className="rounded-[26px] p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.ink} 100%)` }}>
@@ -2556,7 +2591,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 <SelectBox
                   value={selectedMemberId}
                   onChange={setSelectedMemberId}
-                  options={members.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
+                  options={deduplicatedMembers.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
                 />
                 <SelectBox
                   value={selectedTemplateProgramId}

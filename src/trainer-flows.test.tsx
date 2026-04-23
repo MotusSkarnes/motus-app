@@ -253,4 +253,79 @@ describe("Trainer flows", () => {
     expect(screen.getAllByText(/^1$/).length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("3.0 / 5")).toBeInTheDocument();
   });
+
+  it("deduplicates repeated customers in trainer dashboard overview", () => {
+    const members: Member[] = [
+      {
+        id: "member-new",
+        name: "Lene",
+        email: "lene@example.com",
+        isActive: true,
+        invitedAt: "01.01.2026",
+        phone: "",
+        birthDate: "",
+        weight: "",
+        height: "",
+        level: "Nybegynner",
+        membershipType: "Standard",
+        customerType: "Oppfølging",
+        daysSinceActivity: "0",
+        goal: "",
+        focus: "",
+        personalGoals: "",
+        injuries: "",
+        coachNotes: "",
+      },
+      {
+        id: "member-old",
+        name: "Lene",
+        email: "lene@example.com",
+        isActive: false,
+        invitedAt: "",
+        phone: "",
+        birthDate: "",
+        weight: "",
+        height: "",
+        level: "Nybegynner",
+        membershipType: "Standard",
+        customerType: "Oppfølging",
+        daysSinceActivity: "12",
+        goal: "",
+        focus: "",
+        personalGoals: "",
+        injuries: "",
+        coachNotes: "",
+      },
+    ];
+
+    render(
+      <TrainerPortal
+        members={members}
+        programs={[]}
+        logs={[]}
+        messages={[]}
+        exercises={[] as Exercise[]}
+        selectedMemberId="member-new"
+        setSelectedMemberId={() => {}}
+        trainerTab="dashboard"
+        setTrainerTab={() => {}}
+        addMember={() => {}}
+        deactivateMember={() => {}}
+        deleteMember={() => {}}
+        updateMember={() => {}}
+        markMemberInvited={() => {}}
+        inviteMember={async () => ({ ok: true, message: "ok" })}
+        inviteTrainer={async () => ({ ok: true, message: "ok" })}
+        restoreMemberByEmail={async () => ({ ok: true, message: "ok" })}
+        restoreMissingTestData={async () => ({ ok: true, message: "ok" })}
+        restoreOriginalExerciseBank={async () => ({ ok: true, message: "ok" })}
+        saveProgramForMember={() => {}}
+        deleteProgramById={() => {}}
+        sendTrainerMessage={() => {}}
+        saveExercise={() => {}}
+      />
+    );
+
+    expect(screen.getAllByText(/lene@example\.com/i).length).toBe(1);
+  });
 });
