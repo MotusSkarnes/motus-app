@@ -266,6 +266,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [workoutSearchQuery, setWorkoutSearchQuery] = useState("");
   const [workoutSortOrder, setWorkoutSortOrder] = useState<"newest" | "oldest">("newest");
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
+  function getMemberIdentityKey(member: Member): string {
+    const emailKey = member.email.trim().toLowerCase();
+    const nameKey = member.name.trim().toLowerCase();
+    return emailKey || `name:${nameKey}`;
+  }
   const deduplicatedMembers = useMemo(() => {
     function memberScore(member: Member): number {
       let score = 0;
@@ -282,9 +287,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
     const byIdentity = new Map<string, Member>();
     members.forEach((member) => {
-      const emailKey = member.email.trim().toLowerCase();
-      const nameKey = member.name.trim().toLowerCase();
-      const identityKey = emailKey || `name:${nameKey}`;
+      const identityKey = getMemberIdentityKey(member);
       const existing = byIdentity.get(identityKey);
       if (!existing) {
         byIdentity.set(identityKey, member);
@@ -330,30 +333,36 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const memberAvatarByEmail = useMemo(() => {
     const byEmail: Record<string, string> = {};
     const byName: Record<string, string> = {};
+    const byIdentity: Record<string, string> = {};
     members.forEach((member) => {
       const normalizedEmail = member.email.trim().toLowerCase();
       const normalizedName = member.name.trim().toLowerCase();
+      const identityKey = getMemberIdentityKey(member);
       if (normalizedEmail) {
         const emailKeyAvatar = memberAvatarById[`email:${normalizedEmail}`];
         if (emailKeyAvatar && !byEmail[normalizedEmail]) {
           byEmail[normalizedEmail] = emailKeyAvatar;
+          if (!byIdentity[identityKey]) byIdentity[identityKey] = emailKeyAvatar;
         }
       }
       if (normalizedName) {
         const nameKeyAvatar = memberAvatarById[`name:${normalizedName}`];
         if (nameKeyAvatar && !byName[normalizedName]) {
           byName[normalizedName] = nameKeyAvatar;
+          if (!byIdentity[identityKey]) byIdentity[identityKey] = nameKeyAvatar;
         }
       }
       const avatarUrl = memberAvatarById[member.id];
       if (normalizedEmail && avatarUrl && !byEmail[normalizedEmail]) {
         byEmail[normalizedEmail] = avatarUrl;
+        if (!byIdentity[identityKey]) byIdentity[identityKey] = avatarUrl;
       }
       if (normalizedName && avatarUrl && !byName[normalizedName]) {
         byName[normalizedName] = avatarUrl;
+        if (!byIdentity[identityKey]) byIdentity[identityKey] = avatarUrl;
       }
     });
-    return { byEmail, byName };
+    return { byEmail, byName, byIdentity };
   }, [members, memberAvatarById]);
   function resolveMemberAvatarUrl(member: Member): string {
     const direct = memberAvatarById[member.id];
@@ -364,8 +373,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
       if (byEmail) return byEmail;
     }
     const normalizedName = member.name.trim().toLowerCase();
-    if (!normalizedName) return "";
-    return memberAvatarByEmail.byName[normalizedName] ?? "";
+    if (normalizedName) {
+      const byName = memberAvatarByEmail.byName[normalizedName];
+      if (byName) return byName;
+    }
+    return memberAvatarByEmail.byIdentity[getMemberIdentityKey(member)] ?? "";
   }
   const selectedMemberRelatedIds = useMemo(() => {
     if (selectedMemberId === "__template__") return [];

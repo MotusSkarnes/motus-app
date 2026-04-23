@@ -1,5 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AuthUser, Member } from "./types";
+import { supabaseClient } from "../services/supabaseClient";
+
+const MEMBER_AVATAR_BUCKET = "exercise-images";
+const MEMBER_AVATAR_PREFIX = "member-avatars";
+
+function encodeEmailForPath(email: string): string {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return "";
+  const base64 = btoa(unescape(encodeURIComponent(normalized)));
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function decodeEmailFromPath(value: string): string {
+  const normalized = value.trim();
+  if (!normalized) return "";
+  const padded = normalized.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (normalized.length % 4)) % 4);
+  try {
+    return decodeURIComponent(escape(atob(padded))).trim().toLowerCase();
+  } catch {
+    return "";
+  }
+}
 
 export function useMemberAvatarStore({
   currentUser,
@@ -66,6 +88,37 @@ export function useMemberAvatarStore({
   }, [memberAvatarById]);
 
   useEffect(() => {
+    if (!supabaseClient) return;
+    let cancelled = false;
+    async function hydrateRemoteAvatars() {
+      const { data, error } = await supabaseClient.storage.from(MEMBER_AVATAR_BUCKET).list(MEMBER_AVATAR_PREFIX, { limit: 500 });
+      if (cancelled || error || !data?.length) return;
+      setMemberAvatarById((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        data.forEach((entry) => {
+          const dotIndex = entry.name.lastIndexOf(".");
+          const encoded = dotIndex >= 0 ? entry.name.slice(0, dotIndex) : entry.name;
+          const decodedEmail = decodeEmailFromPath(encoded);
+          if (!decodedEmail) return;
+          const key = emailAvatarKey(decodedEmail);
+          if (next[key]) return;
+          const path = `${MEMBER_AVATAR_PREFIX}/${entry.name}`;
+          const { data: publicData } = supabaseClient.storage.from(MEMBER_AVATAR_BUCKET).getPublicUrl(path);
+          if (!publicData.publicUrl) return;
+          next[key] = publicData.publicUrl;
+          changed = true;
+        });
+        return changed ? next : prev;
+      });
+    }
+    void hydrateRemoteAvatars();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!members.length) return;
     setMemberAvatarById((prev) => {
       let changed = false;
@@ -128,6 +181,17 @@ export function useMemberAvatarStore({
       }
       if (nameKey) {
         next[nameKey] = avatarUrl;
+      }
+      if (normalizedEmail) {
+        const encodedEmail = encodeEmailForPath(normalizedEmail);
+        if (encodedEmail) {
+          const extension = avatarUrl.includes(".webp") ? "webp" : avatarUrl.includes(".png") ? "png" : "jpg";
+          const path = `${MEMBER_AVATAR_PREFIX}/${encodedEmail}.${extension}`;
+          const { data } = supabaseClient?.storage.from(MEMBER_AVATAR_BUCKET).getPublicUrl(path) ?? { data: null };
+          if (data?.publicUrl) {
+            next[emailKey] = data.publicUrl;
+          }
+        }
       }
       return next;
     });

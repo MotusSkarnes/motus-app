@@ -41,6 +41,33 @@ type MemberPortalProps = {
   dismissWorkoutCelebration: () => void;
 };
 
+const MEMBER_AVATAR_BUCKET = "exercise-images";
+const MEMBER_AVATAR_PREFIX = "member-avatars";
+
+function encodeEmailForPath(email: string): string {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return "";
+  const base64 = btoa(unescape(encodeURIComponent(normalized)));
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function dataUrlToBlob(dataUrl: string): Blob | null {
+  const parts = dataUrl.split(",");
+  if (parts.length < 2) return null;
+  const mimeMatch = parts[0].match(/data:(.*?);base64/);
+  const mime = mimeMatch?.[1] ?? "image/jpeg";
+  try {
+    const binary = atob(parts[1]);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mime });
+  } catch {
+    return null;
+  }
+}
+
 export function MemberPortal(props: MemberPortalProps) {
   const groupWorkoutClassOptions = [
     "Smilepuls",
@@ -57,8 +84,6 @@ export function MemberPortal(props: MemberPortalProps) {
   ];
   const { members, currentUserRole, currentUserEmail, currentUserMemberId, programs, logs, messages, memberViewId, memberTab, setMemberTab, updateMember, memberAvatarUrl, setMemberAvatarUrl, exercises, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, replaceWorkoutExerciseGroup, updateWorkoutModeNote, finishWorkoutMode, logGroupWorkout, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
   const [messageText, setMessageText] = useState("");
-  const [profileWeight, setProfileWeight] = useState("");
-  const [profileTrainingGoal, setProfileTrainingGoal] = useState("");
   const [profileSessionsPerWeekTarget, setProfileSessionsPerWeekTarget] = useState("");
   const [profileDailyStepsTarget, setProfileDailyStepsTarget] = useState("");
   const [profileTargetWeight, setProfileTargetWeight] = useState("");
@@ -495,19 +520,13 @@ export function MemberPortal(props: MemberPortalProps) {
   useEffect(() => {
     if (!editableMember) return;
     setProfileSaveInfo(null);
-    const fallbackWeight = editableMember.weight ?? "";
-    const fallbackGoal = editableMember.goal ?? "";
     const fallback = {
-      weight: fallbackWeight,
-      trainingGoal: fallbackGoal,
       sessionsPerWeekTarget: "",
       dailyStepsTarget: "",
       targetWeight: "",
       currentDailySteps: "",
     };
     if (typeof window === "undefined") {
-      setProfileWeight(fallback.weight);
-      setProfileTrainingGoal(fallback.trainingGoal);
       setProfileSessionsPerWeekTarget(fallback.sessionsPerWeekTarget);
       setProfileDailyStepsTarget(fallback.dailyStepsTarget);
       setProfileTargetWeight(fallback.targetWeight);
@@ -524,8 +543,6 @@ export function MemberPortal(props: MemberPortalProps) {
     try {
       const raw = window.localStorage.getItem(getProfileStorageKey(editableMember.id));
       if (!raw) {
-        setProfileWeight(fallback.weight);
-        setProfileTrainingGoal(fallback.trainingGoal);
         setProfileSessionsPerWeekTarget(fallback.sessionsPerWeekTarget);
         setProfileDailyStepsTarget(fallback.dailyStepsTarget);
         setProfileTargetWeight(fallback.targetWeight);
@@ -540,8 +557,6 @@ export function MemberPortal(props: MemberPortalProps) {
         return;
       }
       const parsed = JSON.parse(raw) as Partial<typeof fallback>;
-      setProfileWeight(parsed.weight ?? fallback.weight);
-      setProfileTrainingGoal(parsed.trainingGoal ?? fallback.trainingGoal);
       setProfileSessionsPerWeekTarget(parsed.sessionsPerWeekTarget ?? "");
       setProfileDailyStepsTarget(parsed.dailyStepsTarget ?? "");
       setProfileTargetWeight(parsed.targetWeight ?? "");
@@ -554,8 +569,6 @@ export function MemberPortal(props: MemberPortalProps) {
       setMemberFocusDraft(editableMember.focus);
       setMemberInjuriesDraft(editableMember.injuries);
     } catch {
-      setProfileWeight(fallback.weight);
-      setProfileTrainingGoal(fallback.trainingGoal);
       setProfileSessionsPerWeekTarget(fallback.sessionsPerWeekTarget);
       setProfileDailyStepsTarget(fallback.dailyStepsTarget);
       setProfileTargetWeight(fallback.targetWeight);
@@ -688,8 +701,6 @@ export function MemberPortal(props: MemberPortalProps) {
     const normalizedEmail =
       normalizedDraftEmail && normalizedDraftEmail.includes("@") ? normalizedDraftEmail : fallbackEmail;
     const next = {
-      weight: profileWeight.trim(),
-      trainingGoal: profileTrainingGoal.trim(),
       sessionsPerWeekTarget: profileSessionsPerWeekTarget.trim(),
       dailyStepsTarget: profileDailyStepsTarget.trim(),
       targetWeight: profileTargetWeight.trim(),
@@ -814,7 +825,32 @@ export function MemberPortal(props: MemberPortalProps) {
     try {
       const originalDataUrl = await readFileAsDataUrl(file);
       const compressedDataUrl = await compressImageDataUrl(originalDataUrl);
-      setMemberAvatarUrl(compressedDataUrl);
+      let syncedAvatarUrl = compressedDataUrl;
+      const normalizedAvatarEmail =
+        normalizedCurrentUserEmail || editableMember.email.trim().toLowerCase();
+      if (supabaseClient && normalizedAvatarEmail && normalizedAvatarEmail.includes("@")) {
+        const encodedEmail = encodeEmailForPath(normalizedAvatarEmail);
+        if (encodedEmail) {
+          const extension = file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg";
+          const avatarPath = `${MEMBER_AVATAR_PREFIX}/${encodedEmail}.${extension}`;
+          const compressedBlob = dataUrlToBlob(compressedDataUrl);
+          const uploadBody: Blob | File = compressedBlob ?? file;
+          const { error: uploadError } = await supabaseClient.storage
+            .from(MEMBER_AVATAR_BUCKET)
+            .upload(avatarPath, uploadBody, {
+              cacheControl: "3600",
+              upsert: true,
+              contentType: compressedBlob?.type || file.type || "image/jpeg",
+            });
+          if (!uploadError) {
+            const { data } = supabaseClient.storage.from(MEMBER_AVATAR_BUCKET).getPublicUrl(avatarPath);
+            if (data.publicUrl) {
+              syncedAvatarUrl = `${data.publicUrl}?v=${Date.now()}`;
+            }
+          }
+        }
+      }
+      setMemberAvatarUrl(syncedAvatarUrl);
       const normalizedEditableEmail = editableMember.email.trim().toLowerCase();
       const avatarTargetIds = Array.from(
         new Set(
@@ -834,7 +870,7 @@ export function MemberPortal(props: MemberPortalProps) {
         updateMember({
           memberId,
           changes: {
-            avatarUrl: compressedDataUrl,
+            avatarUrl: syncedAvatarUrl,
           },
         });
       });
@@ -853,7 +889,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const dailyStepsTargetNumber = Number(profileDailyStepsTarget) || 0;
   const currentDailyStepsNumber = Number(profileCurrentDailySteps) || 0;
   const targetWeightNumber = Number(profileTargetWeight) || 0;
-  const currentWeightNumber = Number(profileWeight) || 0;
+  const currentWeightNumber = Number(editableMember?.weight ?? "") || 0;
   const sessionsRemaining = Math.max(0, sessionsTargetNumber - completedThisWeek);
   const sessionsProgressPercent = sessionsTargetNumber > 0 ? Math.min(100, Math.round((completedThisWeek / sessionsTargetNumber) * 100)) : 0;
   const stepsProgressPercent = dailyStepsTargetNumber > 0 ? Math.min(100, Math.round((currentDailyStepsNumber / dailyStepsTargetNumber) * 100)) : 0;
@@ -2037,10 +2073,6 @@ export function MemberPortal(props: MemberPortalProps) {
                         Fjern profilbilde
                       </OutlineButton>
                     ) : null}
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <TextInput value={profileWeight} onChange={(e) => setProfileWeight(e.target.value)} placeholder="Vekt (kg)" />
-                    <TextInput value={profileTrainingGoal} onChange={(e) => setProfileTrainingGoal(e.target.value)} placeholder="Treningsmål (tekst)" />
                   </div>
                   <div className="rounded-2xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="text-sm font-semibold text-slate-700">Unike mål</div>
