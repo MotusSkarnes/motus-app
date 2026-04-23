@@ -81,6 +81,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [groupWorkoutMotivationLevel, setGroupWorkoutMotivationLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [groupWorkoutNote, setGroupWorkoutNote] = useState("");
   const [groupWorkoutStatus, setGroupWorkoutStatus] = useState<string | null>(null);
+  const [showGroupWorkoutLogger, setShowGroupWorkoutLogger] = useState(false);
   const [showWorkoutReflection, setShowWorkoutReflection] = useState(false);
   const [reflectionEnergyLevel, setReflectionEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [reflectionDifficultyLevel, setReflectionDifficultyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
@@ -1082,7 +1083,7 @@ export function MemberPortal(props: MemberPortalProps) {
         >
           {[
             { id: "overview", label: "Oversikt" },
-            { id: "programs", label: "Programmer" },
+            { id: "programs", label: "Trening" },
             { id: "progress", label: "Fremgang" },
             { id: "messages", label: "Meldinger" },
             { id: "profile", label: "Profil" },
@@ -1492,6 +1493,82 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="font-semibold">🧾 Logg gruppetrening</div>
+                    <div className="mt-1 text-xs text-slate-500">Registrer gruppetimer slik at PT ser all aktivitet.</div>
+                  </div>
+                  <OutlineButton onClick={() => setShowGroupWorkoutLogger((prev) => !prev)} className="w-full sm:w-auto">
+                    {showGroupWorkoutLogger ? "Skjul logging" : "Logg gruppetrening"}
+                  </OutlineButton>
+                </div>
+                {showGroupWorkoutLogger ? (
+                  <div className="mt-4 rounded-2xl border bg-slate-50 p-4 space-y-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-slate-600">Gruppetime</span>
+                        <SelectBox
+                          value={groupWorkoutClassName}
+                          onChange={(value) => setGroupWorkoutClassName(value)}
+                          options={groupWorkoutClassOptions.map((className) => ({ value: className, label: className }))}
+                        />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-slate-600">Notat (valgfritt)</span>
+                        <TextInput value={groupWorkoutNote} onChange={(event) => setGroupWorkoutNote(event.target.value)} placeholder="Hvordan gikk timen?" />
+                      </label>
+                    </div>
+                    {[
+                      {
+                        key: "group-energy",
+                        question: "Hvordan føles energinivået nå?",
+                        value: groupWorkoutEnergyLevel,
+                        setValue: setGroupWorkoutEnergyLevel,
+                      },
+                      {
+                        key: "group-difficulty",
+                        question: "Hvor tung opplevdes timen?",
+                        value: groupWorkoutDifficultyLevel,
+                        setValue: setGroupWorkoutDifficultyLevel,
+                      },
+                      {
+                        key: "group-motivation",
+                        question: "Hvordan er motivasjonen videre?",
+                        value: groupWorkoutMotivationLevel,
+                        setValue: setGroupWorkoutMotivationLevel,
+                      },
+                    ].map((item) => (
+                      <div key={item.key} className="space-y-2">
+                        <div className="text-xs font-medium text-slate-700">{item.question}</div>
+                        <div className="grid grid-cols-5 gap-2">
+                          {[1, 2, 3, 4, 5].map((level) => {
+                            const numericLevel = level as 1 | 2 | 3 | 4 | 5;
+                            const active = item.value === numericLevel;
+                            return (
+                              <button
+                                key={level}
+                                type="button"
+                                onClick={() => item.setValue(numericLevel)}
+                                className={`rounded-xl border px-2 py-2 text-lg transition ${
+                                  active ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                                }`}
+                                aria-label={`Velg nivå ${level}`}
+                              >
+                                {getReflectionEmoji(numericLevel)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <GradientButton onClick={handleLogGroupWorkout} className="w-full sm:w-auto">Lagre gruppetime</GradientButton>
+                      {groupWorkoutStatus ? <div className="text-xs text-emerald-700">{groupWorkoutStatus}</div> : null}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="font-semibold">📝 Siste 5 økter</div>
                 <div className="mt-4 space-y-3">
                   {completedLogs.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen økter logget ennå.</div> : null}
@@ -1809,73 +1886,6 @@ export function MemberPortal(props: MemberPortalProps) {
                     className="mt-3 !rounded-xl !px-3 !py-2 !text-xs"
                   />
                 ) : null}
-              </div>
-              <div className="mt-4 rounded-2xl border bg-slate-50 p-4 space-y-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div>
-                  <div className="text-sm font-semibold text-slate-700">🧾 Logg gruppetime selv</div>
-                  <div className="mt-1 text-xs text-slate-500">Legg inn økter du har gjort utenfor programmet, så PT ser alt.</div>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <label className="space-y-1">
-                    <span className="text-xs font-medium text-slate-600">Gruppetime</span>
-                    <SelectBox
-                      value={groupWorkoutClassName}
-                      onChange={(value) => setGroupWorkoutClassName(value)}
-                      options={groupWorkoutClassOptions.map((className) => ({ value: className, label: className }))}
-                    />
-                  </label>
-                  <label className="space-y-1">
-                    <span className="text-xs font-medium text-slate-600">Notat (valgfritt)</span>
-                    <TextInput value={groupWorkoutNote} onChange={(event) => setGroupWorkoutNote(event.target.value)} placeholder="Hvordan gikk timen?" />
-                  </label>
-                </div>
-                {[
-                  {
-                    key: "group-energy",
-                    question: "Hvordan føles energinivået nå?",
-                    value: groupWorkoutEnergyLevel,
-                    setValue: setGroupWorkoutEnergyLevel,
-                  },
-                  {
-                    key: "group-difficulty",
-                    question: "Hvor tung opplevdes timen?",
-                    value: groupWorkoutDifficultyLevel,
-                    setValue: setGroupWorkoutDifficultyLevel,
-                  },
-                  {
-                    key: "group-motivation",
-                    question: "Hvordan er motivasjonen videre?",
-                    value: groupWorkoutMotivationLevel,
-                    setValue: setGroupWorkoutMotivationLevel,
-                  },
-                ].map((item) => (
-                  <div key={item.key} className="space-y-2">
-                    <div className="text-xs font-medium text-slate-700">{item.question}</div>
-                    <div className="grid grid-cols-5 gap-2">
-                      {[1, 2, 3, 4, 5].map((level) => {
-                        const numericLevel = level as 1 | 2 | 3 | 4 | 5;
-                        const active = item.value === numericLevel;
-                        return (
-                          <button
-                            key={level}
-                            type="button"
-                            onClick={() => item.setValue(numericLevel)}
-                            className={`rounded-xl border px-2 py-2 text-lg transition ${
-                              active ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
-                            }`}
-                            aria-label={`Velg nivå ${level}`}
-                          >
-                            {getReflectionEmoji(numericLevel)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-                <div className="flex flex-wrap items-center gap-3">
-                  <GradientButton onClick={handleLogGroupWorkout} className="w-full sm:w-auto">Lagre gruppetime</GradientButton>
-                  {groupWorkoutStatus ? <div className="text-xs text-emerald-700">{groupWorkoutStatus}</div> : null}
-                </div>
               </div>
               <div className="mt-4 rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-sm font-semibold text-slate-700">🏆 Streaks + achievements</div>

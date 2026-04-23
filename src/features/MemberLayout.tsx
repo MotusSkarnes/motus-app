@@ -37,7 +37,7 @@ type MemberLayoutProps = {
 
 const mobileTabs: Array<{ id: MemberTab; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Hjem", icon: LayoutDashboard },
-  { id: "programs", label: "Program", icon: ClipboardList },
+  { id: "programs", label: "Trening", icon: ClipboardList },
   { id: "progress", label: "Fremgang", icon: TrendingUp },
   { id: "messages", label: "Meldinger", icon: MessageSquare },
   { id: "profile", label: "Profil", icon: UserCircle2 },
