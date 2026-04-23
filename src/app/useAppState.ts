@@ -760,6 +760,11 @@ export function useAppState() {
     setAppState((prev) => repository.saveExercise(prev, input));
   }
 
+  function deleteExercise(exerciseId: string) {
+    if (!exerciseId.trim()) return;
+    setAppState((prev) => repository.deleteExercise(prev, exerciseId));
+  }
+
   function startWorkoutMode(programId: string) {
     setAppState((prev) => repository.startWorkoutMode(prev, programId));
   }
@@ -923,6 +928,7 @@ export function useAppState() {
     deleteProgramById,
     sendTrainerMessage,
     saveExercise,
+    deleteExercise,
     startWorkoutMode,
     updateWorkoutExerciseResult,
     replaceWorkoutExerciseGroup,

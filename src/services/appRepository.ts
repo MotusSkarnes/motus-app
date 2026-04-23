@@ -74,6 +74,7 @@ export interface AppRepository {
   finishWorkoutMode(state: AppState, input?: FinishWorkoutInput): AppState;
   logGroupWorkout(state: AppState, input: LogGroupWorkoutInput): AppState;
   saveExercise(state: AppState, input: SaveExerciseInput): AppState;
+  deleteExercise(state: AppState, exerciseId: string): AppState;
   updateMember(state: AppState, input: UpdateMemberInput): AppState;
 }
 
@@ -417,6 +418,19 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
   return { ...state, exercises: [nextExercise, ...state.exercises] };
 }
 
+export function deleteExerciseInState(state: AppState, exerciseId: string): AppState {
+  const normalizedExerciseId = exerciseId.trim();
+  if (!normalizedExerciseId) return state;
+  return {
+    ...state,
+    exercises: state.exercises.filter((exercise) => exercise.id !== normalizedExerciseId),
+    programs: state.programs.map((program) => ({
+      ...program,
+      exercises: program.exercises.filter((exercise) => exercise.exerciseId !== normalizedExerciseId),
+    })),
+  };
+}
+
 export function updateMemberInState(state: AppState, input: UpdateMemberInput): AppState {
   const normalizedEmail = input.changes.email?.trim().toLowerCase();
   return {
@@ -457,5 +471,6 @@ export const localAppRepository: AppRepository = {
   finishWorkoutMode: finishWorkoutModeInState,
   logGroupWorkout: logGroupWorkoutInState,
   saveExercise: saveExerciseInState,
+  deleteExercise: deleteExerciseInState,
   updateMember: updateMemberInState,
 };

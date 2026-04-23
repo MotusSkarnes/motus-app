@@ -10,7 +10,6 @@ export type TrainerTab =
   | "admin"
   | "calendar"
   | "messages"
-  | "tasks"
   | "statistics"
   | "settings";
 export type CustomerSubTab = "overview" | "profile" | "programs" | "workouts" | "messages";

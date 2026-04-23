@@ -44,6 +44,7 @@ type TrainerPortalProps = {
     description: string;
     imageUrl?: string;
   }) => void;
+  deleteExercise: (exerciseId: string) => void;
   openCustomerMessagesSignal?: number;
   memberAvatarById?: Record<string, string>;
   setMemberAvatarUrlForMember?: (memberId: string, avatarUrl: string) => void;
@@ -173,6 +174,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     deleteProgramById,
     sendTrainerMessage,
     saveExercise,
+    deleteExercise,
     openCustomerMessagesSignal = 0,
     memberAvatarById = {},
     setMemberAvatarUrlForMember,
@@ -1634,6 +1636,19 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setExerciseFormStatus(editingExerciseId ? "Øvelsen ble oppdatert." : "Ny øvelse ble lagt til i banken.");
     resetExerciseForm();
   }
+  function handleDeleteExercise(exercise: Exercise) {
+    const isUsedInPrograms = programs.some((program) => program.exercises.some((item) => item.exerciseId === exercise.id));
+    const confirmMessage = isUsedInPrograms
+      ? `Slette "${exercise.name}" fra øvelsesbanken?\n\nØvelsen blir også fjernet fra programmer der den er brukt.`
+      : `Slette "${exercise.name}" fra øvelsesbanken?`;
+    const shouldDelete = window.confirm(confirmMessage);
+    if (!shouldDelete) return;
+    deleteExercise(exercise.id);
+    setFavoriteExerciseIds((prev) => prev.filter((id) => id !== exercise.id));
+    if (editingExerciseId === exercise.id) resetExerciseForm();
+    if (expandedExerciseId === exercise.id) setExpandedExerciseId(null);
+    setExerciseFormStatus(`Øvelsen "${exercise.name}" ble slettet.`);
+  }
 
   async function handleExerciseImageUpload(file: File | null) {
     if (!file) return;
@@ -1712,7 +1727,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     return day;
   });
   const todoDateSet = new Set(todos.map((todo) => todo.date));
-  const monthLabel = formatDateDdMmYyyy(dashboardMonth);
+  const monthLabel = dashboardMonth.toLocaleDateString("nb-NO", { month: "long", year: "numeric" });
   const memberRelatedIdSetByCanonicalId = useMemo(() => {
     const byCanonicalId = new Map<string, Set<string>>();
     deduplicatedMembers.forEach((member) => {
@@ -2176,27 +2191,24 @@ export function TrainerPortal(props: TrainerPortalProps) {
               );
             })}
           </div>
-        </Card>
-      ) : null}
-
-      {trainerTab === "tasks" ? (
-        <Card className="p-5 space-y-4">
-          <div className="font-semibold text-slate-800">Oppgaver</div>
-          <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
-            <TextInput value={todoTitle} onChange={(e) => setTodoTitle(e.target.value)} placeholder="Ny oppgave (f.eks. ring Martin)" />
-            <TextInput type="date" value={selectedTodoDate} onChange={(e) => setSelectedTodoDate(e.target.value)} />
-            <GradientButton onClick={addTodoItem}>Legg til</GradientButton>
-          </div>
-          <div className="space-y-2">
-            {todoItemsForSelectedDate.length === 0 ? <div className="rounded-xl border border-dashed bg-white p-3 text-sm text-slate-500">Ingen oppgaver for valgt dag.</div> : null}
-            {todoItemsForSelectedDate.map((todo) => (
-              <div key={todo.id} className="flex items-center justify-between gap-2 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <button type="button" onClick={() => toggleTodoDone(todo.id)} className={`text-left text-sm ${todo.done ? "line-through text-slate-400" : "text-slate-700"}`}>
-                  {todo.title}
-                </button>
-                <OutlineButton onClick={() => deleteTodo(todo.id)} className="px-3 py-1.5 text-xs">Slett</OutlineButton>
-              </div>
-            ))}
+          <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="font-semibold text-slate-800">Oppgaver for valgt dag</div>
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+              <TextInput value={todoTitle} onChange={(e) => setTodoTitle(e.target.value)} placeholder="Ny oppgave (f.eks. ring Martin)" />
+              <TextInput type="date" value={selectedTodoDate} onChange={(e) => setSelectedTodoDate(e.target.value)} />
+              <GradientButton onClick={addTodoItem}>Legg til</GradientButton>
+            </div>
+            <div className="space-y-2">
+              {todoItemsForSelectedDate.length === 0 ? <div className="rounded-xl border border-dashed bg-white p-3 text-sm text-slate-500">Ingen oppgaver for valgt dag.</div> : null}
+              {todoItemsForSelectedDate.map((todo) => (
+                <div key={todo.id} className="flex items-center justify-between gap-2 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <button type="button" onClick={() => toggleTodoDone(todo.id)} className={`text-left text-sm ${todo.done ? "line-through text-slate-400" : "text-slate-700"}`}>
+                    {todo.title}
+                  </button>
+                  <OutlineButton onClick={() => deleteTodo(todo.id)} className="px-3 py-1.5 text-xs">Slett</OutlineButton>
+                </div>
+              ))}
+            </div>
           </div>
         </Card>
       ) : null}
@@ -3723,6 +3735,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           <Star className={`h-4 w-4 ${isFavorite ? "text-white" : ""}`} />
                         </button>
                         <OutlineButton onClick={() => startEditExercise(exercise)} className="px-3 py-1.5 text-xs">Rediger</OutlineButton>
+                        <OutlineButton onClick={() => handleDeleteExercise(exercise)} className="px-3 py-1.5 text-xs text-rose-700">
+                          Slett
+                        </OutlineButton>
                         <OutlineButton onClick={() => setExpandedExerciseId((prev) => (prev === exercise.id ? null : exercise.id))} className="px-3 py-1.5 text-xs">
                           {expandedExerciseId === exercise.id ? "Skjul" : "Vis"}
                         </OutlineButton>

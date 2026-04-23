@@ -39,6 +39,7 @@ export function buildTrainerLayoutProps(input: {
   deleteProgramById: TrainerLayoutProps["deleteProgramById"];
   sendTrainerMessage: TrainerLayoutProps["sendTrainerMessage"];
   saveExercise: TrainerLayoutProps["saveExercise"];
+  deleteExercise: TrainerLayoutProps["deleteExercise"];
   openCustomerMessagesSignal: number;
   setOpenCustomerMessagesSignal: Dispatch<SetStateAction<number>>;
   memberAvatarById: TrainerLayoutProps["memberAvatarById"];

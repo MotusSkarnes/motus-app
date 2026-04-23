@@ -67,6 +67,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     deleteProgramById: state.deleteProgramById,
     sendTrainerMessage: state.sendTrainerMessage,
     saveExercise: state.saveExercise,
+    deleteExercise: state.deleteExercise,
     openCustomerMessagesSignal,
     setOpenCustomerMessagesSignal,
     memberAvatarById,

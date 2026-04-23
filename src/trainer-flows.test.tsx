@@ -170,6 +170,7 @@ describe("Trainer flows", () => {
         deleteProgramById={() => {}}
         sendTrainerMessage={() => {}}
         saveExercise={() => {}}
+        deleteExercise={() => {}}
       />
     );
 
@@ -265,6 +266,7 @@ describe("Trainer flows", () => {
         deleteProgramById={() => {}}
         sendTrainerMessage={() => {}}
         saveExercise={() => {}}
+        deleteExercise={() => {}}
       />
     );
 
@@ -345,6 +347,7 @@ describe("Trainer flows", () => {
         deleteProgramById={() => {}}
         sendTrainerMessage={() => {}}
         saveExercise={() => {}}
+        deleteExercise={() => {}}
       />
     );
 
@@ -429,6 +432,7 @@ describe("Trainer flows", () => {
         deleteProgramById={() => {}}
         sendTrainerMessage={() => {}}
         saveExercise={() => {}}
+        deleteExercise={() => {}}
       />
     );
 

@@ -141,6 +141,7 @@ describe("Stability regressions", () => {
         deleteProgramById={vi.fn()}
         sendTrainerMessage={vi.fn()}
         saveExercise={vi.fn()}
+        deleteExercise={vi.fn()}
         isLocalDemoSession={true}
       />,
     );

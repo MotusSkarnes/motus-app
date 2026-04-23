@@ -1,5 +1,5 @@
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
-import { BarChart3, Bell, CalendarDays, CheckSquare, ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, Settings, ShieldCheck, Users, type LucideIcon } from "lucide-react";
+import { BarChart3, Bell, CalendarDays, ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, Settings, ShieldCheck, Users, type LucideIcon } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { AppState, TrainerTab } from "../app/types";
 import { Card } from "../app/ui";
@@ -31,6 +31,7 @@ type TrainerLayoutProps = {
   deleteProgramById: ComponentProps<typeof TrainerPortal>["deleteProgramById"];
   sendTrainerMessage: ComponentProps<typeof TrainerPortal>["sendTrainerMessage"];
   saveExercise: ComponentProps<typeof TrainerPortal>["saveExercise"];
+  deleteExercise: ComponentProps<typeof TrainerPortal>["deleteExercise"];
   openCustomerMessagesSignal: number;
   setOpenCustomerMessagesSignal: Dispatch<SetStateAction<number>>;
   memberAvatarById: Record<string, string>;
@@ -49,7 +50,6 @@ const trainerMenuItems: Array<{ key: TrainerTab; label: string; icon: LucideIcon
   { key: "exerciseBank", label: "Øvelsesbank", icon: Dumbbell },
   { key: "programs", label: "Programmer", icon: ClipboardList },
   { key: "calendar", label: "Kalender", icon: CalendarDays },
-  { key: "tasks", label: "Oppgaver", icon: CheckSquare },
   { key: "statistics", label: "Statistikk", icon: BarChart3 },
   { key: "settings", label: "Innstillinger", icon: Settings },
   { key: "admin", label: "Admin", icon: ShieldCheck },
@@ -83,6 +83,7 @@ export function TrainerLayout({
   deleteProgramById,
   sendTrainerMessage,
   saveExercise,
+  deleteExercise,
   openCustomerMessagesSignal,
   setOpenCustomerMessagesSignal,
   memberAvatarById,
@@ -119,6 +120,7 @@ export function TrainerLayout({
     deleteProgramById,
     sendTrainerMessage,
     saveExercise,
+    deleteExercise,
     inviteTrainer,
     openCustomerMessagesSignal,
     memberAvatarById,
