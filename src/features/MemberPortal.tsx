@@ -1019,9 +1019,9 @@ export function MemberPortal(props: MemberPortalProps) {
           </div>
         </Card>
 
-        <div className="space-y-4 sm:space-y-6">
+        <div className="min-w-0 w-full space-y-4 sm:space-y-6">
           {memberTab === "overview" ? (
-            <Card className="w-full p-4 sm:p-5 space-y-4 sm:space-y-5">
+            <Card className="min-w-0 w-full p-4 sm:p-5 space-y-4 sm:space-y-5">
               <div className="hidden w-full sm:block rounded-[22px] p-4 sm:p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm text-white/80">Hei{viewedMember ? `, ${viewedMember.name}` : ""}</div>
@@ -1037,7 +1037,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 <StatCard label="Logger" value={String(memberLogs.length)} hint="Registrert" />
                 <StatCard label="Meldinger" value={String(memberMessages.length)} hint="I chatten" />
               </div>
-              <div className="w-full rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="min-w-0 w-full rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-sm font-semibold text-slate-700">🎯 Neste steg</div>
                 <div className="mt-1 text-sm font-medium text-slate-800">{nextBestAction.title}</div>
                 <div className="mt-1 text-sm text-slate-600">{nextBestAction.description}</div>
@@ -1063,7 +1063,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </OutlineButton>
                 </div>
               </div>
-              <div className="w-full rounded-2xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="min-w-0 w-full rounded-2xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-sm font-semibold text-slate-700">Målstatus</div>
                   <div className="rounded-full px-2.5 py-1 text-[11px] font-semibold text-slate-700" style={{ background: "rgba(15,23,42,0.08)" }}>
