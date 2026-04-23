@@ -1,9 +1,6 @@
 import { useAppViewModel } from "./app/viewmodels";
 import { AppShell } from "./app/ui";
-import { AppHeader } from "./features/AppHeader";
-import { LoginScreen } from "./features/LoginScreen";
-import { MemberLayout } from "./features/MemberLayout";
-import { TrainerLayout } from "./features/TrainerLayout";
+import { AppHeader, LoginScreen, MemberLayout, TrainerLayout } from "./features";
 
 export default function App() {
   const { appState, isRecoveryMode, loginScreenProps, appHeaderProps, trainerLayoutProps, memberLayoutProps } =
