@@ -11,6 +11,12 @@ type LinkPayload = {
   memberId?: string;
 };
 
+type MemberCandidate = {
+  id: string;
+  is_active: boolean | null;
+  created_at: string | null;
+};
+
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -20,6 +26,13 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
 
 function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
+}
+
+function parseDateScore(value: string | null): number {
+  if (!value) return 0;
+  const parsed = new Date(value);
+  const score = parsed.getTime();
+  return Number.isFinite(score) ? score : 0;
 }
 
 Deno.serve(async (req) => {
@@ -51,19 +64,61 @@ Deno.serve(async (req) => {
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-  if (!memberId) {
-    const { data: memberRows, error: memberLookupError } = await adminClient
-      .from("members")
-      .select("id, is_active, created_at")
-      .eq("email", email)
-      .order("is_active", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(1);
-    if (memberLookupError) {
-      return jsonResponse(500, { error: `Could not resolve member by email: ${memberLookupError.message}` });
-    }
-    memberId = String(memberRows?.[0]?.id ?? "").trim();
+  const { data: memberRows, error: memberLookupError } = await adminClient
+    .from("members")
+    .select("id, is_active, created_at")
+    .eq("email", email);
+  if (memberLookupError) {
+    return jsonResponse(500, { error: `Could not resolve member by email: ${memberLookupError.message}` });
   }
+  const candidates = (memberRows ?? [])
+    .map((row) => ({
+      id: String((row as MemberCandidate).id ?? "").trim(),
+      is_active: (row as MemberCandidate).is_active ?? null,
+      created_at: (row as MemberCandidate).created_at ?? null,
+    }))
+    .filter((row) => row.id);
+  if (!candidates.length) {
+    return jsonResponse(404, { error: "No member row found for email" });
+  }
+
+  const candidateIds = candidates.map((row) => row.id);
+  const { data: programRows, error: programLookupError } = await adminClient
+    .from("training_programs")
+    .select("member_id")
+    .in("member_id", candidateIds);
+  if (programLookupError) {
+    return jsonResponse(500, { error: `Could not resolve member programs: ${programLookupError.message}` });
+  }
+  const programCountByMemberId = new Map<string, number>();
+  (programRows ?? []).forEach((row) => {
+    const resolvedMemberId = String((row as { member_id?: string }).member_id ?? "").trim();
+    if (!resolvedMemberId) return;
+    programCountByMemberId.set(resolvedMemberId, (programCountByMemberId.get(resolvedMemberId) ?? 0) + 1);
+  });
+
+  // Canonical choice:
+  // 1) member with most programs
+  // 2) active member preferred
+  // 3) newest created member
+  const canonicalCandidate = [...candidates].sort((a, b) => {
+    const aPrograms = programCountByMemberId.get(a.id) ?? 0;
+    const bPrograms = programCountByMemberId.get(b.id) ?? 0;
+    if (bPrograms !== aPrograms) return bPrograms - aPrograms;
+    const aActive = a.is_active === false ? 0 : 1;
+    const bActive = b.is_active === false ? 0 : 1;
+    if (bActive !== aActive) return bActive - aActive;
+    const aCreated = parseDateScore(a.created_at);
+    const bCreated = parseDateScore(b.created_at);
+    if (bCreated !== aCreated) return bCreated - aCreated;
+    return a.id.localeCompare(b.id);
+  })[0];
+
+  const requestedCandidate = memberId ? candidates.find((candidate) => candidate.id === memberId) : null;
+  const requestedProgramCount = requestedCandidate ? programCountByMemberId.get(requestedCandidate.id) ?? 0 : -1;
+  const canonicalProgramCount = canonicalCandidate ? programCountByMemberId.get(canonicalCandidate.id) ?? 0 : -1;
+  memberId =
+    (canonicalProgramCount >= requestedProgramCount ? canonicalCandidate?.id : requestedCandidate?.id || canonicalCandidate?.id || "").trim();
   if (!memberId) {
     return jsonResponse(404, { error: "No member row found for email" });
   }
