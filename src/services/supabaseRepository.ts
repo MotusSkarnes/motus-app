@@ -43,6 +43,23 @@ async function getOwnerUserId(): Promise<string | null> {
   return claims && typeof claims.sub === "string" ? claims.sub : null;
 }
 
+async function resolveOwnerUserIdForMember(memberId: string, fallbackOwnerUserId: string | null): Promise<string | null> {
+  if (!supabaseClient) return fallbackOwnerUserId;
+  const trimmedMemberId = memberId.trim();
+  if (!trimmedMemberId) return fallbackOwnerUserId;
+  const { data, error } = await supabaseClient
+    .from("members")
+    .select("owner_user_id")
+    .eq("id", trimmedMemberId)
+    .maybeSingle();
+  if (error) {
+    console.warn("Supabase owner lookup for member failed:", error.message);
+    return fallbackOwnerUserId;
+  }
+  const ownerUserId = String((data as { owner_user_id?: string } | null)?.owner_user_id ?? "").trim();
+  return ownerUserId || fallbackOwnerUserId;
+}
+
 async function resolveRelatedMemberIds(memberId: string): Promise<string[]> {
   if (!supabaseClient) return [memberId];
   const trimmedMemberId = memberId.trim();
@@ -78,7 +95,8 @@ async function resolveRelatedMemberIds(memberId: string): Promise<string[]> {
 
 async function persistMessage(memberId: string, sender: "trainer" | "member", text: string) {
   if (!supabaseClient) return;
-  const ownerUserId = await getOwnerUserId();
+  const fallbackOwnerUserId = await getOwnerUserId();
+  const ownerUserId = await resolveOwnerUserIdForMember(memberId, fallbackOwnerUserId);
   if (!ownerUserId) return;
   const { error } = await supabaseClient.from("chat_messages").insert({
     member_id: memberId,
@@ -390,7 +408,8 @@ async function deleteMemberFromSupabase(member: { id: string; email?: string }) 
 
 async function persistWorkoutLog(log: WorkoutLog) {
   if (!supabaseClient) return;
-  const ownerUserId = await getOwnerUserId();
+  const fallbackOwnerUserId = await getOwnerUserId();
+  const ownerUserId = await resolveOwnerUserIdForMember(log.memberId, fallbackOwnerUserId);
   if (!ownerUserId) return;
   const serializedNote = serializeWorkoutNote(log.note, log.reflection);
 
