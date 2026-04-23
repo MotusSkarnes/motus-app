@@ -151,22 +151,20 @@ Deno.serve(async (req) => {
     .select("id, name, category, muscle_group, equipment, level, description, image_url")
     .order("name", { ascending: true });
 
-  const firstError =
-    membersError ??
-    programsByOwnerError ??
-    logsByOwnerError ??
-    messagesByOwnerError ??
-    programsByMemberError ??
-    logsByMemberError ??
-    messagesByMemberError ??
-    exercisesError;
-  if (firstError) {
-    return jsonResponse(500, { error: firstError.message });
-  }
-
   const mergedPrograms = uniqueById([...(programsByOwner ?? []), ...programsByMember]);
   const mergedLogs = uniqueById([...(logsByOwner ?? []), ...logsByMember]);
   const mergedMessages = uniqueById([...(messagesByOwner ?? []), ...messagesByMember]);
+  const queryErrors = {
+    members: membersError?.message ?? null,
+    programsByOwner: programsByOwnerError?.message ?? null,
+    logsByOwner: logsByOwnerError?.message ?? null,
+    messagesByOwner: messagesByOwnerError?.message ?? null,
+    programsByMember: programsByMemberError?.message ?? null,
+    logsByMember: logsByMemberError?.message ?? null,
+    messagesByMember: messagesByMemberError?.message ?? null,
+    exercises: exercisesError?.message ?? null,
+  };
+  const hasQueryErrors = Object.values(queryErrors).some((value) => Boolean(value));
 
   return jsonResponse(200, {
     members: members ?? [],
@@ -176,6 +174,8 @@ Deno.serve(async (req) => {
     exercises: exercises ?? [],
     debug: includeDebug
       ? {
+          status: hasQueryErrors ? "partial_error" : "ok",
+          message: hasQueryErrors ? "One or more hydrate queries failed; see queryErrors." : null,
           ownerUserId,
           ownedMemberIds,
           memberIdsFromMembersQuery: (members ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean),
@@ -199,6 +199,7 @@ Deno.serve(async (req) => {
             messagesByMember: messagesByMember.length,
             mergedMessages: mergedMessages.length,
           },
+          queryErrors,
           generatedAt: new Date().toISOString(),
         }
       : null,

@@ -548,6 +548,34 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
   });
   if (error) {
     console.warn("hydrate-trainer-data invoke failed:", error.message);
+    let fallbackMessage = error.message;
+    if (supabaseUrl && supabaseAnonKey) {
+      try {
+        const {
+          data: { session },
+        } = await supabaseClient.auth.getSession();
+        const response = await fetch(`${supabaseUrl}/functions/v1/hydrate-trainer-data`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: supabaseAnonKey,
+            Authorization: `Bearer ${session?.access_token ?? ""}`,
+          },
+          body: JSON.stringify({ ownerUserId, includeDebug: true }),
+        });
+        const raw = await response.text();
+        let parsed: { error?: string; message?: string } | null = null;
+        try {
+          parsed = raw ? (JSON.parse(raw) as { error?: string; message?: string }) : null;
+        } catch {
+          parsed = null;
+        }
+        const detail = parsed?.error || parsed?.message || raw || "No body";
+        fallbackMessage = `HTTP ${response.status}: ${detail}`;
+      } catch (fetchError) {
+        fallbackMessage = `${error.message} (fallback fetch feilet: ${String(fetchError)})`;
+      }
+    }
     return {
       members: [],
       messages: [],
@@ -556,7 +584,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
       exercises: [],
       debug: {
         status: "invoke_error",
-        message: error.message,
+        message: fallbackMessage,
         ownerUserId,
         ownedMemberIds: [],
         memberIdsFromMembersQuery: [],
