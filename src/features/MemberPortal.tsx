@@ -60,7 +60,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [memberGoalDraft, setMemberGoalDraft] = useState("");
   const [memberFocusDraft, setMemberFocusDraft] = useState("");
   const [memberInjuriesDraft, setMemberInjuriesDraft] = useState("");
-  const [replacementExerciseIdDraft, setReplacementExerciseIdDraft] = useState("");
+  const [showReplacementOptions, setShowReplacementOptions] = useState(false);
   const [workoutExerciseIndex, setWorkoutExerciseIndex] = useState(0);
   const [expandedRecentLogId, setExpandedRecentLogId] = useState<string | null>(null);
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<number | null>(null);
@@ -875,17 +875,18 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [workoutResultGroups, workoutExerciseIndex]);
 
   useEffect(() => {
-    setReplacementExerciseIdDraft(replacementCandidates[0]?.id ?? "");
-  }, [replacementCandidates, currentWorkoutGroup?.groupId]);
+    setShowReplacementOptions(false);
+  }, [currentWorkoutGroup?.groupId]);
 
-  function handleReplaceCurrentWorkoutExercise() {
-    if (!currentWorkoutGroup || !replacementExerciseIdDraft) return;
-    const replacementExercise = exercises.find((exercise) => exercise.id === replacementExerciseIdDraft);
+  function handleReplaceCurrentWorkoutExercise(replacementExerciseId: string) {
+    if (!currentWorkoutGroup || !replacementExerciseId) return;
+    const replacementExercise = exercises.find((exercise) => exercise.id === replacementExerciseId);
     if (!replacementExercise) return;
     replaceWorkoutExerciseGroup({
       programExerciseId: currentWorkoutGroup.groupId,
       nextExerciseName: replacementExercise.name,
     });
+    setShowReplacementOptions(false);
   }
 
   function estimate1RM(weight: number, reps: number): number {
@@ -1393,7 +1394,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
               {activeWorkoutProgram && workoutMode ? (
                 <div className="fixed inset-0 z-[10010] bg-slate-900/40 p-3 sm:p-6">
-                  <div className="mx-auto flex h-full max-w-xl flex-col rounded-[28px] bg-white shadow-2xl pb-24 sm:pb-0">
+                  <div className="mx-auto flex h-full max-w-xl flex-col rounded-[28px] bg-white shadow-2xl">
                     <div className="border-b p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="flex items-start justify-between gap-3">
                         <div>
@@ -1414,48 +1415,65 @@ export function MemberPortal(props: MemberPortalProps) {
                         >
                           <div>
                             <div className="text-xs text-slate-400">Øvelse {workoutExerciseIndex + 1} av {workoutResultGroups.length}</div>
-                            <div className="font-medium">{currentWorkoutGroup.exerciseName}</div>
+                            <div className="flex items-center gap-2">
+                              <div className="font-medium">{currentWorkoutGroup.exerciseName}</div>
+                              {replacementCandidates.length > 0 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setShowReplacementOptions((prev) => !prev)}
+                                  className="rounded-full border bg-white px-2 py-0.5 text-sm transition hover:bg-slate-100"
+                                  style={{ borderColor: "rgba(15,23,42,0.12)" }}
+                                  aria-label="Bytt øvelse"
+                                  title="Bytt øvelse"
+                                >
+                                  🔁
+                                </button>
+                              ) : null}
+                            </div>
                             <div className="mt-1 text-sm text-slate-500">
                               {currentWorkoutGroup.rows[0]?.exerciseCategory === "Kondisjon"
                                 ? `Plan: ${currentWorkoutGroup.rows.length} runder × ${currentWorkoutGroup.rows[0]?.plannedDurationMinutes || "0"} min${currentWorkoutGroup.rows[0]?.plannedSpeed ? ` · ${currentWorkoutGroup.rows[0]?.plannedSpeed} km/t` : ""}${currentWorkoutGroup.rows[0]?.plannedIncline ? ` · ${currentWorkoutGroup.rows[0]?.plannedIncline}% incline` : ""}`
                                 : `Plan: ${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedReps} reps · ${currentWorkoutGroup.plannedWeight}kg`}
                             </div>
                           </div>
-                          {replacementCandidates.length > 0 ? (
+                          {replacementCandidates.length > 0 && showReplacementOptions ? (
                             <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                              <div className="text-xs font-medium text-slate-600">Bytt øvelse (samme muskelgruppe)</div>
-                              <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
-                                <SelectBox
-                                  value={replacementExerciseIdDraft}
-                                  onChange={setReplacementExerciseIdDraft}
-                                  options={replacementCandidates.map((exercise) => ({
-                                    value: exercise.id,
-                                    label: `${exercise.name} · ${exercise.group}`,
-                                  }))}
-                                />
-                                <OutlineButton onClick={handleReplaceCurrentWorkoutExercise}>Bytt</OutlineButton>
+                              <div className="text-xs font-medium text-slate-600">Velg ny øvelse (samme muskelgruppe)</div>
+                              <div className="mt-2 grid gap-2">
+                                {replacementCandidates.map((exercise) => (
+                                  <button
+                                    key={exercise.id}
+                                    type="button"
+                                    onClick={() => handleReplaceCurrentWorkoutExercise(exercise.id)}
+                                    className="w-full rounded-lg border bg-white px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                                    style={{ borderColor: "rgba(15,23,42,0.12)" }}
+                                  >
+                                    {exercise.name} · {exercise.group}
+                                  </button>
+                                ))}
                               </div>
                             </div>
                           ) : null}
-                          <div className="mt-3 space-y-2">
+                          <div className={`mt-3 ${currentWorkoutGroup.rows.length <= 3 ? "space-y-1.5" : "space-y-2"}`}>
                             {currentWorkoutGroup.rows.map((row, index) => {
                               const resolvedExercise = exerciseByName.get(row.exerciseName.trim().toLowerCase());
                               const isCardio = (row.exerciseCategory ?? resolvedExercise?.category) === "Kondisjon";
                               const isTreadmill = (row.exerciseEquipment ?? resolvedExercise?.equipment ?? "").toLowerCase().includes("tredem");
+                              const isCompactSetView = currentWorkoutGroup.rows.length <= 3;
                               return (
-                              <div key={row.exerciseId} className={`rounded-xl border bg-white p-3 ${row.completed ? "border-emerald-300" : "border-slate-200"}`}>
-                                <div className="mb-2 flex items-center justify-between gap-2">
+                              <div key={row.exerciseId} className={`rounded-xl border bg-white ${isCompactSetView ? "p-2.5" : "p-3"} ${row.completed ? "border-emerald-300" : "border-slate-200"}`}>
+                                <div className={`${isCompactSetView ? "mb-1.5" : "mb-2"} flex items-center justify-between gap-2`}>
                                   <div className="text-xs font-semibold text-slate-600">Sett {row.setNumber ?? 1}</div>
                                   <button
                                     type="button"
                                     onClick={() => updateWorkoutExerciseResult(row.exerciseId, "completed", !row.completed)}
-                                    className={`rounded-full px-3 py-1 text-xs font-semibold ${row.completed ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-700"}`}
+                                    className={`rounded-full ${isCompactSetView ? "px-2.5 py-0.5" : "px-3 py-1"} text-xs font-semibold ${row.completed ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-700"}`}
                                   >
                                     {row.completed ? "Fullført" : "Marker"}
                                   </button>
                                 </div>
                                 {isCardio ? (
-                                  <div className={`grid gap-3 ${isTreadmill ? "grid-cols-3" : "grid-cols-1"}`}>
+                                  <div className={`grid ${isCompactSetView ? "gap-2" : "gap-3"} ${isTreadmill ? "grid-cols-3" : "grid-cols-1"}`}>
                                     <div className="space-y-1">
                                       <div className="text-[11px] font-medium text-slate-500">Tid utført (min)</div>
                                       <TextInput
@@ -1465,6 +1483,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                         value={row.performedDurationMinutes ?? ""}
                                         onChange={(e) => handleWorkoutResultInputChange(row, "performedDurationMinutes", e.target.value, index, currentWorkoutGroup.rows)}
                                         placeholder="0"
+                                        className={isCompactSetView ? "h-9 text-xs" : ""}
                                       />
                                     </div>
                                     {isTreadmill ? (
@@ -1475,6 +1494,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                             value={row.performedSpeed ?? ""}
                                             onChange={(e) => handleWorkoutResultInputChange(row, "performedSpeed", e.target.value, index, currentWorkoutGroup.rows)}
                                             placeholder="0"
+                                            className={isCompactSetView ? "h-9 text-xs" : ""}
                                           />
                                         </div>
                                         <div className="space-y-1">
@@ -1483,13 +1503,14 @@ export function MemberPortal(props: MemberPortalProps) {
                                             value={row.performedIncline ?? ""}
                                             onChange={(e) => handleWorkoutResultInputChange(row, "performedIncline", e.target.value, index, currentWorkoutGroup.rows)}
                                             placeholder="0"
+                                            className={isCompactSetView ? "h-9 text-xs" : ""}
                                           />
                                         </div>
                                       </>
                                     ) : null}
                                   </div>
                                 ) : (
-                                  <div className="grid grid-cols-2 gap-3">
+                                  <div className={`grid grid-cols-2 ${isCompactSetView ? "gap-2" : "gap-3"}`}>
                                     <div className="space-y-1">
                                       <div className="text-[11px] font-medium text-slate-500">Kg utført</div>
                                       <TextInput
@@ -1499,6 +1520,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                         value={row.performedWeight}
                                         onChange={(e) => handleWorkoutResultInputChange(row, "performedWeight", e.target.value, index, currentWorkoutGroup.rows)}
                                         placeholder="0"
+                                        className={isCompactSetView ? "h-9 text-xs" : ""}
                                       />
                                     </div>
                                     <div className="space-y-1">
@@ -1507,6 +1529,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                         value={row.performedReps}
                                         onChange={(e) => handleWorkoutResultInputChange(row, "performedReps", e.target.value, index, currentWorkoutGroup.rows)}
                                         placeholder="0"
+                                        className={isCompactSetView ? "h-9 text-xs" : ""}
                                       />
                                     </div>
                                   </div>
@@ -1520,7 +1543,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       <TextArea value={workoutMode.note} onChange={(e) => updateWorkoutModeNote(e.target.value)} className="min-h-[110px]" placeholder="Hvordan gikk økta?" />
                     </div>
 
-                    <div className="border-t p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="flex gap-3">
                         <OutlineButton className="flex-1" onClick={cancelWorkoutMode}>Avbryt</OutlineButton>
                         <OutlineButton
