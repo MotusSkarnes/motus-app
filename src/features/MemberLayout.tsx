@@ -12,6 +12,28 @@ type MemberAlert = {
   targetTab: "messages" | "programs";
 };
 
+type MemberLayoutProps = {
+  appState: AppState;
+  memberTab: MemberTab;
+  setMemberTab: (tab: MemberTab) => void;
+  updateMember: ComponentProps<typeof MemberPortal>["updateMember"];
+  currentMemberAvatarUrl: string;
+  setCurrentMemberAvatarUrl: (url: string) => void;
+  sendMemberMessage: ComponentProps<typeof MemberPortal>["sendMemberMessage"];
+  startWorkoutMode: ComponentProps<typeof MemberPortal>["startWorkoutMode"];
+  updateWorkoutExerciseResult: ComponentProps<typeof MemberPortal>["updateWorkoutExerciseResult"];
+  replaceWorkoutExerciseGroup: ComponentProps<typeof MemberPortal>["replaceWorkoutExerciseGroup"];
+  updateWorkoutModeNote: ComponentProps<typeof MemberPortal>["updateWorkoutModeNote"];
+  finishWorkoutMode: ComponentProps<typeof MemberPortal>["finishWorkoutMode"];
+  cancelWorkoutMode: ComponentProps<typeof MemberPortal>["cancelWorkoutMode"];
+  dismissWorkoutCelebration: ComponentProps<typeof MemberPortal>["dismissWorkoutCelebration"];
+  memberNotificationsOpen: boolean;
+  memberUnreadCount: number;
+  memberVisibleAlerts: MemberAlert[];
+  handleMemberBellToggle: () => void;
+  openAlert: (alert: MemberAlert) => void;
+};
+
 const mobileTabs: Array<{ id: MemberTab; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Hjem", icon: LayoutDashboard },
   { id: "programs", label: "Program", icon: ClipboardList },
@@ -40,27 +62,32 @@ export function MemberLayout({
   memberVisibleAlerts,
   handleMemberBellToggle,
   openAlert,
-}: {
-  appState: AppState;
-  memberTab: MemberTab;
-  setMemberTab: (tab: MemberTab) => void;
-  updateMember: ComponentProps<typeof MemberPortal>["updateMember"];
-  currentMemberAvatarUrl: string;
-  setCurrentMemberAvatarUrl: (url: string) => void;
-  sendMemberMessage: ComponentProps<typeof MemberPortal>["sendMemberMessage"];
-  startWorkoutMode: ComponentProps<typeof MemberPortal>["startWorkoutMode"];
-  updateWorkoutExerciseResult: ComponentProps<typeof MemberPortal>["updateWorkoutExerciseResult"];
-  replaceWorkoutExerciseGroup: ComponentProps<typeof MemberPortal>["replaceWorkoutExerciseGroup"];
-  updateWorkoutModeNote: ComponentProps<typeof MemberPortal>["updateWorkoutModeNote"];
-  finishWorkoutMode: ComponentProps<typeof MemberPortal>["finishWorkoutMode"];
-  cancelWorkoutMode: ComponentProps<typeof MemberPortal>["cancelWorkoutMode"];
-  dismissWorkoutCelebration: ComponentProps<typeof MemberPortal>["dismissWorkoutCelebration"];
-  memberNotificationsOpen: boolean;
-  memberUnreadCount: number;
-  memberVisibleAlerts: MemberAlert[];
-  handleMemberBellToggle: () => void;
-  openAlert: (alert: MemberAlert) => void;
-}) {
+}: MemberLayoutProps) {
+  const memberPortalProps: ComponentProps<typeof MemberPortal> = {
+    members: appState.members,
+    currentUserRole: appState.currentUser!.role,
+    currentUserEmail: appState.currentUser!.email,
+    programs: appState.programs,
+    logs: appState.logs,
+    messages: appState.messages,
+    memberViewId: appState.memberViewId,
+    memberTab,
+    setMemberTab,
+    updateMember,
+    memberAvatarUrl: currentMemberAvatarUrl,
+    setMemberAvatarUrl: setCurrentMemberAvatarUrl,
+    exercises: appState.exercises,
+    sendMemberMessage,
+    workoutMode: appState.workoutMode,
+    startWorkoutMode,
+    updateWorkoutExerciseResult,
+    replaceWorkoutExerciseGroup,
+    updateWorkoutModeNote,
+    finishWorkoutMode,
+    cancelWorkoutMode,
+    workoutCelebration: appState.workoutCelebration,
+    dismissWorkoutCelebration,
+  };
   return (
     <>
       <div className="space-y-3">
@@ -108,31 +135,7 @@ export function MemberLayout({
             <div className="mt-1.5 text-xs sm:text-sm text-slate-500">Trykk på bjellen for å se varsler.</div>
           )}
         </Card>
-        <MemberPortal
-          members={appState.members}
-          currentUserRole={appState.currentUser!.role}
-          currentUserEmail={appState.currentUser!.email}
-          programs={appState.programs}
-          logs={appState.logs}
-          messages={appState.messages}
-          memberViewId={appState.memberViewId}
-          memberTab={memberTab}
-          setMemberTab={setMemberTab}
-          updateMember={updateMember}
-          memberAvatarUrl={currentMemberAvatarUrl}
-          setMemberAvatarUrl={setCurrentMemberAvatarUrl}
-          exercises={appState.exercises}
-          sendMemberMessage={sendMemberMessage}
-          workoutMode={appState.workoutMode}
-          startWorkoutMode={startWorkoutMode}
-          updateWorkoutExerciseResult={updateWorkoutExerciseResult}
-          replaceWorkoutExerciseGroup={replaceWorkoutExerciseGroup}
-          updateWorkoutModeNote={updateWorkoutModeNote}
-          finishWorkoutMode={finishWorkoutMode}
-          cancelWorkoutMode={cancelWorkoutMode}
-          workoutCelebration={appState.workoutCelebration}
-          dismissWorkoutCelebration={dismissWorkoutCelebration}
-        />
+        <MemberPortal {...memberPortalProps} />
       </div>
 
       <div

@@ -12,6 +12,36 @@ type TrainerAlert = {
   timestamp: number;
 };
 
+type TrainerLayoutProps = {
+  appState: AppState;
+  trainerTab: ComponentProps<typeof TrainerPortal>["trainerTab"];
+  setTrainerTab: ComponentProps<typeof TrainerPortal>["setTrainerTab"];
+  patchState: (patch: Partial<AppState>) => void;
+  addMember: ComponentProps<typeof TrainerPortal>["addMember"];
+  deactivateMember: ComponentProps<typeof TrainerPortal>["deactivateMember"];
+  deleteMember: ComponentProps<typeof TrainerPortal>["deleteMember"];
+  updateMember: ComponentProps<typeof TrainerPortal>["updateMember"];
+  markMemberInvited: ComponentProps<typeof TrainerPortal>["markMemberInvited"];
+  inviteMember: ComponentProps<typeof TrainerPortal>["inviteMember"];
+  inviteTrainer: ComponentProps<typeof TrainerPortal>["inviteTrainer"];
+  restoreMemberByEmail: ComponentProps<typeof TrainerPortal>["restoreMemberByEmail"];
+  restoreMissingTestData: ComponentProps<typeof TrainerPortal>["restoreMissingTestData"];
+  restoreOriginalExerciseBank: ComponentProps<typeof TrainerPortal>["restoreOriginalExerciseBank"];
+  saveProgramForMember: ComponentProps<typeof TrainerPortal>["saveProgramForMember"];
+  deleteProgramById: ComponentProps<typeof TrainerPortal>["deleteProgramById"];
+  sendTrainerMessage: ComponentProps<typeof TrainerPortal>["sendTrainerMessage"];
+  saveExercise: ComponentProps<typeof TrainerPortal>["saveExercise"];
+  openCustomerMessagesSignal: number;
+  setOpenCustomerMessagesSignal: Dispatch<SetStateAction<number>>;
+  memberAvatarById: Record<string, string>;
+  setMemberAvatarUrlForMember: ComponentProps<typeof TrainerPortal>["setMemberAvatarUrlForMember"];
+  trainerNotificationsOpen: boolean;
+  setTrainerNotificationsOpen: (open: boolean) => void;
+  trainerUnreadCount: number;
+  trainerMessageAlerts: TrainerAlert[];
+  handleTrainerBellToggle: () => void;
+};
+
 const trainerMenuItems: Array<{ key: TrainerTab; label: string; icon: LucideIcon }> = [
   { key: "dashboard", label: "Oversikt", icon: LayoutDashboard },
   { key: "customers", label: "Klienter", icon: Users },
@@ -62,37 +92,37 @@ export function TrainerLayout({
   trainerUnreadCount,
   trainerMessageAlerts,
   handleTrainerBellToggle,
-}: {
-  appState: AppState;
-  trainerTab: ComponentProps<typeof TrainerPortal>["trainerTab"];
-  setTrainerTab: ComponentProps<typeof TrainerPortal>["setTrainerTab"];
-  patchState: (patch: Partial<AppState>) => void;
-  addMember: ComponentProps<typeof TrainerPortal>["addMember"];
-  deactivateMember: ComponentProps<typeof TrainerPortal>["deactivateMember"];
-  deleteMember: ComponentProps<typeof TrainerPortal>["deleteMember"];
-  updateMember: ComponentProps<typeof TrainerPortal>["updateMember"];
-  markMemberInvited: ComponentProps<typeof TrainerPortal>["markMemberInvited"];
-  inviteMember: ComponentProps<typeof TrainerPortal>["inviteMember"];
-  inviteTrainer: ComponentProps<typeof TrainerPortal>["inviteTrainer"];
-  restoreMemberByEmail: ComponentProps<typeof TrainerPortal>["restoreMemberByEmail"];
-  restoreMissingTestData: ComponentProps<typeof TrainerPortal>["restoreMissingTestData"];
-  restoreOriginalExerciseBank: ComponentProps<typeof TrainerPortal>["restoreOriginalExerciseBank"];
-  saveProgramForMember: ComponentProps<typeof TrainerPortal>["saveProgramForMember"];
-  deleteProgramById: ComponentProps<typeof TrainerPortal>["deleteProgramById"];
-  sendTrainerMessage: ComponentProps<typeof TrainerPortal>["sendTrainerMessage"];
-  saveExercise: ComponentProps<typeof TrainerPortal>["saveExercise"];
-  openCustomerMessagesSignal: number;
-  setOpenCustomerMessagesSignal: Dispatch<SetStateAction<number>>;
-  memberAvatarById: Record<string, string>;
-  setMemberAvatarUrlForMember: ComponentProps<typeof TrainerPortal>["setMemberAvatarUrlForMember"];
-  trainerNotificationsOpen: boolean;
-  setTrainerNotificationsOpen: (open: boolean) => void;
-  trainerUnreadCount: number;
-  trainerMessageAlerts: TrainerAlert[];
-  handleTrainerBellToggle: () => void;
-}) {
+}: TrainerLayoutProps) {
   const inactiveMembersCount = appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length;
   const missingInvitesCount = appState.members.filter((member) => !member.invitedAt).length;
+  const trainerPortalProps: ComponentProps<typeof TrainerPortal> = {
+    members: appState.members,
+    programs: appState.programs,
+    logs: appState.logs,
+    messages: appState.messages,
+    exercises: appState.exercises,
+    selectedMemberId: appState.selectedMemberId,
+    setSelectedMemberId: (id) => patchState({ selectedMemberId: id }),
+    trainerTab,
+    setTrainerTab,
+    addMember,
+    deactivateMember,
+    deleteMember,
+    updateMember,
+    markMemberInvited,
+    inviteMember,
+    restoreMemberByEmail,
+    restoreMissingTestData,
+    restoreOriginalExerciseBank,
+    saveProgramForMember,
+    deleteProgramById,
+    sendTrainerMessage,
+    saveExercise,
+    inviteTrainer,
+    openCustomerMessagesSignal,
+    memberAvatarById,
+    setMemberAvatarUrlForMember,
+  };
 
   return (
     <>
@@ -205,34 +235,7 @@ export function TrainerLayout({
               <div className="mt-1.5 text-xs sm:text-sm text-slate-500">Trykk på bjellen for å se varsler.</div>
             )}
           </Card>
-          <TrainerPortal
-            members={appState.members}
-            programs={appState.programs}
-            logs={appState.logs}
-            messages={appState.messages}
-            exercises={appState.exercises}
-            selectedMemberId={appState.selectedMemberId}
-            setSelectedMemberId={(id) => patchState({ selectedMemberId: id })}
-            trainerTab={trainerTab}
-            setTrainerTab={setTrainerTab}
-            addMember={addMember}
-            deactivateMember={deactivateMember}
-            deleteMember={deleteMember}
-            updateMember={updateMember}
-            markMemberInvited={markMemberInvited}
-            inviteMember={inviteMember}
-            restoreMemberByEmail={restoreMemberByEmail}
-            restoreMissingTestData={restoreMissingTestData}
-            restoreOriginalExerciseBank={restoreOriginalExerciseBank}
-            saveProgramForMember={saveProgramForMember}
-            deleteProgramById={deleteProgramById}
-            sendTrainerMessage={sendTrainerMessage}
-            saveExercise={saveExercise}
-            inviteTrainer={inviteTrainer}
-            openCustomerMessagesSignal={openCustomerMessagesSignal}
-            memberAvatarById={memberAvatarById}
-            setMemberAvatarUrlForMember={setMemberAvatarUrlForMember}
-          />
+          <TrainerPortal {...trainerPortalProps} />
         </div>
       </div>
 
