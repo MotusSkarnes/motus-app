@@ -34,6 +34,7 @@ type MemberPortalProps = {
   ) => void;
   replaceWorkoutExerciseGroup: (input: ReplaceWorkoutExerciseGroupInput) => void;
   removeWorkoutLogResult: (input: { logId: string; exerciseId: string }) => void;
+  setWorkoutLogResults: (input: { logId: string; results: WorkoutLog["results"] }) => void;
   updateWorkoutModeNote: (note: string) => void;
   finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
   logGroupWorkout: (input: { memberId: string; className: string; note?: string; reflection: WorkoutReflection }) => void;
@@ -115,7 +116,7 @@ export function MemberPortal(props: MemberPortalProps) {
     "Godt voksen",
     "Step styrke",
   ];
-  const { members, currentUserRole, currentUserEmail, currentUserMemberId, programs, logs, messages, memberViewId, memberTab, setMemberTab, updateMember, memberAvatarUrl, setMemberAvatarUrl, exercises, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, replaceWorkoutExerciseGroup, removeWorkoutLogResult, updateWorkoutModeNote, finishWorkoutMode, logGroupWorkout, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
+  const { members, currentUserRole, currentUserEmail, currentUserMemberId, programs, logs, messages, memberViewId, memberTab, setMemberTab, updateMember, memberAvatarUrl, setMemberAvatarUrl, exercises, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, replaceWorkoutExerciseGroup, removeWorkoutLogResult, setWorkoutLogResults, updateWorkoutModeNote, finishWorkoutMode, logGroupWorkout, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
   const [messageText, setMessageText] = useState("");
   const [profileSessionsPerWeekTarget, setProfileSessionsPerWeekTarget] = useState("");
   const [profileDailyStepsTarget, setProfileDailyStepsTarget] = useState("");
@@ -141,6 +142,16 @@ export function MemberPortal(props: MemberPortalProps) {
   const [showGroupWorkoutLogger, setShowGroupWorkoutLogger] = useState(false);
   const [showWorkoutReflection, setShowWorkoutReflection] = useState(false);
   const [isSavingWorkout, setIsSavingWorkout] = useState(false);
+  const [lastDeletedLogResult, setLastDeletedLogResult] = useState<{ logId: string; results: WorkoutLog["results"] } | null>(null);
+  const [editingLoggedExerciseKey, setEditingLoggedExerciseKey] = useState<string | null>(null);
+  const [editingLoggedExerciseDraft, setEditingLoggedExerciseDraft] = useState<{
+    performedWeight: string;
+    performedReps: string;
+    performedDurationMinutes: string;
+    performedSpeed: string;
+    performedIncline: string;
+    completed: boolean;
+  } | null>(null);
   const [reflectionEnergyLevel, setReflectionEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [reflectionDifficultyLevel, setReflectionDifficultyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [reflectionMotivationLevel, setReflectionMotivationLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
@@ -1574,7 +1585,55 @@ export function MemberPortal(props: MemberPortalProps) {
   function handleDeleteLoggedExercise(logId: string, exerciseId: string) {
     const shouldDelete = window.confirm("Slette denne øvelsen fra treningsloggen?");
     if (!shouldDelete) return;
+    const log = completedLogs.find((item) => item.id === logId);
+    if (log) {
+      setLastDeletedLogResult({ logId, results: log.results ?? [] });
+    }
     removeWorkoutLogResult({ logId, exerciseId });
+  }
+
+  function startEditLoggedExercise(logId: string, result: WorkoutLog["results"][number], index: number) {
+    const editKey = `${logId}:${result.exerciseId}:${index}`;
+    setEditingLoggedExerciseKey(editKey);
+    setEditingLoggedExerciseDraft({
+      performedWeight: result.performedWeight ?? "",
+      performedReps: result.performedReps ?? "",
+      performedDurationMinutes: result.performedDurationMinutes ?? "",
+      performedSpeed: result.performedSpeed ?? "",
+      performedIncline: result.performedIncline ?? "",
+      completed: Boolean(result.completed),
+    });
+  }
+
+  function cancelEditLoggedExercise() {
+    setEditingLoggedExerciseKey(null);
+    setEditingLoggedExerciseDraft(null);
+  }
+
+  function saveEditLoggedExercise(logId: string, resultIndex: number) {
+    if (!editingLoggedExerciseDraft) return;
+    const log = completedLogs.find((item) => item.id === logId);
+    if (!log?.results?.length) return;
+    const nextResults = log.results.map((item, index) => {
+      if (index !== resultIndex) return item;
+      return {
+        ...item,
+        performedWeight: editingLoggedExerciseDraft.performedWeight,
+        performedReps: editingLoggedExerciseDraft.performedReps,
+        performedDurationMinutes: editingLoggedExerciseDraft.performedDurationMinutes,
+        performedSpeed: editingLoggedExerciseDraft.performedSpeed,
+        performedIncline: editingLoggedExerciseDraft.performedIncline,
+        completed: editingLoggedExerciseDraft.completed,
+      };
+    });
+    setWorkoutLogResults({ logId, results: nextResults });
+    cancelEditLoggedExercise();
+  }
+
+  function undoDeleteLoggedExercise() {
+    if (!lastDeletedLogResult) return;
+    setWorkoutLogResults(lastDeletedLogResult);
+    setLastDeletedLogResult(null);
   }
 
   function handleWorkoutResultInputChange(
@@ -2251,6 +2310,14 @@ export function MemberPortal(props: MemberPortalProps) {
               <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="font-semibold">📝 Siste 3 økter</div>
                 <div className="mt-4 space-y-3">
+                  {lastDeletedLogResult ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                      Øvelse slettet fra loggen.
+                      <button type="button" onClick={undoDeleteLoggedExercise} className="ml-2 font-semibold underline">
+                        Angre
+                      </button>
+                    </div>
+                  ) : null}
                   {completedLogs.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen økter logget ennå.</div> : null}
                   {completedLogs.slice(0, 3).map((log) => (
                     <div key={log.id} className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -2276,22 +2343,103 @@ export function MemberPortal(props: MemberPortalProps) {
                             ) : (
                               (log.results ?? []).map((result, index) => (
                                 <div key={`${result.exerciseId}-${result.setNumber ?? 0}-${index}`} className="rounded-lg border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                  {(() => {
+                                    const editKey = `${log.id}:${result.exerciseId}:${index}`;
+                                    const isEditing = editingLoggedExerciseKey === editKey && Boolean(editingLoggedExerciseDraft);
+                                    return (
+                                      <>
                                   <div className="flex items-start justify-between gap-2">
                                     <div className="font-medium text-slate-800">{result.exerciseName}</div>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteLoggedExercise(log.id, result.exerciseId)}
-                                      className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
-                                    >
-                                      Slett
-                                    </button>
+                                    <div className="flex items-center gap-1.5">
+                                      {isEditing ? (
+                                        <>
+                                          <button
+                                            type="button"
+                                            onClick={() => saveEditLoggedExercise(log.id, index)}
+                                            className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                                          >
+                                            Lagre
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={cancelEditLoggedExercise}
+                                            className="rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-200"
+                                          >
+                                            Avbryt
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => startEditLoggedExercise(log.id, result, index)}
+                                          className="rounded-lg border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold text-sky-700 transition hover:bg-sky-100"
+                                        >
+                                          Rediger
+                                        </button>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteLoggedExercise(log.id, result.exerciseId)}
+                                        className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
+                                      >
+                                        Slett
+                                      </button>
+                                    </div>
                                   </div>
-                                  <div className="mt-1 text-xs text-slate-600">
-                                    {result.exerciseCategory === "Kondisjon"
-                                      ? `Utført: ${result.performedDurationMinutes || "0"} min${result.performedSpeed ? ` · ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` · ${result.performedIncline}% incline` : ""}`
-                                      : `Utført: ${result.performedWeight || "0"} kg x ${result.performedReps || "0"} reps`}
-                                    {result.completed ? " - Fullført" : " - Ikke markert fullført"}
-                                  </div>
+                                  {isEditing && editingLoggedExerciseDraft ? (
+                                    <div className="mt-2 grid gap-2">
+                                      {result.exerciseCategory === "Kondisjon" ? (
+                                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                                          <TextInput
+                                            value={editingLoggedExerciseDraft.performedDurationMinutes}
+                                            onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedDurationMinutes: e.target.value } : prev)}
+                                            placeholder="Minutter"
+                                          />
+                                          <TextInput
+                                            value={editingLoggedExerciseDraft.performedSpeed}
+                                            onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedSpeed: e.target.value } : prev)}
+                                            placeholder="Km/t"
+                                          />
+                                          <TextInput
+                                            value={editingLoggedExerciseDraft.performedIncline}
+                                            onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedIncline: e.target.value } : prev)}
+                                            placeholder="Incline %"
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                          <TextInput
+                                            value={editingLoggedExerciseDraft.performedWeight}
+                                            onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedWeight: e.target.value } : prev)}
+                                            placeholder="Kg"
+                                          />
+                                          <TextInput
+                                            value={editingLoggedExerciseDraft.performedReps}
+                                            onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedReps: e.target.value } : prev)}
+                                            placeholder="Reps"
+                                          />
+                                        </div>
+                                      )}
+                                      <label className="inline-flex items-center gap-2 text-xs text-slate-700">
+                                        <input
+                                          type="checkbox"
+                                          checked={editingLoggedExerciseDraft.completed}
+                                          onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, completed: e.target.checked } : prev)}
+                                        />
+                                        Markert som fullført
+                                      </label>
+                                    </div>
+                                  ) : (
+                                    <div className="mt-1 text-xs text-slate-600">
+                                      {result.exerciseCategory === "Kondisjon"
+                                        ? `Utført: ${result.performedDurationMinutes || "0"} min${result.performedSpeed ? ` · ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` · ${result.performedIncline}% incline` : ""}`
+                                        : `Utført: ${result.performedWeight || "0"} kg x ${result.performedReps || "0"} reps`}
+                                      {result.completed ? " - Fullført" : " - Ikke markert fullført"}
+                                    </div>
+                                  )}
+                                      </>
+                                    );
+                                  })()}
                                 </div>
                               ))
                             )}

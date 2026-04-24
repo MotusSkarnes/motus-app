@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
-import { localAppRepository, type CreateMemberInput, type FinishWorkoutInput, type LogGroupWorkoutInput, type RemoveWorkoutLogResultInput, type ReplaceWorkoutExerciseGroupInput, type SaveExerciseInput, type SaveProgramInput, type StartWorkoutModeOptions, type UpdateMemberInput } from "../services/appRepository";
+import { localAppRepository, type CreateMemberInput, type FinishWorkoutInput, type LogGroupWorkoutInput, type RemoveWorkoutLogResultInput, type ReplaceWorkoutExerciseGroupInput, type SaveExerciseInput, type SaveProgramInput, type SetWorkoutLogResultsInput, type StartWorkoutModeOptions, type UpdateMemberInput } from "../services/appRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { fetchExercisesFromSupabase, fetchHydratedMemberData, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
 import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, inviteTrainerByEmail, refreshSupabaseSessionUser, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult, type InviteTrainerResult } from "../services/supabaseAuth";
@@ -785,6 +785,10 @@ export function useAppState() {
     setAppState((prev) => repository.removeWorkoutLogResult(prev, input));
   }
 
+  function setWorkoutLogResults(input: SetWorkoutLogResultsInput) {
+    setAppState((prev) => repository.setWorkoutLogResults(prev, input));
+  }
+
   function updateWorkoutModeNote(note: string) {
     setAppState((prev) => repository.updateWorkoutNote(prev, note));
   }
@@ -937,6 +941,7 @@ export function useAppState() {
     updateWorkoutExerciseResult,
     replaceWorkoutExerciseGroup,
     removeWorkoutLogResult,
+    setWorkoutLogResults,
     updateWorkoutModeNote,
     finishWorkoutMode,
     logGroupWorkout,

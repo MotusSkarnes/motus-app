@@ -9,6 +9,7 @@ import {
   type FinishWorkoutInput,
   type LogGroupWorkoutInput,
   type RemoveWorkoutLogResultInput,
+  type SetWorkoutLogResultsInput,
   type SaveProgramInput,
   type SaveExerciseInput,
   type ReplaceWorkoutExerciseGroupInput,
@@ -1117,6 +1118,14 @@ export const supabaseAppRepository: AppRepository = {
   },
   removeWorkoutLogResult(state: AppState, input: RemoveWorkoutLogResultInput): AppState {
     const nextState = localAppRepository.removeWorkoutLogResult(state, input);
+    const updatedLog = nextState.logs.find((log) => log.id === input.logId);
+    if (updatedLog) {
+      void persistWorkoutLog(updatedLog);
+    }
+    return nextState;
+  },
+  setWorkoutLogResults(state: AppState, input: SetWorkoutLogResultsInput): AppState {
+    const nextState = localAppRepository.setWorkoutLogResults(state, input);
     const updatedLog = nextState.logs.find((log) => log.id === input.logId);
     if (updatedLog) {
       void persistWorkoutLog(updatedLog);

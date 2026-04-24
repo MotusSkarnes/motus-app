@@ -50,6 +50,11 @@ export type RemoveWorkoutLogResultInput = {
   exerciseId: string;
 };
 
+export type SetWorkoutLogResultsInput = {
+  logId: string;
+  results: WorkoutLog["results"];
+};
+
 export type SaveExerciseInput = {
   id?: string;
   name: string;
@@ -79,6 +84,7 @@ export interface AppRepository {
   updateWorkoutResult(state: AppState, input: UpdateWorkoutResultInput): AppState;
   replaceWorkoutExerciseGroup(state: AppState, input: ReplaceWorkoutExerciseGroupInput): AppState;
   removeWorkoutLogResult(state: AppState, input: RemoveWorkoutLogResultInput): AppState;
+  setWorkoutLogResults(state: AppState, input: SetWorkoutLogResultsInput): AppState;
   updateWorkoutNote(state: AppState, note: string): AppState;
   cancelWorkoutMode(state: AppState): AppState;
   finishWorkoutMode(state: AppState, input?: FinishWorkoutInput): AppState;
@@ -406,11 +412,20 @@ export function removeWorkoutLogResultInState(state: AppState, input: RemoveWork
   const logId = input.logId.trim();
   const exerciseId = input.exerciseId.trim();
   if (!logId || !exerciseId) return state;
+  const logToUpdate = state.logs.find((log) => log.id === logId);
+  if (!logToUpdate) return state;
+  const nextResults = (logToUpdate.results ?? []).filter((result) => result.exerciseId !== exerciseId);
+  return setWorkoutLogResultsInState(state, { logId, results: nextResults });
+}
+
+export function setWorkoutLogResultsInState(state: AppState, input: SetWorkoutLogResultsInput): AppState {
+  const logId = input.logId.trim();
+  if (!logId) return state;
+  const nextResults = (input.results ?? []).map((result) => ({ ...result }));
   return {
     ...state,
     logs: state.logs.map((log) => {
       if (log.id !== logId) return log;
-      const nextResults = (log.results ?? []).filter((result) => result.exerciseId !== exerciseId);
       return {
         ...log,
         results: nextResults,
@@ -507,6 +522,7 @@ export const localAppRepository: AppRepository = {
   updateWorkoutResult: (state, input) => updateWorkoutResultInState(state, input.exerciseId, input.field, input.value),
   replaceWorkoutExerciseGroup: (state, input) => replaceWorkoutExerciseGroupInState(state, input),
   removeWorkoutLogResult: (state, input) => removeWorkoutLogResultInState(state, input),
+  setWorkoutLogResults: (state, input) => setWorkoutLogResultsInState(state, input),
   updateWorkoutNote: updateWorkoutNoteInState,
   cancelWorkoutMode: cancelWorkoutModeInState,
   finishWorkoutMode: finishWorkoutModeInState,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AppState } from "../app/types";
-import { finishWorkoutModeInState, removeWorkoutLogResultInState } from "./appRepository";
+import { finishWorkoutModeInState, removeWorkoutLogResultInState, setWorkoutLogResultsInState } from "./appRepository";
 
 function createBaseState(): AppState {
   return {
@@ -109,5 +109,46 @@ describe("appRepository workout log guards", () => {
     const next = removeWorkoutLogResultInState(state, { logId: "log-1", exerciseId: "set-2" });
     expect(next.logs[0].results).toHaveLength(1);
     expect(next.logs[0].results?.[0].exerciseId).toBe("set-1");
+  });
+
+  it("updates logged exercise values in an existing log", () => {
+    const state = createBaseState();
+    state.logs = [
+      {
+        id: "log-1",
+        memberId: "member-1",
+        programTitle: "Styrke A",
+        date: "24.04.2026",
+        status: "Fullført",
+        note: "",
+        results: [
+          {
+            exerciseId: "set-1",
+            programExerciseId: "prog-ex-1",
+            setNumber: 1,
+            exerciseName: "Knebøy",
+            plannedSets: "3",
+            plannedReps: "8",
+            plannedWeight: "60",
+            performedWeight: "60",
+            performedReps: "8",
+            completed: true,
+          },
+        ],
+      },
+    ];
+
+    const next = setWorkoutLogResultsInState(state, {
+      logId: "log-1",
+      results: [
+        {
+          ...state.logs[0].results![0],
+          performedWeight: "65",
+          performedReps: "6",
+        },
+      ],
+    });
+    expect(next.logs[0].results?.[0].performedWeight).toBe("65");
+    expect(next.logs[0].results?.[0].performedReps).toBe("6");
   });
 });
