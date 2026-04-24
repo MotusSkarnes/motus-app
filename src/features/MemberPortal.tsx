@@ -282,6 +282,18 @@ export function MemberPortal(props: MemberPortalProps) {
     if (sameGroup.length > 0) return sameGroup;
     return exercises.filter((exercise) => exercise.id !== sourceExercise.id && exercise.category === sourceExercise.category);
   }, [activeWorkoutProgram, currentWorkoutGroup, exercises]);
+  const currentWorkoutExerciseImageUrl = useMemo(() => {
+    if (!currentWorkoutGroup) return "";
+    if (activeWorkoutProgram) {
+      const sourceProgramExercise = activeWorkoutProgram.exercises.find((exercise) => exercise.id === currentWorkoutGroup.groupId);
+      if (sourceProgramExercise) {
+        const sourceExercise = exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
+        if (sourceExercise?.imageUrl) return sourceExercise.imageUrl;
+      }
+    }
+    const byName = exerciseByName.get(currentWorkoutGroup.exerciseName.trim().toLowerCase());
+    return byName?.imageUrl ?? "";
+  }, [activeWorkoutProgram, currentWorkoutGroup, exerciseByName, exercises]);
   const now = new Date();
   const exerciseCategoryById = useMemo(() => {
     const byId = new Map<string, Exercise["category"]>();
@@ -2542,6 +2554,17 @@ export function MemberPortal(props: MemberPortalProps) {
                           className="w-full rounded-2xl border p-4 text-left transition bg-slate-50"
                           style={{ borderColor: "rgba(15,23,42,0.08)" }}
                         >
+                          {currentWorkoutExerciseImageUrl ? (
+                            <div className="mb-3 overflow-hidden rounded-xl border bg-white" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                              <img
+                                src={currentWorkoutExerciseImageUrl}
+                                alt={`Illustrasjon av ${currentWorkoutGroup.exerciseName}`}
+                                className="h-40 w-full object-cover"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            </div>
+                          ) : null}
                           <div>
                             <div className="text-xs text-slate-400">Øvelse {workoutExerciseIndex + 1} av {workoutResultGroups.length}</div>
                             <div className="flex items-center gap-2">
