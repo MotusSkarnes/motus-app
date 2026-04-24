@@ -56,8 +56,8 @@ export function AppHeader({
                 <button
                   type="button"
                   onClick={() => onOpenMemberProfile?.()}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white md:h-9 md:w-9"
-                  style={{ borderColor: MOTUS.turquoise, color: MOTUS.turquoise }}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full md:h-9 md:w-9"
+                  style={{ backgroundColor: MOTUS.turquoise, color: "#ffffff" }}
                   aria-label="Åpne profil"
                   title="Profil"
                 >
@@ -66,8 +66,8 @@ export function AppHeader({
                 <button
                   type="button"
                   onClick={onLogout}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white md:h-9 md:w-9"
-                  style={{ borderColor: MOTUS.pink, color: MOTUS.pink }}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full md:h-9 md:w-9"
+                  style={{ backgroundColor: MOTUS.pink, color: "#ffffff" }}
                   aria-label="Logg ut"
                   title="Logg ut"
                 >
