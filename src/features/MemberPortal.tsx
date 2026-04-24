@@ -2547,46 +2547,51 @@ export function MemberPortal(props: MemberPortalProps) {
                       </div>
                     </div>
 
-                    <div className="flex-1 space-y-3 overflow-auto p-4">
+                    <div className="flex-1 space-y-2 overflow-auto p-3">
                       {currentWorkoutGroup ? (
                         <div
                           key={currentWorkoutGroup.groupId}
-                          className="w-full rounded-2xl border p-4 text-left transition bg-slate-50"
+                          className="w-full rounded-2xl border p-3 text-left transition bg-slate-50"
                           style={{ borderColor: "rgba(15,23,42,0.08)" }}
                         >
-                          {currentWorkoutExerciseImageUrl ? (
-                            <div className="mb-3 overflow-hidden rounded-xl border bg-white" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                              <img
-                                src={currentWorkoutExerciseImageUrl}
-                                alt={`Illustrasjon av ${currentWorkoutGroup.exerciseName}`}
-                                className="h-40 w-full object-cover"
-                                loading="lazy"
-                                decoding="async"
-                              />
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs text-slate-400">Øvelse {workoutExerciseIndex + 1} av {workoutResultGroups.length}</div>
+                              <div className="flex items-center gap-2">
+                                <div className="font-medium">{currentWorkoutGroup.exerciseName}</div>
+                                {replacementCandidates.length > 0 ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowReplacementOptions((prev) => !prev)}
+                                    className="rounded-full border bg-white px-2 py-0.5 text-sm transition hover:bg-slate-100"
+                                    style={{ borderColor: "rgba(15,23,42,0.12)" }}
+                                    aria-label="Bytt øvelse"
+                                    title="Bytt øvelse"
+                                  >
+                                    🔁
+                                  </button>
+                                ) : null}
+                              </div>
+                              <div className="mt-1 text-sm text-slate-500">
+                                {currentWorkoutGroup.rows[0]?.exerciseCategory === "Kondisjon"
+                                  ? `Plan: ${currentWorkoutGroup.rows.length} runder × ${currentWorkoutGroup.rows[0]?.plannedDurationMinutes || "0"} min${currentWorkoutGroup.rows[0]?.plannedSpeed ? ` · ${currentWorkoutGroup.rows[0]?.plannedSpeed} km/t` : ""}${currentWorkoutGroup.rows[0]?.plannedIncline ? ` · ${currentWorkoutGroup.rows[0]?.plannedIncline}% incline` : ""}`
+                                  : `Plan: ${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedReps} reps · ${currentWorkoutGroup.plannedWeight}kg`}
+                              </div>
                             </div>
-                          ) : null}
-                          <div>
-                            <div className="text-xs text-slate-400">Øvelse {workoutExerciseIndex + 1} av {workoutResultGroups.length}</div>
-                            <div className="flex items-center gap-2">
-                              <div className="font-medium">{currentWorkoutGroup.exerciseName}</div>
-                              {replacementCandidates.length > 0 ? (
-                                <button
-                                  type="button"
-                                  onClick={() => setShowReplacementOptions((prev) => !prev)}
-                                  className="rounded-full border bg-white px-2 py-0.5 text-sm transition hover:bg-slate-100"
-                                  style={{ borderColor: "rgba(15,23,42,0.12)" }}
-                                  aria-label="Bytt øvelse"
-                                  title="Bytt øvelse"
-                                >
-                                  🔁
-                                </button>
-                              ) : null}
-                            </div>
-                            <div className="mt-1 text-sm text-slate-500">
-                              {currentWorkoutGroup.rows[0]?.exerciseCategory === "Kondisjon"
-                                ? `Plan: ${currentWorkoutGroup.rows.length} runder × ${currentWorkoutGroup.rows[0]?.plannedDurationMinutes || "0"} min${currentWorkoutGroup.rows[0]?.plannedSpeed ? ` · ${currentWorkoutGroup.rows[0]?.plannedSpeed} km/t` : ""}${currentWorkoutGroup.rows[0]?.plannedIncline ? ` · ${currentWorkoutGroup.rows[0]?.plannedIncline}% incline` : ""}`
-                                : `Plan: ${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedReps} reps · ${currentWorkoutGroup.plannedWeight}kg`}
-                            </div>
+                            {currentWorkoutExerciseImageUrl ? (
+                              <div
+                                className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border bg-white sm:h-24 sm:w-24"
+                                style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                              >
+                                <img
+                                  src={currentWorkoutExerciseImageUrl}
+                                  alt={`Illustrasjon av ${currentWorkoutGroup.exerciseName}`}
+                                  className="h-full w-full object-cover"
+                                  loading="lazy"
+                                  decoding="async"
+                                />
+                              </div>
+                            ) : null}
                           </div>
                           {replacementCandidates.length > 0 && showReplacementOptions ? (
                             <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
