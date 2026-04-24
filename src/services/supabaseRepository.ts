@@ -8,6 +8,7 @@ import {
   type CreateMemberInput,
   type FinishWorkoutInput,
   type LogGroupWorkoutInput,
+  type RemoveWorkoutLogResultInput,
   type SaveProgramInput,
   type SaveExerciseInput,
   type ReplaceWorkoutExerciseGroupInput,
@@ -1113,6 +1114,14 @@ export const supabaseAppRepository: AppRepository = {
   },
   replaceWorkoutExerciseGroup(state: AppState, input: ReplaceWorkoutExerciseGroupInput): AppState {
     return localAppRepository.replaceWorkoutExerciseGroup(state, input);
+  },
+  removeWorkoutLogResult(state: AppState, input: RemoveWorkoutLogResultInput): AppState {
+    const nextState = localAppRepository.removeWorkoutLogResult(state, input);
+    const updatedLog = nextState.logs.find((log) => log.id === input.logId);
+    if (updatedLog) {
+      void persistWorkoutLog(updatedLog);
+    }
+    return nextState;
   },
   updateWorkoutNote(state: AppState, note: string): AppState {
     return localAppRepository.updateWorkoutNote(state, note);

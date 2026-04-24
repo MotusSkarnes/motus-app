@@ -33,6 +33,7 @@ type MemberPortalProps = {
     value: string | boolean,
   ) => void;
   replaceWorkoutExerciseGroup: (input: ReplaceWorkoutExerciseGroupInput) => void;
+  removeWorkoutLogResult: (input: { logId: string; exerciseId: string }) => void;
   updateWorkoutModeNote: (note: string) => void;
   finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
   logGroupWorkout: (input: { memberId: string; className: string; note?: string; reflection: WorkoutReflection }) => void;
@@ -114,7 +115,7 @@ export function MemberPortal(props: MemberPortalProps) {
     "Godt voksen",
     "Step styrke",
   ];
-  const { members, currentUserRole, currentUserEmail, currentUserMemberId, programs, logs, messages, memberViewId, memberTab, setMemberTab, updateMember, memberAvatarUrl, setMemberAvatarUrl, exercises, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, replaceWorkoutExerciseGroup, updateWorkoutModeNote, finishWorkoutMode, logGroupWorkout, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
+  const { members, currentUserRole, currentUserEmail, currentUserMemberId, programs, logs, messages, memberViewId, memberTab, setMemberTab, updateMember, memberAvatarUrl, setMemberAvatarUrl, exercises, sendMemberMessage, workoutMode, startWorkoutMode, updateWorkoutExerciseResult, replaceWorkoutExerciseGroup, removeWorkoutLogResult, updateWorkoutModeNote, finishWorkoutMode, logGroupWorkout, cancelWorkoutMode, workoutCelebration, dismissWorkoutCelebration } = props;
   const [messageText, setMessageText] = useState("");
   const [profileSessionsPerWeekTarget, setProfileSessionsPerWeekTarget] = useState("");
   const [profileDailyStepsTarget, setProfileDailyStepsTarget] = useState("");
@@ -139,6 +140,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [groupWorkoutStatus, setGroupWorkoutStatus] = useState<string | null>(null);
   const [showGroupWorkoutLogger, setShowGroupWorkoutLogger] = useState(false);
   const [showWorkoutReflection, setShowWorkoutReflection] = useState(false);
+  const [isSavingWorkout, setIsSavingWorkout] = useState(false);
   const [reflectionEnergyLevel, setReflectionEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [reflectionDifficultyLevel, setReflectionDifficultyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [reflectionMotivationLevel, setReflectionMotivationLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
@@ -1445,10 +1447,12 @@ export function MemberPortal(props: MemberPortalProps) {
       setWorkoutExerciseIndex(0);
       setLiveWorkoutCelebration(null);
       setShowWorkoutReflection(false);
+      setIsSavingWorkout(false);
       return;
     }
     setWorkoutExerciseIndex(0);
     setShowWorkoutReflection(false);
+    setIsSavingWorkout(false);
     setReflectionEnergyLevel(3);
     setReflectionDifficultyLevel(3);
     setReflectionMotivationLevel(3);
@@ -1565,6 +1569,12 @@ export function MemberPortal(props: MemberPortalProps) {
   function handleGoToNextWorkoutExercise() {
     maybeCelebrateCurrentWorkoutGroup();
     setWorkoutExerciseIndex((prev) => prev + 1);
+  }
+
+  function handleDeleteLoggedExercise(logId: string, exerciseId: string) {
+    const shouldDelete = window.confirm("Slette denne øvelsen fra treningsloggen?");
+    if (!shouldDelete) return;
+    removeWorkoutLogResult({ logId, exerciseId });
   }
 
   function handleWorkoutResultInputChange(
@@ -2266,7 +2276,16 @@ export function MemberPortal(props: MemberPortalProps) {
                             ) : (
                               (log.results ?? []).map((result, index) => (
                                 <div key={`${result.exerciseId}-${result.setNumber ?? 0}-${index}`} className="rounded-lg border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                  <div className="font-medium text-slate-800">{result.exerciseName}</div>
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="font-medium text-slate-800">{result.exerciseName}</div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteLoggedExercise(log.id, result.exerciseId)}
+                                      className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
+                                    >
+                                      Slett
+                                    </button>
+                                  </div>
                                   <div className="mt-1 text-xs text-slate-600">
                                     {result.exerciseCategory === "Kondisjon"
                                       ? `Utført: ${result.performedDurationMinutes || "0"} min${result.performedSpeed ? ` · ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` · ${result.performedIncline}% incline` : ""}`
@@ -2580,15 +2599,19 @@ export function MemberPortal(props: MemberPortalProps) {
                         ) : (
                           <GradientButton
                             className="flex-1"
+                            disabled={isSavingWorkout}
                             onClick={() => {
                               if (!showWorkoutReflection) {
                                 setShowWorkoutReflection(true);
                                 return;
                               }
+                              if (isSavingWorkout) return;
+                              setIsSavingWorkout(true);
                               finishWorkoutMode({ reflection: buildWorkoutReflection() });
+                              window.setTimeout(() => setIsSavingWorkout(false), 600);
                             }}
                           >
-                            {showWorkoutReflection ? "Lagre økt" : "Til oppsummering"}
+                            {showWorkoutReflection ? (isSavingWorkout ? "Lagrer..." : "Lagre økt") : "Til oppsummering"}
                           </GradientButton>
                         )}
                       </div>

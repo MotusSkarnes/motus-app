@@ -91,6 +91,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     startWorkoutMode: state.startWorkoutMode,
     updateWorkoutExerciseResult: state.updateWorkoutExerciseResult,
     replaceWorkoutExerciseGroup: state.replaceWorkoutExerciseGroup,
+    removeWorkoutLogResult: state.removeWorkoutLogResult,
     updateWorkoutModeNote: state.updateWorkoutModeNote,
     finishWorkoutMode: state.finishWorkoutMode,
     logGroupWorkout: state.logGroupWorkout,

@@ -45,6 +45,11 @@ export type ReplaceWorkoutExerciseGroupInput = {
   nextExerciseName: string;
 };
 
+export type RemoveWorkoutLogResultInput = {
+  logId: string;
+  exerciseId: string;
+};
+
 export type SaveExerciseInput = {
   id?: string;
   name: string;
@@ -73,6 +78,7 @@ export interface AppRepository {
   startWorkoutMode(state: AppState, programId: string, options?: StartWorkoutModeOptions): AppState;
   updateWorkoutResult(state: AppState, input: UpdateWorkoutResultInput): AppState;
   replaceWorkoutExerciseGroup(state: AppState, input: ReplaceWorkoutExerciseGroupInput): AppState;
+  removeWorkoutLogResult(state: AppState, input: RemoveWorkoutLogResultInput): AppState;
   updateWorkoutNote(state: AppState, note: string): AppState;
   cancelWorkoutMode(state: AppState): AppState;
   finishWorkoutMode(state: AppState, input?: FinishWorkoutInput): AppState;
@@ -344,6 +350,16 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
     }
   });
 
+  const seenResultKeys = new Set<string>();
+  const deduplicatedResults = current.results.filter((result) => {
+    const dedupeKey = `${result.programExerciseId || result.exerciseName.trim().toLowerCase()}::${result.setNumber ?? 0}`;
+    if (seenResultKeys.has(dedupeKey)) {
+      return false;
+    }
+    seenResultKeys.add(dedupeKey);
+    return true;
+  });
+
   return {
     ...state,
     logs: [
@@ -355,7 +371,7 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
         status: "Fullført",
         note: current.note,
         reflection: input?.reflection,
-        results: current.results,
+        results: deduplicatedResults,
       },
       ...state.logs,
     ],
@@ -383,6 +399,23 @@ export function logGroupWorkoutInState(state: AppState, input: LogGroupWorkoutIn
       },
       ...state.logs,
     ],
+  };
+}
+
+export function removeWorkoutLogResultInState(state: AppState, input: RemoveWorkoutLogResultInput): AppState {
+  const logId = input.logId.trim();
+  const exerciseId = input.exerciseId.trim();
+  if (!logId || !exerciseId) return state;
+  return {
+    ...state,
+    logs: state.logs.map((log) => {
+      if (log.id !== logId) return log;
+      const nextResults = (log.results ?? []).filter((result) => result.exerciseId !== exerciseId);
+      return {
+        ...log,
+        results: nextResults,
+      };
+    }),
   };
 }
 
@@ -473,6 +506,7 @@ export const localAppRepository: AppRepository = {
   startWorkoutMode: (state, programId, options) => startWorkoutModeInState(state, programId, options),
   updateWorkoutResult: (state, input) => updateWorkoutResultInState(state, input.exerciseId, input.field, input.value),
   replaceWorkoutExerciseGroup: (state, input) => replaceWorkoutExerciseGroupInState(state, input),
+  removeWorkoutLogResult: (state, input) => removeWorkoutLogResultInState(state, input),
   updateWorkoutNote: updateWorkoutNoteInState,
   cancelWorkoutMode: cancelWorkoutModeInState,
   finishWorkoutMode: finishWorkoutModeInState,
