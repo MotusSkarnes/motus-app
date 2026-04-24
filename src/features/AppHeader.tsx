@@ -11,6 +11,7 @@ export function AppHeader({
   onSwitchRole,
   onResetData,
   onLogout,
+  onOpenMemberProfile,
 }: {
   currentUser: AuthUser;
   role: Role;
@@ -18,6 +19,7 @@ export function AppHeader({
   onSwitchRole: (role: Role) => void;
   onResetData: () => void;
   onLogout: () => void;
+  onOpenMemberProfile?: () => void;
 }) {
   const memberFirstName = useMemo(() => {
     const rawName = currentUser.name?.trim() ?? "";
@@ -54,7 +56,31 @@ export function AppHeader({
           <div>
             {currentUser.role === "member" ? (
               <>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Hei {memberFirstName}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Hei {memberFirstName}</h1>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => onOpenMemberProfile?.()}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white text-sm md:h-9 md:w-9 md:text-base"
+                      style={{ borderColor: "rgba(15,23,42,0.12)" }}
+                      aria-label="Åpne profil"
+                      title="Profil"
+                    >
+                      👤
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onLogout}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white text-sm md:h-9 md:w-9 md:text-base"
+                      style={{ borderColor: "rgba(15,23,42,0.12)" }}
+                      aria-label="Logg ut"
+                      title="Logg ut"
+                    >
+                      🚪
+                    </button>
+                  </div>
+                </div>
                 <p className="mt-2 text-sm md:text-base text-slate-500 max-w-3xl">{memberMotivationText}</p>
               </>
             ) : (
@@ -81,7 +107,7 @@ export function AppHeader({
         ) : null}
         <div className="flex flex-col gap-2 sm:flex-row">
           {showQuickLogin ? <OutlineButton onClick={onResetData}>Nullstill testdata</OutlineButton> : null}
-          <OutlineButton onClick={onLogout}>Logg ut</OutlineButton>
+          {currentUser.role !== "member" ? <OutlineButton onClick={onLogout}>Logg ut</OutlineButton> : null}
         </div>
       </div>
     </Card>

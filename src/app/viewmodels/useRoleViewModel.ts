@@ -46,6 +46,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     onSwitchRole: (role) => state.patchState({ role }),
     onResetData: handleResetData,
     onLogout: state.handleLogout,
+    onOpenMemberProfile: () => state.setMemberTab("profile"),
   });
 
   const trainerLayoutProps: ComponentProps<typeof TrainerLayout> = buildTrainerLayoutProps({
