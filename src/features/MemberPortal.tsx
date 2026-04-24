@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ClipboardList, MessageSquare, Target, TrendingUp, UserCircle2 } from "lucide-react";
+import { ClipboardList, MessageSquare, Repeat2, Target, TrendingUp, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
@@ -2563,12 +2563,13 @@ export function MemberPortal(props: MemberPortalProps) {
                                   <button
                                     type="button"
                                     onClick={() => setShowReplacementOptions((prev) => !prev)}
-                                    className="rounded-full border bg-white px-2 py-0.5 text-sm transition hover:bg-slate-100"
-                                    style={{ borderColor: "rgba(15,23,42,0.12)" }}
+                                    className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm transition hover:opacity-90"
+                                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
                                     aria-label="Bytt øvelse"
                                     title="Bytt øvelse"
                                   >
-                                    🔁
+                                    <Repeat2 className="h-3.5 w-3.5" />
+                                    Bytt
                                   </button>
                                 ) : null}
                               </div>
@@ -2602,8 +2603,12 @@ export function MemberPortal(props: MemberPortalProps) {
                                     key={exercise.id}
                                     type="button"
                                     onClick={() => handleReplaceCurrentWorkoutExercise(exercise.id)}
-                                    className="w-full rounded-lg border bg-white px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50"
-                                    style={{ borderColor: "rgba(15,23,42,0.12)" }}
+                                    className="w-full rounded-lg border px-3 py-2 text-left text-xs font-medium transition hover:opacity-90"
+                                    style={{
+                                      borderColor: "rgba(20,184,166,0.35)",
+                                      color: MOTUS.ink,
+                                      background: "linear-gradient(135deg, rgba(20,184,166,0.10) 0%, rgba(236,72,153,0.10) 100%)",
+                                    }}
                                   >
                                     {exercise.name} · {exercise.group}
                                   </button>
