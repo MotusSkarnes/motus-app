@@ -178,6 +178,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [intervalTimerStatus, setIntervalTimerStatus] = useState<string | null>(null);
   const hasInitializedAchievementTracking = useRef(false);
   const workoutWeightInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const memberMessagesContainerRef = useRef<HTMLDivElement | null>(null);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const nowDate = new Date();
@@ -1037,6 +1038,12 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!shouldShowCelebration && !achievementCelebration) return;
     playCelebrationSound();
   }, [shouldShowCelebration, achievementCelebration?.id, microCelebrationsEnabled, celebrationSoundEnabled]);
+  useEffect(() => {
+    if (memberTab !== "messages") return;
+    const container = memberMessagesContainerRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
+  }, [memberTab, memberMessages.length]);
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -2978,7 +2985,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               <div className="mt-5 space-y-4">
-                <div className="max-h-64 space-y-3 overflow-auto rounded-2xl border bg-slate-50 p-4">
+                <div ref={memberMessagesContainerRef} className="max-h-64 space-y-3 overflow-auto rounded-2xl border bg-slate-50 p-4">
                   {memberMessages.length === 0 ? (
                     <div className="rounded-xl border border-dashed bg-white p-4 text-sm text-slate-500">
                       Ingen meldinger ennå. Skriv en kort status til trener, så holder dere kontakten.
