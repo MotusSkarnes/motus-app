@@ -1,7 +1,8 @@
 import { useMemo } from "react";
+import { LogOut, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { AuthUser, Role } from "../app/types";
-import { Badge, Card, OutlineButton, PillButton } from "../app/ui";
+import { Card, OutlineButton, PillButton } from "../app/ui";
 import motusLogo from "../assets/motus-logo.png";
 
 export function AppHeader({
@@ -48,39 +49,37 @@ export function AppHeader({
       />
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center justify-between gap-3">
             <img src={motusLogo} alt="Motus logo" className="h-14 w-auto object-contain" />
-            <Badge>{currentUser.role === "trainer" ? "PT" : "Medlem"}</Badge>
-            <Badge>{currentUser.name}</Badge>
+            {currentUser.role === "member" ? (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onOpenMemberProfile?.()}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white md:h-9 md:w-9"
+                  style={{ borderColor: MOTUS.turquoise, color: MOTUS.turquoise }}
+                  aria-label="Åpne profil"
+                  title="Profil"
+                >
+                  <UserCircle2 className="h-4 w-4 md:h-5 md:w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white md:h-9 md:w-9"
+                  style={{ borderColor: MOTUS.pink, color: MOTUS.pink }}
+                  aria-label="Logg ut"
+                  title="Logg ut"
+                >
+                  <LogOut className="h-4 w-4 md:h-5 md:w-5" />
+                </button>
+              </div>
+            ) : null}
           </div>
           <div>
             {currentUser.role === "member" ? (
               <>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Hei {memberFirstName}</h1>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => onOpenMemberProfile?.()}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white text-sm md:h-9 md:w-9 md:text-base"
-                      style={{ borderColor: "rgba(15,23,42,0.12)" }}
-                      aria-label="Åpne profil"
-                      title="Profil"
-                    >
-                      👤
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onLogout}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white text-sm md:h-9 md:w-9 md:text-base"
-                      style={{ borderColor: "rgba(15,23,42,0.12)" }}
-                      aria-label="Logg ut"
-                      title="Logg ut"
-                    >
-                      🚪
-                    </button>
-                  </div>
-                </div>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Hei {memberFirstName}</h1>
                 <p className="mt-2 text-sm md:text-base text-slate-500 max-w-3xl">{memberMotivationText}</p>
               </>
             ) : (
