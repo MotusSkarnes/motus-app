@@ -122,6 +122,8 @@ export function MemberPortal(props: MemberPortalProps) {
   const [profileDailyStepsTarget, setProfileDailyStepsTarget] = useState("");
   const [profileTargetWeight, setProfileTargetWeight] = useState("");
   const [profileCurrentDailySteps, setProfileCurrentDailySteps] = useState("");
+  const [microCelebrationsEnabled, setMicroCelebrationsEnabled] = useState(true);
+  const [celebrationSoundEnabled, setCelebrationSoundEnabled] = useState(false);
   const [goalMetricDraft, setGoalMetricDraft] = useState<"sessionsPerWeek" | "dailySteps" | "targetWeight">("sessionsPerWeek");
   const [goalMetricValueDraft, setGoalMetricValueDraft] = useState("");
   const [profileSaveInfo, setProfileSaveInfo] = useState<string | null>(null);
@@ -878,10 +880,40 @@ export function MemberPortal(props: MemberPortalProps) {
       .slice(0, 5);
   }, [completedLogs, latestCompletedLog]);
   const activeCelebration = liveWorkoutCelebration ?? workoutCelebration;
-  const shouldShowCelebration = Boolean(activeCelebration && activeCelebration.memberId === activeMemberId);
+  const shouldShowCelebration = Boolean(
+    microCelebrationsEnabled && activeCelebration && activeCelebration.memberId === activeMemberId
+  );
 
   function getProfileStorageKey(memberId: string): string {
     return `motus.member.profile.${memberId}`;
+  }
+  function getUiPreferencesStorageKey(memberId: string): string {
+    return `motus.member.uiPrefs.${memberId}`;
+  }
+  function playCelebrationSound() {
+    if (typeof window === "undefined" || !celebrationSoundEnabled) return;
+    const AudioCtx = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const context = new AudioCtx();
+    const nowTime = context.currentTime;
+    const tones = [523.25, 659.25, 783.99];
+    tones.forEach((frequency, index) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "triangle";
+      oscillator.frequency.setValueAtTime(frequency, nowTime);
+      gain.gain.setValueAtTime(0.0001, nowTime);
+      const start = nowTime + index * 0.08;
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      gain.gain.exponentialRampToValueAtTime(0.08, start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.17);
+      oscillator.start(start);
+      oscillator.stop(start + 0.2);
+    });
+    window.setTimeout(() => {
+      void context.close();
+    }, 400);
   }
   function formatSeconds(seconds: number): string {
     const safe = Math.max(0, Math.floor(seconds));
@@ -972,6 +1004,39 @@ export function MemberPortal(props: MemberPortalProps) {
     }, 8000);
     return () => window.clearTimeout(timer);
   }, [profileSaveInfo]);
+  useEffect(() => {
+    if (!editableMember || typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(getUiPreferencesStorageKey(editableMember.id));
+      if (!raw) {
+        setMicroCelebrationsEnabled(true);
+        setCelebrationSoundEnabled(false);
+        return;
+      }
+      const parsed = JSON.parse(raw) as {
+        microCelebrationsEnabled?: boolean;
+        celebrationSoundEnabled?: boolean;
+      };
+      setMicroCelebrationsEnabled(parsed.microCelebrationsEnabled !== false);
+      setCelebrationSoundEnabled(parsed.celebrationSoundEnabled === true);
+    } catch {
+      setMicroCelebrationsEnabled(true);
+      setCelebrationSoundEnabled(false);
+    }
+  }, [editableMember?.id]);
+  useEffect(() => {
+    if (!editableMember || typeof window === "undefined") return;
+    const payload = JSON.stringify({
+      microCelebrationsEnabled,
+      celebrationSoundEnabled,
+    });
+    window.localStorage.setItem(getUiPreferencesStorageKey(editableMember.id), payload);
+  }, [editableMember?.id, microCelebrationsEnabled, celebrationSoundEnabled]);
+  useEffect(() => {
+    if (!microCelebrationsEnabled) return;
+    if (!shouldShowCelebration && !achievementCelebration) return;
+    playCelebrationSound();
+  }, [shouldShowCelebration, achievementCelebration?.id, microCelebrationsEnabled, celebrationSoundEnabled]);
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -2084,7 +2149,7 @@ export function MemberPortal(props: MemberPortalProps) {
               </div>
             </div>
           ) : null}
-          {achievementCelebration ? (
+          {microCelebrationsEnabled && achievementCelebration ? (
             <div className="fixed inset-0 z-[10030] bg-slate-900/35 p-4">
               <div className="motus-pop-in mx-auto mt-20 max-w-sm rounded-3xl border bg-white p-5 text-center shadow-2xl" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-3xl">🎉</div>
@@ -2681,8 +2746,9 @@ export function MemberPortal(props: MemberPortalProps) {
                                         }}
                                         value={row.performedWeight}
                                         onChange={(e) => handleWorkoutResultInputChange(row, "performedWeight", e.target.value, index, currentWorkoutGroup.rows)}
+                                        onFocus={(event) => event.currentTarget.select()}
                                         placeholder="0"
-                                        className={isCompactSetView ? "h-9 text-xs" : ""}
+                                        className={`${isCompactSetView ? "h-9 text-xs" : ""} ${row.performedWeight === row.plannedWeight ? "text-slate-400" : "text-slate-800"}`}
                                       />
                                     </div>
                                     <div className="space-y-1">
@@ -2690,8 +2756,9 @@ export function MemberPortal(props: MemberPortalProps) {
                                       <TextInput
                                         value={row.performedReps}
                                         onChange={(e) => handleWorkoutResultInputChange(row, "performedReps", e.target.value, index, currentWorkoutGroup.rows)}
+                                        onFocus={(event) => event.currentTarget.select()}
                                         placeholder="0"
-                                        className={isCompactSetView ? "h-9 text-xs" : ""}
+                                        className={`${isCompactSetView ? "h-9 text-xs" : ""} ${row.performedReps === row.plannedReps ? "text-slate-400" : "text-slate-800"}`}
                                       />
                                     </div>
                                   </div>
@@ -3029,6 +3096,26 @@ export function MemberPortal(props: MemberPortalProps) {
                       <div className="rounded-xl border bg-white p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>Målvekt: {profileTargetWeight ? `${profileTargetWeight} kg` : "Ikke satt"}</div>
                     </div>
                     <TextInput value={profileCurrentDailySteps} onChange={(e) => setProfileCurrentDailySteps(e.target.value)} placeholder="Dagens skritt (for målstatus)" />
+                  </div>
+                  <div className="rounded-2xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="text-sm font-semibold text-slate-700">Mikro-feiringer</div>
+                    <label className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <span>Vis små feiringer for PR/streak</span>
+                      <input
+                        type="checkbox"
+                        checked={microCelebrationsEnabled}
+                        onChange={(e) => setMicroCelebrationsEnabled(e.target.checked)}
+                      />
+                    </label>
+                    <label className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <span>Spill av feiringslyd</span>
+                      <input
+                        type="checkbox"
+                        checked={celebrationSoundEnabled}
+                        onChange={(e) => setCelebrationSoundEnabled(e.target.checked)}
+                        disabled={!microCelebrationsEnabled}
+                      />
+                    </label>
                   </div>
                   <GradientButton onClick={saveProfile} className="w-full md:w-auto">Lagre min profil</GradientButton>
                   {profileSaveInfo ? (
