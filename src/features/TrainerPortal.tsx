@@ -1592,6 +1592,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
   function startEditExercise(exercise: Exercise) {
     setEditingExerciseId(exercise.id);
+    setExpandedExerciseId(exercise.id);
     setExerciseFormName(exercise.name);
     setExerciseFormCategory(exercise.category);
     setExerciseFormGroup(exercise.group);
@@ -3762,6 +3763,43 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     {expandedExerciseId === exercise.id ? (
                       <div className="mt-2 text-sm text-slate-700">
                         {exercise.description}
+                      </div>
+                    ) : null}
+                    {editingExerciseId === exercise.id ? (
+                      <div className="mt-3 rounded-xl border bg-white p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.10)" }}>
+                        <div className="text-xs font-semibold text-slate-600">Rediger øvelse her</div>
+                        <TextInput value={exerciseFormName} onChange={(e) => setExerciseFormName(e.target.value)} placeholder="Navn på øvelse" />
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <SelectBox
+                            value={exerciseFormCategory}
+                            onChange={(value) => setExerciseFormCategory(value as Exercise["category"])}
+                            options={["Styrke", "Kondisjon", "Uttøyning"]}
+                          />
+                          <SelectBox
+                            value={exerciseFormLevel}
+                            onChange={(value) => setExerciseFormLevel(value as Exercise["level"])}
+                            options={["Nybegynner", "Litt øvet", "Øvet"]}
+                          />
+                        </div>
+                        <SelectBox
+                          value={exerciseFormGroup}
+                          onChange={setExerciseFormGroup}
+                          options={[
+                            { value: "", label: "Velg muskelgruppe / fokusområde" },
+                            ...exerciseFormGroupOptions.map((group) => ({ value: group, label: group })),
+                          ]}
+                        />
+                        <TextInput value={exerciseFormEquipment} onChange={(e) => setExerciseFormEquipment(e.target.value)} placeholder="Utstyr (f.eks. stang, manualer, kroppsvekt)" />
+                        <TextInput value={exerciseFormImageUrl} onChange={(e) => setExerciseFormImageUrl(e.target.value)} placeholder="Bilde-URL (valgfritt)" />
+                        <TextArea value={exerciseFormDescription} onChange={(e) => setExerciseFormDescription(e.target.value)} className="min-h-[90px]" placeholder="Forklaring av teknikk og utførelse" />
+                        <div className="flex gap-2">
+                          <GradientButton onClick={submitExerciseForm} className="w-full">
+                            Lagre endring
+                          </GradientButton>
+                          <OutlineButton onClick={resetExerciseForm} className="w-full">
+                            Avbryt
+                          </OutlineButton>
+                        </div>
                       </div>
                     ) : null}
                   </div>
