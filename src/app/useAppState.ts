@@ -256,7 +256,10 @@ export function useAppState() {
                   member.id === localMember.id || member.email.trim().toLowerCase() === localMember.email.trim().toLowerCase()
               );
               if (remoteIndex >= 0) {
-                mergedMembers = mergedMembers.map((member, index) => (index === remoteIndex ? { ...member, ...localMember } : member));
+                // Remote must win over stale per-device localStorage so profile edits sync across phone/PC.
+                mergedMembers = mergedMembers.map((member, index) =>
+                  index === remoteIndex ? { ...localMember, ...member } : member,
+                );
               } else {
                 mergedMembers = [...mergedMembers, localMember];
               }
