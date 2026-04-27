@@ -122,6 +122,8 @@ export type TrainingProgram = {
   notes: string;
   createdAt: string;
   exercises: ProgramExercise[];
+  /** Not persisted; removed after økt fullføres eller avbrytes. */
+  ephemeral?: boolean;
 };
 
 export type WorkoutLog = {
@@ -141,6 +143,26 @@ export type ChatMessage = {
   sender: "trainer" | "member";
   text: string;
   createdAt: string;
+};
+
+export type WeekdayPlanKey = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+
+export type WeeklyDayPlan = Record<WeekdayPlanKey, string>;
+
+export type WeeklySchedulePlan = {
+  id: string;
+  weekNumber: number;
+  days: WeeklyDayPlan;
+};
+
+export type PeriodSchedulePlan = {
+  id: string;
+  title: string;
+  notes: string;
+  startDate: string;
+  weeks: number;
+  createdAt: string;
+  weeklyPlans: WeeklySchedulePlan[];
 };
 
 export type AppState = {

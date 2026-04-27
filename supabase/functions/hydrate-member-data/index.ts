@@ -67,6 +67,8 @@ Deno.serve(async (req) => {
       programs: [],
       logs: [],
       messages: [],
+      periodPlans: [],
+      exercises: [],
     });
   }
 
@@ -86,6 +88,31 @@ Deno.serve(async (req) => {
     .in("member_id", memberIds)
     .order("created_at", { ascending: true });
 
+  let periodPlans: Array<{ member_id: string; plan: unknown }> = [];
+  const { data: periodRows, error: periodPlansError } = await adminClient
+    .from("member_period_plans")
+    .select("member_id, plan")
+    .in("member_id", memberIds);
+  if (periodPlansError) {
+    console.warn("hydrate-member-data: member_period_plans query failed (table may be missing):", periodPlansError.message);
+  } else {
+    periodPlans = (periodRows ?? []).map((row) => ({
+      member_id: String((row as { member_id?: string }).member_id ?? ""),
+      plan: (row as { plan?: unknown }).plan,
+    }));
+  }
+
+  let exercises: Array<Record<string, unknown>> = [];
+  const { data: exerciseRows, error: exercisesError } = await adminClient
+    .from("exercise_bank")
+    .select("id, name, category, muscle_group, equipment, level, description, image_url")
+    .order("name", { ascending: true });
+  if (exercisesError) {
+    console.warn("hydrate-member-data: exercise_bank query failed:", exercisesError.message);
+  } else {
+    exercises = (exerciseRows ?? []) as Array<Record<string, unknown>>;
+  }
+
   const firstError = programsError ?? logsError ?? messagesError;
   if (firstError) {
     return jsonResponse(500, { error: firstError.message });
@@ -96,5 +123,7 @@ Deno.serve(async (req) => {
     programs: programs ?? [],
     logs: logs ?? [],
     messages: messages ?? [],
+    periodPlans,
+    exercises,
   });
 });

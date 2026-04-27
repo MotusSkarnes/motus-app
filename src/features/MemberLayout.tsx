@@ -21,6 +21,7 @@ type MemberLayoutProps = {
   setCurrentMemberAvatarUrl: (url: string) => void;
   sendMemberMessage: ComponentProps<typeof MemberPortal>["sendMemberMessage"];
   startWorkoutMode: ComponentProps<typeof MemberPortal>["startWorkoutMode"];
+  startCustomWorkout: ComponentProps<typeof MemberPortal>["startCustomWorkout"];
   updateWorkoutExerciseResult: ComponentProps<typeof MemberPortal>["updateWorkoutExerciseResult"];
   replaceWorkoutExerciseGroup: ComponentProps<typeof MemberPortal>["replaceWorkoutExerciseGroup"];
   removeWorkoutLogResult: ComponentProps<typeof MemberPortal>["removeWorkoutLogResult"];
@@ -35,6 +36,7 @@ type MemberLayoutProps = {
   memberVisibleAlerts: MemberAlert[];
   handleMemberBellToggle: () => void;
   openAlert: (alert: MemberAlert) => void;
+  remoteMemberPeriodPlanRows: ComponentProps<typeof MemberPortal>["remoteMemberPeriodPlanRows"];
 };
 
 const mobileTabs: Array<{ id: MemberTab; label: string; icon: LucideIcon }> = [
@@ -53,6 +55,7 @@ export function MemberLayout({
   setCurrentMemberAvatarUrl,
   sendMemberMessage,
   startWorkoutMode,
+  startCustomWorkout,
   updateWorkoutExerciseResult,
   replaceWorkoutExerciseGroup,
   removeWorkoutLogResult,
@@ -67,6 +70,7 @@ export function MemberLayout({
   memberVisibleAlerts,
   handleMemberBellToggle,
   openAlert,
+  remoteMemberPeriodPlanRows,
 }: MemberLayoutProps) {
   const memberPortalProps: ComponentProps<typeof MemberPortal> = {
     members: appState.members,
@@ -86,6 +90,7 @@ export function MemberLayout({
     sendMemberMessage,
     workoutMode: appState.workoutMode,
     startWorkoutMode,
+    startCustomWorkout,
     updateWorkoutExerciseResult,
     replaceWorkoutExerciseGroup,
     removeWorkoutLogResult,
@@ -96,6 +101,7 @@ export function MemberLayout({
     cancelWorkoutMode,
     workoutCelebration: appState.workoutCelebration,
     dismissWorkoutCelebration,
+    remoteMemberPeriodPlanRows,
   };
   return (
     <>
@@ -148,7 +154,7 @@ export function MemberLayout({
       </div>
 
       <div
-        className="fixed inset-x-0 bottom-0 z-[9999] border-t bg-white/95 px-2 pt-2 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-[9999] border-t bg-white/95 px-2 pt-2 backdrop-blur lg:hidden"
         style={{ borderColor: "rgba(15,23,42,0.08)", paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))" }}
       >
         <div

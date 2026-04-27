@@ -79,6 +79,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     trainerMessageAlerts,
     handleTrainerBellToggle,
     isLocalDemoSession: state.isLocalDemoSession,
+    remoteTrainerPeriodPlansByMemberId: state.remoteTrainerPeriodPlansByMemberId,
   });
 
   const memberLayoutProps: ComponentProps<typeof MemberLayout> = buildMemberLayoutProps({
@@ -90,6 +91,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     setCurrentMemberAvatarUrl,
     sendMemberMessage: state.sendMemberMessage,
     startWorkoutMode: state.startWorkoutMode,
+    startCustomWorkout: state.startCustomWorkout,
     updateWorkoutExerciseResult: state.updateWorkoutExerciseResult,
     replaceWorkoutExerciseGroup: state.replaceWorkoutExerciseGroup,
     removeWorkoutLogResult: state.removeWorkoutLogResult,
@@ -104,6 +106,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     memberVisibleAlerts,
     handleMemberBellToggle,
     openAlert,
+    remoteMemberPeriodPlanRows: state.remoteMemberPeriodPlanRows,
   });
 
   return {
