@@ -33,6 +33,11 @@ export type StartWorkoutModeOptions = {
   suggestedWeightByProgramExerciseId?: Record<string, string>;
 };
 
+export type StartCustomWorkoutInput = {
+  memberId: string;
+  exercises: ProgramExercise[];
+};
+
 export type LogGroupWorkoutInput = {
   memberId: string;
   className: string;
@@ -81,6 +86,7 @@ export interface AppRepository {
   appendTrainerMessage(state: AppState, memberId: string, text: string): AppState;
   appendMemberMessage(state: AppState, memberId: string, text: string): AppState;
   startWorkoutMode(state: AppState, programId: string, options?: StartWorkoutModeOptions): AppState;
+  startCustomWorkout(state: AppState, input: StartCustomWorkoutInput, options?: StartWorkoutModeOptions): AppState;
   updateWorkoutResult(state: AppState, input: UpdateWorkoutResultInput): AppState;
   replaceWorkoutExerciseGroup(state: AppState, input: ReplaceWorkoutExerciseGroupInput): AppState;
   removeWorkoutLogResult(state: AppState, input: RemoveWorkoutLogResultInput): AppState;
@@ -306,7 +312,12 @@ export function updateWorkoutNoteInState(state: AppState, note: string): AppStat
 }
 
 export function cancelWorkoutModeInState(state: AppState): AppState {
-  return { ...state, workoutMode: null };
+  if (!state.workoutMode) {
+    return { ...state, workoutMode: null };
+  }
+  const program = state.programs.find((p) => p.id === state.workoutMode.programId);
+  const programs = program?.ephemeral ? state.programs.filter((p) => p.id !== program.id) : state.programs;
+  return { ...state, programs, workoutMode: null };
 }
 
 export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutInput): AppState {
@@ -366,8 +377,12 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
     return true;
   });
 
+  const programsAfter =
+    program.ephemeral === true ? state.programs.filter((p) => p.id !== program.id) : state.programs;
+
   return {
     ...state,
+    programs: programsAfter,
     logs: [
       {
         id: uid("log"),
@@ -384,6 +399,32 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
     workoutMode: null,
     workoutCelebration: bestCelebration,
   };
+}
+
+export function startCustomWorkoutInState(
+  state: AppState,
+  input: StartCustomWorkoutInput,
+  options?: StartWorkoutModeOptions,
+): AppState {
+  const memberId = input.memberId.trim();
+  if (!memberId || !input.exercises.length) return state;
+  const programId = uid("program");
+  const exercises = input.exercises.map((exercise) => ({
+    ...exercise,
+    id: exercise.id?.trim() ? exercise.id : uid("prog-ex"),
+  }));
+  const newProgram: TrainingProgram = {
+    id: programId,
+    memberId,
+    title: "Egen økt",
+    goal: "",
+    notes: "",
+    createdAt: formatDateDdMmYyyy(new Date()),
+    exercises,
+    ephemeral: true,
+  };
+  const withProgram: AppState = { ...state, programs: [newProgram, ...state.programs] };
+  return startWorkoutModeInState(withProgram, programId, options);
 }
 
 export function logGroupWorkoutInState(state: AppState, input: LogGroupWorkoutInput): AppState {
@@ -519,6 +560,7 @@ export const localAppRepository: AppRepository = {
   appendTrainerMessage,
   appendMemberMessage,
   startWorkoutMode: (state, programId, options) => startWorkoutModeInState(state, programId, options),
+  startCustomWorkout: (state, input, options) => startCustomWorkoutInState(state, input, options),
   updateWorkoutResult: (state, input) => updateWorkoutResultInState(state, input.exerciseId, input.field, input.value),
   replaceWorkoutExerciseGroup: (state, input) => replaceWorkoutExerciseGroupInState(state, input),
   removeWorkoutLogResult: (state, input) => removeWorkoutLogResultInState(state, input),
