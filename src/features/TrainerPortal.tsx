@@ -1500,6 +1500,16 @@ export function TrainerPortal(props: TrainerPortalProps) {
     const {
       data: { session },
     } = await supabaseClient.auth.getSession();
+    const fromSessionUser = session?.user?.id?.trim?.() ?? "";
+    if (fromSessionUser) return fromSessionUser;
+
+    const {
+      data: { user },
+      error,
+    } = await supabaseClient.auth.getUser();
+    const fromUser = user?.id?.trim?.() ?? "";
+    if (!error && fromUser) return fromUser;
+
     const token = session?.access_token ?? "";
     if (!token) return "";
     try {
