@@ -65,6 +65,7 @@ type MemberPortalProps = {
 const MEMBER_AVATAR_BUCKET = "exercise-images";
 const MEMBER_AVATAR_PREFIX = "member-avatars";
 const PERIOD_PLANS_STORAGE_KEY = "motus.trainer.periodPlansByMemberId";
+const EMPTY_REMOTE_PERIOD_PLAN_ROWS: Array<{ memberId: string; plan: PeriodSchedulePlan }> = [];
 
 function encodeEmailForPath(email: string): string {
   const normalized = email.trim().toLowerCase();
@@ -148,7 +149,7 @@ export function MemberPortal(props: MemberPortalProps) {
     cancelWorkoutMode,
     workoutCelebration,
     dismissWorkoutCelebration,
-    remoteMemberPeriodPlanRows = [],
+    remoteMemberPeriodPlanRows = EMPTY_REMOTE_PERIOD_PLAN_ROWS,
   } = props;
   const [messageText, setMessageText] = useState("");
   const [profileSessionsPerWeekTarget, setProfileSessionsPerWeekTarget] = useState("");
