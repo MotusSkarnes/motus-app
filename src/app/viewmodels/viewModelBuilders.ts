@@ -50,6 +50,7 @@ export function buildTrainerLayoutProps(input: {
   trainerMessageAlerts: TrainerLayoutProps["trainerMessageAlerts"];
   handleTrainerBellToggle: () => void;
   isLocalDemoSession: boolean;
+  remoteTrainerPeriodPlansByMemberId: TrainerLayoutProps["remoteTrainerPeriodPlansByMemberId"];
 }): TrainerLayoutProps {
   return input;
 }
@@ -63,6 +64,7 @@ export function buildMemberLayoutProps(input: {
   setCurrentMemberAvatarUrl: (url: string) => void;
   sendMemberMessage: MemberLayoutProps["sendMemberMessage"];
   startWorkoutMode: MemberLayoutProps["startWorkoutMode"];
+  startCustomWorkout: MemberLayoutProps["startCustomWorkout"];
   updateWorkoutExerciseResult: MemberLayoutProps["updateWorkoutExerciseResult"];
   replaceWorkoutExerciseGroup: MemberLayoutProps["replaceWorkoutExerciseGroup"];
   removeWorkoutLogResult: MemberLayoutProps["removeWorkoutLogResult"];
@@ -77,6 +79,7 @@ export function buildMemberLayoutProps(input: {
   memberVisibleAlerts: MemberLayoutProps["memberVisibleAlerts"];
   handleMemberBellToggle: () => void;
   openAlert: MemberLayoutProps["openAlert"];
+  remoteMemberPeriodPlanRows: MemberLayoutProps["remoteMemberPeriodPlanRows"];
 }): MemberLayoutProps {
   return input;
 }

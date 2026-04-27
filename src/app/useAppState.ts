@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
-import { localAppRepository, type CreateMemberInput, type FinishWorkoutInput, type LogGroupWorkoutInput, type RemoveWorkoutLogResultInput, type ReplaceWorkoutExerciseGroupInput, type SaveExerciseInput, type SaveProgramInput, type SetWorkoutLogResultsInput, type StartWorkoutModeOptions, type UpdateMemberInput } from "../services/appRepository";
+import { localAppRepository, type CreateMemberInput, type FinishWorkoutInput, type LogGroupWorkoutInput, type RemoveWorkoutLogResultInput, type ReplaceWorkoutExerciseGroupInput, type SaveExerciseInput, type SaveProgramInput, type SetWorkoutLogResultsInput, type StartCustomWorkoutInput, type StartWorkoutModeOptions, type UpdateMemberInput } from "../services/appRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { fetchExercisesFromSupabase, fetchHydratedMemberData, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
 import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, inviteTrainerByEmail, refreshSupabaseSessionUser, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult, type InviteTrainerResult } from "../services/supabaseAuth";
-import type { AppState, Exercise, MemberTab, TrainerTab } from "./types";
+import type { AppState, AuthUser, Exercise, MemberTab, PeriodSchedulePlan, TrainerTab } from "./types";
 
 function syncExercisesWithPrograms(state: AppState): AppState {
   const exercisesById = new Map(state.exercises.map((exercise) => [exercise.id, exercise]));
@@ -78,6 +78,12 @@ export function useAppState() {
   const [trainerTab, setTrainerTab] = useState<TrainerTab>("dashboard");
   const [memberTab, setMemberTab] = useState<MemberTab>("overview");
   const [isLocalDemoSession, setIsLocalDemoSession] = useState(false);
+  const [remoteTrainerPeriodPlansByMemberId, setRemoteTrainerPeriodPlansByMemberId] = useState<Record<string, PeriodSchedulePlan[]>>(
+    {},
+  );
+  const [remoteMemberPeriodPlanRows, setRemoteMemberPeriodPlanRows] = useState<Array<{ memberId: string; plan: PeriodSchedulePlan }>>(
+    [],
+  );
 
   function ensureMemberRecordForUser(state: AppState, user: AuthUser, preferredMemberId?: string): AppState {
     if (user.role !== "member") return state;
@@ -206,8 +212,19 @@ export function useAppState() {
       const remoteMessages = hydratedTrainer?.messages ?? hydratedMember?.messages ?? (await fetchMessagesFromSupabase());
       const remotePrograms = hydratedTrainer?.programs ?? hydratedMember?.programs ?? (await fetchProgramsFromSupabase());
       const remoteLogs = hydratedTrainer?.logs ?? hydratedMember?.logs ?? (await fetchLogsFromSupabase());
-      const remoteExercises = hydratedTrainer?.exercises ?? (await fetchExercisesFromSupabase());
+      const remoteExercises =
+        hydratedTrainer?.exercises ?? hydratedMember?.exercises ?? (await fetchExercisesFromSupabase());
       if (cancelled) return;
+
+      if (hydratedTrainer) {
+        const trainerHydrateStatus = hydratedTrainer.debug?.status;
+        if (trainerHydrateStatus !== "invoke_error" && trainerHydrateStatus !== "invalid_payload") {
+          setRemoteTrainerPeriodPlansByMemberId(hydratedTrainer.periodPlansByMemberId ?? {});
+        }
+      }
+      if (hydratedMember) {
+        setRemoteMemberPeriodPlanRows(hydratedMember.periodPlanRows ?? []);
+      }
 
       setAppState((prev) => {
         const next = { ...prev };
@@ -684,6 +701,8 @@ export function useAppState() {
     setLoginPassword("");
     setLoginError(null);
     setIsLocalDemoSession(false);
+    setRemoteTrainerPeriodPlansByMemberId({});
+    setRemoteMemberPeriodPlanRows([]);
   }
 
   function resetAllData() {
@@ -694,6 +713,8 @@ export function useAppState() {
     setLoginPassword("");
     setLoginError(null);
     setIsLocalDemoSession(false);
+    setRemoteTrainerPeriodPlansByMemberId({});
+    setRemoteMemberPeriodPlanRows([]);
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
     }
@@ -767,6 +788,10 @@ export function useAppState() {
 
   function startWorkoutMode(programId: string, options?: StartWorkoutModeOptions) {
     setAppState((prev) => repository.startWorkoutMode(prev, programId, options));
+  }
+
+  function startCustomWorkout(input: StartCustomWorkoutInput, options?: StartWorkoutModeOptions) {
+    setAppState((prev) => repository.startCustomWorkout(prev, input, options));
   }
 
   function updateWorkoutExerciseResult(
@@ -938,6 +963,7 @@ export function useAppState() {
     saveExercise,
     deleteExercise,
     startWorkoutMode,
+    startCustomWorkout,
     updateWorkoutExerciseResult,
     replaceWorkoutExerciseGroup,
     removeWorkoutLogResult,
@@ -953,5 +979,7 @@ export function useAppState() {
     restoreMemberByEmail,
     restoreMissingTestData,
     restoreOriginalExerciseBank,
+    remoteTrainerPeriodPlansByMemberId,
+    remoteMemberPeriodPlanRows,
   };
 }

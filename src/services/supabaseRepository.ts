@@ -1,4 +1,17 @@
-import type { AppState, ChatMessage, Exercise, Member, ProgramExercise, TrainingProgram, WorkoutExerciseResult, WorkoutLog } from "../app/types";
+import type {
+  AppState,
+  ChatMessage,
+  Exercise,
+  Member,
+  PeriodSchedulePlan,
+  ProgramExercise,
+  TrainingProgram,
+  WeekdayPlanKey,
+  WeeklyDayPlan,
+  WeeklySchedulePlan,
+  WorkoutExerciseResult,
+  WorkoutLog,
+} from "../app/types";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
 import {
   appendMemberMessage,
@@ -13,6 +26,7 @@ import {
   type SaveProgramInput,
   type SaveExerciseInput,
   type ReplaceWorkoutExerciseGroupInput,
+  type StartCustomWorkoutInput,
   type StartWorkoutModeOptions,
   type UpdateMemberInput,
   type UpdateWorkoutResultInput,
@@ -63,6 +77,119 @@ async function resolveOwnerUserIdForMember(memberId: string, fallbackOwnerUserId
   return ownerUserId || fallbackOwnerUserId;
 }
 
+const WEEKDAY_KEYS: WeekdayPlanKey[] = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
+
+function parseWeeklyDayPlan(raw: unknown): WeeklyDayPlan {
+  const empty: WeeklyDayPlan = {
+    monday: "",
+    tuesday: "",
+    wednesday: "",
+    thursday: "",
+    friday: "",
+    saturday: "",
+    sunday: "",
+  };
+  if (!raw || typeof raw !== "object") return empty;
+  const o = raw as Record<string, unknown>;
+  const out = { ...empty };
+  for (const key of WEEKDAY_KEYS) {
+    out[key] = String(o[key] ?? "").trim();
+  }
+  return out;
+}
+
+function parseWeeklySchedulePlan(value: unknown): WeeklySchedulePlan | null {
+  if (!value || typeof value !== "object") return null;
+  const o = value as Record<string, unknown>;
+  const id = String(o.id ?? "").trim();
+  if (!id) return null;
+  const weekNumber = Number(o.weekNumber);
+  return {
+    id,
+    weekNumber: Number.isFinite(weekNumber) ? weekNumber : 0,
+    days: parseWeeklyDayPlan(o.days),
+  };
+}
+
+export function parsePeriodSchedulePlan(value: unknown): PeriodSchedulePlan | null {
+  if (!value || typeof value !== "object") return null;
+  const o = value as Record<string, unknown>;
+  const id = String(o.id ?? "").trim();
+  if (!id) return null;
+  const weeklyRaw = o.weeklyPlans;
+  const weeklyPlans: WeeklySchedulePlan[] = Array.isArray(weeklyRaw)
+    ? (weeklyRaw.map(parseWeeklySchedulePlan).filter(Boolean) as WeeklySchedulePlan[])
+    : [];
+  const weeks = Number(o.weeks);
+  return {
+    id,
+    title: String(o.title ?? "").trim() || "Periodeplan",
+    notes: String(o.notes ?? "").trim(),
+    startDate: String(o.startDate ?? "").trim(),
+    weeks: Number.isFinite(weeks) ? weeks : weeklyPlans.length || 1,
+    createdAt: String(o.createdAt ?? "").trim(),
+    weeklyPlans,
+  };
+}
+
+function periodPlanRowsToByMemberId(rows: Array<{ member_id: string; plan: unknown }>): Record<string, PeriodSchedulePlan[]> {
+  const out: Record<string, PeriodSchedulePlan[]> = {};
+  for (const row of rows) {
+    const memberId = String(row.member_id ?? "").trim();
+    if (!memberId) continue;
+    const plan = parsePeriodSchedulePlan(row.plan);
+    if (!plan) continue;
+    const list = out[memberId] ?? [];
+    list.push(plan);
+    out[memberId] = list;
+  }
+  for (const memberId of Object.keys(out)) {
+    const seen = new Set<string>();
+    out[memberId] = out[memberId].filter((p) => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+  }
+  return out;
+}
+
+export async function upsertMemberPeriodPlansForTrainer(memberIds: string[], plan: PeriodSchedulePlan): Promise<void> {
+  if (!supabaseClient) return;
+  const ownerUserId = await getOwnerUserId();
+  if (!ownerUserId) return;
+  const trimmedIds = Array.from(new Set(memberIds.map((id) => id.trim()).filter(Boolean)));
+  if (!trimmedIds.length) return;
+  const rows = trimmedIds.map((memberId) => ({
+    member_id: memberId,
+    plan_id: plan.id,
+    owner_user_id: ownerUserId,
+    plan: plan as unknown as Record<string, unknown>,
+  }));
+  const { error } = await supabaseClient.from("member_period_plans").upsert(rows, { onConflict: "member_id,plan_id" });
+  if (error) {
+    console.warn("Supabase member_period_plans upsert failed:", error.message);
+  }
+}
+
+export async function deleteMemberPeriodPlanByPlanId(planId: string): Promise<void> {
+  if (!supabaseClient) return;
+  const trimmed = planId.trim();
+  if (!trimmed) return;
+  const { error } = await supabaseClient.from("member_period_plans").delete().eq("plan_id", trimmed);
+  if (error) {
+    console.warn("Supabase member_period_plans delete failed:", error.message);
+  }
+}
+
 async function resolveRelatedMemberIds(memberId: string): Promise<string[]> {
   if (!supabaseClient) return [memberId];
   const trimmedMemberId = memberId.trim();
@@ -101,16 +228,25 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
   const fallbackOwnerUserId = await getOwnerUserId();
   const ownerUserId = await resolveOwnerUserIdForMember(memberId, fallbackOwnerUserId);
   if (!ownerUserId) return;
-  const { error } = await supabaseClient.from("chat_messages").insert({
-    member_id: memberId,
-    owner_user_id: ownerUserId,
-    sender,
-    text,
-    created_at: new Date().toISOString(),
-  });
+  const { data: inserted, error } = await supabaseClient
+    .from("chat_messages")
+    .insert({
+      member_id: memberId,
+      owner_user_id: ownerUserId,
+      sender,
+      text,
+      created_at: new Date().toISOString(),
+    })
+    .select("id")
+    .maybeSingle();
   if (error) {
     // Keep app resilient: local state succeeds even if backend is unavailable.
     console.warn("Supabase message persist failed:", error.message);
+    return;
+  }
+  const messageId = typeof inserted?.id === "string" ? inserted.id : null;
+  if (messageId) {
+    void supabaseClient.functions.invoke("send-message-push", { body: { messageId } });
   }
 }
 
@@ -578,6 +714,8 @@ export type HydratedTrainerData = {
   programs: TrainingProgram[];
   logs: WorkoutLog[];
   exercises: Exercise[];
+  /** Synket periodeplan per medlem (Supabase). */
+  periodPlansByMemberId: Record<string, PeriodSchedulePlan[]>;
   debug: HydratedTrainerDebug | null;
 };
 
@@ -611,6 +749,8 @@ export type HydratedMemberData = {
   messages: ChatMessage[];
   programs: TrainingProgram[];
   logs: WorkoutLog[];
+  periodPlanRows: Array<{ memberId: string; plan: PeriodSchedulePlan }>;
+  exercises: Exercise[];
 };
 
 export async function fetchHydratedTrainerData(ownerUserId: string): Promise<HydratedTrainerData | null> {
@@ -656,6 +796,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
       programs: [],
       logs: [],
       exercises: [],
+      periodPlansByMemberId: {},
       debug: {
         status: "invoke_error",
         message: fallbackMessage,
@@ -690,6 +831,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
       programs: [],
       logs: [],
       exercises: [],
+      periodPlansByMemberId: {},
       debug: {
         status: "invalid_payload",
         message: "Function returned empty or non-object payload.",
@@ -722,6 +864,20 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
   const programsRows = Array.isArray(payload.programs) ? payload.programs : [];
   const logsRows = Array.isArray(payload.logs) ? payload.logs : [];
   const exercisesRows = Array.isArray(payload.exercises) ? payload.exercises : [];
+  const periodPlanRowsRaw = Array.isArray(payload.periodPlans) ? payload.periodPlans : [];
+  const periodPlansByMemberId = periodPlanRowsToByMemberId(
+    periodPlanRowsRaw.map((row) => {
+      const r = row as Record<string, unknown>;
+      return { member_id: String(r.member_id ?? ""), plan: r.plan };
+    }),
+  );
+  for (const memberRow of membersRows) {
+    const memberId = String((memberRow as { id?: unknown }).id ?? "").trim();
+    if (!memberId) continue;
+    if (periodPlansByMemberId[memberId] === undefined) {
+      periodPlansByMemberId[memberId] = [];
+    }
+  }
   const debugBase = payload.debug && typeof payload.debug === "object" ? (payload.debug as HydratedTrainerDebug) : null;
   const debug = debugBase
     ? {
@@ -803,6 +959,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
         imageUrl: String(exercise.image_url ?? ""),
       } as Exercise;
     }),
+    periodPlansByMemberId,
     debug,
   };
 }
@@ -821,6 +978,17 @@ export async function fetchHydratedMemberData(): Promise<HydratedMemberData | nu
   const messagesRows = Array.isArray(payload.messages) ? payload.messages : [];
   const programsRows = Array.isArray(payload.programs) ? payload.programs : [];
   const logsRows = Array.isArray(payload.logs) ? payload.logs : [];
+  const exercisesRows = Array.isArray(payload.exercises) ? payload.exercises : [];
+  const periodPlansRaw = Array.isArray(payload.periodPlans) ? payload.periodPlans : [];
+  const periodPlanRows: Array<{ memberId: string; plan: PeriodSchedulePlan }> = [];
+  for (const row of periodPlansRaw) {
+    const r = row as Record<string, unknown>;
+    const memberId = String(r.member_id ?? "").trim();
+    const plan = parsePeriodSchedulePlan(r.plan);
+    if (memberId && plan) {
+      periodPlanRows.push({ memberId, plan });
+    }
+  }
 
   return {
     members: membersRows.map((row) => {
@@ -881,6 +1049,20 @@ export async function fetchHydratedMemberData(): Promise<HydratedMemberData | nu
         reflection: parsedNote.reflection,
         results: Array.isArray(log.results) ? (log.results as WorkoutExerciseResult[]) : undefined,
       } as WorkoutLog;
+    }),
+    periodPlanRows,
+    exercises: exercisesRows.map((row) => {
+      const exercise = row as Record<string, unknown>;
+      return {
+        id: String(exercise.id ?? ""),
+        name: String(exercise.name ?? ""),
+        category: exercise.category === "Kondisjon" || exercise.category === "Uttøyning" ? exercise.category : "Styrke",
+        group: String(exercise.muscle_group ?? ""),
+        equipment: String(exercise.equipment ?? ""),
+        level: exercise.level === "Litt øvet" || exercise.level === "Øvet" ? exercise.level : "Nybegynner",
+        description: String(exercise.description ?? ""),
+        imageUrl: String(exercise.image_url ?? ""),
+      } as Exercise;
     }),
   };
 }
@@ -1109,6 +1291,9 @@ export const supabaseAppRepository: AppRepository = {
   },
   startWorkoutMode(state: AppState, programId: string, options?: StartWorkoutModeOptions): AppState {
     return localAppRepository.startWorkoutMode(state, programId, options);
+  },
+  startCustomWorkout(state: AppState, input: StartCustomWorkoutInput, options?: StartWorkoutModeOptions): AppState {
+    return localAppRepository.startCustomWorkout(state, input, options);
   },
   updateWorkoutResult(state: AppState, input: UpdateWorkoutResultInput): AppState {
     return localAppRepository.updateWorkoutResult(state, input);

@@ -42,6 +42,7 @@ type TrainerLayoutProps = {
   trainerMessageAlerts: TrainerAlert[];
   handleTrainerBellToggle: () => void;
   isLocalDemoSession: boolean;
+  remoteTrainerPeriodPlansByMemberId: ComponentProps<typeof TrainerPortal>["remoteTrainerPeriodPlansByMemberId"];
 };
 
 const trainerMenuItems: Array<{ key: TrainerTab; label: string; icon: LucideIcon }> = [
@@ -94,6 +95,7 @@ export function TrainerLayout({
   trainerMessageAlerts,
   handleTrainerBellToggle,
   isLocalDemoSession,
+  remoteTrainerPeriodPlansByMemberId,
 }: TrainerLayoutProps) {
   const inactiveMembersCount = appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length;
   const missingInvitesCount = appState.members.filter((member) => !member.invitedAt).length;
@@ -126,12 +128,13 @@ export function TrainerLayout({
     memberAvatarById,
     setMemberAvatarUrlForMember,
     isLocalDemoSession,
+    remoteTrainerPeriodPlansByMemberId,
   };
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-[220px_1fr]">
-        <Card className="hidden h-fit p-3 md:block">
+      <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
+        <Card className="hidden h-fit p-3 lg:block">
           <div className="mb-2 px-2">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">PT-meny</div>
           </div>
@@ -252,7 +255,7 @@ export function TrainerLayout({
       </div>
 
       <div
-        className="fixed inset-x-0 bottom-0 z-[9999] border-t bg-white/95 px-2 pt-2 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-[9999] border-t bg-white/95 px-2 pt-2 backdrop-blur lg:hidden"
         style={{ borderColor: "rgba(15,23,42,0.08)", paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))" }}
       >
         <div

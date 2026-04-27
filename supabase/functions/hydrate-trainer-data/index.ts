@@ -151,6 +151,20 @@ Deno.serve(async (req) => {
     .select("id, name, category, muscle_group, equipment, level, description, image_url")
     .order("name", { ascending: true });
 
+  let periodPlanRows: Array<{ member_id: string; plan: unknown }> = [];
+  const { data: periodRows, error: periodPlansError } = await adminClient
+    .from("member_period_plans")
+    .select("member_id, plan")
+    .eq("owner_user_id", ownerUserId);
+  if (periodPlansError) {
+    console.warn("hydrate-trainer-data: member_period_plans query failed (table may be missing):", periodPlansError.message);
+  } else {
+    periodPlanRows = (periodRows ?? []).map((row) => ({
+      member_id: String((row as { member_id?: string }).member_id ?? ""),
+      plan: (row as { plan?: unknown }).plan,
+    }));
+  }
+
   const mergedPrograms = uniqueById([...(programsByOwner ?? []), ...programsByMember]);
   const mergedLogs = uniqueById([...(logsByOwner ?? []), ...logsByMember]);
   const mergedMessages = uniqueById([...(messagesByOwner ?? []), ...messagesByMember]);
@@ -172,6 +186,7 @@ Deno.serve(async (req) => {
     logs: mergedLogs,
     messages: mergedMessages,
     exercises: exercises ?? [],
+    periodPlans: periodPlanRows,
     debug: includeDebug
       ? {
           status: hasQueryErrors ? "partial_error" : "ok",

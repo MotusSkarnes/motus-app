@@ -3,7 +3,7 @@ import { MOTUS } from "./data";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen p-3 sm:p-4 md:p-8 text-slate-900 bg-white">
+    <div className="min-h-screen min-h-dvh p-3 sm:p-4 md:p-8 text-slate-900 bg-white">
       <div className="mx-auto max-w-7xl">{children}</div>
     </div>
   );
@@ -45,11 +45,11 @@ export function MobileNavButton({ active, icon, label, onClick }: { active?: boo
 }
 
 export const TextInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(function TextInput(props, ref) {
-  return <input ref={ref} {...props} className={`h-11 w-full rounded-2xl border px-3 text-sm outline-none ${props.className ?? ""}`} style={{ borderColor: "rgba(15,23,42,0.10)" }} />;
+  return <input ref={ref} {...props} className={`h-11 w-full rounded-2xl border px-3 text-base outline-none ${props.className ?? ""}`} style={{ borderColor: "rgba(15,23,42,0.10)" }} />;
 });
 
 export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} className={`w-full rounded-2xl border px-3 py-3 text-sm outline-none ${props.className ?? ""}`} style={{ borderColor: "rgba(15,23,42,0.10)" }} />;
+  return <textarea {...props} className={`w-full rounded-2xl border px-3 py-3 text-base outline-none ${props.className ?? ""}`} style={{ borderColor: "rgba(15,23,42,0.10)" }} />;
 }
 
 type SelectOption = { value: string; label: string };
@@ -69,7 +69,7 @@ export function SelectBox({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`h-11 w-full rounded-2xl border px-3 text-sm text-slate-800 outline-none bg-white ${className}`}
+      className={`h-11 w-full rounded-2xl border px-3 text-base text-slate-800 outline-none bg-white ${className}`}
       style={{ borderColor: "rgba(15,23,42,0.10)" }}
     >
       {options.map((option) => {

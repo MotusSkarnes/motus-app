@@ -8,7 +8,24 @@ import { uid } from "../app/storage";
 import { Card, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
 import type { CreateMemberInput, UpdateMemberInput } from "../services/appRepository";
 import type { InviteMemberResult, InviteTrainerResult } from "../services/supabaseAuth";
-import type { ChatMessage, CustomerSubTab, Exercise, Member, ProgramExercise, TrainerTab, TrainingProgram, WorkoutLog } from "../app/types";
+import type {
+  ChatMessage,
+  CustomerSubTab,
+  Exercise,
+  Member,
+  PeriodSchedulePlan,
+  ProgramExercise,
+  TrainerTab,
+  TrainingProgram,
+  WeekdayPlanKey,
+  WeeklyDayPlan,
+  WeeklySchedulePlan,
+  WorkoutLog,
+} from "../app/types";
+import {
+  deleteMemberPeriodPlanByPlanId,
+  upsertMemberPeriodPlansForTrainer,
+} from "../services/supabaseRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
 type TrainerPortalProps = {
@@ -49,6 +66,8 @@ type TrainerPortalProps = {
   memberAvatarById?: Record<string, string>;
   setMemberAvatarUrlForMember?: (memberId: string, avatarUrl: string) => void;
   isLocalDemoSession?: boolean;
+  /** Synket fra Supabase ved hydrering (per medlem, inkl. tom liste). */
+  remoteTrainerPeriodPlansByMemberId?: Record<string, PeriodSchedulePlan[]>;
 };
 
 type FollowUpDetail = {
@@ -57,22 +76,6 @@ type FollowUpDetail = {
   note: string;
 };
 
-type WeekdayPlanKey = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
-type WeeklyDayPlan = Record<WeekdayPlanKey, string>;
-type WeeklySchedulePlan = {
-  id: string;
-  weekNumber: number;
-  days: WeeklyDayPlan;
-};
-type PeriodSchedulePlan = {
-  id: string;
-  title: string;
-  notes: string;
-  startDate: string;
-  weeks: number;
-  createdAt: string;
-  weeklyPlans: WeeklySchedulePlan[];
-};
 type IntervalPreset = {
   id: string;
   name: string;
@@ -179,6 +182,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     memberAvatarById = {},
     setMemberAvatarUrlForMember,
     isLocalDemoSession = false,
+    remoteTrainerPeriodPlansByMemberId = {},
   } = props;
 
   const [programTitle, setProgramTitle] = useState("Nytt treningsprogram");
@@ -760,6 +764,20 @@ export function TrainerPortal(props: TrainerPortalProps) {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(PERIOD_PLANS_STORAGE_KEY, JSON.stringify(periodPlansByMemberId));
   }, [periodPlansByMemberId]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || isLocalDemoSession) return;
+    const keys = Object.keys(remoteTrainerPeriodPlansByMemberId);
+    if (!keys.length) return;
+    setPeriodPlansByMemberId((prev) => {
+      const next = { ...prev };
+      keys.forEach((memberId) => {
+        next[memberId] = remoteTrainerPeriodPlansByMemberId[memberId] ?? [];
+      });
+      return next;
+    });
+  }, [isSupabaseConfigured, isLocalDemoSession, remoteTrainerPeriodPlansByMemberId]);
+
   useEffect(() => {
     setMatchingWeekIdsDraft((prev) => prev.filter((id) => periodWeeklyPlansDraft.some((week) => week.id === id)));
   }, [periodWeeklyPlansDraft]);
@@ -821,6 +839,14 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
     void sendInviteForNewMember();
   }, [pendingInviteMemberEmail, members, inviteMember, markMemberInvited, setSelectedMemberId, setTrainerTab]);
+
+  useEffect(() => {
+    if (!editingExerciseId) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(`inline-exercise-edit-${editingExerciseId}`)?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [editingExerciseId]);
 
   useEffect(() => {
     if (!selectedMemberId || selectedMemberId === "__template__") return;
@@ -1098,6 +1124,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
       });
       return next;
     });
+    if (isSupabaseConfigured && !isLocalDemoSession) {
+      void upsertMemberPeriodPlansForTrainer(selectedMemberRelatedIds, newPeriodPlan);
+    }
     setPeriodPlanStatus("Periodeplan lagret.");
   }
 
@@ -1125,6 +1154,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
   function removePeriodPlan(planId: string) {
     if (!selectedMemberId || selectedMemberId === "__template__" || selectedMemberRelatedIds.length === 0) return;
+    if (isSupabaseConfigured && !isLocalDemoSession) {
+      void deleteMemberPeriodPlanByPlanId(planId);
+    }
     setPeriodPlansByMemberId((prev) => {
       const next = { ...prev };
       selectedMemberRelatedIds.forEach((memberId) => {
@@ -1936,7 +1968,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   return (
     <>
     <div className="space-y-4 sm:space-y-6">
-      <Card className="p-3 md:hidden">
+      <Card className="p-3 lg:hidden">
         <div className="flex gap-2 overflow-auto pb-1">
           <PillButton active={trainerTab === "dashboard"} onClick={() => setTrainerTab("dashboard")}>Oversikt</PillButton>
           <PillButton active={trainerTab === "customers"} onClick={() => setTrainerTab("customers")}>Kunder</PillButton>
@@ -3751,7 +3783,15 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         >
                           <Star className={`h-4 w-4 ${isFavorite ? "text-white" : ""}`} />
                         </button>
-                        <OutlineButton onClick={() => startEditExercise(exercise)} className="px-3 py-1.5 text-xs">Rediger</OutlineButton>
+                        <OutlineButton
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            startEditExercise(exercise);
+                          }}
+                          className="px-3 py-1.5 text-xs"
+                        >
+                          Rediger
+                        </OutlineButton>
                         <OutlineButton onClick={() => handleDeleteExercise(exercise)} className="px-3 py-1.5 text-xs text-rose-700">
                           Slett
                         </OutlineButton>
@@ -3760,13 +3800,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         </OutlineButton>
                       </div>
                     </div>
-                    {expandedExerciseId === exercise.id ? (
-                      <div className="mt-2 text-sm text-slate-700">
-                        {exercise.description}
-                      </div>
+                    {expandedExerciseId === exercise.id && editingExerciseId !== exercise.id ? (
+                      <div className="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{exercise.description}</div>
                     ) : null}
                     {editingExerciseId === exercise.id ? (
-                      <div className="mt-3 rounded-xl border bg-white p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.10)" }}>
+                      <div id={`inline-exercise-edit-${exercise.id}`} className="mt-3 rounded-xl border bg-white p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.10)" }}>
                         <div className="text-xs font-semibold text-slate-600">Rediger øvelse her</div>
                         <TextInput value={exerciseFormName} onChange={(e) => setExerciseFormName(e.target.value)} placeholder="Navn på øvelse" />
                         <div className="grid gap-2 sm:grid-cols-2">
