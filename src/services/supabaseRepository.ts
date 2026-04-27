@@ -225,8 +225,9 @@ async function resolveRelatedMemberIds(memberId: string): Promise<string[]> {
 
 async function persistMessage(memberId: string, sender: "trainer" | "member", text: string) {
   if (!supabaseClient) return;
-  const fallbackOwnerUserId = await getOwnerUserId();
-  const ownerUserId = await resolveOwnerUserIdForMember(memberId, fallbackOwnerUserId);
+  // Strict RLS policy `chat_messages_insert_own` requires owner_user_id = auth.uid() for the row inserter.
+  // Do not substitute members.owner_user_id here — that breaks member inserts when the member row is owned by the trainer.
+  const ownerUserId = await getOwnerUserId();
   if (!ownerUserId) return;
   const { data: inserted, error } = await supabaseClient
     .from("chat_messages")
