@@ -44,6 +44,7 @@ export type LogGroupWorkoutInput = {
   note?: string;
   reflection: WorkoutReflection;
   keepCurrentTab?: boolean;
+  date?: string;
 };
 
 export type ReplaceWorkoutExerciseGroupInput = {
@@ -446,6 +447,7 @@ export function startCustomWorkoutInState(
 export function logGroupWorkoutInState(state: AppState, input: LogGroupWorkoutInput): AppState {
   const memberId = input.memberId.trim();
   const className = input.className.trim();
+  const date = input.date?.trim() || formatDateDdMmYyyy(new Date());
   if (!memberId || !className) return state;
   return {
     ...state,
@@ -454,7 +456,7 @@ export function logGroupWorkoutInState(state: AppState, input: LogGroupWorkoutIn
         id: uid("log"),
         memberId,
         programTitle: `Gruppetime: ${className}`,
-        date: formatDateDdMmYyyy(new Date()),
+        date,
         status: "Fullført",
         note: input.note?.trim() ?? "",
         reflection: input.reflection,

@@ -221,8 +221,6 @@ export function MemberPortal(props: MemberPortalProps) {
   const [pushRegisterStatus, setPushRegisterStatus] = useState<string | null>(null);
   const [customWorkoutSearch, setCustomWorkoutSearch] = useState("");
   const [customWorkoutLines, setCustomWorkoutLines] = useState<Array<{ key: string; exerciseId: string; sets: string; reps: string; weight: string }>>([]);
-  const [goalMetricDraft, setGoalMetricDraft] = useState<"sessionsPerWeek" | "dailySteps" | "targetWeight">("sessionsPerWeek");
-  const [goalMetricValueDraft, setGoalMetricValueDraft] = useState("");
   const [profileSaveInfo, setProfileSaveInfo] = useState<string | null>(null);
   const [memberNameDraft, setMemberNameDraft] = useState("");
   const [memberEmailDraft, setMemberEmailDraft] = useState("");
@@ -1111,14 +1109,6 @@ export function MemberPortal(props: MemberPortalProps) {
     return `${minutesPart}:${secondsPart}`;
   }
 
-  function getWeekStart(date: Date): Date {
-    const start = new Date(date);
-    const day = (start.getDay() + 6) % 7;
-    start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - day);
-    return start;
-  }
-
   useEffect(() => {
     if (!editableMember) return;
     setProfileSaveInfo(null);
@@ -1362,14 +1352,6 @@ export function MemberPortal(props: MemberPortalProps) {
     setSeenUnlockedAchievementIds((prev) => [...prev, newlyUnlocked.id]);
   }, [achievements, seenUnlockedAchievementIds]);
 
-  function applyMetricDraftToProfile() {
-    const value = goalMetricValueDraft.trim();
-    if (!value) return;
-    if (goalMetricDraft === "sessionsPerWeek") setProfileSessionsPerWeekTarget(value);
-    if (goalMetricDraft === "dailySteps") setProfileDailyStepsTarget(value);
-    if (goalMetricDraft === "targetWeight") setProfileTargetWeight(value);
-    setGoalMetricValueDraft("");
-  }
   function handleStartIntervalProgramTimer() {
     if (!activeIntervalProgram || !intervalProgramSteps.length) return;
     const firstStep = intervalProgramSteps[0] ?? null;
@@ -1731,21 +1713,6 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }
 
-  const completedThisWeek = useMemo(() => {
-    const start = getWeekStart(new Date());
-    return completedLogDates.filter((date) => date >= start).length;
-  }, [completedLogDates]);
-
-  const sessionsTargetNumber = Number(profileSessionsPerWeekTarget) || 0;
-  const dailyStepsTargetNumber = Number(profileDailyStepsTarget) || 0;
-  const currentDailyStepsNumber = Number(profileCurrentDailySteps) || 0;
-  const targetWeightNumber = Number(profileTargetWeight) || 0;
-  const currentWeightNumber = Number(editableMember?.weight ?? "") || 0;
-  const sessionsRemaining = Math.max(0, sessionsTargetNumber - completedThisWeek);
-  const sessionsProgressPercent = sessionsTargetNumber > 0 ? Math.min(100, Math.round((completedThisWeek / sessionsTargetNumber) * 100)) : 0;
-  const stepsProgressPercent = dailyStepsTargetNumber > 0 ? Math.min(100, Math.round((currentDailyStepsNumber / dailyStepsTargetNumber) * 100)) : 0;
-  const weightDirectionDown = targetWeightNumber > 0 && currentWeightNumber > targetWeightNumber;
-  const weightGap = targetWeightNumber > 0 && currentWeightNumber > 0 ? Math.abs(currentWeightNumber - targetWeightNumber) : 0;
   const progressStory = useMemo(() => {
     const nowMs = now.getTime();
     const dayMs = 24 * 60 * 60 * 1000;
@@ -1763,12 +1730,9 @@ export function MemberPortal(props: MemberPortalProps) {
         .map((date) => getWeekKey(date)),
     );
     const consistency = Math.min(100, Math.round((weekKeysRecent4.size / 4) * 100));
-    const nextFocus =
-      sessionsRemaining > 0
-        ? `Mangler ${sessionsRemaining} økt${sessionsRemaining === 1 ? "" : "er"} for ukemålet`
-        : "Ukemålet er nådd - hold flyten videre";
+    const nextFocus = recent14 > 0 ? "Hold flyten med neste planlagte økt" : "Start med en rolig økt denne uken";
     return { recent14, previous14, delta, trendLabel, trendToneClass, consistency, nextFocus };
-  }, [completedLogDates, now, sessionsRemaining]);
+  }, [completedLogDates, now]);
   const nextBestAction = useMemo(() => {
     if (!memberAssignedPrograms.length) {
       return {
@@ -1778,10 +1742,10 @@ export function MemberPortal(props: MemberPortalProps) {
         action: "programs" as const,
       };
     }
-    if (sessionsTargetNumber > 0 && sessionsRemaining > 0 && nextProgram) {
+    if (nextProgram) {
       return {
-        title: `Du mangler ${sessionsRemaining} økt${sessionsRemaining === 1 ? "" : "er"} denne uken`,
-        description: "Start neste program nå for å holde flyten og nå ukemålet.",
+        title: "Neste økt er klar",
+        description: "Start neste program når du er klar.",
         cta: "Start neste økt",
         action: "start-workout" as const,
       };
@@ -1792,7 +1756,7 @@ export function MemberPortal(props: MemberPortalProps) {
       cta: "Se fremgang",
       action: "progress" as const,
     };
-  }, [memberAssignedPrograms.length, sessionsTargetNumber, sessionsRemaining, nextProgram]);
+  }, [memberAssignedPrograms.length, nextProgram]);
   const customerStatusLabel = (() => {
     const isPtCustomer = viewedMember?.customerType === "PT-kunde";
     const isPremiumCustomer = viewedMember?.membershipType === "Premium";
@@ -1885,23 +1849,22 @@ export function MemberPortal(props: MemberPortalProps) {
     setGroupWorkoutNote("");
   }
 
-  function handleQuickCompletePlannedEntry(entry: string) {
-    if (!activeMemberId) return;
-    const trimmed = entry.trim();
-    if (!trimmed) return;
-    logGroupWorkout({
-      memberId: activeMemberId,
-      className: trimmed,
-      note: "Registrert som gjennomfort fra periodeplan.",
-      reflection: {
-        energyLevel: 3,
-        difficultyLevel: 3,
-        motivationLevel: 3,
-        note: "Hurtiglogget fra periodeplan.",
-      },
-      keepCurrentTab: true,
-    });
-    setPeriodPlanActionStatus(`Registrert "${trimmed}" som gjennomfort.`);
+  function resolvePeriodPlanEntryDate(plan: PeriodSchedulePlan, weekNumber: number, day: WeekdayPlanKey): string | null {
+    const startDate = parseDateOnly(plan.startDate);
+    if (!startDate) return null;
+    const weekdayIndexByKey: Record<WeekdayPlanKey, number> = {
+      monday: 0,
+      tuesday: 1,
+      wednesday: 2,
+      thursday: 3,
+      friday: 4,
+      saturday: 5,
+      sunday: 6,
+    };
+    const weekIndex = Math.max(0, weekNumber - 1);
+    const dayOffset = weekIndex * 7 + weekdayIndexByKey[day];
+    const plannedDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + dayOffset);
+    return formatDateDdMmYyyy(plannedDate);
   }
 
   function getPeriodPlanCompletedStorageKey(memberId: string): string {
@@ -1917,11 +1880,27 @@ export function MemberPortal(props: MemberPortalProps) {
     return completedPeriodPlanEntryKeys.includes(key);
   }
 
-  function togglePeriodPlanEntryCompleted(input: { planId: string; weekNumber: number; day: WeekdayPlanKey; entry: string }) {
+  function togglePeriodPlanEntryCompleted(input: { planId: string; weekNumber: number; day: WeekdayPlanKey; entry: string; plannedDate?: string | null }) {
     const key = buildPeriodPlanEntryKey(input.planId, input.weekNumber, input.day);
     const alreadyCompleted = completedPeriodPlanEntryKeys.includes(key);
     if (!alreadyCompleted) {
-      handleQuickCompletePlannedEntry(input.entry);
+      if (!activeMemberId) return;
+      const trimmed = input.entry.trim();
+      if (!trimmed) return;
+      logGroupWorkout({
+        memberId: activeMemberId,
+        className: trimmed,
+        note: "Registrert som gjennomfort fra periodeplan.",
+        reflection: {
+          energyLevel: 3,
+          difficultyLevel: 3,
+          motivationLevel: 3,
+          note: "Hurtiglogget fra periodeplan.",
+        },
+        keepCurrentTab: true,
+        date: input.plannedDate ?? undefined,
+      });
+      setPeriodPlanActionStatus(`Registrert "${trimmed}" som gjennomfort.`);
       setCompletedPeriodPlanEntryKeys((prev) => [...prev, key]);
       return;
     }
@@ -2206,60 +2185,6 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 </div>
               ) : null}
-              <div className="min-w-0 w-full rounded-2xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm font-semibold text-slate-700">Målstatus</div>
-                  <div className="rounded-full px-2.5 py-1 text-[11px] font-semibold text-slate-700" style={{ background: "rgba(15,23,42,0.08)" }}>
-                    Denne uken
-                  </div>
-                </div>
-                {sessionsTargetNumber > 0 ? (
-                  <div className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="flex items-center justify-between text-slate-700">
-                      <span className="font-medium">🏋️ Treningsmål (uke)</span>
-                      <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold">{completedThisWeek}/{sessionsTargetNumber}</span>
-                    </div>
-                    <div className="mt-2 h-2 rounded-full bg-slate-200">
-                      <div className="h-2 rounded-full" style={{ width: `${sessionsProgressPercent}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
-                    </div>
-                    <div className="mt-2 text-xs font-medium text-slate-700">
-                      {sessionsRemaining > 0 ? `${sessionsRemaining} trening${sessionsRemaining === 1 ? "" : "er"} igjen denne uken` : "Ukemålet er nådd!"}
-                    </div>
-                  </div>
-                ) : null}
-                {dailyStepsTargetNumber > 0 ? (
-                  <div className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="flex items-center justify-between text-slate-700">
-                      <span className="font-medium">👟 Skrittmål (i dag)</span>
-                      <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold">{currentDailyStepsNumber}/{dailyStepsTargetNumber}</span>
-                    </div>
-                    <div className="mt-2 h-2 rounded-full bg-slate-200">
-                      <div className="h-2 rounded-full" style={{ width: `${stepsProgressPercent}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
-                    </div>
-                    <div className="mt-2 text-xs font-medium text-slate-700">
-                      {currentDailyStepsNumber < dailyStepsTargetNumber ? `${dailyStepsTargetNumber - currentDailyStepsNumber} skritt igjen i dag` : "Skrittmålet er nådd!"}
-                    </div>
-                  </div>
-                ) : null}
-                {targetWeightNumber > 0 && currentWeightNumber > 0 ? (
-                  <div className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="flex items-center justify-between text-slate-700">
-                      <span className="font-medium">⚖️ Vektmål</span>
-                      <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold">{currentWeightNumber} / {targetWeightNumber} kg</span>
-                    </div>
-                    <div className="mt-2 text-xs font-medium text-slate-700">
-                      {weightGap === 0
-                        ? "Du er på målet."
-                        : weightDirectionDown
-                        ? `${weightGap.toFixed(1)} kg igjen til mål`
-                        : `${weightGap.toFixed(1)} kg over målet`}
-                    </div>
-                  </div>
-                ) : null}
-                {sessionsTargetNumber <= 0 && dailyStepsTargetNumber <= 0 && targetWeightNumber <= 0 ? (
-                  <div className="text-sm text-slate-500">Sett mål under Min profil for å få status her.</div>
-                ) : null}
-              </div>
               <div
                 className="rounded-2xl border p-4 text-white"
                 style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, borderColor: "rgba(255,255,255,0.3)" }}
@@ -2737,6 +2662,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                                 weekNumber: displayedPeriodWeek.weekNumber,
                                                 day: day.key,
                                                 entry: displayedPeriodWeek.days[day.key],
+                                                plannedDate: resolvePeriodPlanEntryDate(plan, displayedPeriodWeek.weekNumber, day.key),
                                               })
                                             }
                                             className="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
@@ -2754,6 +2680,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                                 weekNumber: displayedPeriodWeek.weekNumber,
                                                 day: day.key,
                                                 entry: displayedPeriodWeek.days[day.key],
+                                                plannedDate: resolvePeriodPlanEntryDate(plan, displayedPeriodWeek.weekNumber, day.key),
                                               })
                                             }
                                             className="inline-flex h-7 w-7 items-center justify-center rounded-full border text-xs font-bold text-slate-600 bg-white"
@@ -3543,28 +3470,6 @@ export function MemberPortal(props: MemberPortalProps) {
                         Fjern profilbilde
                       </OutlineButton>
                     ) : null}
-                  </div>
-                  <div className="rounded-2xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="text-sm font-semibold text-slate-700">Unike mål</div>
-                    <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
-                      <SelectBox
-                        value={goalMetricDraft}
-                        onChange={(value) => setGoalMetricDraft(value as "sessionsPerWeek" | "dailySteps" | "targetWeight")}
-                        options={[
-                          { value: "sessionsPerWeek", label: "Antall treninger per uke" },
-                          { value: "dailySteps", label: "Skritt per dag" },
-                          { value: "targetWeight", label: "Målvekt (kg)" },
-                        ]}
-                      />
-                      <TextInput value={goalMetricValueDraft} onChange={(e) => setGoalMetricValueDraft(e.target.value)} placeholder="Målverdi" />
-                      <OutlineButton onClick={applyMetricDraftToProfile}>Sett mål</OutlineButton>
-                    </div>
-                    <div className="grid gap-2 md:grid-cols-3 text-sm text-slate-600">
-                      <div className="rounded-xl border bg-white p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>Økter/uke: {profileSessionsPerWeekTarget || "Ikke satt"}</div>
-                      <div className="rounded-xl border bg-white p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>Skritt/dag: {profileDailyStepsTarget || "Ikke satt"}</div>
-                      <div className="rounded-xl border bg-white p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>Målvekt: {profileTargetWeight ? `${profileTargetWeight} kg` : "Ikke satt"}</div>
-                    </div>
-                    <TextInput value={profileCurrentDailySteps} onChange={(e) => setProfileCurrentDailySteps(e.target.value)} placeholder="Dagens skritt (for målstatus)" />
                   </div>
                   <div className="rounded-2xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="text-sm font-semibold text-slate-700">Mikro-feiringer</div>
