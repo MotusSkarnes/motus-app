@@ -220,6 +220,8 @@ export function MemberPortal(props: MemberPortalProps) {
   const [pushRegisterBusy, setPushRegisterBusy] = useState(false);
   const [pushRegisterStatus, setPushRegisterStatus] = useState<string | null>(null);
   const [customWorkoutSearch, setCustomWorkoutSearch] = useState("");
+  const [customWorkoutCategoryFilter, setCustomWorkoutCategoryFilter] = useState<string>("all");
+  const [showAllCustomWorkoutOptions, setShowAllCustomWorkoutOptions] = useState(false);
   const [customWorkoutLines, setCustomWorkoutLines] = useState<Array<{ key: string; exerciseId: string; sets: string; reps: string; weight: string }>>([]);
   const [profileSaveInfo, setProfileSaveInfo] = useState<string | null>(null);
   const [memberNameDraft, setMemberNameDraft] = useState("");
@@ -583,18 +585,31 @@ export function MemberPortal(props: MemberPortalProps) {
     return { suggestedWeightByProgramExerciseId };
   }
 
+  const customWorkoutCategories = useMemo(() => {
+    const categories = Array.from(
+      new Set(
+        exercises
+          .map((exercise) => exercise.category.trim())
+          .filter(Boolean),
+      ),
+    );
+    return categories.sort((a, b) => a.localeCompare(b, "nb"));
+  }, [exercises]);
+
   const customWorkoutExerciseOptions = useMemo(() => {
     const q = customWorkoutSearch.trim().toLowerCase();
-    const list = q
-      ? exercises.filter(
-          (ex) =>
-            ex.name.toLowerCase().includes(q) ||
-            ex.group.toLowerCase().includes(q) ||
-            ex.equipment.toLowerCase().includes(q),
-        )
-      : exercises;
-    return list.slice(0, 28);
-  }, [exercises, customWorkoutSearch]);
+    const list = exercises.filter((ex) => {
+      if (customWorkoutCategoryFilter !== "all" && ex.category !== customWorkoutCategoryFilter) return false;
+      if (!q) return true;
+      return ex.name.toLowerCase().includes(q) || ex.group.toLowerCase().includes(q) || ex.equipment.toLowerCase().includes(q);
+    });
+    if (showAllCustomWorkoutOptions || q) return list;
+    return list.slice(0, 10);
+  }, [exercises, customWorkoutSearch, customWorkoutCategoryFilter, showAllCustomWorkoutOptions]);
+
+  useEffect(() => {
+    setShowAllCustomWorkoutOptions(false);
+  }, [customWorkoutSearch, customWorkoutCategoryFilter]);
 
   function addCustomWorkoutLine(exerciseId: string) {
     if (!exerciseId.trim()) return;
@@ -2494,6 +2509,28 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
                 <div className="mt-4 space-y-3">
                   <TextInput value={customWorkoutSearch} onChange={(e) => setCustomWorkoutSearch(e.target.value)} placeholder="Søk i øvelsesbanken (navn, gruppe, utstyr)" />
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,220px)_auto] sm:items-center">
+                    <label className="space-y-1">
+                      <span className="text-[11px] font-semibold text-slate-600">Kategori</span>
+                      <select
+                        value={customWorkoutCategoryFilter}
+                        onChange={(event) => setCustomWorkoutCategoryFilter(event.target.value)}
+                        className="h-10 w-full rounded-xl border bg-white px-3 text-sm text-slate-700"
+                        style={{ borderColor: "rgba(15,23,42,0.12)" }}
+                      >
+                        <option value="all">Alle kategorier</option>
+                        {customWorkoutCategories.map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <div className="text-xs text-slate-500 sm:text-right">
+                      Viser {customWorkoutExerciseOptions.length}
+                      {showAllCustomWorkoutOptions || customWorkoutSearch.trim() ? "" : " av de første 10"}
+                    </div>
+                  </div>
                   {exercises.length === 0 ? (
                     <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
                       Øvelsesbanken er tom akkurat nå. Oppdater siden om litt, eller ta kontakt med treneren din. Uten øvelser i banken kan du ikke legge til øvelser her.
@@ -2512,6 +2549,11 @@ export function MemberPortal(props: MemberPortalProps) {
                       </button>
                     ))}
                   </div>
+                  {!customWorkoutSearch.trim() && !showAllCustomWorkoutOptions && customWorkoutCategoryFilter === "all" && exercises.length > 10 ? (
+                    <OutlineButton type="button" onClick={() => setShowAllCustomWorkoutOptions(true)} className="px-3 py-1.5 text-xs">
+                      Vis flere øvelser
+                    </OutlineButton>
+                  ) : null}
                   {customWorkoutLines.length === 0 ? (
                     <div className="rounded-2xl border border-dashed bg-slate-50 px-3 py-4 text-center text-sm text-slate-500" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
                       Trykk på øvelser over for å legge dem i økta di.

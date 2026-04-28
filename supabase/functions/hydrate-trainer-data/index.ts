@@ -85,11 +85,29 @@ Deno.serve(async (req) => {
       .in("member_id", ownedMemberIds);
   }
 
-  const { data: members, error: membersError } = await adminClient
+  const membersSelectWithAvatar =
+    "id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url, created_at";
+  const membersSelectWithoutAvatar =
+    "id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, created_at";
+  let members: Array<Record<string, unknown>> | null = null;
+  let membersError: { message: string } | null = null;
+  const membersWithAvatar = await adminClient
     .from("members")
-    .select("id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url, created_at")
+    .select(membersSelectWithAvatar)
     .eq("owner_user_id", ownerUserId)
     .order("created_at", { ascending: true });
+  if (membersWithAvatar.error && membersWithAvatar.error.message.includes("avatar_url")) {
+    const membersWithoutAvatar = await adminClient
+      .from("members")
+      .select(membersSelectWithoutAvatar)
+      .eq("owner_user_id", ownerUserId)
+      .order("created_at", { ascending: true });
+    members = (membersWithoutAvatar.data ?? []) as Array<Record<string, unknown>>;
+    membersError = membersWithoutAvatar.error;
+  } else {
+    members = (membersWithAvatar.data ?? []) as Array<Record<string, unknown>>;
+    membersError = membersWithAvatar.error;
+  }
 
   const { data: programsByOwner, error: programsByOwnerError } = await adminClient
     .from("training_programs")

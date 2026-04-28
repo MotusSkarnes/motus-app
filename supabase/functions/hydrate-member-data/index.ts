@@ -53,13 +53,26 @@ Deno.serve(async (req) => {
     return jsonResponse(400, { error: "Authenticated user email is missing" });
   }
 
-  const { data: allMembers, error: membersError } = await adminClient
-    .from("members")
-    .select("id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url, created_at")
-    .order("created_at", { ascending: false });
-  if (membersError) {
-    return jsonResponse(500, { error: membersError.message });
+  const membersSelectWithAvatar =
+    "id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url, created_at";
+  const membersSelectWithoutAvatar =
+    "id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, created_at";
+
+  let allMembers: Array<Record<string, unknown>> | null = null;
+  let membersError: { message: string } | null = null;
+  const membersWithAvatar = await adminClient.from("members").select(membersSelectWithAvatar).order("created_at", { ascending: false });
+  if (membersWithAvatar.error && membersWithAvatar.error.message.includes("avatar_url")) {
+    const membersWithoutAvatar = await adminClient
+      .from("members")
+      .select(membersSelectWithoutAvatar)
+      .order("created_at", { ascending: false });
+    allMembers = (membersWithoutAvatar.data ?? []) as Array<Record<string, unknown>>;
+    membersError = membersWithoutAvatar.error;
+  } else {
+    allMembers = (membersWithAvatar.data ?? []) as Array<Record<string, unknown>>;
+    membersError = membersWithAvatar.error;
   }
+  if (membersError) return jsonResponse(500, { error: membersError.message });
 
   const members = (allMembers ?? []).filter((row) => {
     const rowEmail = normalizeEmail((row as { email?: string }).email);
