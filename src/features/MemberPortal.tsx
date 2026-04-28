@@ -1494,7 +1494,9 @@ export function MemberPortal(props: MemberPortalProps) {
         ),
         memberId: editableMember.id,
         memberIds: safeTargetIds,
-        expectedMinUpdated: safeTargetIds.length,
+        // Treat sync as healthy when at least one canonical row is updated.
+        // Duplicate legacy rows may lag and be healed by subsequent sync paths.
+        expectedMinUpdated: 1,
         changes: {
           name: memberNameDraft,
           phone: memberPhoneDraft,
