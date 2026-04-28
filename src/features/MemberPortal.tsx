@@ -265,6 +265,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [periodPlans, setPeriodPlans] = useState<PeriodSchedulePlan[]>([]);
   const [showPeriodPlanPanel, setShowPeriodPlanPanel] = useState(true);
   const [selectedPeriodPlanWeekNumber, setSelectedPeriodPlanWeekNumber] = useState<number | null>(null);
+  const [periodPlanActionStatus, setPeriodPlanActionStatus] = useState<string | null>(null);
   const [selectedIntervalProgramId, setSelectedIntervalProgramId] = useState("");
   const [suggestedWeightOverridesByProgramExerciseId, setSuggestedWeightOverridesByProgramExerciseId] = useState<Record<string, string>>({});
   const [showIntervalTimerModal, setShowIntervalTimerModal] = useState(false);
@@ -1224,6 +1225,13 @@ export function MemberPortal(props: MemberPortalProps) {
     return () => window.clearTimeout(timer);
   }, [profileSaveInfo]);
   useEffect(() => {
+    if (!periodPlanActionStatus) return;
+    const timer = window.setTimeout(() => {
+      setPeriodPlanActionStatus(null);
+    }, 5000);
+    return () => window.clearTimeout(timer);
+  }, [periodPlanActionStatus]);
+  useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     try {
       const raw = window.localStorage.getItem(getUiPreferencesStorageKey(editableMember.id));
@@ -1844,6 +1852,30 @@ export function MemberPortal(props: MemberPortalProps) {
     setGroupWorkoutDifficultyLevel(3);
     setGroupWorkoutMotivationLevel(3);
     setGroupWorkoutNote("");
+  }
+
+  function resolveProgramForPlannedEntry(entry: string): TrainingProgram | null {
+    const normalized = entry.trim().toLowerCase();
+    if (!normalized) return null;
+    return memberAssignedPrograms.find((program) => program.title.trim().toLowerCase() === normalized) ?? null;
+  }
+
+  function handleQuickCompletePlannedEntry(entry: string) {
+    if (!activeMemberId) return;
+    const trimmed = entry.trim();
+    if (!trimmed) return;
+    logGroupWorkout({
+      memberId: activeMemberId,
+      className: trimmed,
+      note: "Registrert som gjennomfort fra periodeplan.",
+      reflection: {
+        energyLevel: 3,
+        difficultyLevel: 3,
+        motivationLevel: 3,
+        note: "Hurtiglogget fra periodeplan.",
+      },
+    });
+    setPeriodPlanActionStatus(`Registrert "${trimmed}" som gjennomfort.`);
   }
 
   function estimate1RM(weight: number, reps: number): number {
@@ -2618,6 +2650,7 @@ export function MemberPortal(props: MemberPortalProps) {
                           {displayedPeriodWeek ? (
                             <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Uke {displayedPeriodWeek.weekNumber}</div>
+                              {periodPlanActionStatus ? <div className="mt-2 text-xs text-emerald-700">{periodPlanActionStatus}</div> : null}
                               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                                 {([
                                   { key: "monday", label: "Mandag" },
@@ -2629,8 +2662,33 @@ export function MemberPortal(props: MemberPortalProps) {
                                   { key: "sunday", label: "Søndag" },
                                 ] as Array<{ key: WeekdayPlanKey; label: string }>).map((day) => (
                                   <div key={`${displayedPeriodWeek.id}-${day.key}`} className="rounded-lg border bg-slate-50 px-2 py-1.5 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                    <span className="font-semibold text-slate-700">{day.label}:</span>{" "}
-                                    <span className="text-slate-600">{displayedPeriodWeek.days[day.key] || "Ingen plan"}</span>
+                                    <div>
+                                      <span className="font-semibold text-slate-700">{day.label}:</span>{" "}
+                                      <span className="text-slate-600">{displayedPeriodWeek.days[day.key] || "Ingen plan"}</span>
+                                    </div>
+                                    {displayedPeriodWeek.days[day.key]?.trim() ? (
+                                      <div className="mt-2">
+                                        {resolveProgramForPlannedEntry(displayedPeriodWeek.days[day.key]) ? (
+                                          <OutlineButton
+                                            onClick={() => {
+                                              const matchedProgram = resolveProgramForPlannedEntry(displayedPeriodWeek.days[day.key]);
+                                              if (!matchedProgram) return;
+                                              startWorkoutMode(matchedProgram.id, buildStartWorkoutOptions(matchedProgram));
+                                            }}
+                                            className="w-full"
+                                          >
+                                            Start økt
+                                          </OutlineButton>
+                                        ) : (
+                                          <OutlineButton
+                                            onClick={() => handleQuickCompletePlannedEntry(displayedPeriodWeek.days[day.key])}
+                                            className="w-full"
+                                          >
+                                            Marker gjennomført
+                                          </OutlineButton>
+                                        )}
+                                      </div>
+                                    ) : null}
                                   </div>
                                 ))}
                               </div>
