@@ -55,9 +55,22 @@ async function getOwnerUserId(): Promise<string | null> {
     data: { session },
     error,
   } = await supabaseClient.auth.getSession();
-  if (error || !session?.access_token) return null;
-  const claims = decodeJwtPayload(session.access_token);
-  return claims && typeof claims.sub === "string" ? claims.sub : null;
+  if (!error && session?.user?.id) {
+    const fromSessionUser = String(session.user.id).trim();
+    if (fromSessionUser) return fromSessionUser;
+  }
+  if (!error && session?.access_token) {
+    const claims = decodeJwtPayload(session.access_token);
+    if (claims && typeof claims.sub === "string" && claims.sub.trim()) {
+      return claims.sub.trim();
+    }
+  }
+  const { data: userResult, error: userError } = await supabaseClient.auth.getUser();
+  if (!userError && userResult?.user?.id) {
+    const fromGetUser = String(userResult.user.id).trim();
+    if (fromGetUser) return fromGetUser;
+  }
+  return null;
 }
 
 async function resolveOwnerUserIdForMember(memberId: string, fallbackOwnerUserId: string | null): Promise<string | null> {
