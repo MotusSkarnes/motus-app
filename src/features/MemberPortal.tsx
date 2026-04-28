@@ -264,6 +264,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [seenUnlockedAchievementIds, setSeenUnlockedAchievementIds] = useState<string[]>([]);
   const [periodPlans, setPeriodPlans] = useState<PeriodSchedulePlan[]>([]);
   const [showPeriodPlanPanel, setShowPeriodPlanPanel] = useState(true);
+  const [selectedPeriodPlanWeekNumber, setSelectedPeriodPlanWeekNumber] = useState<number | null>(null);
   const [selectedIntervalProgramId, setSelectedIntervalProgramId] = useState("");
   const [suggestedWeightOverridesByProgramExerciseId, setSuggestedWeightOverridesByProgramExerciseId] = useState<Record<string, string>>({});
   const [showIntervalTimerModal, setShowIntervalTimerModal] = useState(false);
@@ -509,6 +510,19 @@ export function MemberPortal(props: MemberPortalProps) {
       null
     );
   }, [activePeriodPlan, activePeriodWeekIndex]);
+  const displayedPeriodWeek = useMemo(() => {
+    if (!activePeriodPlan) return null;
+    const weeks = activePeriodPlan.weeklyPlans ?? [];
+    if (!weeks.length) return null;
+    const fallbackWeekNumber = activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : 1;
+    const preferredWeekNumber = selectedPeriodPlanWeekNumber ?? fallbackWeekNumber;
+    return (
+      weeks.find((week) => week.weekNumber === preferredWeekNumber) ??
+      weeks.find((week) => week.weekNumber === fallbackWeekNumber) ??
+      weeks[0] ??
+      null
+    );
+  }, [activePeriodPlan, activePeriodWeekIndex, selectedPeriodPlanWeekNumber]);
   const todayPlanEntry = activeWeeklyPlan?.days[currentWeekdayKey]?.trim() ?? "";
   const todayProgramMatch = todayPlanEntry
     ? memberAssignedPrograms.find((program) => program.title.trim().toLowerCase() === todayPlanEntry.toLowerCase()) ?? null
@@ -1191,6 +1205,15 @@ export function MemberPortal(props: MemberPortalProps) {
       applyMemberCoreDrafts();
     }
   }, [editableMember, dbProfileMetrics, relatedMemberIds, updateMember]);
+
+  useEffect(() => {
+    if (!activePeriodPlan) {
+      setSelectedPeriodPlanWeekNumber(null);
+      return;
+    }
+    const fallbackWeekNumber = activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : 1;
+    setSelectedPeriodPlanWeekNumber(fallbackWeekNumber);
+  }, [activePeriodPlan?.id, activePeriodWeekIndex]);
 
   useEffect(() => {
     if (!profileSaveInfo) return;
@@ -2577,29 +2600,42 @@ export function MemberPortal(props: MemberPortalProps) {
                           <div className="font-medium text-slate-800">{plan.title}</div>
                           <div className="mt-1 text-xs text-slate-500">Start: {plan.startDate} · {plan.weeks} uker · Lagret {plan.createdAt}</div>
                           {plan.notes ? <div className="mt-2 text-sm text-slate-600">{plan.notes}</div> : null}
-                          <div className="mt-3 space-y-2">
-                            {(plan.weeklyPlans ?? []).map((week) => (
-                              <div key={week.id} className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Uke {week.weekNumber}</div>
-                                <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                                  {([
-                                    { key: "monday", label: "Mandag" },
-                                    { key: "tuesday", label: "Tirsdag" },
-                                    { key: "wednesday", label: "Onsdag" },
-                                    { key: "thursday", label: "Torsdag" },
-                                    { key: "friday", label: "Fredag" },
-                                    { key: "saturday", label: "Lørdag" },
-                                    { key: "sunday", label: "Søndag" },
-                                  ] as Array<{ key: WeekdayPlanKey; label: string }>).map((day) => (
-                                    <div key={`${week.id}-${day.key}`} className="rounded-lg border bg-slate-50 px-2 py-1.5 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                      <span className="font-semibold text-slate-700">{day.label}:</span>{" "}
-                                      <span className="text-slate-600">{week.days[day.key] || "Ingen plan"}</span>
-                                    </div>
-                                  ))}
-                                </div>
+                          {(plan.weeklyPlans ?? []).length > 1 ? (
+                            <div className="mt-3">
+                              <SelectBox
+                                value={String(displayedPeriodWeek?.weekNumber ?? 1)}
+                                onChange={(value) => setSelectedPeriodPlanWeekNumber(Math.max(1, Number(value) || 1))}
+                                options={(plan.weeklyPlans ?? []).map((week) => ({
+                                  value: String(week.weekNumber),
+                                  label:
+                                    week.weekNumber === (activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : -1)
+                                      ? `Uke ${week.weekNumber} (nå)`
+                                      : `Uke ${week.weekNumber}`,
+                                }))}
+                              />
+                            </div>
+                          ) : null}
+                          {displayedPeriodWeek ? (
+                            <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Uke {displayedPeriodWeek.weekNumber}</div>
+                              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                {([
+                                  { key: "monday", label: "Mandag" },
+                                  { key: "tuesday", label: "Tirsdag" },
+                                  { key: "wednesday", label: "Onsdag" },
+                                  { key: "thursday", label: "Torsdag" },
+                                  { key: "friday", label: "Fredag" },
+                                  { key: "saturday", label: "Lørdag" },
+                                  { key: "sunday", label: "Søndag" },
+                                ] as Array<{ key: WeekdayPlanKey; label: string }>).map((day) => (
+                                  <div key={`${displayedPeriodWeek.id}-${day.key}`} className="rounded-lg border bg-slate-50 px-2 py-1.5 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                    <span className="font-semibold text-slate-700">{day.label}:</span>{" "}
+                                    <span className="text-slate-600">{displayedPeriodWeek.days[day.key] || "Ingen plan"}</span>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
+                            </div>
+                          ) : null}
                         </div>
                       ))
                     )}
