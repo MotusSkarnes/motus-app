@@ -12,7 +12,7 @@ import type {
   WorkoutExerciseResult,
   WorkoutLog,
 } from "../app/types";
-import { formatDateDdMmYyyy } from "../app/dateFormat";
+import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy } from "../app/dateFormat";
 import {
   appendMemberMessage,
   appendTrainerMessage,
@@ -689,8 +689,8 @@ async function deleteLogsForProgram(memberId: string, programTitle: string) {
 
 function mapIsoToCreatedAt(iso: string): string {
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return formatDateDdMmYyyy(new Date());
-  return formatDateDdMmYyyy(date);
+  if (Number.isNaN(date.getTime())) return formatDateTimeDdMmYyyy(new Date());
+  return formatDateTimeDdMmYyyy(date);
 }
 
 function mapIsoToProgramDate(iso: string): string {

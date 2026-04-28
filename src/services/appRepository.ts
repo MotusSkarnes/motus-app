@@ -1,6 +1,6 @@
 import { uid } from "../app/storage";
 import type { AppState, ChatMessage, Exercise, Member, ProgramExercise, TrainingProgram, WorkoutCelebration, WorkoutLog, WorkoutReflection } from "../app/types";
-import { formatDateDdMmYyyy } from "../app/dateFormat";
+import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy } from "../app/dateFormat";
 
 export type CreateMemberInput = {
   name: string;
@@ -233,7 +233,7 @@ export function appendTrainerMessage(state: AppState, memberId: string, text: st
     memberId,
     sender: "trainer",
     text: text.trim(),
-    createdAt: formatDateDdMmYyyy(new Date()),
+    createdAt: formatDateTimeDdMmYyyy(new Date()),
   };
   return { ...state, messages: [...state.messages, nextMessage] };
 }
@@ -244,7 +244,7 @@ export function appendMemberMessage(state: AppState, memberId: string, text: str
     memberId,
     sender: "member",
     text: text.trim(),
-    createdAt: formatDateDdMmYyyy(new Date()),
+    createdAt: formatDateTimeDdMmYyyy(new Date()),
   };
   return { ...state, messages: [...state.messages, nextMessage] };
 }
