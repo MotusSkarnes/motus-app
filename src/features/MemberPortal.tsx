@@ -277,6 +277,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const hasInitializedAchievementTracking = useRef(false);
   const workoutWeightInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const memberMessagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const profileAutoSaveInFlightRef = useRef(false);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const nowDate = new Date();
@@ -528,6 +529,40 @@ export function MemberPortal(props: MemberPortalProps) {
   const todayProgramMatch = todayPlanEntry
     ? memberAssignedPrograms.find((program) => program.title.trim().toLowerCase() === todayPlanEntry.toLowerCase()) ?? null
     : null;
+  const profileMetricsFromDb = decodeMemberProfileMetrics(editableMember?.personalGoals);
+  const profileHasUnsavedChanges = useMemo(() => {
+    if (!editableMember) return false;
+    return (
+      memberNameDraft.trim() !== editableMember.name.trim() ||
+      memberEmailDraft.trim().toLowerCase() !== editableMember.email.trim().toLowerCase() ||
+      normalizePhone(memberPhoneDraft) !== normalizePhone(editableMember.phone) ||
+      normalizeBirthDateToDdMmYyyy(memberBirthDateDraft) !== normalizeBirthDateToDdMmYyyy(editableMember.birthDate) ||
+      memberGoalDraft.trim() !== editableMember.goal.trim() ||
+      memberFocusDraft.trim() !== editableMember.focus.trim() ||
+      memberInjuriesDraft.trim() !== editableMember.injuries.trim() ||
+      profileSessionsPerWeekTarget.trim() !== String(profileMetricsFromDb?.sessionsPerWeekTarget ?? "").trim() ||
+      profileDailyStepsTarget.trim() !== String(profileMetricsFromDb?.dailyStepsTarget ?? "").trim() ||
+      profileTargetWeight.trim() !== String(profileMetricsFromDb?.targetWeight ?? "").trim() ||
+      profileCurrentDailySteps.trim() !== String(profileMetricsFromDb?.currentDailySteps ?? "").trim()
+    );
+  }, [
+    editableMember,
+    memberNameDraft,
+    memberEmailDraft,
+    memberPhoneDraft,
+    memberBirthDateDraft,
+    memberGoalDraft,
+    memberFocusDraft,
+    memberInjuriesDraft,
+    profileSessionsPerWeekTarget,
+    profileDailyStepsTarget,
+    profileTargetWeight,
+    profileCurrentDailySteps,
+    profileMetricsFromDb?.sessionsPerWeekTarget,
+    profileMetricsFromDb?.dailyStepsTarget,
+    profileMetricsFromDb?.targetWeight,
+    profileMetricsFromDb?.currentDailySteps,
+  ]);
 
   function resolveSuggestedWorkoutWeight(programExercise: TrainingProgram["exercises"][number]): string {
     const override = suggestedWeightOverridesByProgramExerciseId[programExercise.id];
@@ -1224,6 +1259,19 @@ export function MemberPortal(props: MemberPortalProps) {
     return () => window.clearTimeout(timer);
   }, [periodPlanActionStatus]);
   useEffect(() => {
+    if (memberTab !== "profile") return;
+    if (!editableMember) return;
+    if (!profileHasUnsavedChanges) return;
+    const timer = window.setTimeout(() => {
+      if (profileAutoSaveInFlightRef.current) return;
+      profileAutoSaveInFlightRef.current = true;
+      void saveProfile({ silent: true }).finally(() => {
+        profileAutoSaveInFlightRef.current = false;
+      });
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [memberTab, editableMember, profileHasUnsavedChanges, saveProfile]);
+  useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     try {
       const raw = window.localStorage.getItem(getPeriodPlanCompletedStorageKey(editableMember.id));
@@ -1478,10 +1526,13 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }
 
-  async function saveProfile() {
+  async function saveProfile(options?: { silent?: boolean }) {
+    const silent = options?.silent === true;
     if (!editableMember || typeof window === "undefined") return;
     if (!isLikelyValidBirthDate(memberBirthDateDraft)) {
-      setProfileSaveInfo("Fødselsdato må være på formatet dd.mm.yyyy.");
+      if (!silent) {
+        setProfileSaveInfo("Fødselsdato må være på formatet dd.mm.yyyy.");
+      }
       return;
     }
     const normalizedDraftEmail = memberEmailDraft.trim().toLowerCase();
@@ -1554,18 +1605,26 @@ export function MemberPortal(props: MemberPortalProps) {
       if (!syncResult.ok) {
         setProfileSaveInfo("Profil lagret. Synk mot PT er midlertidig forsinket og forsøkes igjen automatisk.");
       } else if (normalizedDraftEmail && !normalizedDraftEmail.includes("@")) {
-        setProfileSaveInfo("Profil lagret. E-post ble ikke endret fordi formatet var ugyldig.");
+        if (!silent) {
+          setProfileSaveInfo("Profil lagret. E-post ble ikke endret fordi formatet var ugyldig.");
+        }
         return;
       } else {
-        setProfileSaveInfo("Profil og mål lagret.");
+        if (!silent) {
+          setProfileSaveInfo("Profil lagret automatisk.");
+        }
       }
       return;
     }
     if (normalizedDraftEmail && !normalizedDraftEmail.includes("@")) {
-      setProfileSaveInfo("Profil lagret. E-post ble ikke endret fordi formatet var ugyldig.");
+      if (!silent) {
+        setProfileSaveInfo("Profil lagret. E-post ble ikke endret fordi formatet var ugyldig.");
+      }
       return;
     }
-    setProfileSaveInfo("Profil og mål lagret.");
+    if (!silent) {
+      setProfileSaveInfo("Profil lagret automatisk.");
+    }
   }
 
   async function handleRegisterWebPush() {
