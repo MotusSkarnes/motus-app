@@ -362,6 +362,7 @@ async function persistMember(member: Member) {
         goal: member.goal,
         focus: member.focus,
         injuries: member.injuries,
+        personalGoals: member.personalGoals,
       },
     };
 
@@ -420,6 +421,7 @@ async function persistMember(member: Member) {
           goal: member.goal,
           focus: member.focus,
           injuries: member.injuries,
+          personal_goals: member.personalGoals,
         })
         .or(directClauses.join(","))
         .select("id");

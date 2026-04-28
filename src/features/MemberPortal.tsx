@@ -67,6 +67,64 @@ const MEMBER_AVATAR_PREFIX = "member-avatars";
 const PERIOD_PLANS_STORAGE_KEY = "motus.trainer.periodPlansByMemberId";
 const EMPTY_REMOTE_PERIOD_PLAN_ROWS: Array<{ memberId: string; plan: PeriodSchedulePlan }> = [];
 
+/** Stored in members.personal_goals so økt/skritt/mål synkes på tvers av enheter. */
+const PROFILE_METRICS_PREFIX = "MOTUS_PROFILE_V1:";
+
+type ProfileMetricsDraft = {
+  sessionsPerWeekTarget: string;
+  dailyStepsTarget: string;
+  targetWeight: string;
+  currentDailySteps: string;
+};
+
+function encodeMemberProfileMetrics(metrics: ProfileMetricsDraft): string {
+  return `${PROFILE_METRICS_PREFIX}${JSON.stringify(metrics)}`;
+}
+
+function decodeMemberProfileMetrics(personalGoals: string | undefined): ProfileMetricsDraft | null {
+  if (!personalGoals?.startsWith(PROFILE_METRICS_PREFIX)) return null;
+  try {
+    const parsed = JSON.parse(personalGoals.slice(PROFILE_METRICS_PREFIX.length)) as Partial<ProfileMetricsDraft>;
+    if (!parsed || typeof parsed !== "object") return null;
+    return {
+      sessionsPerWeekTarget: String(parsed.sessionsPerWeekTarget ?? ""),
+      dailyStepsTarget: String(parsed.dailyStepsTarget ?? ""),
+      targetWeight: String(parsed.targetWeight ?? ""),
+      currentDailySteps: String(parsed.currentDailySteps ?? ""),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Same canonical choice as useAppState.resolveMemberViewIdForUser — avoids feil rad ved duplikat-e-post. */
+function pickCanonicalMemberRow(
+  emailNormalized: string,
+  membersList: Member[],
+  programsList: TrainingProgram[],
+  preferredMemberId?: string,
+): Member | null {
+  const candidates = membersList.filter(
+    (m) => m.email.trim().toLowerCase() === emailNormalized && m.isActive !== false,
+  );
+  if (!candidates.length) return null;
+  const pref = preferredMemberId?.trim();
+  if (pref) {
+    const hit = candidates.find((m) => m.id === pref);
+    if (hit) return hit;
+  }
+  const programCountByMemberId = new Map<string, number>();
+  programsList.forEach((program) => {
+    programCountByMemberId.set(program.memberId, (programCountByMemberId.get(program.memberId) ?? 0) + 1);
+  });
+  return [...candidates].sort((a, b) => {
+    const aCount = programCountByMemberId.get(a.id) ?? 0;
+    const bCount = programCountByMemberId.get(b.id) ?? 0;
+    if (bCount !== aCount) return bCount - aCount;
+    return a.id.localeCompare(b.id);
+  })[0];
+}
+
 function encodeEmailForPath(email: string): string {
   const normalized = email.trim().toLowerCase();
   if (!normalized) return "";
@@ -226,7 +284,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const viewedMember = members.find((member) => member.id === memberViewId) ?? null;
   const currentMemberByEmail =
     currentUserRole === "member" && normalizedCurrentUserEmail
-      ? members.find((member) => member.email.trim().toLowerCase() === normalizedCurrentUserEmail) ?? null
+      ? pickCanonicalMemberRow(normalizedCurrentUserEmail, members, programs, currentUserMemberId)
       : null;
   const editableMember =
     currentUserRole === "member"
@@ -273,6 +331,17 @@ export function MemberPortal(props: MemberPortalProps) {
     return merged.length ? merged : [activeMemberId];
   }, [members, currentUserRole, normalizedCurrentUserEmail, editableMember, activeMemberId, programs, logs, messages, currentUserMemberId]);
   const relatedMemberIdSet = useMemo(() => new Set(relatedMemberIds), [relatedMemberIds]);
+  const relatedMembersForProfile = useMemo(
+    () => members.filter((member) => relatedMemberIdSet.has(member.id)),
+    [members, relatedMemberIdSet],
+  );
+  const dbProfileMetrics = useMemo(() => {
+    for (const member of relatedMembersForProfile) {
+      const decoded = decodeMemberProfileMetrics(member.personalGoals);
+      if (decoded) return decoded;
+    }
+    return null;
+  }, [relatedMembersForProfile]);
   const memberPrograms = programs.filter((program) => relatedMemberIdSet.has(program.memberId));
   const memberAssignedPrograms = useMemo(() => memberPrograms.filter((program) => !program.ephemeral), [memberPrograms]);
   const memberLogs = logs.filter((log) => relatedMemberIdSet.has(log.memberId));
@@ -559,6 +628,8 @@ export function MemberPortal(props: MemberPortalProps) {
       goal: string;
       focus: string;
       injuries: string;
+      /** MOTUS_PROFILE_V1 + JSON; synker økter/skritt osv. */
+      personalGoals: string;
     };
   }): Promise<{ ok: true } | { ok: false; message: string }> {
     if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
@@ -617,6 +688,7 @@ export function MemberPortal(props: MemberPortalProps) {
           goal: payload.changes.goal.trim(),
           focus: payload.changes.focus.trim(),
           injuries: payload.changes.injuries.trim(),
+          personal_goals: payload.changes.personalGoals.trim(),
         })
         .in("id", payload.memberIds)
         .select("id");
@@ -639,6 +711,7 @@ export function MemberPortal(props: MemberPortalProps) {
           goal: payload.changes.goal.trim(),
           focus: payload.changes.focus.trim(),
           injuries: payload.changes.injuries.trim(),
+          personal_goals: payload.changes.personalGoals.trim(),
         })
         .in("id", payload.memberIds)
         .select("id");
@@ -1032,17 +1105,16 @@ export function MemberPortal(props: MemberPortalProps) {
   useEffect(() => {
     if (!editableMember) return;
     setProfileSaveInfo(null);
-    const fallback = {
+    const fallback: ProfileMetricsDraft = {
       sessionsPerWeekTarget: "",
       dailyStepsTarget: "",
       targetWeight: "",
       currentDailySteps: "",
     };
-    if (typeof window === "undefined") {
-      setProfileSessionsPerWeekTarget(fallback.sessionsPerWeekTarget);
-      setProfileDailyStepsTarget(fallback.dailyStepsTarget);
-      setProfileTargetWeight(fallback.targetWeight);
-      setProfileCurrentDailySteps(fallback.currentDailySteps);
+
+    const fromDb = dbProfileMetrics;
+
+    function applyMemberCoreDrafts() {
       setMemberNameDraft(editableMember.name);
       setMemberEmailDraft(editableMember.email);
       setMemberPhoneDraft(editableMember.phone);
@@ -1050,50 +1122,75 @@ export function MemberPortal(props: MemberPortalProps) {
       setMemberGoalDraft(editableMember.goal);
       setMemberFocusDraft(editableMember.focus);
       setMemberInjuriesDraft(editableMember.injuries);
+    }
+
+    function applyMetricDrafts(metrics: ProfileMetricsDraft) {
+      setProfileSessionsPerWeekTarget(metrics.sessionsPerWeekTarget);
+      setProfileDailyStepsTarget(metrics.dailyStepsTarget);
+      setProfileTargetWeight(metrics.targetWeight);
+      setProfileCurrentDailySteps(metrics.currentDailySteps);
+    }
+
+    if (typeof window === "undefined") {
+      applyMetricDrafts(fromDb ?? fallback);
+      applyMemberCoreDrafts();
       return;
     }
+
+    if (fromDb) {
+      applyMetricDrafts(fromDb);
+      applyMemberCoreDrafts();
+      try {
+        window.localStorage.setItem(getProfileStorageKey(editableMember.id), JSON.stringify(fromDb));
+      } catch {
+        /* ignore quota / private mode quirks */
+      }
+      return;
+    }
+
     try {
       const raw = window.localStorage.getItem(getProfileStorageKey(editableMember.id));
       if (!raw) {
-        setProfileSessionsPerWeekTarget(fallback.sessionsPerWeekTarget);
-        setProfileDailyStepsTarget(fallback.dailyStepsTarget);
-        setProfileTargetWeight(fallback.targetWeight);
-        setProfileCurrentDailySteps(fallback.currentDailySteps);
-        setMemberNameDraft(editableMember.name);
-        setMemberEmailDraft(editableMember.email);
-        setMemberPhoneDraft(editableMember.phone);
-        setMemberBirthDateDraft(normalizeBirthDateToDdMmYyyy(editableMember.birthDate));
-        setMemberGoalDraft(editableMember.goal);
-        setMemberFocusDraft(editableMember.focus);
-        setMemberInjuriesDraft(editableMember.injuries);
+        applyMetricDrafts(fallback);
+        applyMemberCoreDrafts();
         return;
       }
-      const parsed = JSON.parse(raw) as Partial<typeof fallback>;
-      setProfileSessionsPerWeekTarget(parsed.sessionsPerWeekTarget ?? "");
-      setProfileDailyStepsTarget(parsed.dailyStepsTarget ?? "");
-      setProfileTargetWeight(parsed.targetWeight ?? "");
-      setProfileCurrentDailySteps(parsed.currentDailySteps ?? "");
-      setMemberNameDraft(editableMember.name);
-      setMemberEmailDraft(editableMember.email);
-      setMemberPhoneDraft(editableMember.phone);
-      setMemberBirthDateDraft(normalizeBirthDateToDdMmYyyy(editableMember.birthDate));
-      setMemberGoalDraft(editableMember.goal);
-      setMemberFocusDraft(editableMember.focus);
-      setMemberInjuriesDraft(editableMember.injuries);
+      const parsed = JSON.parse(raw) as Partial<ProfileMetricsDraft>;
+      applyMetricDrafts({
+        sessionsPerWeekTarget: parsed.sessionsPerWeekTarget ?? "",
+        dailyStepsTarget: parsed.dailyStepsTarget ?? "",
+        targetWeight: parsed.targetWeight ?? "",
+        currentDailySteps: parsed.currentDailySteps ?? "",
+      });
+      applyMemberCoreDrafts();
+      const localHasAnyMetric =
+        Boolean((parsed.sessionsPerWeekTarget ?? "").toString().trim()) ||
+        Boolean((parsed.dailyStepsTarget ?? "").toString().trim()) ||
+        Boolean((parsed.targetWeight ?? "").toString().trim()) ||
+        Boolean((parsed.currentDailySteps ?? "").toString().trim());
+      if (localHasAnyMetric) {
+        const targetIds = Array.from(new Set([editableMember.id, ...relatedMemberIds].filter(Boolean)));
+        // One-time heal path: migrate legacy local-only metrics into DB-backed personal_goals.
+        const encoded = encodeMemberProfileMetrics({
+          sessionsPerWeekTarget: String(parsed.sessionsPerWeekTarget ?? ""),
+          dailyStepsTarget: String(parsed.dailyStepsTarget ?? ""),
+          targetWeight: String(parsed.targetWeight ?? ""),
+          currentDailySteps: String(parsed.currentDailySteps ?? ""),
+        });
+        targetIds.forEach((memberId) => {
+          updateMember({
+            memberId,
+            changes: {
+              personalGoals: encoded,
+            },
+          });
+        });
+      }
     } catch {
-      setProfileSessionsPerWeekTarget(fallback.sessionsPerWeekTarget);
-      setProfileDailyStepsTarget(fallback.dailyStepsTarget);
-      setProfileTargetWeight(fallback.targetWeight);
-      setProfileCurrentDailySteps(fallback.currentDailySteps);
-      setMemberNameDraft(editableMember.name);
-      setMemberEmailDraft(editableMember.email);
-      setMemberPhoneDraft(editableMember.phone);
-      setMemberBirthDateDraft(normalizeBirthDateToDdMmYyyy(editableMember.birthDate));
-      setMemberGoalDraft(editableMember.goal);
-      setMemberFocusDraft(editableMember.focus);
-      setMemberInjuriesDraft(editableMember.injuries);
+      applyMetricDrafts(fallback);
+      applyMemberCoreDrafts();
     }
-  }, [editableMember]);
+  }, [editableMember, dbProfileMetrics, relatedMemberIds, updateMember]);
 
   useEffect(() => {
     if (!profileSaveInfo) return;
@@ -1347,12 +1444,13 @@ export function MemberPortal(props: MemberPortalProps) {
     const fallbackEmail = editableMember.email.trim().toLowerCase();
     const normalizedEmail =
       normalizedDraftEmail && normalizedDraftEmail.includes("@") ? normalizedDraftEmail : fallbackEmail;
-    const next = {
+    const next: ProfileMetricsDraft = {
       sessionsPerWeekTarget: profileSessionsPerWeekTarget.trim(),
       dailyStepsTarget: profileDailyStepsTarget.trim(),
       targetWeight: profileTargetWeight.trim(),
       currentDailySteps: profileCurrentDailySteps.trim(),
     };
+    const metricsForSync = encodeMemberProfileMetrics(next);
     window.localStorage.setItem(getProfileStorageKey(editableMember.id), JSON.stringify(next));
     const targetMemberIds = Array.from(
       new Set(
@@ -1380,6 +1478,7 @@ export function MemberPortal(props: MemberPortalProps) {
           goal: memberGoalDraft,
           focus: memberFocusDraft,
           injuries: memberInjuriesDraft,
+          personalGoals: metricsForSync,
         },
       });
     });
@@ -1403,6 +1502,7 @@ export function MemberPortal(props: MemberPortalProps) {
           goal: memberGoalDraft,
           focus: memberFocusDraft,
           injuries: memberInjuriesDraft,
+          personalGoals: metricsForSync,
         },
       });
       if (!syncResult.ok) {
