@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
 
   const { data: members, error: membersError } = await adminClient
     .from("members")
-    .select("id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, created_at")
+    .select("id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url, created_at")
     .eq("owner_user_id", ownerUserId)
     .order("created_at", { ascending: true });
 

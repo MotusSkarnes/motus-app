@@ -376,6 +376,7 @@ async function persistMember(member: Member) {
         focus: member.focus,
         injuries: member.injuries,
         personalGoals: member.personalGoals,
+        avatarUrl: member.avatarUrl ?? "",
       },
     };
 
@@ -435,6 +436,7 @@ async function persistMember(member: Member) {
           focus: member.focus,
           injuries: member.injuries,
           personal_goals: member.personalGoals,
+          avatar_url: member.avatarUrl ?? "",
         })
         .or(directClauses.join(","))
         .select("id");
@@ -489,6 +491,7 @@ async function persistMember(member: Member) {
       personal_goals: member.personalGoals,
       injuries: member.injuries,
       coach_notes: member.coachNotes,
+      avatar_url: member.avatarUrl ?? "",
       created_at: new Date().toISOString(),
     },
     { onConflict: "id" }
@@ -924,6 +927,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
         personalGoals: String(member.personal_goals ?? ""),
         injuries: String(member.injuries ?? ""),
         coachNotes: String(member.coach_notes ?? ""),
+        avatarUrl: String(member.avatar_url ?? ""),
       } as Member;
     }),
     messages: messagesRows.map((row) => {
@@ -1028,6 +1032,7 @@ export async function fetchHydratedMemberData(): Promise<HydratedMemberData | nu
         personalGoals: String(member.personal_goals ?? ""),
         injuries: String(member.injuries ?? ""),
         coachNotes: String(member.coach_notes ?? ""),
+        avatarUrl: String(member.avatar_url ?? ""),
       } as Member;
     }),
     messages: messagesRows.map((row) => {
@@ -1163,7 +1168,7 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
   const { data, error } = await supabaseClient
     .from("members")
     .select(
-      "id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes"
+      "id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url"
     )
     .or("is_active.is.null,is_active.eq.true")
     .order("created_at", { ascending: true });
@@ -1192,6 +1197,7 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
     personalGoals: String(row.personal_goals ?? ""),
     injuries: String(row.injuries ?? ""),
     coachNotes: String(row.coach_notes ?? ""),
+    avatarUrl: String(row.avatar_url ?? ""),
   }));
 }
 

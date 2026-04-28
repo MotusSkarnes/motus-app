@@ -506,6 +506,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     });
     return { byEmail, byName, byIdentity };
   }, [members, memberAvatarById]);
+  const avatarCacheBust = useMemo(() => String(Date.now()), []);
   function resolveMemberAvatarUrl(member: Member): string {
     const direct = memberAvatarById[member.id];
     if (direct) return direct;
@@ -526,13 +527,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
     if (encodedEmail) {
       const path = `${MEMBER_AVATAR_PREFIX}/email-${encodedEmail}.jpg`;
       const { data } = supabaseClient.storage.from(MEMBER_AVATAR_BUCKET).getPublicUrl(path);
-      if (data.publicUrl) return `${data.publicUrl}?v=1`;
+      if (data.publicUrl) return `${data.publicUrl}?v=${avatarCacheBust}`;
     }
     const encodedName = encodeNameForPath(member.name);
     if (!encodedName) return "";
     const namePath = `${MEMBER_AVATAR_PREFIX}/name-${encodedName}.jpg`;
     const { data: nameData } = supabaseClient.storage.from(MEMBER_AVATAR_BUCKET).getPublicUrl(namePath);
-    return nameData.publicUrl ? `${nameData.publicUrl}?v=1` : "";
+    return nameData.publicUrl ? `${nameData.publicUrl}?v=${avatarCacheBust}` : "";
   }
   const selectedMemberRelatedIds = useMemo(() => {
     if (selectedMemberId === "__template__") return [];

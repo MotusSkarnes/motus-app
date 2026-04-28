@@ -20,6 +20,7 @@ type UpdatePayload = {
     injuries?: string;
     /** Encoded profile metrics / app metadata; see MemberPortal MOTUS_PROFILE_V1 */
     personalGoals?: string;
+    avatarUrl?: string;
   };
 };
 
@@ -122,6 +123,7 @@ Deno.serve(async (req) => {
   if (changes.focus !== undefined) updateFields.focus = normalizeString(changes.focus);
   if (changes.injuries !== undefined) updateFields.injuries = normalizeString(changes.injuries);
   if (changes.personalGoals !== undefined) updateFields.personal_goals = normalizeString(changes.personalGoals);
+  if (changes.avatarUrl !== undefined) updateFields.avatar_url = normalizeString(changes.avatarUrl);
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
   const anchorClauses = [`email.eq.${currentEmail}`];
