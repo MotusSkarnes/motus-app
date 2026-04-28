@@ -43,6 +43,7 @@ export type LogGroupWorkoutInput = {
   className: string;
   note?: string;
   reflection: WorkoutReflection;
+  keepCurrentTab?: boolean;
 };
 
 export type ReplaceWorkoutExerciseGroupInput = {

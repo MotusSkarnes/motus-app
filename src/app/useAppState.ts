@@ -832,7 +832,9 @@ export function useAppState() {
 
   function logGroupWorkout(input: LogGroupWorkoutInput) {
     setAppState((prev) => repository.logGroupWorkout(prev, input));
-    setMemberTab("progress");
+    if (input.keepCurrentTab !== true) {
+      setMemberTab("progress");
+    }
   }
 
   function sendMemberMessage(memberId: string, text: string) {

@@ -8,7 +8,7 @@ import { supabaseClient } from "../services/supabaseClient";
 import { isWebPushConfigurable, registerWebPushWithSupabase } from "../services/webPush";
 import { Card, GradientButton, OutlineButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { uid } from "../app/storage";
-import type { ReplaceWorkoutExerciseGroupInput, StartCustomWorkoutInput, StartWorkoutModeOptions, UpdateMemberInput } from "../services/appRepository";
+import type { LogGroupWorkoutInput, ReplaceWorkoutExerciseGroupInput, StartCustomWorkoutInput, StartWorkoutModeOptions, UpdateMemberInput } from "../services/appRepository";
 import { mergedPeriodPlanListForMember } from "../app/periodPlanMerge";
 import type {
   ChatMessage,
@@ -54,7 +54,7 @@ type MemberPortalProps = {
   setWorkoutLogResults: (input: { logId: string; results: WorkoutLog["results"] }) => void;
   updateWorkoutModeNote: (note: string) => void;
   finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
-  logGroupWorkout: (input: { memberId: string; className: string; note?: string; reflection: WorkoutReflection }) => void;
+  logGroupWorkout: (input: LogGroupWorkoutInput) => void;
   cancelWorkoutMode: () => void;
   workoutCelebration: WorkoutCelebration | null;
   dismissWorkoutCelebration: () => void;
@@ -1899,6 +1899,7 @@ export function MemberPortal(props: MemberPortalProps) {
         motivationLevel: 3,
         note: "Hurtiglogget fra periodeplan.",
       },
+      keepCurrentTab: true,
     });
     setPeriodPlanActionStatus(`Registrert "${trimmed}" som gjennomfort.`);
   }
