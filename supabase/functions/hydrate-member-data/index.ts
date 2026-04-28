@@ -44,6 +44,11 @@ Deno.serve(async (req) => {
   }
 
   const requesterEmail = normalizeEmail(userData.user.email);
+  const authMemberId = String(
+    (userData.user.app_metadata?.member_id as string | undefined) ??
+      (userData.user.user_metadata?.member_id as string | undefined) ??
+      ""
+  ).trim();
   if (!requesterEmail || !requesterEmail.includes("@")) {
     return jsonResponse(400, { error: "Authenticated user email is missing" });
   }
@@ -56,7 +61,13 @@ Deno.serve(async (req) => {
     return jsonResponse(500, { error: membersError.message });
   }
 
-  const members = (allMembers ?? []).filter((row) => normalizeEmail((row as { email?: string }).email) === requesterEmail);
+  const members = (allMembers ?? []).filter((row) => {
+    const rowEmail = normalizeEmail((row as { email?: string }).email);
+    const rowId = String((row as { id?: string }).id ?? "").trim();
+    if (rowEmail === requesterEmail) return true;
+    if (authMemberId && rowId === authMemberId) return true;
+    return false;
+  });
 
   const memberIds = (members ?? [])
     .map((row) => String((row as { id?: string }).id ?? "").trim())
