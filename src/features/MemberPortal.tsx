@@ -66,6 +66,7 @@ const MEMBER_AVATAR_BUCKET = "exercise-images";
 const MEMBER_AVATAR_PREFIX = "member-avatars";
 const PERIOD_PLANS_STORAGE_KEY = "motus.trainer.periodPlansByMemberId";
 const EMPTY_REMOTE_PERIOD_PLAN_ROWS: Array<{ memberId: string; plan: PeriodSchedulePlan }> = [];
+const PERIOD_PLAN_COMPLETED_STORAGE_PREFIX = "MOTUS_PERIOD_PLAN_COMPLETED_V1:";
 
 /** Stored in members.personal_goals so økt/skritt/mål synkes på tvers av enheter. */
 const PROFILE_METRICS_PREFIX = "MOTUS_PROFILE_V1:";
@@ -266,6 +267,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [showPeriodPlanPanel, setShowPeriodPlanPanel] = useState(true);
   const [selectedPeriodPlanWeekNumber, setSelectedPeriodPlanWeekNumber] = useState<number | null>(null);
   const [periodPlanActionStatus, setPeriodPlanActionStatus] = useState<string | null>(null);
+  const [completedPeriodPlanEntryKeys, setCompletedPeriodPlanEntryKeys] = useState<string[]>([]);
   const [selectedIntervalProgramId, setSelectedIntervalProgramId] = useState("");
   const [suggestedWeightOverridesByProgramExerciseId, setSuggestedWeightOverridesByProgramExerciseId] = useState<Record<string, string>>({});
   const [showIntervalTimerModal, setShowIntervalTimerModal] = useState(false);
@@ -1234,6 +1236,35 @@ export function MemberPortal(props: MemberPortalProps) {
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     try {
+      const raw = window.localStorage.getItem(getPeriodPlanCompletedStorageKey(editableMember.id));
+      if (!raw) {
+        setCompletedPeriodPlanEntryKeys([]);
+        return;
+      }
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) {
+        setCompletedPeriodPlanEntryKeys([]);
+        return;
+      }
+      setCompletedPeriodPlanEntryKeys(parsed.map((item) => String(item)).filter(Boolean));
+    } catch {
+      setCompletedPeriodPlanEntryKeys([]);
+    }
+  }, [editableMember?.id]);
+  useEffect(() => {
+    if (!editableMember || typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(
+        getPeriodPlanCompletedStorageKey(editableMember.id),
+        JSON.stringify(completedPeriodPlanEntryKeys),
+      );
+    } catch {
+      // ignore storage write errors (quota/private mode)
+    }
+  }, [editableMember?.id, completedPeriodPlanEntryKeys]);
+  useEffect(() => {
+    if (!editableMember || typeof window === "undefined") return;
+    try {
       const raw = window.localStorage.getItem(getUiPreferencesStorageKey(editableMember.id));
       if (!raw) {
         setMicroCelebrationsEnabled(true);
@@ -1870,6 +1901,31 @@ export function MemberPortal(props: MemberPortalProps) {
       },
     });
     setPeriodPlanActionStatus(`Registrert "${trimmed}" som gjennomfort.`);
+  }
+
+  function getPeriodPlanCompletedStorageKey(memberId: string): string {
+    return `${PERIOD_PLAN_COMPLETED_STORAGE_PREFIX}${memberId}`;
+  }
+
+  function buildPeriodPlanEntryKey(planId: string, weekNumber: number, day: WeekdayPlanKey): string {
+    return `${planId}:${weekNumber}:${day}`;
+  }
+
+  function isPeriodPlanEntryCompleted(planId: string, weekNumber: number, day: WeekdayPlanKey): boolean {
+    const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
+    return completedPeriodPlanEntryKeys.includes(key);
+  }
+
+  function togglePeriodPlanEntryCompleted(input: { planId: string; weekNumber: number; day: WeekdayPlanKey; entry: string }) {
+    const key = buildPeriodPlanEntryKey(input.planId, input.weekNumber, input.day);
+    const alreadyCompleted = completedPeriodPlanEntryKeys.includes(key);
+    if (!alreadyCompleted) {
+      handleQuickCompletePlannedEntry(input.entry);
+      setCompletedPeriodPlanEntryKeys((prev) => [...prev, key]);
+      return;
+    }
+    setCompletedPeriodPlanEntryKeys((prev) => prev.filter((item) => item !== key));
+    setPeriodPlanActionStatus(`Fjernet markering for "${input.entry.trim()}".`);
   }
 
   function estimate1RM(weight: number, reps: number): number {
@@ -2659,19 +2715,53 @@ export function MemberPortal(props: MemberPortalProps) {
                                   <div key={`${displayedPeriodWeek.id}-${day.key}`} className="rounded-lg border bg-slate-50 px-2 py-1.5 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                                     <div>
                                       <span className="font-semibold text-slate-700">{day.label}:</span>{" "}
-                                      <span className="text-slate-600">{displayedPeriodWeek.days[day.key] || "Ingen plan"}</span>
+                                      <span
+                                        className={
+                                          isPeriodPlanEntryCompleted(plan.id, displayedPeriodWeek.weekNumber, day.key)
+                                            ? "text-slate-400 line-through"
+                                            : "text-slate-600"
+                                        }
+                                      >
+                                        {displayedPeriodWeek.days[day.key] || "Ingen plan"}
+                                      </span>
                                     </div>
                                     {displayedPeriodWeek.days[day.key]?.trim() ? (
                                       <div className="mt-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => handleQuickCompletePlannedEntry(displayedPeriodWeek.days[day.key])}
-                                          className="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
-                                          style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                                          aria-label={`Marker ${day.label} som fullført`}
-                                        >
-                                          ✓
-                                        </button>
+                                        {isPeriodPlanEntryCompleted(plan.id, displayedPeriodWeek.weekNumber, day.key) ? (
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              togglePeriodPlanEntryCompleted({
+                                                planId: plan.id,
+                                                weekNumber: displayedPeriodWeek.weekNumber,
+                                                day: day.key,
+                                                entry: displayedPeriodWeek.days[day.key],
+                                              })
+                                            }
+                                            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
+                                            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                                            aria-label={`Fjern fullfort-markering for ${day.label}`}
+                                          >
+                                            ✓
+                                          </button>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              togglePeriodPlanEntryCompleted({
+                                                planId: plan.id,
+                                                weekNumber: displayedPeriodWeek.weekNumber,
+                                                day: day.key,
+                                                entry: displayedPeriodWeek.days[day.key],
+                                              })
+                                            }
+                                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border text-xs font-bold text-slate-600 bg-white"
+                                            style={{ borderColor: "rgba(15,23,42,0.16)" }}
+                                            aria-label={`Marker ${day.label} som fullført`}
+                                          >
+                                            ✓
+                                          </button>
+                                        )}
                                       </div>
                                     ) : null}
                                   </div>
