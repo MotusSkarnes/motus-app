@@ -2675,14 +2675,14 @@ export function MemberPortal(props: MemberPortalProps) {
                                               if (!matchedProgram) return;
                                               startWorkoutMode(matchedProgram.id, buildStartWorkoutOptions(matchedProgram));
                                             }}
-                                            className="w-full"
+                                            className="h-8 px-3 text-[11px] sm:text-xs"
                                           >
                                             Start økt
                                           </OutlineButton>
                                         ) : (
                                           <OutlineButton
                                             onClick={() => handleQuickCompletePlannedEntry(displayedPeriodWeek.days[day.key])}
-                                            className="w-full"
+                                            className="h-8 px-3 text-[11px] sm:text-xs"
                                           >
                                             Marker gjennomført
                                           </OutlineButton>
