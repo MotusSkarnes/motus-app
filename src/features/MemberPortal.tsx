@@ -1854,12 +1854,6 @@ export function MemberPortal(props: MemberPortalProps) {
     setGroupWorkoutNote("");
   }
 
-  function resolveProgramForPlannedEntry(entry: string): TrainingProgram | null {
-    const normalized = entry.trim().toLowerCase();
-    if (!normalized) return null;
-    return memberAssignedPrograms.find((program) => program.title.trim().toLowerCase() === normalized) ?? null;
-  }
-
   function handleQuickCompletePlannedEntry(entry: string) {
     if (!activeMemberId) return;
     const trimmed = entry.trim();
@@ -2650,6 +2644,7 @@ export function MemberPortal(props: MemberPortalProps) {
                           {displayedPeriodWeek ? (
                             <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Uke {displayedPeriodWeek.weekNumber}</div>
+                              <div className="mt-1 text-[11px] text-slate-500">Merk av øktene med haken for å registrere dem som fullført.</div>
                               {periodPlanActionStatus ? <div className="mt-2 text-xs text-emerald-700">{periodPlanActionStatus}</div> : null}
                               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                                 {([
@@ -2668,25 +2663,15 @@ export function MemberPortal(props: MemberPortalProps) {
                                     </div>
                                     {displayedPeriodWeek.days[day.key]?.trim() ? (
                                       <div className="mt-2">
-                                        {resolveProgramForPlannedEntry(displayedPeriodWeek.days[day.key]) ? (
-                                          <OutlineButton
-                                            onClick={() => {
-                                              const matchedProgram = resolveProgramForPlannedEntry(displayedPeriodWeek.days[day.key]);
-                                              if (!matchedProgram) return;
-                                              startWorkoutMode(matchedProgram.id, buildStartWorkoutOptions(matchedProgram));
-                                            }}
-                                            className="h-8 px-3 text-[11px] sm:text-xs"
-                                          >
-                                            Start økt
-                                          </OutlineButton>
-                                        ) : (
-                                          <OutlineButton
-                                            onClick={() => handleQuickCompletePlannedEntry(displayedPeriodWeek.days[day.key])}
-                                            className="h-8 px-3 text-[11px] sm:text-xs"
-                                          >
-                                            Marker gjennomført
-                                          </OutlineButton>
-                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={() => handleQuickCompletePlannedEntry(displayedPeriodWeek.days[day.key])}
+                                          className="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
+                                          style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                                          aria-label={`Marker ${day.label} som fullført`}
+                                        >
+                                          ✓
+                                        </button>
                                       </div>
                                     ) : null}
                                   </div>
