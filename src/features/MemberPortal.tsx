@@ -2383,6 +2383,8 @@ export function MemberPortal(props: MemberPortalProps) {
     if (typeof window === "undefined") return;
     const printWindow = window.open("", "_blank", "width=900,height=1100");
     if (!printWindow) return;
+    const recipientName = (viewedMember?.name || editableMember?.name || "Kunde").trim();
+    const trainerLabel = "Trener";
     const exercisesHtml =
       program.exercises.length > 0
         ? program.exercises
@@ -2423,16 +2425,17 @@ export function MemberPortal(props: MemberPortalProps) {
   <title>${escapeHtml(program.title)} - Utskrift</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; color: #0f172a; background: #f8fafc; }
-    .page { padding: 20px; }
-    .header-card { border-radius: 16px; padding: 18px; background: linear-gradient(135deg, #14b8a6 0%, #ec4899 100%); color: #fff; }
+    .page { padding: 14px; max-width: 940px; margin: 0 auto; }
+    .header-card { border-radius: 12px; padding: 12px; background: linear-gradient(135deg, #14b8a6 0%, #ec4899 100%); color: #fff; }
     .header-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
     .brand-logo { height: 40px; width: auto; object-fit: contain; }
-    h1 { margin: 0 0 8px; font-size: 28px; }
-    .meta { color: rgba(255,255,255,0.9); font-size: 14px; }
-    .notes-card { margin-top: 12px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; padding: 12px; }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    .meta { color: rgba(255,255,255,0.9); font-size: 13px; }
+    .meta-line { color: rgba(255,255,255,0.95); font-size: 13px; margin-top: 2px; }
+    .notes-card { margin-top: 10px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; padding: 10px; }
     .notes-title { font-weight: 700; margin-bottom: 6px; }
-    .section-title { margin: 16px 0 10px; font-size: 16px; font-weight: 700; color: #334155; }
-    .exercise-card { display: grid; grid-template-columns: 140px 1fr; gap: 12px; border: 1px solid #dbeafe; border-radius: 14px; background: #fff; padding: 10px; margin-bottom: 10px; break-inside: avoid; }
+    .section-title { margin: 12px 0 8px; font-size: 15px; font-weight: 700; color: #334155; }
+    .exercise-card { display: grid; grid-template-columns: 132px 1fr; gap: 10px; border: 1px solid #dbeafe; border-radius: 12px; background: #fff; padding: 8px; margin-bottom: 8px; break-inside: avoid; }
     .exercise-image-wrap { width: 140px; height: 110px; border-radius: 10px; overflow: hidden; background: #f1f5f9; border: 1px solid #e2e8f0; }
     .exercise-image { width: 100%; height: 100%; object-fit: cover; display: block; }
     .exercise-image-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px; }
@@ -2441,7 +2444,7 @@ export function MemberPortal(props: MemberPortalProps) {
     .exercise-description { font-size: 12px; color: #475569; line-height: 1.45; }
     .exercise-notes { margin-top: 6px; font-size: 12px; color: #7c2d12; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 6px; }
     .empty-state { border: 1px dashed #cbd5e1; border-radius: 12px; background: #fff; padding: 12px; color: #64748b; }
-    .footer { margin-top: 18px; color: #64748b; font-size: 12px; text-align: right; }
+    .footer { margin-top: 14px; color: #64748b; font-size: 11px; text-align: right; }
     @media print { body { margin: 16mm; } }
     @media print {
       body { background: #fff; }
@@ -2458,6 +2461,7 @@ export function MemberPortal(props: MemberPortalProps) {
       </div>
       <h1>${escapeHtml(program.title)}</h1>
       <div class="meta">Mål: ${escapeHtml(program.goal || "Ikke satt")} · Opprettet: ${escapeHtml(program.createdAt || "-")}</div>
+      <div class="meta-line">Av: ${escapeHtml(trainerLabel)} · Til: ${escapeHtml(recipientName)}</div>
     </div>
     ${
       program.notes
