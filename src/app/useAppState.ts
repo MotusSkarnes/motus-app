@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
-import { localAppRepository, type CreateMemberInput, type FinishWorkoutInput, type LogGroupWorkoutInput, type RemoveWorkoutLogResultInput, type ReplaceWorkoutExerciseGroupInput, type SaveExerciseInput, type SaveProgramInput, type SetWorkoutLogResultsInput, type StartCustomWorkoutInput, type StartWorkoutModeOptions, type UpdateMemberInput } from "../services/appRepository";
+import { localAppRepository, type CreateMemberInput, type FinishWorkoutInput, type LogGroupWorkoutInput, type RemoveGroupWorkoutLogInput, type RemoveWorkoutLogResultInput, type ReplaceWorkoutExerciseGroupInput, type SaveExerciseInput, type SaveProgramInput, type SetWorkoutLogResultsInput, type StartCustomWorkoutInput, type StartWorkoutModeOptions, type UpdateMemberInput } from "../services/appRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { fetchExercisesFromSupabase, fetchHydratedMemberData, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
 import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, inviteTrainerByEmail, refreshSupabaseSessionUser, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult, type InviteTrainerResult } from "../services/supabaseAuth";
@@ -837,6 +837,10 @@ export function useAppState() {
     }
   }
 
+  function removeGroupWorkoutLog(input: RemoveGroupWorkoutLogInput) {
+    setAppState((prev) => repository.removeGroupWorkoutLog(prev, input));
+  }
+
   function sendMemberMessage(memberId: string, text: string) {
     if (!text.trim()) return;
     setAppState((prev) => repository.appendMemberMessage(prev, memberId, text));
@@ -976,6 +980,7 @@ export function useAppState() {
     updateWorkoutModeNote,
     finishWorkoutMode,
     logGroupWorkout,
+    removeGroupWorkoutLog,
     cancelWorkoutMode,
     dismissWorkoutCelebration,
     sendMemberMessage,

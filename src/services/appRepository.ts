@@ -62,6 +62,12 @@ export type SetWorkoutLogResultsInput = {
   results: WorkoutLog["results"];
 };
 
+export type RemoveGroupWorkoutLogInput = {
+  memberId: string;
+  className: string;
+  date?: string;
+};
+
 export type SaveExerciseInput = {
   id?: string;
   name: string;
@@ -107,6 +113,7 @@ export interface AppRepository {
   updateWorkoutResult(state: AppState, input: UpdateWorkoutResultInput): AppState;
   replaceWorkoutExerciseGroup(state: AppState, input: ReplaceWorkoutExerciseGroupInput): AppState;
   removeWorkoutLogResult(state: AppState, input: RemoveWorkoutLogResultInput): AppState;
+  removeGroupWorkoutLog(state: AppState, input: RemoveGroupWorkoutLogInput): AppState;
   setWorkoutLogResults(state: AppState, input: SetWorkoutLogResultsInput): AppState;
   updateWorkoutNote(state: AppState, note: string): AppState;
   cancelWorkoutMode(state: AppState): AppState;
@@ -449,13 +456,22 @@ export function logGroupWorkoutInState(state: AppState, input: LogGroupWorkoutIn
   const className = input.className.trim();
   const date = input.date?.trim() || formatDateDdMmYyyy(new Date());
   if (!memberId || !className) return state;
+  const normalizedTitle = `Gruppetime: ${className}`;
+  const duplicateExists = state.logs.some(
+    (log) =>
+      log.memberId === memberId &&
+      log.programTitle.trim().toLowerCase() === normalizedTitle.trim().toLowerCase() &&
+      log.date.trim() === date &&
+      log.status === "Fullført"
+  );
+  if (duplicateExists) return state;
   return {
     ...state,
     logs: [
       {
         id: uid("log"),
         memberId,
-        programTitle: `Gruppetime: ${className}`,
+        programTitle: normalizedTitle,
         date,
         status: "Fullført",
         note: input.note?.trim() ?? "",
@@ -464,6 +480,23 @@ export function logGroupWorkoutInState(state: AppState, input: LogGroupWorkoutIn
       },
       ...state.logs,
     ],
+  };
+}
+
+export function removeGroupWorkoutLogInState(state: AppState, input: RemoveGroupWorkoutLogInput): AppState {
+  const memberId = input.memberId.trim();
+  const className = input.className.trim();
+  const date = input.date?.trim() ?? "";
+  if (!memberId || !className) return state;
+  const normalizedTitle = `Gruppetime: ${className}`.trim().toLowerCase();
+  return {
+    ...state,
+    logs: state.logs.filter((log) => {
+      if (log.memberId !== memberId) return true;
+      if (log.programTitle.trim().toLowerCase() !== normalizedTitle) return true;
+      if (date && log.date.trim() !== date) return true;
+      return false;
+    }),
   };
 }
 
@@ -583,6 +616,7 @@ export const localAppRepository: AppRepository = {
   updateWorkoutResult: (state, input) => updateWorkoutResultInState(state, input.exerciseId, input.field, input.value),
   replaceWorkoutExerciseGroup: (state, input) => replaceWorkoutExerciseGroupInState(state, input),
   removeWorkoutLogResult: (state, input) => removeWorkoutLogResultInState(state, input),
+  removeGroupWorkoutLog: (state, input) => removeGroupWorkoutLogInState(state, input),
   setWorkoutLogResults: (state, input) => setWorkoutLogResultsInState(state, input),
   updateWorkoutNote: updateWorkoutNoteInState,
   cancelWorkoutMode: cancelWorkoutModeInState,

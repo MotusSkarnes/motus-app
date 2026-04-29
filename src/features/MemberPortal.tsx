@@ -55,6 +55,7 @@ type MemberPortalProps = {
   updateWorkoutModeNote: (note: string) => void;
   finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
   logGroupWorkout: (input: LogGroupWorkoutInput) => void;
+  removeGroupWorkoutLog: (input: { memberId: string; className: string; date?: string }) => void;
   cancelWorkoutMode: () => void;
   workoutCelebration: WorkoutCelebration | null;
   dismissWorkoutCelebration: () => void;
@@ -205,6 +206,7 @@ export function MemberPortal(props: MemberPortalProps) {
     updateWorkoutModeNote,
     finishWorkoutMode,
     logGroupWorkout,
+    removeGroupWorkoutLog,
     cancelWorkoutMode,
     workoutCelebration,
     dismissWorkoutCelebration,
@@ -1975,8 +1977,15 @@ export function MemberPortal(props: MemberPortalProps) {
         date: input.plannedDate ?? undefined,
       });
       setPeriodPlanActionStatus(`Registrert "${trimmed}" som gjennomfort.`);
-      setCompletedPeriodPlanEntryKeys((prev) => [...prev, key]);
+      setCompletedPeriodPlanEntryKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
       return;
+    }
+    if (activeMemberId) {
+      removeGroupWorkoutLog({
+        memberId: activeMemberId,
+        className: input.entry.trim(),
+        date: input.plannedDate ?? undefined,
+      });
     }
     setCompletedPeriodPlanEntryKeys((prev) => prev.filter((item) => item !== key));
     setPeriodPlanActionStatus(`Fjernet markering for "${input.entry.trim()}".`);

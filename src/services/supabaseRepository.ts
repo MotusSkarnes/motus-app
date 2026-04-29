@@ -21,6 +21,7 @@ import {
   type CreateMemberInput,
   type FinishWorkoutInput,
   type LogGroupWorkoutInput,
+  type RemoveGroupWorkoutLogInput,
   type RemoveWorkoutLogResultInput,
   type SetWorkoutLogResultsInput,
   type SaveProgramInput,
@@ -690,6 +691,26 @@ async function deleteLogsForProgram(memberId: string, programTitle: string) {
   }
 }
 
+async function deleteGroupWorkoutLogs(input: RemoveGroupWorkoutLogInput) {
+  if (!supabaseClient) return;
+  const memberId = input.memberId.trim();
+  const className = input.className.trim();
+  const date = input.date?.trim() ?? "";
+  if (!memberId || !className) return;
+  let query = supabaseClient
+    .from("workout_logs")
+    .delete()
+    .eq("member_id", memberId)
+    .eq("program_title", `Gruppetime: ${className}`);
+  if (date) {
+    query = query.eq("date", date);
+  }
+  const { error } = await query;
+  if (error) {
+    console.warn("Supabase group workout log delete failed:", error.message);
+  }
+}
+
 function mapIsoToCreatedAt(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return formatDateTimeDdMmYyyy(new Date());
@@ -1329,6 +1350,11 @@ export const supabaseAppRepository: AppRepository = {
     if (updatedLog) {
       void persistWorkoutLog(updatedLog);
     }
+    return nextState;
+  },
+  removeGroupWorkoutLog(state: AppState, input: RemoveGroupWorkoutLogInput): AppState {
+    const nextState = localAppRepository.removeGroupWorkoutLog(state, input);
+    void deleteGroupWorkoutLogs(input);
     return nextState;
   },
   setWorkoutLogResults(state: AppState, input: SetWorkoutLogResultsInput): AppState {
