@@ -70,6 +70,7 @@ const EMPTY_REMOTE_PERIOD_PLAN_ROWS: Array<{ memberId: string; plan: PeriodSched
 const PERIOD_PLAN_COMPLETED_STORAGE_PREFIX = "MOTUS_PERIOD_PLAN_COMPLETED_V1:";
 const DEFAULT_HOME_VISIBILITY = {
   weeklyStats: true,
+  smartWeekPlan: true,
   readiness: true,
   nextStep: true,
   selfWorkout: true,
@@ -1982,6 +1983,60 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     return insights.slice(0, 3);
   }, [homeWeeklySummary.completedThisWeek, homeWeeklySummary.plannedThisWeek, progressStory.delta, streakWeeks, todayPlanEntry]);
+  const smartWeekPlanSuggestion = useMemo(() => {
+    const dayKeys: WeekdayPlanKey[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    const dayLabels: Record<WeekdayPlanKey, string> = {
+      monday: "Mandag",
+      tuesday: "Tirsdag",
+      wednesday: "Onsdag",
+      thursday: "Torsdag",
+      friday: "Fredag",
+      saturday: "Lørdag",
+      sunday: "Søndag",
+    };
+    const completedByDay = new Map<WeekdayPlanKey, number>();
+    completedLogDates.forEach((date) => {
+      const dayIndex = (date.getDay() + 6) % 7;
+      const key = dayKeys[dayIndex];
+      completedByDay.set(key, (completedByDay.get(key) ?? 0) + 1);
+    });
+    const plannedEntries = activeWeeklyPlan?.days ?? null;
+    const scores = dayKeys.map((key) => {
+      const hasPlan = Boolean(plannedEntries?.[key]?.trim());
+      const completionCount = completedByDay.get(key) ?? 0;
+      // Weight planned days highest, then user history.
+      const score = (hasPlan ? 4 : 0) + Math.min(3, completionCount);
+      return {
+        key,
+        label: dayLabels[key],
+        hasPlan,
+        completionCount,
+        score,
+        planEntry: plannedEntries?.[key]?.trim() ?? "",
+      };
+    });
+    const recommended = scores
+      .sort((a, b) => b.score - a.score || b.completionCount - a.completionCount)
+      .slice(0, 3)
+      .filter((item) => item.score > 0);
+    if (!recommended.length) {
+      return {
+        intro: "Ingen tydelig historikk ennå. Forslag: start rolig med 2 faste dager denne uken.",
+        days: [] as Array<{ label: string; reason: string }>,
+      };
+    }
+    return {
+      intro: "Anbefalt ukeplan basert på treningsmønster, periodeplan og etterlevelse:",
+      days: recommended.map((item) => ({
+        label: item.label,
+        reason: item.hasPlan
+          ? item.planEntry
+            ? `Planlagt: ${item.planEntry}`
+            : "Har planlagt økt denne dagen"
+          : `Du trener ofte denne dagen (${item.completionCount} registrerte økter)`,
+      })),
+    };
+  }, [activeWeeklyPlan, completedLogDates]);
   const customerStatusLabel = (() => {
     const isPtCustomer = viewedMember?.customerType === "PT-kunde";
     const isPremiumCustomer = viewedMember?.membershipType === "Premium";
@@ -2353,6 +2408,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     {([
                       { key: "weeklyStats", label: "Ukesstatistikk" },
+                      { key: "smartWeekPlan", label: "Smart ukeplan" },
                       { key: "readiness", label: "Readiness" },
                       { key: "nextStep", label: "Neste steg" },
                       { key: "selfWorkout", label: "Lag økt selv" },
@@ -2386,6 +2442,22 @@ export function MemberPortal(props: MemberPortalProps) {
                   <StatCard label="Denne uken" value={`${homeWeeklySummary.completedThisWeek}/${homeWeeklySummary.plannedThisWeek || 0}`} hint="Økter fullført" />
                   <StatCard label="Treffprosent" value={`${homeWeeklySummary.completionRate}%`} hint="Av ukens plan" />
                   <StatCard label="Streak" value={`${streakWeeks}`} hint="Uker på rad" />
+                </div>
+              ) : null}
+              {homeVisibility.smartWeekPlan ? (
+                <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="text-sm font-semibold text-slate-700">🧭 Smart ukeplan</div>
+                  <div className="mt-1 text-sm text-slate-600">{smartWeekPlanSuggestion.intro}</div>
+                  {smartWeekPlanSuggestion.days.length > 0 ? (
+                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                      {smartWeekPlanSuggestion.days.map((item) => (
+                        <div key={item.label} className="rounded-xl border bg-slate-50 px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                          <div className="text-sm font-semibold text-slate-800">{item.label}</div>
+                          <div className="mt-0.5 text-xs text-slate-600">{item.reason}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
               {homeVisibility.readiness ? (
