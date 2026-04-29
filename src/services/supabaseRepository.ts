@@ -971,6 +971,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
         notes: String(program.notes ?? ""),
         createdAt: mapIsoToProgramDate(String(program.created_at ?? "")),
         exercises: Array.isArray(program.exercises) ? (program.exercises as ProgramExercise[]) : [],
+        assignedTrainerName: String(program.assigned_trainer_name ?? "").trim(),
       } as TrainingProgram;
     }),
     logs: logsRows.map((row) => {
@@ -1076,6 +1077,7 @@ export async function fetchHydratedMemberData(): Promise<HydratedMemberData | nu
         notes: String(program.notes ?? ""),
         createdAt: mapIsoToProgramDate(String(program.created_at ?? "")),
         exercises: Array.isArray(program.exercises) ? (program.exercises as ProgramExercise[]) : [],
+        assignedTrainerName: String(program.assigned_trainer_name ?? "").trim(),
       } as TrainingProgram;
     }),
     logs: logsRows.map((row) => {

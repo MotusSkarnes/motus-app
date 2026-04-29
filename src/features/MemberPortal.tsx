@@ -2384,7 +2384,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const printWindow = window.open("", "_blank", "width=900,height=1100");
     if (!printWindow) return;
     const recipientName = (viewedMember?.name || editableMember?.name || "Kunde").trim();
-    const trainerLabel = "Trener";
+    const trainerLabel = (program.assignedTrainerName || MOTUS.name || "Trener").trim();
     const exercisesHtml =
       program.exercises.length > 0
         ? program.exercises
@@ -2436,7 +2436,7 @@ export function MemberPortal(props: MemberPortalProps) {
     .notes-title { font-weight: 700; margin-bottom: 6px; }
     .section-title { margin: 12px 0 8px; font-size: 15px; font-weight: 700; color: #334155; }
     .exercise-card { display: grid; grid-template-columns: 132px 1fr; gap: 10px; border: 1px solid #dbeafe; border-radius: 12px; background: #fff; padding: 8px; margin-bottom: 8px; break-inside: avoid; }
-    .exercise-image-wrap { width: 140px; height: 110px; border-radius: 10px; overflow: hidden; background: #f1f5f9; border: 1px solid #e2e8f0; }
+    .exercise-image-wrap { width: 120px; aspect-ratio: 1 / 1; border-radius: 10px; overflow: hidden; background: #f1f5f9; border: 1px solid #e2e8f0; }
     .exercise-image { width: 100%; height: 100%; object-fit: cover; display: block; }
     .exercise-image-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px; }
     .exercise-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }

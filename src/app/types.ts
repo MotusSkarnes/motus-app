@@ -122,6 +122,7 @@ export type TrainingProgram = {
   notes: string;
   createdAt: string;
   exercises: ProgramExercise[];
+  assignedTrainerName?: string;
   /** Not persisted; removed after økt fullføres eller avbrytes. */
   ephemeral?: boolean;
 };

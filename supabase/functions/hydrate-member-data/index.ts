@@ -96,9 +96,9 @@ Deno.serve(async (req) => {
     });
   }
 
-  const { data: programs, error: programsError } = await adminClient
+  const { data: programsRaw, error: programsError } = await adminClient
     .from("training_programs")
-    .select("id, member_id, title, goal, notes, exercises, created_at")
+    .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id")
     .in("member_id", memberIds)
     .order("created_at", { ascending: false });
   const { data: logs, error: logsError } = await adminClient
@@ -142,9 +142,42 @@ Deno.serve(async (req) => {
     return jsonResponse(500, { error: firstError.message });
   }
 
+  const trainerNameByOwnerId = new Map<string, string>();
+  const ownerUserIds = Array.from(
+    new Set(
+      (programsRaw ?? [])
+        .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
+        .filter(Boolean),
+    ),
+  );
+  for (const ownerUserId of ownerUserIds) {
+    try {
+      const { data: trainerData, error: trainerError } = await adminClient.auth.admin.getUserById(ownerUserId);
+      if (trainerError || !trainerData?.user) continue;
+      const fullName = String(
+        (trainerData.user.user_metadata?.full_name as string | undefined) ??
+          (trainerData.user.user_metadata?.name as string | undefined) ??
+          ""
+      ).trim();
+      const email = String(trainerData.user.email ?? "").trim();
+      trainerNameByOwnerId.set(ownerUserId, fullName || email || "");
+    } catch {
+      // Ignore lookup failures; frontend will use fallback label.
+    }
+  }
+
+  const programs = (programsRaw ?? []).map((row) => {
+    const typedRow = row as Record<string, unknown>;
+    const ownerUserId = String(typedRow.owner_user_id ?? "").trim();
+    return {
+      ...typedRow,
+      assigned_trainer_name: trainerNameByOwnerId.get(ownerUserId) ?? "",
+    };
+  });
+
   return jsonResponse(200, {
     members: members ?? [],
-    programs: programs ?? [],
+    programs,
     logs: logs ?? [],
     messages: messages ?? [],
     periodPlans,
