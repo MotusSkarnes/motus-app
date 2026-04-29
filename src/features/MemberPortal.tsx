@@ -71,6 +71,7 @@ const PERIOD_PLAN_COMPLETED_STORAGE_PREFIX = "MOTUS_PERIOD_PLAN_COMPLETED_V1:";
 const DEFAULT_HOME_VISIBILITY = {
   weeklyStats: true,
   smartWeekPlan: true,
+  streakChallenges: true,
   readiness: true,
   nextStep: true,
   selfWorkout: true,
@@ -2037,6 +2038,49 @@ export function MemberPortal(props: MemberPortalProps) {
       })),
     };
   }, [activeWeeklyPlan, completedLogDates]);
+  const streakChallenges = useMemo(() => {
+    const dayMs = 24 * 60 * 60 * 1000;
+    const today = getStartOfDay(now);
+    const uniqueDayKeys = Array.from(new Set(completedLogDates.map((date) => getStartOfDay(date).toDateString())));
+    const last7DaysCount = uniqueDayKeys.filter((dayKey) => {
+      const date = new Date(dayKey);
+      return today.getTime() - date.getTime() <= 6 * dayMs;
+    }).length;
+    const sevenDayTarget = 4;
+
+    const sortedUniqueDays = uniqueDayKeys
+      .map((dayKey) => new Date(dayKey))
+      .sort((a, b) => b.getTime() - a.getTime());
+    let streakDays = 0;
+    let cursor = today;
+    for (const day of sortedUniqueDays) {
+      const diffDays = Math.round((cursor.getTime() - day.getTime()) / dayMs);
+      if (diffDays === 0) {
+        streakDays += 1;
+        cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() - 1);
+        continue;
+      }
+      if (diffDays === 1) {
+        streakDays += 1;
+        cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() - 2);
+        continue;
+      }
+      if (streakDays === 0 && diffDays <= 2) {
+        // Allow streak to start if last session was yesterday.
+        streakDays = 1;
+      }
+      break;
+    }
+
+    const monthTargetFromProfile = Number(profileSessionsPerWeekTarget) > 0 ? Number(profileSessionsPerWeekTarget) * 4 : 10;
+    const monthTarget = Math.max(8, Math.min(24, monthTargetFromProfile));
+    const monthProgress = estimatedSessionsThisMonth;
+    return {
+      sevenDay: { current: last7DaysCount, target: sevenDayTarget, unlocked: last7DaysCount >= sevenDayTarget },
+      month: { current: monthProgress, target: monthTarget, unlocked: monthProgress >= monthTarget },
+      streakDays,
+    };
+  }, [completedLogDates, estimatedSessionsThisMonth, now, profileSessionsPerWeekTarget]);
   const customerStatusLabel = (() => {
     const isPtCustomer = viewedMember?.customerType === "PT-kunde";
     const isPremiumCustomer = viewedMember?.membershipType === "Premium";
@@ -2409,6 +2453,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     {([
                       { key: "weeklyStats", label: "Ukesstatistikk" },
                       { key: "smartWeekPlan", label: "Smart ukeplan" },
+                      { key: "streakChallenges", label: "Streaks & challenges" },
                       { key: "readiness", label: "Readiness" },
                       { key: "nextStep", label: "Neste steg" },
                       { key: "selfWorkout", label: "Lag økt selv" },
@@ -2458,6 +2503,34 @@ export function MemberPortal(props: MemberPortalProps) {
                       ))}
                     </div>
                   ) : null}
+                </div>
+              ) : null}
+              {homeVisibility.streakChallenges ? (
+                <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="text-sm font-semibold text-slate-700">🏆 Streaks & challenges</div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-xl border bg-slate-50 px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="text-xs font-semibold text-slate-600">7-dagers challenge</div>
+                      <div className="mt-1 text-sm font-semibold text-slate-800">
+                        {streakChallenges.sevenDay.current}/{streakChallenges.sevenDay.target} treningsdager
+                      </div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        {streakChallenges.sevenDay.unlocked ? "Badge låst opp ✅" : "Fortsett - du er snart i mål"}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border bg-slate-50 px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="text-xs font-semibold text-slate-600">Månedsmål</div>
+                      <div className="mt-1 text-sm font-semibold text-slate-800">
+                        {streakChallenges.month.current}/{streakChallenges.month.target} økter denne måneden
+                      </div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        {streakChallenges.month.unlocked ? "Mål nådd 🎉" : "Bygg jevnt videre mot månedsmålet"}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3 rounded-xl border bg-emerald-50/60 px-3 py-2 text-sm text-emerald-800" style={{ borderColor: "rgba(16,185,129,0.25)" }}>
+                    Aktiv streak: <span className="font-semibold">{streakChallenges.streakDays} dager</span>
+                  </div>
                 </div>
               ) : null}
               {homeVisibility.readiness ? (
