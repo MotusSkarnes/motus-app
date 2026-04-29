@@ -2462,13 +2462,49 @@ export function MemberPortal(props: MemberPortalProps) {
     ${exercisesHtml}
     <div class="footer">Generert fra Motus medlemsportal.</div>
   </div>
+  <script>
+    (function () {
+      var hasPrinted = false;
+      function doPrintOnce() {
+        if (hasPrinted) return;
+        hasPrinted = true;
+        window.focus();
+        window.print();
+      }
+      function waitForImagesThenPrint() {
+        var images = Array.prototype.slice.call(document.images || []);
+        if (!images.length) {
+          doPrintOnce();
+          return;
+        }
+        var loaded = 0;
+        function markLoaded() {
+          loaded += 1;
+          if (loaded >= images.length) doPrintOnce();
+        }
+        images.forEach(function (img) {
+          if (img.complete) {
+            markLoaded();
+            return;
+          }
+          img.addEventListener("load", markLoaded, { once: true });
+          img.addEventListener("error", markLoaded, { once: true });
+        });
+        // Safety timeout so print is never blocked by slow image hosts.
+        window.setTimeout(doPrintOnce, 2000);
+      }
+      if (document.readyState === "complete") {
+        waitForImagesThenPrint();
+      } else {
+        window.addEventListener("load", waitForImagesThenPrint, { once: true });
+      }
+    })();
+  </script>
 </body>
 </html>`;
     printWindow.document.open();
     printWindow.document.write(html);
     printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
   }
 
   return (
