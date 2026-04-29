@@ -219,6 +219,10 @@ export function MemberPortal(props: MemberPortalProps) {
   const [profileCurrentDailySteps, setProfileCurrentDailySteps] = useState("");
   const [microCelebrationsEnabled, setMicroCelebrationsEnabled] = useState(true);
   const [celebrationSoundEnabled, setCelebrationSoundEnabled] = useState(false);
+  const [readinessSleep, setReadinessSleep] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [readinessEnergy, setReadinessEnergy] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [readinessStress, setReadinessStress] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [readinessMotivation, setReadinessMotivation] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [pushRegisterBusy, setPushRegisterBusy] = useState(false);
   const [pushRegisterStatus, setPushRegisterStatus] = useState<string | null>(null);
   const [customWorkoutSearch, setCustomWorkoutSearch] = useState("");
@@ -1329,12 +1333,35 @@ export function MemberPortal(props: MemberPortalProps) {
       const parsed = JSON.parse(raw) as {
         microCelebrationsEnabled?: boolean;
         celebrationSoundEnabled?: boolean;
+        readiness?: {
+          sleep?: number;
+          energy?: number;
+          stress?: number;
+          motivation?: number;
+        };
       };
       setMicroCelebrationsEnabled(parsed.microCelebrationsEnabled !== false);
       setCelebrationSoundEnabled(parsed.celebrationSoundEnabled === true);
+      const readiness = parsed.readiness ?? {};
+      const normalizeReadiness = (value: unknown): 1 | 2 | 3 | 4 | 5 => {
+        const n = Number(value);
+        if (n >= 5) return 5;
+        if (n <= 1) return 1;
+        if (n >= 4) return 4;
+        if (n >= 3) return 3;
+        return 2;
+      };
+      setReadinessSleep(normalizeReadiness(readiness.sleep));
+      setReadinessEnergy(normalizeReadiness(readiness.energy));
+      setReadinessStress(normalizeReadiness(readiness.stress));
+      setReadinessMotivation(normalizeReadiness(readiness.motivation));
     } catch {
       setMicroCelebrationsEnabled(true);
       setCelebrationSoundEnabled(false);
+      setReadinessSleep(3);
+      setReadinessEnergy(3);
+      setReadinessStress(3);
+      setReadinessMotivation(3);
     }
   }, [editableMember?.id]);
   useEffect(() => {
@@ -1342,9 +1369,15 @@ export function MemberPortal(props: MemberPortalProps) {
     const payload = JSON.stringify({
       microCelebrationsEnabled,
       celebrationSoundEnabled,
+      readiness: {
+        sleep: readinessSleep,
+        energy: readinessEnergy,
+        stress: readinessStress,
+        motivation: readinessMotivation,
+      },
     });
     window.localStorage.setItem(getUiPreferencesStorageKey(editableMember.id), payload);
-  }, [editableMember?.id, microCelebrationsEnabled, celebrationSoundEnabled]);
+  }, [editableMember?.id, microCelebrationsEnabled, celebrationSoundEnabled, readinessSleep, readinessEnergy, readinessStress, readinessMotivation]);
   useEffect(() => {
     if (!microCelebrationsEnabled) return;
     if (!shouldShowCelebration && !achievementCelebration) return;
@@ -1896,6 +1929,36 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     return items.slice(0, 3);
   }, [latestCompletedLog, memberMessages, todayPlanEntry]);
+  const readinessScore = useMemo(() => {
+    const stressAdjusted = 6 - readinessStress;
+    const score = Math.round(((readinessSleep + readinessEnergy + stressAdjusted + readinessMotivation) / 20) * 100);
+    return Math.max(0, Math.min(100, score));
+  }, [readinessSleep, readinessEnergy, readinessStress, readinessMotivation]);
+  const readinessAdvice = useMemo(() => {
+    if (readinessScore >= 75) return "Høy readiness: kjør planlagt økt med normal/høy intensitet.";
+    if (readinessScore >= 50) return "Middels readiness: hold økta litt kontrollert i dag.";
+    return "Lav readiness: velg en roligere økt, teknikk eller aktiv restitusjon.";
+  }, [readinessScore]);
+  const coachFeedInsights = useMemo(() => {
+    const insights: string[] = [];
+    if (homeWeeklySummary.plannedThisWeek > 0) {
+      insights.push(`Du har fullført ${homeWeeklySummary.completedThisWeek} av ${homeWeeklySummary.plannedThisWeek} planlagte økter denne uken.`);
+    }
+    if (streakWeeks > 0) {
+      insights.push(`Du har ${streakWeeks} uke${streakWeeks === 1 ? "" : "r"} på rad med trening.`);
+    }
+    if (progressStory.delta > 0) {
+      insights.push(`Sterk trend: +${progressStory.delta} økt${progressStory.delta === 1 ? "" : "er"} siste 14 dager mot perioden før.`);
+    } else if (progressStory.delta < 0) {
+      insights.push("Liten nedgang siste periode - en ekstra økt denne uken vil løfte flyten igjen.");
+    } else {
+      insights.push("Stabil rytme - hold samme flyt for jevn progresjon.");
+    }
+    if (todayPlanEntry) {
+      insights.push(`Dagens fokus: ${todayPlanEntry}.`);
+    }
+    return insights.slice(0, 3);
+  }, [homeWeeklySummary.completedThisWeek, homeWeeklySummary.plannedThisWeek, progressStory.delta, streakWeeks, todayPlanEntry]);
   const customerStatusLabel = (() => {
     const isPtCustomer = viewedMember?.customerType === "PT-kunde";
     const isPremiumCustomer = viewedMember?.membershipType === "Premium";
@@ -2261,6 +2324,42 @@ export function MemberPortal(props: MemberPortalProps) {
                 <StatCard label="Treffprosent" value={`${homeWeeklySummary.completionRate}%`} hint="Av ukens plan" />
                 <StatCard label="Streak" value={`${streakWeeks}`} hint="Uker på rad" />
               </div>
+              <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-slate-700">⚙️ Readiness i dag</div>
+                  <div className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{readinessScore}%</div>
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {([
+                    { label: "Søvn", value: readinessSleep, setter: setReadinessSleep },
+                    { label: "Energi", value: readinessEnergy, setter: setReadinessEnergy },
+                    { label: "Stress", value: readinessStress, setter: setReadinessStress },
+                    { label: "Motivasjon", value: readinessMotivation, setter: setReadinessMotivation },
+                  ] as const).map((item) => (
+                    <div key={item.label} className="rounded-xl border bg-slate-50 p-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="text-xs font-semibold text-slate-600">{item.label}</div>
+                      <div className="mt-2 flex gap-1">
+                        {[1, 2, 3, 4, 5].map((level) => (
+                          <button
+                            key={`${item.label}-${level}`}
+                            type="button"
+                            onClick={() => item.setter(level as 1 | 2 | 3 | 4 | 5)}
+                            className={`h-7 w-7 rounded-full text-xs font-semibold ${item.value === level ? "text-white" : "border bg-white text-slate-600"}`}
+                            style={
+                              item.value === level
+                                ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
+                                : { borderColor: "rgba(15,23,42,0.14)" }
+                            }
+                          >
+                            {level}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 text-sm text-slate-700">{readinessAdvice}</div>
+              </div>
               <div className="min-w-0 w-full rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-sm font-semibold text-slate-700">🎯 Neste steg</div>
                 <div className="mt-1 text-sm font-medium text-slate-800">{nextBestAction.title}</div>
@@ -2369,6 +2468,16 @@ export function MemberPortal(props: MemberPortalProps) {
                     ))}
                   </div>
                 )}
+              </div>
+              <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-sm font-semibold text-slate-700">🧠 Coach feed</div>
+                <div className="mt-2 space-y-2">
+                  {coachFeedInsights.map((insight, index) => (
+                    <div key={`coach-${index}`} className="rounded-xl border bg-slate-50 px-3 py-2 text-sm text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      {insight}
+                    </div>
+                  ))}
+                </div>
               </div>
               <div
                 className="rounded-2xl border p-4 text-white"
