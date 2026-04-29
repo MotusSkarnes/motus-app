@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ClipboardList, MessageSquare, Plus, Repeat2, Sparkles, Target, TrendingUp, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
+import motusLogo from "../assets/motus-logo.png";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../app/validators";
@@ -2424,6 +2425,8 @@ export function MemberPortal(props: MemberPortalProps) {
     body { font-family: Arial, sans-serif; margin: 0; color: #0f172a; background: #f8fafc; }
     .page { padding: 20px; }
     .header-card { border-radius: 16px; padding: 18px; background: linear-gradient(135deg, #14b8a6 0%, #ec4899 100%); color: #fff; }
+    .header-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+    .brand-logo { height: 40px; width: auto; object-fit: contain; }
     h1 { margin: 0 0 8px; font-size: 28px; }
     .meta { color: rgba(255,255,255,0.9); font-size: 14px; }
     .notes-card { margin-top: 12px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; padding: 12px; }
@@ -2450,6 +2453,9 @@ export function MemberPortal(props: MemberPortalProps) {
 <body>
   <div class="page">
     <div class="header-card">
+      <div class="header-top">
+        <img src="${escapeHtml(motusLogo)}" alt="Motus logo" class="brand-logo" />
+      </div>
       <h1>${escapeHtml(program.title)}</h1>
       <div class="meta">Mål: ${escapeHtml(program.goal || "Ikke satt")} · Opprettet: ${escapeHtml(program.createdAt || "-")}</div>
     </div>
