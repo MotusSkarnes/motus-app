@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemberPortal } from "./MemberPortal";
@@ -65,6 +65,7 @@ function createProgram(input: Partial<TrainingProgram>): TrainingProgram {
 
 describe("Stability regressions", () => {
   afterEach(() => {
+    window.localStorage.clear();
     cleanup();
   });
 
@@ -155,5 +156,86 @@ describe("Stability regressions", () => {
 
     expect(saveButton).toBeDisabled();
     expect(saveProgramForMember).not.toHaveBeenCalled();
+  });
+
+  it("does not copy member home preferences when trainer switches members", async () => {
+    const members = [
+      createMember({ id: "m1", email: "emma@example.com", name: "Emma" }),
+      createMember({ id: "m2", email: "olav@example.com", name: "Olav" }),
+    ];
+    window.localStorage.setItem(
+      "motus.member.uiPrefs.m1",
+      JSON.stringify({
+        microCelebrationsEnabled: false,
+        celebrationSoundEnabled: true,
+        readiness: { sleep: 5, energy: 4, stress: 1, motivation: 5 },
+        homeVisibility: {
+          weeklyStats: false,
+          smartWeekPlan: false,
+          readiness: false,
+          nextStep: false,
+          selfWorkout: false,
+          todayPlan: false,
+          nextOnPlan: false,
+          quickActions: false,
+          recentActivity: false,
+          coachFeed: false,
+          progressStory: false,
+          calendar: false,
+        },
+      }),
+    );
+
+    const baseProps = {
+      members,
+      currentUserRole: "trainer" as const,
+      currentUserEmail: "coach@example.com",
+      programs: [],
+      logs: [],
+      messages: [],
+      memberTab: "overview" as const,
+      setMemberTab: vi.fn(),
+      updateMember: vi.fn(),
+      memberAvatarUrl: "",
+      setMemberAvatarUrl: vi.fn(),
+      exercises: [baseExercise],
+      sendMemberMessage: vi.fn(),
+      workoutMode: null,
+      startWorkoutMode: vi.fn(),
+      startCustomWorkout: vi.fn(),
+      updateWorkoutExerciseResult: vi.fn(),
+      replaceWorkoutExerciseGroup: vi.fn(),
+      removeWorkoutLogResult: vi.fn(),
+      setWorkoutLogResults: vi.fn(),
+      updateWorkoutModeNote: vi.fn(),
+      finishWorkoutMode: vi.fn(),
+      logGroupWorkout: vi.fn(),
+      removeGroupWorkoutLog: vi.fn(),
+      cancelWorkoutMode: vi.fn(),
+      workoutCelebration: null,
+      dismissWorkoutCelebration: vi.fn(),
+    };
+
+    const { rerender } = render(<MemberPortal {...baseProps} memberViewId="m1" />);
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Smart ukeplan/)).not.toBeInTheDocument();
+    });
+
+    rerender(<MemberPortal {...baseProps} memberViewId="m2" />);
+
+    await waitFor(() => {
+      const storedForOlav = JSON.parse(window.localStorage.getItem("motus.member.uiPrefs.m2") ?? "{}") as {
+        microCelebrationsEnabled?: boolean;
+        celebrationSoundEnabled?: boolean;
+        readiness?: { sleep?: number; energy?: number; stress?: number; motivation?: number };
+        homeVisibility?: Record<string, boolean>;
+      };
+      expect(storedForOlav.microCelebrationsEnabled).toBe(true);
+      expect(storedForOlav.celebrationSoundEnabled).toBe(false);
+      expect(storedForOlav.readiness).toEqual({ sleep: 3, energy: 3, stress: 3, motivation: 3 });
+      expect(storedForOlav.homeVisibility?.smartWeekPlan).toBe(true);
+      expect(storedForOlav.homeVisibility?.calendar).toBe(true);
+    });
   });
 });
