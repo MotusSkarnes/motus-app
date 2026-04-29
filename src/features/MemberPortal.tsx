@@ -68,6 +68,20 @@ const MEMBER_AVATAR_PREFIX = "member-avatars";
 const PERIOD_PLANS_STORAGE_KEY = "motus.trainer.periodPlansByMemberId";
 const EMPTY_REMOTE_PERIOD_PLAN_ROWS: Array<{ memberId: string; plan: PeriodSchedulePlan }> = [];
 const PERIOD_PLAN_COMPLETED_STORAGE_PREFIX = "MOTUS_PERIOD_PLAN_COMPLETED_V1:";
+const DEFAULT_HOME_VISIBILITY = {
+  weeklyStats: true,
+  readiness: true,
+  nextStep: true,
+  selfWorkout: true,
+  todayPlan: true,
+  nextOnPlan: true,
+  quickActions: true,
+  recentActivity: true,
+  coachFeed: true,
+  progressStory: true,
+  calendar: true,
+} as const;
+type HomeSectionKey = keyof typeof DEFAULT_HOME_VISIBILITY;
 
 /** Stored in members.personal_goals so økt/skritt/mål synkes på tvers av enheter. */
 const PROFILE_METRICS_PREFIX = "MOTUS_PROFILE_V1:";
@@ -219,6 +233,8 @@ export function MemberPortal(props: MemberPortalProps) {
   const [profileCurrentDailySteps, setProfileCurrentDailySteps] = useState("");
   const [microCelebrationsEnabled, setMicroCelebrationsEnabled] = useState(true);
   const [celebrationSoundEnabled, setCelebrationSoundEnabled] = useState(false);
+  const [showHomeCustomization, setShowHomeCustomization] = useState(false);
+  const [homeVisibility, setHomeVisibility] = useState<Record<HomeSectionKey, boolean>>({ ...DEFAULT_HOME_VISIBILITY });
   const [readinessSleep, setReadinessSleep] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [readinessEnergy, setReadinessEnergy] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [readinessStress, setReadinessStress] = useState<1 | 2 | 3 | 4 | 5>(3);
@@ -1339,9 +1355,14 @@ export function MemberPortal(props: MemberPortalProps) {
           stress?: number;
           motivation?: number;
         };
+        homeVisibility?: Partial<Record<HomeSectionKey, boolean>>;
       };
       setMicroCelebrationsEnabled(parsed.microCelebrationsEnabled !== false);
       setCelebrationSoundEnabled(parsed.celebrationSoundEnabled === true);
+      setHomeVisibility({
+        ...DEFAULT_HOME_VISIBILITY,
+        ...(parsed.homeVisibility ?? {}),
+      });
       const readiness = parsed.readiness ?? {};
       const normalizeReadiness = (value: unknown): 1 | 2 | 3 | 4 | 5 => {
         const n = Number(value);
@@ -1358,6 +1379,7 @@ export function MemberPortal(props: MemberPortalProps) {
     } catch {
       setMicroCelebrationsEnabled(true);
       setCelebrationSoundEnabled(false);
+      setHomeVisibility({ ...DEFAULT_HOME_VISIBILITY });
       setReadinessSleep(3);
       setReadinessEnergy(3);
       setReadinessStress(3);
@@ -1375,9 +1397,10 @@ export function MemberPortal(props: MemberPortalProps) {
         stress: readinessStress,
         motivation: readinessMotivation,
       },
+      homeVisibility,
     });
     window.localStorage.setItem(getUiPreferencesStorageKey(editableMember.id), payload);
-  }, [editableMember?.id, microCelebrationsEnabled, celebrationSoundEnabled, readinessSleep, readinessEnergy, readinessStress, readinessMotivation]);
+  }, [editableMember?.id, microCelebrationsEnabled, celebrationSoundEnabled, readinessSleep, readinessEnergy, readinessStress, readinessMotivation, homeVisibility]);
   useEffect(() => {
     if (!microCelebrationsEnabled) return;
     if (!shouldShowCelebration && !achievementCelebration) return;
@@ -2319,12 +2342,54 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">Klar for neste økt?</div>
                 <div className="mt-2 text-sm text-white/90">Trykk pa neste steg under for a komme raskt i gang.</div>
               </div>
-              <div className="hidden w-full sm:grid gap-3 sm:grid-cols-3">
-                <StatCard label="Denne uken" value={`${homeWeeklySummary.completedThisWeek}/${homeWeeklySummary.plannedThisWeek || 0}`} hint="Økter fullført" />
-                <StatCard label="Treffprosent" value={`${homeWeeklySummary.completionRate}%`} hint="Av ukens plan" />
-                <StatCard label="Streak" value={`${streakWeeks}`} hint="Uker på rad" />
+              <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-slate-700">🛠️ Tilpass hjem-skjerm</div>
+                  <OutlineButton onClick={() => setShowHomeCustomization((prev) => !prev)} className="w-full sm:w-auto">
+                    {showHomeCustomization ? "Skjul valg" : "Velg hva som vises"}
+                  </OutlineButton>
+                </div>
+                {showHomeCustomization ? (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {([
+                      { key: "weeklyStats", label: "Ukesstatistikk" },
+                      { key: "readiness", label: "Readiness" },
+                      { key: "nextStep", label: "Neste steg" },
+                      { key: "selfWorkout", label: "Lag økt selv" },
+                      { key: "todayPlan", label: "Dagens økt" },
+                      { key: "nextOnPlan", label: "Neste på planen" },
+                      { key: "quickActions", label: "Hurtighandlinger" },
+                      { key: "recentActivity", label: "Siste aktivitet" },
+                      { key: "coachFeed", label: "Coach feed" },
+                      { key: "progressStory", label: "Progress story" },
+                      { key: "calendar", label: "Treningskalender" },
+                    ] as Array<{ key: HomeSectionKey; label: string }>).map((item) => (
+                      <label key={item.key} className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                        <input
+                          type="checkbox"
+                          checked={homeVisibility[item.key]}
+                          onChange={(event) =>
+                            setHomeVisibility((prev) => ({
+                              ...prev,
+                              [item.key]: event.target.checked,
+                            }))
+                          }
+                        />
+                        {item.label}
+                      </label>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-              <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              {homeVisibility.weeklyStats ? (
+                <div className="hidden w-full sm:grid gap-3 sm:grid-cols-3">
+                  <StatCard label="Denne uken" value={`${homeWeeklySummary.completedThisWeek}/${homeWeeklySummary.plannedThisWeek || 0}`} hint="Økter fullført" />
+                  <StatCard label="Treffprosent" value={`${homeWeeklySummary.completionRate}%`} hint="Av ukens plan" />
+                  <StatCard label="Streak" value={`${streakWeeks}`} hint="Uker på rad" />
+                </div>
+              ) : null}
+              {homeVisibility.readiness ? (
+                <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-semibold text-slate-700">⚙️ Readiness i dag</div>
                   <div className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{readinessScore}%</div>
@@ -2360,7 +2425,9 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
                 <div className="mt-3 text-sm text-slate-700">{readinessAdvice}</div>
               </div>
-              <div className="min-w-0 w-full rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              ) : null}
+              {homeVisibility.nextStep ? (
+                <div className="min-w-0 w-full rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-sm font-semibold text-slate-700">🎯 Neste steg</div>
                 <div className="mt-1 text-sm font-medium text-slate-800">{nextBestAction.title}</div>
                 <div className="mt-1 text-sm text-slate-600">{nextBestAction.description}</div>
@@ -2387,7 +2454,9 @@ export function MemberPortal(props: MemberPortalProps) {
                   </OutlineButton>
                 </div>
               </div>
-              <div className="min-w-0 w-full rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              ) : null}
+              {homeVisibility.selfWorkout ? (
+                <div className="min-w-0 w-full rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex flex-wrap items-start gap-3">
                   <div className="rounded-xl p-2 text-white shrink-0" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
                     <Sparkles className="h-5 w-5" />
@@ -2403,7 +2472,8 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 </div>
               </div>
-              {todayPlanEntry ? (
+              ) : null}
+              {homeVisibility.todayPlan && todayPlanEntry ? (
                 <div className="min-w-0 w-full rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">📅 Dagens økt (fra periodeplan)</div>
                   <div className="mt-1 text-sm text-slate-700">{todayPlanEntry}</div>
@@ -2430,8 +2500,10 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 </div>
               ) : null}
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              {(homeVisibility.nextOnPlan || homeVisibility.quickActions) ? (
+                <div className="grid gap-4 lg:grid-cols-2">
+                {homeVisibility.nextOnPlan ? (
+                  <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">🧭 Neste på planen</div>
                   {nextPlannedWorkout ? (
                     <>
@@ -2445,7 +2517,9 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="mt-1 text-sm text-slate-500">Ingen flere planlagte økter denne uken.</div>
                   )}
                 </div>
-                <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                ) : <div />}
+                {homeVisibility.quickActions ? (
+                  <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">⚡ Hurtighandlinger</div>
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     <GradientButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">Start egen økt</GradientButton>
@@ -2453,8 +2527,11 @@ export function MemberPortal(props: MemberPortalProps) {
                     <OutlineButton onClick={() => setMemberTab("progress")} className="w-full sm:w-auto">Se fremgang</OutlineButton>
                   </div>
                 </div>
+                ) : <div />}
               </div>
-              <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              ) : null}
+              {homeVisibility.recentActivity ? (
+                <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-sm font-semibold text-slate-700">🕒 Siste aktivitet</div>
                 {recentHomeEvents.length === 0 ? (
                   <div className="mt-2 text-sm text-slate-500">Ingen aktivitet ennå. Start med en økt i dag.</div>
@@ -2469,7 +2546,9 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 )}
               </div>
-              <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              ) : null}
+              {homeVisibility.coachFeed ? (
+                <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-sm font-semibold text-slate-700">🧠 Coach feed</div>
                 <div className="mt-2 space-y-2">
                   {coachFeedInsights.map((insight, index) => (
@@ -2479,7 +2558,9 @@ export function MemberPortal(props: MemberPortalProps) {
                   ))}
                 </div>
               </div>
-              <div
+              ) : null}
+              {homeVisibility.progressStory ? (
+                <div
                 className="rounded-2xl border p-4 text-white"
                 style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, borderColor: "rgba(255,255,255,0.3)" }}
               >
@@ -2508,7 +2589,9 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 </div>
               </div>
-              <div className="grid gap-4">
+              ) : null}
+              {homeVisibility.calendar ? (
+                <div className="grid gap-4">
                 <div className="min-w-0 w-full overflow-hidden rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Treningskalender</div>
                   <div className="mt-1 text-base font-semibold text-slate-800 capitalize">{calendarMonthLabel}</div>
@@ -2672,6 +2755,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null}
                 </div>
               </div>
+              ) : null}
             </Card>
           ) : null}
 
