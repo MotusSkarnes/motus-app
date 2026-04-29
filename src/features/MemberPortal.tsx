@@ -96,24 +96,59 @@ type ProfileMetricsDraft = {
   currentDailySteps: string;
 };
 
-function encodeMemberProfileMetrics(metrics: ProfileMetricsDraft): string {
-  return `${PROFILE_METRICS_PREFIX}${JSON.stringify(metrics)}`;
+type SyncedHomePreferences = {
+  homeVisibility?: Partial<Record<HomeSectionKey, boolean>>;
+};
+
+type ProfileMetricsPayload = ProfileMetricsDraft & SyncedHomePreferences;
+
+function normalizeHomeVisibilityForStorage(
+  homeVisibility?: Partial<Record<HomeSectionKey, boolean>>,
+): Partial<Record<HomeSectionKey, boolean>> | undefined {
+  if (!homeVisibility) return undefined;
+  const normalized: Partial<Record<HomeSectionKey, boolean>> = {};
+  (Object.keys(DEFAULT_HOME_VISIBILITY) as HomeSectionKey[]).forEach((key) => {
+    const value = homeVisibility[key];
+    if (typeof value === "boolean") normalized[key] = value;
+  });
+  return Object.keys(normalized).length ? normalized : undefined;
 }
 
-function decodeMemberProfileMetrics(personalGoals: string | undefined): ProfileMetricsDraft | null {
+function encodeMemberProfileMetrics(metrics: ProfileMetricsDraft, preferences?: SyncedHomePreferences): string {
+  const normalizedHomeVisibility = normalizeHomeVisibilityForStorage(preferences?.homeVisibility);
+  const payload: ProfileMetricsPayload = {
+    ...metrics,
+    ...(normalizedHomeVisibility ? { homeVisibility: normalizedHomeVisibility } : {}),
+  };
+  return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;
+}
+
+function decodeMemberProfilePayload(personalGoals: string | undefined): ProfileMetricsPayload | null {
   if (!personalGoals?.startsWith(PROFILE_METRICS_PREFIX)) return null;
   try {
-    const parsed = JSON.parse(personalGoals.slice(PROFILE_METRICS_PREFIX.length)) as Partial<ProfileMetricsDraft>;
+    const parsed = JSON.parse(personalGoals.slice(PROFILE_METRICS_PREFIX.length)) as Partial<ProfileMetricsPayload>;
     if (!parsed || typeof parsed !== "object") return null;
     return {
       sessionsPerWeekTarget: String(parsed.sessionsPerWeekTarget ?? ""),
       dailyStepsTarget: String(parsed.dailyStepsTarget ?? ""),
       targetWeight: String(parsed.targetWeight ?? ""),
       currentDailySteps: String(parsed.currentDailySteps ?? ""),
+      homeVisibility: normalizeHomeVisibilityForStorage(parsed.homeVisibility),
     };
   } catch {
     return null;
   }
+}
+
+function decodeMemberProfileMetrics(personalGoals: string | undefined): ProfileMetricsDraft | null {
+  const payload = decodeMemberProfilePayload(personalGoals);
+  if (!payload) return null;
+  return {
+    sessionsPerWeekTarget: payload.sessionsPerWeekTarget,
+    dailyStepsTarget: payload.dailyStepsTarget,
+    targetWeight: payload.targetWeight,
+    currentDailySteps: payload.currentDailySteps,
+  };
 }
 
 /** Same canonical choice as useAppState.resolveMemberViewIdForUser — avoids feil rad ved duplikat-e-post. */
@@ -327,6 +362,7 @@ export function MemberPortal(props: MemberPortalProps) {
     currentUserRole === "member"
       ? currentMemberByEmail ?? viewedMember ?? null
       : viewedMember ?? members[0] ?? null;
+  const isMemberLimited = currentUserRole === "member" && editableMember?.customerType === "Medlem";
   const activeMemberId = editableMember?.id ?? memberViewId;
   const relatedMemberIds = useMemo(() => {
     const collectedIds = new Set<string>();
@@ -379,12 +415,24 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     return null;
   }, [relatedMembersForProfile]);
+  const dbHomeVisibility = useMemo(() => {
+    for (const member of relatedMembersForProfile) {
+      const decoded = decodeMemberProfilePayload(member.personalGoals);
+      if (decoded?.homeVisibility) return decoded.homeVisibility;
+    }
+    return null;
+  }, [relatedMembersForProfile]);
   const memberPrograms = programs.filter((program) => relatedMemberIdSet.has(program.memberId));
   const memberAssignedPrograms = useMemo(() => memberPrograms.filter((program) => !program.ephemeral), [memberPrograms]);
   const memberLogs = logs.filter((log) => relatedMemberIdSet.has(log.memberId));
   const memberMessages = messages.filter((message) => relatedMemberIdSet.has(message.memberId));
   const activeWorkoutProgram = workoutMode ? memberPrograms.find((program) => program.id === workoutMode.programId) ?? null : null;
   const nextProgram = memberAssignedPrograms[0] ?? null;
+  useEffect(() => {
+    if (!isMemberLimited) return;
+    if (memberTab === "programs") return;
+    setMemberTab("programs");
+  }, [isMemberLimited, memberTab, setMemberTab]);
   const workoutResultGroups = useMemo(() => {
     if (!workoutMode) return [];
     const grouped = new Map<string, { exerciseName: string; plannedReps: string; plannedWeight: string; rows: WorkoutModeState["results"] }>();
@@ -1260,12 +1308,15 @@ export function MemberPortal(props: MemberPortalProps) {
       if (localHasAnyMetric) {
         const targetIds = Array.from(new Set([editableMember.id, ...relatedMemberIds].filter(Boolean)));
         // One-time heal path: migrate legacy local-only metrics into DB-backed personal_goals.
-        const encoded = encodeMemberProfileMetrics({
-          sessionsPerWeekTarget: String(parsed.sessionsPerWeekTarget ?? ""),
-          dailyStepsTarget: String(parsed.dailyStepsTarget ?? ""),
-          targetWeight: String(parsed.targetWeight ?? ""),
-          currentDailySteps: String(parsed.currentDailySteps ?? ""),
-        });
+        const encoded = encodeMemberProfileMetrics(
+          {
+            sessionsPerWeekTarget: String(parsed.sessionsPerWeekTarget ?? ""),
+            dailyStepsTarget: String(parsed.dailyStepsTarget ?? ""),
+            targetWeight: String(parsed.targetWeight ?? ""),
+            currentDailySteps: String(parsed.currentDailySteps ?? ""),
+          },
+          { homeVisibility: dbHomeVisibility ?? undefined },
+        );
         targetIds.forEach((memberId) => {
           updateMember({
             memberId,
@@ -1279,7 +1330,7 @@ export function MemberPortal(props: MemberPortalProps) {
       applyMetricDrafts(fallback);
       applyMemberCoreDrafts();
     }
-  }, [editableMember, dbProfileMetrics, relatedMemberIds, updateMember]);
+  }, [editableMember, dbProfileMetrics, dbHomeVisibility, relatedMemberIds, updateMember]);
 
   useEffect(() => {
     if (!activePeriodPlan) {
@@ -1354,6 +1405,10 @@ export function MemberPortal(props: MemberPortalProps) {
       if (!raw) {
         setMicroCelebrationsEnabled(true);
         setCelebrationSoundEnabled(false);
+        setHomeVisibility({
+          ...DEFAULT_HOME_VISIBILITY,
+          ...(dbHomeVisibility ?? {}),
+        });
         return;
       }
       const parsed = JSON.parse(raw) as {
@@ -1369,9 +1424,10 @@ export function MemberPortal(props: MemberPortalProps) {
       };
       setMicroCelebrationsEnabled(parsed.microCelebrationsEnabled !== false);
       setCelebrationSoundEnabled(parsed.celebrationSoundEnabled === true);
+      const resolvedHomeVisibility = dbHomeVisibility ?? parsed.homeVisibility ?? {};
       setHomeVisibility({
         ...DEFAULT_HOME_VISIBILITY,
-        ...(parsed.homeVisibility ?? {}),
+        ...resolvedHomeVisibility,
       });
       const readiness = parsed.readiness ?? {};
       const normalizeReadiness = (value: unknown): 1 | 2 | 3 | 4 | 5 => {
@@ -1389,13 +1445,16 @@ export function MemberPortal(props: MemberPortalProps) {
     } catch {
       setMicroCelebrationsEnabled(true);
       setCelebrationSoundEnabled(false);
-      setHomeVisibility({ ...DEFAULT_HOME_VISIBILITY });
+      setHomeVisibility({
+        ...DEFAULT_HOME_VISIBILITY,
+        ...(dbHomeVisibility ?? {}),
+      });
       setReadinessSleep(3);
       setReadinessEnergy(3);
       setReadinessStress(3);
       setReadinessMotivation(3);
     }
-  }, [editableMember?.id]);
+  }, [editableMember?.id, dbHomeVisibility]);
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     const payload = JSON.stringify({
@@ -1411,6 +1470,58 @@ export function MemberPortal(props: MemberPortalProps) {
     });
     window.localStorage.setItem(getUiPreferencesStorageKey(editableMember.id), payload);
   }, [editableMember?.id, microCelebrationsEnabled, celebrationSoundEnabled, readinessSleep, readinessEnergy, readinessStress, readinessMotivation, homeVisibility]);
+  useEffect(() => {
+    if (!editableMember) return;
+    const normalizedHomeVisibility = normalizeHomeVisibilityForStorage(homeVisibility);
+    const dbHomeVisibilityNormalized = normalizeHomeVisibilityForStorage(dbHomeVisibility ?? undefined);
+    const nextVisibilitySignature = JSON.stringify(normalizedHomeVisibility ?? {});
+    const dbVisibilitySignature = JSON.stringify(dbHomeVisibilityNormalized ?? {});
+    if (nextVisibilitySignature === dbVisibilitySignature) return;
+    const nextMetrics: ProfileMetricsDraft = {
+      sessionsPerWeekTarget: profileSessionsPerWeekTarget.trim(),
+      dailyStepsTarget: profileDailyStepsTarget.trim(),
+      targetWeight: profileTargetWeight.trim(),
+      currentDailySteps: profileCurrentDailySteps.trim(),
+    };
+    const encoded = encodeMemberProfileMetrics(nextMetrics, { homeVisibility: normalizedHomeVisibility });
+    const targetIds = Array.from(new Set([editableMember.id, ...relatedMemberIds].filter(Boolean)));
+    targetIds.forEach((memberId) => {
+      updateMember({
+        memberId,
+        changes: {
+          personalGoals: encoded,
+        },
+      });
+    });
+    if (!supabaseClient) return;
+    void syncProfileToPtBackend({
+      email: normalizedCurrentUserEmail || editableMember.email.trim().toLowerCase(),
+      emails: Array.from(
+        new Set(
+          [normalizedCurrentUserEmail, editableMember.email.trim().toLowerCase()]
+            .map((value) => value.trim().toLowerCase())
+            .filter((value) => value && value.includes("@")),
+        ),
+      ),
+      memberId: editableMember.id,
+      memberIds: targetIds,
+      expectedMinUpdated: 1,
+      changes: {
+        personalGoals: encoded,
+      },
+    });
+  }, [
+    editableMember,
+    homeVisibility,
+    dbHomeVisibility,
+    profileSessionsPerWeekTarget,
+    profileDailyStepsTarget,
+    profileTargetWeight,
+    profileCurrentDailySteps,
+    relatedMemberIds,
+    updateMember,
+    normalizedCurrentUserEmail,
+  ]);
   useEffect(() => {
     if (!microCelebrationsEnabled) return;
     if (!shouldShowCelebration && !achievementCelebration) return;
@@ -1628,7 +1739,7 @@ export function MemberPortal(props: MemberPortalProps) {
       targetWeight: profileTargetWeight.trim(),
       currentDailySteps: profileCurrentDailySteps.trim(),
     };
-    const metricsForSync = encodeMemberProfileMetrics(next);
+    const metricsForSync = encodeMemberProfileMetrics(next, { homeVisibility });
     window.localStorage.setItem(getProfileStorageKey(editableMember.id), JSON.stringify(next));
     const targetMemberIds = Array.from(
       new Set(
@@ -2532,13 +2643,15 @@ export function MemberPortal(props: MemberPortalProps) {
           className="flex gap-2 overflow-auto px-3 py-3"
           style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
         >
-          {[
+          {(isMemberLimited
+            ? [{ id: "programs", label: "Trening" }]
+            : [
             { id: "overview", label: "Oversikt" },
             { id: "programs", label: "Trening" },
             { id: "progress", label: "Fremgang" },
             { id: "messages", label: "Meldinger" },
             { id: "profile", label: "Profil" },
-          ].map((tab) => {
+          ]).map((tab) => {
             const isActive = memberTab === tab.id;
             return (
               <button
@@ -2823,8 +2936,12 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div className="text-sm font-semibold text-slate-700">⚡ Hurtighandlinger</div>
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     <GradientButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">Start egen økt</GradientButton>
-                    <OutlineButton onClick={() => setMemberTab("messages")} className="w-full sm:w-auto">Send melding til PT</OutlineButton>
-                    <OutlineButton onClick={() => setMemberTab("progress")} className="w-full sm:w-auto">Se fremgang</OutlineButton>
+                    {!isMemberLimited ? (
+                      <>
+                        <OutlineButton onClick={() => setMemberTab("messages")} className="w-full sm:w-auto">Send melding til PT</OutlineButton>
+                        <OutlineButton onClick={() => setMemberTab("progress")} className="w-full sm:w-auto">Se fremgang</OutlineButton>
+                      </>
+                    ) : null}
                   </div>
                 </div>
                 ) : <div />}
@@ -3213,9 +3330,11 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="rounded-2xl border border-dashed bg-white p-6 text-center">
                       <div className="text-sm font-semibold text-slate-700">Ingen programmer fra trener ennå</div>
                       <div className="mt-1 text-sm text-slate-500">Be trener tildele et program, eller bruk «Egen økt» over.</div>
-                      <GradientButton onClick={() => setMemberTab("messages")} className="mt-3 w-full sm:w-auto">
-                        Send melding til trener
-                      </GradientButton>
+                      {!isMemberLimited ? (
+                        <GradientButton onClick={() => setMemberTab("messages")} className="mt-3 w-full sm:w-auto">
+                          Send melding til trener
+                        </GradientButton>
+                      ) : null}
                     </div>
                   ) : null}
                   {memberAssignedPrograms.map((program) => {

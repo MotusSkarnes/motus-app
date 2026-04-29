@@ -941,7 +941,10 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
         height: String(member.height ?? ""),
         level: member.level === "Litt øvet" || member.level === "Øvet" ? member.level : "Nybegynner",
         membershipType: member.membership_type === "Premium" ? "Premium" : "Standard",
-        customerType: member.customer_type === "PT-kunde" || member.customer_type === "Egentrening" ? member.customer_type : "Oppfølging",
+        customerType:
+          member.customer_type === "PT-kunde" || member.customer_type === "Egentrening" || member.customer_type === "Medlem"
+            ? member.customer_type
+            : "Oppfølging",
         daysSinceActivity: String(member.days_since_activity ?? "0"),
         goal: String(member.goal ?? ""),
         focus: String(member.focus ?? ""),
@@ -1047,7 +1050,10 @@ export async function fetchHydratedMemberData(): Promise<HydratedMemberData | nu
         height: String(member.height ?? ""),
         level: member.level === "Litt øvet" || member.level === "Øvet" ? member.level : "Nybegynner",
         membershipType: member.membership_type === "Premium" ? "Premium" : "Standard",
-        customerType: member.customer_type === "PT-kunde" || member.customer_type === "Egentrening" ? member.customer_type : "Oppfølging",
+        customerType:
+          member.customer_type === "PT-kunde" || member.customer_type === "Egentrening" || member.customer_type === "Medlem"
+            ? member.customer_type
+            : "Oppfølging",
         daysSinceActivity: String(member.days_since_activity ?? "0"),
         goal: String(member.goal ?? ""),
         focus: String(member.focus ?? ""),
@@ -1213,7 +1219,10 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
     height: String(row.height ?? ""),
     level: row.level === "Litt øvet" || row.level === "Øvet" ? row.level : "Nybegynner",
     membershipType: row.membership_type === "Premium" ? "Premium" : "Standard",
-    customerType: row.customer_type === "PT-kunde" || row.customer_type === "Egentrening" ? row.customer_type : "Oppfølging",
+    customerType:
+      row.customer_type === "PT-kunde" || row.customer_type === "Egentrening" || row.customer_type === "Medlem"
+        ? row.customer_type
+        : "Oppfølging",
     daysSinceActivity: String(row.days_since_activity ?? "0"),
     goal: String(row.goal ?? ""),
     focus: String(row.focus ?? ""),

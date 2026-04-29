@@ -304,7 +304,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     }
     return "all";
   });
-  const [customerTypeFilter, setCustomerTypeFilter] = useState<"all" | "PT-kunde" | "Premium-kunde">("all");
+  const [customerTypeFilter, setCustomerTypeFilter] = useState<"all" | "PT-kunde" | "Premium-kunde" | "Medlem">("all");
   const [memberSort, setMemberSort] = useState<"activityRecent" | "nameAsc" | "nameDesc">("activityRecent");
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const [isInvitingMember, setIsInvitingMember] = useState(false);
@@ -318,6 +318,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [memberEditInjuries, setMemberEditInjuries] = useState("");
   const [memberEditIsPtCustomer, setMemberEditIsPtCustomer] = useState(false);
   const [memberEditIsPremiumCustomer, setMemberEditIsPremiumCustomer] = useState(false);
+  const [memberEditIsSharedMember, setMemberEditIsSharedMember] = useState(false);
   const [isEditingCustomerCard, setIsEditingCustomerCard] = useState(false);
   const [memberEditStatus, setMemberEditStatus] = useState<string | null>(null);
   const [restoreEmail, setRestoreEmail] = useState("");
@@ -456,6 +457,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
         if (!matchesSearch) return false;
         if (customerTypeFilter === "PT-kunde" && member.customerType !== "PT-kunde") return false;
         if (customerTypeFilter === "Premium-kunde" && member.membershipType !== "Premium") return false;
+        if (customerTypeFilter === "Medlem" && member.customerType !== "Medlem") return false;
         if (memberFilter === "followUp") return Number(member.daysSinceActivity || "0") >= 7;
         if (memberFilter === "invited") return Boolean(member.invitedAt);
         if (memberFilter === "notInvited") return !member.invitedAt;
@@ -891,6 +893,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       setMemberEditInjuries("");
       setMemberEditIsPtCustomer(false);
       setMemberEditIsPremiumCustomer(false);
+      setMemberEditIsSharedMember(false);
       return;
     }
     setMemberEditName(member.name);
@@ -901,6 +904,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setMemberEditInjuries(member.injuries);
     setMemberEditIsPtCustomer(member.customerType === "PT-kunde");
     setMemberEditIsPremiumCustomer(member.membershipType === "Premium");
+    setMemberEditIsSharedMember(member.customerType === "Medlem");
   }
 
   useEffect(() => {
@@ -1391,7 +1395,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
           goal: memberEditGoal,
           injuries: memberEditInjuries,
           membershipType: memberEditIsPremiumCustomer ? "Premium" : "Standard",
-          customerType: memberEditIsPtCustomer ? "PT-kunde" : "Oppfølging",
+          customerType: memberEditIsSharedMember ? "Medlem" : memberEditIsPtCustomer ? "PT-kunde" : "Oppfølging",
         },
       });
     });
@@ -2371,11 +2375,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 />
                 <SelectBox
                   value={customerTypeFilter}
-                  onChange={(value) => setCustomerTypeFilter(value as "all" | "PT-kunde" | "Premium-kunde")}
+                  onChange={(value) => setCustomerTypeFilter(value as "all" | "PT-kunde" | "Premium-kunde" | "Medlem")}
                   options={[
                     { value: "all", label: "Alle kundetyper" },
                     { value: "PT-kunde", label: "PT-kunde" },
                     { value: "Premium-kunde", label: "Premium-kunde" },
+                    { value: "Medlem", label: "Medlem (deles)" },
                   ]}
                 />
                 <SelectBox
@@ -2480,7 +2485,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           <input
                             type="checkbox"
                             checked={memberEditIsPtCustomer}
-                            onChange={(event) => setMemberEditIsPtCustomer(event.target.checked)}
+                            onChange={(event) => {
+                              const checked = event.target.checked;
+                              setMemberEditIsPtCustomer(checked);
+                              if (checked) setMemberEditIsSharedMember(false);
+                            }}
                             className="h-4 w-4 rounded border-white/40 bg-white/20 accent-emerald-500"
                           />
                           PT-kunde
@@ -2499,6 +2508,25 @@ export function TrainerPortal(props: TrainerPortalProps) {
                             className="h-4 w-4 rounded border-white/40 bg-white/20 accent-emerald-500"
                           />
                           Premium-kunde
+                        </label>
+                        <label
+                          className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition ${
+                            memberEditIsSharedMember
+                              ? "border-white/70 bg-white/25 text-white"
+                              : "border-white/30 bg-white/10 text-white/90 hover:bg-white/20"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={memberEditIsSharedMember}
+                            onChange={(event) => {
+                              const checked = event.target.checked;
+                              setMemberEditIsSharedMember(checked);
+                              if (checked) setMemberEditIsPtCustomer(false);
+                            }}
+                            className="h-4 w-4 rounded border-white/40 bg-white/20 accent-emerald-500"
+                          />
+                          Medlem (vises hos alle PT-er)
                         </label>
                         </div>
                       </div>

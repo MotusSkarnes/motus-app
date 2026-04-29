@@ -1,7 +1,7 @@
 export type Role = "trainer" | "member";
 export type Level = "Nybegynner" | "Litt øvet" | "Øvet";
 export type MembershipType = "Standard" | "Premium";
-export type CustomerType = "PT-kunde" | "Oppfølging" | "Egentrening";
+export type CustomerType = "PT-kunde" | "Oppfølging" | "Egentrening" | "Medlem";
 export type TrainerTab =
   | "dashboard"
   | "customers"

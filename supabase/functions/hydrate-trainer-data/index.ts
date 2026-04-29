@@ -91,23 +91,44 @@ Deno.serve(async (req) => {
     "id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, created_at";
   let members: Array<Record<string, unknown>> | null = null;
   let membersError: { message: string } | null = null;
-  const membersWithAvatar = await adminClient
+  const ownedMembersWithAvatar = await adminClient
     .from("members")
     .select(membersSelectWithAvatar)
     .eq("owner_user_id", ownerUserId)
     .order("created_at", { ascending: true });
-  if (membersWithAvatar.error && membersWithAvatar.error.message.includes("avatar_url")) {
-    const membersWithoutAvatar = await adminClient
+  const sharedMembersWithAvatar = await adminClient
+    .from("members")
+    .select(membersSelectWithAvatar)
+    .eq("customer_type", "Medlem")
+    .neq("owner_user_id", ownerUserId)
+    .order("created_at", { ascending: true });
+  if (
+    (ownedMembersWithAvatar.error && ownedMembersWithAvatar.error.message.includes("avatar_url")) ||
+    (sharedMembersWithAvatar.error && sharedMembersWithAvatar.error.message.includes("avatar_url"))
+  ) {
+    const ownedMembersWithoutAvatar = await adminClient
       .from("members")
       .select(membersSelectWithoutAvatar)
       .eq("owner_user_id", ownerUserId)
       .order("created_at", { ascending: true });
-    members = (membersWithoutAvatar.data ?? []) as Array<Record<string, unknown>>;
-    membersError = membersWithoutAvatar.error;
+    const sharedMembersWithoutAvatar = await adminClient
+      .from("members")
+      .select(membersSelectWithoutAvatar)
+      .eq("customer_type", "Medlem")
+      .neq("owner_user_id", ownerUserId)
+      .order("created_at", { ascending: true });
+    members = uniqueById([...(ownedMembersWithoutAvatar.data ?? []), ...(sharedMembersWithoutAvatar.data ?? [])]) as Array<
+      Record<string, unknown>
+    >;
+    membersError = ownedMembersWithoutAvatar.error ?? sharedMembersWithoutAvatar.error;
   } else {
-    members = (membersWithAvatar.data ?? []) as Array<Record<string, unknown>>;
-    membersError = membersWithAvatar.error;
+    members = uniqueById([...(ownedMembersWithAvatar.data ?? []), ...(sharedMembersWithAvatar.data ?? [])]) as Array<
+      Record<string, unknown>
+    >;
+    membersError = ownedMembersWithAvatar.error ?? sharedMembersWithAvatar.error;
   }
+
+  const visibleMemberIds = (members ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);
 
   const { data: programsByOwner, error: programsByOwnerError } = await adminClient
     .from("training_programs")
@@ -134,31 +155,31 @@ Deno.serve(async (req) => {
   let logsByMemberError: { message: string } | null = null;
   let messagesByMemberError: { message: string } | null = null;
 
-  if (ownedMemberIds.length > 0) {
+  if (visibleMemberIds.length > 0) {
     const { data, error } = await adminClient
       .from("training_programs")
       .select("id, member_id, title, goal, notes, exercises, created_at")
-      .in("member_id", ownedMemberIds)
+      .in("member_id", visibleMemberIds)
       .order("created_at", { ascending: false });
     programsByMember = (data ?? []) as Array<Record<string, unknown>>;
     programsByMemberError = error;
   }
 
-  if (ownedMemberIds.length > 0) {
+  if (visibleMemberIds.length > 0) {
     const { data, error } = await adminClient
       .from("workout_logs")
       .select("id, member_id, program_title, date, status, note, results, created_at")
-      .in("member_id", ownedMemberIds)
+      .in("member_id", visibleMemberIds)
       .order("created_at", { ascending: false });
     logsByMember = (data ?? []) as Array<Record<string, unknown>>;
     logsByMemberError = error;
   }
 
-  if (ownedMemberIds.length > 0) {
+  if (visibleMemberIds.length > 0) {
     const { data, error } = await adminClient
       .from("chat_messages")
       .select("id, member_id, sender, text, created_at")
-      .in("member_id", ownedMemberIds)
+      .in("member_id", visibleMemberIds)
       .order("created_at", { ascending: true });
     messagesByMember = (data ?? []) as Array<Record<string, unknown>>;
     messagesByMemberError = error;
@@ -170,10 +191,10 @@ Deno.serve(async (req) => {
     .order("name", { ascending: true });
 
   let periodPlanRows: Array<{ member_id: string; plan: unknown }> = [];
-  const { data: periodRows, error: periodPlansError } = await adminClient
-    .from("member_period_plans")
-    .select("member_id, plan")
-    .eq("owner_user_id", ownerUserId);
+  const { data: periodRows, error: periodPlansError } =
+    visibleMemberIds.length > 0
+      ? await adminClient.from("member_period_plans").select("member_id, plan").in("member_id", visibleMemberIds)
+      : await adminClient.from("member_period_plans").select("member_id, plan").eq("owner_user_id", ownerUserId);
   if (periodPlansError) {
     console.warn("hydrate-trainer-data: member_period_plans query failed (table may be missing):", periodPlansError.message);
   } else {
