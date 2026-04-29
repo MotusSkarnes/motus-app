@@ -299,6 +299,8 @@ export function MemberPortal(props: MemberPortalProps) {
   const [intervalTimerStepIndex, setIntervalTimerStepIndex] = useState(0);
   const [intervalTimerRemainingSeconds, setIntervalTimerRemainingSeconds] = useState(0);
   const [intervalTimerStatus, setIntervalTimerStatus] = useState<string | null>(null);
+  const [completedPeriodPlanHydratedMemberId, setCompletedPeriodPlanHydratedMemberId] = useState<string | null>(null);
+  const [uiPreferencesMemberId, setUiPreferencesMemberId] = useState<string | null>(null);
   const hasInitializedAchievementTracking = useRef(false);
   const workoutWeightInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const memberMessagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -1310,25 +1312,33 @@ export function MemberPortal(props: MemberPortalProps) {
     return () => window.clearTimeout(timer);
   }, [memberTab, editableMember, profileHasUnsavedChanges, saveProfile]);
   useEffect(() => {
-    if (!editableMember || typeof window === "undefined") return;
+    if (!editableMember || typeof window === "undefined") {
+      setCompletedPeriodPlanHydratedMemberId(null);
+      return;
+    }
+    setCompletedPeriodPlanHydratedMemberId(null);
     try {
       const raw = window.localStorage.getItem(getPeriodPlanCompletedStorageKey(editableMember.id));
       if (!raw) {
         setCompletedPeriodPlanEntryKeys([]);
+        setCompletedPeriodPlanHydratedMemberId(editableMember.id);
         return;
       }
       const parsed = JSON.parse(raw) as unknown;
       if (!Array.isArray(parsed)) {
         setCompletedPeriodPlanEntryKeys([]);
+        setCompletedPeriodPlanHydratedMemberId(editableMember.id);
         return;
       }
       setCompletedPeriodPlanEntryKeys(parsed.map((item) => String(item)).filter(Boolean));
     } catch {
       setCompletedPeriodPlanEntryKeys([]);
     }
+    setCompletedPeriodPlanHydratedMemberId(editableMember.id);
   }, [editableMember?.id]);
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
+    if (completedPeriodPlanHydratedMemberId !== editableMember.id) return;
     try {
       window.localStorage.setItem(
         getPeriodPlanCompletedStorageKey(editableMember.id),
@@ -1337,14 +1347,24 @@ export function MemberPortal(props: MemberPortalProps) {
     } catch {
       // ignore storage write errors (quota/private mode)
     }
-  }, [editableMember?.id, completedPeriodPlanEntryKeys]);
+  }, [editableMember?.id, completedPeriodPlanEntryKeys, completedPeriodPlanHydratedMemberId]);
   useEffect(() => {
-    if (!editableMember || typeof window === "undefined") return;
+    if (!editableMember || typeof window === "undefined") {
+      setUiPreferencesMemberId(null);
+      return;
+    }
+    setUiPreferencesMemberId(null);
     try {
       const raw = window.localStorage.getItem(getUiPreferencesStorageKey(editableMember.id));
       if (!raw) {
         setMicroCelebrationsEnabled(true);
         setCelebrationSoundEnabled(false);
+        setHomeVisibility({ ...DEFAULT_HOME_VISIBILITY });
+        setReadinessSleep(3);
+        setReadinessEnergy(3);
+        setReadinessStress(3);
+        setReadinessMotivation(3);
+        setUiPreferencesMemberId(editableMember.id);
         return;
       }
       const parsed = JSON.parse(raw) as {
@@ -1377,6 +1397,7 @@ export function MemberPortal(props: MemberPortalProps) {
       setReadinessEnergy(normalizeReadiness(readiness.energy));
       setReadinessStress(normalizeReadiness(readiness.stress));
       setReadinessMotivation(normalizeReadiness(readiness.motivation));
+      setUiPreferencesMemberId(editableMember.id);
     } catch {
       setMicroCelebrationsEnabled(true);
       setCelebrationSoundEnabled(false);
@@ -1385,10 +1406,12 @@ export function MemberPortal(props: MemberPortalProps) {
       setReadinessEnergy(3);
       setReadinessStress(3);
       setReadinessMotivation(3);
+      setUiPreferencesMemberId(editableMember.id);
     }
   }, [editableMember?.id]);
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
+    if (uiPreferencesMemberId !== editableMember.id) return;
     const payload = JSON.stringify({
       microCelebrationsEnabled,
       celebrationSoundEnabled,
@@ -1401,7 +1424,7 @@ export function MemberPortal(props: MemberPortalProps) {
       homeVisibility,
     });
     window.localStorage.setItem(getUiPreferencesStorageKey(editableMember.id), payload);
-  }, [editableMember?.id, microCelebrationsEnabled, celebrationSoundEnabled, readinessSleep, readinessEnergy, readinessStress, readinessMotivation, homeVisibility]);
+  }, [editableMember?.id, uiPreferencesMemberId, microCelebrationsEnabled, celebrationSoundEnabled, readinessSleep, readinessEnergy, readinessStress, readinessMotivation, homeVisibility]);
   useEffect(() => {
     if (!microCelebrationsEnabled) return;
     if (!shouldShowCelebration && !achievementCelebration) return;
