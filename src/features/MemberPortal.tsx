@@ -2386,44 +2386,82 @@ export function MemberPortal(props: MemberPortalProps) {
       program.exercises.length > 0
         ? program.exercises
             .map((exercise, index) => {
+              const libraryMatch =
+                exercises.find((item) => item.id === exercise.exerciseId) ??
+                exercises.find((item) => item.name.trim().toLowerCase() === exercise.exerciseName.trim().toLowerCase()) ??
+                null;
               const prescription = exercise.durationMinutes
                 ? `${exercise.sets} runder × ${exercise.durationMinutes} min${
                     exercise.speed ? ` · ${exercise.speed} km/t` : ""
                   }${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s pause`
                 : `${exercise.sets} x ${exercise.reps} · ${exercise.weight || "-"} kg · ${exercise.restSeconds}s pause`;
-              return `<li><strong>${index + 1}. ${escapeHtml(exercise.exerciseName)}</strong><br/>${escapeHtml(prescription)}${
-                exercise.notes ? `<br/><em>${escapeHtml(exercise.notes)}</em>` : ""
-              }</li>`;
+              const imageUrl = libraryMatch?.imageUrl?.trim() || "";
+              const description = libraryMatch?.description?.trim() || "Ingen forklaring tilgjengelig for denne øvelsen.";
+              return `<article class="exercise-card">
+  <div class="exercise-image-wrap">
+    ${
+      imageUrl
+        ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(exercise.exerciseName)}" class="exercise-image" />`
+        : `<div class="exercise-image-placeholder">Ingen bilde</div>`
+    }
+  </div>
+  <div class="exercise-body">
+    <div class="exercise-title">${index + 1}. ${escapeHtml(exercise.exerciseName)}</div>
+    <div class="exercise-prescription">${escapeHtml(prescription)}</div>
+    <div class="exercise-description">${escapeHtml(description)}</div>
+    ${exercise.notes ? `<div class="exercise-notes">Coach-notat: ${escapeHtml(exercise.notes)}</div>` : ""}
+  </div>
+</article>`;
             })
             .join("")
-        : "<li>Ingen øvelser i programmet.</li>";
+        : `<div class="empty-state">Ingen øvelser i programmet.</div>`;
     const html = `<!doctype html>
 <html lang="no">
 <head>
   <meta charset="utf-8" />
   <title>${escapeHtml(program.title)} - Utskrift</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 24px; color: #0f172a; }
+    body { font-family: Arial, sans-serif; margin: 0; color: #0f172a; background: #f8fafc; }
+    .page { padding: 20px; }
+    .header-card { border-radius: 16px; padding: 18px; background: linear-gradient(135deg, #14b8a6 0%, #ec4899 100%); color: #fff; }
     h1 { margin: 0 0 8px; font-size: 28px; }
-    .meta { color: #475569; font-size: 14px; margin-bottom: 16px; }
-    .block { margin-bottom: 16px; }
-    ul { margin: 0; padding-left: 20px; }
-    li { margin-bottom: 12px; line-height: 1.4; }
-    .footer { margin-top: 24px; color: #64748b; font-size: 12px; }
+    .meta { color: rgba(255,255,255,0.9); font-size: 14px; }
+    .notes-card { margin-top: 12px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; padding: 12px; }
+    .notes-title { font-weight: 700; margin-bottom: 6px; }
+    .section-title { margin: 16px 0 10px; font-size: 16px; font-weight: 700; color: #334155; }
+    .exercise-card { display: grid; grid-template-columns: 140px 1fr; gap: 12px; border: 1px solid #dbeafe; border-radius: 14px; background: #fff; padding: 10px; margin-bottom: 10px; break-inside: avoid; }
+    .exercise-image-wrap { width: 140px; height: 110px; border-radius: 10px; overflow: hidden; background: #f1f5f9; border: 1px solid #e2e8f0; }
+    .exercise-image { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .exercise-image-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px; }
+    .exercise-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+    .exercise-prescription { font-size: 13px; color: #0f766e; margin-bottom: 6px; }
+    .exercise-description { font-size: 12px; color: #475569; line-height: 1.45; }
+    .exercise-notes { margin-top: 6px; font-size: 12px; color: #7c2d12; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 6px; }
+    .empty-state { border: 1px dashed #cbd5e1; border-radius: 12px; background: #fff; padding: 12px; color: #64748b; }
+    .footer { margin-top: 18px; color: #64748b; font-size: 12px; text-align: right; }
     @media print { body { margin: 16mm; } }
+    @media print {
+      body { background: #fff; }
+      .page { padding: 0; }
+      .exercise-card { page-break-inside: avoid; }
+    }
   </style>
 </head>
 <body>
-  <h1>${escapeHtml(program.title)}</h1>
-  <div class="meta">Mål: ${escapeHtml(program.goal || "Ikke satt")} · Opprettet: ${escapeHtml(program.createdAt || "-")}</div>
-  ${
-    program.notes
-      ? `<div class="block"><strong>Notater</strong><br/>${escapeHtml(program.notes)}</div>`
-      : ""
-  }
-  <div class="block"><strong>Øvelser</strong></div>
-  <ul>${exercisesHtml}</ul>
-  <div class="footer">Generert fra Motus medlemsportal.</div>
+  <div class="page">
+    <div class="header-card">
+      <h1>${escapeHtml(program.title)}</h1>
+      <div class="meta">Mål: ${escapeHtml(program.goal || "Ikke satt")} · Opprettet: ${escapeHtml(program.createdAt || "-")}</div>
+    </div>
+    ${
+      program.notes
+        ? `<div class="notes-card"><div class="notes-title">Notater</div>${escapeHtml(program.notes)}</div>`
+        : ""
+    }
+    <div class="section-title">Øvelser</div>
+    ${exercisesHtml}
+    <div class="footer">Generert fra Motus medlemsportal.</div>
+  </div>
 </body>
 </html>`;
     printWindow.document.open();
