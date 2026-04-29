@@ -2369,6 +2369,70 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }
 
+  function escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function handlePrintProgram(program: TrainingProgram) {
+    if (typeof window === "undefined") return;
+    const printWindow = window.open("", "_blank", "width=900,height=1100");
+    if (!printWindow) return;
+    const exercisesHtml =
+      program.exercises.length > 0
+        ? program.exercises
+            .map((exercise, index) => {
+              const prescription = exercise.durationMinutes
+                ? `${exercise.sets} runder × ${exercise.durationMinutes} min${
+                    exercise.speed ? ` · ${exercise.speed} km/t` : ""
+                  }${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s pause`
+                : `${exercise.sets} x ${exercise.reps} · ${exercise.weight || "-"} kg · ${exercise.restSeconds}s pause`;
+              return `<li><strong>${index + 1}. ${escapeHtml(exercise.exerciseName)}</strong><br/>${escapeHtml(prescription)}${
+                exercise.notes ? `<br/><em>${escapeHtml(exercise.notes)}</em>` : ""
+              }</li>`;
+            })
+            .join("")
+        : "<li>Ingen øvelser i programmet.</li>";
+    const html = `<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(program.title)} - Utskrift</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; color: #0f172a; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    .meta { color: #475569; font-size: 14px; margin-bottom: 16px; }
+    .block { margin-bottom: 16px; }
+    ul { margin: 0; padding-left: 20px; }
+    li { margin-bottom: 12px; line-height: 1.4; }
+    .footer { margin-top: 24px; color: #64748b; font-size: 12px; }
+    @media print { body { margin: 16mm; } }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(program.title)}</h1>
+  <div class="meta">Mål: ${escapeHtml(program.goal || "Ikke satt")} · Opprettet: ${escapeHtml(program.createdAt || "-")}</div>
+  ${
+    program.notes
+      ? `<div class="block"><strong>Notater</strong><br/>${escapeHtml(program.notes)}</div>`
+      : ""
+  }
+  <div class="block"><strong>Øvelser</strong></div>
+  <ul>${exercisesHtml}</ul>
+  <div class="footer">Generert fra Motus medlemsportal.</div>
+</body>
+</html>`;
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  }
+
   return (
     <>
     <div className="space-y-4 sm:space-y-6">
@@ -3079,6 +3143,9 @@ export function MemberPortal(props: MemberPortalProps) {
                               onClick={() => setExpandedProgramId((prev) => (prev === program.id ? null : program.id))}
                             >
                               {isExpanded ? "Skjul økt" : "Se hele økt"}
+                            </OutlineButton>
+                            <OutlineButton className="px-3 py-2 text-xs" onClick={() => handlePrintProgram(program)}>
+                              Skriv ut / PDF
                             </OutlineButton>
                             <GradientButton
                               className="px-3 py-2 text-xs"
