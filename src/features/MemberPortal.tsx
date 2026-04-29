@@ -1833,6 +1833,69 @@ export function MemberPortal(props: MemberPortalProps) {
       action: "progress" as const,
     };
   }, [memberAssignedPrograms.length, nextProgram]);
+  const homeWeeklySummary = useMemo(() => {
+    const today = getStartOfDay(now);
+    const mondayOffset = (today.getDay() + 6) % 7;
+    const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset);
+    const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7);
+    const completedThisWeek = completedLogDates.filter((date) => {
+      const day = getStartOfDay(date);
+      return day.getTime() >= weekStart.getTime() && day.getTime() < weekEnd.getTime();
+    }).length;
+    const plannedThisWeek = activeWeeklyPlan
+      ? Object.values(activeWeeklyPlan.days).filter((entry) => entry.trim().length > 0).length
+      : 0;
+    const completionRate = plannedThisWeek > 0 ? Math.min(100, Math.round((completedThisWeek / plannedThisWeek) * 100)) : 0;
+    return { completedThisWeek, plannedThisWeek, completionRate };
+  }, [now, completedLogDates, activeWeeklyPlan]);
+  const nextPlannedWorkout = useMemo(() => {
+    if (!activeWeeklyPlan) return null;
+    const dayOrder: WeekdayPlanKey[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    const dayLabels: Record<WeekdayPlanKey, string> = {
+      monday: "Mandag",
+      tuesday: "Tirsdag",
+      wednesday: "Onsdag",
+      thursday: "Torsdag",
+      friday: "Fredag",
+      saturday: "Lørdag",
+      sunday: "Søndag",
+    };
+    const todayIndex = dayOrder.indexOf(currentWeekdayKey);
+    for (let step = 1; step <= 7; step += 1) {
+      const index = (todayIndex + step) % 7;
+      const dayKey = dayOrder[index];
+      const entry = activeWeeklyPlan.days[dayKey]?.trim();
+      if (!entry) continue;
+      return { dayLabel: dayLabels[dayKey], entry };
+    }
+    return null;
+  }, [activeWeeklyPlan, currentWeekdayKey]);
+  const recentHomeEvents = useMemo(() => {
+    const items: Array<{ id: string; title: string; meta: string }> = [];
+    if (latestCompletedLog) {
+      items.push({
+        id: `log-${latestCompletedLog.id}`,
+        title: `Fullført: ${latestCompletedLog.programTitle}`,
+        meta: latestCompletedLog.date,
+      });
+    }
+    const latestTrainerMessage = [...memberMessages].reverse().find((message) => message.sender === "trainer");
+    if (latestTrainerMessage) {
+      items.push({
+        id: `msg-${latestTrainerMessage.id}`,
+        title: "Ny melding fra PT",
+        meta: latestTrainerMessage.createdAt,
+      });
+    }
+    if (todayPlanEntry) {
+      items.push({
+        id: `plan-${todayPlanEntry}`,
+        title: `Planlagt i dag: ${todayPlanEntry}`,
+        meta: "Fra periodeplan",
+      });
+    }
+    return items.slice(0, 3);
+  }, [latestCompletedLog, memberMessages, todayPlanEntry]);
   const customerStatusLabel = (() => {
     const isPtCustomer = viewedMember?.customerType === "PT-kunde";
     const isPremiumCustomer = viewedMember?.membershipType === "Premium";
@@ -2194,9 +2257,9 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="mt-2 text-sm text-white/90">Trykk pa neste steg under for a komme raskt i gang.</div>
               </div>
               <div className="hidden w-full sm:grid gap-3 sm:grid-cols-3">
-                <StatCard label="Programmer" value={String(memberAssignedPrograms.length)} hint="Tildelt deg" />
-                <StatCard label="Logger" value={String(memberLogs.length)} hint="Registrert" />
-                <StatCard label="Meldinger" value={String(memberMessages.length)} hint="I chatten" />
+                <StatCard label="Denne uken" value={`${homeWeeklySummary.completedThisWeek}/${homeWeeklySummary.plannedThisWeek || 0}`} hint="Økter fullført" />
+                <StatCard label="Treffprosent" value={`${homeWeeklySummary.completionRate}%`} hint="Av ukens plan" />
+                <StatCard label="Streak" value={`${streakWeeks}`} hint="Uker på rad" />
               </div>
               <div className="min-w-0 w-full rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-sm font-semibold text-slate-700">🎯 Neste steg</div>
@@ -2268,6 +2331,45 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 </div>
               ) : null}
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="text-sm font-semibold text-slate-700">🧭 Neste på planen</div>
+                  {nextPlannedWorkout ? (
+                    <>
+                      <div className="mt-1 text-sm font-medium text-slate-800">{nextPlannedWorkout.dayLabel}</div>
+                      <div className="mt-1 text-sm text-slate-600">{nextPlannedWorkout.entry}</div>
+                      <OutlineButton onClick={() => setMemberTab("programs")} className="mt-3 w-full sm:w-auto">
+                        Se periodeplan
+                      </OutlineButton>
+                    </>
+                  ) : (
+                    <div className="mt-1 text-sm text-slate-500">Ingen flere planlagte økter denne uken.</div>
+                  )}
+                </div>
+                <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="text-sm font-semibold text-slate-700">⚡ Hurtighandlinger</div>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                    <GradientButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">Start egen økt</GradientButton>
+                    <OutlineButton onClick={() => setMemberTab("messages")} className="w-full sm:w-auto">Send melding til PT</OutlineButton>
+                    <OutlineButton onClick={() => setMemberTab("progress")} className="w-full sm:w-auto">Se fremgang</OutlineButton>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-sm font-semibold text-slate-700">🕒 Siste aktivitet</div>
+                {recentHomeEvents.length === 0 ? (
+                  <div className="mt-2 text-sm text-slate-500">Ingen aktivitet ennå. Start med en økt i dag.</div>
+                ) : (
+                  <div className="mt-2 space-y-2">
+                    {recentHomeEvents.map((item) => (
+                      <div key={item.id} className="rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                        <div className="font-medium text-slate-800">{item.title}</div>
+                        <div className="text-xs text-slate-500">{item.meta}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div
                 className="rounded-2xl border p-4 text-white"
                 style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, borderColor: "rgba(255,255,255,0.3)" }}
