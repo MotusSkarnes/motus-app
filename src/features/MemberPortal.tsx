@@ -158,6 +158,13 @@ function encodeNameForPath(name: string): string {
   return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
+function pickFirstName(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const firstToken = trimmed.split(/\s+/)[0] ?? "";
+  return firstToken.trim();
+}
+
 function dataUrlToBlob(dataUrl: string): Blob | null {
   const parts = dataUrl.split(",");
   if (parts.length < 2) return null;
@@ -2384,7 +2391,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const printWindow = window.open("", "_blank", "width=900,height=1100");
     if (!printWindow) return;
     const recipientName = (viewedMember?.name || editableMember?.name || "Kunde").trim();
-    const trainerLabel = (program.assignedTrainerName || MOTUS.name || "Trener").trim();
+    const trainerLabel = (pickFirstName(program.assignedTrainerName ?? "") || pickFirstName(MOTUS.name) || "Trener").trim();
     const exercisesHtml =
       program.exercises.length > 0
         ? program.exercises

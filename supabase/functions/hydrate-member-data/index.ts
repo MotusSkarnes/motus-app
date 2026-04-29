@@ -17,6 +17,19 @@ function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
 }
 
+function toFirstName(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const firstToken = trimmed.split(/\s+/)[0] ?? "";
+  return firstToken.trim();
+}
+
+function nameFromEmail(email: string): string {
+  const localPart = email.split("@")[0] ?? "";
+  const normalized = localPart.replace(/[._-]+/g, " ").trim();
+  return toFirstName(normalized);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -160,7 +173,8 @@ Deno.serve(async (req) => {
           ""
       ).trim();
       const email = String(trainerData.user.email ?? "").trim();
-      trainerNameByOwnerId.set(ownerUserId, fullName || email || "");
+      const trainerFirstName = toFirstName(fullName) || nameFromEmail(email) || "";
+      trainerNameByOwnerId.set(ownerUserId, trainerFirstName);
     } catch {
       // Ignore lookup failures; frontend will use fallback label.
     }
