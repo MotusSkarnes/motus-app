@@ -326,6 +326,43 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
   }
 }
 
+function resolvePersistMessageTargetIds(state: AppState, memberId: string): string[] {
+  const trimmedMemberId = memberId.trim();
+  const isRealId = (value: string) => Boolean(value && value !== "__template__" && !value.startsWith("auth-"));
+  const targets = new Set<string>();
+  if (isRealId(trimmedMemberId)) {
+    targets.add(trimmedMemberId);
+  }
+  const anchorMember = state.members.find((member) => member.id === trimmedMemberId) ?? null;
+  const anchorEmail = (anchorMember?.email ?? "").trim().toLowerCase();
+  const anchorName = (anchorMember?.name ?? "").trim().toLowerCase();
+  if (anchorEmail) {
+    state.members
+      .filter((member) => member.email.trim().toLowerCase() === anchorEmail)
+      .map((member) => member.id)
+      .filter(isRealId)
+      .forEach((id) => targets.add(id));
+  }
+  if (anchorName) {
+    state.members
+      .filter((member) => member.name.trim().toLowerCase() === anchorName)
+      .map((member) => member.id)
+      .filter(isRealId)
+      .forEach((id) => targets.add(id));
+  }
+  if (!targets.size && state.currentUser?.role === "member") {
+    const currentUserEmail = state.currentUser.email.trim().toLowerCase();
+    if (currentUserEmail) {
+      state.members
+        .filter((member) => member.email.trim().toLowerCase() === currentUserEmail)
+        .map((member) => member.id)
+        .filter(isRealId)
+        .forEach((id) => targets.add(id));
+    }
+  }
+  return Array.from(targets);
+}
+
 async function persistProgram(input: SaveProgramInput) {
   if (!supabaseClient) return;
   const ownerUserId = await getOwnerUserId();
@@ -1399,12 +1436,26 @@ export const supabaseAppRepository: AppRepository = {
   },
   appendTrainerMessage(state: AppState, memberId: string, text: string): AppState {
     const nextState = appendTrainerMessage(state, memberId, text);
-    void persistMessage(memberId, "trainer", text.trim());
+    const targetIds = resolvePersistMessageTargetIds(nextState, memberId);
+    if (targetIds.length === 0) {
+      void persistMessage(memberId, "trainer", text.trim());
+    } else {
+      targetIds.forEach((targetId) => {
+        void persistMessage(targetId, "trainer", text.trim());
+      });
+    }
     return nextState;
   },
   appendMemberMessage(state: AppState, memberId: string, text: string): AppState {
     const nextState = appendMemberMessage(state, memberId, text);
-    void persistMessage(memberId, "member", text.trim());
+    const targetIds = resolvePersistMessageTargetIds(nextState, memberId);
+    if (targetIds.length === 0) {
+      void persistMessage(memberId, "member", text.trim());
+    } else {
+      targetIds.forEach((targetId) => {
+        void persistMessage(targetId, "member", text.trim());
+      });
+    }
     return nextState;
   },
   startWorkoutMode(state: AppState, programId: string, options?: StartWorkoutModeOptions): AppState {
