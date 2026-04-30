@@ -261,7 +261,40 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
       continue;
     }
     if (invokeResult.error) {
-      console.warn("send-chat-message invoke failed, trying direct insert fallback:", invokeResult.error.message);
+      console.warn("send-chat-message invoke failed, trying direct function fetch fallback:", invokeResult.error.message);
+    }
+
+    if (supabaseUrl && supabaseAnonKey) {
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession();
+      const accessToken = session?.access_token ?? "";
+      if (accessToken) {
+        try {
+          const response = await fetch(`${supabaseUrl}/functions/v1/send-chat-message`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: supabaseAnonKey,
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              memberId: targetMemberId,
+              sender,
+              text: trimmedText,
+            }),
+          });
+          const body = (await response.json().catch(() => null)) as { messageId?: string; error?: string; message?: string } | null;
+          if (response.ok) {
+            const messageId = String(body?.messageId ?? "").trim();
+            if (messageId) persistedMessageIds.push(messageId);
+            continue;
+          }
+          console.warn("send-chat-message direct fetch failed:", body?.error || body?.message || `HTTP ${response.status}`);
+        } catch (error) {
+          console.warn("send-chat-message direct fetch threw:", error);
+        }
+      }
     }
 
     // Fallback path: direct insert for both sender-owner and member-owner copies.
