@@ -12,6 +12,10 @@ type SendPayload = {
   text?: string;
 };
 
+function normalizeEmail(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -31,6 +35,7 @@ Deno.serve(async (req) => {
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
+  if (!token) return jsonResponse(401, { error: "Missing bearer token" });
 
   let payload: SendPayload;
   try {
@@ -46,13 +51,17 @@ Deno.serve(async (req) => {
   if (!text) return jsonResponse(400, { error: "text is required" });
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
-  let authenticatedUserId = "";
-  if (token) {
-    const { data: userData, error: userError } = await adminClient.auth.getUser(token);
-    if (!userError) {
-      authenticatedUserId = String(userData?.user?.id ?? "").trim();
-    }
+  const { data: userData, error: userError } = await adminClient.auth.getUser(token);
+  const authenticatedUserId = String(userData?.user?.id ?? "").trim();
+  if (userError || !userData?.user || !authenticatedUserId) {
+    return jsonResponse(401, { error: "Invalid user session" });
   }
+  const requesterEmail = normalizeEmail(userData.user.email);
+  const requesterMemberId = String(
+    (userData.user.app_metadata?.member_id as string | undefined) ??
+      (userData.user.user_metadata?.member_id as string | undefined) ??
+      ""
+  ).trim();
 
   const { data: memberRow, error: memberError } = await adminClient
     .from("members")
@@ -62,8 +71,15 @@ Deno.serve(async (req) => {
   if (memberError || !memberRow) {
     return jsonResponse(404, { error: "Member not found" });
   }
-  const anchorEmail = String((memberRow as { email?: string }).email ?? "").trim().toLowerCase();
-  const anchorName = String((memberRow as { name?: string }).name ?? "").trim().toLowerCase();
+  const anchorOwnerUserId = String((memberRow as { owner_user_id?: string }).owner_user_id ?? "").trim();
+  const anchorEmail = normalizeEmail((memberRow as { email?: string }).email);
+  const isAuthorized =
+    sender === "trainer"
+      ? anchorOwnerUserId === authenticatedUserId
+      : (requesterMemberId && requesterMemberId === memberId) || (requesterEmail && anchorEmail === requesterEmail);
+  if (!isAuthorized) {
+    return jsonResponse(403, { error: "Not allowed to send message for this member" });
+  }
   const targetById = new Map<string, { id: string; owner_user_id: string }>();
 
   const addTargets = (rows: Array<Record<string, unknown>> | null | undefined) => {
@@ -89,17 +105,6 @@ Deno.serve(async (req) => {
       return jsonResponse(500, { error: relatedByEmailError.message });
     }
     addTargets((relatedByEmail ?? []) as Array<Record<string, unknown>>);
-  }
-
-  if (anchorName) {
-    const { data: relatedByName, error: relatedByNameError } = await adminClient
-      .from("members")
-      .select("id, owner_user_id")
-      .eq("name", anchorName);
-    if (relatedByNameError) {
-      return jsonResponse(500, { error: relatedByNameError.message });
-    }
-    addTargets((relatedByName ?? []) as Array<Record<string, unknown>>);
   }
 
   const targets = Array.from(targetById.values());

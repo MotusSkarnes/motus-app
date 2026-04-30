@@ -95,23 +95,16 @@ Deno.serve(async (req) => {
     return false;
   });
 
-  // Legacy-dupe support: widen member scope to rows sharing email or name
-  // with the initially matched member rows, so messages/programs survive refresh.
+  // Legacy-dupe support: widen member scope to rows sharing email with the
+  // initially matched member rows, so messages/programs survive refresh.
   const relatedEmailSet = new Set(
     members
       .map((row) => normalizeEmail((row as { email?: string }).email))
       .filter((value) => value && value.includes("@")),
   );
-  const relatedNameSet = new Set(
-    members
-      .map((row) => String((row as { name?: string }).name ?? "").trim().toLowerCase())
-      .filter(Boolean),
-  );
   const widenedMembers = (allMembers ?? []).filter((row) => {
     const rowEmail = normalizeEmail((row as { email?: string }).email);
-    const rowName = String((row as { name?: string }).name ?? "").trim().toLowerCase();
     if (rowEmail && relatedEmailSet.has(rowEmail)) return true;
-    if (rowName && relatedNameSet.has(rowName)) return true;
     return false;
   });
   const dedupedMembersById = new Map<string, Record<string, unknown>>();
