@@ -31,6 +31,7 @@ Deno.serve(async (req) => {
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
+  if (!token) return jsonResponse(401, { error: "Missing bearer token" });
 
   let payload: SendPayload;
   try {
@@ -46,12 +47,10 @@ Deno.serve(async (req) => {
   if (!text) return jsonResponse(400, { error: "text is required" });
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
-  let authenticatedUserId = "";
-  if (token) {
-    const { data: userData, error: userError } = await adminClient.auth.getUser(token);
-    if (!userError && userData?.user?.id) {
-      authenticatedUserId = String(userData.user.id).trim();
-    }
+  const { data: userData, error: userError } = await adminClient.auth.getUser(token);
+  const authenticatedUserId = String(userData?.user?.id ?? "").trim();
+  if (userError || !authenticatedUserId) {
+    return jsonResponse(401, { error: "Invalid user session" });
   }
 
   const { data: memberRow, error: memberError } = await adminClient
@@ -107,7 +106,8 @@ Deno.serve(async (req) => {
   const rows = targets.map((row) => {
     return {
       member_id: row.id,
-      owner_user_id: row.owner_user_id || authenticatedUserId,
+      // Critical: chat visibility for sender depends on owner_user_id = auth.uid() in strict RLS.
+      owner_user_id: authenticatedUserId,
       sender,
       text,
       created_at: nowIso,
