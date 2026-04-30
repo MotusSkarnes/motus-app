@@ -272,6 +272,7 @@ export function MemberPortal(props: MemberPortalProps) {
     remoteMemberPeriodPlanRows = EMPTY_REMOTE_PERIOD_PLAN_ROWS,
   } = props;
   const [messageText, setMessageText] = useState("");
+  const [memberChatSendStatus, setMemberChatSendStatus] = useState<string | null>(null);
   const [profileSessionsPerWeekTarget, setProfileSessionsPerWeekTarget] = useState("");
   const [profileDailyStepsTarget, setProfileDailyStepsTarget] = useState("");
   const [profileTargetWeight, setProfileTargetWeight] = useState("");
@@ -1723,7 +1724,7 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }
 
-  function dispatchMemberMessageToRelatedMembers(text: string) {
+  async function dispatchMemberMessageToRelatedMembers(text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
     const targetMemberIds = relatedMemberIds.length ? relatedMemberIds : activeMemberId ? [activeMemberId] : [];
@@ -1743,21 +1744,32 @@ export function MemberPortal(props: MemberPortalProps) {
         );
       }
     }
-    if (!validTargetMemberIds.length) return;
-    validTargetMemberIds.forEach((memberId) => {
+    if (!validTargetMemberIds.length) {
+      setMemberChatSendStatus("DIAG: Ingen gyldige target IDs.");
+      return;
+    }
+    const diagRows: string[] = [];
+    for (const memberId of validTargetMemberIds) {
       const normalizedMemberId = String(memberId ?? "").trim();
       if (!normalizedMemberId) return;
       sendMemberMessage(normalizedMemberId, trimmed);
       if (supabaseClient) {
-        void supabaseClient.functions.invoke("send-chat-message", {
+        const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
           body: {
             memberId: normalizedMemberId,
             sender: "member",
             text: trimmed,
           },
         });
+        if (invokeResult.error) {
+          diagRows.push(`${normalizedMemberId}: ERR ${invokeResult.error.message}`);
+        } else {
+          const payload = invokeResult.data as { inserted?: number; messageId?: string } | null;
+          diagRows.push(`${normalizedMemberId}: OK inserted=${payload?.inserted ?? "?"} msg=${payload?.messageId ?? "-"}`);
+        }
       }
-    });
+    }
+    setMemberChatSendStatus(`DIAG targets=[${validTargetMemberIds.join(", ")}] ${diagRows.join(" | ")}`);
   }
 
   async function saveProfile(options?: { silent?: boolean }) {
@@ -4258,10 +4270,15 @@ export function MemberPortal(props: MemberPortalProps) {
                   <TextInput value={messageText} onChange={(e) => setMessageText(e.target.value)} placeholder="Skriv melding til trener" />
                   <GradientButton onClick={() => {
                     if (!activeMemberId || !messageText.trim()) return;
-                    dispatchMemberMessageToRelatedMembers(messageText);
+                    void dispatchMemberMessageToRelatedMembers(messageText);
                     setMessageText("");
                   }}>Send</GradientButton>
                 </div>
+                {memberChatSendStatus ? (
+                  <div className="rounded-xl border bg-white px-3 py-2 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+                    {memberChatSendStatus}
+                  </div>
+                ) : null}
               </div>
             </Card>
           ) : null}

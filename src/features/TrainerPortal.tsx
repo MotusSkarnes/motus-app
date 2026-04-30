@@ -189,6 +189,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [programGoal, setProgramGoal] = useState("");
   const [programNotes, setProgramNotes] = useState("");
   const [trainerMessage, setTrainerMessage] = useState("");
+  const [trainerChatSendStatus, setTrainerChatSendStatus] = useState<string | null>(null);
   const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
   const [selectedWorkoutLogId, setSelectedWorkoutLogId] = useState<string | null>(null);
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
@@ -1417,7 +1418,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setIsEditingCustomerCard(false);
   }
 
-  function dispatchTrainerMessageToSelectedMember(text: string) {
+  async function dispatchTrainerMessageToSelectedMember(text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
     const targetMemberIds = selectedMemberRelatedIds.length
@@ -1441,20 +1442,31 @@ export function TrainerPortal(props: TrainerPortalProps) {
         );
       }
     }
-    if (!validTargetMemberIds.length) return;
-    validTargetMemberIds.forEach((memberId) => {
+    if (!validTargetMemberIds.length) {
+      setTrainerChatSendStatus("DIAG: Ingen gyldige target IDs.");
+      return;
+    }
+    const diagRows: string[] = [];
+    for (const memberId of validTargetMemberIds) {
       if (!memberId || memberId === "__template__") return;
       sendTrainerMessage(memberId, trimmed);
       if (supabaseClient) {
-        void supabaseClient.functions.invoke("send-chat-message", {
+        const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
           body: {
             memberId,
             sender: "trainer",
             text: trimmed,
           },
         });
+        if (invokeResult.error) {
+          diagRows.push(`${memberId}: ERR ${invokeResult.error.message}`);
+        } else {
+          const payload = invokeResult.data as { inserted?: number; messageId?: string } | null;
+          diagRows.push(`${memberId}: OK inserted=${payload?.inserted ?? "?"} msg=${payload?.messageId ?? "-"}`);
+        }
       }
-    });
+    }
+    setTrainerChatSendStatus(`DIAG targets=[${validTargetMemberIds.join(", ")}] ${diagRows.join(" | ")}`);
   }
 
   function resetMemberListControls() {
@@ -3369,13 +3381,18 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       <GradientButton
                         onClick={() => {
                           if (!selectedMemberId || selectedMemberId === "__template__" || !trainerMessage.trim()) return;
-                          dispatchTrainerMessageToSelectedMember(trainerMessage);
+                          void dispatchTrainerMessageToSelectedMember(trainerMessage);
                           setTrainerMessage("");
                         }}
                       >
                         Send
                       </GradientButton>
                     </div>
+                    {trainerChatSendStatus ? (
+                      <div className="rounded-xl border bg-white px-3 py-2 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+                        {trainerChatSendStatus}
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -3968,10 +3985,15 @@ export function TrainerPortal(props: TrainerPortalProps) {
           <TextInput value={trainerMessage} onChange={(e) => setTrainerMessage(e.target.value)} placeholder="Skriv melding til kunden" />
           <GradientButton onClick={() => {
             if (!selectedMemberId || selectedMemberId === "__template__" || !trainerMessage.trim()) return;
-            dispatchTrainerMessageToSelectedMember(trainerMessage);
+            void dispatchTrainerMessageToSelectedMember(trainerMessage);
             setTrainerMessage("");
           }}>Send</GradientButton>
         </div>
+        {trainerChatSendStatus ? (
+          <div className="mt-3 rounded-xl border bg-white px-3 py-2 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+            {trainerChatSendStatus}
+          </div>
+        ) : null}
       </Card>
       ) : null}
 
