@@ -1422,8 +1422,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
     const trimmed = text.trim();
     if (!trimmed) return;
     setTrainerChatSendStatus("Sender...");
-    const isLikelyDbMemberId = (value: string) =>
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
     const targetMemberIds = selectedMemberRelatedIds.length
       ? selectedMemberRelatedIds
       : selectedMemberId && selectedMemberId !== "__template__"
@@ -1433,8 +1431,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       (memberId) =>
         memberId &&
         memberId !== "__template__" &&
-        !memberId.startsWith("auth-") &&
-        isLikelyDbMemberId(memberId),
+        !memberId.startsWith("auth-"),
     );
     if (!validTargetMemberIds.length && selectedMember) {
       const selectedEmail = selectedMember.email.trim().toLowerCase();
@@ -1448,8 +1445,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 (memberId) =>
                   memberId &&
                   memberId !== "__template__" &&
-                  !memberId.startsWith("auth-") &&
-                  isLikelyDbMemberId(memberId),
+                  !memberId.startsWith("auth-"),
               )
           )
         );
@@ -1463,7 +1459,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
           new Set(
             (rows ?? [])
               .map((row) => String((row as { id?: string }).id ?? "").trim())
-              .filter((memberId) => memberId && isLikelyDbMemberId(memberId)),
+              .filter((memberId) => memberId && memberId !== "__template__" && !memberId.startsWith("auth-")),
           ),
         );
       }

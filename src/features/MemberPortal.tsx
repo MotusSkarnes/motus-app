@@ -1727,11 +1727,9 @@ export function MemberPortal(props: MemberPortalProps) {
   async function dispatchMemberMessageToRelatedMembers(text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
-    const isLikelyDbMemberId = (value: string) =>
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
     const targetMemberIds = relatedMemberIds.length ? relatedMemberIds : activeMemberId ? [activeMemberId] : [];
     let validTargetMemberIds = Array.from(new Set(targetMemberIds)).filter(
-      (memberId) => memberId && !memberId.startsWith("auth-") && isLikelyDbMemberId(memberId),
+      (memberId) => memberId && !memberId.startsWith("auth-") && memberId !== "__template__",
     );
     if (!validTargetMemberIds.length) {
       const anchorEmail = (editableMember?.email || normalizedCurrentUserEmail).trim().toLowerCase();
@@ -1741,7 +1739,7 @@ export function MemberPortal(props: MemberPortalProps) {
             members
               .filter((member) => member.email.trim().toLowerCase() === anchorEmail)
               .map((member) => member.id)
-              .filter((memberId) => memberId && !memberId.startsWith("auth-") && isLikelyDbMemberId(memberId))
+              .filter((memberId) => memberId && !memberId.startsWith("auth-") && memberId !== "__template__")
           )
         );
       }
@@ -1754,7 +1752,7 @@ export function MemberPortal(props: MemberPortalProps) {
           new Set(
             (rows ?? [])
               .map((row) => String((row as { id?: string }).id ?? "").trim())
-              .filter((memberId) => memberId && isLikelyDbMemberId(memberId)),
+              .filter((memberId) => memberId && !memberId.startsWith("auth-") && memberId !== "__template__"),
           ),
         );
       }
