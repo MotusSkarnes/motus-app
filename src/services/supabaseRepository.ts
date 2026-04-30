@@ -208,6 +208,9 @@ async function resolveRelatedMemberIds(memberId: string): Promise<string[]> {
   if (!supabaseClient) return [memberId];
   const trimmedMemberId = memberId.trim();
   if (!trimmedMemberId) return [];
+  if (trimmedMemberId === "__template__" || trimmedMemberId.startsWith("auth-")) {
+    return [];
+  }
   const { data: memberRow, error: memberLookupError } = await supabaseClient
     .from("members")
     .select("email")
@@ -242,7 +245,32 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
   const trimmedMemberId = memberId.trim();
   const trimmedText = text.trim();
   if (!trimmedMemberId || !trimmedText) return;
-  const targetMemberIds = await resolveRelatedMemberIds(trimmedMemberId);
+  let targetMemberIds = await resolveRelatedMemberIds(trimmedMemberId);
+  if (!targetMemberIds.length) {
+    const {
+      data: { user },
+    } = await supabaseClient.auth.getUser();
+    const authEmail = String(user?.email ?? "").trim().toLowerCase();
+    if (authEmail && authEmail.includes("@")) {
+      const { data: rows, error } = await supabaseClient
+        .from("members")
+        .select("id")
+        .eq("email", authEmail);
+      if (!error) {
+        targetMemberIds = Array.from(
+          new Set(
+            (rows ?? [])
+              .map((row) => String((row as { id?: string }).id ?? "").trim())
+              .filter((id) => id && !id.startsWith("auth-") && id !== "__template__")
+          )
+        );
+      }
+    }
+  }
+  if (!targetMemberIds.length) {
+    console.warn("persistMessage: no valid target member ids resolved");
+    return;
+  }
   const persistedMessageIds: string[] = [];
 
   // Primary path: server-side fanout via edge function.
