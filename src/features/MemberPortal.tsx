@@ -1727,7 +1727,11 @@ export function MemberPortal(props: MemberPortalProps) {
     const trimmed = text.trim();
     if (!trimmed) return;
     const targetMemberIds = relatedMemberIds.length ? relatedMemberIds : activeMemberId ? [activeMemberId] : [];
-    Array.from(new Set(targetMemberIds)).forEach((memberId) => {
+    const validTargetMemberIds = Array.from(new Set(targetMemberIds)).filter(
+      (memberId) => memberId && !memberId.startsWith("auth-")
+    );
+    if (!validTargetMemberIds.length) return;
+    validTargetMemberIds.forEach((memberId) => {
       const normalizedMemberId = String(memberId ?? "").trim();
       if (!normalizedMemberId) return;
       sendMemberMessage(normalizedMemberId, trimmed);

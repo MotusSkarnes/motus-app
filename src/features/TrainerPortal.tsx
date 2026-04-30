@@ -1425,8 +1425,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
       : selectedMemberId && selectedMemberId !== "__template__"
         ? [selectedMemberId]
         : [];
-    if (!targetMemberIds.length) return;
-    Array.from(new Set(targetMemberIds)).forEach((memberId) => {
+    const validTargetMemberIds = Array.from(new Set(targetMemberIds)).filter(
+      (memberId) => memberId && memberId !== "__template__" && !memberId.startsWith("auth-"),
+    );
+    if (!validTargetMemberIds.length) return;
+    validTargetMemberIds.forEach((memberId) => {
       if (!memberId || memberId === "__template__") return;
       sendTrainerMessage(memberId, trimmed);
     });
