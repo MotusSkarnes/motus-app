@@ -3942,7 +3942,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
         <div className="mt-5 flex flex-col gap-3 sm:flex-row">
           <TextInput value={trainerMessage} onChange={(e) => setTrainerMessage(e.target.value)} placeholder="Skriv melding til kunden" />
           <GradientButton onClick={() => {
-            if (!selectedMemberId || !trainerMessage.trim()) return;
+            if (!selectedMemberId || selectedMemberId === "__template__" || !trainerMessage.trim()) return;
             dispatchTrainerMessageToSelectedMember(trainerMessage);
             setTrainerMessage("");
           }}>Send</GradientButton>

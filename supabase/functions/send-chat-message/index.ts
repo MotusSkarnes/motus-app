@@ -68,29 +68,58 @@ Deno.serve(async (req) => {
 
   const { data: memberRow, error: memberError } = await adminClient
     .from("members")
-    .select("id, owner_user_id, email")
+    .select("id, owner_user_id, email, name")
     .eq("id", memberId)
     .maybeSingle();
   if (memberError || !memberRow) {
     return jsonResponse(404, { error: "Member not found" });
   }
   const anchorEmail = String((memberRow as { email?: string }).email ?? "").trim().toLowerCase();
-  const { data: relatedMembers, error: relatedMembersError } = anchorEmail
-    ? await adminClient
-        .from("members")
-        .select("id, owner_user_id, email")
-        .eq("email", anchorEmail)
-    : await adminClient.from("members").select("id, owner_user_id, email").eq("id", memberId);
-  if (relatedMembersError) {
-    return jsonResponse(500, { error: relatedMembersError.message });
+  const anchorName = String((memberRow as { name?: string }).name ?? "").trim().toLowerCase();
+  const targetById = new Map<string, { id: string; owner_user_id: string }>();
+
+  const addTargets = (rows: Array<Record<string, unknown>> | null | undefined) => {
+    (rows ?? []).forEach((row) => {
+      const id = String(row.id ?? "").trim();
+      if (!id) return;
+      targetById.set(id, {
+        id,
+        owner_user_id: String(row.owner_user_id ?? "").trim(),
+      });
+    });
+  };
+
+  const selfRow = memberRow as Record<string, unknown>;
+  addTargets([selfRow]);
+
+  if (anchorEmail) {
+    const { data: relatedByEmail, error: relatedByEmailError } = await adminClient
+      .from("members")
+      .select("id, owner_user_id")
+      .eq("email", anchorEmail);
+    if (relatedByEmailError) {
+      return jsonResponse(500, { error: relatedByEmailError.message });
+    }
+    addTargets((relatedByEmail ?? []) as Array<Record<string, unknown>>);
   }
-  const targets = (relatedMembers ?? []).length ? relatedMembers : [memberRow];
+
+  if (anchorName) {
+    const { data: relatedByName, error: relatedByNameError } = await adminClient
+      .from("members")
+      .select("id, owner_user_id")
+      .eq("name", anchorName);
+    if (relatedByNameError) {
+      return jsonResponse(500, { error: relatedByNameError.message });
+    }
+    addTargets((relatedByName ?? []) as Array<Record<string, unknown>>);
+  }
+
+  const targets = Array.from(targetById.values());
   const nowIso = new Date().toISOString();
   const rows = targets.map((row) => {
-    const typed = row as { id?: string; owner_user_id?: string };
     return {
-      member_id: String(typed.id ?? "").trim(),
-      owner_user_id: String(typed.owner_user_id ?? "").trim() || userData.user.id,
+      member_id: row.id,
+      owner_user_id: row.owner_user_id || userData.user.id,
       sender,
       text,
       created_at: nowIso,
