@@ -42,132 +42,155 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return jsonResponse(405, { error: "Method not allowed" });
-
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !serviceRoleKey) {
-    return jsonResponse(500, { error: "Missing Supabase environment variables" });
-  }
-
-  const authHeader = req.headers.get("Authorization") ?? "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
-
-  let payload: SendPayload;
   try {
-    payload = (await req.json()) as SendPayload;
-  } catch {
-    return jsonResponse(400, { error: "Invalid JSON body" });
-  }
+    if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+    if (req.method !== "POST") return jsonResponse(200, { ok: false, inserted: 0, message: "Method not allowed" });
 
-  const memberId = String(payload.memberId ?? "").trim();
-  const text = String(payload.text ?? "").trim();
-  const sender = payload.sender === "member" ? "member" : "trainer";
-  if (!memberId) return jsonResponse(400, { error: "memberId is required" });
-  if (!text) return jsonResponse(400, { error: "text is required" });
-
-  const adminClient = createClient(supabaseUrl, serviceRoleKey);
-  let authenticatedUserId = "";
-  if (token) {
-    const { data: userData, error: userError } = await adminClient.auth.getUser(token);
-    if (!userError) {
-      authenticatedUserId = String(userData?.user?.id ?? "").trim();
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !serviceRoleKey) {
+      return jsonResponse(200, { ok: false, inserted: 0, message: "Missing Supabase environment variables" });
     }
-  }
 
-  const { data: memberRow, error: memberError } = await adminClient
-    .from("members")
-    .select("id, owner_user_id, email, name")
-    .eq("id", memberId)
-    .maybeSingle();
-  if (memberError || !memberRow) {
-    return jsonResponse(404, { error: "Member not found" });
-  }
-  const anchorEmail = String((memberRow as { email?: string }).email ?? "").trim().toLowerCase();
-  const anchorName = String((memberRow as { name?: string }).name ?? "").trim().toLowerCase();
-  const targetById = new Map<string, { id: string; owner_user_id: string; email: string }>();
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
 
-  const addTargets = (rows: Array<Record<string, unknown>> | null | undefined) => {
-    (rows ?? []).forEach((row) => {
-      const id = String(row.id ?? "").trim();
-      if (!id) return;
-      targetById.set(id, {
-        id,
-        owner_user_id: String(row.owner_user_id ?? "").trim(),
-        email: String(row.email ?? "").trim().toLowerCase(),
-      });
-    });
-  };
+    let payload: SendPayload;
+    try {
+      payload = (await req.json()) as SendPayload;
+    } catch {
+      return jsonResponse(200, { ok: false, inserted: 0, message: "Invalid JSON body" });
+    }
 
-  const selfRow = memberRow as Record<string, unknown>;
-  addTargets([selfRow]);
+    const memberId = String(payload.memberId ?? "").trim();
+    const text = String(payload.text ?? "").trim();
+    const sender = payload.sender === "member" ? "member" : "trainer";
+    if (!memberId) return jsonResponse(200, { ok: false, inserted: 0, message: "memberId is required" });
+    if (!text) return jsonResponse(200, { ok: false, inserted: 0, message: "text is required" });
 
-  if (anchorEmail) {
-    const { data: relatedByEmail, error: relatedByEmailError } = await adminClient
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    let authenticatedUserId = "";
+    if (token) {
+      const { data: userData, error: userError } = await adminClient.auth.getUser(token);
+      if (!userError) {
+        authenticatedUserId = String(userData?.user?.id ?? "").trim();
+      }
+    }
+
+    const { data: memberRow, error: memberError } = await adminClient
       .from("members")
-      .select("id, owner_user_id, email")
-      .eq("email", anchorEmail);
-    if (relatedByEmailError) {
-      return jsonResponse(500, { error: relatedByEmailError.message });
+      .select("id, owner_user_id, email, name")
+      .eq("id", memberId)
+      .maybeSingle();
+    if (memberError || !memberRow) {
+      return jsonResponse(200, { ok: false, inserted: 0, message: "Member not found" });
     }
-    addTargets((relatedByEmail ?? []) as Array<Record<string, unknown>>);
-  }
+    const anchorEmail = String((memberRow as { email?: string }).email ?? "").trim().toLowerCase();
+    const anchorName = String((memberRow as { name?: string }).name ?? "").trim().toLowerCase();
+    const targetById = new Map<string, { id: string; owner_user_id: string; email: string }>();
 
-  if (anchorName) {
-    const { data: relatedByName, error: relatedByNameError } = await adminClient
-      .from("members")
-      .select("id, owner_user_id, email")
-      .eq("name", anchorName);
-    if (relatedByNameError) {
-      return jsonResponse(500, { error: relatedByNameError.message });
-    }
-    addTargets((relatedByName ?? []) as Array<Record<string, unknown>>);
-  }
-
-  const targets = Array.from(targetById.values());
-  const nowIso = new Date().toISOString();
-  const rows: Array<{
-    member_id: string;
-    owner_user_id: string;
-    sender: "trainer" | "member";
-    text: string;
-    created_at: string;
-  }> = [];
-  targets.forEach((row) => {
-    const memberIdForRow = row.id;
-    const recipientOwnerUserId = (row.owner_user_id ?? "").trim();
-    const recipientAuthUserId = await resolveAuthUserIdByEmail(adminClient, row.email ?? "");
-    const ownerCandidates = Array.from(
-      new Set([authenticatedUserId, recipientOwnerUserId, recipientAuthUserId].filter(Boolean)),
-    );
-    if (ownerCandidates.length === 0) return;
-    ownerCandidates.forEach((ownerUserId) => {
-      rows.push({
-        member_id: memberIdForRow,
-        owner_user_id: ownerUserId,
-        sender,
-        text,
-        created_at: nowIso,
+    const addTargets = (rows: Array<Record<string, unknown>> | null | undefined) => {
+      (rows ?? []).forEach((row) => {
+        const id = String(row.id ?? "").trim();
+        if (!id) return;
+        targetById.set(id, {
+          id,
+          owner_user_id: String(row.owner_user_id ?? "").trim(),
+          email: String(row.email ?? "").trim().toLowerCase(),
+        });
       });
+    };
+
+    const selfRow = memberRow as Record<string, unknown>;
+    addTargets([selfRow]);
+
+    if (anchorEmail) {
+      const { data: relatedByEmail, error: relatedByEmailError } = await adminClient
+        .from("members")
+        .select("id, owner_user_id, email")
+        .eq("email", anchorEmail);
+      if (relatedByEmailError) {
+        return jsonResponse(200, { ok: false, inserted: 0, message: relatedByEmailError.message });
+      }
+      addTargets((relatedByEmail ?? []) as Array<Record<string, unknown>>);
+    }
+
+    if (anchorName) {
+      const { data: relatedByName, error: relatedByNameError } = await adminClient
+        .from("members")
+        .select("id, owner_user_id, email")
+        .eq("name", anchorName);
+      if (relatedByNameError) {
+        return jsonResponse(200, { ok: false, inserted: 0, message: relatedByNameError.message });
+      }
+      addTargets((relatedByName ?? []) as Array<Record<string, unknown>>);
+    }
+
+    const targets = Array.from(targetById.values());
+
+    // Heal legacy rows with missing owner_user_id whenever we have authenticated sender.
+    if (authenticatedUserId) {
+      const missingOwnerIds = targets.filter((row) => !row.owner_user_id).map((row) => row.id);
+      if (missingOwnerIds.length > 0) {
+        const { data: healedRows } = await adminClient
+          .from("members")
+          .update({ owner_user_id: authenticatedUserId })
+          .in("id", missingOwnerIds)
+          .select("id, owner_user_id, email");
+        addTargets((healedRows ?? []) as Array<Record<string, unknown>>);
+      }
+    }
+
+    const finalTargets = Array.from(targetById.values());
+    const nowIso = new Date().toISOString();
+    const rows: Array<{
+      member_id: string;
+      owner_user_id: string;
+      sender: "trainer" | "member";
+      text: string;
+      created_at: string;
+    }> = [];
+    for (const row of finalTargets) {
+      const memberIdForRow = row.id;
+      const recipientOwnerUserId = (row.owner_user_id ?? "").trim();
+      const recipientAuthUserId = await resolveAuthUserIdByEmail(adminClient, row.email ?? "");
+      const ownerCandidates = Array.from(
+        new Set([authenticatedUserId, recipientOwnerUserId, recipientAuthUserId].filter(Boolean)),
+      );
+      if (ownerCandidates.length === 0) continue;
+      ownerCandidates.forEach((ownerUserId) => {
+        rows.push({
+          member_id: memberIdForRow,
+          owner_user_id: ownerUserId,
+          sender,
+          text,
+          created_at: nowIso,
+        });
+      });
+    }
+    const validRows = rows.filter((row) => row.member_id && row.owner_user_id);
+    if (!validRows.length) {
+      return jsonResponse(200, { ok: false, inserted: 0, message: "No target members resolved for message" });
+    }
+    const { data: insertedRows, error: insertError } = await adminClient
+      .from("chat_messages")
+      .insert(validRows)
+      .select("id, member_id");
+    if (insertError) {
+      return jsonResponse(200, { ok: false, inserted: 0, message: insertError.message });
+    }
+    const firstMessageId = String((insertedRows?.[0] as { id?: string } | undefined)?.id ?? "");
+    return jsonResponse(200, {
+      ok: true,
+      inserted: insertedRows?.length ?? 0,
+      messageId: firstMessageId,
     });
-  });
-  const validRows = rows.filter((row) => row.member_id && row.owner_user_id);
-  if (!validRows.length) {
-    return jsonResponse(400, { error: "No target members resolved for message" });
+  } catch (error) {
+    return jsonResponse(200, {
+      ok: false,
+      inserted: 0,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
-  const { data: insertedRows, error: insertError } = await adminClient
-    .from("chat_messages")
-    .insert(validRows)
-    .select("id, member_id");
-  if (insertError) {
-    return jsonResponse(500, { error: insertError.message });
-  }
-  const firstMessageId = String((insertedRows?.[0] as { id?: string } | undefined)?.id ?? "");
-  return jsonResponse(200, {
-    ok: true,
-    inserted: insertedRows?.length ?? 0,
-    messageId: firstMessageId,
-  });
 });
 

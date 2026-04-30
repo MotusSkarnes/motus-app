@@ -1727,9 +1727,11 @@ export function MemberPortal(props: MemberPortalProps) {
   async function dispatchMemberMessageToRelatedMembers(text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
+    const isLikelyDbMemberId = (value: string) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
     const targetMemberIds = relatedMemberIds.length ? relatedMemberIds : activeMemberId ? [activeMemberId] : [];
     let validTargetMemberIds = Array.from(new Set(targetMemberIds)).filter(
-      (memberId) => memberId && !memberId.startsWith("auth-")
+      (memberId) => memberId && !memberId.startsWith("auth-") && isLikelyDbMemberId(memberId),
     );
     if (!validTargetMemberIds.length) {
       const anchorEmail = (editableMember?.email || normalizedCurrentUserEmail).trim().toLowerCase();
@@ -1739,13 +1741,26 @@ export function MemberPortal(props: MemberPortalProps) {
             members
               .filter((member) => member.email.trim().toLowerCase() === anchorEmail)
               .map((member) => member.id)
-              .filter((memberId) => memberId && !memberId.startsWith("auth-"))
+              .filter((memberId) => memberId && !memberId.startsWith("auth-") && isLikelyDbMemberId(memberId))
           )
         );
       }
     }
+    if (!validTargetMemberIds.length && supabaseClient) {
+      const anchorEmail = (editableMember?.email || normalizedCurrentUserEmail).trim().toLowerCase();
+      if (anchorEmail) {
+        const { data: rows } = await supabaseClient.from("members").select("id").eq("email", anchorEmail);
+        validTargetMemberIds = Array.from(
+          new Set(
+            (rows ?? [])
+              .map((row) => String((row as { id?: string }).id ?? "").trim())
+              .filter((memberId) => memberId && isLikelyDbMemberId(memberId)),
+          ),
+        );
+      }
+    }
     if (!validTargetMemberIds.length) {
-      setMemberChatSendStatus("DIAG: Ingen gyldige target IDs.");
+      setMemberChatSendStatus("Kunne ikke sende melding: ingen gyldig mottaker.");
       return;
     }
     const diagRows: string[] = [];
@@ -1769,7 +1784,13 @@ export function MemberPortal(props: MemberPortalProps) {
         }
       }
     }
-    setMemberChatSendStatus(`DIAG targets=[${validTargetMemberIds.join(", ")}] ${diagRows.join(" | ")}`);
+    const firstError = diagRows.find((row) => row.includes(": ERR "));
+    if (firstError) {
+      const message = firstError.split(": ERR ")[1] ?? "Ukjent feil";
+      setMemberChatSendStatus(`Kunne ikke sende melding: ${message}`);
+      return;
+    }
+    setMemberChatSendStatus("Melding sendt.");
   }
 
   async function saveProfile(options?: { silent?: boolean }) {

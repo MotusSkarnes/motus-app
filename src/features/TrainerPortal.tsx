@@ -1421,13 +1421,20 @@ export function TrainerPortal(props: TrainerPortalProps) {
   async function dispatchTrainerMessageToSelectedMember(text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
+    setTrainerChatSendStatus("Sender...");
+    const isLikelyDbMemberId = (value: string) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
     const targetMemberIds = selectedMemberRelatedIds.length
       ? selectedMemberRelatedIds
       : selectedMemberId && selectedMemberId !== "__template__"
         ? [selectedMemberId]
         : [];
     let validTargetMemberIds = Array.from(new Set(targetMemberIds)).filter(
-      (memberId) => memberId && memberId !== "__template__" && !memberId.startsWith("auth-"),
+      (memberId) =>
+        memberId &&
+        memberId !== "__template__" &&
+        !memberId.startsWith("auth-") &&
+        isLikelyDbMemberId(memberId),
     );
     if (!validTargetMemberIds.length && selectedMember) {
       const selectedEmail = selectedMember.email.trim().toLowerCase();
@@ -1437,36 +1444,72 @@ export function TrainerPortal(props: TrainerPortalProps) {
             members
               .filter((member) => member.email.trim().toLowerCase() === selectedEmail)
               .map((member) => member.id)
-              .filter((memberId) => memberId && memberId !== "__template__" && !memberId.startsWith("auth-"))
+              .filter(
+                (memberId) =>
+                  memberId &&
+                  memberId !== "__template__" &&
+                  !memberId.startsWith("auth-") &&
+                  isLikelyDbMemberId(memberId),
+              )
           )
         );
       }
     }
+    if (!validTargetMemberIds.length && selectedMember && supabaseClient) {
+      const selectedEmail = selectedMember.email.trim().toLowerCase();
+      if (selectedEmail) {
+        const { data: rows } = await supabaseClient.from("members").select("id").eq("email", selectedEmail);
+        validTargetMemberIds = Array.from(
+          new Set(
+            (rows ?? [])
+              .map((row) => String((row as { id?: string }).id ?? "").trim())
+              .filter((memberId) => memberId && isLikelyDbMemberId(memberId)),
+          ),
+        );
+      }
+    }
     if (!validTargetMemberIds.length) {
-      setTrainerChatSendStatus("DIAG: Ingen gyldige target IDs.");
+      setTrainerChatSendStatus("Kunne ikke sende melding: ingen gyldig mottaker.");
       return;
     }
     const diagRows: string[] = [];
-    for (const memberId of validTargetMemberIds) {
-      if (!memberId || memberId === "__template__") return;
-      sendTrainerMessage(memberId, trimmed);
-      if (supabaseClient) {
-        const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
-          body: {
-            memberId,
-            sender: "trainer",
-            text: trimmed,
-          },
-        });
-        if (invokeResult.error) {
-          diagRows.push(`${memberId}: ERR ${invokeResult.error.message}`);
-        } else {
-          const payload = invokeResult.data as { inserted?: number; messageId?: string } | null;
-          diagRows.push(`${memberId}: OK inserted=${payload?.inserted ?? "?"} msg=${payload?.messageId ?? "-"}`);
+    try {
+      for (const memberId of validTargetMemberIds) {
+        if (!memberId || memberId === "__template__") continue;
+        sendTrainerMessage(memberId, trimmed);
+        if (!supabaseClient) {
+          diagRows.push(`${memberId}: ERR supabaseClient mangler`);
+          continue;
+        }
+        try {
+          const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
+            body: {
+              memberId,
+              sender: "trainer",
+              text: trimmed,
+            },
+          });
+          if (invokeResult.error) {
+            diagRows.push(`${memberId}: ERR ${invokeResult.error.message}`);
+          } else {
+            const payload = invokeResult.data as { inserted?: number; messageId?: string } | null;
+            diagRows.push(`${memberId}: OK inserted=${payload?.inserted ?? "?"} msg=${payload?.messageId ?? "-"}`);
+          }
+        } catch (error) {
+          diagRows.push(`${memberId}: ERR ${error instanceof Error ? error.message : String(error)}`);
         }
       }
+    } catch (error) {
+      setTrainerChatSendStatus(`DIAG FEIL: ${error instanceof Error ? error.message : String(error)}`);
+      return;
     }
-    setTrainerChatSendStatus(`DIAG targets=[${validTargetMemberIds.join(", ")}] ${diagRows.join(" | ")}`);
+    const firstError = diagRows.find((row) => row.includes(": ERR "));
+    if (firstError) {
+      const message = firstError.split(": ERR ")[1] ?? "Ukjent feil";
+      setTrainerChatSendStatus(`Kunne ikke sende melding: ${message}`);
+      return;
+    }
+    setTrainerChatSendStatus("Melding sendt.");
   }
 
   function resetMemberListControls() {
