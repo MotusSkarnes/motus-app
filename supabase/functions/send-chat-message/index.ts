@@ -103,17 +103,28 @@ Deno.serve(async (req) => {
 
   const targets = Array.from(targetById.values());
   const nowIso = new Date().toISOString();
-  const rows = targets.map((row) => {
-    return {
-      member_id: row.id,
-      // Critical: chat visibility for sender depends on owner_user_id = auth.uid() in strict RLS.
-      owner_user_id: authenticatedUserId,
-      sender,
-      text,
-      created_at: nowIso,
-    };
+  const rows: Array<{
+    member_id: string;
+    owner_user_id: string;
+    sender: "trainer" | "member";
+    text: string;
+    created_at: string;
+  }> = [];
+  targets.forEach((row) => {
+    const memberIdForRow = row.id;
+    const recipientOwnerUserId = (row.owner_user_id ?? "").trim();
+    const ownerCandidates = Array.from(new Set([authenticatedUserId, recipientOwnerUserId].filter(Boolean)));
+    ownerCandidates.forEach((ownerUserId) => {
+      rows.push({
+        member_id: memberIdForRow,
+        owner_user_id: ownerUserId,
+        sender,
+        text,
+        created_at: nowIso,
+      });
+    });
   });
-  const validRows = rows.filter((row) => row.member_id);
+  const validRows = rows.filter((row) => row.member_id && row.owner_user_id);
   if (validRows.some((row) => !row.owner_user_id)) {
     return jsonResponse(500, { error: "Could not resolve owner_user_id for one or more target members" });
   }
