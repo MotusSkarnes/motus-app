@@ -260,18 +260,25 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
     console.warn("send-chat-message invoke failed, falling back to direct insert:", invokeResult.error.message);
   }
   // Strict RLS policy `chat_messages_insert_own` requires owner_user_id = auth.uid() for the row inserter.
-  // Do not substitute members.owner_user_id here — that breaks member inserts when the member row is owned by the trainer.
+  // Prefer explicit owner_user_id, but if lookup fails we still try insert without it so DB defaults/auth checks can apply.
   const ownerUserId = await getOwnerUserId();
-  if (!ownerUserId) return;
+  const insertPayload = ownerUserId
+    ? {
+        member_id: trimmedMemberId,
+        owner_user_id: ownerUserId,
+        sender,
+        text: trimmedText,
+        created_at: new Date().toISOString(),
+      }
+    : {
+        member_id: trimmedMemberId,
+        sender,
+        text: trimmedText,
+        created_at: new Date().toISOString(),
+      };
   const { data: inserted, error } = await supabaseClient
     .from("chat_messages")
-    .insert({
-      member_id: trimmedMemberId,
-      owner_user_id: ownerUserId,
-      sender,
-      text: trimmedText,
-      created_at: new Date().toISOString(),
-    })
+    .insert(insertPayload)
     .select("id")
     .maybeSingle();
   if (error) {
