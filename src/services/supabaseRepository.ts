@@ -245,34 +245,42 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
   const targetMemberIds = await resolveRelatedMemberIds(trimmedMemberId);
   const persistedMessageIds: string[] = [];
 
-  // Primary path: direct insert (simplest and most reliable with current RLS).
-  const ownerUserId = await getOwnerUserId();
+  // Primary path: direct insert.
+  // Important: support both RLS variants in production:
+  // 1) chat_messages_select_own (owner_user_id = auth.uid)
+  // 2) chat_messages_select_trainer_or_member (owner or member link)
+  // We therefore persist both sender-owner and member-owner copies.
+  const senderOwnerUserId = await getOwnerUserId();
   for (const targetMemberId of targetMemberIds) {
-    const insertPayload = ownerUserId
-      ? {
+    const memberOwnerUserId = await resolveOwnerUserIdForMember(targetMemberId, senderOwnerUserId);
+    const ownerCandidates = Array.from(new Set([senderOwnerUserId, memberOwnerUserId].filter(Boolean)));
+    let insertedAtLeastOne = false;
+
+    for (const ownerUserId of ownerCandidates) {
+      const directInsert = await supabaseClient
+        .from("chat_messages")
+        .insert({
           member_id: targetMemberId,
           owner_user_id: ownerUserId,
           sender,
           text: trimmedText,
           created_at: new Date().toISOString(),
-        }
-      : {
-          member_id: targetMemberId,
-          sender,
-          text: trimmedText,
-          created_at: new Date().toISOString(),
-        };
-    const directInsert = await supabaseClient
-      .from("chat_messages")
-      .insert(insertPayload)
-      .select("id")
-      .maybeSingle();
-    if (!directInsert.error) {
-      const messageId = typeof directInsert.data?.id === "string" ? directInsert.data.id : null;
-      if (messageId) persistedMessageIds.push(messageId);
+        })
+        .select("id")
+        .maybeSingle();
+      if (!directInsert.error) {
+        const messageId = typeof directInsert.data?.id === "string" ? directInsert.data.id : null;
+        if (messageId) persistedMessageIds.push(messageId);
+        insertedAtLeastOne = true;
+      } else {
+        console.warn("Supabase message direct insert failed for owner candidate:", directInsert.error.message);
+      }
+    }
+
+    if (insertedAtLeastOne) {
       continue;
     }
-    console.warn("Supabase message direct insert failed, trying send-chat-message:", directInsert.error.message);
+    console.warn("Supabase message direct insert failed for all owner candidates, trying send-chat-message.");
 
     // Fallback path: edge function for environments with stricter table grants.
     const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
