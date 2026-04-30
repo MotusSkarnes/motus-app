@@ -271,22 +271,14 @@ export function useAppState() {
         if (shouldAdoptRemote(remoteMessages, prev.messages)) {
           const remoteList = remoteMessages;
           const byId = new Map<string, (typeof prev.messages)[number]>();
-          const signatureSeen = new Set<string>();
-          const signatureFor = (message: (typeof prev.messages)[number]) =>
-            `${message.memberId}::${message.sender}::${message.text.trim().toLowerCase()}`;
 
           remoteList.forEach((message) => {
             byId.set(message.id, message);
-            signatureSeen.add(signatureFor(message));
           });
 
           prev.messages.forEach((message) => {
             if (!byId.has(message.id)) {
-              const signature = signatureFor(message);
-              if (!signatureSeen.has(signature)) {
-                byId.set(message.id, message);
-                signatureSeen.add(signature);
-              }
+              byId.set(message.id, message);
             }
           });
 
