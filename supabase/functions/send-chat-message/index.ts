@@ -114,6 +114,9 @@ Deno.serve(async (req) => {
     const memberIdForRow = row.id;
     const recipientOwnerUserId = (row.owner_user_id ?? "").trim();
     const ownerCandidates = Array.from(new Set([authenticatedUserId, recipientOwnerUserId].filter(Boolean)));
+    if (ownerCandidates.length === 0) {
+      ownerCandidates.push(authenticatedUserId);
+    }
     ownerCandidates.forEach((ownerUserId) => {
       rows.push({
         member_id: memberIdForRow,
@@ -125,9 +128,6 @@ Deno.serve(async (req) => {
     });
   });
   const validRows = rows.filter((row) => row.member_id && row.owner_user_id);
-  if (validRows.some((row) => !row.owner_user_id)) {
-    return jsonResponse(500, { error: "Could not resolve owner_user_id for one or more target members" });
-  }
   if (!validRows.length) {
     return jsonResponse(400, { error: "No target members resolved for message" });
   }
