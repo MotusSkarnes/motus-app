@@ -269,7 +269,20 @@ export function useAppState() {
         }
 
         if (shouldAdoptRemote(remoteMessages, prev.messages)) {
-          next.messages = remoteMessages;
+          const remoteList = remoteMessages;
+          const mergedMessages = [...remoteList];
+          const remoteSignatureSet = new Set(
+            remoteList.map((message) => `${message.memberId}::${message.sender}::${message.text.trim().toLowerCase()}`)
+          );
+          prev.messages.forEach((message) => {
+            const looksLikeLocalOptimistic = message.id.startsWith("msg");
+            if (!looksLikeLocalOptimistic) return;
+            if (remoteList.some((remoteMessage) => remoteMessage.id === message.id)) return;
+            const signature = `${message.memberId}::${message.sender}::${message.text.trim().toLowerCase()}`;
+            if (remoteSignatureSet.has(signature)) return;
+            mergedMessages.push(message);
+          });
+          next.messages = mergedMessages;
         }
 
         if (shouldAdoptRemote(remotePrograms, prev.programs)) {
