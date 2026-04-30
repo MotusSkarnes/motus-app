@@ -31,7 +31,6 @@ Deno.serve(async (req) => {
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
-  if (!token) return jsonResponse(401, { error: "Missing bearer token" });
 
   let payload: SendPayload;
   try {
@@ -47,10 +46,12 @@ Deno.serve(async (req) => {
   if (!text) return jsonResponse(400, { error: "text is required" });
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
-  const { data: userData, error: userError } = await adminClient.auth.getUser(token);
-  const authenticatedUserId = String(userData?.user?.id ?? "").trim();
-  if (userError || !authenticatedUserId) {
-    return jsonResponse(401, { error: "Invalid user session" });
+  let authenticatedUserId = "";
+  if (token) {
+    const { data: userData, error: userError } = await adminClient.auth.getUser(token);
+    if (!userError) {
+      authenticatedUserId = String(userData?.user?.id ?? "").trim();
+    }
   }
 
   const { data: memberRow, error: memberError } = await adminClient
@@ -114,9 +115,7 @@ Deno.serve(async (req) => {
     const memberIdForRow = row.id;
     const recipientOwnerUserId = (row.owner_user_id ?? "").trim();
     const ownerCandidates = Array.from(new Set([authenticatedUserId, recipientOwnerUserId].filter(Boolean)));
-    if (ownerCandidates.length === 0) {
-      ownerCandidates.push(authenticatedUserId);
-    }
+    if (ownerCandidates.length === 0) return;
     ownerCandidates.forEach((ownerUserId) => {
       rows.push({
         member_id: memberIdForRow,
