@@ -1409,6 +1409,21 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setIsEditingCustomerCard(false);
   }
 
+  function dispatchTrainerMessageToSelectedMember(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const targetMemberIds = selectedMemberRelatedIds.length
+      ? selectedMemberRelatedIds
+      : selectedMemberId && selectedMemberId !== "__template__"
+        ? [selectedMemberId]
+        : [];
+    if (!targetMemberIds.length) return;
+    Array.from(new Set(targetMemberIds)).forEach((memberId) => {
+      if (!memberId || memberId === "__template__") return;
+      sendTrainerMessage(memberId, trimmed);
+    });
+  }
+
   function resetMemberListControls() {
     setMemberSearch("");
     setMemberFilter("all");
@@ -3321,7 +3336,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       <GradientButton
                         onClick={() => {
                           if (!selectedMemberId || selectedMemberId === "__template__" || !trainerMessage.trim()) return;
-                          sendTrainerMessage(selectedMemberId, trainerMessage);
+                          dispatchTrainerMessageToSelectedMember(trainerMessage);
                           setTrainerMessage("");
                         }}
                       >
@@ -3920,7 +3935,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
           <TextInput value={trainerMessage} onChange={(e) => setTrainerMessage(e.target.value)} placeholder="Skriv melding til kunden" />
           <GradientButton onClick={() => {
             if (!selectedMemberId || !trainerMessage.trim()) return;
-            sendTrainerMessage(selectedMemberId, trainerMessage);
+            dispatchTrainerMessageToSelectedMember(trainerMessage);
             setTrainerMessage("");
           }}>Send</GradientButton>
         </div>
