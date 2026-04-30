@@ -12,6 +12,28 @@ type SendPayload = {
   text?: string;
 };
 
+async function resolveAuthUserIdByEmail(
+  adminClient: ReturnType<typeof createClient>,
+  email: string,
+): Promise<string> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail || !normalizedEmail.includes("@")) return "";
+  let page = 1;
+  for (let i = 0; i < 10; i += 1) {
+    const { data, error } = await adminClient.auth.admin.listUsers({
+      page,
+      perPage: 200,
+    });
+    if (error) return "";
+    const users = data.users ?? [];
+    const match = users.find((user) => String(user.email ?? "").trim().toLowerCase() === normalizedEmail);
+    if (match?.id) return String(match.id).trim();
+    if (users.length < 200) break;
+    page += 1;
+  }
+  return "";
+}
+
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -64,7 +86,7 @@ Deno.serve(async (req) => {
   }
   const anchorEmail = String((memberRow as { email?: string }).email ?? "").trim().toLowerCase();
   const anchorName = String((memberRow as { name?: string }).name ?? "").trim().toLowerCase();
-  const targetById = new Map<string, { id: string; owner_user_id: string }>();
+  const targetById = new Map<string, { id: string; owner_user_id: string; email: string }>();
 
   const addTargets = (rows: Array<Record<string, unknown>> | null | undefined) => {
     (rows ?? []).forEach((row) => {
@@ -73,6 +95,7 @@ Deno.serve(async (req) => {
       targetById.set(id, {
         id,
         owner_user_id: String(row.owner_user_id ?? "").trim(),
+        email: String(row.email ?? "").trim().toLowerCase(),
       });
     });
   };
@@ -83,7 +106,7 @@ Deno.serve(async (req) => {
   if (anchorEmail) {
     const { data: relatedByEmail, error: relatedByEmailError } = await adminClient
       .from("members")
-      .select("id, owner_user_id")
+      .select("id, owner_user_id, email")
       .eq("email", anchorEmail);
     if (relatedByEmailError) {
       return jsonResponse(500, { error: relatedByEmailError.message });
@@ -94,7 +117,7 @@ Deno.serve(async (req) => {
   if (anchorName) {
     const { data: relatedByName, error: relatedByNameError } = await adminClient
       .from("members")
-      .select("id, owner_user_id")
+      .select("id, owner_user_id, email")
       .eq("name", anchorName);
     if (relatedByNameError) {
       return jsonResponse(500, { error: relatedByNameError.message });
@@ -114,7 +137,10 @@ Deno.serve(async (req) => {
   targets.forEach((row) => {
     const memberIdForRow = row.id;
     const recipientOwnerUserId = (row.owner_user_id ?? "").trim();
-    const ownerCandidates = Array.from(new Set([authenticatedUserId, recipientOwnerUserId].filter(Boolean)));
+    const recipientAuthUserId = await resolveAuthUserIdByEmail(adminClient, row.email ?? "");
+    const ownerCandidates = Array.from(
+      new Set([authenticatedUserId, recipientOwnerUserId, recipientAuthUserId].filter(Boolean)),
+    );
     if (ownerCandidates.length === 0) return;
     ownerCandidates.forEach((ownerUserId) => {
       rows.push({
