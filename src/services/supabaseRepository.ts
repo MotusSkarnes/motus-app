@@ -242,6 +242,10 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
   const trimmedMemberId = memberId.trim();
   const trimmedText = text.trim();
   if (!trimmedMemberId || !trimmedText) return;
+  const {
+    data: { session },
+  } = await supabaseClient.auth.getSession();
+  const accessToken = session?.access_token ?? "";
   const targetMemberIds = await resolveRelatedMemberIds(trimmedMemberId);
   const persistedMessageIds: string[] = [];
 
@@ -254,6 +258,7 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
         sender,
         text: trimmedText,
       },
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
     });
     if (!invokeResult.error && invokeResult.data && typeof invokeResult.data === "object") {
       const messageId = String((invokeResult.data as { messageId?: string }).messageId ?? "").trim();
@@ -638,6 +643,7 @@ async function deleteProgram(programId: string) {
 async function deleteMemberFromSupabase(member: { id: string; email?: string }) {
   if (!supabaseClient) return;
   const memberId = member.id;
+  const normalizedEmail = String(member.email ?? "").trim().toLowerCase();
 
   try {
     const { error } = await supabaseClient.functions.invoke("delete-member", {
