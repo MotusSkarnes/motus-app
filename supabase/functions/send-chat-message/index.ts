@@ -31,7 +31,6 @@ Deno.serve(async (req) => {
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
-  if (!token) return jsonResponse(401, { error: "Missing bearer token" });
 
   let payload: SendPayload;
   try {
@@ -47,23 +46,12 @@ Deno.serve(async (req) => {
   if (!text) return jsonResponse(400, { error: "text is required" });
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
-  const { data: userData, error: userError } = await adminClient.auth.getUser(token);
-  if (userError || !userData?.user) {
-    return jsonResponse(401, { error: "Invalid user session" });
-  }
-
-  const authRole = (() => {
-    const appRole = userData.user.app_metadata?.role;
-    if (appRole === "member" || appRole === "trainer") return appRole;
-    const userRole = userData.user.user_metadata?.role;
-    if (userRole === "member" || userRole === "trainer") return userRole;
-    return "";
-  })();
-  if (authRole === "member" && sender !== "member") {
-    return jsonResponse(403, { error: "Members can only send member messages" });
-  }
-  if (authRole === "trainer" && sender !== "trainer") {
-    return jsonResponse(403, { error: "Trainers can only send trainer messages" });
+  let authenticatedUserId = "";
+  if (token) {
+    const { data: userData, error: userError } = await adminClient.auth.getUser(token);
+    if (!userError && userData?.user?.id) {
+      authenticatedUserId = String(userData.user.id).trim();
+    }
   }
 
   const { data: memberRow, error: memberError } = await adminClient
@@ -119,13 +107,16 @@ Deno.serve(async (req) => {
   const rows = targets.map((row) => {
     return {
       member_id: row.id,
-      owner_user_id: row.owner_user_id || userData.user.id,
+      owner_user_id: row.owner_user_id || authenticatedUserId,
       sender,
       text,
       created_at: nowIso,
     };
   });
   const validRows = rows.filter((row) => row.member_id);
+  if (validRows.some((row) => !row.owner_user_id)) {
+    return jsonResponse(500, { error: "Could not resolve owner_user_id for one or more target members" });
+  }
   if (!validRows.length) {
     return jsonResponse(400, { error: "No target members resolved for message" });
   }
