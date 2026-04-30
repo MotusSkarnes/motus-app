@@ -95,7 +95,34 @@ Deno.serve(async (req) => {
     return false;
   });
 
-  const memberIds = (members ?? [])
+  // Legacy-dupe support: widen member scope to rows sharing email or name
+  // with the initially matched member rows, so messages/programs survive refresh.
+  const relatedEmailSet = new Set(
+    members
+      .map((row) => normalizeEmail((row as { email?: string }).email))
+      .filter((value) => value && value.includes("@")),
+  );
+  const relatedNameSet = new Set(
+    members
+      .map((row) => String((row as { name?: string }).name ?? "").trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const widenedMembers = (allMembers ?? []).filter((row) => {
+    const rowEmail = normalizeEmail((row as { email?: string }).email);
+    const rowName = String((row as { name?: string }).name ?? "").trim().toLowerCase();
+    if (rowEmail && relatedEmailSet.has(rowEmail)) return true;
+    if (rowName && relatedNameSet.has(rowName)) return true;
+    return false;
+  });
+  const dedupedMembersById = new Map<string, Record<string, unknown>>();
+  [...members, ...widenedMembers].forEach((row) => {
+    const id = String((row as { id?: string }).id ?? "").trim();
+    if (!id) return;
+    if (!dedupedMembersById.has(id)) dedupedMembersById.set(id, row as Record<string, unknown>);
+  });
+  const scopedMembers = Array.from(dedupedMembersById.values());
+
+  const memberIds = (scopedMembers ?? [])
     .map((row) => String((row as { id?: string }).id ?? "").trim())
     .filter(Boolean);
   if (!memberIds.length) {
@@ -190,7 +217,7 @@ Deno.serve(async (req) => {
   });
 
   return jsonResponse(200, {
-    members: members ?? [],
+    members: scopedMembers ?? [],
     programs,
     logs: logs ?? [],
     messages: messages ?? [],
