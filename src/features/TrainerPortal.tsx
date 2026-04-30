@@ -1483,6 +1483,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
               memberId,
               sender: "trainer",
               text: trimmed,
+              targetEmail: selectedMember?.email ?? "",
+              targetName: selectedMember?.name ?? "",
             },
           });
           if (invokeResult.error) {

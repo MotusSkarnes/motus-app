@@ -10,6 +10,8 @@ type SendPayload = {
   memberId?: string;
   sender?: "trainer" | "member";
   text?: string;
+  targetEmail?: string;
+  targetName?: string;
 };
 
 async function resolveAuthUserIdByEmail(
@@ -65,6 +67,8 @@ Deno.serve(async (req) => {
     const memberId = String(payload.memberId ?? "").trim();
     const text = String(payload.text ?? "").trim();
     const sender = payload.sender === "member" ? "member" : "trainer";
+    const payloadEmail = String(payload.targetEmail ?? "").trim().toLowerCase();
+    const payloadName = String(payload.targetName ?? "").trim().toLowerCase();
     if (!memberId) return jsonResponse(200, { ok: false, inserted: 0, message: "memberId is required" });
     if (!text) return jsonResponse(200, { ok: false, inserted: 0, message: "text is required" });
 
@@ -85,8 +89,8 @@ Deno.serve(async (req) => {
     if (memberError || !memberRow) {
       return jsonResponse(200, { ok: false, inserted: 0, message: "Member not found" });
     }
-    const anchorEmail = String((memberRow as { email?: string }).email ?? "").trim().toLowerCase();
-    const anchorName = String((memberRow as { name?: string }).name ?? "").trim().toLowerCase();
+    const anchorEmail = String((memberRow as { email?: string }).email ?? "").trim().toLowerCase() || payloadEmail;
+    const anchorName = String((memberRow as { name?: string }).name ?? "").trim().toLowerCase() || payloadName;
     const targetById = new Map<string, { id: string; owner_user_id: string; email: string }>();
 
     const addTargets = (rows: Array<Record<string, unknown>> | null | undefined) => {

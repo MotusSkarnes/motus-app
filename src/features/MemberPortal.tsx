@@ -1772,6 +1772,8 @@ export function MemberPortal(props: MemberPortalProps) {
             memberId: normalizedMemberId,
             sender: "member",
             text: trimmed,
+            targetEmail: editableMember?.email ?? normalizedCurrentUserEmail,
+            targetName: editableMember?.name ?? "",
           },
         });
         if (invokeResult.error) {
