@@ -931,6 +931,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
       const member = row as Record<string, unknown>;
       return {
         id: String(member.id ?? ""),
+        ownerUserId: String(member.owner_user_id ?? ""),
         name: String(member.name ?? ""),
         email: String(member.email ?? ""),
         isActive: member.is_active !== false,
@@ -1040,6 +1041,7 @@ export async function fetchHydratedMemberData(): Promise<HydratedMemberData | nu
       const member = row as Record<string, unknown>;
       return {
         id: String(member.id ?? ""),
+        ownerUserId: String(member.owner_user_id ?? ""),
         name: String(member.name ?? ""),
         email: String(member.email ?? ""),
         isActive: member.is_active !== false,
@@ -1197,7 +1199,7 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
   const { data, error } = await supabaseClient
     .from("members")
     .select(
-      "id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url"
+      "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url"
     )
     .or("is_active.is.null,is_active.eq.true")
     .order("created_at", { ascending: true });
@@ -1209,6 +1211,7 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
 
   return (data ?? []).map((row) => ({
     id: String(row.id),
+    ownerUserId: String(row.owner_user_id ?? ""),
     name: String(row.name ?? ""),
     email: String(row.email ?? ""),
     isActive: row.is_active !== false,

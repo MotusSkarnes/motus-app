@@ -74,9 +74,6 @@ export function MemberLayout({
   openAlert,
   remoteMemberPeriodPlanRows,
 }: MemberLayoutProps) {
-  const memberProfile = appState.members.find((member) => member.id === appState.memberViewId) ?? null;
-  const isMemberLimited = appState.currentUser?.role === "member" && memberProfile?.customerType === "Medlem";
-  const visibleMobileTabs = isMemberLimited ? mobileTabs.filter((tab) => tab.id === "programs") : mobileTabs;
   const memberPortalProps: ComponentProps<typeof MemberPortal> = {
     members: appState.members,
     currentUserRole: appState.currentUser!.role,
@@ -139,13 +136,7 @@ export function MemberLayout({
                 <button
                   key={alert.id}
                   type="button"
-                  onClick={() => {
-                    if (isMemberLimited && alert.targetTab === "messages") {
-                      setMemberTab("programs");
-                      return;
-                    }
-                    openAlert(alert);
-                  }}
+                  onClick={() => openAlert(alert)}
                   className="w-full rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs sm:text-sm text-slate-700 hover:bg-emerald-50"
                   style={{ borderColor: "rgba(20,184,166,0.25)" }}
                 >
@@ -177,7 +168,7 @@ export function MemberLayout({
             className="flex w-full items-center gap-1.5 rounded-[18px] p-1.5"
             style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
           >
-            {visibleMobileTabs.map((tab) => {
+            {mobileTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = memberTab === tab.id;
               return (

@@ -327,6 +327,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [memberDedupeStatus, setMemberDedupeStatus] = useState<string | null>(null);
   const [isRunningMemberDedupe, setIsRunningMemberDedupe] = useState(false);
   const [adminHealthStatus, setAdminHealthStatus] = useState<string | null>(null);
+  const [currentTrainerOwnerUserId, setCurrentTrainerOwnerUserId] = useState("");
   const [isRefreshingAdminHealth, setIsRefreshingAdminHealth] = useState(false);
   const [adminDuplicateGroupCount, setAdminDuplicateGroupCount] = useState<number | null>(null);
   const [lastMemberCleanupAt, setLastMemberCleanupAt] = useState<string>(() => {
@@ -1365,6 +1366,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
   function handleSaveSelectedMemberDetails() {
     if (!selectedMember) return;
+    const selectedOwnerUserId = (selectedMember.ownerUserId ?? "").trim();
+    if (selectedOwnerUserId && currentTrainerOwnerUserId && selectedOwnerUserId !== currentTrainerOwnerUserId) {
+      setMemberEditStatus("Denne kunden eies av en annen PT. Be eier-PT oppdatere medlemskapstype.");
+      return;
+    }
     const nextName = memberEditName.trim();
     const nextEmail = memberEditEmail.trim().toLowerCase();
     if (!nextName) {
@@ -1524,6 +1530,20 @@ export function TrainerPortal(props: TrainerPortalProps) {
       return "";
     }
   }
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabaseClient) {
+      setCurrentTrainerOwnerUserId("");
+      return;
+    }
+    let cancelled = false;
+    void resolveOwnerUserIdFromSession().then((ownerUserId) => {
+      if (!cancelled) setCurrentTrainerOwnerUserId(ownerUserId.trim());
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleRefreshAdminHealthCheck() {
     if (!isSupabaseConfigured || !supabaseClient) {

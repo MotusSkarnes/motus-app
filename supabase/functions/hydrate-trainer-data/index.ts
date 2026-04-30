@@ -86,9 +86,9 @@ Deno.serve(async (req) => {
   }
 
   const membersSelectWithAvatar =
-    "id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url, created_at";
+    "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url, created_at";
   const membersSelectWithoutAvatar =
-    "id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, created_at";
+    "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, created_at";
   let members: Array<Record<string, unknown>> | null = null;
   let membersError: { message: string } | null = null;
   const ownedMembersWithAvatar = await adminClient

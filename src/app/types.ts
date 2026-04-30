@@ -68,6 +68,7 @@ export type AuthUser = {
 
 export type Member = {
   id: string;
+  ownerUserId?: string;
   name: string;
   email: string;
   avatarUrl?: string;

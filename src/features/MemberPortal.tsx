@@ -362,7 +362,6 @@ export function MemberPortal(props: MemberPortalProps) {
     currentUserRole === "member"
       ? currentMemberByEmail ?? viewedMember ?? null
       : viewedMember ?? members[0] ?? null;
-  const isMemberLimited = currentUserRole === "member" && editableMember?.customerType === "Medlem";
   const activeMemberId = editableMember?.id ?? memberViewId;
   const relatedMemberIds = useMemo(() => {
     const collectedIds = new Set<string>();
@@ -408,6 +407,10 @@ export function MemberPortal(props: MemberPortalProps) {
     () => members.filter((member) => relatedMemberIdSet.has(member.id)),
     [members, relatedMemberIdSet],
   );
+  const isMemberLimited =
+    currentUserRole === "member" &&
+    relatedMembersForProfile.length > 0 &&
+    relatedMembersForProfile.every((member) => member.customerType === "Medlem");
   const dbProfileMetrics = useMemo(() => {
     for (const member of relatedMembersForProfile) {
       const decoded = decodeMemberProfileMetrics(member.personalGoals);
