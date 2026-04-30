@@ -1727,9 +1727,22 @@ export function MemberPortal(props: MemberPortalProps) {
     const trimmed = text.trim();
     if (!trimmed) return;
     const targetMemberIds = relatedMemberIds.length ? relatedMemberIds : activeMemberId ? [activeMemberId] : [];
-    const validTargetMemberIds = Array.from(new Set(targetMemberIds)).filter(
+    let validTargetMemberIds = Array.from(new Set(targetMemberIds)).filter(
       (memberId) => memberId && !memberId.startsWith("auth-")
     );
+    if (!validTargetMemberIds.length) {
+      const anchorEmail = (editableMember?.email || normalizedCurrentUserEmail).trim().toLowerCase();
+      if (anchorEmail) {
+        validTargetMemberIds = Array.from(
+          new Set(
+            members
+              .filter((member) => member.email.trim().toLowerCase() === anchorEmail)
+              .map((member) => member.id)
+              .filter((memberId) => memberId && !memberId.startsWith("auth-"))
+          )
+        );
+      }
+    }
     if (!validTargetMemberIds.length) return;
     validTargetMemberIds.forEach((memberId) => {
       const normalizedMemberId = String(memberId ?? "").trim();
