@@ -242,54 +242,59 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
   const trimmedMemberId = memberId.trim();
   const trimmedText = text.trim();
   if (!trimmedMemberId || !trimmedText) return;
+  const targetMemberIds = await resolveRelatedMemberIds(trimmedMemberId);
+  const persistedMessageIds: string[] = [];
+
   // Primary path: direct insert (simplest and most reliable with current RLS).
   const ownerUserId = await getOwnerUserId();
-  const insertPayload = ownerUserId
-    ? {
-        member_id: trimmedMemberId,
-        owner_user_id: ownerUserId,
-        sender,
-        text: trimmedText,
-        created_at: new Date().toISOString(),
-      }
-    : {
-        member_id: trimmedMemberId,
-        sender,
-        text: trimmedText,
-        created_at: new Date().toISOString(),
-      };
-  const directInsert = await supabaseClient
-    .from("chat_messages")
-    .insert(insertPayload)
-    .select("id")
-    .maybeSingle();
-  if (!directInsert.error) {
-    const messageId = typeof directInsert.data?.id === "string" ? directInsert.data.id : null;
-    if (messageId) {
-      void supabaseClient.functions.invoke("send-message-push", { body: { messageId } });
+  for (const targetMemberId of targetMemberIds) {
+    const insertPayload = ownerUserId
+      ? {
+          member_id: targetMemberId,
+          owner_user_id: ownerUserId,
+          sender,
+          text: trimmedText,
+          created_at: new Date().toISOString(),
+        }
+      : {
+          member_id: targetMemberId,
+          sender,
+          text: trimmedText,
+          created_at: new Date().toISOString(),
+        };
+    const directInsert = await supabaseClient
+      .from("chat_messages")
+      .insert(insertPayload)
+      .select("id")
+      .maybeSingle();
+    if (!directInsert.error) {
+      const messageId = typeof directInsert.data?.id === "string" ? directInsert.data.id : null;
+      if (messageId) persistedMessageIds.push(messageId);
+      continue;
     }
-    return;
-  }
-  console.warn("Supabase message direct insert failed, trying send-chat-message:", directInsert.error.message);
+    console.warn("Supabase message direct insert failed, trying send-chat-message:", directInsert.error.message);
 
-  // Fallback path: edge function for environments with stricter table grants.
-  const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
-    body: {
-      memberId: trimmedMemberId,
-      sender,
-      text: trimmedText,
-    },
-  });
-  if (!invokeResult.error && invokeResult.data && typeof invokeResult.data === "object") {
-    const messageId = String((invokeResult.data as { messageId?: string }).messageId ?? "").trim();
-    if (messageId) {
-      void supabaseClient.functions.invoke("send-message-push", { body: { messageId } });
+    // Fallback path: edge function for environments with stricter table grants.
+    const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
+      body: {
+        memberId: targetMemberId,
+        sender,
+        text: trimmedText,
+      },
+    });
+    if (!invokeResult.error && invokeResult.data && typeof invokeResult.data === "object") {
+      const messageId = String((invokeResult.data as { messageId?: string }).messageId ?? "").trim();
+      if (messageId) persistedMessageIds.push(messageId);
+      continue;
     }
-    return;
+    if (invokeResult.error) {
+      console.warn("send-chat-message invoke failed:", invokeResult.error.message);
+    }
   }
-  if (invokeResult.error) {
-    console.warn("send-chat-message invoke failed:", invokeResult.error.message);
-  }
+
+  persistedMessageIds.forEach((id) => {
+    void supabaseClient.functions.invoke("send-message-push", { body: { messageId: id } });
+  });
 }
 
 function resolvePersistMessageTargetIds(state: AppState, memberId: string): string[] {
