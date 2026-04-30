@@ -258,6 +258,40 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
   }
   if (invokeResult.error) {
     console.warn("send-chat-message invoke failed, falling back to direct insert:", invokeResult.error.message);
+    if (supabaseUrl && supabaseAnonKey) {
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession();
+      const accessToken = session?.access_token ?? "";
+      if (accessToken) {
+        try {
+          const response = await fetch(`${supabaseUrl}/functions/v1/send-chat-message`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: supabaseAnonKey,
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              memberId: trimmedMemberId,
+              sender,
+              text: trimmedText,
+            }),
+          });
+          const body = (await response.json().catch(() => null)) as { messageId?: string; error?: string; message?: string } | null;
+          if (response.ok) {
+            const messageId = String(body?.messageId ?? "").trim();
+            if (messageId) {
+              void supabaseClient.functions.invoke("send-message-push", { body: { messageId } });
+            }
+            return;
+          }
+          console.warn("send-chat-message direct fetch failed:", body?.error || body?.message || `HTTP ${response.status}`);
+        } catch (error) {
+          console.warn("send-chat-message direct fetch threw:", error);
+        }
+      }
+    }
   }
   // Strict RLS policy `chat_messages_insert_own` requires owner_user_id = auth.uid() for the row inserter.
   // Prefer explicit owner_user_id, but if lookup fails we still try insert without it so DB defaults/auth checks can apply.
