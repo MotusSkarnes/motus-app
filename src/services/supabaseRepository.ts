@@ -242,59 +242,7 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
   const trimmedMemberId = memberId.trim();
   const trimmedText = text.trim();
   if (!trimmedMemberId || !trimmedText) return;
-  const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
-    body: {
-      memberId: trimmedMemberId,
-      sender,
-      text: trimmedText,
-    },
-  });
-  if (!invokeResult.error && invokeResult.data && typeof invokeResult.data === "object") {
-    const messageId = String((invokeResult.data as { messageId?: string }).messageId ?? "").trim();
-    if (messageId) {
-      void supabaseClient.functions.invoke("send-message-push", { body: { messageId } });
-    }
-    return;
-  }
-  if (invokeResult.error) {
-    console.warn("send-chat-message invoke failed, falling back to direct insert:", invokeResult.error.message);
-    if (supabaseUrl && supabaseAnonKey) {
-      const {
-        data: { session },
-      } = await supabaseClient.auth.getSession();
-      const accessToken = session?.access_token ?? "";
-      if (accessToken) {
-        try {
-          const response = await fetch(`${supabaseUrl}/functions/v1/send-chat-message`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: supabaseAnonKey,
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({
-              memberId: trimmedMemberId,
-              sender,
-              text: trimmedText,
-            }),
-          });
-          const body = (await response.json().catch(() => null)) as { messageId?: string; error?: string; message?: string } | null;
-          if (response.ok) {
-            const messageId = String(body?.messageId ?? "").trim();
-            if (messageId) {
-              void supabaseClient.functions.invoke("send-message-push", { body: { messageId } });
-            }
-            return;
-          }
-          console.warn("send-chat-message direct fetch failed:", body?.error || body?.message || `HTTP ${response.status}`);
-        } catch (error) {
-          console.warn("send-chat-message direct fetch threw:", error);
-        }
-      }
-    }
-  }
-  // Strict RLS policy `chat_messages_insert_own` requires owner_user_id = auth.uid() for the row inserter.
-  // Prefer explicit owner_user_id, but if lookup fails we still try insert without it so DB defaults/auth checks can apply.
+  // Primary path: direct insert (simplest and most reliable with current RLS).
   const ownerUserId = await getOwnerUserId();
   const insertPayload = ownerUserId
     ? {
@@ -310,19 +258,37 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
         text: trimmedText,
         created_at: new Date().toISOString(),
       };
-  const { data: inserted, error } = await supabaseClient
+  const directInsert = await supabaseClient
     .from("chat_messages")
     .insert(insertPayload)
     .select("id")
     .maybeSingle();
-  if (error) {
-    // Keep app resilient: local state succeeds even if backend is unavailable.
-    console.warn("Supabase message persist failed:", error.message);
+  if (!directInsert.error) {
+    const messageId = typeof directInsert.data?.id === "string" ? directInsert.data.id : null;
+    if (messageId) {
+      void supabaseClient.functions.invoke("send-message-push", { body: { messageId } });
+    }
     return;
   }
-  const messageId = typeof inserted?.id === "string" ? inserted.id : null;
-  if (messageId) {
-    void supabaseClient.functions.invoke("send-message-push", { body: { messageId } });
+  console.warn("Supabase message direct insert failed, trying send-chat-message:", directInsert.error.message);
+
+  // Fallback path: edge function for environments with stricter table grants.
+  const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
+    body: {
+      memberId: trimmedMemberId,
+      sender,
+      text: trimmedText,
+    },
+  });
+  if (!invokeResult.error && invokeResult.data && typeof invokeResult.data === "object") {
+    const messageId = String((invokeResult.data as { messageId?: string }).messageId ?? "").trim();
+    if (messageId) {
+      void supabaseClient.functions.invoke("send-message-push", { body: { messageId } });
+    }
+    return;
+  }
+  if (invokeResult.error) {
+    console.warn("send-chat-message invoke failed:", invokeResult.error.message);
   }
 }
 
