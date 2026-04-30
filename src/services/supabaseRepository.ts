@@ -245,14 +245,27 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
   const targetMemberIds = await resolveRelatedMemberIds(trimmedMemberId);
   const persistedMessageIds: string[] = [];
 
-  // Primary path: direct insert.
-  // Important: support both RLS variants in production:
-  // 1) chat_messages_select_own (owner_user_id = auth.uid)
-  // 2) chat_messages_select_trainer_or_member (owner or member link)
-  // We therefore persist both sender-owner and member-owner copies.
-  const senderOwnerUserId = await getOwnerUserId();
+  // Primary path: server-side fanout via edge function.
+  // This avoids client-side RLS owner lookups that can differ between trainer/member sessions.
   for (const targetMemberId of targetMemberIds) {
-    const memberOwnerUserId = await resolveOwnerUserIdForMember(targetMemberId, senderOwnerUserId);
+    const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
+      body: {
+        memberId: targetMemberId,
+        sender,
+        text: trimmedText,
+      },
+    });
+    if (!invokeResult.error && invokeResult.data && typeof invokeResult.data === "object") {
+      const messageId = String((invokeResult.data as { messageId?: string }).messageId ?? "").trim();
+      if (messageId) persistedMessageIds.push(messageId);
+      continue;
+    }
+    if (invokeResult.error) {
+      console.warn("send-chat-message invoke failed, trying direct insert fallback:", invokeResult.error.message);
+    }
+
+    // Fallback path: direct insert for sender copy only.
+    const senderOwnerUserId = await getOwnerUserId();
     const directInsert = await supabaseClient
       .from("chat_messages")
       .insert({
@@ -267,41 +280,8 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
     if (!directInsert.error) {
       const messageId = typeof directInsert.data?.id === "string" ? directInsert.data.id : null;
       if (messageId) persistedMessageIds.push(messageId);
-      // If recipient owner differs, mirror through server fanout so recipient can read under strict select_own.
-      if (senderOwnerUserId && memberOwnerUserId && senderOwnerUserId !== memberOwnerUserId) {
-        const mirrorResult = await supabaseClient.functions.invoke("send-chat-message", {
-          body: {
-            memberId: targetMemberId,
-            sender,
-            text: trimmedText,
-          },
-        });
-        if (!mirrorResult.error && mirrorResult.data && typeof mirrorResult.data === "object") {
-          const messageIdFromMirror = String((mirrorResult.data as { messageId?: string }).messageId ?? "").trim();
-          if (messageIdFromMirror) persistedMessageIds.push(messageIdFromMirror);
-        } else if (mirrorResult.error) {
-          console.warn("send-chat-message mirror invoke failed:", mirrorResult.error.message);
-        }
-      }
-      continue;
-    }
-    console.warn("Supabase message direct insert failed, trying send-chat-message:", directInsert.error.message);
-
-    // Fallback path: edge function for environments with stricter table grants.
-    const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
-      body: {
-        memberId: targetMemberId,
-        sender,
-        text: trimmedText,
-      },
-    });
-    if (!invokeResult.error && invokeResult.data && typeof invokeResult.data === "object") {
-      const messageId = String((invokeResult.data as { messageId?: string }).messageId ?? "").trim();
-      if (messageId) persistedMessageIds.push(messageId);
-      continue;
-    }
-    if (invokeResult.error) {
-      console.warn("send-chat-message invoke failed:", invokeResult.error.message);
+    } else {
+      console.warn("Supabase message direct insert fallback failed:", directInsert.error.message);
     }
   }
 
