@@ -1723,6 +1723,17 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }
 
+  function dispatchMemberMessageToRelatedMembers(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const targetMemberIds = relatedMemberIds.length ? relatedMemberIds : activeMemberId ? [activeMemberId] : [];
+    Array.from(new Set(targetMemberIds)).forEach((memberId) => {
+      const normalizedMemberId = String(memberId ?? "").trim();
+      if (!normalizedMemberId) return;
+      sendMemberMessage(normalizedMemberId, trimmed);
+    });
+  }
+
   async function saveProfile(options?: { silent?: boolean }) {
     const silent = options?.silent === true;
     if (!editableMember || typeof window === "undefined") return;
@@ -4221,7 +4232,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   <TextInput value={messageText} onChange={(e) => setMessageText(e.target.value)} placeholder="Skriv melding til trener" />
                   <GradientButton onClick={() => {
                     if (!activeMemberId || !messageText.trim()) return;
-                    sendMemberMessage(activeMemberId, messageText);
+                    dispatchMemberMessageToRelatedMembers(messageText);
                     setMessageText("");
                   }}>Send</GradientButton>
                 </div>
