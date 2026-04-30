@@ -1445,6 +1445,15 @@ export function TrainerPortal(props: TrainerPortalProps) {
     validTargetMemberIds.forEach((memberId) => {
       if (!memberId || memberId === "__template__") return;
       sendTrainerMessage(memberId, trimmed);
+      if (supabaseClient) {
+        void supabaseClient.functions.invoke("send-chat-message", {
+          body: {
+            memberId,
+            sender: "trainer",
+            text: trimmed,
+          },
+        });
+      }
     });
   }
 

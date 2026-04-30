@@ -1748,6 +1748,15 @@ export function MemberPortal(props: MemberPortalProps) {
       const normalizedMemberId = String(memberId ?? "").trim();
       if (!normalizedMemberId) return;
       sendMemberMessage(normalizedMemberId, trimmed);
+      if (supabaseClient) {
+        void supabaseClient.functions.invoke("send-chat-message", {
+          body: {
+            memberId: normalizedMemberId,
+            sender: "member",
+            text: trimmed,
+          },
+        });
+      }
     });
   }
 
