@@ -418,6 +418,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const deduplicatedMembers = useMemo(() => {
     function memberScore(member: Member): number {
       let score = 0;
+      if ((member.ownerUserId ?? "").trim() && (member.ownerUserId ?? "").trim() === currentTrainerOwnerUserId) score += 1000;
       if (member.isActive !== false) score += 8;
       if (member.invitedAt) score += 2;
       if (member.customerType === "PT-kunde") score += 1;
@@ -442,7 +443,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       }
     });
     return Array.from(byIdentity.values());
-  }, [members]);
+  }, [members, currentTrainerOwnerUserId]);
   const visibleMembers = showInactiveMembers
     ? deduplicatedMembers
     : deduplicatedMembers.filter((member) => member.isActive !== false);
@@ -1388,6 +1389,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
     const previousEmail = selectedMember.email.trim().toLowerCase();
     const targetMemberIds = members
       .filter((member) => member.email.trim().toLowerCase() === previousEmail)
+      .filter((member) => {
+        const owner = (member.ownerUserId ?? "").trim();
+        if (!owner) return true;
+        if (currentTrainerOwnerUserId && owner === currentTrainerOwnerUserId) return true;
+        if (selectedOwnerUserId && owner === selectedOwnerUserId) return true;
+        return false;
+      })
       .map((member) => member.id);
     const uniqueTargetIds = Array.from(new Set(targetMemberIds.length ? targetMemberIds : [selectedMember.id]));
     uniqueTargetIds.forEach((memberId) => {
