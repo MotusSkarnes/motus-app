@@ -239,6 +239,26 @@ async function resolveRelatedMemberIds(memberId: string): Promise<string[]> {
 
 async function persistMessage(memberId: string, sender: "trainer" | "member", text: string) {
   if (!supabaseClient) return;
+  const trimmedMemberId = memberId.trim();
+  const trimmedText = text.trim();
+  if (!trimmedMemberId || !trimmedText) return;
+  const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
+    body: {
+      memberId: trimmedMemberId,
+      sender,
+      text: trimmedText,
+    },
+  });
+  if (!invokeResult.error && invokeResult.data && typeof invokeResult.data === "object") {
+    const messageId = String((invokeResult.data as { messageId?: string }).messageId ?? "").trim();
+    if (messageId) {
+      void supabaseClient.functions.invoke("send-message-push", { body: { messageId } });
+    }
+    return;
+  }
+  if (invokeResult.error) {
+    console.warn("send-chat-message invoke failed, falling back to direct insert:", invokeResult.error.message);
+  }
   // Strict RLS policy `chat_messages_insert_own` requires owner_user_id = auth.uid() for the row inserter.
   // Do not substitute members.owner_user_id here — that breaks member inserts when the member row is owned by the trainer.
   const ownerUserId = await getOwnerUserId();
@@ -246,10 +266,10 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
   const { data: inserted, error } = await supabaseClient
     .from("chat_messages")
     .insert({
-      member_id: memberId,
+      member_id: trimmedMemberId,
       owner_user_id: ownerUserId,
       sender,
-      text,
+      text: trimmedText,
       created_at: new Date().toISOString(),
     })
     .select("id")
