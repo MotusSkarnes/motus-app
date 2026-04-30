@@ -68,32 +68,50 @@ Deno.serve(async (req) => {
 
   const { data: memberRow, error: memberError } = await adminClient
     .from("members")
-    .select("id, owner_user_id")
+    .select("id, owner_user_id, email")
     .eq("id", memberId)
     .maybeSingle();
   if (memberError || !memberRow) {
     return jsonResponse(404, { error: "Member not found" });
   }
-
-  const ownerUserId = String((memberRow as { owner_user_id?: string }).owner_user_id ?? "").trim() || userData.user.id;
-  const { data: inserted, error: insertError } = await adminClient
-    .from("chat_messages")
-    .insert({
-      member_id: memberId,
-      owner_user_id: ownerUserId,
+  const anchorEmail = String((memberRow as { email?: string }).email ?? "").trim().toLowerCase();
+  const { data: relatedMembers, error: relatedMembersError } = anchorEmail
+    ? await adminClient
+        .from("members")
+        .select("id, owner_user_id, email")
+        .eq("email", anchorEmail)
+    : await adminClient.from("members").select("id, owner_user_id, email").eq("id", memberId);
+  if (relatedMembersError) {
+    return jsonResponse(500, { error: relatedMembersError.message });
+  }
+  const targets = (relatedMembers ?? []).length ? relatedMembers : [memberRow];
+  const nowIso = new Date().toISOString();
+  const rows = targets.map((row) => {
+    const typed = row as { id?: string; owner_user_id?: string };
+    return {
+      member_id: String(typed.id ?? "").trim(),
+      owner_user_id: String(typed.owner_user_id ?? "").trim() || userData.user.id,
       sender,
       text,
-      created_at: new Date().toISOString(),
-    })
-    .select("id")
-    .maybeSingle();
+      created_at: nowIso,
+    };
+  });
+  const validRows = rows.filter((row) => row.member_id);
+  if (!validRows.length) {
+    return jsonResponse(400, { error: "No target members resolved for message" });
+  }
+  const { data: insertedRows, error: insertError } = await adminClient
+    .from("chat_messages")
+    .insert(validRows)
+    .select("id, member_id");
   if (insertError) {
     return jsonResponse(500, { error: insertError.message });
   }
-
+  const firstMessageId = String((insertedRows?.[0] as { id?: string } | undefined)?.id ?? "");
   return jsonResponse(200, {
     ok: true,
-    messageId: String((inserted as { id?: string } | null)?.id ?? ""),
+    inserted: insertedRows?.length ?? 0,
+    messageId: firstMessageId,
   });
 });
 
