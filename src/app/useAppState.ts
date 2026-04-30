@@ -270,19 +270,27 @@ export function useAppState() {
 
         if (shouldAdoptRemote(remoteMessages, prev.messages)) {
           const remoteList = remoteMessages;
-          const mergedMessages = [...remoteList];
-          const remoteSignatureSet = new Set(
-            remoteList.map((message) => `${message.memberId}::${message.sender}::${message.text.trim().toLowerCase()}`)
-          );
-          prev.messages.forEach((message) => {
-            const looksLikeLocalOptimistic = message.id.startsWith("msg");
-            if (!looksLikeLocalOptimistic) return;
-            if (remoteList.some((remoteMessage) => remoteMessage.id === message.id)) return;
-            const signature = `${message.memberId}::${message.sender}::${message.text.trim().toLowerCase()}`;
-            if (remoteSignatureSet.has(signature)) return;
-            mergedMessages.push(message);
+          const byId = new Map<string, (typeof prev.messages)[number]>();
+          const signatureSeen = new Set<string>();
+          const signatureFor = (message: (typeof prev.messages)[number]) =>
+            `${message.memberId}::${message.sender}::${message.text.trim().toLowerCase()}`;
+
+          remoteList.forEach((message) => {
+            byId.set(message.id, message);
+            signatureSeen.add(signatureFor(message));
           });
-          next.messages = mergedMessages;
+
+          prev.messages.forEach((message) => {
+            if (!byId.has(message.id)) {
+              const signature = signatureFor(message);
+              if (!signatureSeen.has(signature)) {
+                byId.set(message.id, message);
+                signatureSeen.add(signature);
+              }
+            }
+          });
+
+          next.messages = Array.from(byId.values());
         }
 
         if (shouldAdoptRemote(remotePrograms, prev.programs)) {
