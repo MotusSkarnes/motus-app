@@ -67,9 +67,9 @@ Deno.serve(async (req) => {
   }
 
   const membersSelectWithAvatar =
-    "id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url, created_at";
+    "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url, created_at";
   const membersSelectWithoutAvatar =
-    "id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, created_at";
+    "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, created_at";
 
   let allMembers: Array<Record<string, unknown>> | null = null;
   let membersError: { message: string } | null = null;
@@ -125,6 +125,13 @@ Deno.serve(async (req) => {
   const memberIds = (scopedMembers ?? [])
     .map((row) => String((row as { id?: string }).id ?? "").trim())
     .filter(Boolean);
+  const ownerUserIds = Array.from(
+    new Set(
+      (scopedMembers ?? [])
+        .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
+        .filter(Boolean),
+    ),
+  );
   if (!memberIds.length) {
     return jsonResponse(200, {
       members: [],
@@ -146,11 +153,19 @@ Deno.serve(async (req) => {
     .select("id, member_id, program_title, date, status, note, results, created_at")
     .in("member_id", memberIds)
     .order("created_at", { ascending: false });
-  const { data: messages, error: messagesError } = await adminClient
+  const { data: messagesByMember, error: messagesError } = await adminClient
     .from("chat_messages")
     .select("id, member_id, sender, text, created_at")
     .in("member_id", memberIds)
     .order("created_at", { ascending: true });
+  const { data: messagesByOwner, error: messagesByOwnerError } =
+    ownerUserIds.length > 0
+      ? await adminClient
+          .from("chat_messages")
+          .select("id, member_id, sender, text, created_at")
+          .in("owner_user_id", ownerUserIds)
+          .order("created_at", { ascending: true })
+      : { data: [], error: null };
 
   let periodPlans: Array<{ member_id: string; plan: unknown }> = [];
   const { data: periodRows, error: periodPlansError } = await adminClient
@@ -177,10 +192,20 @@ Deno.serve(async (req) => {
     exercises = (exerciseRows ?? []) as Array<Record<string, unknown>>;
   }
 
-  const firstError = programsError ?? logsError ?? messagesError;
+  const firstError = programsError ?? logsError ?? messagesError ?? messagesByOwnerError;
   if (firstError) {
     return jsonResponse(500, { error: firstError.message });
   }
+
+  const messagesById = new Map<string, Record<string, unknown>>();
+  [...(messagesByOwner ?? []), ...(messagesByMember ?? [])].forEach((row) => {
+    const id = String((row as { id?: string }).id ?? "").trim();
+    if (!id) return;
+    if (!messagesById.has(id)) {
+      messagesById.set(id, row as Record<string, unknown>);
+    }
+  });
+  const messages = Array.from(messagesById.values());
 
   const trainerNameByOwnerId = new Map<string, string>();
   const ownerUserIds = Array.from(
