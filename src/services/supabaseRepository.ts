@@ -264,25 +264,34 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
       console.warn("send-chat-message invoke failed, trying direct insert fallback:", invokeResult.error.message);
     }
 
-    // Fallback path: direct insert for sender copy only.
+    // Fallback path: direct insert for both sender-owner and member-owner copies.
     const senderOwnerUserId = await getOwnerUserId();
-    const directInsert = await supabaseClient
-      .from("chat_messages")
-      .insert({
-        member_id: targetMemberId,
-        ...(senderOwnerUserId ? { owner_user_id: senderOwnerUserId } : {}),
-        sender,
-        text: trimmedText,
-        created_at: new Date().toISOString(),
-      })
-      .select("id")
-      .maybeSingle();
-    if (!directInsert.error) {
-      const messageId = typeof directInsert.data?.id === "string" ? directInsert.data.id : null;
-      if (messageId) persistedMessageIds.push(messageId);
-    } else {
-      console.warn("Supabase message direct insert fallback failed:", directInsert.error.message);
+    const memberOwnerUserId = await resolveOwnerUserIdForMember(targetMemberId, senderOwnerUserId);
+    const ownerCandidates = Array.from(new Set([senderOwnerUserId, memberOwnerUserId].filter(Boolean)));
+    if (!ownerCandidates.length) continue;
+    let insertedFallback = false;
+    for (const ownerCandidate of ownerCandidates) {
+      const directInsert = await supabaseClient
+        .from("chat_messages")
+        .insert({
+          member_id: targetMemberId,
+          owner_user_id: ownerCandidate,
+          sender,
+          text: trimmedText,
+          created_at: new Date().toISOString(),
+        })
+        .select("id")
+        .maybeSingle();
+      if (!directInsert.error) {
+        const messageId = typeof directInsert.data?.id === "string" ? directInsert.data.id : null;
+        if (messageId) persistedMessageIds.push(messageId);
+        insertedFallback = true;
+      } else {
+        console.warn("Supabase message direct insert fallback failed for owner:", directInsert.error.message);
+      }
     }
+    if (insertedFallback) continue;
+    console.warn("Supabase message direct insert fallback failed for all owner candidates.");
   }
 
   persistedMessageIds.forEach((id) => {
