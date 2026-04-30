@@ -253,34 +253,39 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
   const senderOwnerUserId = await getOwnerUserId();
   for (const targetMemberId of targetMemberIds) {
     const memberOwnerUserId = await resolveOwnerUserIdForMember(targetMemberId, senderOwnerUserId);
-    const ownerCandidates = Array.from(new Set([senderOwnerUserId, memberOwnerUserId].filter(Boolean)));
-    let insertedAtLeastOne = false;
-
-    for (const ownerUserId of ownerCandidates) {
-      const directInsert = await supabaseClient
-        .from("chat_messages")
-        .insert({
-          member_id: targetMemberId,
-          owner_user_id: ownerUserId,
-          sender,
-          text: trimmedText,
-          created_at: new Date().toISOString(),
-        })
-        .select("id")
-        .maybeSingle();
-      if (!directInsert.error) {
-        const messageId = typeof directInsert.data?.id === "string" ? directInsert.data.id : null;
-        if (messageId) persistedMessageIds.push(messageId);
-        insertedAtLeastOne = true;
-      } else {
-        console.warn("Supabase message direct insert failed for owner candidate:", directInsert.error.message);
+    const directInsert = await supabaseClient
+      .from("chat_messages")
+      .insert({
+        member_id: targetMemberId,
+        ...(senderOwnerUserId ? { owner_user_id: senderOwnerUserId } : {}),
+        sender,
+        text: trimmedText,
+        created_at: new Date().toISOString(),
+      })
+      .select("id")
+      .maybeSingle();
+    if (!directInsert.error) {
+      const messageId = typeof directInsert.data?.id === "string" ? directInsert.data.id : null;
+      if (messageId) persistedMessageIds.push(messageId);
+      // If recipient owner differs, mirror through server fanout so recipient can read under strict select_own.
+      if (senderOwnerUserId && memberOwnerUserId && senderOwnerUserId !== memberOwnerUserId) {
+        const mirrorResult = await supabaseClient.functions.invoke("send-chat-message", {
+          body: {
+            memberId: targetMemberId,
+            sender,
+            text: trimmedText,
+          },
+        });
+        if (!mirrorResult.error && mirrorResult.data && typeof mirrorResult.data === "object") {
+          const messageIdFromMirror = String((mirrorResult.data as { messageId?: string }).messageId ?? "").trim();
+          if (messageIdFromMirror) persistedMessageIds.push(messageIdFromMirror);
+        } else if (mirrorResult.error) {
+          console.warn("send-chat-message mirror invoke failed:", mirrorResult.error.message);
+        }
       }
-    }
-
-    if (insertedAtLeastOne) {
       continue;
     }
-    console.warn("Supabase message direct insert failed for all owner candidates, trying send-chat-message.");
+    console.warn("Supabase message direct insert failed, trying send-chat-message:", directInsert.error.message);
 
     // Fallback path: edge function for environments with stricter table grants.
     const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
