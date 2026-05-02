@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
   const memberIds = (scopedMembers ?? [])
     .map((row) => String((row as { id?: string }).id ?? "").trim())
     .filter(Boolean);
-  const ownerUserIds = Array.from(
+  const scopedOwnerUserIds = Array.from(
     new Set(
       (scopedMembers ?? [])
         .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
@@ -159,11 +159,11 @@ Deno.serve(async (req) => {
     .in("member_id", memberIds)
     .order("created_at", { ascending: true });
   const { data: messagesByOwner, error: messagesByOwnerError } =
-    ownerUserIds.length > 0
+    scopedOwnerUserIds.length > 0
       ? await adminClient
           .from("chat_messages")
           .select("id, member_id, sender, text, created_at")
-          .in("owner_user_id", ownerUserIds)
+          .in("owner_user_id", scopedOwnerUserIds)
           .order("created_at", { ascending: true })
       : { data: [], error: null };
 
@@ -208,14 +208,14 @@ Deno.serve(async (req) => {
   const messages = Array.from(messagesById.values());
 
   const trainerNameByOwnerId = new Map<string, string>();
-  const ownerUserIds = Array.from(
+  const trainerOwnerUserIds = Array.from(
     new Set(
       (programsRaw ?? [])
         .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
         .filter(Boolean),
     ),
   );
-  for (const ownerUserId of ownerUserIds) {
+  for (const ownerUserId of trainerOwnerUserIds) {
     try {
       const { data: trainerData, error: trainerError } = await adminClient.auth.admin.getUserById(ownerUserId);
       if (trainerError || !trainerData?.user) continue;
