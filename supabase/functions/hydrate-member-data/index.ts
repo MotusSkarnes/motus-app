@@ -208,14 +208,14 @@ Deno.serve(async (req) => {
   const messages = Array.from(messagesById.values());
 
   const trainerNameByOwnerId = new Map<string, string>();
-  const ownerUserIds = Array.from(
+  const programOwnerUserIds = Array.from(
     new Set(
       (programsRaw ?? [])
         .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
         .filter(Boolean),
     ),
   );
-  for (const ownerUserId of ownerUserIds) {
+  for (const ownerUserId of programOwnerUserIds) {
     try {
       const { data: trainerData, error: trainerError } = await adminClient.auth.admin.getUserById(ownerUserId);
       if (trainerError || !trainerData?.user) continue;
