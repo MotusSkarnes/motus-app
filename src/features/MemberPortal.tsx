@@ -2922,7 +2922,12 @@ export function MemberPortal(props: MemberPortalProps) {
                       </OutlineButton>
                     </>
                   ) : (
-                    <div className="mt-1 text-sm text-slate-500">Ingen flere planlagte økter denne uken.</div>
+                    <div className="mt-2 space-y-2">
+                      <div className="text-sm text-slate-500">Ingen flere planlagte økter denne uken.</div>
+                      <OutlineButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">
+                        Åpne program
+                      </OutlineButton>
+                    </div>
                   )}
                 </div>
                 ) : <div />}
@@ -2952,7 +2957,12 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div className="text-xs text-slate-500">Historikk</div>
                 </div>
                 {recentHomeEvents.length === 0 ? (
-                  <div className="mt-2 text-sm text-slate-500">Ingen aktivitet ennå. Start med en økt i dag.</div>
+                  <div className="mt-2 space-y-2">
+                    <div className="text-sm text-slate-500">Ingen aktivitet ennå. Start med en økt i dag.</div>
+                    <GradientButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">
+                      Start første økt
+                    </GradientButton>
+                  </div>
                 ) : (
                   <div className="mt-2 space-y-2">
                     {recentHomeEvents.map((item) => (
