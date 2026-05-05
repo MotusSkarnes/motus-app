@@ -285,11 +285,13 @@ export function useAppState() {
           const mergedMessages = Array.from(byId.values());
           // Collapse optimistic-local + hydrated-server twins.
           const bySignature = new Map<string, (typeof prev.messages)[number]>();
+          const dedupedMessages: (typeof prev.messages)[number][] = [];
           mergedMessages.forEach((message) => {
             const signature = `${message.sender}|${message.memberId}|${message.text.trim()}|${message.createdAt}`;
             const existing = bySignature.get(signature);
             if (!existing) {
               bySignature.set(signature, message);
+              dedupedMessages.push(message);
               return;
             }
             // Prefer non-local IDs when duplicates exist.
@@ -297,9 +299,19 @@ export function useAppState() {
             const currentIsLocal = message.id.startsWith("local-");
             if (existingIsLocal && !currentIsLocal) {
               bySignature.set(signature, message);
+              const existingIndex = dedupedMessages.findIndex((item) => item.id === existing.id);
+              if (existingIndex >= 0) {
+                dedupedMessages[existingIndex] = message;
+              } else {
+                dedupedMessages.push(message);
+              }
+              return;
             }
+            // Keep both when they are both server rows or both local rows.
+            // This avoids hiding legitimate repeated messages with same text/minute.
+            dedupedMessages.push(message);
           });
-          next.messages = Array.from(bySignature.values());
+          next.messages = dedupedMessages;
         }
 
         if (shouldAdoptRemote(remotePrograms, prev.programs)) {
