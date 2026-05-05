@@ -282,7 +282,24 @@ export function useAppState() {
             }
           });
 
-          next.messages = Array.from(byId.values());
+          const mergedMessages = Array.from(byId.values());
+          // Collapse optimistic-local + hydrated-server twins.
+          const bySignature = new Map<string, (typeof prev.messages)[number]>();
+          mergedMessages.forEach((message) => {
+            const signature = `${message.sender}|${message.memberId}|${message.text.trim()}|${message.createdAt}`;
+            const existing = bySignature.get(signature);
+            if (!existing) {
+              bySignature.set(signature, message);
+              return;
+            }
+            // Prefer non-local IDs when duplicates exist.
+            const existingIsLocal = existing.id.startsWith("local-");
+            const currentIsLocal = message.id.startsWith("local-");
+            if (existingIsLocal && !currentIsLocal) {
+              bySignature.set(signature, message);
+            }
+          });
+          next.messages = Array.from(bySignature.values());
         }
 
         if (shouldAdoptRemote(remotePrograms, prev.programs)) {
