@@ -186,6 +186,16 @@ Deno.serve(async (req) => {
         const ownerUserId = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
         if (ownerUserId) ownerHints.add(ownerUserId);
       });
+      const { data: messageOwnerRows } = await adminClient
+        .from("chat_messages")
+        .select("owner_user_id")
+        .in("member_id", targetMemberIds)
+        .not("owner_user_id", "is", null)
+        .limit(100);
+      (messageOwnerRows ?? []).forEach((row) => {
+        const ownerUserId = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
+        if (ownerUserId) ownerHints.add(ownerUserId);
+      });
     }
     const nowIso = new Date().toISOString();
     const rows: Array<{

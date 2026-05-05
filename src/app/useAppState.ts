@@ -790,7 +790,7 @@ export function useAppState() {
 
   function sendTrainerMessage(memberId: string, text: string) {
     if (!text.trim()) return;
-    setAppState((prev) => repository.appendTrainerMessage(prev, memberId, text));
+    setAppState((prev) => localAppRepository.appendTrainerMessage(prev, memberId, text));
   }
 
   function saveExercise(input: SaveExerciseInput) {
@@ -856,7 +856,7 @@ export function useAppState() {
 
   function sendMemberMessage(memberId: string, text: string) {
     if (!text.trim()) return;
-    setAppState((prev) => repository.appendMemberMessage(prev, memberId, text));
+    setAppState((prev) => localAppRepository.appendMemberMessage(prev, memberId, text));
   }
 
   function dismissWorkoutCelebration() {

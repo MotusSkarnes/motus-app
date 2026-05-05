@@ -1442,6 +1442,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   async function dispatchTrainerMessageToSelectedMember(text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
+    setTrainerChatSendStatus("Sender...");
     const targetMemberIds = selectedMemberRelatedIds.length
       ? selectedMemberRelatedIds
       : selectedMemberId && selectedMemberId !== "__template__"
@@ -1489,6 +1490,29 @@ export function TrainerPortal(props: TrainerPortalProps) {
       return;
     }
     const primaryTargetId = validTargetMemberIds[0];
+    if (supabaseClient) {
+      const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
+        body: {
+          memberId: primaryTargetId,
+          sender: "trainer",
+          text: trimmed,
+          targetEmail: selectedMember?.email ?? "",
+          targetName: selectedMember?.name ?? "",
+        },
+      });
+      if (invokeResult.error) {
+        setTrainerChatSendStatus(`Kunne ikke sende melding: ${invokeResult.error.message}`);
+        return;
+      }
+      const payload = invokeResult.data as { ok?: boolean; inserted?: number; messageId?: string; message?: string } | null;
+      const inserted = Number(payload?.inserted ?? 0);
+      const hasMessageId = Boolean(String(payload?.messageId ?? "").trim());
+      const isSuccess = payload?.ok === true || inserted > 0 || hasMessageId;
+      if (!isSuccess) {
+        setTrainerChatSendStatus(`Kunne ikke sende melding: ${payload?.message ?? "Ukjent feil"}`);
+        return;
+      }
+    }
     sendTrainerMessage(primaryTargetId, trimmed);
     setTrainerChatSendStatus("Melding sendt.");
   }
