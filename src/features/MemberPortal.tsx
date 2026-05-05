@@ -270,6 +270,11 @@ export function MemberPortal(props: MemberPortalProps) {
   } = props;
   const [messageText, setMessageText] = useState("");
   const [memberChatSendStatus, setMemberChatSendStatus] = useState<string | null>(null);
+  useEffect(() => {
+    if (!memberChatSendStatus?.startsWith("Melding sendt")) return;
+    const timer = window.setTimeout(() => setMemberChatSendStatus(null), 2500);
+    return () => window.clearTimeout(timer);
+  }, [memberChatSendStatus]);
   const [profileSessionsPerWeekTarget, setProfileSessionsPerWeekTarget] = useState("");
   const [profileDailyStepsTarget, setProfileDailyStepsTarget] = useState("");
   const [profileTargetWeight, setProfileTargetWeight] = useState("");

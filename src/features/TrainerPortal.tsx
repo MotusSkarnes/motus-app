@@ -190,6 +190,11 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [programNotes, setProgramNotes] = useState("");
   const [trainerMessage, setTrainerMessage] = useState("");
   const [trainerChatSendStatus, setTrainerChatSendStatus] = useState<string | null>(null);
+  useEffect(() => {
+    if (!trainerChatSendStatus?.startsWith("Melding sendt")) return;
+    const timer = window.setTimeout(() => setTrainerChatSendStatus(null), 2500);
+    return () => window.clearTimeout(timer);
+  }, [trainerChatSendStatus]);
   const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
   const [selectedWorkoutLogId, setSelectedWorkoutLogId] = useState<string | null>(null);
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
