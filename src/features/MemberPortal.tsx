@@ -2755,7 +2755,10 @@ export function MemberPortal(props: MemberPortalProps) {
               ) : null}
               {homeVisibility.streakChallenges ? (
                 <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="text-sm font-semibold text-slate-700">🏆 Streaks & challenges</div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-semibold text-slate-700">🏆 Streaks & challenges</div>
+                    <div className="text-xs text-slate-500">Motivasjon</div>
+                  </div>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     <div className="rounded-xl border bg-slate-50 px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="text-xs font-semibold text-slate-600">7-dagers challenge</div>
@@ -2823,8 +2826,11 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">I dag</div>
               ) : null}
               {homeVisibility.nextStep ? (
-                <div className="min-w-0 w-full rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-sm font-semibold text-slate-700">🎯 Neste steg i dag</div>
+                <div className="min-w-0 w-full rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-slate-700">🎯 Neste steg i dag</div>
+                  <div className="text-xs text-slate-500">Prioritert</div>
+                </div>
                 <div className="mt-1 text-sm font-medium text-slate-800">{nextBestAction.title}</div>
                 <div className="mt-1 text-sm text-slate-600">{nextBestAction.description}</div>
                 {nextProgram ? (
@@ -2846,7 +2852,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     {nextBestAction.cta}
                   </GradientButton>
                   <OutlineButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">
-                    Se alle programmer
+                    Åpne program
                   </OutlineButton>
                 </div>
               </div>
@@ -2860,7 +2866,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold text-slate-800">Lag økt selv</div>
                     <div className="mt-1 text-sm text-slate-600">
-                      Sett sammen øvelser fra øvelsesbanken og start vanlig økt-modus — uten program fra trener.
+                      Velg øvelser fra banken og start økt med en gang.
                     </div>
                     <OutlineButton onClick={() => setMemberTab("programs")} className="mt-3 w-full sm:w-auto">
                       Gå til egen økt
@@ -2903,7 +2909,10 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="grid gap-4 lg:grid-cols-2">
                 {homeVisibility.nextOnPlan ? (
                   <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="text-sm font-semibold text-slate-700">🧭 Neste på planen</div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-semibold text-slate-700">🧭 Neste på planen</div>
+                    <div className="text-xs text-slate-500">Plan</div>
+                  </div>
                   {nextPlannedWorkout ? (
                     <>
                       <div className="mt-1 text-sm font-medium text-slate-800">{nextPlannedWorkout.dayLabel}</div>
@@ -2919,7 +2928,10 @@ export function MemberPortal(props: MemberPortalProps) {
                 ) : <div />}
                 {homeVisibility.quickActions ? (
                   <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="text-sm font-semibold text-slate-700">⚡ Hurtighandlinger</div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-semibold text-slate-700">⚡ Hurtighandlinger</div>
+                    <div className="text-xs text-slate-500">Rask tilgang</div>
+                  </div>
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     <GradientButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">Start egen økt</GradientButton>
                     {!isMemberLimited ? (
@@ -2934,8 +2946,11 @@ export function MemberPortal(props: MemberPortalProps) {
               </div>
               ) : null}
               {homeVisibility.recentActivity ? (
-                <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-sm font-semibold text-slate-700">🕒 Siste aktivitet</div>
+                <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-slate-700">🕒 Siste aktivitet</div>
+                  <div className="text-xs text-slate-500">Historikk</div>
+                </div>
                 {recentHomeEvents.length === 0 ? (
                   <div className="mt-2 text-sm text-slate-500">Ingen aktivitet ennå. Start med en økt i dag.</div>
                 ) : (
