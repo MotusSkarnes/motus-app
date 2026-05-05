@@ -149,6 +149,21 @@ function parseLogDateMs(value: string): number {
   return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 }
 
+function parseChatCreatedAtMs(value: string): number {
+  if (!value) return 0;
+  const iso = new Date(value);
+  if (!Number.isNaN(iso.getTime())) return iso.getTime();
+  const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4})(?:\s+kl\s+(\d{2}):(\d{2}))?$/i);
+  if (!match) return 0;
+  const day = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const year = Number(match[3]);
+  const hours = Number(match[4] ?? "0");
+  const minutes = Number(match[5] ?? "0");
+  const parsed = new Date(year, month, day, hours, minutes);
+  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+}
+
 export function TrainerPortal(props: TrainerPortalProps) {
   const EXERCISE_IMAGE_BUCKET = "exercise-images";
   const MAX_EXERCISE_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -605,7 +620,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       if (anchorEmail && messageEmail === anchorEmail) return true;
       if (anchorName && messageName === anchorName) return true;
       return false;
-    });
+    }).sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
   }, [messages, selectedMemberRelatedIdSet, members, selectedMemberId]);
   const trainerMessageDebug = useMemo(() => {
     const relatedIds = selectedMemberRelatedIds.filter(Boolean);

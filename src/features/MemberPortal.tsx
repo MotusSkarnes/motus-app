@@ -443,7 +443,7 @@ export function MemberPortal(props: MemberPortalProps) {
       if (anchorEmail && messageEmail === anchorEmail) return true;
       if (anchorName && messageName === anchorName) return true;
       return false;
-    });
+    }).sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
   }, [messages, relatedMemberIdSet, members, editableMember?.email, editableMember?.name, normalizedCurrentUserEmail]);
   const memberMessageDebug = useMemo(() => {
     const relatedIds = relatedMemberIds.filter(Boolean);
@@ -910,6 +910,20 @@ export function MemberPortal(props: MemberPortalProps) {
     const parsed = new Date(year, month, day);
     if (Number.isNaN(parsed.getTime())) return null;
     return parsed;
+  }
+  function parseChatCreatedAtMs(value: string): number {
+    if (!value) return 0;
+    const isoCandidate = new Date(value);
+    if (!Number.isNaN(isoCandidate.getTime())) return isoCandidate.getTime();
+    const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4})(?:\s+kl\s+(\d{2}):(\d{2}))?$/i);
+    if (!match) return 0;
+    const day = Number(match[1]);
+    const month = Number(match[2]) - 1;
+    const year = Number(match[3]);
+    const hours = Number(match[4] ?? "0");
+    const minutes = Number(match[5] ?? "0");
+    const parsed = new Date(year, month, day, hours, minutes);
+    return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
   }
   function parseDateOnly(value: string): Date | null {
     if (!value) return null;
