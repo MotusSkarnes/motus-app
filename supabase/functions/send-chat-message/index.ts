@@ -86,11 +86,11 @@ Deno.serve(async (req) => {
       .select("id, owner_user_id, email, name")
       .eq("id", memberId)
       .maybeSingle();
-    if (memberError || !memberRow) {
+    const anchorEmail = String((memberRow as { email?: string } | null)?.email ?? "").trim().toLowerCase() || payloadEmail;
+    const anchorName = String((memberRow as { name?: string } | null)?.name ?? "").trim().toLowerCase() || payloadName;
+    if ((memberError || !memberRow) && !anchorEmail && !anchorName) {
       return jsonResponse(200, { ok: false, inserted: 0, message: "Member not found" });
     }
-    const anchorEmail = String((memberRow as { email?: string }).email ?? "").trim().toLowerCase() || payloadEmail;
-    const anchorName = String((memberRow as { name?: string }).name ?? "").trim().toLowerCase() || payloadName;
     const targetById = new Map<string, { id: string; owner_user_id: string; email: string }>();
 
     const addTargets = (rows: Array<Record<string, unknown>> | null | undefined) => {
@@ -105,8 +105,10 @@ Deno.serve(async (req) => {
       });
     };
 
-    const selfRow = memberRow as Record<string, unknown>;
-    addTargets([selfRow]);
+    if (memberRow) {
+      const selfRow = memberRow as Record<string, unknown>;
+      addTargets([selfRow]);
+    }
 
     if (anchorEmail) {
       const { data: relatedByEmail, error: relatedByEmailError } = await adminClient

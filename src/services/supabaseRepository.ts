@@ -240,7 +240,12 @@ async function resolveRelatedMemberIds(memberId: string): Promise<string[]> {
   return ids.length ? ids : [trimmedMemberId];
 }
 
-async function persistMessage(memberId: string, sender: "trainer" | "member", text: string) {
+async function persistMessage(
+  memberId: string,
+  sender: "trainer" | "member",
+  text: string,
+  hints?: { targetEmail?: string; targetName?: string },
+) {
   if (!supabaseClient) return;
   const trimmedMemberId = memberId.trim();
   const trimmedText = text.trim();
@@ -281,6 +286,8 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
         memberId: targetMemberId,
         sender,
         text: trimmedText,
+        targetEmail: hints?.targetEmail ?? "",
+        targetName: hints?.targetName ?? "",
       },
     });
     if (!invokeResult.error && invokeResult.data && typeof invokeResult.data === "object") {
@@ -310,6 +317,8 @@ async function persistMessage(memberId: string, sender: "trainer" | "member", te
               memberId: targetMemberId,
               sender,
               text: trimmedText,
+              targetEmail: hints?.targetEmail ?? "",
+              targetName: hints?.targetName ?? "",
             }),
           });
           const body = (await response.json().catch(() => null)) as { messageId?: string; error?: string; message?: string } | null;
@@ -1470,24 +1479,34 @@ export const supabaseAppRepository: AppRepository = {
   },
   appendTrainerMessage(state: AppState, memberId: string, text: string): AppState {
     const nextState = appendTrainerMessage(state, memberId, text);
+    const anchorMember = nextState.members.find((member) => member.id === memberId);
+    const hints = {
+      targetEmail: String(anchorMember?.email ?? "").trim().toLowerCase(),
+      targetName: String(anchorMember?.name ?? "").trim(),
+    };
     const targetIds = resolvePersistMessageTargetIds(nextState, memberId);
     if (targetIds.length === 0) {
-      void persistMessage(memberId, "trainer", text.trim());
+      void persistMessage(memberId, "trainer", text.trim(), hints);
     } else {
       targetIds.forEach((targetId) => {
-        void persistMessage(targetId, "trainer", text.trim());
+        void persistMessage(targetId, "trainer", text.trim(), hints);
       });
     }
     return nextState;
   },
   appendMemberMessage(state: AppState, memberId: string, text: string): AppState {
     const nextState = appendMemberMessage(state, memberId, text);
+    const anchorMember = nextState.members.find((member) => member.id === memberId);
+    const hints = {
+      targetEmail: String(anchorMember?.email ?? state.currentUser.email ?? "").trim().toLowerCase(),
+      targetName: String(anchorMember?.name ?? "").trim(),
+    };
     const targetIds = resolvePersistMessageTargetIds(nextState, memberId);
     if (targetIds.length === 0) {
-      void persistMessage(memberId, "member", text.trim());
+      void persistMessage(memberId, "member", text.trim(), hints);
     } else {
       targetIds.forEach((targetId) => {
-        void persistMessage(targetId, "member", text.trim());
+        void persistMessage(targetId, "member", text.trim(), hints);
       });
     }
     return nextState;
