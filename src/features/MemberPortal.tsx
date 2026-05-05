@@ -4169,10 +4169,13 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               <div className="mt-5 space-y-4">
-                <div ref={memberMessagesContainerRef} className="max-h-64 space-y-3 overflow-auto rounded-2xl border bg-slate-50 p-4">
+                <div ref={memberMessagesContainerRef} className="max-h-64 space-y-3 overflow-auto rounded-2xl border bg-white p-4">
                   {memberMessages.length === 0 ? (
-                    <div className="rounded-xl border border-dashed bg-white p-4 text-sm text-slate-500">
-                      Ingen meldinger ennå. Skriv en kort status til trener, så holder dere kontakten.
+                    <div className="space-y-3 rounded-xl border border-dashed bg-slate-50 p-4 text-sm text-slate-500">
+                      <div>Ingen meldinger ennå. Start med en kort oppdatering til trener.</div>
+                      <OutlineButton onClick={() => setMessageText("Hei! Kort status:")} className="w-full sm:w-auto">
+                        Sett inn forslag
+                      </OutlineButton>
                     </div>
                   ) : null}
                   {memberMessages.map((message) => (
@@ -4183,15 +4186,25 @@ export function MemberPortal(props: MemberPortalProps) {
                   ))}
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <TextInput value={messageText} onChange={(e) => setMessageText(e.target.value)} placeholder="Skriv melding til trener" />
+                  <TextInput
+                    value={messageText}
+                    onChange={(e) => {
+                      setMessageText(e.target.value);
+                      if (memberChatSendStatus) setMemberChatSendStatus(null);
+                    }}
+                    placeholder="Skriv melding til trener"
+                  />
                   <GradientButton onClick={() => {
                     if (!activeMemberId || !messageText.trim()) return;
                     void dispatchMemberMessageToRelatedMembers(messageText);
                     setMessageText("");
-                  }}>Send</GradientButton>
+                  }} disabled={!messageText.trim()}>Send</GradientButton>
                 </div>
                 {memberChatSendStatus ? (
-                  <div className="rounded-xl border bg-white px-3 py-2 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+                  <div
+                    className={`rounded-xl border px-3 py-2 text-xs ${memberChatSendStatus.startsWith("Melding sendt") ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}
+                    style={{ borderColor: memberChatSendStatus.startsWith("Melding sendt") ? "rgba(16,185,129,0.3)" : "rgba(244,63,94,0.3)" }}
+                  >
                     {memberChatSendStatus}
                   </div>
                 ) : null}

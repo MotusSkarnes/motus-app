@@ -3399,11 +3399,17 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
                 {customerSubTab === "messages" ? (
                   <div className="rounded-3xl border bg-slate-50 p-4 space-y-4">
-                    <div className="font-semibold">Dialog med kunde</div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="font-semibold">Dialog med kunde</div>
+                      <div className="text-xs text-slate-500">Direkte chat</div>
+                    </div>
                     <div className="max-h-64 space-y-3 overflow-auto rounded-2xl border bg-white p-4">
                       {selectedMessages.length === 0 ? (
-                        <div className="rounded-xl border border-dashed bg-slate-50 p-4 text-sm text-slate-500">
-                          Ingen meldinger ennå. Send en kort velkomstmelding for bedre oppstart.
+                        <div className="space-y-3 rounded-xl border border-dashed bg-slate-50 p-4 text-sm text-slate-500">
+                          <div>Ingen meldinger ennå. Send en kort velkomstmelding for bedre oppstart.</div>
+                          <OutlineButton onClick={() => setTrainerMessage("Hei! Klar for en god uke?")} className="w-full sm:w-auto">
+                            Sett inn forslag
+                          </OutlineButton>
                         </div>
                       ) : null}
                       {selectedMessages.map((message) => (
@@ -3416,7 +3422,10 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     <div className="flex flex-col gap-3 sm:flex-row">
                       <TextInput
                         value={trainerMessage}
-                        onChange={(e) => setTrainerMessage(e.target.value)}
+                        onChange={(e) => {
+                          setTrainerMessage(e.target.value);
+                          if (trainerChatSendStatus) setTrainerChatSendStatus(null);
+                        }}
                         placeholder="Skriv melding til kunden"
                       />
                       <GradientButton
@@ -3425,12 +3434,16 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           void dispatchTrainerMessageToSelectedMember(trainerMessage);
                           setTrainerMessage("");
                         }}
+                        disabled={!trainerMessage.trim()}
                       >
                         Send
                       </GradientButton>
                     </div>
                     {trainerChatSendStatus ? (
-                      <div className="rounded-xl border bg-white px-3 py-2 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+                      <div
+                        className={`rounded-xl border px-3 py-2 text-xs ${trainerChatSendStatus.startsWith("Melding sendt") ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}
+                        style={{ borderColor: trainerChatSendStatus.startsWith("Melding sendt") ? "rgba(16,185,129,0.3)" : "rgba(244,63,94,0.3)" }}
+                      >
                         {trainerChatSendStatus}
                       </div>
                     ) : null}
@@ -4023,15 +4036,25 @@ export function TrainerPortal(props: TrainerPortalProps) {
           </div>
         </div>
         <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-          <TextInput value={trainerMessage} onChange={(e) => setTrainerMessage(e.target.value)} placeholder="Skriv melding til kunden" />
+          <TextInput
+            value={trainerMessage}
+            onChange={(e) => {
+              setTrainerMessage(e.target.value);
+              if (trainerChatSendStatus) setTrainerChatSendStatus(null);
+            }}
+            placeholder="Skriv melding til kunden"
+          />
           <GradientButton onClick={() => {
             if (!selectedMemberId || selectedMemberId === "__template__" || !trainerMessage.trim()) return;
             void dispatchTrainerMessageToSelectedMember(trainerMessage);
             setTrainerMessage("");
-          }}>Send</GradientButton>
+          }} disabled={!trainerMessage.trim()}>Send</GradientButton>
         </div>
         {trainerChatSendStatus ? (
-          <div className="mt-3 rounded-xl border bg-white px-3 py-2 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+          <div
+            className={`mt-3 rounded-xl border px-3 py-2 text-xs ${trainerChatSendStatus.startsWith("Melding sendt") ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}
+            style={{ borderColor: trainerChatSendStatus.startsWith("Melding sendt") ? "rgba(16,185,129,0.3)" : "rgba(244,63,94,0.3)" }}
+          >
             {trainerChatSendStatus}
           </div>
         ) : null}
