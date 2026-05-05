@@ -592,13 +592,21 @@ export function TrainerPortal(props: TrainerPortalProps) {
       .filter((log) => selectedMemberRelatedIdSet.has(log.memberId))
       .sort((a, b) => parseLogDateMs(b.date) - parseLogDateMs(a.date));
   }, [logs, selectedMemberRelatedIdSet]);
-  const selectedMessages = useMemo(
-    () =>
-      messages.filter((message) =>
-        selectedMemberRelatedIdSet.has(message.memberId)
-      ),
-    [messages, selectedMemberRelatedIdSet]
-  );
+  const selectedMessages = useMemo(() => {
+    const selected = members.find((member) => member.id === selectedMemberId);
+    const anchorEmail = (selected?.email ?? "").trim().toLowerCase();
+    const anchorName = (selected?.name ?? "").trim().toLowerCase();
+    return messages.filter((message) => {
+      if (selectedMemberRelatedIdSet.has(message.memberId)) return true;
+      const messageMember = members.find((member) => member.id === message.memberId);
+      if (!messageMember) return false;
+      const messageEmail = messageMember.email.trim().toLowerCase();
+      const messageName = messageMember.name.trim().toLowerCase();
+      if (anchorEmail && messageEmail === anchorEmail) return true;
+      if (anchorName && messageName === anchorName) return true;
+      return false;
+    });
+  }, [messages, selectedMemberRelatedIdSet, members, selectedMemberId]);
   function resolveLatestFollowUpDetail(memberIds: string[]): FollowUpDetail | null {
     const details = memberIds
       .map((id) => followUpDetailsByMemberId[id])

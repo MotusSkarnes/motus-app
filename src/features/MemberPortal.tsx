@@ -431,7 +431,20 @@ export function MemberPortal(props: MemberPortalProps) {
   const memberPrograms = programs.filter((program) => relatedMemberIdSet.has(program.memberId));
   const memberAssignedPrograms = useMemo(() => memberPrograms.filter((program) => !program.ephemeral), [memberPrograms]);
   const memberLogs = logs.filter((log) => relatedMemberIdSet.has(log.memberId));
-  const memberMessages = messages.filter((message) => relatedMemberIdSet.has(message.memberId));
+  const memberMessages = useMemo(() => {
+    const anchorEmail = (editableMember?.email ?? normalizedCurrentUserEmail).trim().toLowerCase();
+    const anchorName = (editableMember?.name ?? "").trim().toLowerCase();
+    return messages.filter((message) => {
+      if (relatedMemberIdSet.has(message.memberId)) return true;
+      const messageMember = members.find((member) => member.id === message.memberId);
+      if (!messageMember) return false;
+      const messageEmail = messageMember.email.trim().toLowerCase();
+      const messageName = messageMember.name.trim().toLowerCase();
+      if (anchorEmail && messageEmail === anchorEmail) return true;
+      if (anchorName && messageName === anchorName) return true;
+      return false;
+    });
+  }, [messages, relatedMemberIdSet, members, editableMember?.email, editableMember?.name, normalizedCurrentUserEmail]);
   const activeWorkoutProgram = workoutMode ? memberPrograms.find((program) => program.id === workoutMode.programId) ?? null : null;
   const nextProgram = memberAssignedPrograms[0] ?? null;
   useEffect(() => {
