@@ -291,9 +291,15 @@ async function persistMessage(
       },
     });
     if (!invokeResult.error && invokeResult.data && typeof invokeResult.data === "object") {
-      const messageId = String((invokeResult.data as { messageId?: string }).messageId ?? "").trim();
-      if (messageId) persistedMessageIds.push(messageId);
-      continue;
+      const payload = invokeResult.data as { ok?: boolean; inserted?: number; messageId?: string; message?: string };
+      const inserted = Number(payload.inserted ?? 0);
+      const messageId = String(payload.messageId ?? "").trim();
+      const isSuccess = payload.ok === true || inserted > 0 || Boolean(messageId);
+      if (isSuccess) {
+        if (messageId) persistedMessageIds.push(messageId);
+        continue;
+      }
+      console.warn("send-chat-message returned non-success payload:", payload.message ?? "ok=false");
     }
     if (invokeResult.error) {
       console.warn("send-chat-message invoke failed, trying direct function fetch fallback:", invokeResult.error.message);
@@ -322,7 +328,11 @@ async function persistMessage(
             }),
           });
           const body = (await response.json().catch(() => null)) as { messageId?: string; error?: string; message?: string } | null;
-          if (response.ok) {
+          const bodyOk =
+            Boolean((body as { ok?: boolean } | null)?.ok) ||
+            Number((body as { inserted?: number } | null)?.inserted ?? 0) > 0 ||
+            Boolean(String((body as { messageId?: string } | null)?.messageId ?? "").trim());
+          if (response.ok && bodyOk) {
             const messageId = String(body?.messageId ?? "").trim();
             if (messageId) persistedMessageIds.push(messageId);
             continue;
