@@ -449,7 +449,9 @@ export function MemberPortal(props: MemberPortalProps) {
     const relatedIds = relatedMemberIds.filter(Boolean);
     const visibleIds = Array.from(new Set(memberMessages.map((message) => message.memberId).filter(Boolean)));
     const recentRawIds = Array.from(new Set(messages.slice(-20).map((message) => message.memberId).filter(Boolean)));
-    return `DEBUG related=[${relatedIds.join(", ")}] visible=[${visibleIds.join(", ")}] recentRaw=[${recentRawIds.join(", ")}]`;
+    const lastVisible = memberMessages[memberMessages.length - 1] ?? null;
+    const lastRaw = messages[messages.length - 1] ?? null;
+    return `DEBUG related=[${relatedIds.join(", ")}] visible=[${visibleIds.join(", ")}] recentRaw=[${recentRawIds.join(", ")}] countVisible=${memberMessages.length} lastVisible=${lastVisible ? `${lastVisible.sender}:${lastVisible.memberId}:${lastVisible.text.slice(0, 24)}` : "-"} lastRaw=${lastRaw ? `${lastRaw.sender}:${lastRaw.memberId}:${lastRaw.text.slice(0, 24)}` : "-"}`;
   }, [relatedMemberIds, memberMessages, messages]);
   const activeWorkoutProgram = workoutMode ? memberPrograms.find((program) => program.id === workoutMode.programId) ?? null : null;
   const nextProgram = memberAssignedPrograms[0] ?? null;
