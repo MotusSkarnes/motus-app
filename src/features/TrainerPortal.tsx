@@ -622,14 +622,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
       return false;
     }).sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
   }, [messages, selectedMemberRelatedIdSet, members, selectedMemberId]);
-  const trainerMessageDebug = useMemo(() => {
-    const relatedIds = selectedMemberRelatedIds.filter(Boolean);
-    const visibleIds = Array.from(new Set(selectedMessages.map((message) => message.memberId).filter(Boolean)));
-    const recentRawIds = Array.from(new Set(messages.slice(-20).map((message) => message.memberId).filter(Boolean)));
-    const lastVisible = selectedMessages[selectedMessages.length - 1] ?? null;
-    const lastRaw = messages[messages.length - 1] ?? null;
-    return `DEBUG related=[${relatedIds.join(", ")}] visible=[${visibleIds.join(", ")}] recentRaw=[${recentRawIds.join(", ")}] countVisible=${selectedMessages.length} lastVisible=${lastVisible ? `${lastVisible.sender}:${lastVisible.memberId}:${lastVisible.text.slice(0, 24)}` : "-"} lastRaw=${lastRaw ? `${lastRaw.sender}:${lastRaw.memberId}:${lastRaw.text.slice(0, 24)}` : "-"}`;
-  }, [selectedMemberRelatedIds, selectedMessages, messages]);
   function resolveLatestFollowUpDetail(memberIds: string[]): FollowUpDetail | null {
     const details = memberIds
       .map((id) => followUpDetailsByMemberId[id])
@@ -3469,9 +3461,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         {trainerChatSendStatus}
                       </div>
                     ) : null}
-                    <div className="rounded-xl border bg-slate-50 px-3 py-2 text-[11px] text-slate-600" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
-                      {trainerMessageDebug}
-                    </div>
                   </div>
                 ) : null}
               </div>

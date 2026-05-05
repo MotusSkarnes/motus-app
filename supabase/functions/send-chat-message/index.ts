@@ -205,22 +205,26 @@ Deno.serve(async (req) => {
       text: string;
       created_at: string;
     }> = [];
-    for (const row of finalTargets) {
-      const memberIdForRow = row.id;
-      const recipientOwnerUserId = (row.owner_user_id ?? "").trim();
-      const recipientAuthUserId = await resolveAuthUserIdByEmail(adminClient, row.email ?? "");
-      const ownerCandidates = Array.from(
-        new Set([authenticatedUserId, recipientOwnerUserId, recipientAuthUserId, ...Array.from(ownerHints)].filter(Boolean)),
-      );
-      if (ownerCandidates.length === 0) continue;
-      ownerCandidates.forEach((ownerUserId) => {
-        rows.push({
-          member_id: memberIdForRow,
-          owner_user_id: ownerUserId,
-          sender,
-          text,
-          created_at: nowIso,
-        });
+    const canonicalMemberId =
+      finalTargets.find((row) => row.id === memberId)?.id ??
+      finalTargets[0]?.id ??
+      memberId;
+    const primaryTarget = finalTargets.find((row) => row.id === canonicalMemberId) ?? finalTargets[0] ?? null;
+    const recipientOwnerUserId = String(primaryTarget?.owner_user_id ?? "").trim();
+    const recipientAuthUserId = await resolveAuthUserIdByEmail(adminClient, String(primaryTarget?.email ?? ""));
+    const hintedOwner = Array.from(ownerHints)[0] ?? "";
+    const chosenOwnerUserId =
+      recipientOwnerUserId ||
+      hintedOwner ||
+      authenticatedUserId ||
+      recipientAuthUserId;
+    if (chosenOwnerUserId) {
+      rows.push({
+        member_id: canonicalMemberId,
+        owner_user_id: chosenOwnerUserId,
+        sender,
+        text,
+        created_at: nowIso,
       });
     }
     const validRows = rows.filter((row) => row.member_id && row.owner_user_id);
