@@ -134,14 +134,31 @@ Deno.serve(async (req) => {
 
     const targets = Array.from(targetById.values());
 
-    // Heal legacy rows with missing owner_user_id whenever we have authenticated sender.
-    if (authenticatedUserId) {
-      const missingOwnerIds = targets.filter((row) => !row.owner_user_id).map((row) => row.id);
-      if (missingOwnerIds.length > 0) {
+    // Heal legacy rows with missing owner_user_id:
+    // 1) Prefer owner from sibling rows with same email.
+    // 2) Only fall back to authenticated sender when sender is trainer.
+    const missingOwnerTargets = targets.filter((row) => !row.owner_user_id);
+    if (missingOwnerTargets.length > 0) {
+      for (const target of missingOwnerTargets) {
+        const targetEmail = String(target.email ?? "").trim().toLowerCase();
+        let resolvedOwner = "";
+        if (targetEmail) {
+          const { data: ownerCandidates } = await adminClient
+            .from("members")
+            .select("owner_user_id")
+            .eq("email", targetEmail)
+            .not("owner_user_id", "is", null)
+            .limit(1);
+          resolvedOwner = String((ownerCandidates?.[0] as { owner_user_id?: string } | undefined)?.owner_user_id ?? "").trim();
+        }
+        if (!resolvedOwner && sender === "trainer" && authenticatedUserId) {
+          resolvedOwner = authenticatedUserId;
+        }
+        if (!resolvedOwner) continue;
         const { data: healedRows } = await adminClient
           .from("members")
-          .update({ owner_user_id: authenticatedUserId })
-          .in("id", missingOwnerIds)
+          .update({ owner_user_id: resolvedOwner })
+          .eq("id", target.id)
           .select("id, owner_user_id, email");
         addTargets((healedRows ?? []) as Array<Record<string, unknown>>);
       }

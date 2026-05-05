@@ -204,11 +204,16 @@ export async function deleteMemberPeriodPlanByPlanId(planId: string): Promise<vo
   }
 }
 
-async function resolveRelatedMemberIds(memberId: string): Promise<string[]> {
-  if (!supabaseClient) return [memberId];
+async function resolveRelatedMemberIds(
+  memberId: string,
+  hints?: { targetEmail?: string; targetName?: string },
+): Promise<string[]> {
+  if (!supabaseClient) return memberId ? [memberId] : [];
   const trimmedMemberId = memberId.trim();
-  if (!trimmedMemberId) return [];
-  if (trimmedMemberId === "__template__" || trimmedMemberId.startsWith("auth-")) {
+  const hintedEmail = String(hints?.targetEmail ?? "").trim().toLowerCase();
+  const hintedName = String(hints?.targetName ?? "").trim().toLowerCase();
+  if (!trimmedMemberId && !hintedEmail && !hintedName) return [];
+  if ((trimmedMemberId === "__template__" || trimmedMemberId.startsWith("auth-")) && !hintedEmail && !hintedName) {
     return [];
   }
   const { data: memberRow, error: memberLookupError } = await supabaseClient
@@ -218,26 +223,32 @@ async function resolveRelatedMemberIds(memberId: string): Promise<string[]> {
     .maybeSingle();
   if (memberLookupError) {
     console.warn("Supabase member lookup failed:", memberLookupError.message);
-    return [trimmedMemberId];
   }
-  const normalizedEmail = String(memberRow?.email ?? "").trim().toLowerCase();
-  if (!normalizedEmail) return [trimmedMemberId];
-  const { data: relatedRows, error: relatedError } = await supabaseClient
-    .from("members")
-    .select("id")
-    .eq("email", normalizedEmail);
-  if (relatedError) {
-    console.warn("Supabase related member lookup failed:", relatedError.message);
-    return [trimmedMemberId];
+  const normalizedEmail = String(memberRow?.email ?? "").trim().toLowerCase() || hintedEmail;
+  const rowsByEmail =
+    normalizedEmail
+      ? await supabaseClient.from("members").select("id").eq("email", normalizedEmail)
+      : { data: [], error: null as { message: string } | null };
+  if (rowsByEmail.error) {
+    console.warn("Supabase related member lookup by email failed:", rowsByEmail.error.message);
+  }
+  const rowsByName =
+    hintedName
+      ? await supabaseClient.from("members").select("id").eq("name", hintedName)
+      : { data: [], error: null as { message: string } | null };
+  if (rowsByName.error) {
+    console.warn("Supabase related member lookup by name failed:", rowsByName.error.message);
   }
   const ids = Array.from(
     new Set(
-      (relatedRows ?? [])
+      [...(rowsByEmail.data ?? []), ...(rowsByName.data ?? [])]
         .map((row) => String((row as { id?: string }).id ?? "").trim())
-        .filter(Boolean)
+        .filter((id) => Boolean(id) && id !== "__template__" && !id.startsWith("auth-"))
     )
   );
-  return ids.length ? ids : [trimmedMemberId];
+  if (ids.length) return ids;
+  if (trimmedMemberId && trimmedMemberId !== "__template__" && !trimmedMemberId.startsWith("auth-")) return [trimmedMemberId];
+  return [];
 }
 
 async function persistMessage(
@@ -250,7 +261,7 @@ async function persistMessage(
   const trimmedMemberId = memberId.trim();
   const trimmedText = text.trim();
   if (!trimmedMemberId || !trimmedText) return;
-  let targetMemberIds = await resolveRelatedMemberIds(trimmedMemberId);
+  let targetMemberIds = await resolveRelatedMemberIds(trimmedMemberId, hints);
   if (!targetMemberIds.length) {
     const {
       data: { user },
