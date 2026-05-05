@@ -1426,7 +1426,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
   async function dispatchTrainerMessageToSelectedMember(text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
-    setTrainerChatSendStatus("Sender...");
     const targetMemberIds = selectedMemberRelatedIds.length
       ? selectedMemberRelatedIds
       : selectedMemberId && selectedMemberId !== "__template__"
@@ -1473,45 +1472,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
       setTrainerChatSendStatus("Kunne ikke sende melding: ingen gyldig mottaker.");
       return;
     }
-    const diagRows: string[] = [];
-    try {
-      for (const memberId of validTargetMemberIds) {
-        if (!memberId || memberId === "__template__") continue;
-        sendTrainerMessage(memberId, trimmed);
-        if (!supabaseClient) {
-          diagRows.push(`${memberId}: ERR supabaseClient mangler`);
-          continue;
-        }
-        try {
-          const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
-            body: {
-              memberId,
-              sender: "trainer",
-              text: trimmed,
-              targetEmail: selectedMember?.email ?? "",
-              targetName: selectedMember?.name ?? "",
-            },
-          });
-          if (invokeResult.error) {
-            diagRows.push(`${memberId}: ERR ${invokeResult.error.message}`);
-          } else {
-            const payload = invokeResult.data as { inserted?: number; messageId?: string } | null;
-            diagRows.push(`${memberId}: OK inserted=${payload?.inserted ?? "?"} msg=${payload?.messageId ?? "-"}`);
-          }
-        } catch (error) {
-          diagRows.push(`${memberId}: ERR ${error instanceof Error ? error.message : String(error)}`);
-        }
-      }
-    } catch (error) {
-      setTrainerChatSendStatus(`DIAG FEIL: ${error instanceof Error ? error.message : String(error)}`);
-      return;
-    }
-    const firstError = diagRows.find((row) => row.includes(": ERR "));
-    if (firstError) {
-      const message = firstError.split(": ERR ")[1] ?? "Ukjent feil";
-      setTrainerChatSendStatus(`Kunne ikke sende melding: ${message}`);
-      return;
-    }
+    const primaryTargetId = validTargetMemberIds[0];
+    sendTrainerMessage(primaryTargetId, trimmed);
     setTrainerChatSendStatus("Melding sendt.");
   }
 

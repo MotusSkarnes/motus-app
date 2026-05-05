@@ -1763,35 +1763,12 @@ export function MemberPortal(props: MemberPortalProps) {
       setMemberChatSendStatus("Kunne ikke sende melding: ingen gyldig mottaker.");
       return;
     }
-    const diagRows: string[] = [];
-    for (const memberId of validTargetMemberIds) {
-      const normalizedMemberId = String(memberId ?? "").trim();
-      if (!normalizedMemberId) return;
-      sendMemberMessage(normalizedMemberId, trimmed);
-      if (supabaseClient) {
-        const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
-          body: {
-            memberId: normalizedMemberId,
-            sender: "member",
-            text: trimmed,
-            targetEmail: editableMember?.email ?? normalizedCurrentUserEmail,
-            targetName: editableMember?.name ?? "",
-          },
-        });
-        if (invokeResult.error) {
-          diagRows.push(`${normalizedMemberId}: ERR ${invokeResult.error.message}`);
-        } else {
-          const payload = invokeResult.data as { inserted?: number; messageId?: string } | null;
-          diagRows.push(`${normalizedMemberId}: OK inserted=${payload?.inserted ?? "?"} msg=${payload?.messageId ?? "-"}`);
-        }
-      }
-    }
-    const firstError = diagRows.find((row) => row.includes(": ERR "));
-    if (firstError) {
-      const message = firstError.split(": ERR ")[1] ?? "Ukjent feil";
-      setMemberChatSendStatus(`Kunne ikke sende melding: ${message}`);
+    const primaryTargetId = String(validTargetMemberIds[0] ?? "").trim();
+    if (!primaryTargetId) {
+      setMemberChatSendStatus("Kunne ikke sende melding: ingen gyldig mottaker.");
       return;
     }
+    sendMemberMessage(primaryTargetId, trimmed);
     setMemberChatSendStatus("Melding sendt.");
   }
 
