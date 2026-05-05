@@ -13,6 +13,10 @@ type HydratePayload = {
 
 type RowWithId = { id?: string };
 
+function normalizeEmail(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
 function uniqueById<T extends RowWithId>(rows: T[]): T[] {
   const byId = new Map<string, T>();
   rows.forEach((row) => {
@@ -126,6 +130,40 @@ Deno.serve(async (req) => {
       Record<string, unknown>
     >;
     membersError = ownedMembersWithAvatar.error ?? sharedMembersWithAvatar.error;
+  }
+  if (!membersError && (members ?? []).length > 0) {
+    const relatedEmailSet = new Set(
+      (members ?? [])
+        .map((row) => normalizeEmail((row as { email?: string }).email))
+        .filter((value) => value && value.includes("@")),
+    );
+    const relatedNameSet = new Set(
+      (members ?? [])
+        .map((row) => String((row as { name?: string }).name ?? "").trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const allMembersWithAvatar = await adminClient
+      .from("members")
+      .select(membersSelectWithAvatar)
+      .order("created_at", { ascending: true });
+    let allMembersRows: Array<Record<string, unknown>> = [];
+    if (allMembersWithAvatar.error && allMembersWithAvatar.error.message.includes("avatar_url")) {
+      const allMembersWithoutAvatar = await adminClient
+        .from("members")
+        .select(membersSelectWithoutAvatar)
+        .order("created_at", { ascending: true });
+      allMembersRows = (allMembersWithoutAvatar.data ?? []) as Array<Record<string, unknown>>;
+    } else {
+      allMembersRows = (allMembersWithAvatar.data ?? []) as Array<Record<string, unknown>>;
+    }
+    const widenedMembers = allMembersRows.filter((row) => {
+      const rowEmail = normalizeEmail((row as { email?: string }).email);
+      const rowName = String((row as { name?: string }).name ?? "").trim().toLowerCase();
+      if (rowEmail && relatedEmailSet.has(rowEmail)) return true;
+      if (rowName && relatedNameSet.has(rowName)) return true;
+      return false;
+    });
+    members = uniqueById([...(members ?? []), ...widenedMembers]) as Array<Record<string, unknown>>;
   }
 
   const visibleMemberIds = (members ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);

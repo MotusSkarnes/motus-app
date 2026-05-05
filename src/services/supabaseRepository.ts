@@ -227,14 +227,14 @@ async function resolveRelatedMemberIds(
   const normalizedEmail = String(memberRow?.email ?? "").trim().toLowerCase() || hintedEmail;
   const rowsByEmail =
     normalizedEmail
-      ? await supabaseClient.from("members").select("id").eq("email", normalizedEmail)
+      ? await supabaseClient.from("members").select("id").ilike("email", normalizedEmail)
       : { data: [], error: null as { message: string } | null };
   if (rowsByEmail.error) {
     console.warn("Supabase related member lookup by email failed:", rowsByEmail.error.message);
   }
   const rowsByName =
     hintedName
-      ? await supabaseClient.from("members").select("id").eq("name", hintedName)
+      ? await supabaseClient.from("members").select("id").ilike("name", hintedName)
       : { data: [], error: null as { message: string } | null };
   if (rowsByName.error) {
     console.warn("Supabase related member lookup by name failed:", rowsByName.error.message);
@@ -271,7 +271,7 @@ async function persistMessage(
       const { data: rows, error } = await supabaseClient
         .from("members")
         .select("id")
-        .eq("email", authEmail);
+        .ilike("email", authEmail);
       if (!error) {
         targetMemberIds = Array.from(
           new Set(

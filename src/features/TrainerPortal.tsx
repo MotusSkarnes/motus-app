@@ -607,6 +607,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
       return false;
     });
   }, [messages, selectedMemberRelatedIdSet, members, selectedMemberId]);
+  const trainerMessageDebug = useMemo(() => {
+    const relatedIds = selectedMemberRelatedIds.filter(Boolean);
+    const visibleIds = Array.from(new Set(selectedMessages.map((message) => message.memberId).filter(Boolean)));
+    const recentRawIds = Array.from(new Set(messages.slice(-20).map((message) => message.memberId).filter(Boolean)));
+    return `DEBUG related=[${relatedIds.join(", ")}] visible=[${visibleIds.join(", ")}] recentRaw=[${recentRawIds.join(", ")}]`;
+  }, [selectedMemberRelatedIds, selectedMessages, messages]);
   function resolveLatestFollowUpDetail(memberIds: string[]): FollowUpDetail | null {
     const details = memberIds
       .map((id) => followUpDetailsByMemberId[id])
@@ -3422,6 +3428,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         {trainerChatSendStatus}
                       </div>
                     ) : null}
+                    <div className="rounded-xl border bg-slate-50 px-3 py-2 text-[11px] text-slate-600" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+                      {trainerMessageDebug}
+                    </div>
                   </div>
                 ) : null}
               </div>

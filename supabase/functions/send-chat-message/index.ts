@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
       const { data: relatedByEmail, error: relatedByEmailError } = await adminClient
         .from("members")
         .select("id, owner_user_id, email")
-        .eq("email", anchorEmail);
+        .ilike("email", anchorEmail);
       if (relatedByEmailError) {
         return jsonResponse(200, { ok: false, inserted: 0, message: relatedByEmailError.message });
       }
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
       const { data: relatedByName, error: relatedByNameError } = await adminClient
         .from("members")
         .select("id, owner_user_id, email")
-        .eq("name", anchorName);
+        .ilike("name", anchorName);
       if (relatedByNameError) {
         return jsonResponse(200, { ok: false, inserted: 0, message: relatedByNameError.message });
       }
@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
           const { data: ownerCandidates } = await adminClient
             .from("members")
             .select("owner_user_id")
-            .eq("email", targetEmail)
+            .ilike("email", targetEmail)
             .not("owner_user_id", "is", null)
             .limit(1);
           resolvedOwner = String((ownerCandidates?.[0] as { owner_user_id?: string } | undefined)?.owner_user_id ?? "").trim();
@@ -165,6 +165,28 @@ Deno.serve(async (req) => {
     }
 
     const finalTargets = Array.from(targetById.values());
+    const targetMemberIds = finalTargets.map((row) => row.id).filter(Boolean);
+    const ownerHints = new Set<string>();
+    if (targetMemberIds.length > 0) {
+      const { data: programOwnerRows } = await adminClient
+        .from("training_programs")
+        .select("owner_user_id")
+        .in("member_id", targetMemberIds)
+        .not("owner_user_id", "is", null);
+      (programOwnerRows ?? []).forEach((row) => {
+        const ownerUserId = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
+        if (ownerUserId) ownerHints.add(ownerUserId);
+      });
+      const { data: logOwnerRows } = await adminClient
+        .from("workout_logs")
+        .select("owner_user_id")
+        .in("member_id", targetMemberIds)
+        .not("owner_user_id", "is", null);
+      (logOwnerRows ?? []).forEach((row) => {
+        const ownerUserId = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
+        if (ownerUserId) ownerHints.add(ownerUserId);
+      });
+    }
     const nowIso = new Date().toISOString();
     const rows: Array<{
       member_id: string;
@@ -178,7 +200,7 @@ Deno.serve(async (req) => {
       const recipientOwnerUserId = (row.owner_user_id ?? "").trim();
       const recipientAuthUserId = await resolveAuthUserIdByEmail(adminClient, row.email ?? "");
       const ownerCandidates = Array.from(
-        new Set([authenticatedUserId, recipientOwnerUserId, recipientAuthUserId].filter(Boolean)),
+        new Set([authenticatedUserId, recipientOwnerUserId, recipientAuthUserId, ...Array.from(ownerHints)].filter(Boolean)),
       );
       if (ownerCandidates.length === 0) continue;
       ownerCandidates.forEach((ownerUserId) => {
