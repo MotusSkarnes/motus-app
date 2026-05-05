@@ -14,6 +14,27 @@ type SendPayload = {
   targetName?: string;
 };
 
+type AuthContext = {
+  userId: string;
+  email: string;
+  role: string;
+  memberId: string;
+};
+
+type TargetMember = {
+  id: string;
+  owner_user_id: string;
+  email: string;
+};
+
+function normalizeString(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+function normalizeEmail(value: unknown): string {
+  return normalizeString(value).toLowerCase();
+}
+
 async function resolveAuthUserIdByEmail(
   adminClient: ReturnType<typeof createClient>,
   email: string,
@@ -73,12 +94,28 @@ Deno.serve(async (req) => {
     if (!text) return jsonResponse(200, { ok: false, inserted: 0, message: "text is required" });
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    let authenticatedUserId = "";
+    let authContext: AuthContext = { userId: "", email: "", role: "", memberId: "" };
     if (token) {
       const { data: userData, error: userError } = await adminClient.auth.getUser(token);
-      if (!userError) {
-        authenticatedUserId = String(userData?.user?.id ?? "").trim();
+      if (!userError && userData?.user?.id) {
+        const appMetadata =
+          userData.user.app_metadata && typeof userData.user.app_metadata === "object"
+            ? (userData.user.app_metadata as Record<string, unknown>)
+            : {};
+        const userMetadata =
+          userData.user.user_metadata && typeof userData.user.user_metadata === "object"
+            ? (userData.user.user_metadata as Record<string, unknown>)
+            : {};
+        authContext = {
+          userId: normalizeString(userData.user.id),
+          email: normalizeEmail(userData.user.email),
+          role: normalizeString(appMetadata.role ?? userMetadata.role).toLowerCase(),
+          memberId: normalizeString(appMetadata.member_id ?? userMetadata.member_id),
+        };
       }
+    }
+    if (!authContext.userId) {
+      return jsonResponse(200, { ok: false, inserted: 0, message: "Authentication required" });
     }
 
     const { data: memberRow, error: memberError } = await adminClient
@@ -91,7 +128,7 @@ Deno.serve(async (req) => {
     if ((memberError || !memberRow) && !anchorEmail && !anchorName) {
       return jsonResponse(200, { ok: false, inserted: 0, message: "Member not found" });
     }
-    const targetById = new Map<string, { id: string; owner_user_id: string; email: string }>();
+    const targetById = new Map<string, TargetMember>();
 
     const addTargets = (rows: Array<Record<string, unknown>> | null | undefined) => {
       (rows ?? []).forEach((row) => {
@@ -133,11 +170,40 @@ Deno.serve(async (req) => {
     }
 
     const targets = Array.from(targetById.values());
+    const trustedTrainerTargetIds = new Set(
+      targets
+        .filter((row) => normalizeString(row.owner_user_id) === authContext.userId)
+        .map((row) => row.id),
+    );
+    const trustedTrainerEmails = new Set(
+      targets
+        .filter((row) => normalizeString(row.owner_user_id) === authContext.userId)
+        .map((row) => normalizeEmail(row.email))
+        .filter(Boolean),
+    );
+    const isAuthorizedTarget = (row: TargetMember): boolean => {
+      const ownerUserId = normalizeString(row.owner_user_id);
+      const rowEmail = normalizeEmail(row.email);
+      if (sender === "member") {
+        return Boolean(
+          (authContext.memberId && row.id === authContext.memberId) ||
+            (authContext.email && rowEmail && rowEmail === authContext.email),
+        );
+      }
+      if (ownerUserId === authContext.userId) return true;
+      if (ownerUserId || authContext.role !== "trainer") return false;
+      if (trustedTrainerTargetIds.has(row.id)) return true;
+      return Boolean(rowEmail && trustedTrainerEmails.has(rowEmail));
+    };
+    const authorizedTargets = targets.filter(isAuthorizedTarget);
+    if (!authorizedTargets.length) {
+      return jsonResponse(200, { ok: false, inserted: 0, message: "Not authorized to send to target member" });
+    }
 
     // Heal legacy rows with missing owner_user_id:
     // 1) Prefer owner from sibling rows with same email.
     // 2) Only fall back to authenticated sender when sender is trainer.
-    const missingOwnerTargets = targets.filter((row) => !row.owner_user_id);
+    const missingOwnerTargets = authorizedTargets.filter((row) => !row.owner_user_id);
     if (missingOwnerTargets.length > 0) {
       for (const target of missingOwnerTargets) {
         const targetEmail = String(target.email ?? "").trim().toLowerCase();
@@ -151,8 +217,11 @@ Deno.serve(async (req) => {
             .limit(1);
           resolvedOwner = String((ownerCandidates?.[0] as { owner_user_id?: string } | undefined)?.owner_user_id ?? "").trim();
         }
-        if (!resolvedOwner && sender === "trainer" && authenticatedUserId) {
-          resolvedOwner = authenticatedUserId;
+        if (resolvedOwner && sender === "trainer" && resolvedOwner !== authContext.userId) {
+          resolvedOwner = "";
+        }
+        if (!resolvedOwner && sender === "trainer") {
+          resolvedOwner = authContext.userId;
         }
         if (!resolvedOwner) continue;
         const { data: healedRows } = await adminClient
@@ -164,7 +233,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const finalTargets = Array.from(targetById.values());
+    const finalTargets = Array.from(targetById.values()).filter(isAuthorizedTarget);
     const nowIso = new Date().toISOString();
     const rows: Array<{
       member_id: string;
@@ -178,7 +247,7 @@ Deno.serve(async (req) => {
       const recipientOwnerUserId = (row.owner_user_id ?? "").trim();
       const recipientAuthUserId = await resolveAuthUserIdByEmail(adminClient, row.email ?? "");
       const ownerCandidates = Array.from(
-        new Set([authenticatedUserId, recipientOwnerUserId, recipientAuthUserId].filter(Boolean)),
+        new Set([authContext.userId, recipientOwnerUserId, recipientAuthUserId].filter(Boolean)),
       );
       if (ownerCandidates.length === 0) continue;
       ownerCandidates.forEach((ownerUserId) => {
