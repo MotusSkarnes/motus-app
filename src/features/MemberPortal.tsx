@@ -2702,14 +2702,14 @@ export function MemberPortal(props: MemberPortalProps) {
                     {memberAvatarUrl ? <img src={memberAvatarUrl} alt="Profilbilde" className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
                   </div>
                 </div>
-                <div className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">Klar for neste økt?</div>
-                <div className="mt-2 text-sm text-white/90">Trykk pa neste steg under for a komme raskt i gang.</div>
+                <div className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">Klar for i dag?</div>
+                <div className="mt-2 text-sm text-white/90">Alt du trenger for dagens økt ligger under.</div>
               </div>
               <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="text-sm font-semibold text-slate-700">🛠️ Tilpass hjem-skjerm</div>
                   <OutlineButton onClick={() => setShowHomeCustomization((prev) => !prev)} className="w-full sm:w-auto">
-                    {showHomeCustomization ? "Skjul valg" : "Velg hva som vises"}
+                    {showHomeCustomization ? "Skjul valg" : "Tilpass kort"}
                   </OutlineButton>
                 </div>
                 {showHomeCustomization ? (
@@ -2743,6 +2743,9 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 ) : null}
               </div>
+              {(homeVisibility.weeklyStats || homeVisibility.streakChallenges || homeVisibility.readiness) ? (
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</div>
+              ) : null}
               {homeVisibility.weeklyStats ? (
                 <div className="hidden w-full sm:grid gap-3 sm:grid-cols-3">
                   <StatCard label="Denne uken" value={`${homeWeeklySummary.completedThisWeek}/${homeWeeklySummary.plannedThisWeek || 0}`} hint="Økter fullført" />
@@ -2816,9 +2819,12 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="mt-3 text-sm text-slate-700">{readinessAdvice}</div>
               </div>
               ) : null}
+              {(homeVisibility.nextStep || (homeVisibility.todayPlan && todayPlanEntry)) ? (
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">I dag</div>
+              ) : null}
               {homeVisibility.nextStep ? (
                 <div className="min-w-0 w-full rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-sm font-semibold text-slate-700">🎯 Neste steg</div>
+                <div className="text-sm font-semibold text-slate-700">🎯 Neste steg i dag</div>
                 <div className="mt-1 text-sm font-medium text-slate-800">{nextBestAction.title}</div>
                 <div className="mt-1 text-sm text-slate-600">{nextBestAction.description}</div>
                 {nextProgram ? (
@@ -2889,6 +2895,9 @@ export function MemberPortal(props: MemberPortalProps) {
                     )}
                   </div>
                 </div>
+              ) : null}
+              {(homeVisibility.nextOnPlan || homeVisibility.quickActions) ? (
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Snarveier</div>
               ) : null}
               {(homeVisibility.nextOnPlan || homeVisibility.quickActions) ? (
                 <div className="grid gap-4 lg:grid-cols-2">
