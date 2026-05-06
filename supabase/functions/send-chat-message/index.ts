@@ -206,6 +206,7 @@ Deno.serve(async (req) => {
       created_at: string;
     }> = [];
     const canonicalMemberId =
+      finalTargets.find((row) => payloadEmail && String(row.email ?? "").trim().toLowerCase() === payloadEmail)?.id ??
       finalTargets.find((row) => row.id === memberId)?.id ??
       finalTargets[0]?.id ??
       memberId;
