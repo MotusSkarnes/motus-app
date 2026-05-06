@@ -1527,8 +1527,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
           : "";
       const targetMemberId =
         emailMatchedTargetId ||
-        (selectedMemberId && uniqueTargetMemberIds.find((id) => id === selectedMemberId)) ??
-        uniqueTargetMemberIds[0] ??
+        (selectedMemberId && uniqueTargetMemberIds.find((id) => id === selectedMemberId)) ||
+        uniqueTargetMemberIds[0] ||
         "";
       if (!targetMemberId) {
         setTrainerChatSendStatus("Kunne ikke sende melding: ingen gyldig mottaker.");
