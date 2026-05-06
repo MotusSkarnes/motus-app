@@ -115,10 +115,8 @@ Deno.serve(async (req) => {
   })[0];
 
   const requestedCandidate = memberId ? candidates.find((candidate) => candidate.id === memberId) : null;
-  const requestedProgramCount = requestedCandidate ? programCountByMemberId.get(requestedCandidate.id) ?? 0 : -1;
-  const canonicalProgramCount = canonicalCandidate ? programCountByMemberId.get(canonicalCandidate.id) ?? 0 : -1;
-  memberId =
-    (canonicalProgramCount >= requestedProgramCount ? canonicalCandidate?.id : requestedCandidate?.id || canonicalCandidate?.id || "").trim();
+  // Respect explicitly requested member row when provided and valid.
+  memberId = (requestedCandidate?.id || canonicalCandidate?.id || "").trim();
   if (!memberId) {
     return jsonResponse(404, { error: "No member row found for email" });
   }
@@ -143,10 +141,19 @@ Deno.serve(async (req) => {
       user.app_metadata && typeof user.app_metadata === "object"
         ? (user.app_metadata as Record<string, unknown>)
         : {};
+    const existingUserMetadata =
+      user.user_metadata && typeof user.user_metadata === "object"
+        ? (user.user_metadata as Record<string, unknown>)
+        : {};
 
     const { error: updateError } = await adminClient.auth.admin.updateUserById(user.id, {
       app_metadata: {
         ...existingAppMetadata,
+        role: "member",
+        member_id: memberId,
+      },
+      user_metadata: {
+        ...existingUserMetadata,
         role: "member",
         member_id: memberId,
       },

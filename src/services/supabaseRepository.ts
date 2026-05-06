@@ -287,144 +287,157 @@ async function persistMessage(
     console.warn("persistMessage: no valid target member ids resolved");
     return;
   }
+  const canonicalTargetMemberId = await (async () => {
+    const requestedId = trimmedMemberId;
+    const requestedEmail = String(hints?.targetEmail ?? "").trim().toLowerCase();
+    const uniqueIds = Array.from(new Set(targetMemberIds));
+    if (uniqueIds.includes(requestedId)) return requestedId;
+    if (!supabaseClient) return uniqueIds[0] ?? requestedId;
+    const { data: memberRows, error: memberRowsError } = await supabaseClient
+      .from("members")
+      .select("id, email, is_active, created_at")
+      .in("id", uniqueIds);
+    if (memberRowsError || !memberRows?.length) return uniqueIds[0] ?? requestedId;
+    const byId = new Map(
+      (memberRows ?? []).map((row) => [
+        String((row as { id?: string }).id ?? "").trim(),
+        {
+          email: String((row as { email?: string }).email ?? "").trim().toLowerCase(),
+          isActive: (row as { is_active?: boolean | null }).is_active !== false,
+          createdAt: String((row as { created_at?: string | null }).created_at ?? ""),
+        },
+      ]),
+    );
+    const emailMatchedId = requestedEmail
+      ? uniqueIds.find((id) => byId.get(id)?.email === requestedEmail)
+      : "";
+    if (emailMatchedId) return emailMatchedId;
+    const { data: programRows } = await supabaseClient
+      .from("training_programs")
+      .select("member_id")
+      .in("member_id", uniqueIds);
+    const programCountByMemberId = new Map<string, number>();
+    (programRows ?? []).forEach((row) => {
+      const resolvedMemberId = String((row as { member_id?: string }).member_id ?? "").trim();
+      if (!resolvedMemberId) return;
+      programCountByMemberId.set(resolvedMemberId, (programCountByMemberId.get(resolvedMemberId) ?? 0) + 1);
+    });
+    const sorted = [...uniqueIds].sort((a, b) => {
+      const aPrograms = programCountByMemberId.get(a) ?? 0;
+      const bPrograms = programCountByMemberId.get(b) ?? 0;
+      if (bPrograms !== aPrograms) return bPrograms - aPrograms;
+      const aActive = byId.get(a)?.isActive ? 1 : 0;
+      const bActive = byId.get(b)?.isActive ? 1 : 0;
+      if (bActive !== aActive) return bActive - aActive;
+      const aCreated = new Date(byId.get(a)?.createdAt ?? 0).getTime() || 0;
+      const bCreated = new Date(byId.get(b)?.createdAt ?? 0).getTime() || 0;
+      if (bCreated !== aCreated) return bCreated - aCreated;
+      return a.localeCompare(b);
+    });
+    return sorted[0] ?? requestedId;
+  })();
+  if (!canonicalTargetMemberId) {
+    console.warn("persistMessage: canonical target member id unresolved");
+    return;
+  }
+  const clientMessageId = crypto.randomUUID();
   const persistedMessageIds: string[] = [];
 
-  // Primary path: server-side fanout via edge function.
-  // This avoids client-side RLS owner lookups that can differ between trainer/member sessions.
-  for (const targetMemberId of targetMemberIds) {
-    const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
-      body: {
-        memberId: targetMemberId,
-        sender,
-        text: trimmedText,
-        targetEmail: hints?.targetEmail ?? "",
-        targetName: hints?.targetName ?? "",
-      },
-    });
-    if (!invokeResult.error && invokeResult.data && typeof invokeResult.data === "object") {
-      const payload = invokeResult.data as { ok?: boolean; inserted?: number; messageId?: string; message?: string };
-      const inserted = Number(payload.inserted ?? 0);
-      const messageId = String(payload.messageId ?? "").trim();
-      const isSuccess = payload.ok === true || inserted > 0 || Boolean(messageId);
-      if (isSuccess) {
-        if (messageId) persistedMessageIds.push(messageId);
-        continue;
-      }
+  // Primary path: persist exactly one canonical chat row.
+  const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
+    body: {
+      memberId: canonicalTargetMemberId,
+      sender,
+      text: trimmedText,
+      targetEmail: hints?.targetEmail ?? "",
+      targetName: hints?.targetName ?? "",
+      clientMessageId,
+    },
+  });
+  if (!invokeResult.error && invokeResult.data && typeof invokeResult.data === "object") {
+    const payload = invokeResult.data as { ok?: boolean; inserted?: number; messageId?: string; message?: string };
+    const inserted = Number(payload.inserted ?? 0);
+    const messageId = String(payload.messageId ?? "").trim();
+    const isSuccess = payload.ok === true || inserted > 0 || Boolean(messageId);
+    if (isSuccess) {
+      if (messageId) persistedMessageIds.push(messageId);
+    } else {
       console.warn("send-chat-message returned non-success payload:", payload.message ?? "ok=false");
     }
-    if (invokeResult.error) {
-      console.warn("send-chat-message invoke failed, trying direct function fetch fallback:", invokeResult.error.message);
-    }
+  }
+  if (invokeResult.error) {
+    console.warn("send-chat-message invoke failed, trying direct function fetch fallback:", invokeResult.error.message);
+  }
 
-    if (supabaseUrl && supabaseAnonKey) {
-      const {
-        data: { session },
-      } = await supabaseClient.auth.getSession();
-      const accessToken = session?.access_token ?? "";
-      if (accessToken) {
-        try {
-          const response = await fetch(`${supabaseUrl}/functions/v1/send-chat-message`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: supabaseAnonKey,
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({
-              memberId: targetMemberId,
-              sender,
-              text: trimmedText,
-              targetEmail: hints?.targetEmail ?? "",
-              targetName: hints?.targetName ?? "",
-            }),
-          });
-          const body = (await response.json().catch(() => null)) as { messageId?: string; error?: string; message?: string } | null;
-          const bodyOk =
-            Boolean((body as { ok?: boolean } | null)?.ok) ||
-            Number((body as { inserted?: number } | null)?.inserted ?? 0) > 0 ||
-            Boolean(String((body as { messageId?: string } | null)?.messageId ?? "").trim());
-          if (response.ok && bodyOk) {
-            const messageId = String(body?.messageId ?? "").trim();
-            if (messageId) persistedMessageIds.push(messageId);
-            continue;
-          }
+  if (persistedMessageIds.length === 0 && supabaseUrl && supabaseAnonKey) {
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession();
+    const accessToken = session?.access_token ?? "";
+    if (accessToken) {
+      try {
+        const response = await fetch(`${supabaseUrl}/functions/v1/send-chat-message`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: supabaseAnonKey,
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            memberId: canonicalTargetMemberId,
+            sender,
+            text: trimmedText,
+            targetEmail: hints?.targetEmail ?? "",
+            targetName: hints?.targetName ?? "",
+            clientMessageId,
+          }),
+        });
+        const body = (await response.json().catch(() => null)) as { messageId?: string; error?: string; message?: string } | null;
+        const bodyOk =
+          Boolean((body as { ok?: boolean } | null)?.ok) ||
+          Number((body as { inserted?: number } | null)?.inserted ?? 0) > 0 ||
+          Boolean(String((body as { messageId?: string } | null)?.messageId ?? "").trim());
+        if (response.ok && bodyOk) {
+          const messageId = String(body?.messageId ?? "").trim();
+          if (messageId) persistedMessageIds.push(messageId);
+        } else {
           console.warn("send-chat-message direct fetch failed:", body?.error || body?.message || `HTTP ${response.status}`);
-        } catch (error) {
-          console.warn("send-chat-message direct fetch threw:", error);
         }
+      } catch (error) {
+        console.warn("send-chat-message direct fetch threw:", error);
       }
     }
+  }
 
-    // Fallback path: direct insert for both sender-owner and member-owner copies.
+  if (persistedMessageIds.length === 0) {
+    // Fallback path: direct insert for exactly one owner to avoid duplicate rows.
     const senderOwnerUserId = await getOwnerUserId();
-    const memberOwnerUserId = await resolveOwnerUserIdForMember(targetMemberId, senderOwnerUserId);
-    const ownerCandidates = Array.from(new Set([senderOwnerUserId, memberOwnerUserId].filter(Boolean)));
-    if (!ownerCandidates.length) continue;
-    let insertedFallback = false;
-    for (const ownerCandidate of ownerCandidates) {
-      const directInsert = await supabaseClient
-        .from("chat_messages")
-        .insert({
-          member_id: targetMemberId,
-          owner_user_id: ownerCandidate,
-          sender,
-          text: trimmedText,
-          created_at: new Date().toISOString(),
-        })
-        .select("id")
-        .maybeSingle();
-      if (!directInsert.error) {
-        const messageId = typeof directInsert.data?.id === "string" ? directInsert.data.id : null;
-        if (messageId) persistedMessageIds.push(messageId);
-        insertedFallback = true;
-      } else {
-        console.warn("Supabase message direct insert fallback failed for owner:", directInsert.error.message);
-      }
+    const memberOwnerUserId = await resolveOwnerUserIdForMember(canonicalTargetMemberId, senderOwnerUserId);
+    const chosenOwnerUserId = memberOwnerUserId || senderOwnerUserId;
+    if (!chosenOwnerUserId) return;
+    const directInsert = await supabaseClient
+      .from("chat_messages")
+      .insert({
+        id: clientMessageId,
+        member_id: canonicalTargetMemberId,
+        owner_user_id: chosenOwnerUserId,
+        sender,
+        text: trimmedText,
+        created_at: new Date().toISOString(),
+      })
+      .select("id")
+      .maybeSingle();
+    if (!directInsert.error) {
+      const messageId = typeof directInsert.data?.id === "string" ? directInsert.data.id : null;
+      if (messageId) persistedMessageIds.push(messageId);
+    } else {
+      console.warn("Supabase message direct insert fallback failed:", directInsert.error.message);
     }
-    if (insertedFallback) continue;
-    console.warn("Supabase message direct insert fallback failed for all owner candidates.");
   }
 
   persistedMessageIds.forEach((id) => {
     void supabaseClient.functions.invoke("send-message-push", { body: { messageId: id } });
   });
-}
-
-function resolvePersistMessageTargetIds(state: AppState, memberId: string): string[] {
-  const trimmedMemberId = memberId.trim();
-  const isRealId = (value: string) => Boolean(value && value !== "__template__" && !value.startsWith("auth-"));
-  const targets = new Set<string>();
-  if (isRealId(trimmedMemberId)) {
-    targets.add(trimmedMemberId);
-  }
-  const anchorMember = state.members.find((member) => member.id === trimmedMemberId) ?? null;
-  const anchorEmail = (anchorMember?.email ?? "").trim().toLowerCase();
-  const anchorName = (anchorMember?.name ?? "").trim().toLowerCase();
-  if (anchorEmail) {
-    state.members
-      .filter((member) => member.email.trim().toLowerCase() === anchorEmail)
-      .map((member) => member.id)
-      .filter(isRealId)
-      .forEach((id) => targets.add(id));
-  }
-  if (anchorName) {
-    state.members
-      .filter((member) => member.name.trim().toLowerCase() === anchorName)
-      .map((member) => member.id)
-      .filter(isRealId)
-      .forEach((id) => targets.add(id));
-  }
-  if (!targets.size && state.currentUser?.role === "member") {
-    const currentUserEmail = state.currentUser.email.trim().toLowerCase();
-    if (currentUserEmail) {
-      state.members
-        .filter((member) => member.email.trim().toLowerCase() === currentUserEmail)
-        .map((member) => member.id)
-        .filter(isRealId)
-        .forEach((id) => targets.add(id));
-    }
-  }
-  return Array.from(targets);
 }
 
 async function persistProgram(input: SaveProgramInput) {
@@ -1499,38 +1512,24 @@ export const supabaseAppRepository: AppRepository = {
     return nextState;
   },
   appendTrainerMessage(state: AppState, memberId: string, text: string): AppState {
-    const nextState = appendTrainerMessage(state, memberId, text);
-    const anchorMember = nextState.members.find((member) => member.id === memberId);
+    const anchorMember = state.members.find((member) => member.id === memberId);
     const hints = {
       targetEmail: String(anchorMember?.email ?? "").trim().toLowerCase(),
       targetName: String(anchorMember?.name ?? "").trim(),
     };
-    const targetIds = resolvePersistMessageTargetIds(nextState, memberId);
-    if (targetIds.length === 0) {
-      void persistMessage(memberId, "trainer", text.trim(), hints);
-    } else {
-      targetIds.forEach((targetId) => {
-        void persistMessage(targetId, "trainer", text.trim(), hints);
-      });
-    }
-    return nextState;
+    void persistMessage(memberId, "trainer", text.trim(), hints);
+    // Avoid optimistic local row on Supabase mode; hydrate returns canonical member_id row.
+    return state;
   },
   appendMemberMessage(state: AppState, memberId: string, text: string): AppState {
-    const nextState = appendMemberMessage(state, memberId, text);
-    const anchorMember = nextState.members.find((member) => member.id === memberId);
+    const anchorMember = state.members.find((member) => member.id === memberId);
     const hints = {
       targetEmail: String(anchorMember?.email ?? state.currentUser.email ?? "").trim().toLowerCase(),
       targetName: String(anchorMember?.name ?? "").trim(),
     };
-    const targetIds = resolvePersistMessageTargetIds(nextState, memberId);
-    if (targetIds.length === 0) {
-      void persistMessage(memberId, "member", text.trim(), hints);
-    } else {
-      targetIds.forEach((targetId) => {
-        void persistMessage(targetId, "member", text.trim(), hints);
-      });
-    }
-    return nextState;
+    void persistMessage(memberId, "member", text.trim(), hints);
+    // Avoid optimistic local row on Supabase mode; hydrate returns canonical member_id row.
+    return state;
   },
   startWorkoutMode(state: AppState, programId: string, options?: StartWorkoutModeOptions): AppState {
     return localAppRepository.startWorkoutMode(state, programId, options);

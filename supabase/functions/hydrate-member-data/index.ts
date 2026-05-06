@@ -57,6 +57,7 @@ Deno.serve(async (req) => {
   }
 
   const requesterEmail = normalizeEmail(userData.user.email);
+  const requesterUserId = String(userData.user.id ?? "").trim();
   const authMemberId = String(
     (userData.user.app_metadata?.member_id as string | undefined) ??
       (userData.user.user_metadata?.member_id as string | undefined) ??
@@ -120,18 +121,21 @@ Deno.serve(async (req) => {
     if (!id) return;
     if (!dedupedMembersById.has(id)) dedupedMembersById.set(id, row as Record<string, unknown>);
   });
+  if (authMemberId && !dedupedMembersById.has(authMemberId)) {
+    const { data: authMemberRow } = await adminClient
+      .from("members")
+      .select(membersSelectWithAvatar)
+      .eq("id", authMemberId)
+      .maybeSingle();
+    if (authMemberRow) {
+      dedupedMembersById.set(authMemberId, authMemberRow as Record<string, unknown>);
+    }
+  }
   const scopedMembers = Array.from(dedupedMembersById.values());
 
   const memberIds = (scopedMembers ?? [])
     .map((row) => String((row as { id?: string }).id ?? "").trim())
     .filter(Boolean);
-  const ownerUserIds = Array.from(
-    new Set(
-      (scopedMembers ?? [])
-        .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
-        .filter(Boolean),
-    ),
-  );
   if (!memberIds.length) {
     return jsonResponse(200, {
       members: [],
@@ -158,12 +162,12 @@ Deno.serve(async (req) => {
     .select("id, member_id, sender, text, created_at")
     .in("member_id", memberIds)
     .order("created_at", { ascending: true });
-  const { data: messagesByOwner, error: messagesByOwnerError } =
-    ownerUserIds.length > 0
+  const { data: messagesByRequesterOwner, error: messagesByRequesterOwnerError } =
+    requesterUserId
       ? await adminClient
           .from("chat_messages")
           .select("id, member_id, sender, text, created_at")
-          .in("owner_user_id", ownerUserIds)
+          .eq("owner_user_id", requesterUserId)
           .order("created_at", { ascending: true })
       : { data: [], error: null };
 
@@ -192,13 +196,13 @@ Deno.serve(async (req) => {
     exercises = (exerciseRows ?? []) as Array<Record<string, unknown>>;
   }
 
-  const firstError = programsError ?? logsError ?? messagesError ?? messagesByOwnerError;
+  const firstError = programsError ?? logsError ?? messagesError ?? messagesByRequesterOwnerError;
   if (firstError) {
     return jsonResponse(500, { error: firstError.message });
   }
 
   const messagesById = new Map<string, Record<string, unknown>>();
-  [...(messagesByOwner ?? []), ...(messagesByMember ?? [])].forEach((row) => {
+  [...(messagesByRequesterOwner ?? []), ...(messagesByMember ?? [])].forEach((row) => {
     const id = String((row as { id?: string }).id ?? "").trim();
     if (!id) return;
     if (!messagesById.has(id)) {
@@ -206,6 +210,17 @@ Deno.serve(async (req) => {
     }
   });
   const messages = Array.from(messagesById.values());
+  const messageSignatures = new Set<string>();
+  const dedupedMessages = messages.filter((row) => {
+    const sender = String((row as { sender?: string }).sender ?? "");
+    const memberId = String((row as { member_id?: string }).member_id ?? "");
+    const text = String((row as { text?: string }).text ?? "").trim();
+    const createdAt = String((row as { created_at?: string }).created_at ?? "");
+    const signature = `${sender}|${memberId}|${text}|${createdAt}`;
+    if (messageSignatures.has(signature)) return false;
+    messageSignatures.add(signature);
+    return true;
+  });
 
   const trainerNameByOwnerId = new Map<string, string>();
   const ownerUserIds = Array.from(
@@ -245,7 +260,7 @@ Deno.serve(async (req) => {
     members: scopedMembers ?? [],
     programs,
     logs: logs ?? [],
-    messages: messages ?? [],
+    messages: dedupedMessages ?? [],
     periodPlans,
     exercises,
   });

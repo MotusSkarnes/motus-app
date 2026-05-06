@@ -38,6 +38,7 @@ export function buildTrainerLayoutProps(input: {
   saveProgramForMember: TrainerLayoutProps["saveProgramForMember"];
   deleteProgramById: TrainerLayoutProps["deleteProgramById"];
   sendTrainerMessage: TrainerLayoutProps["sendTrainerMessage"];
+  clearLocalChatCache: TrainerLayoutProps["clearLocalChatCache"];
   saveExercise: TrainerLayoutProps["saveExercise"];
   deleteExercise: TrainerLayoutProps["deleteExercise"];
   openCustomerMessagesSignal: number;

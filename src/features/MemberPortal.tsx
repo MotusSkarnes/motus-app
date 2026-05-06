@@ -270,6 +270,10 @@ export function MemberPortal(props: MemberPortalProps) {
   } = props;
   const [messageText, setMessageText] = useState("");
   const [memberChatSendStatus, setMemberChatSendStatus] = useState<string | null>(null);
+  const isSendingMemberMessageRef = useRef(false);
+  const [isSendingMemberMessage, setIsSendingMemberMessage] = useState(false);
+  const lastMemberSendKeyRef = useRef("");
+  const lastMemberSendAtRef = useRef(0);
   useEffect(() => {
     if (!memberChatSendStatus?.startsWith("Melding sendt")) return;
     const timer = window.setTimeout(() => setMemberChatSendStatus(null), 2500);
@@ -432,19 +436,61 @@ export function MemberPortal(props: MemberPortalProps) {
   const memberAssignedPrograms = useMemo(() => memberPrograms.filter((program) => !program.ephemeral), [memberPrograms]);
   const memberLogs = logs.filter((log) => relatedMemberIdSet.has(log.memberId));
   const memberMessages = useMemo(() => {
+    if (currentUserRole === "member") {
+      const sorted = messages
+        .filter((message) => relatedMemberIdSet.has(message.memberId))
+        .sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
+      const uniqueById = new Map<string, (typeof sorted)[number]>();
+      sorted.forEach((message) => {
+        if (!uniqueById.has(message.id)) uniqueById.set(message.id, message);
+      });
+      const bySignature = new Map<string, (typeof sorted)[number]>();
+      Array.from(uniqueById.values()).forEach((message) => {
+        const timestampMs = parseChatCreatedAtMs(message.createdAt);
+        const normalizedText = message.text.trim().replace(/\s+/g, " ").toLowerCase();
+        const minuteBucket = timestampMs > 0 ? Math.floor(timestampMs / 60000) : message.createdAt.trim().toLowerCase();
+        const signature = `${message.sender}|${normalizedText}|${minuteBucket}`;
+        const existing = bySignature.get(signature);
+        if (!existing || timestampMs >= parseChatCreatedAtMs(existing.createdAt)) {
+          bySignature.set(signature, message);
+        }
+      });
+      return Array.from(bySignature.values()).sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
+    }
     const anchorEmail = (editableMember?.email ?? normalizedCurrentUserEmail).trim().toLowerCase();
     const anchorName = (editableMember?.name ?? "").trim().toLowerCase();
-    return messages.filter((message) => {
+    const filtered = messages.filter((message) => {
       if (relatedMemberIdSet.has(message.memberId)) return true;
       const messageMember = members.find((member) => member.id === message.memberId);
-      if (!messageMember) return false;
+      // Hydrated member payload is already session-scoped on backend.
+      // Keep trainer messages even when legacy member_id row is missing locally.
+      if (!messageMember) {
+        if (currentUserRole === "member" && message.sender === "trainer") return true;
+        return false;
+      }
       const messageEmail = messageMember.email.trim().toLowerCase();
       const messageName = messageMember.name.trim().toLowerCase();
       if (anchorEmail && messageEmail === anchorEmail) return true;
       if (anchorName && messageName === anchorName) return true;
       return false;
     }).sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
-  }, [messages, relatedMemberIdSet, members, editableMember?.email, editableMember?.name, normalizedCurrentUserEmail]);
+    const uniqueById = new Map<string, (typeof filtered)[number]>();
+    filtered.forEach((message) => {
+      if (!uniqueById.has(message.id)) uniqueById.set(message.id, message);
+    });
+    const bySignature = new Map<string, (typeof filtered)[number]>();
+    Array.from(uniqueById.values()).forEach((message) => {
+      const timestampMs = parseChatCreatedAtMs(message.createdAt);
+      const normalizedText = message.text.trim().replace(/\s+/g, " ").toLowerCase();
+      const minuteBucket = timestampMs > 0 ? Math.floor(timestampMs / 60000) : message.createdAt.trim().toLowerCase();
+      const signature = `${message.sender}|${normalizedText}|${minuteBucket}`;
+      const existing = bySignature.get(signature);
+      if (!existing || timestampMs >= parseChatCreatedAtMs(existing.createdAt)) {
+        bySignature.set(signature, message);
+      }
+    });
+    return Array.from(bySignature.values()).sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
+  }, [messages, relatedMemberIdSet, members, editableMember?.email, editableMember?.name, normalizedCurrentUserEmail, currentUserRole]);
   const activeWorkoutProgram = workoutMode ? memberPrograms.find((program) => program.id === workoutMode.programId) ?? null : null;
   const nextProgram = memberAssignedPrograms[0] ?? null;
   useEffect(() => {
@@ -1754,73 +1800,66 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   async function dispatchMemberMessageToRelatedMembers(text: string) {
+    if (isSendingMemberMessageRef.current) return;
     const trimmed = text.trim();
     if (!trimmed) return;
+    const nowMs = Date.now();
+    const duplicateKey = `${(editableMember?.email ?? normalizedCurrentUserEmail).trim().toLowerCase()}|${trimmed.toLowerCase()}`;
+    if (lastMemberSendKeyRef.current === duplicateKey && nowMs - lastMemberSendAtRef.current < 10000) {
+      setMemberChatSendStatus("Meldingen ble allerede sendt nylig.");
+      return;
+    }
+    isSendingMemberMessageRef.current = true;
+    setIsSendingMemberMessage(true);
     setMemberChatSendStatus("Sender...");
-    const targetMemberIds = relatedMemberIds.length ? relatedMemberIds : activeMemberId ? [activeMemberId] : [];
-    let validTargetMemberIds = Array.from(new Set(targetMemberIds)).filter(
-      (memberId) => memberId && !memberId.startsWith("auth-") && memberId !== "__template__",
-    );
-    if (!validTargetMemberIds.length) {
-      const anchorEmail = (editableMember?.email || normalizedCurrentUserEmail).trim().toLowerCase();
-      if (anchorEmail) {
-        validTargetMemberIds = Array.from(
-          new Set(
-            members
-              .filter((member) => member.email.trim().toLowerCase() === anchorEmail)
-              .map((member) => member.id)
-              .filter((memberId) => memberId && !memberId.startsWith("auth-") && memberId !== "__template__")
-          )
-        );
+    try {
+      const targetMemberIds = relatedMemberIds.length ? relatedMemberIds : activeMemberId ? [activeMemberId] : [];
+      let validTargetMemberIds = Array.from(new Set(targetMemberIds)).filter(
+        (memberId) => memberId && !memberId.startsWith("auth-") && memberId !== "__template__",
+      );
+      if (!validTargetMemberIds.length) {
+        const anchorEmail = (editableMember?.email || normalizedCurrentUserEmail).trim().toLowerCase();
+        if (anchorEmail) {
+          validTargetMemberIds = Array.from(
+            new Set(
+              members
+                .filter((member) => member.email.trim().toLowerCase() === anchorEmail)
+                .map((member) => member.id)
+                .filter((memberId) => memberId && !memberId.startsWith("auth-") && memberId !== "__template__")
+            )
+          );
+        }
       }
-    }
-    if (!validTargetMemberIds.length && supabaseClient) {
-      const anchorEmail = (editableMember?.email || normalizedCurrentUserEmail).trim().toLowerCase();
-      if (anchorEmail) {
-        const { data: rows } = await supabaseClient.from("members").select("id").eq("email", anchorEmail);
-        validTargetMemberIds = Array.from(
-          new Set(
-            (rows ?? [])
-              .map((row) => String((row as { id?: string }).id ?? "").trim())
-              .filter((memberId) => memberId && !memberId.startsWith("auth-") && memberId !== "__template__"),
-          ),
-        );
+      if (!validTargetMemberIds.length && supabaseClient) {
+        const anchorEmail = (editableMember?.email || normalizedCurrentUserEmail).trim().toLowerCase();
+        if (anchorEmail) {
+          const { data: rows } = await supabaseClient.from("members").select("id").eq("email", anchorEmail);
+          validTargetMemberIds = Array.from(
+            new Set(
+              (rows ?? [])
+                .map((row) => String((row as { id?: string }).id ?? "").trim())
+                .filter((memberId) => memberId && !memberId.startsWith("auth-") && memberId !== "__template__"),
+            ),
+          );
+        }
       }
-    }
-    if (!validTargetMemberIds.length) {
-      setMemberChatSendStatus("Kunne ikke sende melding: ingen gyldig mottaker.");
-      return;
-    }
-    const primaryTargetId = String(validTargetMemberIds[0] ?? "").trim();
-    if (!primaryTargetId) {
-      setMemberChatSendStatus("Kunne ikke sende melding: ingen gyldig mottaker.");
-      return;
-    }
-    if (supabaseClient) {
-      const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
-        body: {
-          memberId: primaryTargetId,
-          sender: "member",
-          text: trimmed,
-          targetEmail: editableMember?.email ?? normalizedCurrentUserEmail,
-          targetName: editableMember?.name ?? "",
-        },
-      });
-      if (invokeResult.error) {
-        setMemberChatSendStatus(`Kunne ikke sende melding: ${invokeResult.error.message}`);
+      if (!validTargetMemberIds.length) {
+        setMemberChatSendStatus("Kunne ikke sende melding: ingen gyldig mottaker.");
         return;
       }
-      const payload = invokeResult.data as { ok?: boolean; inserted?: number; messageId?: string; message?: string } | null;
-      const inserted = Number(payload?.inserted ?? 0);
-      const hasMessageId = Boolean(String(payload?.messageId ?? "").trim());
-      const isSuccess = payload?.ok === true || inserted > 0 || hasMessageId;
-      if (!isSuccess) {
-        setMemberChatSendStatus(`Kunne ikke sende melding: ${payload?.message ?? "Ukjent feil"}`);
+      const primaryTargetId = String(validTargetMemberIds[0] ?? "").trim();
+      if (!primaryTargetId) {
+        setMemberChatSendStatus("Kunne ikke sende melding: ingen gyldig mottaker.");
         return;
       }
+      sendMemberMessage(primaryTargetId, trimmed);
+      lastMemberSendKeyRef.current = duplicateKey;
+      lastMemberSendAtRef.current = nowMs;
+      setMemberChatSendStatus("Melding sendt.");
+    } finally {
+      isSendingMemberMessageRef.current = false;
+      setIsSendingMemberMessage(false);
     }
-    sendMemberMessage(primaryTargetId, trimmed);
-    setMemberChatSendStatus("Melding sendt.");
   }
 
   async function saveProfile(options?: { silent?: boolean }) {
@@ -4231,7 +4270,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     if (!activeMemberId || !messageText.trim()) return;
                     void dispatchMemberMessageToRelatedMembers(messageText);
                     setMessageText("");
-                  }} disabled={!messageText.trim()}>Send</GradientButton>
+                  }} disabled={!messageText.trim() || isSendingMemberMessage}>{isSendingMemberMessage ? "Sender..." : "Send"}</GradientButton>
                 </div>
                 {memberChatSendStatus ? (
                   <div

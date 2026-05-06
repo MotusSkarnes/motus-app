@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, ShieldCheck, Star, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
@@ -51,6 +51,7 @@ type TrainerPortalProps = {
   saveProgramForMember: (input: { id?: string; title: string; goal: string; notes: string; memberId: string; exercises: ProgramExercise[] }) => void;
   deleteProgramById: (programId: string) => void;
   sendTrainerMessage: (memberId: string, text: string) => void;
+  clearLocalChatCache?: () => number;
   saveExercise: (input: {
     id?: string;
     name: string;
@@ -191,6 +192,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     saveProgramForMember,
     deleteProgramById,
     sendTrainerMessage,
+    clearLocalChatCache,
     saveExercise,
     deleteExercise,
     openCustomerMessagesSignal = 0,
@@ -204,12 +206,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [programGoal, setProgramGoal] = useState("");
   const [programNotes, setProgramNotes] = useState("");
   const [trainerMessage, setTrainerMessage] = useState("");
+  const [isSendingTrainerMessage, setIsSendingTrainerMessage] = useState(false);
+  const isSendingTrainerMessageRef = useRef(false);
+  const lastTrainerSendKeyRef = useRef<string>("");
+  const lastTrainerSendAtRef = useRef<number>(0);
+  const trainerSendAttemptRef = useRef(0);
   const [trainerChatSendStatus, setTrainerChatSendStatus] = useState<string | null>(null);
-  useEffect(() => {
-    if (!trainerChatSendStatus?.startsWith("Melding sendt")) return;
-    const timer = window.setTimeout(() => setTrainerChatSendStatus(null), 2500);
-    return () => window.clearTimeout(timer);
-  }, [trainerChatSendStatus]);
   const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
   const [selectedWorkoutLogId, setSelectedWorkoutLogId] = useState<string | null>(null);
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
@@ -348,6 +350,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [memberDedupeStatus, setMemberDedupeStatus] = useState<string | null>(null);
   const [isRunningMemberDedupe, setIsRunningMemberDedupe] = useState(false);
   const [adminHealthStatus, setAdminHealthStatus] = useState<string | null>(null);
+  const [adminCacheStatus, setAdminCacheStatus] = useState<string | null>(null);
   const [currentTrainerOwnerUserId, setCurrentTrainerOwnerUserId] = useState("");
   const [isRefreshingAdminHealth, setIsRefreshingAdminHealth] = useState(false);
   const [adminDuplicateGroupCount, setAdminDuplicateGroupCount] = useState<number | null>(null);
@@ -608,20 +611,26 @@ export function TrainerPortal(props: TrainerPortalProps) {
       .sort((a, b) => parseLogDateMs(b.date) - parseLogDateMs(a.date));
   }, [logs, selectedMemberRelatedIdSet]);
   const selectedMessages = useMemo(() => {
-    const selected = members.find((member) => member.id === selectedMemberId);
-    const anchorEmail = (selected?.email ?? "").trim().toLowerCase();
-    const anchorName = (selected?.name ?? "").trim().toLowerCase();
-    return messages.filter((message) => {
-      if (selectedMemberRelatedIdSet.has(message.memberId)) return true;
-      const messageMember = members.find((member) => member.id === message.memberId);
-      if (!messageMember) return false;
-      const messageEmail = messageMember.email.trim().toLowerCase();
-      const messageName = messageMember.name.trim().toLowerCase();
-      if (anchorEmail && messageEmail === anchorEmail) return true;
-      if (anchorName && messageName === anchorName) return true;
-      return false;
-    }).sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
-  }, [messages, selectedMemberRelatedIdSet, members, selectedMemberId]);
+    const filtered = messages
+      .filter((message) => selectedMemberRelatedIdSet.has(message.memberId))
+      .sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
+    const uniqueById = new Map<string, (typeof filtered)[number]>();
+    filtered.forEach((message) => {
+      if (!uniqueById.has(message.id)) uniqueById.set(message.id, message);
+    });
+    const bySignature = new Map<string, (typeof filtered)[number]>();
+    Array.from(uniqueById.values()).forEach((message) => {
+      const timestampMs = parseChatCreatedAtMs(message.createdAt);
+      const normalizedText = message.text.trim().replace(/\s+/g, " ").toLowerCase();
+      const minuteBucket = timestampMs > 0 ? Math.floor(timestampMs / 60000) : message.createdAt.trim().toLowerCase();
+      const signature = `${message.sender}|${normalizedText}|${minuteBucket}`;
+      const existing = bySignature.get(signature);
+      if (!existing || timestampMs >= parseChatCreatedAtMs(existing.createdAt)) {
+        bySignature.set(signature, message);
+      }
+    });
+    return Array.from(bySignature.values()).sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
+  }, [messages, selectedMemberRelatedIdSet]);
   function resolveLatestFollowUpDetail(memberIds: string[]): FollowUpDetail | null {
     const details = memberIds
       .map((id) => followUpDetailsByMemberId[id])
@@ -1446,86 +1455,104 @@ export function TrainerPortal(props: TrainerPortalProps) {
     setIsEditingCustomerCard(false);
   }
 
-  async function dispatchTrainerMessageToSelectedMember(text: string) {
+  async function dispatchTrainerMessageToSelectedMember(text: string): Promise<boolean> {
+    if (isSendingTrainerMessageRef.current) return false;
     const trimmed = text.trim();
-    if (!trimmed) return;
-    setTrainerChatSendStatus("Sender...");
-    const targetMemberIds = selectedMemberRelatedIds.length
-      ? selectedMemberRelatedIds
-      : selectedMemberId && selectedMemberId !== "__template__"
-        ? [selectedMemberId]
-        : [];
-    let validTargetMemberIds = Array.from(new Set(targetMemberIds)).filter(
-      (memberId) =>
-        memberId &&
-        memberId !== "__template__" &&
-        !memberId.startsWith("auth-"),
-    );
-    if (!validTargetMemberIds.length && selectedMember) {
-      const selectedEmail = selectedMember.email.trim().toLowerCase();
-      if (selectedEmail) {
-        validTargetMemberIds = Array.from(
-          new Set(
-            members
-              .filter((member) => member.email.trim().toLowerCase() === selectedEmail)
-              .map((member) => member.id)
-              .filter(
-                (memberId) =>
-                  memberId &&
-                  memberId !== "__template__" &&
-                  !memberId.startsWith("auth-"),
-              )
-          )
-        );
+    if (!trimmed) return false;
+    trainerSendAttemptRef.current += 1;
+    const attemptNo = trainerSendAttemptRef.current;
+    isSendingTrainerMessageRef.current = true;
+    setIsSendingTrainerMessage(true);
+    setTrainerChatSendStatus(`Sender... (#${attemptNo})`);
+    try {
+      const targetMemberIds =
+        selectedMemberRelatedIds.length > 0
+          ? selectedMemberRelatedIds
+          : selectedMemberId && selectedMemberId !== "__template__"
+            ? [selectedMemberId]
+            : [];
+      let validTargetMemberIds = Array.from(new Set(targetMemberIds)).filter(
+        (memberId) =>
+          memberId &&
+          memberId !== "__template__" &&
+          !memberId.startsWith("auth-"),
+      );
+      if (!validTargetMemberIds.length && selectedMember) {
+        const selectedEmail = selectedMember.email.trim().toLowerCase();
+        if (selectedEmail) {
+          validTargetMemberIds = Array.from(
+            new Set(
+              members
+                .filter((member) => member.email.trim().toLowerCase() === selectedEmail)
+                .map((member) => member.id)
+                .filter(
+                  (memberId) =>
+                    memberId &&
+                    memberId !== "__template__" &&
+                    !memberId.startsWith("auth-"),
+                )
+            )
+          );
+        }
       }
-    }
-    if (!validTargetMemberIds.length && selectedMember && supabaseClient) {
-      const selectedEmail = selectedMember.email.trim().toLowerCase();
-      if (selectedEmail) {
-        const { data: rowsByEmail } = await supabaseClient.from("members").select("id").ilike("email", selectedEmail);
-        const selectedName = selectedMember.name.trim();
-        const { data: rowsByName } = selectedName
-          ? await supabaseClient.from("members").select("id").ilike("name", selectedName)
-          : { data: [] as Array<{ id?: string }> };
-        validTargetMemberIds = Array.from(
-          new Set(
-            [...(rowsByEmail ?? []), ...(rowsByName ?? [])]
-              .map((row) => String((row as { id?: string }).id ?? "").trim())
-              .filter((memberId) => memberId && memberId !== "__template__" && !memberId.startsWith("auth-")),
-          ),
-        );
+      if (!validTargetMemberIds.length && selectedMember && supabaseClient) {
+        const selectedEmail = selectedMember.email.trim().toLowerCase();
+        if (selectedEmail) {
+          const { data: rowsByEmail } = await supabaseClient.from("members").select("id").ilike("email", selectedEmail);
+          const selectedName = selectedMember.name.trim();
+          const { data: rowsByName } = selectedName
+            ? await supabaseClient.from("members").select("id").ilike("name", selectedName)
+            : { data: [] as Array<{ id?: string }> };
+          validTargetMemberIds = Array.from(
+            new Set(
+              [...(rowsByEmail ?? []), ...(rowsByName ?? [])]
+                .map((row) => String((row as { id?: string }).id ?? "").trim())
+                .filter((memberId) => memberId && memberId !== "__template__" && !memberId.startsWith("auth-")),
+            ),
+          );
+        }
       }
-    }
-    if (!validTargetMemberIds.length) {
-      setTrainerChatSendStatus("Kunne ikke sende melding: ingen gyldig mottaker.");
-      return;
-    }
-    const primaryTargetId = validTargetMemberIds[0];
-    if (supabaseClient) {
-      const invokeResult = await supabaseClient.functions.invoke("send-chat-message", {
-        body: {
-          memberId: primaryTargetId,
-          sender: "trainer",
-          text: trimmed,
-          targetEmail: selectedMember?.email ?? "",
-          targetName: selectedMember?.name ?? "",
-        },
-      });
-      if (invokeResult.error) {
-        setTrainerChatSendStatus(`Kunne ikke sende melding: ${invokeResult.error.message}`);
-        return;
+      if (!validTargetMemberIds.length) {
+        setTrainerChatSendStatus("Kunne ikke sende melding: ingen gyldig mottaker.");
+        return false;
       }
-      const payload = invokeResult.data as { ok?: boolean; inserted?: number; messageId?: string; message?: string } | null;
-      const inserted = Number(payload?.inserted ?? 0);
-      const hasMessageId = Boolean(String(payload?.messageId ?? "").trim());
-      const isSuccess = payload?.ok === true || inserted > 0 || hasMessageId;
-      if (!isSuccess) {
-        setTrainerChatSendStatus(`Kunne ikke sende melding: ${payload?.message ?? "Ukjent feil"}`);
-        return;
+      const uniqueTargetMemberIds = Array.from(new Set(validTargetMemberIds)).sort((a, b) => a.localeCompare(b));
+      const selectedEmail = selectedMember?.email.trim().toLowerCase() ?? "";
+      const emailMatchedTargetId =
+        selectedEmail
+          ? uniqueTargetMemberIds.find((id) => {
+              const member = members.find((row) => row.id === id);
+              return member?.email.trim().toLowerCase() === selectedEmail;
+            }) ?? ""
+          : "";
+      const targetMemberId =
+        emailMatchedTargetId ||
+        (selectedMemberId && uniqueTargetMemberIds.find((id) => id === selectedMemberId)) ??
+        uniqueTargetMemberIds[0] ??
+        "";
+      if (!targetMemberId) {
+        setTrainerChatSendStatus("Kunne ikke sende melding: ingen gyldig mottaker.");
+        return false;
       }
+      const duplicateTargetKey = (selectedMember?.email ?? selectedMemberId ?? targetMemberId).trim().toLowerCase();
+      const duplicateKey = `${duplicateTargetKey}|${trimmed.toLowerCase()}`;
+      const nowMs = Date.now();
+      if (
+        lastTrainerSendKeyRef.current === duplicateKey &&
+        nowMs - lastTrainerSendAtRef.current < 10000
+      ) {
+        setTrainerChatSendStatus(`Meldingen ble allerede sendt nylig. (#${attemptNo})`);
+        return false;
+      }
+      sendTrainerMessage(targetMemberId, trimmed);
+      lastTrainerSendKeyRef.current = duplicateKey;
+      lastTrainerSendAtRef.current = nowMs;
+      setTrainerChatSendStatus(`Melding sendt (#${attemptNo}).`);
+      return true;
+    } finally {
+      setIsSendingTrainerMessage(false);
+      isSendingTrainerMessageRef.current = false;
     }
-    sendTrainerMessage(primaryTargetId, trimmed);
-    setTrainerChatSendStatus("Melding sendt.");
   }
 
   function resetMemberListControls() {
@@ -1693,6 +1720,15 @@ export function TrainerPortal(props: TrainerPortalProps) {
     } finally {
       setIsRefreshingAdminHealth(false);
     }
+  }
+
+  function handleClearLocalChatCache() {
+    if (!clearLocalChatCache) {
+      setAdminCacheStatus("Lokal cache-reset er ikke tilgjengelig i denne visningen.");
+      return;
+    }
+    const removed = clearLocalChatCache();
+    setAdminCacheStatus(`Lokal chat-cache ryddet. Fjernet ${removed} lokal melding${removed === 1 ? "" : "er"}.`);
   }
 
   async function handleRunSafeMemberCleanup() {
@@ -3447,14 +3483,14 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         placeholder="Skriv melding til kunden"
                       />
                       <GradientButton
-                        onClick={() => {
+                        onClick={async () => {
                           if (!selectedMemberId || selectedMemberId === "__template__" || !trainerMessage.trim()) return;
-                          void dispatchTrainerMessageToSelectedMember(trainerMessage);
-                          setTrainerMessage("");
+                          const sent = await dispatchTrainerMessageToSelectedMember(trainerMessage);
+                          if (sent) setTrainerMessage("");
                         }}
-                        disabled={!trainerMessage.trim()}
+                        disabled={!trainerMessage.trim() || isSendingTrainerMessage}
                       >
-                        Send
+                        {isSendingTrainerMessage ? "Sender..." : "Send"}
                       </GradientButton>
                     </div>
                     {trainerChatSendStatus ? (
@@ -4062,11 +4098,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
             }}
             placeholder="Skriv melding til kunden"
           />
-          <GradientButton onClick={() => {
+          <GradientButton onClick={async () => {
             if (!selectedMemberId || selectedMemberId === "__template__" || !trainerMessage.trim()) return;
-            void dispatchTrainerMessageToSelectedMember(trainerMessage);
-            setTrainerMessage("");
-          }} disabled={!trainerMessage.trim()}>Send</GradientButton>
+            const sent = await dispatchTrainerMessageToSelectedMember(trainerMessage);
+            if (sent) setTrainerMessage("");
+          }} disabled={!trainerMessage.trim() || isSendingTrainerMessage}>
+            {isSendingTrainerMessage ? "Sender..." : "Send"}
+          </GradientButton>
         </div>
         {trainerChatSendStatus ? (
           <div
@@ -4135,6 +4173,16 @@ export function TrainerPortal(props: TrainerPortalProps) {
             <OutlineButton onClick={() => void handleRefreshAdminHealthCheck()} className="w-full md:w-auto" disabled={isRefreshingAdminHealth}>
               {isRefreshingAdminHealth ? "Oppdaterer helsesjekk..." : "Oppdater helsesjekk"}
             </OutlineButton>
+            <OutlineButton onClick={handleClearLocalChatCache} className="w-full md:w-auto">
+              Reset lokal chat-cache
+            </OutlineButton>
+            {adminCacheStatus ? (
+              <StatusMessage
+                message={adminCacheStatus}
+                tone="success"
+                className="!rounded-xl !px-3 !py-2 !text-xs"
+              />
+            ) : null}
           </div>
           <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <TextInput value={newTrainerName} onChange={(event) => setNewTrainerName(event.target.value)} placeholder="Navn (valgfritt)" />
