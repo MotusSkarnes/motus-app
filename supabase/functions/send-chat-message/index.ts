@@ -73,12 +73,14 @@ Deno.serve(async (req) => {
     if (!text) return jsonResponse(200, { ok: false, inserted: 0, message: "text is required" });
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    let authenticatedUserId = "";
-    if (token) {
-      const { data: userData, error: userError } = await adminClient.auth.getUser(token);
-      if (!userError) {
-        authenticatedUserId = String(userData?.user?.id ?? "").trim();
-      }
+    if (!token) {
+      return jsonResponse(200, { ok: false, inserted: 0, message: "Authentication required" });
+    }
+    const { data: userData, error: userError } = await adminClient.auth.getUser(token);
+    const authenticatedUserId = String(userData?.user?.id ?? "").trim();
+    const authenticatedUserEmail = String(userData?.user?.email ?? "").trim().toLowerCase();
+    if (userError || !authenticatedUserId) {
+      return jsonResponse(200, { ok: false, inserted: 0, message: "Invalid authentication" });
     }
 
     const { data: memberRow, error: memberError } = await adminClient
@@ -212,13 +214,27 @@ Deno.serve(async (req) => {
       memberId;
     const primaryTarget = finalTargets.find((row) => row.id === canonicalMemberId) ?? finalTargets[0] ?? null;
     const recipientOwnerUserId = String(primaryTarget?.owner_user_id ?? "").trim();
-    const recipientAuthUserId = await resolveAuthUserIdByEmail(adminClient, String(primaryTarget?.email ?? ""));
+    const primaryTargetEmail = String(primaryTarget?.email ?? "").trim().toLowerCase();
+    const recipientAuthUserId = await resolveAuthUserIdByEmail(adminClient, primaryTargetEmail);
     const hintedOwner = Array.from(ownerHints)[0] ?? "";
+    if (sender === "trainer") {
+      const allowedOwnerIds = new Set([recipientOwnerUserId, hintedOwner].filter(Boolean));
+      if (allowedOwnerIds.size > 0 && !allowedOwnerIds.has(authenticatedUserId)) {
+        return jsonResponse(200, { ok: false, inserted: 0, message: "Forbidden" });
+      }
+    } else {
+      const isLinkedMember =
+        (recipientAuthUserId && recipientAuthUserId === authenticatedUserId) ||
+        (primaryTargetEmail && primaryTargetEmail === authenticatedUserEmail);
+      if (!isLinkedMember) {
+        return jsonResponse(200, { ok: false, inserted: 0, message: "Forbidden" });
+      }
+      if (!recipientOwnerUserId && !hintedOwner) {
+        return jsonResponse(200, { ok: false, inserted: 0, message: "No trainer owner resolved for message" });
+      }
+    }
     const chosenOwnerUserId =
-      recipientOwnerUserId ||
-      hintedOwner ||
-      authenticatedUserId ||
-      recipientAuthUserId;
+      sender === "trainer" ? authenticatedUserId : recipientOwnerUserId || hintedOwner;
     if (chosenOwnerUserId) {
       rows.push({
         member_id: canonicalMemberId,
