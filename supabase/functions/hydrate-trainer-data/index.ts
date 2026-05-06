@@ -65,8 +65,19 @@ Deno.serve(async (req) => {
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-  // Recovery: claim legacy rows with missing owner_user_id.
-  await adminClient.from("members").update({ owner_user_id: ownerUserId }).is("owner_user_id", null);
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
+  if (!token) {
+    return jsonResponse(401, { error: "Authentication required" });
+  }
+  const { data: userData, error: userError } = await adminClient.auth.getUser(token);
+  const authenticatedUserId = String(userData?.user?.id ?? "").trim();
+  if (userError || !authenticatedUserId) {
+    return jsonResponse(401, { error: "Invalid authentication" });
+  }
+  if (authenticatedUserId !== ownerUserId) {
+    return jsonResponse(403, { error: "Forbidden" });
+  }
 
   const { data: ownedMembers } = await adminClient.from("members").select("id").eq("owner_user_id", ownerUserId);
   const ownedMemberIds = (ownedMembers ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);
