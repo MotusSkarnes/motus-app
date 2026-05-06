@@ -1482,10 +1482,14 @@ export function TrainerPortal(props: TrainerPortalProps) {
     if (!validTargetMemberIds.length && selectedMember && supabaseClient) {
       const selectedEmail = selectedMember.email.trim().toLowerCase();
       if (selectedEmail) {
-        const { data: rows } = await supabaseClient.from("members").select("id").eq("email", selectedEmail);
+        const { data: rowsByEmail } = await supabaseClient.from("members").select("id").ilike("email", selectedEmail);
+        const selectedName = selectedMember.name.trim();
+        const { data: rowsByName } = selectedName
+          ? await supabaseClient.from("members").select("id").ilike("name", selectedName)
+          : { data: [] as Array<{ id?: string }> };
         validTargetMemberIds = Array.from(
           new Set(
-            (rows ?? [])
+            [...(rowsByEmail ?? []), ...(rowsByName ?? [])]
               .map((row) => String((row as { id?: string }).id ?? "").trim())
               .filter((memberId) => memberId && memberId !== "__template__" && !memberId.startsWith("auth-")),
           ),
