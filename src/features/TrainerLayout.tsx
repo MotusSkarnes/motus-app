@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
 import { BarChart3, Bell, CalendarDays, ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, Settings, ShieldCheck, Users, type LucideIcon } from "lucide-react";
 import { MOTUS } from "../app/data";
@@ -99,8 +100,19 @@ export function TrainerLayout({
   isLocalDemoSession,
   remoteTrainerPeriodPlansByMemberId,
 }: TrainerLayoutProps) {
+  const canAccessAdminTools =
+    isLocalDemoSession || import.meta.env.DEV || import.meta.env.MODE === "test" || import.meta.env.VITE_ENABLE_ADMIN_TOOLS === "true";
   const inactiveMembersCount = appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length;
   const missingInvitesCount = appState.members.filter((member) => !member.invitedAt).length;
+  const visibleTrainerMenuItems = canAccessAdminTools ? trainerMenuItems : trainerMenuItems.filter((item) => item.key !== "admin");
+  const visibleMobileTabs = canAccessAdminTools ? mobileTabs : mobileTabs.filter((tab) => tab.id !== "admin");
+
+  useEffect(() => {
+    if (!canAccessAdminTools && trainerTab === "admin") {
+      setTrainerTab("dashboard");
+    }
+  }, [canAccessAdminTools, trainerTab, setTrainerTab]);
+
   const trainerPortalProps: ComponentProps<typeof TrainerPortal> = {
     members: appState.members,
     programs: appState.programs,
@@ -131,6 +143,7 @@ export function TrainerLayout({
     memberAvatarById,
     setMemberAvatarUrlForMember,
     isLocalDemoSession,
+    canAccessAdminTools,
     remoteTrainerPeriodPlansByMemberId,
   };
 
@@ -142,7 +155,7 @@ export function TrainerLayout({
             <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">PT-meny</div>
           </div>
           <div className="space-y-1.5">
-            {trainerMenuItems.map((item) => {
+            {visibleTrainerMenuItems.map((item) => {
               const Icon = item.icon;
               return (
                 <button
@@ -269,7 +282,7 @@ export function TrainerLayout({
             className="flex w-full items-center gap-1.5 rounded-[18px] p-1.5"
             style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
           >
-            {mobileTabs.map((tab) => {
+            {visibleMobileTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = trainerTab === tab.id;
               return (

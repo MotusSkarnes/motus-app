@@ -1438,7 +1438,7 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
 
 export async function restoreMemberByEmailFromSupabase(email: string): Promise<{ ok: boolean; message: string }> {
   if (!supabaseClient) {
-    return { ok: false, message: "Supabase er ikke konfigurert." };
+    return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
   }
 
   const normalizedEmail = email.trim().toLowerCase();

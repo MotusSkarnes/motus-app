@@ -8,6 +8,8 @@ export type CreateMemberInput = {
   phone?: string;
   goal?: string;
   focus?: string;
+  membershipType?: Member["membershipType"];
+  customerType?: Member["customerType"];
 };
 
 export type SaveProgramInput = {
@@ -134,8 +136,8 @@ export function createMember(state: AppState, input: CreateMemberInput): Member 
     phone: input.phone?.trim() || "900 00 000",
     birthDate: "",
     level: "Nybegynner",
-    membershipType: "Standard",
-    customerType: "Oppfølging",
+    membershipType: input.membershipType ?? "Standard",
+    customerType: input.customerType ?? "Oppfølging",
     daysSinceActivity: "0",
     weight: "",
     height: "",

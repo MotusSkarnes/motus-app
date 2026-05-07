@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from "react";
 import type { ComponentProps } from "react";
 import { Bell, ClipboardList, LayoutDashboard, MessageSquare, TrendingUp, type LucideIcon } from "lucide-react";
 import { MOTUS } from "../app/data";
@@ -74,6 +75,29 @@ export function MemberLayout({
   openAlert,
   remoteMemberPeriodPlanRows,
 }: MemberLayoutProps) {
+  const isMemberLimited = useMemo(() => {
+    const currentUser = appState.currentUser;
+    if (!currentUser || currentUser.role !== "member") return false;
+    const normalizedEmail = currentUser.email.trim().toLowerCase();
+    const relatedRows = appState.members.filter((member) => {
+      if (currentUser.memberId && member.id === currentUser.memberId) return true;
+      if (appState.memberViewId && member.id === appState.memberViewId) return true;
+      return normalizedEmail ? member.email.trim().toLowerCase() === normalizedEmail : false;
+    });
+    if (!relatedRows.length) return false;
+    return relatedRows.some((member) => member.customerType === "Medlem");
+  }, [appState.currentUser, appState.members, appState.memberViewId]);
+  const visibleMobileTabs = isMemberLimited
+    ? mobileTabs.filter((tab) => tab.id !== "messages" && tab.id !== "progress")
+    : mobileTabs;
+
+  useEffect(() => {
+    if (!isMemberLimited) return;
+    if (memberTab === "messages" || memberTab === "progress") {
+      setMemberTab("programs");
+    }
+  }, [isMemberLimited, memberTab, setMemberTab]);
+
   const memberPortalProps: ComponentProps<typeof MemberPortal> = {
     members: appState.members,
     currentUserRole: appState.currentUser!.role,
@@ -168,7 +192,7 @@ export function MemberLayout({
             className="flex w-full items-center gap-1.5 rounded-[18px] p-1.5"
             style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
           >
-            {mobileTabs.map((tab) => {
+            {visibleMobileTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = memberTab === tab.id;
               return (

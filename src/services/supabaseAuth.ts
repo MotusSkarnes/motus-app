@@ -40,7 +40,7 @@ export type SupabaseSignInResult =
   | { ok: false; message: string };
 
 export async function signInWithSupabase(email: string, password: string): Promise<SupabaseSignInResult> {
-  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
   const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
   if (error || !data.user) {
     const detailedMessage = error?.message?.trim() || "Ukjent feil fra Supabase.";
@@ -50,7 +50,7 @@ export async function signInWithSupabase(email: string, password: string): Promi
 }
 
 export async function requestEmailOtpSignIn(email: string): Promise<{ ok: boolean; message: string }> {
-  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
   const normalizedEmail = email.trim().toLowerCase();
   if (!normalizedEmail || !normalizedEmail.includes("@")) {
     return { ok: false, message: "Skriv inn en gyldig e-postadresse." };
@@ -70,7 +70,7 @@ export async function requestEmailOtpSignIn(email: string): Promise<{ ok: boolea
 }
 
 export async function verifyEmailOtpSignIn(email: string, token: string): Promise<SupabaseSignInResult> {
-  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedToken = token.trim();
   if (!normalizedEmail || !normalizedEmail.includes("@")) {
@@ -115,7 +115,7 @@ export async function signOutSupabase(): Promise<void> {
 }
 
 export async function verifyRecoveryToken(tokenHash: string): Promise<{ ok: boolean; message?: string }> {
-  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
   const { error } = await supabaseClient.auth.verifyOtp({
     token_hash: tokenHash,
     type: "recovery",
@@ -128,7 +128,7 @@ export async function establishRecoverySessionFromTokens(input: {
   accessToken: string;
   refreshToken: string;
 }): Promise<{ ok: boolean; message?: string }> {
-  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
   const { error } = await supabaseClient.auth.setSession({
     access_token: input.accessToken,
     refresh_token: input.refreshToken,
@@ -138,14 +138,14 @@ export async function establishRecoverySessionFromTokens(input: {
 }
 
 export async function updateSupabasePassword(password: string): Promise<{ ok: boolean; message?: string }> {
-  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
   const { error } = await supabaseClient.auth.updateUser({ password });
   if (error) return { ok: false, message: error.message || "Kunne ikke oppdatere passord." };
   return { ok: true };
 }
 
 export async function requestPasswordRecovery(email: string): Promise<{ ok: boolean; message: string }> {
-  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
   const normalizedEmail = email.trim().toLowerCase();
   if (!normalizedEmail || !normalizedEmail.includes("@")) {
     return { ok: false, message: "Skriv inn en gyldig e-postadresse." };
@@ -161,7 +161,7 @@ export async function requestPasswordRecovery(email: string): Promise<{ ok: bool
     if (lowered.includes("rate limit")) {
       return {
         ok: false,
-        message: "For mange foresporsler akkurat na. Vent litt og prov igjen.",
+        message: "For mange forespørsler akkurat nå. Vent litt og prøv igjen.",
       };
     }
     return { ok: false, message: `Kunne ikke sende reset-epost: ${error.message || "Ukjent feil."}` };
@@ -228,6 +228,7 @@ function isRateLimitMessage(message: string): boolean {
   return (
     normalized.includes("rate limit") ||
     normalized.includes("too many requests") ||
+    normalized.includes("for mange forespørsler") ||
     normalized.includes("for mange foresporsler") ||
     normalized.includes("request rate limit reached")
   );
@@ -235,7 +236,7 @@ function isRateLimitMessage(message: string): boolean {
 
 export async function inviteMemberByEmail(email: string, memberId: string): Promise<InviteMemberResult> {
   if (!supabaseClient) {
-    return { ok: false, message: "Supabase er ikke konfigurert." };
+    return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
   }
   const normalizedEmail = email.trim().toLowerCase();
   if (!normalizedEmail || !normalizedEmail.includes("@")) {
@@ -268,6 +269,28 @@ export async function inviteMemberByEmail(email: string, memberId: string): Prom
     };
   }
 
+  // Fallback 1: retry without custom metadata.
+  const redirectToFallback =
+    typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+  const { error: otpFallbackError } = await supabaseClient.auth.signInWithOtp({
+    email: normalizedEmail,
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo: redirectToFallback,
+    },
+  });
+  if (!otpFallbackError) {
+    await syncMemberAuthLink(normalizedEmail, memberId.trim());
+    return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}` };
+  }
+  if (isRateLimitMessage(otpFallbackError.message || "")) {
+    await syncMemberAuthLink(normalizedEmail, memberId.trim());
+    return {
+      ok: true,
+      message: "Invitasjon er nylig sendt. Vent litt for ny utsending.",
+    };
+  }
+
   const {
     data: { session: initialSession },
     error: sessionError,
@@ -284,12 +307,15 @@ export async function inviteMemberByEmail(email: string, memberId: string): Prom
   if (!activeSession?.access_token) {
     return { ok: false, message: `Invitasjon feilet: ${otpError.message || "Ingen gyldig innlogging funnet."}` };
   }
+  const ownerUserId = activeSession.user?.id?.trim?.() ?? "";
 
+  // Fallback 2: edge function path for legacy projects.
   const { data, error } = await supabaseClient.functions.invoke("invite-member", {
     body: {
       email: normalizedEmail,
       memberId: memberId.trim(),
       accessToken: activeSession.access_token,
+      ownerUserId,
     },
   });
 
@@ -318,7 +344,7 @@ export async function inviteMemberByEmail(email: string, memberId: string): Prom
 }
 
 export async function inviteTrainerByEmail(email: string): Promise<InviteTrainerResult> {
-  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
   const normalizedEmail = email.trim().toLowerCase();
   if (!normalizedEmail || !normalizedEmail.includes("@")) {
     return { ok: false, message: "Ugyldig e-post." };

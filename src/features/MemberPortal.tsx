@@ -287,6 +287,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [customWorkoutSearch, setCustomWorkoutSearch] = useState("");
   const [customWorkoutCategoryFilter, setCustomWorkoutCategoryFilter] = useState<string>("all");
   const [showAllCustomWorkoutOptions, setShowAllCustomWorkoutOptions] = useState(false);
+  const [showAllPersonalRecords, setShowAllPersonalRecords] = useState(false);
   const [customWorkoutLines, setCustomWorkoutLines] = useState<Array<{ key: string; exerciseId: string; sets: string; reps: string; weight: string }>>([]);
   const [profileSaveInfo, setProfileSaveInfo] = useState<string | null>(null);
   const [memberNameDraft, setMemberNameDraft] = useState("");
@@ -408,7 +409,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const isMemberLimited =
     currentUserRole === "member" &&
     relatedMembersForProfile.length > 0 &&
-    relatedMembersForProfile.every((member) => member.customerType === "Medlem");
+    relatedMembersForProfile.some((member) => member.customerType === "Medlem");
   const dbProfileMetrics = useMemo(() => {
     for (const member of relatedMembersForProfile) {
       const decoded = decodeMemberProfileMetrics(member.personalGoals);
@@ -833,7 +834,7 @@ export function MemberPortal(props: MemberPortalProps) {
       personalGoals: string;
     };
   }): Promise<{ ok: true } | { ok: false; message: string }> {
-    if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+    if (!supabaseClient) return { ok: false, message: "Denne funksjonen er ikke tilgjengelig akkurat nå." };
 
     const invoked = await supabaseClient.functions.invoke("update-member-profile", { body: payload });
     if (!invoked.error) {
@@ -1217,9 +1218,10 @@ export function MemberPortal(props: MemberPortalProps) {
 
     return Array.from(best.entries())
       .map(([name, value]) => ({ name, ...value }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 6);
+      .sort((a, b) => b.score - a.score);
   }, [completedLogs]);
+  const personalRecordsPreview = showAllPersonalRecords ? personalRecords : personalRecords.slice(0, 3);
+  const hiddenPersonalRecordsCount = Math.max(0, personalRecords.length - 3);
   const activeCelebration = liveWorkoutCelebration ?? workoutCelebration;
   const shouldShowCelebration = Boolean(
     microCelebrationsEnabled && activeCelebration && activeCelebration.memberId === activeMemberId
@@ -3998,12 +4000,21 @@ export function MemberPortal(props: MemberPortalProps) {
                       className="bg-white"
                     />
                   ) : null}
-                  {personalRecords.map((record) => (
+                  {personalRecordsPreview.map((record) => (
                     <div key={record.name} className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="font-medium">{record.name}</div>
                       <div className="mt-1 text-sm text-slate-500">Beste registrerte: {record.weight} kg × {record.reps}</div>
                     </div>
                   ))}
+                  {hiddenPersonalRecordsCount > 0 ? (
+                    <OutlineButton
+                      type="button"
+                      onClick={() => setShowAllPersonalRecords((prev) => !prev)}
+                      className="w-full sm:w-auto"
+                    >
+                      {showAllPersonalRecords ? "Vis færre rekorder" : `Se flere rekorder (+${hiddenPersonalRecordsCount})`}
+                    </OutlineButton>
+                  ) : null}
                 </div>
               </div>
             </Card>

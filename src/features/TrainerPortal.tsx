@@ -6,6 +6,7 @@ import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { uid } from "../app/storage";
 import { Card, DangerButton, EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
+import motusLogo from "../assets/motus-logo.png";
 import type { CreateMemberInput, UpdateMemberInput } from "../services/appRepository";
 import type { InviteMemberResult, InviteTrainerResult } from "../services/supabaseAuth";
 import type {
@@ -67,6 +68,7 @@ type TrainerPortalProps = {
   memberAvatarById?: Record<string, string>;
   setMemberAvatarUrlForMember?: (memberId: string, avatarUrl: string) => void;
   isLocalDemoSession?: boolean;
+  canAccessAdminTools?: boolean;
   /** Synket fra Supabase ved hydrering (per medlem, inkl. tom liste). */
   remoteTrainerPeriodPlansByMemberId?: Record<string, PeriodSchedulePlan[]>;
 };
@@ -171,6 +173,22 @@ function parseChatCreatedAtMs(value: string): number {
 export function TrainerPortal(props: TrainerPortalProps) {
   const EXERCISE_IMAGE_BUCKET = "exercise-images";
   const MAX_EXERCISE_IMAGE_BYTES = 5 * 1024 * 1024;
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function pickFirstName(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const firstToken = trimmed.split(/\s+/)[0] ?? "";
+  return firstToken.trim();
+}
   const ALLOWED_EXERCISE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
   const {
     members,
@@ -202,6 +220,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
     memberAvatarById = {},
     setMemberAvatarUrlForMember,
     isLocalDemoSession = false,
+    canAccessAdminTools = false,
     remoteTrainerPeriodPlansByMemberId = {},
   } = props;
 
@@ -310,6 +329,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const [newMemberPhone, setNewMemberPhone] = useState("");
   const [newMemberGoal, setNewMemberGoal] = useState("");
   const [newMemberFocus, setNewMemberFocus] = useState("");
+  const [newMemberInviteType, setNewMemberInviteType] = useState<"PT-kunde" | "Premium-kunde" | "Medlem">("PT-kunde");
   const [newMemberError, setNewMemberError] = useState<string | null>(null);
   const [pendingProgramMemberEmail, setPendingProgramMemberEmail] = useState<string | null>(null);
   const [pendingInviteMemberEmail, setPendingInviteMemberEmail] = useState<string | null>(null);
@@ -1355,12 +1375,19 @@ export function TrainerPortal(props: TrainerPortalProps) {
       return;
     }
 
+    const selectedInviteType = options?.inviteAfterCreate ? newMemberInviteType : "PT-kunde";
+    const nextMembershipType: Member["membershipType"] = selectedInviteType === "Premium-kunde" ? "Premium" : "Standard";
+    const nextCustomerType: Member["customerType"] =
+      selectedInviteType === "Medlem" ? "Medlem" : selectedInviteType === "PT-kunde" ? "PT-kunde" : "Oppfølging";
+
     addMember({
       name,
       email,
       phone: normalizePhone(newMemberPhone),
       goal: newMemberGoal,
       focus: newMemberFocus,
+      membershipType: nextMembershipType,
+      customerType: nextCustomerType,
     });
 
     setNewMemberName("");
@@ -1382,7 +1409,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
   }
 
   function handleDeleteMember(memberId: string) {
-    const confirmed = window.confirm("Er du sikker på at du vil slette kunden permanent? Dette sletter også programmer, logger og meldinger, og kan ikke angres.");
+    if (!canAccessAdminTools) return;
+    const confirmed = window.confirm("Admin: Slette kunden permanent? Dette sletter også programmer, logger og meldinger, og kan ikke angres.");
     if (!confirmed) return;
     deleteMember(memberId);
   }
@@ -1407,34 +1435,47 @@ export function TrainerPortal(props: TrainerPortalProps) {
   }
 
   function handlePrintProgram(program: TrainingProgram) {
+    if (typeof window === "undefined") return;
     const printWindow = window.open("", "_blank", "width=900,height=1100");
     if (!printWindow) {
       window.alert("Kunne ikke åpne utskriftsvindu. Sjekk popup-innstillinger i nettleseren.");
       return;
     }
-    const escapeHtml = (value: string) =>
-      value
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/\"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    const recipientName = selectedMember?.name || "Kunde";
+    const recipientName = (selectedMember?.name || "Kunde").trim();
+    const trainerLabel = (pickFirstName(program.assignedTrainerName ?? "") || pickFirstName(MOTUS.name) || "Trener").trim();
     const exercisesHtml =
-      program.exercises.length === 0
-        ? '<div class="empty-state">Ingen øvelser i programmet.</div>'
-        : program.exercises
-            .map((exercise) => {
-              const details = exercise.durationMinutes
-                ? `${exercise.sets} runder × ${exercise.durationMinutes} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds}s pause`
-                : `${exercise.sets} × ${exercise.reps} · ${exercise.weight || "0"} kg · ${exercise.restSeconds}s pause`;
-              return `<div class="exercise-card">
-  <div class="exercise-title">${escapeHtml(exercise.exerciseName)}</div>
-  <div class="exercise-prescription">${escapeHtml(details)}</div>
-  ${exercise.notes ? `<div class="exercise-notes">${escapeHtml(exercise.notes)}</div>` : ""}
-</div>`;
+      program.exercises.length > 0
+        ? program.exercises
+            .map((exercise, index) => {
+              const libraryMatch =
+                exercises.find((item) => item.id === exercise.exerciseId) ??
+                exercises.find((item) => item.name.trim().toLowerCase() === exercise.exerciseName.trim().toLowerCase()) ??
+                null;
+              const prescription = exercise.durationMinutes
+                ? `${exercise.sets} runder × ${exercise.durationMinutes} min${
+                    exercise.speed ? ` · ${exercise.speed} km/t` : ""
+                  }${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s pause`
+                : `${exercise.sets} x ${exercise.reps} · ${exercise.weight || "-"} kg · ${exercise.restSeconds}s pause`;
+              const imageUrl = libraryMatch?.imageUrl?.trim() || "";
+              const description = libraryMatch?.description?.trim() || "Ingen forklaring tilgjengelig for denne øvelsen.";
+              return `<article class="exercise-card">
+  <div class="exercise-image-wrap">
+    ${
+      imageUrl
+        ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(exercise.exerciseName)}" class="exercise-image" />`
+        : `<div class="exercise-image-placeholder">Ingen bilde</div>`
+    }
+  </div>
+  <div class="exercise-body">
+    <div class="exercise-title">${index + 1}. ${escapeHtml(exercise.exerciseName)}</div>
+    <div class="exercise-prescription">${escapeHtml(prescription)}</div>
+    <div class="exercise-description">${escapeHtml(description)}</div>
+    ${exercise.notes ? `<div class="exercise-notes">Coach-notat: ${escapeHtml(exercise.notes)}</div>` : ""}
+  </div>
+</article>`;
             })
-            .join("");
+            .join("")
+        : `<div class="empty-state">Ingen øvelser i programmet.</div>`;
     const html = `<!doctype html>
 <html lang="no">
 <head>
@@ -1442,39 +1483,85 @@ export function TrainerPortal(props: TrainerPortalProps) {
   <title>${escapeHtml(program.title)} - Utskrift</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; color: #0f172a; background: #f8fafc; }
-    .page { padding: 14px; max-width: 920px; margin: 0 auto; }
+    .page { padding: 14px; max-width: 940px; margin: 0 auto; }
     .header-card { border-radius: 12px; padding: 12px; background: linear-gradient(135deg, #14b8a6 0%, #ec4899 100%); color: #fff; }
+    .header-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+    .brand-logo { height: 40px; width: auto; object-fit: contain; }
     h1 { margin: 0 0 6px; font-size: 24px; }
-    .meta { color: rgba(255,255,255,0.92); font-size: 13px; }
+    .meta { color: rgba(255,255,255,0.9); font-size: 13px; }
+    .meta-line { color: rgba(255,255,255,0.95); font-size: 13px; margin-top: 2px; }
     .notes-card { margin-top: 10px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; padding: 10px; }
     .notes-title { font-weight: 700; margin-bottom: 6px; }
     .section-title { margin: 12px 0 8px; font-size: 15px; font-weight: 700; color: #334155; }
-    .exercise-card { border: 1px solid #dbeafe; border-radius: 12px; background: #fff; padding: 8px; margin-bottom: 8px; break-inside: avoid; }
+    .exercise-card { display: grid; grid-template-columns: 132px 1fr; gap: 10px; border: 1px solid #dbeafe; border-radius: 12px; background: #fff; padding: 8px; margin-bottom: 8px; break-inside: avoid; }
+    .exercise-image-wrap { width: 120px; aspect-ratio: 1 / 1; border-radius: 10px; overflow: hidden; background: #f1f5f9; border: 1px solid #e2e8f0; }
+    .exercise-image { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .exercise-image-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px; }
     .exercise-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
-    .exercise-prescription { font-size: 13px; color: #0f766e; margin-bottom: 4px; }
-    .exercise-notes { font-size: 12px; color: #475569; }
+    .exercise-prescription { font-size: 13px; color: #0f766e; margin-bottom: 6px; }
+    .exercise-description { font-size: 12px; color: #475569; line-height: 1.45; }
+    .exercise-notes { margin-top: 6px; font-size: 12px; color: #7c2d12; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 6px; }
     .empty-state { border: 1px dashed #cbd5e1; border-radius: 12px; background: #fff; padding: 12px; color: #64748b; }
     .footer { margin-top: 14px; color: #64748b; font-size: 11px; text-align: right; }
-    @media print { body { margin: 16mm; background: #fff; } .page { padding: 0; } .exercise-card { page-break-inside: avoid; } }
+    @media print { body { margin: 16mm; } }
+    @media print {
+      body { background: #fff; }
+      .page { padding: 0; }
+      .exercise-card { page-break-inside: avoid; }
+    }
   </style>
 </head>
 <body>
   <div class="page">
     <div class="header-card">
+      <div class="header-top">
+        <img src="${escapeHtml(motusLogo)}" alt="Motus logo" class="brand-logo" />
+      </div>
       <h1>${escapeHtml(program.title)}</h1>
       <div class="meta">Mål: ${escapeHtml(program.goal || "Ikke satt")} · Opprettet: ${escapeHtml(program.createdAt || "-")}</div>
-      <div class="meta">Kunde: ${escapeHtml(recipientName)}</div>
+      <div class="meta-line">Av: ${escapeHtml(trainerLabel)} · Til: ${escapeHtml(recipientName)}</div>
     </div>
     ${program.notes ? `<div class="notes-card"><div class="notes-title">Notater</div>${escapeHtml(program.notes)}</div>` : ""}
     <div class="section-title">Øvelser</div>
     ${exercisesHtml}
-    <div class="footer">Generert fra Motus trenerportal.</div>
+    <div class="footer">Generert fra Motus medlemsportal.</div>
   </div>
   <script>
-    window.addEventListener("load", function () {
-      window.focus();
-      window.print();
-    }, { once: true });
+    (function () {
+      var hasPrinted = false;
+      function doPrintOnce() {
+        if (hasPrinted) return;
+        hasPrinted = true;
+        window.focus();
+        window.print();
+      }
+      function waitForImagesThenPrint() {
+        var images = Array.prototype.slice.call(document.images || []);
+        if (!images.length) {
+          doPrintOnce();
+          return;
+        }
+        var loaded = 0;
+        function markLoaded() {
+          loaded += 1;
+          if (loaded >= images.length) doPrintOnce();
+        }
+        images.forEach(function (img) {
+          if (img.complete) {
+            markLoaded();
+            return;
+          }
+          img.addEventListener("load", markLoaded, { once: true });
+          img.addEventListener("error", markLoaded, { once: true });
+        });
+        window.setTimeout(doPrintOnce, 2000);
+      }
+      if (document.readyState === "complete") {
+        waitForImagesThenPrint();
+      } else {
+        window.addEventListener("load", waitForImagesThenPrint, { once: true });
+      }
+    })();
   </script>
 </body>
 </html>`;
@@ -1683,7 +1770,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       return;
     }
     if (!supabaseClient) {
-      setMemberLinkStatus("Kan ikke reparere kobling uten Supabase-oppsett.");
+      setMemberLinkStatus("Denne handlingen er ikke tilgjengelig akkurat nå.");
       return;
     }
 
@@ -1946,7 +2033,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
   async function handleExerciseImageUpload(file: File | null) {
     if (!file) return;
     if (!supabaseClient) {
-      setExerciseFormStatus("Bildefunksjon krever Supabase-oppsett.");
+      setExerciseFormStatus("Bildefunksjonen er ikke tilgjengelig akkurat nå.");
       return;
     }
     if (!ALLOWED_EXERCISE_IMAGE_TYPES.has(file.type)) {
@@ -1978,9 +2065,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Ukjent feil ved opplasting.";
       if (message.toLowerCase().includes("bucket")) {
-        setExerciseFormStatus("Opplasting feilet: bucket 'exercise-images' mangler i Supabase Storage.");
+        setExerciseFormStatus("Kunne ikke laste opp bilde akkurat nå. Prøv igjen senere.");
       } else {
-        setExerciseFormStatus(`Opplasting feilet: ${message}`);
+        setExerciseFormStatus("Kunne ikke laste opp bilde akkurat nå. Prøv igjen senere.");
       }
     } finally {
       setIsUploadingExerciseImage(false);
@@ -2278,8 +2365,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
             }}
           >
             {followUpCount > 0
-              ? `${followUpCount} kunder ma folges opp i dag.`
-              : "Ingen kunder trenger oppfolging akkurat na."}{" "}
+              ? `${followUpCount} kunder må følges opp i dag.`
+              : "Ingen kunder trenger oppfølging akkurat nå."}{" "}
             {membersWithoutProgramCount > 0 ? `${membersWithoutProgramCount} kunder mangler program.` : "Alle aktive kunder har program."}
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -2891,15 +2978,19 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     <OutlineButton onClick={() => void handleInviteSelectedMember()} disabled={isInvitingMember}>
                       {isInvitingMember ? "Sender invitasjon..." : "Send invitasjon på nytt"}
                     </OutlineButton>
-                    <OutlineButton onClick={() => void handleRepairSelectedMemberLink()} disabled={isRepairingMemberLink}>
-                      {isRepairingMemberLink ? "Reparerer kobling..." : "Reparer medlemskobling"}
-                    </OutlineButton>
+                    {canAccessAdminTools ? (
+                      <OutlineButton onClick={() => void handleRepairSelectedMemberLink()} disabled={isRepairingMemberLink}>
+                        {isRepairingMemberLink ? "Reparerer kobling..." : "Reparer medlemskobling"}
+                      </OutlineButton>
+                    ) : null}
                     <OutlineButton onClick={() => handleDeactivateMember(selectedMember.id)}>
-                      Sett medlem som inaktiv
+                      Arkiver kunde
                     </OutlineButton>
-                    <DangerButton onClick={() => handleDeleteMember(selectedMember.id)}>
-                      Slett kunde permanent
-                    </DangerButton>
+                    {canAccessAdminTools ? (
+                      <DangerButton onClick={() => handleDeleteMember(selectedMember.id)}>
+                        Slett kunde permanent
+                      </DangerButton>
+                    ) : null}
                   </div>
                 </div>
 
@@ -4312,7 +4403,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       </Card>
       ) : null}
 
-      {trainerTab === "admin" ? (
+      {trainerTab === "admin" && canAccessAdminTools ? (
         <Card className="p-5 space-y-4">
           <div className="flex items-start gap-3">
             <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
@@ -4400,6 +4491,15 @@ export function TrainerPortal(props: TrainerPortalProps) {
             <TextInput value={newMemberPhone} onChange={(e) => setNewMemberPhone(e.target.value)} placeholder="Telefon (valgfritt)" />
             <TextInput value={newMemberGoal} onChange={(e) => setNewMemberGoal(e.target.value)} placeholder="Hovedmål (valgfritt)" />
             <TextInput value={newMemberFocus} onChange={(e) => setNewMemberFocus(e.target.value)} placeholder="Fokus (valgfritt)" />
+            <SelectBox
+              value={newMemberInviteType}
+              onChange={(value) => setNewMemberInviteType(value as "PT-kunde" | "Premium-kunde" | "Medlem")}
+              options={[
+                { value: "PT-kunde", label: "Type ved invitasjon: PT-kunde" },
+                { value: "Premium-kunde", label: "Type ved invitasjon: Premium-kunde" },
+                { value: "Medlem", label: "Type ved invitasjon: Medlem" },
+              ]}
+            />
             {newMemberError ? <StatusMessage message={newMemberError} tone="error" className="!rounded-xl !px-3 !py-2 !text-xs" /> : null}
             <GradientButton onClick={() => submitNewMember()} className="w-full md:w-auto">Opprett medlem</GradientButton>
             <OutlineButton onClick={() => submitNewMember({ inviteAfterCreate: true })} className="w-full md:w-auto">

@@ -22,7 +22,7 @@ export function AppHeader({
   onLogout: () => void;
   onOpenMemberProfile?: () => void;
 }) {
-  const showProductionSafeQuickTools = showQuickLogin && !import.meta.env.PROD;
+  const showProductionSafeQuickTools = showQuickLogin && (import.meta.env.DEV || import.meta.env.MODE === "test");
   const memberFirstName = useMemo(() => {
     const rawName = currentUser.name?.trim() ?? "";
     if (!rawName) return "du";
@@ -87,7 +87,7 @@ export function AppHeader({
               <>
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Motus Coach</h1>
                 <p className="mt-2 text-sm md:text-base text-slate-500 max-w-3xl">
-                  Administrer medlemmer, programmer og oppfolging pa ett sted.
+                  Administrer medlemmer, programmer og oppfølging på ett sted.
                 </p>
               </>
             )}

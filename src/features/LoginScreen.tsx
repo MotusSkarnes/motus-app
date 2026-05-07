@@ -60,7 +60,7 @@ export function LoginScreen(props: LoginScreenProps) {
     quickLogin,
     showQuickLogin,
   } = props;
-  const showProductionSafeQuickLogin = showQuickLogin && !import.meta.env.PROD;
+  const showProductionSafeQuickLogin = showQuickLogin && (import.meta.env.DEV || import.meta.env.MODE === "test");
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
@@ -78,7 +78,7 @@ export function LoginScreen(props: LoginScreenProps) {
           </div>
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">Velkommen til Motus Coach</h1>
-            <p className="mt-2 max-w-xl text-slate-600">Logg inn for a styre kunder, programmer, periodeplaner, fremgang og oppfolging i en samlet arbeidsflate.</p>
+            <p className="mt-2 max-w-xl text-slate-600">Logg inn for å styre kunder, programmer, periodeplaner, fremgang og oppfølging i en samlet arbeidsflate.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <StatCard label="Kunder" value="Full kontroll" hint="Profiler, meldinger, planer" />

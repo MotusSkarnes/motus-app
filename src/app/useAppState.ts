@@ -604,7 +604,8 @@ export function useAppState() {
     const result = await requestPasswordRecovery(loginEmail);
     if (!result.ok) {
       setPasswordRecoveryError(result.message);
-      if (result.message.toLowerCase().includes("for mange foresporsler")) {
+      const normalized = result.message.toLowerCase();
+      if (normalized.includes("for mange forespørsler") || normalized.includes("for mange foresporsler")) {
         setPasswordRecoveryCooldownSeconds(60);
       }
       return;
@@ -876,14 +877,14 @@ export function useAppState() {
 
   async function inviteMember(email: string, memberId: string): Promise<InviteMemberResult> {
     if (!isSupabaseConfigured) {
-      return { ok: false, message: "Invitasjon krever Supabase-oppsett." };
+      return { ok: false, message: "Invitasjon er ikke tilgjengelig akkurat nå." };
     }
     return inviteMemberByEmail(email, memberId);
   }
 
   async function restoreMemberByEmail(email: string): Promise<{ ok: boolean; message: string }> {
     if (!isSupabaseConfigured) {
-      return { ok: false, message: "Gjenoppretting krever Supabase-oppsett." };
+      return { ok: false, message: "Gjenoppretting er ikke tilgjengelig akkurat nå." };
     }
     const result = await restoreMemberByEmailFromSupabase(email);
     if (!result.ok) return result;
@@ -896,7 +897,7 @@ export function useAppState() {
 
   async function inviteTrainer(email: string): Promise<InviteTrainerResult> {
     if (!isSupabaseConfigured) {
-      return { ok: false, message: "Invitasjon krever Supabase-oppsett." };
+      return { ok: false, message: "Invitasjon er ikke tilgjengelig akkurat nå." };
     }
     return inviteTrainerByEmail(email);
   }
