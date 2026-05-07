@@ -73,11 +73,8 @@ const DEFAULT_HOME_VISIBILITY = {
   weeklyStats: true,
   streakChallenges: true,
   nextStep: true,
-  selfWorkout: true,
-  todayPlan: true,
   nextOnPlan: true,
   quickActions: true,
-  recentActivity: true,
   calendar: true,
 } as const;
 type HomeSectionKey = keyof typeof DEFAULT_HOME_VISIBILITY;
@@ -2169,32 +2166,6 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     return null;
   }, [activeWeeklyPlan, currentWeekdayKey]);
-  const recentHomeEvents = useMemo(() => {
-    const items: Array<{ id: string; title: string; meta: string }> = [];
-    if (latestCompletedLog) {
-      items.push({
-        id: `log-${latestCompletedLog.id}`,
-        title: `Fullført: ${latestCompletedLog.programTitle}`,
-        meta: latestCompletedLog.date,
-      });
-    }
-    const latestTrainerMessage = [...memberMessages].reverse().find((message) => message.sender === "trainer");
-    if (latestTrainerMessage) {
-      items.push({
-        id: `msg-${latestTrainerMessage.id}`,
-        title: "Ny melding fra PT",
-        meta: latestTrainerMessage.createdAt,
-      });
-    }
-    if (todayPlanEntry) {
-      items.push({
-        id: `plan-${todayPlanEntry}`,
-        title: `Planlagt i dag: ${todayPlanEntry}`,
-        meta: "Fra periodeplan",
-      });
-    }
-    return items.slice(0, 3);
-  }, [latestCompletedLog, memberMessages, todayPlanEntry]);
   const streakChallenges = useMemo(() => {
     const dayMs = 24 * 60 * 60 * 1000;
     const today = getStartOfDay(now);
@@ -2684,7 +2655,7 @@ export function MemberPortal(props: MemberPortalProps) {
           {(isMemberLimited
             ? [{ id: "programs", label: "Trening" }]
             : [
-            { id: "overview", label: "Oversikt" },
+            { id: "overview", label: "Hjem" },
             { id: "programs", label: "Trening" },
             { id: "progress", label: "Fremgang" },
             { id: "messages", label: "Meldinger" },
@@ -2736,7 +2707,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
         <div className="min-w-0 w-full space-y-4 sm:space-y-6">
           {memberTab === "overview" ? (
-            <Card className="min-w-0 w-full p-4 sm:p-5 space-y-4 sm:space-y-5">
+            <Card className="min-w-0 w-full p-4 sm:p-5 flex flex-col gap-4 sm:gap-5">
               <div className="hidden w-full sm:block rounded-[22px] p-4 sm:p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm text-white/80">Hei{viewedMember ? `, ${viewedMember.name}` : ""}</div>
@@ -2760,11 +2731,8 @@ export function MemberPortal(props: MemberPortalProps) {
                       { key: "weeklyStats", label: "Ukesstatistikk" },
                       { key: "streakChallenges", label: "Streaks & challenges" },
                       { key: "nextStep", label: "Neste steg" },
-                      { key: "selfWorkout", label: "Lag egen økt" },
-                      { key: "todayPlan", label: "Dagens økt" },
                       { key: "nextOnPlan", label: "Neste på planen" },
                       { key: "quickActions", label: "Hurtighandlinger" },
-                      { key: "recentActivity", label: "Siste aktivitet" },
                       { key: "calendar", label: "Treningskalender" },
                     ] as Array<{ key: HomeSectionKey; label: string }>).map((item) => (
                       <label key={item.key} className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -2825,7 +2793,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 </div>
               ) : null}
-              {(homeVisibility.nextStep || (homeVisibility.todayPlan && todayPlanEntry)) ? (
+              {homeVisibility.nextStep ? (
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">I dag</div>
               ) : null}
               {homeVisibility.nextStep ? (
@@ -2859,51 +2827,6 @@ export function MemberPortal(props: MemberPortalProps) {
                   </OutlineButton>
                 </div>
               </div>
-              ) : null}
-              {homeVisibility.selfWorkout ? (
-                <div className="min-w-0 w-full rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="flex flex-wrap items-start gap-3">
-                  <div className="rounded-xl p-2 text-white shrink-0" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
-                    <Sparkles className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold text-slate-800">Lag egen økt</div>
-                    <div className="mt-1 text-sm text-slate-600">
-                      Legg til øvelser, juster sett og reps, og start når du er klar.
-                    </div>
-                    <OutlineButton onClick={() => setMemberTab("programs")} className="mt-3 w-full sm:w-auto">
-                      Åpne øktbygger
-                    </OutlineButton>
-                  </div>
-                </div>
-              </div>
-              ) : null}
-              {homeVisibility.todayPlan && todayPlanEntry ? (
-                <div className="min-w-0 w-full rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="text-sm font-semibold text-slate-700">📅 Dagens økt (fra periodeplan)</div>
-                  <div className="mt-1 text-sm text-slate-700">{todayPlanEntry}</div>
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                    {todayProgramMatch ? (
-                      <GradientButton
-                        onClick={() => {
-                          setMemberTab("programs");
-                          if (intervalProgramIdSet.has(todayProgramMatch.id)) {
-                            openIntervalTimerModal(todayProgramMatch.id);
-                            return;
-                          }
-                          startWorkoutMode(todayProgramMatch.id, buildStartWorkoutOptions(todayProgramMatch));
-                        }}
-                        className="w-full sm:w-auto"
-                      >
-                        Start dagens økt
-                      </GradientButton>
-                    ) : (
-                      <OutlineButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">
-                        Se dagens plan
-                      </OutlineButton>
-                    )}
-                  </div>
-                </div>
               ) : null}
               {(homeVisibility.nextOnPlan || homeVisibility.quickActions) ? (
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Snarveier</div>
@@ -2941,7 +2864,6 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="text-xs text-slate-500">Rask tilgang</div>
                   </div>
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                    <GradientButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">Lag egen økt</GradientButton>
                     {!isMemberLimited ? (
                       <>
                         <OutlineButton onClick={() => setMemberTab("messages")} className="w-full sm:w-auto">Send melding til PT</OutlineButton>
@@ -2953,33 +2875,8 @@ export function MemberPortal(props: MemberPortalProps) {
                 ) : <div />}
               </div>
               ) : null}
-              {homeVisibility.recentActivity ? (
-                <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-semibold text-slate-700">🕒 Siste aktivitet</div>
-                  <div className="text-xs text-slate-500">Historikk</div>
-                </div>
-                {recentHomeEvents.length === 0 ? (
-                  <div className="mt-2 space-y-2">
-                    <div className="text-sm text-slate-500">Ingen aktivitet ennå. Start med en økt i dag.</div>
-                    <GradientButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">
-                      Start første økt
-                    </GradientButton>
-                  </div>
-                ) : (
-                  <div className="mt-2 space-y-2">
-                    {recentHomeEvents.map((item) => (
-                      <div key={item.id} className="rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                        <div className="font-medium text-slate-800">{item.title}</div>
-                        <div className="text-xs text-slate-500">{item.meta}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              ) : null}
               {homeVisibility.calendar ? (
-                <div className="grid gap-4">
+                <div className="order-first grid gap-4">
                 <div className="min-w-0 w-full overflow-hidden rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Treningskalender</div>
                   <div className="mt-1 text-base font-semibold text-slate-800 capitalize">{calendarMonthLabel}</div>
@@ -3074,6 +2971,33 @@ export function MemberPortal(props: MemberPortalProps) {
                       <span>Misset</span>
                     </div>
                   </div>
+                  {todayPlanEntry ? (
+                    <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dagens økt</div>
+                      <div className="mt-1 text-sm text-slate-700">{todayPlanEntry}</div>
+                      <div className="mt-3">
+                        {todayProgramMatch ? (
+                          <GradientButton
+                            onClick={() => {
+                              setMemberTab("programs");
+                              if (intervalProgramIdSet.has(todayProgramMatch.id)) {
+                                openIntervalTimerModal(todayProgramMatch.id);
+                                return;
+                              }
+                              startWorkoutMode(todayProgramMatch.id, buildStartWorkoutOptions(todayProgramMatch));
+                            }}
+                            className="w-full sm:w-auto"
+                          >
+                            Start dagens økt
+                          </GradientButton>
+                        ) : (
+                          <OutlineButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">
+                            Se dagens plan
+                          </OutlineButton>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
                   {selectedCalendarDay ? (
                     <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -3189,7 +3113,8 @@ export function MemberPortal(props: MemberPortalProps) {
 
           {memberTab === "programs" ? (
             <>
-              <Card className="mb-4 p-5">
+              <div className="flex flex-col gap-4">
+              <Card className="order-last p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex items-start gap-3">
                     <div className="rounded-2xl p-2.5 text-white shrink-0" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
@@ -3357,7 +3282,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   {memberAssignedPrograms.length === 0 ? (
                     <div className="rounded-2xl border border-dashed bg-white p-6 text-center">
                       <div className="text-sm font-semibold text-slate-700">Ingen programmer fra trener ennå</div>
-                      <div className="mt-1 text-sm text-slate-500">Be trener tildele et program, eller bruk «Lag egen økt» over.</div>
+                      <div className="mt-1 text-sm text-slate-500">Be trener tildele et program, eller bruk «Lag egen økt» nederst på siden.</div>
                       {!isMemberLimited ? (
                         <GradientButton onClick={() => setMemberTab("messages")} className="mt-3 w-full sm:w-auto">
                           Send melding til trener
@@ -3777,6 +3702,8 @@ export function MemberPortal(props: MemberPortalProps) {
                   ))}
                 </div>
               </div>
+              </Card>
+              </div>
               {showIntervalTimerModal ? (
                 <div className="motus-modal-insets fixed inset-0 z-[10012] overscroll-contain bg-slate-900/60">
                   <div className="mx-auto flex h-full w-full max-w-2xl flex-col rounded-[30px] bg-white shadow-2xl">
@@ -4117,7 +4044,6 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 </div>
               ) : null}
-            </Card>
             </>
           ) : null}
 
