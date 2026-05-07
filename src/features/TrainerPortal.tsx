@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ClipboardList, Dumbbell, Eye, EyeOff, MessageSquare, Pencil, ShieldCheck, Star, Trash2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
@@ -480,9 +480,13 @@ function pickFirstName(value: string): string {
     });
     return Array.from(byIdentity.values());
   }, [members, currentTrainerOwnerUserId]);
+  const activeMembers = useMemo(
+    () => deduplicatedMembers.filter((member) => member.isActive !== false),
+    [deduplicatedMembers]
+  );
   const visibleMembers = showInactiveMembers
     ? deduplicatedMembers
-    : deduplicatedMembers.filter((member) => member.isActive !== false);
+    : activeMembers;
   const filteredMembers = useMemo(() => {
     const query = memberSearch.trim().toLowerCase();
     return visibleMembers
@@ -512,6 +516,22 @@ function pickFirstName(value: string): string {
       return a.name.localeCompare(b.name, "no");
     });
   }, [filteredMembers, memberSort]);
+  const findNewestPendingMemberByEmail = useCallback((email: string): Member | null => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const matches = members.filter((member) => member.email.trim().toLowerCase() === normalizedEmail);
+    if (!matches.length) return null;
+    return [...matches].reverse().sort((a, b) => {
+      const aOwned = (a.ownerUserId ?? "").trim() === currentTrainerOwnerUserId ? 1 : 0;
+      const bOwned = (b.ownerUserId ?? "").trim() === currentTrainerOwnerUserId ? 1 : 0;
+      if (aOwned !== bOwned) return bOwned - aOwned;
+      const aActive = a.isActive !== false ? 1 : 0;
+      const bActive = b.isActive !== false ? 1 : 0;
+      if (aActive !== bActive) return bActive - aActive;
+      const aInvited = a.invitedAt ? 1 : 0;
+      const bInvited = b.invitedAt ? 1 : 0;
+      return aInvited - bInvited;
+    })[0] ?? null;
+  }, [members, currentTrainerOwnerUserId]);
   const memberAvatarByEmail = useMemo(() => {
     const byEmail: Record<string, string> = {};
     const byName: Record<string, string> = {};
@@ -866,17 +886,17 @@ function pickFirstName(value: string): string {
 
   useEffect(() => {
     if (!pendingProgramMemberEmail) return;
-    const createdMember = members.find((member) => member.email.toLowerCase() === pendingProgramMemberEmail.toLowerCase());
+    const createdMember = findNewestPendingMemberByEmail(pendingProgramMemberEmail);
     if (!createdMember) return;
     setSelectedMemberId(createdMember.id);
     setTrainerTab("customers");
     setCustomerSubTab("programs");
     setPendingProgramMemberEmail(null);
-  }, [pendingProgramMemberEmail, members, setSelectedMemberId, setTrainerTab]);
+  }, [pendingProgramMemberEmail, findNewestPendingMemberByEmail, setSelectedMemberId, setTrainerTab]);
 
   useEffect(() => {
     if (!pendingInviteMemberEmail) return;
-    const createdMember = members.find((member) => member.email.toLowerCase() === pendingInviteMemberEmail.toLowerCase());
+    const createdMember = findNewestPendingMemberByEmail(pendingInviteMemberEmail);
     if (!createdMember) return;
 
     async function sendInviteForNewMember() {
@@ -893,7 +913,7 @@ function pickFirstName(value: string): string {
     }
 
     void sendInviteForNewMember();
-  }, [pendingInviteMemberEmail, members, inviteMember, markMemberInvited, setSelectedMemberId, setTrainerTab]);
+  }, [pendingInviteMemberEmail, findNewestPendingMemberByEmail, inviteMember, markMemberInvited, setSelectedMemberId, setTrainerTab]);
 
   useEffect(() => {
     if (!editingExerciseId) return;
@@ -2080,12 +2100,12 @@ function pickFirstName(value: string): string {
   }
 
   const followUpCount = useMemo(
-    () => deduplicatedMembers.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length,
-    [deduplicatedMembers]
+    () => activeMembers.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length,
+    [activeMembers]
   );
   const membersWithoutProgramCount = useMemo(
-    () => deduplicatedMembers.filter((member) => !programs.some((program) => program.memberId === member.id)).length,
-    [deduplicatedMembers, programs],
+    () => activeMembers.filter((member) => !programs.some((program) => program.memberId === member.id)).length,
+    [activeMembers, programs],
   );
   const dashboardSummary = useMemo(() => {
     const now = new Date();
@@ -2142,7 +2162,7 @@ function pickFirstName(value: string): string {
     const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
 
-    return deduplicatedMembers
+    return activeMembers
       .map((member) => {
         const relatedIds = Array.from(memberRelatedIdSetByCanonicalId.get(member.id) ?? new Set([member.id]));
         const relatedIdSet = new Set(relatedIds);
@@ -2189,7 +2209,7 @@ function pickFirstName(value: string): string {
       .filter((item) => item.score >= 2)
       .sort((a, b) => b.score - a.score || b.member.daysSinceActivity.localeCompare(a.member.daysSinceActivity))
       .slice(0, 6);
-  }, [deduplicatedMembers, logs, memberRelatedIdSetByCanonicalId, lastFollowUpByMemberId]);
+  }, [activeMembers, logs, memberRelatedIdSetByCanonicalId, lastFollowUpByMemberId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2232,7 +2252,7 @@ function pickFirstName(value: string): string {
       return { tone: "green", score: 1, label: "Grønn" };
     }
 
-    const mapped = deduplicatedMembers.map((member) => ({ member, priority: getPriority(member) }));
+    const mapped = activeMembers.map((member) => ({ member, priority: getPriority(member) }));
     const filtered = priorityFilter === "all" ? mapped : mapped.filter((item) => item.priority.tone === priorityFilter);
     return filtered.sort((a, b) => {
       if (priorityMemberTypeSort !== "none") {
@@ -2245,7 +2265,7 @@ function pickFirstName(value: string): string {
       if (prioritySort === "highFirst") return b.priority.score - a.priority.score;
       return a.priority.score - b.priority.score;
     });
-  }, [deduplicatedMembers, priorityFilter, prioritySort, priorityMemberTypeSort]);
+  }, [activeMembers, priorityFilter, prioritySort, priorityMemberTypeSort]);
 
   function memberTypeBadges(member: Member): Array<{ label: string; style: { backgroundColor: string; color: string } }> {
     const badges: Array<{ label: string; style: { backgroundColor: string; color: string } }> = [];
@@ -2797,7 +2817,7 @@ function pickFirstName(value: string): string {
                   <SelectBox
                     value={selectedMemberId}
                     onChange={setSelectedMemberId}
-                    options={deduplicatedMembers.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
+                    options={visibleMembers.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
                   />
                 </div>
                 <div className="rounded-[26px] p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.ink} 100%)` }}>
@@ -4087,7 +4107,7 @@ function pickFirstName(value: string): string {
                 <SelectBox
                   value={selectedMemberId}
                   onChange={setSelectedMemberId}
-                  options={deduplicatedMembers.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
+                  options={activeMembers.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
                 />
                 <SelectBox
                   value={selectedTemplateProgramId}
@@ -4429,7 +4449,7 @@ function pickFirstName(value: string): string {
             <div className="grid gap-2 sm:grid-cols-3">
               <div className="rounded-xl border bg-white px-3 py-2 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-slate-500">Aktive kunder</div>
-                <div className="font-semibold text-slate-800">{deduplicatedMembers.filter((member) => member.isActive !== false).length}</div>
+                <div className="font-semibold text-slate-800">{activeMembers.length}</div>
               </div>
               <div className="rounded-xl border bg-white px-3 py-2 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-slate-500">Mulige duplikater</div>
