@@ -72,7 +72,6 @@ const PERIOD_PLAN_COMPLETED_STORAGE_PREFIX = "MOTUS_PERIOD_PLAN_COMPLETED_V1:";
 const DEFAULT_HOME_VISIBILITY = {
   weeklyStats: true,
   streakChallenges: true,
-  readiness: true,
   nextStep: true,
   selfWorkout: true,
   todayPlan: true,
@@ -287,10 +286,6 @@ export function MemberPortal(props: MemberPortalProps) {
   const [celebrationSoundEnabled, setCelebrationSoundEnabled] = useState(false);
   const [showHomeCustomization, setShowHomeCustomization] = useState(false);
   const [homeVisibility, setHomeVisibility] = useState<Record<HomeSectionKey, boolean>>({ ...DEFAULT_HOME_VISIBILITY });
-  const [readinessSleep, setReadinessSleep] = useState<1 | 2 | 3 | 4 | 5>(3);
-  const [readinessEnergy, setReadinessEnergy] = useState<1 | 2 | 3 | 4 | 5>(3);
-  const [readinessStress, setReadinessStress] = useState<1 | 2 | 3 | 4 | 5>(3);
-  const [readinessMotivation, setReadinessMotivation] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [pushRegisterBusy, setPushRegisterBusy] = useState(false);
   const [pushRegisterStatus, setPushRegisterStatus] = useState<string | null>(null);
   const [customWorkoutSearch, setCustomWorkoutSearch] = useState("");
@@ -1486,52 +1481,30 @@ export function MemberPortal(props: MemberPortalProps) {
         setCelebrationSoundEnabled(false);
         setHomeVisibility({
           ...DEFAULT_HOME_VISIBILITY,
-          ...(dbHomeVisibility ?? {}),
+          ...(normalizeHomeVisibilityForStorage(dbHomeVisibility ?? undefined) ?? {}),
         });
         return;
       }
       const parsed = JSON.parse(raw) as {
         microCelebrationsEnabled?: boolean;
         celebrationSoundEnabled?: boolean;
-        readiness?: {
-          sleep?: number;
-          energy?: number;
-          stress?: number;
-          motivation?: number;
-        };
         homeVisibility?: Partial<Record<HomeSectionKey, boolean>>;
       };
       setMicroCelebrationsEnabled(parsed.microCelebrationsEnabled !== false);
       setCelebrationSoundEnabled(parsed.celebrationSoundEnabled === true);
-      const resolvedHomeVisibility = dbHomeVisibility ?? parsed.homeVisibility ?? {};
+      const resolvedPatch =
+        normalizeHomeVisibilityForStorage(dbHomeVisibility ?? parsed.homeVisibility ?? undefined) ?? {};
       setHomeVisibility({
         ...DEFAULT_HOME_VISIBILITY,
-        ...resolvedHomeVisibility,
+        ...resolvedPatch,
       });
-      const readiness = parsed.readiness ?? {};
-      const normalizeReadiness = (value: unknown): 1 | 2 | 3 | 4 | 5 => {
-        const n = Number(value);
-        if (n >= 5) return 5;
-        if (n <= 1) return 1;
-        if (n >= 4) return 4;
-        if (n >= 3) return 3;
-        return 2;
-      };
-      setReadinessSleep(normalizeReadiness(readiness.sleep));
-      setReadinessEnergy(normalizeReadiness(readiness.energy));
-      setReadinessStress(normalizeReadiness(readiness.stress));
-      setReadinessMotivation(normalizeReadiness(readiness.motivation));
     } catch {
       setMicroCelebrationsEnabled(true);
       setCelebrationSoundEnabled(false);
       setHomeVisibility({
         ...DEFAULT_HOME_VISIBILITY,
-        ...(dbHomeVisibility ?? {}),
+        ...(normalizeHomeVisibilityForStorage(dbHomeVisibility ?? undefined) ?? {}),
       });
-      setReadinessSleep(3);
-      setReadinessEnergy(3);
-      setReadinessStress(3);
-      setReadinessMotivation(3);
     }
   }, [editableMember?.id, dbHomeVisibility]);
   useEffect(() => {
@@ -1539,16 +1512,10 @@ export function MemberPortal(props: MemberPortalProps) {
     const payload = JSON.stringify({
       microCelebrationsEnabled,
       celebrationSoundEnabled,
-      readiness: {
-        sleep: readinessSleep,
-        energy: readinessEnergy,
-        stress: readinessStress,
-        motivation: readinessMotivation,
-      },
       homeVisibility,
     });
     window.localStorage.setItem(getUiPreferencesStorageKey(editableMember.id), payload);
-  }, [editableMember?.id, microCelebrationsEnabled, celebrationSoundEnabled, readinessSleep, readinessEnergy, readinessStress, readinessMotivation, homeVisibility]);
+  }, [editableMember?.id, microCelebrationsEnabled, celebrationSoundEnabled, homeVisibility]);
   useEffect(() => {
     if (!editableMember) return;
     const normalizedHomeVisibility = normalizeHomeVisibilityForStorage(homeVisibility);
@@ -2215,16 +2182,6 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     return items.slice(0, 3);
   }, [latestCompletedLog, memberMessages, todayPlanEntry]);
-  const readinessScore = useMemo(() => {
-    const stressAdjusted = 6 - readinessStress;
-    const score = Math.round(((readinessSleep + readinessEnergy + stressAdjusted + readinessMotivation) / 20) * 100);
-    return Math.max(0, Math.min(100, score));
-  }, [readinessSleep, readinessEnergy, readinessStress, readinessMotivation]);
-  const readinessAdvice = useMemo(() => {
-    if (readinessScore >= 75) return "Høy readiness: kjør planlagt økt med normal/høy intensitet.";
-    if (readinessScore >= 50) return "Middels readiness: hold økta litt kontrollert i dag.";
-    return "Lav readiness: velg en roligere økt, teknikk eller aktiv restitusjon.";
-  }, [readinessScore]);
   const streakChallenges = useMemo(() => {
     const dayMs = 24 * 60 * 60 * 1000;
     const today = getStartOfDay(now);
@@ -2789,7 +2746,6 @@ export function MemberPortal(props: MemberPortalProps) {
                     {([
                       { key: "weeklyStats", label: "Ukesstatistikk" },
                       { key: "streakChallenges", label: "Streaks & challenges" },
-                      { key: "readiness", label: "Readiness" },
                       { key: "nextStep", label: "Neste steg" },
                       { key: "selfWorkout", label: "Lag økt selv" },
                       { key: "todayPlan", label: "Dagens økt" },
@@ -2815,7 +2771,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 ) : null}
               </div>
-              {(homeVisibility.weeklyStats || homeVisibility.streakChallenges || homeVisibility.readiness) ? (
+              {(homeVisibility.weeklyStats || homeVisibility.streakChallenges) ? (
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</div>
               ) : null}
               {homeVisibility.weeklyStats ? (
@@ -2855,44 +2811,6 @@ export function MemberPortal(props: MemberPortalProps) {
                     Aktiv streak: <span className="font-semibold">{streakChallenges.streakDays} dager</span>
                   </div>
                 </div>
-              ) : null}
-              {homeVisibility.readiness ? (
-                <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-semibold text-slate-700">⚙️ Readiness i dag</div>
-                  <div className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{readinessScore}%</div>
-                </div>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  {([
-                    { label: "Søvn", value: readinessSleep, setter: setReadinessSleep },
-                    { label: "Energi", value: readinessEnergy, setter: setReadinessEnergy },
-                    { label: "Stress", value: readinessStress, setter: setReadinessStress },
-                    { label: "Motivasjon", value: readinessMotivation, setter: setReadinessMotivation },
-                  ] as const).map((item) => (
-                    <div key={item.label} className="rounded-xl border bg-slate-50 p-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="text-xs font-semibold text-slate-600">{item.label}</div>
-                      <div className="mt-2 flex gap-1">
-                        {[1, 2, 3, 4, 5].map((level) => (
-                          <button
-                            key={`${item.label}-${level}`}
-                            type="button"
-                            onClick={() => item.setter(level as 1 | 2 | 3 | 4 | 5)}
-                            className={`h-7 w-7 rounded-full text-xs font-semibold ${item.value === level ? "text-white" : "border bg-white text-slate-600"}`}
-                            style={
-                              item.value === level
-                                ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
-                                : { borderColor: "rgba(15,23,42,0.14)" }
-                            }
-                          >
-                            {level}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-3 text-sm text-slate-700">{readinessAdvice}</div>
-              </div>
               ) : null}
               {(homeVisibility.nextStep || (homeVisibility.todayPlan && todayPlanEntry)) ? (
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">I dag</div>
