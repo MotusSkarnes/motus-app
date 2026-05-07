@@ -64,6 +64,12 @@ export async function requestEmailOtpSignIn(email: string): Promise<{ ok: boolea
     },
   });
   if (error) {
+    if (isRateLimitMessage(error.message || "")) {
+      return {
+        ok: false,
+        message: "For mange forespørsler akkurat nå. Vent litt og prøv igjen.",
+      };
+    }
     return { ok: false, message: `Kunne ikke sende engangskode: ${error.message || "Ukjent feil."}` };
   }
   return { ok: true, message: "Engangskode sendt. Sjekk e-posten din." };

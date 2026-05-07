@@ -266,6 +266,22 @@ export function useAppState() {
               }
             }
           }
+          if (currentUser?.role === "trainer") {
+            const remoteIdentityKeys = new Set(
+              mergedMembers.map((member) => {
+                const emailKey = member.email.trim().toLowerCase();
+                return emailKey || `id:${member.id}`;
+              }),
+            );
+            const missingLocalMembers = prev.members.filter((member) => {
+              const emailKey = member.email.trim().toLowerCase();
+              const identityKey = emailKey || `id:${member.id}`;
+              return !remoteIdentityKeys.has(identityKey);
+            });
+            if (missingLocalMembers.length > 0) {
+              mergedMembers = [...mergedMembers, ...missingLocalMembers];
+            }
+          }
           next.members = mergedMembers;
         }
 
