@@ -456,6 +456,7 @@ function pickFirstName(value: string): string {
   const deduplicatedMembers = useMemo(() => {
     function memberScore(member: Member): number {
       let score = 0;
+      if (member.customerType === "Medlem") score += 2000;
       if ((member.ownerUserId ?? "").trim() && (member.ownerUserId ?? "").trim() === currentTrainerOwnerUserId) score += 1000;
       if (member.isActive !== false) score += 8;
       if (member.invitedAt) score += 2;
