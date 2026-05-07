@@ -2817,7 +2817,7 @@ export function MemberPortal(props: MemberPortalProps) {
               </div>
               ) : null}
               {homeVisibility.calendar ? (
-                <div className="order-first grid gap-4">
+                <div className="grid gap-4">
                 <div className="min-w-0 w-full overflow-hidden rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Treningskalender</div>
                   <div className="mt-1 text-base font-semibold text-slate-800 capitalize">{calendarMonthLabel}</div>
