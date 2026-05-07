@@ -39,6 +39,31 @@ describe("Member flows", () => {
     expect(screen.getByText(memberMessage)).toBeInTheDocument();
   });
 
+  it("shows member chat after full remount (local persisted state)", async () => {
+    const user = userEvent.setup();
+    const memberMessage = "Melding som skal overleve refresh";
+    const first = render(<App />);
+
+    await user.click(screen.getAllByRole("button", { name: /Logg inn som Emma/i })[0]);
+    await user.click(screen.getAllByRole("button", { name: "Meldinger" })[0]);
+    await user.type(screen.getByPlaceholderText("Skriv melding til trener"), memberMessage);
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(screen.getByText(memberMessage)).toBeInTheDocument();
+    expect(window.localStorage.getItem("motus_pt_app_v2")).toContain(memberMessage);
+
+    first.unmount();
+    render(<App />);
+
+    // localStorage gjenoppretter sesjon; trenger ikke alltid innloggingsskjerm på nytt
+    const emmaLogin = screen.queryAllByRole("button", { name: /Logg inn som Emma/i });
+    if (emmaLogin.length) {
+      await user.click(emmaLogin[0]);
+    }
+    await user.click(screen.getAllByRole("button", { name: "Meldinger" })[0]);
+    expect(screen.getByText(memberMessage)).toBeInTheDocument();
+  });
+
   it("persists local state after reload", async () => {
     const user = userEvent.setup();
     const firstRender = render(<App />);
