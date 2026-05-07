@@ -29,6 +29,10 @@ function uniqueById<T extends RowWithId>(rows: T[]): T[] {
   return Array.from(byId.values());
 }
 
+function isSharedMember(row: Record<string, unknown>): boolean {
+  return String(row.customer_type ?? "").trim().toLowerCase() === "medlem";
+}
+
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -103,7 +107,7 @@ Deno.serve(async (req) => {
   const sharedMembersWithAvatar = await adminClient
     .from("members")
     .select(membersSelectWithAvatar)
-    .eq("customer_type", "Medlem")
+    .ilike("customer_type", "%medlem%")
     .neq("owner_user_id", ownerUserId)
     .order("created_at", { ascending: true });
   if (
@@ -118,7 +122,7 @@ Deno.serve(async (req) => {
     const sharedMembersWithoutAvatar = await adminClient
       .from("members")
       .select(membersSelectWithoutAvatar)
-      .eq("customer_type", "Medlem")
+      .ilike("customer_type", "%medlem%")
       .neq("owner_user_id", ownerUserId)
       .order("created_at", { ascending: true });
     members = uniqueById([...(ownedMembersWithoutAvatar.data ?? []), ...(sharedMembersWithoutAvatar.data ?? [])]) as Array<
@@ -157,6 +161,7 @@ Deno.serve(async (req) => {
       allMembersRows = (allMembersWithAvatar.data ?? []) as Array<Record<string, unknown>>;
     }
     const widenedMembers = allMembersRows.filter((row) => {
+      if (isSharedMember(row)) return true;
       const rowEmail = normalizeEmail((row as { email?: string }).email);
       const rowName = String((row as { name?: string }).name ?? "").trim().toLowerCase();
       if (rowEmail && relatedEmailSet.has(rowEmail)) return true;
