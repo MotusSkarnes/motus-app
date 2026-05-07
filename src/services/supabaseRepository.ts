@@ -700,6 +700,30 @@ async function persistExercise(exercise: Exercise) {
   }
 }
 
+async function deleteExerciseFromSupabase(exerciseId: string, updatedPrograms: TrainingProgram[]) {
+  if (!supabaseClient) return;
+  const normalizedExerciseId = exerciseId.trim();
+  if (!normalizedExerciseId) return;
+
+  const { error: exerciseDeleteError } = await supabaseClient
+    .from("exercise_bank")
+    .delete()
+    .eq("id", normalizedExerciseId);
+  if (exerciseDeleteError) {
+    console.warn("Supabase exercise delete failed:", exerciseDeleteError.message);
+  }
+
+  for (const program of updatedPrograms) {
+    const { error } = await supabaseClient
+      .from("training_programs")
+      .update({ exercises: program.exercises })
+      .eq("id", program.id);
+    if (error) {
+      console.warn("Supabase program exercise cleanup failed:", error.message);
+    }
+  }
+}
+
 async function deleteProgram(programId: string) {
   if (!supabaseClient) return;
   const { data: programRow, error: lookupError } = await supabaseClient
@@ -1592,6 +1616,19 @@ export const supabaseAppRepository: AppRepository = {
     if (exercise) {
       void persistExercise(exercise);
     }
+    return nextState;
+  },
+  deleteExercise(state: AppState, exerciseId: string): AppState {
+    const normalizedExerciseId = exerciseId.trim();
+    if (!normalizedExerciseId) return state;
+    const affectedProgramIds = new Set(
+      state.programs
+        .filter((program) => program.exercises.some((exercise) => exercise.exerciseId === normalizedExerciseId))
+        .map((program) => program.id),
+    );
+    const nextState = localAppRepository.deleteExercise(state, normalizedExerciseId);
+    const updatedPrograms = nextState.programs.filter((program) => affectedProgramIds.has(program.id));
+    void deleteExerciseFromSupabase(normalizedExerciseId, updatedPrograms);
     return nextState;
   },
   updateMember(state: AppState, input: UpdateMemberInput): AppState {
