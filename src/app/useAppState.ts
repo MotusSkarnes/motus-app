@@ -8,6 +8,18 @@ import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSe
 import { mergeRemoteMessagesWithLocalOptimistic } from "./messageHydrationMerge";
 import type { AppState, AuthUser, Exercise, MemberTab, PeriodSchedulePlan, TrainerTab } from "./types";
 
+function mergeMembersById(primary: AppState["members"] | null, secondary: AppState["members"] | null): AppState["members"] | null {
+  if (!primary && !secondary) return null;
+  const merged = new Map<string, AppState["members"][number]>();
+  for (const member of [...(primary ?? []), ...(secondary ?? [])]) {
+    const key = member.id.trim() || member.email.trim().toLowerCase();
+    if (!key) continue;
+    const existing = merged.get(key);
+    merged.set(key, existing ? { ...existing, ...member } : member);
+  }
+  return Array.from(merged.values());
+}
+
 function syncExercisesWithPrograms(state: AppState): AppState {
   const exercisesById = new Map(state.exercises.map((exercise) => [exercise.id, exercise]));
   const exercisesByName = new Map(state.exercises.map((exercise) => [exercise.name.trim().toLowerCase(), exercise]));
@@ -209,7 +221,10 @@ export function useAppState() {
       const isMemberLikeSession = Boolean(sessionUser) && !isTrainerSession;
       const hydratedTrainer = isTrainerSession && ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
       const hydratedMember = isMemberLikeSession ? await fetchHydratedMemberData() : null;
-      const remoteMembers = hydratedTrainer?.members ?? hydratedMember?.members ?? (await fetchMembersFromSupabase());
+      const directTrainerMembers = isTrainerSession ? await fetchMembersFromSupabase() : null;
+      const remoteMembers = hydratedTrainer
+        ? mergeMembersById(hydratedTrainer.members, directTrainerMembers)
+        : hydratedMember?.members ?? directTrainerMembers ?? (await fetchMembersFromSupabase());
       const remoteMessages = hydratedTrainer?.messages ?? hydratedMember?.messages ?? (await fetchMessagesFromSupabase());
       const remotePrograms = hydratedTrainer?.programs ?? hydratedMember?.programs ?? (await fetchProgramsFromSupabase());
       const remoteLogs = hydratedTrainer?.logs ?? hydratedMember?.logs ?? (await fetchLogsFromSupabase());
