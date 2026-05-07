@@ -3549,12 +3549,17 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     </div>
                     <div className="max-h-64 space-y-3 overflow-auto rounded-2xl border bg-white p-4">
                       {selectedMessages.length === 0 ? (
-                        <div className="space-y-3 rounded-xl border border-dashed bg-slate-50 p-4 text-sm text-slate-500">
-                          <div>Ingen meldinger ennå. Send en kort velkomstmelding for bedre oppstart.</div>
-                          <OutlineButton onClick={() => setTrainerMessage("Hei! Klar for en god uke?")} className="w-full sm:w-auto">
-                            Sett inn forslag
-                          </OutlineButton>
-                        </div>
+                        <EmptyState
+                          icon="💬"
+                          title="Ingen meldinger ennå"
+                          description="Send en kort velkomstmelding for bedre oppstart."
+                          className="bg-slate-50"
+                          action={
+                            <OutlineButton onClick={() => setTrainerMessage("Hei! Klar for en god uke?")} className="w-full sm:w-auto">
+                              Sett inn forslag
+                            </OutlineButton>
+                          }
+                        />
                       ) : null}
                       {selectedMessages.map((message) => (
                         <div key={message.id} className={`max-w-[85%] rounded-2xl p-3 text-sm ${message.id === selectedMessages[selectedMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "trainer" ? "text-white ml-auto" : "bg-slate-50 border"}`} style={message.sender === "trainer" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
@@ -3662,7 +3667,14 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     setIsDraftDropZoneActive(false);
                   }}
                 >
-                  {programExercisesDraft.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen øvelser valgt ennå.</div> : null}
+                  {programExercisesDraft.length === 0 ? (
+                    <EmptyState
+                      icon="🏋️"
+                      title="Ingen øvelser valgt ennå"
+                      description="Legg til øvelser fra biblioteket for å bygge programmet."
+                      className="bg-white"
+                    />
+                  ) : null}
                   {programExercisesDraft.map((item, index) => (
                     <div
                       key={item.id}
@@ -3803,7 +3815,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 <div className="text-xs text-slate-500">Favoritter vises alltid øverst, resten sorteres alfabetisk.</div>
                 <div className="max-h-[560px] space-y-2 overflow-auto pr-1">
                   {visibleProgramExercises.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed p-4 text-sm text-slate-500 bg-white">Ingen øvelser matcher søk/filter.</div>
+                    <EmptyState
+                      icon="🔎"
+                      title="Ingen øvelser matcher søk/filter"
+                      description="Prøv en annen muskelgruppe eller et kortere søk."
+                      className="bg-white py-4"
+                    />
                   ) : null}
                   {visibleProgramExercises.map((exercise) => {
                     const isFavorite = favoriteExerciseIds.includes(exercise.id);

@@ -3188,7 +3188,14 @@ export function MemberPortal(props: MemberPortalProps) {
                             {program.notes ? <div className="rounded-2xl border bg-slate-50 p-3 text-sm text-slate-600">{program.notes}</div> : null}
 
                             <div className="space-y-2">
-                              {program.exercises.length === 0 ? <div className="rounded-2xl border border-dashed p-4 text-sm text-slate-500 bg-slate-50">Ingen øvelser i programmet ennå.</div> : null}
+                              {program.exercises.length === 0 ? (
+                                <EmptyState
+                                  icon="🧩"
+                                  title="Ingen øvelser i programmet ennå"
+                                  description="Programmet er tomt akkurat nå."
+                                  className="bg-slate-50 py-4"
+                                />
+                              ) : null}
                               {program.exercises.map((exercise) => (
                                 <div key={exercise.id} className="rounded-xl border bg-slate-50 p-2.5">
                                   <div className="font-medium text-sm">{exercise.exerciseName}</div>
@@ -3237,9 +3244,12 @@ export function MemberPortal(props: MemberPortalProps) {
                 {showPeriodPlanPanel ? (
                   <div className="mt-4 space-y-3">
                     {periodPlans.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed bg-slate-50 p-4 text-sm text-slate-500">
-                        Ingen periodeplan er tilgjengelig ennå.
-                      </div>
+                      <EmptyState
+                        icon="🗓️"
+                        title="Ingen periodeplan tilgjengelig"
+                        description="Be treneren din opprette en periodeplan."
+                        className="bg-slate-50 py-4"
+                      />
                     ) : (
                       periodPlans.slice(0, 1).map((plan) => (
                         <div key={plan.id} className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -4011,12 +4021,17 @@ export function MemberPortal(props: MemberPortalProps) {
               <div className="mt-5 space-y-4">
                 <div ref={memberMessagesContainerRef} className="max-h-64 space-y-3 overflow-auto rounded-2xl border bg-white p-4">
                   {memberMessages.length === 0 ? (
-                    <div className="space-y-3 rounded-xl border border-dashed bg-slate-50 p-4 text-sm text-slate-500">
-                      <div>Ingen meldinger ennå. Start med en kort oppdatering til trener.</div>
-                      <OutlineButton onClick={() => setMessageText("Hei! Kort status:")} className="w-full sm:w-auto">
-                        Sett inn forslag
-                      </OutlineButton>
-                    </div>
+                    <EmptyState
+                      icon="💬"
+                      title="Ingen meldinger ennå"
+                      description="Start med en kort oppdatering til trener."
+                      className="bg-slate-50"
+                      action={
+                        <OutlineButton onClick={() => setMessageText("Hei! Kort status:")} className="w-full sm:w-auto">
+                          Sett inn forslag
+                        </OutlineButton>
+                      }
+                    />
                   ) : null}
                   {memberMessages.map((message) => (
                     <div key={message.id} className={`max-w-[85%] rounded-2xl p-3 text-sm ${message.id === memberMessages[memberMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "member" ? "text-white ml-auto" : "bg-white border"}`} style={message.sender === "member" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
@@ -4172,12 +4187,17 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null}
                 </div>
               ) : (
-                <div className="mt-4 rounded-xl border border-dashed bg-slate-50 px-3 py-3 text-sm text-slate-500">
-                  Fant ingen medlemsprofil akkurat nå. Prøv å logge ut og inn igjen.
-                  <OutlineButton onClick={() => setMemberTab("overview")} className="mt-3 w-full sm:w-auto">
-                    Gå til oversikt
-                  </OutlineButton>
-                </div>
+                <EmptyState
+                  icon="👤"
+                  title="Fant ingen medlemsprofil"
+                  description="Prøv å logge ut og inn igjen."
+                  className="mt-4"
+                  action={
+                    <OutlineButton onClick={() => setMemberTab("overview")} className="w-full sm:w-auto">
+                      Gå til oversikt
+                    </OutlineButton>
+                  }
+                />
               )}
             </Card>
           ) : null}
