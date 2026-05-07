@@ -22,6 +22,7 @@ export function AppHeader({
   onLogout: () => void;
   onOpenMemberProfile?: () => void;
 }) {
+  const showProductionSafeQuickTools = showQuickLogin && !import.meta.env.PROD;
   const memberFirstName = useMemo(() => {
     const rawName = currentUser.name?.trim() ?? "";
     if (!rawName) return "du";
@@ -92,9 +93,9 @@ export function AppHeader({
             )}
           </div>
         </div>
-        {showQuickLogin ? (
+        {showProductionSafeQuickTools ? (
           <Card className="p-1 w-full md:w-auto self-stretch md:self-auto">
-            <div className="grid w-full grid-cols-2 md:w-[280px] gap-1 rounded-2xl bg-slate-50 p-1">
+            <div className="grid w-full grid-cols-2 md:w-[280px] gap-1 rounded-xl bg-slate-50 p-1">
               <PillButton active={role === "trainer"} onClick={() => onSwitchRole("trainer")}>
                 PT-side
               </PillButton>
@@ -105,7 +106,7 @@ export function AppHeader({
           </Card>
         ) : null}
         <div className="flex flex-col gap-2 sm:flex-row">
-          {showQuickLogin ? <OutlineButton onClick={onResetData}>Nullstill testdata</OutlineButton> : null}
+          {showProductionSafeQuickTools ? <OutlineButton onClick={onResetData}>Nullstill testdata</OutlineButton> : null}
           {currentUser.role !== "member" ? <OutlineButton onClick={onLogout}>Logg ut</OutlineButton> : null}
         </div>
       </div>

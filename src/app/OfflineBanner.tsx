@@ -22,11 +22,11 @@ export function OfflineBanner() {
 
   return (
     <div
-      className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-sm font-medium text-amber-950"
+      className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-sm font-medium text-amber-950"
       role="status"
       aria-live="polite"
     >
-      Du er offline. App-skal lastes fra cache; synk mot trener skjer når nettet er tilbake.
+      Du er offline. Endringer lagres lokalt og oppdateres automatisk når du er på nett igjen.
     </div>
   );
 }

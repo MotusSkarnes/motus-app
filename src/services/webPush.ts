@@ -28,7 +28,7 @@ export type WebPushRegisterResult = { ok: true } | { ok: false; message: string 
 
 export async function registerWebPushWithSupabase(supabase: SupabaseClient): Promise<WebPushRegisterResult> {
   if (!isWebPushConfigurable() || !vapidPublic) {
-    return { ok: false, message: "Push er ikke aktivert (krever produksjon og VITE_VAPID_PUBLIC_KEY)." };
+    return { ok: false, message: "Varsler er ikke tilgjengelig på denne enheten akkurat nå." };
   }
   const perm = await Notification.requestPermission();
   if (perm !== "granted") {

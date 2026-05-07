@@ -2924,7 +2924,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
           {shouldShowCelebration ? (
             <div className="motus-modal-insets fixed inset-0 z-[10020] overscroll-contain bg-slate-900/45">
-              <div className="motus-pop-in mx-auto mt-16 max-w-sm rounded-3xl border bg-white p-5 shadow-2xl" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="motus-pop-in mx-auto mt-16 max-w-sm rounded-xl border bg-white p-5 shadow-lg" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-xs font-semibold uppercase tracking-wide text-emerald-600">Ny PR!</div>
                 <div className="mt-1 text-xl font-bold tracking-tight text-slate-900">Sterk økning i estimert 1RM</div>
                 <div className="mt-3 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-800">
@@ -2950,7 +2950,7 @@ export function MemberPortal(props: MemberPortalProps) {
           ) : null}
           {microCelebrationsEnabled && achievementCelebration ? (
             <div className="motus-modal-insets fixed inset-0 z-[10030] overscroll-contain bg-slate-900/35">
-              <div className="motus-pop-in mx-auto mt-20 max-w-sm rounded-3xl border bg-white p-5 text-center shadow-2xl" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="motus-pop-in mx-auto mt-20 max-w-sm rounded-xl border bg-white p-5 text-center shadow-lg" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-3xl">🎉</div>
                 <div className="mt-2 text-xs font-semibold uppercase tracking-wide text-emerald-600">Achievement unlock</div>
                 <div className="mt-1 text-xl font-bold tracking-tight text-slate-900">{achievementCelebration.label}</div>
@@ -3594,7 +3594,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                     <div className="motus-scroll-touch flex-1 space-y-4 overflow-auto p-4 sm:p-6">
                       <div
-                        className="rounded-3xl p-5 text-white"
+                        className="rounded-xl p-5 text-white"
                         style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
                       >
                         <div className="text-sm uppercase tracking-wide text-white/90">
@@ -4160,10 +4160,10 @@ export function MemberPortal(props: MemberPortalProps) {
                     </label>
                   </div>
                   {supabaseClient && isWebPushConfigurable() ? (
-                    <div className="rounded-2xl border bg-slate-50 p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="rounded-xl border bg-slate-50 p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="text-sm font-semibold text-slate-700">Varsler på denne enheten</div>
                       <p className="text-xs text-slate-600">
-                        Godta varslinger her. Når VAPID og Edge Functions er satt opp i Supabase, får du push ved nye meldinger i chat (trener ↔ medlem).
+                        Slå på varsler for å få beskjed når treneren sender nye meldinger.
                       </p>
                       <OutlineButton type="button" onClick={handleRegisterWebPush} disabled={pushRegisterBusy} className="w-full md:w-auto">
                         {pushRegisterBusy ? "Aktiverer…" : "Slå på push-varsler"}

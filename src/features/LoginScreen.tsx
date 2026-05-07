@@ -60,6 +60,7 @@ export function LoginScreen(props: LoginScreenProps) {
     quickLogin,
     showQuickLogin,
   } = props;
+  const showProductionSafeQuickLogin = showQuickLogin && !import.meta.env.PROD;
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
@@ -84,7 +85,7 @@ export function LoginScreen(props: LoginScreenProps) {
             <StatCard label="Trening" value="Smart flyt" hint="Program + intervalltimer" />
             <StatCard label="Oppfølging" value="Daglig" hint="Mål og progresjon" />
           </div>
-          <div className="rounded-2xl border bg-white/80 p-4 backdrop-blur-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div className="rounded-xl border bg-white/80 p-4 backdrop-blur-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <div className="text-sm font-semibold text-slate-800">Hva er nytt i appen</div>
             <div className="mt-2 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
               <div>• Periodeplan med uke-for-uke styring</div>
@@ -100,7 +101,7 @@ export function LoginScreen(props: LoginScreenProps) {
           <div>
             <h2 className="text-xl font-semibold tracking-tight">{isRecoveryMode ? "Sett nytt passord" : "Innlogging"}</h2>
             <p className="text-sm text-slate-500">
-              {isRecoveryMode ? "Recovery-lenken er aktiv. Velg et nytt passord." : "Skriv inn e-post/passord for vanlig Supabase-innlogging."}
+              {isRecoveryMode ? "Recovery-lenken er aktiv. Velg et nytt passord." : "Skriv inn e-post og passord for å logge inn."}
             </p>
           </div>
           {isRecoveryMode ? (
@@ -121,20 +122,20 @@ export function LoginScreen(props: LoginScreenProps) {
                 type="button"
                 onClick={onSendPasswordRecovery}
                 disabled={passwordRecoveryCooldownSeconds > 0}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {passwordRecoveryCooldownSeconds > 0 ? `Send ny reset-lenke om ${passwordRecoveryCooldownSeconds}s` : "Glemt passord?"}
               </button>
               {passwordRecoveryInfo ? <StatusMessage message={passwordRecoveryInfo} tone="success" /> : null}
               {passwordRecoveryError ? <StatusMessage message={passwordRecoveryError} tone="error" /> : null}
-              <div className="rounded-2xl border bg-slate-50 px-4 py-3">
+              <div className="rounded-xl border bg-slate-50 px-4 py-3">
                 <div className="text-sm font-semibold text-slate-700">Logg inn med engangskode</div>
-                <div className="mt-1 text-xs text-slate-500">Anbefalt hvis e-postlink blir utløpt.</div>
+                <div className="mt-1 text-xs text-slate-500">Få en kode på e-post og logg inn raskt.</div>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   <button
                     type="button"
                     onClick={onSendEmailOtpCode}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700"
                   >
                     Send engangskode
                   </button>
@@ -151,26 +152,25 @@ export function LoginScreen(props: LoginScreenProps) {
                 {otpError ? <StatusMessage message={otpError} tone="error" className="mt-2 !rounded-xl !px-3 !py-2 !text-xs" /> : null}
               </div>
 
-              {showQuickLogin ? (
+              {showProductionSafeQuickLogin ? (
                 <>
-                  <div className="rounded-2xl border bg-slate-50 px-4 py-3 text-xs text-slate-600">
-                    Demo-knappene under logger deg rett inn lokalt for testing, uavhengig av Supabase.
+                  <div className="rounded-xl border bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                    Hurtigvalg for lokal innlogging.
                   </div>
                   <div className="pt-4 space-y-2">
-                    <button type="button" onClick={() => quickLogin("trainer@motus.no")} className="w-full rounded-2xl border bg-slate-50 px-4 py-3 text-left text-sm">
+                    <button type="button" onClick={() => quickLogin("trainer@motus.no")} className="w-full rounded-xl border bg-slate-50 px-4 py-3 text-left text-sm">
                       <div className="font-medium">Logg inn som trener</div>
                       <div className="text-slate-500">trainer@motus.no</div>
                     </button>
-                    <button type="button" onClick={() => quickLogin("emma@example.com")} className="w-full rounded-2xl border bg-slate-50 px-4 py-3 text-left text-sm">
+                    <button type="button" onClick={() => quickLogin("emma@example.com")} className="w-full rounded-xl border bg-slate-50 px-4 py-3 text-left text-sm">
                       <div className="font-medium">Logg inn som Emma</div>
                       <div className="text-slate-500">Medlem</div>
                     </button>
-                    <button type="button" onClick={() => quickLogin("martin@example.com")} className="w-full rounded-2xl border bg-slate-50 px-4 py-3 text-left text-sm">
+                    <button type="button" onClick={() => quickLogin("martin@example.com")} className="w-full rounded-xl border bg-slate-50 px-4 py-3 text-left text-sm">
                       <div className="font-medium">Logg inn som Martin</div>
                       <div className="text-slate-500">Medlem</div>
                     </button>
                   </div>
-                  <div className="rounded-2xl border bg-slate-50 px-4 py-3 text-sm text-slate-600">Testpassord på alle brukere: <span className="font-semibold">123456</span></div>
                 </>
               ) : null}
             </>

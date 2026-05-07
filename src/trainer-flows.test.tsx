@@ -36,9 +36,9 @@ describe("Trainer flows", () => {
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
     await user.click(screen.getAllByRole("button", { name: "Admin" })[0]);
-    await user.click(screen.getByRole("button", { name: "Kjør sikker opprydding" }));
+    await user.click(screen.getByRole("button", { name: "Start opprydding" }));
 
-    expect(screen.getByText("Opprydding krever Supabase-oppsett.")).toBeInTheDocument();
+    expect(screen.getByText("Opprydding er ikke tilgjengelig akkurat nå.")).toBeInTheDocument();
   });
 
   it("shows health check message when Supabase is unavailable", async () => {
@@ -47,9 +47,9 @@ describe("Trainer flows", () => {
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
     await user.click(screen.getAllByRole("button", { name: "Admin" })[0]);
-    await user.click(screen.getByRole("button", { name: "Oppdater helsesjekk" }));
+    await user.click(screen.getByRole("button", { name: "Oppdater status" }));
 
-    expect(screen.getByText("Helsesjekk krever Supabase-oppsett.")).toBeInTheDocument();
+    expect(screen.getByText("Status er ikke tilgjengelig akkurat nå.")).toBeInTheDocument();
   });
 
   it("shows customer program builder for trainer", async () => {

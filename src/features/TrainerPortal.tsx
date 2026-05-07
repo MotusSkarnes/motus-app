@@ -1773,7 +1773,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
   async function handleRefreshAdminHealthCheck() {
     if (!isSupabaseConfigured || !supabaseClient) {
-      setAdminHealthStatus("Helsesjekk krever Supabase-oppsett.");
+      setAdminHealthStatus("Status er ikke tilgjengelig akkurat nå.");
       return;
     }
     setIsRefreshingAdminHealth(true);
@@ -1781,22 +1781,22 @@ export function TrainerPortal(props: TrainerPortalProps) {
     try {
       const ownerUserId = await resolveOwnerUserIdFromSession();
       if (!ownerUserId) {
-        setAdminHealthStatus("Fant ikke owner-id i aktiv trener-session.");
+        setAdminHealthStatus("Fant ikke nødvendig brukerinformasjon for å oppdatere status.");
         return;
       }
       const dryRunResult = await supabaseClient.functions.invoke("dedupe-members", {
         body: { ownerUserId, apply: false },
       });
       if (dryRunResult.error) {
-        setAdminHealthStatus(`Helsesjekk feilet: ${dryRunResult.error.message}`);
+        setAdminHealthStatus(`Kunne ikke oppdatere status: ${dryRunResult.error.message}`);
         return;
       }
       const dryRunData = (dryRunResult.data ?? {}) as { duplicateGroupCount?: number };
       const duplicateGroups = Number(dryRunData.duplicateGroupCount ?? 0);
       setAdminDuplicateGroupCount(duplicateGroups);
-      setAdminHealthStatus(`Helsesjekk oppdatert. Fant ${duplicateGroups} duplikatgruppe${duplicateGroups === 1 ? "" : "r"}.`);
+      setAdminHealthStatus(`Status oppdatert. Fant ${duplicateGroups} mulig${duplicateGroups === 1 ? "" : "e"} duplikatgruppe${duplicateGroups === 1 ? "" : "r"}.`);
     } catch (error) {
-      setAdminHealthStatus(`Helsesjekk feilet: ${String(error)}`);
+      setAdminHealthStatus(`Kunne ikke oppdatere status: ${String(error)}`);
     } finally {
       setIsRefreshingAdminHealth(false);
     }
@@ -1804,16 +1804,16 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
   function handleClearLocalChatCache() {
     if (!clearLocalChatCache) {
-      setAdminCacheStatus("Lokal cache-reset er ikke tilgjengelig i denne visningen.");
+      setAdminCacheStatus("Rydding av lokale meldinger er ikke tilgjengelig her.");
       return;
     }
     const removed = clearLocalChatCache();
-    setAdminCacheStatus(`Lokal chat-cache ryddet. Fjernet ${removed} lokal melding${removed === 1 ? "" : "er"}.`);
+    setAdminCacheStatus(`Lokale meldinger ryddet. Fjernet ${removed} melding${removed === 1 ? "" : "er"}.`);
   }
 
   async function handleRunSafeMemberCleanup() {
     if (!isSupabaseConfigured || !supabaseClient) {
-      setMemberDedupeStatus("Opprydding krever Supabase-oppsett.");
+      setMemberDedupeStatus("Opprydding er ikke tilgjengelig akkurat nå.");
       return;
     }
     setIsRunningMemberDedupe(true);
@@ -1932,15 +1932,15 @@ export function TrainerPortal(props: TrainerPortalProps) {
   function handleDeleteExercise(exercise: Exercise) {
     const isUsedInPrograms = programs.some((program) => program.exercises.some((item) => item.exerciseId === exercise.id));
     const confirmMessage = isUsedInPrograms
-      ? `Slette "${exercise.name}" fra øvelsesbanken?\n\nØvelsen blir også fjernet fra programmer der den er brukt.`
-      : `Slette "${exercise.name}" fra øvelsesbanken?`;
+      ? `Fjern "${exercise.name}" fra øvelsesbanken?\n\nØvelsen skjules også i programmer der den er brukt.`
+      : `Fjern "${exercise.name}" fra øvelsesbanken?`;
     const shouldDelete = window.confirm(confirmMessage);
     if (!shouldDelete) return;
     deleteExercise(exercise.id);
     setFavoriteExerciseIds((prev) => prev.filter((id) => id !== exercise.id));
     if (editingExerciseId === exercise.id) resetExerciseForm();
     if (expandedExerciseId === exercise.id) setExpandedExerciseId(null);
-    setExerciseFormStatus(`Øvelsen "${exercise.name}" ble slettet.`);
+    setExerciseFormStatus(`Øvelsen "${exercise.name}" er skjult fra øvelsesbanken.`);
   }
 
   async function handleExerciseImageUpload(file: File | null) {
@@ -4205,8 +4205,8 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           type="button"
                           onClick={() => handleDeleteExercise(exercise)}
                           className="rounded-lg border border-rose-200 p-1.5 text-rose-700 transition hover:bg-rose-50"
-                          aria-label="Fjern øvelse"
-                          title="Fjern øvelse"
+                          aria-label="Skjul øvelse"
+                          title="Skjul øvelse"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -4313,40 +4313,40 @@ export function TrainerPortal(props: TrainerPortalProps) {
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold tracking-tight">Admin</h2>
-              <p className="text-sm text-slate-500">Inviter nye PT-er til appen</p>
+              <h2 className="text-xl font-semibold tracking-tight">Team og tilgang</h2>
+              <p className="text-sm text-slate-500">Inviter nye PT-er og hold kundeoversikten ryddig.</p>
             </div>
           </div>
-          <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-            <div className="text-sm font-semibold text-slate-700">Driftsstatus</div>
+          <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="text-sm font-semibold text-slate-700">Status</div>
             <div className="grid gap-2 sm:grid-cols-3">
               <div className="rounded-xl border bg-white px-3 py-2 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-slate-500">Backend</div>
-                <div className="font-semibold text-slate-800">{isSupabaseConfigured ? "Supabase tilkoblet" : "Lokal modus"}</div>
+                <div className="text-slate-500">Tilkobling</div>
+                <div className="font-semibold text-slate-800">{isSupabaseConfigured ? "Aktiv" : "Begrenset"}</div>
               </div>
               <div className="rounded-xl border bg-white px-3 py-2 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-slate-500">Rolle</div>
+                <div className="text-slate-500">Brukertype</div>
                 <div className="font-semibold text-slate-800">Trener</div>
               </div>
               <div className="rounded-xl border bg-white px-3 py-2 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-slate-500">Sesjon</div>
-                <div className="font-semibold text-slate-800">{isLocalDemoSession ? "Demo (lokal)" : "Ekte innlogging"}</div>
+                <div className="text-slate-500">Innlogging</div>
+                <div className="font-semibold text-slate-800">{isLocalDemoSession ? "Lokal" : "Sikker"}</div>
               </div>
             </div>
           </div>
-          <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-            <div className="text-sm font-semibold text-slate-700">Helsesjekk</div>
+          <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="text-sm font-semibold text-slate-700">Datakvalitet</div>
             <div className="grid gap-2 sm:grid-cols-3">
               <div className="rounded-xl border bg-white px-3 py-2 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-slate-500">Aktive kunder</div>
                 <div className="font-semibold text-slate-800">{deduplicatedMembers.filter((member) => member.isActive !== false).length}</div>
               </div>
               <div className="rounded-xl border bg-white px-3 py-2 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-slate-500">Duplikatgrupper</div>
+                <div className="text-slate-500">Mulige duplikater</div>
                 <div className="font-semibold text-slate-800">{adminDuplicateGroupCount ?? "Ukjent"}</div>
               </div>
               <div className="rounded-xl border bg-white px-3 py-2 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-slate-500">Siste opprydding</div>
+                <div className="text-slate-500">Sist oppdatert</div>
                 <div className="font-semibold text-slate-800">
                   {lastMemberCleanupAt ? formatDateDdMmYyyy(new Date(lastMemberCleanupAt)) : "Ikke kjørt"}
                 </div>
@@ -4360,10 +4360,10 @@ export function TrainerPortal(props: TrainerPortalProps) {
               />
             ) : null}
             <OutlineButton onClick={() => void handleRefreshAdminHealthCheck()} className="w-full md:w-auto" disabled={isRefreshingAdminHealth}>
-              {isRefreshingAdminHealth ? "Oppdaterer helsesjekk..." : "Oppdater helsesjekk"}
+              {isRefreshingAdminHealth ? "Oppdaterer status..." : "Oppdater status"}
             </OutlineButton>
             <OutlineButton onClick={handleClearLocalChatCache} className="w-full md:w-auto">
-              Reset lokal chat-cache
+              Rydd lokale meldinger
             </OutlineButton>
             {adminCacheStatus ? (
               <StatusMessage
@@ -4373,7 +4373,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
               />
             ) : null}
           </div>
-          <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <TextInput value={newTrainerName} onChange={(event) => setNewTrainerName(event.target.value)} placeholder="Navn (valgfritt)" />
             <TextInput value={newTrainerEmail} onChange={(event) => setNewTrainerEmail(event.target.value)} placeholder="E-post til ny PT" />
             <GradientButton onClick={() => void handleInviteTrainer()} disabled={isInvitingTrainer} className="w-full md:w-auto">
@@ -4387,7 +4387,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
               />
             ) : null}
           </div>
-          <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <div className="text-sm font-semibold text-slate-700">Legg til medlem</div>
             <TextInput value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="Navn" />
             <TextInput value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} placeholder="E-post" />
@@ -4400,7 +4400,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
               Opprett + send invitasjon
             </OutlineButton>
           </div>
-          <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <div className="text-sm font-semibold text-slate-700">Gjenopprett slettet klient</div>
             <TextInput value={restoreEmail} onChange={(e) => setRestoreEmail(e.target.value)} placeholder="E-post til slettet klient" />
             {restoreStatus ? (
@@ -4414,10 +4414,10 @@ export function TrainerPortal(props: TrainerPortalProps) {
               {isRestoringMember ? "Gjenoppretter..." : "Gjenopprett klient"}
             </OutlineButton>
           </div>
-          <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-            <div className="text-sm font-semibold text-slate-700">Sikker opprydding av duplikatkunder</div>
+          <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="text-sm font-semibold text-slate-700">Slå sammen duplikatkunder</div>
             <div className="text-xs text-slate-600">
-              Kjører dry-run først og deretter sikker sammenslåing av duplikater per e-post (ingen hard delete).
+              Går gjennom kunder med samme e-post og rydder opp trygt.
             </div>
             {memberDedupeStatus ? (
               <StatusMessage
@@ -4427,7 +4427,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
               />
             ) : null}
             <OutlineButton onClick={() => void handleRunSafeMemberCleanup()} className="w-full md:w-auto" disabled={isRunningMemberDedupe}>
-              {isRunningMemberDedupe ? "Kjører opprydding..." : "Kjør sikker opprydding"}
+              {isRunningMemberDedupe ? "Rydder..." : "Start opprydding"}
             </OutlineButton>
           </div>
         </Card>
