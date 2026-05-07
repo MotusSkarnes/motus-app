@@ -10,7 +10,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 }
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-3xl border bg-white/95 shadow-sm ${className}`} style={{ borderColor: "rgba(15,23,42,0.06)" }}>{children}</div>;
+  return <div className={`rounded-xl border bg-white/95 shadow-sm ${className}`} style={{ borderColor: "rgba(15,23,42,0.08)" }}>{children}</div>;
 }
 
 export function Badge({ children }: { children: React.ReactNode }) {
@@ -22,8 +22,8 @@ export function PillButton({ active, children, onClick }: { active?: boolean; ch
     <button
       type="button"
       onClick={onClick}
-      className={`shrink-0 rounded-2xl px-4 py-2 text-sm font-medium transition ${active ? "text-white" : "text-slate-700 bg-slate-50"}`}
-      style={active ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : {}}
+      className={`shrink-0 rounded-lg px-4 py-2 text-sm font-medium transition ${active ? "text-white shadow-sm" : "text-slate-700 bg-slate-50 hover:bg-slate-100"}`}
+      style={active ? { backgroundColor: MOTUS.turquoise } : {}}
     >
       {children}
     </button>
@@ -35,8 +35,8 @@ export function MobileNavButton({ active, icon, label, onClick }: { active?: boo
     <button
       type="button"
       onClick={onClick}
-      className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-1.5 py-2 text-[10px] font-medium transition ${active ? "text-white shadow-sm" : "text-slate-600"}`}
-      style={active ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { backgroundColor: "transparent" }}
+      className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1.5 py-2 text-[10px] font-medium transition ${active ? "text-white shadow-sm" : "text-slate-600"}`}
+      style={active ? { backgroundColor: MOTUS.turquoise } : { backgroundColor: "transparent" }}
     >
       <span className="flex h-4 w-4 items-center justify-center">{icon}</span>
       <span className="truncate leading-none">{label}</span>
@@ -45,11 +45,11 @@ export function MobileNavButton({ active, icon, label, onClick }: { active?: boo
 }
 
 export const TextInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(function TextInput(props, ref) {
-  return <input ref={ref} {...props} className={`h-11 w-full rounded-2xl border px-3 text-base outline-none ${props.className ?? ""}`} style={{ borderColor: "rgba(15,23,42,0.10)" }} />;
+  return <input ref={ref} {...props} className={`h-10 w-full rounded-lg border px-3 text-sm outline-none ${props.className ?? ""}`} style={{ borderColor: "rgba(15,23,42,0.12)" }} />;
 });
 
 export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} className={`w-full rounded-2xl border px-3 py-3 text-base outline-none ${props.className ?? ""}`} style={{ borderColor: "rgba(15,23,42,0.10)" }} />;
+  return <textarea {...props} className={`w-full rounded-lg border px-3 py-2.5 text-sm outline-none ${props.className ?? ""}`} style={{ borderColor: "rgba(15,23,42,0.12)" }} />;
 }
 
 type SelectOption = { value: string; label: string };
@@ -69,8 +69,8 @@ export function SelectBox({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`h-11 w-full rounded-2xl border px-3 text-base text-slate-800 outline-none bg-white ${className}`}
-      style={{ borderColor: "rgba(15,23,42,0.10)" }}
+      className={`h-10 w-full rounded-lg border px-3 text-sm text-slate-800 outline-none bg-white ${className}`}
+      style={{ borderColor: "rgba(15,23,42,0.12)" }}
     >
       {options.map((option) => {
         if (typeof option === "string") {
@@ -92,19 +92,18 @@ export function SelectBox({
 }
 
 export function GradientButton({ children, className = "", type = "button", ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode }) {
-  return <button type={type} {...props} className={`rounded-2xl px-4 py-2.5 text-sm font-medium text-white cursor-pointer ${className}`} style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>{children}</button>;
+  return <button type={type} {...props} className={`rounded-lg px-4 py-2.5 text-sm font-medium text-white cursor-pointer ${className}`} style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>{children}</button>;
 }
 
 export function OutlineButton({ children, className = "", type = "button", ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode }) {
-  return <button type={type} {...props} className={`rounded-2xl border px-4 py-2.5 text-sm font-medium text-slate-700 bg-white cursor-pointer ${className}`} style={{ borderColor: "rgba(15,23,42,0.10)" }}>{children}</button>;
+  return <button type={type} {...props} className={`rounded-lg border px-4 py-2.5 text-sm font-medium text-slate-700 bg-white cursor-pointer ${className}`} style={{ borderColor: "rgba(15,23,42,0.12)" }}>{children}</button>;
 }
 
 export function StatCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div className="rounded-3xl border p-4 shadow-sm relative overflow-hidden bg-white" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-      <div className="absolute inset-x-0 top-0 h-1" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 78%, ${MOTUS.acid} 100%)` }} />
-      <div className="text-sm text-slate-500">{label}</div>
-      <div className="mt-1.5 text-xl sm:text-2xl font-bold tracking-tight">{value}</div>
+    <div className="rounded-xl border p-4 shadow-sm relative overflow-hidden bg-white" style={{ borderColor: "rgba(15,23,42,0.10)" }}>
+      <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="mt-1.5 text-lg sm:text-xl font-semibold tracking-tight">{value}</div>
       <div className="mt-1 text-xs text-slate-500">{hint}</div>
     </div>
   );
@@ -125,5 +124,5 @@ export function StatusMessage({
       : tone === "error"
       ? "border-rose-200 bg-rose-50 text-rose-700"
       : "border-sky-200 bg-sky-50 text-sky-700";
-  return <div className={`motus-fade-in-up rounded-2xl border px-4 py-3 text-sm ${toneClass} ${className}`}>{message}</div>;
+  return <div className={`motus-fade-in-up rounded-lg border px-4 py-3 text-sm ${toneClass} ${className}`}>{message}</div>;
 }
