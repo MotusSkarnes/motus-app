@@ -78,7 +78,7 @@ export function MemberLayout({
 }: MemberLayoutProps) {
   const isMemberLimited = useMemo(() => {
     const currentUser = appState.currentUser;
-    if (!currentUser || currentUser.role !== "member") return false;
+    if (!currentUser) return false;
     const normalizedEmail = currentUser.email.trim().toLowerCase();
     const candidates = appState.members.filter((member) => {
       if (currentUser.memberId && member.id === currentUser.memberId) return true;

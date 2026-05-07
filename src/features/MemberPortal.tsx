@@ -407,7 +407,6 @@ export function MemberPortal(props: MemberPortalProps) {
     [members, relatedMemberIdSet],
   );
   const isMemberLimited = useMemo(() => {
-    if (currentUserRole !== "member") return false;
     const candidates = members.filter((member) => {
       if (currentUserMemberId && member.id === currentUserMemberId) return true;
       if (memberViewId && member.id === memberViewId) return true;
@@ -416,7 +415,7 @@ export function MemberPortal(props: MemberPortalProps) {
     });
     if (editableMember) candidates.push(editableMember);
     return candidates.some((member) => member.customerType === "Medlem" && member.membershipType !== "Premium");
-  }, [currentUserRole, currentUserMemberId, memberViewId, members, normalizedCurrentUserEmail, editableMember]);
+  }, [currentUserMemberId, memberViewId, members, normalizedCurrentUserEmail, editableMember]);
   const dbProfileMetrics = useMemo(() => {
     for (const member of relatedMembersForProfile) {
       const decoded = decodeMemberProfileMetrics(member.personalGoals);

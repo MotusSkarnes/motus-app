@@ -34,6 +34,18 @@ import { supabaseClient } from "./supabaseClient";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
+function mapMembershipType(value: unknown): Member["membershipType"] {
+  return String(value ?? "").trim().toLowerCase() === "premium" ? "Premium" : "Standard";
+}
+
+function mapCustomerType(value: unknown): Member["customerType"] {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "pt-kunde") return "PT-kunde";
+  if (normalized === "egentrening") return "Egentrening";
+  if (normalized === "medlem") return "Medlem";
+  return "Oppfølging";
+}
+
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split(".");
   if (parts.length < 2) return null;
@@ -1139,11 +1151,8 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
         weight: String(member.weight ?? ""),
         height: String(member.height ?? ""),
         level: member.level === "Litt øvet" || member.level === "Øvet" ? member.level : "Nybegynner",
-        membershipType: member.membership_type === "Premium" ? "Premium" : "Standard",
-        customerType:
-          member.customer_type === "PT-kunde" || member.customer_type === "Egentrening" || member.customer_type === "Medlem"
-            ? member.customer_type
-            : "Oppfølging",
+        membershipType: mapMembershipType(member.membership_type),
+        customerType: mapCustomerType(member.customer_type),
         daysSinceActivity: String(member.days_since_activity ?? "0"),
         goal: String(member.goal ?? ""),
         focus: String(member.focus ?? ""),
@@ -1249,11 +1258,8 @@ export async function fetchHydratedMemberData(): Promise<HydratedMemberData | nu
         weight: String(member.weight ?? ""),
         height: String(member.height ?? ""),
         level: member.level === "Litt øvet" || member.level === "Øvet" ? member.level : "Nybegynner",
-        membershipType: member.membership_type === "Premium" ? "Premium" : "Standard",
-        customerType:
-          member.customer_type === "PT-kunde" || member.customer_type === "Egentrening" || member.customer_type === "Medlem"
-            ? member.customer_type
-            : "Oppfølging",
+        membershipType: mapMembershipType(member.membership_type),
+        customerType: mapCustomerType(member.customer_type),
         daysSinceActivity: String(member.days_since_activity ?? "0"),
         goal: String(member.goal ?? ""),
         focus: String(member.focus ?? ""),
@@ -1419,11 +1425,8 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
     weight: String(row.weight ?? ""),
     height: String(row.height ?? ""),
     level: row.level === "Litt øvet" || row.level === "Øvet" ? row.level : "Nybegynner",
-    membershipType: row.membership_type === "Premium" ? "Premium" : "Standard",
-    customerType:
-      row.customer_type === "PT-kunde" || row.customer_type === "Egentrening" || row.customer_type === "Medlem"
-        ? row.customer_type
-        : "Oppfølging",
+    membershipType: mapMembershipType(row.membership_type),
+    customerType: mapCustomerType(row.customer_type),
     daysSinceActivity: String(row.days_since_activity ?? "0"),
     goal: String(row.goal ?? ""),
     focus: String(row.focus ?? ""),
