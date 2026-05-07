@@ -1932,15 +1932,15 @@ export function TrainerPortal(props: TrainerPortalProps) {
   function handleDeleteExercise(exercise: Exercise) {
     const isUsedInPrograms = programs.some((program) => program.exercises.some((item) => item.exerciseId === exercise.id));
     const confirmMessage = isUsedInPrograms
-      ? `Fjern "${exercise.name}" fra øvelsesbanken?\n\nØvelsen skjules også i programmer der den er brukt.`
-      : `Fjern "${exercise.name}" fra øvelsesbanken?`;
+      ? `Fjern "${exercise.name}" fra øvelsesbank?\n\nØvelsen skjules også i programmer der den er brukt.`
+      : `Fjern "${exercise.name}" fra øvelsesbank?`;
     const shouldDelete = window.confirm(confirmMessage);
     if (!shouldDelete) return;
     deleteExercise(exercise.id);
     setFavoriteExerciseIds((prev) => prev.filter((id) => id !== exercise.id));
     if (editingExerciseId === exercise.id) resetExerciseForm();
     if (expandedExerciseId === exercise.id) setExpandedExerciseId(null);
-    setExerciseFormStatus(`Øvelsen "${exercise.name}" er skjult fra øvelsesbanken.`);
+    setExerciseFormStatus(`Øvelsen "${exercise.name}" er skjult fra øvelsesbank.`);
   }
 
   async function handleExerciseImageUpload(file: File | null) {
@@ -2270,7 +2270,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
       {trainerTab === "dashboard" ? (
         <Card className="p-5 space-y-5">
-          <div className="rounded-2xl border bg-slate-50 p-4 text-sm text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div className="rounded-xl border bg-white p-4 text-sm text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             {followUpCount > 0
               ? `${followUpCount} kunder ma folges opp i dag.`
               : "Ingen kunder trenger oppfolging akkurat na."}{" "}
@@ -2290,7 +2290,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
             </div>
           </div>
           <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
-            <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
               <div className="font-semibold text-slate-800">To-do per dag</div>
               <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
                 <TextInput value={todoTitle} onChange={(e) => setTodoTitle(e.target.value)} placeholder="Ny oppgave (f.eks. ring Martin)" />
@@ -2309,7 +2309,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 ))}
               </div>
             </div>
-            <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
               <div className="flex items-center justify-between">
                 <div className="font-semibold text-slate-800">Kalender</div>
                 <div className="flex items-center gap-2">
@@ -2348,7 +2348,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
               </div>
             </div>
           </div>
-          <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div className="rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="font-semibold text-slate-800">Kundeprioritering (rød haster mest)</div>
               <div className="flex flex-wrap items-center gap-2">
@@ -2441,7 +2441,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
               ))}
             </div>
           </div>
-          <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div className="rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <div className="font-semibold text-slate-800">Bør kontaktes nå</div>
             {followUpCandidates.length === 0 ? (
               <div className="rounded-xl border border-dashed bg-white p-3 text-sm text-slate-500">
@@ -2516,7 +2516,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
               );
             })}
           </div>
-          <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <div className="font-semibold text-slate-800">Oppgaver for valgt dag</div>
             <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
               <TextInput value={todoTitle} onChange={(e) => setTodoTitle(e.target.value)} placeholder="Ny oppgave (f.eks. ring Martin)" />
@@ -2627,7 +2627,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
           </div>
           <Card className={`p-4 ${showCustomerToolsMobile ? "block" : "hidden"} lg:block`}>
             <div className="flex items-start gap-3">
-              <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Users className="h-5 w-5" /></div>
+              <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><Users className="h-5 w-5" /></div>
               <div>
                 <h2 className="text-xl font-semibold tracking-tight">Kunder</h2>
                 <p className="text-sm text-slate-500">Velg kunde fra rullgardin og filtrer listen</p>
@@ -2693,7 +2693,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 }
               />
               {sortedMembers.length === 0 ? (
-                <div className="rounded-2xl border border-dashed bg-slate-50 p-4 text-center text-sm text-slate-500">
+                <div className="rounded-xl border border-dashed bg-slate-50 p-4 text-center text-sm text-slate-500">
                   Ingen kunder matcher sok/filter. Proev et enklere sok eller bytt filter.
                 </div>
               ) : null}
@@ -2706,7 +2706,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
           <Card className="p-4 sm:p-5 w-full">
             {selectedMember ? (
               <div className="space-y-5">
-                <div className="lg:hidden rounded-2xl border bg-slate-50 p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="lg:hidden rounded-xl border bg-slate-50 p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-xs font-medium text-slate-600">Bytt kunde raskt</div>
                   <SelectBox
                     value={selectedMemberId}
@@ -2960,7 +2960,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       {selectedLogs.length ? (
                         <div className="mt-3 space-y-3">
                           {selectedLogs.slice(0, 5).map((log) => (
-                            <div key={log.id} className="rounded-2xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                            <div key={log.id} className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                               <div className="flex items-center justify-between gap-3">
                                 <div className="font-medium text-slate-800">{log.programTitle}</div>
                                 <div className="text-xs text-slate-500">{log.date}</div>
@@ -3017,7 +3017,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           <span className="text-xs text-emerald-700">{followUpSaveStatus}</span>
                         ) : null}
                       </div>
-                      <div className="mt-3 rounded-2xl border bg-white p-3 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="mt-3 rounded-xl border bg-white p-3 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                         {selectedMemberLatestFollowUp ? (
                           <>
                             <div><span className="font-semibold text-slate-800">Sist fulgt opp:</span> {formatDateDdMmYyyy(new Date(selectedMemberLatestFollowUp.at))}</div>
@@ -3040,7 +3040,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         <div className="font-semibold">{editingProgramId ? "Rediger program" : "Bygg program"}</div>
                         {editingProgramId ? <OutlineButton onClick={resetProgramBuilder}>Avbryt redigering</OutlineButton> : null}
                       </div>
-                      <div className="rounded-2xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                         <div className="text-sm font-semibold text-slate-700">Periodeplan + ukesplan (per dag)</div>
                         <div className="grid gap-2 md:grid-cols-2">
                           <TextInput value={periodPlanTitleDraft} onChange={(e) => setPeriodPlanTitleDraft(e.target.value)} placeholder="Navn (f.eks. Sommerblokk uke 1-4)" />
@@ -3655,7 +3655,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 ) : null}
               </div>
             ) : (
-              <div className="space-y-4 rounded-2xl border border-dashed bg-slate-50 p-8 text-center text-slate-500">
+              <div className="space-y-4 rounded-xl border border-dashed bg-slate-50 p-8 text-center text-slate-500">
                 <div>Velg en kunde i listen for å se kundekort, programmer og meldinger.</div>
                 <div className="mx-auto max-w-sm rounded-xl border bg-white p-4 text-left text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="font-semibold text-slate-700">Forslag til neste steg</div>
@@ -3678,7 +3678,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
         <div className="grid gap-4">
           <Card className="p-5">
             <div className="flex items-start gap-3">
-              <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><ClipboardList className="h-5 w-5" /></div>
+              <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><ClipboardList className="h-5 w-5" /></div>
               <div>
                 <h2 className="text-xl font-semibold tracking-tight">Lag treningsmal</h2>
                 <p className="text-sm text-slate-500">Bygg mal med filtrering, favoritter og drag-and-drop</p>
@@ -3687,7 +3687,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
             <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
               <div className="space-y-3">
                 <TextInput value={templateProgramTitle} onChange={(e) => setTemplateProgramTitle(e.target.value)} placeholder="Navn på treningsmal" />
-                <div className="rounded-2xl border bg-white p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="rounded-xl border bg-white p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Kondisjonsmal med nedtelling</div>
                   <div className="grid gap-2 md:grid-cols-[1fr_auto]">
                     <SelectBox
@@ -3841,7 +3841,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   </OutlineButton>
                 ) : null}
               </div>
-              <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="font-semibold">Øvelser</div>
                 <TextInput
                   value={programExerciseSearch}
@@ -3925,13 +3925,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   })}
                 </div>
               </div>
-              <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="font-semibold">Lagrede treningsmaler</div>
                   <div className="text-xs text-slate-500">{templatePrograms.length} maler</div>
                 </div>
                 {templatePrograms.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed bg-white p-4 text-sm text-slate-500">
+                  <div className="rounded-xl border border-dashed bg-white p-4 text-sm text-slate-500">
                     Ingen treningsmaler lagret ennå.
                   </div>
                 ) : null}
@@ -3991,7 +3991,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 </div>
               </div>
             </div>
-            <div className="mt-5 rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="mt-5 rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
               <div className="font-semibold">Tildel mal til kunde</div>
               <div className="grid gap-3 md:grid-cols-2">
                 <SelectBox
@@ -4025,14 +4025,14 @@ export function TrainerPortal(props: TrainerPortalProps) {
       {trainerTab === "exerciseBank" ? (
         <Card className="p-5">
           <div className="flex items-start gap-3">
-            <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Dumbbell className="h-5 w-5" /></div>
+            <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><Dumbbell className="h-5 w-5" /></div>
             <div>
               <h2 className="text-xl font-semibold tracking-tight">Øvelsesbank</h2>
               <p className="text-sm text-slate-500">Opprett og rediger øvelser med forklaring, kategori og utstyr.</p>
             </div>
           </div>
           <div className="mt-5 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-            <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
               <div className="font-semibold">{editingExerciseId ? "Rediger øvelse" : "Legg til ny øvelse"}</div>
               <TextInput value={exerciseFormName} onChange={(e) => setExerciseFormName(e.target.value)} placeholder="Navn på øvelse" />
               <div className="grid gap-2 sm:grid-cols-2">
@@ -4272,7 +4272,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       {trainerTab === "messages" ? (
       <Card className="p-5">
         <div className="flex items-start gap-3">
-          <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><MessageSquare className="h-5 w-5" /></div>
+          <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><MessageSquare className="h-5 w-5" /></div>
           <div>
             <h2 className="text-xl font-semibold tracking-tight">Rask melding til valgt kunde</h2>
             <p className="text-sm text-slate-500">Enklere melding enn i den store fila</p>
@@ -4309,7 +4309,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       {trainerTab === "admin" ? (
         <Card className="p-5 space-y-4">
           <div className="flex items-start gap-3">
-            <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
+            <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}>
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>

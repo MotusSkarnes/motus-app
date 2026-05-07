@@ -2621,7 +2621,7 @@ export function MemberPortal(props: MemberPortalProps) {
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-[280px_1fr]">
         <Card className="hidden p-4 h-fit xl:p-5 lg:block">
           <div className="flex items-start gap-3">
-            <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><UserCircle2 className="h-5 w-5" /></div>
+            <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><UserCircle2 className="h-5 w-5" /></div>
             <div>
               <h2 className="text-xl font-semibold tracking-tight">Min profil</h2>
               <p className="text-sm text-slate-500">Dine medlemsdata</p>
@@ -2968,7 +2968,7 @@ export function MemberPortal(props: MemberPortalProps) {
               <Card className="order-last p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex items-start gap-3">
-                    <div className="rounded-2xl p-2.5 text-white shrink-0" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
+                    <div className="rounded-xl p-2.5 text-white shrink-0" style={{ backgroundColor: MOTUS.turquoise }}>
                       <Sparkles className="h-5 w-5" />
                     </div>
                     <div>
@@ -3124,7 +3124,7 @@ export function MemberPortal(props: MemberPortalProps) {
               </Card>
               <Card className="p-5">
               <div className="flex items-start gap-3">
-                <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><ClipboardList className="h-5 w-5" /></div>
+                <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><ClipboardList className="h-5 w-5" /></div>
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight">Mine programmer</h2>
                   <p className="text-sm text-slate-500">Enkel oversikt</p>
@@ -3151,7 +3151,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   {memberAssignedPrograms.map((program) => {
                     const isExpanded = expandedProgramId === program.id;
                     return (
-                      <div key={program.id} className="rounded-2xl border bg-white p-4 space-y-3">
+                      <div key={program.id} className="rounded-xl border bg-white p-4 space-y-3">
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <div className="font-semibold text-sm">{program.title}</div>
@@ -3185,7 +3185,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
                         {isExpanded ? (
                           <>
-                            {program.notes ? <div className="rounded-2xl border bg-slate-50 p-3 text-sm text-slate-600">{program.notes}</div> : null}
+                            {program.notes ? <div className="rounded-xl border bg-slate-50 p-3 text-sm text-slate-600">{program.notes}</div> : null}
 
                             <div className="space-y-2">
                               {program.exercises.length === 0 ? (
@@ -3252,7 +3252,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       />
                     ) : (
                       periodPlans.slice(0, 1).map((plan) => (
-                        <div key={plan.id} className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                        <div key={plan.id} className="rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                           <div className="font-medium text-slate-800">{plan.title}</div>
                           <div className="mt-1 text-xs text-slate-500">Start: {plan.startDate} · {plan.weeks} uker · Lagret {plan.createdAt}</div>
                           {plan.notes ? <div className="mt-2 text-sm text-slate-600">{plan.notes}</div> : null}
@@ -3362,7 +3362,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </OutlineButton>
                 </div>
                 {showGroupWorkoutLogger ? (
-                  <div className="mt-4 rounded-2xl border bg-slate-50 p-4 space-y-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="mt-4 rounded-xl border bg-slate-50 p-4 space-y-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="grid gap-3 md:grid-cols-2">
                       <label className="space-y-1">
                         <span className="text-xs font-medium text-slate-600">Gruppetime</span>
@@ -3447,7 +3447,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     />
                   ) : null}
                   {completedLogs.slice(0, 3).map((log) => (
-                    <div key={log.id} className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div key={log.id} className="rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="font-medium">{log.programTitle}</div>
@@ -3581,7 +3581,7 @@ export function MemberPortal(props: MemberPortalProps) {
               </div>
               {showIntervalTimerModal ? (
                 <div className="motus-modal-insets fixed inset-0 z-[10012] overscroll-contain bg-slate-900/60">
-                  <div className="mx-auto flex h-full w-full max-w-2xl flex-col rounded-[30px] bg-white shadow-2xl">
+                  <div className="mx-auto flex h-full w-full max-w-2xl flex-col rounded-2xl bg-white shadow-lg">
                     <div className="border-b p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="flex items-start justify-between gap-3">
                         <div>
@@ -3608,7 +3608,7 @@ export function MemberPortal(props: MemberPortalProps) {
                           Neste: {intervalProgramSteps[intervalTimerStepIndex + 1]?.label || "Siste steg"}
                         </div>
                       </div>
-                      <div className="rounded-2xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                         <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
                           <span>Del {Math.min(intervalTimerStepIndex + 1, intervalProgramSteps.length || 1)} / {intervalProgramSteps.length || 1}</span>
                           <span>{intervalTimerProgressPercent}%</span>
@@ -3652,7 +3652,7 @@ export function MemberPortal(props: MemberPortalProps) {
               ) : null}
               {activeWorkoutProgram && workoutMode ? (
                 <div className="motus-modal-insets fixed inset-0 z-[10010] overscroll-contain bg-slate-900/40">
-                  <div className="mx-auto flex h-full max-w-xl flex-col rounded-[28px] bg-white shadow-2xl">
+                  <div className="mx-auto flex h-full max-w-xl flex-col rounded-2xl bg-white shadow-lg">
                     <div className="border-b p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="flex items-start justify-between gap-3">
                         <div>
@@ -3668,7 +3668,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       {currentWorkoutGroup ? (
                         <div
                           key={currentWorkoutGroup.groupId}
-                          className="w-full rounded-2xl border p-3 text-left transition bg-slate-50"
+                          className="w-full rounded-xl border p-3 text-left transition bg-slate-50"
                           style={{ borderColor: "rgba(15,23,42,0.08)" }}
                         >
                           <div className="flex items-start justify-between gap-3">
@@ -3824,7 +3824,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       {!showWorkoutReflection ? (
                         <TextArea value={workoutMode.note} onChange={(e) => updateWorkoutModeNote(e.target.value)} className="min-h-[110px]" placeholder="Hvordan gikk økta?" />
                       ) : (
-                        <div className="rounded-2xl border bg-slate-50 p-4 space-y-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                        <div className="rounded-xl border bg-slate-50 p-4 space-y-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                           <div>
                             <div className="text-sm font-semibold text-slate-800">Etter økta</div>
                             <div className="text-xs text-slate-500">Svar med emoji før økta lagres.</div>
@@ -3925,14 +3925,14 @@ export function MemberPortal(props: MemberPortalProps) {
           {memberTab === "progress" ? (
             <Card className="p-5">
               <div className="flex items-start gap-3">
-                <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><TrendingUp className="h-5 w-5" /></div>
+                <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><TrendingUp className="h-5 w-5" /></div>
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight">Fremgang</h2>
                   <p className="text-sm text-slate-500">Utvikling, PR-er og treningsflyt</p>
                 </div>
               </div>
 
-              <div className="mt-4 rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="mt-4 rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <div className="text-sm font-semibold text-slate-700">📸 Delbar progresjonsoppsummering</div>
@@ -3950,7 +3950,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   />
                 ) : null}
               </div>
-              <div className="mt-4 rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="mt-4 rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-sm font-semibold text-slate-700">🏆 Streaks + achievements</div>
                 <div className="mt-1 text-xs text-slate-500">
                   Små milepæler som holder motivasjonen oppe. Nivå {achievementLevel} av {achievementMaxLevel}
@@ -3986,7 +3986,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
 
-              <div className="mt-4 rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="mt-4 rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-sm font-semibold text-slate-700">🏋️ Personlige rekorder</div>
                 <div className="mt-1 text-xs text-slate-500">Beste løft registrert per øvelse.</div>
                 <div className="mt-4 space-y-3">
@@ -3999,7 +3999,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     />
                   ) : null}
                   {personalRecords.map((record) => (
-                    <div key={record.name} className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div key={record.name} className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="font-medium">{record.name}</div>
                       <div className="mt-1 text-sm text-slate-500">Beste registrerte: {record.weight} kg × {record.reps}</div>
                     </div>
@@ -4012,14 +4012,14 @@ export function MemberPortal(props: MemberPortalProps) {
           {memberTab === "messages" ? (
             <Card className="p-5">
               <div className="flex items-start gap-3">
-                <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><MessageSquare className="h-5 w-5" /></div>
+                <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><MessageSquare className="h-5 w-5" /></div>
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight">Meldinger</h2>
                   <p className="text-sm text-slate-500">Enkel chat</p>
                 </div>
               </div>
               <div className="mt-5 space-y-4">
-                <div ref={memberMessagesContainerRef} className="max-h-64 space-y-3 overflow-auto rounded-2xl border bg-white p-4">
+                <div ref={memberMessagesContainerRef} className="max-h-64 space-y-3 overflow-auto rounded-xl border bg-white p-4">
                   {memberMessages.length === 0 ? (
                     <EmptyState
                       icon="💬"
@@ -4034,7 +4034,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     />
                   ) : null}
                   {memberMessages.map((message) => (
-                    <div key={message.id} className={`max-w-[85%] rounded-2xl p-3 text-sm ${message.id === memberMessages[memberMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "member" ? "text-white ml-auto" : "bg-white border"}`} style={message.sender === "member" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div key={message.id} className={`max-w-[85%] rounded-xl p-3 text-sm ${message.id === memberMessages[memberMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "member" ? "text-white ml-auto" : "bg-white border"}`} style={message.sender === "member" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
                       <div>{message.text}</div>
                       <div className={`mt-1 text-[11px] ${message.sender === "member" ? "text-white/80" : "text-slate-500"}`}>{message.createdAt}</div>
                     </div>
@@ -4070,7 +4070,7 @@ export function MemberPortal(props: MemberPortalProps) {
           {memberTab === "profile" ? (
             <Card className="p-5">
               <div className="flex items-start gap-3">
-                <div className="rounded-2xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Target className="h-5 w-5" /></div>
+                <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><Target className="h-5 w-5" /></div>
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight">Medlemsprofil</h2>
                   <p className="text-sm text-slate-500">Se og rediger kundeinformasjon</p>
@@ -4078,7 +4078,7 @@ export function MemberPortal(props: MemberPortalProps) {
               </div>
               {editableMember ? (
                 <div className="mt-5 space-y-4">
-                  <div className="rounded-2xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="rounded-xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="text-sm font-semibold text-slate-700">Kundeinformasjon</div>
                     <div className="grid gap-3 md:grid-cols-2">
                       <label className="space-y-1">
@@ -4120,7 +4120,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       <div><span className="font-medium text-slate-800">Siste trening:</span> {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}</div>
                     </div>
                   </div>
-                  <div className="rounded-2xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="rounded-xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="text-sm font-semibold text-slate-700">Profilbilde</div>
                     {memberAvatarUrl ? (
                       <img src={memberAvatarUrl} alt="Ditt profilbilde" className="h-24 w-24 rounded-full object-cover border" style={{ borderColor: "rgba(15,23,42,0.12)" }} loading="eager" decoding="async" />
@@ -4139,7 +4139,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       </OutlineButton>
                     ) : null}
                   </div>
-                  <div className="rounded-2xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="rounded-xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="text-sm font-semibold text-slate-700">Mikro-feiringer</div>
                     <label className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <span>Vis små feiringer for PR/streak</span>
@@ -4163,7 +4163,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="rounded-xl border bg-slate-50 p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="text-sm font-semibold text-slate-700">Varsler på denne enheten</div>
                       <p className="text-xs text-slate-600">
-                        Slå på varsler for å få beskjed når treneren sender nye meldinger.
+                        Slå på varsler for å få beskjed når treneren sender deg en ny melding.
                       </p>
                       <OutlineButton type="button" onClick={handleRegisterWebPush} disabled={pushRegisterBusy} className="w-full md:w-auto">
                         {pushRegisterBusy ? "Aktiverer…" : "Slå på push-varsler"}

@@ -101,7 +101,7 @@ export function LoginScreen(props: LoginScreenProps) {
           <div>
             <h2 className="text-xl font-semibold tracking-tight">{isRecoveryMode ? "Sett nytt passord" : "Innlogging"}</h2>
             <p className="text-sm text-slate-500">
-              {isRecoveryMode ? "Recovery-lenken er aktiv. Velg et nytt passord." : "Skriv inn e-post og passord for å logge inn."}
+              {isRecoveryMode ? "Recovery-lenken er aktiv. Velg et nytt passord." : "Logg inn med e-post og passord."}
             </p>
           </div>
           {isRecoveryMode ? (

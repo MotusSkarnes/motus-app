@@ -26,7 +26,7 @@ export function OfflineBanner() {
       role="status"
       aria-live="polite"
     >
-      Du er offline. Endringer lagres lokalt og oppdateres automatisk når du er på nett igjen.
+      Du er offline. Endringer synkroniseres når du er på nett igjen.
     </div>
   );
 }
