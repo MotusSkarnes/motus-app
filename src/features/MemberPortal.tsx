@@ -408,15 +408,18 @@ export function MemberPortal(props: MemberPortalProps) {
   );
   const isMemberLimited = useMemo(() => {
     if (currentUserRole !== "member") return false;
-    const scopeRows = relatedMembersForProfile.length > 0 ? relatedMembersForProfile : editableMember ? [editableMember] : [];
-    if (!scopeRows.length) return false;
-    const hasMemberOnlyProfile = scopeRows.some((member) => member.customerType === "Medlem");
-    if (!hasMemberOnlyProfile) return false;
-    const hasElevatedAccess = scopeRows.some(
-      (member) => member.customerType === "PT-kunde" || member.membershipType === "Premium",
-    );
-    return !hasElevatedAccess;
-  }, [currentUserRole, relatedMembersForProfile, editableMember]);
+    const memberByExplicitId =
+      (currentUserMemberId ? members.find((member) => member.id === currentUserMemberId) : null) ??
+      (memberViewId ? members.find((member) => member.id === memberViewId) : null);
+    const memberByEmail = normalizedCurrentUserEmail
+      ? members.find(
+          (member) => member.email.trim().toLowerCase() === normalizedCurrentUserEmail && member.customerType === "Medlem",
+        ) ??
+        members.find((member) => member.email.trim().toLowerCase() === normalizedCurrentUserEmail)
+      : null;
+    const accessMember = memberByExplicitId ?? memberByEmail ?? editableMember ?? null;
+    return accessMember?.customerType === "Medlem" && accessMember.membershipType !== "Premium";
+  }, [currentUserRole, currentUserMemberId, memberViewId, members, normalizedCurrentUserEmail, editableMember]);
   const dbProfileMetrics = useMemo(() => {
     for (const member of relatedMembersForProfile) {
       const decoded = decodeMemberProfileMetrics(member.personalGoals);

@@ -80,18 +80,17 @@ export function MemberLayout({
     const currentUser = appState.currentUser;
     if (!currentUser || currentUser.role !== "member") return false;
     const normalizedEmail = currentUser.email.trim().toLowerCase();
-    const relatedRows = appState.members.filter((member) => {
-      if (currentUser.memberId && member.id === currentUser.memberId) return true;
-      if (appState.memberViewId && member.id === appState.memberViewId) return true;
-      return normalizedEmail ? member.email.trim().toLowerCase() === normalizedEmail : false;
-    });
-    if (!relatedRows.length) return false;
-    const memberOnlyRows = relatedRows.filter((member) => member.customerType === "Medlem");
-    if (!memberOnlyRows.length) return false;
-    const hasElevatedAccess = relatedRows.some(
-      (member) => member.customerType === "PT-kunde" || member.membershipType === "Premium",
-    );
-    return !hasElevatedAccess;
+    const memberByExplicitId =
+      (currentUser.memberId ? appState.members.find((member) => member.id === currentUser.memberId) : null) ??
+      (appState.memberViewId ? appState.members.find((member) => member.id === appState.memberViewId) : null);
+    const memberByEmail = normalizedEmail
+      ? appState.members.find(
+          (member) => member.email.trim().toLowerCase() === normalizedEmail && member.customerType === "Medlem",
+        ) ??
+        appState.members.find((member) => member.email.trim().toLowerCase() === normalizedEmail)
+      : null;
+    const accessMember = memberByExplicitId ?? memberByEmail ?? null;
+    return accessMember?.customerType === "Medlem" && accessMember.membershipType !== "Premium";
   }, [appState.currentUser, appState.members, appState.memberViewId]);
   const visibleMobileTabs = isMemberLimited
     ? mobileTabs.filter((tab) => tab.id === "overview" || tab.id === "programs" || tab.id === "profile")
