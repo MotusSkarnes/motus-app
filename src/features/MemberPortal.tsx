@@ -2662,7 +2662,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Snarveier</div>
               </div>
               <div className="order-2 grid gap-4 lg:grid-cols-2">
-                  <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-semibold text-slate-700">🧭 Neste på planen</div>
                     <div className="text-xs text-slate-500">Plan</div>
@@ -2684,7 +2684,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                   )}
                 </div>
-                  <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-semibold text-slate-700">⚡ Hurtighandlinger</div>
                     <div className="text-xs text-slate-500">Rask tilgang</div>
@@ -2700,7 +2700,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               <div className="order-1 grid gap-4">
-                <div className="min-w-0 w-full overflow-hidden rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="min-w-0 w-full overflow-hidden rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Treningskalender</div>
                   <div className="mt-1 text-base font-semibold text-slate-800 capitalize">{calendarMonthLabel}</div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -2890,7 +2890,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null}
                 </div>
               </div>
-              <div className="order-3 rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="order-3 rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-semibold text-slate-700">🏆 Streaks & challenges</div>
                   <div className="text-xs text-slate-500">Motivasjon</div>

@@ -1406,6 +1406,83 @@ export function TrainerPortal(props: TrainerPortalProps) {
     duplicateIds.forEach((id) => deleteProgramById(id));
   }
 
+  function handlePrintProgram(program: TrainingProgram) {
+    const printWindow = window.open("", "_blank", "width=900,height=1100");
+    if (!printWindow) {
+      window.alert("Kunne ikke åpne utskriftsvindu. Sjekk popup-innstillinger i nettleseren.");
+      return;
+    }
+    const escapeHtml = (value: string) =>
+      value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    const recipientName = selectedMember?.name || "Kunde";
+    const exercisesHtml =
+      program.exercises.length === 0
+        ? '<div class="empty-state">Ingen øvelser i programmet.</div>'
+        : program.exercises
+            .map((exercise) => {
+              const details = exercise.durationMinutes
+                ? `${exercise.sets} runder × ${exercise.durationMinutes} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds}s pause`
+                : `${exercise.sets} × ${exercise.reps} · ${exercise.weight || "0"} kg · ${exercise.restSeconds}s pause`;
+              return `<div class="exercise-card">
+  <div class="exercise-title">${escapeHtml(exercise.exerciseName)}</div>
+  <div class="exercise-prescription">${escapeHtml(details)}</div>
+  ${exercise.notes ? `<div class="exercise-notes">${escapeHtml(exercise.notes)}</div>` : ""}
+</div>`;
+            })
+            .join("");
+    const html = `<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(program.title)} - Utskrift</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; color: #0f172a; background: #f8fafc; }
+    .page { padding: 14px; max-width: 920px; margin: 0 auto; }
+    .header-card { border-radius: 12px; padding: 12px; background: linear-gradient(135deg, #14b8a6 0%, #ec4899 100%); color: #fff; }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    .meta { color: rgba(255,255,255,0.92); font-size: 13px; }
+    .notes-card { margin-top: 10px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; padding: 10px; }
+    .notes-title { font-weight: 700; margin-bottom: 6px; }
+    .section-title { margin: 12px 0 8px; font-size: 15px; font-weight: 700; color: #334155; }
+    .exercise-card { border: 1px solid #dbeafe; border-radius: 12px; background: #fff; padding: 8px; margin-bottom: 8px; break-inside: avoid; }
+    .exercise-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+    .exercise-prescription { font-size: 13px; color: #0f766e; margin-bottom: 4px; }
+    .exercise-notes { font-size: 12px; color: #475569; }
+    .empty-state { border: 1px dashed #cbd5e1; border-radius: 12px; background: #fff; padding: 12px; color: #64748b; }
+    .footer { margin-top: 14px; color: #64748b; font-size: 11px; text-align: right; }
+    @media print { body { margin: 16mm; background: #fff; } .page { padding: 0; } .exercise-card { page-break-inside: avoid; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header-card">
+      <h1>${escapeHtml(program.title)}</h1>
+      <div class="meta">Mål: ${escapeHtml(program.goal || "Ikke satt")} · Opprettet: ${escapeHtml(program.createdAt || "-")}</div>
+      <div class="meta">Kunde: ${escapeHtml(recipientName)}</div>
+    </div>
+    ${program.notes ? `<div class="notes-card"><div class="notes-title">Notater</div>${escapeHtml(program.notes)}</div>` : ""}
+    <div class="section-title">Øvelser</div>
+    ${exercisesHtml}
+    <div class="footer">Generert fra Motus trenerportal.</div>
+  </div>
+  <script>
+    window.addEventListener("load", function () {
+      window.focus();
+      window.print();
+    }, { once: true });
+  </script>
+</body>
+</html>`;
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  }
+
   function handleSaveSelectedMemberDetails() {
     if (!selectedMember) return;
     const selectedOwnerUserId = (selectedMember.ownerUserId ?? "").trim();
@@ -2820,7 +2897,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                   <StatCard label="Inaktivitet" value={`${selectedMember.daysSinceActivity} dager`} hint="Sist aktivitet" />
                 </div>
 
-                <div className="rounded-3xl border bg-slate-50/80 p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="rounded-xl border bg-slate-50/80 p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="grid grid-cols-4 gap-2">
                     <PillButton active={customerSubTab === "overview"} onClick={() => setCustomerSubTab("overview")}>Oversikt</PillButton>
                     <PillButton active={customerSubTab === "programs"} onClick={() => setCustomerSubTab("programs")}>Program</PillButton>
@@ -2832,7 +2909,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 {customerSubTab === "overview" ? (
                   <div className="space-y-4">
                     <div className="grid gap-4 xl:grid-cols-2">
-                    <div className="rounded-3xl border bg-slate-50 p-4">
+                    <div className="rounded-xl border bg-slate-50 p-4">
                       <div className="font-semibold">Kort status</div>
                       <div className="mt-3 space-y-2 text-sm text-slate-600">
                         <div><span className="font-medium text-slate-800">Mål:</span> {selectedMember.goal || "Ikke satt"}</div>
@@ -2841,7 +2918,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         <div><span className="font-medium text-slate-800">Skader/hensyn:</span> {selectedMember.injuries || "Ingen registrerte skader"}</div>
                       </div>
                     </div>
-                    <div className="rounded-3xl border bg-slate-50 p-4">
+                    <div className="rounded-xl border bg-slate-50 p-4">
                       <div className="font-semibold">Siste aktivitet</div>
                       <div className="mt-3 space-y-2 text-sm text-slate-600">
                         <div>{selectedLogs[0] ? `Siste logg: ${selectedLogs[0].date}` : "Ingen logger ennå"}</div>
@@ -3204,7 +3281,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       ) : null}
                     </div>
 
-                    <div className="rounded-3xl border bg-slate-50 p-4 space-y-3">
+                    <div className="rounded-xl border bg-slate-50 p-4 space-y-3">
                       <div className="font-semibold">Øvelser</div>
                       <TextInput
                         value={programExerciseSearch}
@@ -3289,7 +3366,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     </div>
                     </div>
 
-                    <div className="rounded-3xl border bg-slate-50 p-4">
+                    <div className="rounded-xl border bg-slate-50 p-4">
                       <div className="font-semibold">Eksisterende programmer</div>
                       <div className="mt-4 space-y-3">
                         {selectedPrograms.length === 0 ? (
@@ -3332,6 +3409,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
                               <OutlineButton onClick={() => startEditProgram(program)}>
                                 Rediger
                               </OutlineButton>
+                              <OutlineButton onClick={() => handlePrintProgram(program)}>
+                                Skriv ut / PDF
+                              </OutlineButton>
                               <OutlineButton onClick={() => handleDeleteProgram(program.id)}>
                                 Slett
                               </OutlineButton>
@@ -3345,7 +3425,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
                 {customerSubTab === "workouts" ? (
                   <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-                    <div className="rounded-3xl border bg-slate-50 p-4">
+                    <div className="rounded-xl border bg-slate-50 p-4">
                       <div className="mb-3 grid gap-2 sm:grid-cols-3">
                         <StatCard label="Økter siste 7 dager" value={String(workoutInsights.workoutsLast7Days)} hint="Alle økter" />
                         <StatCard label="Gruppetimer siste 30 dager" value={String(workoutInsights.groupWorkoutsLast30Days)} hint="Kun gruppetimer" />
@@ -3410,7 +3490,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         <div className="mt-3 text-sm text-slate-500">Ingen økter matcher filtrene.</div>
                       )}
                     </div>
-                    <div className="rounded-3xl border bg-slate-50 p-4">
+                    <div className="rounded-xl border bg-slate-50 p-4">
                       <div className="font-semibold">Øktdetaljer</div>
                       {filteredSelectedWorkoutLog ? (
                         <div className="mt-3 space-y-3">
@@ -3455,7 +3535,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 ) : null}
 
                 {customerSubTab === "messages" ? (
-                  <div className="rounded-3xl border bg-slate-50 p-4 space-y-4">
+                  <div className="rounded-xl border bg-slate-50 p-4 space-y-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="font-semibold">Dialog med kunde</div>
                       <div className="text-xs text-slate-500">Direkte chat</div>
