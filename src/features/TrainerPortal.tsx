@@ -139,15 +139,18 @@ function encodeNameForPath(name: string): string {
 
 function parseLogDateMs(value: string): number {
   if (!value) return 0;
+  // Norwegian dd.mm.yyyy must be parsed explicitly; `new Date("04.05.2026")` is often read as US m/d/y.
+  const match = value.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (match) {
+    const day = Number(match[1]);
+    const month = Number(match[2]) - 1;
+    const year = Number(match[3]);
+    const parsed = new Date(year, month, day);
+    return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+  }
   const iso = new Date(value);
   if (!Number.isNaN(iso.getTime())) return iso.getTime();
-  const parts = value.split(".");
-  if (parts.length < 3) return 0;
-  const day = Number(parts[0]);
-  const month = Number(parts[1]) - 1;
-  const year = Number(parts[2]);
-  const parsed = new Date(year, month, day);
-  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+  return 0;
 }
 
 function parseChatCreatedAtMs(value: string): number {
