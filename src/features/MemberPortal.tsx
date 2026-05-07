@@ -7,7 +7,7 @@ import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { supabaseClient } from "../services/supabaseClient";
 import { isWebPushConfigurable, registerWebPushWithSupabase } from "../services/webPush";
-import { Card, GradientButton, OutlineButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
+import { Card, GradientButton, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { uid } from "../app/storage";
 import type { LogGroupWorkoutInput, ReplaceWorkoutExerciseGroupInput, StartCustomWorkoutInput, StartWorkoutModeOptions, UpdateMemberInput } from "../services/appRepository";
 import { mergedPeriodPlanListForMember } from "../app/periodPlanMerge";
@@ -281,7 +281,6 @@ export function MemberPortal(props: MemberPortalProps) {
   const [profileCurrentDailySteps, setProfileCurrentDailySteps] = useState("");
   const [microCelebrationsEnabled, setMicroCelebrationsEnabled] = useState(true);
   const [celebrationSoundEnabled, setCelebrationSoundEnabled] = useState(false);
-  const [showHomeCustomization, setShowHomeCustomization] = useState(false);
   const [homeVisibility, setHomeVisibility] = useState<Record<HomeSectionKey, boolean>>({ ...DEFAULT_HOME_VISIBILITY });
   const [pushRegisterBusy, setPushRegisterBusy] = useState(false);
   const [pushRegisterStatus, setPushRegisterStatus] = useState<string | null>(null);
@@ -2659,122 +2658,10 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">Klar for i dag?</div>
                 <div className="mt-2 text-sm text-white/90">Alt du trenger for dagens økt ligger under.</div>
               </div>
-              <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="text-sm font-semibold text-slate-700">🛠️ Tilpass hjem-skjerm</div>
-                  <OutlineButton onClick={() => setShowHomeCustomization((prev) => !prev)} className="w-full sm:w-auto">
-                    {showHomeCustomization ? "Skjul valg" : "Tilpass kort"}
-                  </OutlineButton>
-                </div>
-                {showHomeCustomization ? (
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {([
-                      { key: "weeklyStats", label: "Ukesstatistikk" },
-                      { key: "streakChallenges", label: "Streaks & challenges" },
-                      { key: "nextStep", label: "Neste steg" },
-                      { key: "nextOnPlan", label: "Neste på planen" },
-                      { key: "quickActions", label: "Hurtighandlinger" },
-                      { key: "calendar", label: "Treningskalender" },
-                    ] as Array<{ key: HomeSectionKey; label: string }>).map((item) => (
-                      <label key={item.key} className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                        <input
-                          type="checkbox"
-                          checked={homeVisibility[item.key]}
-                          onChange={(event) =>
-                            setHomeVisibility((prev) => ({
-                              ...prev,
-                              [item.key]: event.target.checked,
-                            }))
-                          }
-                        />
-                        {item.label}
-                      </label>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              {(homeVisibility.weeklyStats || homeVisibility.streakChallenges) ? (
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</div>
-              ) : null}
-              {homeVisibility.weeklyStats ? (
-                <div className="hidden w-full sm:grid gap-3 sm:grid-cols-3">
-                  <StatCard label="Denne uken" value={`${homeWeeklySummary.completedThisWeek}/${homeWeeklySummary.plannedThisWeek || 0}`} hint="Økter fullført" />
-                  <StatCard label="Treffprosent" value={`${homeWeeklySummary.completionRate}%`} hint="Av ukens plan" />
-                  <StatCard label="Streak" value={`${streakWeeks}`} hint="Uker på rad" />
-                </div>
-              ) : null}
-              {homeVisibility.streakChallenges ? (
-                <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold text-slate-700">🏆 Streaks & challenges</div>
-                    <div className="text-xs text-slate-500">Motivasjon</div>
-                  </div>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <div className="rounded-xl border bg-slate-50 px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="text-xs font-semibold text-slate-600">7-dagers challenge</div>
-                      <div className="mt-1 text-sm font-semibold text-slate-800">
-                        {streakChallenges.sevenDay.current}/{streakChallenges.sevenDay.target} treningsdager
-                      </div>
-                      <div className="mt-1 text-xs text-slate-500">
-                        {streakChallenges.sevenDay.unlocked ? "Badge låst opp ✅" : "Fortsett - du er snart i mål"}
-                      </div>
-                    </div>
-                    <div className="rounded-xl border bg-slate-50 px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="text-xs font-semibold text-slate-600">Månedsmål</div>
-                      <div className="mt-1 text-sm font-semibold text-slate-800">
-                        {streakChallenges.month.current}/{streakChallenges.month.target} økter denne måneden
-                      </div>
-                      <div className="mt-1 text-xs text-slate-500">
-                        {streakChallenges.month.unlocked ? "Mål nådd 🎉" : "Bygg jevnt videre mot månedsmålet"}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 rounded-xl border bg-emerald-50/60 px-3 py-2 text-sm text-emerald-800" style={{ borderColor: "rgba(16,185,129,0.25)" }}>
-                    Aktiv streak: <span className="font-semibold">{streakChallenges.streakDays} dager</span>
-                  </div>
-                </div>
-              ) : null}
-              {homeVisibility.nextStep ? (
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">I dag</div>
-              ) : null}
-              {homeVisibility.nextStep ? (
-                <div className="min-w-0 w-full rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-semibold text-slate-700">🎯 Neste steg i dag</div>
-                  <div className="text-xs text-slate-500">Prioritert</div>
-                </div>
-                <div className="mt-1 text-sm font-medium text-slate-800">{nextBestAction.title}</div>
-                <div className="mt-1 text-sm text-slate-600">{nextBestAction.description}</div>
-                {nextProgram ? (
-                  <div className="mt-2 text-xs text-slate-500">Neste program: {nextProgram.title}</div>
-                ) : null}
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                  <GradientButton
-                    onClick={() => {
-                      if (nextBestAction.action === "messages") setMemberTab("messages");
-                      if (nextBestAction.action === "progress") setMemberTab("progress");
-                      if (nextBestAction.action === "programs") setMemberTab("programs");
-                      if (nextBestAction.action === "start-workout" && nextProgram) {
-                        setMemberTab("programs");
-                        startWorkoutMode(nextProgram.id, buildStartWorkoutOptions(nextProgram));
-                      }
-                    }}
-                    className="w-full sm:w-auto"
-                  >
-                    {nextBestAction.cta}
-                  </GradientButton>
-                  <OutlineButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">
-                    Åpne program
-                  </OutlineButton>
-                </div>
-              </div>
-              ) : null}
-              {(homeVisibility.nextOnPlan || homeVisibility.quickActions) ? (
+              <div className="order-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Snarveier</div>
-              ) : null}
-              {(homeVisibility.nextOnPlan || homeVisibility.quickActions) ? (
-                <div className="grid gap-4 lg:grid-cols-2">
-                {homeVisibility.nextOnPlan ? (
+              </div>
+              <div className="order-2 grid gap-4 lg:grid-cols-2">
                   <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-semibold text-slate-700">🧭 Neste på planen</div>
@@ -2797,8 +2684,6 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                   )}
                 </div>
-                ) : <div />}
-                {homeVisibility.quickActions ? (
                   <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-semibold text-slate-700">⚡ Hurtighandlinger</div>
@@ -2813,11 +2698,8 @@ export function MemberPortal(props: MemberPortalProps) {
                     ) : null}
                   </div>
                 </div>
-                ) : <div />}
               </div>
-              ) : null}
-              {homeVisibility.calendar ? (
-                <div className="grid gap-4">
+              <div className="order-1 grid gap-4">
                 <div className="min-w-0 w-full overflow-hidden rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Treningskalender</div>
                   <div className="mt-1 text-base font-semibold text-slate-800 capitalize">{calendarMonthLabel}</div>
@@ -3008,7 +2890,35 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null}
                 </div>
               </div>
-              ) : null}
+              <div className="order-3 rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-slate-700">🏆 Streaks & challenges</div>
+                  <div className="text-xs text-slate-500">Motivasjon</div>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-xl border bg-slate-50 px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="text-xs font-semibold text-slate-600">7-dagers challenge</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-800">
+                      {streakChallenges.sevenDay.current}/{streakChallenges.sevenDay.target} treningsdager
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {streakChallenges.sevenDay.unlocked ? "Badge låst opp ✅" : "Fortsett - du er snart i mål"}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border bg-slate-50 px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="text-xs font-semibold text-slate-600">Månedsmål</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-800">
+                      {streakChallenges.month.current}/{streakChallenges.month.target} økter denne måneden
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {streakChallenges.month.unlocked ? "Mål nådd 🎉" : "Bygg jevnt videre mot månedsmålet"}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 rounded-xl border bg-emerald-50/60 px-3 py-2 text-sm text-emerald-800" style={{ borderColor: "rgba(16,185,129,0.25)" }}>
+                  Aktiv streak: <span className="font-semibold">{streakChallenges.streakDays} dager</span>
+                </div>
+              </div>
             </Card>
           ) : null}
 
