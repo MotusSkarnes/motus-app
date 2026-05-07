@@ -99,6 +99,33 @@ export function OutlineButton({ children, className = "", type = "button", ...pr
   return <button type={type} {...props} className={`rounded-lg border px-4 py-2.5 text-sm font-medium text-slate-700 bg-white cursor-pointer ${className}`} style={{ borderColor: "rgba(15,23,42,0.12)" }}>{children}</button>;
 }
 
+export function DangerButton({ children, className = "", type = "button", ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode }) {
+  return <button type={type} {...props} className={`rounded-lg border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 cursor-pointer transition hover:bg-rose-100 ${className}`}>{children}</button>;
+}
+
+export function EmptyState({
+  title,
+  description,
+  icon = "🗂️",
+  action,
+  className = "",
+}: {
+  title: string;
+  description: string;
+  icon?: string;
+  action?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`rounded-lg border bg-slate-50 px-4 py-5 text-center ${className}`} style={{ borderColor: "rgba(15,23,42,0.1)" }}>
+      <div className="text-xl" aria-hidden>{icon}</div>
+      <div className="mt-2 text-sm font-semibold text-slate-700">{title}</div>
+      <div className="mt-1 text-sm text-slate-500">{description}</div>
+      {action ? <div className="mt-3">{action}</div> : null}
+    </div>
+  );
+}
+
 export function StatCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div className="rounded-xl border p-4 shadow-sm relative overflow-hidden bg-white" style={{ borderColor: "rgba(15,23,42,0.10)" }}>

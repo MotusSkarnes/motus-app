@@ -5,7 +5,7 @@ import { formatDateDdMmYyyy } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { uid } from "../app/storage";
-import { Card, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
+import { Card, DangerButton, EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
 import type { CreateMemberInput, UpdateMemberInput } from "../services/appRepository";
 import type { InviteMemberResult, InviteTrainerResult } from "../services/supabaseAuth";
 import type {
@@ -2859,13 +2859,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
                     <OutlineButton onClick={() => handleDeactivateMember(selectedMember.id)}>
                       Sett medlem som inaktiv
                     </OutlineButton>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteMember(selectedMember.id)}
-                      className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
-                    >
+                    <DangerButton onClick={() => handleDeleteMember(selectedMember.id)}>
                       Slett kunde permanent
-                    </button>
+                    </DangerButton>
                   </div>
                 </div>
 
@@ -3153,7 +3149,14 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           setIsDraftDropZoneActive(false);
                         }}
                       >
-                        {programExercisesDraft.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen øvelser valgt ennå.</div> : null}
+                        {programExercisesDraft.length === 0 ? (
+                          <EmptyState
+                            icon="🏋️"
+                            title="Ingen øvelser valgt ennå"
+                            description="Legg til øvelser fra biblioteket for å bygge programmet."
+                            className="bg-white"
+                          />
+                        ) : null}
                         {programExercisesDraft.map((item, index) => (
                           <div
                             key={item.id}
@@ -3370,13 +3373,17 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       <div className="font-semibold">Eksisterende programmer</div>
                       <div className="mt-4 space-y-3">
                         {selectedPrograms.length === 0 ? (
-                          <div className="rounded-2xl border border-dashed bg-white p-6 text-center">
-                            <div className="text-sm font-semibold text-slate-700">Ingen programmer ennå</div>
-                            <div className="mt-1 text-sm text-slate-500">Lag et enkelt program for å komme i gang med kunden.</div>
-                            <GradientButton onClick={() => setCustomerSubTab("programs")} className="mt-3 w-full sm:w-auto">
-                              Opprett program
-                            </GradientButton>
-                          </div>
+                          <EmptyState
+                            icon="📋"
+                            title="Ingen programmer ennå"
+                            description="Lag et enkelt program for å komme i gang med kunden."
+                            className="bg-white"
+                            action={
+                              <GradientButton onClick={() => setCustomerSubTab("programs")} className="w-full sm:w-auto">
+                                Opprett program
+                              </GradientButton>
+                            }
+                          />
                         ) : null}
                         {selectedPrograms.map((program) => {
                           const firstExercise = exercisesById.get(program.exercises[0]?.exerciseId ?? "");

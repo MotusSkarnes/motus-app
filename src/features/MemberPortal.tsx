@@ -7,7 +7,7 @@ import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { supabaseClient } from "../services/supabaseClient";
 import { isWebPushConfigurable, registerWebPushWithSupabase } from "../services/webPush";
-import { Card, GradientButton, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput } from "../app/ui";
+import { Card, DangerButton, EmptyState, GradientButton, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { uid } from "../app/storage";
 import type { LogGroupWorkoutInput, ReplaceWorkoutExerciseGroupInput, StartCustomWorkoutInput, StartWorkoutModeOptions, UpdateMemberInput } from "../services/appRepository";
 import { mergedPeriodPlanListForMember } from "../app/periodPlanMerge";
@@ -2983,9 +2983,12 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Din økt</div>
                     {customWorkoutLines.length === 0 ? (
-                      <div className="mt-2 rounded-2xl border border-dashed bg-slate-50 px-4 py-5 text-center text-sm text-slate-600" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
-                        Ingen øvelser ennå. Finn øvelser i listen under og trykk «Legg til».
-                      </div>
+                      <EmptyState
+                        icon="🏋️"
+                        title="Ingen øvelser ennå"
+                        description="Finn øvelser i listen under og trykk «Legg til»."
+                        className="mt-2"
+                      />
                     ) : (
                       <div className="mt-2 space-y-2">
                         {customWorkoutLines.map((line) => {
@@ -2994,9 +2997,9 @@ export function MemberPortal(props: MemberPortalProps) {
                             <div key={line.key} className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div className="min-w-0 font-medium text-sm text-slate-800">{ex?.name ?? "Ukjent øvelse"}</div>
-                                <OutlineButton type="button" onClick={() => removeCustomWorkoutLine(line.key)} className="shrink-0 px-2 py-1 text-xs text-rose-700">
+                                <DangerButton type="button" onClick={() => removeCustomWorkoutLine(line.key)} className="shrink-0 px-2 py-1 text-xs">
                                   Fjern
-                                </OutlineButton>
+                                </DangerButton>
                               </div>
                               <div className="mt-3 grid grid-cols-3 gap-2">
                                 <label className="space-y-1">
@@ -3131,15 +3134,19 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="font-semibold">📋 Mine treningsprogram</div>
                 <div className="mt-4 space-y-3">
                   {memberAssignedPrograms.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed bg-white p-6 text-center">
-                      <div className="text-sm font-semibold text-slate-700">Ingen programmer fra trener ennå</div>
-                      <div className="mt-1 text-sm text-slate-500">Be trener tildele et program, eller bruk «Lag egen økt» nederst på siden.</div>
-                      {!isMemberLimited ? (
-                        <GradientButton onClick={() => setMemberTab("messages")} className="mt-3 w-full sm:w-auto">
-                          Send melding til trener
-                        </GradientButton>
-                      ) : null}
-                    </div>
+                    <EmptyState
+                      icon="📋"
+                      title="Ingen programmer fra trener ennå"
+                      description="Be trener tildele et program, eller bruk «Lag egen økt» nederst på siden."
+                      className="bg-white"
+                      action={
+                        !isMemberLimited ? (
+                          <GradientButton onClick={() => setMemberTab("messages")} className="w-full sm:w-auto">
+                            Send melding til trener
+                          </GradientButton>
+                        ) : null
+                      }
+                    />
                   ) : null}
                   {memberAssignedPrograms.map((program) => {
                     const isExpanded = expandedProgramId === program.id;
@@ -3421,7 +3428,14 @@ export function MemberPortal(props: MemberPortalProps) {
                       </button>
                     </div>
                   ) : null}
-                  {completedLogs.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen økter logget ennå.</div> : null}
+                  {completedLogs.length === 0 ? (
+                    <EmptyState
+                      icon="🧾"
+                      title="Ingen økter logget ennå"
+                      description="Start en økt for å bygge historikk og fremgang."
+                      className="bg-white"
+                    />
+                  ) : null}
                   {completedLogs.slice(0, 3).map((log) => (
                     <div key={log.id} className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="flex items-start justify-between gap-3">
@@ -3966,7 +3980,14 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="text-sm font-semibold text-slate-700">🏋️ Personlige rekorder</div>
                 <div className="mt-1 text-xs text-slate-500">Beste løft registrert per øvelse.</div>
                 <div className="mt-4 space-y-3">
-                  {personalRecords.length === 0 ? <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">Ingen PR-er registrert ennå.</div> : null}
+                  {personalRecords.length === 0 ? (
+                    <EmptyState
+                      icon="🏅"
+                      title="Ingen PR-er registrert ennå"
+                      description="Når du logger styrkeøkter, vises personlige rekorder her."
+                      className="bg-white"
+                    />
+                  ) : null}
                   {personalRecords.map((record) => (
                     <div key={record.name} className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="font-medium">{record.name}</div>
