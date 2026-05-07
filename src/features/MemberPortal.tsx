@@ -408,17 +408,14 @@ export function MemberPortal(props: MemberPortalProps) {
   );
   const isMemberLimited = useMemo(() => {
     if (currentUserRole !== "member") return false;
-    const memberByExplicitId =
-      (currentUserMemberId ? members.find((member) => member.id === currentUserMemberId) : null) ??
-      (memberViewId ? members.find((member) => member.id === memberViewId) : null);
-    const memberByEmail = normalizedCurrentUserEmail
-      ? members.find(
-          (member) => member.email.trim().toLowerCase() === normalizedCurrentUserEmail && member.customerType === "Medlem",
-        ) ??
-        members.find((member) => member.email.trim().toLowerCase() === normalizedCurrentUserEmail)
-      : null;
-    const accessMember = memberByExplicitId ?? memberByEmail ?? editableMember ?? null;
-    return accessMember?.customerType === "Medlem" && accessMember.membershipType !== "Premium";
+    const candidates = members.filter((member) => {
+      if (currentUserMemberId && member.id === currentUserMemberId) return true;
+      if (memberViewId && member.id === memberViewId) return true;
+      if (editableMember?.id && member.id === editableMember.id) return true;
+      return Boolean(normalizedCurrentUserEmail && member.email.trim().toLowerCase() === normalizedCurrentUserEmail);
+    });
+    if (editableMember) candidates.push(editableMember);
+    return candidates.some((member) => member.customerType === "Medlem" && member.membershipType !== "Premium");
   }, [currentUserRole, currentUserMemberId, memberViewId, members, normalizedCurrentUserEmail, editableMember]);
   const dbProfileMetrics = useMemo(() => {
     for (const member of relatedMembersForProfile) {
