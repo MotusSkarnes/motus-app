@@ -78,7 +78,7 @@ export async function requestEmailOtpSignIn(email: string): Promise<{ ok: boolea
 export async function verifyEmailOtpSignIn(email: string, token: string): Promise<SupabaseSignInResult> {
   if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
   const normalizedEmail = email.trim().toLowerCase();
-  const normalizedToken = token.trim();
+  const normalizedToken = token.trim().replace(/[\s-]+/g, "");
   if (!normalizedEmail || !normalizedEmail.includes("@")) {
     return { ok: false, message: "Skriv inn en gyldig e-postadresse." };
   }
@@ -90,6 +90,19 @@ export async function verifyEmailOtpSignIn(email: string, token: string): Promis
     token: normalizedToken,
     type: "email",
   });
+  if (!error && data.user) {
+    return { ok: true, user: mapSupabaseUserToAuthUser(data.user) };
+  }
+  if (error?.message && isInvalidOtpMessage(error.message)) {
+    const { data: inviteData, error: inviteError } = await supabaseClient.auth.verifyOtp({
+      email: normalizedEmail,
+      token: normalizedToken,
+      type: "invite",
+    });
+    if (!inviteError && inviteData.user) {
+      return { ok: true, user: mapSupabaseUserToAuthUser(inviteData.user) };
+    }
+  }
   if (error || !data.user) {
     return { ok: false, message: error?.message || "Ugyldig eller utløpt engangskode." };
   }
@@ -241,6 +254,18 @@ function isRateLimitMessage(message: string): boolean {
     normalized.includes("for mange forespørsler") ||
     normalized.includes("for mange foresporsler") ||
     normalized.includes("request rate limit reached")
+  );
+}
+
+function isInvalidOtpMessage(message: string): boolean {
+  const normalized = message.trim().toLowerCase();
+  return (
+    normalized.includes("token has expired") ||
+    normalized.includes("invalid") ||
+    normalized.includes("expired") ||
+    normalized.includes("utlÃ¸pt") ||
+    normalized.includes("utløpt") ||
+    normalized.includes("ugyldig")
   );
 }
 
