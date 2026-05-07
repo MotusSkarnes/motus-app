@@ -87,7 +87,7 @@ export function useMemberAvatarStore({
       if (avatar) return avatar;
     }
     return "";
-  }, [memberAvatarById, memberViewId, currentMemberAvatarTargetIds]);
+  }, [memberAvatarById, memberViewId, currentMemberAvatarTargetIds, currentUser?.email, currentUser?.name]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

@@ -14,8 +14,6 @@ import type {
 } from "../app/types";
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy } from "../app/dateFormat";
 import {
-  appendMemberMessage,
-  appendTrainerMessage,
   localAppRepository,
   type AppRepository,
   type CreateMemberInput,

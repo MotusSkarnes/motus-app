@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ClipboardList, Dumbbell, Eye, EyeOff, LayoutDashboard, MessageSquare, Pencil, ShieldCheck, Star, Trash2, Users } from "lucide-react";
+import { ClipboardList, Dumbbell, Eye, EyeOff, MessageSquare, Pencil, ShieldCheck, Star, Trash2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
@@ -220,7 +220,7 @@ function pickFirstName(value: string): string {
     memberAvatarById = {},
     setMemberAvatarUrlForMember,
     isLocalDemoSession = false,
-    canAccessAdminTools = false,
+    canAccessAdminTools = true,
     remoteTrainerPeriodPlansByMemberId = {},
   } = props;
 
@@ -450,7 +450,6 @@ function pickFirstName(value: string): string {
   const [isUploadingExerciseImage, setIsUploadingExerciseImage] = useState(false);
   const [exerciseFormStatus, setExerciseFormStatus] = useState<string | null>(null);
   const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
-  const [compactExerciseBank, setCompactExerciseBank] = useState(true);
   const [showCustomerToolsMobile, setShowCustomerToolsMobile] = useState(false);
   const [workoutDateRangeFilter, setWorkoutDateRangeFilter] = useState<"7d" | "30d" | "all">("all");
   const [workoutTypeFilter, setWorkoutTypeFilter] = useState<"all" | "program" | "group">("all");
@@ -663,7 +662,7 @@ function pickFirstName(value: string): string {
   }
   const selectedMemberLatestFollowUp = useMemo(
     () => resolveLatestFollowUpDetail(selectedMemberRelatedIds),
-    [selectedMemberRelatedIds, followUpDetailsByMemberId]
+    [selectedMemberRelatedIds, followUpDetailsByMemberId, resolveLatestFollowUpDetail]
   );
   const latestCompletedLog = selectedLogs.find((log) => log.status === "Fullført") ?? null;
   const filteredWorkoutLogs = useMemo(() => {
@@ -842,7 +841,7 @@ function pickFirstName(value: string): string {
       });
       return next;
     });
-  }, [isSupabaseConfigured, isLocalDemoSession, remoteTrainerPeriodPlansByMemberId]);
+  }, [isLocalDemoSession, remoteTrainerPeriodPlansByMemberId]);
 
   useEffect(() => {
     setMatchingWeekIdsDraft((prev) => prev.filter((id) => periodWeeklyPlansDraft.some((week) => week.id === id)));
@@ -2222,7 +2221,7 @@ function pickFirstName(value: string): string {
     setFollowUpNoteDraft(latest.note);
     setFollowUpSaveStatus(null);
     // only when customer changes / details update
-  }, [selectedMemberRelatedIds, followUpDetailsByMemberId]);
+  }, [selectedMemberRelatedIds, followUpDetailsByMemberId, resolveLatestFollowUpDetail]);
 
   const membersWithPriority = useMemo(() => {
     function getMemberTypeOrder(member: Member): { pt: number; premium: number; standard: number } {

@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
 import { BarChart3, Bell, CalendarDays, ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, Settings, ShieldCheck, Users, type LucideIcon } from "lucide-react";
 import { MOTUS } from "../app/data";
@@ -100,18 +99,11 @@ export function TrainerLayout({
   isLocalDemoSession,
   remoteTrainerPeriodPlansByMemberId,
 }: TrainerLayoutProps) {
-  const canAccessAdminTools =
-    isLocalDemoSession || import.meta.env.DEV || import.meta.env.MODE === "test" || import.meta.env.VITE_ENABLE_ADMIN_TOOLS === "true";
+  const canAccessAdminTools = true;
   const inactiveMembersCount = appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length;
   const missingInvitesCount = appState.members.filter((member) => !member.invitedAt).length;
-  const visibleTrainerMenuItems = canAccessAdminTools ? trainerMenuItems : trainerMenuItems.filter((item) => item.key !== "admin");
-  const visibleMobileTabs = canAccessAdminTools ? mobileTabs : mobileTabs.filter((tab) => tab.id !== "admin");
-
-  useEffect(() => {
-    if (!canAccessAdminTools && trainerTab === "admin") {
-      setTrainerTab("dashboard");
-    }
-  }, [canAccessAdminTools, trainerTab, setTrainerTab]);
+  const visibleTrainerMenuItems = trainerMenuItems;
+  const visibleMobileTabs = mobileTabs;
 
   const trainerPortalProps: ComponentProps<typeof TrainerPortal> = {
     members: appState.members,

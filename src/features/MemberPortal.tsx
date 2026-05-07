@@ -547,7 +547,8 @@ export function MemberPortal(props: MemberPortalProps) {
     const byName = exerciseByName.get(currentWorkoutGroup.exerciseName.trim().toLowerCase());
     return byName?.imageUrl ?? "";
   }, [activeWorkoutProgram, currentWorkoutGroup, exerciseByName, exercises]);
-  const now = new Date();
+  const nowTimestamp = Date.now();
+  const nowDate = new Date(nowTimestamp);
   const exerciseCategoryById = useMemo(() => {
     const byId = new Map<string, Exercise["category"]>();
     exercises.forEach((exercise) => {
@@ -624,7 +625,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const intervalTimerProgressPercent =
     intervalTimerTotalSeconds > 0 ? Math.min(100, Math.round((intervalTimerElapsedSeconds / intervalTimerTotalSeconds) * 100)) : 0;
   const currentWeekdayKey: WeekdayPlanKey = useMemo(() => {
-    const day = now.getDay();
+    const day = new Date(nowTimestamp).getDay();
     if (day === 0) return "sunday";
     if (day === 1) return "monday";
     if (day === 2) return "tuesday";
@@ -632,17 +633,17 @@ export function MemberPortal(props: MemberPortalProps) {
     if (day === 4) return "thursday";
     if (day === 5) return "friday";
     return "saturday";
-  }, [now]);
+  }, [nowTimestamp]);
   const activePeriodPlan = periodPlans[0] ?? null;
   const activePeriodPlanStartDate = activePeriodPlan ? parseDateOnly(activePeriodPlan.startDate) : null;
   const activePeriodWeekIndex = useMemo(() => {
     if (!activePeriodPlan || !activePeriodPlanStartDate) return null;
-    const daysSinceStart = Math.floor((getStartOfDay(now).getTime() - getStartOfDay(activePeriodPlanStartDate).getTime()) / (24 * 60 * 60 * 1000));
+    const daysSinceStart = Math.floor((getStartOfDay(new Date(nowTimestamp)).getTime() - getStartOfDay(activePeriodPlanStartDate).getTime()) / (24 * 60 * 60 * 1000));
     if (daysSinceStart < 0) return 0;
     const weekIndex = Math.floor(daysSinceStart / 7);
     if (weekIndex >= activePeriodPlan.weeks) return null;
     return weekIndex;
-  }, [activePeriodPlan, activePeriodPlanStartDate, now]);
+  }, [activePeriodPlan, activePeriodPlanStartDate, nowTimestamp]);
   const activeWeeklyPlan = useMemo(() => {
     if (!activePeriodPlan || activePeriodWeekIndex === null) return null;
     return (
@@ -1018,7 +1019,7 @@ export function MemberPortal(props: MemberPortalProps) {
   );
   const completedLogDates = completedLogs.map((log) => parseLogDate(log.date)).filter((date): date is Date => Boolean(date));
   const uniqueTrainingDays = new Set(completedLogDates.map((date) => date.toDateString())).size;
-  const estimatedSessionsThisMonth = completedLogDates.filter((date) => date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()).length;
+  const estimatedSessionsThisMonth = completedLogDates.filter((date) => date.getMonth() === nowDate.getMonth() && date.getFullYear() === nowDate.getFullYear()).length;
   const trainingWeekKeys = Array.from(new Set(completedLogDates.map((date) => getWeekKey(date)))).sort().reverse();
   const streakWeeks = useMemo(() => {
     if (!trainingWeekKeys.length) return 0;
@@ -1154,7 +1155,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [periodPlans, calendarMonth]);
   const calendarDayStatusByDay = useMemo(() => {
     const statusByDay = new Map<number, "completed" | "planned" | "missed">();
-    const todayStart = getStartOfDay(now);
+    const todayStart = getStartOfDay(new Date(nowTimestamp));
     calendarPlannedEntriesByDay.forEach((_entries, day) => {
       const candidateDate = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day);
       const hasCompleted = calendarDayLoad.has(day);
@@ -1172,7 +1173,7 @@ export function MemberPortal(props: MemberPortalProps) {
       statusByDay.set(day, "completed");
     });
     return statusByDay;
-  }, [calendarPlannedEntriesByDay, calendarDayLoad, calendarMonth, now]);
+  }, [calendarPlannedEntriesByDay, calendarDayLoad, calendarMonth, nowTimestamp]);
   const selectedCalendarLogs = useMemo(() => {
     if (!selectedCalendarDay) return [];
     return calendarLogsByDay.get(selectedCalendarDay) ?? [];
@@ -1186,7 +1187,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!selectedCalendarLogId) return selectedCalendarLogs[0];
     return selectedCalendarLogs.find((log) => log.id === selectedCalendarLogId) ?? selectedCalendarLogs[0];
   }, [selectedCalendarLogs, selectedCalendarLogId]);
-  const maxCalendarDayLoad = Math.max(0, ...Array.from(calendarDayLoad.values()));
+  const _maxCalendarDayLoad = Math.max(0, ...Array.from(calendarDayLoad.values()));
   const firstDayOfMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
   const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
   const calendarMonthLabel = calendarMonth.toLocaleDateString("no-NO", {
@@ -2028,7 +2029,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   const progressStory = useMemo(() => {
-    const nowMs = now.getTime();
+    const nowMs = nowTimestamp;
     const dayMs = 24 * 60 * 60 * 1000;
     const recent14 = completedLogDates.filter((date) => nowMs - date.getTime() <= 14 * dayMs).length;
     const previous14 = completedLogDates.filter((date) => {
@@ -2046,8 +2047,8 @@ export function MemberPortal(props: MemberPortalProps) {
     const consistency = Math.min(100, Math.round((weekKeysRecent4.size / 4) * 100));
     const nextFocus = recent14 > 0 ? "Hold flyten med neste planlagte økt" : "Start med en rolig økt denne uken";
     return { recent14, previous14, delta, trendLabel, trendToneClass, consistency, nextFocus };
-  }, [completedLogDates, now]);
-  const nextBestAction = useMemo(() => {
+  }, [completedLogDates, nowTimestamp]);
+  const _nextBestAction = useMemo(() => {
     if (!memberAssignedPrograms.length) {
       return {
         title: "Be om første program",
@@ -2071,8 +2072,8 @@ export function MemberPortal(props: MemberPortalProps) {
       action: "progress" as const,
     };
   }, [memberAssignedPrograms.length, nextProgram]);
-  const homeWeeklySummary = useMemo(() => {
-    const today = getStartOfDay(now);
+  const _homeWeeklySummary = useMemo(() => {
+    const today = getStartOfDay(new Date(nowTimestamp));
     const mondayOffset = (today.getDay() + 6) % 7;
     const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset);
     const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7);
@@ -2085,7 +2086,7 @@ export function MemberPortal(props: MemberPortalProps) {
       : 0;
     const completionRate = plannedThisWeek > 0 ? Math.min(100, Math.round((completedThisWeek / plannedThisWeek) * 100)) : 0;
     return { completedThisWeek, plannedThisWeek, completionRate };
-  }, [now, completedLogDates, activeWeeklyPlan]);
+  }, [nowTimestamp, completedLogDates, activeWeeklyPlan]);
   const nextPlannedWorkout = useMemo(() => {
     if (!activeWeeklyPlan) return null;
     const dayOrder: WeekdayPlanKey[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -2110,7 +2111,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [activeWeeklyPlan, currentWeekdayKey]);
   const streakChallenges = useMemo(() => {
     const dayMs = 24 * 60 * 60 * 1000;
-    const today = getStartOfDay(now);
+    const today = getStartOfDay(new Date(nowTimestamp));
     const uniqueDayKeys = Array.from(new Set(completedLogDates.map((date) => getStartOfDay(date).toDateString())));
     const last7DaysCount = uniqueDayKeys.filter((dayKey) => {
       const date = new Date(dayKey);
@@ -2150,7 +2151,7 @@ export function MemberPortal(props: MemberPortalProps) {
       month: { current: monthProgress, target: monthTarget, unlocked: monthProgress >= monthTarget },
       streakDays,
     };
-  }, [completedLogDates, estimatedSessionsThisMonth, now, profileSessionsPerWeekTarget]);
+  }, [completedLogDates, estimatedSessionsThisMonth, nowTimestamp, profileSessionsPerWeekTarget]);
   const customerStatusLabel = (() => {
     const isPtCustomer = viewedMember?.customerType === "PT-kunde";
     const isPremiumCustomer = viewedMember?.membershipType === "Premium";
@@ -2714,7 +2715,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     </OutlineButton>
                     <OutlineButton
                       className="px-3 py-1.5 text-xs"
-                      onClick={() => setCalendarMonth(new Date(now.getFullYear(), now.getMonth(), 1))}
+                      onClick={() => setCalendarMonth(new Date(nowDate.getFullYear(), nowDate.getMonth(), 1))}
                     >
                       I dag
                     </OutlineButton>

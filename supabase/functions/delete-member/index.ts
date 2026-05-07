@@ -10,10 +10,6 @@ type DeletePayload = {
   memberId?: string;
 };
 
-function normalizeEmail(value: string | null | undefined): string {
-  return String(value ?? "").trim().toLowerCase();
-}
-
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
