@@ -2675,9 +2675,11 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">Klar for i dag?</div>
                 <div className="mt-2 text-sm text-white/90">Alt du trenger for dagens økt ligger under.</div>
               </div>
+              {!isMemberLimited ? (
               <div className="order-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Snarveier</div>
               </div>
+              ) : null}
               <div className="order-2 grid gap-4 lg:grid-cols-2">
                   <div className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-center justify-between gap-3">
@@ -2701,6 +2703,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                   )}
                 </div>
+                {!isMemberLimited ? (
                   <div className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-semibold text-slate-700">⚡ Hurtighandlinger</div>
@@ -2715,6 +2718,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     ) : null}
                   </div>
                 </div>
+                ) : null}
               </div>
               <div className="order-1 grid gap-4">
                 <div className="min-w-0 w-full overflow-hidden rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -2907,6 +2911,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null}
                 </div>
               </div>
+              {!isMemberLimited ? (
               <div className="order-3 rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-semibold text-slate-700">🏆 Streaks & challenges</div>
@@ -2936,10 +2941,11 @@ export function MemberPortal(props: MemberPortalProps) {
                   Aktiv streak: <span className="font-semibold">{streakChallenges.streakDays} dager</span>
                 </div>
               </div>
+              ) : null}
             </Card>
           ) : null}
 
-          {shouldShowCelebration ? (
+          {!isMemberLimited && shouldShowCelebration ? (
             <div className="motus-modal-insets fixed inset-0 z-[10020] overscroll-contain bg-slate-900/45">
               <div className="motus-pop-in mx-auto mt-16 max-w-sm rounded-xl border bg-white p-5 shadow-lg" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-xs font-semibold uppercase tracking-wide text-emerald-600">Ny PR!</div>
@@ -2965,7 +2971,7 @@ export function MemberPortal(props: MemberPortalProps) {
               </div>
             </div>
           ) : null}
-          {microCelebrationsEnabled && achievementCelebration ? (
+          {!isMemberLimited && microCelebrationsEnabled && achievementCelebration ? (
             <div className="motus-modal-insets fixed inset-0 z-[10030] overscroll-contain bg-slate-900/35">
               <div className="motus-pop-in mx-auto mt-20 max-w-sm rounded-xl border bg-white p-5 text-center shadow-lg" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-3xl">🎉</div>
@@ -2982,6 +2988,7 @@ export function MemberPortal(props: MemberPortalProps) {
           {memberTab === "programs" ? (
             <>
               <div className="flex flex-col gap-4">
+              {!isMemberLimited ? (
               <Card className="order-last p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex items-start gap-3">
@@ -3139,6 +3146,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 </div>
               </Card>
+              ) : null}
               <Card className="p-5">
               <div className="flex items-start gap-3">
                 <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><ClipboardList className="h-5 w-5" /></div>
@@ -3154,7 +3162,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     <EmptyState
                       icon="📋"
                       title="Ingen programmer fra trener ennå"
-                      description="Be trener tildele et program, eller bruk «Lag egen økt» nederst på siden."
+                          description={isMemberLimited ? "Treneren din kan tildele et program her." : "Be trener tildele et program, eller bruk «Lag egen økt» nederst på siden."}
                       className="bg-white"
                       action={
                         !isMemberLimited ? (
@@ -3939,7 +3947,7 @@ export function MemberPortal(props: MemberPortalProps) {
             </>
           ) : null}
 
-          {memberTab === "progress" ? (
+          {!isMemberLimited && memberTab === "progress" ? (
             <Card className="p-5">
               <div className="flex items-start gap-3">
                 <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><TrendingUp className="h-5 w-5" /></div>
@@ -4035,7 +4043,7 @@ export function MemberPortal(props: MemberPortalProps) {
             </Card>
           ) : null}
 
-          {memberTab === "messages" ? (
+          {!isMemberLimited && memberTab === "messages" ? (
             <Card className="p-5">
               <div className="flex items-start gap-3">
                 <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><MessageSquare className="h-5 w-5" /></div>
@@ -4165,6 +4173,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       </OutlineButton>
                     ) : null}
                   </div>
+                  {!isMemberLimited ? (
                   <div className="rounded-xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="text-sm font-semibold text-slate-700">Mikro-feiringer</div>
                     <label className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -4185,7 +4194,8 @@ export function MemberPortal(props: MemberPortalProps) {
                       />
                     </label>
                   </div>
-                  {supabaseClient && isWebPushConfigurable() ? (
+                  ) : null}
+                  {!isMemberLimited && supabaseClient && isWebPushConfigurable() ? (
                     <div className="rounded-xl border bg-slate-50 p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="text-sm font-semibold text-slate-700">Varsler på denne enheten</div>
                       <p className="text-xs text-slate-600">

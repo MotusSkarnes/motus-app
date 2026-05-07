@@ -138,6 +138,7 @@ export function MemberLayout({
   return (
     <>
       <div className="space-y-3">
+        {!isMemberLimited ? (
         <Card className="p-2.5 sm:p-3 bg-gradient-to-b from-emerald-50/80 to-pink-50/60">
           <div className="flex items-center justify-between gap-3">
             <div className="text-xs sm:text-sm font-semibold text-slate-800">Varsler</div>
@@ -182,6 +183,7 @@ export function MemberLayout({
             <div className="mt-1.5 text-xs sm:text-sm text-slate-500">Trykk på bjellen for å se varsler.</div>
           )}
         </Card>
+        ) : null}
         <MemberPortal {...memberPortalProps} />
       </div>
 
