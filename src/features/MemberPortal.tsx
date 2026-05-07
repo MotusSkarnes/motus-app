@@ -2676,12 +2676,12 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="mt-2 text-sm text-white/90">Alt du trenger for dagens økt ligger under.</div>
               </div>
               {!isMemberLimited ? (
-              <div className="order-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <div className="order-2 w-full text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Snarveier</div>
               </div>
               ) : null}
-              <div className="order-2 grid gap-4 lg:grid-cols-2">
-                  <div className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="order-2 grid w-full auto-rows-fr items-stretch gap-4 lg:grid-cols-2">
+                  <div className="flex h-full min-w-0 flex-col rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-semibold text-slate-700">🧭 Neste på planen</div>
                     <div className="text-xs text-slate-500">Plan</div>
@@ -2704,7 +2704,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   )}
                 </div>
                 {!isMemberLimited ? (
-                  <div className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="flex h-full min-w-0 flex-col rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-semibold text-slate-700">⚡ Hurtighandlinger</div>
                     <div className="text-xs text-slate-500">Rask tilgang</div>
@@ -2912,7 +2912,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               {!isMemberLimited ? (
-              <div className="order-3 rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="order-3 w-full rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-semibold text-slate-700">🏆 Streaks & challenges</div>
                   <div className="text-xs text-slate-500">Motivasjon</div>
