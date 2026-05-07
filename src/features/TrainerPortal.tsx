@@ -338,18 +338,8 @@ function pickFirstName(value: string): string {
   const [inviteTrainerStatus, setInviteTrainerStatus] = useState<string | null>(null);
   const [isInvitingTrainer, setIsInvitingTrainer] = useState(false);
   const [showInactiveMembers, setShowInactiveMembers] = useState(false);
-  const [memberSearch, setMemberSearch] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("motus.trainer.memberSearch") ?? "";
-  });
-  const [memberFilter, setMemberFilter] = useState<"all" | "followUp" | "invited" | "notInvited">(() => {
-    if (typeof window === "undefined") return "all";
-    const stored = window.localStorage.getItem("motus.trainer.memberFilter");
-    if (stored === "followUp" || stored === "invited" || stored === "notInvited" || stored === "all") {
-      return stored;
-    }
-    return "all";
-  });
+  const [memberSearch, setMemberSearch] = useState("");
+  const [memberFilter, setMemberFilter] = useState<"all" | "followUp" | "invited" | "notInvited">("all");
   const [customerTypeFilter, setCustomerTypeFilter] = useState<"all" | "PT-kunde" | "Premium-kunde" | "Medlem">("all");
   const [memberSort, setMemberSort] = useState<"activityRecent" | "nameAsc" | "nameDesc">("activityRecent");
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
@@ -2634,7 +2624,11 @@ function pickFirstName(value: string): string {
         <Card className="p-5 space-y-4">
           <div className="font-semibold text-slate-800">Statistikk og prioritering</div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Totalt kunder" value={String(deduplicatedMembers.length)} hint="Alle kunder" />
+            <StatCard
+              label="Kunder i listen"
+              value={String(visibleMembers.length)}
+              hint={showInactiveMembers ? "Aktive + inaktive" : "Kun aktive"}
+            />
             <StatCard label="Må følges opp" value={String(followUpCount)} hint="7+ dager inaktiv" />
             <StatCard label="Uten program" value={String(membersWithoutProgramCount)} hint="Mangler aktiv plan" />
             <StatCard label="Filtrerte kunder" value={String(filteredMembers.length)} hint="Etter søk/filter" />
