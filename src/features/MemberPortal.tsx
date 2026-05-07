@@ -1221,65 +1221,6 @@ export function MemberPortal(props: MemberPortalProps) {
       .sort((a, b) => b.score - a.score)
       .slice(0, 6);
   }, [completedLogs]);
-  const progressionSuggestions = useMemo(() => {
-    if (!latestCompletedLog?.results?.length) return [] as Array<{ exerciseName: string; recommendation: string; reason: string }>;
-    const previousLogs = completedLogs.filter((log) => log.id !== latestCompletedLog.id);
-    function getBestSetFromResults(results: WorkoutLog["results"] | undefined, exerciseName: string): { weight: number; reps: number } | null {
-      if (!results?.length) return null;
-      let best: { weight: number; reps: number } | null = null;
-      results.forEach((row) => {
-        if (!row.completed || row.exerciseName !== exerciseName) return;
-        if (row.exerciseCategory === "Kondisjon") return;
-        const weight = Number(row.performedWeight) || 0;
-        const reps = Number(row.performedReps) || 0;
-        if (weight <= 0 || reps <= 0) return;
-        if (!best || weight > best.weight || (weight === best.weight && reps > best.reps)) best = { weight, reps };
-      });
-      return best;
-    }
-    const exerciseNames = Array.from(
-      new Set(
-        latestCompletedLog.results
-          .filter((row) => row.completed && row.exerciseCategory !== "Kondisjon")
-          .map((row) => row.exerciseName),
-      ),
-    );
-    return exerciseNames
-      .map((exerciseName) => {
-        const latestBest = getBestSetFromResults(latestCompletedLog.results, exerciseName);
-        if (!latestBest) return null;
-        let previousBest: { weight: number; reps: number } | null = null;
-        previousLogs.forEach((log) => {
-          const candidate = getBestSetFromResults(log.results, exerciseName);
-          if (!candidate) return;
-          if (!previousBest || candidate.weight > previousBest.weight || (candidate.weight === previousBest.weight && candidate.reps > previousBest.reps)) {
-            previousBest = candidate;
-          }
-        });
-        if (!previousBest) {
-          return {
-            exerciseName,
-            recommendation: `Neste gang: prøv ${Number((latestBest.weight + 2.5).toFixed(1))} kg`,
-            reason: "Første logg for denne øvelsen - fin base å bygge videre på.",
-          };
-        }
-        if (latestBest.weight > previousBest.weight || (latestBest.weight === previousBest.weight && latestBest.reps >= 10)) {
-          return {
-            exerciseName,
-            recommendation: `Neste gang: prøv ${Number((latestBest.weight + 2.5).toFixed(1))} kg`,
-            reason: "Du løfter tyngre/sterkere enn før - klar for liten progresjon.",
-          };
-        }
-        const targetReps = Math.max(10, previousBest.reps);
-        return {
-          exerciseName,
-          recommendation: `Neste gang: hold ${latestBest.weight} kg og jobb mot ${targetReps} reps`,
-          reason: "Bygg mer reps på samme vekt før neste hopp.",
-        };
-      })
-      .filter((item): item is { exerciseName: string; recommendation: string; reason: string } => Boolean(item))
-      .slice(0, 5);
-  }, [completedLogs, latestCompletedLog]);
   const activeCelebration = liveWorkoutCelebration ?? workoutCelebration;
   const shouldShowCelebration = Boolean(
     microCelebrationsEnabled && activeCelebration && activeCelebration.memberId === activeMemberId
@@ -4120,24 +4061,6 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div key={record.name} className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="font-medium">{record.name}</div>
                       <div className="mt-1 text-sm text-slate-500">Beste registrerte: {record.weight} kg × {record.reps}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="mt-4 rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-sm font-semibold text-slate-700">🧠 Smart progresjonsforslag</div>
-                <div className="mt-1 text-xs text-slate-500">Basert på siste økt: hva du bør gjøre neste gang per øvelse.</div>
-                <div className="mt-4 space-y-3">
-                  {progressionSuggestions.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed p-6 text-center text-slate-500 bg-white">
-                      Logg en styrkeøkt med settdata for å få smarte forslag her.
-                    </div>
-                  ) : null}
-                  {progressionSuggestions.map((suggestion) => (
-                    <div key={suggestion.exerciseName} className="rounded-2xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="font-medium text-slate-800">{suggestion.exerciseName}</div>
-                      <div className="mt-1 text-sm font-semibold text-slate-700">{suggestion.recommendation}</div>
-                      <div className="mt-1 text-xs text-slate-500">{suggestion.reason}</div>
                     </div>
                   ))}
                 </div>
