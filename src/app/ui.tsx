@@ -10,7 +10,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 }
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-xl border bg-white/95 shadow-sm ${className}`} style={{ borderColor: "rgba(15,23,42,0.08)" }}>{children}</div>;
+  return <div className={`rounded-lg border bg-white ${className}`} style={{ borderColor: "rgba(15,23,42,0.10)" }}>{children}</div>;
 }
 
 export function Badge({ children }: { children: React.ReactNode }) {
@@ -92,15 +92,41 @@ export function SelectBox({
 }
 
 export function GradientButton({ children, className = "", type = "button", ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode }) {
-  return <button type={type} {...props} className={`rounded-lg px-4 py-2.5 text-sm font-medium text-white cursor-pointer ${className}`} style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>{children}</button>;
+  return (
+    <button
+      type={type}
+      {...props}
+      className={`inline-flex min-h-10 items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      style={{ backgroundColor: MOTUS.turquoise }}
+    >
+      {children}
+    </button>
+  );
 }
 
 export function OutlineButton({ children, className = "", type = "button", ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode }) {
-  return <button type={type} {...props} className={`rounded-lg border px-4 py-2.5 text-sm font-medium text-slate-700 bg-white cursor-pointer ${className}`} style={{ borderColor: "rgba(15,23,42,0.12)" }}>{children}</button>;
+  return (
+    <button
+      type={type}
+      {...props}
+      className={`inline-flex min-h-10 items-center justify-center rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      style={{ borderColor: "rgba(15,23,42,0.12)" }}
+    >
+      {children}
+    </button>
+  );
 }
 
 export function DangerButton({ children, className = "", type = "button", ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode }) {
-  return <button type={type} {...props} className={`rounded-lg border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 cursor-pointer transition hover:bg-rose-100 ${className}`}>{children}</button>;
+  return (
+    <button
+      type={type}
+      {...props}
+      className={`inline-flex min-h-10 items-center justify-center rounded-lg border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+    >
+      {children}
+    </button>
+  );
 }
 
 export function EmptyState({

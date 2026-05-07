@@ -2923,7 +2923,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       </div>
                     </div>
                     </div>
-                    <div className="rounded-3xl border bg-slate-50 p-4">
+                    <div className="rounded-xl border bg-white p-4">
                       <div className="font-semibold">Siste økter og tilbakemeldinger</div>
                       {selectedLogs.length ? (
                         <div className="mt-3 space-y-3">
@@ -2951,7 +2951,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         <div className="mt-3 text-sm text-slate-500">Ingen økter logget ennå.</div>
                       )}
                     </div>
-                    <div className="rounded-3xl border bg-slate-50 p-4">
+                    <div className="rounded-xl border bg-white p-4">
                       <div className="font-semibold">Oppfølgingslogg</div>
                       <div className="mt-3 grid gap-3 md:grid-cols-[220px_1fr]">
                         <SelectBox
@@ -2997,7 +2997,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                 {customerSubTab === "programs" ? (
                   <div className="space-y-4">
                     <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-                    <div className="rounded-3xl border bg-slate-50 p-4 space-y-4">
+                    <div className="rounded-xl border bg-white p-4 space-y-4">
                       <div className="flex items-center justify-between gap-3">
                         <div className="font-semibold">{editingProgramId ? "Rediger program" : "Bygg program"}</div>
                         {editingProgramId ? <OutlineButton onClick={resetProgramBuilder}>Avbryt redigering</OutlineButton> : null}

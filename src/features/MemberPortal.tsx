@@ -3130,7 +3130,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   <p className="text-sm text-slate-500">Enkel oversikt</p>
                 </div>
               </div>
-              <div className="mt-5 rounded-3xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+              <div className="mt-5 rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="font-semibold">📋 Mine treningsprogram</div>
                 <div className="mt-4 space-y-3">
                   {memberAssignedPrograms.length === 0 ? (
@@ -3231,7 +3231,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   })}
                 </div>
               </div>
-              <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+              <div className="mt-6 rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="font-semibold">🗓️ Periodeplan fra PT</div>
@@ -3351,7 +3351,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 ) : null}
               </div>
-              <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+              <div className="mt-6 rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="font-semibold">👥 Logg gruppetrening</div>
@@ -3427,7 +3427,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 ) : null}
               </div>
-              <div className="mt-6 rounded-3xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+              <div className="mt-6 rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="font-semibold">📝 Siste 3 økter</div>
                 <div className="mt-4 space-y-3">
                   {lastDeletedLogResult ? (
