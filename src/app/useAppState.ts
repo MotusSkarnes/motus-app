@@ -5,6 +5,7 @@ import { localAppRepository, type CreateMemberInput, type FinishWorkoutInput, ty
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { fetchExercisesFromSupabase, fetchHydratedMemberData, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
 import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, inviteTrainerByEmail, refreshSupabaseSessionUser, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult, type InviteTrainerResult } from "../services/supabaseAuth";
+import { mergeRemoteMessagesWithLocalOptimistic } from "./messageHydrationMerge";
 import type { AppState, AuthUser, Exercise, MemberTab, PeriodSchedulePlan, TrainerTab } from "./types";
 
 function syncExercisesWithPrograms(state: AppState): AppState {
@@ -269,58 +270,11 @@ export function useAppState() {
         }
 
         if (remoteMessages.length > 0) {
-          const parseCreatedAtMs = (value: string): number => {
-            const iso = new Date(value);
-            if (!Number.isNaN(iso.getTime())) return iso.getTime();
-            const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4})(?:\s+kl\s+(\d{2}):(\d{2}))?$/i);
-            if (!match) return 0;
-            const day = Number(match[1]);
-            const month = Number(match[2]) - 1;
-            const year = Number(match[3]);
-            const hours = Number(match[4] ?? "0");
-            const minutes = Number(match[5] ?? "0");
-            const parsed = new Date(year, month, day, hours, minutes);
-            return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
-          };
-          const isLocalOptimisticMessage = (id: string): boolean => id.startsWith("local-") || id.startsWith("msg");
-          const memberEmailById = new Map<string, string>();
-          [...next.members, ...prev.members].forEach((member) => {
-            if (!member.id) return;
-            memberEmailById.set(member.id, member.email.trim().toLowerCase());
-          });
-          const canonicalMemberKey = (memberId: string): string => memberEmailById.get(memberId) || memberId;
-          const messageMergeKey = (message: (typeof prev.messages)[number]): string =>
-            `${message.sender}|${message.text.trim().replace(/\s+/g, " ").toLowerCase()}|${canonicalMemberKey(message.memberId)}`;
-          const dedupedRemoteById = new Map<string, (typeof prev.messages)[number]>();
-          remoteMessages.forEach((message) => {
-            if (!dedupedRemoteById.has(message.id)) dedupedRemoteById.set(message.id, message);
-          });
-          const dedupedRemote = Array.from(dedupedRemoteById.values()).sort(
-            (a, b) => parseCreatedAtMs(a.createdAt) - parseCreatedAtMs(b.createdAt),
-          );
-          const remoteByMergeKey = new Map<string, (typeof prev.messages)[number][]>();
-          dedupedRemote.forEach((message) => {
-            const key = messageMergeKey(message);
-            const list = remoteByMergeKey.get(key) ?? [];
-            list.push(message);
-            remoteByMergeKey.set(key, list);
-          });
-          const nowMs = Date.now();
-          const unsyncedLocalMessages = prev.messages.filter((message) => {
-            if (!isLocalOptimisticMessage(message.id)) return false;
-            const createdAtMs = parseCreatedAtMs(message.createdAt);
-            if (!createdAtMs || nowMs - createdAtMs > 30000) return false;
-            const key = messageMergeKey(message);
-            const remoteCandidates = remoteByMergeKey.get(key) ?? [];
-            const hasSyncedTwin = remoteCandidates.some((remoteMessage) => {
-              const remoteCreatedAtMs = parseCreatedAtMs(remoteMessage.createdAt);
-              if (!remoteCreatedAtMs) return false;
-              return Math.abs(remoteCreatedAtMs - createdAtMs) <= 120000;
-            });
-            return !hasSyncedTwin;
-          });
-          next.messages = [...dedupedRemote, ...unsyncedLocalMessages].sort(
-            (a, b) => parseCreatedAtMs(a.createdAt) - parseCreatedAtMs(b.createdAt),
+          next.messages = mergeRemoteMessagesWithLocalOptimistic(
+            remoteMessages,
+            prev.messages,
+            [...next.members, ...prev.members],
+            Date.now(),
           );
         } else if (shouldAdoptRemote(remoteMessages, prev.messages)) {
           next.messages = remoteMessages;
