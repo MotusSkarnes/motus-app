@@ -23,7 +23,7 @@ export function PillButton({ active, children, onClick }: { active?: boolean; ch
       type="button"
       onClick={onClick}
       className={`shrink-0 rounded-lg px-4 py-2 text-sm font-medium transition ${active ? "text-white shadow-sm" : "text-slate-700 bg-slate-50 hover:bg-slate-100"}`}
-      style={active ? { backgroundColor: MOTUS.turquoise } : {}}
+      style={active ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : {}}
     >
       {children}
     </button>
@@ -36,7 +36,7 @@ export function MobileNavButton({ active, icon, label, onClick }: { active?: boo
       type="button"
       onClick={onClick}
       className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1.5 py-2 text-[10px] font-medium transition ${active ? "text-white shadow-sm" : "text-slate-600"}`}
-      style={active ? { backgroundColor: MOTUS.turquoise } : { backgroundColor: "transparent" }}
+      style={active ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { backgroundColor: "transparent" }}
     >
       <span className="flex h-4 w-4 items-center justify-center">{icon}</span>
       <span className="truncate leading-none">{label}</span>
@@ -97,7 +97,7 @@ export function GradientButton({ children, className = "", type = "button", ...p
       type={type}
       {...props}
       className={`inline-flex min-h-10 items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
-      style={{ backgroundColor: MOTUS.turquoise }}
+      style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
     >
       {children}
     </button>

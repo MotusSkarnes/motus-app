@@ -43,7 +43,7 @@ export function AppHeader({
   }, [memberFirstName]);
 
   return (
-    <Card className="overflow-hidden p-4 sm:p-5 md:p-6">
+    <Card className="overflow-hidden p-4 sm:p-5 md:p-6 bg-[linear-gradient(135deg,rgba(20,184,166,0.07)_0%,rgba(236,72,153,0.07)_100%)]">
       <div
         className="h-1.5 -mx-4 sm:-mx-5 md:-mx-6 -mt-4 sm:-mt-5 md:-mt-6 mb-5"
         style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 70%, ${MOTUS.acid} 100%)` }}

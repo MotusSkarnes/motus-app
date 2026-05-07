@@ -2621,7 +2621,7 @@ export function MemberPortal(props: MemberPortalProps) {
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-[280px_1fr]">
         <Card className="hidden p-4 h-fit xl:p-5 lg:block">
           <div className="flex items-start gap-3">
-            <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><UserCircle2 className="h-5 w-5" /></div>
+            <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><UserCircle2 className="h-5 w-5" /></div>
             <div>
               <h2 className="text-xl font-semibold tracking-tight">Min profil</h2>
               <p className="text-sm text-slate-500">Dine medlemsdata</p>
@@ -2968,7 +2968,7 @@ export function MemberPortal(props: MemberPortalProps) {
               <Card className="order-last p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex items-start gap-3">
-                    <div className="rounded-xl p-2.5 text-white shrink-0" style={{ backgroundColor: MOTUS.turquoise }}>
+                    <div className="rounded-xl p-2.5 text-white shrink-0" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
                       <Sparkles className="h-5 w-5" />
                     </div>
                     <div>
@@ -3124,7 +3124,7 @@ export function MemberPortal(props: MemberPortalProps) {
               </Card>
               <Card className="p-5">
               <div className="flex items-start gap-3">
-                <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><ClipboardList className="h-5 w-5" /></div>
+                <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><ClipboardList className="h-5 w-5" /></div>
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight">Mine programmer</h2>
                   <p className="text-sm text-slate-500">Enkel oversikt</p>
@@ -3925,7 +3925,7 @@ export function MemberPortal(props: MemberPortalProps) {
           {memberTab === "progress" ? (
             <Card className="p-5">
               <div className="flex items-start gap-3">
-                <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><TrendingUp className="h-5 w-5" /></div>
+                <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><TrendingUp className="h-5 w-5" /></div>
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight">Fremgang</h2>
                   <p className="text-sm text-slate-500">Utvikling, PR-er og treningsflyt</p>
@@ -4012,7 +4012,7 @@ export function MemberPortal(props: MemberPortalProps) {
           {memberTab === "messages" ? (
             <Card className="p-5">
               <div className="flex items-start gap-3">
-                <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><MessageSquare className="h-5 w-5" /></div>
+                <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><MessageSquare className="h-5 w-5" /></div>
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight">Meldinger</h2>
                   <p className="text-sm text-slate-500">Enkel chat</p>
@@ -4070,7 +4070,7 @@ export function MemberPortal(props: MemberPortalProps) {
           {memberTab === "profile" ? (
             <Card className="p-5">
               <div className="flex items-start gap-3">
-                <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><Target className="h-5 w-5" /></div>
+                <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Target className="h-5 w-5" /></div>
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight">Medlemsprofil</h2>
                   <p className="text-sm text-slate-500">Se og rediger kundeinformasjon</p>

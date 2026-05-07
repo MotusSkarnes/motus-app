@@ -2270,7 +2270,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
 
       {trainerTab === "dashboard" ? (
         <Card className="p-5 space-y-5">
-          <div className="rounded-xl border bg-white p-4 text-sm text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div
+            className="rounded-xl border p-4 text-sm text-slate-600"
+            style={{
+              borderColor: "rgba(15,23,42,0.08)",
+              background: "linear-gradient(135deg, rgba(20,184,166,0.08) 0%, rgba(236,72,153,0.08) 100%)",
+            }}
+          >
             {followUpCount > 0
               ? `${followUpCount} kunder ma folges opp i dag.`
               : "Ingen kunder trenger oppfolging akkurat na."}{" "}
@@ -2627,7 +2633,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
           </div>
           <Card className={`p-4 ${showCustomerToolsMobile ? "block" : "hidden"} lg:block`}>
             <div className="flex items-start gap-3">
-              <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><Users className="h-5 w-5" /></div>
+              <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Users className="h-5 w-5" /></div>
               <div>
                 <h2 className="text-xl font-semibold tracking-tight">Kunder</h2>
                 <p className="text-sm text-slate-500">Velg kunde fra rullgardin og filtrer listen</p>
@@ -3615,7 +3621,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                             {showDateDivider ? (
                               <div className="my-2 text-center text-[11px] font-medium text-slate-400">{dateKey}</div>
                             ) : null}
-                            <div className={`max-w-[88%] rounded-xl p-3 text-sm ${message.id === selectedMessages[selectedMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "trainer" ? "ml-auto border border-transparent bg-teal-500 text-white" : "border bg-slate-50 text-slate-700"}`} style={message.sender === "trainer" ? undefined : { borderColor: "rgba(15,23,42,0.08)" }}>
+                            <div className={`max-w-[88%] rounded-xl p-3 text-sm ${message.id === selectedMessages[selectedMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "trainer" ? "ml-auto border border-transparent text-white" : "border bg-slate-50 text-slate-700"}`} style={message.sender === "trainer" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
                               <div>{message.text}</div>
                               <div className={`mt-1 text-[11px] ${message.sender === "trainer" ? "text-white/80" : "text-slate-500"}`}>{message.createdAt}</div>
                             </div>
@@ -3678,7 +3684,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
         <div className="grid gap-4">
           <Card className="p-5">
             <div className="flex items-start gap-3">
-              <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><ClipboardList className="h-5 w-5" /></div>
+              <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><ClipboardList className="h-5 w-5" /></div>
               <div>
                 <h2 className="text-xl font-semibold tracking-tight">Lag treningsmal</h2>
                 <p className="text-sm text-slate-500">Bygg mal med filtrering, favoritter og drag-and-drop</p>
@@ -4025,7 +4031,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       {trainerTab === "exerciseBank" ? (
         <Card className="p-5">
           <div className="flex items-start gap-3">
-            <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><Dumbbell className="h-5 w-5" /></div>
+            <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Dumbbell className="h-5 w-5" /></div>
             <div>
               <h2 className="text-xl font-semibold tracking-tight">Øvelsesbank</h2>
               <p className="text-sm text-slate-500">Opprett og rediger øvelser med forklaring, kategori og utstyr.</p>
@@ -4272,7 +4278,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       {trainerTab === "messages" ? (
       <Card className="p-5">
         <div className="flex items-start gap-3">
-          <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}><MessageSquare className="h-5 w-5" /></div>
+          <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><MessageSquare className="h-5 w-5" /></div>
           <div>
             <h2 className="text-xl font-semibold tracking-tight">Rask melding til valgt kunde</h2>
             <p className="text-sm text-slate-500">Enklere melding enn i den store fila</p>
@@ -4309,7 +4315,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
       {trainerTab === "admin" ? (
         <Card className="p-5 space-y-4">
           <div className="flex items-start gap-3">
-            <div className="rounded-xl p-2.5 text-white" style={{ backgroundColor: MOTUS.turquoise }}>
+            <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
