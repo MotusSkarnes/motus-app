@@ -131,11 +131,45 @@ Deno.serve(async (req) => {
       dedupedMembersById.set(authMemberId, authMemberRow as Record<string, unknown>);
     }
   }
-  const scopedMembers = Array.from(dedupedMembersById.values());
+  let scopedMembers = Array.from(dedupedMembersById.values());
 
-  const memberIds = (scopedMembers ?? [])
+  let memberIds = (scopedMembers ?? [])
     .map((row) => String((row as { id?: string }).id ?? "").trim())
     .filter(Boolean);
+  if (!memberIds.length && requesterUserId) {
+    const { data: ownerScopedMembers } = await adminClient
+      .from("members")
+      .select(membersSelectWithAvatar)
+      .eq("owner_user_id", requesterUserId)
+      .order("created_at", { ascending: false });
+    const fallbackMembers = (ownerScopedMembers ?? []) as Array<Record<string, unknown>>;
+    if (fallbackMembers.length > 0) {
+      const fallbackById = new Map<string, Record<string, unknown>>();
+      [...scopedMembers, ...fallbackMembers].forEach((row) => {
+        const id = String((row as { id?: string }).id ?? "").trim();
+        if (!id) return;
+        if (!fallbackById.has(id)) fallbackById.set(id, row);
+      });
+      memberIds = Array.from(fallbackById.keys());
+      scopedMembers = Array.from(fallbackById.values());
+    }
+  }
+  if (!memberIds.length && requesterUserId) {
+    const { data: ownerMessages } = await adminClient
+      .from("chat_messages")
+      .select("id, member_id, sender, text, created_at")
+      .eq("owner_user_id", requesterUserId)
+      .order("created_at", { ascending: true });
+    const messageRows = (ownerMessages ?? []) as Array<Record<string, unknown>>;
+    return jsonResponse(200, {
+      members: [],
+      programs: [],
+      logs: [],
+      messages: messageRows,
+      periodPlans: [],
+      exercises: [],
+    });
+  }
   if (!memberIds.length) {
     return jsonResponse(200, {
       members: [],

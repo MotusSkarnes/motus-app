@@ -406,10 +406,17 @@ export function MemberPortal(props: MemberPortalProps) {
     () => members.filter((member) => relatedMemberIdSet.has(member.id)),
     [members, relatedMemberIdSet],
   );
-  const isMemberLimited =
-    currentUserRole === "member" &&
-    relatedMembersForProfile.length > 0 &&
-    relatedMembersForProfile.some((member) => member.customerType === "Medlem");
+  const isMemberLimited = useMemo(() => {
+    if (currentUserRole !== "member") return false;
+    const scopeRows = relatedMembersForProfile.length > 0 ? relatedMembersForProfile : editableMember ? [editableMember] : [];
+    if (!scopeRows.length) return false;
+    const hasMemberOnlyProfile = scopeRows.some((member) => member.customerType === "Medlem");
+    if (!hasMemberOnlyProfile) return false;
+    const hasElevatedAccess = scopeRows.some(
+      (member) => member.customerType === "PT-kunde" || member.membershipType === "Premium",
+    );
+    return !hasElevatedAccess;
+  }, [currentUserRole, relatedMembersForProfile, editableMember]);
   const dbProfileMetrics = useMemo(() => {
     for (const member of relatedMembersForProfile) {
       const decoded = decodeMemberProfileMetrics(member.personalGoals);

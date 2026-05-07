@@ -250,8 +250,8 @@ Deno.serve(async (req) => {
     }
     const chosenOwnerUserId =
       sender === "trainer"
-        ? trainerResolvedRecipientUserId || recipientOwnerUserId || authenticatedUserId
-        : recipientAuthUserId || recipientOwnerUserId || hintedOwner || authenticatedUserId;
+        ? authenticatedUserId || recipientOwnerUserId
+        : recipientOwnerUserId || authenticatedUserId || hintedOwner;
     if (!chosenOwnerUserId) {
       return jsonResponse(200, {
         ok: false,
@@ -331,4 +331,3 @@ Deno.serve(async (req) => {
     });
   }
 });
-

@@ -85,7 +85,12 @@ export function MemberLayout({
       return normalizedEmail ? member.email.trim().toLowerCase() === normalizedEmail : false;
     });
     if (!relatedRows.length) return false;
-    return relatedRows.some((member) => member.customerType === "Medlem");
+    const memberOnlyRows = relatedRows.filter((member) => member.customerType === "Medlem");
+    if (!memberOnlyRows.length) return false;
+    const hasElevatedAccess = relatedRows.some(
+      (member) => member.customerType === "PT-kunde" || member.membershipType === "Premium",
+    );
+    return !hasElevatedAccess;
   }, [appState.currentUser, appState.members, appState.memberViewId]);
   const visibleMobileTabs = isMemberLimited
     ? mobileTabs.filter((tab) => tab.id !== "messages" && tab.id !== "progress")

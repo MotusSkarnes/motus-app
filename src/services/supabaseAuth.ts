@@ -252,7 +252,45 @@ export async function inviteMemberByEmail(email: string, memberId: string): Prom
     return { ok: false, message: "Mangler member_id for medlemmet." };
   }
 
-  // Prefer OTP invite flow first to avoid edge-function JWT algorithm issues.
+  // Prefer edge-function invite flow first when available.
+  // This can send a proper onboarding flow instead of consuming OTP login quota.
+  const {
+    data: { session: initialSession },
+  } = await supabaseClient.auth.getSession();
+  let activeSession = initialSession;
+  if (!activeSession?.access_token) {
+    const { data: refreshedData } = await supabaseClient.auth.refreshSession();
+    activeSession = refreshedData.session;
+  }
+  if (activeSession?.access_token) {
+    const ownerUserId = activeSession.user?.id?.trim?.() ?? "";
+    const { data, error } = await supabaseClient.functions.invoke("invite-member", {
+      body: {
+        email: normalizedEmail,
+        memberId: memberId.trim(),
+        accessToken: activeSession.access_token,
+        ownerUserId,
+      },
+    });
+    if (!error) {
+      if (data && typeof data === "object" && "message" in data && typeof data.message === "string") {
+        await syncMemberAuthLink(normalizedEmail, memberId.trim());
+        return { ok: true, message: data.message };
+      }
+      await syncMemberAuthLink(normalizedEmail, memberId.trim());
+      return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}` };
+    }
+    const functionErrorMessage = await extractFunctionErrorMessage(error);
+    if (functionErrorMessage && isRateLimitMessage(functionErrorMessage)) {
+      await syncMemberAuthLink(normalizedEmail, memberId.trim());
+      return {
+        ok: true,
+        message: "Invitasjon er nylig sendt. Vent litt for ny utsending.",
+      };
+    }
+  }
+
+  // Fallback to OTP invite flow if edge-function path is unavailable.
   const redirectTo =
     typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
   const { error: otpError } = await supabaseClient.auth.signInWithOtp({
@@ -297,18 +335,9 @@ export async function inviteMemberByEmail(email: string, memberId: string): Prom
     };
   }
 
-  const {
-    data: { session: initialSession },
-    error: sessionError,
-  } = await supabaseClient.auth.getSession();
+  const { error: sessionError } = await supabaseClient.auth.getSession();
   if (sessionError) {
     return { ok: false, message: `Invitasjon feilet: ${otpError.message || "Ukjent feil."}` };
-  }
-
-  let activeSession = initialSession;
-  if (!activeSession?.access_token) {
-    const { data: refreshedData } = await supabaseClient.auth.refreshSession();
-    activeSession = refreshedData.session;
   }
   if (!activeSession?.access_token) {
     return { ok: false, message: `Invitasjon feilet: ${otpError.message || "Ingen gyldig innlogging funnet."}` };
