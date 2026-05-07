@@ -139,7 +139,16 @@ drop policy if exists "workout_logs_delete_own" on public.workout_logs;
 create policy "members_select_own"
   on public.members
   for select to authenticated
-  using (owner_user_id = auth.uid());
+  using (
+    owner_user_id = auth.uid()
+    or (
+      lower(trim(customer_type)) = 'medlem'
+      and (
+        auth.jwt() -> 'app_metadata' ->> 'role' = 'trainer'
+        or auth.jwt() -> 'user_metadata' ->> 'role' = 'trainer'
+      )
+    )
+  );
 
 create policy "members_insert_own"
   on public.members
