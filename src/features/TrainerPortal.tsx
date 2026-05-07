@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, ShieldCheck, Star, Users } from "lucide-react";
+import { ClipboardList, Dumbbell, Eye, EyeOff, LayoutDashboard, MessageSquare, Pencil, ShieldCheck, Star, Trash2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
@@ -2011,6 +2011,26 @@ export function TrainerPortal(props: TrainerPortalProps) {
     () => deduplicatedMembers.filter((member) => !programs.some((program) => program.memberId === member.id)).length,
     [deduplicatedMembers, programs],
   );
+  const dashboardSummary = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const end = start + 24 * 60 * 60 * 1000;
+    const todaysLogs = logs.filter((log) => {
+      const ts = parseLogDateMs(log.date);
+      return ts >= start && ts < end;
+    });
+    const todaysCustomerIds = new Set(todaysLogs.map((log) => log.memberId));
+    const newMessages24h = messages.filter((message) => {
+      if (message.sender !== "member") return false;
+      const ts = parseChatCreatedAtMs(message.createdAt);
+      return ts > 0 && now.getTime() - ts <= 24 * 60 * 60 * 1000;
+    }).length;
+    return {
+      todaysCustomers: todaysCustomerIds.size,
+      todaysWorkouts: todaysLogs.length,
+      newMessages24h,
+    };
+  }, [logs, messages]);
   const todoItemsForSelectedDate = todos.filter((todo) => todo.date === selectedTodoDate);
   const firstDayOffset = (dashboardMonth.getDay() + 6) % 7;
   const daysInDashboardMonth = new Date(dashboardMonth.getFullYear(), dashboardMonth.getMonth() + 1, 0).getDate();
@@ -2245,7 +2265,6 @@ export function TrainerPortal(props: TrainerPortalProps) {
           <PillButton active={trainerTab === "programs"} onClick={() => setTrainerTab("programs")}>Programmer</PillButton>
           <PillButton active={trainerTab === "messages"} onClick={() => setTrainerTab("messages")}>Meldinger</PillButton>
           <PillButton active={trainerTab === "exerciseBank"} onClick={() => setTrainerTab("exerciseBank")}>Øvelsesbank</PillButton>
-          <PillButton active={trainerTab === "admin"} onClick={() => setTrainerTab("admin")}>Admin</PillButton>
         </div>
       </Card>
 
@@ -2256,6 +2275,19 @@ export function TrainerPortal(props: TrainerPortalProps) {
               ? `${followUpCount} kunder ma folges opp i dag.`
               : "Ingen kunder trenger oppfolging akkurat na."}{" "}
             {membersWithoutProgramCount > 0 ? `${membersWithoutProgramCount} kunder mangler program.` : "Alle aktive kunder har program."}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StatCard label="Dagens kunder" value={String(dashboardSummary.todaysCustomers)} hint="Unike med aktivitet i dag" />
+            <StatCard label="Dagens økter" value={String(dashboardSummary.todaysWorkouts)} hint="Loggede økter i dag" />
+            <StatCard label="Nye meldinger" value={String(dashboardSummary.newMessages24h)} hint="Fra kunder siste 24 timer" />
+          </div>
+          <div className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="text-sm font-semibold text-slate-700">Snarveier</div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <GradientButton onClick={() => setTrainerTab("customers")} className="w-full sm:w-auto">Legg til kunde</GradientButton>
+              <OutlineButton onClick={() => { setTrainerTab("customers"); setCustomerSubTab("programs"); }} className="w-full sm:w-auto">Lag økt</OutlineButton>
+              <OutlineButton onClick={() => setTrainerTab("messages")} className="w-full sm:w-auto">Åpne meldinger</OutlineButton>
+            </div>
           </div>
           <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
             <div className="rounded-2xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -2948,7 +2980,13 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           ))}
                         </div>
                       ) : (
-                        <div className="mt-3 text-sm text-slate-500">Ingen økter logget ennå.</div>
+                        <EmptyState
+                          icon="📝"
+                          title="Ingen økter logget ennå"
+                          description="Når kunden fullfører første økt, vises historikk og refleksjon her."
+                          className="mt-3 bg-slate-50"
+                          action={<OutlineButton onClick={() => setCustomerSubTab("programs")}>Lag første økt</OutlineButton>}
+                        />
                       )}
                     </div>
                     <div className="rounded-xl border bg-white p-4">
@@ -3535,7 +3573,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           )}
                         </div>
                       ) : (
-                        <div className="mt-3 text-sm text-slate-500">Velg en økt for å se detaljer.</div>
+                        <EmptyState
+                          icon="📋"
+                          title="Velg en økt for detaljer"
+                          description="Trykk på en økt i listen for å se sett, reps og tilbakemelding."
+                          className="mt-3 bg-slate-50"
+                        />
                       )}
                     </div>
                   </div>
@@ -3547,7 +3590,7 @@ export function TrainerPortal(props: TrainerPortalProps) {
                       <div className="font-semibold">Dialog med kunde</div>
                       <div className="text-xs text-slate-500">Direkte chat</div>
                     </div>
-                    <div className="max-h-64 space-y-3 overflow-auto rounded-2xl border bg-white p-4">
+                    <div className="max-h-[420px] space-y-3 overflow-auto rounded-xl border bg-white p-4">
                       {selectedMessages.length === 0 ? (
                         <EmptyState
                           icon="💬"
@@ -3561,14 +3604,26 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           }
                         />
                       ) : null}
-                      {selectedMessages.map((message) => (
-                        <div key={message.id} className={`max-w-[85%] rounded-2xl p-3 text-sm ${message.id === selectedMessages[selectedMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "trainer" ? "text-white ml-auto" : "bg-slate-50 border"}`} style={message.sender === "trainer" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
-                          <div>{message.text}</div>
-                          <div className={`mt-1 text-[11px] ${message.sender === "trainer" ? "text-white/80" : "text-slate-500"}`}>{message.createdAt}</div>
-                        </div>
-                      ))}
+                      {selectedMessages.map((message, index) => {
+                        const timestamp = parseChatCreatedAtMs(message.createdAt);
+                        const dateKey = timestamp > 0 ? new Date(timestamp).toLocaleDateString("nb-NO") : message.createdAt;
+                        const prevTimestamp = index > 0 ? parseChatCreatedAtMs(selectedMessages[index - 1].createdAt) : 0;
+                        const prevDateKey = prevTimestamp > 0 ? new Date(prevTimestamp).toLocaleDateString("nb-NO") : "";
+                        const showDateDivider = index === 0 || dateKey !== prevDateKey;
+                        return (
+                          <div key={message.id}>
+                            {showDateDivider ? (
+                              <div className="my-2 text-center text-[11px] font-medium text-slate-400">{dateKey}</div>
+                            ) : null}
+                            <div className={`max-w-[88%] rounded-xl p-3 text-sm ${message.id === selectedMessages[selectedMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "trainer" ? "ml-auto border border-transparent bg-teal-500 text-white" : "border bg-slate-50 text-slate-700"}`} style={message.sender === "trainer" ? undefined : { borderColor: "rgba(15,23,42,0.08)" }}>
+                              <div>{message.text}</div>
+                              <div className={`mt-1 text-[11px] ${message.sender === "trainer" ? "text-white/80" : "text-slate-500"}`}>{message.createdAt}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div className="flex flex-col gap-3 sm:flex-row">
+                    <div className="sticky bottom-0 flex flex-col gap-3 border-t border-slate-200 bg-slate-50 pt-3 sm:flex-row">
                       <TextInput
                         value={trainerMessage}
                         onChange={(e) => {
@@ -4075,12 +4130,21 @@ export function TrainerPortal(props: TrainerPortalProps) {
               <div className="text-xs text-slate-500">{visibleExercises.length} øvelser vist</div>
               <div className="text-xs text-slate-500">Favoritter vises alltid øverst.</div>
               <div className="space-y-2">
+                {visibleExercises.length === 0 ? (
+                  <EmptyState
+                    icon="🏋️"
+                    title="Ingen øvelser lagt til ennå"
+                    description="Juster søk/filter eller legg til en ny øvelse for å komme i gang."
+                    className="bg-white"
+                    action={<GradientButton onClick={resetExerciseForm}>Legg til øvelse</GradientButton>}
+                  />
+                ) : null}
                 {visibleExercises.map((exercise) => {
                   const isFavorite = favoriteExerciseIds.includes(exercise.id);
                   return (
                   <div
                     key={exercise.id}
-                    className="rounded-2xl border bg-slate-50 px-3 py-2.5"
+                    className="rounded-xl border bg-slate-50 px-3 py-2.5"
                     style={{ borderColor: "rgba(15,23,42,0.08)" }}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -4101,9 +4165,12 @@ export function TrainerPortal(props: TrainerPortalProps) {
                           }}
                         />
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-medium leading-tight">{exercise.name}</div>
-                          <div className="mt-0.5 truncate text-xs text-slate-500">
-                            {exercise.category} · {exercise.group} · Utstyr: {exercise.equipment} · {exercise.level}
+                          <div className="truncate text-sm font-semibold leading-tight text-slate-800">{exercise.name}</div>
+                          <div className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
+                            <span className="rounded-full border bg-white px-2 py-0.5 text-slate-600" style={{ borderColor: "rgba(15,23,42,0.1)" }}>{exercise.category}</span>
+                            <span className="rounded-full border bg-white px-2 py-0.5 text-slate-600" style={{ borderColor: "rgba(15,23,42,0.1)" }}>{exercise.group}</span>
+                            <span className="rounded-full border bg-white px-2 py-0.5 text-slate-600" style={{ borderColor: "rgba(15,23,42,0.1)" }}>{exercise.equipment || "Uten utstyr"}</span>
+                            <span className="rounded-full border bg-white px-2 py-0.5 text-slate-600" style={{ borderColor: "rgba(15,23,42,0.1)" }}>{exercise.level}</span>
                           </div>
                         </div>
                       </button>
@@ -4122,21 +4189,36 @@ export function TrainerPortal(props: TrainerPortalProps) {
                         >
                           <Star className={`h-4 w-4 ${isFavorite ? "text-white" : ""}`} />
                         </button>
-                        <OutlineButton
+                        <button
+                          type="button"
                           onClick={(event) => {
                             event.stopPropagation();
                             startEditExercise(exercise);
                           }}
-                          className="px-3 py-1.5 text-xs"
+                          className="rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-100"
+                          aria-label="Rediger øvelse"
+                          title="Rediger øvelse"
                         >
-                          Rediger
-                        </OutlineButton>
-                        <OutlineButton onClick={() => handleDeleteExercise(exercise)} className="px-3 py-1.5 text-xs text-rose-700">
-                          Slett
-                        </OutlineButton>
-                        <OutlineButton onClick={() => setExpandedExerciseId((prev) => (prev === exercise.id ? null : exercise.id))} className="px-3 py-1.5 text-xs">
-                          {expandedExerciseId === exercise.id ? "Skjul" : "Vis"}
-                        </OutlineButton>
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteExercise(exercise)}
+                          className="rounded-lg border border-rose-200 p-1.5 text-rose-700 transition hover:bg-rose-50"
+                          aria-label="Fjern øvelse"
+                          title="Fjern øvelse"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedExerciseId((prev) => (prev === exercise.id ? null : exercise.id))}
+                          className="rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-100"
+                          aria-label={expandedExerciseId === exercise.id ? "Skjul beskrivelse" : "Vis beskrivelse"}
+                          title={expandedExerciseId === exercise.id ? "Skjul beskrivelse" : "Vis beskrivelse"}
+                        >
+                          {expandedExerciseId === exercise.id ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
                       </div>
                     </div>
                     {expandedExerciseId === exercise.id && editingExerciseId !== exercise.id ? (
