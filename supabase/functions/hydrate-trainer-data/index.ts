@@ -226,6 +226,7 @@ Deno.serve(async (req) => {
   const { data: exercises, error: exercisesError } = await adminClient
     .from("exercise_bank")
     .select("id, name, category, muscle_group, equipment, level, description, image_url")
+    .or("is_active.is.null,is_active.eq.true")
     .order("name", { ascending: true });
 
   let periodPlanRows: Array<{ member_id: string; plan: unknown }> = [];

@@ -690,6 +690,7 @@ async function persistExercise(exercise: Exercise) {
       level: exercise.level,
       description: exercise.description,
       image_url: exercise.imageUrl ?? null,
+      is_active: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
@@ -700,17 +701,17 @@ async function persistExercise(exercise: Exercise) {
   }
 }
 
-async function deleteExerciseFromSupabase(exerciseId: string, updatedPrograms: TrainingProgram[]) {
+async function deactivateExerciseInSupabase(exerciseId: string, updatedPrograms: TrainingProgram[]) {
   if (!supabaseClient) return;
   const normalizedExerciseId = exerciseId.trim();
   if (!normalizedExerciseId) return;
 
-  const { error: exerciseDeleteError } = await supabaseClient
+  const { error: exerciseUpdateError } = await supabaseClient
     .from("exercise_bank")
-    .delete()
+    .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq("id", normalizedExerciseId);
-  if (exerciseDeleteError) {
-    console.warn("Supabase exercise delete failed:", exerciseDeleteError.message);
+  if (exerciseUpdateError) {
+    console.warn("Supabase exercise deactivate failed:", exerciseUpdateError.message);
   }
 
   for (const program of updatedPrograms) {
@@ -1471,6 +1472,7 @@ export async function fetchExercisesFromSupabase(): Promise<Exercise[] | null> {
   const { data, error } = await supabaseClient
     .from("exercise_bank")
     .select("id, name, category, muscle_group, equipment, level, description, image_url")
+    .or("is_active.is.null,is_active.eq.true")
     .order("name", { ascending: true });
 
   if (error) {
@@ -1628,7 +1630,7 @@ export const supabaseAppRepository: AppRepository = {
     );
     const nextState = localAppRepository.deleteExercise(state, normalizedExerciseId);
     const updatedPrograms = nextState.programs.filter((program) => affectedProgramIds.has(program.id));
-    void deleteExerciseFromSupabase(normalizedExerciseId, updatedPrograms);
+    void deactivateExerciseInSupabase(normalizedExerciseId, updatedPrograms);
     return nextState;
   },
   updateMember(state: AppState, input: UpdateMemberInput): AppState {

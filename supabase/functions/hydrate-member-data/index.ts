@@ -189,6 +189,7 @@ Deno.serve(async (req) => {
   const { data: exerciseRows, error: exercisesError } = await adminClient
     .from("exercise_bank")
     .select("id, name, category, muscle_group, equipment, level, description, image_url")
+    .or("is_active.is.null,is_active.eq.true")
     .order("name", { ascending: true });
   if (exercisesError) {
     console.warn("hydrate-member-data: exercise_bank query failed:", exercisesError.message);
