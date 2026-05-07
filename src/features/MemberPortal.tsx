@@ -494,8 +494,8 @@ export function MemberPortal(props: MemberPortalProps) {
   const nextProgram = memberAssignedPrograms[0] ?? null;
   useEffect(() => {
     if (!isMemberLimited) return;
-    if (memberTab === "programs") return;
-    setMemberTab("programs");
+    if (memberTab === "overview" || memberTab === "programs" || memberTab === "profile") return;
+    setMemberTab("overview");
   }, [isMemberLimited, memberTab, setMemberTab]);
   const workoutResultGroups = useMemo(() => {
     if (!workoutMode) return [];
@@ -2603,7 +2603,11 @@ export function MemberPortal(props: MemberPortalProps) {
           style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
         >
           {(isMemberLimited
-            ? [{ id: "programs", label: "Trening" }]
+            ? [
+                { id: "overview", label: "Hjem" },
+                { id: "programs", label: "Trening" },
+                { id: "profile", label: "Profil" },
+              ]
             : [
             { id: "overview", label: "Hjem" },
             { id: "programs", label: "Trening" },

@@ -186,6 +186,10 @@ export type InviteTrainerResult = {
   message: string;
 };
 
+const MEMBER_INVITE_COOLDOWN_MS = 60_000;
+const memberInviteInFlightByKey = new Map<string, Promise<InviteMemberResult>>();
+const memberInviteLastSentAtByKey = new Map<string, number>();
+
 async function syncMemberAuthLink(email: string, memberId?: string): Promise<void> {
   if (!supabaseClient) return;
   const { error } = await supabaseClient.functions.invoke("link-member-auth", {
@@ -240,7 +244,7 @@ function isRateLimitMessage(message: string): boolean {
   );
 }
 
-export async function inviteMemberByEmail(email: string, memberId: string): Promise<InviteMemberResult> {
+async function sendMemberInviteByEmail(email: string, memberId: string): Promise<InviteMemberResult> {
   if (!supabaseClient) {
     return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
   }
@@ -376,6 +380,31 @@ export async function inviteMemberByEmail(email: string, memberId: string): Prom
 
   await syncMemberAuthLink(normalizedEmail, memberId.trim());
   return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}` };
+}
+
+export async function inviteMemberByEmail(email: string, memberId: string): Promise<InviteMemberResult> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedMemberId = memberId.trim();
+  const inviteKey = `${normalizedEmail}|${normalizedMemberId}`;
+  const now = Date.now();
+  const lastSentAt = memberInviteLastSentAtByKey.get(inviteKey) ?? 0;
+  if (lastSentAt && now - lastSentAt < MEMBER_INVITE_COOLDOWN_MS) {
+    return { ok: true, message: "Invitasjon er nylig sendt. Vent litt for ny utsending." };
+  }
+
+  const inFlight = memberInviteInFlightByKey.get(inviteKey);
+  if (inFlight) return inFlight;
+
+  const request = sendMemberInviteByEmail(normalizedEmail, normalizedMemberId)
+    .then((result) => {
+      if (result.ok) memberInviteLastSentAtByKey.set(inviteKey, Date.now());
+      return result;
+    })
+    .finally(() => {
+      memberInviteInFlightByKey.delete(inviteKey);
+    });
+  memberInviteInFlightByKey.set(inviteKey, request);
+  return request;
 }
 
 export async function inviteTrainerByEmail(email: string): Promise<InviteTrainerResult> {

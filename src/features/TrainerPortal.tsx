@@ -230,6 +230,8 @@ function pickFirstName(value: string): string {
   const [trainerMessage, setTrainerMessage] = useState("");
   const [isSendingTrainerMessage, setIsSendingTrainerMessage] = useState(false);
   const isSendingTrainerMessageRef = useRef(false);
+  const pendingInviteSendKeyRef = useRef("");
+  const manualInviteSendKeyRef = useRef("");
   const lastTrainerSendKeyRef = useRef<string>("");
   const lastTrainerSendAtRef = useRef<number>(0);
   const trainerSendAttemptRef = useRef(0);
@@ -898,18 +900,25 @@ function pickFirstName(value: string): string {
     if (!pendingInviteMemberEmail) return;
     const createdMember = findNewestPendingMemberByEmail(pendingInviteMemberEmail);
     if (!createdMember) return;
+    const inviteKey = `${createdMember.email.trim().toLowerCase()}|${createdMember.id}`;
+    if (pendingInviteSendKeyRef.current === inviteKey) return;
+    pendingInviteSendKeyRef.current = inviteKey;
+    setPendingInviteMemberEmail(null);
 
     async function sendInviteForNewMember() {
       setSelectedMemberId(createdMember.id);
       setInviteStatus("Sender invitasjon...");
-      const result = await inviteMember(createdMember.email.toLowerCase(), createdMember.id);
-      if (result.ok) {
-        markMemberInvited(createdMember.id, new Date().toISOString());
+      try {
+        const result = await inviteMember(createdMember.email.toLowerCase(), createdMember.id);
+        if (result.ok) {
+          markMemberInvited(createdMember.id, new Date().toISOString());
+        }
+        setInviteStatus(result.message);
+        setTrainerTab("customers");
+        setCustomerSubTab("overview");
+      } finally {
+        pendingInviteSendKeyRef.current = "";
       }
-      setInviteStatus(result.message);
-      setTrainerTab("customers");
-      setCustomerSubTab("overview");
-      setPendingInviteMemberEmail(null);
     }
 
     void sendInviteForNewMember();
@@ -1755,20 +1764,28 @@ function pickFirstName(value: string): string {
   }
 
   async function handleInviteSelectedMember() {
+    if (isInvitingMember) return;
     if (!selectedMember) return;
     const email = selectedMember.email.trim().toLowerCase();
     if (!isValidEmail(email)) {
       setInviteStatus("Kan ikke sende invitasjon: ugyldig e-post på kunden.");
       return;
     }
+    const inviteKey = `${email}|${selectedMember.id}`;
+    if (manualInviteSendKeyRef.current === inviteKey) return;
+    manualInviteSendKeyRef.current = inviteKey;
     setIsInvitingMember(true);
     setInviteStatus(null);
-    const result = await inviteMember(email, selectedMember.id);
-    if (result.ok) {
-      markMemberInvited(selectedMember.id, new Date().toISOString());
+    try {
+      const result = await inviteMember(email, selectedMember.id);
+      if (result.ok) {
+        markMemberInvited(selectedMember.id, new Date().toISOString());
+      }
+      setInviteStatus(result.message);
+    } finally {
+      setIsInvitingMember(false);
+      manualInviteSendKeyRef.current = "";
     }
-    setInviteStatus(result.message);
-    setIsInvitingMember(false);
   }
 
   async function handleRepairSelectedMemberLink() {
