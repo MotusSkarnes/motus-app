@@ -438,8 +438,19 @@ export function MemberPortal(props: MemberPortalProps) {
   const memberLogs = logs.filter((log) => relatedMemberIdSet.has(log.memberId));
   const memberMessages = useMemo(() => {
     if (currentUserRole === "member") {
+      const anchorEmail = (editableMember?.email ?? normalizedCurrentUserEmail).trim().toLowerCase();
+      const anchorName = (editableMember?.name ?? "").trim().toLowerCase();
       const sorted = messages
-        .filter((message) => relatedMemberIdSet.has(message.memberId))
+        .filter((message) => {
+          if (relatedMemberIdSet.has(message.memberId)) return true;
+          const messageMember = members.find((member) => member.id === message.memberId);
+          if (!messageMember) return true;
+          const messageEmail = messageMember.email.trim().toLowerCase();
+          const messageName = messageMember.name.trim().toLowerCase();
+          if (anchorEmail && messageEmail === anchorEmail) return true;
+          if (anchorName && messageName === anchorName) return true;
+          return false;
+        })
         .sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
       const uniqueById = new Map<string, (typeof sorted)[number]>();
       sorted.forEach((message) => {
