@@ -459,6 +459,24 @@ async function persistProgram(input: SaveProgramInput) {
   const ownerUserId = await getOwnerUserId();
   if (!ownerUserId) return;
   const memberId = input.memberId.trim();
+  const functionResult = await supabaseClient.functions.invoke("save-training-program", {
+    body: {
+      id: input.id,
+      memberId,
+      title: input.title,
+      goal: input.goal,
+      notes: input.notes,
+      exercises: input.exercises,
+    },
+  });
+  if (!functionResult.error) {
+    const payload = functionResult.data as { ok?: boolean; ids?: unknown[] } | null;
+    if (payload?.ok === true || (Array.isArray(payload?.ids) && payload.ids.length > 0)) {
+      return;
+    }
+  } else {
+    console.warn("save-training-program invoke failed, trying direct fallback:", functionResult.error.message);
+  }
   const targetMemberIds = memberId === "__template__" ? [memberId] : await resolveRelatedMemberIds(memberId);
   const isEdit = Boolean(input.id);
 
