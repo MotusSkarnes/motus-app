@@ -448,6 +448,10 @@ function pickFirstName(value: string): string {
   const [workoutSearchQuery, setWorkoutSearchQuery] = useState("");
   const [workoutSortOrder, setWorkoutSortOrder] = useState<"newest" | "oldest">("newest");
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
+  const selectedMemberHasMessagingAccess = selectedMember
+    ? selectedMember.customerType === "PT-kunde" || selectedMember.membershipType === "Premium"
+    : false;
+  const selectedMemberMessagesLocked = Boolean(selectedMember && !selectedMemberHasMessagingAccess);
   function getMemberIdentityKey(member: Member): string {
     const emailKey = member.email.trim().toLowerCase();
     const nameKey = member.name.trim().toLowerCase();
@@ -1645,6 +1649,10 @@ function pickFirstName(value: string): string {
     if (isSendingTrainerMessageRef.current) return false;
     const trimmed = text.trim();
     if (!trimmed) return false;
+    if (selectedMemberMessagesLocked) {
+      setTrainerChatSendStatus("Medlem har ikke tilgang til meldinger.");
+      return false;
+    }
     trainerSendAttemptRef.current += 1;
     const attemptNo = trainerSendAttemptRef.current;
     isSendingTrainerMessageRef.current = true;
@@ -3718,6 +3726,12 @@ function pickFirstName(value: string): string {
                       <div className="font-semibold">Dialog med kunde</div>
                       <div className="text-xs text-slate-500">Direkte chat</div>
                     </div>
+                    {selectedMemberMessagesLocked ? (
+                      <div className="rounded-xl border bg-white p-5 text-sm font-medium text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                        Medlem har ikke tilgang til meldinger.
+                      </div>
+                    ) : (
+                      <>
                     <div className="max-h-[420px] space-y-3 overflow-auto rounded-xl border bg-white p-4">
                       {selectedMessages.length === 0 ? (
                         <EmptyState
@@ -3771,6 +3785,8 @@ function pickFirstName(value: string): string {
                         {isSendingTrainerMessage ? "Sender..." : "Send"}
                       </GradientButton>
                     </div>
+                      </>
+                    )}
                     {trainerChatSendStatus ? (
                       <div
                         className={`rounded-xl border px-3 py-2 text-xs ${trainerChatSendStatus.startsWith("Melding sendt") ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}
@@ -4406,23 +4422,29 @@ function pickFirstName(value: string): string {
             <p className="text-sm text-slate-500">Enklere melding enn i den store fila</p>
           </div>
         </div>
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-          <TextInput
-            value={trainerMessage}
-            onChange={(e) => {
-              setTrainerMessage(e.target.value);
-              if (trainerChatSendStatus) setTrainerChatSendStatus(null);
-            }}
-            placeholder="Skriv melding til kunden"
-          />
-          <GradientButton onClick={async () => {
-            if (!selectedMemberId || selectedMemberId === "__template__" || !trainerMessage.trim()) return;
-            const sent = await dispatchTrainerMessageToSelectedMember(trainerMessage);
-            if (sent) setTrainerMessage("");
-          }} disabled={!trainerMessage.trim() || isSendingTrainerMessage}>
-            {isSendingTrainerMessage ? "Sender..." : "Send"}
-          </GradientButton>
-        </div>
+        {selectedMemberMessagesLocked ? (
+          <div className="mt-5 rounded-xl border bg-slate-50 p-5 text-sm font-medium text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            Medlem har ikke tilgang til meldinger.
+          </div>
+        ) : (
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <TextInput
+              value={trainerMessage}
+              onChange={(e) => {
+                setTrainerMessage(e.target.value);
+                if (trainerChatSendStatus) setTrainerChatSendStatus(null);
+              }}
+              placeholder="Skriv melding til kunden"
+            />
+            <GradientButton onClick={async () => {
+              if (!selectedMemberId || selectedMemberId === "__template__" || !trainerMessage.trim()) return;
+              const sent = await dispatchTrainerMessageToSelectedMember(trainerMessage);
+              if (sent) setTrainerMessage("");
+            }} disabled={!trainerMessage.trim() || isSendingTrainerMessage}>
+              {isSendingTrainerMessage ? "Sender..." : "Send"}
+            </GradientButton>
+          </div>
+        )}
         {trainerChatSendStatus ? (
           <div
             className={`mt-3 rounded-xl border px-3 py-2 text-xs ${trainerChatSendStatus.startsWith("Melding sendt") ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}
