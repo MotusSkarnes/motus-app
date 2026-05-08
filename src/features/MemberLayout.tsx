@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import type { ComponentProps } from "react";
-import { Bell, ClipboardList, LayoutDashboard, MessageSquare, TrendingUp, UserCircle2, type LucideIcon } from "lucide-react";
+import { Bell, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, TrendingUp, UserCircle2, type LucideIcon } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { AppState, MemberTab } from "../app/types";
 import { Card } from "../app/ui";
@@ -8,7 +8,10 @@ import { MemberPortal } from "./MemberPortal";
 
 type MemberAlert = {
   id: string;
+  kind: "message" | "program";
+  title: string;
   text: string;
+  detail: string;
   timestamp: number;
   targetTab: "messages" | "programs";
 };
@@ -138,17 +141,33 @@ export function MemberLayout({
     <>
       <div className="space-y-3">
         {!isMemberLimited ? (
-        <Card className="p-2.5 sm:p-3 bg-gradient-to-b from-emerald-50/80 to-pink-50/60">
+        <Card className="p-3 sm:p-4 bg-gradient-to-br from-emerald-50/90 via-white to-pink-50/70">
           <div className="flex items-center justify-between gap-3">
-            <div className="text-xs sm:text-sm font-semibold text-slate-800">Varsler</div>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Aktuelt nå</div>
+              <div className="mt-0.5 flex items-center gap-2 text-sm font-semibold text-slate-900">
+                {memberUnreadCount > 0 ? (
+                  <>
+                    <span>{memberUnreadCount} nytt</span>
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: MOTUS.pink }} />
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    <span>Alt er ajour</span>
+                  </>
+                )}
+              </div>
+            </div>
             <button
               type="button"
               onClick={handleMemberBellToggle}
-              className="relative rounded-lg border bg-white p-1.5 sm:p-2 text-slate-700 hover:bg-emerald-50"
+              className="relative inline-flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-emerald-50"
               style={{ borderColor: "rgba(20,184,166,0.25)" }}
-              aria-label="Åpne varsler"
+              aria-label={memberNotificationsOpen ? "Lukk varsler" : "Åpne varsler"}
             >
               <Bell className="h-4 w-4" />
+              <span>{memberNotificationsOpen ? "Lukk" : "Se"}</span>
               {memberUnreadCount > 0 ? (
                 <span
                   className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
@@ -160,26 +179,38 @@ export function MemberLayout({
             </button>
           </div>
           {memberNotificationsOpen ? (
-            <div className="mt-2 max-h-36 overflow-y-auto space-y-1.5 pr-1">
-              {memberVisibleAlerts.map((alert) => (
-                <button
-                  key={alert.id}
-                  type="button"
-                  onClick={() => openAlert(alert)}
-                  className="w-full rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs sm:text-sm text-slate-700 hover:bg-emerald-50"
-                  style={{ borderColor: "rgba(20,184,166,0.25)" }}
-                >
-                  {alert.text}
-                </button>
-              ))}
+            <div className="mt-3 max-h-52 overflow-y-auto space-y-2 pr-1">
+              {memberVisibleAlerts.map((alert) => {
+                const AlertIcon = alert.kind === "message" ? MessageSquare : ClipboardList;
+                return (
+                  <button
+                    key={alert.id}
+                    type="button"
+                    onClick={() => openAlert(alert)}
+                    className="group flex w-full items-center gap-3 rounded-xl border bg-white px-3 py-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50"
+                    style={{ borderColor: "rgba(20,184,166,0.25)" }}
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                      <AlertIcon className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-slate-800">{alert.title}</span>
+                      <span className="block truncate text-xs text-slate-500">{alert.detail}</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-emerald-500" />
+                  </button>
+                );
+              })}
               {memberVisibleAlerts.length === 0 ? (
-                <div className="rounded-lg border border-dashed bg-white px-2.5 py-1.5 text-xs sm:text-sm text-slate-500">
-                  Ingen nye varsler akkurat nå.
+                <div className="rounded-xl border border-dashed bg-white px-3 py-2.5 text-sm text-slate-500">
+                  Ingen nye ting å følge opp akkurat nå.
                 </div>
               ) : null}
             </div>
           ) : (
-            <div className="mt-1.5 text-xs sm:text-sm text-slate-500">Trykk på bjellen for å se varsler.</div>
+            <div className="mt-2 text-xs sm:text-sm text-slate-500">
+              {memberUnreadCount > 0 ? "Åpne for å gå rett til melding eller program." : "Nye meldinger og programmer dukker opp her."}
+            </div>
           )}
         </Card>
         ) : null}

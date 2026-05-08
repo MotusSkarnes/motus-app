@@ -3,7 +3,10 @@ import type { ChatMessage, Member, MemberTab, TrainingProgram } from "./types";
 
 type MemberAlert = {
   id: string;
+  kind: "message" | "program";
+  title: string;
   text: string;
+  detail: string;
   timestamp: number;
   targetTab: "messages" | "programs";
 };
@@ -11,7 +14,9 @@ type MemberAlert = {
 type TrainerAlert = {
   id: string;
   memberId: string;
+  title: string;
   text: string;
+  detail: string;
   timestamp: number;
 };
 
@@ -81,7 +86,9 @@ export function useNotifications({
         return {
           id: `msg-${message.id}`,
           memberId: message.memberId,
+          title: "Ny melding",
           text: `${name} har sendt deg en ny melding`,
+          detail: message.text.length > 72 ? `${message.text.slice(0, 72)}...` : message.text,
           timestamp,
         };
       });
@@ -113,7 +120,10 @@ export function useNotifications({
     () =>
       memberTrainerMessages.map((message) => ({
         id: `member-msg-${message.id}`,
-        text: "Ny melding fra trener",
+        kind: "message",
+        title: "Ny melding fra trener",
+        text: "Åpne meldinger",
+        detail: message.text.length > 72 ? `${message.text.slice(0, 72)}...` : message.text,
         timestamp: message._effectiveTimestamp,
         targetTab: "messages",
       })),
@@ -124,7 +134,10 @@ export function useNotifications({
     () =>
       memberPrograms.map((program) => ({
         id: `member-program-${program.id}`,
-        text: `Du har fått nytt treningsprogram: ${program.title}`,
+        kind: "program",
+        title: "Nytt treningsprogram",
+        text: program.title,
+        detail: program.goal || "Programmet er klart i Trening.",
         timestamp: program._effectiveTimestamp,
         targetTab: "programs" as const,
         unread: !seenMemberProgramIds.includes(program.id),

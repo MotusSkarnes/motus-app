@@ -1,5 +1,5 @@
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
-import { BarChart3, Bell, CalendarDays, ClipboardList, Dumbbell, LayoutDashboard, MessageSquare, Settings, ShieldCheck, Users, type LucideIcon } from "lucide-react";
+import { BarChart3, Bell, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, Clock3, Dumbbell, LayoutDashboard, MessageSquare, Settings, ShieldCheck, UserPlus, Users, type LucideIcon } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { AppState, TrainerTab } from "../app/types";
 import { Card } from "../app/ui";
@@ -8,7 +8,9 @@ import { TrainerPortal } from "./TrainerPortal";
 type TrainerAlert = {
   id: string;
   memberId: string;
+  title: string;
   text: string;
+  detail: string;
   timestamp: number;
 };
 
@@ -102,6 +104,7 @@ export function TrainerLayout({
   const canAccessAdminTools = true;
   const inactiveMembersCount = appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length;
   const missingInvitesCount = appState.members.filter((member) => !member.invitedAt).length;
+  const trainerActionCount = trainerUnreadCount + missingInvitesCount + inactiveMembersCount;
   const visibleTrainerMenuItems = trainerMenuItems;
   const visibleMobileTabs = mobileTabs;
 
@@ -183,17 +186,33 @@ export function TrainerLayout({
               </div>
             </Card>
           ) : null}
-          <Card className="p-2.5 sm:p-3 bg-gradient-to-b from-emerald-50/80 to-pink-50/60">
+          <Card className="p-3 sm:p-4 bg-gradient-to-br from-emerald-50/90 via-white to-pink-50/70">
             <div className="flex items-center justify-between gap-3">
-              <div className="text-xs sm:text-sm font-semibold text-slate-800">Varsler</div>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Aktuelt nå</div>
+                <div className="mt-0.5 flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  {trainerActionCount > 0 ? (
+                    <>
+                      <span>{trainerActionCount} ting å følge opp</span>
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: MOTUS.pink }} />
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      <span>Alt er ajour</span>
+                    </>
+                  )}
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={handleTrainerBellToggle}
-                className="relative rounded-lg border bg-white p-1.5 sm:p-2 text-slate-700 hover:bg-emerald-50"
+                className="relative inline-flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-emerald-50"
                 style={{ borderColor: "rgba(20,184,166,0.25)" }}
-                aria-label="Åpne varsler"
+                aria-label={trainerNotificationsOpen ? "Lukk varsler" : "Åpne varsler"}
               >
                 <Bell className="h-4 w-4" />
+                <span>{trainerNotificationsOpen ? "Lukk" : "Se"}</span>
                 {trainerUnreadCount > 0 ? (
                   <span
                     className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
@@ -205,7 +224,7 @@ export function TrainerLayout({
               </button>
             </div>
             {trainerNotificationsOpen ? (
-              <div className="mt-2 max-h-36 overflow-y-auto space-y-1.5 pr-1">
+              <div className="mt-3 max-h-64 overflow-y-auto space-y-2 pr-1">
                 {trainerMessageAlerts.map((alert) => (
                   <button
                     key={alert.id}
@@ -216,10 +235,17 @@ export function TrainerLayout({
                       setOpenCustomerMessagesSignal((prev) => prev + 1);
                       setTrainerNotificationsOpen(false);
                     }}
-                    className="w-full rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs sm:text-sm text-slate-700 hover:bg-emerald-50"
+                    className="group flex w-full items-center gap-3 rounded-xl border bg-white px-3 py-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50"
                     style={{ borderColor: "rgba(20,184,166,0.25)" }}
                   >
-                    {alert.text}
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                      <MessageSquare className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-slate-800">{alert.text}</span>
+                      <span className="block truncate text-xs text-slate-500">{alert.detail || "Åpne meldinger"}</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-emerald-500" />
                   </button>
                 ))}
                 {missingInvitesCount > 0 ? (
@@ -229,10 +255,17 @@ export function TrainerLayout({
                       setTrainerTab("customers");
                       setTrainerNotificationsOpen(false);
                     }}
-                    className="w-full rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs sm:text-sm text-slate-700 hover:bg-emerald-50"
+                    className="group flex w-full items-center gap-3 rounded-xl border bg-white px-3 py-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50"
                     style={{ borderColor: "rgba(20,184,166,0.25)" }}
                   >
-                    {missingInvitesCount} kunder mangler invitasjon
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pink-50 text-pink-600">
+                      <UserPlus className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-slate-800">{missingInvitesCount} kunder mangler invitasjon</span>
+                      <span className="block truncate text-xs text-slate-500">Gå til klienter og send invitasjon.</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-emerald-500" />
                   </button>
                 ) : null}
                 {inactiveMembersCount > 0 ? (
@@ -242,20 +275,29 @@ export function TrainerLayout({
                       setTrainerTab("customers");
                       setTrainerNotificationsOpen(false);
                     }}
-                    className="w-full rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs sm:text-sm text-slate-700 hover:bg-emerald-50"
+                    className="group flex w-full items-center gap-3 rounded-xl border bg-white px-3 py-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50"
                     style={{ borderColor: "rgba(20,184,166,0.25)" }}
                   >
-                    {inactiveMembersCount} kunder bør følges opp
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                      <Clock3 className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-slate-800">{inactiveMembersCount} kunder bør følges opp</span>
+                      <span className="block truncate text-xs text-slate-500">Åpne klientlisten og prioriter oppfølging.</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-emerald-500" />
                   </button>
                 ) : null}
                 {!trainerMessageAlerts.length && !missingInvitesCount && !inactiveMembersCount ? (
-                  <div className="rounded-lg border border-dashed bg-white px-2.5 py-1.5 text-xs sm:text-sm text-slate-500">
-                    Ingen nye varsler akkurat nå.
+                  <div className="rounded-xl border border-dashed bg-white px-3 py-2.5 text-sm text-slate-500">
+                    Ingen nye ting å følge opp akkurat nå.
                   </div>
                 ) : null}
               </div>
             ) : (
-              <div className="mt-1.5 text-xs sm:text-sm text-slate-500">Trykk på bjellen for å se varsler.</div>
+              <div className="mt-2 text-xs sm:text-sm text-slate-500">
+                {trainerActionCount > 0 ? "Åpne for raske snarveier til meldinger og klientoppfølging." : "Nye meldinger og oppfølginger samles her."}
+              </div>
             )}
           </Card>
           <TrainerPortal {...trainerPortalProps} />
