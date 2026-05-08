@@ -15,6 +15,10 @@ type SaveProgramPayload = {
   goal?: string;
   notes?: string;
   exercises?: ProgramExercise[];
+  targetEmail?: string;
+  targetName?: string;
+  customerType?: string;
+  membershipType?: string;
 };
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -31,6 +35,13 @@ function normalizeEmail(value: unknown): string {
 async function resolveRelatedMemberIds(
   adminClient: ReturnType<typeof createClient>,
   memberId: string,
+  hints?: {
+    targetEmail?: string;
+    targetName?: string;
+    customerType?: string;
+    membershipType?: string;
+    ownerUserId?: string;
+  },
 ): Promise<{ ids: string[]; email: string }> {
   const { data: memberRow, error: memberError } = await adminClient
     .from("members")
@@ -42,7 +53,7 @@ async function resolveRelatedMemberIds(
     throw new Error(`Could not resolve member: ${memberError.message}`);
   }
 
-  const email = normalizeEmail((memberRow as { email?: string } | null)?.email);
+  const email = normalizeEmail((memberRow as { email?: string } | null)?.email) || normalizeEmail(hints?.targetEmail);
   if (!email) return { ids: [memberId], email: "" };
 
   const { data: rows, error: rowsError } = await adminClient
@@ -62,7 +73,36 @@ async function resolveRelatedMemberIds(
     ),
   );
 
-  return { ids: ids.length ? ids : [memberId], email };
+  if (ids.length) return { ids, email };
+
+  const targetName = String(hints?.targetName ?? "").trim() || email.split("@")[0] || "Medlem";
+  const ownerUserId = String(hints?.ownerUserId ?? "").trim();
+  const customerType = String(hints?.customerType ?? "").trim() || "Medlem";
+  const membershipType = String(hints?.membershipType ?? "").trim() || "Standard";
+  const id = memberId && memberId !== "__template__" && !memberId.startsWith("auth-") ? memberId : crypto.randomUUID();
+  const { error: insertError } = await adminClient.from("members").upsert(
+    {
+      id,
+      owner_user_id: ownerUserId || null,
+      name: targetName,
+      email,
+      is_active: true,
+      membership_type: membershipType,
+      customer_type: customerType,
+      days_since_activity: "0",
+      goal: "",
+      focus: "",
+      injuries: "",
+      coach_notes: "",
+      personal_goals: "",
+    },
+    { onConflict: "id" },
+  );
+  if (insertError) {
+    throw new Error(`Could not create missing member row: ${insertError.message}`);
+  }
+
+  return { ids: [id], email };
 }
 
 async function syncAuthMemberLink(
@@ -141,6 +181,10 @@ Deno.serve(async (req) => {
   const exercises = Array.isArray(payload.exercises) ? payload.exercises : [];
   const ownerUserId = String(userData.user.id ?? "").trim();
   const programId = String(payload.id ?? "").trim();
+  const targetEmail = normalizeEmail(payload.targetEmail);
+  const targetName = String(payload.targetName ?? "").trim();
+  const customerType = String(payload.customerType ?? "").trim();
+  const membershipType = String(payload.membershipType ?? "").trim();
 
   if (!ownerUserId) return jsonResponse(401, { error: "Missing authenticated user id" });
   if (!memberId || memberId.startsWith("auth-")) return jsonResponse(400, { error: "Valid memberId is required" });
@@ -165,7 +209,13 @@ Deno.serve(async (req) => {
     return jsonResponse(200, { ok: true, ids: [id], targetMemberIds: [memberId] });
   }
 
-  const { ids: targetMemberIds, email } = await resolveRelatedMemberIds(adminClient, memberId);
+  const { ids: targetMemberIds, email } = await resolveRelatedMemberIds(adminClient, memberId, {
+    targetEmail,
+    targetName,
+    customerType,
+    membershipType,
+    ownerUserId,
+  });
   const writtenIds: string[] = [];
 
   if (programId) {

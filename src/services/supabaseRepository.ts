@@ -454,7 +454,15 @@ async function persistMessage(
   });
 }
 
-async function persistProgram(input: SaveProgramInput) {
+async function persistProgram(
+  input: SaveProgramInput,
+  hints?: {
+    targetEmail?: string;
+    targetName?: string;
+    customerType?: string;
+    membershipType?: string;
+  },
+) {
   if (!supabaseClient) return;
   const ownerUserId = await getOwnerUserId();
   if (!ownerUserId) return;
@@ -467,6 +475,10 @@ async function persistProgram(input: SaveProgramInput) {
       goal: input.goal,
       notes: input.notes,
       exercises: input.exercises,
+      targetEmail: hints?.targetEmail ?? "",
+      targetName: hints?.targetName ?? "",
+      customerType: hints?.customerType ?? "",
+      membershipType: hints?.membershipType ?? "",
     },
   });
   if (!functionResult.error) {
@@ -1550,8 +1562,15 @@ export const supabaseAppRepository: AppRepository = {
     return nextState;
   },
   saveProgram(state: AppState, input: SaveProgramInput): AppState {
+    const anchorMember = state.members.find((member) => member.id === input.memberId);
+    const hints = {
+      targetEmail: String(anchorMember?.email ?? "").trim().toLowerCase(),
+      targetName: String(anchorMember?.name ?? "").trim(),
+      customerType: String(anchorMember?.customerType ?? "").trim(),
+      membershipType: String(anchorMember?.membershipType ?? "").trim(),
+    };
     const nextState = localAppRepository.saveProgram(state, input);
-    void persistProgram(input);
+    void persistProgram(input, hints);
     return nextState;
   },
   deleteProgram(state: AppState, programId: string): AppState {
