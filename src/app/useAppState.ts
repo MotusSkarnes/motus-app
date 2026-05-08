@@ -231,20 +231,55 @@ export function useAppState() {
         : hydratedMember?.members ?? directTrainerMembers ?? (await fetchMembersFromSupabase());
       const remoteMessages = hydratedTrainer?.messages ?? hydratedMember?.messages ?? (await fetchMessagesFromSupabase());
       // Edge hydrate can return programs: [] while RLS select still returns rows (or vice versa). Prefer non-empty.
-      const remotePrograms =
+      let remotePrograms =
         hydratedTrainer?.programs ??
         (isMemberLikeSession
           ? hydratedMember?.programs?.length
             ? hydratedMember.programs
             : (directMemberPrograms ?? hydratedMember?.programs ?? [])
           : null);
-      const remoteLogs =
+      let remoteLogs =
         hydratedTrainer?.logs ??
         (isMemberLikeSession
           ? hydratedMember?.logs?.length
             ? hydratedMember.logs
             : (directMemberLogs ?? hydratedMember?.logs ?? [])
           : null);
+
+      // One-shot: JWT app_metadata.member_id often mismatches DB; RLS then returns no rows. Re-link + refresh + refetch.
+      if (
+        !cancelled &&
+        isMemberLikeSession &&
+        supabaseClient &&
+        sessionUser?.email &&
+        sessionUser.id &&
+        Array.isArray(remotePrograms) &&
+        remotePrograms.length === 0 &&
+        hydratedMember &&
+        hydratedMember.members.length > 0 &&
+        typeof window !== "undefined"
+      ) {
+        const retryKey = `motus.memberProgramJwtRetry:${sessionUser.id}`;
+        if (!window.sessionStorage.getItem(retryKey)) {
+          const email = sessionUser.email.trim().toLowerCase();
+          const match =
+            hydratedMember.members.find((m) => m.email.trim().toLowerCase() === email) ?? hydratedMember.members[0];
+          const memberId = match?.id?.trim();
+          if (email.includes("@") && memberId) {
+            window.sessionStorage.setItem(retryKey, "1");
+            await ensureMemberAuthLink(email, memberId);
+            await supabaseClient.auth.refreshSession();
+            const retryPrograms = await fetchProgramsFromSupabase();
+            const retryLogs = await fetchLogsFromSupabase();
+            if (retryPrograms?.length) {
+              remotePrograms = retryPrograms;
+            }
+            if (retryLogs?.length) {
+              remoteLogs = retryLogs;
+            }
+          }
+        }
+      }
       const trainerHydrateFailed =
         Boolean(hydratedTrainer) &&
         (hydratedTrainer?.debug?.status === "invoke_error" || hydratedTrainer?.debug?.status === "invalid_payload");
