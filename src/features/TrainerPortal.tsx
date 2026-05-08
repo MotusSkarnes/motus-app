@@ -1517,15 +1517,18 @@ function pickFirstName(value: string): string {
         window.alert("Nettleseren blokkerte popup-vinduet for utskrift. Tillat popup for denne siden.");
         return;
       }
-    const recipientName = (selectedMember?.name || "Kunde").trim();
-    const trainerLabel = (pickFirstName(program.assignedTrainerName ?? "") || pickFirstName(MOTUS.name) || "Trener").trim();
-    const exercisesHtml =
-      program.exercises.length > 0
-        ? program.exercises
+      const recipientName = (selectedMember?.name || "Kunde").trim();
+      const trainerLabel = (pickFirstName(program.assignedTrainerName ?? "") || pickFirstName(MOTUS.name) || "Trener").trim();
+      const safeExercises = Array.isArray(program.exercises) ? program.exercises : [];
+      const exercisesHtml =
+        safeExercises.length > 0
+          ? safeExercises
             .map((exercise, index) => {
+              const exerciseName = String(exercise.exerciseName ?? "Øvelse").trim() || "Øvelse";
+              const exerciseId = String(exercise.exerciseId ?? "").trim();
               const libraryMatch =
-                exercises.find((item) => item.id === exercise.exerciseId) ??
-                exercises.find((item) => item.name.trim().toLowerCase() === exercise.exerciseName.trim().toLowerCase()) ??
+                exercises.find((item) => item.id === exerciseId) ??
+                exercises.find((item) => item.name.trim().toLowerCase() === exerciseName.toLowerCase()) ??
                 null;
               const prescription = exercise.durationMinutes
                 ? `${exercise.sets} runder × ${exercise.durationMinutes} min${
@@ -1538,12 +1541,12 @@ function pickFirstName(value: string): string {
   <div class="exercise-image-wrap">
     ${
       imageUrl
-        ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(exercise.exerciseName)}" class="exercise-image" />`
+        ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(exerciseName)}" class="exercise-image" />`
         : `<div class="exercise-image-placeholder">Ingen bilde</div>`
     }
   </div>
   <div class="exercise-body">
-    <div class="exercise-title">${index + 1}. ${escapeHtml(exercise.exerciseName)}</div>
+    <div class="exercise-title">${index + 1}. ${escapeHtml(exerciseName)}</div>
     <div class="exercise-prescription">${escapeHtml(prescription)}</div>
     <div class="exercise-description">${escapeHtml(description)}</div>
     ${exercise.notes ? `<div class="exercise-notes">Coach-notat: ${escapeHtml(exercise.notes)}</div>` : ""}
@@ -1551,7 +1554,7 @@ function pickFirstName(value: string): string {
 </article>`;
             })
             .join("")
-        : `<div class="empty-state">Ingen øvelser i programmet.</div>`;
+          : `<div class="empty-state">Ingen øvelser i programmet.</div>`;
     const html = `<!doctype html>
 <html lang="no">
 <head>
