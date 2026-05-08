@@ -181,19 +181,23 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Programs only for scoped `members` ids (email/name-linked dupes). Do not widen to raw auth.uid() — that
-  // surfaced orphan rows PT deletes could not match. Include inactive duplicate ids too: programs often still
-  // reference those rows; filtering is_active here hid all programs for some accounts.
+  // Programs: scoped `members` ids (email/name dupes) plus legacy keys rows may use (auth metadata id, auth.uid, auth-{uid}).
   const programMemberIds = Array.from(
     new Set(memberIds.filter((id) => id && id !== "__template__" && !id.startsWith("auth-"))),
   );
+  const programLookupIds = new Set(programMemberIds);
+  for (const raw of [authMemberId, requesterUserId, requesterUserId ? `auth-${requesterUserId}` : ""]) {
+    const id = String(raw ?? "").trim();
+    if (id && id !== "__template__") programLookupIds.add(id);
+  }
+  const programLookupList = Array.from(programLookupIds);
 
   const { data: programsRaw, error: programsError } =
-    programMemberIds.length > 0
+    programLookupList.length > 0
       ? await adminClient
           .from("training_programs")
           .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id")
-          .in("member_id", programMemberIds)
+          .in("member_id", programLookupList)
           .order("created_at", { ascending: false })
       : { data: [], error: null };
   const { data: logs, error: logsError } = await adminClient
@@ -292,9 +296,9 @@ Deno.serve(async (req) => {
     }
   }
 
-  const programMemberIdSet = new Set(programMemberIds);
+  const programLookupIdSet = new Set(programLookupList);
   const programs = (programsRaw ?? [])
-    .filter((row) => programMemberIdSet.has(String((row as { member_id?: string }).member_id ?? "").trim()))
+    .filter((row) => programLookupIdSet.has(String((row as { member_id?: string }).member_id ?? "").trim()))
     .map((row) => {
       const typedRow = row as Record<string, unknown>;
       const ownerUserId = String(typedRow.owner_user_id ?? "").trim();

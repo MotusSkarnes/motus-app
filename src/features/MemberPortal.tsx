@@ -30,6 +30,8 @@ type MemberPortalProps = {
   members: Member[];
   currentUserRole: "trainer" | "member";
   currentUserEmail: string;
+  /** Supabase auth user id — programs/logs sometimes use this as member_id instead of members.id */
+  currentUserSupabaseId?: string;
   currentUserMemberId?: string;
   programs: TrainingProgram[];
   logs: WorkoutLog[];
@@ -236,6 +238,7 @@ export function MemberPortal(props: MemberPortalProps) {
     members,
     currentUserRole,
     currentUserEmail,
+    currentUserSupabaseId,
     currentUserMemberId,
     programs,
     logs,
@@ -413,10 +416,26 @@ export function MemberPortal(props: MemberPortalProps) {
     if (currentUserRole === "member" && currentUserMemberId?.trim()) {
       collectedIds.add(currentUserMemberId.trim());
     }
+    if (currentUserRole === "member" && currentUserSupabaseId?.trim()) {
+      const sid = currentUserSupabaseId.trim();
+      collectedIds.add(sid);
+      collectedIds.add(`auth-${sid}`);
+    }
     if (activeMemberId.trim()) collectedIds.add(activeMemberId.trim());
     const merged = Array.from(collectedIds);
     return merged.length ? merged : [activeMemberId];
-  }, [members, currentUserRole, normalizedCurrentUserEmail, editableMember, activeMemberId, programs, logs, messages, currentUserMemberId]);
+  }, [
+    members,
+    currentUserRole,
+    normalizedCurrentUserEmail,
+    editableMember,
+    activeMemberId,
+    programs,
+    logs,
+    messages,
+    currentUserMemberId,
+    currentUserSupabaseId,
+  ]);
   const relatedMemberIdSet = useMemo(() => new Set(relatedMemberIds), [relatedMemberIds]);
   const relatedMembersForProfile = useMemo(
     () => members.filter((member) => relatedMemberIdSet.has(member.id)),

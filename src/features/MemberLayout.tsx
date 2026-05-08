@@ -105,6 +105,7 @@ export function MemberLayout({
     members: appState.members,
     currentUserRole: appState.currentUser!.role,
     currentUserEmail: appState.currentUser!.email,
+    currentUserSupabaseId: appState.currentUser?.id,
     currentUserMemberId: appState.currentUser?.memberId,
     programs: appState.programs,
     logs: appState.logs,
