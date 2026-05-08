@@ -1510,10 +1510,6 @@ function pickFirstName(value: string): string {
   function handlePrintProgram(program: TrainingProgram) {
     if (typeof window === "undefined") return;
     const printWindow = window.open("", "_blank", "width=900,height=1100");
-    if (!printWindow) {
-      window.alert("Kunne ikke åpne utskriftsvindu. Sjekk popup-innstillinger i nettleseren.");
-      return;
-    }
     const recipientName = (selectedMember?.name || "Kunde").trim();
     const trainerLabel = (pickFirstName(program.assignedTrainerName ?? "") || pickFirstName(MOTUS.name) || "Trener").trim();
     const exercisesHtml =
@@ -1638,18 +1634,84 @@ function pickFirstName(value: string): string {
   </script>
 </body>
 </html>`;
-    let wroteToPopup = false;
     try {
-      printWindow.document.open();
-      printWindow.document.write(html);
-      printWindow.document.close();
-      wroteToPopup = true;
-    } catch (error) {
-      console.warn("Trainer print: direct document.write failed, falling back to blob URL.", error);
-      wroteToPopup = false;
+      printWindow.close();
+    } catch {
+      // ignore
     }
 
-    if (!wroteToPopup) {
+    // Edge-safe path: render in hidden iframe and print from iframe context.
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.setAttribute("aria-hidden", "true");
+    document.body.appendChild(iframe);
+
+    const cleanup = () => {
+      window.setTimeout(() => {
+        try {
+          iframe.remove();
+        } catch {
+          // ignore
+        }
+      }, 1500);
+    };
+
+    const triggerIframePrint = () => {
+      try {
+        const frameWindow = iframe.contentWindow;
+        const frameDoc = frameWindow?.document;
+        if (!frameWindow || !frameDoc) throw new Error("Mangler iframe-vindu for utskrift.");
+        const images = Array.from(frameDoc.images ?? []);
+        const doPrint = () => {
+          try {
+            frameWindow.focus();
+            frameWindow.print();
+          } catch {
+            // ignore
+          } finally {
+            cleanup();
+          }
+        };
+        if (!images.length) {
+          doPrint();
+          return;
+        }
+        let loaded = 0;
+        const markLoaded = () => {
+          loaded += 1;
+          if (loaded >= images.length) doPrint();
+        };
+        images.forEach((img) => {
+          if (img.complete) {
+            markLoaded();
+            return;
+          }
+          img.addEventListener("load", markLoaded, { once: true });
+          img.addEventListener("error", markLoaded, { once: true });
+        });
+        window.setTimeout(doPrint, 2200);
+      } catch (error) {
+        console.warn("Trainer print: iframe print failed.", error);
+        cleanup();
+        window.alert("Kunne ikke generere PDF/utskrift. Prøv igjen.");
+      }
+    };
+
+    try {
+      const frameDoc = iframe.contentWindow?.document;
+      if (!frameDoc) throw new Error("Mangler iframe-document.");
+      frameDoc.open();
+      frameDoc.write(html);
+      frameDoc.close();
+      window.setTimeout(triggerIframePrint, 150);
+    } catch (error) {
+      console.warn("Trainer print: iframe write failed, trying blob fallback.", error);
+      cleanup();
       try {
         const blob = new Blob([html], { type: "text/html;charset=utf-8" });
         const blobUrl = URL.createObjectURL(blob);
@@ -1667,33 +1729,11 @@ function pickFirstName(value: string): string {
           }
         }, 700);
         window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
-      } catch (error) {
-        console.warn("Trainer print: blob fallback failed.", error);
+      } catch (blobError) {
+        console.warn("Trainer print: blob fallback failed.", blobError);
         window.alert("Kunne ikke generere PDF/utskrift. Prøv igjen.");
       }
-      return;
     }
-    // Fallback from parent window: some browsers ignore/delay inline popup scripts.
-    const fallbackPrint = () => {
-      try {
-        printWindow.focus();
-        printWindow.print();
-      } catch {
-        // ignore
-      }
-    };
-    try {
-      printWindow.addEventListener("load", () => {
-        window.setTimeout(fallbackPrint, 250);
-      });
-    } catch {
-      // ignore and rely on timeout below
-    }
-    window.setTimeout(() => {
-      if (printWindow.document.readyState === "complete") {
-        fallbackPrint();
-      }
-    }, 1200);
   }
 
   function handleSaveSelectedMemberDetails() {
