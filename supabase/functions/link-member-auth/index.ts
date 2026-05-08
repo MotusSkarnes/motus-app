@@ -16,6 +16,7 @@ type MemberCandidate = {
   is_active: boolean | null;
   created_at: string | null;
   email?: string | null;
+  owner_user_id?: string | null;
 };
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -73,7 +74,7 @@ Deno.serve(async (req) => {
 
   const { data: memberRows, error: memberLookupError } = await adminClient
     .from("members")
-    .select("id, is_active, created_at, email")
+    .select("id, owner_user_id, is_active, created_at, email")
     .ilike("email", email);
   if (memberLookupError) {
     return jsonResponse(500, { error: `Could not resolve member by email: ${memberLookupError.message}` });
@@ -81,6 +82,7 @@ Deno.serve(async (req) => {
   const candidates = (memberRows ?? [])
     .map((row) => ({
       id: String((row as MemberCandidate).id ?? "").trim(),
+      owner_user_id: String((row as MemberCandidate).owner_user_id ?? "").trim(),
       is_active: (row as MemberCandidate).is_active ?? null,
       created_at: (row as MemberCandidate).created_at ?? null,
       email: String((row as MemberCandidate).email ?? "").trim(),
@@ -89,7 +91,7 @@ Deno.serve(async (req) => {
   if (!candidates.length) {
     const { data: allMembers, error: allMembersError } = await adminClient
       .from("members")
-      .select("id, is_active, created_at, email");
+      .select("id, owner_user_id, is_active, created_at, email");
     if (allMembersError) {
       return jsonResponse(500, { error: `Could not scan members by normalized email: ${allMembersError.message}` });
     }
@@ -101,6 +103,7 @@ Deno.serve(async (req) => {
       if (!id) continue;
       candidates.push({
         id,
+        owner_user_id: String(typed.owner_user_id ?? "").trim(),
         is_active: typed.is_active ?? null,
         created_at: typed.created_at ?? null,
         email: String(typed.email ?? "").trim(),
@@ -144,7 +147,7 @@ Deno.serve(async (req) => {
     if (upsertError) {
       return jsonResponse(500, { error: `Could not create member row: ${upsertError.message}` });
     }
-    candidates.push({ id: fallbackId, is_active: true, created_at: null });
+    candidates.push({ id: fallbackId, owner_user_id: matchedUser.id, is_active: true, created_at: null });
   }
 
   const candidateIds = candidates.map((row) => row.id);
@@ -181,10 +184,12 @@ Deno.serve(async (req) => {
 
   const requestedCandidate = memberId ? candidates.find((candidate) => candidate.id === memberId) : null;
   // Respect explicitly requested member row when provided and valid.
-  memberId = (requestedCandidate?.id || canonicalCandidate?.id || "").trim();
+  const selectedCandidate = requestedCandidate ?? canonicalCandidate ?? null;
+  memberId = (selectedCandidate?.id || "").trim();
   if (!memberId) {
     return jsonResponse(404, { error: "No member row found for email" });
   }
+  const canonicalOwnerUserId = String(selectedCandidate?.owner_user_id ?? "").trim();
 
   const { data: listData, error: listError } = await adminClient.auth.admin.listUsers({
     page: 1,
@@ -317,6 +322,40 @@ Deno.serve(async (req) => {
     .select("id", { count: "exact", head: true })
     .ilike("member_id", `%${email}%`);
 
+  // Guarded rescue: if canonical has zero programs and owner has exactly one foreign member_id bucket,
+  // migrate that bucket to canonical member_id.
+  let rescuedPrograms = 0;
+  if (Number(canonicalProgramCount ?? 0) === 0 && canonicalOwnerUserId) {
+    const { data: ownerPrograms, error: ownerProgramsError } = await adminClient
+      .from("training_programs")
+      .select("id, member_id")
+      .eq("owner_user_id", canonicalOwnerUserId);
+    if (ownerProgramsError) {
+      console.warn(`link-member-auth: owner program rescue lookup failed:`, ownerProgramsError.message);
+    } else {
+      const grouped = new Map<string, number>();
+      for (const row of ownerPrograms ?? []) {
+        const pid = String((row as { member_id?: string }).member_id ?? "").trim();
+        if (!pid || pid === memberId) continue;
+        grouped.set(pid, (grouped.get(pid) ?? 0) + 1);
+      }
+      if (grouped.size === 1) {
+        const [onlyLegacyId] = Array.from(grouped.keys());
+        const { data: rescuedRows, error: rescueError } = await adminClient
+          .from("training_programs")
+          .update({ member_id: memberId })
+          .eq("owner_user_id", canonicalOwnerUserId)
+          .eq("member_id", onlyLegacyId)
+          .select("id");
+        if (rescueError) {
+          console.warn(`link-member-auth: owner program rescue update failed:`, rescueError.message);
+        } else {
+          rescuedPrograms = (rescuedRows ?? []).length;
+        }
+      }
+    }
+  }
+
   return jsonResponse(200, {
     message: "Auth member link synced",
     updated,
@@ -329,6 +368,8 @@ Deno.serve(async (req) => {
       legacyProgramCounts,
       canonicalProgramCount: Number(canonicalProgramCount ?? 0),
       emailLikeProgramCount: Number(emailLikeProgramCount ?? 0),
+      rescuedPrograms,
+      canonicalOwnerUserId,
     },
   });
 });
