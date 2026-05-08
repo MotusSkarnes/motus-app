@@ -467,9 +467,16 @@ async function persistProgram(
   const ownerUserId = await getOwnerUserId();
   if (!ownerUserId) return;
   const memberId = input.memberId.trim();
+  const normalizedProgramId = (() => {
+    const raw = String(input.id ?? "").trim();
+    if (!raw) return "";
+    // Local optimistic IDs should not force "update-single-row" path in edge function.
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raw);
+    return isUuid ? raw : "";
+  })();
   const functionResult = await supabaseClient.functions.invoke("save-training-program", {
     body: {
-      id: input.id,
+      id: normalizedProgramId,
       memberId,
       title: input.title,
       goal: input.goal,

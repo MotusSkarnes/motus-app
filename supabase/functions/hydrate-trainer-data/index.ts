@@ -172,6 +172,37 @@ Deno.serve(async (req) => {
   }
 
   const visibleMemberIds = (members ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);
+  const visibleMemberEmails = Array.from(
+    new Set(
+      (members ?? [])
+        .map((row) => normalizeEmail((row as { email?: string }).email))
+        .filter((email) => email && email.includes("@")),
+    ),
+  );
+  const programLookupMemberIds = new Set(visibleMemberIds);
+  if (visibleMemberEmails.length > 0) {
+    const { data: authUsersData, error: authUsersError } = await adminClient.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+    if (authUsersError) {
+      console.warn("hydrate-trainer-data: auth user lookup failed:", authUsersError.message);
+    } else {
+      const emailSet = new Set(visibleMemberEmails);
+      for (const user of authUsersData?.users ?? []) {
+        const userEmail = normalizeEmail(user.email);
+        if (!userEmail || !emailSet.has(userEmail)) continue;
+        const authUserId = String(user.id ?? "").trim();
+        if (!authUserId) continue;
+        programLookupMemberIds.add(authUserId);
+        programLookupMemberIds.add(`auth-${authUserId}`);
+        const appMemberId = String((user.app_metadata?.member_id as string | undefined) ?? "").trim();
+        if (appMemberId) programLookupMemberIds.add(appMemberId);
+        const userMemberId = String((user.user_metadata?.member_id as string | undefined) ?? "").trim();
+        if (userMemberId) programLookupMemberIds.add(userMemberId);
+      }
+    }
+  }
 
   const { data: programsByOwner, error: programsByOwnerError } = await adminClient
     .from("training_programs")
@@ -198,11 +229,11 @@ Deno.serve(async (req) => {
   let logsByMemberError: { message: string } | null = null;
   let messagesByMemberError: { message: string } | null = null;
 
-  if (visibleMemberIds.length > 0) {
+  if (programLookupMemberIds.size > 0) {
     const { data, error } = await adminClient
       .from("training_programs")
       .select("id, member_id, title, goal, notes, exercises, created_at")
-      .in("member_id", visibleMemberIds)
+      .in("member_id", Array.from(programLookupMemberIds))
       .order("created_at", { ascending: false });
     programsByMember = (data ?? []) as Array<Record<string, unknown>>;
     programsByMemberError = error;
