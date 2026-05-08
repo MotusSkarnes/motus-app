@@ -174,8 +174,9 @@ export function TrainerPortal(props: TrainerPortalProps) {
   const EXERCISE_IMAGE_BUCKET = "exercise-images";
   const MAX_EXERCISE_IMAGE_BYTES = 5 * 1024 * 1024;
 
-function escapeHtml(value: string): string {
-  return value
+function escapeHtml(value: unknown): string {
+  const safe = String(value ?? "");
+  return safe
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -1509,12 +1510,13 @@ function pickFirstName(value: string): string {
 
   function handlePrintProgram(program: TrainingProgram) {
     if (typeof window === "undefined") return;
-    // Open tab immediately within click gesture to avoid popup blockers in Edge.
-    const printTab = window.open("about:blank", "_blank");
-    if (!printTab) {
-      window.alert("Nettleseren blokkerte popup-vinduet for utskrift. Tillat popup for denne siden.");
-      return;
-    }
+    try {
+      // Open tab immediately within click gesture to avoid popup blockers in Edge.
+      const printTab = window.open("about:blank", "_blank");
+      if (!printTab) {
+        window.alert("Nettleseren blokkerte popup-vinduet for utskrift. Tillat popup for denne siden.");
+        return;
+      }
     const recipientName = (selectedMember?.name || "Kunde").trim();
     const trainerLabel = (pickFirstName(program.assignedTrainerName ?? "") || pickFirstName(MOTUS.name) || "Trener").trim();
     const exercisesHtml =
@@ -1639,7 +1641,7 @@ function pickFirstName(value: string): string {
   </script>
 </body>
 </html>`;
-    try {
+      try {
       // Prefer direct write to the pre-opened tab (most stable in Edge).
       printTab.document.open();
       printTab.document.write(html);
@@ -1652,12 +1654,12 @@ function pickFirstName(value: string): string {
           // ignore
         }
       }, 700);
-      return;
-    } catch (writeError) {
+        return;
+      } catch (writeError) {
       console.warn("Trainer print: direct tab write failed, trying blob fallback.", writeError);
-    }
+      }
 
-    try {
+      try {
       const blob = new Blob([html], { type: "text/html;charset=utf-8" });
       const blobUrl = URL.createObjectURL(blob);
       printTab.location.href = blobUrl;
@@ -1669,8 +1671,8 @@ function pickFirstName(value: string): string {
           // ignore
         }
       }, 900);
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
-    } catch (error) {
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      } catch (error) {
       console.warn("Trainer print: blob print failed.", error);
       try {
         printTab.close();
@@ -1678,6 +1680,10 @@ function pickFirstName(value: string): string {
         // ignore
       }
       window.alert("Kunne ikke generere PDF/utskrift. Prøv igjen.");
+      }
+    } catch (unexpectedError) {
+      console.error("Trainer print failed before rendering.", unexpectedError);
+      window.alert("Utskrift feilet pga. ugyldige data i programmet. Prøv igjen eller oppdater programfelt.");
     }
   }
 
