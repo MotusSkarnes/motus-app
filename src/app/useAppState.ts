@@ -122,7 +122,7 @@ export function useAppState() {
       height: "",
       level: "Nybegynner" as const,
       membershipType: "Standard" as const,
-      customerType: "Oppfølging" as const,
+      customerType: "Medlem" as const,
       daysSinceActivity: "0",
       goal: "",
       focus: "",
