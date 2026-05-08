@@ -1633,99 +1633,34 @@ function pickFirstName(value: string): string {
   </script>
 </body>
 </html>`;
-    // Edge-safe path: render in hidden iframe and print from iframe context.
-    const iframe = document.createElement("iframe");
-    iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
-    iframe.style.border = "0";
-    iframe.setAttribute("aria-hidden", "true");
-    document.body.appendChild(iframe);
-
-    const cleanup = () => {
+    try {
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const blobUrl = URL.createObjectURL(blob);
+      const printTab = window.open(blobUrl, "_blank");
+      if (!printTab) {
+        // Popup blocked: download html so user can open/print manually.
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = `${program.title || "treningsprogram"}.html`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.alert("Popup ble blokkert. HTML-filen ble lastet ned – åpne den og skriv ut som PDF.");
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+        return;
+      }
       window.setTimeout(() => {
         try {
-          iframe.remove();
+          printTab.focus();
+          printTab.print();
         } catch {
           // ignore
         }
-      }, 1500);
-    };
-
-    const triggerIframePrint = () => {
-      try {
-        const frameWindow = iframe.contentWindow;
-        const frameDoc = frameWindow?.document;
-        if (!frameWindow || !frameDoc) throw new Error("Mangler iframe-vindu for utskrift.");
-        const images = Array.from(frameDoc.images ?? []);
-        const doPrint = () => {
-          try {
-            frameWindow.focus();
-            frameWindow.print();
-          } catch {
-            // ignore
-          } finally {
-            cleanup();
-          }
-        };
-        if (!images.length) {
-          doPrint();
-          return;
-        }
-        let loaded = 0;
-        const markLoaded = () => {
-          loaded += 1;
-          if (loaded >= images.length) doPrint();
-        };
-        images.forEach((img) => {
-          if (img.complete) {
-            markLoaded();
-            return;
-          }
-          img.addEventListener("load", markLoaded, { once: true });
-          img.addEventListener("error", markLoaded, { once: true });
-        });
-        window.setTimeout(doPrint, 2200);
-      } catch (error) {
-        console.warn("Trainer print: iframe print failed.", error);
-        cleanup();
-        window.alert("Kunne ikke generere PDF/utskrift. Prøv igjen.");
-      }
-    };
-
-    try {
-      const frameDoc = iframe.contentWindow?.document;
-      if (!frameDoc) throw new Error("Mangler iframe-document.");
-      frameDoc.open();
-      frameDoc.write(html);
-      frameDoc.close();
-      window.setTimeout(triggerIframePrint, 150);
+      }, 650);
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
     } catch (error) {
-      console.warn("Trainer print: iframe write failed, trying blob fallback.", error);
-      cleanup();
-      try {
-        const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-        const blobUrl = URL.createObjectURL(blob);
-        const fallbackWindow = window.open(blobUrl, "_blank");
-        if (!fallbackWindow) {
-          window.alert("Kunne ikke åpne utskriftsvindu. Sjekk popup-innstillinger i nettleseren.");
-          return;
-        }
-        window.setTimeout(() => {
-          try {
-            fallbackWindow.focus();
-            fallbackWindow.print();
-          } catch {
-            // ignore
-          }
-        }, 700);
-        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
-      } catch (blobError) {
-        console.warn("Trainer print: blob fallback failed.", blobError);
-        window.alert("Kunne ikke generere PDF/utskrift. Prøv igjen.");
-      }
+      console.warn("Trainer print: blob print failed.", error);
+      window.alert("Kunne ikke generere PDF/utskrift. Prøv igjen.");
     }
   }
 
