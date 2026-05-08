@@ -494,10 +494,86 @@ async function persistProgram(
       return;
     }
     console.warn("save-training-program returned without saving program:", functionResult.data);
-    return;
-  } else {
+  }
+  if (functionResult.error) {
     console.warn("save-training-program invoke failed:", functionResult.error.message);
-    return;
+  }
+
+  // Fallback: persist directly via table writes when edge function path fails or returns no ids.
+  const relatedMemberIds = await resolveRelatedMemberIds(memberId, {
+    targetEmail: hints?.targetEmail,
+    targetName: hints?.targetName,
+  });
+  const targetMemberIds = Array.from(new Set((relatedMemberIds.length ? relatedMemberIds : [memberId]).filter(Boolean)));
+  if (!targetMemberIds.length) return;
+  const timestamp = new Date().toISOString();
+  const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  const fallbackProgramId = isUuid(normalizedProgramId) ? normalizedProgramId : "";
+
+  if (fallbackProgramId) {
+    const { error: primaryError } = await supabaseClient.from("training_programs").upsert(
+      {
+        id: fallbackProgramId,
+        member_id: memberId,
+        owner_user_id: ownerUserId,
+        title: input.title,
+        goal: input.goal,
+        notes: input.notes,
+        exercises: input.exercises,
+        created_at: timestamp,
+      },
+      { onConflict: "id" },
+    );
+    if (primaryError) {
+      console.warn("save-training-program fallback upsert failed:", primaryError.message);
+      return;
+    }
+  }
+
+  for (const targetMemberId of targetMemberIds) {
+    if (!targetMemberId) continue;
+    if (fallbackProgramId && targetMemberId === memberId) continue;
+    const { data: existingRows, error: lookupError } = await supabaseClient
+      .from("training_programs")
+      .select("id")
+      .eq("owner_user_id", ownerUserId)
+      .eq("member_id", targetMemberId)
+      .eq("title", input.title)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (lookupError) {
+      console.warn("save-training-program fallback lookup failed:", lookupError.message);
+      continue;
+    }
+    const existingId = String((existingRows?.[0] as { id?: string } | undefined)?.id ?? "").trim();
+    if (existingId) {
+      const { error: updateError } = await supabaseClient
+        .from("training_programs")
+        .update({
+          goal: input.goal,
+          notes: input.notes,
+          exercises: input.exercises,
+          created_at: timestamp,
+        })
+        .eq("id", existingId);
+      if (updateError) {
+        console.warn("save-training-program fallback update failed:", updateError.message);
+      }
+      continue;
+    }
+    const { error: insertError } = await supabaseClient.from("training_programs").insert({
+      id: crypto.randomUUID(),
+      member_id: targetMemberId,
+      owner_user_id: ownerUserId,
+      title: input.title,
+      goal: input.goal,
+      notes: input.notes,
+      exercises: input.exercises,
+      created_at: timestamp,
+    });
+    if (insertError) {
+      console.warn("save-training-program fallback insert failed:", insertError.message);
+    }
   }
 }
 
