@@ -221,7 +221,10 @@ Deno.serve(async (req) => {
   const writtenIds: string[] = [];
 
   if (programId) {
-    const { error } = await adminClient.from("training_programs").upsert(
+    const timestamp = new Date().toISOString();
+    const allTargetMemberIds = Array.from(new Set([memberId, ...targetMemberIds])).filter(Boolean);
+
+    const { error: primaryError } = await adminClient.from("training_programs").upsert(
       {
         id: programId,
         member_id: memberId,
@@ -230,12 +233,55 @@ Deno.serve(async (req) => {
         goal,
         notes,
         exercises,
-        created_at: new Date().toISOString(),
+        created_at: timestamp,
       },
       { onConflict: "id" },
     );
-    if (error) return jsonResponse(500, { error: error.message });
+    if (primaryError) return jsonResponse(500, { error: primaryError.message });
     writtenIds.push(programId);
+
+    for (const targetMemberId of allTargetMemberIds) {
+      if (targetMemberId === memberId) continue;
+      const { data: existingRow, error: existingLookupError } = await adminClient
+        .from("training_programs")
+        .select("id")
+        .eq("owner_user_id", ownerUserId)
+        .eq("member_id", targetMemberId)
+        .eq("title", title)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existingLookupError) return jsonResponse(500, { error: existingLookupError.message });
+
+      const existingId = String((existingRow as { id?: string } | null)?.id ?? "").trim();
+      if (existingId) {
+        const { error: updateReplicaError } = await adminClient
+          .from("training_programs")
+          .update({
+            goal,
+            notes,
+            exercises,
+            created_at: timestamp,
+          })
+          .eq("id", existingId);
+        if (updateReplicaError) return jsonResponse(500, { error: updateReplicaError.message });
+        writtenIds.push(existingId);
+      } else {
+        const replicaId = crypto.randomUUID();
+        const { error: insertReplicaError } = await adminClient.from("training_programs").insert({
+          id: replicaId,
+          member_id: targetMemberId,
+          owner_user_id: ownerUserId,
+          title,
+          goal,
+          notes,
+          exercises,
+          created_at: timestamp,
+        });
+        if (insertReplicaError) return jsonResponse(500, { error: insertReplicaError.message });
+        writtenIds.push(replicaId);
+      }
+    }
   } else {
     for (const targetMemberId of targetMemberIds) {
       const id = crypto.randomUUID();
