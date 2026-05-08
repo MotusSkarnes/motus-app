@@ -242,9 +242,15 @@ Deno.serve(async (req) => {
   let migratedPrograms = 0;
   let migratedLogs = 0;
   let migratedMessages = 0;
+  const legacyProgramCounts: Record<string, number> = {};
   for (const legacyId of legacyMemberIds) {
     const normalizedLegacyId = String(legacyId ?? "").trim();
     if (!normalizedLegacyId || normalizedLegacyId === memberId) continue;
+    const { count: programCountBefore } = await adminClient
+      .from("training_programs")
+      .select("id", { count: "exact", head: true })
+      .eq("member_id", normalizedLegacyId);
+    legacyProgramCounts[normalizedLegacyId] = Number(programCountBefore ?? 0);
 
     const { data: programRows, error: programUpdateError } = await adminClient
       .from("training_programs")
@@ -279,6 +285,14 @@ Deno.serve(async (req) => {
       migratedMessages += (messageRows ?? []).length;
     }
   }
+  const { count: canonicalProgramCount } = await adminClient
+    .from("training_programs")
+    .select("id", { count: "exact", head: true })
+    .eq("member_id", memberId);
+  const { count: emailLikeProgramCount } = await adminClient
+    .from("training_programs")
+    .select("id", { count: "exact", head: true })
+    .ilike("member_id", `%${email}%`);
 
   return jsonResponse(200, {
     message: "Auth member link synced",
@@ -288,5 +302,10 @@ Deno.serve(async (req) => {
     migratedLogs,
     migratedMessages,
     migratedFromIds: Array.from(legacyMemberIds),
+    debug: {
+      legacyProgramCounts,
+      canonicalProgramCount: Number(canonicalProgramCount ?? 0),
+      emailLikeProgramCount: Number(emailLikeProgramCount ?? 0),
+    },
   });
 });
