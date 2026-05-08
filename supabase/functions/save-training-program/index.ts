@@ -219,15 +219,16 @@ Deno.serve(async (req) => {
     ownerUserId,
   });
   const writtenIds: string[] = [];
+  const canonicalTargetMemberId =
+    targetMemberIds.find((targetMemberId) => targetMemberId === memberId) ?? targetMemberIds[0] ?? memberId;
 
   if (programId) {
     const timestamp = new Date().toISOString();
-    const allTargetMemberIds = Array.from(new Set([memberId, ...targetMemberIds])).filter(Boolean);
 
     const { error: primaryError } = await adminClient.from("training_programs").upsert(
       {
         id: programId,
-        member_id: memberId,
+        member_id: canonicalTargetMemberId,
         owner_user_id: ownerUserId,
         title,
         goal,
@@ -239,72 +240,27 @@ Deno.serve(async (req) => {
     );
     if (primaryError) return jsonResponse(500, { error: primaryError.message });
     writtenIds.push(programId);
-
-    for (const targetMemberId of allTargetMemberIds) {
-      if (targetMemberId === memberId) continue;
-      const { data: existingRow, error: existingLookupError } = await adminClient
-        .from("training_programs")
-        .select("id")
-        .eq("owner_user_id", ownerUserId)
-        .eq("member_id", targetMemberId)
-        .eq("title", title)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (existingLookupError) return jsonResponse(500, { error: existingLookupError.message });
-
-      const existingId = String((existingRow as { id?: string } | null)?.id ?? "").trim();
-      if (existingId) {
-        const { error: updateReplicaError } = await adminClient
-          .from("training_programs")
-          .update({
-            goal,
-            notes,
-            exercises,
-            created_at: timestamp,
-          })
-          .eq("id", existingId);
-        if (updateReplicaError) return jsonResponse(500, { error: updateReplicaError.message });
-        writtenIds.push(existingId);
-      } else {
-        const replicaId = crypto.randomUUID();
-        const { error: insertReplicaError } = await adminClient.from("training_programs").insert({
-          id: replicaId,
-          member_id: targetMemberId,
-          owner_user_id: ownerUserId,
-          title,
-          goal,
-          notes,
-          exercises,
-          created_at: timestamp,
-        });
-        if (insertReplicaError) return jsonResponse(500, { error: insertReplicaError.message });
-        writtenIds.push(replicaId);
-      }
-    }
   } else {
-    for (const targetMemberId of targetMemberIds) {
-      const id = crypto.randomUUID();
-      const { error } = await adminClient.from("training_programs").insert({
-        id,
-        member_id: targetMemberId,
-        owner_user_id: ownerUserId,
-        title,
-        goal,
-        notes,
-        exercises,
-        created_at: new Date().toISOString(),
-      });
-      if (error) return jsonResponse(500, { error: error.message });
-      writtenIds.push(id);
-    }
+    const id = crypto.randomUUID();
+    const { error } = await adminClient.from("training_programs").insert({
+      id,
+      member_id: canonicalTargetMemberId,
+      owner_user_id: ownerUserId,
+      title,
+      goal,
+      notes,
+      exercises,
+      created_at: new Date().toISOString(),
+    });
+    if (error) return jsonResponse(500, { error: error.message });
+    writtenIds.push(id);
   }
 
-  await syncAuthMemberLink(adminClient, email, memberId);
+  await syncAuthMemberLink(adminClient, email, canonicalTargetMemberId);
 
   return jsonResponse(200, {
     ok: true,
     ids: writtenIds,
-    targetMemberIds,
+    targetMemberIds: [canonicalTargetMemberId],
   });
 });

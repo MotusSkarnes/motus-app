@@ -82,6 +82,25 @@ const DEFAULT_HOME_VISIBILITY = {
 } as const;
 type HomeSectionKey = keyof typeof DEFAULT_HOME_VISIBILITY;
 
+function buildTrainingProgramDisplayKey(program: TrainingProgram): string {
+  const exerciseFingerprint = program.exercises
+    .map((item: ProgramExercise) => `${item.exerciseName}|${item.sets}|${item.reps}|${item.weight}|${item.durationMinutes ?? ""}|${item.speed ?? ""}|${item.incline ?? ""}|${item.restSeconds}|${item.notes}`)
+    .join("||");
+  return `${program.title.trim()}::${program.goal.trim()}::${program.notes.trim()}::${exerciseFingerprint}`;
+}
+
+function dedupeTrainingPrograms(programs: TrainingProgram[]): TrainingProgram[] {
+  const uniqueByFingerprint = new Map<string, TrainingProgram>();
+  programs.forEach((program) => {
+    const fingerprint = buildTrainingProgramDisplayKey(program);
+    const existing = uniqueByFingerprint.get(fingerprint);
+    if (!existing || program.createdAt.localeCompare(existing.createdAt) > 0) {
+      uniqueByFingerprint.set(fingerprint, program);
+    }
+  });
+  return Array.from(uniqueByFingerprint.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
 /** Stored in members.personal_goals so økt/skritt/mål synkes på tvers av enheter. */
 const PROFILE_METRICS_PREFIX = "MOTUS_PROFILE_V1:";
 
@@ -479,11 +498,15 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [relatedMembersForProfile]);
   const memberPrograms = useMemo(() => {
     const scopedPrograms = programs.filter((program) => relatedMemberIdSet.has(program.memberId));
+    const visiblePrograms =
+      currentUserRole === "member" && scopedPrograms.length === 0 && programs.length > 0
+        ? programs
+        : scopedPrograms;
     if (currentUserRole === "member" && scopedPrograms.length === 0 && programs.length > 0) {
       // Last-resort fallback for legacy member_id drift: in member session the payload is already scoped.
-      return programs;
+      return dedupeTrainingPrograms(visiblePrograms);
     }
-    return scopedPrograms;
+    return dedupeTrainingPrograms(visiblePrograms);
   }, [programs, relatedMemberIdSet, currentUserRole]);
   const memberAssignedPrograms = useMemo(() => memberPrograms.filter((program) => !program.ephemeral), [memberPrograms]);
   const memberLogs = logs.filter((log) => relatedMemberIdSet.has(log.memberId));

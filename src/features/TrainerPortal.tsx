@@ -725,7 +725,7 @@ function pickFirstName(value: unknown): string {
       const isSharedMember = selected?.customerType === "Medlem";
       const selectedEmail = selected?.email.trim().toLowerCase() ?? "";
       const selectedName = selected?.name.trim().toLowerCase() ?? "";
-      return programs
+      const matchingPrograms = programs
         .filter((program) => {
           if (selectedMemberRelatedIdSet.has(program.memberId)) return true;
           if (!isSharedMember) return false;
@@ -740,6 +740,15 @@ function pickFirstName(value: unknown): string {
           return false;
         })
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      const uniqueByFingerprint = new Map<string, TrainingProgram>();
+      matchingPrograms.forEach((program) => {
+        const fingerprint = buildProgramFingerprint(program.exercises, program.title, program.goal, program.notes);
+        const existing = uniqueByFingerprint.get(fingerprint);
+        if (!existing || program.createdAt.localeCompare(existing.createdAt) > 0) {
+          uniqueByFingerprint.set(fingerprint, program);
+        }
+      });
+      return Array.from(uniqueByFingerprint.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
     [programs, selectedMemberRelatedIdSet, members, selectedMemberId, memberById]
   );
