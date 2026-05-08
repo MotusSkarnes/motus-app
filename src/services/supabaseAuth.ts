@@ -1,6 +1,9 @@
 import type { AuthUser, Role } from "../app/types";
 import { supabaseClient } from "./supabaseClient";
 
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+
 function parseRole(value: unknown): Role {
   return value === "member" ? "member" : "trainer";
 }
@@ -205,11 +208,33 @@ const memberInviteLastSentAtByKey = new Map<string, number>();
 
 async function syncMemberAuthLink(email: string, memberId?: string): Promise<void> {
   if (!supabaseClient) return;
+  const payload = memberId ? { email, memberId } : { email };
   const { error } = await supabaseClient.functions.invoke("link-member-auth", {
-    body: memberId ? { email, memberId } : { email },
+    body: payload,
   });
-  if (error) {
-    console.warn("link-member-auth invoke failed during invite:", error.message);
+  if (!error) return;
+  console.warn("link-member-auth invoke failed during invite:", error.message);
+
+  if (!supabaseUrl || !supabaseAnonKey) return;
+  try {
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession();
+    const response = await fetch(`${supabaseUrl}/functions/v1/link-member-auth`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${session?.access_token ?? ""}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const detail = await response.text();
+      console.warn("link-member-auth fetch fallback failed:", response.status, detail.slice(0, 400));
+    }
+  } catch (fetchError) {
+    console.warn("link-member-auth fetch fallback threw:", fetchError);
   }
 }
 
