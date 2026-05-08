@@ -1524,17 +1524,29 @@ function pickFirstName(value: string): string {
         safeExercises.length > 0
           ? safeExercises
             .map((exercise, index) => {
-              const exerciseName = String(exercise.exerciseName ?? "Øvelse").trim() || "Øvelse";
-              const exerciseId = String(exercise.exerciseId ?? "").trim();
+              const safeExercise =
+                exercise && typeof exercise === "object"
+                  ? (exercise as Partial<ProgramExercise>)
+                  : ({} as Partial<ProgramExercise>);
+              const exerciseName = String(safeExercise.exerciseName ?? "Øvelse").trim() || "Øvelse";
+              const exerciseId = String(safeExercise.exerciseId ?? "").trim();
               const libraryMatch =
                 exercises.find((item) => item.id === exerciseId) ??
                 exercises.find((item) => item.name.trim().toLowerCase() === exerciseName.toLowerCase()) ??
                 null;
-              const prescription = exercise.durationMinutes
-                ? `${exercise.sets} runder × ${exercise.durationMinutes} min${
-                    exercise.speed ? ` · ${exercise.speed} km/t` : ""
-                  }${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s pause`
-                : `${exercise.sets} x ${exercise.reps} · ${exercise.weight || "-"} kg · ${exercise.restSeconds}s pause`;
+              const setCount = String(safeExercise.sets ?? "").trim() || "-";
+              const reps = String(safeExercise.reps ?? "").trim() || "-";
+              const weight = String(safeExercise.weight ?? "").trim() || "-";
+              const durationMinutes = String(safeExercise.durationMinutes ?? "").trim();
+              const speed = String(safeExercise.speed ?? "").trim();
+              const incline = String(safeExercise.incline ?? "").trim();
+              const restSeconds = String(safeExercise.restSeconds ?? "").trim() || "0";
+              const notes = String(safeExercise.notes ?? "").trim();
+              const prescription = durationMinutes
+                ? `${setCount} runder × ${durationMinutes} min${
+                    speed ? ` · ${speed} km/t` : ""
+                  }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause`
+                : `${setCount} x ${reps} · ${weight} kg · ${restSeconds}s pause`;
               const imageUrl = libraryMatch?.imageUrl?.trim() || "";
               const description = libraryMatch?.description?.trim() || "Ingen forklaring tilgjengelig for denne øvelsen.";
               return `<article class="exercise-card">
@@ -1549,7 +1561,7 @@ function pickFirstName(value: string): string {
     <div class="exercise-title">${index + 1}. ${escapeHtml(exerciseName)}</div>
     <div class="exercise-prescription">${escapeHtml(prescription)}</div>
     <div class="exercise-description">${escapeHtml(description)}</div>
-    ${exercise.notes ? `<div class="exercise-notes">Coach-notat: ${escapeHtml(exercise.notes)}</div>` : ""}
+    ${notes ? `<div class="exercise-notes">Coach-notat: ${escapeHtml(notes)}</div>` : ""}
   </div>
 </article>`;
             })
@@ -1686,7 +1698,8 @@ function pickFirstName(value: string): string {
       }
     } catch (unexpectedError) {
       console.error("Trainer print failed before rendering.", unexpectedError);
-      window.alert("Utskrift feilet pga. ugyldige data i programmet. Prøv igjen eller oppdater programfelt.");
+      const detail = unexpectedError instanceof Error ? unexpectedError.message : String(unexpectedError);
+      window.alert(`Utskrift feilet pga. ugyldige data i programmet (${detail}). Prøv igjen eller oppdater programfelt.`);
     }
   }
 
