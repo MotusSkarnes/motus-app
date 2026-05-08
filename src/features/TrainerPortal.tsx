@@ -1641,6 +1641,27 @@ function pickFirstName(value: string): string {
     printWindow.document.open();
     printWindow.document.write(html);
     printWindow.document.close();
+    // Fallback from parent window: some browsers ignore/delay inline popup scripts.
+    const fallbackPrint = () => {
+      try {
+        printWindow.focus();
+        printWindow.print();
+      } catch {
+        // ignore
+      }
+    };
+    try {
+      printWindow.addEventListener("load", () => {
+        window.setTimeout(fallbackPrint, 250);
+      });
+    } catch {
+      // ignore and rely on timeout below
+    }
+    window.setTimeout(() => {
+      if (printWindow.document.readyState === "complete") {
+        fallbackPrint();
+      }
+    }, 1200);
   }
 
   function handleSaveSelectedMemberDetails() {
