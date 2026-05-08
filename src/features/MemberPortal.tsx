@@ -451,7 +451,7 @@ export function MemberPortal(props: MemberPortalProps) {
           if (anchorName && messageName === anchorName) return true;
           return false;
         })
-        .sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
+        .sort((a, b) => parseChatCreatedAtMs(b.createdAt) - parseChatCreatedAtMs(a.createdAt));
       const uniqueById = new Map<string, (typeof sorted)[number]>();
       sorted.forEach((message) => {
         if (!uniqueById.has(message.id)) uniqueById.set(message.id, message);
@@ -467,7 +467,7 @@ export function MemberPortal(props: MemberPortalProps) {
           bySignature.set(signature, message);
         }
       });
-      return Array.from(bySignature.values()).sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
+      return Array.from(bySignature.values()).sort((a, b) => parseChatCreatedAtMs(b.createdAt) - parseChatCreatedAtMs(a.createdAt));
     }
     const anchorEmail = (editableMember?.email ?? normalizedCurrentUserEmail).trim().toLowerCase();
     const anchorName = (editableMember?.name ?? "").trim().toLowerCase();
@@ -485,7 +485,7 @@ export function MemberPortal(props: MemberPortalProps) {
       if (anchorEmail && messageEmail === anchorEmail) return true;
       if (anchorName && messageName === anchorName) return true;
       return false;
-    }).sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
+    }).sort((a, b) => parseChatCreatedAtMs(b.createdAt) - parseChatCreatedAtMs(a.createdAt));
     const uniqueById = new Map<string, (typeof filtered)[number]>();
     filtered.forEach((message) => {
       if (!uniqueById.has(message.id)) uniqueById.set(message.id, message);
@@ -501,7 +501,7 @@ export function MemberPortal(props: MemberPortalProps) {
         bySignature.set(signature, message);
       }
     });
-    return Array.from(bySignature.values()).sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
+    return Array.from(bySignature.values()).sort((a, b) => parseChatCreatedAtMs(b.createdAt) - parseChatCreatedAtMs(a.createdAt));
   }, [messages, relatedMemberIdSet, members, editableMember?.email, editableMember?.name, normalizedCurrentUserEmail, currentUserRole]);
   const activeWorkoutProgram = workoutMode ? memberPrograms.find((program) => program.id === workoutMode.programId) ?? null : null;
   const nextProgram = memberAssignedPrograms[0] ?? null;
@@ -1550,7 +1550,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (memberTab !== "messages") return;
     const container = memberMessagesContainerRef.current;
     if (!container) return;
-    container.scrollTop = container.scrollHeight;
+    container.scrollTop = 0;
   }, [memberTab, memberMessages.length]);
   useEffect(() => {
     let localByMember: Record<string, PeriodSchedulePlan[]> = {};
@@ -4078,7 +4078,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     />
                   ) : null}
                   {memberMessages.map((message) => (
-                    <div key={message.id} className={`max-w-[85%] rounded-xl p-3 text-sm ${message.id === memberMessages[memberMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "member" ? "text-white ml-auto" : "bg-white border"}`} style={message.sender === "member" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div key={message.id} className={`max-w-[85%] rounded-xl p-3 text-sm ${message.id === memberMessages[0]?.id ? "motus-fade-in-up" : ""} ${message.sender === "member" ? "text-white ml-auto" : "bg-white border"}`} style={message.sender === "member" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
                       <div>{message.text}</div>
                       <div className={`mt-1 text-[11px] ${message.sender === "member" ? "text-white/80" : "text-slate-500"}`}>{message.createdAt}</div>
                     </div>
