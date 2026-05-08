@@ -181,10 +181,21 @@ Deno.serve(async (req) => {
     });
   }
 
+  const programLookupMemberIds = Array.from(
+    new Set(
+      [
+        ...memberIds,
+        authMemberId,
+        requesterUserId,
+        requesterUserId ? `auth-${requesterUserId}` : "",
+      ].filter((value) => value && value !== "__template__"),
+    ),
+  );
+
   const { data: programsRaw, error: programsError } = await adminClient
     .from("training_programs")
     .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id")
-    .in("member_id", memberIds)
+    .in("member_id", programLookupMemberIds.length ? programLookupMemberIds : memberIds)
     .order("created_at", { ascending: false });
   const { data: logs, error: logsError } = await adminClient
     .from("workout_logs")
@@ -290,6 +301,51 @@ Deno.serve(async (req) => {
       assigned_trainer_name: trainerNameByOwnerId.get(ownerUserId) ?? "",
     };
   });
+
+  const scopedMemberIds = new Set(
+    scopedMembers.map((row) => String((row as { id?: string }).id ?? "").trim()).filter(Boolean),
+  );
+  const orphanProgramMemberIds = Array.from(
+    new Set(
+      programs
+        .map((row) => String((row as { member_id?: string }).member_id ?? "").trim())
+        .filter((id) => id && !scopedMemberIds.has(id)),
+    ),
+  );
+  if (orphanProgramMemberIds.length > 0) {
+    const fallbackName = toFirstName(
+      String(
+        (userData.user.user_metadata?.full_name as string | undefined) ??
+          (userData.user.user_metadata?.name as string | undefined) ??
+          "",
+      ),
+    ) || nameFromEmail(requesterEmail) || "Medlem";
+    orphanProgramMemberIds.forEach((id) => {
+      scopedMembers.push({
+        id,
+        owner_user_id: "",
+        name: fallbackName,
+        email: requesterEmail,
+        is_active: true,
+        invited_at: "",
+        phone: "",
+        birth_date: "",
+        weight: "",
+        height: "",
+        level: "Nybegynner",
+        membership_type: "Standard",
+        customer_type: "Medlem",
+        days_since_activity: "0",
+        goal: "",
+        focus: "",
+        personal_goals: "",
+        injuries: "",
+        coach_notes: "",
+        avatar_url: "",
+        created_at: "",
+      });
+    });
+  }
 
   return jsonResponse(200, {
     members: scopedMembers ?? [],
