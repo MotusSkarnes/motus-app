@@ -406,7 +406,8 @@ export function MemberPortal(props: MemberPortalProps) {
           if (primaryLower && row.email.trim().toLowerCase() === primaryLower) collectedIds.add(id);
           continue;
         }
-        if (duplicateEmailProfileCount >= 2) collectedIds.add(id);
+        // Include orphan member_ids when at least one profile exists for this login email (legacy duplicate IDs).
+        if (duplicateEmailProfileCount >= 1) collectedIds.add(id);
       }
     }
     if (currentUserRole === "member" && currentUserMemberId?.trim()) {
