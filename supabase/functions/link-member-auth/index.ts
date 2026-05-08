@@ -181,6 +181,8 @@ Deno.serve(async (req) => {
   const legacyMemberIds = new Set<string>(
     candidates.map((candidate) => candidate.id).filter((id) => id && id !== memberId),
   );
+  // Legacy: some rows stored member_id as email string.
+  legacyMemberIds.add(email);
   for (const user of targetUsers) {
     const authUserId = String(user.id ?? "").trim();
     if (authUserId) {

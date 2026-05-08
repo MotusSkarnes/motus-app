@@ -413,6 +413,10 @@ export function MemberPortal(props: MemberPortalProps) {
         if (duplicateEmailProfileCount >= 1) collectedIds.add(id);
       }
     }
+    // Legacy: some program rows used email string as member_id.
+    if (currentUserRole === "member" && normalizedCurrentUserEmail) {
+      collectedIds.add(normalizedCurrentUserEmail);
+    }
     if (currentUserRole === "member" && currentUserMemberId?.trim()) {
       collectedIds.add(currentUserMemberId.trim());
     }

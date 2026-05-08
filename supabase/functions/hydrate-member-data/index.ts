@@ -235,6 +235,10 @@ Deno.serve(async (req) => {
     new Set(memberIds.filter((id) => id && id !== "__template__" && !id.startsWith("auth-"))),
   );
   const programLookupIds = new Set(programMemberIds);
+  // Some legacy rows used raw email string as member_id.
+  if (requesterEmail) {
+    programLookupIds.add(requesterEmail);
+  }
   for (const raw of [authMemberId, requesterUserId, requesterUserId ? `auth-${requesterUserId}` : ""]) {
     const id = String(raw ?? "").trim();
     if (id && id !== "__template__") programLookupIds.add(id);
