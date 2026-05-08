@@ -233,14 +233,16 @@ export function useAppState() {
       const trainerHydrateFailed =
         Boolean(hydratedTrainer) &&
         (hydratedTrainer?.debug?.status === "invoke_error" || hydratedTrainer?.debug?.status === "invalid_payload");
+      // Do not trust direct table fetch when it returns [] — RLS often hides rows for members, but [] is still a
+      // non-null array; trusting it wiped local state and showed no programs (hydrate is the source of truth).
       const trustRemotePrograms =
         (isTrainerSession && Boolean(hydratedTrainer) && !trainerHydrateFailed) ||
         (isMemberLikeSession && hydratedMember !== null) ||
-        (isMemberLikeSession && directMemberPrograms !== null);
+        (isMemberLikeSession && Array.isArray(directMemberPrograms) && directMemberPrograms.length > 0);
       const trustRemoteLogs =
         (isTrainerSession && Boolean(hydratedTrainer) && !trainerHydrateFailed) ||
         (isMemberLikeSession && hydratedMember !== null) ||
-        (isMemberLikeSession && directMemberLogs !== null);
+        (isMemberLikeSession && Array.isArray(directMemberLogs) && directMemberLogs.length > 0);
       const remoteExercises =
         hydratedTrainer?.exercises ?? hydratedMember?.exercises ?? (await fetchExercisesFromSupabase());
       if (cancelled) return;

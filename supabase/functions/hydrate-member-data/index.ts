@@ -131,6 +131,28 @@ Deno.serve(async (req) => {
       dedupedMembersById.set(authMemberId, authMemberRow as Record<string, unknown>);
     }
   }
+  // DB-side email match catches rows even if in-memory normalize/allMembers path missed them.
+  let rowsByLoginEmail: Array<Record<string, unknown>> | null = null;
+  const emailRowsWithAvatar = await adminClient.from("members").select(membersSelectWithAvatar).ilike("email", requesterEmail);
+  if (emailRowsWithAvatar.error && emailRowsWithAvatar.error.message.includes("avatar_url")) {
+    const emailRowsNoAvatar = await adminClient.from("members").select(membersSelectWithoutAvatar).ilike("email", requesterEmail);
+    if (emailRowsNoAvatar.error) {
+      console.warn("hydrate-member-data: members ilike email failed:", emailRowsNoAvatar.error.message);
+    } else {
+      rowsByLoginEmail = (emailRowsNoAvatar.data ?? []) as Array<Record<string, unknown>>;
+    }
+  } else if (emailRowsWithAvatar.error) {
+    console.warn("hydrate-member-data: members ilike email failed:", emailRowsWithAvatar.error.message);
+  } else {
+    rowsByLoginEmail = (emailRowsWithAvatar.data ?? []) as Array<Record<string, unknown>>;
+  }
+  if (rowsByLoginEmail) {
+    for (const row of rowsByLoginEmail) {
+      const id = String((row as { id?: string }).id ?? "").trim();
+      if (!id) continue;
+      if (!dedupedMembersById.has(id)) dedupedMembersById.set(id, row);
+    }
+  }
   let scopedMembers = Array.from(dedupedMembersById.values());
 
   let memberIds = (scopedMembers ?? [])
