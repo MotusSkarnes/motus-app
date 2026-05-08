@@ -220,16 +220,31 @@ export function useAppState() {
       const isTrainerSession = sessionRole === "trainer";
       const isMemberLikeSession = Boolean(sessionUser) && !isTrainerSession;
       const hydratedTrainer = isTrainerSession && ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
-      const hydratedMember = isMemberLikeSession ? await fetchHydratedMemberData() : null;
-      const directMemberPrograms = isMemberLikeSession && !hydratedMember ? await fetchProgramsFromSupabase() : null;
-      const directMemberLogs = isMemberLikeSession && !hydratedMember ? await fetchLogsFromSupabase() : null;
+      const [hydratedMember, directMemberPrograms, directMemberLogs] = await Promise.all([
+        isMemberLikeSession ? fetchHydratedMemberData() : Promise.resolve(null),
+        isMemberLikeSession ? fetchProgramsFromSupabase() : Promise.resolve(null),
+        isMemberLikeSession ? fetchLogsFromSupabase() : Promise.resolve(null),
+      ]);
       const directTrainerMembers = isTrainerSession ? await fetchMembersFromSupabase() : null;
       const remoteMembers = hydratedTrainer
         ? mergeMembersById(hydratedTrainer.members, directTrainerMembers)
         : hydratedMember?.members ?? directTrainerMembers ?? (await fetchMembersFromSupabase());
       const remoteMessages = hydratedTrainer?.messages ?? hydratedMember?.messages ?? (await fetchMessagesFromSupabase());
-      const remotePrograms = hydratedTrainer?.programs ?? hydratedMember?.programs ?? directMemberPrograms;
-      const remoteLogs = hydratedTrainer?.logs ?? hydratedMember?.logs ?? directMemberLogs;
+      // Edge hydrate can return programs: [] while RLS select still returns rows (or vice versa). Prefer non-empty.
+      const remotePrograms =
+        hydratedTrainer?.programs ??
+        (isMemberLikeSession
+          ? hydratedMember?.programs?.length
+            ? hydratedMember.programs
+            : (directMemberPrograms ?? hydratedMember?.programs ?? [])
+          : null);
+      const remoteLogs =
+        hydratedTrainer?.logs ??
+        (isMemberLikeSession
+          ? hydratedMember?.logs?.length
+            ? hydratedMember.logs
+            : (directMemberLogs ?? hydratedMember?.logs ?? [])
+          : null);
       const trainerHydrateFailed =
         Boolean(hydratedTrainer) &&
         (hydratedTrainer?.debug?.status === "invoke_error" || hydratedTrainer?.debug?.status === "invalid_payload");
@@ -238,11 +253,11 @@ export function useAppState() {
       const trustRemotePrograms =
         (isTrainerSession && Boolean(hydratedTrainer) && !trainerHydrateFailed) ||
         (isMemberLikeSession && hydratedMember !== null) ||
-        (isMemberLikeSession && Array.isArray(directMemberPrograms) && directMemberPrograms.length > 0);
+        (isMemberLikeSession && hydratedMember === null && Array.isArray(directMemberPrograms) && directMemberPrograms.length > 0);
       const trustRemoteLogs =
         (isTrainerSession && Boolean(hydratedTrainer) && !trainerHydrateFailed) ||
         (isMemberLikeSession && hydratedMember !== null) ||
-        (isMemberLikeSession && Array.isArray(directMemberLogs) && directMemberLogs.length > 0);
+        (isMemberLikeSession && hydratedMember === null && Array.isArray(directMemberLogs) && directMemberLogs.length > 0);
       const remoteExercises =
         hydratedTrainer?.exercises ?? hydratedMember?.exercises ?? (await fetchExercisesFromSupabase());
       if (cancelled) return;
