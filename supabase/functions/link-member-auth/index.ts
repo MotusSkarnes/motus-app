@@ -9,6 +9,8 @@ const corsHeaders = {
 type LinkPayload = {
   email?: string;
   memberId?: string;
+  sourceMemberId?: string;
+  sourceOwnerUserId?: string;
 };
 
 type MemberCandidate = {
@@ -66,6 +68,8 @@ Deno.serve(async (req) => {
 
   const email = normalizeEmail(payload.email);
   let memberId = String(payload.memberId ?? "").trim();
+  const sourceMemberId = String(payload.sourceMemberId ?? "").trim();
+  const sourceOwnerUserId = String(payload.sourceOwnerUserId ?? "").trim();
   if (!email || !email.includes("@")) {
     return jsonResponse(400, { error: "Valid email is required" });
   }
@@ -356,6 +360,47 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Explicit one-off rescue path when caller knows orphan source member_id.
+  let explicitSourcePrograms = 0;
+  let explicitSourceLogs = 0;
+  let explicitSourceMessages = 0;
+  if (sourceMemberId && sourceMemberId !== memberId) {
+    const programUpdate = adminClient
+      .from("training_programs")
+      .update({ member_id: memberId })
+      .eq("member_id", sourceMemberId);
+    const logUpdate = adminClient
+      .from("workout_logs")
+      .update({ member_id: memberId })
+      .eq("member_id", sourceMemberId);
+    const messageUpdate = adminClient
+      .from("chat_messages")
+      .update({ member_id: memberId })
+      .eq("member_id", sourceMemberId);
+    const scopedProgramUpdate = sourceOwnerUserId ? programUpdate.eq("owner_user_id", sourceOwnerUserId) : programUpdate;
+    const scopedLogUpdate = sourceOwnerUserId ? logUpdate.eq("owner_user_id", sourceOwnerUserId) : logUpdate;
+    const scopedMessageUpdate = sourceOwnerUserId ? messageUpdate.eq("owner_user_id", sourceOwnerUserId) : messageUpdate;
+
+    const { data: movedPrograms, error: movedProgramsError } = await scopedProgramUpdate.select("id");
+    if (movedProgramsError) {
+      console.warn("link-member-auth: explicit source program migrate failed:", movedProgramsError.message);
+    } else {
+      explicitSourcePrograms = (movedPrograms ?? []).length;
+    }
+    const { data: movedLogs, error: movedLogsError } = await scopedLogUpdate.select("id");
+    if (movedLogsError) {
+      console.warn("link-member-auth: explicit source log migrate failed:", movedLogsError.message);
+    } else {
+      explicitSourceLogs = (movedLogs ?? []).length;
+    }
+    const { data: movedMessages, error: movedMessagesError } = await scopedMessageUpdate.select("id");
+    if (movedMessagesError) {
+      console.warn("link-member-auth: explicit source message migrate failed:", movedMessagesError.message);
+    } else {
+      explicitSourceMessages = (movedMessages ?? []).length;
+    }
+  }
+
   return jsonResponse(200, {
     message: "Auth member link synced",
     updated,
@@ -370,6 +415,11 @@ Deno.serve(async (req) => {
       emailLikeProgramCount: Number(emailLikeProgramCount ?? 0),
       rescuedPrograms,
       canonicalOwnerUserId,
+      explicitSourceMemberId: sourceMemberId || null,
+      explicitSourceOwnerUserId: sourceOwnerUserId || null,
+      explicitSourcePrograms,
+      explicitSourceLogs,
+      explicitSourceMessages,
     },
   });
 });
