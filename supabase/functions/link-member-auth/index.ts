@@ -15,6 +15,7 @@ type MemberCandidate = {
   id: string;
   is_active: boolean | null;
   created_at: string | null;
+  email?: string | null;
 };
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -72,7 +73,7 @@ Deno.serve(async (req) => {
 
   const { data: memberRows, error: memberLookupError } = await adminClient
     .from("members")
-    .select("id, is_active, created_at")
+    .select("id, is_active, created_at, email")
     .ilike("email", email);
   if (memberLookupError) {
     return jsonResponse(500, { error: `Could not resolve member by email: ${memberLookupError.message}` });
@@ -82,8 +83,30 @@ Deno.serve(async (req) => {
       id: String((row as MemberCandidate).id ?? "").trim(),
       is_active: (row as MemberCandidate).is_active ?? null,
       created_at: (row as MemberCandidate).created_at ?? null,
+      email: String((row as MemberCandidate).email ?? "").trim(),
     }))
     .filter((row) => row.id);
+  if (!candidates.length) {
+    const { data: allMembers, error: allMembersError } = await adminClient
+      .from("members")
+      .select("id, is_active, created_at, email");
+    if (allMembersError) {
+      return jsonResponse(500, { error: `Could not scan members by normalized email: ${allMembersError.message}` });
+    }
+    for (const row of allMembers ?? []) {
+      const typed = row as MemberCandidate;
+      const rowEmail = normalizeEmail(typed.email);
+      if (rowEmail !== email) continue;
+      const id = String(typed.id ?? "").trim();
+      if (!id) continue;
+      candidates.push({
+        id,
+        is_active: typed.is_active ?? null,
+        created_at: typed.created_at ?? null,
+        email: String(typed.email ?? "").trim(),
+      });
+    }
+  }
   if (!candidates.length) {
     const { data: listData, error: listError } = await adminClient.auth.admin.listUsers({
       page: 1,
