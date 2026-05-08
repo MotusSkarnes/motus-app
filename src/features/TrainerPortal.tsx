@@ -1638,9 +1638,41 @@ function pickFirstName(value: string): string {
   </script>
 </body>
 </html>`;
-    printWindow.document.open();
-    printWindow.document.write(html);
-    printWindow.document.close();
+    let wroteToPopup = false;
+    try {
+      printWindow.document.open();
+      printWindow.document.write(html);
+      printWindow.document.close();
+      wroteToPopup = true;
+    } catch (error) {
+      console.warn("Trainer print: direct document.write failed, falling back to blob URL.", error);
+      wroteToPopup = false;
+    }
+
+    if (!wroteToPopup) {
+      try {
+        const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+        const blobUrl = URL.createObjectURL(blob);
+        const fallbackWindow = window.open(blobUrl, "_blank");
+        if (!fallbackWindow) {
+          window.alert("Kunne ikke åpne utskriftsvindu. Sjekk popup-innstillinger i nettleseren.");
+          return;
+        }
+        window.setTimeout(() => {
+          try {
+            fallbackWindow.focus();
+            fallbackWindow.print();
+          } catch {
+            // ignore
+          }
+        }, 700);
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      } catch (error) {
+        console.warn("Trainer print: blob fallback failed.", error);
+        window.alert("Kunne ikke generere PDF/utskrift. Prøv igjen.");
+      }
+      return;
+    }
     // Fallback from parent window: some browsers ignore/delay inline popup scripts.
     const fallbackPrint = () => {
       try {
