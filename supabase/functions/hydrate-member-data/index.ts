@@ -181,22 +181,25 @@ Deno.serve(async (req) => {
     });
   }
 
-  const programLookupMemberIds = Array.from(
+  // Only programs tied to real `members` rows for this login — not raw auth.uid() / auth-* keys.
+  // Widen to auth user id previously pulled orphan rows that PT delete could not reach (delete resolves by email).
+  const activeProgramMemberIds = Array.from(
     new Set(
-      [
-        ...memberIds,
-        authMemberId,
-        requesterUserId,
-        requesterUserId ? `auth-${requesterUserId}` : "",
-      ].filter((value) => value && value !== "__template__"),
+      scopedMembers
+        .filter((row) => (row as { is_active?: boolean | null }).is_active !== false)
+        .map((row) => String((row as { id?: string }).id ?? "").trim())
+        .filter((id) => id && id !== "__template__" && !id.startsWith("auth-")),
     ),
   );
 
-  const { data: programsRaw, error: programsError } = await adminClient
-    .from("training_programs")
-    .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id")
-    .in("member_id", programLookupMemberIds.length ? programLookupMemberIds : memberIds)
-    .order("created_at", { ascending: false });
+  const { data: programsRaw, error: programsError } =
+    activeProgramMemberIds.length > 0
+      ? await adminClient
+          .from("training_programs")
+          .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id")
+          .in("member_id", activeProgramMemberIds)
+          .order("created_at", { ascending: false })
+      : { data: [], error: null };
   const { data: logs, error: logsError } = await adminClient
     .from("workout_logs")
     .select("id, member_id, program_title, date, status, note, results, created_at")
@@ -293,59 +296,17 @@ Deno.serve(async (req) => {
     }
   }
 
-  const programs = (programsRaw ?? []).map((row) => {
-    const typedRow = row as Record<string, unknown>;
-    const ownerUserId = String(typedRow.owner_user_id ?? "").trim();
-    return {
-      ...typedRow,
-      assigned_trainer_name: trainerNameByOwnerId.get(ownerUserId) ?? "",
-    };
-  });
-
-  const scopedMemberIds = new Set(
-    scopedMembers.map((row) => String((row as { id?: string }).id ?? "").trim()).filter(Boolean),
-  );
-  const orphanProgramMemberIds = Array.from(
-    new Set(
-      programs
-        .map((row) => String((row as { member_id?: string }).member_id ?? "").trim())
-        .filter((id) => id && !scopedMemberIds.has(id)),
-    ),
-  );
-  if (orphanProgramMemberIds.length > 0) {
-    const fallbackName = toFirstName(
-      String(
-        (userData.user.user_metadata?.full_name as string | undefined) ??
-          (userData.user.user_metadata?.name as string | undefined) ??
-          "",
-      ),
-    ) || nameFromEmail(requesterEmail) || "Medlem";
-    orphanProgramMemberIds.forEach((id) => {
-      scopedMembers.push({
-        id,
-        owner_user_id: "",
-        name: fallbackName,
-        email: requesterEmail,
-        is_active: true,
-        invited_at: "",
-        phone: "",
-        birth_date: "",
-        weight: "",
-        height: "",
-        level: "Nybegynner",
-        membership_type: "Standard",
-        customer_type: "Medlem",
-        days_since_activity: "0",
-        goal: "",
-        focus: "",
-        personal_goals: "",
-        injuries: "",
-        coach_notes: "",
-        avatar_url: "",
-        created_at: "",
-      });
+  const activeProgramMemberIdSet = new Set(activeProgramMemberIds);
+  const programs = (programsRaw ?? [])
+    .filter((row) => activeProgramMemberIdSet.has(String((row as { member_id?: string }).member_id ?? "").trim()))
+    .map((row) => {
+      const typedRow = row as Record<string, unknown>;
+      const ownerUserId = String(typedRow.owner_user_id ?? "").trim();
+      return {
+        ...typedRow,
+        assigned_trainer_name: trainerNameByOwnerId.get(ownerUserId) ?? "",
+      };
     });
-  }
 
   return jsonResponse(200, {
     members: scopedMembers ?? [],
