@@ -1640,6 +1640,24 @@ function pickFirstName(value: string): string {
 </body>
 </html>`;
     try {
+      // Prefer direct write to the pre-opened tab (most stable in Edge).
+      printTab.document.open();
+      printTab.document.write(html);
+      printTab.document.close();
+      window.setTimeout(() => {
+        try {
+          printTab.focus();
+          printTab.print();
+        } catch {
+          // ignore
+        }
+      }, 700);
+      return;
+    } catch (writeError) {
+      console.warn("Trainer print: direct tab write failed, trying blob fallback.", writeError);
+    }
+
+    try {
       const blob = new Blob([html], { type: "text/html;charset=utf-8" });
       const blobUrl = URL.createObjectURL(blob);
       printTab.location.href = blobUrl;
@@ -1650,7 +1668,7 @@ function pickFirstName(value: string): string {
         } catch {
           // ignore
         }
-      }, 650);
+      }, 900);
       window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
     } catch (error) {
       console.warn("Trainer print: blob print failed.", error);
