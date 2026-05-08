@@ -103,8 +103,7 @@ Deno.serve(async (req) => {
     ? memberRows
         .filter((row) => {
           const rowEmail = normalizeEmail(row.email);
-          const rowName = String(row.name ?? "").trim().toLowerCase();
-          return rowEmail === targetEmail || rowName.includes("test medlem") || rowName.includes("test med");
+          return rowEmail === targetEmail;
         })
         .map((row) => ({
           id: String(row.id ?? "").trim(),
@@ -116,17 +115,10 @@ Deno.serve(async (req) => {
     : [];
   if (apply && targetEmail && forceProfile) {
     const name = String(forceProfile.name ?? "").trim();
-    const normalizedName = name.toLowerCase();
     const phone = String(forceProfile.phone ?? "").trim();
     const birthDate = String(forceProfile.birthDate ?? "").trim();
     const targetIds = memberRows
-      .filter((row) => {
-        const rowEmail = normalizeEmail(row.email);
-        if (rowEmail === targetEmail) return true;
-        const rowName = String(row.name ?? "").trim().toLowerCase();
-        if (normalizedName && rowName && rowName.startsWith(normalizedName)) return true;
-        return false;
-      })
+      .filter((row) => normalizeEmail(row.email) === targetEmail)
       .map((row) => String(row.id ?? "").trim())
       .filter(Boolean);
     if (targetIds.length > 0) {
@@ -185,7 +177,7 @@ Deno.serve(async (req) => {
   }
   const groupResults: Array<Record<string, unknown>> = [];
 
-  let authUsersByEmail = new Map<string, string[]>();
+  const authUsersByEmail = new Map<string, string[]>();
   if (sharedGlobal) {
     const { data: listData, error: listError } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
     if (listError) {

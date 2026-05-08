@@ -149,6 +149,13 @@ self.addEventListener("notificationclick", (event) => {
     })()
   );
 });
+
+self.addEventListener("message", (event) => {
+  const type = event?.data?.type;
+  if (type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
 `;
 
 fs.writeFileSync(path.join(dist, "sw.js"), swSource, "utf8");

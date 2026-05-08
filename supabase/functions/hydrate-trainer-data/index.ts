@@ -94,48 +94,6 @@ function harmonizeSharedMemberProfiles(rows: Array<Record<string, unknown>>): Ar
   return rows;
 }
 
-async function persistHarmonizedSharedMemberProfiles(
-  adminClient: ReturnType<typeof createClient>,
-  rows: Array<Record<string, unknown>>,
-): Promise<void> {
-  const PROFILE_FIELDS = [
-    "name",
-    "phone",
-    "birth_date",
-    "goal",
-    "focus",
-    "injuries",
-    "personal_goals",
-    "avatar_url",
-  ] as const;
-  const byEmail = new Map<string, Array<Record<string, unknown>>>();
-  for (const row of rows) {
-    if (!isSharedMember(row)) continue;
-    const emailKey = normalizeEmail(row.email);
-    if (!emailKey) continue;
-    const group = byEmail.get(emailKey) ?? [];
-    group.push(row);
-    byEmail.set(emailKey, group);
-  }
-  for (const [, group] of byEmail) {
-    if (group.length <= 1) continue;
-    const canonical = pickMostRecentProfileRow(group);
-    if (!canonical) continue;
-    const payload: Record<string, unknown> = {};
-    for (const field of PROFILE_FIELDS) {
-      payload[field] = canonical[field] ?? null;
-    }
-    const targetIds = group
-      .map((row) => String(row.id ?? "").trim())
-      .filter(Boolean);
-    if (!targetIds.length) continue;
-    const { error } = await adminClient.from("members").update(payload).in("id", targetIds);
-    if (error) {
-      console.warn("hydrate-trainer-data: persist harmonized profiles failed:", error.message);
-    }
-  }
-}
-
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -273,7 +231,6 @@ Deno.serve(async (req) => {
     });
     members = uniqueById([...(members ?? []), ...widenedMembers]) as Array<Record<string, unknown>>;
     members = harmonizeSharedMemberProfiles(members);
-    await persistHarmonizedSharedMemberProfiles(adminClient, members);
   }
 
   const visibleMemberIds = (members ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);

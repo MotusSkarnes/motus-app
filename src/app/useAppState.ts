@@ -346,29 +346,8 @@ export function useAppState() {
               }
             }
           }
-          if (currentUser?.role === "trainer") {
-            const remoteIdentityKeys = new Set(
-              mergedMembers.map((member) => {
-                const emailKey = member.email.trim().toLowerCase();
-                return emailKey || `id:${member.id}`;
-              }),
-            );
-            const missingLocalMembers = prev.members.filter((member) => {
-              const emailKey = member.email.trim().toLowerCase();
-              const identityKey = emailKey || `id:${member.id}`;
-              return !remoteIdentityKeys.has(identityKey);
-            });
-            if (missingLocalMembers.length > 0) {
-              // Do not resurrect stale shared-member duplicates from local cache.
-              // For "Medlem", hydrate-trainer-data is the source of truth.
-              const safeMissingMembers = missingLocalMembers.filter(
-                (member) => String(member.customerType ?? "").trim().toLowerCase() !== "medlem",
-              );
-              if (safeMissingMembers.length > 0) {
-                mergedMembers = [...mergedMembers, ...safeMissingMembers];
-              }
-            }
-          }
+          // For trainer sessions, hydrate-trainer-data is source of truth.
+          // Never re-introduce stale local member rows that are missing remotely.
           next.members = mergedMembers;
         }
 
@@ -544,14 +523,35 @@ export function useAppState() {
     if (!appState.members.length) return;
     const selectedExists = appState.members.some((member) => member.id === appState.selectedMemberId);
     const viewedExists = appState.members.some((member) => member.id === appState.memberViewId);
-
-    if (!selectedExists || !viewedExists) {
-      setAppState((prev) => ({
+    if (selectedExists && viewedExists) return;
+    setAppState((prev) => {
+      const fallbackId = prev.members[0]?.id ?? "";
+      const resolveReplacementId = (missingId: string): string => {
+        if (!missingId) return fallbackId;
+        const previousMember = prev.members.find((member) => member.id === missingId) ?? null;
+        if (!previousMember) return fallbackId;
+        const previousEmail = previousMember.email.trim().toLowerCase();
+        const previousName = previousMember.name.trim().toLowerCase();
+        const byEmail =
+          previousEmail
+            ? prev.members.find((member) => member.email.trim().toLowerCase() === previousEmail)
+            : null;
+        if (byEmail?.id) return byEmail.id;
+        const byName =
+          previousName
+            ? prev.members.find((member) => member.name.trim().toLowerCase() === previousName)
+            : null;
+        if (byName?.id) return byName.id;
+        return fallbackId;
+      };
+      const selectedStillExists = prev.members.some((member) => member.id === prev.selectedMemberId);
+      const viewedStillExists = prev.members.some((member) => member.id === prev.memberViewId);
+      return {
         ...prev,
-        selectedMemberId: selectedExists ? prev.selectedMemberId : prev.members[0]?.id ?? "",
-        memberViewId: viewedExists ? prev.memberViewId : prev.members[0]?.id ?? "",
-      }));
-    }
+        selectedMemberId: selectedStillExists ? prev.selectedMemberId : resolveReplacementId(prev.selectedMemberId),
+        memberViewId: viewedStillExists ? prev.memberViewId : resolveReplacementId(prev.memberViewId),
+      };
+    });
   }, [appState.members, appState.selectedMemberId, appState.memberViewId]);
 
   useEffect(() => {

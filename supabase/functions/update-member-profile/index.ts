@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
     // and normalize in-memory to find all duplicates that should sync together.
     const { data: allRows, error: allRowsError } = await adminClient
       .from("members")
-      .select("id,email,owner_user_id,customer_type");
+      .select("id,email,name,owner_user_id,customer_type");
     if (allRowsError) {
       return jsonResponse(500, { error: `Could not expand member targets: ${allRowsError.message}` });
     }
@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
       return false;
     });
   }
-  const visibleExpandedRows = expandedRows.filter((row) => {
+  const visibleExpandedRows = expandedRows.filter(() => {
     if (userRole !== "trainer") return true;
     const hasAuthorizedAnchor = visibleAnchors.length > 0;
     if (!hasAuthorizedAnchor) return false;

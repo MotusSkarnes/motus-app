@@ -445,6 +445,8 @@ function pickFirstName(value: unknown): string {
   const [exerciseFormStatus, setExerciseFormStatus] = useState<string | null>(null);
   const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
   const [showCustomerToolsMobile, setShowCustomerToolsMobile] = useState(false);
+  const editLockedMemberIdRef = useRef<string | null>(null);
+  const editLockedIdentityRef = useRef<{ email: string; name: string } | null>(null);
   const [workoutDateRangeFilter, setWorkoutDateRangeFilter] = useState<"7d" | "30d" | "all">("all");
   const [workoutTypeFilter, setWorkoutTypeFilter] = useState<"all" | "program" | "group">("all");
   const [workoutSearchQuery, setWorkoutSearchQuery] = useState("");
@@ -477,25 +479,33 @@ function pickFirstName(value: unknown): string {
   }
   function pickCanonicalMemberProfile(base: Member, candidates: Member[]): Member {
     if (!candidates.length) return base;
-    const pickLatestNonEmpty = (values: string[]): string => {
-      for (let i = values.length - 1; i >= 0; i -= 1) {
+    const scoreProfileSource = (member: Member): number => {
+      let score = 0;
+      if (member.customerType === "Medlem") score += 1000;
+      if (member.isActive !== false) score += 100;
+      if (member.membershipType === "Premium") score += 10;
+      return score;
+    };
+    const prioritized = [...candidates].sort((a, b) => scoreProfileSource(b) - scoreProfileSource(a));
+    const pickPreferredNonEmpty = (values: string[]): string => {
+      for (let i = 0; i < values.length; i += 1) {
         const value = String(values[i] ?? "").trim();
         if (value) return value;
       }
       return "";
     };
-    const names = candidates.map((member) => member.name);
-    const phones = candidates.map((member) => member.phone);
-    const birthDates = candidates.map((member) => member.birthDate);
-    const goals = candidates.map((member) => member.goal);
-    const injuries = candidates.map((member) => member.injuries);
+    const names = prioritized.map((member) => member.name);
+    const phones = prioritized.map((member) => member.phone);
+    const birthDates = prioritized.map((member) => member.birthDate);
+    const goals = prioritized.map((member) => member.goal);
+    const injuries = prioritized.map((member) => member.injuries);
     return {
       ...base,
-      name: pickLatestNonEmpty(names) || base.name,
-      phone: pickLatestNonEmpty(phones) || base.phone,
-      birthDate: pickLatestNonEmpty(birthDates) || base.birthDate,
-      goal: pickLatestNonEmpty(goals) || base.goal,
-      injuries: pickLatestNonEmpty(injuries) || base.injuries,
+      name: pickPreferredNonEmpty(names) || base.name,
+      phone: pickPreferredNonEmpty(phones) || base.phone,
+      birthDate: pickPreferredNonEmpty(birthDates) || base.birthDate,
+      goal: pickPreferredNonEmpty(goals) || base.goal,
+      injuries: pickPreferredNonEmpty(injuries) || base.injuries,
     };
   }
   const deduplicatedMembers = useMemo(() => {
@@ -691,11 +701,24 @@ function pickFirstName(value: unknown): string {
   }, [members, selectedMemberId]);
   const selectedMemberRelatedIdSet = useMemo(() => new Set(selectedMemberRelatedIds), [selectedMemberRelatedIds]);
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
+  const selectedMemberProfileSourceMembers = useMemo(() => {
+    if (!selectedMember) return [] as Member[];
+    const selectedEmail = selectedMember.email.trim().toLowerCase();
+    const selectedName = selectedMember.name.trim().toLowerCase();
+    const byEmail = selectedEmail
+      ? members.filter((member) => member.email.trim().toLowerCase() === selectedEmail)
+      : [];
+    if (byEmail.length > 0) return byEmail;
+    if (selectedName) {
+      return members.filter((member) => member.name.trim().toLowerCase() === selectedName);
+    }
+    return [selectedMember];
+  }, [selectedMember, members]);
   const selectedMemberProfile = useMemo(() => {
     if (!selectedMember) return null;
-    const relatedMembers = members.filter((member) => selectedMemberRelatedIdSet.has(member.id));
+    const relatedMembers = selectedMemberProfileSourceMembers;
     return pickCanonicalMemberProfile(selectedMember, relatedMembers);
-  }, [selectedMember, members, selectedMemberRelatedIdSet]);
+  }, [selectedMember, selectedMemberProfileSourceMembers]);
   const selectedPrograms = useMemo(
     () => {
       const selected = members.find((member) => member.id === selectedMemberId) ?? null;
@@ -1116,11 +1139,37 @@ function pickFirstName(value: unknown): string {
   useEffect(() => {
     resetMemberEditDraftFromSelected(selectedMemberProfile);
     setMemberEditStatus(null);
-    setIsEditingCustomerCard(false);
-    // Only reset edit mode when selected customer actually changes.
-    // Background hydration can replace member objects and should not close the editor.
+    // Keep edit mode stable; it should only close on explicit Save/Cancel actions.
+    // Background hydration or selection normalization must never close the editor.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMemberId, selectedMemberProfile]);
+  }, [selectedMemberId]);
+
+  useEffect(() => {
+    if (!isEditingCustomerCard) return;
+    const lockedId = String(editLockedMemberIdRef.current ?? "").trim();
+    if (!lockedId) return;
+    if (selectedMemberId === lockedId) return;
+    const lockedStillExists = members.some((member) => member.id === lockedId);
+    if (!lockedStillExists) {
+      const lockedEmail = editLockedIdentityRef.current?.email ?? "";
+      const lockedName = editLockedIdentityRef.current?.name ?? "";
+      const replacement =
+        members.find((member) => lockedEmail && member.email.trim().toLowerCase() === lockedEmail) ??
+        members.find((member) => lockedName && member.name.trim().toLowerCase() === lockedName) ??
+        null;
+      if (replacement?.id) {
+        editLockedMemberIdRef.current = replacement.id;
+        setSelectedMemberId(replacement.id);
+        return;
+      }
+      editLockedMemberIdRef.current = null;
+      editLockedIdentityRef.current = null;
+      setIsEditingCustomerCard(false);
+      setMemberEditStatus("Redigering ble avsluttet fordi valgt kunde ikke lenger er tilgjengelig.");
+      return;
+    }
+    setSelectedMemberId(lockedId);
+  }, [isEditingCustomerCard, selectedMemberId, members, setSelectedMemberId]);
 
   function formatInvitedAt(iso: string): string {
     if (!iso) return "";
@@ -1776,10 +1825,11 @@ function pickFirstName(value: unknown): string {
     }
   }
 
-  function handleSaveSelectedMemberDetails() {
+  async function handleSaveSelectedMemberDetails() {
     if (!selectedMember) return;
     const selectedOwnerUserId = (selectedMember.ownerUserId ?? "").trim();
-    if (selectedOwnerUserId && currentTrainerOwnerUserId && selectedOwnerUserId !== currentTrainerOwnerUserId) {
+    const isSharedMemberProfile = selectedMember.customerType === "Medlem" || memberEditIsSharedMember;
+    if (!isSharedMemberProfile && selectedOwnerUserId && currentTrainerOwnerUserId && selectedOwnerUserId !== currentTrainerOwnerUserId) {
       setMemberEditStatus("Denne kunden eies av en annen PT. Be eier-PT oppdatere medlemskapstype.");
       return;
     }
@@ -1793,14 +1843,14 @@ function pickFirstName(value: unknown): string {
       setMemberEditStatus("Gyldig e-post må fylles ut.");
       return;
     }
-    if (!isLikelyValidBirthDate(memberEditBirthDate)) {
+    const trimmedBirthDateDraft = memberEditBirthDate.trim();
+    if (trimmedBirthDateDraft && !isLikelyValidBirthDate(trimmedBirthDateDraft)) {
       setMemberEditStatus("Fødselsdato må være på formatet dd.mm.yyyy.");
       return;
     }
     const previousEmail = selectedMember.email.trim().toLowerCase();
     const previousName = (selectedMemberProfile?.name ?? selectedMember.name).trim().toLowerCase();
-    const shouldFanOutSharedMemberUpdates =
-      selectedMember.customerType === "Medlem" || memberEditIsSharedMember;
+    const shouldFanOutSharedMemberUpdates = isSharedMemberProfile;
     const targetMemberIds = members
       .filter((member) => {
         const memberEmail = member.email.trim().toLowerCase();
@@ -1820,6 +1870,7 @@ function pickFirstName(value: unknown): string {
       })
       .map((member) => member.id);
     const uniqueTargetIds = Array.from(new Set(targetMemberIds.length ? targetMemberIds : [selectedMember.id]));
+    const normalizedBirthDate = trimmedBirthDateDraft ? normalizeBirthDate(trimmedBirthDateDraft) : "";
     uniqueTargetIds.forEach((memberId) => {
       updateMember({
         memberId,
@@ -1827,7 +1878,7 @@ function pickFirstName(value: unknown): string {
           name: nextName,
           email: nextEmail,
           phone: normalizePhone(memberEditPhone),
-          birthDate: normalizeBirthDate(memberEditBirthDate),
+          birthDate: normalizedBirthDate,
           goal: memberEditGoal,
           injuries: memberEditInjuries,
           membershipType: memberEditIsPremiumCustomer ? "Premium" : "Standard",
@@ -1835,7 +1886,76 @@ function pickFirstName(value: unknown): string {
         },
       });
     });
+    if (supabaseClient) {
+      const syncEmails = Array.from(
+        new Set(
+          members
+            .filter((member) => uniqueTargetIds.includes(member.id))
+            .map((member) => member.email.trim().toLowerCase())
+            .concat([nextEmail])
+            .filter((value) => value && value.includes("@")),
+        ),
+      );
+      const syncResult = await supabaseClient.functions.invoke("update-member-profile", {
+        body: {
+          email: nextEmail,
+          emails: syncEmails,
+          memberId: selectedMember.id,
+          memberIds: uniqueTargetIds,
+          targetName: nextName,
+          changes: {
+            name: nextName,
+            phone: normalizePhone(memberEditPhone),
+            birthDate: normalizedBirthDate,
+            goal: memberEditGoal,
+            injuries: memberEditInjuries,
+          },
+        },
+      });
+      const forceResult = await supabaseClient.functions.invoke("dedupe-members", {
+        body: {
+          sharedGlobal: true,
+          apply: true,
+          email: nextEmail,
+          forceProfile: {
+            name: nextName,
+            phone: normalizePhone(memberEditPhone),
+            birthDate: normalizedBirthDate,
+          },
+        },
+      });
+      const updated =
+        syncResult.data && typeof syncResult.data === "object" && "updated" in syncResult.data
+          ? Number((syncResult.data as { updated?: unknown }).updated ?? 0)
+          : 0;
+      const forcedUpdated =
+        forceResult.data && typeof forceResult.data === "object" && "updatedMembers" in forceResult.data
+          ? Array.isArray((forceResult.data as { updatedMembers?: unknown }).updatedMembers)
+            ? ((forceResult.data as { updatedMembers?: unknown[] }).updatedMembers ?? []).length
+            : 0
+          : 0;
+      const primaryError = syncResult.error?.message ?? "";
+      const forceError = forceResult.error?.message ?? "";
+      const syncSucceeded = updated > 0 || forcedUpdated > 0;
+      if (!syncSucceeded) {
+        if (primaryError || forceError) {
+          setMemberEditStatus(
+            `Kundekort lokalt oppdatert, men synk feilet: ${[primaryError, forceError].filter(Boolean).join(" | ")}`,
+          );
+        } else {
+          setMemberEditStatus("Kundekort lagret, men ingen profiler ble synket. Prøv igjen.");
+        }
+        return;
+      }
+      setMemberEditStatus(`Kundekort oppdatert. Synk: primary=${updated}, force=${forcedUpdated}.`);
+      editLockedMemberIdRef.current = null;
+      editLockedIdentityRef.current = null;
+      setIsEditingCustomerCard(false);
+      return;
+    }
     setMemberEditStatus("Kundekort oppdatert.");
+    editLockedMemberIdRef.current = null;
+    editLockedIdentityRef.current = null;
     setIsEditingCustomerCard(false);
   }
 
@@ -3197,6 +3317,8 @@ function pickFirstName(value: unknown): string {
                         <OutlineButton
                           onClick={() => {
                             resetMemberEditDraftFromSelected(selectedMember);
+                            editLockedMemberIdRef.current = null;
+                            editLockedIdentityRef.current = null;
                             setIsEditingCustomerCard(false);
                           }}
                         >
@@ -3204,7 +3326,16 @@ function pickFirstName(value: unknown): string {
                         </OutlineButton>
                       </>
                     ) : (
-                      <OutlineButton onClick={() => setIsEditingCustomerCard(true)}>
+                      <OutlineButton
+                        onClick={() => {
+                          editLockedMemberIdRef.current = selectedMember.id;
+                          editLockedIdentityRef.current = {
+                            email: selectedMember.email.trim().toLowerCase(),
+                            name: selectedMember.name.trim().toLowerCase(),
+                          };
+                          setIsEditingCustomerCard(true);
+                        }}
+                      >
                         Rediger kundekort
                       </OutlineButton>
                     )}
@@ -3284,40 +3415,6 @@ function pickFirstName(value: unknown): string {
                         <div>{selectedPrograms.length ? `Siste program: ${selectedPrograms[0].title}` : "Ingen program ennå"}</div>
                       </div>
                     </div>
-                    </div>
-                    <div className="rounded-xl border bg-white p-4">
-                      <div className="font-semibold">Siste økter og tilbakemeldinger</div>
-                      {selectedLogs.length ? (
-                        <div className="mt-3 space-y-3">
-                          {selectedLogs.slice(0, 5).map((log) => (
-                            <div key={log.id} className="rounded-xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="font-medium text-slate-800">{log.programTitle}</div>
-                                <div className="text-xs text-slate-500">{log.date}</div>
-                              </div>
-                              <div className="mt-1 text-xs text-slate-500">{log.status}</div>
-                              {log.results?.length ? (
-                                <div className="mt-2 text-xs text-slate-600">
-                                  Utførte sett: {log.results.filter((result) => result.completed).length}/{log.results.length}
-                                </div>
-                              ) : null}
-                              <div className="mt-2 text-xs text-slate-700">
-                                Følelse: {reflectionEmoji(log.reflection?.energyLevel)} · Belastning: {reflectionEmoji(log.reflection?.difficultyLevel)} · Motivasjon: {reflectionEmoji(log.reflection?.motivationLevel)}
-                              </div>
-                              {log.note ? <div className="mt-2 text-xs text-slate-600">Øktnotat: {log.note}</div> : null}
-                              {log.reflection?.note ? <div className="mt-1 text-xs text-slate-600">Til PT: {log.reflection.note}</div> : null}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <EmptyState
-                          icon="📝"
-                          title="Ingen økter logget ennå"
-                          description="Når kunden fullfører første økt, vises historikk og refleksjon her."
-                          className="mt-3 bg-slate-50"
-                          action={<OutlineButton onClick={() => setCustomerSubTab("programs")}>Lag første økt</OutlineButton>}
-                        />
-                      )}
                     </div>
                     <div className="rounded-xl border bg-white p-4">
                       <div className="font-semibold">Oppfølgingslogg</div>

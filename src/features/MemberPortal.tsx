@@ -377,10 +377,8 @@ export function MemberPortal(props: MemberPortalProps) {
     // Member view should follow the authenticated member email first, not only the current memberViewId.
     // This keeps assigned programs visible even when member_id links are being synchronized.
     const primaryEmail = currentUserRole === "member" ? normalizedCurrentUserEmail : editableMember?.email.trim().toLowerCase() ?? "";
-    let scopedByPrimaryEmail = false;
     if (primaryEmail) {
       const matchedByPrimary = members.filter((member) => member.email.trim().toLowerCase() === primaryEmail);
-      scopedByPrimaryEmail = matchedByPrimary.length > 0;
       matchedByPrimary.forEach((member) => {
         collectedIds.add(member.id);
       });
@@ -1860,7 +1858,8 @@ export function MemberPortal(props: MemberPortalProps) {
   async function saveProfile(options?: { silent?: boolean }) {
     const silent = options?.silent === true;
     if (!editableMember || typeof window === "undefined") return;
-    if (!isLikelyValidBirthDate(memberBirthDateDraft)) {
+    const trimmedBirthDateDraft = memberBirthDateDraft.trim();
+    if (trimmedBirthDateDraft && !isLikelyValidBirthDate(trimmedBirthDateDraft)) {
       if (!silent) {
         setProfileSaveInfo("Fødselsdato må være på formatet dd.mm.yyyy.");
       }
