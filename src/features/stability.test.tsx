@@ -72,6 +72,8 @@ describe("Stability regressions", () => {
     const members = [
       createMember({ id: "m1", email: "emma@example.com", name: "Emma A" }),
       createMember({ id: "m2", email: "emma@example.com", name: "Emma B" }),
+      // Foreign row so program tied to m3 is excluded by email, not by «missing row» heuristics.
+      createMember({ id: "m3", email: "annenkunde@example.com", name: "Annen kunde" }),
     ];
     const programs = [
       createProgram({ id: "p-related", memberId: "m2", title: "Relatert program" }),

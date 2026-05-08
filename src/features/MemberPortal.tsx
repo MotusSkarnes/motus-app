@@ -383,16 +383,31 @@ export function MemberPortal(props: MemberPortalProps) {
           collectedIds.add(member.id);
         });
     }
-    if (currentUserRole === "member" && !scopedByPrimaryEmail) {
-      // Under strict RLS, member users may not be able to read the full members table.
-      // In that case, derive visible member IDs from data rows the member can read.
-      // When we already resolved profiles by email, do not widen scope from unrelated program rows.
-      [...programs.map((program) => program.memberId), ...logs.map((log) => log.memberId), ...messages.map((message) => message.memberId)]
-        .map((id) => id.trim())
-        .filter(Boolean)
-        .forEach((id) => {
-          collectedIds.add(id);
-        });
+    if (currentUserRole === "member") {
+      // When several `members` rows share one email (duplicate ids), the assigned program may reference
+      // an id that was not picked as `memberViewId`. Link data rows by id + email, and allow orphan ids
+      // (no row in memory) only when we already see duplicate profiles for this login — same pattern as
+      // resolving related member ids server-side.
+      const memberRowById = new Map(members.map((member) => [member.id, member]));
+      const primaryLower = normalizedCurrentUserEmail;
+      const duplicateEmailProfileCount = primaryLower
+        ? members.filter((member) => member.email.trim().toLowerCase() === primaryLower).length
+        : 0;
+      const candidateIds = [
+        ...programs.map((program) => program.memberId),
+        ...logs.map((log) => log.memberId),
+        ...messages.map((message) => message.memberId),
+      ];
+      for (const rawId of candidateIds) {
+        const id = rawId.trim();
+        if (!id) continue;
+        const row = memberRowById.get(id);
+        if (row) {
+          if (primaryLower && row.email.trim().toLowerCase() === primaryLower) collectedIds.add(id);
+          continue;
+        }
+        if (duplicateEmailProfileCount >= 2) collectedIds.add(id);
+      }
     }
     if (currentUserRole === "member" && currentUserMemberId?.trim()) {
       collectedIds.add(currentUserMemberId.trim());
