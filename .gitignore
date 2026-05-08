@@ -5,3 +5,4 @@ dist/
 .env.local
 .env.*.local
 supabase/.temp/cli-latest
+.vercel

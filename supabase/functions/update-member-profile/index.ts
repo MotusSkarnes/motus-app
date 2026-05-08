@@ -11,6 +11,7 @@ type UpdatePayload = {
   emails?: string[];
   memberId?: string;
   memberIds?: string[];
+  targetName?: string;
   changes?: {
     name?: string;
     phone?: string;
@@ -37,6 +38,12 @@ function normalizeEmail(value: unknown): string {
 
 function normalizeString(value: unknown): string {
   return String(value ?? "").trim();
+}
+
+function canTrainerEditAnchor(row: { owner_user_id?: string | null; customer_type?: string | null }, trainerUserId: string): boolean {
+  const ownerUserId = normalizeString(row.owner_user_id);
+  const customerType = normalizeString(row.customer_type).toLowerCase();
+  return ownerUserId === trainerUserId || customerType === "medlem";
 }
 
 Deno.serve(async (req) => {
@@ -106,15 +113,16 @@ Deno.serve(async (req) => {
   if (!currentEmail || !currentEmail.includes("@")) {
     return jsonResponse(400, { error: "Logged-in user is missing a valid email" });
   }
-  if (requestedEmail && requestedEmail !== currentEmail) {
+  if (userRole === "member" && requestedEmail && requestedEmail !== currentEmail) {
     if (!requestedEmails.includes(currentEmail)) {
       return jsonResponse(403, { error: "Email mismatch for member profile update" });
     }
   }
 
   const changes = payload.changes ?? {};
+  const targetEmailForUpdate = requestedEmail || currentEmail;
   const updateFields: Record<string, string> = {
-    email: currentEmail,
+    email: targetEmailForUpdate,
   };
   if (changes.name !== undefined) updateFields.name = normalizeString(changes.name);
   if (changes.phone !== undefined) updateFields.phone = normalizeString(changes.phone);
@@ -126,14 +134,16 @@ Deno.serve(async (req) => {
   if (changes.avatarUrl !== undefined) updateFields.avatar_url = normalizeString(changes.avatarUrl);
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
-  const anchorClauses = [`email.eq.${currentEmail}`];
+  const anchorClauses = [];
+  if (requestedEmail) anchorClauses.push(`email.eq.${requestedEmail}`);
+  anchorClauses.push(`email.eq.${currentEmail}`);
   requestedEmails.forEach((email) => anchorClauses.push(`email.eq.${email}`));
   if (authMemberId) anchorClauses.push(`id.eq.${authMemberId}`);
   if (requestedMemberId) anchorClauses.push(`id.eq.${requestedMemberId}`);
   requestedMemberIds.forEach((id) => anchorClauses.push(`id.eq.${id}`));
   const { data: anchorRows, error: anchorError } = await adminClient
     .from("members")
-    .select("id,email,owner_user_id,customer_type")
+    .select("id,email,name,owner_user_id,customer_type")
     .or(anchorClauses.join(","));
 
   if (anchorError) {
@@ -142,21 +152,57 @@ Deno.serve(async (req) => {
 
   const visibleAnchors = (anchorRows ?? []).filter((row) => {
     if (userRole !== "trainer") return true;
-    const ownerUserId = normalizeString((row as { owner_user_id?: string | null }).owner_user_id);
-    const customerType = normalizeString((row as { customer_type?: string | null }).customer_type).toLowerCase();
-    return ownerUserId === user.id || customerType === "medlem";
+    return canTrainerEditAnchor(
+      row as { owner_user_id?: string | null; customer_type?: string | null },
+      user.id,
+    );
+  });
+
+  const normalizedTargetEmails = new Set<string>(
+    [targetEmailForUpdate, currentEmail, ...requestedEmails].map((value) => normalizeEmail(value)).filter(Boolean),
+  );
+  const normalizedTargetNames = new Set<string>(
+    [
+      normalizeString(payload.targetName).toLowerCase(),
+      normalizeString(changes.name).toLowerCase(),
+      ...(visibleAnchors ?? []).map((row) => normalizeString((row as { name?: string | null }).name).toLowerCase()),
+    ].filter(Boolean),
+  );
+  let expandedRows: Array<{ id: string; email: string; owner_user_id: string | null; customer_type: string | null }> = [];
+  if (normalizedTargetEmails.size || normalizedTargetNames.size) {
+    // Legacy data can contain casing/whitespace variants in email, so do a broad fetch
+    // and normalize in-memory to find all duplicates that should sync together.
+    const { data: allRows, error: allRowsError } = await adminClient
+      .from("members")
+      .select("id,email,owner_user_id,customer_type");
+    if (allRowsError) {
+      return jsonResponse(500, { error: `Could not expand member targets: ${allRowsError.message}` });
+    }
+    expandedRows = (allRows ?? []).filter((row) => {
+      const rowEmail = normalizeEmail(row.email);
+      if (rowEmail && normalizedTargetEmails.has(rowEmail)) return true;
+      const rowName = normalizeString((row as { name?: string | null }).name).toLowerCase();
+      if (rowName && normalizedTargetNames.has(rowName)) return true;
+      return false;
+    });
+  }
+  const visibleExpandedRows = expandedRows.filter((row) => {
+    if (userRole !== "trainer") return true;
+    const hasAuthorizedAnchor = visibleAnchors.length > 0;
+    if (!hasAuthorizedAnchor) return false;
+    return true;
   });
 
   const targetIds = Array.from(
     new Set(
-      visibleAnchors
+      [...visibleAnchors, ...visibleExpandedRows]
         .map((row) => normalizeString(row.id))
         .filter(Boolean)
     )
   );
   const targetEmails = Array.from(
     new Set(
-      [currentEmail, ...visibleAnchors.map((row) => normalizeEmail(row.email))]
+      [targetEmailForUpdate, ...requestedEmails, ...visibleAnchors.map((row) => normalizeEmail(row.email)), ...visibleExpandedRows.map((row) => normalizeEmail(row.email))]
         .filter((value) => value && value.includes("@"))
     )
   );

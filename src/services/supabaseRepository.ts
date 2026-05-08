@@ -580,11 +580,16 @@ async function persistProgram(
 async function persistMember(member: Member) {
   if (!supabaseClient) return;
   const normalizedEmail = member.email.trim().toLowerCase();
+  const relatedMemberIds = await resolveRelatedMemberIds(member.id, {
+    targetEmail: normalizedEmail,
+    targetName: member.name,
+  });
   const syncPayload = {
     email: normalizedEmail,
     emails: [normalizedEmail],
     memberId: member.id,
-    memberIds: [member.id],
+    memberIds: relatedMemberIds.length ? relatedMemberIds : [member.id],
+    targetName: member.name,
     changes: {
       name: member.name,
       phone: member.phone,
@@ -612,7 +617,6 @@ async function persistMember(member: Member) {
     roleClaim === "member" || (authenticatedEmail && authenticatedEmail === normalizedEmail);
 
   if (shouldUseMemberProfileSync) {
-    const relatedMemberIds = await resolveRelatedMemberIds(member.id);
     const syncEmails = Array.from(
       new Set(
         [normalizedEmail, authenticatedEmail]
@@ -625,6 +629,7 @@ async function persistMember(member: Member) {
       emails: syncEmails,
       memberId: member.id,
       memberIds: relatedMemberIds,
+      targetName: member.name,
       changes: {
         name: member.name,
         phone: member.phone,
@@ -756,11 +761,12 @@ async function persistMember(member: Member) {
 
   if (error) {
     console.warn("Supabase member persist failed:", error.message);
-    // Fallback through service-role edge function for shared members / RLS mismatches.
-    const fallback = await supabaseClient.functions.invoke("update-member-profile", { body: syncPayload });
-    if (fallback.error) {
-      console.warn("Supabase member persist edge fallback failed:", fallback.error.message);
-    }
+  }
+  // Always sync profile changes through service-role endpoint so updates propagate
+  // across duplicate/shared member rows (not only when this single-row upsert fails).
+  const propagate = await supabaseClient.functions.invoke("update-member-profile", { body: syncPayload });
+  if (propagate.error) {
+    console.warn("Supabase member persist edge propagation failed:", propagate.error.message);
   }
 }
 

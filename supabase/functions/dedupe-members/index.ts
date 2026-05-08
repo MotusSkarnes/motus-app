@@ -9,6 +9,13 @@ const corsHeaders = {
 type DedupePayload = {
   ownerUserId?: string;
   apply?: boolean;
+  sharedGlobal?: boolean;
+  email?: string;
+  forceProfile?: {
+    name?: string;
+    phone?: string;
+    birthDate?: string;
+  };
 };
 
 type MemberRow = {
@@ -46,6 +53,10 @@ function memberScore(row: MemberRow): number {
   return score;
 }
 
+function normalizeEmail(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse(405, { error: "Method not allowed" });
@@ -65,32 +76,130 @@ Deno.serve(async (req) => {
 
   const ownerUserId = String(payload.ownerUserId ?? "").trim();
   const apply = payload.apply === true;
-  if (!ownerUserId) {
+  const sharedGlobal = payload.sharedGlobal === true;
+  const targetEmail = normalizeEmail(payload.email);
+  const forceProfile = payload.forceProfile ?? null;
+  if (!ownerUserId && !sharedGlobal) {
     return jsonResponse(400, { error: "ownerUserId is required" });
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
-  const { data: members, error: membersError } = await adminClient
+  const membersQuery = adminClient
     .from("members")
-    .select("id, owner_user_id, email, name, is_active, invited_at, days_since_activity, customer_type, membership_type")
-    .eq("owner_user_id", ownerUserId);
+    .select("id, owner_user_id, email, name, is_active, invited_at, days_since_activity, customer_type, membership_type");
+  const shouldScanAllMembersForTarget = sharedGlobal && Boolean(targetEmail);
+  const { data: members, error: membersError } = shouldScanAllMembersForTarget
+    ? await membersQuery
+    : sharedGlobal
+      ? await membersQuery.ilike("customer_type", "%medlem%")
+      : await membersQuery.eq("owner_user_id", ownerUserId);
 
   if (membersError) {
     return jsonResponse(500, { error: membersError.message });
   }
 
   const memberRows = (members ?? []) as MemberRow[];
+  const debugTargetRows = targetEmail
+    ? memberRows
+        .filter((row) => {
+          const rowEmail = normalizeEmail(row.email);
+          const rowName = String(row.name ?? "").trim().toLowerCase();
+          return rowEmail === targetEmail || rowName.includes("test medlem") || rowName.includes("test med");
+        })
+        .map((row) => ({
+          id: String(row.id ?? "").trim(),
+          email: normalizeEmail(row.email),
+          name: String(row.name ?? "").trim(),
+          ownerUserId: String(row.owner_user_id ?? "").trim(),
+          customerType: String(row.customer_type ?? "").trim(),
+        }))
+    : [];
+  if (apply && targetEmail && forceProfile) {
+    const name = String(forceProfile.name ?? "").trim();
+    const normalizedName = name.toLowerCase();
+    const phone = String(forceProfile.phone ?? "").trim();
+    const birthDate = String(forceProfile.birthDate ?? "").trim();
+    const targetIds = memberRows
+      .filter((row) => {
+        const rowEmail = normalizeEmail(row.email);
+        if (rowEmail === targetEmail) return true;
+        const rowName = String(row.name ?? "").trim().toLowerCase();
+        if (normalizedName && rowName && rowName.startsWith(normalizedName)) return true;
+        return false;
+      })
+      .map((row) => String(row.id ?? "").trim())
+      .filter(Boolean);
+    if (targetIds.length > 0) {
+      const { data: updatedRows, error: forceProfileError } = await adminClient
+        .from("members")
+        .update({
+          ...(name ? { name } : {}),
+          ...(phone ? { phone } : {}),
+          ...(birthDate ? { birth_date: birthDate } : {}),
+          email: targetEmail,
+        })
+        .in("id", targetIds)
+        .select("id");
+      if (forceProfileError) {
+        return jsonResponse(500, { error: `Force profile sync failed: ${forceProfileError.message}` });
+      }
+      return jsonResponse(200, {
+        ownerUserId,
+        apply,
+        sharedGlobal,
+        targetEmail,
+        forceProfileApplied: true,
+        debugTargetRows,
+        updatedMembers: (updatedRows ?? []).map((row) => String((row as { id?: string }).id ?? "").trim()).filter(Boolean),
+      });
+    }
+  }
   const byEmail = new Map<string, MemberRow[]>();
   memberRows.forEach((row) => {
-    const emailKey = String(row.email ?? "").trim().toLowerCase();
+    const emailKey = normalizeEmail(row.email);
     if (!emailKey) return;
     const group = byEmail.get(emailKey) ?? [];
     group.push(row);
     byEmail.set(emailKey, group);
   });
 
-  const duplicateGroups = Array.from(byEmail.entries()).filter(([, rows]) => rows.length > 1);
+  const duplicateGroups = Array.from(byEmail.entries()).filter(([email, rows]) => {
+    if (rows.length <= 1) return false;
+    if (!targetEmail) return true;
+    return email === targetEmail;
+  });
+  if (targetEmail && duplicateGroups.length === 0) {
+    const seedRows = memberRows.filter((row) => normalizeEmail(row.email) === targetEmail);
+    const seedNames = new Set(seedRows.map((row) => String(row.name ?? "").trim().toLowerCase()).filter(Boolean));
+    if (seedNames.size > 0) {
+      const connectedRows = memberRows.filter((row) => {
+        const emailKey = normalizeEmail(row.email);
+        if (emailKey === targetEmail) return true;
+        const nameKey = String(row.name ?? "").trim().toLowerCase();
+        return Boolean(nameKey) && seedNames.has(nameKey);
+      });
+      if (connectedRows.length > 1) {
+        duplicateGroups.push([targetEmail, connectedRows]);
+      }
+    }
+  }
   const groupResults: Array<Record<string, unknown>> = [];
+
+  let authUsersByEmail = new Map<string, string[]>();
+  if (sharedGlobal) {
+    const { data: listData, error: listError } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (listError) {
+      return jsonResponse(500, { error: `Could not list auth users: ${listError.message}` });
+    }
+    for (const user of listData?.users ?? []) {
+      const emailKey = normalizeEmail(user.email);
+      if (!emailKey) continue;
+      const ids = authUsersByEmail.get(emailKey) ?? [];
+      const authUserId = String(user.id ?? "").trim();
+      if (authUserId) ids.push(authUserId);
+      authUsersByEmail.set(emailKey, ids);
+    }
+  }
 
   for (const [email, rows] of duplicateGroups) {
     const sorted = [...rows].sort((a, b) => memberScore(b) - memberScore(a));
@@ -100,7 +209,15 @@ Deno.serve(async (req) => {
       .slice(1)
       .map((row) => String(row.id ?? "").trim())
       .filter(Boolean);
-    if (!canonicalId || duplicateIds.length === 0) continue;
+    if (sharedGlobal) {
+      for (const authUserId of authUsersByEmail.get(email) ?? []) {
+        if (authUserId && authUserId !== canonicalId) duplicateIds.push(authUserId);
+        if (authUserId && `auth-${authUserId}` !== canonicalId) duplicateIds.push(`auth-${authUserId}`);
+      }
+      duplicateIds.push(email);
+    }
+    const uniqueDuplicateIds = Array.from(new Set(duplicateIds)).filter((id) => id && id !== canonicalId);
+    if (!canonicalId || uniqueDuplicateIds.length === 0) continue;
 
     let movedPrograms = 0;
     let movedLogs = 0;
@@ -111,7 +228,7 @@ Deno.serve(async (req) => {
       const { data: updatedPrograms, error: programsError } = await adminClient
         .from("training_programs")
         .update({ member_id: canonicalId })
-        .in("member_id", duplicateIds)
+        .in("member_id", uniqueDuplicateIds)
         .select("id");
       if (programsError) {
         return jsonResponse(500, { error: `Program update failed for ${email}: ${programsError.message}` });
@@ -121,7 +238,7 @@ Deno.serve(async (req) => {
       const { data: updatedLogs, error: logsError } = await adminClient
         .from("workout_logs")
         .update({ member_id: canonicalId })
-        .in("member_id", duplicateIds)
+        .in("member_id", uniqueDuplicateIds)
         .select("id");
       if (logsError) {
         return jsonResponse(500, { error: `Workout log update failed for ${email}: ${logsError.message}` });
@@ -131,28 +248,30 @@ Deno.serve(async (req) => {
       const { data: updatedMessages, error: messagesError } = await adminClient
         .from("chat_messages")
         .update({ member_id: canonicalId })
-        .in("member_id", duplicateIds)
+        .in("member_id", uniqueDuplicateIds)
         .select("id");
       if (messagesError) {
         return jsonResponse(500, { error: `Message update failed for ${email}: ${messagesError.message}` });
       }
       movedMessages = (updatedMessages ?? []).length;
 
-      const { data: updatedMembers, error: membersUpdateError } = await adminClient
-        .from("members")
-        .update({ is_active: false })
-        .in("id", duplicateIds)
-        .select("id");
-      if (membersUpdateError) {
-        return jsonResponse(500, { error: `Member deactivate failed for ${email}: ${membersUpdateError.message}` });
+      if (!sharedGlobal) {
+        const { data: updatedMembers, error: membersUpdateError } = await adminClient
+          .from("members")
+          .update({ is_active: false })
+          .in("id", uniqueDuplicateIds)
+          .select("id");
+        if (membersUpdateError) {
+          return jsonResponse(500, { error: `Member deactivate failed for ${email}: ${membersUpdateError.message}` });
+        }
+        deactivatedMembers = (updatedMembers ?? []).length;
       }
-      deactivatedMembers = (updatedMembers ?? []).length;
     }
 
     groupResults.push({
       email,
       canonicalId,
-      duplicateIds,
+      duplicateIds: uniqueDuplicateIds,
       movedPrograms,
       movedLogs,
       movedMessages,
@@ -163,6 +282,9 @@ Deno.serve(async (req) => {
   return jsonResponse(200, {
     ownerUserId,
     apply,
+    sharedGlobal,
+    targetEmail,
+    debugTargetRows,
     duplicateGroupCount: duplicateGroups.length,
     groups: groupResults,
   });

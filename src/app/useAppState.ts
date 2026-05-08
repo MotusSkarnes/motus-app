@@ -359,7 +359,14 @@ export function useAppState() {
               return !remoteIdentityKeys.has(identityKey);
             });
             if (missingLocalMembers.length > 0) {
-              mergedMembers = [...mergedMembers, ...missingLocalMembers];
+              // Do not resurrect stale shared-member duplicates from local cache.
+              // For "Medlem", hydrate-trainer-data is the source of truth.
+              const safeMissingMembers = missingLocalMembers.filter(
+                (member) => String(member.customerType ?? "").trim().toLowerCase() !== "medlem",
+              );
+              if (safeMissingMembers.length > 0) {
+                mergedMembers = [...mergedMembers, ...safeMissingMembers];
+              }
             }
           }
           next.members = mergedMembers;

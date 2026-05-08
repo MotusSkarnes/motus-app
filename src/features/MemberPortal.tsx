@@ -11,6 +11,7 @@ import { Card, DangerButton, EmptyState, GradientButton, OutlineButton, SelectBo
 import { uid } from "../app/storage";
 import type { LogGroupWorkoutInput, ReplaceWorkoutExerciseGroupInput, StartCustomWorkoutInput, StartWorkoutModeOptions, UpdateMemberInput } from "../services/appRepository";
 import { mergedPeriodPlanListForMember } from "../app/periodPlanMerge";
+import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClear";
 import type {
   ChatMessage,
   Exercise,
@@ -360,6 +361,12 @@ export function MemberPortal(props: MemberPortalProps) {
     currentUserRole === "member" && normalizedCurrentUserEmail
       ? pickCanonicalMemberRow(normalizedCurrentUserEmail, members, programs, currentUserMemberId)
       : null;
+  useAutoClearStatus(memberChatSendStatus, () => setMemberChatSendStatus(null), getStatusClearDelayMs(memberChatSendStatus));
+  useAutoClearStatus(pushRegisterStatus, () => setPushRegisterStatus(null), getStatusClearDelayMs(pushRegisterStatus));
+  useAutoClearStatus(groupWorkoutStatus, () => setGroupWorkoutStatus(null), getStatusClearDelayMs(groupWorkoutStatus));
+  useAutoClearStatus(progressShareStatus, () => setProgressShareStatus(null), getStatusClearDelayMs(progressShareStatus));
+  useAutoClearStatus(periodPlanActionStatus, () => setPeriodPlanActionStatus(null), getStatusClearDelayMs(periodPlanActionStatus));
+  useAutoClearStatus(intervalTimerStatus, () => setIntervalTimerStatus(null), getStatusClearDelayMs(intervalTimerStatus));
   const editableMember =
     currentUserRole === "member"
       ? currentMemberByEmail ?? viewedMember ?? null
@@ -889,6 +896,7 @@ export function MemberPortal(props: MemberPortalProps) {
     emails: string[];
     memberId: string;
     memberIds: string[];
+    targetName?: string;
     expectedMinUpdated: number;
     changes: {
       name: string;
@@ -1570,6 +1578,7 @@ export function MemberPortal(props: MemberPortalProps) {
       ),
       memberId: editableMember.id,
       memberIds: targetIds,
+      targetName: editableMember.name,
       expectedMinUpdated: 1,
       changes: {
         personalGoals: encoded,
@@ -1911,6 +1920,7 @@ export function MemberPortal(props: MemberPortalProps) {
         ),
         memberId: editableMember.id,
         memberIds: safeTargetIds,
+        targetName: memberNameDraft,
         // Treat sync as healthy when at least one canonical row is updated.
         // Duplicate legacy rows may lag and be healed by subsequent sync paths.
         expectedMinUpdated: 1,

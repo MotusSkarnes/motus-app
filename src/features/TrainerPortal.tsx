@@ -3,6 +3,7 @@ import { ClipboardList, Dumbbell, Eye, EyeOff, MessageSquare, Pencil, ShieldChec
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
+import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClear";
 import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { uid } from "../app/storage";
 import { Card, DangerButton, EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
@@ -448,6 +449,22 @@ function pickFirstName(value: unknown): string {
   const [workoutTypeFilter, setWorkoutTypeFilter] = useState<"all" | "program" | "group">("all");
   const [workoutSearchQuery, setWorkoutSearchQuery] = useState("");
   const [workoutSortOrder, setWorkoutSortOrder] = useState<"newest" | "oldest">("newest");
+  useAutoClearStatus(trainerChatSendStatus, () => setTrainerChatSendStatus(null), getStatusClearDelayMs(trainerChatSendStatus));
+  useAutoClearStatus(templateAssignStatus, () => setTemplateAssignStatus(null), getStatusClearDelayMs(templateAssignStatus));
+  useAutoClearStatus(periodPlanStatus, () => setPeriodPlanStatus(null), getStatusClearDelayMs(periodPlanStatus));
+  useAutoClearStatus(programSaveStatus, () => setProgramSaveStatus(null), getStatusClearDelayMs(programSaveStatus));
+  useAutoClearStatus(inviteTrainerStatus, () => setInviteTrainerStatus(null), getStatusClearDelayMs(inviteTrainerStatus));
+  useAutoClearStatus(inviteStatus, () => setInviteStatus(null), getStatusClearDelayMs(inviteStatus));
+  useAutoClearStatus(memberLinkStatus, () => setMemberLinkStatus(null), getStatusClearDelayMs(memberLinkStatus));
+  useAutoClearStatus(memberEditStatus, () => setMemberEditStatus(null), getStatusClearDelayMs(memberEditStatus));
+  useAutoClearStatus(restoreStatus, () => setRestoreStatus(null), getStatusClearDelayMs(restoreStatus));
+  useAutoClearStatus(memberDedupeStatus, () => setMemberDedupeStatus(null), getStatusClearDelayMs(memberDedupeStatus));
+  useAutoClearStatus(adminHealthStatus, () => setAdminHealthStatus(null), getStatusClearDelayMs(adminHealthStatus));
+  useAutoClearStatus(adminCacheStatus, () => setAdminCacheStatus(null), getStatusClearDelayMs(adminCacheStatus));
+  useAutoClearStatus(restoreDataStatus, () => setRestoreDataStatus(null), getStatusClearDelayMs(restoreDataStatus));
+  useAutoClearStatus(restoreExerciseBankStatus, () => setRestoreExerciseBankStatus(null), getStatusClearDelayMs(restoreExerciseBankStatus));
+  useAutoClearStatus(followUpSaveStatus, () => setFollowUpSaveStatus(null), getStatusClearDelayMs(followUpSaveStatus));
+  useAutoClearStatus(exerciseFormStatus, () => setExerciseFormStatus(null), getStatusClearDelayMs(exerciseFormStatus));
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
   const selectedMemberHasMessagingAccess = selectedMember
     ? selectedMember.customerType === "PT-kunde" || selectedMember.membershipType === "Premium"
@@ -457,6 +474,29 @@ function pickFirstName(value: unknown): string {
     const emailKey = member.email.trim().toLowerCase();
     const nameKey = member.name.trim().toLowerCase();
     return emailKey || `name:${nameKey}`;
+  }
+  function pickCanonicalMemberProfile(base: Member, candidates: Member[]): Member {
+    if (!candidates.length) return base;
+    const pickLatestNonEmpty = (values: string[]): string => {
+      for (let i = values.length - 1; i >= 0; i -= 1) {
+        const value = String(values[i] ?? "").trim();
+        if (value) return value;
+      }
+      return "";
+    };
+    const names = candidates.map((member) => member.name);
+    const phones = candidates.map((member) => member.phone);
+    const birthDates = candidates.map((member) => member.birthDate);
+    const goals = candidates.map((member) => member.goal);
+    const injuries = candidates.map((member) => member.injuries);
+    return {
+      ...base,
+      name: pickLatestNonEmpty(names) || base.name,
+      phone: pickLatestNonEmpty(phones) || base.phone,
+      birthDate: pickLatestNonEmpty(birthDates) || base.birthDate,
+      goal: pickLatestNonEmpty(goals) || base.goal,
+      injuries: pickLatestNonEmpty(injuries) || base.injuries,
+    };
   }
   const deduplicatedMembers = useMemo(() => {
     function memberScore(member: Member): number {
@@ -474,19 +514,43 @@ function pickFirstName(value: unknown): string {
       return score;
     }
 
-    const byIdentity = new Map<string, Member>();
+    const pickLatestNonEmpty = (values: string[]): string => {
+      for (let i = values.length - 1; i >= 0; i -= 1) {
+        const value = String(values[i] ?? "").trim();
+        if (value) return value;
+      }
+      return "";
+    };
+
+    const byIdentity = new Map<string, Member[]>();
     members.forEach((member) => {
       const identityKey = getMemberIdentityKey(member);
-      const existing = byIdentity.get(identityKey);
-      if (!existing) {
-        byIdentity.set(identityKey, member);
-        return;
-      }
-      if (memberScore(member) > memberScore(existing)) {
-        byIdentity.set(identityKey, member);
-      }
+      const group = byIdentity.get(identityKey) ?? [];
+      group.push(member);
+      byIdentity.set(identityKey, group);
     });
-    return Array.from(byIdentity.values());
+
+    const merged: Member[] = [];
+    for (const [, group] of byIdentity) {
+      if (!group.length) continue;
+      const sorted = [...group].sort((a, b) => memberScore(b) - memberScore(a));
+      const base = sorted[0] ?? group[0];
+      if (!base) continue;
+      const names = group.map((member) => member.name);
+      const phones = group.map((member) => member.phone);
+      const birthDates = group.map((member) => member.birthDate);
+      const goals = group.map((member) => member.goal);
+      const injuries = group.map((member) => member.injuries);
+      merged.push({
+        ...base,
+        name: pickLatestNonEmpty(names) || base.name,
+        phone: pickLatestNonEmpty(phones) || base.phone,
+        birthDate: pickLatestNonEmpty(birthDates) || base.birthDate,
+        goal: pickLatestNonEmpty(goals) || base.goal,
+        injuries: pickLatestNonEmpty(injuries) || base.injuries,
+      });
+    }
+    return merged;
   }, [members, currentTrainerOwnerUserId]);
   const activeMembers = useMemo(
     () => deduplicatedMembers.filter((member) => member.isActive !== false),
@@ -627,6 +691,11 @@ function pickFirstName(value: unknown): string {
   }, [members, selectedMemberId]);
   const selectedMemberRelatedIdSet = useMemo(() => new Set(selectedMemberRelatedIds), [selectedMemberRelatedIds]);
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
+  const selectedMemberProfile = useMemo(() => {
+    if (!selectedMember) return null;
+    const relatedMembers = members.filter((member) => selectedMemberRelatedIdSet.has(member.id));
+    return pickCanonicalMemberProfile(selectedMember, relatedMembers);
+  }, [selectedMember, members, selectedMemberRelatedIdSet]);
   const selectedPrograms = useMemo(
     () => {
       const selected = members.find((member) => member.id === selectedMemberId) ?? null;
@@ -1045,13 +1114,13 @@ function pickFirstName(value: unknown): string {
   }
 
   useEffect(() => {
-    resetMemberEditDraftFromSelected(selectedMember);
+    resetMemberEditDraftFromSelected(selectedMemberProfile);
     setMemberEditStatus(null);
     setIsEditingCustomerCard(false);
     // Only reset edit mode when selected customer actually changes.
     // Background hydration can replace member objects and should not close the editor.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMemberId]);
+  }, [selectedMemberId, selectedMemberProfile]);
 
   function formatInvitedAt(iso: string): string {
     if (!iso) return "";
@@ -1729,9 +1798,20 @@ function pickFirstName(value: unknown): string {
       return;
     }
     const previousEmail = selectedMember.email.trim().toLowerCase();
+    const previousName = (selectedMemberProfile?.name ?? selectedMember.name).trim().toLowerCase();
+    const shouldFanOutSharedMemberUpdates =
+      selectedMember.customerType === "Medlem" || memberEditIsSharedMember;
     const targetMemberIds = members
-      .filter((member) => member.email.trim().toLowerCase() === previousEmail)
       .filter((member) => {
+        const memberEmail = member.email.trim().toLowerCase();
+        const memberName = member.name.trim().toLowerCase();
+        if (memberEmail && memberEmail === previousEmail) return true;
+        // Some legacy shared rows are connected by name only.
+        if (shouldFanOutSharedMemberUpdates && memberName && memberName === previousName) return true;
+        return false;
+      })
+      .filter((member) => {
+        if (shouldFanOutSharedMemberUpdates) return true;
         const owner = (member.ownerUserId ?? "").trim();
         if (!owner) return true;
         if (currentTrainerOwnerUserId && owner === currentTrainerOwnerUserId) return true;
@@ -2969,7 +3049,7 @@ function pickFirstName(value: unknown): string {
                       ) : null}
                     </div>
                   </div>
-                  <div className="mt-1 text-2xl font-bold tracking-tight">{selectedMember.name}</div>
+                  <div className="mt-1 text-2xl font-bold tracking-tight">{selectedMemberProfile?.name ?? selectedMember.name}</div>
                   {isEditingCustomerCard ? (
                     <div className="mt-3 space-y-3 rounded-2xl border border-white/25 bg-white/10 p-3">
                       <div className="grid gap-3 md:grid-cols-2">
@@ -3085,20 +3165,20 @@ function pickFirstName(value: unknown): string {
                         </div>
                         <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm">
                           <div className="text-[11px] text-white/70">Telefon</div>
-                          <div className="font-medium text-white/95">{selectedMember.phone || "Ikke satt"}</div>
+                          <div className="font-medium text-white/95">{selectedMemberProfile?.phone || selectedMember.phone || "Ikke satt"}</div>
                         </div>
                         <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm">
                           <div className="text-[11px] text-white/70">Fødselsdato</div>
-                          <div className="font-medium text-white/95">{selectedMember.birthDate || "Ikke satt"}</div>
+                          <div className="font-medium text-white/95">{selectedMemberProfile?.birthDate || selectedMember.birthDate || "Ikke satt"}</div>
                         </div>
                         <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm">
                           <div className="text-[11px] text-white/70">Mål</div>
-                          <div className="font-medium text-white/95">{selectedMember.goal || "Ikke satt"}</div>
+                          <div className="font-medium text-white/95">{selectedMemberProfile?.goal || selectedMember.goal || "Ikke satt"}</div>
                         </div>
                       </div>
                       <div className="mt-2 rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm">
                         <div className="text-[11px] text-white/70">Skader/hensyn</div>
-                        <div className="font-medium text-white/95">{selectedMember.injuries || "Ingen registrerte skader"}</div>
+                        <div className="font-medium text-white/95">{selectedMemberProfile?.injuries || selectedMember.injuries || "Ingen registrerte skader"}</div>
                       </div>
                       <div className="mt-2 text-sm text-white/85">
                         Sist trening: {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}
@@ -3190,10 +3270,10 @@ function pickFirstName(value: unknown): string {
                     <div className="rounded-xl border bg-slate-50 p-4">
                       <div className="font-semibold">Kort status</div>
                       <div className="mt-3 space-y-2 text-sm text-slate-600">
-                        <div><span className="font-medium text-slate-800">Mål:</span> {selectedMember.goal || "Ikke satt"}</div>
+                        <div><span className="font-medium text-slate-800">Mål:</span> {selectedMemberProfile?.goal || selectedMember.goal || "Ikke satt"}</div>
                         <div><span className="font-medium text-slate-800">Kundetype:</span> {selectedMember.customerType}</div>
                         <div><span className="font-medium text-slate-800">Medlemskap:</span> {selectedMember.membershipType}</div>
-                        <div><span className="font-medium text-slate-800">Skader/hensyn:</span> {selectedMember.injuries || "Ingen registrerte skader"}</div>
+                        <div><span className="font-medium text-slate-800">Skader/hensyn:</span> {selectedMemberProfile?.injuries || selectedMember.injuries || "Ingen registrerte skader"}</div>
                       </div>
                     </div>
                     <div className="rounded-xl border bg-slate-50 p-4">
