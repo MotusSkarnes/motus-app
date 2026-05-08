@@ -1509,7 +1509,6 @@ function pickFirstName(value: string): string {
 
   function handlePrintProgram(program: TrainingProgram) {
     if (typeof window === "undefined") return;
-    const printWindow = window.open("", "_blank", "width=900,height=1100");
     const recipientName = (selectedMember?.name || "Kunde").trim();
     const trainerLabel = (pickFirstName(program.assignedTrainerName ?? "") || pickFirstName(MOTUS.name) || "Trener").trim();
     const exercisesHtml =
@@ -1634,12 +1633,6 @@ function pickFirstName(value: string): string {
   </script>
 </body>
 </html>`;
-    try {
-      printWindow.close();
-    } catch {
-      // ignore
-    }
-
     // Edge-safe path: render in hidden iframe and print from iframe context.
     const iframe = document.createElement("iframe");
     iframe.style.position = "fixed";
