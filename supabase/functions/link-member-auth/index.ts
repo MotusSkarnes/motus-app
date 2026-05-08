@@ -28,6 +28,12 @@ function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
 }
 
+function firstNameFromEmail(email: string): string {
+  const localPart = (email.split("@")[0] ?? "").replace(/[._-]+/g, " ").trim();
+  const firstToken = localPart.split(/\s+/)[0] ?? "";
+  return firstToken.trim() || "Medlem";
+}
+
 function parseDateScore(value: string | null): number {
   if (!value) return 0;
   const parsed = new Date(value);
@@ -79,7 +85,43 @@ Deno.serve(async (req) => {
     }))
     .filter((row) => row.id);
   if (!candidates.length) {
-    return jsonResponse(404, { error: "No member row found for email" });
+    const { data: listData, error: listError } = await adminClient.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+    if (listError) {
+      return jsonResponse(500, { error: `Could not list auth users: ${listError.message}` });
+    }
+    const users = listData?.users ?? [];
+    const matchedUser = users.find((user) => normalizeEmail(user.email) === email);
+    if (!matchedUser) {
+      return jsonResponse(404, { error: "No member row found for email" });
+    }
+    const fallbackId = memberId || String(matchedUser.user_metadata?.member_id ?? "").trim() || matchedUser.id;
+    const fallbackName =
+      String(matchedUser.user_metadata?.full_name ?? matchedUser.user_metadata?.name ?? "").trim() || firstNameFromEmail(email);
+    const { error: upsertError } = await adminClient.from("members").upsert(
+      {
+        id: fallbackId,
+        owner_user_id: matchedUser.id,
+        name: fallbackName,
+        email,
+        is_active: true,
+        membership_type: "Standard",
+        customer_type: "Medlem",
+        days_since_activity: "0",
+        goal: "",
+        focus: "",
+        personal_goals: "",
+        injuries: "",
+        coach_notes: "",
+      },
+      { onConflict: "id" },
+    );
+    if (upsertError) {
+      return jsonResponse(500, { error: `Could not create member row: ${upsertError.message}` });
+    }
+    candidates.push({ id: fallbackId, is_active: true, created_at: null });
   }
 
   const candidateIds = candidates.map((row) => row.id);
