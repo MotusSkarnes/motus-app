@@ -580,6 +580,22 @@ async function persistProgram(
 async function persistMember(member: Member) {
   if (!supabaseClient) return;
   const normalizedEmail = member.email.trim().toLowerCase();
+  const syncPayload = {
+    email: normalizedEmail,
+    emails: [normalizedEmail],
+    memberId: member.id,
+    memberIds: [member.id],
+    changes: {
+      name: member.name,
+      phone: member.phone,
+      birthDate: member.birthDate,
+      goal: member.goal,
+      focus: member.focus,
+      injuries: member.injuries,
+      personalGoals: member.personalGoals,
+      avatarUrl: member.avatarUrl ?? "",
+    },
+  };
   const {
     data: { user },
   } = await supabaseClient.auth.getUser();
@@ -740,6 +756,11 @@ async function persistMember(member: Member) {
 
   if (error) {
     console.warn("Supabase member persist failed:", error.message);
+    // Fallback through service-role edge function for shared members / RLS mismatches.
+    const fallback = await supabaseClient.functions.invoke("update-member-profile", { body: syncPayload });
+    if (fallback.error) {
+      console.warn("Supabase member persist edge fallback failed:", fallback.error.message);
+    }
   }
 }
 

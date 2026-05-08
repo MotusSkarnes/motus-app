@@ -85,8 +85,8 @@ Deno.serve(async (req) => {
   })();
   // Some existing auth users may be missing explicit role metadata.
   // Authorization is still enforced by validating authenticated email below.
-  if (userRole && userRole !== "member") {
-    return jsonResponse(403, { error: "Only members can update profile through this endpoint" });
+  if (userRole && userRole !== "member" && userRole !== "trainer") {
+    return jsonResponse(403, { error: "Only members/trainers can update profile through this endpoint" });
   }
 
   const currentEmail = normalizeEmail(user.email);
@@ -133,28 +133,58 @@ Deno.serve(async (req) => {
   requestedMemberIds.forEach((id) => anchorClauses.push(`id.eq.${id}`));
   const { data: anchorRows, error: anchorError } = await adminClient
     .from("members")
-    .select("id,email")
+    .select("id,email,owner_user_id,customer_type")
     .or(anchorClauses.join(","));
 
   if (anchorError) {
     return jsonResponse(500, { error: `Could not resolve member anchors: ${anchorError.message}` });
   }
 
+  const visibleAnchors = (anchorRows ?? []).filter((row) => {
+    if (userRole !== "trainer") return true;
+    const ownerUserId = normalizeString((row as { owner_user_id?: string | null }).owner_user_id);
+    const customerType = normalizeString((row as { customer_type?: string | null }).customer_type).toLowerCase();
+    return ownerUserId === user.id || customerType === "medlem";
+  });
+
   const targetIds = Array.from(
     new Set(
-      (anchorRows ?? [])
+      visibleAnchors
         .map((row) => normalizeString(row.id))
         .filter(Boolean)
     )
   );
   const targetEmails = Array.from(
     new Set(
-      [currentEmail, ...(anchorRows ?? []).map((row) => normalizeEmail(row.email))]
+      [currentEmail, ...visibleAnchors.map((row) => normalizeEmail(row.email))]
         .filter((value) => value && value.includes("@"))
     )
   );
   if (!targetIds.length && !targetEmails.length) {
-    return jsonResponse(200, { message: "No matching member rows found", updated: 0 });
+    // Last-resort bootstrap for missing member row: create one tied to auth user.
+    const fallbackMemberId = authMemberId || requestedMemberId || `member-${crypto.randomUUID().slice(0, 8)}`;
+    const insertPayload: Record<string, unknown> = {
+      id: fallbackMemberId,
+      owner_user_id: user.id,
+      email: currentEmail,
+      is_active: true,
+      customer_type: "Medlem",
+      membership_type: "Standard",
+      days_since_activity: "0",
+      name: normalizeString(changes.name) || normalizeString((user.user_metadata?.full_name as string | undefined) ?? user.email),
+      phone: normalizeString(changes.phone),
+      birth_date: normalizeString(changes.birthDate),
+      goal: normalizeString(changes.goal),
+      focus: normalizeString(changes.focus),
+      injuries: normalizeString(changes.injuries),
+      personal_goals: normalizeString(changes.personalGoals),
+      avatar_url: normalizeString(changes.avatarUrl),
+    };
+    const bootstrapResult = await adminClient.from("members").upsert(insertPayload, { onConflict: "id" }).select("id");
+    if (bootstrapResult.error) {
+      return jsonResponse(500, { error: `Could not bootstrap member row: ${bootstrapResult.error.message}` });
+    }
+    return jsonResponse(200, { message: "Member profile synced (bootstrapped)", updated: bootstrapResult.data?.length ?? 0 });
   }
 
   const updatedIds = new Set<string>();
