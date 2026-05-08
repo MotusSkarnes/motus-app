@@ -221,13 +221,26 @@ export function useAppState() {
       const isMemberLikeSession = Boolean(sessionUser) && !isTrainerSession;
       const hydratedTrainer = isTrainerSession && ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
       const hydratedMember = isMemberLikeSession ? await fetchHydratedMemberData() : null;
+      const directMemberPrograms = isMemberLikeSession && !hydratedMember ? await fetchProgramsFromSupabase() : null;
+      const directMemberLogs = isMemberLikeSession && !hydratedMember ? await fetchLogsFromSupabase() : null;
       const directTrainerMembers = isTrainerSession ? await fetchMembersFromSupabase() : null;
       const remoteMembers = hydratedTrainer
         ? mergeMembersById(hydratedTrainer.members, directTrainerMembers)
         : hydratedMember?.members ?? directTrainerMembers ?? (await fetchMembersFromSupabase());
       const remoteMessages = hydratedTrainer?.messages ?? hydratedMember?.messages ?? (await fetchMessagesFromSupabase());
-      const remotePrograms = hydratedTrainer?.programs ?? hydratedMember?.programs ?? (await fetchProgramsFromSupabase());
-      const remoteLogs = hydratedTrainer?.logs ?? hydratedMember?.logs ?? (await fetchLogsFromSupabase());
+      const remotePrograms = hydratedTrainer?.programs ?? hydratedMember?.programs ?? directMemberPrograms;
+      const remoteLogs = hydratedTrainer?.logs ?? hydratedMember?.logs ?? directMemberLogs;
+      const trainerHydrateFailed =
+        Boolean(hydratedTrainer) &&
+        (hydratedTrainer?.debug?.status === "invoke_error" || hydratedTrainer?.debug?.status === "invalid_payload");
+      const trustRemotePrograms =
+        (isTrainerSession && Boolean(hydratedTrainer) && !trainerHydrateFailed) ||
+        (isMemberLikeSession && hydratedMember !== null) ||
+        (isMemberLikeSession && directMemberPrograms !== null);
+      const trustRemoteLogs =
+        (isTrainerSession && Boolean(hydratedTrainer) && !trainerHydrateFailed) ||
+        (isMemberLikeSession && hydratedMember !== null) ||
+        (isMemberLikeSession && directMemberLogs !== null);
       const remoteExercises =
         hydratedTrainer?.exercises ?? hydratedMember?.exercises ?? (await fetchExercisesFromSupabase());
       if (cancelled) return;
@@ -311,12 +324,16 @@ export function useAppState() {
           next.messages = remoteMessages;
         }
 
-        if (shouldAdoptRemote(remotePrograms, prev.programs)) {
-          next.programs = remotePrograms;
+        if (trustRemotePrograms) {
+          next.programs = remotePrograms ?? [];
+        } else if (shouldAdoptRemote(remotePrograms, prev.programs)) {
+          next.programs = remotePrograms!;
         }
 
-        if (shouldAdoptRemote(remoteLogs, prev.logs)) {
-          next.logs = remoteLogs;
+        if (trustRemoteLogs) {
+          next.logs = remoteLogs ?? [];
+        } else if (shouldAdoptRemote(remoteLogs, prev.logs)) {
+          next.logs = remoteLogs!;
         }
 
         if (shouldAdoptNonEmptyRemoteOnly(remoteExercises)) {
