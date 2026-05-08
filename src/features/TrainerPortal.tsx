@@ -1509,6 +1509,12 @@ function pickFirstName(value: string): string {
 
   function handlePrintProgram(program: TrainingProgram) {
     if (typeof window === "undefined") return;
+    // Open tab immediately within click gesture to avoid popup blockers in Edge.
+    const printTab = window.open("about:blank", "_blank");
+    if (!printTab) {
+      window.alert("Nettleseren blokkerte popup-vinduet for utskrift. Tillat popup for denne siden.");
+      return;
+    }
     const recipientName = (selectedMember?.name || "Kunde").trim();
     const trainerLabel = (pickFirstName(program.assignedTrainerName ?? "") || pickFirstName(MOTUS.name) || "Trener").trim();
     const exercisesHtml =
@@ -1636,19 +1642,7 @@ function pickFirstName(value: string): string {
     try {
       const blob = new Blob([html], { type: "text/html;charset=utf-8" });
       const blobUrl = URL.createObjectURL(blob);
-      const printTab = window.open(blobUrl, "_blank");
-      if (!printTab) {
-        // Popup blocked: download html so user can open/print manually.
-        const a = document.createElement("a");
-        a.href = blobUrl;
-        a.download = `${program.title || "treningsprogram"}.html`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.alert("Popup ble blokkert. HTML-filen ble lastet ned – åpne den og skriv ut som PDF.");
-        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
-        return;
-      }
+      printTab.location.href = blobUrl;
       window.setTimeout(() => {
         try {
           printTab.focus();
@@ -1660,6 +1654,11 @@ function pickFirstName(value: string): string {
       window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
     } catch (error) {
       console.warn("Trainer print: blob print failed.", error);
+      try {
+        printTab.close();
+      } catch {
+        // ignore
+      }
       window.alert("Kunne ikke generere PDF/utskrift. Prøv igjen.");
     }
   }
