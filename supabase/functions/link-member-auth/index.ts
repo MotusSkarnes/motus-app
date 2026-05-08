@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
   const { data: memberRows, error: memberLookupError } = await adminClient
     .from("members")
     .select("id, is_active, created_at")
-    .eq("email", email);
+    .ilike("email", email);
   if (memberLookupError) {
     return jsonResponse(500, { error: `Could not resolve member by email: ${memberLookupError.message}` });
   }
@@ -178,7 +178,38 @@ Deno.serve(async (req) => {
   }
 
   let updated = 0;
+  const legacyMemberIds = new Set<string>(
+    candidates.map((candidate) => candidate.id).filter((id) => id && id !== memberId),
+  );
   for (const user of targetUsers) {
+    const authUserId = String(user.id ?? "").trim();
+    if (authUserId) {
+      const { data: ownerRows, error: ownerRowsError } = await adminClient
+        .from("members")
+        .select("id")
+        .eq("owner_user_id", authUserId);
+      if (ownerRowsError) {
+        console.warn(`link-member-auth: owner member lookup failed for ${authUserId}:`, ownerRowsError.message);
+      } else {
+        for (const row of ownerRows ?? []) {
+          const id = String((row as { id?: string }).id ?? "").trim();
+          if (id && id !== memberId) legacyMemberIds.add(id);
+        }
+      }
+    }
+    if (authUserId && authUserId !== memberId) {
+      legacyMemberIds.add(authUserId);
+      legacyMemberIds.add(`auth-${authUserId}`);
+    }
+    const appMetaMemberId = String((user.app_metadata?.member_id as string | undefined) ?? "").trim();
+    if (appMetaMemberId && appMetaMemberId !== memberId) {
+      legacyMemberIds.add(appMetaMemberId);
+    }
+    const userMetaMemberId = String((user.user_metadata?.member_id as string | undefined) ?? "").trim();
+    if (userMetaMemberId && userMetaMemberId !== memberId) {
+      legacyMemberIds.add(userMetaMemberId);
+    }
+
     const existingAppMetadata =
       user.app_metadata && typeof user.app_metadata === "object"
         ? (user.app_metadata as Record<string, unknown>)
@@ -205,5 +236,55 @@ Deno.serve(async (req) => {
     }
   }
 
-  return jsonResponse(200, { message: "Auth member link synced", updated });
+  // Normalize historical rows that may still point to legacy ids, so member data resolves consistently.
+  let migratedPrograms = 0;
+  let migratedLogs = 0;
+  let migratedMessages = 0;
+  for (const legacyId of legacyMemberIds) {
+    const normalizedLegacyId = String(legacyId ?? "").trim();
+    if (!normalizedLegacyId || normalizedLegacyId === memberId) continue;
+
+    const { data: programRows, error: programUpdateError } = await adminClient
+      .from("training_programs")
+      .update({ member_id: memberId })
+      .eq("member_id", normalizedLegacyId)
+      .select("id");
+    if (programUpdateError) {
+      console.warn(`link-member-auth: program member_id migrate failed for ${normalizedLegacyId}:`, programUpdateError.message);
+    } else {
+      migratedPrograms += (programRows ?? []).length;
+    }
+
+    const { data: logRows, error: logUpdateError } = await adminClient
+      .from("workout_logs")
+      .update({ member_id: memberId })
+      .eq("member_id", normalizedLegacyId)
+      .select("id");
+    if (logUpdateError) {
+      console.warn(`link-member-auth: workout_log member_id migrate failed for ${normalizedLegacyId}:`, logUpdateError.message);
+    } else {
+      migratedLogs += (logRows ?? []).length;
+    }
+
+    const { data: messageRows, error: messageUpdateError } = await adminClient
+      .from("chat_messages")
+      .update({ member_id: memberId })
+      .eq("member_id", normalizedLegacyId)
+      .select("id");
+    if (messageUpdateError) {
+      console.warn(`link-member-auth: chat_message member_id migrate failed for ${normalizedLegacyId}:`, messageUpdateError.message);
+    } else {
+      migratedMessages += (messageRows ?? []).length;
+    }
+  }
+
+  return jsonResponse(200, {
+    message: "Auth member link synced",
+    updated,
+    canonicalMemberId: memberId,
+    migratedPrograms,
+    migratedLogs,
+    migratedMessages,
+    migratedFromIds: Array.from(legacyMemberIds),
+  });
 });
