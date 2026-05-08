@@ -176,21 +176,48 @@ Deno.serve(async (req) => {
       scopedMembers = Array.from(fallbackById.values());
     }
   }
-  if (!memberIds.length && requesterUserId) {
-    const { data: ownerMessages } = await adminClient
-      .from("chat_messages")
-      .select("id, member_id, sender, text, created_at")
-      .eq("owner_user_id", requesterUserId)
-      .order("created_at", { ascending: true });
-    const messageRows = (ownerMessages ?? []) as Array<Record<string, unknown>>;
-    return jsonResponse(200, {
-      members: [],
-      programs: [],
-      logs: [],
-      messages: messageRows,
-      periodPlans: [],
-      exercises: [],
-    });
+  if (!memberIds.length) {
+    const authFallbackIds = Array.from(
+      new Set(
+        [authMemberId, requesterUserId, requesterUserId ? `auth-${requesterUserId}` : ""]
+          .map((value) => String(value ?? "").trim())
+          .filter((value) => value && value !== "__template__"),
+      ),
+    );
+    if (authFallbackIds.length > 0) {
+      memberIds = authFallbackIds;
+      const fallbackName =
+        toFirstName(
+          String(
+            (userData.user.user_metadata?.full_name as string | undefined) ??
+              (userData.user.user_metadata?.name as string | undefined) ??
+              "",
+          ),
+        ) || nameFromEmail(requesterEmail) || "Medlem";
+      scopedMembers = authFallbackIds.map((id) => ({
+        id,
+        owner_user_id: "",
+        name: fallbackName,
+        email: requesterEmail,
+        is_active: true,
+        invited_at: "",
+        phone: "",
+        birth_date: "",
+        weight: "",
+        height: "",
+        level: "Nybegynner",
+        membership_type: "Standard",
+        customer_type: "Medlem",
+        days_since_activity: "0",
+        goal: "",
+        focus: "",
+        personal_goals: "",
+        injuries: "",
+        coach_notes: "",
+        avatar_url: "",
+        created_at: "",
+      }));
+    }
   }
   if (!memberIds.length) {
     return jsonResponse(200, {
