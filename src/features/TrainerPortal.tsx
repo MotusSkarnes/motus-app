@@ -625,12 +625,30 @@ function pickFirstName(value: string): string {
     return merged.length ? merged : [selectedMemberId];
   }, [members, selectedMemberId]);
   const selectedMemberRelatedIdSet = useMemo(() => new Set(selectedMemberRelatedIds), [selectedMemberRelatedIds]);
+  const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
   const selectedPrograms = useMemo(
-    () =>
-      programs
-        .filter((program) => selectedMemberRelatedIdSet.has(program.memberId))
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [programs, selectedMemberRelatedIdSet]
+    () => {
+      const selected = members.find((member) => member.id === selectedMemberId) ?? null;
+      const isSharedMember = selected?.customerType === "Medlem";
+      const selectedEmail = selected?.email.trim().toLowerCase() ?? "";
+      const selectedName = selected?.name.trim().toLowerCase() ?? "";
+      return programs
+        .filter((program) => {
+          if (selectedMemberRelatedIdSet.has(program.memberId)) return true;
+          if (!isSharedMember) return false;
+          const rawProgramMemberId = program.memberId.trim().toLowerCase();
+          if (selectedEmail && rawProgramMemberId === selectedEmail) return true;
+          const ownerMember = memberById.get(program.memberId);
+          if (!ownerMember) return false;
+          const ownerEmail = ownerMember.email.trim().toLowerCase();
+          const ownerName = ownerMember.name.trim().toLowerCase();
+          if (selectedEmail && ownerEmail && ownerEmail === selectedEmail) return true;
+          if (selectedName && ownerName && ownerName === selectedName) return true;
+          return false;
+        })
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+    [programs, selectedMemberRelatedIdSet, members, selectedMemberId, memberById]
   );
   const selectedPeriodPlans = useMemo(() => {
     if (!selectedMemberRelatedIds.length) return [] as PeriodSchedulePlan[];
@@ -645,13 +663,45 @@ function pickFirstName(value: string): string {
   }, [periodPlansByMemberId, selectedMemberRelatedIds]);
   const templatePrograms = programs.filter((program) => program.memberId === "__template__");
   const selectedLogs = useMemo(() => {
+    const selected = members.find((member) => member.id === selectedMemberId) ?? null;
+    const isSharedMember = selected?.customerType === "Medlem";
+    const selectedEmail = selected?.email.trim().toLowerCase() ?? "";
+    const selectedName = selected?.name.trim().toLowerCase() ?? "";
     return logs
-      .filter((log) => selectedMemberRelatedIdSet.has(log.memberId))
+      .filter((log) => {
+        if (selectedMemberRelatedIdSet.has(log.memberId)) return true;
+        if (!isSharedMember) return false;
+        const rawLogMemberId = log.memberId.trim().toLowerCase();
+        if (selectedEmail && rawLogMemberId === selectedEmail) return true;
+        const ownerMember = memberById.get(log.memberId);
+        if (!ownerMember) return false;
+        const ownerEmail = ownerMember.email.trim().toLowerCase();
+        const ownerName = ownerMember.name.trim().toLowerCase();
+        if (selectedEmail && ownerEmail && ownerEmail === selectedEmail) return true;
+        if (selectedName && ownerName && ownerName === selectedName) return true;
+        return false;
+      })
       .sort((a, b) => parseLogDateMs(b.date) - parseLogDateMs(a.date));
-  }, [logs, selectedMemberRelatedIdSet]);
+  }, [logs, selectedMemberRelatedIdSet, members, selectedMemberId, memberById]);
   const selectedMessages = useMemo(() => {
+    const selected = members.find((member) => member.id === selectedMemberId) ?? null;
+    const isSharedMember = selected?.customerType === "Medlem";
+    const selectedEmail = selected?.email.trim().toLowerCase() ?? "";
+    const selectedName = selected?.name.trim().toLowerCase() ?? "";
     const filtered = messages
-      .filter((message) => selectedMemberRelatedIdSet.has(message.memberId))
+      .filter((message) => {
+        if (selectedMemberRelatedIdSet.has(message.memberId)) return true;
+        if (!isSharedMember) return false;
+        const rawMessageMemberId = message.memberId.trim().toLowerCase();
+        if (selectedEmail && rawMessageMemberId === selectedEmail) return true;
+        const ownerMember = memberById.get(message.memberId);
+        if (!ownerMember) return false;
+        const ownerEmail = ownerMember.email.trim().toLowerCase();
+        const ownerName = ownerMember.name.trim().toLowerCase();
+        if (selectedEmail && ownerEmail && ownerEmail === selectedEmail) return true;
+        if (selectedName && ownerName && ownerName === selectedName) return true;
+        return false;
+      })
       .sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
     const uniqueById = new Map<string, (typeof filtered)[number]>();
     filtered.forEach((message) => {
@@ -669,7 +719,7 @@ function pickFirstName(value: string): string {
       }
     });
     return Array.from(bySignature.values()).sort((a, b) => parseChatCreatedAtMs(b.createdAt) - parseChatCreatedAtMs(a.createdAt));
-  }, [messages, selectedMemberRelatedIdSet]);
+  }, [messages, selectedMemberRelatedIdSet, members, selectedMemberId, memberById]);
   function resolveLatestFollowUpDetail(memberIds: string[]): FollowUpDetail | null {
     const details = memberIds
       .map((id) => followUpDetailsByMemberId[id])
