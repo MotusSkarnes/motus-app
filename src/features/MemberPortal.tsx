@@ -468,7 +468,14 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     return null;
   }, [relatedMembersForProfile]);
-  const memberPrograms = programs.filter((program) => relatedMemberIdSet.has(program.memberId));
+  const memberPrograms = useMemo(() => {
+    const scopedPrograms = programs.filter((program) => relatedMemberIdSet.has(program.memberId));
+    if (currentUserRole === "member" && scopedPrograms.length === 0 && programs.length > 0) {
+      // Last-resort fallback for legacy member_id drift: in member session the payload is already scoped.
+      return programs;
+    }
+    return scopedPrograms;
+  }, [programs, relatedMemberIdSet, currentUserRole]);
   const memberAssignedPrograms = useMemo(() => memberPrograms.filter((program) => !program.ephemeral), [memberPrograms]);
   const memberLogs = logs.filter((log) => relatedMemberIdSet.has(log.memberId));
   const memberMessages = useMemo(() => {
