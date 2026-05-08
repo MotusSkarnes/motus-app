@@ -414,8 +414,11 @@ export function MemberPortal(props: MemberPortalProps) {
       return Boolean(normalizedCurrentUserEmail && member.email.trim().toLowerCase() === normalizedCurrentUserEmail);
     });
     if (editableMember) candidates.push(editableMember);
+    if (currentUserRole === "member") {
+      return !candidates.some((member) => member.customerType === "PT-kunde" || member.membershipType === "Premium");
+    }
     return candidates.some((member) => member.customerType === "Medlem" && member.membershipType !== "Premium");
-  }, [currentUserMemberId, memberViewId, members, normalizedCurrentUserEmail, editableMember]);
+  }, [currentUserRole, currentUserMemberId, memberViewId, members, normalizedCurrentUserEmail, editableMember]);
   const dbProfileMetrics = useMemo(() => {
     for (const member of relatedMembersForProfile) {
       const decoded = decodeMemberProfileMetrics(member.personalGoals);

@@ -423,6 +423,10 @@ async function persistMessage(
     // Fallback path: direct insert for exactly one owner to avoid duplicate rows.
     const senderOwnerUserId = await getOwnerUserId();
     const memberOwnerUserId = await resolveOwnerUserIdForMember(canonicalTargetMemberId, senderOwnerUserId);
+    if (sender === "member" && (!memberOwnerUserId || memberOwnerUserId === senderOwnerUserId)) {
+      console.warn("Supabase message direct insert fallback skipped: trainer owner was not resolved for member sender.");
+      return;
+    }
     const chosenOwnerUserId = memberOwnerUserId || senderOwnerUserId;
     if (!chosenOwnerUserId) return;
     const directInsert = await supabaseClient
