@@ -25,6 +25,11 @@ export default function App() {
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600">
               Supabase prosjekt: <span className="font-semibold">{configuredSupabaseProjectRef || "ukjent"}</span>
               {configuredSupabaseUrl ? <span className="ml-2">({configuredSupabaseUrl})</span> : null}
+              {appState.currentUser?.id ? (
+                <span className="ml-2">
+                  | Bruker-ID: <span className="font-semibold">{appState.currentUser.id}</span>
+                </span>
+              ) : null}
             </div>
           )}
           <OfflineBanner />
