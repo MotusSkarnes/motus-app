@@ -184,8 +184,8 @@ function escapeHtml(value: unknown): string {
     .replace(/'/g, "&#39;");
 }
 
-function pickFirstName(value: string): string {
-  const trimmed = value.trim();
+function pickFirstName(value: unknown): string {
+  const trimmed = String(value ?? "").trim();
   if (!trimmed) return "";
   const firstToken = trimmed.split(/\s+/)[0] ?? "";
   return firstToken.trim();
@@ -1517,8 +1517,12 @@ function pickFirstName(value: string): string {
         window.alert("Nettleseren blokkerte popup-vinduet for utskrift. Tillat popup for denne siden.");
         return;
       }
-      const recipientName = (selectedMember?.name || "Kunde").trim();
-      const trainerLabel = (pickFirstName(program.assignedTrainerName ?? "") || pickFirstName(MOTUS.name) || "Trener").trim();
+      const recipientName = String(selectedMember?.name ?? "Kunde").trim() || "Kunde";
+      const trainerLabel = (
+        pickFirstName(program.assignedTrainerName ?? "") ||
+        pickFirstName(MOTUS.name ?? "") ||
+        "Trener"
+      ).trim();
       const safeExercises = Array.isArray(program.exercises) ? program.exercises : [];
       const exercisesHtml =
         safeExercises.length > 0
