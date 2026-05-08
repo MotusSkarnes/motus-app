@@ -2850,7 +2850,18 @@ function pickFirstName(value: unknown): string {
                 </div>
               ) : null}
               {membersWithPriority.map(({ member, priority }) => (
-                <div key={member.id} className="flex items-center justify-between gap-2 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <button
+                  key={member.id}
+                  type="button"
+                  onClick={() => {
+                    setTrainerTab("customers");
+                    setSelectedMemberId(member.id);
+                    setCustomerSubTab("overview");
+                  }}
+                  className="flex w-full items-center justify-between gap-2 rounded-xl border bg-white p-3 text-left transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+                  style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                  aria-label={`Åpne kundekort for ${member.name}`}
+                >
                   <div className="flex items-center gap-2">
                     <div className="h-9 w-9 overflow-hidden rounded-full border bg-slate-100" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
                       {resolveMemberAvatarUrl(member) ? <img src={resolveMemberAvatarUrl(member)} alt={member.name} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
@@ -2869,13 +2880,7 @@ function pickFirstName(value: unknown): string {
                       ))}
                     </div>
                     <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTrainerTab("customers");
-                          setSelectedMemberId(member.id);
-                          setCustomerSubTab("overview");
-                        }}
+                      <span
                         className={`rounded-full px-3 py-1 text-xs font-semibold ${
                           priority.tone === "red"
                             ? "bg-rose-100 text-rose-700"
@@ -2885,10 +2890,10 @@ function pickFirstName(value: unknown): string {
                         }`}
                       >
                         {priority.label}
-                      </button>
+                      </span>
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
