@@ -1532,7 +1532,7 @@ function pickFirstName(value: string): string {
               const exerciseId = String(safeExercise.exerciseId ?? "").trim();
               const libraryMatch =
                 exercises.find((item) => item.id === exerciseId) ??
-                exercises.find((item) => item.name.trim().toLowerCase() === exerciseName.toLowerCase()) ??
+                exercises.find((item) => String(item.name ?? "").trim().toLowerCase() === exerciseName.toLowerCase()) ??
                 null;
               const setCount = String(safeExercise.sets ?? "").trim() || "-";
               const reps = String(safeExercise.reps ?? "").trim() || "-";
