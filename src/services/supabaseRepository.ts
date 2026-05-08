@@ -486,73 +486,11 @@ async function persistProgram(
     if (payload?.ok === true || (Array.isArray(payload?.ids) && payload.ids.length > 0)) {
       return;
     }
+    console.warn("save-training-program returned without saving program:", functionResult.data);
+    return;
   } else {
-    console.warn("save-training-program invoke failed, trying direct fallback:", functionResult.error.message);
-  }
-  const targetMemberIds = memberId === "__template__" ? [memberId] : await resolveRelatedMemberIds(memberId);
-  const isEdit = Boolean(input.id);
-
-  if (isEdit) {
-    const { error } = await supabaseClient.from("training_programs").upsert(
-      {
-        id: input.id,
-        member_id: memberId,
-        owner_user_id: ownerUserId,
-        title: input.title.trim(),
-        goal: input.goal.trim(),
-        notes: input.notes.trim(),
-        exercises: input.exercises,
-        created_at: new Date().toISOString(),
-      },
-      { onConflict: "id" }
-    );
-    if (error) {
-      console.warn("Supabase program persist failed:", error.message);
-      return;
-    }
-  } else {
-    for (const targetMemberId of targetMemberIds) {
-      const { error } = await supabaseClient.from("training_programs").upsert(
-        {
-          id: crypto.randomUUID(),
-          member_id: targetMemberId,
-          owner_user_id: ownerUserId,
-          title: input.title.trim(),
-          goal: input.goal.trim(),
-          notes: input.notes.trim(),
-          exercises: input.exercises,
-          created_at: new Date().toISOString(),
-        },
-        { onConflict: "id" }
-      );
-      if (error) {
-        console.warn("Supabase program persist failed:", error.message);
-      }
-    }
-  }
-
-  // Keep auth.member_id aligned with selected customer row so member can read assigned programs.
-  if (memberId && memberId !== "__template__") {
-    const { data: memberRow, error: memberLookupError } = await supabaseClient
-      .from("members")
-      .select("email")
-      .eq("id", memberId)
-      .maybeSingle();
-
-    if (memberLookupError) {
-      console.warn("Supabase member lookup failed:", memberLookupError.message);
-      return;
-    }
-
-    const normalizedEmail = String(memberRow?.email ?? "").trim().toLowerCase();
-    if (!normalizedEmail) return;
-
-    const { error: linkError } = await supabaseClient.functions.invoke("link-member-auth", {
-      body: { email: normalizedEmail, memberId },
-    });
-    if (linkError) {
-      console.warn("link-member-auth invoke failed:", linkError.message);
-    }
+    console.warn("save-training-program invoke failed:", functionResult.error.message);
+    return;
   }
 }
 
@@ -1570,7 +1508,12 @@ export const supabaseAppRepository: AppRepository = {
       membershipType: String(anchorMember?.membershipType ?? "").trim(),
     };
     const nextState = localAppRepository.saveProgram(state, input);
-    void persistProgram(input, hints);
+    void (async () => {
+      if (anchorMember) {
+        await persistMember(anchorMember);
+      }
+      await persistProgram(input, hints);
+    })();
     return nextState;
   },
   deleteProgram(state: AppState, programId: string): AppState {

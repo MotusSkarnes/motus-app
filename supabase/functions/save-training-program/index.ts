@@ -54,7 +54,9 @@ async function resolveRelatedMemberIds(
   }
 
   const email = normalizeEmail((memberRow as { email?: string } | null)?.email) || normalizeEmail(hints?.targetEmail);
-  if (!email) return { ids: [memberId], email: "" };
+  if (!email) {
+    throw new Error("Cannot save program without a member email. Save the member row before assigning a program.");
+  }
 
   const { data: rows, error: rowsError } = await adminClient
     .from("members")
