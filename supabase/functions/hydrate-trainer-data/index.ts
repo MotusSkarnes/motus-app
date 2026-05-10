@@ -12,6 +12,11 @@ type HydratePayload = {
 };
 
 type RowWithId = { id?: string };
+type AuthenticatedUser = {
+  id?: string;
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+};
 
 function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
@@ -101,6 +106,37 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
   });
 }
 
+function getUserRole(user: AuthenticatedUser): string {
+  const appRole = user.app_metadata?.role;
+  if (appRole === "member" || appRole === "trainer") return appRole;
+  const userRole = user.user_metadata?.role;
+  if (userRole === "member" || userRole === "trainer") return userRole;
+  return "";
+}
+
+async function authenticateTrainerRequest(
+  req: Request,
+  adminClient: ReturnType<typeof createClient>,
+): Promise<{ ok: true; userId: string } | { ok: false; response: Response }> {
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!token) {
+    return { ok: false, response: jsonResponse(401, { error: "Missing bearer token" }) };
+  }
+
+  const { data, error } = await adminClient.auth.getUser(token);
+  const user = (data?.user ?? null) as AuthenticatedUser | null;
+  const userId = String(user?.id ?? "").trim();
+  if (error || !user || !userId) {
+    return { ok: false, response: jsonResponse(401, { error: "Invalid user session" }) };
+  }
+  if (getUserRole(user) === "member") {
+    return { ok: false, response: jsonResponse(403, { error: "Only trainers can hydrate trainer data" }) };
+  }
+
+  return { ok: true, userId };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -129,9 +165,11 @@ Deno.serve(async (req) => {
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
-
-  // Recovery: claim legacy rows with missing owner_user_id.
-  await adminClient.from("members").update({ owner_user_id: ownerUserId }).is("owner_user_id", null);
+  const authResult = await authenticateTrainerRequest(req, adminClient);
+  if (!authResult.ok) return authResult.response;
+  if (authResult.userId !== ownerUserId) {
+    return jsonResponse(403, { error: "Cannot hydrate trainer data for another user" });
+  }
 
   const { data: ownedMembers } = await adminClient.from("members").select("id").eq("owner_user_id", ownerUserId);
   const ownedMemberIds = (ownedMembers ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);

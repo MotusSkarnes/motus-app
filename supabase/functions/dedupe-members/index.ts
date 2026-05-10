@@ -30,6 +30,12 @@ type MemberRow = {
   membership_type?: string | null;
 };
 
+type AuthenticatedUser = {
+  id?: string;
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+};
+
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -55,6 +61,37 @@ function memberScore(row: MemberRow): number {
 
 function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
+}
+
+function getUserRole(user: AuthenticatedUser): string {
+  const appRole = user.app_metadata?.role;
+  if (appRole === "member" || appRole === "trainer") return appRole;
+  const userRole = user.user_metadata?.role;
+  if (userRole === "member" || userRole === "trainer") return userRole;
+  return "";
+}
+
+async function authenticateTrainerRequest(
+  req: Request,
+  adminClient: ReturnType<typeof createClient>,
+): Promise<{ ok: true; userId: string } | { ok: false; response: Response }> {
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!token) {
+    return { ok: false, response: jsonResponse(401, { error: "Missing bearer token" }) };
+  }
+
+  const { data, error } = await adminClient.auth.getUser(token);
+  const user = (data?.user ?? null) as AuthenticatedUser | null;
+  const userId = String(user?.id ?? "").trim();
+  if (error || !user || !userId) {
+    return { ok: false, response: jsonResponse(401, { error: "Invalid user session" }) };
+  }
+  if (getUserRole(user) === "member") {
+    return { ok: false, response: jsonResponse(403, { error: "Only trainers can dedupe members" }) };
+  }
+
+  return { ok: true, userId };
 }
 
 Deno.serve(async (req) => {
@@ -84,6 +121,12 @@ Deno.serve(async (req) => {
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  const authResult = await authenticateTrainerRequest(req, adminClient);
+  if (!authResult.ok) return authResult.response;
+  if (ownerUserId && authResult.userId !== ownerUserId) {
+    return jsonResponse(403, { error: "Cannot dedupe members for another user" });
+  }
+
   const membersQuery = adminClient
     .from("members")
     .select("id, owner_user_id, email, name, is_active, invited_at, days_since_activity, customer_type, membership_type");

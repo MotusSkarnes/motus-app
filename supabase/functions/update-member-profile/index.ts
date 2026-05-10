@@ -25,6 +25,13 @@ type UpdatePayload = {
   };
 };
 
+type MemberTargetRow = {
+  id?: string | null;
+  email?: string | null;
+  owner_user_id?: string | null;
+  customer_type?: string | null;
+};
+
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -44,6 +51,12 @@ function canTrainerEditAnchor(row: { owner_user_id?: string | null; customer_typ
   const ownerUserId = normalizeString(row.owner_user_id);
   const customerType = normalizeString(row.customer_type).toLowerCase();
   return ownerUserId === trainerUserId || customerType === "medlem";
+}
+
+function canMemberEditRow(row: MemberTargetRow, currentEmail: string, authMemberId: string): boolean {
+  const rowEmail = normalizeEmail(row.email);
+  const rowId = normalizeString(row.id);
+  return (rowEmail && rowEmail === currentEmail) || (authMemberId && rowId === authMemberId);
 }
 
 Deno.serve(async (req) => {
@@ -98,9 +111,11 @@ Deno.serve(async (req) => {
 
   const currentEmail = normalizeEmail(user.email);
   const requestedEmail = normalizeEmail(payload.email);
-  const requestedEmails = Array.isArray(payload.emails)
+  const requestedEmailCandidates = Array.isArray(payload.emails)
     ? payload.emails.map((value) => normalizeEmail(value)).filter((value) => value && value.includes("@"))
     : [];
+  const requestedEmails =
+    userRole === "member" ? requestedEmailCandidates.filter((email) => email === currentEmail) : requestedEmailCandidates;
   const requestedMemberId = normalizeString(payload.memberId);
   const requestedMemberIds = Array.isArray(payload.memberIds)
     ? payload.memberIds.map((value) => normalizeString(value)).filter(Boolean)
@@ -114,13 +129,11 @@ Deno.serve(async (req) => {
     return jsonResponse(400, { error: "Logged-in user is missing a valid email" });
   }
   if (userRole === "member" && requestedEmail && requestedEmail !== currentEmail) {
-    if (!requestedEmails.includes(currentEmail)) {
-      return jsonResponse(403, { error: "Email mismatch for member profile update" });
-    }
+    return jsonResponse(403, { error: "Email mismatch for member profile update" });
   }
 
   const changes = payload.changes ?? {};
-  const targetEmailForUpdate = requestedEmail || currentEmail;
+  const targetEmailForUpdate = userRole === "member" ? currentEmail : requestedEmail || currentEmail;
   const updateFields: Record<string, string> = {
     email: targetEmailForUpdate,
   };
@@ -135,7 +148,7 @@ Deno.serve(async (req) => {
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
   const anchorClauses = [];
-  if (requestedEmail) anchorClauses.push(`email.eq.${requestedEmail}`);
+  if (requestedEmail && userRole !== "member") anchorClauses.push(`email.eq.${requestedEmail}`);
   anchorClauses.push(`email.eq.${currentEmail}`);
   requestedEmails.forEach((email) => anchorClauses.push(`email.eq.${email}`));
   if (authMemberId) anchorClauses.push(`id.eq.${authMemberId}`);
@@ -151,7 +164,9 @@ Deno.serve(async (req) => {
   }
 
   const visibleAnchors = (anchorRows ?? []).filter((row) => {
-    if (userRole !== "trainer") return true;
+    if (userRole === "member") {
+      return canMemberEditRow(row as MemberTargetRow, currentEmail, authMemberId);
+    }
     return canTrainerEditAnchor(
       row as { owner_user_id?: string | null; customer_type?: string | null },
       user.id,
@@ -186,11 +201,11 @@ Deno.serve(async (req) => {
       return false;
     });
   }
-  const visibleExpandedRows = expandedRows.filter(() => {
-    if (userRole !== "trainer") return true;
-    const hasAuthorizedAnchor = visibleAnchors.length > 0;
-    if (!hasAuthorizedAnchor) return false;
-    return true;
+  const visibleExpandedRows = expandedRows.filter((row) => {
+    if (userRole === "member") {
+      return canMemberEditRow(row, currentEmail, authMemberId);
+    }
+    return visibleAnchors.length > 0 && canTrainerEditAnchor(row, user.id);
   });
 
   const targetIds = Array.from(
@@ -200,13 +215,7 @@ Deno.serve(async (req) => {
         .filter(Boolean)
     )
   );
-  const targetEmails = Array.from(
-    new Set(
-      [targetEmailForUpdate, ...requestedEmails, ...visibleAnchors.map((row) => normalizeEmail(row.email)), ...visibleExpandedRows.map((row) => normalizeEmail(row.email))]
-        .filter((value) => value && value.includes("@"))
-    )
-  );
-  if (!targetIds.length && !targetEmails.length) {
+  if (!targetIds.length) {
     // Last-resort bootstrap for missing member row: create one tied to auth user.
     const fallbackMemberId = authMemberId || requestedMemberId || `member-${crypto.randomUUID().slice(0, 8)}`;
     const insertPayload: Record<string, unknown> = {
@@ -240,17 +249,6 @@ Deno.serve(async (req) => {
       return jsonResponse(500, { error: `Could not update member rows by id: ${byIdResult.error.message}` });
     }
     (byIdResult.data ?? []).forEach((row) => {
-      const id = normalizeString((row as { id?: string }).id);
-      if (id) updatedIds.add(id);
-    });
-  }
-
-  if (targetEmails.length) {
-    const byEmailResult = await adminClient.from("members").update(updateFields).in("email", targetEmails).select("id");
-    if (byEmailResult.error) {
-      return jsonResponse(500, { error: `Could not update member rows by email: ${byEmailResult.error.message}` });
-    }
-    (byEmailResult.data ?? []).forEach((row) => {
       const id = normalizeString((row as { id?: string }).id);
       if (id) updatedIds.add(id);
     });
