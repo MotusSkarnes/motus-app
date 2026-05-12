@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ClipboardList, MessageSquare, Plus, Repeat2, Search, Sparkles, Target, TrendingUp, UserCircle2 } from "lucide-react";
+import { ClipboardList, MessageSquare, Plus, Repeat2, Search, Share2, Sparkles, Target, TrendingUp, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import motusLogo from "../assets/motus-logo.png";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
@@ -1880,9 +1880,56 @@ export function MemberPortal(props: MemberPortalProps) {
     setIntervalTimerStatus(`Hoppet til: ${nextStep.label}`);
   }
 
+  const progressShareMonthLabel = useMemo(() => {
+    const s = new Intl.DateTimeFormat("nb-NO", { month: "long", year: "numeric" }).format(nowDate);
+    return s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+  }, [nowDate]);
+
   async function shareMonthlyProgressSummary() {
     if (typeof window === "undefined") return;
     try {
+      function fillWrappedCanvasText(
+        ctx: CanvasRenderingContext2D,
+        text: string,
+        x: number,
+        y: number,
+        maxWidth: number,
+        lineHeight: number,
+      ) {
+        const words = text.split(/\s+/).filter(Boolean);
+        let line = "";
+        let cy = y;
+        for (let i = 0; i < words.length; i += 1) {
+          const word = words[i] ?? "";
+          const test = line ? `${line} ${word}` : word;
+          if (ctx.measureText(test).width > maxWidth && line) {
+            ctx.fillText(line, x, cy);
+            line = word;
+            cy += lineHeight;
+          } else {
+            line = test;
+          }
+        }
+        if (line) ctx.fillText(line, x, cy);
+      }
+
+      function fillRoundRect(
+        ctx: CanvasRenderingContext2D,
+        x: number,
+        y: number,
+        w: number,
+        h: number,
+        r: number,
+      ) {
+        if (typeof ctx.roundRect === "function") {
+          ctx.beginPath();
+          ctx.roundRect(x, y, w, h, r);
+          ctx.fill();
+        } else {
+          ctx.fillRect(x, y, w, h);
+        }
+      }
+
       const canvas = document.createElement("canvas");
       canvas.width = 1080;
       canvas.height = 1920;
@@ -1892,36 +1939,142 @@ export function MemberPortal(props: MemberPortalProps) {
         return;
       }
 
-      const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
-      gradient.addColorStop(0, MOTUS.turquoise);
-      gradient.addColorStop(1, MOTUS.pink);
-      context.fillStyle = gradient;
+      const memberName = viewedMember?.name ?? "Medlem";
+      const displayName = memberName.length > 20 ? `${memberName.slice(0, 20)}…` : memberName;
+      const monthTitle = progressShareMonthLabel;
+
+      const bg = context.createLinearGradient(0, 0, canvas.width, canvas.height * 1.05);
+      bg.addColorStop(0, "#0d9488");
+      bg.addColorStop(0.35, MOTUS.turquoise);
+      bg.addColorStop(0.72, MOTUS.pink);
+      bg.addColorStop(1, "#831843");
+      context.fillStyle = bg;
       context.fillRect(0, 0, canvas.width, canvas.height);
 
-      context.fillStyle = "rgba(255,255,255,0.95)";
-      context.fillRect(60, 120, canvas.width - 120, canvas.height - 240);
-      context.fillStyle = "#0f172a";
-      context.font = "bold 56px Inter, sans-serif";
-      context.fillText("Motus - Denne måneden", 110, 220);
-      context.font = "32px Inter, sans-serif";
-      context.fillStyle = "#475569";
-      context.fillText(`${viewedMember?.name ?? "Medlem"} sin progresjon`, 110, 275);
+      context.save();
+      context.globalAlpha = 0.14;
+      context.fillStyle = "#ffffff";
+      context.beginPath();
+      context.arc(140, 220, 200, 0, Math.PI * 2);
+      context.fill();
+      context.beginPath();
+      context.arc(980, 420, 260, 0, Math.PI * 2);
+      context.fill();
+      context.beginPath();
+      context.arc(200, 1680, 240, 0, Math.PI * 2);
+      context.fill();
+      context.restore();
 
-      const lines = [
-        `Økter logget: ${estimatedSessionsThisMonth}`,
-        `Treningsdager: ${uniqueTrainingDays}`,
-        `Streak: ${streakWeeks} uker`,
-        `Konsistens: ${progressStory.consistency}%`,
-      ];
-      context.font = "bold 42px Inter, sans-serif";
-      context.fillStyle = "#0f172a";
-      lines.forEach((line, index) => {
-        context.fillText(line, 120, 430 + index * 110);
-      });
-      context.font = "30px Inter, sans-serif";
+      const headerH = 380;
+      context.fillStyle = "rgba(15,23,42,0.28)";
+      context.fillRect(0, 0, canvas.width, headerH);
+
+      context.fillStyle = "rgba(255,255,255,0.92)";
+      context.font = "600 34px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText("MOTUS", 72, 95);
+      context.font = "300 30px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText(monthTitle, 72, 145);
+      context.font = "bold 76px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText(displayName, 72, 255);
+      context.font = "26px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.globalAlpha = 0.88;
+      context.fillText("Progresjon denne måneden", 72, 318);
+      context.globalAlpha = 1;
+
+      const cardX = 56;
+      const cardY = 420;
+      const cardW = canvas.width - 112;
+      const cardH = 1320;
+      const cardR = 40;
+      context.shadowColor = "rgba(15, 23, 42, 0.22)";
+      context.shadowBlur = 48;
+      context.shadowOffsetY = 28;
+      context.fillStyle = "rgba(255,255,255,0.96)";
+      fillRoundRect(context, cardX, cardY, cardW, cardH, cardR);
+      context.shadowBlur = 0;
+      context.shadowOffsetY = 0;
+
+      const pad = 52;
+      let y = cardY + pad + 36;
+      context.fillStyle = MOTUS.ink;
+      context.font = "bold 40px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText("Dine tall", cardX + pad, y);
+      y += 52;
       context.fillStyle = "#64748b";
-      context.fillText(`Trend: ${progressStory.trendLabel}`, 120, 930);
-      context.fillText(`Neste fokus: ${progressStory.nextFocus}`, 120, 995);
+      context.font = "26px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText("Fullførte økter og vaner", cardX + pad, y);
+      y += 72;
+
+      const tileGap = 22;
+      const tileW = (cardW - pad * 2 - tileGap) / 2;
+      const tileH = 168;
+      const stats: Array<{ label: string; value: string; accent: string }> = [
+        { label: "Økter logget", value: String(estimatedSessionsThisMonth), accent: MOTUS.turquoise },
+        { label: "Treningsdager", value: String(uniqueTrainingDays), accent: MOTUS.pink },
+        { label: "Streak", value: `${streakWeeks} uker`, accent: "#0d9488" },
+        { label: "Konsistens", value: `${progressStory.consistency}%`, accent: "#db2777" },
+      ];
+      stats.forEach((stat, index) => {
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+        const tx = cardX + pad + col * (tileW + tileGap);
+        const ty = y + row * (tileH + tileGap);
+        context.fillStyle = "#f8fafc";
+        if (typeof context.roundRect === "function") {
+          context.beginPath();
+          context.roundRect(tx, ty, tileW, tileH, 22);
+          context.fill();
+          context.strokeStyle = "rgba(148,163,184,0.45)";
+          context.lineWidth = 1;
+          context.stroke();
+        } else {
+          context.fillRect(tx, ty, tileW, tileH);
+          context.strokeStyle = "rgba(148,163,184,0.45)";
+          context.lineWidth = 1;
+          context.strokeRect(tx, ty, tileW, tileH);
+        }
+        context.fillStyle = stat.accent;
+        context.fillRect(tx, ty, 6, tileH);
+        context.fillStyle = "#94a3b8";
+        context.font = "22px system-ui, -apple-system, Segoe UI, sans-serif";
+        context.fillText(stat.label, tx + 28, ty + 48);
+        context.fillStyle = MOTUS.ink;
+        context.font = "bold 48px system-ui, -apple-system, Segoe UI, sans-serif";
+        context.fillText(stat.value, tx + 28, ty + 118);
+      });
+      y += 2 * (tileH + tileGap) + 36;
+
+      const stripH = 112;
+      const stripGrad = context.createLinearGradient(cardX + pad, y, cardX + cardW - pad, y + stripH);
+      stripGrad.addColorStop(0, MOTUS.turquoise);
+      stripGrad.addColorStop(1, MOTUS.pink);
+      context.fillStyle = stripGrad;
+      fillRoundRect(context, cardX + pad, y, cardW - pad * 2, stripH, 22);
+      context.fillStyle = "#ffffff";
+      context.font = "bold 28px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText(`Trend · ${progressStory.trendLabel}`, cardX + pad + 32, y + 72);
+      y += stripH + 28;
+
+      context.fillStyle = "#f1f5f9";
+      fillRoundRect(context, cardX + pad, y, cardW - pad * 2, 200, 22);
+      context.fillStyle = MOTUS.ink;
+      context.font = "bold 26px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText("Neste fokus", cardX + pad + 28, y + 48);
+      context.fillStyle = "#475569";
+      context.font = "26px system-ui, -apple-system, Segoe UI, sans-serif";
+      fillWrappedCanvasText(context, progressStory.nextFocus, cardX + pad + 28, y + 92, cardW - pad * 2 - 56, 36);
+      y += 220;
+
+      context.strokeStyle = "rgba(148,163,184,0.5)";
+      context.lineWidth = 1;
+      context.beginPath();
+      context.moveTo(cardX + pad, y);
+      context.lineTo(cardX + cardW - pad, y);
+      context.stroke();
+      y += 40;
+      context.fillStyle = "#94a3b8";
+      context.font = "22px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText("motus · tren smartere", cardX + pad, y);
 
       const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) {
@@ -4081,24 +4234,86 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
 
-              <div className="mt-4 rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-700">📸 Delbar progresjonsoppsummering</div>
-                    <div className="mt-1 text-xs text-slate-500">Story-format av “Denne måneden” for rask deling.</div>
+              <div
+                className="relative mt-4 overflow-hidden rounded-2xl border shadow-xl ring-1 ring-white/10"
+                style={{
+                  borderColor: "rgba(255,255,255,0.22)",
+                  background: `linear-gradient(155deg, #0f766e 0%, ${MOTUS.turquoise} 32%, ${MOTUS.pink} 68%, #9d174d 100%)`,
+                }}
+              >
+                <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-white/15 blur-3xl" aria-hidden />
+                <div className="pointer-events-none absolute -bottom-24 -left-16 h-64 w-64 rounded-full bg-cyan-200/20 blur-3xl" aria-hidden />
+                <div className="pointer-events-none absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/5 blur-3xl" aria-hidden />
+
+                <div className="relative p-5 sm:p-6">
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
+                    <div className="min-w-0 flex-1 space-y-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white ring-1 ring-white/30 backdrop-blur-sm">
+                          <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                          Story-kort
+                        </span>
+                        <span className="rounded-full bg-black/15 px-2.5 py-0.5 text-xs font-medium text-white/90">9:16 · PNG</span>
+                      </div>
+
+                      <div>
+                        <h3 className="text-xl font-bold tracking-tight text-white drop-shadow-sm sm:text-2xl">Delbar progresjonsoppsummering</h3>
+                        <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-white/88">
+                          {progressShareMonthLabel} — få et ferdig oppsummeringsbilde i Motus-stilen, klart til deling.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {[
+                          { k: "Økter", v: String(estimatedSessionsThisMonth) },
+                          { k: "Dager", v: String(uniqueTrainingDays) },
+                          { k: "Streak", v: `${streakWeeks} u` },
+                          { k: "Flyt", v: `${progressStory.consistency}%` },
+                        ].map((cell) => (
+                          <div
+                            key={cell.k}
+                            className="rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 text-left shadow-sm backdrop-blur-md"
+                          >
+                            <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">{cell.k}</div>
+                            <div className="mt-0.5 text-lg font-bold tabular-nums text-white">{cell.v}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <p
+                        className={
+                          progressStory.delta > 0
+                            ? "text-xs font-medium text-emerald-200"
+                            : progressStory.delta < 0
+                              ? "text-xs font-medium text-amber-200"
+                              : "text-xs font-medium text-white/80"
+                        }
+                      >
+                        Siste 14 dager: {progressStory.delta > 0 ? "↑" : progressStory.delta < 0 ? "↓" : "—"} {progressStory.trendLabel}
+                      </p>
+                    </div>
+
+                    <div className="flex w-full shrink-0 flex-col gap-2 sm:max-w-xs lg:w-56">
+                      <button
+                        type="button"
+                        onClick={() => void shareMonthlyProgressSummary()}
+                        className="group inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-black/25 ring-2 ring-white/50 transition hover:bg-white/95 hover:shadow-xl active:scale-[0.98]"
+                      >
+                        <Share2 className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5" aria-hidden />
+                        Del denne måneden
+                      </button>
+                      <p className="text-center text-[11px] leading-snug text-white/75 lg:text-left">Fungerer best på mobil — del eller last ned fra galleriet.</p>
+                    </div>
                   </div>
-                  <OutlineButton onClick={() => void shareMonthlyProgressSummary()} className="w-full sm:w-auto">
-                    Del denne måneden
-                  </OutlineButton>
                 </div>
-                {progressShareStatus ? (
-                  <StatusMessage
-                    message={progressShareStatus}
-                    tone={progressShareStatus.toLowerCase().includes("kunne ikke") ? "error" : "success"}
-                    className="mt-3 !rounded-xl !px-3 !py-2 !text-xs"
-                  />
-                ) : null}
               </div>
+              {progressShareStatus ? (
+                <StatusMessage
+                  message={progressShareStatus}
+                  tone={progressShareStatus.toLowerCase().includes("kunne ikke") ? "error" : "success"}
+                  className="mt-3 !rounded-xl !px-3 !py-2 !text-xs"
+                />
+              ) : null}
               <div className="mt-4 rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-sm font-semibold text-slate-700">🏆 Streaks + achievements</div>
                 <div className="mt-1 text-xs text-slate-500">
