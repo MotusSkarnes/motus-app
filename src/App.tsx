@@ -2,7 +2,7 @@ import { OfflineBanner } from "./app/OfflineBanner";
 import { useAppViewModel } from "./app/viewmodels";
 import { AppShell } from "./app/ui";
 import { AppHeader, LoginScreen, MemberLayout, TrainerLayout } from "./features";
-import { configuredSupabaseProjectRef, configuredSupabaseUrl, isSupabaseConfigured } from "./services/supabaseClient";
+import { isSupabaseConfigured } from "./services/supabaseClient";
 
 export default function App() {
   const { appState, isRecoveryMode, loginScreenProps, appHeaderProps, trainerLayoutProps, memberLayoutProps } =
@@ -21,17 +21,7 @@ export default function App() {
                 Appen kjører i lokal/demo-modus og data synkes ikke mellom trenere/medlemmer.
               </div>
             </div>
-          ) : (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600">
-              Supabase prosjekt: <span className="font-semibold">{configuredSupabaseProjectRef || "ukjent"}</span>
-              {configuredSupabaseUrl ? <span className="ml-2">({configuredSupabaseUrl})</span> : null}
-              {appState.currentUser?.id ? (
-                <span className="ml-2">
-                  | Bruker-ID: <span className="font-semibold">{appState.currentUser.id}</span>
-                </span>
-              ) : null}
-            </div>
-          )}
+          ) : null}
           <OfflineBanner />
           <AppHeader {...appHeaderProps} />
 
