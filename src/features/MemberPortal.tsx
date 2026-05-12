@@ -883,8 +883,8 @@ export function MemberPortal(props: MemberPortalProps) {
   function resolveSuggestedWorkoutWeight(programExercise: TrainingProgram["exercises"][number]): string {
     const override = suggestedWeightOverridesByProgramExerciseId[programExercise.id];
     if (override !== undefined) return override;
-    const fromHistory = suggestedWeightByExerciseName.get(programExercise.exerciseName.trim().toLowerCase());
-    if (fromHistory !== undefined) return fromHistory;
+    const fromHistory = findSuggestedWeightForExercise(programExercise.exerciseName);
+    if (fromHistory) return fromHistory;
     return programExercise.weight;
   }
 
@@ -1095,38 +1095,36 @@ export function MemberPortal(props: MemberPortalProps) {
   }
   const completedLogs = useMemo(() => memberLogs.filter((log) => log.status === "Fullført"), [memberLogs]);
   const latestCompletedLog = completedLogs[0] ?? null;
-  const suggestedWeightByExerciseName = useMemo(() => {
-    const byExerciseName = new Map<string, string>();
+  function findSuggestedWeightForExercise(exerciseName: string): string {
+    const normalizedExerciseName = exerciseName.trim().toLowerCase();
+    if (!normalizedExerciseName) return "";
     const sorted = [...completedLogs].sort((a, b) => {
       const aDate = parseLogDate(a.date)?.getTime() ?? 0;
       const bDate = parseLogDate(b.date)?.getTime() ?? 0;
       return bDate - aDate;
     });
-    sorted.forEach((log) => {
-      (log.results ?? []).forEach((result) => {
-        if (!result.completed) return;
+    for (const log of sorted) {
+      for (const result of log.results ?? []) {
+        if (!result.completed) continue;
         const normalizedName = result.exerciseName.trim().toLowerCase();
-        if (!normalizedName || byExerciseName.has(normalizedName)) return;
+        if (normalizedName !== normalizedExerciseName) continue;
         const parsedWeight = Number(result.performedWeight);
-        if (!Number.isFinite(parsedWeight) || parsedWeight <= 0) return;
-        byExerciseName.set(normalizedName, String(parsedWeight));
-      });
+        if (!Number.isFinite(parsedWeight) || parsedWeight <= 0) continue;
+        return String(parsedWeight);
+      }
+    }
+    return "";
+  }
+  function addCustomWorkoutLine(exerciseId: string) {
+    const id = exerciseId.trim();
+    if (!id) return;
+    setCustomWorkoutLines((prev) => {
+      if (prev.some((line) => line.exerciseId === id)) return prev;
+      const ex = exercises.find((e) => e.id === id);
+      const weightHint = ex ? findSuggestedWeightForExercise(ex.name) : "";
+      return [...prev, { key: uid("row"), exerciseId: id, sets: "3", reps: "10", weight: weightHint }];
     });
-    return byExerciseName;
-  }, [completedLogs]);
-  const addCustomWorkoutLine = useCallback(
-    (exerciseId: string) => {
-      const id = exerciseId.trim();
-      if (!id) return;
-      setCustomWorkoutLines((prev) => {
-        if (prev.some((line) => line.exerciseId === id)) return prev;
-        const ex = exercises.find((e) => e.id === id);
-        const weightHint = ex ? suggestedWeightByExerciseName.get(ex.name.trim().toLowerCase()) ?? "" : "";
-        return [...prev, { key: uid("row"), exerciseId: id, sets: "3", reps: "10", weight: weightHint }];
-      });
-    },
-    [exercises, suggestedWeightByExerciseName],
-  );
+  }
   const completedLogDates = useMemo(
     () => completedLogs.map((log) => parseLogDate(log.date)).filter((date): date is Date => Boolean(date)),
     [completedLogs],
@@ -2374,8 +2372,8 @@ export function MemberPortal(props: MemberPortalProps) {
     const completionRate = plannedThisWeek > 0 ? Math.min(100, Math.round((completedThisWeek / plannedThisWeek) * 100)) : 0;
     return { completedThisWeek, plannedThisWeek, completionRate };
   }, [nowTimestamp, completedLogDates, activeWeeklyPlan]);
-  const nextPlannedWorkout = useMemo(() => {
-    if (!activeWeeklyPlan) return null;
+  let nextPlannedWorkout: { dayLabel: string; entry: string } | null = null;
+  if (activeWeeklyPlan) {
     const dayOrder: WeekdayPlanKey[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
     const dayLabels: Record<WeekdayPlanKey, string> = {
       monday: "Mandag",
@@ -2392,10 +2390,10 @@ export function MemberPortal(props: MemberPortalProps) {
       const dayKey = dayOrder[index];
       const entry = activeWeeklyPlan.days[dayKey]?.trim();
       if (!entry) continue;
-      return { dayLabel: dayLabels[dayKey], entry };
+      nextPlannedWorkout = { dayLabel: dayLabels[dayKey], entry };
+      break;
     }
-    return null;
-  }, [activeWeeklyPlan, currentWeekdayKey]);
+  }
   const streakChallenges = useMemo(() => {
     const dayMs = 24 * 60 * 60 * 1000;
     const today = getStartOfDay(new Date(nowTimestamp));
