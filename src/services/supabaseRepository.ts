@@ -859,6 +859,7 @@ async function deleteProgram(programId: string) {
 async function deleteMemberFromSupabase(member: { id: string; email?: string }) {
   if (!supabaseClient) return;
   const memberId = member.id;
+  const normalizedEmail = String(member.email ?? "").trim().toLowerCase();
 
   try {
     const { error } = await supabaseClient.functions.invoke("delete-member", {

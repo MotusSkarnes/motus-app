@@ -33,6 +33,14 @@ function isSharedMember(row: Record<string, unknown>): boolean {
   return String(row.customer_type ?? "").trim().toLowerCase() === "medlem";
 }
 
+function getUserRole(user: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }): string {
+  const appRole = user.app_metadata?.role;
+  if (appRole === "member" || appRole === "trainer") return appRole;
+  const userRole = user.user_metadata?.role;
+  if (userRole === "member" || userRole === "trainer") return userRole;
+  return "";
+}
+
 function pickMostRecentProfileRow(rows: Array<Record<string, unknown>>): Record<string, unknown> | null {
   if (!rows.length) return null;
   const sorted = [...rows].sort((a, b) => {
@@ -115,6 +123,12 @@ Deno.serve(async (req) => {
     return jsonResponse(500, { error: "Missing Supabase service role environment variables" });
   }
 
+  const authHeader = req.headers.get("Authorization") || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!token) {
+    return jsonResponse(401, { error: "Missing bearer token" });
+  }
+
   let payload: HydratePayload;
   try {
     payload = (await req.json()) as HydratePayload;
@@ -129,9 +143,17 @@ Deno.serve(async (req) => {
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
-
-  // Recovery: claim legacy rows with missing owner_user_id.
-  await adminClient.from("members").update({ owner_user_id: ownerUserId }).is("owner_user_id", null);
+  const { data: authData, error: authError } = await adminClient.auth.getUser(token);
+  const user = authData?.user ?? null;
+  if (authError || !user) {
+    return jsonResponse(401, { error: "Invalid user session" });
+  }
+  if (getUserRole(user) !== "trainer") {
+    return jsonResponse(403, { error: "Only trainers can hydrate trainer data" });
+  }
+  if (ownerUserId !== user.id) {
+    return jsonResponse(403, { error: "Cannot hydrate data for another trainer" });
+  }
 
   const { data: ownedMembers } = await adminClient.from("members").select("id").eq("owner_user_id", ownerUserId);
   const ownedMemberIds = (ownedMembers ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);
@@ -197,16 +219,6 @@ Deno.serve(async (req) => {
     membersError = ownedMembersWithAvatar.error ?? sharedMembersWithAvatar.error;
   }
   if (!membersError && (members ?? []).length > 0) {
-    const relatedEmailSet = new Set(
-      (members ?? [])
-        .map((row) => normalizeEmail((row as { email?: string }).email))
-        .filter((value) => value && value.includes("@")),
-    );
-    const relatedNameSet = new Set(
-      (members ?? [])
-        .map((row) => String((row as { name?: string }).name ?? "").trim().toLowerCase())
-        .filter(Boolean),
-    );
     const allMembersWithAvatar = await adminClient
       .from("members")
       .select(membersSelectWithAvatar)
@@ -222,11 +234,9 @@ Deno.serve(async (req) => {
       allMembersRows = (allMembersWithAvatar.data ?? []) as Array<Record<string, unknown>>;
     }
     const widenedMembers = allMembersRows.filter((row) => {
+      const rowOwnerUserId = String((row as { owner_user_id?: string | null }).owner_user_id ?? "").trim();
+      if (rowOwnerUserId === ownerUserId) return true;
       if (isSharedMember(row)) return true;
-      const rowEmail = normalizeEmail((row as { email?: string }).email);
-      const rowName = String((row as { name?: string }).name ?? "").trim().toLowerCase();
-      if (rowEmail && relatedEmailSet.has(rowEmail)) return true;
-      if (rowName && relatedNameSet.has(rowName)) return true;
       return false;
     });
     members = uniqueById([...(members ?? []), ...widenedMembers]) as Array<Record<string, unknown>>;

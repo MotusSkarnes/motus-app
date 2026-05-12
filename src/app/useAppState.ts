@@ -351,7 +351,7 @@ export function useAppState() {
           next.members = mergedMembers;
         }
 
-        if (remoteMessages.length > 0) {
+        if (Array.isArray(remoteMessages) && remoteMessages.length > 0) {
           next.messages = mergeRemoteMessagesWithLocalOptimistic(
             remoteMessages,
             prev.messages,
@@ -600,29 +600,30 @@ export function useAppState() {
       const supabaseResult = await signInWithSupabase(normalizedEmail, loginPassword);
       if (supabaseResult.ok) {
         const supabaseUser = supabaseResult.user;
+        const baseState = ensureMemberRecordForUser(appState, supabaseUser, supabaseUser.memberId ?? appState.memberViewId);
+        const resolvedSelectedMemberId =
+          supabaseUser.role === "member"
+            ? resolveMemberViewIdForUser({
+                role: supabaseUser.role,
+                memberId: supabaseUser.memberId,
+                email: supabaseUser.email,
+                members: baseState.members,
+                programs: baseState.programs,
+                fallbackId: supabaseUser.memberId ?? (baseState.selectedMemberId || `auth-${supabaseUser.id}`),
+              })
+            : supabaseUser.memberId ?? baseState.selectedMemberId;
+        const resolvedMemberViewId = resolveMemberViewIdForUser({
+          role: supabaseUser.role,
+          memberId: supabaseUser.memberId,
+          email: supabaseUser.email,
+          members: baseState.members,
+          programs: baseState.programs,
+          fallbackId: supabaseUser.memberId ?? (baseState.memberViewId || `auth-${supabaseUser.id}`),
+        });
         setAppState((prev) => {
-          const baseState = ensureMemberRecordForUser(prev, supabaseUser, supabaseUser.memberId ?? prev.memberViewId);
-          const resolvedSelectedMemberId =
-            supabaseUser.role === "member"
-              ? resolveMemberViewIdForUser({
-                  role: supabaseUser.role,
-                  memberId: supabaseUser.memberId,
-                  email: supabaseUser.email,
-                  members: baseState.members,
-                  programs: baseState.programs,
-                  fallbackId: supabaseUser.memberId ?? (baseState.selectedMemberId || `auth-${supabaseUser.id}`),
-                })
-              : supabaseUser.memberId ?? baseState.selectedMemberId;
-          const resolvedMemberViewId = resolveMemberViewIdForUser({
-            role: supabaseUser.role,
-            memberId: supabaseUser.memberId,
-            email: supabaseUser.email,
-            members: baseState.members,
-            programs: baseState.programs,
-            fallbackId: supabaseUser.memberId ?? (baseState.memberViewId || `auth-${supabaseUser.id}`),
-          });
+          const nextBase = ensureMemberRecordForUser(prev, supabaseUser, supabaseUser.memberId ?? prev.memberViewId);
           return {
-            ...baseState,
+            ...nextBase,
             currentUser: supabaseUser,
             role: supabaseUser.role,
             selectedMemberId: resolvedSelectedMemberId,

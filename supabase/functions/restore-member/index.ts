@@ -14,6 +14,14 @@ function normalizeEmail(value: string | null | undefined): string {
   return String(value ?? "").trim().toLowerCase();
 }
 
+function getUserRole(user: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }): string {
+  const appRole = user.app_metadata?.role;
+  if (appRole === "member" || appRole === "trainer") return appRole;
+  const userRole = user.user_metadata?.role;
+  if (userRole === "member" || userRole === "trainer") return userRole;
+  return "";
+}
+
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -35,6 +43,12 @@ Deno.serve(async (req) => {
     return jsonResponse(500, { error: "Missing Supabase service role environment variables" });
   }
 
+  const authHeader = req.headers.get("Authorization") || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!token) {
+    return jsonResponse(401, { error: "Missing bearer token" });
+  }
+
   let payload: RestorePayload;
   try {
     payload = (await req.json()) as RestorePayload;
@@ -48,7 +62,21 @@ Deno.serve(async (req) => {
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
-  const { error } = await adminClient.from("members").update({ is_active: true }).eq("email", email).eq("is_active", false);
+  const { data: authData, error: authError } = await adminClient.auth.getUser(token);
+  const user = authData?.user ?? null;
+  if (authError || !user) {
+    return jsonResponse(401, { error: "Invalid user session" });
+  }
+  if (getUserRole(user) !== "trainer") {
+    return jsonResponse(403, { error: "Only trainers can restore members" });
+  }
+
+  const { error } = await adminClient
+    .from("members")
+    .update({ is_active: true })
+    .eq("email", email)
+    .eq("owner_user_id", user.id)
+    .eq("is_active", false);
   if (error) {
     return jsonResponse(500, { error: error.message });
   }
