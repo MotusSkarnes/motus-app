@@ -135,6 +135,7 @@ export function ConfirmDialog({
   message,
   confirmLabel = "Bekreft",
   cancelLabel = "Avbryt",
+  showCancel = true,
   tone = "danger",
   onConfirm,
   onCancel,
@@ -144,6 +145,7 @@ export function ConfirmDialog({
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  showCancel?: boolean;
   tone?: "danger" | "default";
   onConfirm: () => void;
   onCancel: () => void;
@@ -156,9 +158,11 @@ export function ConfirmDialog({
         <div className="text-lg font-semibold tracking-tight text-slate-900">{title}</div>
         <div className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">{message}</div>
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <OutlineButton onClick={onCancel} className="w-full sm:w-auto">
-            {cancelLabel}
-          </OutlineButton>
+          {showCancel ? (
+            <OutlineButton onClick={onCancel} className="w-full sm:w-auto">
+              {cancelLabel}
+            </OutlineButton>
+          ) : null}
           {tone === "danger" ? (
             <DangerButton onClick={onConfirm} className="w-full sm:w-auto">
               {confirmLabel}

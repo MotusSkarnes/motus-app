@@ -612,6 +612,8 @@ function pickFirstName(value: unknown): string {
     title: string;
     message: string;
     confirmLabel?: string;
+    cancelLabel?: string;
+    showCancel?: boolean;
     tone?: "danger" | "default";
     onConfirm: () => void;
   } | null>(null);
@@ -1812,7 +1814,14 @@ function pickFirstName(value: unknown): string {
       // Open tab immediately within click gesture to avoid popup blockers in Edge.
       const printTab = window.open("about:blank", "_blank");
       if (!printTab) {
-        window.alert("Nettleseren blokkerte popup-vinduet for utskrift. Tillat popup for denne siden.");
+        setConfirmDialog({
+          title: "Popup blokkert",
+          message: "Nettleseren blokkerte popup-vinduet for utskrift. Tillat popup for denne siden.",
+          confirmLabel: "OK",
+          showCancel: false,
+          tone: "default",
+          onConfirm: () => {},
+        });
         return;
       }
       const recipientName = String(selectedMember?.name ?? "Kunde").trim() || "Kunde";
@@ -1999,12 +2008,26 @@ function pickFirstName(value: unknown): string {
       } catch {
         // ignore
       }
-      window.alert("Kunne ikke generere PDF/utskrift. Prøv igjen.");
+      setConfirmDialog({
+        title: "Utskrift feilet",
+        message: "Kunne ikke generere PDF/utskrift. Prøv igjen.",
+        confirmLabel: "OK",
+        showCancel: false,
+        tone: "default",
+        onConfirm: () => {},
+      });
       }
     } catch (unexpectedError) {
       console.error("Trainer print failed before rendering.", unexpectedError);
       const detail = unexpectedError instanceof Error ? unexpectedError.message : String(unexpectedError);
-      window.alert(`Utskrift feilet pga. ugyldige data i programmet (${detail}). Prøv igjen eller oppdater programfelt.`);
+      setConfirmDialog({
+        title: "Ugyldige programdata",
+        message: `Utskrift feilet pga. ugyldige data i programmet (${detail}). Prøv igjen eller oppdater programfelt.`,
+        confirmLabel: "OK",
+        showCancel: false,
+        tone: "default",
+        onConfirm: () => {},
+      });
     }
   }
 
@@ -5285,6 +5308,8 @@ function pickFirstName(value: unknown): string {
       title={confirmDialog?.title ?? ""}
       message={confirmDialog?.message ?? ""}
       confirmLabel={confirmDialog?.confirmLabel}
+      cancelLabel={confirmDialog?.cancelLabel}
+      showCancel={confirmDialog?.showCancel}
       tone={confirmDialog?.tone}
       onCancel={() => setConfirmDialog(null)}
       onConfirm={() => {
