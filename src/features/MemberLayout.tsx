@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import type { ComponentProps } from "react";
-import { Bell, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, TrendingUp, UserCircle2, type LucideIcon } from "lucide-react";
+import { Bell, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, TrendingUp, type LucideIcon } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { AppState, MemberTab } from "../app/types";
 import { Card } from "../app/ui";
@@ -49,7 +49,6 @@ const mobileTabs: Array<{ id: MemberTab; label: string; icon: LucideIcon }> = [
   { id: "programs", label: "Trening", icon: ClipboardList },
   { id: "progress", label: "Fremgang", icon: TrendingUp },
   { id: "messages", label: "Meldinger", icon: MessageSquare },
-  { id: "profile", label: "Profil", icon: UserCircle2 },
 ];
 
 export function MemberLayout({
@@ -94,7 +93,7 @@ export function MemberLayout({
     return candidates.some((member) => member.customerType === "Medlem" && member.membershipType !== "Premium");
   }, [appState.currentUser, appState.members, appState.memberViewId]);
   const visibleMobileTabs = isMemberLimited
-    ? mobileTabs.filter((tab) => tab.id === "overview" || tab.id === "programs" || tab.id === "profile")
+    ? mobileTabs.filter((tab) => tab.id === "overview" || tab.id === "programs")
     : mobileTabs;
 
   useEffect(() => {
