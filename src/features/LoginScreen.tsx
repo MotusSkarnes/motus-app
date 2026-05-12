@@ -64,7 +64,7 @@ export function LoginScreen(props: LoginScreenProps) {
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
-      <Card className="relative overflow-hidden p-5 sm:p-8">
+      <Card className="order-2 relative overflow-hidden p-5 sm:p-8 xl:order-1">
         <div
           className="pointer-events-none absolute inset-0 opacity-10"
           style={{ background: `radial-gradient(circle at 15% 20%, ${MOTUS.turquoise} 0%, transparent 38%), radial-gradient(circle at 85% 15%, ${MOTUS.pink} 0%, transparent 40%), radial-gradient(circle at 80% 90%, ${MOTUS.acid} 0%, transparent 34%)` }}
@@ -98,7 +98,7 @@ export function LoginScreen(props: LoginScreenProps) {
         </div>
       </Card>
 
-      <Card className="p-6 sm:p-8">
+      <Card className="order-1 p-5 sm:p-8 xl:order-2">
         <div className="space-y-4">
           <div>
             <h2 className="text-xl font-semibold tracking-tight">{isRecoveryMode ? "Sett nytt passord" : "Innlogging"}</h2>
