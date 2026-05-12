@@ -71,10 +71,12 @@ export function LoginScreen(props: LoginScreenProps) {
         />
         <div className="h-1.5 -mx-6 sm:-mx-8 -mt-6 sm:-mt-8 mb-6" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 70%, ${MOTUS.acid} 100%)` }} />
         <div className="relative max-w-2xl space-y-6">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <img src={motusLogo} alt="Motus logo" className="h-16 w-auto object-contain" />
-            <Badge>Motus Coach</Badge>
-            <Badge>Profesjonell PT-flyt</Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge>Motus Coach</Badge>
+              <Badge>Profesjonell PT-flyt</Badge>
+            </div>
           </div>
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">Velkommen til Motus Coach</h1>
