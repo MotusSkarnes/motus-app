@@ -64,12 +64,12 @@ export function LoginScreen(props: LoginScreenProps) {
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
-      <Card className="relative overflow-hidden p-6 sm:p-8">
+      <Card className="relative overflow-hidden p-5 sm:p-8">
         <div
           className="pointer-events-none absolute inset-0 opacity-10"
           style={{ background: `radial-gradient(circle at 15% 20%, ${MOTUS.turquoise} 0%, transparent 38%), radial-gradient(circle at 85% 15%, ${MOTUS.pink} 0%, transparent 40%), radial-gradient(circle at 80% 90%, ${MOTUS.acid} 0%, transparent 34%)` }}
         />
-        <div className="h-1.5 -mx-6 sm:-mx-8 -mt-6 sm:-mt-8 mb-6" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 70%, ${MOTUS.acid} 100%)` }} />
+        <div className="mb-5 h-1.5 -mx-5 -mt-5 sm:-mx-8 sm:-mt-8 sm:mb-6" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 70%, ${MOTUS.acid} 100%)` }} />
         <div className="relative max-w-2xl space-y-6">
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <img src={motusLogo} alt="Motus logo" className="h-16 w-auto object-contain" />
@@ -79,10 +79,10 @@ export function LoginScreen(props: LoginScreenProps) {
             </div>
           </div>
           <div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">Velkommen til Motus Coach</h1>
-            <p className="mt-2 max-w-xl text-slate-600">Logg inn for å styre kunder, programmer, periodeplaner, fremgang og oppfølging i en samlet arbeidsflate.</p>
+            <h1 className="max-w-[12ch] text-[2rem] leading-tight font-bold tracking-tight text-slate-900 sm:max-w-none sm:text-4xl">Velkommen til Motus Coach</h1>
+            <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-600 sm:max-w-xl sm:text-base">Logg inn for å styre kunder, programmer, periodeplaner, fremgang og oppfølging i en samlet arbeidsflate.</p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
             <StatCard label="Kunder" value="Full kontroll" hint="Profiler, meldinger, planer" />
             <StatCard label="Trening" value="Smart flyt" hint="Program + intervalltimer" />
             <StatCard label="Oppfølging" value="Daglig" hint="Mål og progresjon" />
