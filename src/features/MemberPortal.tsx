@@ -2985,7 +2985,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
         <div className="min-w-0 w-full space-y-4 sm:space-y-6">
           {memberTab === "overview" ? (
-            <Card className="min-w-0 w-full p-4 sm:p-5 flex flex-col gap-4 sm:gap-5">
+            <Card className="min-w-0 w-full p-4 sm:p-6 flex flex-col gap-5 sm:gap-6">
               <div className="hidden w-full sm:block rounded-[22px] p-4 sm:p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm text-white/80">Hei{viewedMember ? `, ${viewedMember.name}` : ""}</div>
@@ -2997,15 +2997,23 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="mt-2 text-sm text-white/90">Alt du trenger for dagens økt ligger under.</div>
               </div>
               {!isMemberLimited ? (
-              <div className="order-2 w-full text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Snarveier</div>
+              <div className="order-2 flex items-end justify-between gap-3">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Snarveier</div>
+                  <div className="mt-1 text-sm text-slate-500">Hopp rett til det du bruker mest.</div>
+                </div>
               </div>
               ) : null}
               <div className="order-2 grid w-full auto-rows-fr items-stretch gap-4 lg:grid-cols-2">
-                  <div className="flex h-full min-w-0 flex-col rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="flex h-full min-w-0 flex-col rounded-2xl border bg-white p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold text-slate-700">🧭 Neste på planen</div>
-                    <div className="text-xs text-slate-500">Plan</div>
+                    <div className="flex items-center gap-2">
+                      <div className="rounded-xl bg-slate-100 p-2 text-slate-700"><ClipboardList className="h-4 w-4" /></div>
+                      <div>
+                        <div className="text-sm font-semibold text-slate-800">Neste på planen</div>
+                        <div className="text-xs text-slate-500">Plan</div>
+                      </div>
+                    </div>
                   </div>
                   {nextPlannedWorkout ? (
                     <>
@@ -3025,10 +3033,15 @@ export function MemberPortal(props: MemberPortalProps) {
                   )}
                 </div>
                 {!isMemberLimited ? (
-                  <div className="flex h-full min-w-0 flex-col rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="flex h-full min-w-0 flex-col rounded-2xl border bg-white p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold text-slate-700">⚡ Hurtighandlinger</div>
-                    <div className="text-xs text-slate-500">Rask tilgang</div>
+                    <div className="flex items-center gap-2">
+                      <div className="rounded-xl bg-slate-100 p-2 text-slate-700"><Sparkles className="h-4 w-4" /></div>
+                      <div>
+                        <div className="text-sm font-semibold text-slate-800">Hurtighandlinger</div>
+                        <div className="text-xs text-slate-500">Rask tilgang</div>
+                      </div>
+                    </div>
                   </div>
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     {!isMemberLimited ? (
@@ -3042,9 +3055,14 @@ export function MemberPortal(props: MemberPortalProps) {
                 ) : null}
               </div>
               <div className="order-1 grid gap-4">
-                <div className="min-w-0 w-full overflow-hidden rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="text-sm font-semibold text-slate-700">Treningskalender</div>
-                  <div className="mt-1 text-base font-semibold text-slate-800 capitalize">{calendarMonthLabel}</div>
+                <div className="min-w-0 w-full overflow-hidden rounded-2xl border bg-slate-50 p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Plan og økter</div>
+                      <div className="mt-1 text-base font-semibold text-slate-800">Treningskalender</div>
+                    </div>
+                    <div className="text-sm font-semibold text-slate-600 capitalize">{calendarMonthLabel}</div>
+                  </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <OutlineButton
                       className="px-3 py-1.5 text-xs"
@@ -3233,10 +3251,15 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               {!isMemberLimited ? (
-              <div className="order-3 w-full rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="order-3 w-full rounded-2xl border bg-white p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-semibold text-slate-700">🏆 Streaks & challenges</div>
-                  <div className="text-xs text-slate-500">Motivasjon</div>
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-xl bg-emerald-50 p-2 text-emerald-700"><Target className="h-4 w-4" /></div>
+                    <div>
+                      <div className="text-sm font-semibold text-slate-800">Streaks & challenges</div>
+                      <div className="text-xs text-slate-500">Motivasjon</div>
+                    </div>
+                  </div>
                 </div>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   <div className="rounded-xl border bg-slate-50 px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>

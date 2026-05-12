@@ -3081,18 +3081,22 @@ function pickFirstName(value: unknown): string {
     <>
     <div className="space-y-4 sm:space-y-6">
       {trainerTab === "dashboard" ? (
-        <Card className="p-5 space-y-5">
+        <Card className="p-5 shadow-sm ring-1 ring-black/5 space-y-5 sm:p-6">
           <div
-            className="rounded-xl border p-4 text-sm text-slate-600"
+            className="rounded-2xl border p-4 text-sm text-slate-600 shadow-sm"
             style={{
               borderColor: "rgba(15,23,42,0.08)",
               background: "linear-gradient(135deg, rgba(20,184,166,0.08) 0%, rgba(236,72,153,0.08) 100%)",
             }}
           >
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dagens fokus</div>
+            <div className="mt-1 text-base font-semibold text-slate-800">Drift og oppfølging</div>
+            <div className="mt-2">
             {followUpCount > 0
               ? `${followUpCount} kunder må følges opp i dag.`
               : "Ingen kunder trenger oppfølging akkurat nå."}{" "}
             {membersWithoutProgramCount > 0 ? `${membersWithoutProgramCount} kunder mangler program.` : "Alle aktive kunder har program."}
+            </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <StatCard label="Dagens kunder" value={String(dashboardSummary.todaysCustomers)} hint="Unike med aktivitet i dag" />
@@ -3100,8 +3104,11 @@ function pickFirstName(value: unknown): string {
             <StatCard label="Nye meldinger" value={String(dashboardSummary.newMessages24h)} hint="Fra kunder siste 24 timer" />
           </div>
           <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
-            <div className="rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-              <div className="font-semibold text-slate-800">To-do per dag</div>
+            <div className="rounded-2xl border bg-white p-5 space-y-4 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Planlegging</div>
+                <div className="mt-1 font-semibold text-slate-800">To-do per dag</div>
+              </div>
               <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
                 <TextInput value={todoTitle} onChange={(e) => setTodoTitle(e.target.value)} placeholder="Ny oppgave (f.eks. ring Martin)" />
                 <TextInput type="date" value={selectedTodoDate} onChange={(e) => setSelectedTodoDate(e.target.value)} />
@@ -3119,9 +3126,12 @@ function pickFirstName(value: unknown): string {
                 ))}
               </div>
             </div>
-            <div className="rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="rounded-2xl border bg-white p-5 space-y-4 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
               <div className="flex items-center justify-between">
-                <div className="font-semibold text-slate-800">Kalender</div>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Oversikt</div>
+                  <div className="mt-1 font-semibold text-slate-800">Kalender</div>
+                </div>
                 <div className="flex items-center gap-2">
                   <OutlineButton onClick={() => setDashboardMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))} className="px-3 py-1.5 text-xs">Forrige</OutlineButton>
                   <OutlineButton onClick={() => setDashboardMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))} className="px-3 py-1.5 text-xs">Neste</OutlineButton>
@@ -3158,9 +3168,13 @@ function pickFirstName(value: unknown): string {
               </div>
             </div>
           </div>
-          <div className="rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div className="rounded-2xl border bg-white p-5 space-y-4 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="font-semibold text-slate-800">Kundeprioritering (rød haster mest)</div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Kundeoversikt</div>
+                <div className="mt-1 font-semibold text-slate-800">Kundeprioritering</div>
+                <div className="mt-1 text-xs text-slate-500">Rød prioritet haster mest.</div>
+              </div>
               <div className="flex flex-wrap items-center gap-2">
                 <SelectBox
                   value={priorityFilter}
@@ -3256,8 +3270,11 @@ function pickFirstName(value: unknown): string {
               ))}
             </div>
           </div>
-          <div className="rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-            <div className="font-semibold text-slate-800">Bør kontaktes nå</div>
+          <div className="rounded-2xl border bg-white p-5 space-y-4 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Oppfølging</div>
+              <div className="mt-1 font-semibold text-slate-800">Bør kontaktes nå</div>
+            </div>
             {followUpCandidates.length === 0 ? (
               <div className="rounded-xl border border-dashed bg-white p-3 text-sm text-slate-500">
                 Ingen kunder trenger ekstra oppfølging akkurat nå.

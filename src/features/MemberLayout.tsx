@@ -138,9 +138,9 @@ export function MemberLayout({
   };
   return (
     <>
-      <div className="space-y-3">
+      <div className="space-y-4 sm:space-y-5">
         {!isMemberLimited ? (
-        <Card className="p-3 sm:p-4 bg-gradient-to-br from-emerald-50/90 via-white to-pink-50/70">
+        <Card className="bg-gradient-to-br from-emerald-50/90 via-white to-pink-50/70 p-4 shadow-sm ring-1 ring-black/5 sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Aktuelt nå</div>
