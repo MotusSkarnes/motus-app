@@ -26,7 +26,7 @@ export function loadState(): AppState {
       : defaults.exercises;
     return {
       workoutMode: parsed.workoutMode ?? defaults.workoutMode,
-      workoutCelebration: parsed.workoutCelebration ?? defaults.workoutCelebration,
+      workoutCelebration: defaults.workoutCelebration,
       members: Array.isArray(parsed.members) ? parsed.members : defaults.members,
       exercises: normalizedExercises,
       programs: Array.isArray(parsed.programs) ? parsed.programs : defaults.programs,
@@ -44,5 +44,5 @@ export function loadState(): AppState {
 
 export function saveState(state: AppState) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, workoutCelebration: null }));
 }
