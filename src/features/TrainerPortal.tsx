@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ClipboardList, Dumbbell, Eye, EyeOff, MessageSquare, Pencil, ShieldCheck, Star, Trash2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
@@ -75,10 +75,91 @@ type TrainerPortalProps = {
 };
 
 type FollowUpDetail = {
+  id: string;
   at: string;
   method: "melding" | "telefon" | "mote";
   note: string;
 };
+
+function parseFollowUpMethod(value: string): FollowUpDetail["method"] {
+  const raw = value.trim();
+  if (raw === "telefon" || raw === "mote") return raw;
+  return "melding";
+}
+
+function migrateFollowUpDetailsFromStorage(raw: string | null): Record<string, FollowUpDetail[]> {
+  if (typeof raw !== "string" || !raw.trim()) return {};
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object") return {};
+    const out: Record<string, FollowUpDetail[]> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (!key) continue;
+      if (Array.isArray(value)) {
+        const list: FollowUpDetail[] = [];
+        for (const item of value) {
+          if (!item || typeof item !== "object") continue;
+          const row = item as Partial<FollowUpDetail>;
+          const at = String(row.at ?? "");
+          if (!at) continue;
+          list.push({
+            id: String(row.id || uid()),
+            at,
+            method: parseFollowUpMethod(String(row.method ?? "")),
+            note: String(row.note ?? ""),
+          });
+        }
+        if (list.length) out[key] = list;
+      } else if (value && typeof value === "object") {
+        const row = value as Partial<FollowUpDetail>;
+        const at = String(row.at ?? "");
+        if (!at) continue;
+        out[key] = [
+          {
+            id: String(row.id || uid()),
+            at,
+            method: parseFollowUpMethod(String(row.method ?? "")),
+            note: String(row.note ?? ""),
+          },
+        ];
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function mergeFollowUpEntriesForMemberIds(
+  memberIds: string[],
+  byMemberId: Record<string, FollowUpDetail[]>,
+): FollowUpDetail[] {
+  const seen = new Set<string>();
+  const merged: FollowUpDetail[] = [];
+  for (const memberId of memberIds) {
+    for (const entry of byMemberId[memberId] ?? []) {
+      if (!entry?.id || !entry.at) continue;
+      if (seen.has(entry.id)) continue;
+      seen.add(entry.id);
+      merged.push(entry);
+    }
+  }
+  return merged.sort((a, b) => b.at.localeCompare(a.at));
+}
+
+function nextLastFollowUpMapForIds(
+  prev: Record<string, string>,
+  memberIds: string[],
+  detailsMap: Record<string, FollowUpDetail[]>,
+): Record<string, string> {
+  const out = { ...prev };
+  for (const id of memberIds) {
+    const logs = detailsMap[id] ?? [];
+    if (!logs.length) delete out[id];
+    else out[id] = logs.reduce((best, e) => (e.at > best ? e.at : best), logs[0].at);
+  }
+  return out;
+}
 
 type IntervalPreset = {
   id: string;
@@ -499,36 +580,17 @@ function pickFirstName(value: unknown): string {
       return {};
     }
   });
-  const [followUpDetailsByMemberId, setFollowUpDetailsByMemberId] = useState<Record<string, FollowUpDetail>>(() => {
+  const [followUpDetailsByMemberId, setFollowUpDetailsByMemberId] = useState<Record<string, FollowUpDetail[]>>(() => {
     if (typeof window === "undefined") return {};
-    try {
-      const raw = window.localStorage.getItem("motus.trainer.followUpDetailsByMemberId");
-      if (!raw) return {};
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      if (!parsed || typeof parsed !== "object") return {};
-      const entries = Object.entries(parsed)
-        .map(([key, value]) => {
-          if (!key || !value || typeof value !== "object") return null;
-          const row = value as Partial<FollowUpDetail>;
-          const at = String(row.at ?? "");
-          const methodRaw = String(row.method ?? "");
-          const note = String(row.note ?? "");
-          if (!at) return null;
-          const method: FollowUpDetail["method"] =
-            methodRaw === "telefon" || methodRaw === "mote" ? methodRaw : "melding";
-          return [key, { at, method, note }] as const;
-        })
-        .filter(Boolean) as Array<readonly [string, FollowUpDetail]>;
-      return Object.fromEntries(entries);
-    } catch {
-      return {};
-    }
+    return migrateFollowUpDetailsFromStorage(window.localStorage.getItem("motus.trainer.followUpDetailsByMemberId"));
   });
   const [followUpMethodDraft, setFollowUpMethodDraft] = useState<FollowUpDetail["method"]>("melding");
   const [followUpNoteDraft, setFollowUpNoteDraft] = useState("");
   const [followUpSaveStatus, setFollowUpSaveStatus] = useState<string | null>(null);
+  const [editingFollowUpEntryId, setEditingFollowUpEntryId] = useState<string | null>(null);
   /** Unngå å laste notatutkast på nytt når `selectedMemberId` byttes mellom duplikat-rader (samme kunde). */
   const followUpDraftHydratedIdentityRef = useRef<string | null>(null);
+  const followUpLastSyncedFromLogRef = useRef(false);
   const [priorityFilter, setPriorityFilter] = useState<"all" | "red" | "orange" | "green">("all");
   const [prioritySort, setPrioritySort] = useState<"highFirst" | "lowFirst">("highFirst");
   const [priorityMemberTypeSort, setPriorityMemberTypeSort] = useState<"none" | "ptFirst" | "premiumFirst" | "standardFirst">("none");
@@ -905,17 +967,11 @@ function pickFirstName(value: unknown): string {
     });
     return Array.from(bySignature.values()).sort((a, b) => parseChatCreatedAtMs(b.createdAt) - parseChatCreatedAtMs(a.createdAt));
   }, [messages, selectedMemberRelatedIdSet, members, selectedMemberId, memberById]);
-  const resolveLatestFollowUpDetail = useCallback((memberIds: string[]): FollowUpDetail | null => {
-    const details = memberIds
-      .map((id) => followUpDetailsByMemberId[id])
-      .filter((item): item is FollowUpDetail => Boolean(item));
-    if (!details.length) return null;
-    return [...details].sort((a, b) => b.at.localeCompare(a.at))[0];
-  }, [followUpDetailsByMemberId]);
-  const selectedMemberLatestFollowUp = useMemo(
-    () => resolveLatestFollowUpDetail(selectedMemberRelatedIds),
-    [selectedMemberRelatedIds, resolveLatestFollowUpDetail]
+  const selectedMemberFollowUpLog = useMemo(
+    () => mergeFollowUpEntriesForMemberIds(selectedMemberRelatedIds, followUpDetailsByMemberId),
+    [selectedMemberRelatedIds, followUpDetailsByMemberId]
   );
+  const selectedMemberLatestFollowUp = selectedMemberFollowUpLog[0] ?? null;
   const latestCompletedLog = selectedLogs.find((log) => log.status === "Fullført") ?? null;
   const filteredWorkoutLogs = useMemo(() => {
     const now = Date.now();
@@ -2716,12 +2772,27 @@ function pickFirstName(value: unknown): string {
     if (typeof window === "undefined") return;
     window.localStorage.setItem("motus.trainer.followUpDetailsByMemberId", JSON.stringify(followUpDetailsByMemberId));
   }, [followUpDetailsByMemberId]);
+  useLayoutEffect(() => {
+    if (followUpLastSyncedFromLogRef.current) return;
+    followUpLastSyncedFromLogRef.current = true;
+    setLastFollowUpByMemberId((prev) => {
+      const next = { ...prev };
+      for (const [memberId, list] of Object.entries(followUpDetailsByMemberId)) {
+        if (!list.length) continue;
+        const maxAt = list.reduce((best, e) => (e.at > best ? e.at : best), list[0].at);
+        const cur = next[memberId];
+        if (!cur || maxAt > cur) next[memberId] = maxAt;
+      }
+      return next;
+    });
+  }, [followUpDetailsByMemberId]);
   useEffect(() => {
     if (selectedMemberId === "__template__" || !selectedMemberId) {
       followUpDraftHydratedIdentityRef.current = null;
       setFollowUpMethodDraft("melding");
       setFollowUpNoteDraft("");
       setFollowUpSaveStatus(null);
+      setEditingFollowUpEntryId(null);
       return;
     }
     const selected = members.find((member) => member.id === selectedMemberId) ?? null;
@@ -2732,21 +2803,11 @@ function pickFirstName(value: unknown): string {
       return;
     }
     followUpDraftHydratedIdentityRef.current = identity;
-
-    const details = selectedMemberRelatedIds
-      .map((id) => followUpDetailsByMemberId[id])
-      .filter((item): item is FollowUpDetail => Boolean(item));
-    const latest = !details.length ? null : [...details].sort((a, b) => b.at.localeCompare(a.at))[0];
-    if (!latest) {
-      setFollowUpMethodDraft("melding");
-      setFollowUpNoteDraft("");
-      setFollowUpSaveStatus(null);
-      return;
-    }
-    setFollowUpMethodDraft(latest.method);
-    setFollowUpNoteDraft(latest.note);
+    setFollowUpMethodDraft("melding");
+    setFollowUpNoteDraft("");
     setFollowUpSaveStatus(null);
-  }, [selectedMemberId, members, selectedMemberRelatedIds, followUpDetailsByMemberId]);
+    setEditingFollowUpEntryId(null);
+  }, [selectedMemberId, members]);
 
   const membersWithPriority = useMemo(() => {
     function getMemberTypeOrder(member: Member): { pt: number; premium: number; standard: number } {
@@ -2821,50 +2882,93 @@ function pickFirstName(value: unknown): string {
   function markMemberFollowedUp(member: Member) {
     const relatedIds = Array.from(memberRelatedIdSetByCanonicalId.get(member.id) ?? new Set([member.id]));
     const nowIso = new Date().toISOString();
-    setLastFollowUpByMemberId((prev) => {
-      const next = { ...prev };
-      relatedIds.forEach((id) => {
-        next[id] = nowIso;
-      });
-      return next;
-    });
+    const newEntry: FollowUpDetail = {
+      id: uid(),
+      at: nowIso,
+      method: "melding",
+      note: "Markert fra oppfølgingsliste.",
+    };
     setFollowUpDetailsByMemberId((prev) => {
       const next = { ...prev };
       relatedIds.forEach((id) => {
-        next[id] = {
-          at: nowIso,
-          method: "melding",
-          note: "Markert fra oppfølgingsliste.",
-        };
+        next[id] = [...(next[id] ?? []), newEntry];
       });
+      setLastFollowUpByMemberId((pl) => nextLastFollowUpMapForIds(pl, relatedIds, next));
       return next;
     });
   }
 
-  function saveSelectedMemberFollowUpEntry() {
-    if (!selectedMember || !selectedMemberRelatedIds.length) return;
-    const nowIso = new Date().toISOString();
-    const detail: FollowUpDetail = {
-      at: nowIso,
-      method: followUpMethodDraft,
-      note: followUpNoteDraft.trim(),
-    };
-    setLastFollowUpByMemberId((prev) => {
-      const next = { ...prev };
-      selectedMemberRelatedIds.forEach((id) => {
-        next[id] = nowIso;
-      });
-      return next;
-    });
+  function beginEditFollowUpEntry(entry: FollowUpDetail) {
+    setEditingFollowUpEntryId(entry.id);
+    setFollowUpMethodDraft(entry.method);
+    setFollowUpNoteDraft(entry.note);
+    setFollowUpSaveStatus(null);
+  }
+
+  function cancelFollowUpFormEdit() {
+    setEditingFollowUpEntryId(null);
+    setFollowUpMethodDraft("melding");
+    setFollowUpNoteDraft("");
+    setFollowUpSaveStatus(null);
+  }
+
+  function deleteSelectedMemberFollowUpEntry(entryId: string) {
+    if (!window.confirm("Slette denne oppføringen?")) return;
+    if (!selectedMemberRelatedIds.length) return;
     setFollowUpDetailsByMemberId((prev) => {
       const next = { ...prev };
-      selectedMemberRelatedIds.forEach((id) => {
-        next[id] = detail;
-      });
+      for (const id of selectedMemberRelatedIds) {
+        next[id] = (next[id] ?? []).filter((e) => e.id !== entryId);
+      }
+      setLastFollowUpByMemberId((pl) => nextLastFollowUpMapForIds(pl, selectedMemberRelatedIds, next));
       return next;
     });
-    setFollowUpNoteDraft(detail.note);
-    setFollowUpSaveStatus("Oppfølging lagret.");
+    if (editingFollowUpEntryId === entryId) {
+      setEditingFollowUpEntryId(null);
+      setFollowUpMethodDraft("melding");
+      setFollowUpNoteDraft("");
+    }
+    setFollowUpSaveStatus("Notat slettet.");
+  }
+
+  function saveSelectedMemberFollowUpEntry() {
+    if (!selectedMember || !selectedMemberRelatedIds.length) return;
+    const trimmed = followUpNoteDraft.trim();
+    if (editingFollowUpEntryId) {
+      setFollowUpDetailsByMemberId((prev) => {
+        const next = { ...prev };
+        for (const id of selectedMemberRelatedIds) {
+          next[id] = (next[id] ?? []).map((e) =>
+            e.id === editingFollowUpEntryId ? { ...e, method: followUpMethodDraft, note: trimmed } : e,
+          );
+        }
+        setLastFollowUpByMemberId((pl) => nextLastFollowUpMapForIds(pl, selectedMemberRelatedIds, next));
+        return next;
+      });
+      setEditingFollowUpEntryId(null);
+      setFollowUpMethodDraft("melding");
+      setFollowUpNoteDraft("");
+      setFollowUpSaveStatus("Notat oppdatert.");
+      return;
+    }
+    const nowIso = new Date().toISOString();
+    const newEntry: FollowUpDetail = {
+      id: uid(),
+      at: nowIso,
+      method: followUpMethodDraft,
+      note: trimmed,
+    };
+    setFollowUpDetailsByMemberId((prev) => {
+      const next = { ...prev };
+      for (const id of selectedMemberRelatedIds) {
+        next[id] = [...(next[id] ?? []), newEntry];
+      }
+      setLastFollowUpByMemberId((pl) => nextLastFollowUpMapForIds(pl, selectedMemberRelatedIds, next));
+      return next;
+    });
+    setFollowUpNoteDraft("");
+    setFollowUpMethodDraft("melding");
+      setFollowUpSaveStatus("Notat lagret.");
   }
 
   return (
@@ -2898,14 +3002,6 @@ function pickFirstName(value: unknown): string {
             <StatCard label="Dagens kunder" value={String(dashboardSummary.todaysCustomers)} hint="Unike med aktivitet i dag" />
             <StatCard label="Dagens økter" value={String(dashboardSummary.todaysWorkouts)} hint="Loggede økter i dag" />
             <StatCard label="Nye meldinger" value={String(dashboardSummary.newMessages24h)} hint="Fra kunder siste 24 timer" />
-          </div>
-          <div className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-            <div className="text-sm font-semibold text-slate-700">Snarveier</div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <GradientButton onClick={() => setTrainerTab("customers")} className="w-full sm:w-auto">Legg til kunde</GradientButton>
-              <OutlineButton onClick={() => { setTrainerTab("customers"); setCustomerSubTab("programs"); }} className="w-full sm:w-auto">Lag økt</OutlineButton>
-              <OutlineButton onClick={() => setTrainerTab("messages")} className="w-full sm:w-auto">Åpne meldinger</OutlineButton>
-            </div>
           </div>
           <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
             <div className="rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -3599,10 +3695,19 @@ function pickFirstName(value: unknown): string {
                     </div>
                     <div className="rounded-xl border bg-white p-4">
                       <div className="font-semibold">Oppfølgingslogg</div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Hvert lagrede notat er egen oppføring. Bytter du kanal (melding / telefon / møte) nullstilles tekstfeltet slik at neste lagring blir et nytt notat.
+                      </p>
                       <div className="mt-3 grid gap-3 md:grid-cols-[220px_1fr]">
                         <SelectBox
                           value={followUpMethodDraft}
-                          onChange={(value) => setFollowUpMethodDraft(value as FollowUpDetail["method"])}
+                          onChange={(value) => {
+                            const next = value as FollowUpDetail["method"];
+                            setFollowUpMethodDraft(next);
+                            if (!editingFollowUpEntryId) {
+                              setFollowUpNoteDraft("");
+                            }
+                          }}
                           options={[
                             { value: "melding", label: "Melding" },
                             { value: "telefon", label: "Telefon" },
@@ -3613,27 +3718,70 @@ function pickFirstName(value: unknown): string {
                           value={followUpNoteDraft}
                           onChange={(event) => setFollowUpNoteDraft(event.target.value)}
                           aria-label="Oppfølgingsnotat"
-                          placeholder="Kort notat fra oppfølgingen..."
+                          placeholder={editingFollowUpEntryId ? "Rediger notatet …" : "Skriv notatet her …"}
                           className="min-h-[92px]"
                         />
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <GradientButton onClick={saveSelectedMemberFollowUpEntry} className="px-4 py-2 text-xs">
-                          Lagre oppfølging
+                        <GradientButton onClick={() => saveSelectedMemberFollowUpEntry()} className="px-4 py-2 text-xs">
+                          {editingFollowUpEntryId ? "Lagre endring" : "Lagre notat"}
                         </GradientButton>
+                        {editingFollowUpEntryId ? (
+                          <OutlineButton type="button" onClick={cancelFollowUpFormEdit} className="px-4 py-2 text-xs">
+                            Avbryt redigering
+                          </OutlineButton>
+                        ) : null}
                         {followUpSaveStatus ? (
                           <span className="text-xs text-emerald-700">{followUpSaveStatus}</span>
                         ) : null}
                       </div>
-                      <div className="mt-3 rounded-xl border bg-white p-3 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                        {selectedMemberLatestFollowUp ? (
-                          <>
-                            <div><span className="font-semibold text-slate-800">Sist fulgt opp:</span> {formatDateDdMmYyyy(new Date(selectedMemberLatestFollowUp.at))}</div>
-                            <div><span className="font-semibold text-slate-800">Metode:</span> {followUpMethodLabel(selectedMemberLatestFollowUp.method)}</div>
-                            <div><span className="font-semibold text-slate-800">Notat:</span> {selectedMemberLatestFollowUp.note || "Ingen notat."}</div>
-                          </>
+                      <div className="mt-4 rounded-xl border bg-slate-50/80 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Lagrede notater</div>
+                        {selectedMemberFollowUpLog.length === 0 ? (
+                          <div className="mt-2 text-sm text-slate-500">Ingen notater ennå.</div>
                         ) : (
-                          <div>Ingen oppfølging registrert ennå.</div>
+                          <div className="mt-2 space-y-2">
+                            {selectedMemberFollowUpLog.map((entry) => (
+                              <div
+                                key={entry.id}
+                                className={`rounded-xl border bg-slate-50 px-3 py-2.5 ${
+                                  entry.id === editingFollowUpEntryId ? "ring-2 ring-emerald-300/80" : ""
+                                }`}
+                                style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0 flex-1 space-y-1">
+                                    <div className="text-[11px] font-medium text-slate-500">
+                                      <span className="text-slate-700">{formatDateDdMmYyyy(new Date(entry.at))}</span>
+                                      <span className="mx-1.5 text-slate-300">·</span>
+                                      <span>{followUpMethodLabel(entry.method)}</span>
+                                    </div>
+                                    <div className="text-xs text-slate-700 whitespace-pre-wrap break-words">{entry.note || "—"}</div>
+                                  </div>
+                                  <div className="flex shrink-0 items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => beginEditFollowUpEntry(entry)}
+                                      className="rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-100"
+                                      aria-label="Rediger notat"
+                                      title="Rediger notat"
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => deleteSelectedMemberFollowUpEntry(entry.id)}
+                                      className="rounded-lg border border-rose-200 p-1.5 text-rose-700 transition hover:bg-rose-50"
+                                      aria-label="Slett notat"
+                                      title="Slett notat"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -5025,7 +5173,11 @@ function pickFirstName(value: unknown): string {
               />
             ) : null}
           </div>
-          <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div
+            id="admin-legg-til-medlem"
+            className="scroll-mt-24 rounded-xl border bg-slate-50 p-4 space-y-3"
+            style={{ borderColor: "rgba(15,23,42,0.08)" }}
+          >
             <div className="text-sm font-semibold text-slate-700">Legg til medlem</div>
             <TextInput value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="Navn" />
             <TextInput value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} placeholder="E-post" />
