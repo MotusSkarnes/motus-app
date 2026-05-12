@@ -1705,27 +1705,28 @@ function pickFirstName(value: unknown): string {
   <title>${escapeHtml(program.title)} - Utskrift</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; color: #0f172a; background: #f8fafc; }
-    .page { padding: 14px; max-width: 940px; margin: 0 auto; }
-    .header-card { border-radius: 12px; padding: 12px; background: linear-gradient(135deg, #14b8a6 0%, #ec4899 100%); color: #fff; }
-    .header-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
-    .brand-logo { height: 40px; width: auto; object-fit: contain; }
-    h1 { margin: 0 0 6px; font-size: 24px; }
-    .meta { color: rgba(255,255,255,0.9); font-size: 13px; }
-    .meta-line { color: rgba(255,255,255,0.95); font-size: 13px; margin-top: 2px; }
-    .notes-card { margin-top: 10px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; padding: 10px; }
-    .notes-title { font-weight: 700; margin-bottom: 6px; }
-    .section-title { margin: 12px 0 8px; font-size: 15px; font-weight: 700; color: #334155; }
-    .exercise-card { display: grid; grid-template-columns: 132px 1fr; gap: 10px; border: 1px solid #dbeafe; border-radius: 12px; background: #fff; padding: 8px; margin-bottom: 8px; break-inside: avoid; }
-    .exercise-image-wrap { width: 120px; aspect-ratio: 1 / 1; border-radius: 10px; overflow: hidden; background: #f1f5f9; border: 1px solid #e2e8f0; }
+    .page { padding: 10px; max-width: 940px; margin: 0 auto; }
+    .header-card { border-radius: 10px; padding: 10px 12px; background: linear-gradient(135deg, #14b8a6 0%, #ec4899 100%); color: #fff; }
+    .header-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+    .brand-logo-frame { display: inline-flex; align-items: center; border-radius: 10px; background: rgba(255,255,255,0.96); padding: 5px 9px; box-shadow: 0 4px 14px rgba(15,23,42,0.14); }
+    .brand-logo { height: 52px; width: auto; max-width: 170px; object-fit: contain; display: block; }
+    h1 { margin: 0 0 4px; font-size: 22px; }
+    .meta { color: rgba(255,255,255,0.9); font-size: 12px; }
+    .meta-line { color: rgba(255,255,255,0.95); font-size: 12px; margin-top: 1px; }
+    .notes-card { margin-top: 8px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 8px; }
+    .notes-title { font-weight: 700; margin-bottom: 4px; }
+    .section-title { margin: 9px 0 6px; font-size: 14px; font-weight: 700; color: #334155; }
+    .exercise-card { display: grid; grid-template-columns: 106px 1fr; gap: 8px; border: 1px solid #dbeafe; border-radius: 8px; background: #fff; padding: 6px; margin-bottom: 6px; break-inside: avoid; }
+    .exercise-image-wrap { width: 96px; aspect-ratio: 1 / 1; border-radius: 8px; overflow: hidden; background: #f1f5f9; border: 1px solid #e2e8f0; }
     .exercise-image { width: 100%; height: 100%; object-fit: cover; display: block; }
     .exercise-image-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px; }
-    .exercise-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
-    .exercise-prescription { font-size: 13px; color: #0f766e; margin-bottom: 6px; }
-    .exercise-description { font-size: 12px; color: #475569; line-height: 1.45; }
-    .exercise-notes { margin-top: 6px; font-size: 12px; color: #7c2d12; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 6px; }
-    .empty-state { border: 1px dashed #cbd5e1; border-radius: 12px; background: #fff; padding: 12px; color: #64748b; }
-    .footer { margin-top: 14px; color: #64748b; font-size: 11px; text-align: right; }
-    @media print { body { margin: 16mm; } }
+    .exercise-title { font-weight: 700; font-size: 14px; margin-bottom: 3px; }
+    .exercise-prescription { font-size: 12px; color: #0f766e; margin-bottom: 4px; }
+    .exercise-description { font-size: 11px; color: #475569; line-height: 1.32; }
+    .exercise-notes { margin-top: 4px; font-size: 11px; color: #7c2d12; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 6px; padding: 4px 5px; }
+    .empty-state { border: 1px dashed #cbd5e1; border-radius: 10px; background: #fff; padding: 10px; color: #64748b; }
+    .footer { margin-top: 10px; color: #64748b; font-size: 10px; text-align: right; }
+    @media print { body { margin: 9mm; } }
     @media print {
       body { background: #fff; }
       .page { padding: 0; }
@@ -1737,7 +1738,7 @@ function pickFirstName(value: unknown): string {
   <div class="page">
     <div class="header-card">
       <div class="header-top">
-        <img src="${escapeHtml(motusLogo)}" alt="Motus logo" class="brand-logo" />
+        <div class="brand-logo-frame"><img src="${escapeHtml(motusLogo)}" alt="Motus logo" class="brand-logo" /></div>
       </div>
       <h1>${escapeHtml(program.title)}</h1>
       <div class="meta">Mål: ${escapeHtml(program.goal || "Ikke satt")} · Opprettet: ${escapeHtml(program.createdAt || "-")}</div>
