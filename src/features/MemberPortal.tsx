@@ -8,6 +8,7 @@ import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../a
 import { supabaseClient } from "../services/supabaseClient";
 import { isWebPushConfigurable, registerWebPushWithSupabase } from "../services/webPush";
 import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput } from "../app/ui";
+import { useToastStatus } from "../app/toast";
 import { uid } from "../app/storage";
 import type { LogGroupWorkoutInput, ReplaceWorkoutExerciseGroupInput, StartCustomWorkoutInput, StartWorkoutModeOptions, UpdateMemberInput } from "../services/appRepository";
 import { mergedPeriodPlanListForMember } from "../app/periodPlanMerge";
@@ -26,6 +27,31 @@ import type {
   WorkoutModeState,
   WorkoutReflection,
 } from "../app/types";
+
+function inferStatusTone(message: string): "success" | "error" | "info" {
+  const normalized = message.trim().toLowerCase();
+  if (!normalized) return "info";
+  if (
+    normalized.includes("feilet") ||
+    normalized.includes("kunne ikke") ||
+    normalized.includes("ugyldig") ||
+    normalized.includes("mangler") ||
+    normalized.includes("ingen ")
+  ) {
+    return "error";
+  }
+  if (
+    normalized.includes("lagret") ||
+    normalized.includes("sendt") ||
+    normalized.includes("oppdatert") ||
+    normalized.includes("slettet") ||
+    normalized.includes("aktivert") ||
+    normalized.includes("slått på")
+  ) {
+    return "success";
+  }
+  return "info";
+}
 
 type MemberPortalProps = {
   members: Member[];
@@ -475,6 +501,13 @@ export function MemberPortal(props: MemberPortalProps) {
   useAutoClearStatus(progressShareStatus, () => setProgressShareStatus(null), getStatusClearDelayMs(progressShareStatus));
   useAutoClearStatus(periodPlanActionStatus, () => setPeriodPlanActionStatus(null), getStatusClearDelayMs(periodPlanActionStatus));
   useAutoClearStatus(intervalTimerStatus, () => setIntervalTimerStatus(null), getStatusClearDelayMs(intervalTimerStatus));
+  useToastStatus(memberChatSendStatus, { title: "Meldinger", tone: inferStatusTone });
+  useToastStatus(pushRegisterStatus, { title: "Varsler", tone: inferStatusTone });
+  useToastStatus(groupWorkoutStatus, { title: "Gruppetrening", tone: inferStatusTone });
+  useToastStatus(progressShareStatus, { title: "Fremgang", tone: inferStatusTone });
+  useToastStatus(periodPlanActionStatus, { title: "Periodeplan", tone: inferStatusTone });
+  useToastStatus(intervalTimerStatus, { title: "Intervalltimer", tone: inferStatusTone });
+  useToastStatus(profileSaveInfo, { title: "Profil", tone: inferStatusTone });
   const editableMember =
     currentUserRole === "member"
       ? currentMemberByEmail ?? viewedMember ?? null

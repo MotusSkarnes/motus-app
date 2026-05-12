@@ -1,11 +1,14 @@
 import React from "react";
 import { MOTUS } from "./data";
+import { ToastProvider } from "./toast";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen min-h-dvh p-3 sm:p-4 md:p-8 text-slate-900 bg-white">
-      <div className="mx-auto max-w-7xl">{children}</div>
-    </div>
+    <ToastProvider>
+      <div className="min-h-screen min-h-dvh p-3 sm:p-4 md:p-8 text-slate-900 bg-white">
+        <div className="mx-auto max-w-7xl">{children}</div>
+      </div>
+    </ToastProvider>
   );
 }
 

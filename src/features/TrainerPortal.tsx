@@ -7,6 +7,7 @@ import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClea
 import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { uid } from "../app/storage";
 import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
+import { useToastStatus } from "../app/toast";
 import motusLogo from "../assets/motus-logo.png";
 import type { CreateMemberInput, UpdateMemberInput } from "../services/appRepository";
 import type { InviteMemberResult, InviteTrainerResult } from "../services/supabaseAuth";
@@ -29,6 +30,33 @@ import {
   upsertMemberPeriodPlansForTrainer,
 } from "../services/supabaseRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
+
+function inferStatusTone(message: string): "success" | "error" | "info" {
+  const normalized = message.trim().toLowerCase();
+  if (!normalized) return "info";
+  if (
+    normalized.includes("feilet") ||
+    normalized.includes("kunne ikke") ||
+    normalized.includes("ugyldig") ||
+    normalized.includes("mangler") ||
+    normalized.includes("ingen ")
+  ) {
+    return "error";
+  }
+  if (
+    normalized.includes("lagret") ||
+    normalized.includes("sendt") ||
+    normalized.includes("oppdatert") ||
+    normalized.includes("slettet") ||
+    normalized.includes("ryddet") ||
+    normalized.includes("gjenopprett") ||
+    normalized.includes("fullført") ||
+    normalized.includes("lagt til")
+  ) {
+    return "success";
+  }
+  return "info";
+}
 
 type TrainerPortalProps = {
   members: Member[];
@@ -639,6 +667,13 @@ function pickFirstName(value: unknown): string {
   useAutoClearStatus(restoreExerciseBankStatus, () => setRestoreExerciseBankStatus(null), getStatusClearDelayMs(restoreExerciseBankStatus));
   useAutoClearStatus(followUpSaveStatus, () => setFollowUpSaveStatus(null), getStatusClearDelayMs(followUpSaveStatus));
   useAutoClearStatus(exerciseFormStatus, () => setExerciseFormStatus(null), getStatusClearDelayMs(exerciseFormStatus));
+  useToastStatus(trainerChatSendStatus, { title: "Meldinger", tone: inferStatusTone });
+  useToastStatus(programSaveStatus, { title: "Treningsprogram", tone: inferStatusTone });
+  useToastStatus(inviteTrainerStatus, { title: "PT-invitasjon", tone: inferStatusTone });
+  useToastStatus(inviteStatus, { title: "Invitasjon", tone: inferStatusTone });
+  useToastStatus(memberEditStatus, { title: "Kundekort", tone: inferStatusTone });
+  useToastStatus(memberLinkStatus, { title: "Medlemskobling", tone: inferStatusTone });
+  useToastStatus(exerciseFormStatus, { title: "Øvelse", tone: inferStatusTone });
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
   const selectedMemberHasMessagingAccess = selectedMember
     ? selectedMember.customerType === "PT-kunde" || selectedMember.membershipType === "Premium"
