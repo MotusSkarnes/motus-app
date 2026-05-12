@@ -232,6 +232,88 @@ function dataUrlToBlob(dataUrl: string): Blob | null {
   }
 }
 
+function normalizeBirthDateToDdMmYyyy(value: string): string {
+  return normalizeBirthDate(value);
+}
+
+async function extractFunctionErrorDetails(error: unknown): Promise<string> {
+  if (!error || typeof error !== "object") return "";
+  const candidate = error as { message?: unknown; context?: { json?: () => Promise<unknown> } };
+  if (typeof candidate.context?.json === "function") {
+    try {
+      const payload = await candidate.context.json();
+      if (payload && typeof payload === "object") {
+        const withError = payload as { error?: unknown; message?: unknown };
+        if (typeof withError.error === "string" && withError.error.trim()) return withError.error;
+        if (typeof withError.message === "string" && withError.message.trim()) return withError.message;
+      }
+    } catch {
+      // Fall through to message fallback.
+    }
+  }
+  if (typeof candidate.message === "string" && candidate.message.trim()) return candidate.message;
+  return "";
+}
+
+function parseLogDate(value: string): Date | null {
+  if (!value) return null;
+  const isoCandidate = new Date(value);
+  if (!Number.isNaN(isoCandidate.getTime())) return isoCandidate;
+  const parts = value.split(".");
+  if (parts.length < 3) return null;
+  const day = Number(parts[0]);
+  const month = Number(parts[1]) - 1;
+  const year = Number(parts[2]);
+  const parsed = new Date(year, month, day);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+}
+
+function parseChatCreatedAtMs(value: string): number {
+  if (!value) return 0;
+  const isoCandidate = new Date(value);
+  if (!Number.isNaN(isoCandidate.getTime())) return isoCandidate.getTime();
+  const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4})(?:\s+kl\s+(\d{2}):(\d{2}))?$/i);
+  if (!match) return 0;
+  const day = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const year = Number(match[3]);
+  const hours = Number(match[4] ?? "0");
+  const minutes = Number(match[5] ?? "0");
+  const parsed = new Date(year, month, day, hours, minutes);
+  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+}
+
+function parseDateOnly(value: string): Date | null {
+  if (!value) return null;
+  const isoLike = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoLike) {
+    const year = Number(isoLike[1]);
+    const month = Number(isoLike[2]) - 1;
+    const day = Number(isoLike[3]);
+    const parsed = new Date(year, month, day);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  }
+  return parseLogDate(value);
+}
+
+function getStartOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function getProfileStorageKey(memberId: string): string {
+  return `motus.member.profile.${memberId}`;
+}
+
+function getUiPreferencesStorageKey(memberId: string): string {
+  return `motus.member.uiPrefs.${memberId}`;
+}
+
+function getPeriodPlanCompletedStorageKey(memberId: string): string {
+  return `${PERIOD_PLAN_COMPLETED_STORAGE_PREFIX}${memberId}`;
+}
+
 type IntervalTimerStep = {
   label: string;
   durationSeconds: number;
@@ -509,7 +591,7 @@ export function MemberPortal(props: MemberPortalProps) {
     return dedupeTrainingPrograms(visiblePrograms);
   }, [programs, relatedMemberIdSet, currentUserRole]);
   const memberAssignedPrograms = useMemo(() => memberPrograms.filter((program) => !program.ephemeral), [memberPrograms]);
-  const memberLogs = logs.filter((log) => relatedMemberIdSet.has(log.memberId));
+  const memberLogs = useMemo(() => logs.filter((log) => relatedMemberIdSet.has(log.memberId)), [logs, relatedMemberIdSet]);
   const memberMessages = useMemo(() => {
     if (currentUserRole === "member") {
       const anchorEmail = (editableMember?.email ?? normalizedCurrentUserEmail).trim().toLowerCase();
@@ -641,8 +723,8 @@ export function MemberPortal(props: MemberPortalProps) {
     const byName = exerciseByName.get(currentWorkoutGroup.exerciseName.trim().toLowerCase());
     return byName?.imageUrl ?? "";
   }, [activeWorkoutProgram, currentWorkoutGroup, exerciseByName, exercises]);
-  const nowTimestamp = Date.now();
-  const nowDate = new Date(nowTimestamp);
+  const nowTimestamp = useMemo(() => Date.now(), []);
+  const nowDate = useMemo(() => new Date(nowTimestamp), [nowTimestamp]);
   const exerciseCategoryById = useMemo(() => {
     const byId = new Map<string, Exercise["category"]>();
     exercises.forEach((exercise) => {
@@ -889,30 +971,7 @@ export function MemberPortal(props: MemberPortalProps) {
     setCustomWorkoutSearch("");
   }
 
-  function normalizeBirthDateToDdMmYyyy(value: string): string {
-    return normalizeBirthDate(value);
-  }
-
-  async function extractFunctionErrorDetails(error: unknown): Promise<string> {
-    if (!error || typeof error !== "object") return "";
-    const candidate = error as { message?: unknown; context?: { json?: () => Promise<unknown> } };
-    if (typeof candidate.context?.json === "function") {
-      try {
-        const payload = await candidate.context.json();
-        if (payload && typeof payload === "object") {
-          const withError = payload as { error?: unknown; message?: unknown };
-          if (typeof withError.error === "string" && withError.error.trim()) return withError.error;
-          if (typeof withError.message === "string" && withError.message.trim()) return withError.message;
-        }
-      } catch {
-        // Fall through to message fallback.
-      }
-    }
-    if (typeof candidate.message === "string" && candidate.message.trim()) return candidate.message;
-    return "";
-  }
-
-  async function syncProfileToPtBackend(payload: {
+  const syncProfileToPtBackend = useCallback(async (payload: {
     email: string;
     emails: string[];
     memberId: string;
@@ -929,7 +988,7 @@ export function MemberPortal(props: MemberPortalProps) {
       /** MOTUS_PROFILE_V1 + JSON; synker økter/skritt osv. */
       personalGoals: string;
     };
-  }): Promise<{ ok: true } | { ok: false; message: string }> {
+  }): Promise<{ ok: true } | { ok: false; message: string }> => {
     if (!supabaseClient) return { ok: false, message: "Denne funksjonen er ikke tilgjengelig akkurat nå." };
 
     const invoked = await supabaseClient.functions.invoke("update-member-profile", { body: payload });
@@ -1022,51 +1081,7 @@ export function MemberPortal(props: MemberPortalProps) {
         }`,
       };
     }
-  }
-
-  function parseLogDate(value: string): Date | null {
-    if (!value) return null;
-    const isoCandidate = new Date(value);
-    if (!Number.isNaN(isoCandidate.getTime())) return isoCandidate;
-    const parts = value.split(".");
-    if (parts.length < 3) return null;
-    const day = Number(parts[0]);
-    const month = Number(parts[1]) - 1;
-    const year = Number(parts[2]);
-    const parsed = new Date(year, month, day);
-    if (Number.isNaN(parsed.getTime())) return null;
-    return parsed;
-  }
-  function parseChatCreatedAtMs(value: string): number {
-    if (!value) return 0;
-    const isoCandidate = new Date(value);
-    if (!Number.isNaN(isoCandidate.getTime())) return isoCandidate.getTime();
-    const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4})(?:\s+kl\s+(\d{2}):(\d{2}))?$/i);
-    if (!match) return 0;
-    const day = Number(match[1]);
-    const month = Number(match[2]) - 1;
-    const year = Number(match[3]);
-    const hours = Number(match[4] ?? "0");
-    const minutes = Number(match[5] ?? "0");
-    const parsed = new Date(year, month, day, hours, minutes);
-    return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
-  }
-  function parseDateOnly(value: string): Date | null {
-    if (!value) return null;
-    const isoLike = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (isoLike) {
-      const year = Number(isoLike[1]);
-      const month = Number(isoLike[2]) - 1;
-      const day = Number(isoLike[3]);
-      const parsed = new Date(year, month, day);
-      if (Number.isNaN(parsed.getTime())) return null;
-      return parsed;
-    }
-    return parseLogDate(value);
-  }
-  function getStartOfDay(date: Date): Date {
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  }
+  }, []);
 
   function getWeekKey(date: Date): string {
     const d = new Date(date);
@@ -1078,7 +1093,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const week = 1 + Math.round((d.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000));
     return `${d.getFullYear()}-${String(week).padStart(2, "0")}`;
   }
-  const completedLogs = memberLogs.filter((log) => log.status === "Fullført");
+  const completedLogs = useMemo(() => memberLogs.filter((log) => log.status === "Fullført"), [memberLogs]);
   const latestCompletedLog = completedLogs[0] ?? null;
   const suggestedWeightByExerciseName = useMemo(() => {
     const byExerciseName = new Map<string, string>();
@@ -1112,10 +1127,16 @@ export function MemberPortal(props: MemberPortalProps) {
     },
     [exercises, suggestedWeightByExerciseName],
   );
-  const completedLogDates = completedLogs.map((log) => parseLogDate(log.date)).filter((date): date is Date => Boolean(date));
-  const uniqueTrainingDays = new Set(completedLogDates.map((date) => date.toDateString())).size;
-  const estimatedSessionsThisMonth = completedLogDates.filter((date) => date.getMonth() === nowDate.getMonth() && date.getFullYear() === nowDate.getFullYear()).length;
-  const trainingWeekKeys = Array.from(new Set(completedLogDates.map((date) => getWeekKey(date)))).sort().reverse();
+  const completedLogDates = useMemo(
+    () => completedLogs.map((log) => parseLogDate(log.date)).filter((date): date is Date => Boolean(date)),
+    [completedLogs],
+  );
+  const uniqueTrainingDays = useMemo(() => new Set(completedLogDates.map((date) => date.toDateString())).size, [completedLogDates]);
+  const estimatedSessionsThisMonth = useMemo(
+    () => completedLogDates.filter((date) => date.getMonth() === nowDate.getMonth() && date.getFullYear() === nowDate.getFullYear()).length,
+    [completedLogDates, nowDate],
+  );
+  const trainingWeekKeys = useMemo(() => Array.from(new Set(completedLogDates.map((date) => getWeekKey(date)))).sort().reverse(), [completedLogDates]);
   const streakWeeks = useMemo(() => {
     if (!trainingWeekKeys.length) return 0;
     let streak = 1;
@@ -1323,13 +1344,7 @@ export function MemberPortal(props: MemberPortalProps) {
     microCelebrationsEnabled && activeCelebration && activeCelebration.memberId === activeMemberId
   );
 
-  function getProfileStorageKey(memberId: string): string {
-    return `motus.member.profile.${memberId}`;
-  }
-  function getUiPreferencesStorageKey(memberId: string): string {
-    return `motus.member.uiPrefs.${memberId}`;
-  }
-  function playCelebrationSound() {
+  const playCelebrationSound = useCallback(() => {
     if (typeof window === "undefined" || !celebrationSoundEnabled) return;
     const AudioCtx = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtx) return;
@@ -1353,7 +1368,130 @@ export function MemberPortal(props: MemberPortalProps) {
     window.setTimeout(() => {
       void context.close();
     }, 400);
-  }
+  }, [celebrationSoundEnabled]);
+
+  const saveProfile = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
+    if (!editableMember || typeof window === "undefined") return;
+    const trimmedBirthDateDraft = memberBirthDateDraft.trim();
+    if (trimmedBirthDateDraft && !isLikelyValidBirthDate(trimmedBirthDateDraft)) {
+      if (!silent) {
+        setProfileSaveInfo("FÃ¸dselsdato mÃ¥ vÃ¦re pÃ¥ formatet dd.mm.yyyy.");
+      }
+      return;
+    }
+    const normalizedDraftEmail = memberEmailDraft.trim().toLowerCase();
+    const fallbackEmail = editableMember.email.trim().toLowerCase();
+    const normalizedEmail =
+      normalizedDraftEmail && normalizedDraftEmail.includes("@") ? normalizedDraftEmail : fallbackEmail;
+    const next: ProfileMetricsDraft = {
+      sessionsPerWeekTarget: profileSessionsPerWeekTarget.trim(),
+      dailyStepsTarget: profileDailyStepsTarget.trim(),
+      targetWeight: profileTargetWeight.trim(),
+      currentDailySteps: profileCurrentDailySteps.trim(),
+    };
+    const metricsForSync = encodeMemberProfileMetrics(next, { homeVisibility });
+    window.localStorage.setItem(getProfileStorageKey(editableMember.id), JSON.stringify(next));
+    const targetMemberIds = Array.from(
+      new Set(
+        members
+          .filter((member) => {
+            const normalizedMemberEmail = member.email.trim().toLowerCase();
+            if (member.id === editableMember.id) return true;
+            if (relatedMemberIds.includes(member.id)) return true;
+            if (normalizedMemberEmail && normalizedMemberEmail === fallbackEmail) return true;
+            if (normalizedMemberEmail && normalizedMemberEmail === normalizedEmail) return true;
+            return false;
+          })
+          .map((member) => member.id)
+      )
+    );
+    const safeTargetIds = targetMemberIds.length ? targetMemberIds : [editableMember.id];
+    safeTargetIds.forEach((memberId) => {
+      updateMember({
+        memberId,
+        changes: {
+          name: memberNameDraft,
+          email: normalizedEmail,
+          phone: normalizePhone(memberPhoneDraft),
+          birthDate: normalizeBirthDateToDdMmYyyy(memberBirthDateDraft),
+          goal: memberGoalDraft,
+          focus: memberFocusDraft,
+          injuries: memberInjuriesDraft,
+          personalGoals: metricsForSync,
+        },
+      });
+    });
+    if (supabaseClient) {
+      const syncResult = await syncProfileToPtBackend({
+        email: normalizedCurrentUserEmail || normalizedEmail,
+        emails: Array.from(
+          new Set(
+            [normalizedCurrentUserEmail, normalizedEmail, fallbackEmail]
+              .map((value) => value.trim().toLowerCase())
+              .filter((value) => value && value.includes("@"))
+          )
+        ),
+        memberId: editableMember.id,
+        memberIds: safeTargetIds,
+        targetName: memberNameDraft,
+        // Treat sync as healthy when at least one canonical row is updated.
+        // Duplicate legacy rows may lag and be healed by subsequent sync paths.
+        expectedMinUpdated: 1,
+        changes: {
+          name: memberNameDraft,
+          phone: memberPhoneDraft,
+          birthDate: normalizeBirthDateToDdMmYyyy(memberBirthDateDraft),
+          goal: memberGoalDraft,
+          focus: memberFocusDraft,
+          injuries: memberInjuriesDraft,
+          personalGoals: metricsForSync,
+        },
+      });
+      if (!syncResult.ok) {
+        setProfileSaveInfo("Profil lagret. Synk mot PT er midlertidig forsinket og forsÃ¸kes igjen automatisk.");
+      } else if (normalizedDraftEmail && !normalizedDraftEmail.includes("@")) {
+        if (!silent) {
+          setProfileSaveInfo("Profil lagret. E-post ble ikke endret fordi formatet var ugyldig.");
+        }
+        return;
+      } else {
+        if (!silent) {
+          setProfileSaveInfo("Profil lagret automatisk.");
+        }
+      }
+      return;
+    }
+    if (normalizedDraftEmail && !normalizedDraftEmail.includes("@")) {
+      if (!silent) {
+        setProfileSaveInfo("Profil lagret. E-post ble ikke endret fordi formatet var ugyldig.");
+      }
+      return;
+    }
+    if (!silent) {
+      setProfileSaveInfo("Profil lagret automatisk.");
+    }
+  }, [
+    editableMember,
+    memberBirthDateDraft,
+    memberEmailDraft,
+    profileSessionsPerWeekTarget,
+    profileDailyStepsTarget,
+    profileTargetWeight,
+    profileCurrentDailySteps,
+    homeVisibility,
+    members,
+    relatedMemberIds,
+    updateMember,
+    memberNameDraft,
+    memberPhoneDraft,
+    memberGoalDraft,
+    memberFocusDraft,
+    memberInjuriesDraft,
+    normalizedCurrentUserEmail,
+    syncProfileToPtBackend,
+  ]);
+
   function formatSeconds(seconds: number): string {
     const safe = Math.max(0, Math.floor(seconds));
     const minutesPart = String(Math.floor(safe / 60)).padStart(2, "0");
@@ -1461,7 +1599,7 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     const fallbackWeekNumber = activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : 1;
     setSelectedPeriodPlanWeekNumber(fallbackWeekNumber);
-  }, [activePeriodPlan?.id, activePeriodWeekIndex]);
+  }, [activePeriodPlan, activePeriodWeekIndex]);
 
   useEffect(() => {
     if (!profileSaveInfo) return;
@@ -1508,7 +1646,7 @@ export function MemberPortal(props: MemberPortalProps) {
     } catch {
       setCompletedPeriodPlanEntryKeys([]);
     }
-  }, [editableMember?.id]);
+  }, [editableMember]);
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     try {
@@ -1519,7 +1657,7 @@ export function MemberPortal(props: MemberPortalProps) {
     } catch {
       // ignore storage write errors (quota/private mode)
     }
-  }, [editableMember?.id, completedPeriodPlanEntryKeys]);
+  }, [editableMember, completedPeriodPlanEntryKeys]);
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     try {
@@ -1554,7 +1692,7 @@ export function MemberPortal(props: MemberPortalProps) {
         ...(normalizeHomeVisibilityForStorage(dbHomeVisibility ?? undefined) ?? {}),
       });
     }
-  }, [editableMember?.id, dbHomeVisibility]);
+  }, [editableMember, dbHomeVisibility]);
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     const payload = JSON.stringify({
@@ -1563,7 +1701,7 @@ export function MemberPortal(props: MemberPortalProps) {
       homeVisibility,
     });
     window.localStorage.setItem(getUiPreferencesStorageKey(editableMember.id), payload);
-  }, [editableMember?.id, microCelebrationsEnabled, celebrationSoundEnabled, homeVisibility]);
+  }, [editableMember, microCelebrationsEnabled, celebrationSoundEnabled, homeVisibility]);
   useEffect(() => {
     if (!editableMember) return;
     const normalizedHomeVisibility = normalizeHomeVisibilityForStorage(homeVisibility);
@@ -1607,6 +1745,7 @@ export function MemberPortal(props: MemberPortalProps) {
     });
   }, [
     editableMember,
+    syncProfileToPtBackend,
     homeVisibility,
     dbHomeVisibility,
     profileSessionsPerWeekTarget,
@@ -1621,7 +1760,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!microCelebrationsEnabled) return;
     if (!shouldShowCelebration && !achievementCelebration) return;
     playCelebrationSound();
-  }, [shouldShowCelebration, achievementCelebration?.id, microCelebrationsEnabled, celebrationSoundEnabled]);
+  }, [shouldShowCelebration, achievementCelebration, microCelebrationsEnabled, playCelebrationSound]);
   useEffect(() => {
     if (memberTab !== "messages") return;
     const container = memberMessagesContainerRef.current;
@@ -1875,109 +2014,6 @@ export function MemberPortal(props: MemberPortalProps) {
     } finally {
       isSendingMemberMessageRef.current = false;
       setIsSendingMemberMessage(false);
-    }
-  }
-
-  async function saveProfile(options?: { silent?: boolean }) {
-    const silent = options?.silent === true;
-    if (!editableMember || typeof window === "undefined") return;
-    const trimmedBirthDateDraft = memberBirthDateDraft.trim();
-    if (trimmedBirthDateDraft && !isLikelyValidBirthDate(trimmedBirthDateDraft)) {
-      if (!silent) {
-        setProfileSaveInfo("Fødselsdato må være på formatet dd.mm.yyyy.");
-      }
-      return;
-    }
-    const normalizedDraftEmail = memberEmailDraft.trim().toLowerCase();
-    const fallbackEmail = editableMember.email.trim().toLowerCase();
-    const normalizedEmail =
-      normalizedDraftEmail && normalizedDraftEmail.includes("@") ? normalizedDraftEmail : fallbackEmail;
-    const next: ProfileMetricsDraft = {
-      sessionsPerWeekTarget: profileSessionsPerWeekTarget.trim(),
-      dailyStepsTarget: profileDailyStepsTarget.trim(),
-      targetWeight: profileTargetWeight.trim(),
-      currentDailySteps: profileCurrentDailySteps.trim(),
-    };
-    const metricsForSync = encodeMemberProfileMetrics(next, { homeVisibility });
-    window.localStorage.setItem(getProfileStorageKey(editableMember.id), JSON.stringify(next));
-    const targetMemberIds = Array.from(
-      new Set(
-        members
-          .filter((member) => {
-            const normalizedMemberEmail = member.email.trim().toLowerCase();
-            if (member.id === editableMember.id) return true;
-            if (relatedMemberIds.includes(member.id)) return true;
-            if (normalizedMemberEmail && normalizedMemberEmail === fallbackEmail) return true;
-            if (normalizedMemberEmail && normalizedMemberEmail === normalizedEmail) return true;
-            return false;
-          })
-          .map((member) => member.id)
-      )
-    );
-    const safeTargetIds = targetMemberIds.length ? targetMemberIds : [editableMember.id];
-    safeTargetIds.forEach((memberId) => {
-      updateMember({
-        memberId,
-        changes: {
-          name: memberNameDraft,
-          email: normalizedEmail,
-          phone: normalizePhone(memberPhoneDraft),
-          birthDate: normalizeBirthDateToDdMmYyyy(memberBirthDateDraft),
-          goal: memberGoalDraft,
-          focus: memberFocusDraft,
-          injuries: memberInjuriesDraft,
-          personalGoals: metricsForSync,
-        },
-      });
-    });
-    if (supabaseClient) {
-      const syncResult = await syncProfileToPtBackend({
-        email: normalizedCurrentUserEmail || normalizedEmail,
-        emails: Array.from(
-          new Set(
-            [normalizedCurrentUserEmail, normalizedEmail, fallbackEmail]
-              .map((value) => value.trim().toLowerCase())
-              .filter((value) => value && value.includes("@"))
-          )
-        ),
-        memberId: editableMember.id,
-        memberIds: safeTargetIds,
-        targetName: memberNameDraft,
-        // Treat sync as healthy when at least one canonical row is updated.
-        // Duplicate legacy rows may lag and be healed by subsequent sync paths.
-        expectedMinUpdated: 1,
-        changes: {
-          name: memberNameDraft,
-          phone: memberPhoneDraft,
-          birthDate: normalizeBirthDateToDdMmYyyy(memberBirthDateDraft),
-          goal: memberGoalDraft,
-          focus: memberFocusDraft,
-          injuries: memberInjuriesDraft,
-          personalGoals: metricsForSync,
-        },
-      });
-      if (!syncResult.ok) {
-        setProfileSaveInfo("Profil lagret. Synk mot PT er midlertidig forsinket og forsøkes igjen automatisk.");
-      } else if (normalizedDraftEmail && !normalizedDraftEmail.includes("@")) {
-        if (!silent) {
-          setProfileSaveInfo("Profil lagret. E-post ble ikke endret fordi formatet var ugyldig.");
-        }
-        return;
-      } else {
-        if (!silent) {
-          setProfileSaveInfo("Profil lagret automatisk.");
-        }
-      }
-      return;
-    }
-    if (normalizedDraftEmail && !normalizedDraftEmail.includes("@")) {
-      if (!silent) {
-        setProfileSaveInfo("Profil lagret. E-post ble ikke endret fordi formatet var ugyldig.");
-      }
-      return;
-    }
-    if (!silent) {
-      setProfileSaveInfo("Profil lagret automatisk.");
     }
   }
 
@@ -2258,9 +2294,10 @@ export function MemberPortal(props: MemberPortalProps) {
     if (isPremiumCustomer) return "Premium-kunde";
     return viewedMember?.customerType || "Ikke satt";
   })();
+  const activeWorkoutModeProgramId = workoutMode?.programId ?? "";
 
   useEffect(() => {
-    if (!workoutMode) {
+    if (!activeWorkoutModeProgramId) {
       setWorkoutExerciseIndex(0);
       setLiveWorkoutCelebration(null);
       setShowWorkoutReflection(false);
@@ -2274,7 +2311,7 @@ export function MemberPortal(props: MemberPortalProps) {
     setReflectionDifficultyLevel(3);
     setReflectionMotivationLevel(3);
     setReflectionNote("");
-  }, [workoutMode?.programId]);
+  }, [activeWorkoutModeProgramId]);
 
   useEffect(() => {
     setSelectedCalendarLogId(null);
@@ -2358,10 +2395,6 @@ export function MemberPortal(props: MemberPortalProps) {
     const dayOffset = weekIndex * 7 + weekdayIndexByKey[day];
     const plannedDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + dayOffset);
     return formatDateDdMmYyyy(plannedDate);
-  }
-
-  function getPeriodPlanCompletedStorageKey(memberId: string): string {
-    return `${PERIOD_PLAN_COMPLETED_STORAGE_PREFIX}${memberId}`;
   }
 
   function buildPeriodPlanEntryKey(planId: string, weekNumber: number, day: WeekdayPlanKey): string {

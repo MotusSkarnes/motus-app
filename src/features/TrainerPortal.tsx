@@ -250,6 +250,26 @@ function parseChatCreatedAtMs(value: string): number {
   return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 }
 
+/** Relaterte medlems-ID-er (e-post/navn) for valgt rad — brukes når listen oppdateres uten at det logisk er en annen kunde. */
+function computeSelectedMemberRelatedIds(members: Member[], selectedMemberId: string | null): string[] {
+  if (selectedMemberId === "__template__") return [];
+  if (!selectedMemberId) return [];
+  const selected = members.find((member) => member.id === selectedMemberId);
+  if (!selected) return [selectedMemberId];
+  const normalizedEmail = selected.email.trim().toLowerCase();
+  const normalizedName = selected.name.trim().toLowerCase();
+  const byEmailIds = normalizedEmail
+    ? members.filter((member) => member.email.trim().toLowerCase() === normalizedEmail).map((member) => member.id)
+    : [];
+  // Legacy data may contain duplicated member rows where email changed between IDs.
+  // Include name matches so trainer still sees historical logs/programs.
+  const byNameIds = normalizedName
+    ? members.filter((member) => member.name.trim().toLowerCase() === normalizedName).map((member) => member.id)
+    : [];
+  const merged = Array.from(new Set([...byEmailIds, ...byNameIds, selectedMemberId]));
+  return merged.length ? merged : [selectedMemberId];
+}
+
 export function TrainerPortal(props: TrainerPortalProps) {
   const EXERCISE_IMAGE_BUCKET = "exercise-images";
   const MAX_EXERCISE_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -507,6 +527,8 @@ function pickFirstName(value: unknown): string {
   const [followUpMethodDraft, setFollowUpMethodDraft] = useState<FollowUpDetail["method"]>("melding");
   const [followUpNoteDraft, setFollowUpNoteDraft] = useState("");
   const [followUpSaveStatus, setFollowUpSaveStatus] = useState<string | null>(null);
+  /** Unngå å laste notatutkast på nytt når `selectedMemberId` byttes mellom duplikat-rader (samme kunde). */
+  const followUpDraftHydratedIdentityRef = useRef<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<"all" | "red" | "orange" | "green">("all");
   const [prioritySort, setPrioritySort] = useState<"highFirst" | "lowFirst">("highFirst");
   const [priorityMemberTypeSort, setPriorityMemberTypeSort] = useState<"none" | "ptFirst" | "premiumFirst" | "standardFirst">("none");
@@ -756,28 +778,10 @@ function pickFirstName(value: unknown): string {
     const { data: nameData } = supabaseClient.storage.from(MEMBER_AVATAR_BUCKET).getPublicUrl(namePath);
     return nameData.publicUrl ? `${nameData.publicUrl}?v=${avatarCacheBust}` : "";
   }
-  const selectedMemberRelatedIds = useMemo(() => {
-    if (selectedMemberId === "__template__") return [];
-    if (!selectedMemberId) return [];
-    const selected = members.find((member) => member.id === selectedMemberId);
-    if (!selected) return [selectedMemberId];
-    const normalizedEmail = selected.email.trim().toLowerCase();
-    const normalizedName = selected.name.trim().toLowerCase();
-    const byEmailIds = normalizedEmail
-      ? members
-          .filter((member) => member.email.trim().toLowerCase() === normalizedEmail)
-          .map((member) => member.id)
-      : [];
-    // Legacy data may contain duplicated member rows where email changed between IDs.
-    // Include name matches so trainer still sees historical logs/programs.
-    const byNameIds = normalizedName
-      ? members
-          .filter((member) => member.name.trim().toLowerCase() === normalizedName)
-          .map((member) => member.id)
-      : [];
-    const merged = Array.from(new Set([...byEmailIds, ...byNameIds, selectedMemberId]));
-    return merged.length ? merged : [selectedMemberId];
-  }, [members, selectedMemberId]);
+  const selectedMemberRelatedIds = useMemo(
+    () => computeSelectedMemberRelatedIds(members, selectedMemberId),
+    [members, selectedMemberId]
+  );
   const selectedMemberRelatedIdSet = useMemo(() => new Set(selectedMemberRelatedIds), [selectedMemberRelatedIds]);
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
   const selectedMemberProfileSourceMembers = useMemo(() => {
@@ -901,16 +905,16 @@ function pickFirstName(value: unknown): string {
     });
     return Array.from(bySignature.values()).sort((a, b) => parseChatCreatedAtMs(b.createdAt) - parseChatCreatedAtMs(a.createdAt));
   }, [messages, selectedMemberRelatedIdSet, members, selectedMemberId, memberById]);
-  function resolveLatestFollowUpDetail(memberIds: string[]): FollowUpDetail | null {
+  const resolveLatestFollowUpDetail = useCallback((memberIds: string[]): FollowUpDetail | null => {
     const details = memberIds
       .map((id) => followUpDetailsByMemberId[id])
       .filter((item): item is FollowUpDetail => Boolean(item));
     if (!details.length) return null;
     return [...details].sort((a, b) => b.at.localeCompare(a.at))[0];
-  }
+  }, [followUpDetailsByMemberId]);
   const selectedMemberLatestFollowUp = useMemo(
     () => resolveLatestFollowUpDetail(selectedMemberRelatedIds),
-    [selectedMemberRelatedIds, followUpDetailsByMemberId, resolveLatestFollowUpDetail]
+    [selectedMemberRelatedIds, resolveLatestFollowUpDetail]
   );
   const latestCompletedLog = selectedLogs.find((log) => log.status === "Fullført") ?? null;
   const filteredWorkoutLogs = useMemo(() => {
@@ -2713,7 +2717,26 @@ function pickFirstName(value: unknown): string {
     window.localStorage.setItem("motus.trainer.followUpDetailsByMemberId", JSON.stringify(followUpDetailsByMemberId));
   }, [followUpDetailsByMemberId]);
   useEffect(() => {
-    const latest = resolveLatestFollowUpDetail(selectedMemberRelatedIds);
+    if (selectedMemberId === "__template__" || !selectedMemberId) {
+      followUpDraftHydratedIdentityRef.current = null;
+      setFollowUpMethodDraft("melding");
+      setFollowUpNoteDraft("");
+      setFollowUpSaveStatus(null);
+      return;
+    }
+    const selected = members.find((member) => member.id === selectedMemberId) ?? null;
+    const identity = selected
+      ? selected.email.trim().toLowerCase() || `name:${selected.name.trim().toLowerCase()}`
+      : selectedMemberId;
+    if (followUpDraftHydratedIdentityRef.current === identity) {
+      return;
+    }
+    followUpDraftHydratedIdentityRef.current = identity;
+
+    const details = selectedMemberRelatedIds
+      .map((id) => followUpDetailsByMemberId[id])
+      .filter((item): item is FollowUpDetail => Boolean(item));
+    const latest = !details.length ? null : [...details].sort((a, b) => b.at.localeCompare(a.at))[0];
     if (!latest) {
       setFollowUpMethodDraft("melding");
       setFollowUpNoteDraft("");
@@ -2723,8 +2746,7 @@ function pickFirstName(value: unknown): string {
     setFollowUpMethodDraft(latest.method);
     setFollowUpNoteDraft(latest.note);
     setFollowUpSaveStatus(null);
-    // only when customer changes / details update
-  }, [selectedMemberRelatedIds, followUpDetailsByMemberId, resolveLatestFollowUpDetail]);
+  }, [selectedMemberId, members, selectedMemberRelatedIds, followUpDetailsByMemberId]);
 
   const membersWithPriority = useMemo(() => {
     function getMemberTypeOrder(member: Member): { pt: number; premium: number; standard: number } {
@@ -2841,6 +2863,7 @@ function pickFirstName(value: unknown): string {
       });
       return next;
     });
+    setFollowUpNoteDraft(detail.note);
     setFollowUpSaveStatus("Oppfølging lagret.");
   }
 
