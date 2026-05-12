@@ -99,7 +99,7 @@ export function LoginScreen(props: LoginScreenProps) {
       </Card>
 
       <Card className="order-1 p-5 sm:p-8 xl:order-2">
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div>
             <h2 className="text-xl font-semibold tracking-tight">{isRecoveryMode ? "Sett nytt passord" : "Innlogging"}</h2>
             <p className="text-sm text-slate-500">
@@ -155,25 +155,23 @@ export function LoginScreen(props: LoginScreenProps) {
               </div>
 
               {showProductionSafeQuickLogin ? (
-                <>
-                  <div className="rounded-xl border bg-slate-50 px-4 py-3 text-xs text-slate-600">
-                    Hurtigvalg for lokal innlogging.
-                  </div>
-                  <div className="pt-4 space-y-2">
-                    <button type="button" onClick={() => quickLogin("trainer@motus.no")} className="w-full rounded-xl border bg-slate-50 px-4 py-3 text-left text-sm">
+                <div className="rounded-xl border bg-slate-50 px-4 py-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="text-xs font-medium text-slate-600">Hurtigvalg for lokal innlogging.</div>
+                  <div className="mt-3 space-y-2">
+                    <button type="button" onClick={() => quickLogin("trainer@motus.no")} className="w-full rounded-xl border bg-white px-4 py-3 text-left text-sm shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="font-medium">Logg inn som trener</div>
                       <div className="text-slate-500">trainer@motus.no</div>
                     </button>
-                    <button type="button" onClick={() => quickLogin("emma@example.com")} className="w-full rounded-xl border bg-slate-50 px-4 py-3 text-left text-sm">
+                    <button type="button" onClick={() => quickLogin("emma@example.com")} className="w-full rounded-xl border bg-white px-4 py-3 text-left text-sm shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="font-medium">Logg inn som Emma</div>
                       <div className="text-slate-500">Medlem</div>
                     </button>
-                    <button type="button" onClick={() => quickLogin("martin@example.com")} className="w-full rounded-xl border bg-slate-50 px-4 py-3 text-left text-sm">
+                    <button type="button" onClick={() => quickLogin("martin@example.com")} className="w-full rounded-xl border bg-white px-4 py-3 text-left text-sm shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="font-medium">Logg inn som Martin</div>
                       <div className="text-slate-500">Medlem</div>
                     </button>
                   </div>
-                </>
+                </div>
               ) : null}
             </>
           )}
