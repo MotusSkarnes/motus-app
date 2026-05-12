@@ -57,6 +57,14 @@ function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
 }
 
+function getUserRole(user: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }): string {
+  const appRole = user.app_metadata?.role;
+  if (appRole === "member" || appRole === "trainer") return appRole;
+  const userRole = user.user_metadata?.role;
+  if (userRole === "member" || userRole === "trainer") return userRole;
+  return "";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse(405, { error: "Method not allowed" });
@@ -67,6 +75,12 @@ Deno.serve(async (req) => {
     return jsonResponse(500, { error: "Missing Supabase service role environment variables" });
   }
 
+  const authHeader = req.headers.get("Authorization") || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!token) {
+    return jsonResponse(401, { error: "Missing bearer token" });
+  }
+
   let payload: DedupePayload = {};
   try {
     payload = (await req.json()) as DedupePayload;
@@ -74,16 +88,28 @@ Deno.serve(async (req) => {
     payload = {};
   }
 
-  const ownerUserId = String(payload.ownerUserId ?? "").trim();
   const apply = payload.apply === true;
   const sharedGlobal = payload.sharedGlobal === true;
+  const requestedOwnerUserId = String(payload.ownerUserId ?? "").trim();
   const targetEmail = normalizeEmail(payload.email);
   const forceProfile = payload.forceProfile ?? null;
+  const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  const { data: authData, error: authError } = await adminClient.auth.getUser(token);
+  const user = authData?.user ?? null;
+  if (authError || !user) {
+    return jsonResponse(401, { error: "Invalid user session" });
+  }
+  if (getUserRole(user) !== "trainer") {
+    return jsonResponse(403, { error: "Only trainers can dedupe members" });
+  }
+  if (requestedOwnerUserId && requestedOwnerUserId !== user.id) {
+    return jsonResponse(403, { error: "Cannot dedupe members for another trainer" });
+  }
+  const ownerUserId = requestedOwnerUserId || user.id;
   if (!ownerUserId && !sharedGlobal) {
     return jsonResponse(400, { error: "ownerUserId is required" });
   }
 
-  const adminClient = createClient(supabaseUrl, serviceRoleKey);
   const membersQuery = adminClient
     .from("members")
     .select("id, owner_user_id, email, name, is_active, invited_at, days_since_activity, customer_type, membership_type");
@@ -98,7 +124,11 @@ Deno.serve(async (req) => {
     return jsonResponse(500, { error: membersError.message });
   }
 
-  const memberRows = (members ?? []) as MemberRow[];
+  const memberRows = ((members ?? []) as MemberRow[]).filter((row) => {
+    const rowOwnerUserId = String(row.owner_user_id ?? "").trim();
+    if (rowOwnerUserId === user.id) return true;
+    return sharedGlobal && String(row.customer_type ?? "").trim().toLowerCase() === "medlem";
+  });
   const debugTargetRows = targetEmail
     ? memberRows
         .filter((row) => {
@@ -221,6 +251,7 @@ Deno.serve(async (req) => {
         .from("training_programs")
         .update({ member_id: canonicalId })
         .in("member_id", uniqueDuplicateIds)
+        .eq("owner_user_id", user.id)
         .select("id");
       if (programsError) {
         return jsonResponse(500, { error: `Program update failed for ${email}: ${programsError.message}` });
@@ -231,6 +262,7 @@ Deno.serve(async (req) => {
         .from("workout_logs")
         .update({ member_id: canonicalId })
         .in("member_id", uniqueDuplicateIds)
+        .eq("owner_user_id", user.id)
         .select("id");
       if (logsError) {
         return jsonResponse(500, { error: `Workout log update failed for ${email}: ${logsError.message}` });
@@ -241,6 +273,7 @@ Deno.serve(async (req) => {
         .from("chat_messages")
         .update({ member_id: canonicalId })
         .in("member_id", uniqueDuplicateIds)
+        .eq("owner_user_id", user.id)
         .select("id");
       if (messagesError) {
         return jsonResponse(500, { error: `Message update failed for ${email}: ${messagesError.message}` });
@@ -252,6 +285,7 @@ Deno.serve(async (req) => {
           .from("members")
           .update({ is_active: false })
           .in("id", uniqueDuplicateIds)
+          .eq("owner_user_id", user.id)
           .select("id");
         if (membersUpdateError) {
           return jsonResponse(500, { error: `Member deactivate failed for ${email}: ${membersUpdateError.message}` });

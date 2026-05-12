@@ -186,11 +186,14 @@ Deno.serve(async (req) => {
       return false;
     });
   }
-  const visibleExpandedRows = expandedRows.filter(() => {
+  const visibleExpandedRows = expandedRows.filter((row) => {
     if (userRole !== "trainer") return true;
     const hasAuthorizedAnchor = visibleAnchors.length > 0;
     if (!hasAuthorizedAnchor) return false;
-    return true;
+    return canTrainerEditAnchor(
+      row as { owner_user_id?: string | null; customer_type?: string | null },
+      user.id,
+    );
   });
 
   const targetIds = Array.from(
@@ -200,12 +203,22 @@ Deno.serve(async (req) => {
         .filter(Boolean)
     )
   );
-  const targetEmails = Array.from(
-    new Set(
-      [targetEmailForUpdate, ...requestedEmails, ...visibleAnchors.map((row) => normalizeEmail(row.email)), ...visibleExpandedRows.map((row) => normalizeEmail(row.email))]
-        .filter((value) => value && value.includes("@"))
-    )
-  );
+  const targetEmails =
+    userRole === "trainer"
+      ? []
+      : Array.from(
+          new Set(
+            [
+              targetEmailForUpdate,
+              ...requestedEmails,
+              ...visibleAnchors.map((row) => normalizeEmail(row.email)),
+              ...visibleExpandedRows.map((row) => normalizeEmail(row.email)),
+            ].filter((value) => value && value.includes("@"))
+          )
+        );
+  if (userRole === "trainer" && !targetIds.length) {
+    return jsonResponse(403, { error: "Cannot update a member outside this trainer's scope" });
+  }
   if (!targetIds.length && !targetEmails.length) {
     // Last-resort bootstrap for missing member row: create one tied to auth user.
     const fallbackMemberId = authMemberId || requestedMemberId || `member-${crypto.randomUUID().slice(0, 8)}`;
