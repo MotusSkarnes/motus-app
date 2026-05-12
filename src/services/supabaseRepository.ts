@@ -1749,6 +1749,7 @@ export const supabaseAppRepository: AppRepository = {
     return nextState;
   },
   saveExercise(state: AppState, input: SaveExerciseInput): AppState {
+    if (!input.name.trim() || !input.group.trim()) return state;
     const nextState = localAppRepository.saveExercise(state, input);
     const exercise = nextState.exercises.find((item) => item.id === input.id) ?? nextState.exercises[0];
     if (exercise) {

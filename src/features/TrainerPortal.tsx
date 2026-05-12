@@ -114,6 +114,84 @@ const GROUP_WORKOUT_PLAN_OPTIONS = [
   "Gruppetime: Step styrke",
 ];
 
+const DEFAULT_EXERCISE_GROUP_OPTIONS = [
+  "Bryst",
+  "Rygg",
+  "Skuldre",
+  "Biceps",
+  "Triceps",
+  "Underarm",
+  "Kjerne",
+  "Mage",
+  "Korsrygg",
+  "Sete",
+  "Hofte",
+  "Forside lår",
+  "Bakside lår",
+  "Innside lår",
+  "Utside lår",
+  "Legg",
+  "Ankel",
+  "Nakke",
+  "Helkropp",
+  "Kondisjon",
+  "Mobilitet",
+];
+
+const DEFAULT_EXERCISE_EQUIPMENT_OPTIONS = [
+  "Manualer",
+  "Kettlebell",
+  "Matte",
+  "Benk",
+  "Vektskive",
+  "Apparat",
+  "Vektstang",
+  "Kroppsvekt",
+  "Strikk",
+  "Kabel",
+  "TRX/slynge",
+  "Medisinball",
+  "Foam roller",
+  "Stepkasse",
+  "Mølle",
+  "Sykkel",
+  "Romaskin",
+  "Vegg",
+  "Dørkarm",
+  "Diverse",
+];
+
+function splitMultiValue(value: string): string[] {
+  return Array.from(
+    new Set(
+      value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
+function joinMultiValues(values: string[]): string {
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean))).join(", ");
+}
+
+function addMultiValue(current: string, nextValue: string): string {
+  const normalizedNextValue = nextValue.trim();
+  if (!normalizedNextValue) return current;
+  return joinMultiValues([...splitMultiValue(current), normalizedNextValue]);
+}
+
+function removeMultiValue(current: string, valueToRemove: string): string {
+  const normalizedValueToRemove = valueToRemove.trim().toLowerCase();
+  return joinMultiValues(splitMultiValue(current).filter((value) => value.toLowerCase() !== normalizedValueToRemove));
+}
+
+function multiValueIncludes(value: string, candidate: string): boolean {
+  const normalizedCandidate = candidate.trim().toLowerCase();
+  return splitMultiValue(value).some((item) => item.toLowerCase() === normalizedCandidate);
+}
+
 function createEmptyWeeklyDayPlan(): WeeklyDayPlan {
   return {
     monday: "",
@@ -928,20 +1006,25 @@ function pickFirstName(value: unknown): string {
     });
   }, [exercises, exerciseSearch, exerciseCategoryFilter, favoriteExerciseIds]);
   const programExerciseGroupOptions = useMemo(() => {
-    const groups = Array.from(new Set(exercises.map((exercise) => exercise.group.trim()).filter(Boolean)));
+    const groups = Array.from(new Set(exercises.flatMap((exercise) => splitMultiValue(exercise.group))));
     return groups.sort((a, b) => a.localeCompare(b, "no"));
   }, [exercises]);
   const exerciseFormGroupOptions = useMemo(() => {
-    const merged = new Set(programExerciseGroupOptions);
-    const currentDraftGroup = exerciseFormGroup.trim();
-    if (currentDraftGroup) merged.add(currentDraftGroup);
+    const merged = new Set([...DEFAULT_EXERCISE_GROUP_OPTIONS, ...programExerciseGroupOptions]);
+    splitMultiValue(exerciseFormGroup).forEach((group) => merged.add(group));
     return Array.from(merged).sort((a, b) => a.localeCompare(b, "no"));
   }, [programExerciseGroupOptions, exerciseFormGroup]);
+  const exerciseFormEquipmentOptions = useMemo(() => {
+    const existingEquipment = exercises.flatMap((exercise) => splitMultiValue(exercise.equipment));
+    const merged = new Set([...DEFAULT_EXERCISE_EQUIPMENT_OPTIONS, ...existingEquipment]);
+    splitMultiValue(exerciseFormEquipment).forEach((equipment) => merged.add(equipment));
+    return Array.from(merged).sort((a, b) => a.localeCompare(b, "no"));
+  }, [exercises, exerciseFormEquipment]);
   const visibleProgramExercises = useMemo(() => {
     const query = programExerciseSearch.trim().toLowerCase();
     const filtered = exercises.filter((exercise) => {
       if (programExerciseCategoryFilter !== "all" && exercise.category !== programExerciseCategoryFilter) return false;
-      if (programExerciseGroupFilter !== "all" && exercise.group !== programExerciseGroupFilter) return false;
+      if (programExerciseGroupFilter !== "all" && !multiValueIncludes(exercise.group, programExerciseGroupFilter)) return false;
       if (!query) return true;
       return (
         exercise.name.toLowerCase().includes(query) ||
@@ -2355,11 +2438,11 @@ function pickFirstName(value: unknown): string {
 
   function submitExerciseForm() {
     const name = exerciseFormName.trim();
-    const group = exerciseFormGroup.trim();
-    const equipment = exerciseFormEquipment.trim();
+    const group = joinMultiValues(splitMultiValue(exerciseFormGroup));
+    const equipment = joinMultiValues(splitMultiValue(exerciseFormEquipment));
     const description = exerciseFormDescription.trim();
-    if (!name || !group || !equipment || !description) {
-      setExerciseFormStatus("Fyll ut navn, kategori, muskelgruppe, utstyr og forklaring.");
+    if (!name || !group) {
+      setExerciseFormStatus("Fyll ut navn og minst én muskelgruppe.");
       return;
     }
 
@@ -2433,6 +2516,63 @@ function pickFirstName(value: unknown): string {
     } finally {
       setIsUploadingExerciseImage(false);
     }
+  }
+
+  function renderExerciseMultiSelectField({
+    label,
+    value,
+    options,
+    onChange,
+    placeholder,
+    emptyText,
+    required = false,
+  }: {
+    label: string;
+    value: string;
+    options: string[];
+    onChange: (value: string) => void;
+    placeholder: string;
+    emptyText: string;
+    required?: boolean;
+  }) {
+    const selectedValues = splitMultiValue(value);
+    const availableOptions = options.filter((option) => !multiValueIncludes(value, option));
+    return (
+      <div className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="text-xs font-semibold text-slate-700">
+            {label}{required ? " *" : ""}
+          </div>
+          <div className="text-[11px] text-slate-400">{selectedValues.length ? `${selectedValues.length} valgt` : emptyText}</div>
+        </div>
+        <SelectBox
+          value=""
+          onChange={(nextValue) => {
+            if (!nextValue) return;
+            onChange(addMultiValue(value, nextValue));
+          }}
+          options={[
+            { value: "", label: placeholder },
+            ...availableOptions.map((option) => ({ value: option, label: option })),
+          ]}
+        />
+        <div className="mt-2 flex min-h-7 flex-wrap gap-1.5">
+          {selectedValues.map((selectedValue) => (
+            <button
+              key={selectedValue}
+              type="button"
+              onClick={() => onChange(removeMultiValue(value, selectedValue))}
+              className="rounded-full border bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-700 transition hover:bg-rose-50 hover:text-rose-700"
+              style={{ borderColor: "rgba(15,23,42,0.1)" }}
+              title={`Fjern ${selectedValue}`}
+            >
+              {selectedValue} ×
+            </button>
+          ))}
+          {selectedValues.length === 0 ? <span className="text-xs text-slate-400">{emptyText}</span> : null}
+        </div>
+      </div>
+    );
   }
 
   function getExerciseSketchDataUri(exercise: Exercise): string {
@@ -4480,7 +4620,7 @@ function pickFirstName(value: unknown): string {
             <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Dumbbell className="h-5 w-5" /></div>
             <div>
               <h2 className="text-xl font-semibold tracking-tight">Øvelsesbank</h2>
-              <p className="text-sm text-slate-500">Opprett og rediger øvelser med forklaring, kategori og utstyr.</p>
+              <p className="text-sm text-slate-500">Opprett og rediger øvelser. Navn og muskelgruppe må fylles ut.</p>
             </div>
           </div>
           <div className="mt-5 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
@@ -4499,15 +4639,23 @@ function pickFirstName(value: unknown): string {
                   options={["Nybegynner", "Litt øvet", "Øvet"]}
                 />
               </div>
-              <SelectBox
-                value={exerciseFormGroup}
-                onChange={setExerciseFormGroup}
-                options={[
-                  { value: "", label: "Velg muskelgruppe / fokusområde" },
-                  ...exerciseFormGroupOptions.map((group) => ({ value: group, label: group })),
-                ]}
-              />
-              <TextInput value={exerciseFormEquipment} onChange={(e) => setExerciseFormEquipment(e.target.value)} placeholder="Utstyr (f.eks. stang, manualer, kroppsvekt)" />
+              {renderExerciseMultiSelectField({
+                label: "Muskelgruppe",
+                value: exerciseFormGroup,
+                options: exerciseFormGroupOptions,
+                onChange: setExerciseFormGroup,
+                placeholder: "Legg til muskelgruppe",
+                emptyText: "Ingen muskelgruppe valgt",
+                required: true,
+              })}
+              {renderExerciseMultiSelectField({
+                label: "Utstyr",
+                value: exerciseFormEquipment,
+                options: exerciseFormEquipmentOptions,
+                onChange: setExerciseFormEquipment,
+                placeholder: "Legg til utstyr",
+                emptyText: "Valgfritt / blank",
+              })}
               <TextInput value={exerciseFormImageUrl} onChange={(e) => setExerciseFormImageUrl(e.target.value)} placeholder="Bilde-URL (valgfritt). La stå tom for auto-skisse." />
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
@@ -4553,7 +4701,7 @@ function pickFirstName(value: unknown): string {
                   />
                 ) : null}
               </div>
-              <TextArea value={exerciseFormDescription} onChange={(e) => setExerciseFormDescription(e.target.value)} className="min-h-[110px]" placeholder="Forklaring av teknikk og utførelse" />
+              <TextArea value={exerciseFormDescription} onChange={(e) => setExerciseFormDescription(e.target.value)} className="min-h-[110px]" placeholder="Forklaring av teknikk og utførelse (valgfritt)" />
               {exerciseFormStatus ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{exerciseFormStatus}</div> : null}
               <div className="grid gap-2 sm:grid-cols-2">
                 <GradientButton onClick={submitExerciseForm} className="w-full">
@@ -4692,17 +4840,25 @@ function pickFirstName(value: unknown): string {
                             options={["Nybegynner", "Litt øvet", "Øvet"]}
                           />
                         </div>
-                        <SelectBox
-                          value={exerciseFormGroup}
-                          onChange={setExerciseFormGroup}
-                          options={[
-                            { value: "", label: "Velg muskelgruppe / fokusområde" },
-                            ...exerciseFormGroupOptions.map((group) => ({ value: group, label: group })),
-                          ]}
-                        />
-                        <TextInput value={exerciseFormEquipment} onChange={(e) => setExerciseFormEquipment(e.target.value)} placeholder="Utstyr (f.eks. stang, manualer, kroppsvekt)" />
+                        {renderExerciseMultiSelectField({
+                          label: "Muskelgruppe",
+                          value: exerciseFormGroup,
+                          options: exerciseFormGroupOptions,
+                          onChange: setExerciseFormGroup,
+                          placeholder: "Legg til muskelgruppe",
+                          emptyText: "Ingen muskelgruppe valgt",
+                          required: true,
+                        })}
+                        {renderExerciseMultiSelectField({
+                          label: "Utstyr",
+                          value: exerciseFormEquipment,
+                          options: exerciseFormEquipmentOptions,
+                          onChange: setExerciseFormEquipment,
+                          placeholder: "Legg til utstyr",
+                          emptyText: "Valgfritt / blank",
+                        })}
                         <TextInput value={exerciseFormImageUrl} onChange={(e) => setExerciseFormImageUrl(e.target.value)} placeholder="Bilde-URL (valgfritt)" />
-                        <TextArea value={exerciseFormDescription} onChange={(e) => setExerciseFormDescription(e.target.value)} className="min-h-[90px]" placeholder="Forklaring av teknikk og utførelse" />
+                        <TextArea value={exerciseFormDescription} onChange={(e) => setExerciseFormDescription(e.target.value)} className="min-h-[90px]" placeholder="Forklaring av teknikk og utførelse (valgfritt)" />
                         <div className="flex gap-2">
                           <GradientButton onClick={submitExerciseForm} className="w-full">
                             Lagre endring

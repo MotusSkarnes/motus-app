@@ -530,9 +530,10 @@ export function setWorkoutLogResultsInState(state: AppState, input: SetWorkoutLo
 
 export function saveExerciseInState(state: AppState, input: SaveExerciseInput): AppState {
   const normalizedName = input.name.trim();
+  const normalizedGroup = input.group.trim();
   const normalizedDescription = input.description.trim();
   const normalizedImageUrl = input.imageUrl?.trim() || "";
-  if (!normalizedName || !normalizedDescription) return state;
+  if (!normalizedName || !normalizedGroup) return state;
 
   if (input.id) {
     return {
@@ -543,7 +544,7 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
               ...exercise,
               name: normalizedName,
               category: input.category,
-              group: input.group.trim(),
+              group: normalizedGroup,
               equipment: input.equipment.trim(),
               level: input.level,
               description: normalizedDescription,
@@ -558,7 +559,7 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
     id: uid("ex"),
     name: normalizedName,
     category: input.category,
-    group: input.group.trim(),
+    group: normalizedGroup,
     equipment: input.equipment.trim(),
     level: input.level,
     description: normalizedDescription,
