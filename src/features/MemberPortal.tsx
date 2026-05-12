@@ -4229,22 +4229,22 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
 
                     <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="flex gap-3">
-                        <OutlineButton className="flex-1" onClick={cancelWorkoutMode}>Avbryt</OutlineButton>
+                      <div className="grid gap-2 sm:flex sm:gap-3">
+                        <OutlineButton className="w-full sm:flex-1" onClick={cancelWorkoutMode}>Avbryt</OutlineButton>
                         <OutlineButton
-                          className="flex-1"
+                          className="w-full sm:flex-1"
                           onClick={() => setWorkoutExerciseIndex((prev) => Math.max(0, prev - 1))}
                           disabled={workoutExerciseIndex === 0}
                         >
                           Forrige øvelse
                         </OutlineButton>
                         {workoutExerciseIndex < workoutResultGroups.length - 1 ? (
-                          <GradientButton className="flex-1" onClick={handleGoToNextWorkoutExercise}>
+                          <GradientButton className="w-full sm:flex-1" onClick={handleGoToNextWorkoutExercise}>
                             Neste øvelse
                           </GradientButton>
                         ) : (
                           <GradientButton
-                            className="flex-1"
+                            className="w-full sm:flex-1"
                             disabled={isSavingWorkout}
                             onClick={() => {
                               if (!showWorkoutReflection) {

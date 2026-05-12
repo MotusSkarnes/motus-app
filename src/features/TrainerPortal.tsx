@@ -3080,16 +3080,6 @@ function pickFirstName(value: unknown): string {
   return (
     <>
     <div className="space-y-4 sm:space-y-6">
-      <Card className="p-3 lg:hidden">
-        <div className="flex gap-2 overflow-auto pb-1">
-          <PillButton active={trainerTab === "dashboard"} onClick={() => setTrainerTab("dashboard")}>Oversikt</PillButton>
-          <PillButton active={trainerTab === "customers"} onClick={() => setTrainerTab("customers")}>Kunder</PillButton>
-          <PillButton active={trainerTab === "programs"} onClick={() => setTrainerTab("programs")}>Programmer</PillButton>
-          <PillButton active={trainerTab === "messages"} onClick={() => setTrainerTab("messages")}>Meldinger</PillButton>
-          <PillButton active={trainerTab === "exerciseBank"} onClick={() => setTrainerTab("exerciseBank")}>Øvelsesbank</PillButton>
-        </div>
-      </Card>
-
       {trainerTab === "dashboard" ? (
         <Card className="p-5 space-y-5">
           <div
@@ -4491,7 +4481,7 @@ function pickFirstName(value: unknown): string {
                         );
                       })}
                     </div>
-                    <div className="sticky bottom-0 flex flex-col gap-3 border-t border-slate-200 bg-slate-50 pt-3 sm:flex-row">
+                    <div className="sticky bottom-0 -mx-5 flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-5 pb-3 pt-3 sm:mx-0 sm:px-0 sm:pb-0 sm:flex-row">
                       <TextInput
                         value={trainerMessage}
                         onChange={(e) => {
