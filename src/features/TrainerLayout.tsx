@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
 import { BarChart3, Bell, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, Clock3, Dumbbell, LayoutDashboard, MessageSquare, Settings, ShieldCheck, UserPlus, Users, type LucideIcon } from "lucide-react";
 import { MOTUS } from "../app/data";
@@ -102,11 +103,50 @@ export function TrainerLayout({
   remoteTrainerPeriodPlansByMemberId,
 }: TrainerLayoutProps) {
   const canAccessAdminTools = true;
-  const inactiveMembersCount = appState.members.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length;
-  const missingInvitesCount = appState.members.filter((member) => !member.invitedAt).length;
-  const trainerActionCount = trainerUnreadCount + missingInvitesCount + inactiveMembersCount;
+  const missingInviteMemberIds = useMemo(
+    () =>
+      appState.members
+        .filter((member) => !member.invitedAt)
+        .map((member) => member.id)
+        .sort(),
+    [appState.members],
+  );
+  const inactiveMemberIds = useMemo(
+    () =>
+      appState.members
+        .filter((member) => Number(member.daysSinceActivity || "0") >= 7)
+        .map((member) => member.id)
+        .sort(),
+    [appState.members],
+  );
+  const inactiveMembersCount = inactiveMemberIds.length;
+  const missingInvitesCount = missingInviteMemberIds.length;
+  const trainerOperationalAlertKey = `${missingInviteMemberIds.join(",")}|${inactiveMemberIds.join(",")}`;
+  const [seenTrainerOperationalAlertKey, setSeenTrainerOperationalAlertKey] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return window.localStorage.getItem("motus.notifications.trainerOperationalSeenKey") ?? "";
+  });
+  const hasTrainerOperationalAlerts = missingInvitesCount + inactiveMembersCount > 0;
+  const hasUnseenTrainerOperationalAlerts =
+    hasTrainerOperationalAlerts && trainerOperationalAlertKey !== seenTrainerOperationalAlertKey;
+  const trainerActionCount =
+    trainerUnreadCount +
+    (trainerNotificationsOpen || hasUnseenTrainerOperationalAlerts ? missingInvitesCount + inactiveMembersCount : 0);
   const visibleTrainerMenuItems = trainerMenuItems;
   const visibleMobileTabs = mobileTabs;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("motus.notifications.trainerOperationalSeenKey", seenTrainerOperationalAlertKey);
+  }, [seenTrainerOperationalAlertKey]);
+
+  function handleTrainerActionPanelToggle() {
+    const willOpen = !trainerNotificationsOpen;
+    handleTrainerBellToggle();
+    if (willOpen && hasTrainerOperationalAlerts) {
+      setSeenTrainerOperationalAlertKey(trainerOperationalAlertKey);
+    }
+  }
 
   const trainerPortalProps: ComponentProps<typeof TrainerPortal> = {
     members: appState.members,
@@ -206,7 +246,7 @@ export function TrainerLayout({
               </div>
               <button
                 type="button"
-                onClick={handleTrainerBellToggle}
+                onClick={handleTrainerActionPanelToggle}
                 className="relative inline-flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-emerald-50"
                 style={{ borderColor: "rgba(20,184,166,0.25)" }}
                 aria-label={trainerNotificationsOpen ? "Lukk varsler" : "Åpne varsler"}
