@@ -146,6 +146,7 @@ const DEFAULT_EXERCISE_EQUIPMENT_OPTIONS = [
   "Vektskive",
   "Apparat",
   "Vektstang",
+  "Egenvekt",
   "Kroppsvekt",
   "Strikk",
   "Kabel",
