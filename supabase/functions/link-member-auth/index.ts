@@ -163,7 +163,10 @@ Deno.serve(async (req) => {
     if (!matchedUser) {
       return jsonResponse(404, { error: "No member row found for email" });
     }
-    const fallbackId = memberId || String(matchedUser.user_metadata?.member_id ?? "").trim() || matchedUser.id;
+    const metadataMemberId =
+      String((matchedUser.app_metadata?.member_id as string | undefined) ?? "").trim() ||
+      String((matchedUser.user_metadata?.member_id as string | undefined) ?? "").trim();
+    const fallbackId = metadataMemberId || matchedUser.id;
     const fallbackName =
       String(matchedUser.user_metadata?.full_name ?? matchedUser.user_metadata?.name ?? "").trim() || firstNameFromEmail(email);
     const { error: upsertError } = await adminClient.from("members").upsert(
