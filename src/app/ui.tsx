@@ -129,6 +129,51 @@ export function DangerButton({ children, className = "", type = "button", ...pro
   );
 }
 
+export function ConfirmDialog({
+  open,
+  title,
+  message,
+  confirmLabel = "Bekreft",
+  cancelLabel = "Avbryt",
+  tone = "danger",
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  tone?: "danger" | "default";
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/45 p-3 sm:items-center sm:p-6">
+      <div className="w-full max-w-md rounded-xl border bg-white p-5 shadow-2xl sm:p-6" style={{ borderColor: "rgba(15,23,42,0.10)" }}>
+        <div className="text-lg font-semibold tracking-tight text-slate-900">{title}</div>
+        <div className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">{message}</div>
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <OutlineButton onClick={onCancel} className="w-full sm:w-auto">
+            {cancelLabel}
+          </OutlineButton>
+          {tone === "danger" ? (
+            <DangerButton onClick={onConfirm} className="w-full sm:w-auto">
+              {confirmLabel}
+            </DangerButton>
+          ) : (
+            <GradientButton onClick={onConfirm} className="w-full sm:w-auto">
+              {confirmLabel}
+            </GradientButton>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function EmptyState({
   title,
   description,

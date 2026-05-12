@@ -7,7 +7,7 @@ import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { supabaseClient } from "../services/supabaseClient";
 import { isWebPushConfigurable, registerWebPushWithSupabase } from "../services/webPush";
-import { Card, DangerButton, EmptyState, GradientButton, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput } from "../app/ui";
+import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { uid } from "../app/storage";
 import type { LogGroupWorkoutInput, ReplaceWorkoutExerciseGroupInput, StartCustomWorkoutInput, StartWorkoutModeOptions, UpdateMemberInput } from "../services/appRepository";
 import { mergedPeriodPlanListForMember } from "../app/periodPlanMerge";
@@ -409,6 +409,13 @@ export function MemberPortal(props: MemberPortalProps) {
   const [groupWorkoutMotivationLevel, setGroupWorkoutMotivationLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [groupWorkoutNote, setGroupWorkoutNote] = useState("");
   const [groupWorkoutStatus, setGroupWorkoutStatus] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    tone?: "danger" | "default";
+    onConfirm: () => void;
+  } | null>(null);
   const [showGroupWorkoutLogger, setShowGroupWorkoutLogger] = useState(false);
   const [showWorkoutReflection, setShowWorkoutReflection] = useState(false);
   const [isSavingWorkout, setIsSavingWorkout] = useState(false);
@@ -2639,13 +2646,19 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   function handleDeleteLoggedExercise(logId: string, exerciseId: string) {
-    const shouldDelete = window.confirm("Slette denne øvelsen fra treningsloggen?");
-    if (!shouldDelete) return;
-    const log = completedLogs.find((item) => item.id === logId);
-    if (log) {
-      setLastDeletedLogResult({ logId, results: log.results ?? [] });
-    }
-    removeWorkoutLogResult({ logId, exerciseId });
+    setConfirmDialog({
+      title: "Slette øvelse fra logg",
+      message: "Slette denne øvelsen fra treningsloggen?",
+      confirmLabel: "Slett øvelse",
+      tone: "danger",
+      onConfirm: () => {
+        const log = completedLogs.find((item) => item.id === logId);
+        if (log) {
+          setLastDeletedLogResult({ logId, results: log.results ?? [] });
+        }
+        removeWorkoutLogResult({ logId, exerciseId });
+      },
+    });
   }
 
   function startEditLoggedExercise(logId: string, result: WorkoutLog["results"][number], index: number) {
@@ -4577,6 +4590,19 @@ export function MemberPortal(props: MemberPortalProps) {
         </div>
       </div>
     </div>
+    <ConfirmDialog
+      open={Boolean(confirmDialog)}
+      title={confirmDialog?.title ?? ""}
+      message={confirmDialog?.message ?? ""}
+      confirmLabel={confirmDialog?.confirmLabel}
+      tone={confirmDialog?.tone}
+      onCancel={() => setConfirmDialog(null)}
+      onConfirm={() => {
+        const action = confirmDialog?.onConfirm;
+        setConfirmDialog(null);
+        action?.();
+      }}
+    />
     </>
   );
 }

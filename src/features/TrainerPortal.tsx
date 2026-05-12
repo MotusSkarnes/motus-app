@@ -6,7 +6,7 @@ import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClear";
 import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { uid } from "../app/storage";
-import { Card, DangerButton, EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
+import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
 import motusLogo from "../assets/motus-logo.png";
 import type { CreateMemberInput, UpdateMemberInput } from "../services/appRepository";
 import type { InviteMemberResult, InviteTrainerResult } from "../services/supabaseAuth";
@@ -608,6 +608,13 @@ function pickFirstName(value: unknown): string {
   const [exerciseFormStatus, setExerciseFormStatus] = useState<string | null>(null);
   const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
   const [showCustomerToolsMobile, setShowCustomerToolsMobile] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    tone?: "danger" | "default";
+    onConfirm: () => void;
+  } | null>(null);
   const editLockedMemberIdRef = useRef<string | null>(null);
   const editLockedIdentityRef = useRef<{ email: string; name: string } | null>(null);
   const [workoutDateRangeFilter, setWorkoutDateRangeFilter] = useState<"7d" | "30d" | "all">("all");
@@ -1627,19 +1634,25 @@ function pickFirstName(value: unknown): string {
   }
 
   function deleteTemplateProgram(program: TrainingProgram) {
-    const shouldDelete = window.confirm(`Slette treningsmalen "${program.title}"?`);
-    if (!shouldDelete) return;
-    deleteProgramById(program.id);
-    if (editingTemplateProgramId === program.id) {
-      resetTemplateProgramBuilder();
-    }
-    if (selectedTemplateProgramId === program.id) {
-      setSelectedTemplateProgramId("");
-    }
-    if (expandedTemplateProgramId === program.id) {
-      setExpandedTemplateProgramId(null);
-    }
-    setTemplateAssignStatus(`Treningsmalen "${program.title}" ble slettet.`);
+    setConfirmDialog({
+      title: "Slette treningsmal",
+      message: `Slette treningsmalen "${program.title}"?`,
+      confirmLabel: "Slett treningsmal",
+      tone: "danger",
+      onConfirm: () => {
+        deleteProgramById(program.id);
+        if (editingTemplateProgramId === program.id) {
+          resetTemplateProgramBuilder();
+        }
+        if (selectedTemplateProgramId === program.id) {
+          setSelectedTemplateProgramId("");
+        }
+        if (expandedTemplateProgramId === program.id) {
+          setExpandedTemplateProgramId(null);
+        }
+        setTemplateAssignStatus(`Treningsmalen "${program.title}" ble slettet.`);
+      },
+    });
   }
 
   function assignSelectedTemplateToMember() {
@@ -1755,9 +1768,15 @@ function pickFirstName(value: unknown): string {
 
   function handleDeleteMember(memberId: string) {
     if (!canAccessAdminTools) return;
-    const confirmed = window.confirm("Admin: Slette kunden permanent? Dette sletter også programmer, logger og meldinger, og kan ikke angres.");
-    if (!confirmed) return;
-    deleteMember(memberId);
+    setConfirmDialog({
+      title: "Slette kunde permanent",
+      message: "Admin: Slette kunden permanent? Dette sletter også programmer, logger og meldinger, og kan ikke angres.",
+      confirmLabel: "Slett permanent",
+      tone: "danger",
+      onConfirm: () => {
+        deleteMember(memberId);
+      },
+    });
   }
 
   function buildProgramFingerprint(program: ProgramExercise[] | undefined, title: string, goal: string, notes: string): string {
@@ -1775,8 +1794,16 @@ function pickFirstName(value: unknown): string {
       .filter((program) => program.id !== target.id)
       .filter((program) => buildProgramFingerprint(program.exercises, program.title, program.goal, program.notes) === fingerprint)
       .map((program) => program.id);
-    deleteProgramById(target.id);
-    duplicateIds.forEach((id) => deleteProgramById(id));
+    setConfirmDialog({
+      title: "Slette program",
+      message: `Slette programmet "${target.title}"?`,
+      confirmLabel: "Slett program",
+      tone: "danger",
+      onConfirm: () => {
+        deleteProgramById(target.id);
+        duplicateIds.forEach((id) => deleteProgramById(id));
+      },
+    });
   }
 
   function handlePrintProgram(program: TrainingProgram) {
@@ -2470,7 +2497,15 @@ function pickFirstName(value: unknown): string {
   }
 
   function deleteTodo(todoId: string) {
-    setTodos((prev) => prev.filter((item) => item.id !== todoId));
+    setConfirmDialog({
+      title: "Slette oppgave",
+      message: "Slette denne oppgaven?",
+      confirmLabel: "Slett oppgave",
+      tone: "danger",
+      onConfirm: () => {
+        setTodos((prev) => prev.filter((item) => item.id !== todoId));
+      },
+    });
   }
 
   function resetExerciseForm() {
@@ -2526,13 +2561,19 @@ function pickFirstName(value: unknown): string {
     const confirmMessage = isUsedInPrograms
       ? `Fjern "${exercise.name}" fra øvelsesbank?\n\nØvelsen skjules også i programmer der den er brukt.`
       : `Fjern "${exercise.name}" fra øvelsesbank?`;
-    const shouldDelete = window.confirm(confirmMessage);
-    if (!shouldDelete) return;
-    deleteExercise(exercise.id);
-    setFavoriteExerciseIds((prev) => prev.filter((id) => id !== exercise.id));
-    if (editingExerciseId === exercise.id) resetExerciseForm();
-    if (expandedExerciseId === exercise.id) setExpandedExerciseId(null);
-    setExerciseFormStatus(`Øvelsen "${exercise.name}" er skjult fra øvelsesbank.`);
+    setConfirmDialog({
+      title: "Fjerne øvelse",
+      message: confirmMessage,
+      confirmLabel: "Fjern øvelse",
+      tone: "danger",
+      onConfirm: () => {
+        deleteExercise(exercise.id);
+        setFavoriteExerciseIds((prev) => prev.filter((id) => id !== exercise.id));
+        if (editingExerciseId === exercise.id) resetExerciseForm();
+        if (expandedExerciseId === exercise.id) setExpandedExerciseId(null);
+        setExerciseFormStatus(`Øvelsen "${exercise.name}" er skjult fra øvelsesbank.`);
+      },
+    });
   }
 
   async function handleExerciseImageUpload(file: File | null) {
@@ -2913,22 +2954,29 @@ function pickFirstName(value: unknown): string {
   }
 
   function deleteSelectedMemberFollowUpEntry(entryId: string) {
-    if (!window.confirm("Slette denne oppføringen?")) return;
-    if (!selectedMemberRelatedIds.length) return;
-    setFollowUpDetailsByMemberId((prev) => {
-      const next = { ...prev };
-      for (const id of selectedMemberRelatedIds) {
-        next[id] = (next[id] ?? []).filter((e) => e.id !== entryId);
-      }
-      setLastFollowUpByMemberId((pl) => nextLastFollowUpMapForIds(pl, selectedMemberRelatedIds, next));
-      return next;
+    setConfirmDialog({
+      title: "Slette oppføring",
+      message: "Slette denne oppføringen?",
+      confirmLabel: "Slett oppføring",
+      tone: "danger",
+      onConfirm: () => {
+        if (!selectedMemberRelatedIds.length) return;
+        setFollowUpDetailsByMemberId((prev) => {
+          const next = { ...prev };
+          for (const id of selectedMemberRelatedIds) {
+            next[id] = (next[id] ?? []).filter((e) => e.id !== entryId);
+          }
+          setLastFollowUpByMemberId((pl) => nextLastFollowUpMapForIds(pl, selectedMemberRelatedIds, next));
+          return next;
+        });
+        if (editingFollowUpEntryId === entryId) {
+          setEditingFollowUpEntryId(null);
+          setFollowUpMethodDraft("melding");
+          setFollowUpNoteDraft("");
+        }
+        setFollowUpSaveStatus("Notat slettet.");
+      },
     });
-    if (editingFollowUpEntryId === entryId) {
-      setEditingFollowUpEntryId(null);
-      setFollowUpMethodDraft("melding");
-      setFollowUpNoteDraft("");
-    }
-    setFollowUpSaveStatus("Notat slettet.");
   }
 
   function saveSelectedMemberFollowUpEntry() {
@@ -5232,6 +5280,19 @@ function pickFirstName(value: unknown): string {
         </Card>
       ) : null}
     </div>
+    <ConfirmDialog
+      open={Boolean(confirmDialog)}
+      title={confirmDialog?.title ?? ""}
+      message={confirmDialog?.message ?? ""}
+      confirmLabel={confirmDialog?.confirmLabel}
+      tone={confirmDialog?.tone}
+      onCancel={() => setConfirmDialog(null)}
+      onConfirm={() => {
+        const action = confirmDialog?.onConfirm;
+        setConfirmDialog(null);
+        action?.();
+      }}
+    />
     </>
   );
 }
