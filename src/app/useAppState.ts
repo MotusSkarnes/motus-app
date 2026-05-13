@@ -6,7 +6,7 @@ import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient
 import { fetchExercisesFromSupabase, fetchHydratedMemberData, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
 import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, inviteTrainerByEmail, refreshSupabaseSessionUser, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult, type InviteTrainerResult } from "../services/supabaseAuth";
 import { mergeRemoteMessagesWithLocalOptimistic } from "./messageHydrationMerge";
-import type { AppState, AuthUser, Exercise, MemberTab, PeriodSchedulePlan, TrainerTab } from "./types";
+import type { AppState, AuthUser, Exercise, MemberTab, PeriodSchedulePlan, TrainerTab, TrainingProgram, WorkoutLog } from "./types";
 
 function mergeMembersById(primary: AppState["members"] | null, secondary: AppState["members"] | null): AppState["members"] | null {
   if (!primary && !secondary) return null;
@@ -18,6 +18,39 @@ function mergeMembersById(primary: AppState["members"] | null, secondary: AppSta
     merged.set(key, existing ? { ...existing, ...member } : member);
   }
   return Array.from(merged.values());
+}
+
+/** Union hydrate + direct table fetch so rows visible under RLS are not dropped when edge list is partial. */
+function mergeTrainingProgramsById(
+  hydrated: TrainingProgram[] | null | undefined,
+  direct: TrainingProgram[] | null | undefined,
+): TrainingProgram[] {
+  const byId = new Map<string, TrainingProgram>();
+  for (const p of hydrated ?? []) {
+    const id = p.id?.trim();
+    if (id) byId.set(id, p);
+  }
+  for (const p of direct ?? []) {
+    const id = p.id?.trim();
+    if (id) byId.set(id, p);
+  }
+  return Array.from(byId.values());
+}
+
+function mergeWorkoutLogsById(
+  hydrated: WorkoutLog[] | null | undefined,
+  direct: WorkoutLog[] | null | undefined,
+): WorkoutLog[] {
+  const byId = new Map<string, WorkoutLog>();
+  for (const l of hydrated ?? []) {
+    const id = l.id?.trim();
+    if (id) byId.set(id, l);
+  }
+  for (const l of direct ?? []) {
+    const id = l.id?.trim();
+    if (id) byId.set(id, l);
+  }
+  return Array.from(byId.values());
 }
 
 function syncExercisesWithPrograms(state: AppState): AppState {
@@ -230,21 +263,14 @@ export function useAppState() {
         ? mergeMembersById(hydratedTrainer.members, directTrainerMembers)
         : hydratedMember?.members ?? directTrainerMembers ?? (await fetchMembersFromSupabase());
       const remoteMessages = hydratedTrainer?.messages ?? hydratedMember?.messages ?? (await fetchMessagesFromSupabase());
-      // Edge hydrate can return programs: [] while RLS select still returns rows (or vice versa). Prefer non-empty.
+      // Edge hydrate and RLS-backed selects can disagree; merge by id so new devices still see programs/logs
+      // the member can read directly from Postgres even when hydrate returns a partial list.
       let remotePrograms =
         hydratedTrainer?.programs ??
-        (isMemberLikeSession
-          ? hydratedMember?.programs?.length
-            ? hydratedMember.programs
-            : (directMemberPrograms ?? hydratedMember?.programs ?? [])
-          : null);
+        (isMemberLikeSession ? mergeTrainingProgramsById(hydratedMember?.programs, directMemberPrograms) : null);
       let remoteLogs =
         hydratedTrainer?.logs ??
-        (isMemberLikeSession
-          ? hydratedMember?.logs?.length
-            ? hydratedMember.logs
-            : (directMemberLogs ?? hydratedMember?.logs ?? [])
-          : null);
+        (isMemberLikeSession ? mergeWorkoutLogsById(hydratedMember?.logs, directMemberLogs) : null);
 
       // One-shot: JWT app_metadata.member_id often mismatches DB; RLS then returns no rows. Re-link + refresh + refetch.
       if (
