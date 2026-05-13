@@ -4761,7 +4761,7 @@ function pickFirstName(value: unknown): string {
                   </OutlineButton>
                 ) : null}
               </div>
-              <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="rounded-xl border bg-slate-50 p-3 sm:p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="font-semibold">Øvelser</div>
                 <TextInput
                   value={programExerciseSearch}
@@ -4805,9 +4805,9 @@ function pickFirstName(value: unknown): string {
                         draggable
                         onDragStart={() => setDraggedExerciseIdFromLibrary(exercise.id)}
                         onDragEnd={() => setDraggedExerciseIdFromLibrary(null)}
-                        className="rounded-2xl border bg-white p-3 cursor-grab active:cursor-grabbing"
+                        className="rounded-2xl border bg-white p-2.5 sm:p-3 cursor-grab active:cursor-grabbing"
                       >
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start justify-between gap-2.5">
                           <button type="button" onClick={() => addExerciseToDraft(exercise)} className="flex flex-1 items-start gap-2 text-left">
                             <img
                               src={getExercisePreviewSrc(exercise)}
@@ -4822,7 +4822,7 @@ function pickFirstName(value: unknown): string {
                             />
                             <div className="min-w-0">
                               <div className="font-medium text-sm">{exercise.name}</div>
-                              <div className="text-xs text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
+                              <div className="text-xs leading-5 text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
                             </div>
                           </button>
                           <button
@@ -4845,7 +4845,7 @@ function pickFirstName(value: unknown): string {
                   })}
                 </div>
               </div>
-              <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="rounded-xl border bg-slate-50 p-3 sm:p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="font-semibold">Lagrede treningsmaler</div>
                   <div className="text-xs text-slate-500">{templatePrograms.length} maler</div>
@@ -4867,14 +4867,14 @@ function pickFirstName(value: unknown): string {
                             {program.exercises.length} øvelse(r){program.createdAt ? ` · ${program.createdAt}` : ""}
                           </div>
                         </div>
-                        <div className="flex flex-wrap items-center justify-end gap-2">
-                          <OutlineButton onClick={() => setExpandedTemplateProgramId((prev) => (prev === program.id ? null : program.id))} className="px-3 py-1.5 text-xs">
+                        <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end">
+                          <OutlineButton onClick={() => setExpandedTemplateProgramId((prev) => (prev === program.id ? null : program.id))} className="w-full px-2 py-1.5 text-xs sm:w-auto sm:px-3">
                             {isExpanded ? "Skjul" : "Vis"}
                           </OutlineButton>
-                          <OutlineButton onClick={() => startEditTemplateProgram(program)} className="px-3 py-1.5 text-xs">
+                          <OutlineButton onClick={() => startEditTemplateProgram(program)} className="w-full px-2 py-1.5 text-xs sm:w-auto sm:px-3">
                             Rediger
                           </OutlineButton>
-                          <OutlineButton onClick={() => deleteTemplateProgram(program)} className="px-3 py-1.5 text-xs text-rose-700">
+                          <OutlineButton onClick={() => deleteTemplateProgram(program)} className="w-full px-2 py-1.5 text-xs text-rose-700 sm:w-auto sm:px-3">
                             Slett
                           </OutlineButton>
                         </div>
