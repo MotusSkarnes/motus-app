@@ -1,5 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ClipboardList, MessageSquare, Plus, Repeat2, Search, Share2, Sparkles, Target, TrendingUp, UserCircle2 } from "lucide-react";
+import {
+  CalendarDays,
+  ClipboardList,
+  Dumbbell,
+  History,
+  MessageSquare,
+  Plus,
+  Repeat2,
+  Search,
+  Share2,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Trophy,
+  UserCircle2,
+  Users,
+} from "lucide-react";
 import { MOTUS } from "../app/data";
 import motusLogo from "../assets/motus-logo.png";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
@@ -3582,7 +3598,15 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               <div className="mt-5 rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
-                <div className="font-semibold">📋 Mine treningsprogram</div>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="rounded-xl p-2 text-white shadow-sm"
+                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                  >
+                    <ClipboardList className="h-4 w-4" />
+                  </div>
+                  <div className="text-sm font-semibold text-slate-800">Mine treningsprogram</div>
+                </div>
                 <div className="mt-4 space-y-3">
                   {memberAssignedPrograms.length === 0 ? (
                     <EmptyState
@@ -3692,9 +3716,17 @@ export function MemberPortal(props: MemberPortalProps) {
               </div>
               <div className="mt-6 rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <div className="font-semibold">🗓️ Periodeplan fra PT</div>
-                    <div className="mt-1 text-xs text-slate-500">Viser hva som er planlagt dag for dag.</div>
+                  <div className="flex min-w-0 items-start gap-2">
+                    <div
+                      className="shrink-0 rounded-xl p-2 text-white shadow-sm"
+                      style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                    >
+                      <CalendarDays className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-slate-800">Periodeplan fra PT</div>
+                      <div className="mt-1 text-xs text-slate-500">Viser hva som er planlagt dag for dag.</div>
+                    </div>
                   </div>
                   <OutlineButton onClick={() => setShowPeriodPlanPanel((prev) => !prev)} className="w-full sm:w-auto">
                     {showPeriodPlanPanel ? "Skjul periodeplan" : "Vis periodeplan"}
@@ -3812,9 +3844,17 @@ export function MemberPortal(props: MemberPortalProps) {
               </div>
               <div className="mt-6 rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <div className="font-semibold">👥 Logg gruppetrening</div>
-                    <div className="mt-1 text-xs text-slate-500">Registrer gruppetimer slik at PT ser all aktivitet.</div>
+                  <div className="flex min-w-0 items-start gap-2">
+                    <div
+                      className="shrink-0 rounded-xl p-2 text-white shadow-sm"
+                      style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                    >
+                      <Users className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-slate-800">Logg gruppetrening</div>
+                      <div className="mt-1 text-xs text-slate-500">Registrer gruppetimer slik at PT ser all aktivitet.</div>
+                    </div>
                   </div>
                   <OutlineButton onClick={() => setShowGroupWorkoutLogger((prev) => !prev)} className="w-full sm:w-auto">
                     {showGroupWorkoutLogger ? "Skjul logging" : "Logg gruppetrening"}
@@ -3887,7 +3927,15 @@ export function MemberPortal(props: MemberPortalProps) {
                 ) : null}
               </div>
               <div className="mt-6 rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
-                <div className="font-semibold">📝 Siste 3 økter</div>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="rounded-xl p-2 text-white shadow-sm"
+                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                  >
+                    <History className="h-4 w-4" />
+                  </div>
+                  <div className="text-sm font-semibold text-slate-800">Siste 3 økter</div>
+                </div>
                 <div className="mt-4 space-y-3">
                   {lastDeletedLogResult ? (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -4472,10 +4520,20 @@ export function MemberPortal(props: MemberPortalProps) {
                 />
               ) : null}
               <div className="mt-4 rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-sm font-semibold text-slate-700">🏆 Streaks + achievements</div>
-                <div className="mt-1 text-xs text-slate-500">
-                  Små milepæler som holder motivasjonen oppe. Nivå {achievementLevel} av {achievementMaxLevel}
-                  {hasCompletedAllAchievementLevels ? " · Maksnivå nådd ✨" : ""}
+                <div className="flex items-start gap-2">
+                  <div
+                    className="shrink-0 rounded-xl p-2 text-white shadow-sm"
+                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                  >
+                    <Trophy className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-slate-800">Streaks og achievements</div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      Små milepæler som holder motivasjonen oppe. Nivå {achievementLevel} av {achievementMaxLevel}
+                      {hasCompletedAllAchievementLevels ? " · Maksnivå nådd ✨" : ""}
+                    </div>
+                  </div>
                 </div>
                 <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Streak denne perioden: {streakWeeks} uker</div>
@@ -4508,8 +4566,18 @@ export function MemberPortal(props: MemberPortalProps) {
               </div>
 
               <div className="mt-4 rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-sm font-semibold text-slate-700">🏋️ Personlige rekorder</div>
-                <div className="mt-1 text-xs text-slate-500">Beste løft registrert per øvelse.</div>
+                <div className="flex items-start gap-2">
+                  <div
+                    className="shrink-0 rounded-xl p-2 text-white shadow-sm"
+                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                  >
+                    <Dumbbell className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-slate-800">Personlige rekorder</div>
+                    <div className="mt-1 text-xs text-slate-500">Beste løft registrert per øvelse.</div>
+                  </div>
+                </div>
                 <div className="mt-4 space-y-3">
                   {personalRecords.length === 0 ? (
                     <EmptyState
