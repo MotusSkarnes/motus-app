@@ -66,7 +66,6 @@ const mobileTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
   { id: "customers", label: "Kunder", icon: Users },
   { id: "programs", label: "Program", icon: ClipboardList },
   { id: "exerciseBank", label: "Øvelser", icon: Dumbbell },
-  { id: "messages", label: "Meld.", icon: MessageSquare },
 ];
 
 export function TrainerLayout({
@@ -369,7 +368,7 @@ export function TrainerLayout({
           style={{ borderColor: "rgba(15,23,42,0.06)" }}
         >
           <div
-            className="grid w-full grid-cols-5 items-center gap-0.5 rounded-[14px] p-0.5"
+            className="grid w-full grid-cols-4 items-center gap-0.5 rounded-[14px] p-0.5"
             style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
           >
             {visibleMobileTabs.map((tab) => {
