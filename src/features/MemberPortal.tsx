@@ -1179,7 +1179,9 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!built) return;
     const title = memberSavedProgramTitle.trim() || "Mitt treningsprogram";
     const authorFull = viewedMember?.name?.trim() || currentUserEmail.trim() || "Medlem";
+    const optimisticProgramId = uid("program");
     saveProgramForMember({
+      id: optimisticProgramId,
       title,
       goal: "",
       notes: "",
@@ -1187,6 +1189,12 @@ export function MemberPortal(props: MemberPortalProps) {
       exercises: built.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
       programCreatedBy: "member",
       programCreatedByName: authorFull,
+      onPersisted: (result) => {
+        if (!result.ok) {
+          deleteProgramById(optimisticProgramId);
+          setCustomProgramSaveStatus(`Kunne ikke lagre "${title}". ${result.message?.trim() || "Prøv igjen."}`);
+        }
+      },
     });
     setCustomWorkoutLines([]);
     setCustomWorkoutSearch("");
@@ -3875,7 +3883,9 @@ export function MemberPortal(props: MemberPortalProps) {
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div className="min-w-0">
                             <div className="font-semibold text-sm">{program.title}</div>
-                            <div className="mt-0.5 text-xs text-slate-500">{program.goal || "Uten mål"}</div>
+                            {program.goal?.trim() ? (
+                              <div className="mt-0.5 text-xs text-slate-500">{program.goal.trim()}</div>
+                            ) : null}
                             {programAuthorLine ? (
                               <div className="mt-1 text-[11px] font-medium text-slate-600">{programAuthorLine}</div>
                             ) : null}
@@ -4038,7 +4048,9 @@ export function MemberPortal(props: MemberPortalProps) {
                               <div className="min-w-0">
                                 <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Skjult</div>
                                 <div className="font-medium text-sm text-slate-800">{program.title}</div>
-                                <div className="text-xs text-slate-500">{program.goal || "Uten mål"}</div>
+                                {program.goal?.trim() ? (
+                                  <div className="text-xs text-slate-500">{program.goal.trim()}</div>
+                                ) : null}
                               </div>
                               <OutlineButton
                                 type="button"
@@ -4077,7 +4089,9 @@ export function MemberPortal(props: MemberPortalProps) {
                               <div className="min-w-0">
                                 <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Arkivert</div>
                                 <div className="font-medium text-sm text-slate-800">{program.title}</div>
-                                <div className="text-xs text-slate-500">{program.goal || "Uten mål"}</div>
+                                {program.goal?.trim() ? (
+                                  <div className="text-xs text-slate-500">{program.goal.trim()}</div>
+                                ) : null}
                               </div>
                               <OutlineButton
                                 type="button"

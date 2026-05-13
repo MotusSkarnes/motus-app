@@ -32,6 +32,7 @@ export type SaveProgramInput = {
   exercises: ProgramExercise[];
   programCreatedBy?: "member" | "trainer";
   programCreatedByName?: string;
+  onPersisted?: (result: { ok: boolean; message?: string }) => void;
 };
 
 export type UpdateWorkoutResultInput = {
@@ -213,6 +214,8 @@ export function saveProgramInState(
   input: SaveProgramInput
 ): AppState {
   if (input.id) {
+    const existingProgram = state.programs.find((program) => program.id === input.id);
+    if (existingProgram) {
     return {
       ...state,
       programs: state.programs.map((program) =>
@@ -234,10 +237,11 @@ export function saveProgramInState(
           : program
       ),
     };
+    }
   }
 
   const newProgram: TrainingProgram = {
-    id: uid("program"),
+    id: input.id?.trim() || uid("program"),
     memberId: input.memberId,
     title: input.title.trim(),
     goal: input.goal.trim(),

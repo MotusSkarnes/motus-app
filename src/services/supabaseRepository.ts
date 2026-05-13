@@ -515,8 +515,8 @@ async function persistProgram(
     customerType?: string;
     membershipType?: string;
   },
-) {
-  if (!supabaseClient) return;
+) : Promise<{ ok: boolean; message?: string }> {
+  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
   const ownerUserId = await getOwnerUserId();
   const memberId = await resolveCanonicalMemberIdForPersistence(input.memberId.trim(), {
     targetEmail: hints?.targetEmail,
@@ -547,12 +547,16 @@ async function persistProgram(
   if (!functionResult.error) {
     const payload = functionResult.data as { ok?: boolean; ids?: unknown[] } | null;
     if (payload?.ok === true || (Array.isArray(payload?.ids) && payload.ids.length > 0)) {
-      return;
+      return { ok: true };
     }
     console.warn("save-training-program returned without saving program:", functionResult.data);
   }
   if (functionResult.error) {
     console.warn("save-training-program invoke failed:", functionResult.error.message);
+    const invokeDetails = await extractFunctionErrorDetails(functionResult.error);
+    if (invokeDetails) {
+      console.warn("save-training-program invoke details:", invokeDetails);
+    }
   }
 
   if (supabaseUrl && supabaseAnonKey) {
@@ -588,11 +592,15 @@ async function persistProgram(
         if (response.ok) {
           const parsed = raw ? (JSON.parse(raw) as { ok?: boolean; ids?: unknown[] }) : null;
           if (parsed?.ok === true || (Array.isArray(parsed?.ids) && parsed.ids.length > 0)) {
-            return;
+            return { ok: true };
           }
           console.warn("save-training-program HTTP fallback returned without saving program:", parsed);
         } else {
           console.warn("save-training-program HTTP fallback failed:", response.status, raw.slice(0, 400));
+          return {
+            ok: false,
+            message: raw.slice(0, 220) || `HTTP ${response.status} fra save-training-program`,
+          };
         }
       }
     } catch (fetchErr) {
@@ -606,10 +614,10 @@ async function persistProgram(
     targetName: hints?.targetName,
   });
   const targetMemberIds = Array.from(new Set((relatedMemberIds.length ? relatedMemberIds : [memberId]).filter(Boolean)));
-  if (!targetMemberIds.length) return;
+  if (!targetMemberIds.length) return { ok: false, message: "Fant ingen medlemsprofiler å lagre programmet på." };
   if (!ownerUserId) {
     console.warn("save-training-program fallback skipped because owner_user_id could not be resolved client-side");
-    return;
+    return { ok: false, message: "Kunne ikke bekrefte innlogget bruker under lagring." };
   }
   const timestamp = new Date().toISOString();
   const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -642,7 +650,7 @@ async function persistProgram(
     }
     if (primaryError) {
       console.warn("save-training-program fallback upsert failed:", primaryError.message);
-      return;
+      return { ok: false, message: primaryError.message };
     }
   }
 
@@ -659,7 +667,7 @@ async function persistProgram(
       .limit(1);
     if (lookupError) {
       console.warn("save-training-program fallback lookup failed:", lookupError.message);
-      continue;
+      return { ok: false, message: lookupError.message };
     }
     const existingId = String((existingRows?.[0] as { id?: string } | undefined)?.id ?? "").trim();
     if (existingId) {
@@ -684,6 +692,7 @@ async function persistProgram(
       }
       if (updateError) {
         console.warn("save-training-program fallback update failed:", updateError.message);
+        return { ok: false, message: updateError.message };
       }
       continue;
     }
@@ -703,8 +712,11 @@ async function persistProgram(
     }
     if (insertError) {
       console.warn("save-training-program fallback insert failed:", insertError.message);
+      return { ok: false, message: insertError.message };
     }
   }
+
+  return { ok: true };
 }
 
 async function persistMember(member: Member) {
@@ -1816,10 +1828,17 @@ export const supabaseAppRepository: AppRepository = {
     };
     const nextState = localAppRepository.saveProgram(state, input);
     void (async () => {
-      if (anchorMember) {
-        await persistMember(anchorMember);
+      try {
+        if (anchorMember) {
+          await persistMember(anchorMember);
+        }
+        const result = await persistProgram(input, hints);
+        input.onPersisted?.(result);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Ukjent feil under programlagring.";
+        console.warn("saveProgram async persistence failed:", message);
+        input.onPersisted?.({ ok: false, message });
       }
-      await persistProgram(input, hints);
     })();
     return nextState;
   },
