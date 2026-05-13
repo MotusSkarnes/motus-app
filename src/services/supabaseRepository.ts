@@ -80,7 +80,7 @@ async function extractFunctionErrorDetails(error: unknown): Promise<string> {
   return "";
 }
 
-async function getOwnerUserId(): Promise<string | null> {
+async function getOwnerUserId(fallbackOwnerUserId?: string | null): Promise<string | null> {
   if (!supabaseClient) return null;
   const {
     data: { session },
@@ -96,12 +96,25 @@ async function getOwnerUserId(): Promise<string | null> {
       return claims.sub.trim();
     }
   }
+  const { data: refreshData, error: refreshError } = await supabaseClient.auth.refreshSession();
+  if (!refreshError) {
+    const refreshedUserId = String(refreshData.user?.id ?? refreshData.session?.user?.id ?? "").trim();
+    if (refreshedUserId) return refreshedUserId;
+    const refreshedToken = String(refreshData.session?.access_token ?? "").trim();
+    if (refreshedToken) {
+      const claims = decodeJwtPayload(refreshedToken);
+      if (claims && typeof claims.sub === "string" && claims.sub.trim()) {
+        return claims.sub.trim();
+      }
+    }
+  }
   const { data: userResult, error: userError } = await supabaseClient.auth.getUser();
   if (!userError && userResult?.user?.id) {
     const fromGetUser = String(userResult.user.id).trim();
     if (fromGetUser) return fromGetUser;
   }
-  return null;
+  const fallback = String(fallbackOwnerUserId ?? "").trim();
+  return fallback || null;
 }
 
 async function resolveOwnerUserIdForMember(memberId: string, fallbackOwnerUserId: string | null): Promise<string | null> {
@@ -533,10 +546,11 @@ async function persistProgram(
     targetName?: string;
     customerType?: string;
     membershipType?: string;
+    fallbackOwnerUserId?: string;
   },
 ) : Promise<{ ok: boolean; message?: string }> {
   if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
-  const ownerUserId = await getOwnerUserId();
+  const ownerUserId = await getOwnerUserId(hints?.fallbackOwnerUserId);
   const memberId = await resolveCanonicalMemberIdForPersistence(input.memberId.trim(), {
     targetEmail: hints?.targetEmail,
   });
@@ -1844,6 +1858,7 @@ export const supabaseAppRepository: AppRepository = {
       targetName: String(anchorMember?.name ?? "").trim(),
       customerType: String(anchorMember?.customerType ?? "").trim(),
       membershipType: String(anchorMember?.membershipType ?? "").trim(),
+      fallbackOwnerUserId: String(state.currentUser?.id ?? "").trim(),
     };
     const nextState = localAppRepository.saveProgram(state, input);
     void (async () => {
