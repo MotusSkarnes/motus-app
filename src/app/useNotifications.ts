@@ -132,16 +132,19 @@ export function useNotifications({
 
   const memberProgramAlerts = useMemo(
     () =>
-      memberPrograms.map((program) => ({
-        id: `member-program-${program.id}`,
-        kind: "program",
-        title: "Nytt treningsprogram",
-        text: program.title,
-        detail: program.goal || "Programmet er klart i Trening.",
-        timestamp: program._effectiveTimestamp,
-        targetTab: "programs" as const,
-        unread: !seenMemberProgramIds.includes(program.id),
-      })),
+      memberPrograms
+        // Varsel kun når trener har lagt inn program — ikke egne programmer medlem har lagret.
+        .filter((program) => program.programCreatedBy !== "member")
+        .map((program) => ({
+          id: `member-program-${program.id}`,
+          kind: "program",
+          title: "Nytt treningsprogram",
+          text: program.title,
+          detail: program.goal || "Programmet er klart i Trening.",
+          timestamp: program._effectiveTimestamp,
+          targetTab: "programs" as const,
+          unread: !seenMemberProgramIds.includes(program.id),
+        })),
     [memberPrograms, seenMemberProgramIds]
   );
 
