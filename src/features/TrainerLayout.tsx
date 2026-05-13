@@ -62,11 +62,10 @@ const trainerMenuItems: Array<{ key: TrainerTab; label: string; icon: LucideIcon
 
 const mobileTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
   { id: "dashboard", label: "Oversikt", icon: LayoutDashboard },
-  { id: "customers", label: "Klienter", icon: Users },
+  { id: "customers", label: "Kunder", icon: Users },
   { id: "programs", label: "Program", icon: ClipboardList },
   { id: "exerciseBank", label: "Øvelser", icon: Dumbbell },
-  { id: "messages", label: "Meldinger", icon: MessageSquare },
-  { id: "admin", label: "Admin", icon: ShieldCheck },
+  { id: "messages", label: "Meld.", icon: MessageSquare },
 ];
 
 export function TrainerLayout({
@@ -340,20 +339,36 @@ export function TrainerLayout({
               </div>
             )}
           </Card>
+          {canAccessAdminTools ? (
+            <button
+              type="button"
+              onClick={() => setTrainerTab("admin")}
+              className="flex w-full items-center justify-between rounded-xl border bg-white px-4 py-3 text-left text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 lg:hidden"
+              style={{ borderColor: "rgba(15,23,42,0.08)" }}
+            >
+              <span className="inline-flex items-center gap-2">
+                <span className="rounded-lg bg-slate-100 p-2 text-slate-700">
+                  <ShieldCheck className="h-4 w-4" />
+                </span>
+                <span>Adminverktøy</span>
+              </span>
+              <ChevronRight className="h-4 w-4 text-slate-400" />
+            </button>
+          ) : null}
           <TrainerPortal {...trainerPortalProps} />
         </div>
       </div>
 
       <div
-        className="fixed inset-x-0 bottom-0 z-[9999] border-t bg-white/95 px-2 pt-2 backdrop-blur lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-[9999] overflow-x-hidden border-t bg-white/95 px-1 pt-1 backdrop-blur lg:hidden"
         style={{ borderColor: "rgba(15,23,42,0.08)", paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))" }}
       >
         <div
-          className="mx-auto flex max-w-md items-center gap-1.5 rounded-[22px] border bg-slate-50/90 p-1.5 shadow-lg"
+          className="mx-auto flex w-[min(100%,22rem)] items-center gap-0.5 rounded-[18px] border bg-slate-50/90 p-0.5 shadow-lg"
           style={{ borderColor: "rgba(15,23,42,0.06)" }}
         >
           <div
-            className="flex w-full items-center gap-1.5 rounded-[18px] p-1.5"
+            className="grid w-full grid-cols-5 items-center gap-0.5 rounded-[14px] p-0.5"
             style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
           >
             {visibleMobileTabs.map((tab) => {
@@ -364,11 +379,11 @@ export function TrainerLayout({
                   key={tab.id}
                   type="button"
                   onClick={() => setTrainerTab(tab.id)}
-                  className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-semibold transition ${
+                  className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-md px-0.5 py-1.5 text-[9px] font-semibold transition ${
                     isActive ? "bg-white text-slate-900 shadow-sm" : "bg-white/20 text-white hover:bg-white/30"
                   }`}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{tab.label}</span>
                 </button>
               );
