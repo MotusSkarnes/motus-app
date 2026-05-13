@@ -4596,7 +4596,7 @@ function pickFirstName(value: unknown): string {
 
       {trainerTab === "programs" ? (
         <div className="grid gap-4">
-          <Card className="p-5">
+          <Card className="p-4 sm:p-5">
             <div className="flex items-start gap-3">
               <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><ClipboardList className="h-5 w-5" /></div>
               <div>
@@ -4672,28 +4672,28 @@ function pickFirstName(value: unknown): string {
                         moveDraftExercise(draggedDraftExerciseId, item.id);
                         setDragOverDraftExerciseId(null);
                       }}
-                      className={`rounded-2xl border bg-white p-4 space-y-3 cursor-move transition ${
+                      className={`rounded-2xl border bg-white p-3 sm:p-4 space-y-3 cursor-move transition ${
                         dragOverDraftExerciseId === item.id ? "ring-2 ring-emerald-300 border-emerald-300" : ""
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="font-medium">{item.exerciseName}</div>
-                        <div className="flex items-center gap-2">
+                        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center">
                           <OutlineButton
                             onClick={() => moveDraftExerciseByOffset(item.id, -1)}
-                            className="px-3 py-1.5 text-xs"
+                            className="w-full px-3 py-1.5 text-xs sm:w-auto"
                             disabled={index === 0}
                           >
                             Opp
                           </OutlineButton>
                           <OutlineButton
                             onClick={() => moveDraftExerciseByOffset(item.id, 1)}
-                            className="px-3 py-1.5 text-xs"
+                            className="w-full px-3 py-1.5 text-xs sm:w-auto"
                             disabled={index === programExercisesDraft.length - 1}
                           >
                             Ned
                           </OutlineButton>
-                          <OutlineButton onClick={() => removeDraftExercise(item.id)}>Fjern</OutlineButton>
+                          <OutlineButton onClick={() => removeDraftExercise(item.id)} className="w-full sm:w-auto">Fjern</OutlineButton>
                         </div>
                       </div>
                       {(() => {
