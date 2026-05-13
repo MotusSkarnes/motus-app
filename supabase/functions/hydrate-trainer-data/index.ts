@@ -12,9 +12,22 @@ type HydratePayload = {
 };
 
 type RowWithId = { id?: string };
+type JwtUser = {
+  id: string;
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+};
 
 function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
+}
+
+function roleFromUser(user: JwtUser): "member" | "trainer" | "" {
+  const appRole = user.app_metadata?.role;
+  if (appRole === "member" || appRole === "trainer") return appRole;
+  const userRole = user.user_metadata?.role;
+  if (userRole === "member" || userRole === "trainer") return userRole;
+  return "";
 }
 
 function uniqueById<T extends RowWithId>(rows: T[]): T[] {
@@ -115,6 +128,25 @@ Deno.serve(async (req) => {
     return jsonResponse(500, { error: "Missing Supabase service role environment variables" });
   }
 
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
+  if (!token) {
+    return jsonResponse(401, { error: "Missing bearer token" });
+  }
+
+  const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  const { data: userData, error: userError } = await adminClient.auth.getUser(token);
+  if (userError || !userData?.user) {
+    return jsonResponse(401, { error: "Invalid session token" });
+  }
+  const authenticatedOwnerUserId = String(userData.user.id ?? "").trim();
+  if (!authenticatedOwnerUserId) {
+    return jsonResponse(401, { error: "Missing authenticated user id" });
+  }
+  if (roleFromUser(userData.user as JwtUser) !== "trainer") {
+    return jsonResponse(403, { error: "Trainer role is required" });
+  }
+
   let payload: HydratePayload;
   try {
     payload = (await req.json()) as HydratePayload;
@@ -127,11 +159,9 @@ Deno.serve(async (req) => {
   if (!ownerUserId) {
     return jsonResponse(400, { error: "ownerUserId is required" });
   }
-
-  const adminClient = createClient(supabaseUrl, serviceRoleKey);
-
-  // Recovery: claim legacy rows with missing owner_user_id.
-  await adminClient.from("members").update({ owner_user_id: ownerUserId }).is("owner_user_id", null);
+  if (ownerUserId !== authenticatedOwnerUserId) {
+    return jsonResponse(403, { error: "ownerUserId must match the authenticated trainer" });
+  }
 
   const { data: ownedMembers } = await adminClient.from("members").select("id").eq("owner_user_id", ownerUserId);
   const ownedMemberIds = (ownedMembers ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);
@@ -202,11 +232,6 @@ Deno.serve(async (req) => {
         .map((row) => normalizeEmail((row as { email?: string }).email))
         .filter((value) => value && value.includes("@")),
     );
-    const relatedNameSet = new Set(
-      (members ?? [])
-        .map((row) => String((row as { name?: string }).name ?? "").trim().toLowerCase())
-        .filter(Boolean),
-    );
     const allMembersWithAvatar = await adminClient
       .from("members")
       .select(membersSelectWithAvatar)
@@ -224,9 +249,7 @@ Deno.serve(async (req) => {
     const widenedMembers = allMembersRows.filter((row) => {
       if (isSharedMember(row)) return true;
       const rowEmail = normalizeEmail((row as { email?: string }).email);
-      const rowName = String((row as { name?: string }).name ?? "").trim().toLowerCase();
       if (rowEmail && relatedEmailSet.has(rowEmail)) return true;
-      if (rowName && relatedNameSet.has(rowName)) return true;
       return false;
     });
     members = uniqueById([...(members ?? []), ...widenedMembers]) as Array<Record<string, unknown>>;

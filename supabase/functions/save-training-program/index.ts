@@ -55,12 +55,12 @@ type JwtUser = {
   user_metadata?: Record<string, unknown>;
 };
 
-function roleFromUser(user: JwtUser): "member" | "trainer" {
+function roleFromUser(user: JwtUser): "member" | "trainer" | "" {
   const app = user.app_metadata?.role;
   if (app === "member" || app === "trainer") return app;
   const um = user.user_metadata?.role;
   if (um === "member" || um === "trainer") return um;
-  return "trainer";
+  return "";
 }
 
 function trainerDisplayFirstName(user: JwtUser): string {
@@ -294,6 +294,9 @@ Deno.serve(async (req) => {
   const role = roleFromUser(userData.user);
 
   if (!ownerUserId) return jsonResponse(401, { error: "Missing authenticated user id" });
+  if (role !== "member" && role !== "trainer") {
+    return jsonResponse(403, { error: "Known member or trainer role is required" });
+  }
   if (!title) return jsonResponse(400, { error: "Title is required" });
 
   // Clients sometimes keep a synthetic `auth-*` id; map to DB `members.id` so upsert and RLS stay consistent.
@@ -337,7 +340,7 @@ Deno.serve(async (req) => {
     return jsonResponse(200, { ok: true, ids: [id], targetMemberIds: [memberId] });
   }
 
-  const { ids: targetMemberIds, email } = await resolveRelatedMemberIds(adminClient, memberId, {
+  let { ids: targetMemberIds, email } = await resolveRelatedMemberIds(adminClient, memberId, {
     targetEmail,
     targetName,
     customerType,
@@ -359,6 +362,25 @@ Deno.serve(async (req) => {
     const allowed = targetMemberIds.some((tid) => myIds.has(tid));
     if (!allowed) {
       return jsonResponse(403, { error: "Du kan bare lagre programmer på din egen profil." });
+    }
+    targetMemberIds = targetMemberIds.filter((tid) => myIds.has(tid));
+  } else {
+    const { data: targetRows, error: targetRowsError } = await adminClient
+      .from("members")
+      .select("id, owner_user_id")
+      .in("id", targetMemberIds);
+    if (targetRowsError) {
+      return jsonResponse(500, { error: `Could not authorize target member: ${targetRowsError.message}` });
+    }
+    const ownedTargetIds = new Set(
+      (targetRows ?? [])
+        .filter((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim() === ownerUserId)
+        .map((row) => String((row as { id?: string }).id ?? "").trim())
+        .filter(Boolean),
+    );
+    targetMemberIds = targetMemberIds.filter((id) => ownedTargetIds.has(id));
+    if (!targetMemberIds.length) {
+      return jsonResponse(403, { error: "Du kan bare lagre programmer på egne medlemmer." });
     }
   }
 
