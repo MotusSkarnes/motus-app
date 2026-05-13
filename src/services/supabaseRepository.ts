@@ -518,7 +518,6 @@ async function persistProgram(
 ) {
   if (!supabaseClient) return;
   const ownerUserId = await getOwnerUserId();
-  if (!ownerUserId) return;
   const memberId = await resolveCanonicalMemberIdForPersistence(input.memberId.trim(), {
     targetEmail: hints?.targetEmail,
   });
@@ -608,6 +607,10 @@ async function persistProgram(
   });
   const targetMemberIds = Array.from(new Set((relatedMemberIds.length ? relatedMemberIds : [memberId]).filter(Boolean)));
   if (!targetMemberIds.length) return;
+  if (!ownerUserId) {
+    console.warn("save-training-program fallback skipped because owner_user_id could not be resolved client-side");
+    return;
+  }
   const timestamp = new Date().toISOString();
   const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
   const fallbackProgramId = isUuid(normalizedProgramId) ? normalizedProgramId : "";
