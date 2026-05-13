@@ -19,6 +19,14 @@ type MemberCandidate = {
   created_at: string | null;
   email?: string | null;
   owner_user_id?: string | null;
+  customer_type?: string | null;
+};
+
+type JwtUser = {
+  id: string;
+  email?: string;
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
 };
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -30,6 +38,14 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
 
 function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
+}
+
+function roleFromUser(user: JwtUser): "member" | "trainer" | "" {
+  const appRole = user.app_metadata?.role;
+  if (appRole === "member" || appRole === "trainer") return appRole;
+  const userRole = user.user_metadata?.role;
+  if (userRole === "member" || userRole === "trainer") return userRole;
+  return "";
 }
 
 function firstNameFromEmail(email: string): string {
@@ -59,6 +75,28 @@ Deno.serve(async (req) => {
     return jsonResponse(500, { error: "Missing Supabase service role environment variables" });
   }
 
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
+  if (!token) {
+    return jsonResponse(401, { error: "Missing bearer token" });
+  }
+
+  const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  const { data: userData, error: userError } = await adminClient.auth.getUser(token);
+  if (userError || !userData?.user) {
+    return jsonResponse(401, { error: "Invalid session token" });
+  }
+  const requesterUser = userData.user as JwtUser;
+  const requesterUserId = String(requesterUser.id ?? "").trim();
+  const requesterEmail = normalizeEmail(requesterUser.email);
+  const requesterRole = roleFromUser(requesterUser);
+  if (!requesterUserId) {
+    return jsonResponse(401, { error: "Missing authenticated user id" });
+  }
+  if (requesterRole !== "member" && requesterRole !== "trainer") {
+    return jsonResponse(403, { error: "Known member or trainer role is required" });
+  }
+
   let payload: LinkPayload;
   try {
     payload = (await req.json()) as LinkPayload;
@@ -73,12 +111,13 @@ Deno.serve(async (req) => {
   if (!email || !email.includes("@")) {
     return jsonResponse(400, { error: "Valid email is required" });
   }
-
-  const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  if (requesterRole === "member" && email !== requesterEmail) {
+    return jsonResponse(403, { error: "Members can only repair their own auth link" });
+  }
 
   const { data: memberRows, error: memberLookupError } = await adminClient
     .from("members")
-    .select("id, owner_user_id, is_active, created_at, email")
+    .select("id, owner_user_id, is_active, created_at, email, customer_type")
     .ilike("email", email);
   if (memberLookupError) {
     return jsonResponse(500, { error: `Could not resolve member by email: ${memberLookupError.message}` });
@@ -90,12 +129,13 @@ Deno.serve(async (req) => {
       is_active: (row as MemberCandidate).is_active ?? null,
       created_at: (row as MemberCandidate).created_at ?? null,
       email: String((row as MemberCandidate).email ?? "").trim(),
+      customer_type: String((row as MemberCandidate).customer_type ?? "").trim(),
     }))
     .filter((row) => row.id);
   if (!candidates.length) {
     const { data: allMembers, error: allMembersError } = await adminClient
       .from("members")
-      .select("id, owner_user_id, is_active, created_at, email");
+      .select("id, owner_user_id, is_active, created_at, email, customer_type");
     if (allMembersError) {
       return jsonResponse(500, { error: `Could not scan members by normalized email: ${allMembersError.message}` });
     }
@@ -111,6 +151,7 @@ Deno.serve(async (req) => {
         is_active: typed.is_active ?? null,
         created_at: typed.created_at ?? null,
         email: String(typed.email ?? "").trim(),
+        customer_type: String(typed.customer_type ?? "").trim(),
       });
     }
   }
@@ -151,7 +192,7 @@ Deno.serve(async (req) => {
     if (upsertError) {
       return jsonResponse(500, { error: `Could not create member row: ${upsertError.message}` });
     }
-    candidates.push({ id: fallbackId, owner_user_id: matchedUser.id, is_active: true, created_at: null });
+    candidates.push({ id: fallbackId, owner_user_id: matchedUser.id, is_active: true, created_at: null, customer_type: "Medlem" });
   }
 
   const candidateIds = candidates.map((row) => row.id);
@@ -194,6 +235,9 @@ Deno.serve(async (req) => {
     return jsonResponse(404, { error: "No member row found for email" });
   }
   const canonicalOwnerUserId = String(selectedCandidate?.owner_user_id ?? "").trim();
+  if (requesterRole === "trainer" && canonicalOwnerUserId !== requesterUserId) {
+    return jsonResponse(403, { error: "Trainers can only repair auth links for their own members" });
+  }
 
   const { data: listData, error: listError } = await adminClient.auth.admin.listUsers({
     page: 1,
@@ -284,33 +328,39 @@ Deno.serve(async (req) => {
       .eq("member_id", normalizedLegacyId);
     legacyProgramCounts[normalizedLegacyId] = Number(programCountBefore ?? 0);
 
-    const { data: programRows, error: programUpdateError } = await adminClient
+    let programUpdate = adminClient
       .from("training_programs")
       .update({ member_id: memberId })
-      .eq("member_id", normalizedLegacyId)
-      .select("id");
+      .eq("member_id", normalizedLegacyId);
+    let logUpdate = adminClient
+      .from("workout_logs")
+      .update({ member_id: memberId })
+      .eq("member_id", normalizedLegacyId);
+    let messageUpdate = adminClient
+      .from("chat_messages")
+      .update({ member_id: memberId })
+      .eq("member_id", normalizedLegacyId);
+    if (requesterRole === "trainer") {
+      programUpdate = programUpdate.eq("owner_user_id", requesterUserId);
+      logUpdate = logUpdate.eq("owner_user_id", requesterUserId);
+      messageUpdate = messageUpdate.eq("owner_user_id", requesterUserId);
+    }
+
+    const { data: programRows, error: programUpdateError } = await programUpdate.select("id");
     if (programUpdateError) {
       console.warn(`link-member-auth: program member_id migrate failed for ${normalizedLegacyId}:`, programUpdateError.message);
     } else {
       migratedPrograms += (programRows ?? []).length;
     }
 
-    const { data: logRows, error: logUpdateError } = await adminClient
-      .from("workout_logs")
-      .update({ member_id: memberId })
-      .eq("member_id", normalizedLegacyId)
-      .select("id");
+    const { data: logRows, error: logUpdateError } = await logUpdate.select("id");
     if (logUpdateError) {
       console.warn(`link-member-auth: workout_log member_id migrate failed for ${normalizedLegacyId}:`, logUpdateError.message);
     } else {
       migratedLogs += (logRows ?? []).length;
     }
 
-    const { data: messageRows, error: messageUpdateError } = await adminClient
-      .from("chat_messages")
-      .update({ member_id: memberId })
-      .eq("member_id", normalizedLegacyId)
-      .select("id");
+    const { data: messageRows, error: messageUpdateError } = await messageUpdate.select("id");
     if (messageUpdateError) {
       console.warn(`link-member-auth: chat_message member_id migrate failed for ${normalizedLegacyId}:`, messageUpdateError.message);
     } else {
@@ -329,7 +379,7 @@ Deno.serve(async (req) => {
   // Guarded rescue: if canonical has zero programs and owner has exactly one foreign member_id bucket,
   // migrate that bucket to canonical member_id.
   let rescuedPrograms = 0;
-  if (Number(canonicalProgramCount ?? 0) === 0 && canonicalOwnerUserId) {
+  if (requesterRole === "trainer" && canonicalOwnerUserId === requesterUserId && Number(canonicalProgramCount ?? 0) === 0) {
     const { data: ownerPrograms, error: ownerProgramsError } = await adminClient
       .from("training_programs")
       .select("id, member_id")
@@ -364,7 +414,8 @@ Deno.serve(async (req) => {
   let explicitSourcePrograms = 0;
   let explicitSourceLogs = 0;
   let explicitSourceMessages = 0;
-  if (sourceMemberId && sourceMemberId !== memberId) {
+  if (sourceMemberId && sourceMemberId !== memberId && legacyMemberIds.has(sourceMemberId)) {
+    const effectiveSourceOwnerUserId = requesterRole === "trainer" ? requesterUserId : sourceOwnerUserId;
     const programUpdate = adminClient
       .from("training_programs")
       .update({ member_id: memberId })
@@ -377,9 +428,9 @@ Deno.serve(async (req) => {
       .from("chat_messages")
       .update({ member_id: memberId })
       .eq("member_id", sourceMemberId);
-    const scopedProgramUpdate = sourceOwnerUserId ? programUpdate.eq("owner_user_id", sourceOwnerUserId) : programUpdate;
-    const scopedLogUpdate = sourceOwnerUserId ? logUpdate.eq("owner_user_id", sourceOwnerUserId) : logUpdate;
-    const scopedMessageUpdate = sourceOwnerUserId ? messageUpdate.eq("owner_user_id", sourceOwnerUserId) : messageUpdate;
+    const scopedProgramUpdate = effectiveSourceOwnerUserId ? programUpdate.eq("owner_user_id", effectiveSourceOwnerUserId) : programUpdate;
+    const scopedLogUpdate = effectiveSourceOwnerUserId ? logUpdate.eq("owner_user_id", effectiveSourceOwnerUserId) : logUpdate;
+    const scopedMessageUpdate = effectiveSourceOwnerUserId ? messageUpdate.eq("owner_user_id", effectiveSourceOwnerUserId) : messageUpdate;
 
     const { data: movedPrograms, error: movedProgramsError } = await scopedProgramUpdate.select("id");
     if (movedProgramsError) {
