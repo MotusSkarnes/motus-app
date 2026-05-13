@@ -359,6 +359,80 @@ function getStartOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
+/** Artig «løftevolum»-tekst (vekt × reps) for progresjonskort — uke først, så måned. */
+function buildProgressLiftPlayfulLine(completedLogs: WorkoutLog[], nowDate: Date, nowTimestamp: number): string {
+  const today = getStartOfDay(new Date(nowTimestamp));
+  const mondayOffset = (today.getDay() + 6) % 7;
+  const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset);
+  const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7);
+
+  const parseNum = (raw: string | undefined): number => {
+    const n = Number(String(raw ?? "").replace(",", ".").trim());
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  };
+
+  const volumeFromResults = (results: WorkoutLog["results"]): number => {
+    let sum = 0;
+    for (const r of results ?? []) {
+      if (!r.completed) continue;
+      const dur = parseNum(r.performedDurationMinutes);
+      const w = parseNum(r.performedWeight);
+      const reps = parseNum(r.performedReps);
+      if (dur > 0 && w <= 0) continue;
+      if (w > 0 && reps > 0) sum += w * reps;
+    }
+    return sum;
+  };
+
+  let weekKg = 0;
+  let monthKg = 0;
+  for (const log of completedLogs) {
+    const d = parseLogDate(log.date);
+    if (!d) continue;
+    const day = getStartOfDay(d);
+    const vol = volumeFromResults(log.results);
+    if (vol <= 0) continue;
+    if (day.getTime() >= weekStart.getTime() && day.getTime() < weekEnd.getTime()) weekKg += vol;
+    if (day.getMonth() === nowDate.getMonth() && day.getFullYear() === nowDate.getFullYear()) monthKg += vol;
+  }
+
+  const fmt = (n: number) => Math.round(n).toLocaleString("nb-NO");
+
+  const lineFor = (kg: number, periodLabel: string): string | null => {
+    if (!Number.isFinite(kg) || kg < 1) return null;
+    if (kg >= 5500) {
+      return `${periodLabel} adderte du ca. ${fmt(kg)} kg i løftevolum (vekt × reps) — i omtrent samme størrelsesorden som massen til en voksen afrikansk elefant. Rått! 🐘`;
+    }
+    if (kg >= 3200) {
+      return `${periodLabel} flyttet du ca. ${fmt(kg)} kg med stanga — samlet omtrent som en liten elbil i masse, bare fordelt på mange reps. 🚗`;
+    }
+    if (kg >= 1600) {
+      return `${periodLabel} ble det ca. ${fmt(kg)} kg i volum — som å løfte et flygel mange ganger over (ca. 300 kg per piano). 🎹`;
+    }
+    if (kg >= 700) {
+      return `${periodLabel} logget du ca. ${fmt(kg)} kg i vekt × reps — omtrent som flere voksne mennesker summet i én kveld. 🙌`;
+    }
+    if (kg >= 250) {
+      const people = Math.max(2, Math.round(kg / 72));
+      return `${periodLabel} adderte du ca. ${fmt(kg)} kg — grovt som å bære ${people} voksne samtidig … i løft-ekvivalent. 💪`;
+    }
+    if (kg >= 60) {
+      const melons = Math.max(6, Math.round(kg / 8));
+      return `${periodLabel} ble det ca. ${fmt(kg)} kg — omtrent like tungt som ${melons} store vannmeloner. 🍉`;
+    }
+    if (kg >= 15) {
+      return `${periodLabel} logget du ca. ${fmt(kg)} kg i stramme vektrep — nok til at en golden retriever hadde blitt imponert. 🐕`;
+    }
+    return `${periodLabel} ble det ca. ${fmt(kg)} kg i vekt × reps — små tall som vokser fort når du er konsistent. ✨`;
+  };
+
+  const weekLine = lineFor(weekKg, "Denne uken");
+  if (weekLine) return weekLine;
+  const monthLine = lineFor(monthKg, "Denne måneden");
+  if (monthLine) return monthLine;
+  return "Logg vekt og reps på styrkeøkter, så dukker det opp en artig sammenligning her (tenk elefant, piano, vannmelon …).";
+}
+
 function getProfileStorageKey(memberId: string): string {
   return `motus.member.profile.${memberId}`;
 }
@@ -2081,7 +2155,7 @@ export function MemberPortal(props: MemberPortalProps) {
       const cardX = 56;
       const cardY = 420;
       const cardW = canvas.width - 112;
-      const cardH = 1320;
+      const cardH = 1450;
       const cardR = 40;
       context.shadowColor = "rgba(15, 23, 42, 0.22)";
       context.shadowBlur = 48;
@@ -2139,7 +2213,37 @@ export function MemberPortal(props: MemberPortalProps) {
         context.font = "bold 48px system-ui, -apple-system, Segoe UI, sans-serif";
         context.fillText(stat.value, tx + 28, ty + 118);
       });
-      y += 2 * (tileH + tileGap) + 36;
+      y += 2 * (tileH + tileGap) + 28;
+
+      const playfulBoxH = 152;
+      context.fillStyle = "#f8fafc";
+      if (typeof context.roundRect === "function") {
+        context.beginPath();
+        context.roundRect(cardX + pad, y, cardW - pad * 2, playfulBoxH, 22);
+        context.fill();
+        context.strokeStyle = "rgba(148,163,184,0.45)";
+        context.lineWidth = 1;
+        context.stroke();
+      } else {
+        context.fillRect(cardX + pad, y, cardW - pad * 2, playfulBoxH);
+        context.strokeStyle = "rgba(148,163,184,0.45)";
+        context.lineWidth = 1;
+        context.strokeRect(cardX + pad, y, cardW - pad * 2, playfulBoxH);
+      }
+      context.fillStyle = MOTUS.ink;
+      context.font = "bold 24px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText("Løftefakta", cardX + pad + 24, y + 42);
+      context.fillStyle = "#475569";
+      context.font = "24px system-ui, -apple-system, Segoe UI, sans-serif";
+      fillWrappedCanvasText(
+        context,
+        progressLiftPlayfulLine,
+        cardX + pad + 24,
+        y + 78,
+        cardW - pad * 2 - 48,
+        30,
+      );
+      y += playfulBoxH + 22;
 
       const stripH = 112;
       const stripGrad = context.createLinearGradient(cardX + pad, y, cardX + cardW - pad, y + stripH);
@@ -2432,6 +2536,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const nextFocus = recent14 > 0 ? "Hold flyten med neste planlagte økt" : "Start med en rolig økt denne uken";
     return { recent14, previous14, delta, trendLabel, trendToneClass, consistency, nextFocus };
   }, [completedLogDates, nowTimestamp]);
+  const progressLiftPlayfulLine = buildProgressLiftPlayfulLine(completedLogs, nowDate, nowTimestamp);
   const _nextBestAction = useMemo(() => {
     if (!memberAssignedPrograms.length) {
       return {
@@ -4570,6 +4675,11 @@ export function MemberPortal(props: MemberPortalProps) {
                             <div className="mt-0.5 text-lg font-bold tabular-nums text-white">{cell.v}</div>
                           </div>
                         ))}
+                      </div>
+
+                      <div className="rounded-xl border border-white/15 bg-white/10 px-3 py-3 text-left shadow-sm backdrop-blur-md">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-white/75">Løftefakta</div>
+                        <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-white/92">{progressLiftPlayfulLine}</p>
                       </div>
 
                       <p
