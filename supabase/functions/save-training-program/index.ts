@@ -19,6 +19,9 @@ type SaveProgramPayload = {
   targetName?: string;
   customerType?: string;
   membershipType?: string;
+  /** Hint only; overskrives server-side ut fra JWT-rolle. */
+  programCreatedBy?: string;
+  programCreatedByName?: string;
 };
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -30,6 +33,76 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
 
 function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
+}
+
+function toFirstName(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const firstToken = trimmed.split(/\s+/)[0] ?? "";
+  return firstToken.trim();
+}
+
+function nameFromEmail(email: string): string {
+  const localPart = email.split("@")[0] ?? "";
+  const normalized = localPart.replace(/[._-]+/g, " ").trim();
+  return toFirstName(normalized);
+}
+
+type JwtUser = {
+  id: string;
+  email?: string;
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+};
+
+function roleFromUser(user: JwtUser): "member" | "trainer" {
+  const app = user.app_metadata?.role;
+  if (app === "member" || app === "trainer") return app;
+  const um = user.user_metadata?.role;
+  if (um === "member" || um === "trainer") return um;
+  return "trainer";
+}
+
+function authMemberIdFromUser(user: JwtUser): string {
+  return String(
+    (user.app_metadata?.member_id as string | undefined) ??
+      (user.user_metadata?.member_id as string | undefined) ??
+      ""
+  ).trim();
+}
+
+function trainerDisplayFirstName(user: JwtUser): string {
+  const meta = user.user_metadata as Record<string, unknown> | undefined;
+  const full = String(meta?.full_name ?? meta?.name ?? "").trim();
+  if (full) return toFirstName(full);
+  const em = String(user.email ?? "").trim();
+  return nameFromEmail(em);
+}
+
+type ProgramAuthorColumns = {
+  program_created_by: string;
+  program_created_by_name: string;
+};
+
+function resolveProgramAuthorColumns(
+  user: JwtUser,
+  role: "member" | "trainer",
+  payload: SaveProgramPayload,
+  hintTargetName: string,
+): ProgramAuthorColumns {
+  const clamp = (s: string) => s.trim().slice(0, 160);
+  if (role === "member") {
+    const name =
+      clamp(String(payload.programCreatedByName ?? "")) ||
+      clamp(hintTargetName) ||
+      nameFromEmail(String(user.email ?? ""));
+    return { program_created_by: "member", program_created_by_name: name || "Medlem" };
+  }
+  const name =
+    trainerDisplayFirstName(user) ||
+    clamp(String(payload.programCreatedByName ?? "")) ||
+    "Trener";
+  return { program_created_by: "trainer", program_created_by_name: name };
 }
 
 async function resolveRelatedMemberIds(
@@ -187,12 +260,19 @@ Deno.serve(async (req) => {
   const targetName = String(payload.targetName ?? "").trim();
   const customerType = String(payload.customerType ?? "").trim();
   const membershipType = String(payload.membershipType ?? "").trim();
+  const role = roleFromUser(userData.user);
+  const authMemberId = authMemberIdFromUser(userData.user);
 
   if (!ownerUserId) return jsonResponse(401, { error: "Missing authenticated user id" });
   if (!memberId || memberId.startsWith("auth-")) return jsonResponse(400, { error: "Valid memberId is required" });
   if (!title) return jsonResponse(400, { error: "Title is required" });
 
+  const authorColumns = resolveProgramAuthorColumns(userData.user as JwtUser, role, payload, targetName);
+
   if (memberId === "__template__") {
+    if (role === "member") {
+      return jsonResponse(403, { error: "Medlemmer kan ikke lagre treningsmaler." });
+    }
     const id = programId || crypto.randomUUID();
     const { error } = await adminClient.from("training_programs").upsert(
       {
@@ -204,6 +284,8 @@ Deno.serve(async (req) => {
         notes,
         exercises,
         created_at: new Date().toISOString(),
+        program_created_by: "trainer",
+        program_created_by_name: authorColumns.program_created_by_name,
       },
       { onConflict: "id" },
     );
@@ -218,6 +300,13 @@ Deno.serve(async (req) => {
     membershipType,
     ownerUserId,
   });
+
+  if (role === "member") {
+    if (!authMemberId || !targetMemberIds.includes(authMemberId)) {
+      return jsonResponse(403, { error: "Du kan bare lagre programmer på din egen profil." });
+    }
+  }
+
   const writtenIds: string[] = [];
   const canonicalTargetMemberId =
     targetMemberIds.find((targetMemberId) => targetMemberId === memberId) ?? targetMemberIds[0] ?? memberId;
@@ -235,6 +324,8 @@ Deno.serve(async (req) => {
         notes,
         exercises,
         created_at: timestamp,
+        program_created_by: authorColumns.program_created_by,
+        program_created_by_name: authorColumns.program_created_by_name,
       },
       { onConflict: "id" },
     );
@@ -251,6 +342,8 @@ Deno.serve(async (req) => {
       notes,
       exercises,
       created_at: new Date().toISOString(),
+      program_created_by: authorColumns.program_created_by,
+      program_created_by_name: authorColumns.program_created_by_name,
     });
     if (error) return jsonResponse(500, { error: error.message });
     writtenIds.push(id);

@@ -486,6 +486,8 @@ async function persistProgram(
       targetName: hints?.targetName ?? "",
       customerType: hints?.customerType ?? "",
       membershipType: hints?.membershipType ?? "",
+      programCreatedBy: input.programCreatedBy,
+      programCreatedByName: input.programCreatedByName,
     },
   });
   if (!functionResult.error) {
@@ -509,6 +511,13 @@ async function persistProgram(
   const timestamp = new Date().toISOString();
   const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
   const fallbackProgramId = isUuid(normalizedProgramId) ? normalizedProgramId : "";
+  const authorDb =
+    input.programCreatedBy && (input.programCreatedBy === "member" || input.programCreatedBy === "trainer")
+      ? {
+          program_created_by: input.programCreatedBy,
+          program_created_by_name: String(input.programCreatedByName ?? "").trim(),
+        }
+      : {};
 
   if (fallbackProgramId) {
     const { error: primaryError } = await supabaseClient.from("training_programs").upsert(
@@ -521,6 +530,7 @@ async function persistProgram(
         notes: input.notes,
         exercises: input.exercises,
         created_at: timestamp,
+        ...authorDb,
       },
       { onConflict: "id" },
     );
@@ -554,6 +564,7 @@ async function persistProgram(
           notes: input.notes,
           exercises: input.exercises,
           created_at: timestamp,
+          ...authorDb,
         })
         .eq("id", existingId);
       if (updateError) {
@@ -570,6 +581,7 @@ async function persistProgram(
       notes: input.notes,
       exercises: input.exercises,
       created_at: timestamp,
+      ...authorDb,
     });
     if (insertError) {
       console.warn("save-training-program fallback insert failed:", insertError.message);
@@ -1085,6 +1097,25 @@ export type HydratedMemberData = {
   exercises: Exercise[];
 };
 
+function trainingProgramFromHydrateRow(program: Record<string, unknown>): TrainingProgram {
+  const rawBy = String(program.program_created_by ?? "").trim();
+  const programCreatedBy = rawBy === "member" || rawBy === "trainer" ? (rawBy as "member" | "trainer") : undefined;
+  const programCreatedByName = String(program.program_created_by_name ?? "").trim();
+  return {
+    id: String(program.id ?? ""),
+    memberId: String(program.member_id ?? ""),
+    title: String(program.title ?? ""),
+    goal: String(program.goal ?? ""),
+    notes: String(program.notes ?? ""),
+    createdAt: mapIsoToProgramDate(String(program.created_at ?? "")),
+    exercises: Array.isArray(program.exercises) ? (program.exercises as ProgramExercise[]) : [],
+    assignedTrainerName: String(program.assigned_trainer_name ?? "").trim(),
+    ...(programCreatedBy
+      ? { programCreatedBy, programCreatedByName: programCreatedByName || undefined }
+      : {}),
+  };
+}
+
 function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemberData {
   const membersRows = Array.isArray(payload.members) ? payload.members : [];
   const messagesRows = Array.isArray(payload.messages) ? payload.messages : [];
@@ -1138,19 +1169,7 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
         createdAt: mapIsoToCreatedAt(String(message.created_at ?? "")),
       } as ChatMessage;
     }),
-    programs: programsRows.map((row) => {
-      const program = row as Record<string, unknown>;
-      return {
-        id: String(program.id ?? ""),
-        memberId: String(program.member_id ?? ""),
-        title: String(program.title ?? ""),
-        goal: String(program.goal ?? ""),
-        notes: String(program.notes ?? ""),
-        createdAt: mapIsoToProgramDate(String(program.created_at ?? "")),
-        exercises: Array.isArray(program.exercises) ? (program.exercises as ProgramExercise[]) : [],
-        assignedTrainerName: String(program.assigned_trainer_name ?? "").trim(),
-      } as TrainingProgram;
-    }),
+    programs: programsRows.map((row) => trainingProgramFromHydrateRow(row as Record<string, unknown>)),
     logs: logsRows.map((row) => {
       const log = row as Record<string, unknown>;
       const parsedNote = parseWorkoutNote(log.note);
@@ -1351,19 +1370,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
         createdAt: mapIsoToCreatedAt(String(message.created_at ?? "")),
       } as ChatMessage;
     }),
-    programs: programsRows.map((row) => {
-      const program = row as Record<string, unknown>;
-      return {
-        id: String(program.id ?? ""),
-        memberId: String(program.member_id ?? ""),
-        title: String(program.title ?? ""),
-        goal: String(program.goal ?? ""),
-        notes: String(program.notes ?? ""),
-        createdAt: mapIsoToProgramDate(String(program.created_at ?? "")),
-        exercises: Array.isArray(program.exercises) ? (program.exercises as ProgramExercise[]) : [],
-        assignedTrainerName: String(program.assigned_trainer_name ?? "").trim(),
-      } as TrainingProgram;
-    }),
+    programs: programsRows.map((row) => trainingProgramFromHydrateRow(row as Record<string, unknown>)),
     logs: logsRows.map((row) => {
       const log = row as Record<string, unknown>;
       const parsedNote = parseWorkoutNote(log.note);

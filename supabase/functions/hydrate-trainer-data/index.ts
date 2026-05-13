@@ -268,7 +268,7 @@ Deno.serve(async (req) => {
 
   const { data: programsByOwner, error: programsByOwnerError } = await adminClient
     .from("training_programs")
-    .select("id, member_id, title, goal, notes, exercises, created_at")
+    .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by, program_created_by_name")
     .eq("owner_user_id", ownerUserId)
     .order("created_at", { ascending: false });
 
@@ -294,7 +294,7 @@ Deno.serve(async (req) => {
   if (programLookupMemberIds.size > 0) {
     const { data, error } = await adminClient
       .from("training_programs")
-      .select("id, member_id, title, goal, notes, exercises, created_at")
+      .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by, program_created_by_name")
       .in("member_id", Array.from(programLookupMemberIds))
       .order("created_at", { ascending: false });
     programsByMember = (data ?? []) as Array<Record<string, unknown>>;

@@ -3050,7 +3050,12 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div className="flex h-full min-w-0 flex-col rounded-2xl border bg-white p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <div className="rounded-xl bg-slate-100 p-2 text-slate-700"><ClipboardList className="h-4 w-4" /></div>
+                      <div
+                        className="rounded-xl p-2 text-white shadow-sm"
+                        style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                      >
+                        <ClipboardList className="h-4 w-4" />
+                      </div>
                       <div>
                         <div className="text-sm font-semibold text-slate-800">Neste på planen</div>
                         <div className="text-xs text-slate-500">Plan</div>
@@ -3078,7 +3083,12 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div className="flex h-full min-w-0 flex-col rounded-2xl border bg-white p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <div className="rounded-xl bg-slate-100 p-2 text-slate-700"><Sparkles className="h-4 w-4" /></div>
+                      <div
+                        className="rounded-xl p-2 text-white shadow-sm"
+                        style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                      >
+                        <Sparkles className="h-4 w-4" />
+                      </div>
                       <div>
                         <div className="text-sm font-semibold text-slate-800">Hurtighandlinger</div>
                         <div className="text-xs text-slate-500">Rask tilgang</div>
@@ -3296,7 +3306,12 @@ export function MemberPortal(props: MemberPortalProps) {
               <div className="order-3 w-full rounded-2xl border bg-white p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <div className="rounded-xl bg-emerald-50 p-2 text-emerald-700"><Target className="h-4 w-4" /></div>
+                    <div
+                      className="rounded-xl p-2 text-white shadow-sm"
+                      style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                    >
+                      <Target className="h-4 w-4" />
+                    </div>
                     <div>
                       <div className="text-sm font-semibold text-slate-800">Streaks & challenges</div>
                       <div className="text-xs text-slate-500">Motivasjon</div>
