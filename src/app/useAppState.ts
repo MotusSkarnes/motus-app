@@ -401,11 +401,17 @@ export function useAppState() {
     void hydrateRemoteData();
     const interval = window.setInterval(() => {
       void hydrateRemoteData();
-    }, 15000);
+    }, 8000);
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void hydrateRemoteData();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       cancelled = true;
       window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
 

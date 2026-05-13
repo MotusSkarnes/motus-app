@@ -101,6 +101,42 @@ async function resolveOwnerUserIdForMember(memberId: string, fallbackOwnerUserId
   return ownerUserId || fallbackOwnerUserId;
 }
 
+/** Map synthetic `auth-*` client ids to `members.id` so edge functions and RLS see the same row. */
+async function resolveCanonicalMemberIdForPersistence(
+  memberId: string,
+  hints?: { targetEmail?: string },
+): Promise<string> {
+  const trimmed = String(memberId ?? "").trim();
+  if (!trimmed || !supabaseClient) return trimmed;
+  if (!trimmed.startsWith("auth-")) return trimmed;
+
+  const {
+    data: { user },
+  } = await supabaseClient.auth.getUser();
+  const role = String(user?.app_metadata?.role ?? user?.user_metadata?.role ?? "").trim();
+  const fromHint = String(hints?.targetEmail ?? "").trim().toLowerCase();
+  const authEmail = String(user?.email ?? "").trim().toLowerCase();
+
+  let email = "";
+  if (role === "trainer") {
+    if (!fromHint.includes("@")) return trimmed;
+    email = fromHint;
+  } else {
+    email = (fromHint.includes("@") ? fromHint : "") || (authEmail.includes("@") ? authEmail : "");
+  }
+  if (!email) return trimmed;
+  const { data, error } = await supabaseClient
+    .from("members")
+    .select("id")
+    .ilike("email", email)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data?.id) return trimmed;
+  const id = String(data.id).trim();
+  return id && !id.startsWith("auth-") ? id : trimmed;
+}
+
 const WEEKDAY_KEYS: WeekdayPlanKey[] = [
   "monday",
   "tuesday",
@@ -466,7 +502,9 @@ async function persistProgram(
   if (!supabaseClient) return;
   const ownerUserId = await getOwnerUserId();
   if (!ownerUserId) return;
-  const memberId = input.memberId.trim();
+  const memberId = await resolveCanonicalMemberIdForPersistence(input.memberId.trim(), {
+    targetEmail: hints?.targetEmail,
+  });
   const normalizedProgramId = (() => {
     const raw = String(input.id ?? "").trim();
     if (!raw) return "";
@@ -942,11 +980,12 @@ async function deleteMemberFromSupabase(member: { id: string; email?: string }) 
 
 async function persistWorkoutLog(log: WorkoutLog) {
   if (!supabaseClient) return;
+  const memberId = await resolveCanonicalMemberIdForPersistence(log.memberId, {});
   const serializedNote = serializeWorkoutNote(log.note, log.reflection);
   const invokeResult = await supabaseClient.functions.invoke("persist-workout-log", {
     body: {
       id: log.id,
-      memberId: log.memberId,
+      memberId,
       programTitle: log.programTitle,
       date: log.date,
       status: log.status,
@@ -960,13 +999,13 @@ async function persistWorkoutLog(log: WorkoutLog) {
   console.warn("persist-workout-log invoke failed, falling back to client upsert:", invokeResult.error.message);
 
   const fallbackOwnerUserId = await getOwnerUserId();
-  const ownerUserId = await resolveOwnerUserIdForMember(log.memberId, fallbackOwnerUserId);
+  const ownerUserId = await resolveOwnerUserIdForMember(memberId, fallbackOwnerUserId);
   if (!ownerUserId) return;
 
   const { error } = await supabaseClient.from("workout_logs").upsert(
     {
       id: log.id,
-      member_id: log.memberId,
+      member_id: memberId,
       owner_user_id: ownerUserId,
       program_title: log.programTitle,
       date: log.date,

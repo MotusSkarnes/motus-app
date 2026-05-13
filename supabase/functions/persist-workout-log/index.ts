@@ -82,15 +82,31 @@ Deno.serve(async (req) => {
     return "";
   })();
 
-  const { data: memberRow, error: memberError } = await adminClient
+  let { data: memberRow, error: memberError } = await adminClient
     .from("members")
     .select("id, email, owner_user_id")
     .eq("id", memberId)
     .maybeSingle();
+
+  if ((memberError || !memberRow) && requesterRole === "member" && requesterEmail) {
+    const { data: byEmail, error: emailLookupError } = await adminClient
+      .from("members")
+      .select("id, email, owner_user_id")
+      .ilike("email", requesterEmail)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!emailLookupError && byEmail) {
+      memberRow = byEmail;
+      memberError = null;
+    }
+  }
+
   if (memberError || !memberRow) {
     return jsonResponse(404, { error: "Member not found" });
   }
 
+  const canonicalMemberId = String((memberRow as { id?: string }).id ?? "").trim();
   const memberEmail = normalizeEmail((memberRow as { email?: string }).email);
   const memberOwner = String((memberRow as { owner_user_id?: string }).owner_user_id ?? "").trim();
   const isMemberOwner = requesterRole === "trainer" && memberOwner === requesterId;
@@ -104,7 +120,7 @@ Deno.serve(async (req) => {
     const { data: programOwnerRow } = await adminClient
       .from("training_programs")
       .select("owner_user_id")
-      .eq("member_id", memberId)
+      .eq("member_id", canonicalMemberId)
       .not("owner_user_id", "is", null)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -130,13 +146,13 @@ Deno.serve(async (req) => {
   }
 
   if (!memberOwner) {
-    await adminClient.from("members").update({ owner_user_id: ownerUserId }).eq("id", memberId);
+    await adminClient.from("members").update({ owner_user_id: ownerUserId }).eq("id", canonicalMemberId);
   }
 
   const { error: upsertError } = await adminClient.from("workout_logs").upsert(
     {
       id,
-      member_id: memberId,
+      member_id: canonicalMemberId,
       owner_user_id: ownerUserId,
       program_title: programTitle,
       date,

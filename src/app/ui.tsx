@@ -156,7 +156,7 @@ export function ConfirmDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/45 p-3 sm:items-center sm:p-6">
+    <div className="fixed inset-0 z-[10050] flex items-end justify-center bg-slate-950/45 p-3 sm:items-center sm:p-6">
       <div className="w-full max-w-md rounded-xl border bg-white p-5 shadow-2xl sm:p-6" style={{ borderColor: "rgba(15,23,42,0.10)" }}>
         <div className="text-lg font-semibold tracking-tight text-slate-900">{title}</div>
         <div className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">{message}</div>

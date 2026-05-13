@@ -2180,7 +2180,12 @@ export function MemberPortal(props: MemberPortalProps) {
         const lh = (brushLogo.naturalHeight / brushLogo.naturalWidth) * lw;
         const lx = canvas.width - 56 - lw;
         const ly = 56;
-        context.drawImage(brushLogo, lx, ly, lw, lh);
+        context.save();
+        context.translate(lx, ly);
+        context.globalCompositeOperation = "screen";
+        context.globalAlpha = 0.95;
+        context.drawImage(brushLogo, 0, 0, lw, lh);
+        context.restore();
       }
 
       const cardX = 56;
@@ -4678,7 +4683,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 <img
                   src={motusMarkBrush}
                   alt=""
-                  className="pointer-events-none absolute right-4 top-4 z-[1] h-16 w-auto max-w-[32%] object-contain opacity-95 drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)]"
+                  className="pointer-events-none absolute right-4 top-4 z-[1] h-16 w-auto max-w-[32%] object-contain opacity-95 mix-blend-screen drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)]"
                   aria-hidden
                 />
                 <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-white/15 blur-3xl" aria-hidden />

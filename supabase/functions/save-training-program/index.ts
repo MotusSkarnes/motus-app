@@ -63,14 +63,6 @@ function roleFromUser(user: JwtUser): "member" | "trainer" {
   return "trainer";
 }
 
-function authMemberIdFromUser(user: JwtUser): string {
-  return String(
-    (user.app_metadata?.member_id as string | undefined) ??
-      (user.user_metadata?.member_id as string | undefined) ??
-      ""
-  ).trim();
-}
-
 function trainerDisplayFirstName(user: JwtUser): string {
   const meta = user.user_metadata as Record<string, unknown> | undefined;
   const full = String(meta?.full_name ?? meta?.name ?? "").trim();
@@ -249,7 +241,7 @@ Deno.serve(async (req) => {
     return jsonResponse(400, { error: "Invalid JSON body" });
   }
 
-  const memberId = String(payload.memberId ?? "").trim();
+  let memberId = String(payload.memberId ?? "").trim();
   const title = String(payload.title ?? "").trim();
   const goal = String(payload.goal ?? "").trim();
   const notes = String(payload.notes ?? "").trim();
@@ -261,11 +253,27 @@ Deno.serve(async (req) => {
   const customerType = String(payload.customerType ?? "").trim();
   const membershipType = String(payload.membershipType ?? "").trim();
   const role = roleFromUser(userData.user);
-  const authMemberId = authMemberIdFromUser(userData.user);
 
   if (!ownerUserId) return jsonResponse(401, { error: "Missing authenticated user id" });
-  if (!memberId || memberId.startsWith("auth-")) return jsonResponse(400, { error: "Valid memberId is required" });
   if (!title) return jsonResponse(400, { error: "Title is required" });
+
+  // Clients sometimes keep a synthetic `auth-*` id; map to DB `members.id` so upsert and RLS stay consistent.
+  if ((!memberId || memberId.startsWith("auth-")) && role === "member") {
+    const email = normalizeEmail(userData.user.email);
+    if (!email) return jsonResponse(400, { error: "Valid memberId is required" });
+    const { data: row } = await adminClient
+      .from("members")
+      .select("id")
+      .ilike("email", email)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!row?.id) return jsonResponse(400, { error: "Valid memberId is required" });
+    memberId = String(row.id).trim();
+  }
+  if (!memberId || memberId.startsWith("auth-")) {
+    return jsonResponse(400, { error: "Valid memberId is required" });
+  }
 
   const authorColumns = resolveProgramAuthorColumns(userData.user as JwtUser, role, payload, targetName);
 
@@ -302,7 +310,18 @@ Deno.serve(async (req) => {
   });
 
   if (role === "member") {
-    if (!authMemberId || !targetMemberIds.includes(authMemberId)) {
+    const email = normalizeEmail(userData.user.email);
+    if (!email) {
+      return jsonResponse(403, { error: "Du kan bare lagre programmer på din egen profil." });
+    }
+    const { data: myMemberRows } = await adminClient.from("members").select("id").ilike("email", email);
+    const myIds = new Set(
+      (myMemberRows ?? [])
+        .map((r) => String((r as { id?: string }).id ?? "").trim())
+        .filter((id) => Boolean(id)),
+    );
+    const allowed = targetMemberIds.some((tid) => myIds.has(tid));
+    if (!allowed) {
       return jsonResponse(403, { error: "Du kan bare lagre programmer på din egen profil." });
     }
   }
