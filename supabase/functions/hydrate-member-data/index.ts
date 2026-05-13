@@ -261,6 +261,14 @@ Deno.serve(async (req) => {
           .in("member_id", memberDataLookupList)
           .order("created_at", { ascending: false })
       : { data: [], error: null };
+  const { data: programsByRequesterOwner, error: programsByRequesterOwnerError } =
+    requesterUserId
+      ? await adminClient
+          .from("training_programs")
+          .select("*")
+          .eq("owner_user_id", requesterUserId)
+          .order("created_at", { ascending: false })
+      : { data: [], error: null };
   const { data: logs, error: logsError } =
     memberDataLookupList.length > 0
       ? await adminClient
@@ -314,7 +322,8 @@ Deno.serve(async (req) => {
     exercises = (exerciseRows ?? []) as Array<Record<string, unknown>>;
   }
 
-  const firstError = programsError ?? logsError ?? messagesError ?? messagesByRequesterOwnerError;
+  const firstError =
+    programsError ?? programsByRequesterOwnerError ?? logsError ?? messagesError ?? messagesByRequesterOwnerError;
   if (firstError) {
     return jsonResponse(500, { error: firstError.message });
   }
@@ -340,10 +349,20 @@ Deno.serve(async (req) => {
     return true;
   });
 
+  const mergedProgramsById = new Map<string, Record<string, unknown>>();
+  [...(programsByRequesterOwner ?? []), ...(programsRaw ?? [])].forEach((row) => {
+    const id = String((row as { id?: string }).id ?? "").trim();
+    if (!id) return;
+    if (!mergedProgramsById.has(id)) {
+      mergedProgramsById.set(id, row as Record<string, unknown>);
+    }
+  });
+  const mergedPrograms = Array.from(mergedProgramsById.values());
+
   const trainerNameByOwnerId = new Map<string, string>();
   const ownerUserIds = Array.from(
     new Set(
-      (programsRaw ?? [])
+      mergedPrograms
         .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
         .filter(Boolean),
     ),
@@ -366,8 +385,12 @@ Deno.serve(async (req) => {
   }
 
   const memberDataLookupIdSet = new Set(memberDataLookupList);
-  const programs = (programsRaw ?? [])
-    .filter((row) => memberDataLookupIdSet.has(String((row as { member_id?: string }).member_id ?? "").trim()))
+  const programs = mergedPrograms
+    .filter((row) => {
+      const memberId = String((row as { member_id?: string }).member_id ?? "").trim();
+      const ownerUserId = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
+      return memberDataLookupIdSet.has(memberId) || (requesterUserId && ownerUserId === requesterUserId);
+    })
     .map((row) => {
       const typedRow = row as Record<string, unknown>;
       const ownerUserId = String(typedRow.owner_user_id ?? "").trim();
