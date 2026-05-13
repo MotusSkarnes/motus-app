@@ -340,13 +340,15 @@ Deno.serve(async (req) => {
     return jsonResponse(200, { ok: true, ids: [id], targetMemberIds: [memberId] });
   }
 
-  let { ids: targetMemberIds, email } = await resolveRelatedMemberIds(adminClient, memberId, {
+  const resolvedTargets = await resolveRelatedMemberIds(adminClient, memberId, {
     targetEmail,
     targetName,
     customerType,
     membershipType,
     ownerUserId,
   });
+  let targetMemberIds = resolvedTargets.ids;
+  const email = resolvedTargets.email;
 
   if (role === "member") {
     const email = normalizeEmail(userData.user.email);
