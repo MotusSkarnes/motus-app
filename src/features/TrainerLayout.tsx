@@ -52,7 +52,6 @@ type TrainerLayoutProps = {
 const trainerMenuItems: Array<{ key: TrainerTab; label: string; icon: LucideIcon }> = [
   { key: "dashboard", label: "Oversikt", icon: LayoutDashboard },
   { key: "customers", label: "Klienter", icon: Users },
-  { key: "messages", label: "Meldinger", icon: MessageSquare },
   { key: "exerciseBank", label: "Øvelsesbank", icon: Dumbbell },
   { key: "programs", label: "Programmer", icon: ClipboardList },
   { key: "calendar", label: "Kalender", icon: CalendarDays },

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
 import { TrainerPortal } from "./features/TrainerPortal";
@@ -70,8 +70,8 @@ describe("Trainer flows", () => {
 
     const trainerMessage = "Trener testmelding";
     await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
-    const trainerNav = screen.getByRole("navigation", { name: "Hovedmeny trener" });
-    await user.click(within(trainerNav).getByRole("button", { name: "Meldinger" }));
+    await user.click(screen.getAllByRole("button", { name: "Klienter" })[0]);
+    await user.click(screen.getByRole("button", { name: "Meldinger" }));
     await user.type(screen.getByPlaceholderText("Skriv melding til kunden"), trainerMessage);
     await user.click(screen.getAllByRole("button", { name: "Send" })[0]);
 

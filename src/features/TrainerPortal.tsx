@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ClipboardList, Dumbbell, Eye, EyeOff, MessageSquare, Pencil, ShieldCheck, Star, Trash2, Users } from "lucide-react";
+import { ClipboardList, Dumbbell, Eye, EyeOff, Pencil, ShieldCheck, Star, Trash2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
@@ -5159,49 +5159,6 @@ function pickFirstName(value: unknown): string {
             </div>
           </div>
         </Card>
-      ) : null}
-
-      {trainerTab === "messages" ? (
-      <Card className="p-5">
-        <div className="flex items-start gap-3">
-          <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><MessageSquare className="h-5 w-5" /></div>
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight">Rask melding til valgt kunde</h2>
-            <p className="text-sm text-slate-500">Enklere melding enn i den store fila</p>
-          </div>
-        </div>
-        {selectedMemberMessagesLocked ? (
-          <div className="mt-5 rounded-xl border bg-slate-50 p-5 text-sm font-medium text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-            Medlem har ikke tilgang til meldinger.
-          </div>
-        ) : (
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-            <TextInput
-              value={trainerMessage}
-              onChange={(e) => {
-                setTrainerMessage(e.target.value);
-                if (trainerChatSendStatus) setTrainerChatSendStatus(null);
-              }}
-              placeholder="Skriv melding til kunden"
-            />
-            <GradientButton onClick={async () => {
-              if (!selectedMemberId || selectedMemberId === "__template__" || !trainerMessage.trim()) return;
-              const sent = await dispatchTrainerMessageToSelectedMember(trainerMessage);
-              if (sent) setTrainerMessage("");
-            }} disabled={!trainerMessage.trim() || isSendingTrainerMessage}>
-              {isSendingTrainerMessage ? "Sender..." : "Send"}
-            </GradientButton>
-          </div>
-        )}
-        {trainerChatSendStatus ? (
-          <div
-            className={`mt-3 rounded-xl border px-3 py-2 text-xs ${trainerChatSendStatus.startsWith("Melding sendt") ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}
-            style={{ borderColor: trainerChatSendStatus.startsWith("Melding sendt") ? "rgba(16,185,129,0.3)" : "rgba(244,63,94,0.3)" }}
-          >
-            {trainerChatSendStatus}
-          </div>
-        ) : null}
-      </Card>
       ) : null}
 
       {trainerTab === "admin" && canAccessAdminTools ? (
