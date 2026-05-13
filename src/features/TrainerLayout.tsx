@@ -178,6 +178,7 @@ export function TrainerLayout({
     isLocalDemoSession,
     canAccessAdminTools,
     remoteTrainerPeriodPlansByMemberId,
+    trainerAccountName: appState.currentUser?.name?.trim() ?? "",
   };
 
   return (

@@ -19,6 +19,8 @@ export type SaveProgramInput = {
   notes: string;
   memberId: string;
   exercises: ProgramExercise[];
+  programCreatedBy?: "member" | "trainer";
+  programCreatedByName?: string;
 };
 
 export type UpdateWorkoutResultInput = {
@@ -210,6 +212,12 @@ export function saveProgramInState(
               goal: input.goal.trim(),
               notes: input.notes.trim(),
               exercises: input.exercises.map((exercise) => ({ ...exercise, id: exercise.id || uid("prog-ex") })),
+              ...(input.programCreatedBy
+                ? {
+                    programCreatedBy: input.programCreatedBy,
+                    programCreatedByName: input.programCreatedByName?.trim() ?? "",
+                  }
+                : {}),
             }
           : program
       ),
@@ -224,6 +232,12 @@ export function saveProgramInState(
     notes: input.notes.trim(),
     createdAt: formatDateDdMmYyyy(new Date()),
     exercises: input.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
+    ...(input.programCreatedBy
+      ? {
+          programCreatedBy: input.programCreatedBy,
+          programCreatedByName: input.programCreatedByName?.trim() ?? "",
+        }
+      : {}),
   };
 
   return { ...state, programs: [newProgram, ...state.programs] };

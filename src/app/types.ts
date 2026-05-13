@@ -123,6 +123,9 @@ export type TrainingProgram = {
   createdAt: string;
   exercises: ProgramExercise[];
   assignedTrainerName?: string;
+  /** Hvem som satte programmet inn i appen (synlig for medlem under Mine programmer). */
+  programCreatedBy?: "member" | "trainer";
+  programCreatedByName?: string;
   /** Not persisted; removed after økt fullføres eller avbrytes. */
   ephemeral?: boolean;
 };

@@ -100,6 +100,7 @@ describe("Stability regressions", () => {
         workoutMode={null}
         startWorkoutMode={vi.fn()}
         startCustomWorkout={vi.fn()}
+        saveProgramForMember={vi.fn()}
         updateWorkoutExerciseResult={vi.fn()}
         replaceWorkoutExerciseGroup={vi.fn()}
         removeWorkoutLogResult={vi.fn()}

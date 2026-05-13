@@ -10,7 +10,7 @@ import { isWebPushConfigurable, registerWebPushWithSupabase } from "../services/
 import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { useToastStatus } from "../app/toast";
 import { uid } from "../app/storage";
-import type { LogGroupWorkoutInput, ReplaceWorkoutExerciseGroupInput, StartCustomWorkoutInput, StartWorkoutModeOptions, UpdateMemberInput } from "../services/appRepository";
+import type { LogGroupWorkoutInput, ReplaceWorkoutExerciseGroupInput, SaveProgramInput, StartCustomWorkoutInput, StartWorkoutModeOptions, UpdateMemberInput } from "../services/appRepository";
 import { mergedPeriodPlanListForMember } from "../app/periodPlanMerge";
 import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClear";
 import type {
@@ -74,6 +74,7 @@ type MemberPortalProps = {
   workoutMode: WorkoutModeState | null;
   startWorkoutMode: (programId: string, options?: StartWorkoutModeOptions) => void;
   startCustomWorkout: (input: StartCustomWorkoutInput, options?: StartWorkoutModeOptions) => void;
+  saveProgramForMember: (input: SaveProgramInput) => void;
   updateWorkoutExerciseResult: (
     exerciseId: string,
     field: "performedWeight" | "performedReps" | "performedDurationMinutes" | "performedSpeed" | "performedIncline" | "completed",
@@ -241,6 +242,19 @@ function pickFirstName(value: string): string {
   return firstToken.trim();
 }
 
+function programAuthorCredit(program: TrainingProgram): string | null {
+  if (program.programCreatedBy === "member") {
+    return "Lagret av deg";
+  }
+  if (program.programCreatedBy === "trainer") {
+    const n = program.programCreatedByName?.trim();
+    return n ? `Fra trener ${pickFirstName(n)}` : "Fra trener";
+  }
+  const legacy = program.assignedTrainerName?.trim();
+  if (legacy) return `Fra trener ${pickFirstName(legacy)}`;
+  return null;
+}
+
 function dataUrlToBlob(dataUrl: string): Blob | null {
   const parts = dataUrl.split(",");
   if (parts.length < 2) return null;
@@ -382,6 +396,7 @@ export function MemberPortal(props: MemberPortalProps) {
     workoutMode,
     startWorkoutMode,
     startCustomWorkout,
+    saveProgramForMember,
     updateWorkoutExerciseResult,
     replaceWorkoutExerciseGroup,
     removeWorkoutLogResult,
@@ -420,6 +435,8 @@ export function MemberPortal(props: MemberPortalProps) {
   const [showAllCustomWorkoutOptions, setShowAllCustomWorkoutOptions] = useState(false);
   const [showAllPersonalRecords, setShowAllPersonalRecords] = useState(false);
   const [customWorkoutLines, setCustomWorkoutLines] = useState<Array<{ key: string; exerciseId: string; sets: string; reps: string; weight: string }>>([]);
+  const [memberSavedProgramTitle, setMemberSavedProgramTitle] = useState("Mitt treningsprogram");
+  const [customProgramSaveStatus, setCustomProgramSaveStatus] = useState<string | null>(null);
   const [profileSaveInfo, setProfileSaveInfo] = useState<string | null>(null);
   const [memberNameDraft, setMemberNameDraft] = useState("");
   const [memberEmailDraft, setMemberEmailDraft] = useState("");
@@ -501,6 +518,7 @@ export function MemberPortal(props: MemberPortalProps) {
   useAutoClearStatus(progressShareStatus, () => setProgressShareStatus(null), getStatusClearDelayMs(progressShareStatus));
   useAutoClearStatus(periodPlanActionStatus, () => setPeriodPlanActionStatus(null), getStatusClearDelayMs(periodPlanActionStatus));
   useAutoClearStatus(intervalTimerStatus, () => setIntervalTimerStatus(null), getStatusClearDelayMs(intervalTimerStatus));
+  useAutoClearStatus(customProgramSaveStatus, () => setCustomProgramSaveStatus(null), getStatusClearDelayMs(customProgramSaveStatus));
   useToastStatus(memberChatSendStatus, { title: "Meldinger", tone: inferStatusTone });
   useToastStatus(pushRegisterStatus, { title: "Varsler", tone: inferStatusTone });
   useToastStatus(groupWorkoutStatus, { title: "Gruppetrening", tone: inferStatusTone });
@@ -979,8 +997,8 @@ export function MemberPortal(props: MemberPortalProps) {
     setCustomWorkoutLines((prev) => prev.map((line) => (line.key === key ? { ...line, ...patch } : line)));
   }
 
-  function handleStartCustomWorkout() {
-    if (!activeMemberId.trim()) return;
+  function buildCustomWorkoutProgramExercises(): ProgramExercise[] | null {
+    if (!activeMemberId.trim()) return null;
     const built: ProgramExercise[] = [];
     for (const line of customWorkoutLines) {
       const ex = exercises.find((e) => e.id === line.exerciseId);
@@ -996,7 +1014,12 @@ export function MemberPortal(props: MemberPortalProps) {
         notes: "",
       });
     }
-    if (!built.length) return;
+    return built.length ? built : null;
+  }
+
+  function handleStartCustomWorkout() {
+    const built = buildCustomWorkoutProgramExercises();
+    if (!built) return;
     const tempProgram: TrainingProgram = {
       id: "",
       memberId: activeMemberId,
@@ -1009,6 +1032,25 @@ export function MemberPortal(props: MemberPortalProps) {
     startCustomWorkout({ memberId: activeMemberId, exercises: built }, buildStartWorkoutOptions(tempProgram));
     setCustomWorkoutLines([]);
     setCustomWorkoutSearch("");
+  }
+
+  function handleSaveMemberTrainingProgram() {
+    const built = buildCustomWorkoutProgramExercises();
+    if (!built) return;
+    const title = memberSavedProgramTitle.trim() || "Mitt treningsprogram";
+    const authorFull = viewedMember?.name?.trim() || currentUserEmail.trim() || "Medlem";
+    saveProgramForMember({
+      title,
+      goal: "",
+      notes: "",
+      memberId: activeMemberId,
+      exercises: built.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
+      programCreatedBy: "member",
+      programCreatedByName: authorFull,
+    });
+    setCustomWorkoutLines([]);
+    setCustomWorkoutSearch("");
+    setCustomProgramSaveStatus(`«${title}» ble lagret under Mine programmer.`);
   }
 
   const syncProfileToPtBackend = useCallback(async (payload: {
@@ -3342,7 +3384,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div>
                       <h2 className="text-xl font-semibold tracking-tight">Lag egen økt</h2>
                       <p className="mt-1 text-sm text-slate-600">
-                        1) Legg til øvelser fra listen · 2) Juster sett og reps · 3) Start. Vekt fylles inn automatisk om du har trent øvelsen før.
+                        1) Legg til øvelser fra listen · 2) Juster sett og reps · 3) Start økt, eller lagre som fast treningsprogram. Vekt fylles inn automatisk om du har trent øvelsen før.
                       </p>
                     </div>
                   </div>
@@ -3388,15 +3430,40 @@ export function MemberPortal(props: MemberPortalProps) {
                         })}
                       </div>
                     )}
+                    <label className="mt-3 block max-w-md space-y-1">
+                      <span className="text-[11px] font-semibold text-slate-600">Programnavn (ved lagring som program)</span>
+                      <TextInput
+                        value={memberSavedProgramTitle}
+                        onChange={(e) => setMemberSavedProgramTitle(e.target.value)}
+                        placeholder="Mitt treningsprogram"
+                      />
+                    </label>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                     <GradientButton
                       onClick={handleStartCustomWorkout}
                       disabled={!customWorkoutLines.length || !activeMemberId.trim()}
-                      className="mt-3 w-full sm:w-auto"
+                      className="w-full sm:w-auto"
                     >
                       {customWorkoutLines.length
                         ? `Start egen økt (${customWorkoutLines.length} øvelse${customWorkoutLines.length === 1 ? "" : "r"})`
                         : "Legg til øvelser for å starte"}
                     </GradientButton>
+                    <OutlineButton
+                      type="button"
+                      onClick={handleSaveMemberTrainingProgram}
+                      disabled={!customWorkoutLines.length || !activeMemberId.trim()}
+                      className="w-full sm:w-auto"
+                    >
+                      Lagre som treningsprogram
+                    </OutlineButton>
+                    </div>
+                    {customProgramSaveStatus ? (
+                      <StatusMessage
+                        message={customProgramSaveStatus}
+                        tone="success"
+                        className="mt-2 !rounded-xl !px-3 !py-2 !text-xs"
+                      />
+                    ) : null}
                   </div>
 
                   <div>
@@ -3505,8 +3572,12 @@ export function MemberPortal(props: MemberPortalProps) {
                   {memberAssignedPrograms.length === 0 ? (
                     <EmptyState
                       icon="📋"
-                      title="Ingen programmer fra trener ennå"
-                          description={isMemberLimited ? "Treneren din kan tildele et program her." : "Be trener tildele et program, eller bruk «Lag egen økt» nederst på siden."}
+                      title="Ingen treningsprogram ennå"
+                      description={
+                        isMemberLimited
+                          ? "Treneren din kan tildele et program her."
+                          : "Be trener tildele et program, eller lagre eget opplegg som program fra «Lag egen økt» over."
+                      }
                       className="bg-white"
                       action={
                         !isMemberLimited ? (
@@ -3519,12 +3590,16 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null}
                   {memberAssignedPrograms.map((program) => {
                     const isExpanded = expandedProgramId === program.id;
+                    const programAuthorLine = programAuthorCredit(program);
                     return (
                       <div key={program.id} className="rounded-xl border bg-white p-4 space-y-3">
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <div className="font-semibold text-sm">{program.title}</div>
                             <div className="mt-0.5 text-xs text-slate-500">{program.goal || "Uten mål"}</div>
+                            {programAuthorLine ? (
+                              <div className="mt-1 text-[11px] font-medium text-slate-600">{programAuthorLine}</div>
+                            ) : null}
                             <div className="mt-1 text-[11px] text-slate-400">{program.createdAt}</div>
                           </div>
                           <div className="flex flex-col gap-2 sm:flex-row">

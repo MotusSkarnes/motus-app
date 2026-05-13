@@ -78,7 +78,16 @@ type TrainerPortalProps = {
   restoreMemberByEmail: (email: string) => Promise<{ ok: boolean; message: string }>;
   restoreMissingTestData: () => Promise<{ ok: boolean; message: string }>;
   restoreOriginalExerciseBank: () => Promise<{ ok: boolean; message: string }>;
-  saveProgramForMember: (input: { id?: string; title: string; goal: string; notes: string; memberId: string; exercises: ProgramExercise[] }) => void;
+  saveProgramForMember: (input: {
+    id?: string;
+    title: string;
+    goal: string;
+    notes: string;
+    memberId: string;
+    exercises: ProgramExercise[];
+    programCreatedBy?: "member" | "trainer";
+    programCreatedByName?: string;
+  }) => void;
   deleteProgramById: (programId: string) => void;
   sendTrainerMessage: (memberId: string, text: string) => void;
   clearLocalChatCache?: () => number;
@@ -98,6 +107,8 @@ type TrainerPortalProps = {
   setMemberAvatarUrlForMember?: (memberId: string, avatarUrl: string) => void;
   isLocalDemoSession?: boolean;
   canAccessAdminTools?: boolean;
+  /** Innlogget treners visningsnavn — brukes når program lagres på kunde. */
+  trainerAccountName?: string;
   /** Synket fra Supabase ved hydrering (per medlem, inkl. tom liste). */
   remoteTrainerPeriodPlansByMemberId?: Record<string, PeriodSchedulePlan[]>;
 };
@@ -432,6 +443,7 @@ function pickFirstName(value: unknown): string {
     isLocalDemoSession = false,
     canAccessAdminTools = true,
     remoteTrainerPeriodPlansByMemberId = {},
+    trainerAccountName = "",
   } = props;
 
   const [programTitle, setProgramTitle] = useState("Nytt treningsprogram");
@@ -1711,12 +1723,15 @@ function pickFirstName(value: unknown): string {
     const uniqueTargetIds = Array.from(new Set(targetMemberIds.length ? targetMemberIds : [selectedMemberId]));
 
     uniqueTargetIds.forEach((memberId) => {
+      const trainerAuthor = pickFirstName(trainerAccountName) || pickFirstName(MOTUS.name) || "Trener";
       saveProgramForMember({
         title: template.title,
         goal: template.goal,
         notes: template.notes,
         memberId,
         exercises: template.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
+        programCreatedBy: "trainer",
+        programCreatedByName: trainerAuthor,
       });
     });
 
@@ -1740,6 +1755,7 @@ function pickFirstName(value: unknown): string {
       return false;
     }
     if (!selectedMemberId || selectedMemberId === "__template__") return false;
+    const trainerAuthor = pickFirstName(trainerAccountName) || pickFirstName(MOTUS.name) || "Trener";
     saveProgramForMember({
       id: input.id,
       title: input.title,
@@ -1747,6 +1763,8 @@ function pickFirstName(value: unknown): string {
       notes: input.notes,
       memberId: selectedMemberId,
       exercises: input.id ? input.exercises : input.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
+      programCreatedBy: "trainer",
+      programCreatedByName: trainerAuthor,
     });
     const selectedMemberName = members.find((member) => member.id === selectedMemberId)?.name ?? "kunden";
     setProgramSaveStatus(`Program lagret på ${selectedMemberName}.`);

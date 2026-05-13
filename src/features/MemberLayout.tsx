@@ -26,6 +26,7 @@ type MemberLayoutProps = {
   sendMemberMessage: ComponentProps<typeof MemberPortal>["sendMemberMessage"];
   startWorkoutMode: ComponentProps<typeof MemberPortal>["startWorkoutMode"];
   startCustomWorkout: ComponentProps<typeof MemberPortal>["startCustomWorkout"];
+  saveProgramForMember: ComponentProps<typeof MemberPortal>["saveProgramForMember"];
   updateWorkoutExerciseResult: ComponentProps<typeof MemberPortal>["updateWorkoutExerciseResult"];
   replaceWorkoutExerciseGroup: ComponentProps<typeof MemberPortal>["replaceWorkoutExerciseGroup"];
   removeWorkoutLogResult: ComponentProps<typeof MemberPortal>["removeWorkoutLogResult"];
@@ -61,6 +62,7 @@ export function MemberLayout({
   sendMemberMessage,
   startWorkoutMode,
   startCustomWorkout,
+  saveProgramForMember,
   updateWorkoutExerciseResult,
   replaceWorkoutExerciseGroup,
   removeWorkoutLogResult,
@@ -123,6 +125,7 @@ export function MemberLayout({
     workoutMode: appState.workoutMode,
     startWorkoutMode,
     startCustomWorkout,
+    saveProgramForMember,
     updateWorkoutExerciseResult,
     replaceWorkoutExerciseGroup,
     removeWorkoutLogResult,
