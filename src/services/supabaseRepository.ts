@@ -1721,7 +1721,12 @@ export const supabaseAppRepository: AppRepository = {
     return nextState;
   },
   saveProgram(state: AppState, input: SaveProgramInput): AppState {
-    const anchorMember = state.members.find((member) => member.id === input.memberId);
+    const normalizedUserEmail = state.currentUser?.email?.trim().toLowerCase() ?? "";
+    const anchorMember =
+      state.members.find((member) => member.id === input.memberId) ??
+      (normalizedUserEmail
+        ? state.members.find((member) => member.email.trim().toLowerCase() === normalizedUserEmail)
+        : undefined);
     const hints = {
       targetEmail: String(anchorMember?.email ?? "").trim().toLowerCase(),
       targetName: String(anchorMember?.name ?? "").trim(),

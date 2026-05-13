@@ -230,39 +230,53 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Programs: scoped `members` ids (email/name dupes) plus legacy keys rows may use (auth metadata id, auth.uid, auth-{uid}).
-  const programMemberIds = Array.from(
-    new Set(memberIds.filter((id) => id && id !== "__template__" && !id.startsWith("auth-"))),
-  );
-  const programLookupIds = new Set(programMemberIds);
-  // Some legacy rows used raw email string as member_id.
+  // One lookup list for programs, logs, messages, period plans: include every scoped member id
+  // (including synthetic `auth-*`) plus legacy keys (email string, JWT member_id, auth.uid).
+  // Previously programs omitted `auth-*` ids from the `.in()` list while logs used raw `memberIds`,
+  // so rows keyed only by synthetic ids could be missing from hydrate on some devices.
+  const memberDataLookupIds = new Set<string>();
+  for (const rawId of memberIds) {
+    const id = String(rawId ?? "").trim();
+    if (id && id !== "__template__") memberDataLookupIds.add(id);
+  }
   if (requesterEmail) {
-    programLookupIds.add(requesterEmail);
+    memberDataLookupIds.add(requesterEmail);
   }
   for (const raw of [authMemberId, requesterUserId, requesterUserId ? `auth-${requesterUserId}` : ""]) {
     const id = String(raw ?? "").trim();
-    if (id && id !== "__template__") programLookupIds.add(id);
+    if (id && id !== "__template__") memberDataLookupIds.add(id);
   }
-  const programLookupList = Array.from(programLookupIds);
+  let memberDataLookupList = Array.from(memberDataLookupIds);
+  if (!memberDataLookupList.length) {
+    memberDataLookupList = memberIds
+      .map((id) => String(id ?? "").trim())
+      .filter((id) => id && id !== "__template__");
+  }
 
   const { data: programsRaw, error: programsError } =
-    programLookupList.length > 0
+    memberDataLookupList.length > 0
       ? await adminClient
           .from("training_programs")
           .select("*")
-          .in("member_id", programLookupList)
+          .in("member_id", memberDataLookupList)
           .order("created_at", { ascending: false })
       : { data: [], error: null };
-  const { data: logs, error: logsError } = await adminClient
-    .from("workout_logs")
-    .select("id, member_id, program_title, date, status, note, results, created_at")
-    .in("member_id", memberIds)
-    .order("created_at", { ascending: false });
-  const { data: messagesByMember, error: messagesError } = await adminClient
-    .from("chat_messages")
-    .select("id, member_id, sender, text, created_at")
-    .in("member_id", memberIds)
-    .order("created_at", { ascending: true });
+  const { data: logs, error: logsError } =
+    memberDataLookupList.length > 0
+      ? await adminClient
+          .from("workout_logs")
+          .select("id, member_id, program_title, date, status, note, results, created_at")
+          .in("member_id", memberDataLookupList)
+          .order("created_at", { ascending: false })
+      : { data: [], error: null };
+  const { data: messagesByMember, error: messagesError } =
+    memberDataLookupList.length > 0
+      ? await adminClient
+          .from("chat_messages")
+          .select("id, member_id, sender, text, created_at")
+          .in("member_id", memberDataLookupList)
+          .order("created_at", { ascending: true })
+      : { data: [], error: null };
   const { data: messagesByRequesterOwner, error: messagesByRequesterOwnerError } =
     requesterUserId
       ? await adminClient
@@ -273,17 +287,19 @@ Deno.serve(async (req) => {
       : { data: [], error: null };
 
   let periodPlans: Array<{ member_id: string; plan: unknown }> = [];
-  const { data: periodRows, error: periodPlansError } = await adminClient
-    .from("member_period_plans")
-    .select("member_id, plan")
-    .in("member_id", memberIds);
-  if (periodPlansError) {
-    console.warn("hydrate-member-data: member_period_plans query failed (table may be missing):", periodPlansError.message);
-  } else {
-    periodPlans = (periodRows ?? []).map((row) => ({
-      member_id: String((row as { member_id?: string }).member_id ?? ""),
-      plan: (row as { plan?: unknown }).plan,
-    }));
+  if (memberDataLookupList.length > 0) {
+    const { data: periodRows, error: periodPlansError } = await adminClient
+      .from("member_period_plans")
+      .select("member_id, plan")
+      .in("member_id", memberDataLookupList);
+    if (periodPlansError) {
+      console.warn("hydrate-member-data: member_period_plans query failed (table may be missing):", periodPlansError.message);
+    } else {
+      periodPlans = (periodRows ?? []).map((row) => ({
+        member_id: String((row as { member_id?: string }).member_id ?? ""),
+        plan: (row as { plan?: unknown }).plan,
+      }));
+    }
   }
 
   let exercises: Array<Record<string, unknown>> = [];
@@ -349,9 +365,9 @@ Deno.serve(async (req) => {
     }
   }
 
-  const programLookupIdSet = new Set(programLookupList);
+  const memberDataLookupIdSet = new Set(memberDataLookupList);
   const programs = (programsRaw ?? [])
-    .filter((row) => programLookupIdSet.has(String((row as { member_id?: string }).member_id ?? "").trim()))
+    .filter((row) => memberDataLookupIdSet.has(String((row as { member_id?: string }).member_id ?? "").trim()))
     .map((row) => {
       const typedRow = row as Record<string, unknown>;
       const ownerUserId = String(typedRow.owner_user_id ?? "").trim();

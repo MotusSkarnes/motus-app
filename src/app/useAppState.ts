@@ -282,16 +282,23 @@ export function useAppState() {
         sessionUser.id &&
         Array.isArray(remotePrograms) &&
         remotePrograms.length === 0 &&
-        hydratedMember &&
-        hydratedMember.members.length > 0 &&
         typeof window !== "undefined"
       ) {
         const retryKey = `motus.memberProgramJwtRetry:${sessionUser.id}`;
         if (!window.sessionStorage.getItem(retryKey)) {
           const email = sessionUser.email.trim().toLowerCase();
-          const match =
-            hydratedMember.members.find((m) => m.email.trim().toLowerCase() === email) ?? hydratedMember.members[0];
-          const memberId = match?.id?.trim();
+          let memberId = "";
+          if (hydratedMember?.members?.length) {
+            const match =
+              hydratedMember.members.find((m) => m.email.trim().toLowerCase() === email) ?? hydratedMember.members[0];
+            memberId = match?.id?.trim() ?? "";
+          }
+          if (!memberId && email.includes("@")) {
+            const fetchedMembers = await fetchMembersFromSupabase();
+            const match =
+              fetchedMembers?.find((m) => m.email.trim().toLowerCase() === email) ?? fetchedMembers?.[0] ?? null;
+            memberId = match?.id?.trim() ?? "";
+          }
           if (email.includes("@") && memberId) {
             window.sessionStorage.setItem(retryKey, "1");
             await ensureMemberAuthLink(email, memberId);
