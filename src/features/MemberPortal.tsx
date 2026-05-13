@@ -3,6 +3,7 @@ import {
   CalendarDays,
   ClipboardList,
   Dumbbell,
+  FileStack,
   History,
   MessageSquare,
   Plus,
@@ -3603,7 +3604,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     className="rounded-xl p-2 text-white shadow-sm"
                     style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
                   >
-                    <ClipboardList className="h-4 w-4" />
+                    <FileStack className="h-4 w-4" />
                   </div>
                   <div className="text-sm font-semibold text-slate-800">Mine treningsprogram</div>
                 </div>
@@ -4439,87 +4440,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
 
-              <div
-                className="relative mt-4 overflow-hidden rounded-2xl border shadow-xl ring-1 ring-white/10"
-                style={{
-                  borderColor: "rgba(255,255,255,0.22)",
-                  background: `linear-gradient(155deg, #0f766e 0%, ${MOTUS.turquoise} 32%, ${MOTUS.pink} 68%, #9d174d 100%)`,
-                }}
-              >
-                <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-white/15 blur-3xl" aria-hidden />
-                <div className="pointer-events-none absolute -bottom-24 -left-16 h-64 w-64 rounded-full bg-cyan-200/20 blur-3xl" aria-hidden />
-                <div className="pointer-events-none absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/5 blur-3xl" aria-hidden />
-
-                <div className="relative p-5 sm:p-6">
-                  <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
-                    <div className="min-w-0 flex-1 space-y-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white ring-1 ring-white/30 backdrop-blur-sm">
-                          <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                          Story-kort
-                        </span>
-                        <span className="rounded-full bg-black/15 px-2.5 py-0.5 text-xs font-medium text-white/90">9:16 · PNG</span>
-                      </div>
-
-                      <div>
-                        <h3 className="text-xl font-bold tracking-tight text-white drop-shadow-sm sm:text-2xl">Delbar progresjonsoppsummering</h3>
-                        <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-white/88">
-                          {progressShareMonthLabel} — få et ferdig oppsummeringsbilde i Motus-stilen, klart til deling.
-                        </p>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        {[
-                          { k: "Økter", v: String(estimatedSessionsThisMonth) },
-                          { k: "Dager", v: String(uniqueTrainingDays) },
-                          { k: "Streak", v: `${streakWeeks} u` },
-                          { k: "Flyt", v: `${progressStory.consistency}%` },
-                        ].map((cell) => (
-                          <div
-                            key={cell.k}
-                            className="rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 text-left shadow-sm backdrop-blur-md"
-                          >
-                            <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">{cell.k}</div>
-                            <div className="mt-0.5 text-lg font-bold tabular-nums text-white">{cell.v}</div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <p
-                        className={
-                          progressStory.delta > 0
-                            ? "text-xs font-medium text-emerald-200"
-                            : progressStory.delta < 0
-                              ? "text-xs font-medium text-amber-200"
-                              : "text-xs font-medium text-white/80"
-                        }
-                      >
-                        Siste 14 dager: {progressStory.delta > 0 ? "↑" : progressStory.delta < 0 ? "↓" : "—"} {progressStory.trendLabel}
-                      </p>
-                    </div>
-
-                    <div className="flex w-full shrink-0 flex-col gap-2 sm:max-w-xs lg:w-56">
-                      <button
-                        type="button"
-                        onClick={() => void shareMonthlyProgressSummary()}
-                        className="group inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-black/25 ring-2 ring-white/50 transition hover:bg-white/95 hover:shadow-xl active:scale-[0.98]"
-                      >
-                        <Share2 className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5" aria-hidden />
-                        Del denne måneden
-                      </button>
-                      <p className="text-center text-[11px] leading-snug text-white/75 lg:text-left">Fungerer best på mobil — del eller last ned fra galleriet.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {progressShareStatus ? (
-                <StatusMessage
-                  message={progressShareStatus}
-                  tone={progressShareStatus.toLowerCase().includes("kunne ikke") ? "error" : "success"}
-                  className="mt-3 !rounded-xl !px-3 !py-2 !text-xs"
-                />
-              ) : null}
-              <div className="mt-4 rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="mt-5 rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-start gap-2">
                   <div
                     className="shrink-0 rounded-xl p-2 text-white shadow-sm"
@@ -4604,6 +4525,87 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null}
                 </div>
               </div>
+
+              <div
+                className="relative mt-6 overflow-hidden rounded-2xl border shadow-xl ring-1 ring-white/10"
+                style={{
+                  borderColor: "rgba(255,255,255,0.22)",
+                  background: `linear-gradient(155deg, #0f766e 0%, ${MOTUS.turquoise} 32%, ${MOTUS.pink} 68%, #9d174d 100%)`,
+                }}
+              >
+                <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-white/15 blur-3xl" aria-hidden />
+                <div className="pointer-events-none absolute -bottom-24 -left-16 h-64 w-64 rounded-full bg-cyan-200/20 blur-3xl" aria-hidden />
+                <div className="pointer-events-none absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/5 blur-3xl" aria-hidden />
+
+                <div className="relative p-5 sm:p-6">
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
+                    <div className="min-w-0 flex-1 space-y-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white ring-1 ring-white/30 backdrop-blur-sm">
+                          <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                          Story-kort
+                        </span>
+                        <span className="rounded-full bg-black/15 px-2.5 py-0.5 text-xs font-medium text-white/90">9:16 · PNG</span>
+                      </div>
+
+                      <div>
+                        <h3 className="text-xl font-bold tracking-tight text-white drop-shadow-sm sm:text-2xl">Delbar progresjonsoppsummering</h3>
+                        <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-white/88">
+                          {progressShareMonthLabel} — få et ferdig oppsummeringsbilde i Motus-stilen, klart til deling.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {[
+                          { k: "Økter", v: String(estimatedSessionsThisMonth) },
+                          { k: "Dager", v: String(uniqueTrainingDays) },
+                          { k: "Streak", v: `${streakWeeks} u` },
+                          { k: "Flyt", v: `${progressStory.consistency}%` },
+                        ].map((cell) => (
+                          <div
+                            key={cell.k}
+                            className="rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 text-left shadow-sm backdrop-blur-md"
+                          >
+                            <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">{cell.k}</div>
+                            <div className="mt-0.5 text-lg font-bold tabular-nums text-white">{cell.v}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <p
+                        className={
+                          progressStory.delta > 0
+                            ? "text-xs font-medium text-emerald-200"
+                            : progressStory.delta < 0
+                              ? "text-xs font-medium text-amber-200"
+                              : "text-xs font-medium text-white/80"
+                        }
+                      >
+                        Siste 14 dager: {progressStory.delta > 0 ? "↑" : progressStory.delta < 0 ? "↓" : "—"} {progressStory.trendLabel}
+                      </p>
+                    </div>
+
+                    <div className="flex w-full shrink-0 flex-col gap-2 sm:max-w-xs lg:w-56">
+                      <button
+                        type="button"
+                        onClick={() => void shareMonthlyProgressSummary()}
+                        className="group inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-black/25 ring-2 ring-white/50 transition hover:bg-white/95 hover:shadow-xl active:scale-[0.98]"
+                      >
+                        <Share2 className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5" aria-hidden />
+                        Del denne måneden
+                      </button>
+                      <p className="text-center text-[11px] leading-snug text-white/75 lg:text-left">Fungerer best på mobil — del eller last ned fra galleriet.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {progressShareStatus ? (
+                <StatusMessage
+                  message={progressShareStatus}
+                  tone={progressShareStatus.toLowerCase().includes("kunne ikke") ? "error" : "success"}
+                  className="mt-3 !rounded-xl !px-3 !py-2 !text-xs"
+                />
+              ) : null}
             </Card>
           ) : null}
 
