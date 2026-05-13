@@ -541,7 +541,12 @@ export function useAppState() {
 
     async function hydrateSession() {
       const user = await getSupabaseSessionUser();
-      if (!user || cancelled) return;
+      if (cancelled) return;
+      if (!user) {
+        setIsLocalDemoSession(false);
+        setAppState((prev) => ({ ...prev, currentUser: null, role: "trainer" }));
+        return;
+      }
       setIsLocalDemoSession(false);
       setAppState((prev) => {
         const baseState = ensureMemberRecordForUser(prev, user, user.memberId ?? prev.memberViewId);
@@ -575,8 +580,66 @@ export function useAppState() {
     }
 
     void hydrateSession();
+    const {
+      data: { subscription },
+    } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
+      if (!session?.user) {
+        setIsLocalDemoSession(false);
+        setAppState((prev) => ({ ...prev, currentUser: null, role: "trainer" }));
+        return;
+      }
+      const user = {
+        id: session.user.id,
+        role:
+          session.user.app_metadata?.role === "member" || session.user.user_metadata?.role === "member"
+            ? "member"
+            : "trainer",
+        name:
+          (typeof session.user.user_metadata?.full_name === "string" && session.user.user_metadata.full_name) ||
+          (typeof session.user.user_metadata?.name === "string" && session.user.user_metadata.name) ||
+          (session.user.email ?? "Bruker"),
+        email: session.user.email ?? "",
+        memberId:
+          typeof session.user.app_metadata?.member_id === "string"
+            ? session.user.app_metadata.member_id
+            : typeof session.user.user_metadata?.member_id === "string"
+            ? session.user.user_metadata.member_id
+            : undefined,
+      } as AuthUser;
+      setAppState((prev) => {
+        const baseState = ensureMemberRecordForUser(prev, user, user.memberId ?? prev.memberViewId);
+        const resolvedSelectedMemberId =
+          user.role === "member"
+            ? resolveMemberViewIdForUser({
+                role: user.role,
+                memberId: user.memberId,
+                email: user.email,
+                members: baseState.members,
+                programs: baseState.programs,
+                fallbackId: user.memberId ?? (baseState.selectedMemberId || `auth-${user.id}`),
+              })
+            : user.memberId ?? baseState.selectedMemberId;
+        const resolvedMemberViewId = resolveMemberViewIdForUser({
+          role: user.role,
+          memberId: user.memberId,
+          email: user.email,
+          members: baseState.members,
+          programs: baseState.programs,
+          fallbackId: user.memberId ?? (baseState.memberViewId || `auth-${user.id}`),
+        });
+        return {
+          ...baseState,
+          currentUser: user,
+          role: user.role,
+          selectedMemberId: resolvedSelectedMemberId,
+          memberViewId: resolvedMemberViewId,
+        };
+      });
+    });
     return () => {
       cancelled = true;
+      subscription.unsubscribe();
     };
   }, [isRecoveryMode]);
 
