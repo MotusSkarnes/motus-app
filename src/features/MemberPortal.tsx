@@ -3746,7 +3746,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </Card>
               ) : null}
-              <Card className="p-5">
+              <Card className="p-4 sm:p-5">
               <div className="flex items-start gap-3">
                 <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><ClipboardList className="h-5 w-5" /></div>
                 <div>
@@ -3788,9 +3788,9 @@ export function MemberPortal(props: MemberPortalProps) {
                     const isExpanded = expandedProgramId === program.id;
                     const programAuthorLine = programAuthorCredit(program);
                     return (
-                      <div key={program.id} className="rounded-xl border bg-white p-4 space-y-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
+                      <div key={program.id} className="rounded-xl border bg-white p-3 sm:p-4 space-y-3">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
                             <div className="font-semibold text-sm">{program.title}</div>
                             <div className="mt-0.5 text-xs text-slate-500">{program.goal || "Uten mål"}</div>
                             {programAuthorLine ? (
@@ -3798,18 +3798,18 @@ export function MemberPortal(props: MemberPortalProps) {
                             ) : null}
                             <div className="mt-1 text-[11px] text-slate-400">{program.createdAt}</div>
                           </div>
-                          <div className="flex flex-col gap-2 sm:flex-row">
+                          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-row">
                             <OutlineButton
-                              className="px-3 py-2 text-xs"
+                              className="w-full px-2 py-2 text-xs sm:w-auto sm:px-3"
                               onClick={() => setExpandedProgramId((prev) => (prev === program.id ? null : program.id))}
                             >
                               {isExpanded ? "Skjul økt" : "Se hele økt"}
                             </OutlineButton>
-                            <OutlineButton className="px-3 py-2 text-xs" onClick={() => handlePrintProgram(program)}>
+                            <OutlineButton className="w-full px-2 py-2 text-xs sm:w-auto sm:px-3" onClick={() => handlePrintProgram(program)}>
                               Skriv ut / PDF
                             </OutlineButton>
                             <GradientButton
-                              className="px-3 py-2 text-xs"
+                              className="w-full px-2 py-2 text-xs sm:w-auto sm:px-3"
                               onClick={() => {
                                 if (intervalProgramIdSet.has(program.id)) {
                                   openIntervalTimerModal(program.id);
@@ -4587,7 +4587,7 @@ export function MemberPortal(props: MemberPortalProps) {
           ) : null}
 
           {!isMemberLimited && memberTab === "progress" ? (
-            <Card className="p-5">
+            <Card className="p-4 sm:p-5">
               <div className="flex items-start gap-3">
                 <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><TrendingUp className="h-5 w-5" /></div>
                 <div>
@@ -4786,7 +4786,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               <div className="mt-5 space-y-4">
-                <div ref={memberMessagesContainerRef} className="max-h-64 space-y-3 overflow-auto rounded-xl border bg-white p-4">
+                <div ref={memberMessagesContainerRef} className="max-h-[min(52vh,20rem)] space-y-3 overflow-auto rounded-xl border bg-white p-3 sm:p-4">
                   {memberMessages.length === 0 ? (
                     <EmptyState
                       icon="💬"
@@ -4807,7 +4807,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                   ))}
                 </div>
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row">
                   <TextInput
                     value={messageText}
                     onChange={(e) => {
@@ -4816,7 +4816,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     }}
                     placeholder="Skriv melding til trener"
                   />
-                  <GradientButton onClick={() => {
+                  <GradientButton className="w-full sm:w-auto" onClick={() => {
                     if (!activeMemberId || !messageText.trim()) return;
                     void dispatchMemberMessageToRelatedMembers(messageText);
                     setMessageText("");
