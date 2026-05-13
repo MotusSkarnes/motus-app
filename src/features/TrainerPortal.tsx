@@ -58,6 +58,17 @@ function inferStatusTone(message: string): "success" | "error" | "info" {
   return "info";
 }
 
+function getMemberInitials(name: string): string {
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+  return initials || "M";
+}
+
 type TrainerPortalProps = {
   members: Member[];
   programs: TrainingProgram[];
@@ -3570,9 +3581,21 @@ function pickFirstName(value: unknown): string {
                 <div className="rounded-[26px] p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.ink} 100%)` }}>
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div className="text-sm text-white/80">Kundekort</div>
-                    <div className="h-14 w-14 overflow-hidden rounded-full border border-white/40 bg-white/20">
+                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-white/40 bg-white/15 sm:h-14 sm:w-14">
+                      <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-white/85">
+                        {getMemberInitials(selectedMember.name)}
+                      </div>
                       {resolveMemberAvatarUrl(selectedMember) ? (
-                        <img src={resolveMemberAvatarUrl(selectedMember)} alt={`Profilbilde av ${selectedMember.name}`} className="h-full w-full object-cover" loading="eager" decoding="async" />
+                        <img
+                          src={resolveMemberAvatarUrl(selectedMember)}
+                          alt={`Profilbilde av ${selectedMember.name}`}
+                          className="relative z-10 h-full w-full object-cover"
+                          loading="eager"
+                          decoding="async"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                          }}
+                        />
                       ) : null}
                     </div>
                   </div>
@@ -3715,10 +3738,10 @@ function pickFirstName(value: unknown): string {
                       </div>
                     </>
                   )}
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
                     {isEditingCustomerCard ? (
                       <>
-                        <GradientButton onClick={handleSaveSelectedMemberDetails}>
+                        <GradientButton onClick={handleSaveSelectedMemberDetails} className="w-full sm:w-auto">
                           Lagre endringer
                         </GradientButton>
                         <OutlineButton
@@ -3728,6 +3751,7 @@ function pickFirstName(value: unknown): string {
                             editLockedIdentityRef.current = null;
                             setIsEditingCustomerCard(false);
                           }}
+                          className="w-full sm:w-auto"
                         >
                           Avbryt redigering
                         </OutlineButton>
@@ -3742,23 +3766,24 @@ function pickFirstName(value: unknown): string {
                           };
                           setIsEditingCustomerCard(true);
                         }}
+                        className="w-full sm:w-auto"
                       >
                         Rediger kundekort
                       </OutlineButton>
                     )}
-                    <OutlineButton onClick={() => void handleInviteSelectedMember()} disabled={isInvitingMember}>
+                    <OutlineButton onClick={() => void handleInviteSelectedMember()} disabled={isInvitingMember} className="w-full sm:w-auto">
                       {isInvitingMember ? "Sender invitasjon..." : "Send invitasjon på nytt"}
                     </OutlineButton>
                     {canAccessAdminTools ? (
-                      <OutlineButton onClick={() => void handleRepairSelectedMemberLink()} disabled={isRepairingMemberLink}>
+                      <OutlineButton onClick={() => void handleRepairSelectedMemberLink()} disabled={isRepairingMemberLink} className="w-full sm:w-auto">
                         {isRepairingMemberLink ? "Reparerer kobling..." : "Reparer medlemskobling"}
                       </OutlineButton>
                     ) : null}
-                    <OutlineButton onClick={() => handleDeactivateMember(selectedMember.id)}>
+                    <OutlineButton onClick={() => handleDeactivateMember(selectedMember.id)} className="w-full sm:w-auto">
                       Arkiver kunde
                     </OutlineButton>
                     {canAccessAdminTools ? (
-                      <DangerButton onClick={() => handleDeleteMember(selectedMember.id)}>
+                      <DangerButton onClick={() => handleDeleteMember(selectedMember.id)} className="w-full sm:w-auto">
                         Slett kunde permanent
                       </DangerButton>
                     ) : null}
@@ -4471,7 +4496,7 @@ function pickFirstName(value: unknown): string {
                 ) : null}
 
                 {customerSubTab === "messages" ? (
-                  <div className="rounded-xl border bg-slate-50 p-4 space-y-4">
+                  <div className="rounded-xl border bg-slate-50 p-3 sm:p-4 space-y-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="font-semibold">Dialog med kunde</div>
                       <div className="text-xs text-slate-500">Direkte chat</div>
@@ -4482,7 +4507,7 @@ function pickFirstName(value: unknown): string {
                       </div>
                     ) : (
                       <>
-                    <div className="max-h-[420px] space-y-3 overflow-auto rounded-xl border bg-white p-4">
+                    <div className="max-h-[min(52vh,420px)] space-y-3 overflow-auto rounded-xl border bg-white p-3 sm:p-4">
                       {selectedMessages.length === 0 ? (
                         <EmptyState
                           icon="💬"
@@ -4515,7 +4540,7 @@ function pickFirstName(value: unknown): string {
                         );
                       })}
                     </div>
-                    <div className="sticky bottom-0 -mx-5 flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-5 pb-3 pt-3 sm:mx-0 sm:px-0 sm:pb-0 sm:flex-row">
+                    <div className="sticky bottom-0 -mx-3 flex flex-col gap-3 border-t border-slate-200 bg-slate-50/95 px-3 pb-3 pt-3 backdrop-blur sm:mx-0 sm:px-0 sm:pb-0 sm:flex-row">
                       <TextInput
                         value={trainerMessage}
                         onChange={(e) => {
@@ -4530,6 +4555,7 @@ function pickFirstName(value: unknown): string {
                           const sent = await dispatchTrainerMessageToSelectedMember(trainerMessage);
                           if (sent) setTrainerMessage("");
                         }}
+                        className="w-full sm:w-auto"
                         disabled={!trainerMessage.trim() || isSendingTrainerMessage}
                       >
                         {isSendingTrainerMessage ? "Sender..." : "Send"}
