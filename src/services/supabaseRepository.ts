@@ -61,6 +61,25 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
+async function extractFunctionErrorDetails(error: unknown): Promise<string> {
+  if (!error || typeof error !== "object") return "";
+  const candidate = error as { message?: unknown; context?: { json?: () => Promise<unknown> } };
+  if (typeof candidate.context?.json === "function") {
+    try {
+      const payload = await candidate.context.json();
+      if (payload && typeof payload === "object") {
+        const withError = payload as { error?: unknown; message?: unknown };
+        if (typeof withError.error === "string" && withError.error.trim()) return withError.error;
+        if (typeof withError.message === "string" && withError.message.trim()) return withError.message;
+      }
+    } catch {
+      // Fall through to message fallback.
+    }
+  }
+  if (typeof candidate.message === "string" && candidate.message.trim()) return candidate.message;
+  return "";
+}
+
 async function getOwnerUserId(): Promise<string | null> {
   if (!supabaseClient) return null;
   const {
