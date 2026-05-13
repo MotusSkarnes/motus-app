@@ -52,6 +52,7 @@ type TrainerLayoutProps = {
 const trainerMenuItems: Array<{ key: TrainerTab; label: string; icon: LucideIcon }> = [
   { key: "dashboard", label: "Oversikt", icon: LayoutDashboard },
   { key: "customers", label: "Klienter", icon: Users },
+  { key: "messages", label: "Meldinger", icon: MessageSquare },
   { key: "exerciseBank", label: "Øvelsesbank", icon: Dumbbell },
   { key: "programs", label: "Programmer", icon: ClipboardList },
   { key: "calendar", label: "Kalender", icon: CalendarDays },
@@ -188,7 +189,7 @@ export function TrainerLayout({
           <div className="mb-2 px-2">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">PT-meny</div>
           </div>
-          <div className="space-y-1.5">
+          <nav aria-label="Hovedmeny trener" className="space-y-1.5">
             {visibleTrainerMenuItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -214,7 +215,7 @@ export function TrainerLayout({
                 </button>
               );
             })}
-          </div>
+          </nav>
         </Card>
         <div className="space-y-4 sm:space-y-5">
           {isLocalDemoSession ? (
