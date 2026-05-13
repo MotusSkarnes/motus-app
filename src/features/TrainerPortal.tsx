@@ -1015,7 +1015,6 @@ function pickFirstName(value: unknown): string {
     () => mergeFollowUpEntriesForMemberIds(selectedMemberRelatedIds, followUpDetailsByMemberId),
     [selectedMemberRelatedIds, followUpDetailsByMemberId]
   );
-  const _selectedMemberLatestFollowUp = selectedMemberFollowUpLog[0] ?? null;
   const latestCompletedLog = selectedLogs.find((log) => log.status === "Fullført") ?? null;
   const filteredWorkoutLogs = useMemo(() => {
     const now = Date.now();

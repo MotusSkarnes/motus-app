@@ -70,7 +70,8 @@ describe("Trainer flows", () => {
 
     const trainerMessage = "Trener testmelding";
     await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
-    await user.click(screen.getAllByRole("button", { name: "Meldinger" })[0]);
+    await user.click(screen.getAllByRole("button", { name: "Klienter" })[0]);
+    await user.click(screen.getByRole("button", { name: "Meldinger" }));
     await user.type(screen.getByPlaceholderText("Skriv melding til kunden"), trainerMessage);
     await user.click(screen.getAllByRole("button", { name: "Send" })[0]);
 
