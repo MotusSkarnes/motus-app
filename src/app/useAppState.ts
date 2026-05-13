@@ -37,6 +37,14 @@ function mergeTrainingProgramsById(
   return Array.from(byId.values());
 }
 
+function preserveActiveWorkoutProgram(remotePrograms: TrainingProgram[], previousState: AppState): TrainingProgram[] {
+  const activeProgramId = previousState.workoutMode?.programId.trim();
+  if (!activeProgramId) return remotePrograms;
+  if (remotePrograms.some((program) => program.id === activeProgramId)) return remotePrograms;
+  const activeLocalProgram = previousState.programs.find((program) => program.id === activeProgramId);
+  return activeLocalProgram ? [activeLocalProgram, ...remotePrograms] : remotePrograms;
+}
+
 function mergeWorkoutLogsById(
   hydrated: WorkoutLog[] | null | undefined,
   direct: WorkoutLog[] | null | undefined,
@@ -397,12 +405,12 @@ export function useAppState() {
         }
 
         if (trustRemotePrograms) {
-          const mergedProgs = remotePrograms ?? [];
+          const mergedProgs = preserveActiveWorkoutProgram(remotePrograms ?? [], prev);
           if (mergedProgs.length > 0 || shouldAdoptRemote(mergedProgs, prev.programs)) {
             next.programs = mergedProgs;
           }
         } else if (shouldAdoptRemote(remotePrograms, prev.programs)) {
-          next.programs = remotePrograms!;
+          next.programs = preserveActiveWorkoutProgram(remotePrograms!, prev);
         }
 
         if (trustRemoteLogs) {
