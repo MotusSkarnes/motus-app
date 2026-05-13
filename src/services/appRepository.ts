@@ -1,5 +1,16 @@
 import { uid } from "../app/storage";
-import type { AppState, ChatMessage, Exercise, Member, ProgramExercise, TrainingProgram, WorkoutCelebration, WorkoutLog, WorkoutReflection } from "../app/types";
+import type {
+  AppState,
+  ChatMessage,
+  Exercise,
+  Member,
+  MemberProgramLibraryStatus,
+  ProgramExercise,
+  TrainingProgram,
+  WorkoutCelebration,
+  WorkoutLog,
+  WorkoutReflection,
+} from "../app/types";
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy } from "../app/dateFormat";
 
 export type CreateMemberInput = {
@@ -110,6 +121,7 @@ export interface AppRepository {
   markMemberInvited(state: AppState, memberId: string, invitedAtIso?: string): AppState;
   saveProgram(state: AppState, input: SaveProgramInput): AppState;
   deleteProgram(state: AppState, programId: string): AppState;
+  updateProgramMemberLibraryStatus(state: AppState, programId: string, status: MemberProgramLibraryStatus | undefined): AppState;
   appendTrainerMessage(state: AppState, memberId: string, text: string): AppState;
   appendMemberMessage(state: AppState, memberId: string, text: string): AppState;
   startWorkoutMode(state: AppState, programId: string, options?: StartWorkoutModeOptions): AppState;
@@ -249,6 +261,24 @@ export function deleteProgramInState(state: AppState, programId: string): AppSta
     ...state,
     programs: state.programs.filter((program) => program.id !== programId),
     logs: programToDelete ? state.logs.filter((log) => !(log.memberId === programToDelete.memberId && log.programTitle === programToDelete.title)) : state.logs,
+  };
+}
+
+export function updateProgramMemberLibraryStatusInState(
+  state: AppState,
+  programId: string,
+  status: MemberProgramLibraryStatus | undefined,
+): AppState {
+  return {
+    ...state,
+    programs: state.programs.map((program) =>
+      program.id === programId
+        ? {
+            ...program,
+            ...(status ? { memberLibraryStatus: status } : { memberLibraryStatus: undefined }),
+          }
+        : program,
+    ),
   };
 }
 
@@ -632,6 +662,7 @@ export const localAppRepository: AppRepository = {
   markMemberInvited: markMemberInvitedInState,
   saveProgram: saveProgramInState,
   deleteProgram: deleteProgramInState,
+  updateProgramMemberLibraryStatus: updateProgramMemberLibraryStatusInState,
   appendTrainerMessage,
   appendMemberMessage,
   startWorkoutMode: (state, programId, options) => startWorkoutModeInState(state, programId, options),

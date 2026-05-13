@@ -135,6 +135,7 @@ export function useNotifications({
       memberPrograms
         // Varsel kun når trener har lagt inn program — ikke egne programmer medlem har lagret.
         .filter((program) => program.programCreatedBy !== "member")
+        .filter((program) => !program.memberLibraryStatus)
         .map((program) => ({
           id: `member-program-${program.id}`,
           kind: "program",

@@ -67,6 +67,8 @@ export function buildMemberLayoutProps(input: {
   startWorkoutMode: MemberLayoutProps["startWorkoutMode"];
   startCustomWorkout: MemberLayoutProps["startCustomWorkout"];
   saveProgramForMember: MemberLayoutProps["saveProgramForMember"];
+  deleteProgramById: MemberLayoutProps["deleteProgramById"];
+  updateProgramMemberLibraryStatus: MemberLayoutProps["updateProgramMemberLibraryStatus"];
   updateWorkoutExerciseResult: MemberLayoutProps["updateWorkoutExerciseResult"];
   replaceWorkoutExerciseGroup: MemberLayoutProps["replaceWorkoutExerciseGroup"];
   removeWorkoutLogResult: MemberLayoutProps["removeWorkoutLogResult"];

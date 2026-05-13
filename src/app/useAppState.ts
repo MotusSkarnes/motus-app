@@ -6,7 +6,17 @@ import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient
 import { fetchExercisesFromSupabase, fetchHydratedMemberData, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
 import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, inviteTrainerByEmail, refreshSupabaseSessionUser, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult, type InviteTrainerResult } from "../services/supabaseAuth";
 import { mergeRemoteMessagesWithLocalOptimistic } from "./messageHydrationMerge";
-import type { AppState, AuthUser, Exercise, MemberTab, PeriodSchedulePlan, TrainerTab, TrainingProgram, WorkoutLog } from "./types";
+import type {
+  AppState,
+  AuthUser,
+  Exercise,
+  MemberProgramLibraryStatus,
+  MemberTab,
+  PeriodSchedulePlan,
+  TrainerTab,
+  TrainingProgram,
+  WorkoutLog,
+} from "./types";
 
 function mergeMembersById(primary: AppState["members"] | null, secondary: AppState["members"] | null): AppState["members"] | null {
   if (!primary && !secondary) return null;
@@ -958,6 +968,11 @@ export function useAppState() {
     setAppState((prev) => repository.deleteProgram(prev, programId));
   }
 
+  function updateProgramMemberLibraryStatus(programId: string, status: MemberProgramLibraryStatus | undefined) {
+    if (!programId.trim()) return;
+    setAppState((prev) => repository.updateProgramMemberLibraryStatus(prev, programId, status));
+  }
+
   function sendTrainerMessage(memberId: string, text: string) {
     if (!text.trim()) return;
     setAppState((prev) => repository.appendTrainerMessage(prev, memberId, text));
@@ -1157,6 +1172,7 @@ export function useAppState() {
     markMemberInvited,
     saveProgramForMember,
     deleteProgramById,
+    updateProgramMemberLibraryStatus,
     sendTrainerMessage,
     saveExercise,
     deleteExercise,

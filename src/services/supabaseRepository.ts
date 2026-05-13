@@ -3,6 +3,7 @@ import type {
   ChatMessage,
   Exercise,
   Member,
+  MemberProgramLibraryStatus,
   PeriodSchedulePlan,
   ProgramExercise,
   TrainingProgram,
@@ -141,6 +142,14 @@ function isTrainingProgramAuthorColumnDbError(message: string): boolean {
   const m = message.toLowerCase();
   return (
     (m.includes("program_created_by") || m.includes("program_created_by_name")) &&
+    (m.includes("does not exist") || m.includes("schema cache") || m.includes("pgrst204") || m.includes("could not find"))
+  );
+}
+
+function isMemberLibraryStatusColumnDbError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes("member_library_status") &&
     (m.includes("does not exist") || m.includes("schema cache") || m.includes("pgrst204") || m.includes("could not find"))
   );
 }
@@ -929,6 +938,20 @@ async function deleteProgram(programId: string) {
   }
 }
 
+async function persistMemberProgramLibraryStatus(programId: string, status: "hidden" | "archived" | null) {
+  if (!supabaseClient) return;
+  const id = programId.trim();
+  if (!id) return;
+  const { error } = await supabaseClient.from("training_programs").update({ member_library_status: status }).eq("id", id);
+  if (error && isMemberLibraryStatusColumnDbError(error.message)) {
+    console.warn("member_library_status column missing; run training_programs_member_library_status.sql:", error.message);
+    return;
+  }
+  if (error) {
+    console.warn("Supabase member_library_status update failed:", error.message);
+  }
+}
+
 async function deleteMemberFromSupabase(member: { id: string; email?: string }) {
   if (!supabaseClient) return;
   const memberId = member.id;
@@ -1163,6 +1186,9 @@ function trainingProgramFromHydrateRow(program: Record<string, unknown>): Traini
   const rawBy = String(program.program_created_by ?? "").trim();
   const programCreatedBy = rawBy === "member" || rawBy === "trainer" ? (rawBy as "member" | "trainer") : undefined;
   const programCreatedByName = String(program.program_created_by_name ?? "").trim();
+  const rawLibrary = String(program.member_library_status ?? "").trim().toLowerCase();
+  const memberLibraryStatus: MemberProgramLibraryStatus | undefined =
+    rawLibrary === "hidden" || rawLibrary === "archived" ? (rawLibrary as MemberProgramLibraryStatus) : undefined;
   return {
     id: String(program.id ?? ""),
     memberId: String(program.member_id ?? ""),
@@ -1175,6 +1201,7 @@ function trainingProgramFromHydrateRow(program: Record<string, unknown>): Traini
     ...(programCreatedBy
       ? { programCreatedBy, programCreatedByName: programCreatedByName || undefined }
       : {}),
+    ...(memberLibraryStatus ? { memberLibraryStatus } : {}),
   };
 }
 
@@ -1543,7 +1570,7 @@ export async function fetchProgramsFromSupabase(): Promise<TrainingProgram[] | n
 
   const { data, error } = await supabaseClient
     .from("training_programs")
-    .select("id, member_id, title, goal, notes, exercises, created_at")
+    .select("id, member_id, title, goal, notes, exercises, created_at, member_library_status")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -1551,15 +1578,21 @@ export async function fetchProgramsFromSupabase(): Promise<TrainingProgram[] | n
     return null;
   }
 
-  return (data ?? []).map((row) => ({
-    id: String(row.id),
-    memberId: String(row.member_id),
-    title: String(row.title ?? ""),
-    goal: String(row.goal ?? ""),
-    notes: String(row.notes ?? ""),
-    createdAt: mapIsoToProgramDate(String(row.created_at ?? "")),
-    exercises: Array.isArray(row.exercises) ? (row.exercises as ProgramExercise[]) : [],
-  }));
+  return (data ?? []).map((row) => {
+    const rawLibrary = String(row.member_library_status ?? "").trim().toLowerCase();
+    const memberLibraryStatus: MemberProgramLibraryStatus | undefined =
+      rawLibrary === "hidden" || rawLibrary === "archived" ? (rawLibrary as MemberProgramLibraryStatus) : undefined;
+    return {
+      id: String(row.id),
+      memberId: String(row.member_id),
+      title: String(row.title ?? ""),
+      goal: String(row.goal ?? ""),
+      notes: String(row.notes ?? ""),
+      createdAt: mapIsoToProgramDate(String(row.created_at ?? "")),
+      exercises: Array.isArray(row.exercises) ? (row.exercises as ProgramExercise[]) : [],
+      ...(memberLibraryStatus ? { memberLibraryStatus } : {}),
+    };
+  });
 }
 
 export async function fetchLogsFromSupabase(): Promise<WorkoutLog[] | null> {
@@ -1740,6 +1773,12 @@ export const supabaseAppRepository: AppRepository = {
       }
       await persistProgram(input, hints);
     })();
+    return nextState;
+  },
+  updateProgramMemberLibraryStatus(state: AppState, programId: string, status: MemberProgramLibraryStatus | undefined): AppState {
+    const nextState = localAppRepository.updateProgramMemberLibraryStatus(state, programId, status);
+    const dbStatus = status === "hidden" || status === "archived" ? status : null;
+    void persistMemberProgramLibraryStatus(programId, dbStatus);
     return nextState;
   },
   deleteProgram(state: AppState, programId: string): AppState {

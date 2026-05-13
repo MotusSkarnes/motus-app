@@ -116,6 +116,9 @@ export type ProgramExercise = {
   notes: string;
 };
 
+/** Medlemsbibliotek: skjul/arkiver fra hovedlisten under «Mine treningsprogram» (synkes via Supabase). */
+export type MemberProgramLibraryStatus = "hidden" | "archived";
+
 export type TrainingProgram = {
   id: string;
   memberId: string;
@@ -128,6 +131,8 @@ export type TrainingProgram = {
   /** Hvem som satte programmet inn i appen (synlig for medlem under Mine programmer). */
   programCreatedBy?: "member" | "trainer";
   programCreatedByName?: string;
+  /** Medlem: skjul eller arkiver fra hovedlisten (ikke sletting). */
+  memberLibraryStatus?: MemberProgramLibraryStatus;
   /** Not persisted; removed after økt fullføres eller avbrytes. */
   ephemeral?: boolean;
 };
