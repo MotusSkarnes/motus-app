@@ -556,6 +556,51 @@ async function persistProgram(
     console.warn("save-training-program invoke failed:", functionResult.error.message);
   }
 
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession();
+      const accessToken = session?.access_token ?? "";
+      if (accessToken) {
+        const response = await fetch(`${supabaseUrl}/functions/v1/save-training-program`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: supabaseAnonKey,
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            id: normalizedProgramId,
+            memberId,
+            title: input.title,
+            goal: input.goal,
+            notes: input.notes,
+            exercises: input.exercises,
+            targetEmail: hints?.targetEmail ?? "",
+            targetName: hints?.targetName ?? "",
+            customerType: hints?.customerType ?? "",
+            membershipType: hints?.membershipType ?? "",
+            programCreatedBy: input.programCreatedBy,
+            programCreatedByName: input.programCreatedByName,
+          }),
+        });
+        const raw = await response.text();
+        if (response.ok) {
+          const parsed = raw ? (JSON.parse(raw) as { ok?: boolean; ids?: unknown[] }) : null;
+          if (parsed?.ok === true || (Array.isArray(parsed?.ids) && parsed.ids.length > 0)) {
+            return;
+          }
+          console.warn("save-training-program HTTP fallback returned without saving program:", parsed);
+        } else {
+          console.warn("save-training-program HTTP fallback failed:", response.status, raw.slice(0, 400));
+        }
+      }
+    } catch (fetchErr) {
+      console.warn("save-training-program HTTP fallback fetch failed:", fetchErr);
+    }
+  }
+
   // Fallback: persist directly via table writes when edge function path fails or returns no ids.
   const relatedMemberIds = await resolveRelatedMemberIds(memberId, {
     targetEmail: hints?.targetEmail,
