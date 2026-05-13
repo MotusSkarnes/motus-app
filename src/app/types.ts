@@ -107,6 +107,8 @@ export type ProgramExercise = {
   sets: string;
   reps: string;
   weight: string;
+  /** Hold/strekk: sekunder per sett (Uttøyning). */
+  holdSeconds?: string;
   durationMinutes?: string;
   speed?: string;
   incline?: string;

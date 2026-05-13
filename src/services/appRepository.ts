@@ -279,25 +279,29 @@ export function startWorkoutModeInState(state: AppState, programId: string, opti
   if (!program) return state;
 
   const expandedResults = program.exercises.flatMap((ex) => {
+    const meta = state.exercises.find((item) => item.id === ex.exerciseId);
+    const isStretch = meta?.category === "Uttøyning";
     const suggestedWeightRaw = options?.suggestedWeightByProgramExerciseId?.[ex.id];
     const suggestedWeight = suggestedWeightRaw !== undefined ? suggestedWeightRaw.trim() : "";
-    const initialWeight = suggestedWeight || ex.weight;
+    const holdPlan = (ex.holdSeconds ?? "").trim() || (isStretch ? ex.weight.trim() : "");
+    const initialWeight = isStretch ? suggestedWeight || holdPlan || "30" : suggestedWeight || ex.weight;
+    const plannedRepsForRow = isStretch ? (ex.reps.trim() || "1") : ex.reps;
     const setCount = Math.max(1, Math.min(12, Number(ex.sets) || 1));
     return Array.from({ length: setCount }, (_, index) => ({
       exerciseId: `${ex.id}-set-${index + 1}`,
       programExerciseId: ex.id,
       setNumber: index + 1,
       exerciseName: ex.exerciseName,
-      exerciseCategory: state.exercises.find((item) => item.id === ex.exerciseId)?.category,
-      exerciseEquipment: state.exercises.find((item) => item.id === ex.exerciseId)?.equipment,
+      exerciseCategory: meta?.category,
+      exerciseEquipment: meta?.equipment,
       plannedSets: ex.sets,
-      plannedReps: ex.reps,
+      plannedReps: plannedRepsForRow,
       plannedWeight: initialWeight,
       plannedDurationMinutes: ex.durationMinutes ?? "",
       plannedSpeed: ex.speed ?? "",
       plannedIncline: ex.incline ?? "",
       performedWeight: initialWeight,
-      performedReps: ex.reps,
+      performedReps: plannedRepsForRow,
       performedDurationMinutes: ex.durationMinutes ?? "",
       performedSpeed: ex.speed ?? "",
       performedIncline: ex.incline ?? "",
@@ -377,6 +381,7 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
       if (log.memberId !== memberId) return;
       (log.results ?? []).forEach((result) => {
         if (!result.completed || result.exerciseName !== exerciseName) return;
+        if (result.exerciseCategory === "Uttøyning") return;
         const weight = Number(result.performedWeight) || 0;
         const reps = Number(result.performedReps) || 0;
         const estimated = estimate1RM(weight, reps);
@@ -389,6 +394,7 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
   let bestCelebration: WorkoutCelebration | null = null;
   current.results.forEach((result) => {
     if (!result.completed) return;
+    if (result.exerciseCategory === "Uttøyning") return;
     const weight = Number(result.performedWeight) || 0;
     const reps = Number(result.performedReps) || 0;
     const newEstimated = estimate1RM(weight, reps);

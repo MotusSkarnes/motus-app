@@ -1431,6 +1431,7 @@ function pickFirstName(value: unknown): string {
 
   function addExerciseToDraft(exercise: Exercise) {
     const isCardio = exercise.category === "Kondisjon";
+    const isStretch = exercise.category === "Uttøyning";
     const isTreadmill = exercise.equipment.trim().toLowerCase().includes("tredem");
     setProgramExercisesDraft((prev) => [
       ...prev,
@@ -1438,13 +1439,14 @@ function pickFirstName(value: unknown): string {
         id: uid("draft-ex"),
         exerciseId: exercise.id,
         exerciseName: exercise.name,
-        sets: "3",
-        reps: isCardio ? "" : "10",
-        weight: isCardio ? "" : "0",
+        sets: isStretch ? "2" : "3",
+        reps: isCardio ? "" : isStretch ? "1" : "10",
+        weight: isCardio || isStretch ? "" : "0",
+        holdSeconds: isStretch ? "30" : "",
         durationMinutes: isCardio ? "20" : "",
         speed: isTreadmill ? "8" : "",
         incline: isTreadmill ? "1" : "",
-        restSeconds: "90",
+        restSeconds: isStretch ? "30" : "90",
         notes: "",
       },
     ]);
@@ -1846,7 +1848,7 @@ function pickFirstName(value: unknown): string {
 
   function buildProgramFingerprint(program: ProgramExercise[] | undefined, title: string, goal: string, notes: string): string {
     const exerciseFingerprint = (program ?? [])
-      .map((item) => `${item.exerciseName}|${item.sets}|${item.reps}|${item.weight}|${item.durationMinutes ?? ""}|${item.speed ?? ""}|${item.incline ?? ""}|${item.restSeconds}|${item.notes}`)
+      .map((item) => `${item.exerciseName}|${item.sets}|${item.reps}|${item.weight}|${item.holdSeconds ?? ""}|${item.durationMinutes ?? ""}|${item.speed ?? ""}|${item.incline ?? ""}|${item.restSeconds}|${item.notes}`)
       .join("||");
     return `${title.trim()}::${goal.trim()}::${notes.trim()}::${exerciseFingerprint}`;
   }
@@ -1920,7 +1922,9 @@ function pickFirstName(value: unknown): string {
                 ? `${setCount} runder × ${durationMinutes} min${
                     speed ? ` · ${speed} km/t` : ""
                   }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause`
-                : `${setCount} x ${reps} · ${weight} kg · ${restSeconds}s pause`;
+                : libraryMatch?.category === "Uttøyning"
+                  ? `${setCount} sett × ${String(safeExercise.holdSeconds ?? "").trim() || weight || "-"} sek hold · ${restSeconds}s pause`
+                  : `${setCount} x ${reps} · ${weight} kg · ${restSeconds}s pause`;
               const imageUrl = libraryMatch?.imageUrl?.trim() || "";
               const description = libraryMatch?.description?.trim() || "Ingen forklaring tilgjengelig for denne øvelsen.";
               return `<article class="exercise-card">
@@ -4155,6 +4159,7 @@ function pickFirstName(value: unknown): string {
                             {(() => {
                               const linkedExercise = exercisesById.get(item.exerciseId);
                               const isCardio = linkedExercise?.category === "Kondisjon";
+                              const isStretch = linkedExercise?.category === "Uttøyning";
                               const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
                               return (
                             <div className={`grid gap-3 sm:grid-cols-2 ${isCardio ? "xl:grid-cols-5" : "xl:grid-cols-5"}`}>
@@ -4166,6 +4171,15 @@ function pickFirstName(value: unknown): string {
                                 <div className="space-y-1">
                                   <div className="text-[11px] font-medium text-slate-500">Tid (min)</div>
                                   <TextInput value={item.durationMinutes ?? ""} onChange={(e) => updateDraftExercise(item.id, "durationMinutes", e.target.value)} placeholder="Minutter" />
+                                </div>
+                              ) : isStretch ? (
+                                <div className="space-y-1">
+                                  <div className="text-[11px] font-medium text-slate-500">Hold (sek)</div>
+                                  <TextInput
+                                    value={item.holdSeconds ?? ""}
+                                    onChange={(e) => updateDraftExercise(item.id, "holdSeconds", e.target.value)}
+                                    placeholder="Sekunder"
+                                  />
                                 </div>
                               ) : (
                                 <>
@@ -4473,8 +4487,22 @@ function pickFirstName(value: unknown): string {
                                     </div>
                                   </div>
                                   <div className="mt-2 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
-                                    <div>Plan: {result.plannedSets} x {result.plannedReps} @ {result.plannedWeight || "0"} kg</div>
-                                    <div>Utført: {result.performedReps || "-"} reps @ {result.performedWeight || "-"} kg</div>
+                                    <div>
+                                      Plan:{" "}
+                                      {result.exerciseCategory === "Kondisjon" && (result.plannedDurationMinutes ?? "").trim()
+                                        ? `${result.plannedSets} runder × ${result.plannedDurationMinutes} min`
+                                        : result.exerciseCategory === "Uttøyning"
+                                          ? `${result.plannedSets} sett × ${result.plannedWeight || "0"} sek`
+                                          : `${result.plannedSets} x ${result.plannedReps} @ ${result.plannedWeight || "0"} kg`}
+                                    </div>
+                                    <div>
+                                      Utført:{" "}
+                                      {result.exerciseCategory === "Kondisjon" && (result.performedDurationMinutes ?? "").trim()
+                                        ? `${result.performedDurationMinutes || "-"} min`
+                                        : result.exerciseCategory === "Uttøyning"
+                                          ? `${result.performedWeight || "-"} sek`
+                                          : `${result.performedReps || "-"} reps @ ${result.performedWeight || "-"} kg`}
+                                    </div>
                                   </div>
                                 </div>
                               ))}
@@ -4699,6 +4727,7 @@ function pickFirstName(value: unknown): string {
                       {(() => {
                         const linkedExercise = exercisesById.get(item.exerciseId);
                         const isCardio = linkedExercise?.category === "Kondisjon";
+                        const isStretch = linkedExercise?.category === "Uttøyning";
                         const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
                         return (
                       <div className={`grid gap-3 sm:grid-cols-2 ${isCardio ? "xl:grid-cols-5" : "xl:grid-cols-5"}`}>
@@ -4710,6 +4739,15 @@ function pickFirstName(value: unknown): string {
                           <div className="space-y-1">
                             <div className="text-[11px] font-medium text-slate-500">Tid (min)</div>
                             <TextInput value={item.durationMinutes ?? ""} onChange={(e) => updateDraftExercise(item.id, "durationMinutes", e.target.value)} placeholder="Minutter" />
+                          </div>
+                        ) : isStretch ? (
+                          <div className="space-y-1">
+                            <div className="text-[11px] font-medium text-slate-500">Hold (sek)</div>
+                            <TextInput
+                              value={item.holdSeconds ?? ""}
+                              onChange={(e) => updateDraftExercise(item.id, "holdSeconds", e.target.value)}
+                              placeholder="Sekunder"
+                            />
                           </div>
                         ) : (
                           <>
@@ -4898,7 +4936,9 @@ function pickFirstName(value: unknown): string {
                                   <div className="mt-0.5 text-slate-500">
                                     {exercise.durationMinutes
                                       ? `${exercise.sets || "-"} runder × ${exercise.durationMinutes || "-"} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s`
-                                      : `${exercise.sets || "-"}×${exercise.reps || "-"} · ${exercise.weight || "0"}kg · ${exercise.restSeconds || "0"}s`}
+                                      : exercises.find((e) => e.id === exercise.exerciseId)?.category === "Uttøyning"
+                                        ? `${exercise.sets || "-"} sett × ${(exercise.holdSeconds ?? "").trim() || exercise.weight || "-"} sek · ${exercise.restSeconds || "0"}s`
+                                        : `${exercise.sets || "-"}×${exercise.reps || "-"} · ${exercise.weight || "0"}kg · ${exercise.restSeconds || "0"}s`}
                                   </div>
                                 </div>
                               ))}
