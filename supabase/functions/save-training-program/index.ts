@@ -365,10 +365,9 @@ Deno.serve(async (req) => {
   const writtenIds: string[] = [];
   const canonicalTargetMemberId =
     targetMemberIds.find((targetMemberId) => targetMemberId === memberId) ?? targetMemberIds[0] ?? memberId;
+  const timestamp = new Date().toISOString();
 
   if (programId) {
-    const timestamp = new Date().toISOString();
-
     const { error: primaryError } = await upsertTrainingProgramWithAuthorFallback(adminClient, {
       id: programId,
       member_id: canonicalTargetMemberId,
@@ -383,22 +382,72 @@ Deno.serve(async (req) => {
     });
     if (primaryError) return jsonResponse(500, { error: primaryError.message });
     writtenIds.push(programId);
+
+    for (const targetMemberId of targetMemberIds) {
+      if (!targetMemberId || targetMemberId === canonicalTargetMemberId) continue;
+      const { data: existingRows, error: lookupError } = await adminClient
+        .from("training_programs")
+        .select("id")
+        .eq("owner_user_id", ownerUserId)
+        .eq("member_id", targetMemberId)
+        .eq("title", title)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (lookupError) return jsonResponse(500, { error: lookupError.message });
+
+      const existingId = String((existingRows?.[0] as { id?: string } | undefined)?.id ?? "").trim();
+      if (existingId) {
+        const { error: updateError } = await upsertTrainingProgramWithAuthorFallback(adminClient, {
+          id: existingId,
+          member_id: targetMemberId,
+          owner_user_id: ownerUserId,
+          title,
+          goal,
+          notes,
+          exercises,
+          created_at: timestamp,
+          program_created_by: authorColumns.program_created_by,
+          program_created_by_name: authorColumns.program_created_by_name,
+        });
+        if (updateError) return jsonResponse(500, { error: updateError.message });
+        writtenIds.push(existingId);
+      } else {
+        const siblingId = crypto.randomUUID();
+        const { error: insertError } = await insertTrainingProgramWithAuthorFallback(adminClient, {
+          id: siblingId,
+          member_id: targetMemberId,
+          owner_user_id: ownerUserId,
+          title,
+          goal,
+          notes,
+          exercises,
+          created_at: timestamp,
+          program_created_by: authorColumns.program_created_by,
+          program_created_by_name: authorColumns.program_created_by_name,
+        });
+        if (insertError) return jsonResponse(500, { error: insertError.message });
+        writtenIds.push(siblingId);
+      }
+    }
   } else {
-    const id = crypto.randomUUID();
-    const { error } = await insertTrainingProgramWithAuthorFallback(adminClient, {
-      id,
-      member_id: canonicalTargetMemberId,
-      owner_user_id: ownerUserId,
-      title,
-      goal,
-      notes,
-      exercises,
-      created_at: new Date().toISOString(),
-      program_created_by: authorColumns.program_created_by,
-      program_created_by_name: authorColumns.program_created_by_name,
-    });
-    if (error) return jsonResponse(500, { error: error.message });
-    writtenIds.push(id);
+    for (const targetMemberId of targetMemberIds) {
+      if (!targetMemberId) continue;
+      const nextId = targetMemberId === canonicalTargetMemberId ? crypto.randomUUID() : crypto.randomUUID();
+      const { error } = await insertTrainingProgramWithAuthorFallback(adminClient, {
+        id: nextId,
+        member_id: targetMemberId,
+        owner_user_id: ownerUserId,
+        title,
+        goal,
+        notes,
+        exercises,
+        created_at: timestamp,
+        program_created_by: authorColumns.program_created_by,
+        program_created_by_name: authorColumns.program_created_by_name,
+      });
+      if (error) return jsonResponse(500, { error: error.message });
+      writtenIds.push(nextId);
+    }
   }
 
   await syncAuthMemberLink(adminClient, email, canonicalTargetMemberId);
