@@ -83,6 +83,7 @@ export function buildMemberLayoutProps(input: {
   handleMemberBellToggle: () => void;
   openAlert: MemberLayoutProps["openAlert"];
   remoteMemberPeriodPlanRows: MemberLayoutProps["remoteMemberPeriodPlanRows"];
+  refreshRemoteHydration?: MemberLayoutProps["refreshRemoteHydration"];
 }): MemberLayoutProps {
   return input;
 }

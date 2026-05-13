@@ -43,6 +43,7 @@ type MemberLayoutProps = {
   handleMemberBellToggle: () => void;
   openAlert: (alert: MemberAlert) => void;
   remoteMemberPeriodPlanRows: ComponentProps<typeof MemberPortal>["remoteMemberPeriodPlanRows"];
+  refreshRemoteHydration?: ComponentProps<typeof MemberPortal>["refreshRemoteHydration"];
 };
 
 const mobileTabs: Array<{ id: MemberTab; label: string; icon: LucideIcon }> = [
@@ -79,6 +80,7 @@ export function MemberLayout({
   handleMemberBellToggle,
   openAlert,
   remoteMemberPeriodPlanRows,
+  refreshRemoteHydration,
 }: MemberLayoutProps) {
   const isMemberLimited = useMemo(() => {
     const currentUser = appState.currentUser;
@@ -138,6 +140,7 @@ export function MemberLayout({
     workoutCelebration: appState.workoutCelebration,
     dismissWorkoutCelebration,
     remoteMemberPeriodPlanRows,
+    refreshRemoteHydration,
   };
   return (
     <>

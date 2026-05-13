@@ -110,6 +110,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     handleMemberBellToggle,
     openAlert,
     remoteMemberPeriodPlanRows: state.remoteMemberPeriodPlanRows,
+    refreshRemoteHydration: state.refreshRemoteHydration,
   });
 
   return {

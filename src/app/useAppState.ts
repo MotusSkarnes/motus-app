@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
 import { localAppRepository, type CreateMemberInput, type FinishWorkoutInput, type LogGroupWorkoutInput, type RemoveGroupWorkoutLogInput, type RemoveWorkoutLogResultInput, type ReplaceWorkoutExerciseGroupInput, type SaveExerciseInput, type SaveProgramInput, type SetWorkoutLogResultsInput, type StartCustomWorkoutInput, type StartWorkoutModeOptions, type UpdateMemberInput } from "../services/appRepository";
@@ -101,6 +101,7 @@ function syncExercisesWithPrograms(state: AppState): AppState {
 }
 
 export function useAppState() {
+  const remoteHydrateRef = useRef<(() => Promise<void>) | null>(null);
   const isDemoMode = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_MODE === "true";
   const repository = isSupabaseConfigured ? supabaseAppRepository : localAppRepository;
   const [appState, setAppState] = useState<AppState>(() => loadState());
@@ -389,13 +390,19 @@ export function useAppState() {
         }
 
         if (trustRemotePrograms) {
-          next.programs = remotePrograms ?? [];
+          const mergedProgs = remotePrograms ?? [];
+          if (mergedProgs.length > 0 || shouldAdoptRemote(mergedProgs, prev.programs)) {
+            next.programs = mergedProgs;
+          }
         } else if (shouldAdoptRemote(remotePrograms, prev.programs)) {
           next.programs = remotePrograms!;
         }
 
         if (trustRemoteLogs) {
-          next.logs = remoteLogs ?? [];
+          const mergedLogs = remoteLogs ?? [];
+          if (mergedLogs.length > 0 || shouldAdoptRemote(mergedLogs, prev.logs)) {
+            next.logs = mergedLogs;
+          }
         } else if (shouldAdoptRemote(remoteLogs, prev.logs)) {
           next.logs = remoteLogs!;
         }
@@ -424,6 +431,10 @@ export function useAppState() {
       });
     }
 
+    remoteHydrateRef.current = async () => {
+      await hydrateRemoteData();
+    };
+
     void hydrateRemoteData();
     const interval = window.setInterval(() => {
       void hydrateRemoteData();
@@ -436,6 +447,7 @@ export function useAppState() {
 
     return () => {
       cancelled = true;
+      remoteHydrateRef.current = null;
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
     };
@@ -1089,6 +1101,10 @@ export function useAppState() {
     };
   }
 
+  async function refreshRemoteHydration() {
+    await remoteHydrateRef.current?.();
+  }
+
   return {
     appState,
     loginEmail,
@@ -1126,6 +1142,7 @@ export function useAppState() {
     handleLogout,
     resetAllData,
     clearLocalChatCache,
+    refreshRemoteHydration,
     addMember,
     deactivateMember,
     deleteMember,

@@ -110,6 +110,8 @@ type MemberPortalProps = {
   dismissWorkoutCelebration: () => void;
   /** Periodeplaner fra Supabase (hydrate-member-data). */
   remoteMemberPeriodPlanRows?: Array<{ memberId: string; plan: PeriodSchedulePlan }>;
+  /** Etter lagring: kjør hydrate fra Supabase (persist er asynk) */
+  refreshRemoteHydration?: () => void | Promise<void>;
 };
 
 const MEMBER_AVATAR_BUCKET = "exercise-images";
@@ -509,6 +511,7 @@ export function MemberPortal(props: MemberPortalProps) {
     workoutCelebration,
     dismissWorkoutCelebration,
     remoteMemberPeriodPlanRows = EMPTY_REMOTE_PERIOD_PLAN_ROWS,
+    refreshRemoteHydration,
   } = props;
   const [messageText, setMessageText] = useState("");
   const [memberChatSendStatus, setMemberChatSendStatus] = useState<string | null>(null);
@@ -1151,6 +1154,12 @@ export function MemberPortal(props: MemberPortalProps) {
     setCustomWorkoutLines([]);
     setCustomWorkoutSearch("");
     setCustomProgramSaveStatus(`«${title}» ble lagret under Mine programmer.`);
+    window.setTimeout(() => {
+      void refreshRemoteHydration?.();
+    }, 750);
+    window.setTimeout(() => {
+      void refreshRemoteHydration?.();
+    }, 2800);
   }
 
   const syncProfileToPtBackend = useCallback(async (payload: {
