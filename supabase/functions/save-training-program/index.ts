@@ -76,6 +76,45 @@ type ProgramAuthorColumns = {
   program_created_by_name: string;
 };
 
+type DbErr = { message?: string; code?: string };
+
+function isMissingProgramAuthorColumnError(err: DbErr | null): boolean {
+  if (!err?.message) return false;
+  if (String(err.code ?? "") === "42703") return true;
+  const m = err.message.toLowerCase();
+  return (
+    (m.includes("program_created_by") || m.includes("program_created_by_name")) &&
+    (m.includes("does not exist") || m.includes("unknown") || m.includes("schema cache"))
+  );
+}
+
+function omitProgramAuthorColumns<T extends Record<string, unknown>>(row: T): Record<string, unknown> {
+  const { program_created_by: _a, program_created_by_name: _b, ...rest } = row;
+  return rest;
+}
+
+async function upsertTrainingProgramWithAuthorFallback(
+  adminClient: ReturnType<typeof createClient>,
+  row: Record<string, unknown>,
+): Promise<{ error: DbErr | null }> {
+  let { error } = await adminClient.from("training_programs").upsert(row, { onConflict: "id" });
+  if (error && isMissingProgramAuthorColumnError(error)) {
+    ({ error } = await adminClient.from("training_programs").upsert(omitProgramAuthorColumns(row), { onConflict: "id" }));
+  }
+  return { error };
+}
+
+async function insertTrainingProgramWithAuthorFallback(
+  adminClient: ReturnType<typeof createClient>,
+  row: Record<string, unknown>,
+): Promise<{ error: DbErr | null }> {
+  let { error } = await adminClient.from("training_programs").insert(row);
+  if (error && isMissingProgramAuthorColumnError(error)) {
+    ({ error } = await adminClient.from("training_programs").insert(omitProgramAuthorColumns(row)));
+  }
+  return { error };
+}
+
 function resolveProgramAuthorColumns(
   user: JwtUser,
   role: "member" | "trainer",
@@ -282,21 +321,18 @@ Deno.serve(async (req) => {
       return jsonResponse(403, { error: "Medlemmer kan ikke lagre treningsmaler." });
     }
     const id = programId || crypto.randomUUID();
-    const { error } = await adminClient.from("training_programs").upsert(
-      {
-        id,
-        member_id: memberId,
-        owner_user_id: ownerUserId,
-        title,
-        goal,
-        notes,
-        exercises,
-        created_at: new Date().toISOString(),
-        program_created_by: "trainer",
-        program_created_by_name: authorColumns.program_created_by_name,
-      },
-      { onConflict: "id" },
-    );
+    const { error } = await upsertTrainingProgramWithAuthorFallback(adminClient, {
+      id,
+      member_id: memberId,
+      owner_user_id: ownerUserId,
+      title,
+      goal,
+      notes,
+      exercises,
+      created_at: new Date().toISOString(),
+      program_created_by: "trainer",
+      program_created_by_name: authorColumns.program_created_by_name,
+    });
     if (error) return jsonResponse(500, { error: error.message });
     return jsonResponse(200, { ok: true, ids: [id], targetMemberIds: [memberId] });
   }
@@ -333,26 +369,23 @@ Deno.serve(async (req) => {
   if (programId) {
     const timestamp = new Date().toISOString();
 
-    const { error: primaryError } = await adminClient.from("training_programs").upsert(
-      {
-        id: programId,
-        member_id: canonicalTargetMemberId,
-        owner_user_id: ownerUserId,
-        title,
-        goal,
-        notes,
-        exercises,
-        created_at: timestamp,
-        program_created_by: authorColumns.program_created_by,
-        program_created_by_name: authorColumns.program_created_by_name,
-      },
-      { onConflict: "id" },
-    );
+    const { error: primaryError } = await upsertTrainingProgramWithAuthorFallback(adminClient, {
+      id: programId,
+      member_id: canonicalTargetMemberId,
+      owner_user_id: ownerUserId,
+      title,
+      goal,
+      notes,
+      exercises,
+      created_at: timestamp,
+      program_created_by: authorColumns.program_created_by,
+      program_created_by_name: authorColumns.program_created_by_name,
+    });
     if (primaryError) return jsonResponse(500, { error: primaryError.message });
     writtenIds.push(programId);
   } else {
     const id = crypto.randomUUID();
-    const { error } = await adminClient.from("training_programs").insert({
+    const { error } = await insertTrainingProgramWithAuthorFallback(adminClient, {
       id,
       member_id: canonicalTargetMemberId,
       owner_user_id: ownerUserId,

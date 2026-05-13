@@ -137,6 +137,14 @@ async function resolveCanonicalMemberIdForPersistence(
   return id && !id.startsWith("auth-") ? id : trimmed;
 }
 
+function isTrainingProgramAuthorColumnDbError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    (m.includes("program_created_by") || m.includes("program_created_by_name")) &&
+    (m.includes("does not exist") || m.includes("schema cache") || m.includes("pgrst204") || m.includes("could not find"))
+  );
+}
+
 const WEEKDAY_KEYS: WeekdayPlanKey[] = [
   "monday",
   "tuesday",
@@ -558,20 +566,23 @@ async function persistProgram(
       : {};
 
   if (fallbackProgramId) {
-    const { error: primaryError } = await supabaseClient.from("training_programs").upsert(
-      {
-        id: fallbackProgramId,
-        member_id: memberId,
-        owner_user_id: ownerUserId,
-        title: input.title,
-        goal: input.goal,
-        notes: input.notes,
-        exercises: input.exercises,
-        created_at: timestamp,
-        ...authorDb,
-      },
+    const rowBase = {
+      id: fallbackProgramId,
+      member_id: memberId,
+      owner_user_id: ownerUserId,
+      title: input.title,
+      goal: input.goal,
+      notes: input.notes,
+      exercises: input.exercises,
+      created_at: timestamp,
+    };
+    let { error: primaryError } = await supabaseClient.from("training_programs").upsert(
+      { ...rowBase, ...authorDb },
       { onConflict: "id" },
     );
+    if (primaryError && isTrainingProgramAuthorColumnDbError(primaryError.message)) {
+      ({ error: primaryError } = await supabaseClient.from("training_programs").upsert(rowBase, { onConflict: "id" }));
+    }
     if (primaryError) {
       console.warn("save-training-program fallback upsert failed:", primaryError.message);
       return;
@@ -595,22 +606,31 @@ async function persistProgram(
     }
     const existingId = String((existingRows?.[0] as { id?: string } | undefined)?.id ?? "").trim();
     if (existingId) {
-      const { error: updateError } = await supabaseClient
-        .from("training_programs")
-        .update({
-          goal: input.goal,
-          notes: input.notes,
-          exercises: input.exercises,
-          created_at: timestamp,
-          ...authorDb,
-        })
-        .eq("id", existingId);
+      const updatePayload = {
+        goal: input.goal,
+        notes: input.notes,
+        exercises: input.exercises,
+        created_at: timestamp,
+        ...authorDb,
+      };
+      let { error: updateError } = await supabaseClient.from("training_programs").update(updatePayload).eq("id", existingId);
+      if (updateError && isTrainingProgramAuthorColumnDbError(updateError.message)) {
+        ({ error: updateError } = await supabaseClient
+          .from("training_programs")
+          .update({
+            goal: input.goal,
+            notes: input.notes,
+            exercises: input.exercises,
+            created_at: timestamp,
+          })
+          .eq("id", existingId));
+      }
       if (updateError) {
         console.warn("save-training-program fallback update failed:", updateError.message);
       }
       continue;
     }
-    const { error: insertError } = await supabaseClient.from("training_programs").insert({
+    const insertBase = {
       id: crypto.randomUUID(),
       member_id: targetMemberId,
       owner_user_id: ownerUserId,
@@ -619,8 +639,11 @@ async function persistProgram(
       notes: input.notes,
       exercises: input.exercises,
       created_at: timestamp,
-      ...authorDb,
-    });
+    };
+    let { error: insertError } = await supabaseClient.from("training_programs").insert({ ...insertBase, ...authorDb });
+    if (insertError && isTrainingProgramAuthorColumnDbError(insertError.message)) {
+      ({ error: insertError } = await supabaseClient.from("training_programs").insert(insertBase));
+    }
     if (insertError) {
       console.warn("save-training-program fallback insert failed:", insertError.message);
     }

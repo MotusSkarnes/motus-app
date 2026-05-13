@@ -249,7 +249,7 @@ Deno.serve(async (req) => {
     programLookupList.length > 0
       ? await adminClient
           .from("training_programs")
-          .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by, program_created_by_name")
+          .select("*")
           .in("member_id", programLookupList)
           .order("created_at", { ascending: false })
       : { data: [], error: null };
