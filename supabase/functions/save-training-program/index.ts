@@ -93,13 +93,14 @@ function omitProgramAuthorColumns<T extends Record<string, unknown>>(row: T): Re
   return rest;
 }
 
-async function upsertTrainingProgramWithAuthorFallback(
+async function updateTrainingProgramWithAuthorFallback(
   adminClient: ReturnType<typeof createClient>,
+  id: string,
   row: Record<string, unknown>,
 ): Promise<{ error: DbErr | null }> {
-  let { error } = await adminClient.from("training_programs").upsert(row, { onConflict: "id" });
+  let { error } = await adminClient.from("training_programs").update(row).eq("id", id);
   if (error && isMissingProgramAuthorColumnError(error)) {
-    ({ error } = await adminClient.from("training_programs").upsert(omitProgramAuthorColumns(row), { onConflict: "id" }));
+    ({ error } = await adminClient.from("training_programs").update(omitProgramAuthorColumns(row)).eq("id", id));
   }
   return { error };
 }
@@ -113,6 +114,26 @@ async function insertTrainingProgramWithAuthorFallback(
     ({ error } = await adminClient.from("training_programs").insert(omitProgramAuthorColumns(row)));
   }
   return { error };
+}
+
+async function findExistingProgramById(
+  adminClient: ReturnType<typeof createClient>,
+  id: string,
+): Promise<{ row: Record<string, unknown> | null; error: DbErr | null }> {
+  const { data, error } = await adminClient
+    .from("training_programs")
+    .select("id, owner_user_id, member_id")
+    .eq("id", id)
+    .maybeSingle();
+  return { row: (data as Record<string, unknown> | null) ?? null, error };
+}
+
+function existingProgramOwnerId(row: Record<string, unknown> | null): string {
+  return String(row?.owner_user_id ?? "").trim();
+}
+
+function existingProgramMemberId(row: Record<string, unknown> | null): string {
+  return String(row?.member_id ?? "").trim();
 }
 
 function resolveProgramAuthorColumns(
@@ -321,8 +342,17 @@ Deno.serve(async (req) => {
       return jsonResponse(403, { error: "Medlemmer kan ikke lagre treningsmaler." });
     }
     const id = programId || crypto.randomUUID();
-    const { error } = await upsertTrainingProgramWithAuthorFallback(adminClient, {
-      id,
+    const { row: existingTemplate, error: existingTemplateError } = programId
+      ? await findExistingProgramById(adminClient, programId)
+      : { row: null, error: null };
+    if (existingTemplateError) return jsonResponse(500, { error: existingTemplateError.message });
+    if (existingTemplate && existingProgramOwnerId(existingTemplate) !== ownerUserId) {
+      return jsonResponse(403, { error: "Du kan ikke endre et program som tilhører en annen bruker." });
+    }
+    if (existingTemplate && existingProgramMemberId(existingTemplate) !== "__template__") {
+      return jsonResponse(403, { error: "Programmet kan ikke lagres som treningsmal." });
+    }
+    const templateRow = {
       member_id: memberId,
       owner_user_id: ownerUserId,
       title,
@@ -332,7 +362,10 @@ Deno.serve(async (req) => {
       created_at: new Date().toISOString(),
       program_created_by: "trainer",
       program_created_by_name: authorColumns.program_created_by_name,
-    });
+    };
+    const { error } = existingTemplate
+      ? await updateTrainingProgramWithAuthorFallback(adminClient, id, templateRow)
+      : await insertTrainingProgramWithAuthorFallback(adminClient, { id, ...templateRow });
     if (error) return jsonResponse(500, { error: error.message });
     return jsonResponse(200, { ok: true, ids: [id], targetMemberIds: [memberId] });
   }
@@ -368,9 +401,18 @@ Deno.serve(async (req) => {
   const timestamp = new Date().toISOString();
 
   if (programId) {
-    const { error: primaryError } = await upsertTrainingProgramWithAuthorFallback(adminClient, {
-      id: programId,
-      member_id: canonicalTargetMemberId,
+    const { row: existingProgram, error: existingProgramError } = await findExistingProgramById(adminClient, programId);
+    if (existingProgramError) return jsonResponse(500, { error: existingProgramError.message });
+    if (existingProgram && existingProgramOwnerId(existingProgram) !== ownerUserId) {
+      return jsonResponse(403, { error: "Du kan ikke endre et program som tilhører en annen bruker." });
+    }
+    const existingMemberId = existingProgramMemberId(existingProgram);
+    if (existingProgram && !targetMemberIds.includes(existingMemberId)) {
+      return jsonResponse(403, { error: "Programmet tilhører en annen medlemsprofil." });
+    }
+    const primaryMemberId = existingProgram ? existingMemberId : canonicalTargetMemberId;
+    const primaryRow = {
+      member_id: primaryMemberId,
       owner_user_id: ownerUserId,
       title,
       goal,
@@ -379,12 +421,15 @@ Deno.serve(async (req) => {
       created_at: timestamp,
       program_created_by: authorColumns.program_created_by,
       program_created_by_name: authorColumns.program_created_by_name,
-    });
+    };
+    const { error: primaryError } = existingProgram
+      ? await updateTrainingProgramWithAuthorFallback(adminClient, programId, primaryRow)
+      : await insertTrainingProgramWithAuthorFallback(adminClient, { id: programId, ...primaryRow });
     if (primaryError) return jsonResponse(500, { error: primaryError.message });
     writtenIds.push(programId);
 
     for (const targetMemberId of targetMemberIds) {
-      if (!targetMemberId || targetMemberId === canonicalTargetMemberId) continue;
+      if (!targetMemberId || targetMemberId === primaryMemberId) continue;
       const { data: existingRows, error: lookupError } = await adminClient
         .from("training_programs")
         .select("id")
@@ -397,8 +442,7 @@ Deno.serve(async (req) => {
 
       const existingId = String((existingRows?.[0] as { id?: string } | undefined)?.id ?? "").trim();
       if (existingId) {
-        const { error: updateError } = await upsertTrainingProgramWithAuthorFallback(adminClient, {
-          id: existingId,
+        const { error: updateError } = await updateTrainingProgramWithAuthorFallback(adminClient, existingId, {
           member_id: targetMemberId,
           owner_user_id: ownerUserId,
           title,
