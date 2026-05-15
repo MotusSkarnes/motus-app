@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ClipboardList, Dumbbell, Eye, EyeOff, Pencil, ShieldCheck, Star, Trash2, Users } from "lucide-react";
+import { ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, Pencil, ShieldCheck, Star, Trash2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
@@ -3929,12 +3929,14 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                     className="!rounded-xl !px-3 !py-2 !text-xs"
                   />
                 ) : null}
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <StatCard label="Programmer" value={String(selectedPrograms.length)} hint="På denne kunden" />
-                  <StatCard label="Logger" value={String(selectedLogs.length)} hint="På denne kunden" />
-                  <StatCard label="Meldinger" value={String(selectedMessages.length)} hint="På denne kunden" />
-                  <StatCard label="Inaktivitet" value={`${selectedMember.daysSinceActivity} dager`} hint="Sist aktivitet" />
-                </div>
+                {customerSubTab !== "programs" ? (
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <StatCard label="Programmer" value={String(selectedPrograms.length)} hint="På denne kunden" />
+                    <StatCard label="Logger" value={String(selectedLogs.length)} hint="På denne kunden" />
+                    <StatCard label="Meldinger" value={String(selectedMessages.length)} hint="På denne kunden" />
+                    <StatCard label="Inaktivitet" value={`${selectedMember.daysSinceActivity} dager`} hint="Sist aktivitet" />
+                  </div>
+                ) : null}
 
                 <div className="rounded-xl border bg-slate-50/80 p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="grid grid-cols-4 gap-2">
@@ -4062,15 +4064,22 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 ) : null}
 
                 {customerSubTab === "programs" ? (
-                  <div className="space-y-4">
-                    <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-                    <div className="rounded-xl border bg-white p-4 space-y-4">
+                  <div className="space-y-3">
+                    <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)] xl:items-start">
+                    <div className="rounded-xl border bg-white p-3 sm:p-4 space-y-3">
                       <div className="flex items-center justify-between gap-3">
                         <div className="font-semibold">{editingProgramId ? "Rediger program" : "Bygg program"}</div>
                         {editingProgramId ? <OutlineButton onClick={resetProgramBuilder}>Avbryt redigering</OutlineButton> : null}
                       </div>
-                      <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                        <div className="text-sm font-semibold text-slate-700">Periodeplan + ukesplan (per dag)</div>
+                      <details className="rounded-xl border border-slate-200/80 bg-slate-50/60 open:bg-slate-50" open={periodWeeklyPlansDraft.length > 0 || selectedPeriodPlans.length > 0}>
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-1 text-sm font-semibold text-slate-700 [&::-webkit-details-marker]:hidden">
+                          <span>Periodeplan + ukesplan</span>
+                          <span className="flex items-center gap-1 text-xs font-normal text-slate-500">
+                            {selectedPeriodPlans.length > 0 ? `${selectedPeriodPlans.length} lagret` : "Valgfritt"}
+                            <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+                          </span>
+                        </summary>
+                        <div className="mt-3 space-y-3 border-t border-slate-200/80 pt-3">
                         <div className="grid gap-2 md:grid-cols-2">
                           <TextInput value={periodPlanTitleDraft} onChange={(e) => setPeriodPlanTitleDraft(e.target.value)} placeholder="Navn (f.eks. Sommerblokk uke 1-4)" />
                           <TextInput value={periodPlanStartDateDraft} onChange={(e) => setPeriodPlanStartDateDraft(e.target.value)} type="date" />
@@ -4187,10 +4196,13 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                             ))
                           )}
                         </div>
-                      </div>
+                        </div>
+                      </details>
+                      <div className="grid gap-2 sm:grid-cols-2">
                       <TextInput value={programTitle} onChange={(e) => setProgramTitle(e.target.value)} placeholder="Navn på program" />
                       <TextInput value={programGoal} onChange={(e) => setProgramGoal(e.target.value)} placeholder="Mål" />
-                      <TextArea value={programNotes} onChange={(e) => setProgramNotes(e.target.value)} className="min-h-[110px]" placeholder="Notater" />
+                      </div>
+                      <TextArea value={programNotes} onChange={(e) => setProgramNotes(e.target.value)} className="min-h-[72px]" placeholder="Notater" />
 
                       <div
                         className={`space-y-3 rounded-2xl p-1 transition ${
@@ -4214,8 +4226,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                           <EmptyState
                             icon="🏋️"
                             title="Ingen øvelser valgt ennå"
-                            description="Legg til øvelser fra biblioteket for å bygge programmet."
-                            className="bg-white"
+                            description="Legg til fra øvelseslisten til høyre."
+                            className="!px-3 !py-3 bg-white"
                           />
                         ) : null}
                         {programExercisesDraft.map((item, index) => (
@@ -4249,19 +4261,23 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                               <div className="flex items-center gap-2">
                                 <OutlineButton
                                   onClick={() => moveDraftExerciseByOffset(item.id, -1)}
-                                  className="px-3 py-1.5 text-xs"
+                                  className="px-2 py-1.5 text-xs"
                                   disabled={index === 0}
+                                  aria-label="Flytt opp"
                                 >
-                                  Opp
+                                  <ChevronUp className="h-4 w-4" />
                                 </OutlineButton>
                                 <OutlineButton
                                   onClick={() => moveDraftExerciseByOffset(item.id, 1)}
-                                  className="px-3 py-1.5 text-xs"
+                                  className="px-2 py-1.5 text-xs"
                                   disabled={index === programExercisesDraft.length - 1}
+                                  aria-label="Flytt ned"
                                 >
-                                  Ned
+                                  <ChevronDown className="h-4 w-4" />
                                 </OutlineButton>
-                                <OutlineButton onClick={() => removeDraftExercise(item.id)}>Fjern</OutlineButton>
+                                <OutlineButton onClick={() => removeDraftExercise(item.id)} className="px-2 py-1.5 text-xs" aria-label="Fjern">
+                                  <Trash2 className="h-4 w-4" />
+                                </OutlineButton>
                               </div>
                             </div>
                             {(() => {
@@ -4355,8 +4371,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       ) : null}
                     </div>
 
-                    <div className="rounded-xl border bg-slate-50 p-4 space-y-3">
-                      <div className="font-semibold">Øvelser</div>
+                    <div className="space-y-3 xl:sticky xl:top-4">
+                    <div className="rounded-xl border bg-slate-50 p-3 space-y-2.5">
+                      <div className="text-sm font-semibold text-slate-800">Øvelser</div>
                       <TextInput
                         value={programExerciseSearch}
                         onChange={(e) => setProgramExerciseSearch(e.target.value)}
@@ -4381,12 +4398,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                           ]}
                         />
                       </div>
-                      <div className="text-xs text-slate-500">
-                        Favoritter vises alltid øverst, resten sorteres alfabetisk.
-                      </div>
-                      <div className="max-h-[560px] space-y-2 overflow-auto pr-1">
+                      <div className="max-h-[min(320px,40vh)] space-y-1.5 overflow-auto pr-1">
                         {visibleProgramExercises.length === 0 ? (
-                          <div className="rounded-2xl border border-dashed p-4 text-sm text-slate-500 bg-white">
+                          <div className="rounded-xl border border-dashed p-3 text-sm text-slate-500 bg-white">
                             Ingen øvelser matcher søk/filter.
                           </div>
                         ) : null}
@@ -4398,7 +4412,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                               draggable
                               onDragStart={() => setDraggedExerciseIdFromLibrary(exercise.id)}
                               onDragEnd={() => setDraggedExerciseIdFromLibrary(null)}
-                              className="rounded-2xl border bg-white p-3 cursor-grab active:cursor-grabbing"
+                              className="rounded-xl border bg-white p-2.5 cursor-grab active:cursor-grabbing"
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <button type="button" onClick={() => addExerciseToDraft(exercise)} className="flex flex-1 items-start gap-2 text-left">
@@ -4438,70 +4452,32 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         })}
                       </div>
                     </div>
-                    </div>
-
-                    <div className="rounded-xl border bg-slate-50 p-4">
-                      <div className="font-semibold">Eksisterende programmer</div>
-                      <div className="mt-4 space-y-3">
-                        {visibleSelectedPrograms.length === 0 ? (
-                          <EmptyState
-                            icon="📋"
-                            title="Ingen programmer ennå"
-                            description="Lag et enkelt program for å komme i gang med kunden."
-                            className="bg-white"
-                            action={
-                              <GradientButton onClick={() => setCustomerSubTab("programs")} className="w-full sm:w-auto">
-                                Opprett program
-                              </GradientButton>
-                            }
-                          />
-                        ) : null}
-                        {visibleSelectedPrograms.map((program) => {
-                          const firstExercise = exercisesById.get(program.exercises[0]?.exerciseId ?? "");
-                          return (
-                          <div key={program.id} className="rounded-2xl border bg-white p-4">
-                            <div className="flex items-start gap-2">
-                              {firstExercise ? (
-                                <img
-                                  src={getExercisePreviewSrc(firstExercise)}
-                                  alt={program.title}
-                                  className="mt-0.5 h-10 w-10 shrink-0 rounded-lg border object-cover bg-white"
-                                  style={{ borderColor: "rgba(15,23,42,0.08)" }}
-                                  loading="lazy"
-                                  decoding="async"
-                                  onError={(event) => {
-                                    event.currentTarget.src = getExerciseSketchDataUri(firstExercise);
-                                  }}
-                                />
-                              ) : (
-                                <div className="mt-0.5 h-10 w-10 shrink-0 rounded-lg border bg-slate-50" style={{ borderColor: "rgba(15,23,42,0.08)" }} />
-                              )}
+                    <div className="rounded-xl border bg-white p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm font-semibold text-slate-800">Lagrede programmer</div>
+                        <span className="text-xs text-slate-500">{visibleSelectedPrograms.length}</span>
+                      </div>
+                      {visibleSelectedPrograms.length === 0 ? (
+                        <p className="text-xs text-slate-500">Ingen ennå — fyll ut skjemaet til venstre og lagre.</p>
+                      ) : (
+                        <div className="max-h-[min(280px,35vh)] space-y-2 overflow-auto pr-1">
+                          {visibleSelectedPrograms.map((program) => (
+                            <div key={program.id} className="rounded-xl border bg-slate-50/80 p-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                               <div className="min-w-0">
-                                <div className="font-medium">{program.title}</div>
-                                {program.goal?.trim() ? (
-                                  <div className="mt-0.5 text-xs text-slate-500">{program.goal.trim()}</div>
-                                ) : null}
-                                {programAuthorLabel(program) ? (
-                                  <div className="mt-1 text-[11px] font-medium text-slate-600">{programAuthorLabel(program)}</div>
-                                ) : null}
+                                <div className="text-sm font-medium text-slate-800 truncate">{program.title}</div>
+                                <div className="text-[11px] text-slate-500">{program.exercises.length} øvelser · {program.createdAt}</div>
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                <OutlineButton onClick={() => startEditProgram(program)} className="px-2 py-1 text-[11px]">Rediger</OutlineButton>
+                                <OutlineButton onClick={() => handlePrintProgram(program)} className="px-2 py-1 text-[11px]">PDF</OutlineButton>
+                                <OutlineButton onClick={() => handleDeleteProgram(program.id)} className="px-2 py-1 text-[11px]">Slett</OutlineButton>
                               </div>
                             </div>
-                            <div className="mt-2 text-xs text-slate-400">{program.exercises.length} øvelser · {program.createdAt}</div>
-
-                            <div className="mt-3 flex gap-2">
-                              <OutlineButton onClick={() => startEditProgram(program)}>
-                                Rediger
-                              </OutlineButton>
-                              <OutlineButton onClick={() => handlePrintProgram(program)}>
-                                Skriv ut / PDF
-                              </OutlineButton>
-                              <OutlineButton onClick={() => handleDeleteProgram(program.id)}>
-                                Slett
-                              </OutlineButton>
-                            </div>
-                          </div>
-                        )})}
-                      </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    </div>
                     </div>
                   </div>
                 ) : null}
