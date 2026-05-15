@@ -26,6 +26,7 @@ import type {
   AppState,
   AuthUser,
   Exercise,
+  Member,
   MemberProgramLibraryStatus,
   MemberTab,
   PeriodSchedulePlan,
@@ -33,6 +34,24 @@ import type {
   TrainingProgram,
   WorkoutLog,
 } from "./types";
+
+/** Ved hydrering kan flere rader ha samme e-post; slå sammen mot riktig rad (ikke første treff — ofte Medlem-dup før PT-raden). */
+function resolveMemberRowMergeIndex(remoteMembers: Member[], localMember: Member): number {
+  const idIdx = remoteMembers.findIndex((m) => m.id === localMember.id);
+  if (idIdx >= 0) return idIdx;
+  const emailKey = localMember.email.trim().toLowerCase();
+  const matches = remoteMembers
+    .map((m, index) => ({ m, index }))
+    .filter(({ m }) => m.email.trim().toLowerCase() === emailKey);
+  if (!matches.length) return -1;
+  if (matches.length === 1) return matches[0].index;
+  const preferred =
+    matches.find(({ m }) => m.customerType === "PT-kunde") ??
+    matches.find(({ m }) => m.membershipType === "Premium") ??
+    matches.find(({ m }) => m.customerType !== "Medlem") ??
+    matches[0];
+  return preferred.index;
+}
 
 function mergeMembersById(primary: AppState["members"] | null, secondary: AppState["members"] | null): AppState["members"] | null {
   if (!primary && !secondary) return null;
@@ -392,10 +411,7 @@ export function useAppState() {
               prev.members.find((member) => member.email.trim().toLowerCase() === normalizedUserEmail) ??
               null;
             if (localMember) {
-              const remoteIndex = mergedMembers.findIndex(
-                (member) =>
-                  member.id === localMember.id || member.email.trim().toLowerCase() === localMember.email.trim().toLowerCase()
-              );
+              const remoteIndex = resolveMemberRowMergeIndex(mergedMembers, localMember);
               if (remoteIndex >= 0) {
                 // Remote must win over stale per-device localStorage so profile edits sync across phone/PC.
                 mergedMembers = mergedMembers.map((member, index) =>

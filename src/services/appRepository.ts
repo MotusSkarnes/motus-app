@@ -757,6 +757,9 @@ export function updateMemberInState(state: AppState, input: UpdateMemberInput): 
             injuries: input.changes.injuries !== undefined ? input.changes.injuries.trim() : member.injuries,
             personalGoals: input.changes.personalGoals !== undefined ? input.changes.personalGoals.trim() : member.personalGoals,
             avatarUrl: input.changes.avatarUrl !== undefined ? input.changes.avatarUrl.trim() : member.avatarUrl,
+            membershipType:
+              input.changes.membershipType !== undefined ? input.changes.membershipType : member.membershipType,
+            customerType: input.changes.customerType !== undefined ? input.changes.customerType : member.customerType,
           }
         : member
     ),

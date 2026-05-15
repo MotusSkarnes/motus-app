@@ -22,6 +22,9 @@ type UpdatePayload = {
     /** Encoded profile metrics / app metadata; see MemberPortal MOTUS_PROFILE_V1 */
     personalGoals?: string;
     avatarUrl?: string;
+    /** Trainer-only; applied server-side only when JWT role is trainer */
+    membershipType?: string;
+    customerType?: string;
   };
 };
 
@@ -132,6 +135,21 @@ Deno.serve(async (req) => {
   if (changes.injuries !== undefined) updateFields.injuries = normalizeString(changes.injuries);
   if (changes.personalGoals !== undefined) updateFields.personal_goals = normalizeString(changes.personalGoals);
   if (changes.avatarUrl !== undefined) updateFields.avatar_url = normalizeString(changes.avatarUrl);
+
+  // Membership / customer type: ikke for medlem-session; trener eller JWT uten role (eldre trener-kontoer).
+  const canEditMembershipFields = userRole === "trainer" || userRole === "";
+  if (canEditMembershipFields) {
+    if (changes.membershipType !== undefined) {
+      const mt = normalizeString(changes.membershipType).toLowerCase();
+      if (mt === "premium") updateFields.membership_type = "Premium";
+      else if (mt === "standard") updateFields.membership_type = "Standard";
+    }
+    if (changes.customerType !== undefined) {
+      const ct = normalizeString(changes.customerType);
+      const allowedCustomer = new Set(["PT-kunde", "Medlem", "Oppfølging", "Egentrening"]);
+      if (allowedCustomer.has(ct)) updateFields.customer_type = ct;
+    }
+  }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
   const anchorClauses = [];

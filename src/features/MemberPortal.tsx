@@ -911,7 +911,11 @@ export function MemberPortal(props: MemberPortalProps) {
     });
     if (editableMember) candidates.push(editableMember);
     if (currentUserRole === "member") {
-      return !candidates.some((member) => member.customerType === "PT-kunde" || member.membershipType === "Premium");
+      // Full portal (meldinger, fremgang): alle som ikke bare er ''ren'' Standard-medlem (delt treningssenter-profil).
+      // Inkluderer PT-kunde, Premium, Oppfølging og Egentrening — tidligere ble Oppfølging feilaktig låst ute.
+      return !candidates.some(
+        (member) => member.customerType !== "Medlem" || member.membershipType === "Premium",
+      );
     }
     return candidates.some((member) => member.customerType === "Medlem" && member.membershipType !== "Premium");
   }, [currentUserRole, currentUserMemberId, memberViewId, members, normalizedCurrentUserEmail, editableMember]);

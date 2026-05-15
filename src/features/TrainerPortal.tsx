@@ -1873,10 +1873,11 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       return;
     }
 
-    const selectedInviteType = options?.inviteAfterCreate ? newMemberInviteType : "PT-kunde";
-    const nextMembershipType: Member["membershipType"] = selectedInviteType === "Premium-kunde" ? "Premium" : "Standard";
+    // Kundetype/medlemskap følger alltid nedtrekksvalget — ikke bare ved «Opprett + invitasjon».
+    const tier = newMemberInviteType;
+    const nextMembershipType: Member["membershipType"] = tier === "Premium-kunde" ? "Premium" : "Standard";
     const nextCustomerType: Member["customerType"] =
-      selectedInviteType === "Medlem" ? "Medlem" : selectedInviteType === "PT-kunde" ? "PT-kunde" : "Oppfølging";
+      tier === "Medlem" ? "Medlem" : tier === "PT-kunde" || tier === "Premium-kunde" ? "PT-kunde" : "Oppfølging";
 
     addMember({
       name,
@@ -2296,6 +2297,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
             birthDate: normalizedBirthDate,
             goal: memberEditGoal,
             injuries: memberEditInjuries,
+            membershipType: memberEditIsPremiumCustomer ? "Premium" : "Standard",
+            customerType: memberEditIsSharedMember ? "Medlem" : memberEditIsPtCustomer ? "PT-kunde" : "Oppfølging",
           },
         },
       });
@@ -3241,9 +3244,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
           value={newMemberInviteType}
           onChange={(value) => setNewMemberInviteType(value as "PT-kunde" | "Premium-kunde" | "Medlem")}
           options={[
-            { value: "PT-kunde", label: "Type ved invitasjon: PT-kunde" },
-            { value: "Premium-kunde", label: "Type ved invitasjon: Premium-kunde" },
-            { value: "Medlem", label: "Type ved invitasjon: Medlem" },
+            { value: "PT-kunde", label: "Ny kunde: PT-kunde (standard)" },
+            { value: "Premium-kunde", label: "Ny kunde: Premium-kunde" },
+            { value: "Medlem", label: "Ny kunde: Medlem (delt)" },
           ]}
         />
         {newMemberError ? <StatusMessage message={newMemberError} tone="error" className="!rounded-xl !px-3 !py-2 !text-xs" /> : null}

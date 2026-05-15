@@ -775,6 +775,8 @@ async function persistMember(member: Member) {
       injuries: member.injuries,
       personalGoals: member.personalGoals,
       avatarUrl: member.avatarUrl ?? "",
+      membershipType: member.membershipType,
+      customerType: member.customerType,
     },
   };
   const {
