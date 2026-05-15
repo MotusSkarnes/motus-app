@@ -5276,7 +5276,7 @@ export function MemberPortal(props: MemberPortalProps) {
               {editableMember ? (
                 <div className="mt-5 space-y-4">
                   <div className="rounded-xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="text-sm font-semibold text-slate-700">Kundeinformasjon</div>
+                    <div className="text-sm font-semibold text-slate-700">Om meg</div>
                     <div className="grid gap-3 md:grid-cols-2">
                       <label className="space-y-1">
                         <span className="text-sm font-semibold text-slate-700">Navn</span>
