@@ -1,6 +1,6 @@
 import { MOTUS } from "../app/data";
 import { Badge, Card, GradientButton, StatCard, StatusMessage, TextInput } from "../app/ui";
-import motusLogo from "../assets/motus-logo.png";
+import motusLogo from "../assets/motus-skrytekort-logo.png";
 
 type LoginScreenProps = {
   email: string;

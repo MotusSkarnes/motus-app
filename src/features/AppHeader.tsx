@@ -3,7 +3,7 @@ import { LogOut, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { AuthUser, Role } from "../app/types";
 import { Card, OutlineButton, PillButton } from "../app/ui";
-import motusLogo from "../assets/motus-logo.png";
+import motusLogo from "../assets/motus-skrytekort-logo.png";
 
 export function AppHeader({
   currentUser,
