@@ -50,6 +50,8 @@ function isSharedMedlem(customerType: unknown): boolean {
 function canTrainerEditAnchor(row: { owner_user_id?: string | null; customer_type?: string | null }, trainerUserId: string): boolean {
   const ownerUserId = normalizeString(row.owner_user_id);
   if (isSharedMedlem(row.customer_type)) return true;
+  // Eldre PT-rader kan mangle owner_user_id til auth-id er satt — da skal eier-PT fortsatt kunne oppdatere typen.
+  if (!ownerUserId) return true;
   return ownerUserId === trainerUserId;
 }
 

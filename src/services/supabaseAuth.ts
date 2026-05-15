@@ -176,6 +176,16 @@ export async function verifyRecoveryToken(tokenHash: string): Promise<{ ok: bool
   return { ok: true };
 }
 
+export async function verifyInviteToken(tokenHash: string): Promise<{ ok: boolean; message?: string }> {
+  if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
+  const { error } = await supabaseClient.auth.verifyOtp({
+    token_hash: tokenHash,
+    type: "invite",
+  });
+  if (error) return { ok: false, message: error.message || "Kunne ikke verifisere invitasjonslenke." };
+  return { ok: true };
+}
+
 export async function establishRecoverySessionFromTokens(input: {
   accessToken: string;
   refreshToken: string;

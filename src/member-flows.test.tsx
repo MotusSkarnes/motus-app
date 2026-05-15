@@ -72,7 +72,7 @@ describe("Member flows", () => {
     await user.click(screen.getAllByRole("button", { name: "Admin" })[0]);
     await user.type(screen.getByPlaceholderText("Navn"), "Persist Kunde");
     await user.type(screen.getByPlaceholderText("E-post"), "persist.kunde@example.com");
-    await user.click(screen.getByRole("button", { name: "Opprett medlem" }));
+    await user.click(screen.getByRole("button", { name: "Opprett kunde" }));
     expect(window.localStorage.getItem("motus_pt_app_v2")).toContain("persist.kunde@example.com");
 
     firstRender.unmount();

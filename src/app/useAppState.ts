@@ -20,7 +20,24 @@ import {
 } from "../services/appRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { fetchExercisesFromSupabase, fetchHydratedMemberData, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
-import { ensureMemberAuthLink, establishRecoverySessionFromTokens, getSupabaseSessionUser, inviteMemberByEmail, inviteTrainerByEmail, refreshSupabaseSessionUser, requestEmailOtpSignIn, requestPasswordRecovery, signInWithSupabase, signOutSupabase, updateSupabasePassword, verifyEmailOtpSignIn, verifyRecoveryToken, type InviteMemberResult, type InviteTrainerResult } from "../services/supabaseAuth";
+import {
+  ensureMemberAuthLink,
+  establishRecoverySessionFromTokens,
+  getSupabaseSessionUser,
+  inviteMemberByEmail,
+  inviteTrainerByEmail,
+  refreshSupabaseSessionUser,
+  requestEmailOtpSignIn,
+  requestPasswordRecovery,
+  signInWithSupabase,
+  signOutSupabase,
+  updateSupabasePassword,
+  verifyEmailOtpSignIn,
+  verifyInviteToken,
+  verifyRecoveryToken,
+  type InviteMemberResult,
+  type InviteTrainerResult,
+} from "../services/supabaseAuth";
 import { mergeRemoteMessagesWithLocalOptimistic } from "./messageHydrationMerge";
 import type {
   AppState,
@@ -145,6 +162,71 @@ function syncExercisesWithPrograms(state: AppState): AppState {
   };
 }
 
+/** Parse invite/recovery på første render slik at hydrate-session ikke kjører før passordskjerm er aktiv. */
+function captureInitialSupabaseAuthUrl(): {
+  isRecoveryMode: boolean;
+  recoveryInviteFlow: boolean;
+  recoveryTokenHash: string | null;
+  recoveryAccessToken: string | null;
+  recoveryRefreshToken: string | null;
+  recoveryInfo: string | null;
+  stripSensitiveAfterCapture: boolean;
+} | null {
+  if (typeof window === "undefined" || !isSupabaseConfigured) return null;
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const query = new URLSearchParams(window.location.search);
+  const type = hash.get("type") ?? query.get("type");
+  const recoveryFlag = hash.get("recovery") ?? query.get("recovery");
+  const tokenHash = hash.get("token_hash") ?? query.get("token_hash");
+  const accessToken = hash.get("access_token") ?? query.get("access_token");
+  const refreshToken = hash.get("refresh_token") ?? query.get("refresh_token");
+  const hasSecrets = Boolean(tokenHash || accessToken || refreshToken);
+  if (type === "recovery" || recoveryFlag === "1") {
+    return {
+      isRecoveryMode: true,
+      recoveryInviteFlow: false,
+      recoveryTokenHash: tokenHash,
+      recoveryAccessToken: accessToken,
+      recoveryRefreshToken: refreshToken,
+      recoveryInfo: "Recovery-lenke registrert. Velg nytt passord.",
+      stripSensitiveAfterCapture: hasSecrets,
+    };
+  }
+  if (type === "invite") {
+    return {
+      isRecoveryMode: true,
+      recoveryInviteFlow: true,
+      recoveryTokenHash: tokenHash,
+      recoveryAccessToken: accessToken,
+      recoveryRefreshToken: refreshToken,
+      recoveryInfo: "Invitasjon registrert. Velg et passord for kontoen din.",
+      stripSensitiveAfterCapture: hasSecrets,
+    };
+  }
+  return null;
+}
+
+function stripSensitiveSupabaseAuthFromBrowserUrl(): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  let changed = false;
+  for (const key of ["access_token", "refresh_token", "expires_in", "token_type", "provider_token", "token_hash", "type"]) {
+    if (url.searchParams.has(key)) {
+      url.searchParams.delete(key);
+      changed = true;
+    }
+  }
+  if (window.location.hash.replace(/^#/, "").trim()) {
+    url.hash = "";
+    changed = true;
+  }
+  if (changed) {
+    window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
+  }
+}
+
+const INITIAL_SUPABASE_AUTH_FROM_URL = captureInitialSupabaseAuthUrl();
+
 export function useAppState() {
   const remoteHydrateRef = useRef<(() => Promise<void>) | null>(null);
   const isDemoMode = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_MODE === "true";
@@ -153,14 +235,19 @@ export function useAppState() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
-  const [recoveryTokenHash, setRecoveryTokenHash] = useState<string | null>(null);
-  const [recoveryAccessToken, setRecoveryAccessToken] = useState<string | null>(null);
-  const [recoveryRefreshToken, setRecoveryRefreshToken] = useState<string | null>(null);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(() => INITIAL_SUPABASE_AUTH_FROM_URL?.isRecoveryMode ?? false);
+  const [recoveryInviteFlow, setRecoveryInviteFlow] = useState(() => INITIAL_SUPABASE_AUTH_FROM_URL?.recoveryInviteFlow ?? false);
+  const [recoveryTokenHash, setRecoveryTokenHash] = useState<string | null>(() => INITIAL_SUPABASE_AUTH_FROM_URL?.recoveryTokenHash ?? null);
+  const [recoveryAccessToken, setRecoveryAccessToken] = useState<string | null>(
+    () => INITIAL_SUPABASE_AUTH_FROM_URL?.recoveryAccessToken ?? null,
+  );
+  const [recoveryRefreshToken, setRecoveryRefreshToken] = useState<string | null>(
+    () => INITIAL_SUPABASE_AUTH_FROM_URL?.recoveryRefreshToken ?? null,
+  );
   const [recoveryPassword, setRecoveryPassword] = useState("");
   const [recoveryPasswordConfirm, setRecoveryPasswordConfirm] = useState("");
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
-  const [recoveryInfo, setRecoveryInfo] = useState<string | null>(null);
+  const [recoveryInfo, setRecoveryInfo] = useState<string | null>(() => INITIAL_SUPABASE_AUTH_FROM_URL?.recoveryInfo ?? null);
   const [passwordRecoveryInfo, setPasswordRecoveryInfo] = useState<string | null>(null);
   const [passwordRecoveryError, setPasswordRecoveryError] = useState<string | null>(null);
   const [passwordRecoveryCooldownSeconds, setPasswordRecoveryCooldownSeconds] = useState(0);
@@ -503,47 +590,34 @@ export function useAppState() {
   }, []);
 
   useEffect(() => {
-    if (!isSupabaseConfigured || typeof window === "undefined") return;
-    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    const query = new URLSearchParams(window.location.search);
-    const type = hash.get("type") ?? query.get("type");
-    const recoveryFlag = hash.get("recovery") ?? query.get("recovery");
-    const tokenHash = hash.get("token_hash") ?? query.get("token_hash");
-    const accessToken = hash.get("access_token") ?? query.get("access_token");
-    const refreshToken = hash.get("refresh_token") ?? query.get("refresh_token");
-    if (type === "recovery" || recoveryFlag === "1") {
-      setIsRecoveryMode(true);
-      setRecoveryInfo("Recovery-lenke registrert. Velg nytt passord.");
-      if (tokenHash) {
-        setRecoveryTokenHash(tokenHash);
-      }
-      if (accessToken) {
-        setRecoveryAccessToken(accessToken);
-      }
-      if (refreshToken) {
-        setRecoveryRefreshToken(refreshToken);
-      }
-    }
+    if (!INITIAL_SUPABASE_AUTH_FROM_URL?.stripSensitiveAfterCapture) return;
+    stripSensitiveSupabaseAuthFromBrowserUrl();
   }, []);
 
   useEffect(() => {
     if (!isRecoveryMode || !recoveryTokenHash) return;
     let cancelled = false;
     async function hydrateRecoverySession() {
-      const result = await verifyRecoveryToken(recoveryTokenHash);
+      const result = recoveryInviteFlow
+        ? await verifyInviteToken(recoveryTokenHash)
+        : await verifyRecoveryToken(recoveryTokenHash);
       if (cancelled) return;
       if (!result.ok) {
-        setRecoveryError(`Recovery-lenke feilet: ${result.message}`);
+        setRecoveryError(
+          recoveryInviteFlow ? `Invitasjonslenke feilet: ${result.message}` : `Recovery-lenke feilet: ${result.message}`,
+        );
         return;
       }
       setRecoveryError(null);
-      setRecoveryInfo("Recovery-lenke verifisert. Du kan sette nytt passord.");
+      setRecoveryInfo(
+        recoveryInviteFlow ? "Invitasjon verifisert. Velg et passord for kontoen din." : "Recovery-lenke verifisert. Du kan sette nytt passord.",
+      );
     }
     void hydrateRecoverySession();
     return () => {
       cancelled = true;
     };
-  }, [isRecoveryMode, recoveryTokenHash]);
+  }, [isRecoveryMode, recoveryInviteFlow, recoveryTokenHash]);
 
   useEffect(() => {
     if (!isRecoveryMode || !recoveryAccessToken || !recoveryRefreshToken) return;
@@ -555,23 +629,53 @@ export function useAppState() {
       });
       if (cancelled) return;
       if (!result.ok) {
-        setRecoveryError(`Recovery-lenke feilet: ${result.message}`);
+        setRecoveryError(
+          recoveryInviteFlow ? `Invitasjonslenke feilet: ${result.message}` : `Recovery-lenke feilet: ${result.message}`,
+        );
         return;
       }
       setRecoveryError(null);
-      setRecoveryInfo("Recovery-session opprettet. Du kan sette nytt passord.");
+      setRecoveryInfo(
+        recoveryInviteFlow
+          ? "Invitasjon registrert. Velg et passord for kontoen din."
+          : "Recovery-session opprettet. Du kan sette nytt passord.",
+      );
     }
     void hydrateRecoverySessionFromTokens();
     return () => {
       cancelled = true;
     };
-  }, [isRecoveryMode, recoveryAccessToken, recoveryRefreshToken]);
+  }, [isRecoveryMode, recoveryInviteFlow, recoveryAccessToken, recoveryRefreshToken]);
 
   useEffect(() => {
     if (!isSupabaseConfigured || isRecoveryMode) return;
     let cancelled = false;
 
     async function hydrateSession() {
+      if (typeof window !== "undefined" && supabaseClient) {
+        const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        const query = new URLSearchParams(window.location.search);
+        const type = hash.get("type") ?? query.get("type");
+        const recoveryFlag = hash.get("recovery") ?? query.get("recovery");
+        const accessToken = hash.get("access_token") ?? query.get("access_token");
+        const refreshToken = hash.get("refresh_token") ?? query.get("refresh_token");
+        const implicitSession =
+          Boolean(accessToken && refreshToken) &&
+          type !== "recovery" &&
+          type !== "invite" &&
+          recoveryFlag !== "1";
+        if (implicitSession) {
+          const result = await establishRecoverySessionFromTokens({
+            accessToken: accessToken as string,
+            refreshToken: refreshToken as string,
+          });
+          stripSensitiveSupabaseAuthFromBrowserUrl();
+          if (!result.ok) {
+            console.warn("Implicit URL auth session failed:", result.message);
+          }
+        }
+      }
+
       const user = await getSupabaseSessionUser();
       if (cancelled) return;
       if (!user) {
@@ -847,7 +951,15 @@ export function useAppState() {
     }
 
     setRecoveryError(null);
-    setRecoveryInfo("Passord oppdatert. Logg inn med nytt passord.");
+    const wasInviteFlow = recoveryInviteFlow;
+    if (wasInviteFlow) {
+      await signOutSupabase();
+      setAppState((prev) => ({ ...prev, currentUser: null, role: "trainer" }));
+      setRecoveryInviteFlow(false);
+      setRecoveryInfo("Passord er satt. Logg inn med e-post og passord.");
+    } else {
+      setRecoveryInfo("Passord oppdatert. Logg inn med nytt passord.");
+    }
     setIsRecoveryMode(false);
     setRecoveryPassword("");
     setRecoveryPasswordConfirm("");
@@ -1255,6 +1367,7 @@ export function useAppState() {
     setLoginPassword,
     loginError,
     isRecoveryMode,
+    recoveryInviteFlow,
     recoveryPassword,
     setRecoveryPassword,
     recoveryPasswordConfirm,

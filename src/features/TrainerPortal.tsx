@@ -2263,18 +2263,19 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const storedCustomerType = selectedMember.customerType;
     const crossOwner =
       Boolean(selectedOwnerUserId && currentTrainerOwnerUserId && selectedOwnerUserId !== currentTrainerOwnerUserId);
-    const nextCustomerType = memberEditIsSharedMember ? "Medlem" : memberEditIsPtCustomer ? "PT-kunde" : "Oppfølging";
+    const nextCustomerType = memberEditIsSharedMember
+      ? "Medlem"
+      : memberEditIsPtCustomer || memberEditIsPremiumCustomer
+        ? "PT-kunde"
+        : "Oppfølging";
 
-    // Never treat the UI checkbox as proof of ownership — another PT's PT-kunde cannot be edited here.
-    if (crossOwner && storedCustomerType !== "Medlem") {
+    /** PT-rader skal eies av innlogget trener etter lagring — da kan vi «rette» feil owner etter invitasjon/link. */
+    const claimingPrivateWithSessionOwner =
+      isPrivatePtRosterCustomerType(nextCustomerType) && Boolean(currentTrainerOwnerUserId.trim());
+
+    // Blokker kun når vi ikke kan tilordne raden til gjeldende trener-sesjon (annens privat kunde uten claim-path).
+    if (crossOwner && storedCustomerType !== "Medlem" && !claimingPrivateWithSessionOwner) {
       setMemberEditStatus("Denne kunden eies av en annen PT. Be eier-PT oppdatere medlemskapstype.");
-      return;
-    }
-    // Shared «Medlem» rows may sync profile fields, but converting someone else's roster semantics away from Medlem is blocked.
-    if (crossOwner && storedCustomerType === "Medlem" && nextCustomerType !== "Medlem") {
-      setMemberEditStatus(
-        "Kan ikke endre medlemstype på denne profilen — den tilhører en annen PT som PT-/oppfølgingskunde. La eier-PT gjøre det.",
-      );
       return;
     }
 
@@ -2295,19 +2296,28 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     }
     const previousEmail = selectedMember.email.trim().toLowerCase();
     const nextMembershipType = memberEditIsPremiumCustomer ? "Premium" : "Standard";
-    const uniqueTargetIds = filterMemberIdsForRosterSave({
-      memberRows: members.map((member) => ({
-        id: member.id,
-        email: member.email,
-        ownerUserId: member.ownerUserId,
-        customerType: member.customerType,
-      })),
-      previousEmail,
-      nextCustomerType,
-      currentTrainerOwnerUserId,
-      selectedMemberId: selectedMember.id,
-      selectedOwnerUserId,
-    });
+    const convertingSharedMedlemToPrivate =
+      storedCustomerType === "Medlem" && nextCustomerType !== "Medlem";
+    // Ved owner-konflikt: oppdater kun raden du ser på (invitasjon/feil owner_user_id), ikke flere e-posterader.
+    const narrowTargetsToSelectedOnly =
+      crossOwner &&
+      (convertingSharedMedlemToPrivate ||
+        (claimingPrivateWithSessionOwner && storedCustomerType !== "Medlem"));
+    const uniqueTargetIds = narrowTargetsToSelectedOnly
+      ? [selectedMember.id]
+      : filterMemberIdsForRosterSave({
+          memberRows: members.map((member) => ({
+            id: member.id,
+            email: member.email,
+            ownerUserId: member.ownerUserId,
+            customerType: member.customerType,
+          })),
+          previousEmail,
+          nextCustomerType,
+          currentTrainerOwnerUserId,
+          selectedMemberId: selectedMember.id,
+          selectedOwnerUserId,
+        });
     const assignOwnerToSession =
       isPrivatePtRosterCustomerType(nextCustomerType) && Boolean(currentTrainerOwnerUserId);
     const normalizedBirthDate = trimmedBirthDateDraft ? normalizeBirthDate(trimmedBirthDateDraft) : "";

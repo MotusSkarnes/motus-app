@@ -76,6 +76,48 @@ Deno.serve(async (req) => {
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
+  type ResolvedCandidate = {
+    id: string;
+    owner_user_id: string;
+    is_active: boolean | null;
+    created_at: string | null;
+    email: string;
+  };
+
+  const candidatesById = new Map<string, ResolvedCandidate>();
+
+  function upsertCandidate(row: MemberCandidate) {
+    const id = String(row.id ?? "").trim();
+    if (!id) return;
+    candidatesById.set(id, {
+      id,
+      owner_user_id: String(row.owner_user_id ?? "").trim(),
+      is_active: row.is_active ?? null,
+      created_at: row.created_at ?? null,
+      email: String(row.email ?? "").trim(),
+    });
+  }
+
+  // Trainer-invitasjon sender eksplisitt memberId — rad kan mangle i e-postsøk (case/varianter), men må likevel prioriteres.
+  if (memberId) {
+    const { data: idRow, error: idErr } = await adminClient
+      .from("members")
+      .select("id, owner_user_id, is_active, created_at, email")
+      .eq("id", memberId)
+      .maybeSingle();
+    if (idErr) {
+      return jsonResponse(500, { error: `Could not load member by id: ${idErr.message}` });
+    }
+    if (idRow) {
+      const typed = idRow as MemberCandidate;
+      const rowEmail = normalizeEmail(typed.email);
+      if (rowEmail && rowEmail !== email) {
+        return jsonResponse(409, { error: "memberId does not match the invited email" });
+      }
+      upsertCandidate(typed);
+    }
+  }
+
   const { data: memberRows, error: memberLookupError } = await adminClient
     .from("members")
     .select("id, owner_user_id, is_active, created_at, email")
@@ -83,15 +125,11 @@ Deno.serve(async (req) => {
   if (memberLookupError) {
     return jsonResponse(500, { error: `Could not resolve member by email: ${memberLookupError.message}` });
   }
-  const candidates = (memberRows ?? [])
-    .map((row) => ({
-      id: String((row as MemberCandidate).id ?? "").trim(),
-      owner_user_id: String((row as MemberCandidate).owner_user_id ?? "").trim(),
-      is_active: (row as MemberCandidate).is_active ?? null,
-      created_at: (row as MemberCandidate).created_at ?? null,
-      email: String((row as MemberCandidate).email ?? "").trim(),
-    }))
-    .filter((row) => row.id);
+  for (const row of memberRows ?? []) {
+    upsertCandidate(row as MemberCandidate);
+  }
+
+  let candidates = [...candidatesById.values()];
   if (!candidates.length) {
     const { data: allMembers, error: allMembersError } = await adminClient
       .from("members")
@@ -103,16 +141,9 @@ Deno.serve(async (req) => {
       const typed = row as MemberCandidate;
       const rowEmail = normalizeEmail(typed.email);
       if (rowEmail !== email) continue;
-      const id = String(typed.id ?? "").trim();
-      if (!id) continue;
-      candidates.push({
-        id,
-        owner_user_id: String(typed.owner_user_id ?? "").trim(),
-        is_active: typed.is_active ?? null,
-        created_at: typed.created_at ?? null,
-        email: String(typed.email ?? "").trim(),
-      });
+      upsertCandidate(typed);
     }
+    candidates = [...candidatesById.values()];
   }
   if (!candidates.length) {
     const { data: listData, error: listError } = await adminClient.auth.admin.listUsers({
@@ -151,7 +182,14 @@ Deno.serve(async (req) => {
     if (upsertError) {
       return jsonResponse(500, { error: `Could not create member row: ${upsertError.message}` });
     }
-    candidates.push({ id: fallbackId, owner_user_id: matchedUser.id, is_active: true, created_at: null });
+    upsertCandidate({
+      id: fallbackId,
+      owner_user_id: matchedUser.id,
+      is_active: true,
+      created_at: null,
+      email,
+    });
+    candidates = [...candidatesById.values()];
   }
 
   const candidateIds = candidates.map((row) => row.id);

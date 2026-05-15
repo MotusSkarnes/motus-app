@@ -16,5 +16,10 @@ export const configuredSupabaseProjectRef = (() => {
 })();
 
 export const supabaseClient = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        // Vi håndterer invite/recovery/magic-link selv i useAppState slik at brukeren først får passordskjerm (invite/recovery).
+        detectSessionInUrl: false,
+      },
+    })
   : null;

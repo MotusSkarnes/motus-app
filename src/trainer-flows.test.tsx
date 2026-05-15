@@ -24,7 +24,7 @@ describe("Trainer flows", () => {
     await user.click(screen.getAllByRole("button", { name: "Admin" })[0]);
     await user.type(screen.getByPlaceholderText("Navn"), "Ny Kunde");
     await user.type(screen.getByPlaceholderText("E-post"), "ny.kunde@example.com");
-    await user.click(screen.getByRole("button", { name: "Opprett medlem" }));
+    await user.click(screen.getByRole("button", { name: "Opprett kunde" }));
 
     expect(screen.getByPlaceholderText("Navn")).toHaveValue("");
     expect(screen.getByPlaceholderText("E-post")).toHaveValue("");

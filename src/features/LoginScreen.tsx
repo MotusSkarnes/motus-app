@@ -10,6 +10,8 @@ type LoginScreenProps = {
   onLogin: () => void | Promise<void>;
   loginError: string | null;
   isRecoveryMode: boolean;
+  /** Ekte invite-flow fra Supabase (samme passordskjerm som recovery, men annen tekst). */
+  recoveryInviteFlow?: boolean;
   recoveryPassword: string;
   setRecoveryPassword: (value: string) => void;
   recoveryPasswordConfirm: string;
@@ -40,6 +42,7 @@ export function LoginScreen(props: LoginScreenProps) {
     onLogin,
     loginError,
     isRecoveryMode,
+    recoveryInviteFlow = false,
     recoveryPassword,
     setRecoveryPassword,
     recoveryPasswordConfirm,
@@ -101,9 +104,15 @@ export function LoginScreen(props: LoginScreenProps) {
       <Card className="order-1 p-5 sm:p-8 xl:order-2">
         <div className="space-y-3 sm:space-y-4">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">{isRecoveryMode ? "Sett nytt passord" : "Innlogging"}</h2>
+            <h2 className="text-xl font-semibold tracking-tight">
+              {isRecoveryMode ? (recoveryInviteFlow ? "Aktiver kontoen din" : "Sett nytt passord") : "Innlogging"}
+            </h2>
             <p className="text-sm text-slate-500">
-              {isRecoveryMode ? "Recovery-lenken er aktiv. Velg et nytt passord." : "Logg inn med e-post og passord."}
+              {isRecoveryMode
+                ? recoveryInviteFlow
+                  ? "Du har åpnet invitasjonslenken. Opprett et passord som du logger inn med senere."
+                  : "Recovery-lenken er aktiv. Velg et nytt passord."
+                : "Logg inn med e-post og passord."}
             </p>
           </div>
           {isRecoveryMode ? (
