@@ -2530,13 +2530,14 @@ export function MemberPortal(props: MemberPortalProps) {
       }
 
       let shareCardLogo: HTMLImageElement | null = null;
+      const shareLogoSrc = `${motusSkrytekortLogo}${motusSkrytekortLogo.includes("?") ? "&" : "?"}motus_skrytekort=2026-02`;
       try {
         shareCardLogo = await new Promise<HTMLImageElement>((resolve, reject) => {
           const im = new Image();
           im.crossOrigin = "anonymous";
           im.onload = () => resolve(im);
           im.onerror = () => reject(new Error("logo"));
-          im.src = motusSkrytekortLogo;
+          im.src = shareLogoSrc;
         });
       } catch {
         shareCardLogo = null;
@@ -2735,13 +2736,13 @@ export function MemberPortal(props: MemberPortalProps) {
         return;
       }
 
-      const file = new File([blob], "motus-siste-7-dager.png", { type: "image/png" });
+      const file = new File([blob], "motus-skrytekort-siste-7-dager.png", { type: "image/png" });
       const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };
       const canShareFile = typeof nav.canShare === "function" ? nav.canShare({ files: [file] }) : false;
       if (typeof nav.share === "function" && canShareFile) {
         await nav.share({
-          title: "Min Motus-styrke",
-          text: "Se hva jeg har fått til denne måneden 💪",
+          title: "Min Motus-oppsummering",
+          text: "Siste 7 dager – se tallene mine 💪 #Motus",
           files: [file],
         });
         setProgressShareStatus("Kort delt.");
@@ -2751,7 +2752,7 @@ export function MemberPortal(props: MemberPortalProps) {
       const imageUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = imageUrl;
-      link.download = "motus-denne-maneden.png";
+      link.download = "motus-skrytekort-siste-7-dager.png";
       link.click();
       URL.revokeObjectURL(imageUrl);
       setProgressShareStatus("Bilde lastet ned. Del det fra galleriet.");
