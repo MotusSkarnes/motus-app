@@ -2571,7 +2571,7 @@ export function MemberPortal(props: MemberPortalProps) {
       context.fillText(displayName, 72, 255);
       context.font = "26px system-ui, -apple-system, Segoe UI, sans-serif";
       context.globalAlpha = 0.88;
-      context.fillText("Skrytekort · mine siste 7 dager", 72, 318);
+      context.fillText("Ukesoppsummering · mine siste 7 dager", 72, 318);
       context.globalAlpha = 1;
 
       if (shareCardLogo && shareCardLogo.naturalWidth > 0) {
@@ -2667,7 +2667,7 @@ export function MemberPortal(props: MemberPortalProps) {
       }
       context.fillStyle = MOTUS.ink;
       context.font = "bold 24px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Skrytefakta", cardX + pad + 24, y + 42);
+      context.fillText("Løftefakta", cardX + pad + 24, y + 42);
       context.fillStyle = "#475569";
       context.font = "24px system-ui, -apple-system, Segoe UI, sans-serif";
       fillWrappedCanvasText(
@@ -2734,7 +2734,7 @@ export function MemberPortal(props: MemberPortalProps) {
           text: "Se hva jeg har fått til denne måneden 💪",
           files: [file],
         });
-        setProgressShareStatus("Skrytekort delt.");
+        setProgressShareStatus("Kort delt.");
         return;
       }
 
@@ -5494,15 +5494,15 @@ export function MemberPortal(props: MemberPortalProps) {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white ring-1 ring-white/30 backdrop-blur-sm">
                           <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                          Skrytekort
+                          Ukesoppsummering
                         </span>
                         <span className="rounded-full bg-black/15 px-2.5 py-0.5 text-xs font-medium text-white/90">9:16 · PNG</span>
                       </div>
 
                       <div>
-                        <h3 className="text-xl font-bold tracking-tight text-white drop-shadow-sm sm:text-2xl">Skrytekort til Facebook</h3>
+                        <h3 className="text-xl font-bold tracking-tight text-white drop-shadow-sm sm:text-2xl">Ukesoppsummering til Facebook</h3>
                         <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-white/88">
-                          Siste 7 dager — bilde med mine tall og korte «jeg har …»-fakta, klart å lime inn i et innlegg.
+                          Siste 7 dager — et delbart kort med mine tall og løftefakta, laget for treningsfeed.
                         </p>
                       </div>
 
@@ -5524,7 +5524,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       </div>
 
                       <div className="rounded-xl border border-white/15 bg-white/10 px-3 py-3 text-left shadow-sm backdrop-blur-md">
-                        <div className="text-[11px] font-semibold uppercase tracking-wide text-white/75">Skrytefakta</div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-white/75">Løftefakta</div>
                         <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-white/92">{progressLiftPlayfulLine}</p>
                       </div>
 
