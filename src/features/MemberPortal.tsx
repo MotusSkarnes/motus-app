@@ -1,13 +1,13 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
-  CalendarDays,
+  CalendarRange,
   ClipboardList,
   Dumbbell,
   Eye,
   EyeOff,
-  FileStack,
   History,
+  Layers,
   MessageSquare,
   Plus,
   Play,
@@ -4385,7 +4385,7 @@ export function MemberPortal(props: MemberPortalProps) {
               ) : null}
               <Card className="p-4 sm:p-5">
               <div className="flex items-start gap-3">
-                <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><ClipboardList className="h-5 w-5" /></div>
+                <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Layers className="h-5 w-5" aria-hidden /></div>
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight">Mine programmer</h2>
                   <p className="text-sm text-slate-500">Enkel oversikt</p>
@@ -4397,7 +4397,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     className="rounded-xl p-2 text-white shadow-sm"
                     style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
                   >
-                    <FileStack className="h-4 w-4" />
+                    <Dumbbell className="h-4 w-4" aria-hidden />
                   </div>
                   <div className="text-sm font-semibold text-slate-800">Mine treningsprogram</div>
                 </div>
@@ -4687,7 +4687,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       className="shrink-0 rounded-xl p-2 text-white shadow-sm"
                       style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
                     >
-                      <CalendarDays className="h-4 w-4" />
+                      <CalendarRange className="h-4 w-4" aria-hidden />
                     </div>
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-slate-800">Periodeplan fra PT</div>
