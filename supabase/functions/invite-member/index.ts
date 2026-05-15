@@ -152,5 +152,16 @@ Deno.serve(async (req) => {
   const msg = inviteData?.user?.id
     ? `Invitasjon sendt til ${email}. Lenken peker til ${trimSlash(redirect.redirectTo)}/`
     : `Invitasjon prosessert for ${email}`;
-  return jsonResponse(200, { message: msg, redirectTo: redirect.redirectTo });
+
+  const invitedAtIso = new Date().toISOString();
+  const { error: stampErr } = await adminClient.from("members").update({ invited_at: invitedAtIso }).eq("id", memberId);
+  if (stampErr) {
+    console.warn("invite-member: kunne ikke sette invited_at på members-rad:", stampErr.message);
+  }
+
+  return jsonResponse(200, {
+    message: msg,
+    redirectTo: redirect.redirectTo,
+    invitedAt: invitedAtIso,
+  });
 });

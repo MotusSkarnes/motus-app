@@ -875,8 +875,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         if (customerTypeFilter === "Premium-kunde" && member.membershipType !== "Premium") return false;
         if (customerTypeFilter === "Medlem" && member.customerType !== "Medlem") return false;
         if (memberFilter === "followUp") return Number(member.daysSinceActivity || "0") >= 7;
-        if (memberFilter === "invited") return Boolean(member.invitedAt);
-        if (memberFilter === "notInvited") return !member.invitedAt;
+      if (memberFilter === "invited") return Boolean(member.invitedAt?.trim());
+      if (memberFilter === "notInvited") return !member.invitedAt?.trim();
         return true;
       });
   }, [visibleMembers, memberSearch, memberFilter, customerTypeFilter]);
@@ -901,8 +901,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       const aActive = a.isActive !== false ? 1 : 0;
       const bActive = b.isActive !== false ? 1 : 0;
       if (aActive !== bActive) return bActive - aActive;
-      const aInvited = a.invitedAt ? 1 : 0;
-      const bInvited = b.invitedAt ? 1 : 0;
+      const aInvited = a.invitedAt?.trim() ? 1 : 0;
+      const bInvited = b.invitedAt?.trim() ? 1 : 0;
       return aInvited - bInvited;
     })[0] ?? null;
   }, [members, currentTrainerOwnerUserId]);
@@ -1391,7 +1391,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       try {
         const result = await inviteMember(createdMember.email.toLowerCase(), createdMember.id);
         if (result.ok) {
-          markMemberInvited(createdMember.id, new Date().toISOString());
+          markMemberInvited(createdMember.id, result.invitedAtIso ?? new Date().toISOString());
         }
         setInviteStatus(result.message);
         setTrainerTab("customers");
@@ -1503,10 +1503,14 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   }, [isEditingCustomerCard, selectedMemberId, members, setSelectedMemberId]);
 
   function formatInvitedAt(iso: string): string {
-    if (!iso) return "";
+    if (!iso.trim()) return "";
     const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) return "";
-    return formatDateDdMmYyyy(date);
+    if (Number.isNaN(date.getTime())) return iso.trim();
+    try {
+      return new Intl.DateTimeFormat("nb-NO", { dateStyle: "short", timeStyle: "short" }).format(date);
+    } catch {
+      return iso.trim();
+    }
   }
 
   async function readFileAsDataUrl(file: File): Promise<string> {
@@ -2537,7 +2541,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     try {
       const result = await inviteMember(email, selectedMember.id);
       if (result.ok) {
-        markMemberInvited(selectedMember.id, new Date().toISOString());
+        markMemberInvited(selectedMember.id, result.invitedAtIso ?? new Date().toISOString());
       }
       setInviteStatus(result.message);
     } finally {
@@ -3966,7 +3970,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         Sist trening: {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}
                       </div>
                       <div className="mt-1 text-xs text-white/80">
-                        {selectedMember.invitedAt ? `Invitert: ${formatInvitedAt(selectedMember.invitedAt)}` : "Ikke invitert enda"}
+                        {selectedMember.invitedAt?.trim()
+                          ? `Invitert ${formatInvitedAt(selectedMember.invitedAt)}`
+                          : "Ikke invitert ennå"}
                       </div>
                     </>
                   )}

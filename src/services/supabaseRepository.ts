@@ -783,6 +783,7 @@ async function persistMember(member: Member) {
       avatarUrl: member.avatarUrl ?? "",
       membershipType: member.membershipType,
       customerType: member.customerType,
+      ...(member.invitedAt?.trim() ? { invitedAt: member.invitedAt.trim() } : {}),
     },
   };
   const {

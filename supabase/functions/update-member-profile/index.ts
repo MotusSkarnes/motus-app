@@ -25,6 +25,8 @@ type UpdatePayload = {
     /** Trainer-only; applied server-side only when JWT role is trainer */
     membershipType?: string;
     customerType?: string;
+    /** ISO 8601 — trener setter invitasjonstidspunkt */
+    invitedAt?: string;
   };
 };
 
@@ -154,6 +156,10 @@ Deno.serve(async (req) => {
       const ct = normalizeString(changes.customerType);
       const allowedCustomer = new Set(["PT-kunde", "Medlem", "Oppfølging", "Egentrening"]);
       if (allowedCustomer.has(ct)) updateFields.customer_type = ct;
+    }
+    if (changes.invitedAt !== undefined) {
+      const iso = normalizeString(changes.invitedAt);
+      if (iso) updateFields.invited_at = iso;
     }
   }
 

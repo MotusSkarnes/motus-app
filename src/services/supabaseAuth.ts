@@ -235,12 +235,21 @@ export async function requestPasswordRecovery(email: string): Promise<{ ok: bool
 export type InviteMemberResult = {
   ok: boolean;
   message: string;
+  /** Fyllt når invite-member har stemplet invited_at (ISO 8601). */
+  invitedAtIso?: string;
 };
 
 export type InviteTrainerResult = {
   ok: boolean;
   message: string;
 };
+
+function inviteMemberIsoTimestamp(data: unknown): string | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  const raw = (data as { invitedAt?: unknown }).invitedAt;
+  if (typeof raw !== "string" || !raw.trim()) return undefined;
+  return raw.trim();
+}
 
 const MEMBER_INVITE_COOLDOWN_MS = 60_000;
 const memberInviteInFlightByKey = new Map<string, Promise<InviteMemberResult>>();
@@ -367,12 +376,13 @@ async function sendMemberInviteByEmail(email: string, memberId: string): Promise
       },
     });
     if (!error) {
+      const stamp = inviteMemberIsoTimestamp(data);
       if (data && typeof data === "object" && "message" in data && typeof data.message === "string") {
         await syncMemberAuthLink(normalizedEmail, memberId.trim());
-        return { ok: true, message: data.message };
+        return stamp ? { ok: true, message: data.message, invitedAtIso: stamp } : { ok: true, message: data.message };
       }
       await syncMemberAuthLink(normalizedEmail, memberId.trim());
-      return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}` };
+      return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}`, ...(stamp ? { invitedAtIso: stamp } : {}) };
     }
     const functionErrorMessage = await extractFunctionErrorMessage(error);
     if (functionErrorMessage && isRateLimitMessage(functionErrorMessage)) {
@@ -464,7 +474,8 @@ async function sendMemberInviteByEmail(email: string, memberId: string): Promise
 
   if (data && typeof data === "object" && "message" in data && typeof data.message === "string") {
     await syncMemberAuthLink(normalizedEmail, memberId.trim());
-    return { ok: true, message: data.message };
+    const stamp = inviteMemberIsoTimestamp(data);
+    return stamp ? { ok: true, message: data.message, invitedAtIso: stamp } : { ok: true, message: data.message };
   }
 
   await syncMemberAuthLink(normalizedEmail, memberId.trim());

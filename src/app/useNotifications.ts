@@ -120,7 +120,7 @@ export function useNotifications({
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
 
   const missingInviteMemberIds = useMemo(
-    () => members.filter((member) => !member.invitedAt).map((member) => member.id).sort(),
+    () => members.filter((member) => !member.invitedAt?.trim()).map((member) => member.id).sort(),
     [members],
   );
   const inactiveMemberIds = useMemo(
