@@ -450,27 +450,27 @@ function buildProgressLiftPlayfulLineFromKg(weekKg: number, monthKg: number): st
   const lineFor = (kg: number, periodWhen: string): string | null => {
     if (!Number.isFinite(kg) || kg < 1) return null;
     if (kg >= 5500) {
-      return `${periodWhen} har jeg løftet ca. ${fmt(kg)} kg totalt (vekt � reps) � grovt i samme gate som massen til en afrikansk elefant. Skryt lov! 🐘`;
+      return `${periodWhen} har jeg løftet ca. ${fmt(kg)} kg totalt (vekt × reps) — grovt i samme gate som massen til en afrikansk elefant. Skryt lov! 🐘`;
     }
     if (kg >= 3200) {
-      return `${periodWhen} har jeg flyttet ca. ${fmt(kg)} kg med stanga � omtrent som ei lita elbil i masse, fordelt p� mange reps. Tag en venn! 🚗`;
+      return `${periodWhen} har jeg flyttet ca. ${fmt(kg)} kg med stanga — omtrent som ei lita elbil i masse, fordelt på mange reps. Tag en venn! 🚗`;
     }
     if (kg >= 1600) {
-      return `${periodWhen} har jeg logget ca. ${fmt(kg)} kg i volum � som � l�fte et flygel mange ganger (ca. 300 kg per piano). 🎹`;
+      return `${periodWhen} har jeg logget ca. ${fmt(kg)} kg i volum — som å løfte et flygel mange ganger (ca. 300 kg per piano). 🎹`;
     }
     if (kg >= 700) {
-      return `${periodWhen} har jeg presset gjennom ca. ${fmt(kg)} kg i vekt � reps � omtrent som flere voksne summet. Klart for feed! 🙌`;
+      return `${periodWhen} har jeg presset gjennom ca. ${fmt(kg)} kg i vekt × reps — omtrent som flere voksne summet. Klart for feed! 🙌`;
     }
     if (kg >= 250) {
       const people = Math.max(2, Math.round(kg / 72));
-      return `${periodWhen} har jeg samlet ca. ${fmt(kg)} kg — grovt som å bære ${people} voksne samtidig � i l�ft-ekvivalent. 💪`;
+      return `${periodWhen} har jeg samlet ca. ${fmt(kg)} kg — grovt som å bære ${people} voksne samtidig — i løft-ekvivalent. 💪`;
     }
     if (kg >= 60) {
       const melons = Math.max(6, Math.round(kg / 8));
       return `${periodWhen} ble det ca. ${fmt(kg)} kg for meg — omtrent like tungt som ${melons} store vannmeloner. Del gjerne! 🍉`;
     }
     if (kg >= 15) {
-      return `${periodWhen} har jeg logget ca. ${fmt(kg)} kg i stramme vektrep � nok til at en golden retriever hadde blitt imponert. 🐕`;
+      return `${periodWhen} har jeg logget ca. ${fmt(kg)} kg i stramme vekt × reps — nok til at en golden retriever hadde blitt imponert. 🐕`;
     }
     return `${periodWhen} har jeg logget ca. ${fmt(kg)} kg i vekt × reps — små tall som blir store når jeg holder på. ✨`;
   };
@@ -2556,7 +2556,7 @@ export function MemberPortal(props: MemberPortalProps) {
       if (typeof nav.share === "function" && canShareFile) {
         await nav.share({
           title: "Min Motus-styrke",
-          text: "Se hva jeg har f�tt til denne m�neden 💪",
+          text: "Se hva jeg har fått til denne måneden 💪",
           files: [file],
         });
         setProgressShareStatus("Skrytekort delt.");
@@ -3869,7 +3869,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       {streakChallenges.month.current}/{streakChallenges.month.target} økter denne måneden
                     </div>
                     <div className="mt-1 text-xs text-slate-500">
-                      {streakChallenges.month.unlocked ? "M�l n�dd 🎉" : "Bygg jevnt videre mot månedsmålet"}
+                      {streakChallenges.month.unlocked ? "Mål nådd 🎉" : "Bygg jevnt videre mot månedsmålet"}
                     </div>
                   </div>
                 </div>
@@ -4029,7 +4029,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Øvelsesbank</div>
                     <p className="mt-1 text-sm text-slate-600">Søk eller filtrer, scroll i listen, trykk «Legg til».</p>
                     <div className="relative mt-3">
-                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+                      <Search className="pointer-events-none absolute løft-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
                       <TextInput
                         value={customWorkoutSearch}
                         onChange={(e) => setCustomWorkoutSearch(e.target.value)}
@@ -5259,8 +5259,8 @@ export function MemberPortal(props: MemberPortalProps) {
                   aria-hidden
                 />
                 <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-white/15 blur-3xl" aria-hidden />
-                <div className="pointer-events-none absolute -bottom-24 -left-16 h-64 w-64 rounded-full bg-cyan-200/20 blur-3xl" aria-hidden />
-                <div className="pointer-events-none absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/5 blur-3xl" aria-hidden />
+                <div className="pointer-events-none absolute -bottom-24 -løft-16 h-64 w-64 rounded-full bg-cyan-200/20 blur-3xl" aria-hidden />
+                <div className="pointer-events-none absolute løft-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/5 blur-3xl" aria-hidden />
 
                 <div className="relative p-5 sm:p-6">
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
