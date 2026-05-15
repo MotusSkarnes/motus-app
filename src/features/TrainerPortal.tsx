@@ -4174,9 +4174,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                                     aria-pressed={marked}
                                   >
                                     <span className="block font-semibold">Uke {week.weekNumber}</span>
-                                    <span className={`mt-1 block text-[11px] ${marked ? "text-white/80" : "text-slate-500"}`}>
-                                      {marked ? "Gradient-merket" : "Egen ukeplan"} · {plannedDays} planlagte dager
-                                    </span>
                                   </button>
                                 );
                               })}
