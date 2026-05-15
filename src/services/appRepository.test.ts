@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { AppState } from "../app/types";
-import { finishWorkoutModeInState, removeWorkoutLogResultInState, setWorkoutLogResultsInState } from "./appRepository";
+import {
+  finishWorkoutModeInState,
+  removeGroupWorkoutLogInState,
+  removeWorkoutLogResultInState,
+  setWorkoutLogResultsInState,
+} from "./appRepository";
 
 function createBaseState(): AppState {
   return {
@@ -150,5 +155,42 @@ describe("appRepository workout log guards", () => {
     });
     expect(next.logs[0].results?.[0].performedWeight).toBe("65");
     expect(next.logs[0].results?.[0].performedReps).toBe("6");
+  });
+
+  it("does not delete group workout logs without an exact date", () => {
+    const state = createBaseState();
+    state.logs = [
+      {
+        id: "log-1",
+        memberId: "member-1",
+        programTitle: "Gruppetime: Smilepuls",
+        date: "24.04.2026",
+        status: "Fullført",
+        note: "",
+        results: [],
+      },
+      {
+        id: "log-2",
+        memberId: "member-1",
+        programTitle: "Gruppetime: Smilepuls",
+        date: "25.04.2026",
+        status: "Fullført",
+        note: "",
+        results: [],
+      },
+    ];
+
+    const unchanged = removeGroupWorkoutLogInState(state, {
+      memberId: "member-1",
+      className: "Smilepuls",
+    });
+    expect(unchanged.logs).toHaveLength(2);
+
+    const next = removeGroupWorkoutLogInState(state, {
+      memberId: "member-1",
+      className: "Smilepuls",
+      date: "24.04.2026",
+    });
+    expect(next.logs.map((log) => log.id)).toEqual(["log-2"]);
   });
 });

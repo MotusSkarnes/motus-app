@@ -1178,16 +1178,13 @@ async function deleteGroupWorkoutLogs(input: RemoveGroupWorkoutLogInput) {
   const memberId = input.memberId.trim();
   const className = input.className.trim();
   const date = input.date?.trim() ?? "";
-  if (!memberId || !className) return;
-  let query = supabaseClient
+  if (!memberId || !className || !date) return;
+  const { error } = await supabaseClient
     .from("workout_logs")
     .delete()
     .eq("member_id", memberId)
-    .eq("program_title", `Gruppetime: ${className}`);
-  if (date) {
-    query = query.eq("date", date);
-  }
-  const { error } = await query;
+    .eq("program_title", `Gruppetime: ${className}`)
+    .eq("date", date);
   if (error) {
     console.warn("Supabase group workout log delete failed:", error.message);
   }

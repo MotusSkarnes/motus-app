@@ -543,14 +543,14 @@ export function removeGroupWorkoutLogInState(state: AppState, input: RemoveGroup
   const memberId = input.memberId.trim();
   const className = input.className.trim();
   const date = input.date?.trim() ?? "";
-  if (!memberId || !className) return state;
+  if (!memberId || !className || !date) return state;
   const normalizedTitle = `Gruppetime: ${className}`.trim().toLowerCase();
   return {
     ...state,
     logs: state.logs.filter((log) => {
       if (log.memberId !== memberId) return true;
       if (log.programTitle.trim().toLowerCase() !== normalizedTitle) return true;
-      if (date && log.date.trim() !== date) return true;
+      if (log.date.trim() !== date) return true;
       return false;
     }),
   };

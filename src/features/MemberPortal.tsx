@@ -3137,10 +3137,11 @@ export function MemberPortal(props: MemberPortalProps) {
       return;
     }
     if (activeMemberId) {
+      const logDate = input.plannedDate?.trim() || formatDateDdMmYyyy(new Date());
       removeGroupWorkoutLog({
         memberId: activeMemberId,
         className: input.entry.trim(),
-        date: input.plannedDate ?? undefined,
+        date: logDate,
       });
     }
     periodPlanCompletedDirtyRef.current = true;
