@@ -662,12 +662,12 @@ type IntervalTimerStep = {
   tone: "warmup" | "work" | "rest" | "cooldown";
 };
 
-function computeIntervalPhaseBadge(tone: IntervalTimerStep["tone"], exerciseNameForBadge: string): string {
+function computeIntervalPhaseBadge(tone: IntervalTimerStep["tone"], headlineForBadge: string): string {
   if (tone === "warmup") return "Oppvarming";
   if (tone === "cooldown") return "Nedjogg";
   if (tone === "rest") return "Pause";
-  const lower = exerciseNameForBadge.trim().toLowerCase();
-  if (/\bdrag\b/.test(lower)) return "Drag";
+  const lower = headlineForBadge.trim().toLowerCase();
+  if (lower.startsWith("drag")) return "Drag";
   if (lower.includes("tempo")) return "Tempo";
   if (lower.includes("tabata")) return "Tabata";
   return "Intervall";
@@ -1176,7 +1176,14 @@ export function MemberPortal(props: MemberPortalProps) {
   );
   const intervalProgramSteps = useMemo(() => {
     if (!activeIntervalProgram) return [] as IntervalTimerStep[];
-    return activeIntervalProgram.exercises.flatMap((exercise, index) => {
+    const programTitle = activeIntervalProgram.title;
+    const steps: IntervalTimerStep[] = [];
+    let workOrdinal = 0;
+    let dragOrdinal = 0;
+    let lastWorkHeadline = "";
+
+    for (let index = 0; index < activeIntervalProgram.exercises.length; index++) {
+      const exercise = activeIntervalProgram.exercises[index];
       const workDurationSeconds = Math.max(0, Math.round((Number(exercise.durationMinutes) || 0) * 60));
       const rawRestStr = String(exercise.restSeconds ?? "").trim();
       const rawRestParsed = rawRestStr === "" ? NaN : Number(rawRestStr);
@@ -1185,13 +1192,33 @@ export function MemberPortal(props: MemberPortalProps) {
         rawRestValue > 0 && rawRestValue <= 15
           ? Math.round(rawRestValue * 60)
           : Math.round(rawRestValue);
-      const steps: IntervalTimerStep[] = [];
+
       if (workDurationSeconds > 0) {
         const lowerName = exercise.exerciseName.toLowerCase();
         const tone: IntervalTimerStep["tone"] =
           lowerName.includes("oppvarm") ? "warmup" : lowerName.includes("nedjogg") ? "cooldown" : "work";
-        const nameTrimmed = exercise.exerciseName.trim();
-        const headline = nameTrimmed || `Intervall ${index + 1}`;
+        const isDragSlot =
+          tone === "work" &&
+          !lowerName.includes("tempo") &&
+          !lowerName.includes("tabata") &&
+          (/\bdrag\b/i.test(exercise.exerciseName) ||
+            /\bintervall\b/i.test(exercise.exerciseName) ||
+            /4x4/i.test(programTitle));
+
+        let headline: string;
+        if (tone === "warmup") headline = "Oppvarming";
+        else if (tone === "cooldown") headline = "Nedjogg";
+        else if (tone === "work") {
+          workOrdinal += 1;
+          if (lowerName.includes("tabata")) headline = `Tabata ${workOrdinal}`;
+          else if (lowerName.includes("tempo")) headline = `Tempo ${workOrdinal}`;
+          else if (isDragSlot) {
+            dragOrdinal += 1;
+            headline = `Drag ${dragOrdinal}`;
+          } else headline = `Intervall ${workOrdinal}`;
+        } else headline = exercise.exerciseName.trim() || `Intervall ${index + 1}`;
+
+        lastWorkHeadline = headline;
         steps.push({
           headline,
           phaseBadge: computeIntervalPhaseBadge(tone, headline),
@@ -1203,17 +1230,18 @@ export function MemberPortal(props: MemberPortalProps) {
           tone,
         });
       }
-      const isClassic4x4Drag = /4x4/i.test(activeIntervalProgram.title) && /drag/i.test(exercise.exerciseName);
+
+      const isClassic4x4Drag = /4x4/i.test(programTitle) && /drag/i.test(exercise.exerciseName);
       // Eksplisitt "0" = ingen pause (trengs etter siste drag før nedjogg). Tom streng = eldre programmer uten hvilefelt → behold 4×4-fallback.
       const legacy4x4DragPauseSeconds = rawRestStr === "" && isClassic4x4Drag ? 180 : 0;
       const restDurationSeconds = normalizedRestSeconds > 0 ? normalizedRestSeconds : legacy4x4DragPauseSeconds;
       if (restDurationSeconds > 0 && index < activeIntervalProgram.exercises.length - 1) {
-        const prevName = exercise.exerciseName.trim() || `Intervall ${index + 1}`;
+        const afterLabel = lastWorkHeadline || exercise.exerciseName.trim() || `Steg ${index + 1}`;
         steps.push({
           headline: "Pause",
           phaseBadge: "Pause",
-          afterExerciseName: prevName,
-          label: `Pause etter ${prevName}`,
+          afterExerciseName: afterLabel,
+          label: `Pause etter ${afterLabel}`,
           durationSeconds: restDurationSeconds,
           speedHint: "Rolig",
           inclineHint: "0–1%",
@@ -1221,8 +1249,9 @@ export function MemberPortal(props: MemberPortalProps) {
           tone: "rest",
         });
       }
-      return steps;
-    });
+    }
+
+    return steps;
   }, [activeIntervalProgram]);
   const currentIntervalProgramStep = intervalProgramSteps[intervalTimerStepIndex] ?? null;
   const intervalTimerTotalSeconds = useMemo(
