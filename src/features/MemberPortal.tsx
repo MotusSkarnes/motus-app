@@ -5212,7 +5212,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><MessageSquare className="h-5 w-5" /></div>
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight">Meldinger</h2>
-                  <p className="text-sm text-slate-500">Enkel chat</p>
                 </div>
               </div>
               <div className="mt-5 space-y-4">
