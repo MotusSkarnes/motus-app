@@ -480,6 +480,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const manualInviteSendKeyRef = useRef("");
   const lastTrainerSendKeyRef = useRef<string>("");
   const lastTrainerSendAtRef = useRef<number>(0);
+  const trainerMessagesContainerRef = useRef<HTMLDivElement | null>(null);
   const trainerSendAttemptRef = useRef(0);
   const [trainerChatSendStatus, setTrainerChatSendStatus] = useState<string | null>(null);
   const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
@@ -1045,13 +1046,19 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         bySignature.set(signature, message);
       }
     });
-    return Array.from(bySignature.values()).sort((a, b) => parseChatCreatedAtMs(b.createdAt) - parseChatCreatedAtMs(a.createdAt));
+    return Array.from(bySignature.values()).sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
   }, [messages, selectedMemberRelatedIdSet, members, selectedMemberId, memberById]);
   const selectedMemberFollowUpLog = useMemo(
     () => mergeFollowUpEntriesForMemberIds(selectedMemberRelatedIds, followUpDetailsByMemberId),
     [selectedMemberRelatedIds, followUpDetailsByMemberId]
   );
   const latestCompletedLog = selectedLogs.find((log) => log.status === "Fullført") ?? null;
+  useEffect(() => {
+    if (customerSubTab !== "messages") return;
+    const container = trainerMessagesContainerRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
+  }, [customerSubTab, selectedMessages.length]);
   const filteredWorkoutLogs = useMemo(() => {
     const now = Date.now();
     const query = workoutSearchQuery.trim().toLowerCase();
@@ -4553,7 +4560,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       </div>
                     ) : (
                       <>
-                    <div className="max-h-[min(52vh,420px)] space-y-3 overflow-auto rounded-xl border bg-white p-3 sm:p-4">
+                    <div ref={trainerMessagesContainerRef} className="max-h-[min(52vh,420px)] space-y-3 overflow-auto rounded-xl border bg-white p-3 sm:p-4">
                       {selectedMessages.length === 0 ? (
                         <EmptyState
                           icon="💬"
@@ -4578,7 +4585,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                             {showDateDivider ? (
                               <div className="my-2 text-center text-[11px] font-medium text-slate-400">{dateKey}</div>
                             ) : null}
-                            <div className={`max-w-[88%] rounded-xl p-3 text-sm ${message.id === selectedMessages[0]?.id ? "motus-fade-in-up" : ""} ${message.sender === "trainer" ? "ml-auto border border-transparent text-white" : "border bg-slate-50 text-slate-700"}`} style={message.sender === "trainer" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
+                            <div className={`max-w-[88%] rounded-xl p-3 text-sm ${message.id === selectedMessages[selectedMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "trainer" ? "ml-auto border border-transparent text-white" : "border bg-slate-50 text-slate-700"}`} style={message.sender === "trainer" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
                               <div>{message.text}</div>
                               <div className={`mt-1 text-[11px] ${message.sender === "trainer" ? "text-white/80" : "text-slate-500"}`}>{message.createdAt}</div>
                             </div>
