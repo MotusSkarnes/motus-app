@@ -19,7 +19,6 @@ import {
   Users,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
-import motusLogo from "../assets/motus-logo.png";
 import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
@@ -3239,8 +3238,8 @@ export function MemberPortal(props: MemberPortalProps) {
     .page { padding: 10px; max-width: 940px; margin: 0 auto; }
     .header-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; border-radius: 10px; padding: 8px 10px; background: linear-gradient(135deg, #14b8a6 0%, #ec4899 100%); color: #fff; }
     .header-main { min-width: 0; padding-top: 1px; }
-    .brand-logo-frame { display: inline-flex; align-items: center; flex-shrink: 0; border-radius: 9px; background: rgba(255,255,255,0.96); padding: 4px 8px; box-shadow: 0 4px 14px rgba(15,23,42,0.14); }
-    .brand-logo { height: 48px; width: auto; max-width: 160px; object-fit: contain; display: block; }
+    .brand-logo-frame { display: inline-flex; align-items: center; flex-shrink: 0; padding: 0; background: transparent; box-shadow: none; }
+    .brand-logo { height: 56px; width: auto; max-width: 208px; object-fit: contain; display: block; }
     h1 { margin: 0 0 3px; font-size: 22px; line-height: 1.08; }
     .meta { color: rgba(255,255,255,0.9); font-size: 12px; }
     .meta-line { color: rgba(255,255,255,0.95); font-size: 12px; margin-top: 1px; }
@@ -3274,7 +3273,7 @@ export function MemberPortal(props: MemberPortalProps) {
         <div class="meta-line">Av: ${escapeHtml(trainerLabel)} · Til: ${escapeHtml(recipientName)}</div>
       </div>
       <div>
-        <div class="brand-logo-frame"><img src="${escapeHtml(motusLogo)}" alt="Motus logo" class="brand-logo" /></div>
+        <div class="brand-logo-frame"><img src="${escapeHtml(motusSkrytekortLogo)}" alt="Motus logo" class="brand-logo" /></div>
       </div>
     </div>
     ${
