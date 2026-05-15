@@ -1195,8 +1195,16 @@ export function MemberPortal(props: MemberPortalProps) {
 
       if (workDurationSeconds > 0) {
         const lowerName = exercise.exerciseName.toLowerCase();
-        const tone: IntervalTimerStep["tone"] =
+        let tone: IntervalTimerStep["tone"] =
           lowerName.includes("oppvarm") ? "warmup" : lowerName.includes("nedjogg") ? "cooldown" : "work";
+        const nameImpliesExplicitWorkSegment =
+          /\bdrag\b/i.test(exercise.exerciseName) ||
+          lowerName.includes("tempo") ||
+          lowerName.includes("tabata");
+        // Første blokk bruker ofte samme biblioteksnavn som intervallene (f.eks. «Mølle intervall» uten «oppvarm»).
+        if (index === 0 && tone === "work" && !nameImpliesExplicitWorkSegment) {
+          tone = "warmup";
+        }
         const isDragSlot =
           tone === "work" &&
           !lowerName.includes("tempo") &&
