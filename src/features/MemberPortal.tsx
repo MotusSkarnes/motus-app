@@ -1,18 +1,24 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Archive,
   CalendarDays,
   ClipboardList,
   Dumbbell,
+  Eye,
+  EyeOff,
   FileStack,
   History,
   MessageSquare,
   Plus,
+  Play,
+  Printer,
   Repeat2,
   Search,
   Share2,
   Sparkles,
   Star,
   Target,
+  Trash2,
   TrendingUp,
   Trophy,
   UserCircle2,
@@ -65,7 +71,7 @@ function inferStatusTone(message: string): "success" | "error" | "info" {
     normalized.includes("oppdatert") ||
     normalized.includes("slettet") ||
     normalized.includes("aktivert") ||
-    normalized.includes("slått på")
+    normalized.includes("slÃ¥tt pÃ¥")
   ) {
     return "success";
   }
@@ -76,7 +82,7 @@ type MemberPortalProps = {
   members: Member[];
   currentUserRole: "trainer" | "member";
   currentUserEmail: string;
-  /** Supabase auth user id — programs/logs sometimes use this as member_id instead of members.id */
+  /** Supabase auth user id â€” programs/logs sometimes use this as member_id instead of members.id */
   currentUserSupabaseId?: string;
   currentUserMemberId?: string;
   programs: TrainingProgram[];
@@ -113,7 +119,7 @@ type MemberPortalProps = {
   dismissWorkoutCelebration: () => void;
   /** Periodeplaner fra Supabase (hydrate-member-data). */
   remoteMemberPeriodPlanRows?: Array<{ memberId: string; plan: PeriodSchedulePlan }>;
-  /** Etter lagring: kjør hydrate fra Supabase (persist er asynk) */
+  /** Etter lagring: kjÃ¸r hydrate fra Supabase (persist er asynk) */
   refreshRemoteHydration?: () => void | Promise<void>;
 };
 
@@ -154,7 +160,7 @@ function dedupeTrainingPrograms(programs: TrainingProgram[]): TrainingProgram[] 
   return Array.from(uniqueByFingerprint.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-/** Stored in members.personal_goals so økt/skritt/mål synkes på tvers av enheter. */
+/** Stored in members.personal_goals so Ã¸kt/skritt/mÃ¥l synkes pÃ¥ tvers av enheter. */
 const PROFILE_METRICS_PREFIX = "MOTUS_PROFILE_V1:";
 
 type ProfileMetricsDraft = {
@@ -235,7 +241,7 @@ function decodeMemberProfileMetrics(personalGoals: string | undefined): ProfileM
   };
 }
 
-/** Same canonical choice as useAppState.resolveMemberViewIdForUser — avoids feil rad ved duplikat-e-post. */
+/** Same canonical choice as useAppState.resolveMemberViewIdForUser â€” avoids feil rad ved duplikat-e-post. */
 function pickCanonicalMemberRow(
   emailNormalized: string,
   membersList: Member[],
@@ -367,7 +373,7 @@ function parseChatCreatedAtMs(value: string): number {
 }
 
 function formatLoggedResultTitle(result: NonNullable<WorkoutLog["results"]>[number]): string {
-  const baseName = result.exerciseName.trim() || "Øvelse";
+  const baseName = result.exerciseName.trim() || "Ã˜velse";
   if (result.setNumber && result.setNumber > 0) {
     return `${baseName} - sett ${result.setNumber}`;
   }
@@ -392,7 +398,7 @@ function getStartOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
-/** Kumulativt styrkevolum (kg × reps) per uke og måned — samme logikk som skrytefakta. */
+/** Kumulativt styrkevolum (kg Ã— reps) per uke og mÃ¥ned â€” samme logikk som skrytefakta. */
 function computeLiftVolumeKgWeekAndMonth(
   completedLogs: WorkoutLog[],
   nowDate: Date,
@@ -412,7 +418,7 @@ function computeLiftVolumeKgWeekAndMonth(
     let sum = 0;
     for (const r of results ?? []) {
       if (!r.completed) continue;
-      if (r.exerciseCategory === "Uttøyning") continue;
+      if (r.exerciseCategory === "UttÃ¸yning") continue;
       const dur = parseNum(r.performedDurationMinutes);
       const w = parseNum(r.performedWeight);
       const reps = parseNum(r.performedReps);
@@ -436,43 +442,43 @@ function computeLiftVolumeKgWeekAndMonth(
   return { weekKg, monthKg };
 }
 
-/** Artig «løftevolum»-tekst (vekt × reps) for progresjonskort — uke først, så måned. */
+/** Artig Â«lÃ¸ftevolumÂ»-tekst (vekt Ã— reps) for progresjonskort â€” uke fÃ¸rst, sÃ¥ mÃ¥ned. */
 function buildProgressLiftPlayfulLineFromKg(weekKg: number, monthKg: number): string {
   const fmt = (n: number) => Math.round(n).toLocaleString("nb-NO");
 
   const lineFor = (kg: number, periodWhen: string): string | null => {
     if (!Number.isFinite(kg) || kg < 1) return null;
     if (kg >= 5500) {
-      return `${periodWhen} har jeg løftet ca. ${fmt(kg)} kg totalt (vekt × reps) — grovt i samme gate som massen til en afrikansk elefant. Skryt lov! 🐘`;
+      return `${periodWhen} har jeg lÃ¸ftet ca. ${fmt(kg)} kg totalt (vekt Ã— reps) â€” grovt i samme gate som massen til en afrikansk elefant. Skryt lov! ðŸ˜`;
     }
     if (kg >= 3200) {
-      return `${periodWhen} har jeg flyttet ca. ${fmt(kg)} kg med stanga — omtrent som ei lita elbil i masse, fordelt på mange reps. Tag en venn! 🚗`;
+      return `${periodWhen} har jeg flyttet ca. ${fmt(kg)} kg med stanga â€” omtrent som ei lita elbil i masse, fordelt pÃ¥ mange reps. Tag en venn! ðŸš—`;
     }
     if (kg >= 1600) {
-      return `${periodWhen} har jeg logget ca. ${fmt(kg)} kg i volum — som å løfte et flygel mange ganger (ca. 300 kg per piano). 🎹`;
+      return `${periodWhen} har jeg logget ca. ${fmt(kg)} kg i volum â€” som Ã¥ lÃ¸fte et flygel mange ganger (ca. 300 kg per piano). ðŸŽ¹`;
     }
     if (kg >= 700) {
-      return `${periodWhen} har jeg presset gjennom ca. ${fmt(kg)} kg i vekt × reps — omtrent som flere voksne summet. Klart for feed! 🙌`;
+      return `${periodWhen} har jeg presset gjennom ca. ${fmt(kg)} kg i vekt Ã— reps â€” omtrent som flere voksne summet. Klart for feed! ðŸ™Œ`;
     }
     if (kg >= 250) {
       const people = Math.max(2, Math.round(kg / 72));
-      return `${periodWhen} har jeg samlet ca. ${fmt(kg)} kg — grovt som å bære ${people} voksne samtidig … i løft-ekvivalent. 💪`;
+      return `${periodWhen} har jeg samlet ca. ${fmt(kg)} kg â€” grovt som Ã¥ bÃ¦re ${people} voksne samtidig â€¦ i lÃ¸ft-ekvivalent. ðŸ’ª`;
     }
     if (kg >= 60) {
       const melons = Math.max(6, Math.round(kg / 8));
-      return `${periodWhen} ble det ca. ${fmt(kg)} kg for meg — omtrent like tungt som ${melons} store vannmeloner. Del gjerne! 🍉`;
+      return `${periodWhen} ble det ca. ${fmt(kg)} kg for meg â€” omtrent like tungt som ${melons} store vannmeloner. Del gjerne! ðŸ‰`;
     }
     if (kg >= 15) {
-      return `${periodWhen} har jeg logget ca. ${fmt(kg)} kg i stramme vektrep — nok til at en golden retriever hadde blitt imponert. 🐕`;
+      return `${periodWhen} har jeg logget ca. ${fmt(kg)} kg i stramme vektrep â€” nok til at en golden retriever hadde blitt imponert. ðŸ•`;
     }
-    return `${periodWhen} har jeg logget ca. ${fmt(kg)} kg i vekt × reps — små tall som blir store når jeg holder på. ✨`;
+    return `${periodWhen} har jeg logget ca. ${fmt(kg)} kg i vekt Ã— reps â€” smÃ¥ tall som blir store nÃ¥r jeg holder pÃ¥. âœ¨`;
   };
 
   const weekLine = lineFor(weekKg, "Denne uken");
   if (weekLine) return weekLine;
-  const monthLine = lineFor(monthKg, "Denne måneden");
+  const monthLine = lineFor(monthKg, "Denne mÃ¥neden");
   if (monthLine) return monthLine;
-  return "Jeg logger vekt og reps neste gang — da får dette kortet skikkelig skrytevolum (elefant, piano, vannmelon …).";
+  return "Jeg logger vekt og reps neste gang â€” da fÃ¥r dette kortet skikkelig skrytevolum (elefant, piano, vannmelon â€¦).";
 }
 
 function getProfileStorageKey(memberId: string): string {
@@ -499,7 +505,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const groupWorkoutClassOptions = [
     "Smilepuls",
     "Sykkel 45",
-    "Mølle 45",
+    "MÃ¸lle 45",
     "Sterk",
     "Sirkeltrening",
     "Stram opp",
@@ -697,7 +703,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (currentUserRole === "member") {
       // When several `members` rows share one email (duplicate ids), the assigned program may reference
       // an id that was not picked as `memberViewId`. Link data rows by id + email, and allow orphan ids
-      // (no row in memory) only when we already see duplicate profiles for this login — same pattern as
+      // (no row in memory) only when we already see duplicate profiles for this login â€” same pattern as
       // resolving related member ids server-side.
       const memberRowById = new Map(members.map((member) => [member.id, member]));
       const primaryLower = normalizedCurrentUserEmail;
@@ -1107,7 +1113,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const fromHistory = findSuggestedWeightForExercise(programExercise.exerciseName);
     if (fromHistory) return fromHistory;
     const meta = exercises.find((e) => e.id === programExercise.exerciseId);
-    if (meta?.category === "Uttøyning") {
+    if (meta?.category === "UttÃ¸yning") {
       return (programExercise.holdSeconds ?? "").trim() || programExercise.weight.trim() || "30";
     }
     return programExercise.weight;
@@ -1173,7 +1179,7 @@ export function MemberPortal(props: MemberPortalProps) {
     for (const line of customWorkoutLines) {
       const ex = exercises.find((e) => e.id === line.exerciseId);
       if (!ex) continue;
-      const isStretch = ex.category === "Uttøyning";
+      const isStretch = ex.category === "UttÃ¸yning";
       built.push({
         id: uid("prog-ex"),
         exerciseId: ex.id,
@@ -1195,7 +1201,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const tempProgram: TrainingProgram = {
       id: "",
       memberId: activeMemberId,
-      title: "Egen økt",
+      title: "Egen Ã¸kt",
       goal: "",
       notes: "",
       createdAt: "",
@@ -1224,13 +1230,13 @@ export function MemberPortal(props: MemberPortalProps) {
       onPersisted: (result) => {
         if (!result.ok) {
           deleteProgramById(optimisticProgramId);
-          setCustomProgramSaveStatus(`Kunne ikke lagre "${title}". ${result.message?.trim() || "Prøv igjen."}`);
+          setCustomProgramSaveStatus(`Kunne ikke lagre "${title}". ${result.message?.trim() || "PrÃ¸v igjen."}`);
         }
       },
     });
     setCustomWorkoutLines([]);
     setCustomWorkoutSearch("");
-    setCustomProgramSaveStatus(`«${title}» ble lagret under Mine programmer.`);
+    setCustomProgramSaveStatus(`Â«${title}Â» ble lagret under Mine programmer.`);
     window.setTimeout(() => {
       void refreshRemoteHydration?.();
     }, 750);
@@ -1253,11 +1259,11 @@ export function MemberPortal(props: MemberPortalProps) {
       goal: string;
       focus: string;
       injuries: string;
-      /** MOTUS_PROFILE_V1 + JSON; synker økter/skritt osv. */
+      /** MOTUS_PROFILE_V1 + JSON; synker Ã¸kter/skritt osv. */
       personalGoals: string;
     };
   }): Promise<{ ok: true } | { ok: false; message: string }> => {
-    if (!supabaseClient) return { ok: false, message: "Denne funksjonen er ikke tilgjengelig akkurat nå." };
+    if (!supabaseClient) return { ok: false, message: "Denne funksjonen er ikke tilgjengelig akkurat nÃ¥." };
 
     const invoked = await supabaseClient.functions.invoke("update-member-profile", { body: payload });
     if (!invoked.error) {
@@ -1280,7 +1286,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
     if (!supabaseUrl || !supabaseAnonKey || !accessToken) {
-      return { ok: false, message: invokeDetails || invoked.error.message || "Kunne ikke nå sync-tjenesten." };
+      return { ok: false, message: invokeDetails || invoked.error.message || "Kunne ikke nÃ¥ sync-tjenesten." };
     }
 
     try {
@@ -1344,7 +1350,7 @@ export function MemberPortal(props: MemberPortalProps) {
       if (!directUpdate.error && fallbackUpdated >= payload.expectedMinUpdated) return { ok: true };
       return {
         ok: false,
-        message: `${invokeDetails || invoked.error.message || "Kunne ikke nå sync-tjenesten."} | fallback oppdaterte ${fallbackUpdated} av ${payload.expectedMinUpdated}${
+        message: `${invokeDetails || invoked.error.message || "Kunne ikke nÃ¥ sync-tjenesten."} | fallback oppdaterte ${fallbackUpdated} av ${payload.expectedMinUpdated}${
           directUpdate.error ? ` (${directUpdate.error.message})` : ""
         }`,
       };
@@ -1361,7 +1367,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const week = 1 + Math.round((d.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000));
     return `${d.getFullYear()}-${String(week).padStart(2, "0")}`;
   }
-  const completedLogs = useMemo(() => memberLogs.filter((log) => log.status === "Fullført"), [memberLogs]);
+  const completedLogs = useMemo(() => memberLogs.filter((log) => log.status === "FullfÃ¸rt"), [memberLogs]);
   const latestCompletedLog = completedLogs[0] ?? null;
   function findSuggestedWeightForExercise(exerciseName: string): string {
     const normalizedExerciseName = exerciseName.trim().toLowerCase();
@@ -1389,7 +1395,7 @@ export function MemberPortal(props: MemberPortalProps) {
     setCustomWorkoutLines((prev) => {
       if (prev.some((line) => line.exerciseId === id)) return prev;
       const ex = exercises.find((e) => e.id === id);
-      const isStretch = ex?.category === "Uttøyning";
+      const isStretch = ex?.category === "UttÃ¸yning";
       const weightHint = ex && !isStretch ? findSuggestedWeightForExercise(ex.name) : "";
       const secHint = ex && isStretch ? findSuggestedWeightForExercise(ex.name) : "";
       return [
@@ -1454,16 +1460,16 @@ export function MemberPortal(props: MemberPortalProps) {
     const streakTarget = 3 + (achievementLevel - 1);
     const sessionsTarget = 10 + (achievementLevel - 1) * 5;
     const trainingDaysTarget = 5 + (achievementLevel - 1) * 2;
-    const levelHint = `(Nivå ${achievementLevel})`;
+    const levelHint = `(NivÃ¥ ${achievementLevel})`;
     const items: Array<{ id: string; label: string; hint: string; unlocked: boolean; current: number; target: number; icon: string }> = [
       {
         id: `first-session-level-${achievementLevel}`,
-        label: "Økter logget",
-        hint: `${levelHint} Logg minst ${firstSessionTarget} fullførte økter`,
+        label: "Ã˜kter logget",
+        hint: `${levelHint} Logg minst ${firstSessionTarget} fullfÃ¸rte Ã¸kter`,
         unlocked: completedLogs.length >= firstSessionTarget,
         current: completedLogs.length,
         target: firstSessionTarget,
-        icon: "🚀",
+        icon: "ðŸš€",
       },
       {
         id: `streak-level-${achievementLevel}`,
@@ -1472,25 +1478,25 @@ export function MemberPortal(props: MemberPortalProps) {
         unlocked: streakWeeks >= streakTarget,
         current: streakWeeks,
         target: streakTarget,
-        icon: "🔥",
+        icon: "ðŸ”¥",
       },
       {
         id: `sessions-level-${achievementLevel}`,
-        label: "Total økter",
-        hint: `${levelHint} Fullfør totalt ${sessionsTarget} økter`,
+        label: "Total Ã¸kter",
+        hint: `${levelHint} FullfÃ¸r totalt ${sessionsTarget} Ã¸kter`,
         unlocked: completedLogs.length >= sessionsTarget,
         current: completedLogs.length,
         target: sessionsTarget,
-        icon: "💪",
+        icon: "ðŸ’ª",
       },
       {
         id: `days-level-${achievementLevel}`,
         label: "Treningsdager",
-        hint: `${levelHint} Tren på ${trainingDaysTarget} ulike dager`,
+        hint: `${levelHint} Tren pÃ¥ ${trainingDaysTarget} ulike dager`,
         unlocked: uniqueTrainingDays >= trainingDaysTarget,
         current: uniqueTrainingDays,
         target: trainingDaysTarget,
-        icon: "📅",
+        icon: "ðŸ“…",
       },
     ];
     return items;
@@ -1677,7 +1683,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const trimmedBirthDateDraft = memberBirthDateDraft.trim();
     if (trimmedBirthDateDraft && !isLikelyValidBirthDate(trimmedBirthDateDraft)) {
       if (!silent) {
-        setProfileSaveInfo("FÃ¸dselsdato mÃ¥ vÃ¦re pÃ¥ formatet dd.mm.yyyy.");
+        setProfileSaveInfo("FÃƒÂ¸dselsdato mÃƒÂ¥ vÃƒÂ¦re pÃƒÂ¥ formatet dd.mm.yyyy.");
       }
       return;
     }
@@ -1753,7 +1759,7 @@ export function MemberPortal(props: MemberPortalProps) {
         },
       });
       if (!syncResult.ok) {
-        setProfileSaveInfo("Profil lagret. Synk mot PT er midlertidig forsinket og forsÃ¸kes igjen automatisk.");
+        setProfileSaveInfo("Profil lagret. Synk mot PT er midlertidig forsinket og forsÃƒÂ¸kes igjen automatisk.");
       } else if (normalizedDraftEmail && !normalizedDraftEmail.includes("@")) {
         if (!silent) {
           setProfileSaveInfo("Profil lagret. E-post ble ikke endret fordi formatet var ugyldig.");
@@ -2175,7 +2181,7 @@ export function MemberPortal(props: MemberPortalProps) {
         if (!nextStep) {
           setIsIntervalTimerRunning(false);
           setIsIntervalTimerPaused(false);
-          setIntervalTimerStatus("Intervalløkten er fullført. Sterkt jobba!");
+          setIntervalTimerStatus("IntervallÃ¸kten er fullfÃ¸rt. Sterkt jobba!");
           return 0;
         }
         setIntervalTimerStepIndex(nextIndex);
@@ -2234,7 +2240,7 @@ export function MemberPortal(props: MemberPortalProps) {
     setIsIntervalTimerPaused(false);
     setIntervalTimerStepIndex(0);
     setIntervalTimerRemainingSeconds(intervalProgramSteps[0]?.durationSeconds ?? 0);
-    setIntervalTimerStatus("Intervalløkten er nullstilt.");
+    setIntervalTimerStatus("IntervallÃ¸kten er nullstilt.");
   }
   function handleSkipIntervalProgramStep() {
     if (!intervalProgramSteps.length) return;
@@ -2244,7 +2250,7 @@ export function MemberPortal(props: MemberPortalProps) {
       setIsIntervalTimerRunning(false);
       setIsIntervalTimerPaused(false);
       setIntervalTimerRemainingSeconds(0);
-      setIntervalTimerStatus("Siste fase hoppet over. Intervalløkten er fullført.");
+      setIntervalTimerStatus("Siste fase hoppet over. IntervallÃ¸kten er fullfÃ¸rt.");
       return;
     }
     setIntervalTimerStepIndex(nextIndex);
@@ -2307,7 +2313,7 @@ export function MemberPortal(props: MemberPortalProps) {
       canvas.height = 1920;
       const context = canvas.getContext("2d");
       if (!context) {
-        setProgressShareStatus("Kunne ikke lage bilde akkurat nå.");
+        setProgressShareStatus("Kunne ikke lage bilde akkurat nÃ¥.");
         return;
       }
 
@@ -2325,7 +2331,7 @@ export function MemberPortal(props: MemberPortalProps) {
       }
 
       const memberName = viewedMember?.name ?? "Medlem";
-      const displayName = memberName.length > 20 ? `${memberName.slice(0, 20)}…` : memberName;
+      const displayName = memberName.length > 20 ? `${memberName.slice(0, 20)}â€¦` : memberName;
       const monthTitle = progressShareMonthLabel;
 
       const bg = context.createLinearGradient(0, 0, canvas.width, canvas.height * 1.05);
@@ -2363,7 +2369,7 @@ export function MemberPortal(props: MemberPortalProps) {
       context.fillText(displayName, 72, 255);
       context.font = "26px system-ui, -apple-system, Segoe UI, sans-serif";
       context.globalAlpha = 0.88;
-      context.fillText("Skrytekort · min Motus-måned", 72, 318);
+      context.fillText("Skrytekort Â· min Motus-mÃ¥ned", 72, 318);
       context.globalAlpha = 1;
 
       if (shareCardLogo && shareCardLogo.naturalWidth > 0) {
@@ -2396,21 +2402,21 @@ export function MemberPortal(props: MemberPortalProps) {
       let y = cardY + pad + 36;
       context.fillStyle = MOTUS.ink;
       context.font = "bold 40px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Mine tall · skryteklare", cardX + pad, y);
+      context.fillText("Mine tall Â· skryteklare", cardX + pad, y);
       y += 52;
       context.fillStyle = "#64748b";
       context.font = "26px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Økter, streak og månedsvolum (vekt × reps) jeg har logget", cardX + pad, y);
+      context.fillText("Ã˜kter, streak og mÃ¥nedsvolum (vekt Ã— reps) jeg har logget", cardX + pad, y);
       y += 72;
 
       const tileGap = 22;
       const tileW = (cardW - pad * 2 - tileGap) / 2;
       const tileH = 168;
       const stats: Array<{ label: string; value: string; accent: string }> = [
-        { label: "Mine økter", value: String(estimatedSessionsThisMonth), accent: MOTUS.turquoise },
+        { label: "Mine Ã¸kter", value: String(estimatedSessionsThisMonth), accent: MOTUS.turquoise },
         { label: "Mine treningsdager", value: String(uniqueTrainingDays), accent: MOTUS.pink },
         { label: "Min streak", value: `${streakWeeks} uker`, accent: "#0d9488" },
-        { label: "Månedsvolum", value: `${Math.round(progressShareMonthLiftKg).toLocaleString("nb-NO")} kg`, accent: "#db2777" },
+        { label: "MÃ¥nedsvolum", value: `${Math.round(progressShareMonthLiftKg).toLocaleString("nb-NO")} kg`, accent: "#db2777" },
       ];
       stats.forEach((stat, index) => {
         const col = index % 2;
@@ -2480,7 +2486,7 @@ export function MemberPortal(props: MemberPortalProps) {
       fillRoundRect(context, cardX + pad, y, cardW - pad * 2, stripH, 22);
       context.fillStyle = "#ffffff";
       context.font = "bold 28px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText(`Min trend · ${progressStory.trendLabel}`, cardX + pad + 32, y + 72);
+      context.fillText(`Min trend Â· ${progressStory.trendLabel}`, cardX + pad + 32, y + 72);
       y += stripH + 28;
 
       context.fillStyle = "#f1f5f9";
@@ -2502,11 +2508,11 @@ export function MemberPortal(props: MemberPortalProps) {
       y += 40;
       context.fillStyle = "#94a3b8";
       context.font = "22px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("motus · del styrken din", cardX + pad, y);
+      context.fillText("motus Â· del styrken din", cardX + pad, y);
 
       const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) {
-        setProgressShareStatus("Kunne ikke lage bilde akkurat nå.");
+        setProgressShareStatus("Kunne ikke lage bilde akkurat nÃ¥.");
         return;
       }
 
@@ -2516,7 +2522,7 @@ export function MemberPortal(props: MemberPortalProps) {
       if (typeof nav.share === "function" && canShareFile) {
         await nav.share({
           title: "Min Motus-styrke",
-          text: "Se hva jeg har fått til denne måneden 💪",
+          text: "Se hva jeg har fÃ¥tt til denne mÃ¥neden ðŸ’ª",
           files: [file],
         });
         setProgressShareStatus("Skrytekort delt.");
@@ -2604,7 +2610,7 @@ export function MemberPortal(props: MemberPortalProps) {
     setPushRegisterStatus(null);
     const result = await registerWebPushWithSupabase(supabaseClient);
     setPushRegisterBusy(false);
-    setPushRegisterStatus(result.ok ? "Push-varsler er slått på for denne enheten." : result.message);
+    setPushRegisterStatus(result.ok ? "Push-varsler er slÃ¥tt pÃ¥ for denne enheten." : result.message);
   }
 
   async function readFileAsDataUrl(file: File): Promise<string> {
@@ -2739,7 +2745,7 @@ export function MemberPortal(props: MemberPortalProps) {
       });
       setProfileSaveInfo("Profilbilde lagret.");
     } catch {
-      setProfileSaveInfo("Kunne ikke lagre profilbildet. Prøv et annet bilde.");
+      setProfileSaveInfo("Kunne ikke lagre profilbildet. PrÃ¸v et annet bilde.");
     }
   }
 
@@ -2756,12 +2762,12 @@ export function MemberPortal(props: MemberPortalProps) {
       delta > 0
         ? "jeg er oppe fra forrige periode"
         : delta < 0
-          ? "jeg er nede fra forrige periode — neste runde tar jeg igjen"
-          : "jeg holder nivået stabilt";
+          ? "jeg er nede fra forrige periode â€” neste runde tar jeg igjen"
+          : "jeg holder nivÃ¥et stabilt";
     const nextFocus =
       recent14 > 0
-        ? "Jeg holder flyten — neste planlagte økt er allerede i kalenderen min."
-        : "Jeg starter med en rolig økt denne uken og bygger skrytegrunnlaget.";
+        ? "Jeg holder flyten â€” neste planlagte Ã¸kt er allerede i kalenderen min."
+        : "Jeg starter med en rolig Ã¸kt denne uken og bygger skrytegrunnlaget.";
     return { recent14, previous14, delta, trendLabel, nextFocus };
   })();
   const progressShareLiftVolumes = computeLiftVolumeKgWeekAndMonth(completedLogs, nowDate, nowTimestamp);
@@ -2773,31 +2779,31 @@ export function MemberPortal(props: MemberPortalProps) {
   const _nextBestAction = useMemo(() => {
     if (!memberAssignedPrograms.length) {
       return {
-        title: "Be om første program",
-        description: "Du har ingen program fra trener ennå. Du kan likevel trene: legg din egen økt sammen under Trening, eller send melding til trener.",
-        cta: "Åpne Trening",
+        title: "Be om fÃ¸rste program",
+        description: "Du har ingen program fra trener ennÃ¥. Du kan likevel trene: legg din egen Ã¸kt sammen under Trening, eller send melding til trener.",
+        cta: "Ã…pne Trening",
         action: "programs" as const,
       };
     }
     if (!memberProgramsInActiveLibrary.length) {
       return {
         title: "Program er skjult eller arkivert",
-        description: "Gjenopprett et program under Trening, eller start en egen økt.",
-        cta: "Åpne Trening",
+        description: "Gjenopprett et program under Trening, eller start en egen Ã¸kt.",
+        cta: "Ã…pne Trening",
         action: "programs" as const,
       };
     }
     if (nextProgram) {
       return {
-        title: "Neste økt er klar",
-        description: "Start neste program når du er klar.",
-        cta: "Start neste økt",
+        title: "Neste Ã¸kt er klar",
+        description: "Start neste program nÃ¥r du er klar.",
+        cta: "Start neste Ã¸kt",
         action: "start-workout" as const,
       };
     }
     return {
-      title: "Ukemålet er nådd",
-      description: "Sterkt! Ta en bonusøkt eller sjekk fremgangen din.",
+      title: "UkemÃ¥let er nÃ¥dd",
+      description: "Sterkt! Ta en bonusÃ¸kt eller sjekk fremgangen din.",
       cta: "Se fremgang",
       action: "progress" as const,
     };
@@ -2826,8 +2832,8 @@ export function MemberPortal(props: MemberPortalProps) {
       wednesday: "Onsdag",
       thursday: "Torsdag",
       friday: "Fredag",
-      saturday: "Lørdag",
-      sunday: "Søndag",
+      saturday: "LÃ¸rdag",
+      sunday: "SÃ¸ndag",
     };
     const todayIndex = dayOrder.indexOf(currentWeekdayKey);
     for (let step = 1; step <= 7; step += 1) {
@@ -2935,11 +2941,11 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   function getReflectionEmoji(level: 1 | 2 | 3 | 4 | 5): string {
-    if (level <= 1) return "🥳";
-    if (level === 2) return "🙂";
-    if (level === 3) return "😌";
-    if (level === 4) return "😮‍💨";
-    return "🥵";
+    if (level <= 1) return "ðŸ¥³";
+    if (level === 2) return "ðŸ™‚";
+    if (level === 3) return "ðŸ˜Œ";
+    if (level === 4) return "ðŸ˜®â€ðŸ’¨";
+    return "ðŸ¥µ";
   }
 
   function buildWorkoutReflection(): WorkoutReflection {
@@ -2968,7 +2974,7 @@ export function MemberPortal(props: MemberPortalProps) {
       note: groupWorkoutNote.trim(),
       reflection: buildGroupWorkoutReflection(),
     });
-    setGroupWorkoutStatus("Gruppetime lagret. PT kan nå se denne økta.");
+    setGroupWorkoutStatus("Gruppetime lagret. PT kan nÃ¥ se denne Ã¸kta.");
     setGroupWorkoutEnergyLevel(3);
     setGroupWorkoutDifficultyLevel(3);
     setGroupWorkoutMotivationLevel(3);
@@ -3047,7 +3053,7 @@ export function MemberPortal(props: MemberPortalProps) {
     memberLogs.forEach((log) => {
       (log.results ?? []).forEach((result) => {
         if (!result.completed || result.exerciseName !== exerciseName) return;
-        if (result.exerciseCategory === "Uttøyning") return;
+        if (result.exerciseCategory === "UttÃ¸yning") return;
         const estimated = estimate1RM(Number(result.performedWeight) || 0, Number(result.performedReps) || 0);
         if (estimated > best) best = estimated;
       });
@@ -3059,7 +3065,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!currentWorkoutGroup || !activeMemberId) return;
     let bestCandidate: WorkoutCelebration | null = null;
     currentWorkoutGroup.rows.forEach((row) => {
-      if (row.exerciseCategory === "Uttøyning") return;
+      if (row.exerciseCategory === "UttÃ¸yning") return;
       const weight = Number(row.performedWeight) || 0;
       const reps = Number(row.performedReps) || 0;
       const currentEstimated = estimate1RM(weight, reps);
@@ -3087,9 +3093,9 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function handleDeleteLoggedExercise(logId: string, exerciseId: string) {
     setConfirmDialog({
-      title: "Slette øvelse fra logg",
-      message: "Slette denne øvelsen fra treningsloggen?",
-      confirmLabel: "Slett øvelse",
+      title: "Slette Ã¸velse fra logg",
+      message: "Slette denne Ã¸velsen fra treningsloggen?",
+      confirmLabel: "Slett Ã¸velse",
       tone: "danger",
       onConfirm: () => {
         const log = completedLogs.find((item) => item.id === logId);
@@ -3154,7 +3160,7 @@ export function MemberPortal(props: MemberPortalProps) {
   ) {
     updateWorkoutExerciseResult(row.exerciseId, field, value);
     const isCardio = row.exerciseCategory === "Kondisjon";
-    const isStretch = row.exerciseCategory === "Uttøyning";
+    const isStretch = row.exerciseCategory === "UttÃ¸yning";
     const isTreadmill = (row.exerciseEquipment ?? "").toLowerCase().includes("tredem");
     const nextWeight = field === "performedWeight" ? value.trim() : row.performedWeight.trim();
     const nextReps = field === "performedReps" ? value.trim() : row.performedReps.trim();
@@ -3202,14 +3208,14 @@ export function MemberPortal(props: MemberPortalProps) {
                 exercises.find((item) => item.name.trim().toLowerCase() === exercise.exerciseName.trim().toLowerCase()) ??
                 null;
               const prescription = exercise.durationMinutes
-                ? `${exercise.sets} runder × ${exercise.durationMinutes} min${
-                    exercise.speed ? ` · ${exercise.speed} km/t` : ""
-                  }${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s pause`
-                : libraryMatch?.category === "Uttøyning"
-                  ? `${exercise.sets} sett × ${(exercise.holdSeconds ?? "").trim() || exercise.weight || "-"} sek · ${exercise.restSeconds}s pause`
-                  : `${exercise.sets} x ${exercise.reps} · ${exercise.weight || "-"} kg · ${exercise.restSeconds}s pause`;
+                ? `${exercise.sets} runder Ã— ${exercise.durationMinutes} min${
+                    exercise.speed ? ` Â· ${exercise.speed} km/t` : ""
+                  }${exercise.incline ? ` Â· ${exercise.incline}% incline` : ""} Â· ${exercise.restSeconds}s pause`
+                : libraryMatch?.category === "UttÃ¸yning"
+                  ? `${exercise.sets} sett Ã— ${(exercise.holdSeconds ?? "").trim() || exercise.weight || "-"} sek Â· ${exercise.restSeconds}s pause`
+                  : `${exercise.sets} x ${exercise.reps} Â· ${exercise.weight || "-"} kg Â· ${exercise.restSeconds}s pause`;
               const imageUrl = libraryMatch?.imageUrl?.trim() || "";
-              const description = libraryMatch?.description?.trim() || "Ingen forklaring tilgjengelig for denne øvelsen.";
+              const description = libraryMatch?.description?.trim() || "Ingen forklaring tilgjengelig for denne Ã¸velsen.";
               return `<article class="exercise-card">
   <div class="exercise-image-wrap">
     ${
@@ -3227,7 +3233,7 @@ export function MemberPortal(props: MemberPortalProps) {
 </article>`;
             })
             .join("")
-        : `<div class="empty-state">Ingen øvelser i programmet.</div>`;
+        : `<div class="empty-state">Ingen Ã¸velser i programmet.</div>`;
     const html = `<!doctype html>
 <html lang="no">
 <head>
@@ -3269,8 +3275,8 @@ export function MemberPortal(props: MemberPortalProps) {
     <div class="header-card">
       <div class="header-main">
         <h1>${escapeHtml(program.title)}</h1>
-        <div class="meta">Mål: ${escapeHtml(program.goal || "Ikke satt")} · Opprettet: ${escapeHtml(program.createdAt || "-")}</div>
-        <div class="meta-line">Av: ${escapeHtml(trainerLabel)} · Til: ${escapeHtml(recipientName)}</div>
+        <div class="meta">MÃ¥l: ${escapeHtml(program.goal || "Ikke satt")} Â· Opprettet: ${escapeHtml(program.createdAt || "-")}</div>
+        <div class="meta-line">Av: ${escapeHtml(trainerLabel)} Â· Til: ${escapeHtml(recipientName)}</div>
       </div>
       <div>
         <div class="brand-logo-frame"><img src="${escapeHtml(motusSkrytekortLogo)}" alt="Motus logo" class="brand-logo" /></div>
@@ -3281,7 +3287,7 @@ export function MemberPortal(props: MemberPortalProps) {
         ? `<div class="notes-card"><div class="notes-title">Notater</div>${escapeHtml(program.notes)}</div>`
         : ""
     }
-    <div class="section-title">Øvelser</div>
+    <div class="section-title">Ã˜velser</div>
     ${exercisesHtml}
     <div class="footer">Generert fra Motus medlemsportal.</div>
   </div>
@@ -3389,7 +3395,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="text-sm text-slate-500">{viewedMember.email}</div>
                   </div>
                 </div>
-                <div className="mt-2 text-sm"><span className="font-medium">Mål:</span> {viewedMember.goal}</div>
+                <div className="mt-2 text-sm"><span className="font-medium">MÃ¥l:</span> {viewedMember.goal}</div>
               </div>
             ) : null}
           </div>
@@ -3406,7 +3412,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 </div>
                 <div className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">Klar for i dag?</div>
-                <div className="mt-2 text-sm text-white/90">Alt du trenger for dagens økt ligger under.</div>
+                <div className="mt-2 text-sm text-white/90">Alt du trenger for dagens Ã¸kt ligger under.</div>
               </div>
               {!isMemberLimited ? (
               <div className="order-2 flex items-end justify-between gap-3">
@@ -3426,7 +3432,7 @@ export function MemberPortal(props: MemberPortalProps) {
                         <ClipboardList className="h-4 w-4" />
                       </div>
                       <div>
-                        <div className="text-sm font-semibold text-slate-800">Neste på planen</div>
+                        <div className="text-sm font-semibold text-slate-800">Neste pÃ¥ planen</div>
                         <div className="text-xs text-slate-500">Plan</div>
                       </div>
                     </div>
@@ -3441,9 +3447,9 @@ export function MemberPortal(props: MemberPortalProps) {
                     </>
                   ) : (
                     <div className="mt-2 space-y-2">
-                      <div className="text-sm text-slate-500">Ingen flere planlagte økter denne uken.</div>
+                      <div className="text-sm text-slate-500">Ingen flere planlagte Ã¸kter denne uken.</div>
                       <OutlineButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">
-                        Åpne program
+                        Ã…pne program
                       </OutlineButton>
                     </div>
                   )}
@@ -3479,7 +3485,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="min-w-0 w-full overflow-hidden rounded-2xl border bg-slate-50 p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Plan og økter</div>
+                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Plan og Ã¸kter</div>
                       <div className="mt-1 text-base font-semibold text-slate-800">Treningskalender</div>
                     </div>
                     <div className="text-sm font-semibold text-slate-600 capitalize">{calendarMonthLabel}</div>
@@ -3546,12 +3552,12 @@ export function MemberPortal(props: MemberPortalProps) {
                           })()}
                           title={
                             calendarDayStatusByDay.get(day) === "completed"
-                              ? `${calendarDayLoad.get(day)} økt${calendarDayLoad.get(day) === 1 ? "" : "er"} fullført`
+                              ? `${calendarDayLoad.get(day)} Ã¸kt${calendarDayLoad.get(day) === 1 ? "" : "er"} fullfÃ¸rt`
                               : calendarDayStatusByDay.get(day) === "missed"
-                                ? "Planlagt økt ble ikke fullført"
+                                ? "Planlagt Ã¸kt ble ikke fullfÃ¸rt"
                                 : calendarDayStatusByDay.get(day) === "planned"
-                                  ? "Planlagt økt"
-                                  : "Ingen økter logget"
+                                  ? "Planlagt Ã¸kt"
+                                  : "Ingen Ã¸kter logget"
                           }
                         >
                           {day}
@@ -3564,7 +3570,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
                     <div className="inline-flex items-center gap-1.5">
                       <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
-                      <span>Fullført</span>
+                      <span>FullfÃ¸rt</span>
                     </div>
                     <div className="inline-flex items-center gap-1.5">
                       <span className="inline-block h-2.5 w-2.5 rounded-full border border-dashed" style={{ borderColor: "rgba(20,184,166,0.75)", backgroundColor: "rgba(236,253,245,0.9)" }} />
@@ -3577,7 +3583,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                   {todayPlanEntry ? (
                     <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dagens økt</div>
+                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dagens Ã¸kt</div>
                       <div className="mt-1 text-sm text-slate-700">{todayPlanEntry}</div>
                       <div className="mt-3">
                         {todayProgramMatch ? (
@@ -3592,7 +3598,7 @@ export function MemberPortal(props: MemberPortalProps) {
                             }}
                             className="w-full sm:w-auto"
                           >
-                            Start dagens økt
+                            Start dagens Ã¸kt
                           </GradientButton>
                         ) : (
                           <OutlineButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">
@@ -3605,12 +3611,12 @@ export function MemberPortal(props: MemberPortalProps) {
                   {selectedCalendarDay ? (
                     <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Økter {String(selectedCalendarDay).padStart(2, "0")}.{String(calendarMonth.getMonth() + 1).padStart(2, "0")}.{calendarMonth.getFullYear()}
+                        Ã˜kter {String(selectedCalendarDay).padStart(2, "0")}.{String(calendarMonth.getMonth() + 1).padStart(2, "0")}.{calendarMonth.getFullYear()}
                       </div>
                       <div className="mt-2 space-y-2">
                         {selectedCalendarPlannedEntries.length > 0 ? (
                           <div className="rounded-lg border bg-emerald-50/60 px-3 py-2 text-xs text-emerald-800" style={{ borderColor: "rgba(20,184,166,0.25)" }}>
-                            <div className="font-semibold">Planlagt økt</div>
+                            <div className="font-semibold">Planlagt Ã¸kt</div>
                             {selectedCalendarPlannedEntries.map((entry, entryIndex) => (
                               <div key={`${selectedCalendarDay}-planned-${entryIndex}`} className="mt-1">
                                 {entry}
@@ -3619,7 +3625,7 @@ export function MemberPortal(props: MemberPortalProps) {
                           </div>
                         ) : null}
                         {selectedCalendarLogs.length === 0 ? (
-                          <div className="text-sm text-slate-500">Ingen logg på valgt dag.</div>
+                          <div className="text-sm text-slate-500">Ingen logg pÃ¥ valgt dag.</div>
                         ) : (
                           <>
                             <div className="space-y-2">
@@ -3640,7 +3646,7 @@ export function MemberPortal(props: MemberPortalProps) {
                             </div>
                             {selectedCalendarLog ? (
                               <div className="rounded-lg border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Detaljer fra økta</div>
+                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Detaljer fra Ã¸kta</div>
                                 {selectedCalendarLog.results?.length ? (
                                   <div className="mt-2 space-y-2">
                                     {selectedCalendarLog.results.map((result, index) => (
@@ -3648,24 +3654,24 @@ export function MemberPortal(props: MemberPortalProps) {
                                         <div className="text-sm font-medium text-slate-800">{formatLoggedResultTitle(result)}</div>
                                         <div className="mt-1 text-xs text-slate-600">
                                           {result.performedDurationMinutes
-                                            ? `Utført: ${result.performedDurationMinutes || "-"} min${result.performedSpeed ? ` · ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` · ${result.performedIncline}% incline` : ""}`
-                                            : result.exerciseCategory === "Uttøyning"
-                                              ? `Utført: ${result.performedWeight || "-"} sek hold`
-                                              : `Utført: ${result.performedReps || "-"} reps @ ${result.performedWeight || "-"} kg`}
+                                            ? `UtfÃ¸rt: ${result.performedDurationMinutes || "-"} min${result.performedSpeed ? ` Â· ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` Â· ${result.performedIncline}% incline` : ""}`
+                                            : result.exerciseCategory === "UttÃ¸yning"
+                                              ? `UtfÃ¸rt: ${result.performedWeight || "-"} sek hold`
+                                              : `UtfÃ¸rt: ${result.performedReps || "-"} reps @ ${result.performedWeight || "-"} kg`}
                                         </div>
                                         <div className="text-[11px] text-slate-500">
                                           Plan:{" "}
                                           {result.plannedDurationMinutes
-                                            ? `${result.plannedDurationMinutes} min${result.plannedSpeed ? ` · ${result.plannedSpeed} km/t` : ""}${result.plannedIncline ? ` · ${result.plannedIncline}% incline` : ""}`
-                                            : result.exerciseCategory === "Uttøyning"
-                                              ? `${result.plannedSets} sett × ${result.plannedWeight || "0"} sek`
+                                            ? `${result.plannedDurationMinutes} min${result.plannedSpeed ? ` Â· ${result.plannedSpeed} km/t` : ""}${result.plannedIncline ? ` Â· ${result.plannedIncline}% incline` : ""}`
+                                            : result.exerciseCategory === "UttÃ¸yning"
+                                              ? `${result.plannedSets} sett Ã— ${result.plannedWeight || "0"} sek`
                                               : `${result.plannedSets}x${result.plannedReps} @ ${result.plannedWeight || "0"} kg`}
                                         </div>
                                       </div>
                                     ))}
                                   </div>
                                 ) : (
-                                  <div className="mt-2 text-sm text-slate-500">Ingen detaljerte sett registrert på denne økten.</div>
+                                  <div className="mt-2 text-sm text-slate-500">Ingen detaljerte sett registrert pÃ¥ denne Ã¸kten.</div>
                                 )}
                               </div>
                             ) : null}
@@ -3699,16 +3705,16 @@ export function MemberPortal(props: MemberPortalProps) {
                       {streakChallenges.sevenDay.current}/{streakChallenges.sevenDay.target} treningsdager
                     </div>
                     <div className="mt-1 text-xs text-slate-500">
-                      {streakChallenges.sevenDay.unlocked ? "Badge låst opp ✅" : "Fortsett - du er snart i mål"}
+                      {streakChallenges.sevenDay.unlocked ? "Badge lÃ¥st opp âœ…" : "Fortsett - du er snart i mÃ¥l"}
                     </div>
                   </div>
                   <div className="rounded-xl border bg-slate-50 px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="text-xs font-semibold text-slate-600">Månedsmål</div>
+                    <div className="text-xs font-semibold text-slate-600">MÃ¥nedsmÃ¥l</div>
                     <div className="mt-1 text-sm font-semibold text-slate-800">
-                      {streakChallenges.month.current}/{streakChallenges.month.target} økter denne måneden
+                      {streakChallenges.month.current}/{streakChallenges.month.target} Ã¸kter denne mÃ¥neden
                     </div>
                     <div className="mt-1 text-xs text-slate-500">
-                      {streakChallenges.month.unlocked ? "Mål nådd 🎉" : "Bygg jevnt videre mot månedsmålet"}
+                      {streakChallenges.month.unlocked ? "MÃ¥l nÃ¥dd ðŸŽ‰" : "Bygg jevnt videre mot mÃ¥nedsmÃ¥let"}
                     </div>
                   </div>
                 </div>
@@ -3724,12 +3730,12 @@ export function MemberPortal(props: MemberPortalProps) {
             <div className="motus-modal-insets fixed inset-0 z-[10020] overscroll-contain bg-slate-900/45">
               <div className="motus-pop-in mx-auto mt-16 max-w-sm rounded-xl border bg-white p-5 shadow-lg" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-xs font-semibold uppercase tracking-wide text-emerald-600">Ny PR!</div>
-                <div className="mt-1 text-xl font-bold tracking-tight text-slate-900">Sterk økning i estimert 1RM</div>
+                <div className="mt-1 text-xl font-bold tracking-tight text-slate-900">Sterk Ã¸kning i estimert 1RM</div>
                 <div className="mt-3 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-800">
-                  {activeCelebration?.exerciseName}: {activeCelebration?.previousEstimated1RM.toFixed(1)} kg → {activeCelebration?.newEstimated1RM.toFixed(1)} kg
+                  {activeCelebration?.exerciseName}: {activeCelebration?.previousEstimated1RM.toFixed(1)} kg â†’ {activeCelebration?.newEstimated1RM.toFixed(1)} kg
                 </div>
                 <div className="mt-2 text-xs text-slate-500">
-                  Beregnet fra {activeCelebration?.weight} kg × {activeCelebration?.reps} reps (omregnet til 1RM).
+                  Beregnet fra {activeCelebration?.weight} kg Ã— {activeCelebration?.reps} reps (omregnet til 1RM).
                 </div>
                 <GradientButton
                   onClick={() => {
@@ -3741,7 +3747,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   }}
                   className="mt-4 w-full"
                 >
-                  Rått! Fortsett
+                  RÃ¥tt! Fortsett
                 </GradientButton>
               </div>
             </div>
@@ -3749,12 +3755,12 @@ export function MemberPortal(props: MemberPortalProps) {
           {!isMemberLimited && microCelebrationsEnabled && achievementCelebration ? (
             <div className="motus-modal-insets fixed inset-0 z-[10030] overscroll-contain bg-slate-900/35">
               <div className="motus-pop-in mx-auto mt-20 max-w-sm rounded-xl border bg-white p-5 text-center shadow-lg" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-3xl">🎉</div>
+                <div className="text-3xl">ðŸŽ‰</div>
                 <div className="mt-2 text-xs font-semibold uppercase tracking-wide text-emerald-600">Achievement unlock</div>
                 <div className="mt-1 text-xl font-bold tracking-tight text-slate-900">{achievementCelebration.label}</div>
-                <div className="mt-2 text-sm text-slate-600">Låst opp! Fortsett den gode flyten.</div>
+                <div className="mt-2 text-sm text-slate-600">LÃ¥st opp! Fortsett den gode flyten.</div>
                 <GradientButton onClick={() => setAchievementCelebration(null)} className="mt-4 w-full">
-                  Rått!
+                  RÃ¥tt!
                 </GradientButton>
               </div>
             </div>
@@ -3771,32 +3777,32 @@ export function MemberPortal(props: MemberPortalProps) {
                       <Sparkles className="h-5 w-5" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-semibold tracking-tight">Lag egen økt</h2>
+                      <h2 className="text-xl font-semibold tracking-tight">Lag egen Ã¸kt</h2>
                       <p className="mt-1 text-sm text-slate-600">
-                        1) Legg til øvelser fra listen · 2) Juster sett (og reps eller sekunder ved uttøyning) · 3) Start økt, eller lagre som fast treningsprogram. Vekt fylles inn automatisk om du har trent øvelsen før.
+                        1) Legg til Ã¸velser fra listen Â· 2) Juster sett (og reps eller sekunder ved uttÃ¸yning) Â· 3) Start Ã¸kt, eller lagre som fast treningsprogram. Vekt fylles inn automatisk om du har trent Ã¸velsen fÃ¸r.
                       </p>
                     </div>
                   </div>
                 </div>
                 <div className="mt-5 space-y-5">
                   <div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Din økt</div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Din Ã¸kt</div>
                     {customWorkoutLines.length === 0 ? (
                       <EmptyState
-                        icon="🏋️"
-                        title="Ingen øvelser ennå"
-                        description="Finn øvelser i listen under og trykk «Legg til»."
+                        icon="ðŸ‹ï¸"
+                        title="Ingen Ã¸velser ennÃ¥"
+                        description="Finn Ã¸velser i listen under og trykk Â«Legg tilÂ»."
                         className="mt-2"
                       />
                     ) : (
                       <div className="mt-2 space-y-2">
                         {customWorkoutLines.map((line) => {
                           const ex = exercises.find((e) => e.id === line.exerciseId);
-                          const isStretch = ex?.category === "Uttøyning";
+                          const isStretch = ex?.category === "UttÃ¸yning";
                           return (
                             <div key={line.key} className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
                               <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div className="min-w-0 font-medium text-sm text-slate-800">{ex?.name ?? "Ukjent øvelse"}</div>
+                                <div className="min-w-0 font-medium text-sm text-slate-800">{ex?.name ?? "Ukjent Ã¸velse"}</div>
                                 <DangerButton type="button" onClick={() => removeCustomWorkoutLine(line.key)} className="shrink-0 px-2 py-1 text-xs">
                                   Fjern
                                 </DangerButton>
@@ -3819,7 +3825,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                     onChange={(e) =>
                                       updateCustomWorkoutLine(line.key, isStretch ? { holdSeconds: e.target.value } : { weight: e.target.value })
                                     }
-                                    placeholder={isStretch ? "30" : "–"}
+                                    placeholder={isStretch ? "30" : "â€“"}
                                   />
                                 </label>
                               </div>
@@ -3843,8 +3849,8 @@ export function MemberPortal(props: MemberPortalProps) {
                       className="w-full sm:w-auto"
                     >
                       {customWorkoutLines.length
-                        ? `Start egen økt (${customWorkoutLines.length} øvelse${customWorkoutLines.length === 1 ? "" : "r"})`
-                        : "Legg til øvelser for å starte"}
+                        ? `Start egen Ã¸kt (${customWorkoutLines.length} Ã¸velse${customWorkoutLines.length === 1 ? "" : "r"})`
+                        : "Legg til Ã¸velser for Ã¥ starte"}
                     </GradientButton>
                     <OutlineButton
                       type="button"
@@ -3865,14 +3871,14 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
 
                   <div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Øvelsesbank</div>
-                    <p className="mt-1 text-sm text-slate-600">Søk eller filtrer, scroll i listen, trykk «Legg til».</p>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Ã˜velsesbank</div>
+                    <p className="mt-1 text-sm text-slate-600">SÃ¸k eller filtrer, scroll i listen, trykk Â«Legg tilÂ».</p>
                     <div className="relative mt-3">
                       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
                       <TextInput
                         value={customWorkoutSearch}
                         onChange={(e) => setCustomWorkoutSearch(e.target.value)}
-                        placeholder="Søk etter øvelse…"
+                        placeholder="SÃ¸k etter Ã¸velseâ€¦"
                         className="pl-10"
                       />
                     </div>
@@ -3895,19 +3901,19 @@ export function MemberPortal(props: MemberPortalProps) {
                       </label>
                       <div className="text-xs text-slate-500 sm:pb-2 sm:text-right">
                         {customWorkoutBankFiltered.length === 0 && exercises.length > 0 ? (
-                          <span>Ingen treff – prøv annet søk eller kategori.</span>
+                          <span>Ingen treff â€“ prÃ¸v annet sÃ¸k eller kategori.</span>
                         ) : !customWorkoutSearch.trim() && !showAllCustomWorkoutOptions && customWorkoutBankOverflow > 0 ? (
                           <span>
-                            Viser {customWorkoutExerciseOptions.length} av {customWorkoutBankFiltered.length} øvelser
+                            Viser {customWorkoutExerciseOptions.length} av {customWorkoutBankFiltered.length} Ã¸velser
                           </span>
                         ) : (
-                          <span>{customWorkoutBankFiltered.length} øvelse{customWorkoutBankFiltered.length === 1 ? "" : "r"}</span>
+                          <span>{customWorkoutBankFiltered.length} Ã¸velse{customWorkoutBankFiltered.length === 1 ? "" : "r"}</span>
                         )}
                       </div>
                     </div>
                     {exercises.length === 0 ? (
                       <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
-                        Øvelsesbanken er tom. Oppdater siden eller kontakt treneren din.
+                        Ã˜velsesbanken er tom. Oppdater siden eller kontakt treneren din.
                       </div>
                     ) : (
                       <div
@@ -3922,7 +3928,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                 <div className="min-w-0 flex-1">
                                   <div className="text-sm font-medium text-slate-800">{ex.name}</div>
                                   <div className="text-[11px] text-slate-500">
-                                    {[ex.category, ex.group].filter(Boolean).join(" · ")}
+                                    {[ex.category, ex.group].filter(Boolean).join(" Â· ")}
                                   </div>
                                 </div>
                                 <button
@@ -3949,7 +3955,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     )}
                     {!customWorkoutSearch.trim() && !showAllCustomWorkoutOptions && customWorkoutBankOverflow > 0 ? (
                       <OutlineButton type="button" onClick={() => setShowAllCustomWorkoutOptions(true)} className="mt-3 w-full sm:w-auto">
-                        Vis alle øvelser ({customWorkoutBankFiltered.length})
+                        Vis alle Ã¸velser ({customWorkoutBankFiltered.length})
                       </OutlineButton>
                     ) : null}
                   </div>
@@ -3977,12 +3983,12 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="mt-4 space-y-3">
                   {memberAssignedPrograms.length === 0 ? (
                     <EmptyState
-                      icon="📋"
-                      title="Ingen treningsprogram ennå"
+                      icon="ðŸ“‹"
+                      title="Ingen treningsprogram ennÃ¥"
                       description={
                         isMemberLimited
                           ? "Treneren din kan tildele et program her."
-                          : "Be trener tildele et program, eller lagre eget opplegg som program fra «Lag egen økt» over."
+                          : "Be trener tildele et program, eller lagre eget opplegg som program fra Â«Lag egen Ã¸ktÂ» over."
                       }
                       className="bg-white"
                       action={
@@ -3996,7 +4002,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null}
                   {memberAssignedPrograms.length > 0 && memberProgramsInActiveLibrary.length === 0 ? (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-                      Alle program er skjult eller arkivert. Bruk seksjonene nedenfor for å gjenopprette dem i oversikten.
+                      Alle program er skjult eller arkivert. Bruk seksjonene nedenfor for Ã¥ gjenopprette dem i oversikten.
                     </div>
                   ) : null}
                   {memberProgramsInActiveLibrary.map((program) => {
@@ -4015,18 +4021,24 @@ export function MemberPortal(props: MemberPortalProps) {
                             ) : null}
                             <div className="mt-1 text-[11px] text-slate-400">{program.createdAt}</div>
                           </div>
-                          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-row">
+                          <div className="grid grid-cols-3 gap-1.5 sm:flex sm:flex-row sm:gap-2">
                             <OutlineButton
-                              className="w-full px-2 py-2 text-xs sm:w-auto sm:px-3"
+                              className="w-full rounded-lg px-2 py-1.5 text-[11px] font-medium sm:w-auto sm:px-2.5"
                               onClick={() => setExpandedProgramId((prev) => (prev === program.id ? null : program.id))}
                             >
-                              {isExpanded ? "Skjul økt" : "Se hele økt"}
+                              <span className="inline-flex items-center justify-center gap-1.5">
+                                {isExpanded ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                <span>{isExpanded ? "Skjul" : "Vis økt"}</span>
+                              </span>
                             </OutlineButton>
-                            <OutlineButton className="w-full px-2 py-2 text-xs sm:w-auto sm:px-3" onClick={() => handlePrintProgram(program)}>
-                              Skriv ut / PDF
+                            <OutlineButton className="w-full rounded-lg px-2 py-1.5 text-[11px] font-medium sm:w-auto sm:px-2.5" onClick={() => handlePrintProgram(program)}> 
+                              <span className="inline-flex items-center justify-center gap-1.5">
+                                <Printer className="h-3.5 w-3.5" />
+                                <span>PDF</span>
+                              </span>
                             </OutlineButton>
                             <GradientButton
-                              className="w-full px-2 py-2 text-xs sm:w-auto sm:px-3"
+                              className="w-full rounded-lg px-2 py-1.5 text-[11px] font-medium sm:w-auto sm:px-2.5"
                               onClick={() => {
                                 if (intervalProgramIdSet.has(program.id)) {
                                   openIntervalTimerModal(program.id);
@@ -4035,41 +4047,50 @@ export function MemberPortal(props: MemberPortalProps) {
                                 startWorkoutMode(program.id, buildStartWorkoutOptions(program));
                               }}
                             >
-                              Start økt
+                              <span className="inline-flex items-center justify-center gap-1.5">
+                                <Play className="h-3.5 w-3.5" />
+                                <span>Start</span>
+                              </span>
                             </GradientButton>
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2 border-t pt-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                          <span className="text-[11px] font-medium text-slate-500">Bibliotek</span>
+                        <div className="flex flex-wrap items-center gap-1.5 border-t pt-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                          <span className="mr-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Bibliotek</span>
                           <OutlineButton
                             type="button"
-                            className="px-2 py-1.5 text-xs"
+                            className="rounded-lg px-2 py-1 text-[11px] font-medium"
                             onClick={() => {
                               updateProgramMemberLibraryStatus(program.id, "hidden");
                               setLibraryActionStatus("Programmet er skjult fra oversikten.");
                             }}
                           >
-                            Skjul
+                            <span className="inline-flex items-center gap-1.5">
+                              <EyeOff className="h-3.5 w-3.5" />
+                              <span>Skjul</span>
+                            </span>
                           </OutlineButton>
                           <OutlineButton
                             type="button"
-                            className="px-2 py-1.5 text-xs"
+                            className="rounded-lg px-2 py-1 text-[11px] font-medium"
                             onClick={() => {
                               updateProgramMemberLibraryStatus(program.id, "archived");
                               setLibraryActionStatus("Programmet er arkivert.");
                             }}
                           >
-                            Arkiver
+                            <span className="inline-flex items-center gap-1.5">
+                              <Archive className="h-3.5 w-3.5" />
+                              <span>Arkiver</span>
+                            </span>
                           </OutlineButton>
                           {program.programCreatedBy === "member" ? (
                             <DangerButton
                               type="button"
-                              className="px-2 py-1.5 text-xs"
+                              className="rounded-lg px-2 py-1 text-[11px] font-medium"
                               onClick={() =>
                                 setConfirmDialog({
                                   title: "Slette program?",
-                                  message: `Dette sletter «${program.title.trim()}» fra biblioteket og tilhørende økter som er logget på dette programmet.`,
+                                  message: `Dette sletter Â«${program.title.trim()}Â» fra biblioteket og tilhÃ¸rende Ã¸kter som er logget pÃ¥ dette programmet.`,
                                   confirmLabel: "Slett",
                                   tone: "danger",
                                   onConfirm: () => {
@@ -4079,7 +4100,10 @@ export function MemberPortal(props: MemberPortalProps) {
                                 })
                               }
                             >
-                              Slett
+                              <span className="inline-flex items-center gap-1.5">
+                                <Trash2 className="h-3.5 w-3.5" />
+                                <span>Slett</span>
+                              </span>
                             </DangerButton>
                           ) : null}
                         </div>
@@ -4091,28 +4115,28 @@ export function MemberPortal(props: MemberPortalProps) {
                             <div className="space-y-2">
                               {program.exercises.length === 0 ? (
                                 <EmptyState
-                                  icon="🧩"
-                                  title="Ingen øvelser i programmet ennå"
-                                  description="Programmet er tomt akkurat nå."
+                                  icon="ðŸ§©"
+                                  title="Ingen Ã¸velser i programmet ennÃ¥"
+                                  description="Programmet er tomt akkurat nÃ¥."
                                   className="bg-slate-50 py-4"
                                 />
                               ) : null}
                               {program.exercises.map((exercise) => {
                                 const lib = exercises.find((e) => e.id === exercise.exerciseId);
-                                const isStretch = lib?.category === "Uttøyning";
+                                const isStretch = lib?.category === "UttÃ¸yning";
                                 return (
                                 <div key={exercise.id} className="rounded-xl border bg-slate-50 p-2.5">
                                   <div className="font-medium text-sm">{exercise.exerciseName}</div>
                                   <div className="mt-0.5 text-xs text-slate-500">
                                     {exercise.durationMinutes
-                                      ? `${exercise.sets} runder × ${exercise.durationMinutes} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s`
+                                      ? `${exercise.sets} runder Ã— ${exercise.durationMinutes} min${exercise.speed ? ` Â· ${exercise.speed} km/t` : ""}${exercise.incline ? ` Â· ${exercise.incline}% incline` : ""} Â· ${exercise.restSeconds}s`
                                       : isStretch
-                                        ? `${exercise.sets} sett × ${(exercise.holdSeconds ?? "").trim() || exercise.weight || "-"} sek · ${exercise.restSeconds}s`
-                                        : `${exercise.sets}×${exercise.reps} · ${exercise.weight}kg · ${exercise.restSeconds}s`}
+                                        ? `${exercise.sets} sett Ã— ${(exercise.holdSeconds ?? "").trim() || exercise.weight || "-"} sek Â· ${exercise.restSeconds}s`
+                                        : `${exercise.sets}Ã—${exercise.reps} Â· ${exercise.weight}kg Â· ${exercise.restSeconds}s`}
                                   </div>
                                   {!exercise.durationMinutes && !isStretch ? (
                                     <div className="mt-2 rounded-lg border bg-white px-2.5 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                      <div className="text-[11px] text-slate-500">Foreslått vekt fra forrige gang (kan endres)</div>
+                                      <div className="text-[11px] text-slate-500">ForeslÃ¥tt vekt fra forrige gang (kan endres)</div>
                                       <TextInput
                                         value={resolveSuggestedWorkoutWeight(exercise)}
                                         onChange={(event) =>
@@ -4127,7 +4151,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                     </div>
                                   ) : !exercise.durationMinutes && isStretch ? (
                                     <div className="mt-2 rounded-lg border bg-white px-2.5 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                      <div className="text-[11px] text-slate-500">Foreslått hold fra forrige gang (kan endres)</div>
+                                      <div className="text-[11px] text-slate-500">ForeslÃ¥tt hold fra forrige gang (kan endres)</div>
                                       <TextInput
                                         value={resolveSuggestedWorkoutWeight(exercise)}
                                         onChange={(event) =>
@@ -4257,7 +4281,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div className="mt-4 space-y-3">
                     {periodPlans.length === 0 ? (
                       <EmptyState
-                        icon="🗓️"
+                        icon="ðŸ—“ï¸"
                         title="Ingen periodeplan tilgjengelig"
                         description="Be treneren din opprette en periodeplan."
                         className="bg-slate-50 py-4"
@@ -4266,7 +4290,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       periodPlans.slice(0, 1).map((plan) => (
                         <div key={plan.id} className="rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                           <div className="font-medium text-slate-800">{plan.title}</div>
-                          <div className="mt-1 text-xs text-slate-500">Start: {plan.startDate} · {plan.weeks} uker · Lagret {plan.createdAt}</div>
+                          <div className="mt-1 text-xs text-slate-500">Start: {plan.startDate} Â· {plan.weeks} uker Â· Lagret {plan.createdAt}</div>
                           {plan.notes ? <div className="mt-2 text-sm text-slate-600">{plan.notes}</div> : null}
                           {(plan.weeklyPlans ?? []).length > 1 ? (
                             <div className="mt-3">
@@ -4277,7 +4301,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                   value: String(week.weekNumber),
                                   label:
                                     week.weekNumber === (activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : -1)
-                                      ? `Uke ${week.weekNumber} (nå)`
+                                      ? `Uke ${week.weekNumber} (nÃ¥)`
                                       : `Uke ${week.weekNumber}`,
                                 }))}
                               />
@@ -4286,7 +4310,7 @@ export function MemberPortal(props: MemberPortalProps) {
                           {displayedPeriodWeek ? (
                             <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Uke {displayedPeriodWeek.weekNumber}</div>
-                              <div className="mt-1 text-[11px] text-slate-500">Merk av øktene med haken for å registrere dem som fullført.</div>
+                              <div className="mt-1 text-[11px] text-slate-500">Merk av Ã¸ktene med haken for Ã¥ registrere dem som fullfÃ¸rt.</div>
                               {periodPlanActionStatus ? <div className="mt-2 text-xs text-emerald-700">{periodPlanActionStatus}</div> : null}
                               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                                 {([
@@ -4295,8 +4319,8 @@ export function MemberPortal(props: MemberPortalProps) {
                                   { key: "wednesday", label: "Onsdag" },
                                   { key: "thursday", label: "Torsdag" },
                                   { key: "friday", label: "Fredag" },
-                                  { key: "saturday", label: "Lørdag" },
-                                  { key: "sunday", label: "Søndag" },
+                                  { key: "saturday", label: "LÃ¸rdag" },
+                                  { key: "sunday", label: "SÃ¸ndag" },
                                 ] as Array<{ key: WeekdayPlanKey; label: string }>).map((day) => (
                                   <div key={`${displayedPeriodWeek.id}-${day.key}`} className="rounded-lg border bg-slate-50 px-2 py-1.5 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                                     <div>
@@ -4329,7 +4353,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                             style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
                                             aria-label={`Fjern fullfort-markering for ${day.label}`}
                                           >
-                                            ✓
+                                            âœ“
                                           </button>
                                         ) : (
                                           <button
@@ -4345,9 +4369,9 @@ export function MemberPortal(props: MemberPortalProps) {
                                             }
                                             className="inline-flex h-7 w-7 items-center justify-center rounded-full border text-xs font-bold text-slate-600 bg-white"
                                             style={{ borderColor: "rgba(15,23,42,0.16)" }}
-                                            aria-label={`Marker ${day.label} som fullført`}
+                                            aria-label={`Marker ${day.label} som fullfÃ¸rt`}
                                           >
-                                            ✓
+                                            âœ“
                                           </button>
                                         )}
                                       </div>
@@ -4400,7 +4424,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     {[
                       {
                         key: "group-energy",
-                        question: "Hvordan føles energinivået nå?",
+                        question: "Hvordan fÃ¸les energinivÃ¥et nÃ¥?",
                         value: groupWorkoutEnergyLevel,
                         setValue: setGroupWorkoutEnergyLevel,
                       },
@@ -4431,7 +4455,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                 className={`rounded-xl border px-2 py-2 text-lg transition ${
                                   active ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
                                 }`}
-                                aria-label={`Velg nivå ${level}`}
+                                aria-label={`Velg nivÃ¥ ${level}`}
                               >
                                 {getReflectionEmoji(numericLevel)}
                               </button>
@@ -4455,12 +4479,12 @@ export function MemberPortal(props: MemberPortalProps) {
                   >
                     <History className="h-4 w-4" />
                   </div>
-                  <div className="text-sm font-semibold text-slate-800">Siste 3 økter</div>
+                  <div className="text-sm font-semibold text-slate-800">Siste 3 Ã¸kter</div>
                 </div>
                 <div className="mt-4 space-y-3">
                   {lastDeletedLogResult ? (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                      Øvelse slettet fra loggen.
+                      Ã˜velse slettet fra loggen.
                       <button type="button" onClick={undoDeleteLoggedExercise} className="ml-2 font-semibold underline">
                         Angre
                       </button>
@@ -4468,9 +4492,9 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null}
                   {completedLogs.length === 0 ? (
                     <EmptyState
-                      icon="🧾"
-                      title="Ingen økter logget ennå"
-                      description="Start en økt for å bygge historikk og fremgang."
+                      icon="ðŸ§¾"
+                      title="Ingen Ã¸kter logget ennÃ¥"
+                      description="Start en Ã¸kt for Ã¥ bygge historikk og fremgang."
                       className="bg-white"
                     />
                   ) : null}
@@ -4491,10 +4515,10 @@ export function MemberPortal(props: MemberPortalProps) {
                       {log.note ? <div className="mt-2 text-sm text-slate-600">{log.note}</div> : null}
                       {expandedRecentLogId === log.id ? (
                         <div className="mt-3 rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Utført i økta</div>
+                          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">UtfÃ¸rt i Ã¸kta</div>
                           <div className="mt-2 space-y-2">
                             {(log.results ?? []).length === 0 ? (
-                              <div className="text-sm text-slate-500">Ingen settdata registrert for denne økta.</div>
+                              <div className="text-sm text-slate-500">Ingen settdata registrert for denne Ã¸kta.</div>
                             ) : (
                               (log.results ?? []).map((result, index) => (
                                 <div key={`${result.exerciseId}-${result.setNumber ?? 0}-${index}`} className="rounded-lg border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -4561,7 +4585,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                             placeholder="Incline %"
                                           />
                                         </div>
-                                      ) : result.exerciseCategory === "Uttøyning" ? (
+                                      ) : result.exerciseCategory === "UttÃ¸yning" ? (
                                         <div className="grid grid-cols-1 gap-2">
                                           <TextInput
                                             value={editingLoggedExerciseDraft.performedWeight}
@@ -4589,17 +4613,17 @@ export function MemberPortal(props: MemberPortalProps) {
                                           checked={editingLoggedExerciseDraft.completed}
                                           onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, completed: e.target.checked } : prev)}
                                         />
-                                        Markert som fullført
+                                        Markert som fullfÃ¸rt
                                       </label>
                                     </div>
                                   ) : (
                                     <div className="mt-1 text-xs text-slate-600">
                                       {result.exerciseCategory === "Kondisjon"
-                                        ? `Utført: ${result.performedDurationMinutes || "0"} min${result.performedSpeed ? ` · ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` · ${result.performedIncline}% incline` : ""}`
-                                        : result.exerciseCategory === "Uttøyning"
-                                          ? `Utført: ${result.performedWeight || "0"} sek`
-                                          : `Utført: ${result.performedWeight || "0"} kg x ${result.performedReps || "0"} reps`}
-                                      {result.completed ? " - Fullført" : " - Ikke markert fullført"}
+                                        ? `UtfÃ¸rt: ${result.performedDurationMinutes || "0"} min${result.performedSpeed ? ` Â· ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` Â· ${result.performedIncline}% incline` : ""}`
+                                        : result.exerciseCategory === "UttÃ¸yning"
+                                          ? `UtfÃ¸rt: ${result.performedWeight || "0"} sek`
+                                          : `UtfÃ¸rt: ${result.performedWeight || "0"} kg x ${result.performedReps || "0"} reps`}
+                                      {result.completed ? " - FullfÃ¸rt" : " - Ikke markert fullfÃ¸rt"}
                                     </div>
                                   )}
                                       </>
@@ -4624,7 +4648,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="text-xs uppercase tracking-wide text-slate-400">Intervallvindu</div>
-                          <div className="text-xl font-semibold text-slate-900">{activeIntervalProgram?.title || "Intervalløkt"}</div>
+                          <div className="text-xl font-semibold text-slate-900">{activeIntervalProgram?.title || "IntervallÃ¸kt"}</div>
                           <div className="mt-1 text-xs text-slate-500">{activeIntervalProgram?.goal || "Nedtelling per intervallsteg"}</div>
                         </div>
                         <OutlineButton onClick={closeIntervalTimerModal}>Lukk</OutlineButton>
@@ -4640,7 +4664,7 @@ export function MemberPortal(props: MemberPortalProps) {
                         </div>
                         <div className="mt-2 text-7xl font-black tracking-tight sm:text-8xl">{formatSeconds(intervalTimerRemainingSeconds)}</div>
                         <div className="mt-2 text-sm text-white/90">
-                          Fart: {currentIntervalProgramStep?.speedHint || "-"} · Incline: {currentIntervalProgramStep?.inclineHint || "-"}
+                          Fart: {currentIntervalProgramStep?.speedHint || "-"} Â· Incline: {currentIntervalProgramStep?.inclineHint || "-"}
                         </div>
                         <div className="mt-2 text-sm text-white/90">
                           Neste: {intervalProgramSteps[intervalTimerStepIndex + 1]?.label || "Siste steg"}
@@ -4664,7 +4688,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       {intervalTimerStatus ? (
                         <StatusMessage
                           message={intervalTimerStatus}
-                          tone={intervalTimerStatus.toLowerCase().includes("fullført") ? "success" : "info"}
+                          tone={intervalTimerStatus.toLowerCase().includes("fullfÃ¸rt") ? "success" : "info"}
                           className="!rounded-xl !px-3 !py-2 !text-xs"
                         />
                       ) : null}
@@ -4672,7 +4696,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="border-t p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="grid gap-2 sm:grid-cols-4">
                         <GradientButton onClick={handleStartIntervalProgramTimer} disabled={!intervalProgramSteps.length}>
-                          Start økt
+                          Start Ã¸kt
                         </GradientButton>
                         <OutlineButton onClick={handlePauseResumeIntervalProgramTimer} disabled={!isIntervalTimerRunning}>
                           {isIntervalTimerPaused ? "Fortsett" : "Pause"}
@@ -4694,9 +4718,9 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="border-b p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="text-xs uppercase tracking-wide text-slate-400">Økt-modus</div>
+                          <div className="text-xs uppercase tracking-wide text-slate-400">Ã˜kt-modus</div>
                           <div className="text-lg font-semibold">{activeWorkoutProgram.title}</div>
-                          <div className="mt-1 text-sm text-slate-500">{workoutMode.results.filter(r => r.completed).length}/{workoutMode.results.length} sett fullført</div>
+                          <div className="mt-1 text-sm text-slate-500">{workoutMode.results.filter(r => r.completed).length}/{workoutMode.results.length} sett fullfÃ¸rt</div>
                         </div>
                         <OutlineButton onClick={cancelWorkoutMode}>Lukk</OutlineButton>
                       </div>
@@ -4711,7 +4735,7 @@ export function MemberPortal(props: MemberPortalProps) {
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
-                              <div className="text-xs text-slate-400">Øvelse {workoutExerciseIndex + 1} av {workoutResultGroups.length}</div>
+                              <div className="text-xs text-slate-400">Ã˜velse {workoutExerciseIndex + 1} av {workoutResultGroups.length}</div>
                               <div className="flex items-center gap-2">
                                 <div className="font-medium">{currentWorkoutGroup.exerciseName}</div>
                                 {replacementCandidates.length > 0 ? (
@@ -4720,8 +4744,8 @@ export function MemberPortal(props: MemberPortalProps) {
                                     onClick={() => setShowReplacementOptions((prev) => !prev)}
                                     className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm transition hover:opacity-90"
                                     style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                                    aria-label="Bytt øvelse"
-                                    title="Bytt øvelse"
+                                    aria-label="Bytt Ã¸velse"
+                                    title="Bytt Ã¸velse"
                                   >
                                     <Repeat2 className="h-3.5 w-3.5" />
                                     Bytt
@@ -4730,10 +4754,10 @@ export function MemberPortal(props: MemberPortalProps) {
                               </div>
                               <div className="mt-1 text-sm text-slate-500">
                                 {currentWorkoutGroup.rows[0]?.exerciseCategory === "Kondisjon"
-                                  ? `Plan: ${currentWorkoutGroup.rows.length} runder × ${currentWorkoutGroup.rows[0]?.plannedDurationMinutes || "0"} min${currentWorkoutGroup.rows[0]?.plannedSpeed ? ` · ${currentWorkoutGroup.rows[0]?.plannedSpeed} km/t` : ""}${currentWorkoutGroup.rows[0]?.plannedIncline ? ` · ${currentWorkoutGroup.rows[0]?.plannedIncline}% incline` : ""}`
-                                  : currentWorkoutGroup.rows[0]?.exerciseCategory === "Uttøyning"
-                                    ? `Plan: ${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedWeight} sek`
-                                    : `Plan: ${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedReps} reps · ${currentWorkoutGroup.plannedWeight}kg`}
+                                  ? `Plan: ${currentWorkoutGroup.rows.length} runder Ã— ${currentWorkoutGroup.rows[0]?.plannedDurationMinutes || "0"} min${currentWorkoutGroup.rows[0]?.plannedSpeed ? ` Â· ${currentWorkoutGroup.rows[0]?.plannedSpeed} km/t` : ""}${currentWorkoutGroup.rows[0]?.plannedIncline ? ` Â· ${currentWorkoutGroup.rows[0]?.plannedIncline}% incline` : ""}`
+                                  : currentWorkoutGroup.rows[0]?.exerciseCategory === "UttÃ¸yning"
+                                    ? `Plan: ${currentWorkoutGroup.rows.length} sett Ã— ${currentWorkoutGroup.plannedWeight} sek`
+                                    : `Plan: ${currentWorkoutGroup.rows.length} sett Ã— ${currentWorkoutGroup.plannedReps} reps Â· ${currentWorkoutGroup.plannedWeight}kg`}
                               </div>
                             </div>
                             {currentWorkoutExerciseImageUrl ? (
@@ -4753,7 +4777,7 @@ export function MemberPortal(props: MemberPortalProps) {
                           </div>
                           {replacementCandidates.length > 0 && showReplacementOptions ? (
                             <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                              <div className="text-xs font-medium text-slate-600">Velg ny øvelse (samme muskelgruppe)</div>
+                              <div className="text-xs font-medium text-slate-600">Velg ny Ã¸velse (samme muskelgruppe)</div>
                               <div className="mt-2 grid gap-2">
                                 {replacementCandidates.map((exercise) => (
                                   <button
@@ -4767,7 +4791,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                       background: "linear-gradient(135deg, rgba(20,184,166,0.10) 0%, rgba(236,72,153,0.10) 100%)",
                                     }}
                                   >
-                                    {exercise.name} · {exercise.group}
+                                    {exercise.name} Â· {exercise.group}
                                   </button>
                                 ))}
                               </div>
@@ -4777,7 +4801,7 @@ export function MemberPortal(props: MemberPortalProps) {
                             {currentWorkoutGroup.rows.map((row, index) => {
                               const resolvedExercise = exerciseByName.get(row.exerciseName.trim().toLowerCase());
                               const isCardio = (row.exerciseCategory ?? resolvedExercise?.category) === "Kondisjon";
-                              const isStretch = (row.exerciseCategory ?? resolvedExercise?.category) === "Uttøyning";
+                              const isStretch = (row.exerciseCategory ?? resolvedExercise?.category) === "UttÃ¸yning";
                               const isTreadmill = (row.exerciseEquipment ?? resolvedExercise?.equipment ?? "").toLowerCase().includes("tredem");
                               const isCompactSetView = currentWorkoutGroup.rows.length <= 3;
                               return (
@@ -4789,13 +4813,13 @@ export function MemberPortal(props: MemberPortalProps) {
                                     onClick={() => updateWorkoutExerciseResult(row.exerciseId, "completed", !row.completed)}
                                     className={`rounded-full ${isCompactSetView ? "px-2.5 py-0.5" : "px-3 py-1"} text-xs font-semibold ${row.completed ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-700"}`}
                                   >
-                                    {row.completed ? "Fullført" : "Marker"}
+                                    {row.completed ? "FullfÃ¸rt" : "Marker"}
                                   </button>
                                 </div>
                                 {isCardio ? (
                                   <div className={`grid ${isCompactSetView ? "gap-2" : "gap-3"} ${isTreadmill ? "grid-cols-3" : "grid-cols-1"}`}>
                                     <div className="space-y-1">
-                                      <div className="text-[11px] font-medium text-slate-500">Tid utført (min)</div>
+                                      <div className="text-[11px] font-medium text-slate-500">Tid utfÃ¸rt (min)</div>
                                       <TextInput
                                         ref={(input) => {
                                           workoutWeightInputRefs.current[row.exerciseId] = input;
@@ -4846,7 +4870,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                 ) : (
                                   <div className={`grid grid-cols-2 ${isCompactSetView ? "gap-2" : "gap-3"}`}>
                                     <div className="space-y-1">
-                                      <div className="text-[11px] font-medium text-slate-500">Kg utført</div>
+                                      <div className="text-[11px] font-medium text-slate-500">Kg utfÃ¸rt</div>
                                       <TextInput
                                         ref={(input) => {
                                           workoutWeightInputRefs.current[row.exerciseId] = input;
@@ -4859,7 +4883,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                       />
                                     </div>
                                     <div className="space-y-1">
-                                      <div className="text-[11px] font-medium text-slate-500">Reps utført</div>
+                                      <div className="text-[11px] font-medium text-slate-500">Reps utfÃ¸rt</div>
                                       <TextInput
                                         value={row.performedReps}
                                         onChange={(e) => handleWorkoutResultInputChange(row, "performedReps", e.target.value, index, currentWorkoutGroup.rows)}
@@ -4877,23 +4901,23 @@ export function MemberPortal(props: MemberPortalProps) {
                       ) : null}
 
                       {!showWorkoutReflection ? (
-                        <TextArea value={workoutMode.note} onChange={(e) => updateWorkoutModeNote(e.target.value)} className="min-h-[110px]" placeholder="Hvordan gikk økta?" />
+                        <TextArea value={workoutMode.note} onChange={(e) => updateWorkoutModeNote(e.target.value)} className="min-h-[110px]" placeholder="Hvordan gikk Ã¸kta?" />
                       ) : (
                         <div className="rounded-xl border bg-slate-50 p-4 space-y-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                           <div>
-                            <div className="text-sm font-semibold text-slate-800">Etter økta</div>
-                            <div className="text-xs text-slate-500">Svar med emoji før økta lagres.</div>
+                            <div className="text-sm font-semibold text-slate-800">Etter Ã¸kta</div>
+                            <div className="text-xs text-slate-500">Svar med emoji fÃ¸r Ã¸kta lagres.</div>
                           </div>
                           {[
                             {
                               key: "energy",
-                              question: "Hvordan føles energinivået nå?",
+                              question: "Hvordan fÃ¸les energinivÃ¥et nÃ¥?",
                               value: reflectionEnergyLevel,
                               setValue: setReflectionEnergyLevel,
                             },
                             {
                               key: "difficulty",
-                              question: "Hvor tung opplevdes økta?",
+                              question: "Hvor tung opplevdes Ã¸kta?",
                               value: reflectionDifficultyLevel,
                               setValue: setReflectionDifficultyLevel,
                             },
@@ -4918,7 +4942,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                       className={`rounded-xl border px-2 py-2 text-lg transition ${
                                         active ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
                                       }`}
-                                      aria-label={`Velg nivå ${level}`}
+                                      aria-label={`Velg nivÃ¥ ${level}`}
                                     >
                                       {getReflectionEmoji(numericLevel)}
                                     </button>
@@ -4945,11 +4969,11 @@ export function MemberPortal(props: MemberPortalProps) {
                           onClick={() => setWorkoutExerciseIndex((prev) => Math.max(0, prev - 1))}
                           disabled={workoutExerciseIndex === 0}
                         >
-                          Forrige øvelse
+                          Forrige Ã¸velse
                         </OutlineButton>
                         {workoutExerciseIndex < workoutResultGroups.length - 1 ? (
                           <GradientButton className="w-full sm:flex-1" onClick={handleGoToNextWorkoutExercise}>
-                            Neste øvelse
+                            Neste Ã¸velse
                           </GradientButton>
                         ) : (
                           <GradientButton
@@ -4966,7 +4990,7 @@ export function MemberPortal(props: MemberPortalProps) {
                               window.setTimeout(() => setIsSavingWorkout(false), 600);
                             }}
                           >
-                            {showWorkoutReflection ? (isSavingWorkout ? "Lagrer..." : "Lagre økt") : "Avslutt økt"}
+                            {showWorkoutReflection ? (isSavingWorkout ? "Lagrer..." : "Lagre Ã¸kt") : "Avslutt Ã¸kt"}
                           </GradientButton>
                         )}
                       </div>
@@ -4998,14 +5022,14 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-slate-800">Streaks og achievements</div>
                     <div className="mt-1 text-xs text-slate-500">
-                      Små milepæler som holder motivasjonen oppe. Nivå {achievementLevel} av {achievementMaxLevel}
-                      {hasCompletedAllAchievementLevels ? " · Maksnivå nådd ✨" : ""}
+                      SmÃ¥ milepÃ¦ler som holder motivasjonen oppe. NivÃ¥ {achievementLevel} av {achievementMaxLevel}
+                      {hasCompletedAllAchievementLevels ? " Â· MaksnivÃ¥ nÃ¥dd âœ¨" : ""}
                     </div>
                   </div>
                 </div>
                 <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Streak denne perioden: {streakWeeks} uker</div>
-                  <div className="mt-2 text-xs text-slate-500">Streak teller sammenhengende treningsuker med fullførte økter.</div>
+                  <div className="mt-2 text-xs text-slate-500">Streak teller sammenhengende treningsuker med fullfÃ¸rte Ã¸kter.</div>
                 </div>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                   {achievements.map((achievement) => (
@@ -5026,7 +5050,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       </div>
                       <div className="mt-1 flex items-center justify-between text-[11px] font-semibold">
                         <span>{Math.min(achievement.current, achievement.target)}/{achievement.target}</span>
-                        <span>{achievement.unlocked ? "Låst opp ✨" : "På vei"}</span>
+                        <span>{achievement.unlocked ? "LÃ¥st opp âœ¨" : "PÃ¥ vei"}</span>
                       </div>
                     </div>
                   ))}
@@ -5043,15 +5067,15 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-slate-800">Personlige rekorder</div>
-                    <div className="mt-1 text-xs text-slate-500">Stjernemerk opptil tre rekorder du vil fremheve først.</div>
+                    <div className="mt-1 text-xs text-slate-500">Stjernemerk opptil tre rekorder du vil fremheve fÃ¸rst.</div>
                   </div>
                 </div>
                 <div className="mt-4 space-y-3">
                   {personalRecords.length === 0 ? (
                     <EmptyState
-                      icon="🏅"
-                      title="Ingen PR-er registrert ennå"
-                      description="Når du logger styrkeøkter, vises personlige rekorder her."
+                      icon="ðŸ…"
+                      title="Ingen PR-er registrert ennÃ¥"
+                      description="NÃ¥r du logger styrkeÃ¸kter, vises personlige rekorder her."
                       className="bg-white"
                     />
                   ) : null}
@@ -5060,7 +5084,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="font-medium">{record.name}</div>
-                          <div className="mt-1 text-sm text-slate-500">Beste registrerte: {record.weight} kg × {record.reps}</div>
+                          <div className="mt-1 text-sm text-slate-500">Beste registrerte: {record.weight} kg Ã— {record.reps}</div>
                         </div>
                         <button
                           type="button"
@@ -5113,22 +5137,22 @@ export function MemberPortal(props: MemberPortalProps) {
                           <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
                           Skrytekort
                         </span>
-                        <span className="rounded-full bg-black/15 px-2.5 py-0.5 text-xs font-medium text-white/90">9:16 · PNG</span>
+                        <span className="rounded-full bg-black/15 px-2.5 py-0.5 text-xs font-medium text-white/90">9:16 Â· PNG</span>
                       </div>
 
                       <div>
                         <h3 className="text-xl font-bold tracking-tight text-white drop-shadow-sm sm:text-2xl">Skrytekort til Facebook</h3>
                         <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-white/88">
-                          {progressShareMonthLabel} — bilde med mine tall og «jeg har løftet …»-fakta, klart å lime inn i et innlegg.
+                          {progressShareMonthLabel} â€” bilde med mine tall og Â«jeg har lÃ¸ftet â€¦Â»-fakta, klart Ã¥ lime inn i et innlegg.
                         </p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                         {[
-                          { k: "Mine økter", v: String(estimatedSessionsThisMonth) },
+                          { k: "Mine Ã¸kter", v: String(estimatedSessionsThisMonth) },
                           { k: "Mine dager", v: String(uniqueTrainingDays) },
                           { k: "Min streak", v: `${streakWeeks} u` },
-                          { k: "Månedsvolum", v: `${Math.round(progressShareMonthLiftKg).toLocaleString("nb-NO")} kg` },
+                          { k: "MÃ¥nedsvolum", v: `${Math.round(progressShareMonthLiftKg).toLocaleString("nb-NO")} kg` },
                         ].map((cell) => (
                           <div
                             key={cell.k}
@@ -5154,7 +5178,7 @@ export function MemberPortal(props: MemberPortalProps) {
                               : "text-xs font-medium text-white/80"
                         }
                       >
-                        Siste 14 dager: {progressStory.delta > 0 ? "↑" : progressStory.delta < 0 ? "↓" : "—"} {progressStory.trendLabel}.
+                        Siste 14 dager: {progressStory.delta > 0 ? "â†‘" : progressStory.delta < 0 ? "â†“" : "â€”"} {progressStory.trendLabel}.
                       </p>
                     </div>
 
@@ -5167,7 +5191,7 @@ export function MemberPortal(props: MemberPortalProps) {
                         <Share2 className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5" aria-hidden />
                         Del til Facebook
                       </button>
-                      <p className="text-center text-[11px] leading-snug text-white/75 lg:text-left">Fungerer best på mobil — last ned eller del rett til Facebook.</p>
+                      <p className="text-center text-[11px] leading-snug text-white/75 lg:text-left">Fungerer best pÃ¥ mobil â€” last ned eller del rett til Facebook.</p>
                     </div>
                   </div>
                 </div>
@@ -5195,8 +5219,8 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div ref={memberMessagesContainerRef} className="max-h-[min(52vh,20rem)] space-y-3 overflow-auto rounded-xl border bg-white p-3 sm:p-4">
                   {memberMessages.length === 0 ? (
                     <EmptyState
-                      icon="💬"
-                      title="Ingen meldinger ennå"
+                      icon="ðŸ’¬"
+                      title="Ingen meldinger ennÃ¥"
                       description="Start med en kort oppdatering til trener."
                       className="bg-slate-50"
                       action={
@@ -5269,17 +5293,17 @@ export function MemberPortal(props: MemberPortalProps) {
                         <TextInput value={memberPhoneDraft} onChange={(e) => setMemberPhoneDraft(e.target.value)} placeholder="Telefon" />
                       </label>
                       <label className="space-y-1">
-                        <span className="text-sm font-semibold text-slate-700">Fødselsdato</span>
-                        <TextInput value={memberBirthDateDraft} onChange={(e) => setMemberBirthDateDraft(e.target.value)} placeholder="Fødselsdato (dd.mm.yyyy)" />
+                        <span className="text-sm font-semibold text-slate-700">FÃ¸dselsdato</span>
+                        <TextInput value={memberBirthDateDraft} onChange={(e) => setMemberBirthDateDraft(e.target.value)} placeholder="FÃ¸dselsdato (dd.mm.yyyy)" />
                       </label>
                     </div>
                     <label className="space-y-1">
-                      <span className="text-sm font-semibold text-slate-700">Mål</span>
+                      <span className="text-sm font-semibold text-slate-700">MÃ¥l</span>
                       <SelectBox
                         value={MEMBER_GOAL_OPTIONS.includes(memberGoalDraft as (typeof MEMBER_GOAL_OPTIONS)[number]) ? memberGoalDraft : ""}
                         onChange={(value) => setMemberGoalDraft(value)}
                         options={[
-                          { value: "", label: "Velg mål" },
+                          { value: "", label: "Velg mÃ¥l" },
                           ...MEMBER_GOAL_OPTIONS.map((goal) => ({ value: goal, label: goal })),
                         ]}
                       />
@@ -5290,7 +5314,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     </label>
                     <div className="grid gap-2 text-sm text-slate-600 md:grid-cols-2">
                       <div><span className="font-medium text-slate-800">Status:</span> {customerStatusLabel}</div>
-                      <div><span className="font-medium text-slate-800">Siste trening:</span> {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}</div>
+                      <div><span className="font-medium text-slate-800">Siste trening:</span> {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullfÃ¸rte Ã¸kter ennÃ¥"}</div>
                     </div>
                   </div>
                   <div className="rounded-xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -5298,7 +5322,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     {memberAvatarUrl ? (
                       <img src={memberAvatarUrl} alt="Ditt profilbilde" className="h-24 w-24 rounded-full object-cover border" style={{ borderColor: "rgba(15,23,42,0.12)" }} loading="eager" decoding="async" />
                     ) : (
-                      <div className="text-xs text-slate-500">Ingen bilde valgt ennå.</div>
+                      <div className="text-xs text-slate-500">Ingen bilde valgt ennÃ¥.</div>
                     )}
                     <input
                       type="file"
@@ -5316,7 +5340,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div className="rounded-xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="text-sm font-semibold text-slate-700">Mikro-feiringer</div>
                     <label className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <span>Vis små feiringer for PR/streak</span>
+                      <span>Vis smÃ¥ feiringer for PR/streak</span>
                       <input
                         type="checkbox"
                         checked={microCelebrationsEnabled}
@@ -5336,12 +5360,12 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null}
                   {!isMemberLimited && supabaseClient && isWebPushConfigurable() ? (
                     <div className="rounded-xl border bg-slate-50 p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="text-sm font-semibold text-slate-700">Varsler på denne enheten</div>
+                      <div className="text-sm font-semibold text-slate-700">Varsler pÃ¥ denne enheten</div>
                       <p className="text-xs text-slate-600">
-                        Slå på varsler for å få beskjed når treneren sender deg en ny melding.
+                        SlÃ¥ pÃ¥ varsler for Ã¥ fÃ¥ beskjed nÃ¥r treneren sender deg en ny melding.
                       </p>
                       <OutlineButton type="button" onClick={handleRegisterWebPush} disabled={pushRegisterBusy} className="w-full md:w-auto">
-                        {pushRegisterBusy ? "Aktiverer…" : "Slå på push-varsler"}
+                        {pushRegisterBusy ? "Aktivererâ€¦" : "SlÃ¥ pÃ¥ push-varsler"}
                       </OutlineButton>
                       {pushRegisterStatus ? (
                         <StatusMessage
@@ -5363,13 +5387,13 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               ) : (
                 <EmptyState
-                  icon="👤"
+                  icon="ðŸ‘¤"
                   title="Fant ingen medlemsprofil"
-                  description="Prøv å logge ut og inn igjen."
+                  description="PrÃ¸v Ã¥ logge ut og inn igjen."
                   className="mt-4"
                   action={
                     <OutlineButton onClick={() => setMemberTab("overview")} className="w-full sm:w-auto">
-                      Gå til oversikt
+                      GÃ¥ til oversikt
                     </OutlineButton>
                   }
                 />
@@ -5395,3 +5419,5 @@ export function MemberPortal(props: MemberPortalProps) {
     </>
   );
 }
+
+
