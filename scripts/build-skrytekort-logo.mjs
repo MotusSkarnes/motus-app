@@ -14,18 +14,16 @@ const src =
     "projects",
     "c-Users-iben-OneDrive-Lene-motus-pt-app",
     "assets",
-    "c__Users_iben_AppData_Roaming_Cursor_User_workspaceStorage_b12ce805d51d929840c8009c3ccf9154_images_Motus_logo_Til_turkis_bakgrunn-5e590ff2-cb68-42ad-b5cd-9089fc3d453d.png",
+    "c__Users_iben_AppData_Roaming_Cursor_User_workspaceStorage_b12ce805d51d929840c8009c3ccf9154_images_Motus_logo_Til_turkis_bakgrunn-4f517c59-140f-4c5a-adc6-195094651602.png",
   );
 
-const outputs = [
-  path.join(root, "src/assets/motus-skrytekort-logo.png"),
-  path.join(root, "src/assets/motus-mark-brush-transparent.png"),
-];
-
-const BACKGROUND_MAX = 18;
+const output = path.join(root, "src/assets/motus-skrytekort-logo.png");
+const BACKGROUND_MAX = 12;
+const WHITE_MIN = 180;
+const INK = "#000000";
 
 function isBackgroundPixel(r, g, b) {
-  return r <= BACKGROUND_MAX && g <= BACKGROUND_MAX && b <= BACKGROUND_MAX;
+  return Math.max(r, g, b) <= BACKGROUND_MAX;
 }
 
 const { data, info } = await sharp(src).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -62,26 +60,70 @@ while (queue.length > 0) {
   pushIfBackground(x, y + 1);
 }
 
-let removed = 0;
-let keptDark = 0;
+let minX = width;
+let minY = height;
+let maxX = 0;
+let maxY = 0;
+
 for (let idx = 0; idx < width * height; idx += 1) {
   const i = idx * 4;
   const r = data[i];
   const g = data[i + 1];
   const b = data[i + 2];
+  const luminance = Math.max(r, g, b);
+
   if (visited[idx]) {
     data[i + 3] = 0;
-    removed += 1;
-  } else if (isBackgroundPixel(r, g, b)) {
-    keptDark += 1;
+    continue;
   }
+
+  if (luminance >= WHITE_MIN) {
+    data[i + 3] = 255;
+    const x = idx % width;
+    const y = Math.floor(idx / width);
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y);
+    maxY = Math.max(maxY, y);
+    continue;
+  }
+
+  data[i + 3] = 0;
 }
 
-for (const out of outputs) {
-  await sharp(data, { raw: { width, height, channels: 4 } })
-    .png({ compressionLevel: 9 })
-    .toFile(out);
-}
+const markCenterX = (minX + maxX) / 2;
+const textY = maxY + Math.max(36, Math.round((height - maxY) * 0.42));
+const fontSize = Math.round(Math.max(52, Math.min(86, width * 0.078)));
 
-const meta = await sharp(outputs[0]).metadata();
-console.log({ src, width: meta.width, height: meta.height, hasAlpha: meta.hasAlpha, removed, keptDark, outputs });
+const textSvg = Buffer.from(
+  `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+    <text
+      x="${markCenterX.toFixed(1)}"
+      y="${textY.toFixed(1)}"
+      text-anchor="middle"
+      dominant-baseline="middle"
+      font-family="Segoe UI, system-ui, Helvetica, Arial, sans-serif"
+      font-size="${fontSize}"
+      font-weight="500"
+      letter-spacing="0.04em"
+      fill="${INK}"
+    >motus</text>
+  </svg>`,
+);
+
+await sharp(data, { raw: { width, height, channels: 4 } })
+  .composite([{ input: textSvg, top: 0, left: 0 }])
+  .png({ compressionLevel: 9 })
+  .toFile(output);
+
+const meta = await sharp(output).metadata();
+console.log({
+  src,
+  output,
+  width: meta.width,
+  height: meta.height,
+  hasAlpha: meta.hasAlpha,
+  fontSize,
+  textY,
+  markBox: { minX, minY, maxX, maxY },
+});
