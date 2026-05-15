@@ -994,11 +994,24 @@ async function deactivateExerciseInSupabase(exerciseId: string, updatedPrograms:
   }
 }
 
+function buildTrainingProgramPersistenceFingerprint(input: {
+  title?: unknown;
+  goal?: unknown;
+  notes?: unknown;
+  exercises?: unknown;
+}): string {
+  const exercises = Array.isArray(input.exercises) ? (input.exercises as ProgramExercise[]) : [];
+  const exerciseFingerprint = exercises
+    .map((item) => `${item.exerciseName}|${item.sets}|${item.reps}|${item.weight}|${item.holdSeconds ?? ""}|${item.durationMinutes ?? ""}|${item.speed ?? ""}|${item.incline ?? ""}|${item.restSeconds}|${item.notes}`)
+    .join("||");
+  return `${String(input.title ?? "").trim()}::${String(input.goal ?? "").trim()}::${String(input.notes ?? "").trim()}::${exerciseFingerprint}`;
+}
+
 async function deleteProgram(programId: string) {
   if (!supabaseClient) return;
   const { data: programRow, error: lookupError } = await supabaseClient
     .from("training_programs")
-    .select("id, member_id, title")
+    .select("id, member_id, title, goal, notes, exercises")
     .eq("id", programId)
     .maybeSingle();
   if (lookupError) {
@@ -1014,21 +1027,46 @@ async function deleteProgram(programId: string) {
   }
 
   const memberId = String(programRow.member_id ?? "").trim();
+  const targetEmail = memberId.includes("@") ? memberId.toLowerCase() : "";
   const title = String(programRow.title ?? "");
-  const relatedMemberIds = memberId && memberId !== "__template__" ? await resolveRelatedMemberIds(memberId) : [memberId];
-  const validMemberIds = relatedMemberIds.filter(Boolean);
-  if (!validMemberIds.length) return;
+  const targetFingerprint = buildTrainingProgramPersistenceFingerprint(programRow as Record<string, unknown>);
+  const relatedMemberIds =
+    memberId && memberId !== "__template__"
+      ? await resolveRelatedMemberIds(memberId, targetEmail ? { targetEmail } : undefined)
+      : [memberId];
+  const deletionKeys = Array.from(new Set([memberId, targetEmail, ...relatedMemberIds].map((value) => String(value ?? "").trim()).filter(Boolean)));
+  if (!deletionKeys.length) return;
+
+  const { data: candidateRows, error: candidateError } = await supabaseClient
+    .from("training_programs")
+    .select("id, member_id, title, goal, notes, exercises")
+    .in("member_id", deletionKeys)
+    .eq("title", title);
+  if (candidateError) {
+    console.warn("Supabase linked program candidate lookup failed:", candidateError.message);
+  }
+
+  const programIdsToDelete = Array.from(
+    new Set(
+      (candidateRows ?? [])
+        .filter((row) => buildTrainingProgramPersistenceFingerprint(row as Record<string, unknown>) === targetFingerprint)
+        .map((row) => String((row as { id?: string }).id ?? "").trim())
+        .filter(Boolean),
+    ),
+  );
+  if (!programIdsToDelete.length) {
+    programIdsToDelete.push(programId);
+  }
 
   const { error } = await supabaseClient
     .from("training_programs")
     .delete()
-    .in("member_id", validMemberIds)
-    .eq("title", title);
+    .in("id", programIdsToDelete);
   if (error) {
     console.warn("Supabase linked program delete failed:", error.message);
   }
 
-  for (const relatedMemberId of validMemberIds) {
+  for (const relatedMemberId of deletionKeys) {
     await deleteLogsForProgram(relatedMemberId, title);
   }
 }
