@@ -6,3 +6,18 @@ dist/
 .env.*.local
 supabase/.temp/cli-latest
 .vercel
+
+# Windows / OneDrive conflict copies from DESKTOP-* machine names.
+# Keep this scoped to source/config/docs so legitimate assets are still visible.
+**/*-DESKTOP-*.*js
+**/*-DESKTOP-*.*ts
+**/*-DESKTOP-*.jsx
+**/*-DESKTOP-*.tsx
+**/*-DESKTOP-*.json
+**/*-DESKTOP-*.css
+**/*-DESKTOP-*.html
+**/*-DESKTOP-*.md
+**/*-DESKTOP-*.sql
+**/*-DESKTOP-*.toml
+**/*-DESKTOP-*.yml
+**/*-DESKTOP-*.yaml

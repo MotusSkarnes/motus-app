@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, Pencil, ShieldCheck, Star, Trash2, Users } from "lucide-react";
+import { ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, Pencil, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
@@ -36,7 +36,14 @@ import {
   upsertMemberPeriodPlansForTrainer,
 } from "../services/supabaseRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
-import { buildPeriodPlanWeekNavItems, weekAppliesToMember } from "../app/periodPlanMerge";
+import {
+  assignWeekPlanGroupAndSyncDays,
+  buildPeriodPlanWeekNavItems,
+  PERIOD_PLAN_GROUP_PRESETS,
+  planGroupColorForKey,
+  propagatePlanGroupDaysFromWeek,
+  normalizeSharedPlanDaysInWeeklyPlans,
+} from "../app/periodPlanMerge";
 import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
 
 function inferStatusTone(message: string): "success" | "error" | "info" {
@@ -75,6 +82,14 @@ function getMemberInitials(name: string): string {
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
   return initials || "M";
+}
+
+function ClientAvatarFallback({ className = "", iconClassName = "h-5 w-5" }: { className?: string; iconClassName?: string }) {
+  return (
+    <div className={`absolute inset-0 flex items-center justify-center ${className}`} aria-hidden="true">
+      <UserCircle2 className={iconClassName} strokeWidth={1.7} />
+    </div>
+  );
 }
 
 type TrainerPortalProps = {
@@ -1636,18 +1651,15 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     });
   }
 
-  function togglePeriodWeekAppliesToMember(weekId: string) {
-    setPeriodWeeklyPlansDraft((prev) =>
-      prev.map((week) =>
-        week.id === weekId ? { ...week, appliesToMember: week.appliesToMember === false ? undefined : false } : week,
-      ),
-    );
+  function assignPlanGroupForActiveWeek(presetKey: string | undefined) {
+    if (!activePeriodWeek) return;
+    setPeriodWeeklyPlansDraft((prev) => assignWeekPlanGroupAndSyncDays(prev, activePeriodWeek.id, presetKey));
   }
 
   function updateActivePeriodWeekDay(day: WeekdayPlanKey, value: string) {
     if (!activePeriodWeek) return;
-    setPeriodWeeklyPlansDraft((prev) =>
-      prev.map((week) =>
+    setPeriodWeeklyPlansDraft((prev) => {
+      const afterMap = prev.map((week) =>
         week.id === activePeriodWeek.id
           ? {
               ...week,
@@ -1657,8 +1669,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
               },
             }
           : week,
-      ),
-    );
+      );
+      return propagatePlanGroupDaysFromWeek(afterMap, activePeriodWeek.id);
+    });
   }
 
   function savePeriodPlanForSelectedMember() {
@@ -1672,14 +1685,12 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       return;
     }
     const weeks = Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1));
-    const weeklyPlans = periodWeeklyPlansDraft.slice(0, weeks).map((week, index) => ({
-      ...week,
-      weekNumber: index + 1,
-    }));
-    if (!weeklyPlans.some((w) => weekAppliesToMember(w))) {
-      setPeriodPlanStatus("Kryss av for minst én uke under «Synlig for medlem».");
-      return;
-    }
+    const weeklyPlans = normalizeSharedPlanDaysInWeeklyPlans(
+      periodWeeklyPlansDraft.slice(0, weeks).map((week, index) => ({
+        ...week,
+        weekNumber: index + 1,
+      })),
+    );
     const newPeriodPlan: PeriodSchedulePlan = {
       id: uid("period-plan"),
       title,
@@ -1712,16 +1723,15 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       setPeriodPlanStatus("Velg minst én uke å kopiere til.");
       return;
     }
-    setPeriodWeeklyPlansDraft((prev) =>
-      prev.map((week) =>
-        matchingWeekIdsDraft.includes(week.id)
-          ? {
-              ...week,
-              days: { ...activePeriodWeek.days },
-            }
-          : week,
-      ),
-    );
+    setPeriodWeeklyPlansDraft((prev) => {
+      let next = prev.map((week) =>
+        matchingWeekIdsDraft.includes(week.id) ? { ...week, days: { ...activePeriodWeek.days } } : week,
+      );
+      matchingWeekIdsDraft.forEach((id) => {
+        next = propagatePlanGroupDaysFromWeek(next, id);
+      });
+      return next;
+    });
     setPeriodPlanStatus(`Kopierte uke ${activePeriodWeek.weekNumber} til ${matchingWeekIdsDraft.length} uke(r).`);
   }
 
@@ -3429,8 +3439,20 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                   aria-label={`Åpne kundekort for ${member.name}`}
                 >
                   <div className="flex items-center gap-2">
-                    <div className="h-9 w-9 overflow-hidden rounded-full border bg-slate-100" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
-                      {resolveMemberAvatarUrl(member) ? <img src={resolveMemberAvatarUrl(member)} alt={member.name} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
+                    <div className="relative h-9 w-9 overflow-hidden rounded-full border bg-slate-100 text-slate-400" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
+                      <ClientAvatarFallback />
+                      {resolveMemberAvatarUrl(member) ? (
+                        <img
+                          src={resolveMemberAvatarUrl(member)}
+                          alt={member.name}
+                          className="relative z-10 h-full w-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ) : null}
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-slate-800">{member.name}</div>
@@ -3585,8 +3607,20 @@ function programAuthorLabel(program: TrainingProgram): string | null {
             {membersWithPriority.map(({ member, priority }) => (
               <div key={member.id} className="flex items-center justify-between gap-2 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center gap-2">
-                  <div className="h-9 w-9 overflow-hidden rounded-full border bg-slate-100" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
-                    {resolveMemberAvatarUrl(member) ? <img src={resolveMemberAvatarUrl(member)} alt={member.name} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
+                  <div className="relative h-9 w-9 overflow-hidden rounded-full border bg-slate-100 text-slate-400" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
+                    <ClientAvatarFallback />
+                    {resolveMemberAvatarUrl(member) ? (
+                      <img
+                        src={resolveMemberAvatarUrl(member)}
+                        alt={member.name}
+                        className="relative z-10 h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : null}
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-slate-800">{member.name}</div>
@@ -3651,7 +3685,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         <div className="grid gap-4">
           <div className="lg:hidden">
             <OutlineButton onClick={() => setShowCustomerToolsMobile((prev) => !prev)} className="w-full">
-              {showCustomerToolsMobile ? "Skjul kundeliste og oppretting" : "Vis kundeliste og oppretting"}
+              {showCustomerToolsMobile ? "Skjul kundeliste" : "Vis kundeliste"}
             </OutlineButton>
           </div>
           <Card className={`p-4 ${showCustomerToolsMobile ? "block" : "hidden"} lg:block`}>
@@ -3659,7 +3693,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
               <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Users className="h-5 w-5" /></div>
               <div>
                 <h2 className="text-xl font-semibold tracking-tight">Kunder</h2>
-                <p className="text-sm text-slate-500">Velg kunde, filtrer listen, eller legg til ny kunde nedenfor</p>
+                <p className="text-sm text-slate-500">Velg kunde eller filtrer listen. Nye kunder opprettes under Admin.</p>
               </div>
             </div>
             <div className="mt-5 space-y-3">
@@ -3732,10 +3766,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
             </div>
           </Card>
 
-          <Card className={`p-4 ${showCustomerToolsMobile ? "block" : "hidden"} lg:block`}>
-            {renderNewMemberForm({ title: "Legg til ny kunde" })}
-          </Card>
-
           <Card className="p-4 sm:p-5 w-full">
             {selectedMember ? (
               <div className="space-y-5">
@@ -3750,10 +3780,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 <div className="rounded-[26px] p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.ink} 100%)` }}>
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div className="text-sm text-white/80">Kundekort</div>
-                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-white/40 bg-white/15 sm:h-14 sm:w-14">
-                      <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-white/85">
-                        {getMemberInitials(selectedMember.name)}
-                      </div>
+                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-white/40 bg-white/15 text-white/80 sm:h-14 sm:w-14">
+                      <ClientAvatarFallback iconClassName="h-8 w-8 sm:h-9 sm:w-9" />
                       {resolveMemberAvatarUrl(selectedMember) ? (
                         <img
                           src={resolveMemberAvatarUrl(selectedMember)}
@@ -3864,8 +3892,18 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       </div>
                       <div className="rounded-xl border border-white/25 bg-white/10 p-3 space-y-2">
                         <div className="text-xs font-medium text-white">Profilbilde</div>
-                        <div className="h-14 w-14 overflow-hidden rounded-full border border-white/40 bg-white/20">
-                          {resolveMemberAvatarUrl(selectedMember) ? <img src={resolveMemberAvatarUrl(selectedMember)} alt={`Profilbilde av ${selectedMember.name}`} className="h-full w-full object-cover" /> : null}
+                        <div className="relative h-14 w-14 overflow-hidden rounded-full border border-white/40 bg-white/20 text-white/80">
+                          <ClientAvatarFallback iconClassName="h-9 w-9" />
+                          {resolveMemberAvatarUrl(selectedMember) ? (
+                            <img
+                              src={resolveMemberAvatarUrl(selectedMember)}
+                              alt={`Profilbilde av ${selectedMember.name}`}
+                              className="relative z-10 h-full w-full object-cover"
+                              onError={(event) => {
+                                event.currentTarget.style.display = "none";
+                              }}
+                            />
+                          ) : null}
                         </div>
                         <input
                           type="file"
@@ -4161,26 +4199,48 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                           />
                         ) : null}
                         {periodWeeklyPlansDraft.length > 0 ? (
-                          <div className="rounded-xl border bg-white p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Synlig for medlem</div>
+                          <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Del samme dagplan på flere uker</div>
                             <p className="text-[11px] text-slate-500 leading-snug">
-                              Bare avkryssede uker vises for medlem. Fjern kryss på f.eks. uke 2 og 4 hvis kun uke 1 og 3 skal synliggjøres. Som trener kan du fortsatt bla mellom alle uker og tilpasse hver av dem.
+                              Velg uke i navigatoren over, deretter en farge. Alle uker med samme merke får samme dagplan på medlemsappen (som uke&nbsp;1 og 3 merket rosa).
+                              Alle uker kan settes til samme farge for å kopiere én felles plantemplate. «Egen plan» gir uken kun sin egen plan.
                             </p>
-                            <div className="flex flex-wrap gap-2">
-                              {periodWeeklyPlansDraft.slice(0, Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1))).map((week) => (
-                                <label
-                                  key={`applies-${week.id}`}
-                                  className="inline-flex cursor-pointer items-center gap-2 rounded-lg border bg-slate-50 px-2 py-1.5 text-xs text-slate-700"
-                                  style={{ borderColor: "rgba(15,23,42,0.08)" }}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={week.appliesToMember !== false}
-                                    onChange={() => togglePeriodWeekAppliesToMember(week.id)}
+                            <div className="flex flex-wrap items-center gap-2">
+                              {PERIOD_PLAN_GROUP_PRESETS.map((preset) => {
+                                const active = activePeriodWeek?.planGroupKey === preset.key;
+                                return (
+                                  <button
+                                    key={preset.key}
+                                    type="button"
+                                    title={preset.label}
+                                    aria-label={`Sett aktiv uke i gruppe ${preset.label}`}
+                                    aria-pressed={active}
+                                    onClick={() => assignPlanGroupForActiveWeek(preset.key)}
+                                    className={`h-9 w-9 shrink-0 rounded-full border shadow-sm transition ${
+                                      active ? "ring-2 ring-offset-2 ring-slate-800 scale-105" : "opacity-95 hover:opacity-100 hover:ring-2 hover:ring-slate-300"
+                                    }`}
+                                    style={{ backgroundColor: preset.color, borderColor: "rgba(15,23,42,0.12)" }}
                                   />
-                                  <span>Uke {week.weekNumber}</span>
-                                </label>
-                              ))}
+                                );
+                              })}
+                              <OutlineButton type="button" onClick={() => assignPlanGroupForActiveWeek(undefined)} className="text-xs px-3 py-1.5">
+                                Egen plan
+                              </OutlineButton>
+                            </div>
+                            <div className="flex flex-wrap gap-x-3 gap-y-1 border-t border-slate-100 pt-2 text-[11px] text-slate-600">
+                              {periodWeeklyPlansDraft.slice(0, Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1))).map((week) => {
+                                const dot = planGroupColorForKey(week.planGroupKey);
+                                return (
+                                  <span key={`legend-${week.id}`} className="inline-flex items-center gap-1.5 font-medium">
+                                    {dot ? (
+                                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: dot }} aria-hidden />
+                                    ) : (
+                                      <span className="h-2 w-2 rounded-full border border-slate-300 bg-white" aria-hidden />
+                                    )}
+                                    Uke {week.weekNumber}
+                                  </span>
+                                );
+                              })}
                             </div>
                           </div>
                         ) : null}

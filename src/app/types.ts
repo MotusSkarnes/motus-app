@@ -167,8 +167,11 @@ export type WeeklySchedulePlan = {
   id: string;
   weekNumber: number;
   days: WeeklyDayPlan;
-  /** Når false: uken lagres men vises ikke for medlem (f.eks. bare uke 1 og 3 aktive). */
-  appliesToMember?: boolean;
+  /**
+   * Uker med samme nøkkel (samme valgte farge) deler samme dagplan på medlemssiden og holdes synkron ved redigering.
+   * Ikke satt eller tom = kun denne ukens egen dagplan (uavhengig).
+   */
+  planGroupKey?: string;
 };
 
 export type PeriodSchedulePlan = {

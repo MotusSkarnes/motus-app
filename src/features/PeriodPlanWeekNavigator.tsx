@@ -93,11 +93,20 @@ export function PeriodPlanWeekNavigator({
           className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl border bg-white px-3 py-2 text-center"
           style={{ borderColor: "rgba(15,23,42,0.10)" }}
         >
-          <div className="text-sm font-semibold text-slate-800">
-            Uke {activeWeek.weekNumber}
-            {showNowBadge && currentWeekNumber === activeWeek.weekNumber ? (
-              <span className="ml-1 text-xs font-medium text-teal-700">(nå)</span>
+          <div className="text-sm font-semibold text-slate-800 inline-flex items-center justify-center gap-1.5 flex-wrap">
+            {activeWeek.planGroupColor ? (
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white shadow"
+                style={{ backgroundColor: activeWeek.planGroupColor }}
+                aria-hidden
+              />
             ) : null}
+            <span>
+              Uke {activeWeek.weekNumber}
+              {showNowBadge && currentWeekNumber === activeWeek.weekNumber ? (
+                <span className="ml-1 text-xs font-medium text-teal-700">(nå)</span>
+              ) : null}
+            </span>
           </div>
           {weekRange ? <div className="mt-0.5 text-[11px] text-slate-500">{weekRange}</div> : null}
           <div className="mt-0.5 text-[10px] text-slate-400">
@@ -140,8 +149,21 @@ export function PeriodPlanWeekNavigator({
                   selected ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : undefined
                 }
               >
-                Uke {week.weekNumber}
-                {showNowBadge && currentWeekNumber === week.weekNumber ? " · nå" : ""}
+                <span className="inline-flex items-center justify-center gap-1.5">
+                  {week.planGroupColor ? (
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ring-1 ring-offset-1 ${
+                        selected ? "ring-white/70 ring-offset-transparent" : "ring-slate-300 ring-offset-white"
+                      }`}
+                      style={{ backgroundColor: week.planGroupColor }}
+                      aria-hidden
+                    />
+                  ) : null}
+                  <span>
+                    Uke {week.weekNumber}
+                    {showNowBadge && currentWeekNumber === week.weekNumber ? " · nå" : ""}
+                  </span>
+                </span>
               </button>
             );
           })}

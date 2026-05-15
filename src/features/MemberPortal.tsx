@@ -51,11 +51,10 @@ import {
   resolvePeriodPlanEntryAction,
 } from "../app/periodPlanEntryActions";
 import {
-  buildPeriodPlanWeekNavItemsForMember,
+  buildPeriodPlanWeekNavItemsFromPlan,
   mergedPeriodPlanListForMember,
-  normalizePeriodSchedulePlan,
+  periodPlanSelectableWeekCount,
   resolvePeriodPlanWeek,
-  weekAppliesToMember,
 } from "../app/periodPlanMerge";
 import {
   applyPeriodPlanSwaps,
@@ -1233,10 +1232,10 @@ export function MemberPortal(props: MemberPortalProps) {
     const swaps = getSwapsForWeek(periodPlanSwapsByPlan, activePeriodPlan.id, activeWeeklyPlan.weekNumber);
     return applyPeriodPlanSwaps(activeWeeklyPlan.days, swaps);
   }, [activeWeeklyPlan, activePeriodPlan, periodPlanSwapsByPlan]);
-  const todayPlanEntry = useMemo(() => {
-    if (!activeWeeklyPlan || !weekAppliesToMember(activeWeeklyPlan) || !activeWeeklyPlanEffectiveDays) return "";
-    return activeWeeklyPlanEffectiveDays[currentWeekdayKey]?.trim() ?? "";
-  }, [activeWeeklyPlan, activeWeeklyPlanEffectiveDays, currentWeekdayKey]);
+  const todayPlanEntry =
+    activeWeeklyPlan && activeWeeklyPlanEffectiveDays
+      ? activeWeeklyPlanEffectiveDays[currentWeekdayKey]?.trim() ?? ""
+      : "";
   const todayPlanAction = useMemo(
     () => (todayPlanEntry ? resolvePeriodPlanEntryAction(todayPlanEntry, memberProgramsInActiveLibrary) : { kind: "none" as const }),
     [todayPlanEntry, memberProgramsInActiveLibrary],
@@ -1707,7 +1706,6 @@ export function MemberPortal(props: MemberPortalProps) {
       const startDate = parseDateOnly(plan.startDate);
       if (!startDate) return;
       (plan.weeklyPlans ?? []).forEach((week) => {
-        if (!weekAppliesToMember(week)) return;
         const weekIndex = Math.max(0, (week.weekNumber || 1) - 1);
         (Object.keys(weekdayIndexByKey) as WeekdayPlanKey[]).forEach((weekdayKey) => {
           const swaps = getSwapsForWeek(periodPlanSwapsByPlan, plan.id, week.weekNumber);
@@ -2091,17 +2089,12 @@ export function MemberPortal(props: MemberPortalProps) {
       setSelectedPeriodPlanWeekNumber(null);
       return;
     }
-    const normalized = normalizePeriodSchedulePlan(activePeriodPlan);
-    const includedNumbers = normalized.weeklyPlans.filter(weekAppliesToMember).map((w) => w.weekNumber);
-    if (includedNumbers.length === 0) {
-      setSelectedPeriodPlanWeekNumber(1);
-      return;
-    }
     const fallbackWeekNumber = activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : 1;
     setSelectedPeriodPlanWeekNumber((prev) => {
-      if (prev != null && includedNumbers.includes(prev)) return prev;
-      if (includedNumbers.includes(fallbackWeekNumber)) return fallbackWeekNumber;
-      return includedNumbers[0] ?? 1;
+      if (prev == null) return fallbackWeekNumber;
+      const weekCount = periodPlanSelectableWeekCount(activePeriodPlan);
+      const weekExists = Number(prev) >= 1 && Number(prev) <= weekCount;
+      return weekExists ? prev : fallbackWeekNumber;
     });
   }, [activePeriodPlan, activePeriodWeekIndex]);
 
@@ -4708,19 +4701,15 @@ export function MemberPortal(props: MemberPortalProps) {
                         className="bg-slate-50 py-4"
                       />
                     ) : (
-                      periodPlans.slice(0, 1).map((plan) => {
-                        const memberWeekNav = buildPeriodPlanWeekNavItemsForMember(plan);
-                        const weekForMemberView = resolvePeriodPlanWeek(plan, selectedPeriodPlanWeekForView);
-                        return (
+                      periodPlans.slice(0, 1).map((plan) => (
                         <div key={plan.id} className="rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                           <div className="font-medium text-slate-800">{plan.title}</div>
                           <div className="mt-1 text-xs text-slate-500">Start: {plan.startDate} · {plan.weeks} uker · Lagret {plan.createdAt}</div>
                           {plan.notes ? <div className="mt-2 text-sm text-slate-600">{plan.notes}</div> : null}
                           {(plan.weeklyPlans ?? []).length > 0 ? (
-                            memberWeekNav.length > 0 ? (
                             <PeriodPlanWeekNavigator
                               className="mt-3"
-                              weeks={memberWeekNav}
+                              weeks={buildPeriodPlanWeekNavItemsFromPlan(plan)}
                               selectedWeekNumber={selectedPeriodPlanWeekForView}
                               onWeekSelectByNumber={setSelectedPeriodPlanWeekNumber}
                               currentWeekNumber={activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : null}
@@ -4731,17 +4720,12 @@ export function MemberPortal(props: MemberPortalProps) {
                                 return `${monday} – ${sunday}`;
                               }}
                             />
-                            ) : (
-                              <div className="mt-3 rounded-lg border border-dashed border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
-                                Ingen uker er markert som synlige i denne planen. Be treneren om å krysse av under «Synlig for medlem».
-                              </div>
-                            )
                           ) : null}
-                          {weekForMemberView && weekAppliesToMember(weekForMemberView) ? (
+                          {resolvePeriodPlanWeek(plan, selectedPeriodPlanWeekForView) ? (
                             <PeriodPlanWeekView
                               key={`${plan.id}-${selectedPeriodPlanWeekForView}`}
                               plan={plan}
-                              week={weekForMemberView}
+                              week={resolvePeriodPlanWeek(plan, selectedPeriodPlanWeekForView)!}
                               swapsByPlan={periodPlanSwapsByPlan}
                               memberPrograms={memberProgramsInActiveLibrary}
                               actionStatus={periodPlanActionStatus}
@@ -4753,14 +4737,9 @@ export function MemberPortal(props: MemberPortalProps) {
                               onLogGroup={handlePeriodPlanLogGroup}
                               resolveEntryDate={resolvePeriodPlanEntryDate}
                             />
-                          ) : weekForMemberView ? (
-                            <div className="mt-3 rounded-xl border bg-white p-3 text-sm text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                              Denne uken er ikke inkludert i det som vises for deg. Velg en annen uke i listen over om treneren har satt opp flere synlige uker.
-                            </div>
                           ) : null}
                         </div>
-                        );
-                      })
+                      ))
                     )}
                   </div>
                 ) : null}
