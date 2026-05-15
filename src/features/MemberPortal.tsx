@@ -367,6 +367,14 @@ function parseChatCreatedAtMs(value: string): number {
   return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 }
 
+function formatLoggedResultTitle(result: NonNullable<WorkoutLog["results"]>[number]): string {
+  const baseName = result.exerciseName.trim() || "Øvelse";
+  if (result.setNumber && result.setNumber > 0) {
+    return `${baseName} - sett ${result.setNumber}`;
+  }
+  return baseName;
+}
+
 function parseDateOnly(value: string): Date | null {
   if (!value) return null;
   const isoLike = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -3640,7 +3648,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                   <div className="mt-2 space-y-2">
                                     {selectedCalendarLog.results.map((result, index) => (
                                       <div key={`${selectedCalendarLog.id}-${result.exerciseId}-${index}`} className="rounded-lg border bg-white p-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                        <div className="text-sm font-medium text-slate-800">{result.exerciseName}</div>
+                                        <div className="text-sm font-medium text-slate-800">{formatLoggedResultTitle(result)}</div>
                                         <div className="mt-1 text-xs text-slate-600">
                                           {result.performedDurationMinutes
                                             ? `Utført: ${result.performedDurationMinutes || "-"} min${result.performedSpeed ? ` · ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` · ${result.performedIncline}% incline` : ""}`
@@ -4499,7 +4507,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                     return (
                                       <>
                                   <div className="flex items-start justify-between gap-2">
-                                    <div className="font-medium text-slate-800">{result.exerciseName}</div>
+                                    <div className="font-medium text-slate-800">{formatLoggedResultTitle(result)}</div>
                                     <div className="flex items-center gap-1.5">
                                       {isEditing ? (
                                         <>
