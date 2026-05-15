@@ -795,6 +795,8 @@ export function MemberPortal(props: MemberPortalProps) {
   const workoutWeightInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const memberMessagesContainerRef = useRef<HTMLDivElement | null>(null);
   const profileAutoSaveInFlightRef = useRef(false);
+  /** Unngår å nullstille toast ved hvert felt-synk fra autosave — kun ved bytte aktiv profil. */
+  const lastMemberCoreHydrationIdRef = useRef<string | null>(null);
   const periodPlanCompletedDirtyRef = useRef(false);
   const periodPlanSwapsDirtyRef = useRef(false);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
@@ -909,6 +911,12 @@ export function MemberPortal(props: MemberPortalProps) {
   const relatedMembersForProfile = useMemo(
     () => members.filter((member) => relatedMemberIdSet.has(member.id)),
     [members, relatedMemberIdSet],
+  );
+  /** Stabil på tvers av nye array-referanser — brukes til å hydrate måltall uten å røre tekstutkast. */
+  const relatedProfileGoalsSignature = useMemo(
+    () =>
+      relatedMembersForProfile.map((member) => `${member.id}:${member.personalGoals ?? ""}`).join("|"),
+    [relatedMembersForProfile],
   );
   const isMemberLimited = useMemo(() => {
     const candidates = members.filter((member) => {
@@ -2001,7 +2009,31 @@ export function MemberPortal(props: MemberPortalProps) {
 
   useEffect(() => {
     if (!editableMember) return;
-    setProfileSaveInfo(null);
+    if (lastMemberCoreHydrationIdRef.current !== editableMember.id) {
+      lastMemberCoreHydrationIdRef.current = editableMember.id;
+      setProfileSaveInfo(null);
+    }
+    setMemberNameDraft(editableMember.name);
+    setMemberEmailDraft(editableMember.email);
+    setMemberPhoneDraft(editableMember.phone);
+    setMemberBirthDateDraft(normalizeBirthDateToDdMmYyyy(editableMember.birthDate));
+    setMemberGoalDraft(editableMember.goal);
+    setMemberFocusDraft(editableMember.focus);
+    setMemberInjuriesDraft(editableMember.injuries);
+  }, [
+    editableMember?.id,
+    editableMember?.name,
+    editableMember?.email,
+    editableMember?.phone,
+    editableMember?.birthDate,
+    editableMember?.goal,
+    editableMember?.focus,
+    editableMember?.injuries,
+  ]);
+
+  useEffect(() => {
+    if (!editableMember) return;
+
     const fallback: ProfileMetricsDraft = {
       sessionsPerWeekTarget: "",
       dailyStepsTarget: "",
@@ -2009,16 +2041,14 @@ export function MemberPortal(props: MemberPortalProps) {
       currentDailySteps: "",
     };
 
-    const fromDb = dbProfileMetrics;
-
-    function applyMemberCoreDrafts() {
-      setMemberNameDraft(editableMember.name);
-      setMemberEmailDraft(editableMember.email);
-      setMemberPhoneDraft(editableMember.phone);
-      setMemberBirthDateDraft(normalizeBirthDateToDdMmYyyy(editableMember.birthDate));
-      setMemberGoalDraft(editableMember.goal);
-      setMemberFocusDraft(editableMember.focus);
-      setMemberInjuriesDraft(editableMember.injuries);
+    let fromDb: ProfileMetricsDraft | null = null;
+    for (const member of members) {
+      if (!relatedMemberIdSet.has(member.id)) continue;
+      const decoded = decodeMemberProfileMetrics(member.personalGoals);
+      if (decoded) {
+        fromDb = decoded;
+        break;
+      }
     }
 
     function applyMetricDrafts(metrics: ProfileMetricsDraft) {
@@ -2030,13 +2060,11 @@ export function MemberPortal(props: MemberPortalProps) {
 
     if (typeof window === "undefined") {
       applyMetricDrafts(fromDb ?? fallback);
-      applyMemberCoreDrafts();
       return;
     }
 
     if (fromDb) {
       applyMetricDrafts(fromDb);
-      applyMemberCoreDrafts();
       try {
         window.localStorage.setItem(getProfileStorageKey(editableMember.id), JSON.stringify(fromDb));
       } catch {
@@ -2049,7 +2077,6 @@ export function MemberPortal(props: MemberPortalProps) {
       const raw = window.localStorage.getItem(getProfileStorageKey(editableMember.id));
       if (!raw) {
         applyMetricDrafts(fallback);
-        applyMemberCoreDrafts();
         return;
       }
       const parsed = JSON.parse(raw) as Partial<ProfileMetricsDraft>;
@@ -2059,7 +2086,6 @@ export function MemberPortal(props: MemberPortalProps) {
         targetWeight: parsed.targetWeight ?? "",
         currentDailySteps: parsed.currentDailySteps ?? "",
       });
-      applyMemberCoreDrafts();
       const localHasAnyMetric =
         Boolean((parsed.sessionsPerWeekTarget ?? "").toString().trim()) ||
         Boolean((parsed.dailyStepsTarget ?? "").toString().trim()) ||
@@ -2067,7 +2093,6 @@ export function MemberPortal(props: MemberPortalProps) {
         Boolean((parsed.currentDailySteps ?? "").toString().trim());
       if (localHasAnyMetric) {
         const targetIds = Array.from(new Set([editableMember.id, ...relatedMemberIds].filter(Boolean)));
-        // One-time heal path: migrate legacy local-only metrics into DB-backed personal_goals.
         const encoded = encodeMemberProfileMetrics(
           {
             sessionsPerWeekTarget: String(parsed.sessionsPerWeekTarget ?? ""),
@@ -2088,9 +2113,9 @@ export function MemberPortal(props: MemberPortalProps) {
       }
     } catch {
       applyMetricDrafts(fallback);
-      applyMemberCoreDrafts();
     }
-  }, [editableMember, dbProfileMetrics, dbHomeVisibility, favoritePersonalRecordNames, homeVisibility, relatedMemberIds, updateMember]);
+    // Avhengigheter bevisst snevre: «members» leses kun når signaturen sier at personalGoals faktisk endret seg.
+  }, [editableMember?.id, relatedProfileGoalsSignature, relatedMemberIds, updateMember, dbHomeVisibility]);
 
   useEffect(() => {
     if (!activePeriodPlan) {
