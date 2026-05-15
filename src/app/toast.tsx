@@ -71,12 +71,15 @@ export function useToastStatus(
   options?: {
     title?: string;
     tone?: ToastTone | ((message: string) => ToastTone);
+    /** Når false, vises ikke toast (status kan fortsatt brukes i UI). */
+    shouldToast?: (message: string) => boolean;
   },
 ) {
   const { pushToast } = useToast();
   const lastMessageRef = React.useRef("");
   const title = options?.title;
   const tone = options?.tone;
+  const shouldToast = options?.shouldToast;
 
   React.useEffect(() => {
     const normalized = message?.trim() ?? "";
@@ -84,8 +87,12 @@ export function useToastStatus(
       lastMessageRef.current = "";
       return;
     }
+    if (shouldToast && !shouldToast(normalized)) {
+      lastMessageRef.current = normalized;
+      return;
+    }
     if (lastMessageRef.current === normalized) return;
     lastMessageRef.current = normalized;
     pushToast({ message: normalized, tone: typeof tone === "function" ? tone(normalized) : tone, title });
-  }, [message, pushToast, title, tone]);
+  }, [message, pushToast, title, tone, shouldToast]);
 }

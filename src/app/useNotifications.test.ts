@@ -128,6 +128,26 @@ describe("useNotifications workout comment alerts", () => {
     expect(operational?.isUnread).toBe(true);
   });
 
+  it("excludes deactivated members from operational trainer alerts", () => {
+    const members = [
+      { id: "member-1", name: "Ola", email: "ola@example.com", isActive: false, invitedAt: "" } as never,
+    ];
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [],
+        logs: [],
+        members,
+        memberViewId: "member-1",
+        setMemberTab: () => {},
+      }),
+    );
+
+    expect(result.current.trainerVisibleAlerts.filter((a) => a.kind === "missing-invite")).toHaveLength(0);
+    expect(result.current.trainerVisibleAlerts.filter((a) => a.kind === "inactive-member")).toHaveLength(0);
+    expect(result.current.trainerUnreadCount).toBe(0);
+  });
+
   it("ignores workout comments on non-completed logs", () => {
     const { result } = renderHook(() =>
       useNotifications({

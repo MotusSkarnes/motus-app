@@ -120,17 +120,19 @@ export function useNotifications({
 
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
 
+  const rosterMembers = useMemo(() => members.filter((member) => member.isActive !== false), [members]);
+
   const missingInviteMemberIds = useMemo(
-    () => members.filter((member) => !member.invitedAt?.trim()).map((member) => member.id).sort(),
-    [members],
+    () => rosterMembers.filter((member) => !member.invitedAt?.trim()).map((member) => member.id).sort(),
+    [rosterMembers],
   );
   const inactiveMemberIds = useMemo(
     () =>
-      members
+      rosterMembers
         .filter((member) => (trainerInactiveDaysForFollowUp(member, members, logs) ?? -1) >= 7)
         .map((member) => member.id)
         .sort(),
-    [members, logs],
+    [rosterMembers, members, logs],
   );
   const trainerOperationalAlertKey = `${missingInviteMemberIds.join(",")}|${inactiveMemberIds.join(",")}`;
   const hasTrainerOperationalAlerts = missingInviteMemberIds.length + inactiveMemberIds.length > 0;

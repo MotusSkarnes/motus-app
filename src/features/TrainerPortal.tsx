@@ -76,6 +76,11 @@ function inferStatusTone(message: string): "success" | "error" | "info" {
   return "info";
 }
 
+/** Ikke popup for «Sender…»-status (vises allerede i knapper/skjema). */
+function trainerPtStatusShouldToast(message: string): boolean {
+  return !message.trim().toLowerCase().startsWith("sender");
+}
+
 function ClientAvatarFallback({ className = "", iconClassName = "h-5 w-5" }: { className?: string; iconClassName?: string }) {
   return (
     <div className={`absolute inset-0 flex items-center justify-center ${className}`} aria-hidden="true">
@@ -725,14 +730,14 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   useAutoClearStatus(followUpSaveStatus, () => setFollowUpSaveStatus(null), getStatusClearDelayMs(followUpSaveStatus));
   useAutoClearStatus(exerciseFormStatus, () => setExerciseFormStatus(null), getStatusClearDelayMs(exerciseFormStatus));
   useAutoClearStatus(trainerWorkoutCommentStatus, () => setTrainerWorkoutCommentStatus(null), getStatusClearDelayMs(trainerWorkoutCommentStatus));
-  useToastStatus(trainerChatSendStatus, { title: "Meldinger", tone: inferStatusTone });
-  useToastStatus(programSaveStatus, { title: "Treningsprogram", tone: inferStatusTone });
-  useToastStatus(inviteTrainerStatus, { title: "PT-invitasjon", tone: inferStatusTone });
-  useToastStatus(inviteStatus, { title: "Invitasjon", tone: inferStatusTone });
-  useToastStatus(memberEditStatus, { title: "Kundekort", tone: inferStatusTone });
-  useToastStatus(memberLinkStatus, { title: "Medlemskobling", tone: inferStatusTone });
-  useToastStatus(exerciseFormStatus, { title: "Øvelse", tone: inferStatusTone });
-  useToastStatus(trainerWorkoutCommentStatus, { title: "Øktkommentar", tone: inferStatusTone });
+  useToastStatus(trainerChatSendStatus, { title: "Meldinger", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
+  useToastStatus(programSaveStatus, { title: "Treningsprogram", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
+  useToastStatus(inviteTrainerStatus, { title: "PT-invitasjon", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
+  useToastStatus(inviteStatus, { title: "Invitasjon", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
+  useToastStatus(memberEditStatus, { title: "Kundekort", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
+  useToastStatus(memberLinkStatus, { title: "Medlemskobling", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
+  useToastStatus(exerciseFormStatus, { title: "Øvelse", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
+  useToastStatus(trainerWorkoutCommentStatus, { title: "Øktkommentar", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
   const selectedMemberHasMessagingAccess = selectedMember
     ? selectedMember.customerType === "PT-kunde" || selectedMember.membershipType === "Premium"
