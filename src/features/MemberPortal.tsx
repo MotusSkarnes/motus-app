@@ -4967,7 +4967,7 @@ export function MemberPortal(props: MemberPortalProps) {
                               window.setTimeout(() => setIsSavingWorkout(false), 600);
                             }}
                           >
-                            {showWorkoutReflection ? (isSavingWorkout ? "Lagrer..." : "Lagre økt") : "Til oppsummering"}
+                            {showWorkoutReflection ? (isSavingWorkout ? "Lagrer..." : "Lagre økt") : "Avslutt økt"}
                           </GradientButton>
                         )}
                       </div>
