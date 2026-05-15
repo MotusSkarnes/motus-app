@@ -654,6 +654,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const [followUpNoteDraft, setFollowUpNoteDraft] = useState("");
   const [followUpSaveStatus, setFollowUpSaveStatus] = useState<string | null>(null);
   const [editingFollowUpEntryId, setEditingFollowUpEntryId] = useState<string | null>(null);
+  const [dismissedProgramFingerprints, setDismissedProgramFingerprints] = useState<string[]>([]);
   /** Unngå å laste notatutkast på nytt når `selectedMemberId` byttes mellom duplikat-rader (samme kunde). */
   const followUpDraftHydratedIdentityRef = useRef<string | null>(null);
   const followUpLastSyncedFromLogRef = useRef(false);
@@ -979,6 +980,11 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     },
     [programs, selectedMemberRelatedIdSet, members, selectedMemberId, memberById]
   );
+  const visibleSelectedPrograms = useMemo(() => {
+    if (!dismissedProgramFingerprints.length) return selectedPrograms;
+    const dismissed = new Set(dismissedProgramFingerprints);
+    return selectedPrograms.filter((program) => !dismissed.has(buildProgramFingerprint(program.exercises, program.title, program.goal, program.notes)));
+  }, [dismissedProgramFingerprints, selectedPrograms]);
   const selectedPeriodPlans = useMemo(() => {
     if (!selectedMemberRelatedIds.length) return [] as PeriodSchedulePlan[];
     const merged = selectedMemberRelatedIds.flatMap((memberId) => periodPlansByMemberId[memberId] ?? []);
@@ -1251,6 +1257,10 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       return next;
     });
   }, [isLocalDemoSession, remoteTrainerPeriodPlansByMemberId]);
+
+  useEffect(() => {
+    setDismissedProgramFingerprints([]);
+  }, [selectedMemberId]);
 
   useEffect(() => {
     setMatchingWeekIdsDraft((prev) => prev.filter((id) => periodWeeklyPlansDraft.some((week) => week.id === id)));
@@ -1916,6 +1926,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       confirmLabel: "Slett program",
       tone: "danger",
       onConfirm: () => {
+        setDismissedProgramFingerprints((prev) => (prev.includes(fingerprint) ? prev : [...prev, fingerprint]));
         deleteProgramById(target.id);
         duplicateIds.forEach((id) => deleteProgramById(id));
       },
@@ -4377,7 +4388,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                     <div className="rounded-xl border bg-slate-50 p-4">
                       <div className="font-semibold">Eksisterende programmer</div>
                       <div className="mt-4 space-y-3">
-                        {selectedPrograms.length === 0 ? (
+                        {visibleSelectedPrograms.length === 0 ? (
                           <EmptyState
                             icon="📋"
                             title="Ingen programmer ennå"
@@ -4390,7 +4401,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                             }
                           />
                         ) : null}
-                        {selectedPrograms.map((program) => {
+                        {visibleSelectedPrograms.map((program) => {
                           const firstExercise = exercisesById.get(program.exercises[0]?.exerciseId ?? "");
                           return (
                           <div key={program.id} className="rounded-2xl border bg-white p-4">
