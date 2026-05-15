@@ -3412,7 +3412,6 @@ export function MemberPortal(props: MemberPortalProps) {
               <div className="order-2 flex items-end justify-between gap-3">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Snarveier</div>
-                  <div className="mt-1 text-sm text-slate-500">Hopp rett til det du bruker mest.</div>
                 </div>
               </div>
               ) : null}
