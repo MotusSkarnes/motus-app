@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import motusLogo from "../assets/motus-logo.png";
-import motusMarkBrush from "../assets/motus-mark-brush.png";
+import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../app/validators";
@@ -2312,17 +2312,17 @@ export function MemberPortal(props: MemberPortalProps) {
         return;
       }
 
-      let brushLogo: HTMLImageElement | null = null;
+      let shareCardLogo: HTMLImageElement | null = null;
       try {
-        brushLogo = await new Promise<HTMLImageElement>((resolve, reject) => {
+        shareCardLogo = await new Promise<HTMLImageElement>((resolve, reject) => {
           const im = new Image();
           im.crossOrigin = "anonymous";
           im.onload = () => resolve(im);
           im.onerror = () => reject(new Error("logo"));
-          im.src = motusMarkBrush;
+          im.src = motusSkrytekortLogo;
         });
       } catch {
-        brushLogo = null;
+        shareCardLogo = null;
       }
 
       const memberName = viewedMember?.name ?? "Medlem";
@@ -2367,17 +2367,16 @@ export function MemberPortal(props: MemberPortalProps) {
       context.fillText("Skrytekort · min Motus-måned", 72, 318);
       context.globalAlpha = 1;
 
-      if (brushLogo && brushLogo.naturalWidth > 0) {
-        const maxW = 152;
+      if (shareCardLogo && shareCardLogo.naturalWidth > 0) {
+        const maxW = 292;
         const lw = maxW;
-        const lh = (brushLogo.naturalHeight / brushLogo.naturalWidth) * lw;
+        const lh = (shareCardLogo.naturalHeight / shareCardLogo.naturalWidth) * lw;
         const lx = canvas.width - 56 - lw;
         const ly = 56;
         context.save();
         context.translate(lx, ly);
-        context.globalCompositeOperation = "screen";
-        context.globalAlpha = 0.95;
-        context.drawImage(brushLogo, 0, 0, lw, lh);
+        context.globalAlpha = 0.98;
+        context.drawImage(shareCardLogo, 0, 0, lw, lh);
         context.restore();
       }
 
@@ -5099,9 +5098,9 @@ export function MemberPortal(props: MemberPortalProps) {
                 }}
               >
                 <img
-                  src={motusMarkBrush}
+                  src={motusSkrytekortLogo}
                   alt=""
-                  className="pointer-events-none absolute right-4 top-4 z-[1] h-16 w-auto max-w-[32%] object-contain opacity-95 mix-blend-screen drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)]"
+                  className="pointer-events-none absolute right-4 top-4 z-[1] h-auto w-[11.5rem] max-w-[46%] object-contain opacity-95 drop-shadow-[0_3px_12px_rgba(255,255,255,0.18)] sm:w-[12.5rem]"
                   aria-hidden
                 />
                 <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-white/15 blur-3xl" aria-hidden />
