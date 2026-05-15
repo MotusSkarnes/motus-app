@@ -655,6 +655,12 @@ async function persistProgram(
     return { ok: false, message: "Kunne ikke bekrefte innlogget bruker under lagring." };
   }
   const timestamp = new Date().toISOString();
+  const inputFingerprint = buildTrainingProgramPersistenceFingerprint({
+    title: input.title,
+    goal: input.goal,
+    notes: input.notes,
+    exercises: input.exercises,
+  });
   const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
   const fallbackProgramId = isUuid(normalizedProgramId) ? normalizedProgramId : "";
   const authorDb =
@@ -694,17 +700,17 @@ async function persistProgram(
     if (fallbackProgramId && targetMemberId === memberId) continue;
     const { data: existingRows, error: lookupError } = await supabaseClient
       .from("training_programs")
-      .select("id")
+      .select("id, title, goal, notes, exercises")
       .eq("owner_user_id", ownerUserId)
       .eq("member_id", targetMemberId)
       .eq("title", input.title)
-      .order("created_at", { ascending: false })
-      .limit(1);
+      .order("created_at", { ascending: false });
     if (lookupError) {
       console.warn("save-training-program fallback lookup failed:", lookupError.message);
       return { ok: false, message: lookupError.message };
     }
-    const existingId = String((existingRows?.[0] as { id?: string } | undefined)?.id ?? "").trim();
+    const matchingExisting = (existingRows ?? []).find((row) => buildTrainingProgramPersistenceFingerprint(row as Record<string, unknown>) === inputFingerprint);
+    const existingId = String((matchingExisting as { id?: string } | undefined)?.id ?? "").trim();
     if (existingId) {
       const updatePayload = {
         goal: input.goal,

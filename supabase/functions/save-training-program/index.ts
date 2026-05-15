@@ -136,6 +136,22 @@ function resolveProgramAuthorColumns(
   return { program_created_by: "trainer", program_created_by_name: name };
 }
 
+function buildProgramFingerprint(input: {
+  title?: unknown;
+  goal?: unknown;
+  notes?: unknown;
+  exercises?: unknown;
+}): string {
+  const exercises = Array.isArray(input.exercises) ? input.exercises : [];
+  const exerciseFingerprint = exercises
+    .map((item) => {
+      const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+      return `${String(row.exerciseName ?? "").trim()}|${String(row.sets ?? "").trim()}|${String(row.reps ?? "").trim()}|${String(row.weight ?? "").trim()}|${String(row.holdSeconds ?? "").trim()}|${String(row.durationMinutes ?? "").trim()}|${String(row.speed ?? "").trim()}|${String(row.incline ?? "").trim()}|${String(row.restSeconds ?? "").trim()}|${String(row.notes ?? "").trim()}`;
+    })
+    .join("||");
+  return `${String(input.title ?? "").trim()}::${String(input.goal ?? "").trim()}::${String(input.notes ?? "").trim()}::${exerciseFingerprint}`;
+}
+
 async function resolveRelatedMemberIds(
   adminClient: ReturnType<typeof createClient>,
   memberId: string,
@@ -430,9 +446,40 @@ Deno.serve(async (req) => {
       }
     }
   } else {
+    const inputFingerprint = buildProgramFingerprint({ title, goal, notes, exercises });
     for (const targetMemberId of targetMemberIds) {
       if (!targetMemberId) continue;
-      const nextId = targetMemberId === canonicalTargetMemberId ? crypto.randomUUID() : crypto.randomUUID();
+      const { data: existingRows, error: lookupError } = await adminClient
+        .from("training_programs")
+        .select("id, title, goal, notes, exercises")
+        .eq("owner_user_id", ownerUserId)
+        .eq("member_id", targetMemberId)
+        .eq("title", title)
+        .order("created_at", { ascending: false });
+      if (lookupError) return jsonResponse(500, { error: lookupError.message });
+
+      const matchingExisting = (existingRows ?? []).find((row) => buildProgramFingerprint(row as Record<string, unknown>) === inputFingerprint);
+      const existingId = String((matchingExisting as { id?: string } | undefined)?.id ?? "").trim();
+
+      if (existingId) {
+        const { error: updateError } = await upsertTrainingProgramWithAuthorFallback(adminClient, {
+          id: existingId,
+          member_id: targetMemberId,
+          owner_user_id: ownerUserId,
+          title,
+          goal,
+          notes,
+          exercises,
+          created_at: timestamp,
+          program_created_by: authorColumns.program_created_by,
+          program_created_by_name: authorColumns.program_created_by_name,
+        });
+        if (updateError) return jsonResponse(500, { error: updateError.message });
+        writtenIds.push(existingId);
+        continue;
+      }
+
+      const nextId = crypto.randomUUID();
       const { error } = await insertTrainingProgramWithAuthorFallback(adminClient, {
         id: nextId,
         member_id: targetMemberId,
