@@ -35,7 +35,21 @@ import { isWebPushConfigurable, registerWebPushWithSupabase } from "../services/
 import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { useToastStatus } from "../app/toast";
 import { uid } from "../app/storage";
-import type { LogGroupWorkoutInput, ReplaceWorkoutExerciseGroupInput, SaveProgramInput, StartCustomWorkoutInput, StartWorkoutModeOptions, UpdateMemberInput } from "../services/appRepository";
+import type {
+  LogCompletedPlanEntryInput,
+  LogGroupWorkoutInput,
+  ReplaceWorkoutExerciseGroupInput,
+  SaveProgramInput,
+  StartCustomWorkoutInput,
+  StartWorkoutModeOptions,
+  UpdateMemberInput,
+} from "../services/appRepository";
+import {
+  findProgramForPeriodPlanEntry,
+  isGroupPeriodPlanEntry,
+  resolveGroupClassNameFromPeriodEntry,
+  resolvePeriodPlanEntryAction,
+} from "../app/periodPlanEntryActions";
 import { mergedPeriodPlanListForMember } from "../app/periodPlanMerge";
 import {
   applyPeriodPlanSwaps,
@@ -133,7 +147,9 @@ type MemberPortalProps = {
   updateWorkoutModeNote: (note: string) => void;
   finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
   logGroupWorkout: (input: LogGroupWorkoutInput) => void;
+  logCompletedPlanEntry: (input: LogCompletedPlanEntryInput) => void;
   removeGroupWorkoutLog: (input: { memberId: string; className: string; date?: string }) => void;
+  removeCompletedPlanEntryLog: (input: { memberId: string; programTitle: string; date?: string }) => void;
   cancelWorkoutMode: () => void;
   workoutCelebration: WorkoutCelebration | null;
   dismissWorkoutCelebration: () => void;
@@ -565,7 +581,9 @@ export function MemberPortal(props: MemberPortalProps) {
     updateWorkoutModeNote,
     finishWorkoutMode,
     logGroupWorkout,
+    logCompletedPlanEntry,
     removeGroupWorkoutLog,
+    removeCompletedPlanEntryLog,
     cancelWorkoutMode,
     workoutCelebration,
     dismissWorkoutCelebration,
@@ -1115,9 +1133,10 @@ export function MemberPortal(props: MemberPortalProps) {
     return applyPeriodPlanSwaps(activeWeeklyPlan.days, swaps);
   }, [activeWeeklyPlan, activePeriodPlan, periodPlanSwapsByPlan]);
   const todayPlanEntry = activeWeeklyPlanEffectiveDays?.[currentWeekdayKey]?.trim() ?? "";
-  const todayProgramMatch = todayPlanEntry
-    ? memberProgramsInActiveLibrary.find((program) => program.title.trim().toLowerCase() === todayPlanEntry.toLowerCase()) ?? null
-    : null;
+  const todayPlanAction = useMemo(
+    () => (todayPlanEntry ? resolvePeriodPlanEntryAction(todayPlanEntry, memberProgramsInActiveLibrary) : { kind: "none" as const }),
+    [todayPlanEntry, memberProgramsInActiveLibrary],
+  );
   const profileMetricsFromDb = decodeMemberProfileMetrics(editableMember?.personalGoals);
   const profileHasUnsavedChanges = useMemo(() => {
     if (!editableMember) return false;
@@ -3111,41 +3130,106 @@ export function MemberPortal(props: MemberPortalProps) {
     setPeriodPlanActionStatus("Uken er tilbakestilt til original periodeplan.");
   }
 
+  const defaultPeriodPlanReflection = {
+    energyLevel: 3 as const,
+    difficultyLevel: 3 as const,
+    motivationLevel: 3 as const,
+    note: "Hurtiglogget fra periodeplan.",
+  };
+
+  function markPeriodPlanDayCompleted(planId: string, weekNumber: number, day: WeekdayPlanKey) {
+    const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
+    periodPlanCompletedDirtyRef.current = true;
+    setCompletedPeriodPlanEntryKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
+  }
+
+  function unmarkPeriodPlanDayCompleted(planId: string, weekNumber: number, day: WeekdayPlanKey) {
+    const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
+    periodPlanCompletedDirtyRef.current = true;
+    setCompletedPeriodPlanEntryKeys((prev) => prev.filter((item) => item !== key));
+  }
+
+  function handlePeriodPlanStartProgram(programId: string) {
+    const program = memberProgramsInActiveLibrary.find((item) => item.id === programId);
+    if (!program) return;
+    setMemberTab("programs");
+    if (intervalProgramIdSet.has(program.id)) {
+      openIntervalTimerModal(program.id);
+      return;
+    }
+    startWorkoutMode(program.id, buildStartWorkoutOptions(program));
+  }
+
+  function handlePeriodPlanLogGroup(input: {
+    entry: string;
+    plannedDate: string | null;
+    planId: string;
+    weekNumber: number;
+    day: WeekdayPlanKey;
+  }) {
+    if (!activeMemberId) return;
+    const trimmed = input.entry.trim();
+    if (!trimmed) return;
+    logGroupWorkout({
+      memberId: activeMemberId,
+      className: resolveGroupClassNameFromPeriodEntry(trimmed),
+      note: "Logget fra periodeplan.",
+      reflection: defaultPeriodPlanReflection,
+      keepCurrentTab: true,
+      date: input.plannedDate ?? undefined,
+    });
+    markPeriodPlanDayCompleted(input.planId, input.weekNumber, input.day);
+    setPeriodPlanActionStatus(`«${trimmed}» er logget.`);
+  }
+
   function togglePeriodPlanEntryCompleted(input: { planId: string; weekNumber: number; day: WeekdayPlanKey; entry: string; plannedDate?: string | null }) {
     const key = buildPeriodPlanEntryKey(input.planId, input.weekNumber, input.day);
     const alreadyCompleted = completedPeriodPlanEntryKeys.includes(key);
+    const trimmed = input.entry.trim();
+    if (!trimmed || !activeMemberId) return;
+
     if (!alreadyCompleted) {
-      if (!activeMemberId) return;
-      const trimmed = input.entry.trim();
-      if (!trimmed) return;
-      logGroupWorkout({
-        memberId: activeMemberId,
-        className: trimmed,
-        note: "Registrert som gjennomført fra periodeplan.",
-        reflection: {
-          energyLevel: 3,
-          difficultyLevel: 3,
-          motivationLevel: 3,
-          note: "Hurtiglogget fra periodeplan.",
-        },
-        keepCurrentTab: true,
-        date: input.plannedDate ?? undefined,
-      });
+      if (isGroupPeriodPlanEntry(trimmed)) {
+        logGroupWorkout({
+          memberId: activeMemberId,
+          className: resolveGroupClassNameFromPeriodEntry(trimmed),
+          note: "Registrert som gjennomført fra periodeplan.",
+          reflection: defaultPeriodPlanReflection,
+          keepCurrentTab: true,
+          date: input.plannedDate ?? undefined,
+        });
+      } else {
+        const program = findProgramForPeriodPlanEntry(trimmed, memberProgramsInActiveLibrary);
+        logCompletedPlanEntry({
+          memberId: activeMemberId,
+          programTitle: program?.title ?? trimmed,
+          note: "Registrert som gjennomført fra periodeplan.",
+          reflection: defaultPeriodPlanReflection,
+          keepCurrentTab: true,
+          date: input.plannedDate ?? undefined,
+        });
+      }
+      markPeriodPlanDayCompleted(input.planId, input.weekNumber, input.day);
       setPeriodPlanActionStatus(`Registrert «${trimmed}» som gjennomført.`);
-      periodPlanCompletedDirtyRef.current = true;
-      setCompletedPeriodPlanEntryKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
       return;
     }
-    if (activeMemberId) {
+
+    if (isGroupPeriodPlanEntry(trimmed)) {
       removeGroupWorkoutLog({
         memberId: activeMemberId,
-        className: input.entry.trim(),
+        className: resolveGroupClassNameFromPeriodEntry(trimmed),
+        date: input.plannedDate ?? undefined,
+      });
+    } else {
+      const program = findProgramForPeriodPlanEntry(trimmed, memberProgramsInActiveLibrary);
+      removeCompletedPlanEntryLog({
+        memberId: activeMemberId,
+        programTitle: program?.title ?? trimmed,
         date: input.plannedDate ?? undefined,
       });
     }
-    periodPlanCompletedDirtyRef.current = true;
-    setCompletedPeriodPlanEntryKeys((prev) => prev.filter((item) => item !== key));
-    setPeriodPlanActionStatus(`Fjernet markering for "${input.entry.trim()}".`);
+    unmarkPeriodPlanDayCompleted(input.planId, input.weekNumber, input.day);
+    setPeriodPlanActionStatus(`Fjernet markering for «${trimmed}».`);
   }
 
   function estimate1RM(weight: number, reps: number): number {
@@ -3809,26 +3893,40 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dagens økt</div>
                       <div className="mt-1 text-sm text-slate-700">{todayPlanEntry}</div>
-                      <div className="mt-3">
-                        {todayProgramMatch ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {todayPlanAction.kind === "start-program" ? (
                           <GradientButton
-                            onClick={() => {
-                              setMemberTab("programs");
-                              if (intervalProgramIdSet.has(todayProgramMatch.id)) {
-                                openIntervalTimerModal(todayProgramMatch.id);
-                                return;
-                              }
-                              startWorkoutMode(todayProgramMatch.id, buildStartWorkoutOptions(todayProgramMatch));
-                            }}
+                            onClick={() => handlePeriodPlanStartProgram(todayPlanAction.program.id)}
                             className="w-full sm:w-auto"
                           >
                             Start dagens økt
                           </GradientButton>
-                        ) : (
+                        ) : null}
+                        {todayPlanAction.kind === "log-group" && activePeriodPlan && activePeriodWeekIndex !== null ? (
+                          <OutlineButton
+                            onClick={() =>
+                              handlePeriodPlanLogGroup({
+                                entry: todayPlanEntry,
+                                plannedDate: resolvePeriodPlanEntryDate(
+                                  activePeriodPlan,
+                                  activeWeeklyPlan?.weekNumber ?? activePeriodWeekIndex + 1,
+                                  currentWeekdayKey,
+                                ),
+                                planId: activePeriodPlan.id,
+                                weekNumber: activeWeeklyPlan?.weekNumber ?? activePeriodWeekIndex + 1,
+                                day: currentWeekdayKey,
+                              })
+                            }
+                            className="w-full sm:w-auto"
+                          >
+                            Logg gruppetime
+                          </OutlineButton>
+                        ) : null}
+                        {todayPlanAction.kind === "none" ? (
                           <OutlineButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">
                             Se dagens plan
                           </OutlineButton>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   ) : null}
@@ -4536,11 +4634,14 @@ export function MemberPortal(props: MemberPortalProps) {
                               plan={plan}
                               week={displayedPeriodWeek}
                               swapsByPlan={periodPlanSwapsByPlan}
+                              memberPrograms={memberProgramsInActiveLibrary}
                               actionStatus={periodPlanActionStatus}
                               isEntryCompleted={isPeriodPlanEntryCompleted}
                               onToggleCompleted={togglePeriodPlanEntryCompleted}
                               onSwapDays={swapPeriodPlanDays}
                               onResetSwaps={resetPeriodPlanSwapsForWeek}
+                              onStartProgram={handlePeriodPlanStartProgram}
+                              onLogGroup={handlePeriodPlanLogGroup}
                               resolveEntryDate={resolvePeriodPlanEntryDate}
                             />
                           ) : null}

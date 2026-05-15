@@ -20,6 +20,8 @@ import {
   type CreateMemberInput,
   type FinishWorkoutInput,
   type LogGroupWorkoutInput,
+  type LogCompletedPlanEntryInput,
+  type RemoveCompletedPlanEntryLogInput,
   type RemoveGroupWorkoutLogInput,
   type RemoveWorkoutLogResultInput,
   type SetWorkoutLogResultsInput,
@@ -1193,6 +1195,22 @@ async function deleteGroupWorkoutLogs(input: RemoveGroupWorkoutLogInput) {
   }
 }
 
+async function deleteCompletedPlanEntryLogs(input: RemoveCompletedPlanEntryLogInput) {
+  if (!supabaseClient) return;
+  const memberId = input.memberId.trim();
+  const programTitle = input.programTitle.trim();
+  const date = input.date?.trim() ?? "";
+  if (!memberId || !programTitle) return;
+  let query = supabaseClient.from("workout_logs").delete().eq("member_id", memberId).eq("program_title", programTitle);
+  if (date) {
+    query = query.eq("date", date);
+  }
+  const { error } = await query;
+  if (error) {
+    console.warn("Supabase plan entry log delete failed:", error.message);
+  }
+}
+
 function mapIsoToCreatedAt(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return formatDateTimeDdMmYyyy(new Date());
@@ -1960,6 +1978,19 @@ export const supabaseAppRepository: AppRepository = {
     if (latestLog) {
       void persistWorkoutLog(latestLog);
     }
+    return nextState;
+  },
+  logCompletedPlanEntry(state: AppState, input: LogCompletedPlanEntryInput): AppState {
+    const nextState = localAppRepository.logCompletedPlanEntry(state, input);
+    const latestLog = nextState.logs[0];
+    if (latestLog) {
+      void persistWorkoutLog(latestLog);
+    }
+    return nextState;
+  },
+  removeCompletedPlanEntryLog(state: AppState, input: RemoveCompletedPlanEntryLogInput): AppState {
+    const nextState = localAppRepository.removeCompletedPlanEntryLog(state, input);
+    void deleteCompletedPlanEntryLogs(input);
     return nextState;
   },
   saveExercise(state: AppState, input: SaveExerciseInput): AppState {

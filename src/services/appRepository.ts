@@ -84,6 +84,21 @@ export type RemoveGroupWorkoutLogInput = {
   date?: string;
 };
 
+export type LogCompletedPlanEntryInput = {
+  memberId: string;
+  programTitle: string;
+  note?: string;
+  reflection?: WorkoutReflection;
+  keepCurrentTab?: boolean;
+  date?: string;
+};
+
+export type RemoveCompletedPlanEntryLogInput = {
+  memberId: string;
+  programTitle: string;
+  date?: string;
+};
+
 export type SaveExerciseInput = {
   id?: string;
   name: string;
@@ -136,6 +151,8 @@ export interface AppRepository {
   cancelWorkoutMode(state: AppState): AppState;
   finishWorkoutMode(state: AppState, input?: FinishWorkoutInput): AppState;
   logGroupWorkout(state: AppState, input: LogGroupWorkoutInput): AppState;
+  logCompletedPlanEntry(state: AppState, input: LogCompletedPlanEntryInput): AppState;
+  removeCompletedPlanEntryLog(state: AppState, input: RemoveCompletedPlanEntryLogInput): AppState;
   saveExercise(state: AppState, input: SaveExerciseInput): AppState;
   deleteExercise(state: AppState, exerciseId: string): AppState;
   updateMember(state: AppState, input: UpdateMemberInput): AppState;
@@ -556,6 +573,55 @@ export function removeGroupWorkoutLogInState(state: AppState, input: RemoveGroup
   };
 }
 
+export function logCompletedPlanEntryInState(state: AppState, input: LogCompletedPlanEntryInput): AppState {
+  const memberId = input.memberId.trim();
+  const programTitle = input.programTitle.trim();
+  const date = input.date?.trim() || formatDateDdMmYyyy(new Date());
+  if (!memberId || !programTitle) return state;
+  const normalizedTitle = programTitle.toLowerCase();
+  const duplicateExists = state.logs.some(
+    (log) =>
+      log.memberId === memberId &&
+      log.programTitle.trim().toLowerCase() === normalizedTitle &&
+      log.date.trim() === date &&
+      log.status === "Fullført",
+  );
+  if (duplicateExists) return state;
+  return {
+    ...state,
+    logs: [
+      {
+        id: uid("log"),
+        memberId,
+        programTitle,
+        date,
+        status: "Fullført",
+        note: input.note?.trim() ?? "",
+        reflection: input.reflection,
+        results: [],
+      },
+      ...state.logs,
+    ],
+  };
+}
+
+export function removeCompletedPlanEntryLogInState(state: AppState, input: RemoveCompletedPlanEntryLogInput): AppState {
+  const memberId = input.memberId.trim();
+  const programTitle = input.programTitle.trim();
+  const date = input.date?.trim() ?? "";
+  if (!memberId || !programTitle) return state;
+  const normalizedTitle = programTitle.toLowerCase();
+  return {
+    ...state,
+    logs: state.logs.filter((log) => {
+      if (log.memberId !== memberId) return true;
+      if (log.programTitle.trim().toLowerCase() !== normalizedTitle) return true;
+      if (date && log.date.trim() !== date) return true;
+      return false;
+    }),
+  };
+}
+
 export function removeWorkoutLogResultInState(state: AppState, input: RemoveWorkoutLogResultInput): AppState {
   const logId = input.logId.trim();
   const exerciseId = input.exerciseId.trim();
@@ -680,6 +746,8 @@ export const localAppRepository: AppRepository = {
   cancelWorkoutMode: cancelWorkoutModeInState,
   finishWorkoutMode: finishWorkoutModeInState,
   logGroupWorkout: logGroupWorkoutInState,
+  logCompletedPlanEntry: logCompletedPlanEntryInState,
+  removeCompletedPlanEntryLog: removeCompletedPlanEntryLogInState,
   saveExercise: saveExerciseInState,
   deleteExercise: deleteExerciseInState,
   updateMember: updateMemberInState,

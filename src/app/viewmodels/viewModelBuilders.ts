@@ -76,7 +76,9 @@ export function buildMemberLayoutProps(input: {
   updateWorkoutModeNote: MemberLayoutProps["updateWorkoutModeNote"];
   finishWorkoutMode: MemberLayoutProps["finishWorkoutMode"];
   logGroupWorkout: MemberLayoutProps["logGroupWorkout"];
+  logCompletedPlanEntry: MemberLayoutProps["logCompletedPlanEntry"];
   removeGroupWorkoutLog: MemberLayoutProps["removeGroupWorkoutLog"];
+  removeCompletedPlanEntryLog: MemberLayoutProps["removeCompletedPlanEntryLog"];
   cancelWorkoutMode: MemberLayoutProps["cancelWorkoutMode"];
   dismissWorkoutCelebration: MemberLayoutProps["dismissWorkoutCelebration"];
   memberNotificationsOpen: boolean;

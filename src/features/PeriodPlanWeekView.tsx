@@ -1,3 +1,5 @@
+import { Play, Users } from "lucide-react";
+import { resolvePeriodPlanEntryAction } from "../app/periodPlanEntryActions";
 import {
   applyPeriodPlanSwaps,
   getSwapsForWeek,
@@ -6,12 +8,14 @@ import {
   WEEKDAY_PLAN_ORDER,
   type PeriodPlanSwapsByPlan,
 } from "../app/periodPlanSwaps";
-import type { PeriodSchedulePlan, WeekdayPlanKey, WeeklySchedulePlan } from "../app/types";
+import { GradientButton, OutlineButton } from "../app/ui";
+import type { PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklySchedulePlan } from "../app/types";
 
 type PeriodPlanWeekViewProps = {
   plan: PeriodSchedulePlan;
   week: WeeklySchedulePlan;
   swapsByPlan: PeriodPlanSwapsByPlan;
+  memberPrograms: TrainingProgram[];
   actionStatus: string | null;
   isEntryCompleted: (planId: string, weekNumber: number, day: WeekdayPlanKey) => boolean;
   onToggleCompleted: (input: {
@@ -23,6 +27,14 @@ type PeriodPlanWeekViewProps = {
   }) => void;
   onSwapDays: (planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) => void;
   onResetSwaps: (planId: string, weekNumber: number) => void;
+  onStartProgram: (programId: string) => void;
+  onLogGroup: (input: {
+    entry: string;
+    plannedDate: string | null;
+    planId: string;
+    weekNumber: number;
+    day: WeekdayPlanKey;
+  }) => void;
   resolveEntryDate: (plan: PeriodSchedulePlan, weekNumber: number, day: WeekdayPlanKey) => string | null;
 };
 
@@ -30,11 +42,14 @@ export function PeriodPlanWeekView({
   plan,
   week,
   swapsByPlan,
+  memberPrograms,
   actionStatus,
   isEntryCompleted,
   onToggleCompleted,
   onSwapDays,
   onResetSwaps,
+  onStartProgram,
+  onLogGroup,
   resolveEntryDate,
 }: PeriodPlanWeekViewProps) {
   const weekSwaps = getSwapsForWeek(swapsByPlan, plan.id, week.weekNumber);
@@ -55,7 +70,7 @@ export function PeriodPlanWeekView({
         ) : null}
       </div>
       <div className="mt-1 text-[11px] text-slate-500">
-        Merk av økter som fullført. Kan ikke trene på planlagt dag? Bytt med en annen dag i uken.
+        Start program eller logg gruppetime direkte. Bytt dag om planen ikke passer — kalenderen oppdateres når du logger.
       </div>
       {actionStatus ? <div className="mt-2 text-xs text-emerald-700">{actionStatus}</div> : null}
       <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -63,6 +78,9 @@ export function PeriodPlanWeekView({
           const dayLabel = WEEKDAY_PLAN_LABELS[dayKey];
           const entry = effectiveDays[dayKey]?.trim() ?? "";
           const sourceDay = periodPlanSourceDay(dayKey, week.days, effectiveDays);
+          const plannedDate = resolveEntryDate(plan, week.weekNumber, dayKey);
+          const entryAction = entry ? resolvePeriodPlanEntryAction(entry, memberPrograms) : { kind: "none" as const };
+          const completed = isEntryCompleted(plan.id, week.weekNumber, dayKey);
 
           return (
             <div
@@ -72,13 +90,7 @@ export function PeriodPlanWeekView({
             >
               <div>
                 <span className="font-semibold text-slate-700">{dayLabel}:</span>{" "}
-                <span
-                  className={
-                    isEntryCompleted(plan.id, week.weekNumber, dayKey) ? "text-slate-400 line-through" : "text-slate-600"
-                  }
-                >
-                  {entry || "Ingen plan"}
-                </span>
+                <span className={completed ? "text-slate-400 line-through" : "text-slate-600"}>{entry || "Ingen plan"}</span>
                 {sourceDay ? (
                   <span className="mt-0.5 block text-[10px] font-medium text-teal-700">
                     Plan fra {WEEKDAY_PLAN_LABELS[sourceDay].toLowerCase()}
@@ -106,23 +118,53 @@ export function PeriodPlanWeekView({
                 </select>
               </div>
               {entry ? (
-                <label className="mt-2 inline-flex cursor-pointer items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={isEntryCompleted(plan.id, week.weekNumber, dayKey)}
-                    onChange={() =>
-                      onToggleCompleted({
-                        planId: plan.id,
-                        weekNumber: week.weekNumber,
-                        day: dayKey,
-                        entry: effectiveDays[dayKey],
-                        plannedDate: resolveEntryDate(plan, week.weekNumber, dayKey),
-                      })
-                    }
-                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <span className="text-xs font-medium text-slate-600">Gjennomført</span>
-                </label>
+                <div className="mt-2 flex flex-col gap-2">
+                  {entryAction.kind === "start-program" ? (
+                    <GradientButton
+                      type="button"
+                      onClick={() => onStartProgram(entryAction.program.id)}
+                      className="!min-h-8 w-full !px-2 !py-1.5 !text-[11px]"
+                    >
+                      <Play className="mr-1 inline h-3 w-3" aria-hidden />
+                      Start økt
+                    </GradientButton>
+                  ) : null}
+                  {entryAction.kind === "log-group" ? (
+                    <OutlineButton
+                      type="button"
+                      onClick={() =>
+                        onLogGroup({
+                          entry,
+                          plannedDate,
+                          planId: plan.id,
+                          weekNumber: week.weekNumber,
+                          day: dayKey,
+                        })
+                      }
+                      className="!min-h-8 w-full !px-2 !py-1.5 !text-[11px]"
+                    >
+                      <Users className="mr-1 inline h-3 w-3" aria-hidden />
+                      Logg gruppetime
+                    </OutlineButton>
+                  ) : null}
+                  <label className="inline-flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={completed}
+                      onChange={() =>
+                        onToggleCompleted({
+                          planId: plan.id,
+                          weekNumber: week.weekNumber,
+                          day: dayKey,
+                          entry: effectiveDays[dayKey],
+                          plannedDate,
+                        })
+                      }
+                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span className="text-xs font-medium text-slate-600">Gjennomført</span>
+                  </label>
+                </div>
               ) : null}
             </div>
           );
@@ -131,3 +173,4 @@ export function PeriodPlanWeekView({
     </div>
   );
 }
+
