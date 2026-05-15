@@ -25,6 +25,12 @@ function parseTimestamp(value: string, fallbackOrder: number): number {
   return Number.isFinite(parsed) ? parsed : fallbackOrder;
 }
 
+function isCompletedWorkoutLog(log: WorkoutLog): boolean {
+  const status = String(log.status ?? "").trim();
+  if (status === "Fullført") return true;
+  return status.toLowerCase().replace(/ø/g, "o") === "fullfort";
+}
+
 export function useNotifications({
   messages,
   programs,
@@ -121,7 +127,7 @@ export function useNotifications({
     () =>
       logs
         .filter((log) => log.memberId === memberViewId)
-        .filter((log) => log.status === "FullfÃ¸rt")
+        .filter((log) => isCompletedWorkoutLog(log))
         .filter((log) => String(log.trainerComment ?? "").trim())
         .map((log, index) => {
           const updatedAt = String(log.trainerCommentUpdatedAt ?? "").trim();

@@ -1185,6 +1185,13 @@ async function deleteMemberFromSupabase(member: { id: string; email?: string }) 
   }
 }
 
+async function notifyWorkoutCommentPush(logId: string) {
+  if (!supabaseClient) return;
+  const trimmedLogId = logId.trim();
+  if (!trimmedLogId) return;
+  void supabaseClient.functions.invoke("send-workout-comment-push", { body: { logId: trimmedLogId } });
+}
+
 async function persistWorkoutLog(log: WorkoutLog) {
   if (!supabaseClient) return;
   const memberId = await resolveCanonicalMemberIdForPersistence(log.memberId, {});
@@ -2080,7 +2087,12 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.updateWorkoutLogTrainerComment(state, input);
     const updatedLog = nextState.logs.find((log) => log.id === input.logId);
     if (updatedLog) {
-      void persistWorkoutLog(updatedLog);
+      void (async () => {
+        await persistWorkoutLog(updatedLog);
+        if (input.trainerComment.trim()) {
+          await notifyWorkoutCommentPush(updatedLog.id);
+        }
+      })();
     }
     return nextState;
   },
