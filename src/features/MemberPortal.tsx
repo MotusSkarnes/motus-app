@@ -471,7 +471,7 @@ function buildProgressLiftPlayfulLineFromKg(weekKg: number, monthKg: number): st
     if (kg >= 15) {
       return `${periodWhen} har jeg logget ca. ${fmt(kg)} kg i stramme vektrep � nok til at en golden retriever hadde blitt imponert. 🐕`;
     }
-    return `${periodWhen} har jeg logget ca. ${fmt(kg)} kg i vekt × reps — små tall som blir store når jeg holder på. âœ¨`;
+    return `${periodWhen} har jeg logget ca. ${fmt(kg)} kg i vekt × reps — små tall som blir store når jeg holder på. ✨`;
   };
 
   const weekLine = lineFor(weekKg, "Denne uken");
@@ -3740,7 +3740,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       {streakChallenges.sevenDay.current}/{streakChallenges.sevenDay.target} treningsdager
                     </div>
                     <div className="mt-1 text-xs text-slate-500">
-                      {streakChallenges.sevenDay.unlocked ? "Badge låst opp âœ…" : "Fortsett - du er snart i mål"}
+                      {streakChallenges.sevenDay.unlocked ? "Badge låst opp ✨" : "Fortsett - du er snart i mål"}
                     </div>
                   </div>
                   <div className="rounded-xl border bg-slate-50 px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -3767,7 +3767,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="text-xs font-semibold uppercase tracking-wide text-emerald-600">Ny PR!</div>
                 <div className="mt-1 text-xl font-bold tracking-tight text-slate-900">Sterk økning i estimert 1RM</div>
                 <div className="mt-3 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-800">
-                  {activeCelebration?.exerciseName}: {activeCelebration?.previousEstimated1RM.toFixed(1)} kg â†’ {activeCelebration?.newEstimated1RM.toFixed(1)} kg
+                  {activeCelebration?.exerciseName}: {activeCelebration?.previousEstimated1RM.toFixed(1)} kg → {activeCelebration?.newEstimated1RM.toFixed(1)} kg
                 </div>
                 <div className="mt-2 text-xs text-slate-500">
                   Beregnet fra {activeCelebration?.weight} kg × {activeCelebration?.reps} reps (omregnet til 1RM).
@@ -5036,7 +5036,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="text-sm font-semibold text-slate-800">Streaks og achievements</div>
                     <div className="mt-1 text-xs text-slate-500">
                       Små milepæler som holder motivasjonen oppe. Nivå {achievementLevel} av {achievementMaxLevel}
-                      {hasCompletedAllAchievementLevels ? " · Maksnivå nådd âœ¨" : ""}
+                      {hasCompletedAllAchievementLevels ? " · Maksnivå nådd ✨" : ""}
                     </div>
                   </div>
                 </div>
@@ -5063,7 +5063,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       </div>
                       <div className="mt-1 flex items-center justify-between text-[11px] font-semibold">
                         <span>{Math.min(achievement.current, achievement.target)}/{achievement.target}</span>
-                        <span>{achievement.unlocked ? "Låst opp âœ¨" : "På vei"}</span>
+                        <span>{achievement.unlocked ? "Låst opp ✨" : "På vei"}</span>
                       </div>
                     </div>
                   ))}
@@ -5191,7 +5191,7 @@ export function MemberPortal(props: MemberPortalProps) {
                               : "text-xs font-medium text-white/80"
                         }
                       >
-                        Siste 14 dager: {progressStory.delta > 0 ? "â†‘" : progressStory.delta < 0 ? "â†“" : "—"} {progressStory.trendLabel}.
+                        Siste 14 dager: {progressStory.delta > 0 ? "↑" : progressStory.delta < 0 ? "↓" : "—"} {progressStory.trendLabel}.
                       </p>
                     </div>
 

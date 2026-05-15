@@ -14,7 +14,7 @@ for (const ch of text) {
   const cp = ch.codePointAt(0);
   if (cp !== undefined && (cp < 9 || (cp > 13 && cp < 32))) control += 1;
 }
-const moj = (text.match(/Ã.|â€.|Â./g) ?? []).length;
+const moj = (text.match(/Ã.|â€.|Â.|âœ.|â†./g) ?? []).length;
 const brokenEmoji = (text.match(/ðŸ/g) ?? []).length;
 console.log({
   control,
