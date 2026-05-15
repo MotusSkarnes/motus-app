@@ -1,3 +1,12 @@
+/**
+ * Builds src/assets/motus-skrytekort-logo.png from a Motus brush logo source.
+ *
+ * Best result: export PNG from Figma/Illustrator with transparent background,
+ * white M + black "motus" (not black matte behind the wordmark).
+ *
+ * JPEG / black-matte sources: keeps the white M pixels exactly and removes only
+ * edge-connected black background. Black "motus" on black matte cannot be recovered.
+ */
 import sharp from "sharp";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -7,123 +16,201 @@ const root = path.join(__dirname, "..");
 
 const src =
   process.argv[2] ??
-  path.join(
-    root,
-    "..",
-    ".cursor",
-    "projects",
-    "c-Users-iben-OneDrive-Lene-motus-pt-app",
-    "assets",
-    "c__Users_iben_AppData_Roaming_Cursor_User_workspaceStorage_b12ce805d51d929840c8009c3ccf9154_images_Motus_logo_Til_turkis_bakgrunn-4f517c59-140f-4c5a-adc6-195094651602.png",
-  );
+  path.join(root, "src/assets/motus-skrytekort-source.jpg");
 
 const output = path.join(root, "src/assets/motus-skrytekort-logo.png");
 const BACKGROUND_MAX = 12;
-const WHITE_MIN = 180;
-const INK = "#000000";
+const WHITE_MIN = 200;
 
-function isBackgroundPixel(r, g, b) {
+function isBackgroundBlack(r, g, b) {
   return Math.max(r, g, b) <= BACKGROUND_MAX;
 }
 
-const { data, info } = await sharp(src).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-const { width, height } = info;
-const visited = new Uint8Array(width * height);
-const queue = [];
-
-function pushIfBackground(x, y) {
-  if (x < 0 || y < 0 || x >= width || y >= height) return;
-  const idx = y * width + x;
-  if (visited[idx]) return;
-  const i = idx * 4;
-  if (!isBackgroundPixel(data[i], data[i + 1], data[i + 2])) return;
-  visited[idx] = 1;
-  queue.push(idx);
+function isWhiteMark(r, g, b) {
+  return Math.max(r, g, b) >= WHITE_MIN;
 }
 
-for (let x = 0; x < width; x += 1) {
-  pushIfBackground(x, 0);
-  pushIfBackground(x, height - 1);
-}
-for (let y = 0; y < height; y += 1) {
-  pushIfBackground(0, y);
-  pushIfBackground(width - 1, y);
-}
-
-while (queue.length > 0) {
-  const idx = queue.pop();
-  const x = idx % width;
-  const y = Math.floor(idx / width);
-  pushIfBackground(x - 1, y);
-  pushIfBackground(x + 1, y);
-  pushIfBackground(x, y - 1);
-  pushIfBackground(x, y + 1);
+function sampleCornersLuma(data, width, height, channels) {
+  const points = [
+    [0, 0],
+    [width - 1, 0],
+    [0, height - 1],
+    [width - 1, height - 1],
+  ];
+  let sum = 0;
+  for (const [x, y] of points) {
+    const i = (y * width + x) * channels;
+    sum += Math.max(data[i], data[i + 1], data[i + 2]);
+  }
+  return sum / points.length;
 }
 
-let minX = width;
-let minY = height;
-let maxX = 0;
-let maxY = 0;
+async function buildFromOpaqueSource(buffer, meta) {
+  const { data, info } = await sharp(buffer).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width, height } = info;
+  const visited = new Uint8Array(width * height);
+  const queue = [];
 
-for (let idx = 0; idx < width * height; idx += 1) {
-  const i = idx * 4;
-  const r = data[i];
-  const g = data[i + 1];
-  const b = data[i + 2];
-  const luminance = Math.max(r, g, b);
-
-  if (visited[idx]) {
-    data[i + 3] = 0;
-    continue;
+  function pushIfBackground(x, y) {
+    if (x < 0 || y < 0 || x >= width || y >= height) return;
+    const idx = y * width + x;
+    if (visited[idx]) return;
+    const i = idx * 4;
+    if (!isBackgroundBlack(data[i], data[i + 1], data[i + 2])) return;
+    visited[idx] = 1;
+    queue.push(idx);
   }
 
-  if (luminance >= WHITE_MIN) {
-    data[i + 3] = 255;
+  for (let x = 0; x < width; x += 1) {
+    pushIfBackground(x, 0);
+    pushIfBackground(x, height - 1);
+  }
+  for (let y = 0; y < height; y += 1) {
+    pushIfBackground(0, y);
+    pushIfBackground(width - 1, y);
+  }
+
+  while (queue.length > 0) {
+    const idx = queue.pop();
     const x = idx % width;
     const y = Math.floor(idx / width);
-    minX = Math.min(minX, x);
-    maxX = Math.max(maxX, x);
-    minY = Math.min(minY, y);
-    maxY = Math.max(maxY, y);
-    continue;
+    pushIfBackground(x - 1, y);
+    pushIfBackground(x + 1, y);
+    pushIfBackground(x, y - 1);
+    pushIfBackground(x, y + 1);
   }
 
-  data[i + 3] = 0;
+  let whiteKept = 0;
+  let blackKept = 0;
+  let fringeKept = 0;
+  let transparent = 0;
+
+  for (let idx = 0; idx < width * height; idx += 1) {
+    const i = idx * 4;
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const luminance = Math.max(r, g, b);
+
+    if (visited[idx]) {
+      data[i + 3] = 0;
+      transparent += 1;
+      continue;
+    }
+
+    data[i + 3] = 255;
+    if (isWhiteMark(r, g, b)) {
+      whiteKept += 1;
+    } else if (isBackgroundBlack(r, g, b)) {
+      blackKept += 1;
+    } else {
+      fringeKept += 1;
+    }
+  }
+
+  await sharp(data, { raw: { width, height, channels: 4 } })
+    .png({ compressionLevel: 9 })
+    .toFile(output);
+
+  return { mode: "opaque-flood", whiteKept, blackKept, fringeKept, transparent };
 }
 
-const markCenterX = (minX + maxX) / 2;
-const textY = maxY + Math.max(36, Math.round((height - maxY) * 0.42));
-const fontSize = Math.round(Math.max(52, Math.min(86, width * 0.078)));
+async function buildFromTransparentSource(buffer) {
+  const { data, info } = await sharp(buffer).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width, height } = info;
+  let kept = 0;
+  let transparent = 0;
 
-const textSvg = Buffer.from(
-  `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-    <text
-      x="${markCenterX.toFixed(1)}"
-      y="${textY.toFixed(1)}"
-      text-anchor="middle"
-      dominant-baseline="middle"
-      font-family="Segoe UI, system-ui, Helvetica, Arial, sans-serif"
-      font-size="${fontSize}"
-      font-weight="500"
-      letter-spacing="0.04em"
-      fill="${INK}"
-    >motus</text>
-  </svg>`,
-);
+  for (let idx = 0; idx < width * height; idx += 1) {
+    const i = idx * 4;
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const a = data[i + 3];
+    const luminance = Math.max(r, g, b);
 
-await sharp(data, { raw: { width, height, channels: 4 } })
-  .composite([{ input: textSvg, top: 0, left: 0 }])
-  .png({ compressionLevel: 9 })
-  .toFile(output);
+    if (a < 8 || (luminance <= BACKGROUND_MAX && isBackgroundBlack(r, g, b))) {
+      data[i + 3] = 0;
+      transparent += 1;
+      continue;
+    }
 
-const meta = await sharp(output).metadata();
+    data[i + 3] = 255;
+    kept += 1;
+  }
+
+  await sharp(data, { raw: { width, height, channels: 4 } })
+    .png({ compressionLevel: 9 })
+    .toFile(output);
+
+  return { mode: "alpha-source", kept, transparent };
+}
+
+async function buildFromWhiteBackground(buffer) {
+  const { data, info } = await sharp(buffer).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width, height } = info;
+  let whiteKept = 0;
+  let blackKept = 0;
+  let fringeKept = 0;
+  let transparent = 0;
+
+  for (let idx = 0; idx < width * height; idx += 1) {
+    const i = idx * 4;
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const luminance = Math.max(r, g, b);
+
+    if (luminance >= 248) {
+      data[i + 3] = 0;
+      transparent += 1;
+      continue;
+    }
+
+    data[i + 3] = 255;
+    if (isWhiteMark(r, g, b)) {
+      whiteKept += 1;
+    } else if (luminance <= BACKGROUND_MAX) {
+      blackKept += 1;
+    } else {
+      fringeKept += 1;
+    }
+  }
+
+  await sharp(data, { raw: { width, height, channels: 4 } })
+    .png({ compressionLevel: 9 })
+    .toFile(output);
+
+  return { mode: "white-background", whiteKept, blackKept, fringeKept, transparent };
+}
+
+const input = sharp(src);
+const meta = await input.metadata();
+const raw = await input.raw().toBuffer({ resolveWithObject: true });
+const cornerLuma = sampleCornersLuma(raw.data, raw.info.width, raw.info.height, raw.info.channels);
+
+let stats;
+if (meta.hasAlpha) {
+  stats = await buildFromTransparentSource(await sharp(src).toBuffer());
+} else if (cornerLuma > 128) {
+  stats = await buildFromWhiteBackground(await sharp(src).toBuffer());
+} else {
+  stats = await buildFromOpaqueSource(await sharp(src).toBuffer(), meta);
+  if (stats.blackKept < 500) {
+    console.warn(
+      "Warning: source looks like black matte + white M only. Export PNG with transparent background and black \"motus\" text for the full logo.",
+    );
+  }
+}
+
+const outMeta = await sharp(output).metadata();
 console.log({
   src,
   output,
-  width: meta.width,
-  height: meta.height,
-  hasAlpha: meta.hasAlpha,
-  fontSize,
-  textY,
-  markBox: { minX, minY, maxX, maxY },
+  format: meta.format,
+  width: outMeta.width,
+  height: outMeta.height,
+  hasAlpha: outMeta.hasAlpha,
+  cornerLuma: Math.round(cornerLuma),
+  ...stats,
 });
