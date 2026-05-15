@@ -8,7 +8,7 @@ import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhon
 import { uid } from "../app/storage";
 import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { useToastStatus } from "../app/toast";
-import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
+import motusLogo from "../assets/motus-logo-transparent.png";
 import type { CreateMemberInput, UpdateMemberInput } from "../services/appRepository";
 import type { InviteMemberResult, InviteTrainerResult } from "../services/supabaseAuth";
 import type {
@@ -2010,7 +2010,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         <div class="meta-line">Av: ${escapeHtml(trainerLabel)} · Til: ${escapeHtml(recipientName)}</div>
       </div>
       <div>
-        <div class="brand-logo-frame"><img src="${escapeHtml(motusSkrytekortLogo)}" alt="Motus logo" class="brand-logo" /></div>
+        <div class="brand-logo-frame"><img src="${escapeHtml(motusLogo)}" alt="Motus logo" class="brand-logo" /></div>
       </div>
     </div>
     ${program.notes ? `<div class="notes-card"><div class="notes-title">Notater</div>${escapeHtml(program.notes)}</div>` : ""}
