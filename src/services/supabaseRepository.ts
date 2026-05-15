@@ -1030,7 +1030,6 @@ async function deleteProgram(programId: string) {
   const targetEmail = memberId.includes("@") ? memberId.toLowerCase() : "";
   const title = String(programRow.title ?? "");
   const targetFingerprint = buildTrainingProgramPersistenceFingerprint(programRow as Record<string, unknown>);
-  const targetCreatedAt = String(programRow.created_at ?? "").trim();
   const targetOwnerUserId = String(programRow.owner_user_id ?? "").trim();
   const relatedMemberIds =
     memberId && memberId !== "__template__"
@@ -1059,9 +1058,7 @@ async function deleteProgram(programId: string) {
         .filter((row) => {
           const fingerprintMatches = buildTrainingProgramPersistenceFingerprint(row as Record<string, unknown>) === targetFingerprint;
           if (!fingerprintMatches) return false;
-          if (targetCreatedAt) {
-            return String((row as { created_at?: string }).created_at ?? "").trim() === targetCreatedAt;
-          }
+          if (targetOwnerUserId) return String((row as { owner_user_id?: string }).owner_user_id ?? "").trim() === targetOwnerUserId;
           const candidateMemberId = String((row as { member_id?: string }).member_id ?? "").trim();
           return !deletionKeys.length || deletionKeys.includes(candidateMemberId);
         })
