@@ -4029,7 +4029,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Øvelsesbank</div>
                     <p className="mt-1 text-sm text-slate-600">Søk eller filtrer, scroll i listen, trykk «Legg til».</p>
                     <div className="relative mt-3">
-                      <Search className="pointer-events-none absolute løft-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
                       <TextInput
                         value={customWorkoutSearch}
                         onChange={(e) => setCustomWorkoutSearch(e.target.value)}
@@ -5259,8 +5259,8 @@ export function MemberPortal(props: MemberPortalProps) {
                   aria-hidden
                 />
                 <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-white/15 blur-3xl" aria-hidden />
-                <div className="pointer-events-none absolute -bottom-24 -løft-16 h-64 w-64 rounded-full bg-cyan-200/20 blur-3xl" aria-hidden />
-                <div className="pointer-events-none absolute løft-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/5 blur-3xl" aria-hidden />
+                <div className="pointer-events-none absolute -bottom-24 -left-16 h-64 w-64 rounded-full bg-cyan-200/20 blur-3xl" aria-hidden />
+                <div className="pointer-events-none absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/5 blur-3xl" aria-hidden />
 
                 <div className="relative p-5 sm:p-6">
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-8">

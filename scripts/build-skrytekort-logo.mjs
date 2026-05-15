@@ -16,7 +16,7 @@ const root = path.join(__dirname, "..");
 
 const src =
   process.argv[2] ??
-  path.join(root, "src/assets/motus-skrytekort-source.jpg");
+  path.join(root, "src/assets/motus-skrytekort-source.png");
 
 const output = path.join(root, "src/assets/motus-skrytekort-logo.png");
 const BACKGROUND_MAX = 12;
@@ -119,31 +119,44 @@ async function buildFromTransparentSource(buffer) {
   const { data, info } = await sharp(buffer).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const { width, height } = info;
   let kept = 0;
+  let whiteKept = 0;
+  let blackKept = 0;
   let transparent = 0;
 
   for (let idx = 0; idx < width * height; idx += 1) {
     const i = idx * 4;
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
+    let r = data[i];
+    let g = data[i + 1];
+    let b = data[i + 2];
     const a = data[i + 3];
-    const luminance = Math.max(r, g, b);
 
-    if (a < 8 || (luminance <= BACKGROUND_MAX && isBackgroundBlack(r, g, b))) {
+    if (a < 16) {
       data[i + 3] = 0;
       transparent += 1;
       continue;
     }
 
+    if (a < 255) {
+      const scale = 255 / a;
+      r = Math.min(255, Math.round(r * scale));
+      g = Math.min(255, Math.round(g * scale));
+      b = Math.min(255, Math.round(b * scale));
+    }
+
+    data[i] = r;
+    data[i + 1] = g;
+    data[i + 2] = b;
     data[i + 3] = 255;
     kept += 1;
+    if (Math.max(r, g, b) >= WHITE_MIN) whiteKept += 1;
+    else if (Math.max(r, g, b) <= BACKGROUND_MAX) blackKept += 1;
   }
 
   await sharp(data, { raw: { width, height, channels: 4 } })
     .png({ compressionLevel: 9 })
     .toFile(output);
 
-  return { mode: "alpha-source", kept, transparent };
+  return { mode: "alpha-source", kept, whiteKept, blackKept, transparent };
 }
 
 async function buildFromWhiteBackground(buffer) {
