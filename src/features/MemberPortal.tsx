@@ -929,27 +929,39 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     return candidates.some((member) => member.customerType === "Medlem" && member.membershipType !== "Premium");
   }, [currentUserRole, currentUserMemberId, memberViewId, members, normalizedCurrentUserEmail, editableMember]);
-  const dbProfileMetrics = useMemo(() => {
-    for (const member of relatedMembersForProfile) {
-      const decoded = decodeMemberProfileMetrics(member.personalGoals);
-      if (decoded) return decoded;
-    }
-    return null;
-  }, [relatedMembersForProfile]);
-  const dbHomeVisibility = useMemo(() => {
-    for (const member of relatedMembersForProfile) {
-      const decoded = decodeMemberProfilePayload(member.personalGoals);
-      if (decoded?.homeVisibility) return decoded.homeVisibility;
-    }
-    return null;
-  }, [relatedMembersForProfile]);
-  const dbFavoritePersonalRecordNames = useMemo(() => {
-    for (const member of relatedMembersForProfile) {
-      const decoded = decodeMemberProfilePayload(member.personalGoals);
-      if (decoded?.favoritePersonalRecords?.length) return decoded.favoritePersonalRecords;
-    }
-    return null;
-  }, [relatedMembersForProfile]);
+  const dbProfileMetrics = useMemo(
+    () => {
+      for (const member of relatedMembersForProfile) {
+        const decoded = decodeMemberProfileMetrics(member.personalGoals);
+        if (decoded) return decoded;
+      }
+      return null;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- decode nyttes kun når personalGoals-signaturen endrer seg
+    [relatedProfileGoalsSignature],
+  );
+  const dbHomeVisibility = useMemo(
+    () => {
+      for (const member of relatedMembersForProfile) {
+        const decoded = decodeMemberProfilePayload(member.personalGoals);
+        if (decoded?.homeVisibility) return decoded.homeVisibility;
+      }
+      return null;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- som dbProfileMetrics
+    [relatedProfileGoalsSignature],
+  );
+  const dbFavoritePersonalRecordNames = useMemo(
+    () => {
+      for (const member of relatedMembersForProfile) {
+        const decoded = decodeMemberProfilePayload(member.personalGoals);
+        if (decoded?.favoritePersonalRecords?.length) return decoded.favoritePersonalRecords;
+      }
+      return null;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- som dbProfileMetrics
+    [relatedProfileGoalsSignature],
+  );
   const resolvedFavoritePersonalRecordNames = useMemo(() => {
     const dbFavorites = normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? undefined) ?? [];
     if (!editableMember || typeof window === "undefined") return dbFavorites;
@@ -2098,7 +2110,7 @@ export function MemberPortal(props: MemberPortalProps) {
       applyMetricDrafts(fallback);
     }
     // Avhengigheter bevisst snevre: «members» leses kun når signaturen sier at personalGoals faktisk endret seg.
-  }, [editableMember?.id, relatedProfileGoalsSignature, relatedMemberIds, updateMember, dbHomeVisibility]);
+  }, [editableMember?.id, relatedProfileGoalsSignature, relatedMemberIds, updateMember]);
 
   useEffect(() => {
     if (!activePeriodPlan) {
@@ -2210,7 +2222,8 @@ export function MemberPortal(props: MemberPortalProps) {
           ...DEFAULT_HOME_VISIBILITY,
           ...(normalizeHomeVisibilityForStorage(dbHomeVisibility ?? undefined) ?? {}),
         });
-        setFavoritePersonalRecordNames(normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? undefined) ?? []);
+        const seeded = normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? undefined) ?? [];
+        setFavoritePersonalRecordNames((prev) => (JSON.stringify(prev) === JSON.stringify(seeded) ? prev : seeded));
         setFavoritePersonalRecordPreferencesHydrated(true);
         return;
       }
@@ -2230,7 +2243,7 @@ export function MemberPortal(props: MemberPortalProps) {
         ...DEFAULT_HOME_VISIBILITY,
         ...resolvedPatch,
       });
-      setFavoritePersonalRecordNames(resolvedFavorites);
+      setFavoritePersonalRecordNames((prev) => (JSON.stringify(prev) === JSON.stringify(resolvedFavorites) ? prev : resolvedFavorites));
       setFavoritePersonalRecordPreferencesHydrated(true);
     } catch {
       setMicroCelebrationsEnabled(true);
@@ -2239,10 +2252,11 @@ export function MemberPortal(props: MemberPortalProps) {
         ...DEFAULT_HOME_VISIBILITY,
         ...(normalizeHomeVisibilityForStorage(dbHomeVisibility ?? undefined) ?? {}),
       });
-      setFavoritePersonalRecordNames(normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? undefined) ?? []);
+      const fallback = normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? undefined) ?? [];
+      setFavoritePersonalRecordNames((prev) => (JSON.stringify(prev) === JSON.stringify(fallback) ? prev : fallback));
       setFavoritePersonalRecordPreferencesHydrated(true);
     }
-  }, [editableMember, dbHomeVisibility, dbFavoritePersonalRecordNames]);
+  }, [editableMember?.id, relatedProfileGoalsSignature]);
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     if (!favoritePersonalRecordPreferencesHydrated) return;
