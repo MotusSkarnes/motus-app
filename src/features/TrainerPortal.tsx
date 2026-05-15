@@ -1883,12 +1883,31 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     return `${title.trim()}::${goal.trim()}::${notes.trim()}::${exerciseFingerprint}`;
   }
 
+  const programBelongsToSelectedMember = useCallback((program: TrainingProgram): boolean => {
+    const selected = members.find((member) => member.id === selectedMemberId) ?? null;
+    const isSharedMember = selected?.customerType === "Medlem";
+    const selectedEmail = selected?.email.trim().toLowerCase() ?? "";
+    const selectedName = selected?.name.trim().toLowerCase() ?? "";
+    if (selectedMemberRelatedIdSet.has(program.memberId)) return true;
+    if (!isSharedMember) return false;
+    const rawProgramMemberId = program.memberId.trim().toLowerCase();
+    if (selectedEmail && rawProgramMemberId === selectedEmail) return true;
+    const ownerMember = memberById.get(program.memberId);
+    if (!ownerMember) return false;
+    const ownerEmail = ownerMember.email.trim().toLowerCase();
+    const ownerName = ownerMember.name.trim().toLowerCase();
+    if (selectedEmail && ownerEmail && ownerEmail === selectedEmail) return true;
+    if (selectedName && ownerName && ownerName === selectedName) return true;
+    return false;
+  }, [memberById, members, selectedMemberId, selectedMemberRelatedIdSet]);
+
   function handleDeleteProgram(programId: string) {
     const target = selectedPrograms.find((program) => program.id === programId);
     if (!target) return;
     const fingerprint = buildProgramFingerprint(target.exercises, target.title, target.goal, target.notes);
-    const duplicateIds = selectedPrograms
+    const duplicateIds = programs
       .filter((program) => program.id !== target.id)
+      .filter((program) => programBelongsToSelectedMember(program))
       .filter((program) => buildProgramFingerprint(program.exercises, program.title, program.goal, program.notes) === fingerprint)
       .map((program) => program.id);
     setConfirmDialog({
