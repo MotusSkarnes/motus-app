@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  assignWeekPlanGroupAndSyncDays,
   buildPeriodPlanWeekNavItemsFromPlan,
   normalizePeriodSchedulePlan,
-  normalizeSharedPlanDaysInWeeklyPlans,
-  propagatePlanGroupDaysFromWeek,
   resolvePeriodPlanWeek,
+  syncGradientMarkedWeekDays,
 } from "./periodPlanMerge";
-import type { PeriodSchedulePlan } from "./types";
+import type { PeriodSchedulePlan, WeeklySchedulePlan } from "./types";
 
 const empty = { monday: "", tuesday: "", wednesday: "", thursday: "", friday: "", saturday: "", sunday: "" };
 
@@ -68,8 +66,8 @@ describe("normalizePeriodSchedulePlan", () => {
     expect(resolvePeriodPlanWeek(normalized, 3)?.days.monday).toBe("");
   });
 
-  it("syncs days for weeks with same planGroupKey (lowest week is canonical)", () => {
-    const withGroup: PeriodSchedulePlan = {
+  it("syncs days for weeks marked usesGradientPlan (lowest week is canonical)", () => {
+    const withGradient: PeriodSchedulePlan = {
       id: "plan-1",
       title: "Test",
       notes: "",
@@ -77,12 +75,12 @@ describe("normalizePeriodSchedulePlan", () => {
       weeks: 3,
       createdAt: "2026-01-01",
       weeklyPlans: [
-        { id: "w1", weekNumber: 1, days: { ...empty, monday: "A", tuesday: "x" }, planGroupKey: "rose" },
+        { id: "w1", weekNumber: 1, days: { ...empty, monday: "A", tuesday: "x" }, usesGradientPlan: true },
         { id: "w2", weekNumber: 2, days: { ...empty, monday: "B" } },
-        { id: "w3", weekNumber: 3, days: { ...empty, monday: "C" }, planGroupKey: "rose" },
+        { id: "w3", weekNumber: 3, days: { ...empty, monday: "C" }, usesGradientPlan: true },
       ],
     };
-    const normalized = normalizePeriodSchedulePlan(withGroup);
+    const normalized = normalizePeriodSchedulePlan(withGradient);
     expect(normalized.weeklyPlans[0].days.monday).toBe("A");
     expect(normalized.weeklyPlans[0].days.tuesday).toBe("x");
     expect(normalized.weeklyPlans[2].days.monday).toBe("A");
@@ -91,34 +89,26 @@ describe("normalizePeriodSchedulePlan", () => {
   });
 });
 
-describe("plan group helpers", () => {
-  it("assignWeekPlanGroupAndSyncDays copies from lowest week number in group", () => {
-    const weeks = [
-      { id: "w1", weekNumber: 1, days: { ...empty, monday: "A" }, planGroupKey: "rose" as const },
+describe("syncGradientMarkedWeekDays", () => {
+  it("aligns marked weeks to canonical days by lowest week number", () => {
+    const weeks: WeeklySchedulePlan[] = [
+      { id: "w1", weekNumber: 1, days: { ...empty, monday: "A" }, usesGradientPlan: true },
       { id: "w2", weekNumber: 2, days: { ...empty, monday: "B" } },
-      { id: "w3", weekNumber: 3, days: { ...empty, monday: "C" } },
+      { id: "w3", weekNumber: 3, days: { ...empty, monday: "C" }, usesGradientPlan: true },
     ];
-    const next = assignWeekPlanGroupAndSyncDays(weeks, "w3", "rose");
-    expect(next.find((w) => w.id === "w3")?.days.monday).toBe("A");
-    expect(next.find((w) => w.id === "w1")?.days.monday).toBe("A");
+    const out = syncGradientMarkedWeekDays(weeks);
+    expect(out[0].days.monday).toBe("A");
+    expect(out[2].days.monday).toBe("A");
+    expect(out[1].days.monday).toBe("B");
   });
 
-  it("propagatePlanGroupDaysFromWeek updates siblings", () => {
-    const weeks = [
-      { id: "w1", weekNumber: 1, days: { ...empty, monday: "A" }, planGroupKey: "rose" },
-      { id: "w2", weekNumber: 2, days: { ...empty, monday: "B" }, planGroupKey: "rose" },
+  it("no marked weeks leaves copy per week untouched", () => {
+    const weeks: WeeklySchedulePlan[] = [
+      { id: "a", weekNumber: 1, days: { ...empty, monday: "1" } },
+      { id: "b", weekNumber: 2, days: { ...empty, monday: "2" } },
     ];
-    const edited = weeks.map((w) => (w.id === "w2" ? { ...w, days: { ...w.days, monday: "Z" } } : w));
-    const out = propagatePlanGroupDaysFromWeek(edited, "w2");
-    expect(out[0].days.monday).toBe("Z");
-    expect(out[1].days.monday).toBe("Z");
-  });
-
-  it("normalizeSharedPlanDaysInWeeklyPlans runs key by key", () => {
-    const weeks = normalizeSharedPlanDaysInWeeklyPlans([
-      { id: "a", weekNumber: 1, days: { ...empty, monday: "1" }, planGroupKey: "teal" },
-      { id: "b", weekNumber: 2, days: { ...empty, monday: "wrong" }, planGroupKey: "teal" },
-    ]);
-    expect(weeks[1].days.monday).toBe("1");
+    const out = syncGradientMarkedWeekDays(weeks);
+    expect(out[0].days.monday).toBe("1");
+    expect(out[1].days.monday).toBe("2");
   });
 });

@@ -5,6 +5,8 @@ import type { PeriodPlanWeekNavItem } from "../app/periodPlanMerge";
 
 export type { PeriodPlanWeekNavItem };
 
+const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
+
 type PeriodPlanWeekNavigatorProps = {
   weeks: PeriodPlanWeekNavItem[];
   /** Velg uke via id (trenerutkast). */
@@ -94,10 +96,11 @@ export function PeriodPlanWeekNavigator({
           style={{ borderColor: "rgba(15,23,42,0.10)" }}
         >
           <div className="text-sm font-semibold text-slate-800 inline-flex items-center justify-center gap-1.5 flex-wrap">
-            {activeWeek.planGroupColor ? (
+            {activeWeek.usesGradientPlan ? (
               <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white shadow"
-                style={{ backgroundColor: activeWeek.planGroupColor }}
+                className="h-2 w-6 shrink-0 rounded-full shadow-sm"
+                style={{ background: MOTUS_GRADIENT }}
+                title="Merka som felles gradient-program"
                 aria-hidden
               />
             ) : null}
@@ -135,37 +138,68 @@ export function PeriodPlanWeekNavigator({
         >
           {sortedWeeks.map((week, index) => {
             const selected = index === activeIndex;
-            return (
+            const marked = week.usesGradientPlan === true;
+            const label = (
+              <span className="inline-flex items-center justify-center gap-1.5">
+                {marked ? (
+                  <span
+                    className={`h-2 w-4 shrink-0 rounded-full ${selected ? "ring-1 ring-white/80" : "ring-1 ring-slate-200"}`}
+                    style={{ background: MOTUS_GRADIENT }}
+                    aria-hidden
+                  />
+                ) : null}
+                <span>
+                  Uke {week.weekNumber}
+                  {showNowBadge && currentWeekNumber === week.weekNumber ? " · nå" : ""}
+                </span>
+              </span>
+            );
+
+            const tabButtonClasses = selected
+              ? "border-transparent text-white shadow-sm"
+              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+
+            const innerTab = (
               <button
                 key={week.id}
                 type="button"
                 role="tab"
                 aria-selected={selected}
-                onClick={() => goToIndex(index)}
-                className={`relative z-10 shrink-0 snap-start touch-manipulation rounded-xl border px-3 py-1.5 text-xs font-medium transition ${
-                  selected ? "border-transparent text-white shadow-sm" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                }`}
-                style={
-                  selected ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : undefined
+                aria-label={
+                  marked
+                    ? `Uke ${week.weekNumber}, del av felles gradient-program`
+                    : `Uke ${week.weekNumber}, egen ukedagplan`
                 }
+                onClick={() => goToIndex(index)}
+                className={`relative z-10 w-full shrink-0 snap-start touch-manipulation rounded-xl border px-3 py-1.5 text-xs font-medium transition ${tabButtonClasses}`}
+                style={selected ? { background: MOTUS_GRADIENT } : undefined}
               >
-                <span className="inline-flex items-center justify-center gap-1.5">
-                  {week.planGroupColor ? (
-                    <span
-                      className={`h-2 w-2 shrink-0 rounded-full ring-1 ring-offset-1 ${
-                        selected ? "ring-white/70 ring-offset-transparent" : "ring-slate-300 ring-offset-white"
-                      }`}
-                      style={{ backgroundColor: week.planGroupColor }}
-                      aria-hidden
-                    />
-                  ) : null}
-                  <span>
-                    Uke {week.weekNumber}
-                    {showNowBadge && currentWeekNumber === week.weekNumber ? " · nå" : ""}
-                  </span>
-                </span>
+                {label}
               </button>
             );
+
+            if (marked && !selected) {
+              return (
+                <div
+                  key={week.id}
+                  className="shrink-0 snap-start rounded-[14px] p-[2px] shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
+                  style={{ background: MOTUS_GRADIENT }}
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={false}
+                    aria-label={`Uke ${week.weekNumber}, del av felles gradient-program`}
+                    onClick={() => goToIndex(index)}
+                    className="w-full rounded-[12px] border-0 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    {label}
+                  </button>
+                </div>
+              );
+            }
+
+            return innerTab;
           })}
         </div>
       ) : null}

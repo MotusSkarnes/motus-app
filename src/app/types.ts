@@ -168,10 +168,10 @@ export type WeeklySchedulePlan = {
   weekNumber: number;
   days: WeeklyDayPlan;
   /**
-   * Uker med samme nøkkel (samme valgte farge) deler samme dagplan på medlemssiden og holdes synkron ved redigering.
-   * Ikke satt eller tom = kun denne ukens egen dagplan (uavhengig).
+   * Merket som «gradient» = denne uken deler samme dagplan som alle andre gradient-merkede uker i perioden.
+   * Umerket = egen dagplan for denne uken.
    */
-  planGroupKey?: string;
+  usesGradientPlan?: boolean;
 };
 
 export type PeriodSchedulePlan = {

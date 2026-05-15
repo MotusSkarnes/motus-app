@@ -3,71 +3,9 @@ import type { PeriodSchedulePlan, WeeklyDayPlan, WeeklySchedulePlan } from "./ty
 export type PeriodPlanWeekNavItem = {
   id: string;
   weekNumber: number;
-  /** Fargedot for felles dagplan mellom flere uker (trener/ medlem navigator). */
-  planGroupColor?: string;
+  /** Uke inngår i felles «gradient»-blokk med samme dagplan som andre merkede uker. */
+  usesGradientPlan?: boolean;
 };
-
-export const PERIOD_PLAN_GROUP_PRESETS = [
-  { key: "rose", label: "Rosa", color: "#f472b6" },
-  { key: "teal", label: "Turkis", color: "#14b8a6" },
-  { key: "lime", label: "Lime", color: "#84cc16" },
-  { key: "amber", label: "Rav", color: "#f59e0b" },
-  { key: "violet", label: "Fiolett", color: "#a78bfa" },
-] as const satisfies ReadonlyArray<{ key: string; label: string; color: string }>;
-
-export type PeriodPlanGroupPresetKey = (typeof PERIOD_PLAN_GROUP_PRESETS)[number]["key"];
-
-/** Fyllfarge på merket uke på navigatoren — undefined når ukens plan er kun for seg selv. */
-export function planGroupColorForKey(planGroupKey: string | undefined): string | undefined {
-  if (!planGroupKey?.trim()) return undefined;
-  return PERIOD_PLAN_GROUP_PRESETS.find((preset) => preset.key === planGroupKey.trim())?.color;
-}
-
-/**
- * Setter planGroupKey på én uke og synkroniserer dagplan innen gruppa (lavt ukenummer først ved sammenslåing).
- */
-export function assignWeekPlanGroupAndSyncDays(
-  weeks: WeeklySchedulePlan[],
-  weekId: string,
-  newGroupKey: string | undefined,
-): WeeklySchedulePlan[] {
-  const trimmedKey = newGroupKey?.trim() || undefined;
-  const next: WeeklySchedulePlan[] = weeks.map((week) => {
-    if (week.id !== weekId) return week;
-    if (!trimmedKey) {
-      const cleared = { ...week };
-      delete cleared.planGroupKey;
-      return cleared;
-    }
-    return { ...week, planGroupKey: trimmedKey };
-  });
-
-  if (!trimmedKey) return next;
-
-  const inGroup = next
-    .filter((week) => (week.planGroupKey?.trim() || undefined) === trimmedKey)
-    .slice()
-    .sort((a, b) => a.weekNumber - b.weekNumber);
-
-  const canonical = inGroup[0];
-  if (!canonical) return next;
-  const days = { ...canonical.days };
-  return next.map((week) =>
-    (week.planGroupKey?.trim() || undefined) === trimmedKey ? { ...week, days: { ...days } } : week,
-  );
-}
-
-/** Etter dagendring i én uke: kopier hele ukens dagplan til alle uker som deler samme planGroupKey. */
-export function propagatePlanGroupDaysFromWeek(weeks: WeeklySchedulePlan[], leaderWeekId: string): WeeklySchedulePlan[] {
-  const leader = weeks.find((week) => week.id === leaderWeekId);
-  if (!leader) return weeks;
-  const key = leader.planGroupKey?.trim();
-  if (!key) return weeks;
-  const days = { ...leader.days };
-  return weeks.map((week) =>
-    (week.planGroupKey?.trim() || undefined) === key ? { ...week, days: { ...days } } : week,
-  );
-}
 
 function planStartTimeMs(plan: PeriodSchedulePlan): number {
   const value = plan.startDate?.trim() ?? "";
@@ -101,6 +39,17 @@ function createEmptyWeeklyDayPlan(): WeeklyDayPlan {
   };
 }
 
+/** Alle uker med `usesGradientPlan` får samme dagplan (laveste ukenummer bestemmer innhold). */
+export function syncGradientMarkedWeekDays(weeklyPlans: WeeklySchedulePlan[]): WeeklySchedulePlan[] {
+  const marked = weeklyPlans
+    .filter((week) => week.usesGradientPlan === true)
+    .slice()
+    .sort((a, b) => a.weekNumber - b.weekNumber);
+  if (marked.length === 0) return weeklyPlans.map((week) => ({ ...week }));
+  const days = { ...marked[0].days };
+  return weeklyPlans.map((week) => (week.usesGradientPlan === true ? { ...week, days: { ...days } } : { ...week }));
+}
+
 export function buildPeriodPlanWeekNavItems(
   weeklyPlans: WeeklySchedulePlan[],
   totalWeeks: number,
@@ -114,11 +63,10 @@ export function buildPeriodPlanWeekNavItems(
     const weekNumber = index + 1;
     const existing =
       weeklyPlans.find((week) => Number(week.weekNumber) === weekNumber) ?? weeklyPlans[index];
-    const groupKey = existing?.planGroupKey?.trim();
     return {
       id: existing?.id ?? `${planId}-week-${weekNumber}`,
       weekNumber,
-      planGroupColor: planGroupColorForKey(groupKey),
+      ...(existing?.usesGradientPlan === true ? { usesGradientPlan: true as const } : {}),
     };
   });
 }
@@ -142,43 +90,18 @@ export function normalizePeriodSchedulePlan(plan: PeriodSchedulePlan): PeriodSch
   const weeklyPlansRaw: WeeklySchedulePlan[] = Array.from({ length: weeks }, (_, index) => {
     const weekNumber = index + 1;
     const existing = source.find((week) => Number(week.weekNumber) === weekNumber) ?? source[index];
-    const groupKey =
-      typeof existing?.planGroupKey === "string" && existing.planGroupKey.trim()
-        ? existing.planGroupKey.trim()
-        : undefined;
     const base: WeeklySchedulePlan = {
       id: existing?.id ?? `${plan.id}-week-${weekNumber}`,
       weekNumber,
       days: existing?.days ?? createEmptyWeeklyDayPlan(),
-      ...(groupKey ? { planGroupKey: groupKey } : {}),
     };
+    if (existing?.usesGradientPlan === true) {
+      return { ...base, usesGradientPlan: true };
+    }
     return base;
   });
-  const synced = normalizeSharedPlanDaysInWeeklyPlans(weeklyPlansRaw);
+  const synced = syncGradientMarkedWeekDays(weeklyPlansRaw);
   return { ...plan, weeks, weeklyPlans: synced };
-}
-
-/** Flett inn identisk dagplan for alle «grupperte» uker før lagring/visning — brukes etter hydrate. */
-export function normalizeSharedPlanDaysInWeeklyPlans(weeklyPlans: WeeklySchedulePlan[]): WeeklySchedulePlan[] {
-  const keys = new Set<string>();
-  for (const week of weeklyPlans) {
-    const key = week.planGroupKey?.trim();
-    if (key) keys.add(key);
-  }
-  let result = [...weeklyPlans];
-  for (const key of keys) {
-    const inGroup = result
-      .filter((week) => (week.planGroupKey?.trim() || "") === key)
-      .slice()
-      .sort((a, b) => a.weekNumber - b.weekNumber);
-    const canonical = inGroup[0];
-    if (!canonical) continue;
-    const days = { ...canonical.days };
-    result = result.map((week) =>
-      (week.planGroupKey?.trim() || "") === key ? { ...week, days: { ...days } } : week,
-    );
-  }
-  return result;
 }
 
 export function resolvePeriodPlanWeek(plan: PeriodSchedulePlan, weekNumber: number): WeeklySchedulePlan | null {

@@ -93,6 +93,14 @@ import type {
   WorkoutReflection,
 } from "../app/types";
 
+function ClientAvatarFallback({ className = "", iconClassName = "h-6 w-6" }: { className?: string; iconClassName?: string }) {
+  return (
+    <div className={`absolute inset-0 flex items-center justify-center ${className}`} aria-hidden="true">
+      <UserCircle2 className={iconClassName} strokeWidth={1.7} />
+    </div>
+  );
+}
+
 function inferStatusTone(message: string): "success" | "error" | "info" {
   const normalized = message.trim().toLowerCase();
   if (!normalized) return "info";
@@ -3781,8 +3789,20 @@ export function MemberPortal(props: MemberPortalProps) {
             {viewedMember ? (
               <div className="rounded-2xl border p-4" style={{ backgroundColor: "#f8fffd", borderColor: MOTUS.turquoise }}>
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 overflow-hidden rounded-full border bg-white" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
-                    {memberAvatarUrl ? <img src={memberAvatarUrl} alt={viewedMember.name} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
+                  <div className="relative h-12 w-12 overflow-hidden rounded-full border bg-slate-100 text-slate-400" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+                    <ClientAvatarFallback iconClassName="h-7 w-7" />
+                    {memberAvatarUrl ? (
+                      <img
+                        src={memberAvatarUrl}
+                        alt={viewedMember.name}
+                        className="relative z-10 h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : null}
                   </div>
                   <div>
                     <div className="font-medium">{viewedMember.name}</div>
@@ -3801,8 +3821,20 @@ export function MemberPortal(props: MemberPortalProps) {
               <div className="hidden w-full sm:block rounded-[22px] p-4 sm:p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm text-white/80">Hei{viewedMember ? `, ${viewedMember.name}` : ""}</div>
-                  <div className="h-12 w-12 overflow-hidden rounded-full border border-white/40 bg-white/20">
-                    {memberAvatarUrl ? <img src={memberAvatarUrl} alt="Profilbilde" className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
+                  <div className="relative h-12 w-12 overflow-hidden rounded-full border border-white/40 bg-white/20 text-white/80">
+                    <ClientAvatarFallback iconClassName="h-8 w-8" />
+                    {memberAvatarUrl ? (
+                      <img
+                        src={memberAvatarUrl}
+                        alt="Profilbilde"
+                        className="relative z-10 h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : null}
                   </div>
                 </div>
                 <div className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">Klar for i dag?</div>
@@ -5693,11 +5725,21 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                   <div className="rounded-xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="text-sm font-semibold text-slate-700">Profilbilde</div>
-                    {memberAvatarUrl ? (
-                      <img src={memberAvatarUrl} alt="Ditt profilbilde" className="h-24 w-24 rounded-full object-cover border" style={{ borderColor: "rgba(15,23,42,0.12)" }} loading="eager" decoding="async" />
-                    ) : (
-                      <div className="text-xs text-slate-500">Ingen bilde valgt ennå.</div>
-                    )}
+                    <div className="relative h-24 w-24 overflow-hidden rounded-full border bg-slate-100 text-slate-400" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+                      <ClientAvatarFallback iconClassName="h-12 w-12" />
+                      {memberAvatarUrl ? (
+                        <img
+                          src={memberAvatarUrl}
+                          alt="Ditt profilbilde"
+                          className="relative z-10 h-full w-full object-cover"
+                          loading="eager"
+                          decoding="async"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ) : null}
+                    </div>
                     <input
                       type="file"
                       accept="image/*"

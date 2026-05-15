@@ -36,14 +36,7 @@ import {
   upsertMemberPeriodPlansForTrainer,
 } from "../services/supabaseRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
-import {
-  assignWeekPlanGroupAndSyncDays,
-  buildPeriodPlanWeekNavItems,
-  PERIOD_PLAN_GROUP_PRESETS,
-  planGroupColorForKey,
-  propagatePlanGroupDaysFromWeek,
-  normalizeSharedPlanDaysInWeeklyPlans,
-} from "../app/periodPlanMerge";
+import { buildPeriodPlanWeekNavItems, syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
 
 function inferStatusTone(message: string): "success" | "error" | "info" {
@@ -71,17 +64,6 @@ function inferStatusTone(message: string): "success" | "error" | "info" {
     return "success";
   }
   return "info";
-}
-
-function getMemberInitials(name: string): string {
-  const initials = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
-  return initials || "M";
 }
 
 function ClientAvatarFallback({ className = "", iconClassName = "h-5 w-5" }: { className?: string; iconClassName?: string }) {
@@ -1651,26 +1633,38 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     });
   }
 
-  function assignPlanGroupForActiveWeek(presetKey: string | undefined) {
+  function toggleUsesGradientForActiveWeek() {
     if (!activePeriodWeek) return;
-    setPeriodWeeklyPlansDraft((prev) => assignWeekPlanGroupAndSyncDays(prev, activePeriodWeek.id, presetKey));
+    const targetId = activePeriodWeek.id;
+    setPeriodWeeklyPlansDraft((prev) => {
+      let next = prev.map((w) =>
+        w.id === targetId ? { ...w, usesGradientPlan: !w.usesGradientPlan } : { ...w },
+      );
+      const now = next.find((w) => w.id === targetId);
+      if (!now) return prev;
+      if (now.usesGradientPlan === true) {
+        const cohort = next.filter((w) => w.usesGradientPlan).sort((a, b) => a.weekNumber - b.weekNumber);
+        const tmpl = { ...cohort[0].days };
+        next = next.map((w) => (w.usesGradientPlan ? { ...w, days: { ...tmpl } } : w));
+      }
+      return syncGradientMarkedWeekDays(next);
+    });
   }
 
   function updateActivePeriodWeekDay(day: WeekdayPlanKey, value: string) {
     if (!activePeriodWeek) return;
     setPeriodWeeklyPlansDraft((prev) => {
-      const afterMap = prev.map((week) =>
-        week.id === activePeriodWeek.id
-          ? {
-              ...week,
-              days: {
-                ...week.days,
-                [day]: value,
-              },
-            }
-          : week,
-      );
-      return propagatePlanGroupDaysFromWeek(afterMap, activePeriodWeek.id);
+      const active = prev.find((w) => w.id === activePeriodWeek.id);
+      if (!active) return prev;
+      const after =
+        active.usesGradientPlan === true
+          ? prev.map((w) =>
+              w.usesGradientPlan === true ? { ...w, days: { ...w.days, [day]: value } } : w,
+            )
+          : prev.map((w) =>
+              w.id === activePeriodWeek.id ? { ...w, days: { ...w.days, [day]: value } } : w,
+            );
+      return syncGradientMarkedWeekDays(after);
     });
   }
 
@@ -1685,7 +1679,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       return;
     }
     const weeks = Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1));
-    const weeklyPlans = normalizeSharedPlanDaysInWeeklyPlans(
+    const weeklyPlans = syncGradientMarkedWeekDays(
       periodWeeklyPlansDraft.slice(0, weeks).map((week, index) => ({
         ...week,
         weekNumber: index + 1,
@@ -1724,13 +1718,10 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       return;
     }
     setPeriodWeeklyPlansDraft((prev) => {
-      let next = prev.map((week) =>
+      const next = prev.map((week) =>
         matchingWeekIdsDraft.includes(week.id) ? { ...week, days: { ...activePeriodWeek.days } } : week,
       );
-      matchingWeekIdsDraft.forEach((id) => {
-        next = propagatePlanGroupDaysFromWeek(next, id);
-      });
-      return next;
+      return syncGradientMarkedWeekDays(next);
     });
     setPeriodPlanStatus(`Kopierte uke ${activePeriodWeek.weekNumber} til ${matchingWeekIdsDraft.length} uke(r).`);
   }
@@ -3693,7 +3684,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
               <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Users className="h-5 w-5" /></div>
               <div>
                 <h2 className="text-xl font-semibold tracking-tight">Kunder</h2>
-                <p className="text-sm text-slate-500">Velg kunde eller filtrer listen. Nye kunder opprettes under Admin.</p>
+                <p className="text-sm text-slate-500">Velg kunde eller filtrer listen.</p>
               </div>
             </div>
             <div className="mt-5 space-y-3">
@@ -4200,52 +4191,56 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         ) : null}
                         {periodWeeklyPlansDraft.length > 0 ? (
                           <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Del samme dagplan på flere uker</div>
+                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Felles eller egen ukedagplan</div>
                             <p className="text-[11px] text-slate-500 leading-snug">
-                              Velg uke i navigatoren over, deretter en farge. Alle uker med samme merke får samme dagplan på medlemsappen (som uke&nbsp;1 og 3 merket rosa).
-                              Alle uker kan settes til samme farge for å kopiere én felles plantemplate. «Egen plan» gir uken kun sin egen plan.
+                              Velg uke i navigatoren over og marker hvilke uker som skal ligge i <strong>samt gradient‑program</strong> (samme dagplan på
+                              medlemssiden). Umerka uker får <strong>hver sin egen</strong> ukedagplan.
                             </p>
-                            <div className="flex flex-wrap items-center gap-2">
-                              {PERIOD_PLAN_GROUP_PRESETS.map((preset) => {
-                                const active = activePeriodWeek?.planGroupKey === preset.key;
-                                return (
-                                  <button
-                                    key={preset.key}
-                                    type="button"
-                                    title={preset.label}
-                                    aria-label={`Sett aktiv uke i gruppe ${preset.label}`}
-                                    aria-pressed={active}
-                                    onClick={() => assignPlanGroupForActiveWeek(preset.key)}
-                                    className={`h-9 w-9 shrink-0 rounded-full border shadow-sm transition ${
-                                      active ? "ring-2 ring-offset-2 ring-slate-800 scale-105" : "opacity-95 hover:opacity-100 hover:ring-2 hover:ring-slate-300"
-                                    }`}
-                                    style={{ backgroundColor: preset.color, borderColor: "rgba(15,23,42,0.12)" }}
+                            <label className="flex cursor-pointer items-start gap-3 rounded-xl border bg-slate-50/70 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                              <input
+                                type="checkbox"
+                                checked={Boolean(activePeriodWeek?.usesGradientPlan)}
+                                onChange={() => toggleUsesGradientForActiveWeek()}
+                                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                              />
+                              <span className="min-w-0 space-y-0.5 text-xs leading-snug text-slate-700">
+                                <span className="flex items-center gap-2 font-semibold text-slate-800">
+                                  <span
+                                    className="h-2 w-8 shrink-0 rounded-full"
+                                    style={{
+                                      background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
+                                    }}
+                                    aria-hidden
                                   />
-                                );
-                              })}
-                              <OutlineButton type="button" onClick={() => assignPlanGroupForActiveWeek(undefined)} className="text-xs px-3 py-1.5">
-                                Egen plan
-                              </OutlineButton>
-                            </div>
+                                  Med i gradient‑program (felles dagplan)
+                                </span>
+                                <span className="block text-[11px] text-slate-500">
+                                  Når feltet er av, redigeres kun denne uken. Når feltet er på, gjelder endringene alle gradient‑merka uker.
+                                </span>
+                              </span>
+                            </label>
                             <div className="flex flex-wrap gap-x-3 gap-y-1 border-t border-slate-100 pt-2 text-[11px] text-slate-600">
-                              {periodWeeklyPlansDraft.slice(0, Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1))).map((week) => {
-                                const dot = planGroupColorForKey(week.planGroupKey);
-                                return (
-                                  <span key={`legend-${week.id}`} className="inline-flex items-center gap-1.5 font-medium">
-                                    {dot ? (
-                                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: dot }} aria-hidden />
-                                    ) : (
-                                      <span className="h-2 w-2 rounded-full border border-slate-300 bg-white" aria-hidden />
-                                    )}
-                                    Uke {week.weekNumber}
-                                  </span>
-                                );
-                              })}
+                              {periodWeeklyPlansDraft.slice(0, Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1))).map((week) => (
+                                <span key={`legend-${week.id}`} className="inline-flex items-center gap-1.5 font-medium">
+                                  {week.usesGradientPlan ? (
+                                    <span
+                                      className="h-2 w-8 rounded-full shrink-0"
+                                      style={{
+                                        background: `linear-gradient(90deg, ${MOTUS.turquoise}, ${MOTUS.pink})`,
+                                      }}
+                                      aria-hidden
+                                    />
+                                  ) : (
+                                    <span className="h-2 w-8 rounded-full shrink-0 border border-slate-300 bg-white" aria-hidden />
+                                  )}
+                                  Uke {week.weekNumber}
+                                </span>
+                              ))}
                             </div>
                           </div>
                         ) : null}
                         <p className="text-[11px] text-slate-500 leading-snug">
-                          Når du øker antall uker kopieres nye uker automatisk fra uke&nbsp;1. Velg uke i listen over for å tilpasse hver uke for seg, eller bruk «Bruk samme plan på valgte uker» under.
+                          Når du øker antall uker kopieres nye uker automatisk fra uke&nbsp;1. Marker gradient på de ukene som skal dele felles dagplan — ellers kan du definere egne kombinasjoner for hver enkelt uke. Bruk også «Kopier gjeldende uke til andre» når du vil lime inn én ukedagplan som utgangspunkt.
                         </p>
                         {activePeriodWeek ? (
                           <div className="grid gap-2 md:grid-cols-2">
@@ -4866,7 +4861,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 <div className="mx-auto max-w-sm rounded-xl border bg-white p-4 text-left text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="font-semibold text-slate-700">Forslag til neste steg</div>
                   <ol className="mt-2 space-y-1 text-slate-600">
-                    <li>1. Opprett eller velg en kunde</li>
+                    <li>1. Velg en kunde i listen</li>
                     <li>2. Gå til Program og lag en enkel plan</li>
                     <li>3. Send en velkomstmelding</li>
                   </ol>
