@@ -37,6 +37,25 @@ import { useToastStatus } from "../app/toast";
 import { uid } from "../app/storage";
 import type { LogGroupWorkoutInput, ReplaceWorkoutExerciseGroupInput, SaveProgramInput, StartCustomWorkoutInput, StartWorkoutModeOptions, UpdateMemberInput } from "../services/appRepository";
 import { mergedPeriodPlanListForMember } from "../app/periodPlanMerge";
+import {
+  applyPeriodPlanSwaps,
+  getPeriodPlanSwapsStorageKey,
+  getSwapsForWeek,
+  parsePeriodPlanSwapsState,
+  setSwapsForWeek,
+  togglePeriodPlanSwap,
+  WEEKDAY_PLAN_LABELS,
+  WEEKDAY_PLAN_ORDER,
+  type PeriodPlanSwapsByPlan,
+} from "../app/periodPlanSwaps";
+import { MuscleSplitCard } from "./MuscleSplitCard";
+import { PeriodPlanWeekView } from "./PeriodPlanWeekView";
+import {
+  buildExerciseGroupByName,
+  computeMuscleGroupStats,
+  type MuscleSplitMetric,
+  type MuscleSplitPeriod,
+} from "./muscleSplitStats";
 import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClear";
 import type {
   ChatMessage,
@@ -577,6 +596,8 @@ export function MemberPortal(props: MemberPortalProps) {
   const [customWorkoutCategoryFilter, setCustomWorkoutCategoryFilter] = useState<string>("all");
   const [showAllCustomWorkoutOptions, setShowAllCustomWorkoutOptions] = useState(false);
   const [showAllPersonalRecords, setShowAllPersonalRecords] = useState(false);
+  const [muscleSplitPeriod, setMuscleSplitPeriod] = useState<MuscleSplitPeriod>(28);
+  const [muscleSplitMetric, setMuscleSplitMetric] = useState<MuscleSplitMetric>("sets");
   const [favoritePersonalRecordNames, setFavoritePersonalRecordNames] = useState<string[]>([]);
   const [favoritePersonalRecordPreferencesHydrated, setFavoritePersonalRecordPreferencesHydrated] = useState(false);
   const [customWorkoutLines, setCustomWorkoutLines] = useState<
@@ -636,6 +657,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [selectedPeriodPlanWeekNumber, setSelectedPeriodPlanWeekNumber] = useState<number | null>(null);
   const [periodPlanActionStatus, setPeriodPlanActionStatus] = useState<string | null>(null);
   const [completedPeriodPlanEntryKeys, setCompletedPeriodPlanEntryKeys] = useState<string[]>([]);
+  const [periodPlanSwapsByPlan, setPeriodPlanSwapsByPlan] = useState<PeriodPlanSwapsByPlan>({});
   const [selectedIntervalProgramId, setSelectedIntervalProgramId] = useState("");
   const [suggestedWeightOverridesByProgramExerciseId, setSuggestedWeightOverridesByProgramExerciseId] = useState<Record<string, string>>({});
   const [showIntervalTimerModal, setShowIntervalTimerModal] = useState(false);
@@ -649,6 +671,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const memberMessagesContainerRef = useRef<HTMLDivElement | null>(null);
   const profileAutoSaveInFlightRef = useRef(false);
   const periodPlanCompletedDirtyRef = useRef(false);
+  const periodPlanSwapsDirtyRef = useRef(false);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [libraryActionStatus, setLibraryActionStatus] = useState<string | null>(null);
   const [showLibraryHiddenSection, setShowLibraryHiddenSection] = useState(false);
@@ -1086,7 +1109,12 @@ export function MemberPortal(props: MemberPortalProps) {
       null
     );
   }, [activePeriodPlan, activePeriodWeekIndex, selectedPeriodPlanWeekNumber]);
-  const todayPlanEntry = activeWeeklyPlan?.days[currentWeekdayKey]?.trim() ?? "";
+  const activeWeeklyPlanEffectiveDays = useMemo(() => {
+    if (!activeWeeklyPlan || !activePeriodPlan) return null;
+    const swaps = getSwapsForWeek(periodPlanSwapsByPlan, activePeriodPlan.id, activeWeeklyPlan.weekNumber);
+    return applyPeriodPlanSwaps(activeWeeklyPlan.days, swaps);
+  }, [activeWeeklyPlan, activePeriodPlan, periodPlanSwapsByPlan]);
+  const todayPlanEntry = activeWeeklyPlanEffectiveDays?.[currentWeekdayKey]?.trim() ?? "";
   const todayProgramMatch = todayPlanEntry
     ? memberProgramsInActiveLibrary.find((program) => program.title.trim().toLowerCase() === todayPlanEntry.toLowerCase()) ?? null
     : null;
@@ -1558,7 +1586,9 @@ export function MemberPortal(props: MemberPortalProps) {
       (plan.weeklyPlans ?? []).forEach((week) => {
         const weekIndex = Math.max(0, (week.weekNumber || 1) - 1);
         (Object.keys(weekdayIndexByKey) as WeekdayPlanKey[]).forEach((weekdayKey) => {
-          const plannedEntry = week.days[weekdayKey]?.trim() ?? "";
+          const swaps = getSwapsForWeek(periodPlanSwapsByPlan, plan.id, week.weekNumber);
+          const effectiveDays = applyPeriodPlanSwaps(week.days, swaps);
+          const plannedEntry = effectiveDays[weekdayKey]?.trim() ?? "";
           if (!plannedEntry) return;
           const dayOffset = weekIndex * 7 + weekdayIndexByKey[weekdayKey];
           const plannedDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + dayOffset);
@@ -1570,7 +1600,7 @@ export function MemberPortal(props: MemberPortalProps) {
       });
     });
     return byDay;
-  }, [periodPlans, calendarMonth]);
+  }, [periodPlans, periodPlanSwapsByPlan, calendarMonth]);
   const calendarDayStatusByDay = useMemo(() => {
     const statusByDay = new Map<number, "completed" | "planned" | "missed">();
     const todayStart = getStartOfDay(new Date(nowTimestamp));
@@ -1647,6 +1677,15 @@ export function MemberPortal(props: MemberPortalProps) {
     const fallback = personalRecords.filter((record) => !effectiveFavoritePersonalRecordNames.includes(record.name));
     return [...favorites, ...fallback].slice(0, 3);
   }, [showAllPersonalRecords, personalRecords, effectiveFavoritePersonalRecordNames]);
+  const exerciseGroupByName = useMemo(() => buildExerciseGroupByName(exercises), [exercises]);
+  const muscleSplitStats = useMemo(
+    () =>
+      computeMuscleGroupStats(completedLogs, exerciseGroupByName, {
+        periodDays: muscleSplitPeriod,
+        nowTimestamp,
+      }),
+    [completedLogs, exerciseGroupByName, muscleSplitPeriod, nowTimestamp],
+  );
   const activeCelebration = liveWorkoutCelebration ?? workoutCelebration;
   const shouldShowCelebration = Boolean(
     microCelebrationsEnabled && activeCelebration && activeCelebration.memberId === activeMemberId
@@ -1994,6 +2033,26 @@ export function MemberPortal(props: MemberPortalProps) {
       // ignore storage write errors (quota/private mode)
     }
   }, [editableMember, completedPeriodPlanEntryKeys]);
+  useEffect(() => {
+    periodPlanSwapsDirtyRef.current = false;
+    if (!editableMember || typeof window === "undefined") {
+      setPeriodPlanSwapsByPlan({});
+      return;
+    }
+    setPeriodPlanSwapsByPlan(parsePeriodPlanSwapsState(window.localStorage.getItem(getPeriodPlanSwapsStorageKey(editableMember.id))));
+  }, [editableMember]);
+  useEffect(() => {
+    if (!editableMember || typeof window === "undefined") return;
+    if (!periodPlanSwapsDirtyRef.current) return;
+    try {
+      window.localStorage.setItem(
+        getPeriodPlanSwapsStorageKey(editableMember.id),
+        JSON.stringify(periodPlanSwapsByPlan),
+      );
+    } catch {
+      // ignore storage write errors (quota/private mode)
+    }
+  }, [editableMember, periodPlanSwapsByPlan]);
   useEffect(() => {
     setFavoritePersonalRecordPreferencesHydrated(false);
   }, [editableMember?.id]);
@@ -2851,31 +2910,21 @@ export function MemberPortal(props: MemberPortalProps) {
       const day = getStartOfDay(date);
       return day.getTime() >= weekStart.getTime() && day.getTime() < weekEnd.getTime();
     }).length;
-    const plannedThisWeek = activeWeeklyPlan
-      ? Object.values(activeWeeklyPlan.days).filter((entry) => entry.trim().length > 0).length
+    const plannedThisWeek = activeWeeklyPlanEffectiveDays
+      ? Object.values(activeWeeklyPlanEffectiveDays).filter((entry) => entry.trim().length > 0).length
       : 0;
     const completionRate = plannedThisWeek > 0 ? Math.min(100, Math.round((completedThisWeek / plannedThisWeek) * 100)) : 0;
     return { completedThisWeek, plannedThisWeek, completionRate };
-  }, [nowTimestamp, completedLogDates, activeWeeklyPlan]);
+  }, [nowTimestamp, completedLogDates, activeWeeklyPlanEffectiveDays]);
   let nextPlannedWorkout: { dayLabel: string; entry: string } | null = null;
-  if (activeWeeklyPlan) {
-    const dayOrder: WeekdayPlanKey[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-    const dayLabels: Record<WeekdayPlanKey, string> = {
-      monday: "Mandag",
-      tuesday: "Tirsdag",
-      wednesday: "Onsdag",
-      thursday: "Torsdag",
-      friday: "Fredag",
-      saturday: "Lørdag",
-      sunday: "Søndag",
-    };
-    const todayIndex = dayOrder.indexOf(currentWeekdayKey);
+  if (activeWeeklyPlanEffectiveDays) {
+    const todayIndex = WEEKDAY_PLAN_ORDER.indexOf(currentWeekdayKey);
     for (let step = 1; step <= 7; step += 1) {
       const index = (todayIndex + step) % 7;
-      const dayKey = dayOrder[index];
-      const entry = activeWeeklyPlan.days[dayKey]?.trim();
+      const dayKey = WEEKDAY_PLAN_ORDER[index];
+      const entry = activeWeeklyPlanEffectiveDays[dayKey]?.trim();
       if (!entry) continue;
-      nextPlannedWorkout = { dayLabel: dayLabels[dayKey], entry };
+      nextPlannedWorkout = { dayLabel: WEEKDAY_PLAN_LABELS[dayKey], entry };
       break;
     }
   }
@@ -3040,6 +3089,26 @@ export function MemberPortal(props: MemberPortalProps) {
   function isPeriodPlanEntryCompleted(planId: string, weekNumber: number, day: WeekdayPlanKey): boolean {
     const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
     return completedPeriodPlanEntryKeys.includes(key);
+  }
+
+  function swapPeriodPlanDays(planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) {
+    if (dayA === dayB) return;
+    const current = getSwapsForWeek(periodPlanSwapsByPlan, planId, weekNumber);
+    const nextSwaps = togglePeriodPlanSwap(current, dayA, dayB);
+    periodPlanSwapsDirtyRef.current = true;
+    setPeriodPlanSwapsByPlan((prev) => setSwapsForWeek(prev, planId, weekNumber, nextSwaps));
+    const reverted = nextSwaps.length < current.length;
+    setPeriodPlanActionStatus(
+      reverted
+        ? `Bytte mellom ${WEEKDAY_PLAN_LABELS[dayA]} og ${WEEKDAY_PLAN_LABELS[dayB]} er angret.`
+        : `Byttet plan for ${WEEKDAY_PLAN_LABELS[dayA]} og ${WEEKDAY_PLAN_LABELS[dayB]}.`,
+    );
+  }
+
+  function resetPeriodPlanSwapsForWeek(planId: string, weekNumber: number) {
+    periodPlanSwapsDirtyRef.current = true;
+    setPeriodPlanSwapsByPlan((prev) => setSwapsForWeek(prev, planId, weekNumber, []));
+    setPeriodPlanActionStatus("Uken er tilbakestilt til original periodeplan.");
   }
 
   function togglePeriodPlanEntryCompleted(input: { planId: string; weekNumber: number; day: WeekdayPlanKey; entry: string; plannedDate?: string | null }) {
@@ -4463,56 +4532,17 @@ export function MemberPortal(props: MemberPortalProps) {
                             </div>
                           ) : null}
                           {displayedPeriodWeek ? (
-                            <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Uke {displayedPeriodWeek.weekNumber}</div>
-                              <div className="mt-1 text-[11px] text-slate-500">Merk av øktene med haken for å registrere dem som fullført.</div>
-                              {periodPlanActionStatus ? <div className="mt-2 text-xs text-emerald-700">{periodPlanActionStatus}</div> : null}
-                              <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                                {([
-                                  { key: "monday", label: "Mandag" },
-                                  { key: "tuesday", label: "Tirsdag" },
-                                  { key: "wednesday", label: "Onsdag" },
-                                  { key: "thursday", label: "Torsdag" },
-                                  { key: "friday", label: "Fredag" },
-                                  { key: "saturday", label: "Lørdag" },
-                                  { key: "sunday", label: "Søndag" },
-                                ] as Array<{ key: WeekdayPlanKey; label: string }>).map((day) => (
-                                  <div key={`${displayedPeriodWeek.id}-${day.key}`} className="rounded-lg border bg-slate-50 px-2 py-1.5 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                    <div>
-                                      <span className="font-semibold text-slate-700">{day.label}:</span>{" "}
-                                      <span
-                                        className={
-                                          isPeriodPlanEntryCompleted(plan.id, displayedPeriodWeek.weekNumber, day.key)
-                                            ? "text-slate-400 line-through"
-                                            : "text-slate-600"
-                                        }
-                                      >
-                                        {displayedPeriodWeek.days[day.key] || "Ingen plan"}
-                                      </span>
-                                    </div>
-                                    {displayedPeriodWeek.days[day.key]?.trim() ? (
-                                      <label className="mt-2 inline-flex cursor-pointer items-center gap-2">
-                                        <input
-                                          type="checkbox"
-                                          checked={isPeriodPlanEntryCompleted(plan.id, displayedPeriodWeek.weekNumber, day.key)}
-                                          onChange={() =>
-                                            togglePeriodPlanEntryCompleted({
-                                              planId: plan.id,
-                                              weekNumber: displayedPeriodWeek.weekNumber,
-                                              day: day.key,
-                                              entry: displayedPeriodWeek.days[day.key],
-                                              plannedDate: resolvePeriodPlanEntryDate(plan, displayedPeriodWeek.weekNumber, day.key),
-                                            })
-                                          }
-                                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                                        />
-                                        <span className="text-xs font-medium text-slate-600">Gjennomført</span>
-                                      </label>
-                                    ) : null}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
+                            <PeriodPlanWeekView
+                              plan={plan}
+                              week={displayedPeriodWeek}
+                              swapsByPlan={periodPlanSwapsByPlan}
+                              actionStatus={periodPlanActionStatus}
+                              isEntryCompleted={isPeriodPlanEntryCompleted}
+                              onToggleCompleted={togglePeriodPlanEntryCompleted}
+                              onSwapDays={swapPeriodPlanDays}
+                              onResetSwaps={resetPeriodPlanSwapsForWeek}
+                              resolveEntryDate={resolvePeriodPlanEntryDate}
+                            />
                           ) : null}
                         </div>
                       ))
@@ -5244,6 +5274,14 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null}
                 </div>
               </div>
+
+              <MuscleSplitCard
+                stats={muscleSplitStats}
+                metric={muscleSplitMetric}
+                period={muscleSplitPeriod}
+                onMetricChange={setMuscleSplitMetric}
+                onPeriodChange={setMuscleSplitPeriod}
+              />
 
               <div
                 className="relative mt-6 overflow-hidden rounded-2xl border shadow-xl ring-1 ring-white/10"
