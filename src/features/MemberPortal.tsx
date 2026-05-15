@@ -11,6 +11,7 @@ import {
   Search,
   Share2,
   Sparkles,
+  Star,
   Target,
   TrendingUp,
   Trophy,
@@ -166,9 +167,22 @@ type ProfileMetricsDraft = {
 
 type SyncedHomePreferences = {
   homeVisibility?: Partial<Record<HomeSectionKey, boolean>>;
+  favoritePersonalRecords?: string[];
 };
 
 type ProfileMetricsPayload = ProfileMetricsDraft & SyncedHomePreferences;
+
+function normalizeFavoritePersonalRecordNames(names?: string[]): string[] | undefined {
+  if (!Array.isArray(names)) return undefined;
+  const normalized = Array.from(
+    new Set(
+      names
+        .map((value) => String(value ?? "").trim())
+        .filter(Boolean),
+    ),
+  ).slice(0, 3);
+  return normalized.length ? normalized : undefined;
+}
 
 function normalizeHomeVisibilityForStorage(
   homeVisibility?: Partial<Record<HomeSectionKey, boolean>>,
@@ -184,9 +198,11 @@ function normalizeHomeVisibilityForStorage(
 
 function encodeMemberProfileMetrics(metrics: ProfileMetricsDraft, preferences?: SyncedHomePreferences): string {
   const normalizedHomeVisibility = normalizeHomeVisibilityForStorage(preferences?.homeVisibility);
+  const normalizedFavoritePersonalRecords = normalizeFavoritePersonalRecordNames(preferences?.favoritePersonalRecords);
   const payload: ProfileMetricsPayload = {
     ...metrics,
     ...(normalizedHomeVisibility ? { homeVisibility: normalizedHomeVisibility } : {}),
+    ...(normalizedFavoritePersonalRecords ? { favoritePersonalRecords: normalizedFavoritePersonalRecords } : {}),
   };
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;
 }
@@ -202,6 +218,7 @@ function decodeMemberProfilePayload(personalGoals: string | undefined): ProfileM
       targetWeight: String(parsed.targetWeight ?? ""),
       currentDailySteps: String(parsed.currentDailySteps ?? ""),
       homeVisibility: normalizeHomeVisibilityForStorage(parsed.homeVisibility),
+      favoritePersonalRecords: normalizeFavoritePersonalRecordNames(parsed.favoritePersonalRecords),
     };
   } catch {
     return null;
@@ -546,6 +563,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [customWorkoutCategoryFilter, setCustomWorkoutCategoryFilter] = useState<string>("all");
   const [showAllCustomWorkoutOptions, setShowAllCustomWorkoutOptions] = useState(false);
   const [showAllPersonalRecords, setShowAllPersonalRecords] = useState(false);
+  const [favoritePersonalRecordNames, setFavoritePersonalRecordNames] = useState<string[]>([]);
   const [customWorkoutLines, setCustomWorkoutLines] = useState<
     Array<{ key: string; exerciseId: string; sets: string; reps: string; weight: string; holdSeconds?: string }>
   >([]);
@@ -752,6 +770,13 @@ export function MemberPortal(props: MemberPortalProps) {
     for (const member of relatedMembersForProfile) {
       const decoded = decodeMemberProfilePayload(member.personalGoals);
       if (decoded?.homeVisibility) return decoded.homeVisibility;
+    }
+    return null;
+  }, [relatedMembersForProfile]);
+  const dbFavoritePersonalRecordNames = useMemo(() => {
+    for (const member of relatedMembersForProfile) {
+      const decoded = decodeMemberProfilePayload(member.personalGoals);
+      if (decoded?.favoritePersonalRecords?.length) return decoded.favoritePersonalRecords;
     }
     return null;
   }, [relatedMembersForProfile]);
@@ -1583,8 +1608,14 @@ export function MemberPortal(props: MemberPortalProps) {
       .map(([name, value]) => ({ name, ...value }))
       .sort((a, b) => b.score - a.score);
   }, [completedLogs]);
-  const personalRecordsPreview = showAllPersonalRecords ? personalRecords : personalRecords.slice(0, 3);
-  const hiddenPersonalRecordsCount = Math.max(0, personalRecords.length - 3);
+  const personalRecordsPreview = useMemo(() => {
+    if (showAllPersonalRecords) return personalRecords;
+    const favorites = favoritePersonalRecordNames
+      .map((name) => personalRecords.find((record) => record.name === name) ?? null)
+      .filter((record): record is (typeof personalRecords)[number] => Boolean(record));
+    const fallback = personalRecords.filter((record) => !favoritePersonalRecordNames.includes(record.name));
+    return [...favorites, ...fallback].slice(0, 3);
+  }, [showAllPersonalRecords, personalRecords, favoritePersonalRecordNames]);
   const activeCelebration = liveWorkoutCelebration ?? workoutCelebration;
   const shouldShowCelebration = Boolean(
     microCelebrationsEnabled && activeCelebration && activeCelebration.memberId === activeMemberId
@@ -1616,6 +1647,23 @@ export function MemberPortal(props: MemberPortalProps) {
     }, 400);
   }, [celebrationSoundEnabled]);
 
+  function toggleFavoritePersonalRecord(recordName: string) {
+    const normalizedName = recordName.trim();
+    if (!normalizedName) return;
+    setFavoritePersonalRecordNames((prev) => {
+      if (prev.includes(normalizedName)) {
+        setProfileSaveInfo(`Fjernet "${normalizedName}" fra fremhevede PR-er.`);
+        return prev.filter((name) => name !== normalizedName);
+      }
+      if (prev.length >= 3) {
+        setProfileSaveInfo("Du kan ha maks tre fremhevede personlige rekorder.");
+        return prev;
+      }
+      setProfileSaveInfo(`La til "${normalizedName}" som fremhevet PR.`);
+      return [...prev, normalizedName];
+    });
+  }
+
   const saveProfile = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent === true;
     if (!editableMember || typeof window === "undefined") return;
@@ -1636,7 +1684,10 @@ export function MemberPortal(props: MemberPortalProps) {
       targetWeight: profileTargetWeight.trim(),
       currentDailySteps: profileCurrentDailySteps.trim(),
     };
-    const metricsForSync = encodeMemberProfileMetrics(next, { homeVisibility });
+    const metricsForSync = encodeMemberProfileMetrics(next, {
+      homeVisibility,
+      favoritePersonalRecords: favoritePersonalRecordNames,
+    });
     window.localStorage.setItem(getProfileStorageKey(editableMember.id), JSON.stringify(next));
     const targetMemberIds = Array.from(
       new Set(
@@ -1726,6 +1777,7 @@ export function MemberPortal(props: MemberPortalProps) {
     profileTargetWeight,
     profileCurrentDailySteps,
     homeVisibility,
+    favoritePersonalRecordNames,
     members,
     relatedMemberIds,
     updateMember,
@@ -1836,7 +1888,7 @@ export function MemberPortal(props: MemberPortalProps) {
       applyMetricDrafts(fallback);
       applyMemberCoreDrafts();
     }
-  }, [editableMember, dbProfileMetrics, dbHomeVisibility, relatedMemberIds, updateMember]);
+  }, [editableMember, dbProfileMetrics, dbHomeVisibility, favoritePersonalRecordNames, homeVisibility, relatedMemberIds, updateMember]);
 
   useEffect(() => {
     if (!activePeriodPlan) {
@@ -1915,21 +1967,26 @@ export function MemberPortal(props: MemberPortalProps) {
           ...DEFAULT_HOME_VISIBILITY,
           ...(normalizeHomeVisibilityForStorage(dbHomeVisibility ?? undefined) ?? {}),
         });
+        setFavoritePersonalRecordNames(normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? undefined) ?? []);
         return;
       }
       const parsed = JSON.parse(raw) as {
         microCelebrationsEnabled?: boolean;
         celebrationSoundEnabled?: boolean;
         homeVisibility?: Partial<Record<HomeSectionKey, boolean>>;
+        favoritePersonalRecords?: string[];
       };
       setMicroCelebrationsEnabled(parsed.microCelebrationsEnabled !== false);
       setCelebrationSoundEnabled(parsed.celebrationSoundEnabled === true);
       const resolvedPatch =
         normalizeHomeVisibilityForStorage(dbHomeVisibility ?? parsed.homeVisibility ?? undefined) ?? {};
+      const resolvedFavorites =
+        normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? parsed.favoritePersonalRecords) ?? [];
       setHomeVisibility({
         ...DEFAULT_HOME_VISIBILITY,
         ...resolvedPatch,
       });
+      setFavoritePersonalRecordNames(resolvedFavorites);
     } catch {
       setMicroCelebrationsEnabled(true);
       setCelebrationSoundEnabled(false);
@@ -1937,17 +1994,19 @@ export function MemberPortal(props: MemberPortalProps) {
         ...DEFAULT_HOME_VISIBILITY,
         ...(normalizeHomeVisibilityForStorage(dbHomeVisibility ?? undefined) ?? {}),
       });
+      setFavoritePersonalRecordNames(normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? undefined) ?? []);
     }
-  }, [editableMember, dbHomeVisibility]);
+  }, [editableMember, dbHomeVisibility, dbFavoritePersonalRecordNames]);
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     const payload = JSON.stringify({
       microCelebrationsEnabled,
       celebrationSoundEnabled,
       homeVisibility,
+      favoritePersonalRecords: favoritePersonalRecordNames,
     });
     window.localStorage.setItem(getUiPreferencesStorageKey(editableMember.id), payload);
-  }, [editableMember, microCelebrationsEnabled, celebrationSoundEnabled, homeVisibility]);
+  }, [editableMember, microCelebrationsEnabled, celebrationSoundEnabled, homeVisibility, favoritePersonalRecordNames]);
   useEffect(() => {
     if (!editableMember) return;
     const normalizedHomeVisibility = normalizeHomeVisibilityForStorage(homeVisibility);
@@ -1961,7 +2020,10 @@ export function MemberPortal(props: MemberPortalProps) {
       targetWeight: profileTargetWeight.trim(),
       currentDailySteps: profileCurrentDailySteps.trim(),
     };
-    const encoded = encodeMemberProfileMetrics(nextMetrics, { homeVisibility: normalizedHomeVisibility });
+    const encoded = encodeMemberProfileMetrics(nextMetrics, {
+      homeVisibility: normalizedHomeVisibility,
+      favoritePersonalRecords: favoritePersonalRecordNames,
+    });
     const targetIds = Array.from(new Set([editableMember.id, ...relatedMemberIds].filter(Boolean)));
     targetIds.forEach((memberId) => {
       updateMember({
@@ -1992,6 +2054,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [
     editableMember,
     syncProfileToPtBackend,
+    favoritePersonalRecordNames,
     homeVisibility,
     dbHomeVisibility,
     profileSessionsPerWeekTarget,
@@ -2001,6 +2064,62 @@ export function MemberPortal(props: MemberPortalProps) {
     relatedMemberIds,
     updateMember,
     normalizedCurrentUserEmail,
+  ]);
+  useEffect(() => {
+    if (!editableMember) return;
+    const normalizedFavorites = normalizeFavoritePersonalRecordNames(favoritePersonalRecordNames) ?? [];
+    const dbFavorites = normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? undefined) ?? [];
+    if (JSON.stringify(normalizedFavorites) === JSON.stringify(dbFavorites)) return;
+    const nextMetrics: ProfileMetricsDraft = {
+      sessionsPerWeekTarget: profileSessionsPerWeekTarget.trim(),
+      dailyStepsTarget: profileDailyStepsTarget.trim(),
+      targetWeight: profileTargetWeight.trim(),
+      currentDailySteps: profileCurrentDailySteps.trim(),
+    };
+    const encoded = encodeMemberProfileMetrics(nextMetrics, {
+      homeVisibility: normalizeHomeVisibilityForStorage(homeVisibility),
+      favoritePersonalRecords: normalizedFavorites,
+    });
+    const targetIds = Array.from(new Set([editableMember.id, ...relatedMemberIds].filter(Boolean)));
+    targetIds.forEach((memberId) => {
+      updateMember({
+        memberId,
+        changes: {
+          personalGoals: encoded,
+        },
+      });
+    });
+    if (!supabaseClient) return;
+    void syncProfileToPtBackend({
+      email: normalizedCurrentUserEmail || editableMember.email.trim().toLowerCase(),
+      emails: Array.from(
+        new Set(
+          [normalizedCurrentUserEmail, editableMember.email.trim().toLowerCase()]
+            .map((value) => value.trim().toLowerCase())
+            .filter((value) => value && value.includes("@")),
+        ),
+      ),
+      memberId: editableMember.id,
+      memberIds: targetIds,
+      targetName: editableMember.name,
+      expectedMinUpdated: 1,
+      changes: {
+        personalGoals: encoded,
+      },
+    });
+  }, [
+    dbFavoritePersonalRecordNames,
+    editableMember,
+    favoritePersonalRecordNames,
+    homeVisibility,
+    normalizedCurrentUserEmail,
+    profileCurrentDailySteps,
+    profileDailyStepsTarget,
+    profileSessionsPerWeekTarget,
+    profileTargetWeight,
+    relatedMemberIds,
+    syncProfileToPtBackend,
+    updateMember,
   ]);
   useEffect(() => {
     if (!microCelebrationsEnabled) return;
@@ -4919,7 +5038,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-slate-800">Personlige rekorder</div>
-                    <div className="mt-1 text-xs text-slate-500">Beste løft registrert per øvelse.</div>
+                    <div className="mt-1 text-xs text-slate-500">Stjernemerk opptil tre rekorder du vil fremheve først.</div>
                   </div>
                 </div>
                 <div className="mt-4 space-y-3">
@@ -4933,17 +5052,32 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null}
                   {personalRecordsPreview.map((record) => (
                     <div key={record.name} className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="font-medium">{record.name}</div>
-                      <div className="mt-1 text-sm text-slate-500">Beste registrerte: {record.weight} kg × {record.reps}</div>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-medium">{record.name}</div>
+                          <div className="mt-1 text-sm text-slate-500">Beste registrerte: {record.weight} kg × {record.reps}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleFavoritePersonalRecord(record.name)}
+                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-white text-slate-500 transition hover:text-amber-500"
+                          style={{ borderColor: "rgba(15,23,42,0.10)" }}
+                          title={favoritePersonalRecordNames.includes(record.name) ? "Fjern fra fremhevede PR-er" : "Fremhev denne PR-en"}
+                        >
+                          <Star
+                            className={`h-4 w-4 ${favoritePersonalRecordNames.includes(record.name) ? "fill-amber-400 text-amber-500" : ""}`}
+                          />
+                        </button>
+                      </div>
                     </div>
                   ))}
-                  {hiddenPersonalRecordsCount > 0 ? (
+                  {personalRecords.length > 3 ? (
                     <OutlineButton
                       type="button"
                       onClick={() => setShowAllPersonalRecords((prev) => !prev)}
                       className="w-full sm:w-auto"
                     >
-                      {showAllPersonalRecords ? "Vis færre rekorder" : `Se flere rekorder (+${hiddenPersonalRecordsCount})`}
+                      {showAllPersonalRecords ? "Vis bare fremhevede / topp 3" : `Se alle personlige rekorder (${personalRecords.length})`}
                     </OutlineButton>
                   ) : null}
                 </div>
