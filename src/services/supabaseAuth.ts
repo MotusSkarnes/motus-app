@@ -4,6 +4,36 @@ import { supabaseClient } from "./supabaseClient";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
+/**
+ * Kanonisk app-origin for e-postlenker (invitasjon, OTP, passord).
+ * Sett `VITE_SITE_URL` i prod (f.eks. https://motus-pt-app.vercel.app) så lenker ikke peker til feil host.
+ */
+function getCanonicalSiteOrigin(): string {
+  const raw = String(import.meta.env.VITE_SITE_URL ?? "").trim();
+  if (raw) {
+    try {
+      let href = raw;
+      if (!/^https?:\/\//i.test(href)) {
+        const hostPart = href.split("/")[0] ?? "";
+        const isLocal = /^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(hostPart);
+        href = `${isLocal ? "http" : "https"}://${href}`;
+      }
+      return new URL(href).origin;
+    } catch {
+      // Fall back to current page origin.
+    }
+  }
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return window.location.origin;
+  }
+  return "";
+}
+
+function emailRedirectBase(): string | undefined {
+  const origin = getCanonicalSiteOrigin();
+  return origin ? `${origin}/` : undefined;
+}
+
 function parseRole(value: unknown): Role {
   return value === "member" ? "member" : "trainer";
 }
@@ -58,7 +88,7 @@ export async function requestEmailOtpSignIn(email: string): Promise<{ ok: boolea
   if (!normalizedEmail || !normalizedEmail.includes("@")) {
     return { ok: false, message: "Skriv inn en gyldig e-postadresse." };
   }
-  const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+  const redirectTo = emailRedirectBase();
   const { error } = await supabaseClient.auth.signInWithOtp({
     email: normalizedEmail,
     options: {
@@ -173,8 +203,8 @@ export async function requestPasswordRecovery(email: string): Promise<{ ok: bool
     return { ok: false, message: "Skriv inn en gyldig e-postadresse." };
   }
 
-  const redirectTo =
-    typeof window !== "undefined" ? `${window.location.origin}/?type=recovery&recovery=1` : undefined;
+  const origin = getCanonicalSiteOrigin();
+  const redirectTo = origin ? `${origin}/?type=recovery&recovery=1` : undefined;
   const { error } = await supabaseClient.auth.resetPasswordForEmail(normalizedEmail, {
     redirectTo,
   });
@@ -323,6 +353,7 @@ async function sendMemberInviteByEmail(email: string, memberId: string): Promise
         memberId: memberId.trim(),
         accessToken: activeSession.access_token,
         ownerUserId,
+        inviteRedirectOrigin: getCanonicalSiteOrigin(),
       },
     });
     if (!error) {
@@ -344,8 +375,7 @@ async function sendMemberInviteByEmail(email: string, memberId: string): Promise
   }
 
   // Fallback to OTP invite flow if edge-function path is unavailable.
-  const redirectTo =
-    typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+  const redirectTo = emailRedirectBase();
   const { error: otpError } = await supabaseClient.auth.signInWithOtp({
     email: normalizedEmail,
     options: {
@@ -367,8 +397,7 @@ async function sendMemberInviteByEmail(email: string, memberId: string): Promise
   }
 
   // Fallback 1: retry without custom metadata.
-  const redirectToFallback =
-    typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+  const redirectToFallback = emailRedirectBase();
   const { error: otpFallbackError } = await supabaseClient.auth.signInWithOtp({
     email: normalizedEmail,
     options: {
@@ -404,6 +433,7 @@ async function sendMemberInviteByEmail(email: string, memberId: string): Promise
       memberId: memberId.trim(),
       accessToken: activeSession.access_token,
       ownerUserId,
+      inviteRedirectOrigin: getCanonicalSiteOrigin(),
     },
   });
 
@@ -463,7 +493,7 @@ export async function inviteTrainerByEmail(email: string): Promise<InviteTrainer
     return { ok: false, message: "Ugyldig e-post." };
   }
 
-  const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+  const redirectTo = emailRedirectBase();
   const { error } = await supabaseClient.auth.signInWithOtp({
     email: normalizedEmail,
     options: {

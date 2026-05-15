@@ -8,8 +8,9 @@ I Vercel (`Project -> Settings -> Environment Variables`):
 
 - `VITE_SUPABASE_URL` -> Supabase URL for riktig prosjekt
 - `VITE_SUPABASE_ANON_KEY` -> anon key fra samme prosjekt
+- `VITE_SITE_URL` (anbefalt) -> produksjonsnettadresse uten trailing slash, f.eks. **`https://motus-pt-app.vercel.app`**. Appen bruker den til `emailRedirectTo` / invitasjon slik at e-postlenker ikke avhenger av hvilken Vercel-URL treneren står på.
 
-Etter endring: redeploy.
+For medlems-invitasjon via Edge Function: sett også Supabase secret **`PUBLIC_APP_URL`** til samme prod-HTTPS-URL på funksjonen `invite-member` (se `SUPABASE_GO_LIVE.md`).
 
 ## 2) Supabase URL Configuration
 

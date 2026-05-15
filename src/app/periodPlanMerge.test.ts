@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildPeriodPlanWeekNavItemsForMember,
   buildPeriodPlanWeekNavItemsFromPlan,
   normalizePeriodSchedulePlan,
   resolvePeriodPlanWeek,
@@ -63,5 +64,32 @@ describe("normalizePeriodSchedulePlan", () => {
     expect(normalized.weeklyPlans).toHaveLength(4);
     expect(buildPeriodPlanWeekNavItemsFromPlan(normalized)).toHaveLength(4);
     expect(resolvePeriodPlanWeek(normalized, 3)?.days.monday).toBe("");
+  });
+
+  it("preserves appliesToMember false after normalize", () => {
+    const plan = makePlan([
+      { id: "w1", weekNumber: 1, days: { monday: "", tuesday: "", wednesday: "", thursday: "", friday: "", saturday: "", sunday: "" } },
+      {
+        id: "w2",
+        weekNumber: 2,
+        days: { monday: "", tuesday: "", wednesday: "", thursday: "", friday: "", saturday: "", sunday: "" },
+        appliesToMember: false,
+      },
+    ]);
+    const normalized = normalizePeriodSchedulePlan(plan);
+    expect(normalized.weeklyPlans[0].appliesToMember).toBeUndefined();
+    expect(normalized.weeklyPlans[1].appliesToMember).toBe(false);
+  });
+});
+
+describe("buildPeriodPlanWeekNavItemsForMember", () => {
+  it("omits weeks where appliesToMember is false", () => {
+    const empty = { monday: "", tuesday: "", wednesday: "", thursday: "", friday: "", saturday: "", sunday: "" };
+    const plan = makePlan([
+      { id: "w1", weekNumber: 1, days: { ...empty, monday: "A" } },
+      { id: "w2", weekNumber: 2, days: { ...empty, monday: "B" }, appliesToMember: false },
+      { id: "w3", weekNumber: 3, days: { ...empty, monday: "C" } },
+    ]);
+    expect(buildPeriodPlanWeekNavItemsForMember(plan).map((w) => w.weekNumber)).toEqual([1, 3]);
   });
 });

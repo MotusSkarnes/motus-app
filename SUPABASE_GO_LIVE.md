@@ -17,6 +17,8 @@ Opprett fil `src/.env` (ikke commit):
 ```env
 VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...
+# Anbefalt: produksjons-URL uten trailing slash — brukes i alle auth e-postlenker
+# VITE_SITE_URL=https://motus-pt-app.vercel.app
 ```
 
 Start appen og bekreft:
@@ -64,6 +66,8 @@ Alternativ med invitasjon fra appen:
 
 Eksempel deploy:
 - `supabase functions deploy invite-member`
+- `supabase secrets set PUBLIC_APP_URL=https://motus-pt-app.vercel.app`  
+  (`PUBLIC_APP_URL` brukes i `inviteUserByEmail`-redirect og overstyrer nettleser-origin når du inviterer fra feil hostname, f.eks. admin fra preview-URL.)
 - `supabase secrets set SUPABASE_SERVICE_ROLE_KEY=...`
 
 ### Edge Functions – deploy-rutine etter endringer

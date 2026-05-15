@@ -15,3 +15,17 @@ export function formatDateTimeDdMmYyyy(input: Date | string | number): string {
   const minutes = String(date.getMinutes()).padStart(2, "0");
   return `${datePart} kl ${hours}:${minutes}`;
 }
+
+/**
+ * Neste kommende kalendermandag (lokal tid). Er det allerede mandag — brukes i dag.
+ * Brukes som standard «startdato» for periodeplan når trener ikke har valgt annet.
+ */
+export function getDefaultPeriodPlanStartMondayISO(now = new Date()): string {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const daysUntilMonday = (8 - d.getDay()) % 7;
+  d.setDate(d.getDate() + daysUntilMonday);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}

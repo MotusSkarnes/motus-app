@@ -37,6 +37,16 @@ function createEmptyWeeklyDayPlan(): WeeklyDayPlan {
   };
 }
 
+/** Uke vises for medlem med mindre trener har satt `appliesToMember: false`. */
+export function weekAppliesToMember(week: WeeklySchedulePlan): boolean {
+  return week.appliesToMember !== false;
+}
+
+export function buildPeriodPlanWeekNavItemsForMember(plan: PeriodSchedulePlan): PeriodPlanWeekNavItem[] {
+  const normalized = normalizePeriodSchedulePlan(plan);
+  return normalized.weeklyPlans.filter(weekAppliesToMember).map((week) => ({ id: week.id, weekNumber: week.weekNumber }));
+}
+
 export function buildPeriodPlanWeekNavItems(
   weeklyPlans: WeeklySchedulePlan[],
   totalWeeks: number,
@@ -80,6 +90,7 @@ export function normalizePeriodSchedulePlan(plan: PeriodSchedulePlan): PeriodSch
       id: existing?.id ?? `${plan.id}-week-${weekNumber}`,
       weekNumber,
       days: existing?.days ?? createEmptyWeeklyDayPlan(),
+      ...(existing?.appliesToMember === false ? { appliesToMember: false as const } : {}),
     };
   });
   return { ...plan, weeks, weeklyPlans };

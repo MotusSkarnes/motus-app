@@ -167,6 +167,8 @@ export type WeeklySchedulePlan = {
   id: string;
   weekNumber: number;
   days: WeeklyDayPlan;
+  /** Når false: uken lagres men vises ikke for medlem (f.eks. bare uke 1 og 3 aktive). */
+  appliesToMember?: boolean;
 };
 
 export type PeriodSchedulePlan = {
