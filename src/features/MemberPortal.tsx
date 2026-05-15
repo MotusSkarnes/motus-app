@@ -2520,7 +2520,7 @@ export function MemberPortal(props: MemberPortalProps) {
       fillRoundRect(context, cardX + pad, y, cardW - pad * 2, stripH, 22);
       context.fillStyle = "#ffffff";
       context.font = "bold 28px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText(`Min trend · ${progressStory.trendLabel}`, cardX + pad + 32, y + 72);
+      context.fillText(progressStory.trendLabel, cardX + pad + 32, y + 72);
       y += stripH + 28;
 
       context.fillStyle = "#f1f5f9";
@@ -2794,10 +2794,10 @@ export function MemberPortal(props: MemberPortalProps) {
     const delta = recent14 - previous14;
     const trendLabel =
       delta > 0
-        ? "jeg er oppe fra forrige periode"
+        ? "Flere fullførte økter enn forrige 14 dager"
         : delta < 0
-          ? "jeg er nede fra forrige periode — neste runde tar jeg igjen"
-          : "jeg holder nivået stabilt";
+          ? "Færre fullførte økter enn forrige 14 dager"
+          : "Like mange økter som forrige 14 dager";
     const nextFocus =
       recent14 > 0
         ? "Jeg holder flyten — neste planlagte økt er allerede i kalenderen min."
