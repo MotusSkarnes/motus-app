@@ -2017,7 +2017,11 @@ export function MemberPortal(props: MemberPortalProps) {
       return;
     }
     const fallbackWeekNumber = activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : 1;
-    setSelectedPeriodPlanWeekNumber(fallbackWeekNumber);
+    setSelectedPeriodPlanWeekNumber((prev) => {
+      if (prev == null) return fallbackWeekNumber;
+      const weekExists = (activePeriodPlan.weeklyPlans ?? []).some((week) => week.weekNumber === prev);
+      return weekExists ? prev : fallbackWeekNumber;
+    });
   }, [activePeriodPlan, activePeriodWeekIndex]);
 
   useEffect(() => {

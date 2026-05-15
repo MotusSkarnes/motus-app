@@ -1193,6 +1193,15 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     () => periodWeeklyPlansDraft.find((week) => week.id === activePeriodWeekId) ?? periodWeeklyPlansDraft[0] ?? null,
     [periodWeeklyPlansDraft, activePeriodWeekId],
   );
+  useEffect(() => {
+    if (!periodWeeklyPlansDraft.length) {
+      if (activePeriodWeekId) setActivePeriodWeekId("");
+      return;
+    }
+    if (!activePeriodWeekId || !periodWeeklyPlansDraft.some((week) => week.id === activePeriodWeekId)) {
+      setActivePeriodWeekId(periodWeeklyPlansDraft[0]?.id ?? "");
+    }
+  }, [periodWeeklyPlansDraft, activePeriodWeekId]);
   const periodPlanProgramOptions = useMemo(() => {
     const baseOptions = [
       { value: "", label: "Ingen plan valgt" },
