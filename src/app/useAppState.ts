@@ -70,6 +70,15 @@ function resolveMemberRowMergeIndex(remoteMembers: Member[], localMember: Member
   return preferred.index;
 }
 
+/** Slå sammen to medlemssnapshot fra hydrate vs direkte fetch uten at tom invitedAt overskriver en gyldig verdi. */
+function mergeTwoMemberSnapshots(primary: Member, secondary: Member): Member {
+  const merged = { ...primary, ...secondary };
+  const pInv = primary.invitedAt?.trim();
+  const sInv = secondary.invitedAt?.trim();
+  merged.invitedAt = sInv || pInv || "";
+  return merged;
+}
+
 function mergeMembersById(primary: AppState["members"] | null, secondary: AppState["members"] | null): AppState["members"] | null {
   if (!primary && !secondary) return null;
   const merged = new Map<string, AppState["members"][number]>();
@@ -77,7 +86,7 @@ function mergeMembersById(primary: AppState["members"] | null, secondary: AppSta
     const key = member.id.trim() || member.email.trim().toLowerCase();
     if (!key) continue;
     const existing = merged.get(key);
-    merged.set(key, existing ? { ...existing, ...member } : member);
+    merged.set(key, existing ? mergeTwoMemberSnapshots(existing, member) : member);
   }
   return Array.from(merged.values());
 }
@@ -501,16 +510,31 @@ export function useAppState() {
               const remoteIndex = resolveMemberRowMergeIndex(mergedMembers, localMember);
               if (remoteIndex >= 0) {
                 // Remote must win over stale per-device localStorage so profile edits sync across phone/PC.
-                mergedMembers = mergedMembers.map((member, index) =>
-                  index === remoteIndex ? { ...localMember, ...member } : member,
-                );
+                mergedMembers = mergedMembers.map((member, index) => {
+                  if (index !== remoteIndex) return member;
+                  const mergedRow = { ...localMember, ...member };
+                  const remoteInv = member.invitedAt?.trim();
+                  const localInv = localMember.invitedAt?.trim();
+                  mergedRow.invitedAt = remoteInv || localInv || "";
+                  return mergedRow;
+                });
               } else {
                 mergedMembers = [...mergedMembers, localMember];
               }
             }
           }
-          // For trainer sessions, hydrate-trainer-data is source of truth.
-          // Never re-introduce stale local member rows that are missing remotely.
+          if (currentUser?.role === "trainer") {
+            // Remote kan ha tom invitedAt på raden (RLS/direkte fetch vs hydrate) rett etter invitasjon — ikke overskriv optimistisk/lokal verdi.
+            mergedMembers = mergedMembers.map((remote) => {
+              const prevRow = prev.members.find((m) => m.id === remote.id);
+              const prevInv = prevRow?.invitedAt?.trim();
+              const remoteInv = remote.invitedAt?.trim();
+              if (prevInv && !remoteInv) {
+                return { ...remote, invitedAt: prevInv };
+              }
+              return remote;
+            });
+          }
           next.members = mergedMembers;
         }
 
