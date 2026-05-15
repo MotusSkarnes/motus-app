@@ -577,6 +577,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [showAllCustomWorkoutOptions, setShowAllCustomWorkoutOptions] = useState(false);
   const [showAllPersonalRecords, setShowAllPersonalRecords] = useState(false);
   const [favoritePersonalRecordNames, setFavoritePersonalRecordNames] = useState<string[]>([]);
+  const [favoritePersonalRecordPreferencesHydrated, setFavoritePersonalRecordPreferencesHydrated] = useState(false);
   const [customWorkoutLines, setCustomWorkoutLines] = useState<
     Array<{ key: string; exerciseId: string; sets: string; reps: string; weight: string; holdSeconds?: string }>
   >([]);
@@ -793,6 +794,21 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     return null;
   }, [relatedMembersForProfile]);
+  const resolvedFavoritePersonalRecordNames = useMemo(() => {
+    const dbFavorites = normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? undefined) ?? [];
+    if (!editableMember || typeof window === "undefined") return dbFavorites;
+    try {
+      const raw = window.localStorage.getItem(getUiPreferencesStorageKey(editableMember.id));
+      if (!raw) return dbFavorites;
+      const parsed = JSON.parse(raw) as { favoritePersonalRecords?: string[] };
+      return normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? parsed.favoritePersonalRecords) ?? [];
+    } catch {
+      return dbFavorites;
+    }
+  }, [editableMember, dbFavoritePersonalRecordNames]);
+  const effectiveFavoritePersonalRecordNames = favoritePersonalRecordPreferencesHydrated
+    ? favoritePersonalRecordNames
+    : resolvedFavoritePersonalRecordNames;
   const memberPrograms = useMemo(() => {
     const scopedPrograms = programs.filter((program) => relatedMemberIdSet.has(program.memberId));
     const visiblePrograms =
@@ -1623,12 +1639,12 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [completedLogs]);
   const personalRecordsPreview = useMemo(() => {
     if (showAllPersonalRecords) return personalRecords;
-    const favorites = favoritePersonalRecordNames
+    const favorites = effectiveFavoritePersonalRecordNames
       .map((name) => personalRecords.find((record) => record.name === name) ?? null)
       .filter((record): record is (typeof personalRecords)[number] => Boolean(record));
-    const fallback = personalRecords.filter((record) => !favoritePersonalRecordNames.includes(record.name));
+    const fallback = personalRecords.filter((record) => !effectiveFavoritePersonalRecordNames.includes(record.name));
     return [...favorites, ...fallback].slice(0, 3);
-  }, [showAllPersonalRecords, personalRecords, favoritePersonalRecordNames]);
+  }, [showAllPersonalRecords, personalRecords, effectiveFavoritePersonalRecordNames]);
   const activeCelebration = liveWorkoutCelebration ?? workoutCelebration;
   const shouldShowCelebration = Boolean(
     microCelebrationsEnabled && activeCelebration && activeCelebration.memberId === activeMemberId
@@ -1664,17 +1680,19 @@ export function MemberPortal(props: MemberPortalProps) {
     const normalizedName = recordName.trim();
     if (!normalizedName) return;
     setFavoritePersonalRecordNames((prev) => {
-      if (prev.includes(normalizedName)) {
+      const currentFavorites = favoritePersonalRecordPreferencesHydrated ? prev : effectiveFavoritePersonalRecordNames;
+      if (currentFavorites.includes(normalizedName)) {
         setProfileSaveInfo(`Fjernet "${normalizedName}" fra fremhevede PR-er.`);
-        return prev.filter((name) => name !== normalizedName);
+        return currentFavorites.filter((name) => name !== normalizedName);
       }
-      if (prev.length >= 3) {
+      if (currentFavorites.length >= 3) {
         setProfileSaveInfo("Du kan ha maks tre fremhevede personlige rekorder.");
-        return prev;
+        return currentFavorites;
       }
       setProfileSaveInfo(`La til "${normalizedName}" som fremhevet PR.`);
-      return [...prev, normalizedName];
+      return [...currentFavorites, normalizedName];
     });
+    setFavoritePersonalRecordPreferencesHydrated(true);
   }
 
   const saveProfile = useCallback(async (options?: { silent?: boolean }) => {
@@ -1699,7 +1717,7 @@ export function MemberPortal(props: MemberPortalProps) {
     };
     const metricsForSync = encodeMemberProfileMetrics(next, {
       homeVisibility,
-      favoritePersonalRecords: favoritePersonalRecordNames,
+      favoritePersonalRecords: effectiveFavoritePersonalRecordNames,
     });
     window.localStorage.setItem(getProfileStorageKey(editableMember.id), JSON.stringify(next));
     const targetMemberIds = Array.from(
@@ -1790,7 +1808,7 @@ export function MemberPortal(props: MemberPortalProps) {
     profileTargetWeight,
     profileCurrentDailySteps,
     homeVisibility,
-    favoritePersonalRecordNames,
+    effectiveFavoritePersonalRecordNames,
     members,
     relatedMemberIds,
     updateMember,
@@ -1970,6 +1988,9 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }, [editableMember, completedPeriodPlanEntryKeys]);
   useEffect(() => {
+    setFavoritePersonalRecordPreferencesHydrated(false);
+  }, [editableMember?.id]);
+  useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     try {
       const raw = window.localStorage.getItem(getUiPreferencesStorageKey(editableMember.id));
@@ -1981,6 +2002,7 @@ export function MemberPortal(props: MemberPortalProps) {
           ...(normalizeHomeVisibilityForStorage(dbHomeVisibility ?? undefined) ?? {}),
         });
         setFavoritePersonalRecordNames(normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? undefined) ?? []);
+        setFavoritePersonalRecordPreferencesHydrated(true);
         return;
       }
       const parsed = JSON.parse(raw) as {
@@ -2000,6 +2022,7 @@ export function MemberPortal(props: MemberPortalProps) {
         ...resolvedPatch,
       });
       setFavoritePersonalRecordNames(resolvedFavorites);
+      setFavoritePersonalRecordPreferencesHydrated(true);
     } catch {
       setMicroCelebrationsEnabled(true);
       setCelebrationSoundEnabled(false);
@@ -2008,10 +2031,12 @@ export function MemberPortal(props: MemberPortalProps) {
         ...(normalizeHomeVisibilityForStorage(dbHomeVisibility ?? undefined) ?? {}),
       });
       setFavoritePersonalRecordNames(normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? undefined) ?? []);
+      setFavoritePersonalRecordPreferencesHydrated(true);
     }
   }, [editableMember, dbHomeVisibility, dbFavoritePersonalRecordNames]);
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
+    if (!favoritePersonalRecordPreferencesHydrated) return;
     const payload = JSON.stringify({
       microCelebrationsEnabled,
       celebrationSoundEnabled,
@@ -2019,7 +2044,7 @@ export function MemberPortal(props: MemberPortalProps) {
       favoritePersonalRecords: favoritePersonalRecordNames,
     });
     window.localStorage.setItem(getUiPreferencesStorageKey(editableMember.id), payload);
-  }, [editableMember, microCelebrationsEnabled, celebrationSoundEnabled, homeVisibility, favoritePersonalRecordNames]);
+  }, [editableMember, microCelebrationsEnabled, celebrationSoundEnabled, homeVisibility, favoritePersonalRecordNames, favoritePersonalRecordPreferencesHydrated]);
   useEffect(() => {
     if (!editableMember) return;
     const normalizedHomeVisibility = normalizeHomeVisibilityForStorage(homeVisibility);
@@ -2035,7 +2060,7 @@ export function MemberPortal(props: MemberPortalProps) {
     };
     const encoded = encodeMemberProfileMetrics(nextMetrics, {
       homeVisibility: normalizedHomeVisibility,
-      favoritePersonalRecords: favoritePersonalRecordNames,
+      favoritePersonalRecords: effectiveFavoritePersonalRecordNames,
     });
     const targetIds = Array.from(new Set([editableMember.id, ...relatedMemberIds].filter(Boolean)));
     targetIds.forEach((memberId) => {
@@ -2067,7 +2092,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [
     editableMember,
     syncProfileToPtBackend,
-    favoritePersonalRecordNames,
+    effectiveFavoritePersonalRecordNames,
     homeVisibility,
     dbHomeVisibility,
     profileSessionsPerWeekTarget,
@@ -2080,6 +2105,7 @@ export function MemberPortal(props: MemberPortalProps) {
   ]);
   useEffect(() => {
     if (!editableMember) return;
+    if (!favoritePersonalRecordPreferencesHydrated) return;
     const normalizedFavorites = normalizeFavoritePersonalRecordNames(favoritePersonalRecordNames) ?? [];
     const dbFavorites = normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? undefined) ?? [];
     if (JSON.stringify(normalizedFavorites) === JSON.stringify(dbFavorites)) return;
@@ -2133,6 +2159,7 @@ export function MemberPortal(props: MemberPortalProps) {
     relatedMemberIds,
     syncProfileToPtBackend,
     updateMember,
+    favoritePersonalRecordPreferencesHydrated,
   ]);
   useEffect(() => {
     if (!microCelebrationsEnabled) return;
@@ -5091,10 +5118,10 @@ export function MemberPortal(props: MemberPortalProps) {
                           onClick={() => toggleFavoritePersonalRecord(record.name)}
                           className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-white text-slate-500 transition hover:text-amber-500"
                           style={{ borderColor: "rgba(15,23,42,0.10)" }}
-                          title={favoritePersonalRecordNames.includes(record.name) ? "Fjern fra fremhevede PR-er" : "Fremhev denne PR-en"}
+                          title={effectiveFavoritePersonalRecordNames.includes(record.name) ? "Fjern fra fremhevede PR-er" : "Fremhev denne PR-en"}
                         >
                           <Star
-                            className={`h-4 w-4 ${favoritePersonalRecordNames.includes(record.name) ? "fill-amber-400 text-amber-500" : ""}`}
+                            className={`h-4 w-4 ${effectiveFavoritePersonalRecordNames.includes(record.name) ? "fill-amber-400 text-amber-500" : ""}`}
                           />
                         </button>
                       </div>
