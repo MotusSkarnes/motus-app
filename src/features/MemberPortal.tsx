@@ -5512,7 +5512,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                         {[
                           { k: "Mine økter", v: String(progressShareLast7Days.workouts) },
-                          { k: "Mine dager", v: String(progressShareLast7Days.trainingDays) },
+                          { k: "Treningsdager", v: String(progressShareLast7Days.trainingDays) },
                           { k: "Mine sett", v: String(progressShareLast7Days.completedSets) },
                           { k: "Mitt volum", v: `${Math.round(progressShareLast7Days.volumeKg).toLocaleString("nb-NO")} kg` },
                         ].map((cell) => (
