@@ -1011,7 +1011,7 @@ async function deleteProgram(programId: string) {
   if (!supabaseClient) return;
   const { data: programRow, error: lookupError } = await supabaseClient
     .from("training_programs")
-    .select("id, member_id, title, goal, notes, exercises")
+    .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id")
     .eq("id", programId)
     .maybeSingle();
   if (lookupError) {
@@ -1030,18 +1030,25 @@ async function deleteProgram(programId: string) {
   const targetEmail = memberId.includes("@") ? memberId.toLowerCase() : "";
   const title = String(programRow.title ?? "");
   const targetFingerprint = buildTrainingProgramPersistenceFingerprint(programRow as Record<string, unknown>);
+  const targetCreatedAt = String(programRow.created_at ?? "").trim();
+  const targetOwnerUserId = String(programRow.owner_user_id ?? "").trim();
   const relatedMemberIds =
     memberId && memberId !== "__template__"
       ? await resolveRelatedMemberIds(memberId, targetEmail ? { targetEmail } : undefined)
       : [memberId];
   const deletionKeys = Array.from(new Set([memberId, targetEmail, ...relatedMemberIds].map((value) => String(value ?? "").trim()).filter(Boolean)));
-  if (!deletionKeys.length) return;
+  if (!deletionKeys.length && !targetOwnerUserId) return;
 
-  const { data: candidateRows, error: candidateError } = await supabaseClient
+  let candidateQuery = supabaseClient
     .from("training_programs")
-    .select("id, member_id, title, goal, notes, exercises")
-    .in("member_id", deletionKeys)
+    .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id")
     .eq("title", title);
+  if (targetOwnerUserId) {
+    candidateQuery = candidateQuery.eq("owner_user_id", targetOwnerUserId);
+  } else {
+    candidateQuery = candidateQuery.in("member_id", deletionKeys);
+  }
+  const { data: candidateRows, error: candidateError } = await candidateQuery;
   if (candidateError) {
     console.warn("Supabase linked program candidate lookup failed:", candidateError.message);
   }
@@ -1049,7 +1056,15 @@ async function deleteProgram(programId: string) {
   const programIdsToDelete = Array.from(
     new Set(
       (candidateRows ?? [])
-        .filter((row) => buildTrainingProgramPersistenceFingerprint(row as Record<string, unknown>) === targetFingerprint)
+        .filter((row) => {
+          const fingerprintMatches = buildTrainingProgramPersistenceFingerprint(row as Record<string, unknown>) === targetFingerprint;
+          if (!fingerprintMatches) return false;
+          if (targetCreatedAt) {
+            return String((row as { created_at?: string }).created_at ?? "").trim() === targetCreatedAt;
+          }
+          const candidateMemberId = String((row as { member_id?: string }).member_id ?? "").trim();
+          return !deletionKeys.length || deletionKeys.includes(candidateMemberId);
+        })
         .map((row) => String((row as { id?: string }).id ?? "").trim())
         .filter(Boolean),
     ),
