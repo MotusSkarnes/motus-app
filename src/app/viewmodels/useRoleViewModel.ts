@@ -93,6 +93,13 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     handleTrainerBellToggle,
     isLocalDemoSession: state.isLocalDemoSession,
     remoteTrainerPeriodPlansByMemberId: state.remoteTrainerPeriodPlansByMemberId,
+    workoutMode: state.appState.workoutMode,
+    startWorkoutMode: state.startWorkoutMode,
+    updateWorkoutExerciseResult: state.updateWorkoutExerciseResult,
+    replaceWorkoutExerciseGroup: state.replaceWorkoutExerciseGroup,
+    updateWorkoutModeNote: state.updateWorkoutModeNote,
+    finishWorkoutMode: state.finishWorkoutMode,
+    cancelWorkoutMode: state.cancelWorkoutMode,
   });
 
   const memberLayoutProps: ComponentProps<typeof MemberLayout> = buildMemberLayoutProps({

@@ -5,6 +5,18 @@ import type { AppState, TrainerTab } from "../app/types";
 import { Card } from "../app/ui";
 import type { TrainerAlert } from "../app/useNotifications";
 import { TrainerPortal } from "./TrainerPortal";
+import type { MemberPortal } from "./MemberPortal";
+
+type TrainerWorkoutBridge = Pick<
+  ComponentProps<typeof MemberPortal>,
+  | "workoutMode"
+  | "startWorkoutMode"
+  | "updateWorkoutExerciseResult"
+  | "replaceWorkoutExerciseGroup"
+  | "updateWorkoutModeNote"
+  | "finishWorkoutMode"
+  | "cancelWorkoutMode"
+>;
 
 type TrainerLayoutProps = {
   appState: AppState;
@@ -40,7 +52,7 @@ type TrainerLayoutProps = {
   handleTrainerBellToggle: () => void;
   isLocalDemoSession: boolean;
   remoteTrainerPeriodPlansByMemberId: ComponentProps<typeof TrainerPortal>["remoteTrainerPeriodPlansByMemberId"];
-};
+} & TrainerWorkoutBridge;
 
 const trainerMenuItems: Array<{ key: TrainerTab; label: string; icon: LucideIcon }> = [
   { key: "dashboard", label: "Oversikt", icon: LayoutDashboard },
@@ -94,6 +106,13 @@ export function TrainerLayout({
   handleTrainerBellToggle,
   isLocalDemoSession,
   remoteTrainerPeriodPlansByMemberId,
+  workoutMode,
+  startWorkoutMode,
+  updateWorkoutExerciseResult,
+  replaceWorkoutExerciseGroup,
+  updateWorkoutModeNote,
+  finishWorkoutMode,
+  cancelWorkoutMode,
 }: TrainerLayoutProps) {
   const canAccessAdminTools = true;
   const visibleTrainerMenuItems = trainerMenuItems;
@@ -133,6 +152,13 @@ export function TrainerLayout({
     canAccessAdminTools,
     remoteTrainerPeriodPlansByMemberId,
     trainerAccountName: appState.currentUser?.name?.trim() ?? "",
+    workoutMode,
+    startWorkoutMode,
+    updateWorkoutExerciseResult,
+    replaceWorkoutExerciseGroup,
+    updateWorkoutModeNote,
+    finishWorkoutMode,
+    cancelWorkoutMode,
   };
 
   return (

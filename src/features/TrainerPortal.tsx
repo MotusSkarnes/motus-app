@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, Pencil, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
+import { ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, Pencil, Play, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
@@ -9,7 +9,7 @@ import { uid } from "../app/storage";
 import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { useToastStatus } from "../app/toast";
 import motusLogo from "../assets/motus-logo-transparent.svg";
-import type { CreateMemberInput, UpdateMemberInput } from "../services/appRepository";
+import type { CreateMemberInput, ReplaceWorkoutExerciseGroupInput, StartWorkoutModeOptions, UpdateMemberInput } from "../services/appRepository";
 import {
   filterMemberIdsForRosterSave,
   isPrivatePtRosterCustomerType,
@@ -26,6 +26,8 @@ import type {
   ProgramExercise,
   TrainerTab,
   TrainingProgram,
+  WorkoutModeState,
+  WorkoutReflection,
   WeekdayPlanKey,
   WeeklyDayPlan,
   WeeklySchedulePlan,
@@ -37,6 +39,8 @@ import {
 } from "../services/supabaseRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
+import { buildDefaultStartWorkoutOptions } from "../app/buildStartWorkoutOptions";
+import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
 
 function inferStatusTone(message: string): "success" | "error" | "info" {
   const normalized = message.trim().toLowerCase();
@@ -132,6 +136,24 @@ type TrainerPortalProps = {
   trainerAccountName?: string;
   /** Synket fra Supabase ved hydrering (per medlem, inkl. tom liste). */
   remoteTrainerPeriodPlansByMemberId?: Record<string, PeriodSchedulePlan[]>;
+  /** Live PT-økt på kundens program — samme tilstand som medlemssiden. */
+  workoutMode?: WorkoutModeState | null;
+  startWorkoutMode?: (programId: string, options?: StartWorkoutModeOptions) => void;
+  updateWorkoutExerciseResult?: (
+    exerciseId: string,
+    field:
+      | "performedWeight"
+      | "performedReps"
+      | "performedDurationMinutes"
+      | "performedSpeed"
+      | "performedIncline"
+      | "completed",
+    value: string | boolean,
+  ) => void;
+  replaceWorkoutExerciseGroup?: (input: ReplaceWorkoutExerciseGroupInput) => void;
+  updateWorkoutModeNote?: (note: string) => void;
+  finishWorkoutMode?: (input?: { reflection?: WorkoutReflection }) => void;
+  cancelWorkoutMode?: () => void;
 };
 
 type FollowUpDetail = {
@@ -479,6 +501,13 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     canAccessAdminTools = true,
     remoteTrainerPeriodPlansByMemberId = {},
     trainerAccountName = "",
+    workoutMode = null,
+    startWorkoutMode = () => {},
+    updateWorkoutExerciseResult = () => {},
+    replaceWorkoutExerciseGroup = () => {},
+    updateWorkoutModeNote = () => {},
+    finishWorkoutMode = () => {},
+    cancelWorkoutMode = () => {},
   } = props;
 
   const [programTitle, setProgramTitle] = useState("Nytt treningsprogram");
@@ -993,6 +1022,23 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const dismissed = new Set(dismissedProgramFingerprints);
     return selectedPrograms.filter((program) => !dismissed.has(buildProgramFingerprint(program.exercises, program.title, program.goal, program.notes)));
   }, [dismissedProgramFingerprints, selectedPrograms]);
+  const activeTrainerWorkoutProgram = useMemo(() => {
+    if (!workoutMode) return null;
+    return programs.find((p) => p.id === workoutMode.programId) ?? null;
+  }, [workoutMode, programs]);
+
+  function handleTrainerStartLiveWorkout(program: TrainingProgram) {
+    if (!program.exercises.length) {
+      window.alert("Programmet har ingen øvelser.");
+      return;
+    }
+    if (workoutMode) {
+      if (!window.confirm("Det pågår allerede en økt. Vil du avbryte den uten å lagre og starte denne?")) return;
+      cancelWorkoutMode();
+    }
+    startWorkoutMode(program.id, buildDefaultStartWorkoutOptions(program, exercises));
+  }
+
   const selectedPeriodPlans = useMemo(() => {
     if (!selectedMemberRelatedIds.length) return [] as PeriodSchedulePlan[];
     const merged = selectedMemberRelatedIds.flatMap((memberId) => periodPlansByMemberId[memberId] ?? []);
@@ -1654,27 +1700,34 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         weekNumber: index + 1,
       })),
     );
+    const existingPeriodPlan = selectedPeriodPlans[0] ?? null;
+    const periodPlanId = existingPeriodPlan?.id ?? uid("period-plan");
+    const obsoletePeriodPlanIds = selectedPeriodPlans
+      .map((plan) => plan.id)
+      .filter((planId) => planId && planId !== periodPlanId);
     const newPeriodPlan: PeriodSchedulePlan = {
-      id: uid("period-plan"),
+      id: periodPlanId,
       title,
       notes: periodPlanNotesDraft.trim(),
       startDate: periodPlanStartDateDraft.trim() || getDefaultPeriodPlanStartMondayISO(),
       weeks,
-      createdAt: formatDateDdMmYyyy(new Date()),
+      createdAt: existingPeriodPlan?.createdAt ?? formatDateDdMmYyyy(new Date()),
       weeklyPlans,
     };
     setPeriodPlansByMemberId((prev) => {
       const next = { ...prev };
       selectedMemberRelatedIds.forEach((memberId) => {
-        const previous = next[memberId] ?? [];
-        next[memberId] = [newPeriodPlan, ...previous];
+        next[memberId] = [newPeriodPlan];
       });
       return next;
     });
     if (isSupabaseConfigured && !isLocalDemoSession) {
+      obsoletePeriodPlanIds.forEach((planId) => {
+        void deleteMemberPeriodPlanByPlanId(planId);
+      });
       void upsertMemberPeriodPlansForTrainer(selectedMemberRelatedIds, newPeriodPlan);
     }
-    setPeriodPlanStatus("Periodeplan lagret.");
+    setPeriodPlanStatus(existingPeriodPlan ? "Periodeplan oppdatert." : "Periodeplan lagret.");
   }
 
   function toggleGradientPeriodWeek(weekId: string) {
@@ -4157,7 +4210,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                               {periodWeeklyPlansDraft.slice(0, Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1))).map((week) => {
                                 const marked = week.usesGradientPlan === true;
                                 const isActive = activePeriodWeekId === week.id;
-                                const plannedDays = WEEKDAY_PLAN_FIELDS.map((field) => week.days[field.key]).filter((entry) => entry.trim()).length;
                                 return (
                                   <button
                                     key={week.id}
@@ -4520,6 +4572,16 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                                 <div className="text-[11px] text-slate-500">{program.exercises.length} øvelser · {program.createdAt}</div>
                               </div>
                               <div className="mt-2 flex flex-wrap gap-1.5">
+                                <OutlineButton
+                                  type="button"
+                                  onClick={() => handleTrainerStartLiveWorkout(program)}
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px]"
+                                  aria-label={`Start live økt med ${program.title}`}
+                                  title="Start live økt (loggføres på kunden)"
+                                >
+                                  <Play className="h-3 w-3 shrink-0" />
+                                  Live økt
+                                </OutlineButton>
                                 <OutlineButton onClick={() => startEditProgram(program)} className="px-2 py-1 text-[11px]">Rediger</OutlineButton>
                                 <OutlineButton onClick={() => handlePrintProgram(program)} className="px-2 py-1 text-[11px]">PDF</OutlineButton>
                                 <OutlineButton onClick={() => handleDeleteProgram(program.id)} className="px-2 py-1 text-[11px]">Slett</OutlineButton>
@@ -5532,6 +5594,18 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         </Card>
       ) : null}
     </div>
+    <LiveWorkoutSessionModal
+      variant="trainer"
+      workoutMode={workoutMode}
+      activeProgram={activeTrainerWorkoutProgram}
+      exercises={exercises}
+      trainerSubtitle={selectedMemberProfile?.name ?? selectedMember?.name ?? ""}
+      updateWorkoutExerciseResult={updateWorkoutExerciseResult}
+      replaceWorkoutExerciseGroup={replaceWorkoutExerciseGroup}
+      updateWorkoutModeNote={updateWorkoutModeNote}
+      finishWorkoutMode={finishWorkoutMode}
+      cancelWorkoutMode={cancelWorkoutMode}
+    />
     <ConfirmDialog
       open={Boolean(confirmDialog)}
       title={confirmDialog?.title ?? ""}
