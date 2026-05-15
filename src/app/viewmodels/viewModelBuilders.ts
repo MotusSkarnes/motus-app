@@ -49,7 +49,8 @@ export function buildTrainerLayoutProps(input: {
   trainerNotificationsOpen: boolean;
   setTrainerNotificationsOpen: (open: boolean) => void;
   trainerUnreadCount: number;
-  trainerMessageAlerts: TrainerLayoutProps["trainerMessageAlerts"];
+  trainerVisibleAlerts: TrainerLayoutProps["trainerVisibleAlerts"];
+  openTrainerAlert: TrainerLayoutProps["openTrainerAlert"];
   handleTrainerBellToggle: () => void;
   isLocalDemoSession: boolean;
   remoteTrainerPeriodPlansByMemberId: TrainerLayoutProps["remoteTrainerPeriodPlansByMemberId"];

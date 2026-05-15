@@ -1,19 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
 import { BarChart3, Bell, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, Clock3, Dumbbell, LayoutDashboard, MessageSquare, Settings, ShieldCheck, UserPlus, Users, type LucideIcon } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { AppState, TrainerTab } from "../app/types";
 import { Card } from "../app/ui";
+import type { TrainerAlert } from "../app/useNotifications";
 import { TrainerPortal } from "./TrainerPortal";
-
-type TrainerAlert = {
-  id: string;
-  memberId: string;
-  title: string;
-  text: string;
-  detail: string;
-  timestamp: number;
-};
 
 type TrainerLayoutProps = {
   appState: AppState;
@@ -44,7 +35,8 @@ type TrainerLayoutProps = {
   trainerNotificationsOpen: boolean;
   setTrainerNotificationsOpen: (open: boolean) => void;
   trainerUnreadCount: number;
-  trainerMessageAlerts: TrainerAlert[];
+  trainerVisibleAlerts: TrainerAlert[];
+  openTrainerAlert: (alert: TrainerAlert) => void;
   handleTrainerBellToggle: () => void;
   isLocalDemoSession: boolean;
   remoteTrainerPeriodPlansByMemberId: ComponentProps<typeof TrainerPortal>["remoteTrainerPeriodPlansByMemberId"];
@@ -97,56 +89,15 @@ export function TrainerLayout({
   trainerNotificationsOpen,
   setTrainerNotificationsOpen,
   trainerUnreadCount,
-  trainerMessageAlerts,
+  trainerVisibleAlerts,
+  openTrainerAlert,
   handleTrainerBellToggle,
   isLocalDemoSession,
   remoteTrainerPeriodPlansByMemberId,
 }: TrainerLayoutProps) {
   const canAccessAdminTools = true;
-  const missingInviteMemberIds = useMemo(
-    () =>
-      appState.members
-        .filter((member) => !member.invitedAt)
-        .map((member) => member.id)
-        .sort(),
-    [appState.members],
-  );
-  const inactiveMemberIds = useMemo(
-    () =>
-      appState.members
-        .filter((member) => Number(member.daysSinceActivity || "0") >= 7)
-        .map((member) => member.id)
-        .sort(),
-    [appState.members],
-  );
-  const inactiveMembersCount = inactiveMemberIds.length;
-  const missingInvitesCount = missingInviteMemberIds.length;
-  const trainerOperationalAlertKey = `${missingInviteMemberIds.join(",")}|${inactiveMemberIds.join(",")}`;
-  const [seenTrainerOperationalAlertKey, setSeenTrainerOperationalAlertKey] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("motus.notifications.trainerOperationalSeenKey") ?? "";
-  });
-  const hasTrainerOperationalAlerts = missingInvitesCount + inactiveMembersCount > 0;
-  const hasUnseenTrainerOperationalAlerts =
-    hasTrainerOperationalAlerts && trainerOperationalAlertKey !== seenTrainerOperationalAlertKey;
-  const trainerActionCount =
-    trainerUnreadCount +
-    (trainerNotificationsOpen || hasUnseenTrainerOperationalAlerts ? missingInvitesCount + inactiveMembersCount : 0);
   const visibleTrainerMenuItems = trainerMenuItems;
   const visibleMobileTabs = mobileTabs;
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("motus.notifications.trainerOperationalSeenKey", seenTrainerOperationalAlertKey);
-  }, [seenTrainerOperationalAlertKey]);
-
-  function handleTrainerActionPanelToggle() {
-    const willOpen = !trainerNotificationsOpen;
-    handleTrainerBellToggle();
-    if (willOpen && hasTrainerOperationalAlerts) {
-      setSeenTrainerOperationalAlertKey(trainerOperationalAlertKey);
-    }
-  }
 
   const trainerPortalProps: ComponentProps<typeof TrainerPortal> = {
     members: appState.members,
@@ -233,9 +184,9 @@ export function TrainerLayout({
               <div className="min-w-0">
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Aktuelt nå</div>
                 <div className="mt-0.5 flex items-center gap-2 text-sm font-semibold text-slate-900">
-                  {trainerActionCount > 0 ? (
+                  {trainerUnreadCount > 0 ? (
                     <>
-                      <span>{trainerActionCount} ting å følge opp</span>
+                      <span>{trainerUnreadCount} ting å følge opp</span>
                       <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: MOTUS.pink }} />
                     </>
                   ) : (
@@ -248,7 +199,7 @@ export function TrainerLayout({
               </div>
               <button
                 type="button"
-                onClick={handleTrainerActionPanelToggle}
+                onClick={handleTrainerBellToggle}
                 className="relative inline-flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-emerald-50"
                 style={{ borderColor: "rgba(20,184,166,0.25)" }}
                 aria-label={trainerNotificationsOpen ? "Lukk varsler" : "Åpne varsler"}
@@ -266,71 +217,67 @@ export function TrainerLayout({
               </button>
             </div>
             {trainerNotificationsOpen ? (
-              <div className="mt-3 max-h-64 overflow-y-auto space-y-2 pr-1">
-                {trainerMessageAlerts.map((alert) => (
-                  <button
-                    key={alert.id}
-                    type="button"
-                    onClick={() => {
-                      patchState({ selectedMemberId: alert.memberId });
-                      setTrainerTab("customers");
-                      setOpenCustomerMessagesSignal((prev) => prev + 1);
-                      setTrainerNotificationsOpen(false);
-                    }}
-                    className="group flex w-full items-center gap-3 rounded-xl border bg-white px-3 py-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50"
-                    style={{ borderColor: "rgba(20,184,166,0.25)" }}
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                      <MessageSquare className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-slate-800">{alert.text}</span>
-                      <span className="block truncate text-xs text-slate-500">{alert.detail || "Åpne meldinger"}</span>
-                    </span>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-emerald-500" />
-                  </button>
-                ))}
-                {missingInvitesCount > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTrainerTab("customers");
-                      setTrainerNotificationsOpen(false);
-                    }}
-                    className="group flex w-full items-center gap-3 rounded-xl border bg-white px-3 py-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50"
-                    style={{ borderColor: "rgba(20,184,166,0.25)" }}
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pink-50 text-pink-600">
-                      <UserPlus className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-slate-800">{missingInvitesCount} kunder mangler invitasjon</span>
-                      <span className="block truncate text-xs text-slate-500">Gå til klienter og send invitasjon.</span>
-                    </span>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-emerald-500" />
-                  </button>
-                ) : null}
-                {inactiveMembersCount > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTrainerTab("customers");
-                      setTrainerNotificationsOpen(false);
-                    }}
-                    className="group flex w-full items-center gap-3 rounded-xl border bg-white px-3 py-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50"
-                    style={{ borderColor: "rgba(20,184,166,0.25)" }}
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
-                      <Clock3 className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-slate-800">{inactiveMembersCount} kunder bør følges opp</span>
-                      <span className="block truncate text-xs text-slate-500">Åpne klientlisten og prioriter oppfølging.</span>
-                    </span>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-emerald-500" />
-                  </button>
-                ) : null}
-                {!trainerMessageAlerts.length && !missingInvitesCount && !inactiveMembersCount ? (
+              <div className="mt-3 max-h-[min(22rem,70vh)] overflow-y-auto space-y-2 pr-1">
+                {trainerVisibleAlerts.map((alert) => {
+                  const AlertIcon =
+                    alert.kind === "message"
+                      ? MessageSquare
+                      : alert.kind === "missing-invite"
+                        ? UserPlus
+                        : Clock3;
+                  const isOpened = alert.isOpened;
+                  const isRead = !alert.isUnread;
+                  return (
+                    <button
+                      key={alert.id}
+                      type="button"
+                      onClick={() => openTrainerAlert(alert)}
+                      className={`group flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left shadow-sm transition ${
+                        isOpened
+                          ? "border-slate-200/80 bg-slate-50/90 opacity-75 hover:bg-slate-100"
+                          : isRead
+                            ? "border-slate-200/90 bg-slate-50/70 opacity-90 hover:bg-slate-100"
+                            : "border-emerald-200/80 bg-white hover:-translate-y-0.5 hover:bg-emerald-50"
+                      }`}
+                    >
+                      <span
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                          alert.kind === "missing-invite"
+                            ? isOpened || isRead
+                              ? "bg-slate-100 text-slate-400"
+                              : "bg-pink-50 text-pink-600"
+                            : alert.kind === "inactive-member"
+                              ? isOpened || isRead
+                                ? "bg-slate-100 text-slate-400"
+                                : "bg-amber-50 text-amber-600"
+                              : isOpened || isRead
+                                ? "bg-slate-100 text-slate-400"
+                                : "bg-emerald-50 text-emerald-600"
+                        }`}
+                      >
+                        <AlertIcon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span
+                          className={`block text-sm ${
+                            isOpened ? "font-medium text-slate-500" : isRead ? "font-medium text-slate-600" : "font-semibold text-slate-800"
+                          }`}
+                        >
+                          {alert.text}
+                        </span>
+                        <span className={`block truncate text-xs ${isOpened ? "text-slate-400" : "text-slate-500"}`}>
+                          {alert.detail}
+                        </span>
+                      </span>
+                      <ChevronRight
+                        className={`h-4 w-4 shrink-0 transition ${
+                          isOpened ? "text-slate-300" : "text-slate-300 group-hover:text-emerald-500"
+                        }`}
+                      />
+                    </button>
+                  );
+                })}
+                {trainerVisibleAlerts.length === 0 ? (
                   <div className="rounded-xl border border-dashed bg-white px-3 py-2.5 text-sm text-slate-500">
                     Ingen nye ting å følge opp akkurat nå.
                   </div>
@@ -338,7 +285,7 @@ export function TrainerLayout({
               </div>
             ) : (
               <div className="mt-2 text-xs sm:text-sm text-slate-500">
-                {trainerActionCount > 0 ? "Åpne for raske snarveier til meldinger og klientoppfølging." : "Nye meldinger og oppfølginger samles her."}
+                {trainerUnreadCount > 0 ? "Åpne for raske snarveier til meldinger og klientoppfølging." : "Nye meldinger og oppfølginger samles her."}
               </div>
             )}
           </Card>

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ChatMessage, Member, MemberTab, TrainingProgram, WorkoutLog } from "./types";
 
-const MEMBER_ALERT_HISTORY_LIMIT = 5;
+const ALERT_HISTORY_LIMIT = 5;
+const TRAINER_OPERATIONAL_TIMESTAMP_BASE = 9_000_000_000_000;
 
 export type MemberAlert = {
   id: string;
@@ -15,13 +16,16 @@ export type MemberAlert = {
   isOpened: boolean;
 };
 
-type TrainerAlert = {
+export type TrainerAlert = {
   id: string;
+  kind: "message" | "missing-invite" | "inactive-member";
   memberId: string;
   title: string;
   text: string;
   detail: string;
   timestamp: number;
+  isUnread: boolean;
+  isOpened: boolean;
 };
 
 function parseTimestamp(value: string, fallbackOrder: number): number {
@@ -42,6 +46,8 @@ export function useNotifications({
   members,
   memberViewId,
   setMemberTab,
+  onTrainerOpenMessage,
+  onTrainerOpenCustomers,
 }: {
   messages: ChatMessage[];
   programs: TrainingProgram[];
@@ -49,6 +55,8 @@ export function useNotifications({
   members: Member[];
   memberViewId: string;
   setMemberTab: (tab: MemberTab) => void;
+  onTrainerOpenMessage?: (memberId: string) => void;
+  onTrainerOpenCustomers?: () => void;
 }) {
   const [trainerNotificationsOpen, setTrainerNotificationsOpen] = useState(false);
   const [memberNotificationsOpen, setMemberNotificationsOpen] = useState(false);
@@ -94,36 +102,112 @@ export function useNotifications({
       return [];
     }
   });
+  const [openedTrainerAlertIds, setOpenedTrainerAlertIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem("motus.notifications.trainerOpenedAlertIds");
+      const parsed = JSON.parse(raw ?? "[]");
+      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+    } catch {
+      return [];
+    }
+  });
+  const [seenTrainerOperationalAlertKey, setSeenTrainerOperationalAlertKey] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return window.localStorage.getItem("motus.notifications.trainerOperationalSeenKey") ?? "";
+  });
 
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
 
-  const trainerMessageAlerts = useMemo<TrainerAlert[]>(() => {
-    const latestByMember = new Map<string, { message: ChatMessage; timestamp: number }>();
-    messages
-      .filter((message) => message.sender === "member")
-      .forEach((message, index) => {
-        const timestamp = parseTimestamp(message.createdAt, index + 1);
-        const previous = latestByMember.get(message.memberId);
-        if (!previous || timestamp > previous.timestamp) {
-          latestByMember.set(message.memberId, { message, timestamp });
-        }
-      });
+  const missingInviteMemberIds = useMemo(
+    () => members.filter((member) => !member.invitedAt).map((member) => member.id).sort(),
+    [members],
+  );
+  const inactiveMemberIds = useMemo(
+    () =>
+      members
+        .filter((member) => Number(member.daysSinceActivity || "0") >= 7)
+        .map((member) => member.id)
+        .sort(),
+    [members],
+  );
+  const trainerOperationalAlertKey = `${missingInviteMemberIds.join(",")}|${inactiveMemberIds.join(",")}`;
+  const hasTrainerOperationalAlerts = missingInviteMemberIds.length + inactiveMemberIds.length > 0;
+  const trainerOperationalUnread = hasTrainerOperationalAlerts && trainerOperationalAlertKey !== seenTrainerOperationalAlertKey;
 
-    return Array.from(latestByMember.values())
-      .sort((a, b) => b.timestamp - a.timestamp)
-      .map(({ message, timestamp }) => {
-        const member = memberById.get(message.memberId);
-        const name = member?.name || "Et medlem";
-        return {
-          id: `msg-${message.id}`,
-          memberId: message.memberId,
-          title: "Ny melding",
-          text: `${name} har sendt deg en ny melding`,
-          detail: message.text.length > 72 ? `${message.text.slice(0, 72)}...` : message.text,
-          timestamp,
-        };
+  const trainerMessageAlerts = useMemo(
+    () =>
+      messages
+        .filter((message) => message.sender === "member")
+        .map((message, index) => {
+          const timestamp = parseTimestamp(message.createdAt, index + 1);
+          const member = memberById.get(message.memberId);
+          const name = member?.name || "Et medlem";
+          const id = `trainer-msg-${message.id}`;
+          return {
+            id,
+            kind: "message" as const,
+            memberId: message.memberId,
+            title: "Ny melding",
+            text: `${name} har sendt deg en ny melding`,
+            detail: message.text.length > 72 ? `${message.text.slice(0, 72)}...` : message.text,
+            timestamp,
+            unread: timestamp > trainerAlertsSeenAt,
+          };
+        }),
+    [messages, memberById, trainerAlertsSeenAt],
+  );
+
+  const trainerOperationalAlerts = useMemo<TrainerAlert[]>(() => {
+    const alerts: TrainerAlert[] = [];
+    if (missingInviteMemberIds.length > 0) {
+      const id = "trainer-op-missing-invites";
+      alerts.push({
+        id,
+        kind: "missing-invite",
+        memberId: "",
+        title: "Invitasjoner",
+        text: `${missingInviteMemberIds.length} kunder mangler invitasjon`,
+        detail: "Gå til klienter og send invitasjon.",
+        timestamp: TRAINER_OPERATIONAL_TIMESTAMP_BASE,
+        isUnread: trainerOperationalUnread,
+        isOpened: openedTrainerAlertIds.includes(id),
       });
-  }, [messages, memberById]);
+    }
+    if (inactiveMemberIds.length > 0) {
+      const id = "trainer-op-inactive-members";
+      alerts.push({
+        id,
+        kind: "inactive-member",
+        memberId: "",
+        title: "Oppfølging",
+        text: `${inactiveMemberIds.length} kunder bør følges opp`,
+        detail: "Åpne klientlisten og prioriter oppfølging.",
+        timestamp: TRAINER_OPERATIONAL_TIMESTAMP_BASE - 1,
+        isUnread: trainerOperationalUnread,
+        isOpened: openedTrainerAlertIds.includes(id),
+      });
+    }
+    return alerts;
+  }, [missingInviteMemberIds.length, inactiveMemberIds.length, trainerOperationalUnread, openedTrainerAlertIds]);
+
+  const trainerRecentAlerts = useMemo<TrainerAlert[]>(() => {
+    const combined: TrainerAlert[] = [
+      ...trainerMessageAlerts.map((alert) => ({
+        id: alert.id,
+        kind: alert.kind,
+        memberId: alert.memberId,
+        title: alert.title,
+        text: alert.text,
+        detail: alert.detail,
+        timestamp: alert.timestamp,
+        isUnread: alert.unread,
+        isOpened: openedTrainerAlertIds.includes(alert.id),
+      })),
+      ...trainerOperationalAlerts,
+    ];
+    return combined.sort((a, b) => b.timestamp - a.timestamp).slice(0, ALERT_HISTORY_LIMIT);
+  }, [trainerMessageAlerts, trainerOperationalAlerts, openedTrainerAlertIds]);
 
   const memberPrograms = useMemo(
     () =>
@@ -247,7 +331,7 @@ export function useNotifications({
         isOpened: openedMemberAlertIds.includes(alert.id),
       })),
     ];
-    return combined.sort((a, b) => b.timestamp - a.timestamp).slice(0, MEMBER_ALERT_HISTORY_LIMIT);
+    return combined.sort((a, b) => b.timestamp - a.timestamp).slice(0, ALERT_HISTORY_LIMIT);
   }, [memberMessageAlerts, memberProgramAlerts, memberWorkoutCommentAlerts, openedMemberAlertIds]);
 
   const memberUnreadAlerts = useMemo(
@@ -255,11 +339,20 @@ export function useNotifications({
     [memberRecentAlerts],
   );
 
-  const trainerUnreadCount = useMemo(
-    () => trainerMessageAlerts.filter((alert) => alert.timestamp > trainerAlertsSeenAt).length,
-    [trainerMessageAlerts, trainerAlertsSeenAt],
+  const trainerUnreadAlerts = useMemo(
+    () => trainerRecentAlerts.filter((alert) => alert.isUnread),
+    [trainerRecentAlerts],
   );
+  const trainerUnreadCount = trainerUnreadAlerts.length;
   const memberUnreadCount = memberUnreadAlerts.length;
+
+  function markTrainerAlertsAsSeen() {
+    const latestMessageTime = trainerMessageAlerts.reduce((max, alert) => Math.max(max, alert.timestamp), 0);
+    setTrainerAlertsSeenAt(latestMessageTime);
+    if (hasTrainerOperationalAlerts) {
+      setSeenTrainerOperationalAlertKey(trainerOperationalAlertKey);
+    }
+  }
 
   function markMemberAlertsAsSeen() {
     const latestAlertTime = [...memberMessageAlerts, ...memberProgramAlerts, ...memberWorkoutCommentAlerts].reduce(
@@ -277,9 +370,24 @@ export function useNotifications({
     const willOpen = !trainerNotificationsOpen;
     setTrainerNotificationsOpen(willOpen);
     if (willOpen) {
-      const latestAlertTime = trainerMessageAlerts.reduce((max, alert) => Math.max(max, alert.timestamp), 0);
-      setTrainerAlertsSeenAt(latestAlertTime);
+      markTrainerAlertsAsSeen();
     }
+  }
+
+  function openTrainerAlert(alert: TrainerAlert) {
+    setOpenedTrainerAlertIds((prev) => Array.from(new Set([...prev, alert.id])));
+
+    if (alert.kind === "message") {
+      setTrainerAlertsSeenAt((prev) => Math.max(prev, alert.timestamp));
+      if (alert.memberId) {
+        onTrainerOpenMessage?.(alert.memberId);
+      }
+    } else {
+      setSeenTrainerOperationalAlertKey(trainerOperationalAlertKey);
+      onTrainerOpenCustomers?.();
+    }
+
+    setTrainerNotificationsOpen(false);
   }
 
   function handleMemberBellToggle() {
@@ -339,16 +447,27 @@ export function useNotifications({
     window.localStorage.setItem("motus.notifications.memberOpenedAlertIds", JSON.stringify(openedMemberAlertIds));
   }, [openedMemberAlertIds]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("motus.notifications.trainerOpenedAlertIds", JSON.stringify(openedTrainerAlertIds));
+  }, [openedTrainerAlertIds]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("motus.notifications.trainerOperationalSeenKey", seenTrainerOperationalAlertKey);
+  }, [seenTrainerOperationalAlertKey]);
+
   return {
     trainerNotificationsOpen,
     setTrainerNotificationsOpen,
     memberNotificationsOpen,
-    trainerMessageAlerts,
+    trainerVisibleAlerts: trainerRecentAlerts,
     memberVisibleAlerts: memberRecentAlerts,
     trainerUnreadCount,
     memberUnreadCount,
     handleTrainerBellToggle,
     handleMemberBellToggle,
+    openTrainerAlert,
     openAlert,
   };
 }

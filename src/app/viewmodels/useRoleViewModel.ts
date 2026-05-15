@@ -24,12 +24,13 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     trainerNotificationsOpen,
     setTrainerNotificationsOpen,
     memberNotificationsOpen,
-    trainerMessageAlerts,
+    trainerVisibleAlerts,
     memberVisibleAlerts,
     trainerUnreadCount,
     memberUnreadCount,
     handleTrainerBellToggle,
     handleMemberBellToggle,
+    openTrainerAlert,
     openAlert,
   } = useNotifications({
     messages: state.appState.messages,
@@ -38,6 +39,14 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     members: state.appState.members,
     memberViewId: state.appState.memberViewId,
     setMemberTab: state.setMemberTab,
+    onTrainerOpenMessage: (memberId) => {
+      state.patchState({ selectedMemberId: memberId });
+      state.setTrainerTab("customers");
+      setOpenCustomerMessagesSignal((prev) => prev + 1);
+    },
+    onTrainerOpenCustomers: () => {
+      state.setTrainerTab("customers");
+    },
   });
 
   const appHeaderProps: ComponentProps<typeof AppHeader> = buildAppHeaderProps({
@@ -79,7 +88,8 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     trainerNotificationsOpen,
     setTrainerNotificationsOpen,
     trainerUnreadCount,
-    trainerMessageAlerts,
+    trainerVisibleAlerts,
+    openTrainerAlert,
     handleTrainerBellToggle,
     isLocalDemoSession: state.isLocalDemoSession,
     remoteTrainerPeriodPlansByMemberId: state.remoteTrainerPeriodPlansByMemberId,
