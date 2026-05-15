@@ -5135,7 +5135,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 <img
                   src={motusSkrytekortLogo}
                   alt=""
-                  className="pointer-events-none absolute right-4 top-4 z-[1] h-auto w-[11.5rem] max-w-[46%] object-contain opacity-95 drop-shadow-[0_3px_12px_rgba(255,255,255,0.18)] sm:w-[12.5rem]"
+                  className="pointer-events-none absolute right-4 top-4 z-[1] h-auto max-h-[4.75rem] w-auto max-w-[42%] object-contain opacity-95 drop-shadow-[0_3px_12px_rgba(255,255,255,0.18)] sm:max-h-20"
                   aria-hidden
                 />
                 <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-white/15 blur-3xl" aria-hidden />
