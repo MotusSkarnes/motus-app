@@ -769,9 +769,10 @@ export function MemberPortal(props: MemberPortalProps) {
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<number | null>(null);
   const [selectedCalendarLogId, setSelectedCalendarLogId] = useState<string | null>(null);
   const [progressShareStatus, setProgressShareStatus] = useState<string | null>(null);
-  const [achievementCelebration, setAchievementCelebration] = useState<{ id: string; label: string } | null>(null);
+  const [achievementCelebration, setAchievementCelebration] = useState<{ achievedLevel: number } | null>(null);
   const [liveWorkoutCelebration, setLiveWorkoutCelebration] = useState<WorkoutCelebration | null>(null);
-  const [seenUnlockedAchievementIds, setSeenUnlockedAchievementIds] = useState<string[]>([]);
+  /** Unngår popup ved første lasting; feirer kun når `achievedLevel` faktisk øker. */
+  const achievementCelebrationBaselineRef = useRef<number | null>(null);
   const [periodPlans, setPeriodPlans] = useState<PeriodSchedulePlan[]>([]);
   const [showPeriodPlanPanel, setShowPeriodPlanPanel] = useState(true);
   const [selectedPeriodPlanWeekNumber, setSelectedPeriodPlanWeekNumber] = useState<number | null>(null);
@@ -786,7 +787,6 @@ export function MemberPortal(props: MemberPortalProps) {
   const [intervalTimerStepIndex, setIntervalTimerStepIndex] = useState(0);
   const [intervalTimerRemainingSeconds, setIntervalTimerRemainingSeconds] = useState(0);
   const [intervalTimerStatus, setIntervalTimerStatus] = useState<string | null>(null);
-  const hasInitializedAchievementTracking = useRef(false);
   const memberMessagesContainerRef = useRef<HTMLDivElement | null>(null);
   const profileAutoSaveInFlightRef = useRef(false);
   /** Unngår å nullstille toast ved hvert felt-synk fra autosave — kun ved bytte aktiv profil. */
@@ -1195,6 +1195,8 @@ export function MemberPortal(props: MemberPortalProps) {
     return "saturday";
   }, [nowTimestamp]);
   const activePeriodPlan = periodPlans[0] ?? null;
+  const activePeriodPlanId = activePeriodPlan?.id ?? null;
+  const activePeriodSelectableWeekCount = activePeriodPlan ? periodPlanSelectableWeekCount(activePeriodPlan) : 0;
   const activePeriodPlanStartDate = activePeriodPlan ? parseDateOnly(activePeriodPlan.startDate) : null;
   const activePeriodWeekIndex = useMemo(() => {
     if (!activePeriodPlan || !activePeriodPlanStartDate) return null;
@@ -1819,9 +1821,8 @@ export function MemberPortal(props: MemberPortalProps) {
     [completedLogs, exerciseGroupByName, muscleSplitPeriod, nowTimestamp],
   );
   const activeCelebration = liveWorkoutCelebration ?? workoutCelebration;
-  const shouldShowCelebration = Boolean(
-    microCelebrationsEnabled && activeCelebration && activeCelebration.memberId === activeMemberId
-  );
+  /** Ny PR / økt rekord: alltid synlig for aktiv bruker (uavhengig av «små feiringer»). */
+  const shouldShowPrCelebration = Boolean(activeCelebration && activeCelebration.memberId === activeMemberId);
 
   const playCelebrationSound = useCallback(() => {
     if (typeof window === "undefined" || !celebrationSoundEnabled) return;
@@ -2113,18 +2114,17 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [editableMember?.id, relatedProfileGoalsSignature, relatedMemberIds, updateMember]);
 
   useEffect(() => {
-    if (!activePeriodPlan) {
+    if (!activePeriodPlanId || activePeriodSelectableWeekCount === 0) {
       setSelectedPeriodPlanWeekNumber(null);
       return;
     }
     const fallbackWeekNumber = activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : 1;
     setSelectedPeriodPlanWeekNumber((prev) => {
       if (prev == null) return fallbackWeekNumber;
-      const weekCount = periodPlanSelectableWeekCount(activePeriodPlan);
-      const weekExists = Number(prev) >= 1 && Number(prev) <= weekCount;
+      const weekExists = Number(prev) >= 1 && Number(prev) <= activePeriodSelectableWeekCount;
       return weekExists ? prev : fallbackWeekNumber;
     });
-  }, [activePeriodPlan, activePeriodWeekIndex]);
+  }, [activePeriodPlanId, activePeriodSelectableWeekCount, activePeriodWeekIndex]);
 
   useEffect(() => {
     if (!profileSaveInfo) return;
@@ -2210,6 +2210,8 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [editableMember, periodPlanSwapsByPlan]);
   useEffect(() => {
     setFavoritePersonalRecordPreferencesHydrated(false);
+    achievementCelebrationBaselineRef.current = null;
+    setAchievementCelebration(null);
   }, [editableMember?.id]);
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
@@ -2390,10 +2392,9 @@ export function MemberPortal(props: MemberPortalProps) {
     personalRecordExerciseNameSet,
   ]);
   useEffect(() => {
-    if (!microCelebrationsEnabled) return;
-    if (!shouldShowCelebration && !achievementCelebration) return;
+    if (!shouldShowPrCelebration) return;
     playCelebrationSound();
-  }, [shouldShowCelebration, achievementCelebration, microCelebrationsEnabled, playCelebrationSound]);
+  }, [shouldShowPrCelebration, playCelebrationSound]);
   useEffect(() => {
     if (memberTab !== "messages") return;
     const container = memberMessagesContainerRef.current;
@@ -2447,19 +2448,18 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [isIntervalTimerRunning, isIntervalTimerPaused, intervalProgramSteps, intervalTimerStepIndex]);
 
   useEffect(() => {
-    const unlockedIds = achievements.filter((achievement) => achievement.unlocked).map((achievement) => achievement.id);
-    if (!hasInitializedAchievementTracking.current) {
-      setSeenUnlockedAchievementIds(unlockedIds);
-      hasInitializedAchievementTracking.current = true;
+    if (achievementCelebrationBaselineRef.current === null) {
+      achievementCelebrationBaselineRef.current = achievedLevel;
       return;
     }
-    const newlyUnlocked = achievements.find(
-      (achievement) => achievement.unlocked && !seenUnlockedAchievementIds.includes(achievement.id),
-    );
-    if (!newlyUnlocked) return;
-    setAchievementCelebration({ id: newlyUnlocked.id, label: newlyUnlocked.label });
-    setSeenUnlockedAchievementIds((prev) => [...prev, newlyUnlocked.id]);
-  }, [achievements, seenUnlockedAchievementIds]);
+    if (achievedLevel < achievementCelebrationBaselineRef.current) {
+      achievementCelebrationBaselineRef.current = achievedLevel;
+      return;
+    }
+    if (achievedLevel === achievementCelebrationBaselineRef.current) return;
+    achievementCelebrationBaselineRef.current = achievedLevel;
+    setAchievementCelebration({ achievedLevel });
+  }, [achievedLevel]);
 
   function handleStartIntervalProgramTimer() {
     if (!activeIntervalProgram || !intervalProgramSteps.length) return;
@@ -4102,41 +4102,86 @@ export function MemberPortal(props: MemberPortalProps) {
             </Card>
           ) : null}
 
-          {!isMemberLimited && shouldShowCelebration ? (
-            <div className="motus-modal-insets fixed inset-0 z-[10020] overscroll-contain bg-slate-900/45">
-              <div className="motus-pop-in mx-auto mt-16 max-w-sm rounded-xl border bg-white p-5 shadow-lg" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-xs font-semibold uppercase tracking-wide text-emerald-600">Ny PR!</div>
-                <div className="mt-1 text-xl font-bold tracking-tight text-slate-900">Sterk økning i estimert 1RM</div>
-                <div className="mt-3 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-800">
-                  {activeCelebration?.exerciseName}: {activeCelebration?.previousEstimated1RM.toFixed(1)} kg → {activeCelebration?.newEstimated1RM.toFixed(1)} kg
+          {!isMemberLimited && shouldShowPrCelebration ? (
+            <div className="motus-modal-insets fixed inset-0 z-[10020] flex justify-center overflow-y-auto overscroll-contain bg-slate-900/55 px-4 py-10 pt-[max(2rem,env(safe-area-inset-top))]">
+              <div
+                className="motus-pop-in h-fit w-full max-w-md rounded-2xl border bg-white p-6 shadow-2xl ring-2 ring-emerald-500/20"
+                style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="pr-celebration-heading"
+              >
+                <div className="flex flex-col items-center text-center">
+                  <div
+                    className="rounded-2xl p-4 shadow-lg"
+                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, #059669 52%, ${MOTUS.pink} 100%)` }}
+                  >
+                    <Trophy className="h-11 w-11 text-white drop-shadow-sm" aria-hidden />
+                  </div>
+                  <p className="mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Ny personlig rekord</p>
+                  <h2 id="pr-celebration-heading" className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                    Sterkere enn før
+                  </h2>
+                  <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-600">
+                    Du satte ny beste estimerte 1&nbsp;RM på denne øvelsen i økta du nettopp fullførte.
+                  </p>
+                  <div className="mt-5 w-full rounded-2xl border border-emerald-200/90 bg-emerald-50 px-4 py-4 text-left shadow-inner" style={{ borderColor: "rgba(16,185,129,0.35)" }}>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-900/80">Øvelse</div>
+                    <div className="mt-1 text-lg font-semibold text-slate-900">{activeCelebration?.exerciseName}</div>
+                    <div className="mt-3 flex flex-wrap items-baseline gap-2 text-sm">
+                      <span className="tabular-nums text-slate-600">{activeCelebration?.previousEstimated1RM.toFixed(1)} kg</span>
+                      <span className="text-slate-400">→</span>
+                      <span className="tabular-nums text-lg font-bold text-emerald-800">{activeCelebration?.newEstimated1RM.toFixed(1)} kg</span>
+                      <span className="text-xs font-medium text-emerald-900/70">1RM (estimat)</span>
+                    </div>
+                    <div className="mt-2 text-xs text-slate-600">
+                      Basert på {activeCelebration?.weight}&nbsp;kg × {activeCelebration?.reps} reps i økta.
+                    </div>
+                  </div>
+                  <GradientButton
+                    onClick={() => {
+                      if (liveWorkoutCelebration) {
+                        setLiveWorkoutCelebration(null);
+                        return;
+                      }
+                      dismissWorkoutCelebration();
+                    }}
+                    className="mt-6 w-full min-h-11 text-base font-semibold"
+                  >
+                    Supert — videre
+                  </GradientButton>
                 </div>
-                <div className="mt-2 text-xs text-slate-500">
-                  Beregnet fra {activeCelebration?.weight} kg × {activeCelebration?.reps} reps (omregnet til 1RM).
-                </div>
-                <GradientButton
-                  onClick={() => {
-                    if (liveWorkoutCelebration) {
-                      setLiveWorkoutCelebration(null);
-                      return;
-                    }
-                    dismissWorkoutCelebration();
-                  }}
-                  className="mt-4 w-full"
-                >
-                  Rått! Fortsett
-                </GradientButton>
               </div>
             </div>
           ) : null}
-          {!isMemberLimited && microCelebrationsEnabled && achievementCelebration ? (
-            <div className="motus-modal-insets fixed inset-0 z-[10030] overscroll-contain bg-slate-900/35">
-              <div className="motus-pop-in mx-auto mt-20 max-w-sm rounded-xl border bg-white p-5 text-center shadow-lg" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-3xl">🎉</div>
-                <div className="mt-2 text-xs font-semibold uppercase tracking-wide text-emerald-600">Achievement unlock</div>
-                <div className="mt-1 text-xl font-bold tracking-tight text-slate-900">{achievementCelebration.label}</div>
-                <div className="mt-2 text-sm text-slate-600">Låst opp! Fortsett den gode flyten.</div>
-                <GradientButton onClick={() => setAchievementCelebration(null)} className="mt-4 w-full">
-                  Rått!
+          {!isMemberLimited && microCelebrationsEnabled && achievementCelebration && !shouldShowPrCelebration ? (
+            <div className="motus-modal-insets fixed inset-0 z-[10019] flex justify-center overflow-y-auto overscroll-contain bg-slate-900/40 px-4 py-12 pt-[max(2.5rem,env(safe-area-inset-top))]">
+              <div
+                className="motus-pop-in h-fit w-full max-w-sm rounded-2xl border bg-white p-6 text-center shadow-xl"
+                style={{ borderColor: "rgba(15,23,42,0.1)" }}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="milestone-heading"
+              >
+                <div className="mx-auto inline-flex rounded-full bg-slate-100 p-3 ring-1 ring-slate-200/90">
+                  <TrendingUp className="h-8 w-8 text-teal-700" aria-hidden />
+                </div>
+                <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Fremdrift på oversikten</p>
+                <h2 id="milestone-heading" className="mt-2 text-xl font-bold tracking-tight text-slate-900">
+                  {achievementCelebration.achievedLevel >= achievementMaxLevel
+                    ? "Gratulerer — maksnivå"
+                    : `Du er opp på nivå ${achievementCelebration.achievedLevel}`}
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                  {achievementCelebration.achievedLevel >= achievementMaxLevel
+                    ? `Du har nådd høyeste steg (${achievementMaxLevel}) i fremdriftssystemet ut fra økter, ukers streak og antall ulike treningsdager.`
+                    : `Dette nivået beregnes på oversikten fra økter, streak og variasjon i treningsdager. Neste steg er nivå ${achievementCelebration.achievedLevel + 1}.`}
+                </p>
+                <p className="mt-3 text-xs leading-snug text-slate-500">
+                  Varsler om ny PR etter økt vises som før og påvirkes ikke av denne innstillingen.
+                </p>
+                <GradientButton onClick={() => setAchievementCelebration(null)} className="mt-6 w-full min-h-11 font-semibold">
+                  OK
                 </GradientButton>
               </div>
             </div>
@@ -5412,9 +5457,12 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                   {!isMemberLimited ? (
                   <div className="rounded-xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="text-sm font-semibold text-slate-700">Mikro-feiringer</div>
+                    <div className="text-sm font-semibold text-slate-700">Feiring og varsler</div>
+                    <p className="text-xs leading-snug text-slate-600">
+                      Ny PR etter økt vises alltid. Du kan slå av den ekstra meldingen som kommer når du går opp et nivå i fremdriftssystemet på oversikten.
+                    </p>
                     <label className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <span>Vis små feiringer for PR/streak</span>
+                      <span>Melding ved nytt fremdriftsnivå</span>
                       <input
                         type="checkbox"
                         checked={microCelebrationsEnabled}
@@ -5422,12 +5470,11 @@ export function MemberPortal(props: MemberPortalProps) {
                       />
                     </label>
                     <label className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <span>Spill av feiringslyd</span>
+                      <span>Lyd når du setter ny PR etter økt</span>
                       <input
                         type="checkbox"
                         checked={celebrationSoundEnabled}
                         onChange={(e) => setCelebrationSoundEnabled(e.target.checked)}
-                        disabled={!microCelebrationsEnabled}
                       />
                     </label>
                   </div>
