@@ -34,6 +34,13 @@ import type {
   WorkoutLog,
 } from "../app/types";
 import {
+  daysSinceLastCompletedWorkout,
+  formatTrainerMemberActivitySubtitle,
+  trainerActivitySortKey,
+  trainerInactiveDaysForFollowUp,
+} from "../app/memberActivity";
+import { parseLogDateMs } from "../app/workoutLogDate";
+import {
   deleteMemberPeriodPlanByPlanId,
   upsertMemberPeriodPlansForTrainer,
 } from "../services/supabaseRepository";
@@ -383,22 +390,6 @@ function encodeNameForPath(name: string): string {
   return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
-function parseLogDateMs(value: string): number {
-  if (!value) return 0;
-  // Norwegian dd.mm.yyyy must be parsed explicitly; `new Date("04.05.2026")` is often read as US m/d/y.
-  const match = value.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-  if (match) {
-    const day = Number(match[1]);
-    const month = Number(match[2]) - 1;
-    const year = Number(match[3]);
-    const parsed = new Date(year, month, day);
-    return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
-  }
-  const iso = new Date(value);
-  if (!Number.isNaN(iso.getTime())) return iso.getTime();
-  return 0;
-}
-
 function parseChatCreatedAtMs(value: string): number {
   if (!value) return 0;
   const iso = new Date(value);
@@ -540,12 +531,26 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const [programExerciseSearch, setProgramExerciseSearch] = useState("");
   const [programExerciseCategoryFilter, setProgramExerciseCategoryFilter] = useState<"all" | "Styrke" | "Kondisjon">("all");
   const [programExerciseGroupFilter, setProgramExerciseGroupFilter] = useState("all");
-  const intervalPresets = useMemo<IntervalPreset[]>(
-    () => [
+  const intervalPresets = useMemo<IntervalPreset[]>(() => {
+    const hiitTenByOne = Array.from({ length: 10 }, (_, i) => ({
+      name: `Drag ${i + 1}`,
+      minutes: 1,
+      speed: "14",
+      incline: "1",
+      restSeconds: i < 9 ? "45" : "0",
+    }));
+    const tabataEight = Array.from({ length: 8 }, (_, i) => ({
+      name: `Tabata ${i + 1}`,
+      minutes: 20 / 60,
+      speed: "15",
+      incline: "1.5",
+      restSeconds: i < 7 ? "10" : "0",
+    }));
+    return [
       {
         id: "classic-4x4",
-        name: "4x4 klassisk",
-        description: "10 min oppvarming, 4x4 min med 3 min pause, 5 min nedjogg.",
+        name: "4×4 klassisk",
+        description: "10 min oppvarming, fire drag à 4 min med 3 min aktiv hvile mellom, 5 min nedjogg.",
         steps: [
           { name: "Oppvarming", minutes: 10, speed: "7", incline: "1", restSeconds: "0" },
           { name: "Drag 1", minutes: 4, speed: "13", incline: "1.5", restSeconds: "180" },
@@ -557,8 +562,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       },
       {
         id: "tempo-30",
-        name: "Tempo 30",
-        description: "8 min oppvarming, 3 tempo-drag, 5 min nedjogg.",
+        name: "Tempo-pyramide",
+        description: "8 min oppvarming, tre progressive tempo-drag med kortere mellompause, 5 min nedjogg.",
         steps: [
           { name: "Oppvarming", minutes: 8, speed: "7", incline: "1", restSeconds: "0" },
           { name: "Tempo 1", minutes: 3, speed: "11", incline: "1", restSeconds: "90" },
@@ -568,18 +573,27 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         ],
       },
       {
-        id: "short-hiit-20",
-        name: "Kort HIIT 20",
-        description: "6 min oppvarming, 10 korte drag, 4 min nedjogg.",
+        id: "hiit-10x1",
+        name: "HIIT 10 × 1 min",
+        description: "6 min oppvarming, ti ett-minutters drag med 45 s mellompause, 4 min nedjogg.",
         steps: [
           { name: "Oppvarming", minutes: 6, speed: "7", incline: "1", restSeconds: "0" },
-          { name: "10x kortintervall", minutes: 20, speed: "13-16", incline: "1", restSeconds: "0" },
+          ...hiitTenByOne,
           { name: "Nedjogg", minutes: 4, speed: "5.5", incline: "0", restSeconds: "0" },
         ],
       },
-    ],
-    [],
-  );
+      {
+        id: "tabata-8",
+        name: "Tabata (8 × 20 s / 10 s)",
+        description: "5 min oppvarming, åtte Tabata-runder (20 sek jobb / 10 sek hvile), 5 min nedjogg.",
+        steps: [
+          { name: "Oppvarming", minutes: 5, speed: "7", incline: "1", restSeconds: "0" },
+          ...tabataEight,
+          { name: "Nedjogg", minutes: 5, speed: "5.5", incline: "0", restSeconds: "0" },
+        ],
+      },
+    ];
+  }, []);
   const [selectedIntervalPresetId, setSelectedIntervalPresetId] = useState("classic-4x4");
   const [periodPlansByMemberId, setPeriodPlansByMemberId] = useState<Record<string, PeriodSchedulePlan[]>>(() => {
     if (typeof window === "undefined") return {};
@@ -805,8 +819,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       if (member.invitedAt) score += 2;
       if (member.customerType === "PT-kunde") score += 1;
       if (member.membershipType === "Premium") score += 1;
-      const days = Number(member.daysSinceActivity || "9999");
-      if (Number.isFinite(days)) {
+      const days = trainerActivitySortKey(member, members, logs);
+      if (days < 999999 && Number.isFinite(days)) {
         score += Math.max(0, 100 - Math.min(100, days));
       }
       return score;
@@ -832,6 +846,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     for (const [, group] of byIdentity) {
       if (!group.length) continue;
       const sorted = [...group].sort((a, b) => {
+        const aActive = a.isActive !== false ? 1 : 0;
+        const bActive = b.isActive !== false ? 1 : 0;
+        if (aActive !== bActive) return bActive - aActive;
         const scoreDelta = memberScore(b) - memberScore(a);
         if (scoreDelta !== 0) return scoreDelta;
         return a.id.localeCompare(b.id);
@@ -853,7 +870,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       });
     }
     return merged;
-  }, [members, currentTrainerOwnerUserId]);
+  }, [members, currentTrainerOwnerUserId, logs]);
   const activeMembers = useMemo(
     () => deduplicatedMembers.filter((member) => member.isActive !== false),
     [deduplicatedMembers]
@@ -874,22 +891,22 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         if (customerTypeFilter === "PT-kunde" && member.customerType !== "PT-kunde") return false;
         if (customerTypeFilter === "Premium-kunde" && member.membershipType !== "Premium") return false;
         if (customerTypeFilter === "Medlem" && member.customerType !== "Medlem") return false;
-        if (memberFilter === "followUp") return Number(member.daysSinceActivity || "0") >= 7;
-      if (memberFilter === "invited") return Boolean(member.invitedAt?.trim());
-      if (memberFilter === "notInvited") return !member.invitedAt?.trim();
+        if (memberFilter === "followUp") return (trainerInactiveDaysForFollowUp(member, members, logs) ?? -1) >= 7;
+        if (memberFilter === "invited") return Boolean(member.invitedAt?.trim());
+        if (memberFilter === "notInvited") return !member.invitedAt?.trim();
         return true;
       });
-  }, [visibleMembers, memberSearch, memberFilter, customerTypeFilter]);
+  }, [visibleMembers, memberSearch, memberFilter, customerTypeFilter, members, logs]);
   const sortedMembers = useMemo(() => {
     return [...filteredMembers].sort((a, b) => {
       if (memberSort === "nameAsc") return a.name.localeCompare(b.name, "no");
       if (memberSort === "nameDesc") return b.name.localeCompare(a.name, "no");
-      const aDays = Number(a.daysSinceActivity || "0");
-      const bDays = Number(b.daysSinceActivity || "0");
+      const aDays = trainerActivitySortKey(a, members, logs);
+      const bDays = trainerActivitySortKey(b, members, logs);
       if (aDays !== bDays) return aDays - bDays;
       return a.name.localeCompare(b.name, "no");
     });
-  }, [filteredMembers, memberSort]);
+  }, [filteredMembers, memberSort, members, logs]);
   const findNewestPendingMemberByEmail = useCallback((email: string): Member | null => {
     const normalizedEmail = email.trim().toLowerCase();
     const matches = members.filter((member) => member.email.trim().toLowerCase() === normalizedEmail);
@@ -1116,6 +1133,10 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     [selectedMemberRelatedIds, followUpDetailsByMemberId]
   );
   const latestCompletedLog = selectedLogs.find((log) => log.status === "Fullført") ?? null;
+  const selectedDaysSinceLastCompletedWorkout = useMemo(() => {
+    if (!selectedMember) return null;
+    return daysSinceLastCompletedWorkout(selectedMember, members, logs);
+  }, [selectedMember, members, logs]);
   useEffect(() => {
     if (customerSubTab !== "messages") return;
     const container = trainerMessagesContainerRef.current;
@@ -1629,27 +1650,48 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   function generateIntervalTemplateDraft() {
     const preset = intervalPresets.find((item) => item.id === selectedIntervalPresetId) ?? intervalPresets[0];
     if (!preset) return;
-    const treadmillExercise =
-      exercises.find((exercise) => exercise.equipment.trim().toLowerCase().includes("tredem")) ??
-      exercises.find((exercise) => exercise.category === "Kondisjon") ??
-      exercises[0];
+
+    function pickCardioIntervalExercise(allExercises: Exercise[]): Exercise | undefined {
+      if (!allExercises.length) return undefined;
+      const eqLo = (e: Exercise) => e.equipment.trim().toLowerCase();
+      const nameLo = (e: Exercise) => e.name.trim().toLowerCase();
+      const isKond = (e: Exercise) => e.category === "Kondisjon";
+      const isTreadmill = (e: Exercise) =>
+        eqLo(e).includes("tredem") || eqLo(e).includes("mølle") || nameLo(e).includes("mølle");
+      const isBike = (e: Exercise) => eqLo(e).includes("sykkel") || nameLo(e).includes("sykkel");
+
+      return (
+        allExercises.find((e) => isKond(e) && isTreadmill(e) && nameLo(e).includes("intervall")) ??
+        allExercises.find((e) => isKond(e) && isTreadmill(e)) ??
+        allExercises.find((e) => isKond(e) && isBike(e)) ??
+        allExercises.find((e) => isKond(e)) ??
+        allExercises[0]
+      );
+    }
+
+    const treadmillExercise = pickCardioIntervalExercise(exercises);
     if (!treadmillExercise) {
       setTemplateAssignStatus("Fant ingen kondisjonsøvelse å bygge nedtellingsmal fra.");
       return;
     }
-    const draftExercises: ProgramExercise[] = preset.steps.map((step) => ({
-      id: uid("draft-ex"),
-      exerciseId: treadmillExercise.id,
-      exerciseName: step.name,
-      sets: "1",
-      reps: "",
-      weight: "",
-      durationMinutes: String(step.minutes),
-      speed: step.speed,
-      incline: step.incline,
-      restSeconds: step.restSeconds,
-      notes: "Intervallsteg",
-    }));
+
+    const draftExercises: ProgramExercise[] = preset.steps.map((step) => {
+      const durSec = Math.round(step.minutes * 60);
+      const durLabel = step.minutes > 0 && durSec < 60 ? `${durSec} s` : `${step.minutes} min`;
+      return {
+        id: uid("draft-ex"),
+        exerciseId: treadmillExercise.id,
+        exerciseName: step.name,
+        sets: "1",
+        reps: "",
+        weight: "",
+        durationMinutes: String(step.minutes),
+        speed: step.speed,
+        incline: step.incline,
+        restSeconds: step.restSeconds,
+        notes: `${durLabel} · ${step.speed} km/t · stigning ${step.incline}%`,
+      };
+    });
     setTemplateProgramTitle(`Intervall: ${preset.name}`);
     setProgramExercisesDraft(draftExercises);
     setEditingTemplateProgramId(null);
@@ -2950,8 +2992,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   }
 
   const followUpCount = useMemo(
-    () => activeMembers.filter((member) => Number(member.daysSinceActivity || "0") >= 7).length,
-    [activeMembers]
+    () => activeMembers.filter((member) => (trainerInactiveDaysForFollowUp(member, members, logs) ?? -1) >= 7).length,
+    [activeMembers, members, logs]
   );
   const membersWithoutProgramCount = useMemo(
     () => activeMembers.filter((member) => !programs.some((program) => program.memberId === member.id)).length,
@@ -3030,12 +3072,12 @@ function programAuthorLabel(program: TrainingProgram): string | null {
           .filter(Boolean)
           .sort((a, b) => b.localeCompare(a))[0] ?? "";
         const lastFollowUpMs = bestLastFollowUpIso ? new Date(bestLastFollowUpIso).getTime() : 0;
-        const daysInactive = Number(member.daysSinceActivity || "0");
+        const daysInactive = trainerInactiveDaysForFollowUp(member, members, logs);
         let score = 0;
         const reasons: string[] = [];
-        if (daysInactive >= 7) {
+        if (daysInactive !== null && daysInactive >= 7) {
           score += 2;
-          reasons.push(`${daysInactive} dager siden aktivitet`);
+          reasons.push(`${daysInactive} dager siden siste økt`);
         }
         if (recentHardLogs >= 2) {
           score += 2;
@@ -3057,9 +3099,19 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         };
       })
       .filter((item) => item.score >= 2)
-      .sort((a, b) => b.score - a.score || b.member.daysSinceActivity.localeCompare(a.member.daysSinceActivity))
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        const ak = trainerActivitySortKey(a.member, members, logs);
+        const bk = trainerActivitySortKey(b.member, members, logs);
+        const aReal = ak < 999999;
+        const bReal = bk < 999999;
+        if (aReal && bReal) return bk - ak;
+        if (aReal && !bReal) return -1;
+        if (!aReal && bReal) return 1;
+        return a.member.name.localeCompare(b.member.name, "no");
+      })
       .slice(0, 6);
-  }, [activeMembers, logs, memberRelatedIdSetByCanonicalId, lastFollowUpByMemberId]);
+  }, [activeMembers, logs, memberRelatedIdSetByCanonicalId, lastFollowUpByMemberId, members]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -3119,9 +3171,10 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     }
 
     function getPriority(member: Member): { tone: "red" | "orange" | "green"; score: number; label: string } {
-      const days = Number(member.daysSinceActivity || "0");
-      if (days >= 10) return { tone: "red", score: 3, label: "Rød" };
-      if (days >= 5) return { tone: "orange", score: 2, label: "Oransje" };
+      const inactiveDays = trainerInactiveDaysForFollowUp(member, members, logs);
+      if (inactiveDays === null) return { tone: "green", score: 1, label: "Grønn" };
+      if (inactiveDays >= 10) return { tone: "red", score: 3, label: "Rød" };
+      if (inactiveDays >= 5) return { tone: "orange", score: 2, label: "Oransje" };
       return { tone: "green", score: 1, label: "Grønn" };
     }
 
@@ -3138,7 +3191,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       if (prioritySort === "highFirst") return b.priority.score - a.priority.score;
       return a.priority.score - b.priority.score;
     });
-  }, [activeMembers, priorityFilter, prioritySort, priorityMemberTypeSort]);
+  }, [activeMembers, priorityFilter, prioritySort, priorityMemberTypeSort, members, logs]);
 
   function memberTypeBadges(member: Member): Array<{ label: string; style: { backgroundColor: string; color: string } }> {
     const badges: Array<{ label: string; style: { backgroundColor: string; color: string } }> = [];
@@ -3485,7 +3538,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-slate-800">{member.name}</div>
-                      <div className="text-xs text-slate-500">{member.email} · {member.daysSinceActivity} dager siden aktivitet</div>
+                      <div className="text-xs text-slate-500">{member.email} · {formatTrainerMemberActivitySubtitle(member, members, logs)}</div>
                     </div>
                   </div>
                   <div className="min-w-[172px] space-y-1">
@@ -3653,7 +3706,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-slate-800">{member.name}</div>
-                    <div className="text-xs text-slate-500">{member.email} · {member.daysSinceActivity} dager siden aktivitet</div>
+                    <div className="text-xs text-slate-500">{member.email} · {formatTrainerMemberActivitySubtitle(member, members, logs)}</div>
                   </div>
                 </div>
                 <div className="min-w-[172px] space-y-1">
@@ -3766,7 +3819,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                   value={memberSort}
                   onChange={(value) => setMemberSort(value as "activityRecent" | "nameAsc" | "nameDesc")}
                   options={[
-                    { value: "activityRecent", label: "Siste aktivitet (nyeste først)" },
+                    { value: "activityRecent", label: "Siste økt (nyeste først)" },
                     { value: "nameAsc", label: "Navn A-Å" },
                     { value: "nameDesc", label: "Navn Å-A" },
                   ]}
@@ -4054,7 +4107,15 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                     <StatCard label="Programmer" value={String(selectedPrograms.length)} hint="På denne kunden" />
                     <StatCard label="Logger" value={String(selectedLogs.length)} hint="På denne kunden" />
                     <StatCard label="Meldinger" value={String(selectedMessages.length)} hint="På denne kunden" />
-                    <StatCard label="Inaktivitet" value={`${selectedMember.daysSinceActivity} dager`} hint="Sist aktivitet" />
+                    <StatCard
+                      label="Siste økt"
+                      value={selectedDaysSinceLastCompletedWorkout !== null ? `${selectedDaysSinceLastCompletedWorkout} dager` : "–"}
+                      hint={
+                        selectedDaysSinceLastCompletedWorkout !== null
+                          ? "Siden siste fullførte økt"
+                          : "Ingen fullførte økter registrert"
+                      }
+                    />
                   </div>
                 ) : null}
 
@@ -4899,23 +4960,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
             <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
               <div className="space-y-3">
                 <TextInput value={templateProgramTitle} onChange={(e) => setTemplateProgramTitle(e.target.value)} placeholder="Navn på treningsmal" />
-                <div className="rounded-xl border bg-white p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="text-sm font-semibold text-slate-700">Kondisjonsmal med nedtelling</div>
-                  <div className="grid gap-2 md:grid-cols-[1fr_auto]">
-                    <SelectBox
-                      value={selectedIntervalPresetId}
-                      onChange={setSelectedIntervalPresetId}
-                      options={intervalPresets.map((preset) => ({ value: preset.id, label: preset.name }))}
-                    />
-                    <GradientButton onClick={generateIntervalTemplateDraft} className="w-full md:w-auto">
-                      Lag kondisjonsmal
-                    </GradientButton>
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    {intervalPresets.find((preset) => preset.id === selectedIntervalPresetId)?.description}
-                    {" "}Lager malutkast med nedtelling som kan lagres og tildeles kunde.
-                  </div>
-                </div>
                 <div
                   className={`space-y-3 rounded-2xl p-1 transition ${
                     isDraftDropZoneActive ? "bg-emerald-50 ring-2 ring-emerald-300" : ""
@@ -5062,6 +5106,23 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                     Avbryt redigering
                   </OutlineButton>
                 ) : null}
+                <div className="rounded-xl border bg-white p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="text-sm font-semibold text-slate-700">Kondisjonsmal med nedtelling</div>
+                  <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+                    <SelectBox
+                      value={selectedIntervalPresetId}
+                      onChange={setSelectedIntervalPresetId}
+                      options={intervalPresets.map((preset) => ({ value: preset.id, label: preset.name }))}
+                    />
+                    <GradientButton onClick={generateIntervalTemplateDraft} className="w-full md:w-auto">
+                      Lag kondisjonsmal
+                    </GradientButton>
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {intervalPresets.find((preset) => preset.id === selectedIntervalPresetId)?.description}{" "}
+                    Velger automatisk passende kondisjonsøvelse (helst mølle). Malutkastet støtter nedtelling i medlemsappen når alle steg er tidsbaserte kondisjon.
+                  </div>
+                </div>
               </div>
               <div className="rounded-xl border bg-slate-50 p-3 sm:p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="font-semibold">Øvelser</div>

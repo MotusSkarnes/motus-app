@@ -1137,7 +1137,9 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!activeIntervalProgram) return [] as IntervalTimerStep[];
     return activeIntervalProgram.exercises.flatMap((exercise, index) => {
       const workDurationSeconds = Math.max(0, Math.round((Number(exercise.durationMinutes) || 0) * 60));
-      const rawRestValue = Number(exercise.restSeconds) || 0;
+      const rawRestStr = String(exercise.restSeconds ?? "").trim();
+      const rawRestParsed = rawRestStr === "" ? NaN : Number(rawRestStr);
+      const rawRestValue = Number.isFinite(rawRestParsed) ? rawRestParsed : 0;
       const normalizedRestSeconds =
         rawRestValue > 0 && rawRestValue <= 15
           ? Math.round(rawRestValue * 60)
@@ -1156,7 +1158,9 @@ export function MemberPortal(props: MemberPortalProps) {
         });
       }
       const isClassic4x4Drag = /4x4/i.test(activeIntervalProgram.title) && /drag/i.test(exercise.exerciseName);
-      const restDurationSeconds = normalizedRestSeconds > 0 ? normalizedRestSeconds : isClassic4x4Drag ? 180 : 0;
+      // Eksplisitt "0" = ingen pause (trengs etter siste drag før nedjogg). Tom streng = eldre programmer uten hvilefelt → behold 4×4-fallback.
+      const legacy4x4DragPauseSeconds = rawRestStr === "" && isClassic4x4Drag ? 180 : 0;
+      const restDurationSeconds = normalizedRestSeconds > 0 ? normalizedRestSeconds : legacy4x4DragPauseSeconds;
       if (restDurationSeconds > 0 && index < activeIntervalProgram.exercises.length - 1) {
         steps.push({
           label: `Pause etter ${exercise.exerciseName || `intervall ${index + 1}`}`,

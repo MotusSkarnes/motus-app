@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { trainerInactiveDaysForFollowUp } from "./memberActivity";
 import type { ChatMessage, Member, MemberTab, TrainingProgram, WorkoutLog } from "./types";
 
 const ALERT_HISTORY_LIMIT = 5;
@@ -126,10 +127,10 @@ export function useNotifications({
   const inactiveMemberIds = useMemo(
     () =>
       members
-        .filter((member) => Number(member.daysSinceActivity || "0") >= 7)
+        .filter((member) => (trainerInactiveDaysForFollowUp(member, members, logs) ?? -1) >= 7)
         .map((member) => member.id)
         .sort(),
-    [members],
+    [members, logs],
   );
   const trainerOperationalAlertKey = `${missingInviteMemberIds.join(",")}|${inactiveMemberIds.join(",")}`;
   const hasTrainerOperationalAlerts = missingInviteMemberIds.length + inactiveMemberIds.length > 0;
