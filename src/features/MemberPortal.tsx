@@ -417,6 +417,35 @@ function formatLoggedResultTitle(result: NonNullable<WorkoutLog["results"]>[numb
   return baseName;
 }
 
+function groupLoggedResultsForDisplay(results: NonNullable<WorkoutLog["results"]>): Array<{
+  key: string;
+  exerciseName: string;
+  rows: Array<{ result: NonNullable<WorkoutLog["results"]>[number]; originalIndex: number }>;
+}> {
+  const groups = new Map<
+    string,
+    {
+      key: string;
+      exerciseName: string;
+      rows: Array<{ result: NonNullable<WorkoutLog["results"]>[number]; originalIndex: number }>;
+    }
+  >();
+  results.forEach((result, originalIndex) => {
+    const key = `${result.programExerciseId || result.exerciseId || result.exerciseName.trim().toLowerCase()}::${result.exerciseName.trim().toLowerCase()}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.rows.push({ result, originalIndex });
+      return;
+    }
+    groups.set(key, {
+      key,
+      exerciseName: result.exerciseName.trim() || "Øvelse",
+      rows: [{ result, originalIndex }],
+    });
+  });
+  return Array.from(groups.values());
+}
+
 function parseDateOnly(value: string): Date | null {
   if (!value) return null;
   const isoLike = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -4788,115 +4817,126 @@ export function MemberPortal(props: MemberPortalProps) {
                             {(log.results ?? []).length === 0 ? (
                               <div className="text-sm text-slate-500">Ingen settdata registrert for denne økta.</div>
                             ) : (
-                              (log.results ?? []).map((result, index) => (
-                                <div key={`${result.exerciseId}-${result.setNumber ?? 0}-${index}`} className="rounded-lg border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                  {(() => {
-                                    const editKey = `${log.id}:${result.exerciseId}:${index}`;
-                                    const isEditing = editingLoggedExerciseKey === editKey && Boolean(editingLoggedExerciseDraft);
-                                    return (
-                                      <>
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="font-medium text-slate-800">{formatLoggedResultTitle(result)}</div>
-                                    <div className="flex items-center gap-1.5">
-                                      {isEditing ? (
-                                        <>
-                                          <button
-                                            type="button"
-                                            onClick={() => saveEditLoggedExercise(log.id, index)}
-                                            className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100"
-                                          >
-                                            Lagre
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={cancelEditLoggedExercise}
-                                            className="rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-200"
-                                          >
-                                            Avbryt
-                                          </button>
-                                        </>
-                                      ) : (
-                                        <button
-                                          type="button"
-                                          onClick={() => startEditLoggedExercise(log.id, result, index)}
-                                          className="rounded-lg border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold text-sky-700 transition hover:bg-sky-100"
-                                        >
-                                          Rediger
-                                        </button>
-                                      )}
-                                      <button
-                                        type="button"
-                                        onClick={() => handleDeleteLoggedExercise(log.id, result.exerciseId)}
-                                        className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
-                                      >
-                                        Slett
-                                      </button>
+                              groupLoggedResultsForDisplay(log.results ?? []).map((group) => (
+                                <div key={group.key} className="rounded-lg border bg-white px-3 py-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                      <div className="font-medium text-slate-800">{group.exerciseName}</div>
+                                      <div className="mt-0.5 text-[11px] text-slate-500">
+                                        {group.rows.length === 1 ? "1 sett logget" : `${group.rows.length} sett logget`}
+                                      </div>
                                     </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteLoggedExercise(log.id, group.rows[0]?.result.exerciseId ?? "")}
+                                      className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
+                                    >
+                                      Slett øvelse
+                                    </button>
                                   </div>
-                                  {isEditing && editingLoggedExerciseDraft ? (
-                                    <div className="mt-2 grid gap-2">
-                                      {result.exerciseCategory === "Kondisjon" ? (
-                                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                                          <TextInput
-                                            value={editingLoggedExerciseDraft.performedDurationMinutes}
-                                            onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedDurationMinutes: e.target.value } : prev)}
-                                            placeholder="Minutter"
-                                          />
-                                          <TextInput
-                                            value={editingLoggedExerciseDraft.performedSpeed}
-                                            onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedSpeed: e.target.value } : prev)}
-                                            placeholder="Km/t"
-                                          />
-                                          <TextInput
-                                            value={editingLoggedExerciseDraft.performedIncline}
-                                            onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedIncline: e.target.value } : prev)}
-                                            placeholder="Incline %"
-                                          />
+                                  <div className="mt-3 space-y-2">
+                                    {group.rows.map(({ result, originalIndex }) => {
+                                      const editKey = `${log.id}:${result.exerciseId}:${originalIndex}`;
+                                      const isEditing = editingLoggedExerciseKey === editKey && Boolean(editingLoggedExerciseDraft);
+                                      const setLabel = result.setNumber && result.setNumber > 0 ? `Sett ${result.setNumber}` : "Sett";
+                                      return (
+                                        <div key={`${group.key}:${originalIndex}`} className="rounded-lg border bg-slate-50 px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                          <div className="flex items-start justify-between gap-2">
+                                            <div className="font-medium text-slate-700">{setLabel}</div>
+                                            <div className="flex items-center gap-1.5">
+                                              {isEditing ? (
+                                                <>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => saveEditLoggedExercise(log.id, originalIndex)}
+                                                    className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                                                  >
+                                                    Lagre
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={cancelEditLoggedExercise}
+                                                    className="rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-200"
+                                                  >
+                                                    Avbryt
+                                                  </button>
+                                                </>
+                                              ) : (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => startEditLoggedExercise(log.id, result, originalIndex)}
+                                                  className="rounded-lg border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold text-sky-700 transition hover:bg-sky-100"
+                                                >
+                                                  Rediger sett
+                                                </button>
+                                              )}
+                                            </div>
+                                          </div>
+                                          {isEditing && editingLoggedExerciseDraft ? (
+                                            <div className="mt-2 grid gap-2">
+                                              {result.exerciseCategory === "Kondisjon" ? (
+                                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                                                  <TextInput
+                                                    value={editingLoggedExerciseDraft.performedDurationMinutes}
+                                                    onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedDurationMinutes: e.target.value } : prev)}
+                                                    placeholder="Minutter"
+                                                  />
+                                                  <TextInput
+                                                    value={editingLoggedExerciseDraft.performedSpeed}
+                                                    onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedSpeed: e.target.value } : prev)}
+                                                    placeholder="Km/t"
+                                                  />
+                                                  <TextInput
+                                                    value={editingLoggedExerciseDraft.performedIncline}
+                                                    onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedIncline: e.target.value } : prev)}
+                                                    placeholder="Incline %"
+                                                  />
+                                                </div>
+                                              ) : result.exerciseCategory === "Uttøyning" ? (
+                                                <div className="grid grid-cols-1 gap-2">
+                                                  <TextInput
+                                                    value={editingLoggedExerciseDraft.performedWeight}
+                                                    onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedWeight: e.target.value } : prev)}
+                                                    placeholder="Sekunder"
+                                                  />
+                                                </div>
+                                              ) : (
+                                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                                  <TextInput
+                                                    value={editingLoggedExerciseDraft.performedWeight}
+                                                    onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedWeight: e.target.value } : prev)}
+                                                    placeholder="Kg"
+                                                  />
+                                                  <TextInput
+                                                    value={editingLoggedExerciseDraft.performedReps}
+                                                    onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedReps: e.target.value } : prev)}
+                                                    placeholder="Reps"
+                                                  />
+                                                </div>
+                                              )}
+                                              <label className="inline-flex items-center gap-2 text-xs text-slate-700">
+                                                <input
+                                                  type="checkbox"
+                                                  checked={editingLoggedExerciseDraft.completed}
+                                                  onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, completed: e.target.checked } : prev)}
+                                                />
+                                                Markert som fullført
+                                              </label>
+                                            </div>
+                                          ) : (
+                                            <div className="mt-1 text-xs text-slate-600">
+                                              {result.exerciseCategory === "Kondisjon"
+                                                ? `Utført: ${result.performedDurationMinutes || "0"} min${result.performedSpeed ? ` · ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` · ${result.performedIncline}% incline` : ""}`
+                                                : result.exerciseCategory === "Uttøyning"
+                                                  ? `Utført: ${result.performedWeight || "0"} sek`
+                                                  : `Utført: ${result.performedWeight || "0"} kg x ${result.performedReps || "0"} reps`}
+                                              {result.completed ? " - Fullført" : " - Ikke markert fullført"}
+                                            </div>
+                                          )}
                                         </div>
-                                      ) : result.exerciseCategory === "Uttøyning" ? (
-                                        <div className="grid grid-cols-1 gap-2">
-                                          <TextInput
-                                            value={editingLoggedExerciseDraft.performedWeight}
-                                            onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedWeight: e.target.value } : prev)}
-                                            placeholder="Sekunder"
-                                          />
-                                        </div>
-                                      ) : (
-                                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                          <TextInput
-                                            value={editingLoggedExerciseDraft.performedWeight}
-                                            onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedWeight: e.target.value } : prev)}
-                                            placeholder="Kg"
-                                          />
-                                          <TextInput
-                                            value={editingLoggedExerciseDraft.performedReps}
-                                            onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedReps: e.target.value } : prev)}
-                                            placeholder="Reps"
-                                          />
-                                        </div>
-                                      )}
-                                      <label className="inline-flex items-center gap-2 text-xs text-slate-700">
-                                        <input
-                                          type="checkbox"
-                                          checked={editingLoggedExerciseDraft.completed}
-                                          onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, completed: e.target.checked } : prev)}
-                                        />
-                                        Markert som fullført
-                                      </label>
-                                    </div>
-                                  ) : (
-                                    <div className="mt-1 text-xs text-slate-600">
-                                      {result.exerciseCategory === "Kondisjon"
-                                        ? `Utført: ${result.performedDurationMinutes || "0"} min${result.performedSpeed ? ` · ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` · ${result.performedIncline}% incline` : ""}`
-                                        : result.exerciseCategory === "Uttøyning"
-                                          ? `Utført: ${result.performedWeight || "0"} sek`
-                                          : `Utført: ${result.performedWeight || "0"} kg x ${result.performedReps || "0"} reps`}
-                                      {result.completed ? " - Fullført" : " - Ikke markert fullført"}
-                                    </div>
-                                  )}
-                                      </>
-                                    );
-                                  })()}
+                                      );
+                                    })}
+                                  </div>
                                 </div>
                               ))
                             )}
