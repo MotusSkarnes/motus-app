@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Repeat2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { GradientButton, OutlineButton, TextArea, TextInput } from "../app/ui";
@@ -57,7 +57,6 @@ export function LiveWorkoutSessionModal({
   trainerSubtitle,
   onWorkoutExerciseIndexChange,
 }: LiveWorkoutSessionModalProps) {
-  const workoutWeightInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [showReplacementOptions, setShowReplacementOptions] = useState(false);
   const [showWorkoutReflection, setShowWorkoutReflection] = useState(false);
   const [isSavingWorkout, setIsSavingWorkout] = useState(false);
@@ -190,8 +189,6 @@ export function LiveWorkoutSessionModal({
     row: WorkoutModeState["results"][number],
     field: "performedWeight" | "performedReps" | "performedDurationMinutes" | "performedSpeed" | "performedIncline",
     value: string,
-    rowIndex: number,
-    rows: WorkoutModeState["results"],
   ) {
     updateWorkoutExerciseResult(row.exerciseId, field, value);
     const isCardio = row.exerciseCategory === "Kondisjon";
@@ -208,14 +205,6 @@ export function LiveWorkoutSessionModal({
         : Number(nextWeight) > 0 && Number(nextReps) > 0;
     if (isCompleted && !row.completed) {
       updateWorkoutExerciseResult(row.exerciseId, "completed", true);
-    }
-    if (isCompleted && !row.completed && !isCardio && (field === "performedReps" || field === "performedWeight")) {
-      const nextRow = rows[rowIndex + 1];
-      if (!nextRow) return;
-      const nextInput = workoutWeightInputRefs.current[nextRow.exerciseId];
-      if (nextInput) {
-        window.requestAnimationFrame(() => nextInput.focus());
-      }
     }
   }
 
@@ -325,7 +314,7 @@ export function LiveWorkoutSessionModal({
                 </div>
               ) : null}
               <div className={`mt-3 ${currentWorkoutGroup.rows.length <= 3 ? "space-y-1.5" : "space-y-2"}`}>
-                {currentWorkoutGroup.rows.map((row, index) => {
+                {currentWorkoutGroup.rows.map((row) => {
                   const resolvedExercise = exerciseByName.get(row.exerciseName.trim().toLowerCase());
                   const isCardio = (row.exerciseCategory ?? resolvedExercise?.category) === "Kondisjon";
                   const isStretch = (row.exerciseCategory ?? resolvedExercise?.category) === "Uttøyning";
@@ -351,12 +340,9 @@ export function LiveWorkoutSessionModal({
                           <div className="space-y-1">
                             <div className="text-[11px] font-medium text-slate-500">Tid utført (min)</div>
                             <TextInput
-                              ref={(input) => {
-                                workoutWeightInputRefs.current[row.exerciseId] = input;
-                              }}
                               value={row.performedDurationMinutes ?? ""}
                               onChange={(e) =>
-                                handleWorkoutResultInputChange(row, "performedDurationMinutes", e.target.value, index, currentWorkoutGroup.rows)
+                                handleWorkoutResultInputChange(row, "performedDurationMinutes", e.target.value)
                               }
                               placeholder="0"
                               className={isCompactSetView ? "h-9 text-xs" : ""}
@@ -368,7 +354,7 @@ export function LiveWorkoutSessionModal({
                                 <div className="text-[11px] font-medium text-slate-500">Fart (km/t)</div>
                                 <TextInput
                                   value={row.performedSpeed ?? ""}
-                                  onChange={(e) => handleWorkoutResultInputChange(row, "performedSpeed", e.target.value, index, currentWorkoutGroup.rows)}
+                                  onChange={(e) => handleWorkoutResultInputChange(row, "performedSpeed", e.target.value)}
                                   placeholder="0"
                                   className={isCompactSetView ? "h-9 text-xs" : ""}
                                 />
@@ -378,7 +364,7 @@ export function LiveWorkoutSessionModal({
                                 <TextInput
                                   value={row.performedIncline ?? ""}
                                   onChange={(e) =>
-                                    handleWorkoutResultInputChange(row, "performedIncline", e.target.value, index, currentWorkoutGroup.rows)
+                                    handleWorkoutResultInputChange(row, "performedIncline", e.target.value)
                                   }
                                   placeholder="0"
                                   className={isCompactSetView ? "h-9 text-xs" : ""}
@@ -391,11 +377,8 @@ export function LiveWorkoutSessionModal({
                         <div className="space-y-1">
                           <div className="text-[11px] font-medium text-slate-500">Sekunder (hold)</div>
                           <TextInput
-                            ref={(input) => {
-                              workoutWeightInputRefs.current[row.exerciseId] = input;
-                            }}
                             value={row.performedWeight}
-                            onChange={(e) => handleWorkoutResultInputChange(row, "performedWeight", e.target.value, index, currentWorkoutGroup.rows)}
+                            onChange={(e) => handleWorkoutResultInputChange(row, "performedWeight", e.target.value)}
                             onFocus={(event) => event.currentTarget.select()}
                             placeholder="0"
                             className={`${isCompactSetView ? "h-9 text-xs" : ""} ${row.performedWeight === row.plannedWeight ? "text-slate-400" : "text-slate-800"}`}
@@ -406,11 +389,8 @@ export function LiveWorkoutSessionModal({
                           <div className="space-y-1">
                             <div className="text-[11px] font-medium text-slate-500">Kg utført</div>
                             <TextInput
-                              ref={(input) => {
-                                workoutWeightInputRefs.current[row.exerciseId] = input;
-                              }}
                               value={row.performedWeight}
-                              onChange={(e) => handleWorkoutResultInputChange(row, "performedWeight", e.target.value, index, currentWorkoutGroup.rows)}
+                              onChange={(e) => handleWorkoutResultInputChange(row, "performedWeight", e.target.value)}
                               onFocus={(event) => event.currentTarget.select()}
                               placeholder="0"
                               className={`${isCompactSetView ? "h-9 text-xs" : ""} ${row.performedWeight === row.plannedWeight ? "text-slate-400" : "text-slate-800"}`}
@@ -420,7 +400,7 @@ export function LiveWorkoutSessionModal({
                             <div className="text-[11px] font-medium text-slate-500">Reps utført</div>
                             <TextInput
                               value={row.performedReps}
-                              onChange={(e) => handleWorkoutResultInputChange(row, "performedReps", e.target.value, index, currentWorkoutGroup.rows)}
+                              onChange={(e) => handleWorkoutResultInputChange(row, "performedReps", e.target.value)}
                               onFocus={(event) => event.currentTarget.select()}
                               placeholder="0"
                               className={`${isCompactSetView ? "h-9 text-xs" : ""} ${row.performedReps === row.plannedReps ? "text-slate-400" : "text-slate-800"}`}

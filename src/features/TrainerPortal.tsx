@@ -593,7 +593,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const [periodPlanTitleDraft, setPeriodPlanTitleDraft] = useState("Periodeplan");
   const [periodPlanNotesDraft, setPeriodPlanNotesDraft] = useState("");
   const [periodPlanStartDateDraft, setPeriodPlanStartDateDraft] = useState(() => getDefaultPeriodPlanStartMondayISO());
-  const [periodPlanWeeksDraft, setPeriodPlanWeeksDraft] = useState("4");
+  const [periodPlanWeeksDraft, setPeriodPlanWeeksDraft] = useState("1");
   const [periodWeeklyPlansDraft, setPeriodWeeklyPlansDraft] = useState<WeeklySchedulePlan[]>([
     { id: uid("period-week"), weekNumber: 1, days: createEmptyWeeklyDayPlan() },
   ]);
@@ -1435,7 +1435,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     setPeriodPlanTitleDraft("Periodeplan");
     setPeriodPlanNotesDraft("");
     setPeriodPlanStartDateDraft(getDefaultPeriodPlanStartMondayISO());
-    setPeriodPlanWeeksDraft("4");
+    setPeriodPlanWeeksDraft("1");
     const firstWeek = { id: uid("period-week"), weekNumber: 1, days: createEmptyWeeklyDayPlan() };
     setPeriodWeeklyPlansDraft([firstWeek]);
     setActivePeriodWeekId(firstWeek.id);
@@ -4182,31 +4182,69 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                           </span>
                         </summary>
                         <div className="mt-3 space-y-3 border-t border-slate-200/80 pt-3">
-                        <div className="grid gap-2 md:grid-cols-2">
-                          <TextInput value={periodPlanTitleDraft} onChange={(e) => setPeriodPlanTitleDraft(e.target.value)} placeholder="Navn (f.eks. Sommerblokk uke 1-4)" />
-                          <TextInput value={periodPlanStartDateDraft} onChange={(e) => setPeriodPlanStartDateDraft(e.target.value)} type="date" />
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <label className="grid gap-1">
+                            <span className="text-xs font-medium text-slate-700">Navn på periodeplan</span>
+                            <span className="text-[11px] leading-snug text-slate-500">
+                              Tittel dere ser på planen (vises for kunden). F.eks. «Sommerblokk» eller «Rehab uke 1–4».
+                            </span>
+                            <TextInput
+                              value={periodPlanTitleDraft}
+                              onChange={(e) => setPeriodPlanTitleDraft(e.target.value)}
+                              placeholder="F.eks. Sommerblokk"
+                              autoComplete="off"
+                            />
+                          </label>
+                          <label className="grid gap-1">
+                            <span className="text-xs font-medium text-slate-700">Startdato</span>
+                            <span className="text-[11px] leading-snug text-slate-500">
+                              Første dag i <strong className="font-medium text-slate-600">uke 1</strong>. Vi anbefaler mandag som start — da matcher uketall og kalenderuker.
+                            </span>
+                            <TextInput value={periodPlanStartDateDraft} onChange={(e) => setPeriodPlanStartDateDraft(e.target.value)} type="date" />
+                          </label>
                         </div>
-                        <div className="grid gap-2 md:grid-cols-[160px_1fr]">
-                          <TextInput
-                            value={periodPlanWeeksDraft}
-                            onChange={(e) => handlePeriodPlanWeeksDraftChange(e.target.value)}
-                            placeholder="Antall uker"
-                            type="number"
-                          />
-                          <TextArea
-                            value={periodPlanNotesDraft}
-                            onChange={(e) => setPeriodPlanNotesDraft(e.target.value)}
-                            className="min-h-[70px]"
-                            placeholder="Overordnet fokus for perioden"
-                          />
+                        <div className="grid gap-3 md:grid-cols-[minmax(0,140px)_minmax(0,1fr)]">
+                          <label className="grid gap-1">
+                            <span className="text-xs font-medium text-slate-700">Antall uker</span>
+                            <span className="text-[11px] leading-snug text-slate-500">
+                              Hvor mange uker planen varer (1–12). Under «Uker i planen» vises én knapp per uke — samme antall som her.
+                            </span>
+                            <TextInput
+                              value={periodPlanWeeksDraft}
+                              onChange={(e) => handlePeriodPlanWeeksDraftChange(e.target.value)}
+                              placeholder="1–12"
+                              type="number"
+                              inputMode="numeric"
+                              min={1}
+                              max={12}
+                              className="text-center md:text-left"
+                            />
+                          </label>
+                          <label className="grid gap-1">
+                            <span className="text-xs font-medium text-slate-700">Notat til perioden</span>
+                            <span className="text-[11px] leading-snug text-slate-500">
+                              Overordnet mål, tema eller kommentar til hele blokken — valgfritt, lagres sammen med planen.
+                            </span>
+                            <TextArea
+                              value={periodPlanNotesDraft}
+                              onChange={(e) => setPeriodPlanNotesDraft(e.target.value)}
+                              className="min-h-[88px]"
+                              placeholder="F.eks. fokus teknikk, volum eller utstyr denne perioden"
+                            />
+                          </label>
                         </div>
                         {periodWeeklyPlansDraft.length > 0 ? (
                           <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                             <div>
                               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Uker i planen</div>
-                              <div className="text-[11px] text-slate-500">Klikk på ukene som skal bruke samme ukeplan. Markerte uker vises med gradient.</div>
+                              <div className="text-[11px] leading-snug text-slate-500">
+                                Én knapp per uke (samme antall som «Antall uker» over).{" "}
+                                <strong className="font-medium text-slate-600">Klikk</strong> en uke for å markere den med gradient — alle gradient-uker{" "}
+                                <strong className="font-medium text-slate-600">deler samme dagplan</strong> under.{" "}
+                                <strong className="font-medium text-slate-600">Turkis ring</strong> viser hvilken uke du redigerer nå.
+                              </div>
                             </div>
-                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
                               {periodWeeklyPlansDraft.slice(0, Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1))).map((week) => {
                                 const marked = week.usesGradientPlan === true;
                                 const isActive = activePeriodWeekId === week.id;
@@ -4215,7 +4253,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                                     key={week.id}
                                     type="button"
                                     onClick={() => toggleGradientPeriodWeek(week.id)}
-                                    className={`rounded-xl border p-3 text-left text-xs transition ${
+                                    className={`rounded-lg border px-1.5 py-2 text-center text-[11px] font-semibold leading-tight transition ${
                                       marked ? "text-white shadow-sm" : "bg-white text-slate-700 hover:bg-slate-50"
                                     } ${isActive ? "ring-2 ring-teal-200" : ""}`}
                                     style={
@@ -4225,7 +4263,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                                     }
                                     aria-pressed={marked}
                                   >
-                                    <span className="block font-semibold">Uke {week.weekNumber}</span>
+                                    Uke {week.weekNumber}
                                   </button>
                                 );
                               })}
@@ -4233,10 +4271,16 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                           </div>
                         ) : null}
                         <p className="text-[11px] text-slate-500 leading-snug">
-                          Alle gradient-merkede uker får samme ukeplan. Rediger en markert uke under, så oppdateres de andre markerte ukene samtidig.
+                          Alle gradient-merkede uker deler én ukedag-plan. Endrer du en dag under (for aktiv uke), oppdateres samme dag for alle gradient-ukene.
                         </p>
                         {activePeriodWeek ? (
-                          <div className="grid gap-2 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-2.5 py-2 text-[11px] leading-snug text-slate-600">
+                              <strong className="font-medium text-slate-700">Ukedager for aktiv uke:</strong> Velg for hver dag hvilket{" "}
+                              <strong className="font-medium text-slate-700">lagret program</strong> kunden skal følge, eller et alternativ som hvile / gruppetime.
+                              Gjelder ukedag-planen til den <strong className="font-medium text-slate-700">aktive uken</strong> (ring); gradient-uker speiler hverandre.
+                            </div>
+                            <div className="grid gap-2 md:grid-cols-2">
                             {WEEKDAY_PLAN_FIELDS.map((field) => {
                               const currentValue = activePeriodWeek.days[field.key];
                               const hasCurrentValueInOptions = periodPlanProgramOptions.some((option) => option.value === currentValue);
@@ -4254,6 +4298,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                                 </label>
                               );
                             })}
+                            </div>
                           </div>
                         ) : null}
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
