@@ -5,7 +5,10 @@ import "./index.css";
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    const reloadedFlag = "motus.sw.reloaded";
+    const deployId =
+      typeof __MOTUS_DEPLOY_ID__ !== "undefined" ? String(__MOTUS_DEPLOY_ID__ || "").trim() || "local" : "local";
+    const reloadedFlag = `motus.sw.reloaded.${deployId}`;
+
     const triggerOneTimeReload = () => {
       try {
         if (window.sessionStorage.getItem(reloadedFlag) === "1") return;
@@ -17,6 +20,16 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
     };
 
     navigator.serviceWorker.addEventListener("controllerchange", triggerOneTimeReload);
+
+    const pokeUpdate = () =>
+      void navigator.serviceWorker
+        .getRegistration()
+        .then((registration) => registration?.update())
+        .catch(() => {});
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") pokeUpdate();
+    });
 
     void navigator.serviceWorker
       .register("/sw.js", { scope: "/" })
