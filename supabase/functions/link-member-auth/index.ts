@@ -21,6 +21,13 @@ type MemberCandidate = {
   owner_user_id?: string | null;
 };
 
+type AuthMetadataUser = {
+  id: string;
+  email?: string | null;
+  app_metadata?: Record<string, unknown> | null;
+  user_metadata?: Record<string, unknown> | null;
+};
+
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -30,6 +37,14 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
 
 function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
+}
+
+function authRole(user: AuthMetadataUser): "member" | "trainer" | "" {
+  const appRole = user.app_metadata?.role;
+  if (appRole === "member" || appRole === "trainer") return appRole;
+  const userRole = user.user_metadata?.role;
+  if (userRole === "member" || userRole === "trainer") return userRole;
+  return "";
 }
 
 function firstNameFromEmail(email: string): string {
@@ -76,6 +91,24 @@ Deno.serve(async (req) => {
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
+  if (!token) {
+    return jsonResponse(401, { error: "Missing session token" });
+  }
+  const { data: requesterData, error: requesterError } = await adminClient.auth.getUser(token);
+  const requester = requesterData?.user as AuthMetadataUser | undefined;
+  if (requesterError || !requester) {
+    return jsonResponse(401, { error: "Invalid session token" });
+  }
+  const requesterId = String(requester.id ?? "").trim();
+  const requesterEmail = normalizeEmail(requester.email);
+  const requesterIsTrainer = authRole(requester) === "trainer";
+  const requesterMatchesTargetEmail = requesterEmail === email;
+  if (!requesterIsTrainer && !requesterMatchesTargetEmail) {
+    return jsonResponse(403, { error: "Not authorized to link this member" });
+  }
+
   const { data: memberRows, error: memberLookupError } = await adminClient
     .from("members")
     .select("id, owner_user_id, is_active, created_at, email")
@@ -83,7 +116,7 @@ Deno.serve(async (req) => {
   if (memberLookupError) {
     return jsonResponse(500, { error: `Could not resolve member by email: ${memberLookupError.message}` });
   }
-  const candidates = (memberRows ?? [])
+  let candidates = (memberRows ?? [])
     .map((row) => ({
       id: String((row as MemberCandidate).id ?? "").trim(),
       owner_user_id: String((row as MemberCandidate).owner_user_id ?? "").trim(),
@@ -130,10 +163,11 @@ Deno.serve(async (req) => {
     const fallbackId = memberId || String(matchedUser.user_metadata?.member_id ?? "").trim() || matchedUser.id;
     const fallbackName =
       String(matchedUser.user_metadata?.full_name ?? matchedUser.user_metadata?.name ?? "").trim() || firstNameFromEmail(email);
+    const fallbackOwnerUserId = requesterIsTrainer ? requesterId : matchedUser.id;
     const { error: upsertError } = await adminClient.from("members").upsert(
       {
         id: fallbackId,
-        owner_user_id: matchedUser.id,
+        owner_user_id: fallbackOwnerUserId,
         name: fallbackName,
         email,
         is_active: true,
@@ -151,7 +185,19 @@ Deno.serve(async (req) => {
     if (upsertError) {
       return jsonResponse(500, { error: `Could not create member row: ${upsertError.message}` });
     }
-    candidates.push({ id: fallbackId, owner_user_id: matchedUser.id, is_active: true, created_at: null });
+    candidates.push({ id: fallbackId, owner_user_id: fallbackOwnerUserId, is_active: true, created_at: null, email });
+  }
+
+  const candidateCountBeforeAuth = candidates.length;
+  candidates = candidates.filter((candidate) => {
+    const candidateOwnerUserId = String(candidate.owner_user_id ?? "").trim();
+    if (requesterIsTrainer) {
+      return candidateOwnerUserId === requesterId || (!candidateOwnerUserId && Boolean(memberId) && candidate.id === memberId);
+    }
+    return requesterMatchesTargetEmail && normalizeEmail(candidate.email) === email;
+  });
+  if (candidateCountBeforeAuth > 0 && candidates.length === 0) {
+    return jsonResponse(403, { error: "Not authorized to link this member row" });
   }
 
   const candidateIds = candidates.map((row) => row.id);
@@ -275,42 +321,56 @@ Deno.serve(async (req) => {
   let migratedLogs = 0;
   let migratedMessages = 0;
   const legacyProgramCounts: Record<string, number> = {};
+  const migrationOwnerScope = requesterIsTrainer ? requesterId : "";
   for (const legacyId of legacyMemberIds) {
     const normalizedLegacyId = String(legacyId ?? "").trim();
     if (!normalizedLegacyId || normalizedLegacyId === memberId) continue;
-    const { count: programCountBefore } = await adminClient
+    let programCountQuery = adminClient
       .from("training_programs")
       .select("id", { count: "exact", head: true })
       .eq("member_id", normalizedLegacyId);
+    if (migrationOwnerScope) {
+      programCountQuery = programCountQuery.eq("owner_user_id", migrationOwnerScope);
+    }
+    const { count: programCountBefore } = await programCountQuery;
     legacyProgramCounts[normalizedLegacyId] = Number(programCountBefore ?? 0);
 
-    const { data: programRows, error: programUpdateError } = await adminClient
+    let programUpdateQuery = adminClient
       .from("training_programs")
       .update({ member_id: memberId })
-      .eq("member_id", normalizedLegacyId)
-      .select("id");
+      .eq("member_id", normalizedLegacyId);
+    if (migrationOwnerScope) {
+      programUpdateQuery = programUpdateQuery.eq("owner_user_id", migrationOwnerScope);
+    }
+    const { data: programRows, error: programUpdateError } = await programUpdateQuery.select("id");
     if (programUpdateError) {
       console.warn(`link-member-auth: program member_id migrate failed for ${normalizedLegacyId}:`, programUpdateError.message);
     } else {
       migratedPrograms += (programRows ?? []).length;
     }
 
-    const { data: logRows, error: logUpdateError } = await adminClient
+    let logUpdateQuery = adminClient
       .from("workout_logs")
       .update({ member_id: memberId })
-      .eq("member_id", normalizedLegacyId)
-      .select("id");
+      .eq("member_id", normalizedLegacyId);
+    if (migrationOwnerScope) {
+      logUpdateQuery = logUpdateQuery.eq("owner_user_id", migrationOwnerScope);
+    }
+    const { data: logRows, error: logUpdateError } = await logUpdateQuery.select("id");
     if (logUpdateError) {
       console.warn(`link-member-auth: workout_log member_id migrate failed for ${normalizedLegacyId}:`, logUpdateError.message);
     } else {
       migratedLogs += (logRows ?? []).length;
     }
 
-    const { data: messageRows, error: messageUpdateError } = await adminClient
+    let messageUpdateQuery = adminClient
       .from("chat_messages")
       .update({ member_id: memberId })
-      .eq("member_id", normalizedLegacyId)
-      .select("id");
+      .eq("member_id", normalizedLegacyId);
+    if (migrationOwnerScope) {
+      messageUpdateQuery = messageUpdateQuery.eq("owner_user_id", migrationOwnerScope);
+    }
+    const { data: messageRows, error: messageUpdateError } = await messageUpdateQuery.select("id");
     if (messageUpdateError) {
       console.warn(`link-member-auth: chat_message member_id migrate failed for ${normalizedLegacyId}:`, messageUpdateError.message);
     } else {
@@ -365,35 +425,39 @@ Deno.serve(async (req) => {
   let explicitSourceLogs = 0;
   let explicitSourceMessages = 0;
   if (sourceMemberId && sourceMemberId !== memberId) {
+    const explicitSourceOwnerScope = requesterId;
     const programUpdate = adminClient
       .from("training_programs")
       .update({ member_id: memberId })
-      .eq("member_id", sourceMemberId);
+      .eq("member_id", sourceMemberId)
+      .eq("owner_user_id", explicitSourceOwnerScope);
     const logUpdate = adminClient
       .from("workout_logs")
       .update({ member_id: memberId })
-      .eq("member_id", sourceMemberId);
+      .eq("member_id", sourceMemberId)
+      .eq("owner_user_id", explicitSourceOwnerScope);
     const messageUpdate = adminClient
       .from("chat_messages")
       .update({ member_id: memberId })
-      .eq("member_id", sourceMemberId);
-    const scopedProgramUpdate = sourceOwnerUserId ? programUpdate.eq("owner_user_id", sourceOwnerUserId) : programUpdate;
-    const scopedLogUpdate = sourceOwnerUserId ? logUpdate.eq("owner_user_id", sourceOwnerUserId) : logUpdate;
-    const scopedMessageUpdate = sourceOwnerUserId ? messageUpdate.eq("owner_user_id", sourceOwnerUserId) : messageUpdate;
+      .eq("member_id", sourceMemberId)
+      .eq("owner_user_id", explicitSourceOwnerScope);
+    if (sourceOwnerUserId && sourceOwnerUserId !== explicitSourceOwnerScope) {
+      console.warn("link-member-auth: ignored untrusted explicit source owner scope");
+    }
 
-    const { data: movedPrograms, error: movedProgramsError } = await scopedProgramUpdate.select("id");
+    const { data: movedPrograms, error: movedProgramsError } = await programUpdate.select("id");
     if (movedProgramsError) {
       console.warn("link-member-auth: explicit source program migrate failed:", movedProgramsError.message);
     } else {
       explicitSourcePrograms = (movedPrograms ?? []).length;
     }
-    const { data: movedLogs, error: movedLogsError } = await scopedLogUpdate.select("id");
+    const { data: movedLogs, error: movedLogsError } = await logUpdate.select("id");
     if (movedLogsError) {
       console.warn("link-member-auth: explicit source log migrate failed:", movedLogsError.message);
     } else {
       explicitSourceLogs = (movedLogs ?? []).length;
     }
-    const { data: movedMessages, error: movedMessagesError } = await scopedMessageUpdate.select("id");
+    const { data: movedMessages, error: movedMessagesError } = await messageUpdate.select("id");
     if (movedMessagesError) {
       console.warn("link-member-auth: explicit source message migrate failed:", movedMessagesError.message);
     } else {
