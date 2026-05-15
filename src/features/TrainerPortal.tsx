@@ -8,7 +8,7 @@ import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhon
 import { uid } from "../app/storage";
 import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { useToastStatus } from "../app/toast";
-import motusLogo from "../assets/motus-logo-transparent.png";
+import motusLogo from "../assets/motus-logo-transparent.svg";
 import type { CreateMemberInput, UpdateMemberInput } from "../services/appRepository";
 import type { InviteMemberResult, InviteTrainerResult } from "../services/supabaseAuth";
 import type {

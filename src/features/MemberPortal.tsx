@@ -25,7 +25,7 @@ import {
   Users,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
-import motusLogo from "../assets/motus-logo-transparent.png";
+import motusLogo from "../assets/motus-logo-transparent.svg";
 import motusMarkBrush from "../assets/motus-mark-brush.png";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";

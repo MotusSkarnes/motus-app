@@ -3,7 +3,7 @@ import { LogOut, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { AuthUser, Role } from "../app/types";
 import { Card, OutlineButton, PillButton } from "../app/ui";
-import motusLogo from "../assets/motus-logo-transparent.png";
+import motusLogo from "../assets/motus-logo-transparent.svg";
 
 export function AppHeader({
   currentUser,
@@ -51,7 +51,7 @@ export function AppHeader({
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <img src={motusLogo} alt="Motus logo" className="h-14 w-auto object-contain" />
+            <img src={motusLogo} alt="Motus logo" className="h-10 w-auto object-contain sm:h-11" />
             {currentUser.role === "member" ? (
               <div className="flex items-center gap-1.5">
                 <button

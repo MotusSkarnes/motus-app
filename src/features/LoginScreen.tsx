@@ -1,6 +1,6 @@
 import { MOTUS } from "../app/data";
 import { Badge, Card, GradientButton, StatCard, StatusMessage, TextInput } from "../app/ui";
-import motusLogo from "../assets/motus-logo-transparent.png";
+import motusLogo from "../assets/motus-logo-transparent.svg";
 
 type LoginScreenProps = {
   email: string;
@@ -72,7 +72,7 @@ export function LoginScreen(props: LoginScreenProps) {
         <div className="mb-5 h-1.5 -mx-5 -mt-5 sm:-mx-8 sm:-mt-8 sm:mb-6" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 70%, ${MOTUS.acid} 100%)` }} />
         <div className="relative max-w-2xl space-y-6">
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <img src={motusLogo} alt="Motus logo" className="h-16 w-auto object-contain" />
+            <img src={motusLogo} alt="Motus logo" className="h-12 w-auto object-contain sm:h-14" />
             <div className="flex flex-wrap items-center gap-2">
               <Badge>Motus Coach</Badge>
               <Badge>Profesjonell PT-flyt</Badge>
