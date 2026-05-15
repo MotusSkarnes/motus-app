@@ -8,12 +8,12 @@ import { MemberPortal } from "./MemberPortal";
 
 type MemberAlert = {
   id: string;
-  kind: "message" | "program";
+  kind: "message" | "program" | "workout-comment";
   title: string;
   text: string;
   detail: string;
   timestamp: number;
-  targetTab: "messages" | "programs";
+  targetTab: "messages" | "programs" | "progress";
 };
 
 type MemberLayoutProps = {
@@ -198,7 +198,8 @@ export function MemberLayout({
           {memberNotificationsOpen ? (
             <div className="mt-3 max-h-52 overflow-y-auto space-y-2 pr-1">
               {memberVisibleAlerts.map((alert) => {
-                const AlertIcon = alert.kind === "message" ? MessageSquare : ClipboardList;
+                const AlertIcon =
+                  alert.kind === "message" ? MessageSquare : alert.kind === "workout-comment" ? TrendingUp : ClipboardList;
                 return (
                   <button
                     key={alert.id}

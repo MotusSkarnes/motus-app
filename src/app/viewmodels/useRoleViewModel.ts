@@ -34,6 +34,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
   } = useNotifications({
     messages: state.appState.messages,
     programs: state.appState.programs,
+    logs: state.appState.logs,
     members: state.appState.members,
     memberViewId: state.appState.memberViewId,
     setMemberTab: state.setMemberTab,
@@ -67,6 +68,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     saveProgramForMember: state.saveProgramForMember,
     deleteProgramById: state.deleteProgramById,
     sendTrainerMessage: state.sendTrainerMessage,
+    updateWorkoutLogTrainerComment: state.updateWorkoutLogTrainerComment,
     clearLocalChatCache: state.clearLocalChatCache,
     saveExercise: state.saveExercise,
     deleteExercise: state.deleteExercise,

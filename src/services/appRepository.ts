@@ -84,6 +84,13 @@ export type SetWorkoutLogResultsInput = {
   results: WorkoutLog["results"];
 };
 
+export type UpdateWorkoutLogTrainerCommentInput = {
+  logId: string;
+  trainerComment: string;
+  trainerCommentUpdatedAt?: string;
+  trainerCommentAuthorName?: string;
+};
+
 export type RemoveGroupWorkoutLogInput = {
   memberId: string;
   className: string;
@@ -153,6 +160,7 @@ export interface AppRepository {
   removeWorkoutLogResult(state: AppState, input: RemoveWorkoutLogResultInput): AppState;
   removeGroupWorkoutLog(state: AppState, input: RemoveGroupWorkoutLogInput): AppState;
   setWorkoutLogResults(state: AppState, input: SetWorkoutLogResultsInput): AppState;
+  updateWorkoutLogTrainerComment(state: AppState, input: UpdateWorkoutLogTrainerCommentInput): AppState;
   updateWorkoutNote(state: AppState, note: string): AppState;
   cancelWorkoutMode(state: AppState): AppState;
   finishWorkoutMode(state: AppState, input?: FinishWorkoutInput): AppState;
@@ -654,6 +662,30 @@ export function setWorkoutLogResultsInState(state: AppState, input: SetWorkoutLo
   };
 }
 
+export function updateWorkoutLogTrainerCommentInState(
+  state: AppState,
+  input: UpdateWorkoutLogTrainerCommentInput,
+): AppState {
+  const logId = input.logId.trim();
+  if (!logId) return state;
+  const nextComment = input.trainerComment.trim();
+  const nextUpdatedAt = nextComment ? input.trainerCommentUpdatedAt?.trim() || new Date().toISOString() : undefined;
+  const nextAuthorName = nextComment ? input.trainerCommentAuthorName?.trim() || undefined : undefined;
+  return {
+    ...state,
+    logs: state.logs.map((log) =>
+      log.id === logId
+        ? {
+            ...log,
+            trainerComment: nextComment || undefined,
+            trainerCommentUpdatedAt: nextUpdatedAt,
+            trainerCommentAuthorName: nextAuthorName,
+          }
+        : log,
+    ),
+  };
+}
+
 export function saveExerciseInState(state: AppState, input: SaveExerciseInput): AppState {
   const normalizedName = input.name.trim();
   const normalizedGroup = input.group.trim();
@@ -748,6 +780,7 @@ export const localAppRepository: AppRepository = {
   removeWorkoutLogResult: (state, input) => removeWorkoutLogResultInState(state, input),
   removeGroupWorkoutLog: (state, input) => removeGroupWorkoutLogInState(state, input),
   setWorkoutLogResults: (state, input) => setWorkoutLogResultsInState(state, input),
+  updateWorkoutLogTrainerComment: (state, input) => updateWorkoutLogTrainerCommentInState(state, input),
   updateWorkoutNote: updateWorkoutNoteInState,
   cancelWorkoutMode: cancelWorkoutModeInState,
   finishWorkoutMode: finishWorkoutModeInState,

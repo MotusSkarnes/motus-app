@@ -33,6 +33,7 @@ type TrainerLayoutProps = {
   saveProgramForMember: ComponentProps<typeof TrainerPortal>["saveProgramForMember"];
   deleteProgramById: ComponentProps<typeof TrainerPortal>["deleteProgramById"];
   sendTrainerMessage: ComponentProps<typeof TrainerPortal>["sendTrainerMessage"];
+  updateWorkoutLogTrainerComment?: ComponentProps<typeof TrainerPortal>["updateWorkoutLogTrainerComment"];
   clearLocalChatCache: ComponentProps<typeof TrainerPortal>["clearLocalChatCache"];
   saveExercise: ComponentProps<typeof TrainerPortal>["saveExercise"];
   deleteExercise: ComponentProps<typeof TrainerPortal>["deleteExercise"];
@@ -85,6 +86,7 @@ export function TrainerLayout({
   saveProgramForMember,
   deleteProgramById,
   sendTrainerMessage,
+  updateWorkoutLogTrainerComment,
   clearLocalChatCache,
   saveExercise,
   deleteExercise,
@@ -168,6 +170,7 @@ export function TrainerLayout({
     saveProgramForMember,
     deleteProgramById,
     sendTrainerMessage,
+    updateWorkoutLogTrainerComment,
     clearLocalChatCache,
     saveExercise,
     deleteExercise,

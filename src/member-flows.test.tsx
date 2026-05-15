@@ -20,7 +20,7 @@ describe("Member flows", () => {
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som Emma/i })[0]);
     await user.click(screen.getAllByRole("button", { name: "Trening" })[0]);
-    await user.click(screen.getByRole("button", { name: "Start økt" }));
+    await user.click(screen.getByRole("button", { name: "Start" }));
 
     expect(await screen.findByText("Økt-modus")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Avbryt" })).toBeInTheDocument();

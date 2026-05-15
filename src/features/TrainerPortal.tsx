@@ -103,6 +103,12 @@ type TrainerPortalProps = {
   }) => void;
   deleteProgramById: (programId: string, context?: { memberIds?: string[]; targetEmail?: string; targetName?: string }) => void;
   sendTrainerMessage: (memberId: string, text: string) => void;
+  updateWorkoutLogTrainerComment?: (input: {
+    logId: string;
+    trainerComment: string;
+    trainerCommentUpdatedAt?: string;
+    trainerCommentAuthorName?: string;
+  }) => void;
   clearLocalChatCache?: () => number;
   saveExercise: (input: {
     id?: string;
@@ -460,6 +466,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     saveProgramForMember,
     deleteProgramById,
     sendTrainerMessage,
+    updateWorkoutLogTrainerComment,
     clearLocalChatCache,
     saveExercise,
     deleteExercise,
@@ -691,6 +698,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const [workoutTypeFilter, setWorkoutTypeFilter] = useState<"all" | "program" | "group">("all");
   const [workoutSearchQuery, setWorkoutSearchQuery] = useState("");
   const [workoutSortOrder, setWorkoutSortOrder] = useState<"newest" | "oldest">("newest");
+  const [trainerWorkoutCommentDraft, setTrainerWorkoutCommentDraft] = useState("");
+  const [trainerWorkoutCommentStatus, setTrainerWorkoutCommentStatus] = useState<string | null>(null);
   useAutoClearStatus(trainerChatSendStatus, () => setTrainerChatSendStatus(null), getStatusClearDelayMs(trainerChatSendStatus));
   useAutoClearStatus(templateAssignStatus, () => setTemplateAssignStatus(null), getStatusClearDelayMs(templateAssignStatus));
   useAutoClearStatus(periodPlanStatus, () => setPeriodPlanStatus(null), getStatusClearDelayMs(periodPlanStatus));
@@ -707,6 +716,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   useAutoClearStatus(restoreExerciseBankStatus, () => setRestoreExerciseBankStatus(null), getStatusClearDelayMs(restoreExerciseBankStatus));
   useAutoClearStatus(followUpSaveStatus, () => setFollowUpSaveStatus(null), getStatusClearDelayMs(followUpSaveStatus));
   useAutoClearStatus(exerciseFormStatus, () => setExerciseFormStatus(null), getStatusClearDelayMs(exerciseFormStatus));
+  useAutoClearStatus(trainerWorkoutCommentStatus, () => setTrainerWorkoutCommentStatus(null), getStatusClearDelayMs(trainerWorkoutCommentStatus));
   useToastStatus(trainerChatSendStatus, { title: "Meldinger", tone: inferStatusTone });
   useToastStatus(programSaveStatus, { title: "Treningsprogram", tone: inferStatusTone });
   useToastStatus(inviteTrainerStatus, { title: "PT-invitasjon", tone: inferStatusTone });
@@ -714,6 +724,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   useToastStatus(memberEditStatus, { title: "Kundekort", tone: inferStatusTone });
   useToastStatus(memberLinkStatus, { title: "Medlemskobling", tone: inferStatusTone });
   useToastStatus(exerciseFormStatus, { title: "Øvelse", tone: inferStatusTone });
+  useToastStatus(trainerWorkoutCommentStatus, { title: "Øktkommentar", tone: inferStatusTone });
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
   const selectedMemberHasMessagingAccess = selectedMember
     ? selectedMember.customerType === "PT-kunde" || selectedMember.membershipType === "Premium"
@@ -1132,6 +1143,10 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     if (!selectedWorkoutLogId) return filteredWorkoutLogs[0];
     return filteredWorkoutLogs.find((log) => log.id === selectedWorkoutLogId) ?? filteredWorkoutLogs[0];
   }, [filteredWorkoutLogs, selectedWorkoutLogId]);
+
+  useEffect(() => {
+    setTrainerWorkoutCommentDraft(filteredSelectedWorkoutLog?.trainerComment ?? "");
+  }, [filteredSelectedWorkoutLog?.id, filteredSelectedWorkoutLog?.trainerComment]);
   function reflectionEmoji(level?: 1 | 2 | 3 | 4 | 5): string {
     if (!level) return "—";
     if (level <= 1) return "🥳";
@@ -1954,6 +1969,22 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         duplicateIds.forEach((id) => deleteProgramById(id, deleteContext));
       },
     });
+  }
+
+  function handleSaveWorkoutComment() {
+    if (!filteredSelectedWorkoutLog) return;
+    const trimmedComment = trainerWorkoutCommentDraft.trim();
+    if (!updateWorkoutLogTrainerComment) {
+      setTrainerWorkoutCommentStatus("Kunne ikke lagre kommentar akkurat nå.");
+      return;
+    }
+    updateWorkoutLogTrainerComment({
+      logId: filteredSelectedWorkoutLog.id,
+      trainerComment: trimmedComment,
+      trainerCommentUpdatedAt: trimmedComment ? new Date().toISOString() : undefined,
+      trainerCommentAuthorName: trainerAccountName.trim() || undefined,
+    });
+    setTrainerWorkoutCommentStatus(trimmedComment ? "Kommentar lagret." : "Kommentar fjernet.");
   }
 
   function handlePrintProgram(program: TrainingProgram) {
@@ -4557,6 +4588,34 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                             </div>
                             {filteredSelectedWorkoutLog.note ? <div className="mt-2 text-xs text-slate-600">Øktnotat: {filteredSelectedWorkoutLog.note}</div> : null}
                             {filteredSelectedWorkoutLog.reflection?.note ? <div className="mt-1 text-xs text-slate-600">Til PT: {filteredSelectedWorkoutLog.reflection.note}</div> : null}
+                          </div>
+                          <div className="rounded-2xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="font-medium text-slate-800">Kommentar til økten</div>
+                              <div className="text-[11px] text-slate-500">Varsler medlemmet</div>
+                            </div>
+                            <TextArea
+                              value={trainerWorkoutCommentDraft}
+                              onChange={(event) => setTrainerWorkoutCommentDraft(event.target.value)}
+                              placeholder="Skriv en kort kommentar til denne gjennomførte økten"
+                              className="mt-3 min-h-[110px]"
+                            />
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                              <div className="text-[11px] text-slate-500">
+                                {filteredSelectedWorkoutLog.trainerCommentUpdatedAt ? "Siste kommentar er sendt til medlem." : "Medlem får varsel når du lagrer."}
+                              </div>
+                              <GradientButton
+                                onClick={handleSaveWorkoutComment}
+                                className="px-4 py-2 text-xs"
+                                disabled={
+                                  !updateWorkoutLogTrainerComment ||
+                                  trainerWorkoutCommentDraft.trim() === String(filteredSelectedWorkoutLog.trainerComment ?? "").trim()
+                                }
+                              >
+                                Lagre kommentar
+                              </GradientButton>
+                            </div>
+                            {trainerWorkoutCommentStatus ? <div className="mt-2 text-xs text-slate-600">{trainerWorkoutCommentStatus}</div> : null}
                           </div>
                           {filteredSelectedWorkoutLog.results?.length ? (
                             <div className="space-y-2">

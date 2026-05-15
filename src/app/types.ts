@@ -145,6 +145,9 @@ export type WorkoutLog = {
   status: "Planlagt" | "Fullført";
   note: string;
   reflection?: WorkoutReflection;
+  trainerComment?: string;
+  trainerCommentUpdatedAt?: string;
+  trainerCommentAuthorName?: string;
   results?: WorkoutExerciseResult[];
 };
 

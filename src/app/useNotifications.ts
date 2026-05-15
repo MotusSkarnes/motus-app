@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ChatMessage, Member, MemberTab, TrainingProgram } from "./types";
+import type { ChatMessage, Member, MemberTab, TrainingProgram, WorkoutLog } from "./types";
 
 type MemberAlert = {
   id: string;
-  kind: "message" | "program";
+  kind: "message" | "program" | "workout-comment";
   title: string;
   text: string;
   detail: string;
   timestamp: number;
-  targetTab: "messages" | "programs";
+  targetTab: "messages" | "programs" | "progress";
 };
 
 type TrainerAlert = {
@@ -28,12 +28,14 @@ function parseTimestamp(value: string, fallbackOrder: number): number {
 export function useNotifications({
   messages,
   programs,
+  logs,
   members,
   memberViewId,
   setMemberTab,
 }: {
   messages: ChatMessage[];
   programs: TrainingProgram[];
+  logs: WorkoutLog[];
   members: Member[];
   memberViewId: string;
   setMemberTab: (tab: MemberTab) => void;
@@ -56,6 +58,16 @@ export function useNotifications({
     if (typeof window === "undefined") return [];
     try {
       const raw = window.localStorage.getItem("motus.notifications.memberSeenProgramIds");
+      const parsed = JSON.parse(raw ?? "[]");
+      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+    } catch {
+      return [];
+    }
+  });
+  const [seenMemberWorkoutCommentKeys, setSeenMemberWorkoutCommentKeys] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem("motus.notifications.memberSeenWorkoutCommentKeys");
       const parsed = JSON.parse(raw ?? "[]");
       return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
     } catch {
@@ -105,6 +117,36 @@ export function useNotifications({
     [programs, memberViewId]
   );
 
+  const memberWorkoutCommentAlerts = useMemo(
+    () =>
+      logs
+        .filter((log) => log.memberId === memberViewId)
+        .filter((log) => log.status === "FullfÃ¸rt")
+        .filter((log) => String(log.trainerComment ?? "").trim())
+        .map((log, index) => {
+          const updatedAt = String(log.trainerCommentUpdatedAt ?? "").trim();
+          const timestamp = updatedAt ? parseTimestamp(updatedAt, index + 1) : index + 1;
+          const comment = String(log.trainerComment ?? "").trim();
+          const authorName = String(log.trainerCommentAuthorName ?? "").trim();
+          const seenKey = `${log.id}:${updatedAt || comment}`;
+          return {
+            id: `member-workout-comment-${log.id}`,
+            kind: "workout-comment" as const,
+            title: "Ny kommentar på økten",
+            text: log.programTitle,
+            detail:
+              comment.length > 72
+                ? `${comment.slice(0, 72)}...`
+                : `${authorName ? `${authorName}: ` : ""}${comment}`,
+            timestamp,
+            targetTab: "progress" as const,
+            unread: !seenMemberWorkoutCommentKeys.includes(seenKey),
+            seenKey,
+          };
+        }),
+    [logs, memberViewId, seenMemberWorkoutCommentKeys],
+  );
+
   const memberTrainerMessages = useMemo(
     () =>
       messages
@@ -151,10 +193,10 @@ export function useNotifications({
 
   const memberUnreadAlerts = useMemo(
     () =>
-      [...memberMessageAlerts, ...memberProgramAlerts]
+      [...memberMessageAlerts, ...memberProgramAlerts, ...memberWorkoutCommentAlerts]
         .filter((alert) => ("unread" in alert ? alert.unread : alert.timestamp > memberAlertsSeenAt))
         .sort((a, b) => b.timestamp - a.timestamp),
-    [memberMessageAlerts, memberProgramAlerts, memberAlertsSeenAt]
+    [memberMessageAlerts, memberProgramAlerts, memberWorkoutCommentAlerts, memberAlertsSeenAt]
   );
 
   const trainerUnreadCount = useMemo(
@@ -177,12 +219,15 @@ export function useNotifications({
     setMemberNotificationsOpen(willOpen);
     if (willOpen) {
       setMemberVisibleAlerts(memberUnreadAlerts);
-      const latestAlertTime = [...memberMessageAlerts, ...memberProgramAlerts].reduce(
+      const latestAlertTime = [...memberMessageAlerts, ...memberProgramAlerts, ...memberWorkoutCommentAlerts].reduce(
         (max, alert) => Math.max(max, alert.timestamp),
         0
       );
       setMemberAlertsSeenAt(latestAlertTime);
       setSeenMemberProgramIds((prev) => Array.from(new Set([...prev, ...memberPrograms.map((program) => program.id)])));
+      setSeenMemberWorkoutCommentKeys((prev) =>
+        Array.from(new Set([...prev, ...memberWorkoutCommentAlerts.map((alert) => alert.seenKey)])),
+      );
       return;
     }
     setMemberVisibleAlerts([]);
@@ -207,6 +252,14 @@ export function useNotifications({
     if (typeof window === "undefined") return;
     window.localStorage.setItem("motus.notifications.memberSeenProgramIds", JSON.stringify(seenMemberProgramIds));
   }, [seenMemberProgramIds]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      "motus.notifications.memberSeenWorkoutCommentKeys",
+      JSON.stringify(seenMemberWorkoutCommentKeys),
+    );
+  }, [seenMemberWorkoutCommentKeys]);
 
   return {
     trainerNotificationsOpen,

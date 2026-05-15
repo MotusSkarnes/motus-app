@@ -31,6 +31,7 @@ import {
   type StartCustomWorkoutInput,
   type StartWorkoutModeOptions,
   type UpdateMemberInput,
+  type UpdateWorkoutLogTrainerCommentInput,
   type UpdateWorkoutResultInput,
 } from "./appRepository";
 import { supabaseClient } from "./supabaseClient";
@@ -1187,7 +1188,7 @@ async function deleteMemberFromSupabase(member: { id: string; email?: string }) 
 async function persistWorkoutLog(log: WorkoutLog) {
   if (!supabaseClient) return;
   const memberId = await resolveCanonicalMemberIdForPersistence(log.memberId, {});
-  const serializedNote = serializeWorkoutNote(log.note, log.reflection);
+  const serializedNote = serializeWorkoutNote(log);
   const invokeResult = await supabaseClient.functions.invoke("persist-workout-log", {
     body: {
       id: log.id,
@@ -1292,22 +1293,61 @@ function mapIsoToProgramDate(iso: string): string {
 
 const WORKOUT_REFLECTION_PREFIX = "__MOTUS_REFLECTION__";
 
-function serializeWorkoutNote(note: string, reflection?: WorkoutLog["reflection"]): string {
-  const cleanNote = note.trim();
-  if (!reflection) return cleanNote;
-  const payload = JSON.stringify(reflection);
+function serializeWorkoutNote(
+  log: Pick<WorkoutLog, "note" | "reflection" | "trainerComment" | "trainerCommentUpdatedAt" | "trainerCommentAuthorName">,
+): string {
+  const cleanNote = log.note.trim();
+  const cleanTrainerComment = String(log.trainerComment ?? "").trim();
+  if (!log.reflection && !cleanTrainerComment) return cleanNote;
+  const payload = JSON.stringify({
+    ...(log.reflection ? { reflection: log.reflection } : {}),
+    ...(cleanTrainerComment
+      ? {
+          trainerComment: cleanTrainerComment,
+          trainerCommentUpdatedAt: String(log.trainerCommentUpdatedAt ?? "").trim() || new Date().toISOString(),
+          trainerCommentAuthorName: String(log.trainerCommentAuthorName ?? "").trim(),
+        }
+      : {}),
+  });
   return `${WORKOUT_REFLECTION_PREFIX}${payload}\n${cleanNote}`;
 }
 
-function parseWorkoutNote(rawNote: unknown): { note: string; reflection?: WorkoutLog["reflection"] } {
+function isWorkoutReflectionPayload(value: unknown): value is NonNullable<WorkoutLog["reflection"]> {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.energyLevel === "number" &&
+    typeof candidate.difficultyLevel === "number" &&
+    typeof candidate.motivationLevel === "number"
+  );
+}
+
+function parseWorkoutNote(
+  rawNote: unknown,
+): Pick<WorkoutLog, "note" | "reflection" | "trainerComment" | "trainerCommentUpdatedAt" | "trainerCommentAuthorName"> {
   const note = String(rawNote ?? "");
   if (!note.startsWith(WORKOUT_REFLECTION_PREFIX)) return { note };
   const newlineIndex = note.indexOf("\n");
   const payload = newlineIndex >= 0 ? note.slice(WORKOUT_REFLECTION_PREFIX.length, newlineIndex) : note.slice(WORKOUT_REFLECTION_PREFIX.length);
   const plainNote = newlineIndex >= 0 ? note.slice(newlineIndex + 1) : "";
   try {
-    const parsed = JSON.parse(payload) as WorkoutLog["reflection"];
-    return { note: plainNote, reflection: parsed };
+    const parsed = JSON.parse(payload) as unknown;
+    if (isWorkoutReflectionPayload(parsed)) {
+      return { note: plainNote, reflection: parsed };
+    }
+    if (!parsed || typeof parsed !== "object") return { note: plainNote };
+    const envelope = parsed as Record<string, unknown>;
+    const reflection = isWorkoutReflectionPayload(envelope.reflection) ? envelope.reflection : undefined;
+    const trainerComment = String(envelope.trainerComment ?? "").trim();
+    const trainerCommentUpdatedAt = String(envelope.trainerCommentUpdatedAt ?? "").trim();
+    const trainerCommentAuthorName = String(envelope.trainerCommentAuthorName ?? "").trim();
+    return {
+      note: plainNote,
+      reflection,
+      trainerComment: trainerComment || undefined,
+      trainerCommentUpdatedAt: trainerCommentUpdatedAt || undefined,
+      trainerCommentAuthorName: trainerCommentAuthorName || undefined,
+    };
   } catch {
     return { note: plainNote };
   }
@@ -1446,6 +1486,9 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
         status: log.status === "Planlagt" ? "Planlagt" : "Fullført",
         note: parsedNote.note,
         reflection: parsedNote.reflection,
+        trainerComment: parsedNote.trainerComment,
+        trainerCommentUpdatedAt: parsedNote.trainerCommentUpdatedAt,
+        trainerCommentAuthorName: parsedNote.trainerCommentAuthorName,
         results: Array.isArray(log.results) ? (log.results as WorkoutExerciseResult[]) : undefined,
       } as WorkoutLog;
     }),
@@ -1647,6 +1690,9 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
         status: log.status === "Planlagt" ? "Planlagt" : "Fullført",
         note: parsedNote.note,
         reflection: parsedNote.reflection,
+        trainerComment: parsedNote.trainerComment,
+        trainerCommentUpdatedAt: parsedNote.trainerCommentUpdatedAt,
+        trainerCommentAuthorName: parsedNote.trainerCommentAuthorName,
         results: Array.isArray(log.results) ? (log.results as WorkoutExerciseResult[]) : undefined,
       } as WorkoutLog;
     }),
@@ -1794,6 +1840,9 @@ export async function fetchLogsFromSupabase(): Promise<WorkoutLog[] | null> {
       status: row.status === "Planlagt" ? "Planlagt" : "Fullført",
       note: parsedNote.note,
       reflection: parsedNote.reflection,
+      trainerComment: parsedNote.trainerComment,
+      trainerCommentUpdatedAt: parsedNote.trainerCommentUpdatedAt,
+      trainerCommentAuthorName: parsedNote.trainerCommentAuthorName,
       results: Array.isArray(row.results) ? (row.results as WorkoutExerciseResult[]) : undefined,
     };
   });
@@ -2021,6 +2070,14 @@ export const supabaseAppRepository: AppRepository = {
   },
   setWorkoutLogResults(state: AppState, input: SetWorkoutLogResultsInput): AppState {
     const nextState = localAppRepository.setWorkoutLogResults(state, input);
+    const updatedLog = nextState.logs.find((log) => log.id === input.logId);
+    if (updatedLog) {
+      void persistWorkoutLog(updatedLog);
+    }
+    return nextState;
+  },
+  updateWorkoutLogTrainerComment(state: AppState, input: UpdateWorkoutLogTrainerCommentInput): AppState {
+    const nextState = localAppRepository.updateWorkoutLogTrainerComment(state, input);
     const updatedLog = nextState.logs.find((log) => log.id === input.logId);
     if (updatedLog) {
       void persistWorkoutLog(updatedLog);

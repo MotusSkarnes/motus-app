@@ -4047,6 +4047,12 @@ export function MemberPortal(props: MemberPortalProps) {
                             {selectedCalendarLog ? (
                               <div className="rounded-lg border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Detaljer fra økta</div>
+                                {selectedCalendarLog.trainerComment ? (
+                                  <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                                    <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Kommentar fra trener</div>
+                                    <div className="mt-1">{selectedCalendarLog.trainerComment}</div>
+                                  </div>
+                                ) : null}
                                 {selectedCalendarLog.results?.length ? (
                                   <div className="mt-2 space-y-2">
                                     {selectedCalendarLog.results.map((result, index) => (
@@ -4856,6 +4862,12 @@ export function MemberPortal(props: MemberPortalProps) {
                         </GradientButton>
                       </div>
                       {log.note ? <div className="mt-2 text-sm text-slate-600">{log.note}</div> : null}
+                      {log.trainerComment ? (
+                        <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                          <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Kommentar fra trener</div>
+                          <div className="mt-1">{log.trainerComment}</div>
+                        </div>
+                      ) : null}
                       {expandedRecentLogId === log.id ? (
                         <div className="mt-3 rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Utført i økta</div>

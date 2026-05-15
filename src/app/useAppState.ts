@@ -1094,6 +1094,15 @@ export function useAppState() {
     setAppState((prev) => repository.setWorkoutLogResults(prev, input));
   }
 
+  function updateWorkoutLogTrainerComment(input: {
+    logId: string;
+    trainerComment: string;
+    trainerCommentUpdatedAt?: string;
+    trainerCommentAuthorName?: string;
+  }) {
+    setAppState((prev) => repository.updateWorkoutLogTrainerComment(prev, input));
+  }
+
   function updateWorkoutModeNote(note: string) {
     setAppState((prev) => repository.updateWorkoutNote(prev, note));
   }
@@ -1272,6 +1281,7 @@ export function useAppState() {
     replaceWorkoutExerciseGroup,
     removeWorkoutLogResult,
     setWorkoutLogResults,
+    updateWorkoutLogTrainerComment,
     updateWorkoutModeNote,
     finishWorkoutMode,
     logGroupWorkout,
