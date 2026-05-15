@@ -309,9 +309,8 @@ async function resolveRelatedMemberIds(
   if (!supabaseClient) return memberId ? [memberId] : [];
   const trimmedMemberId = memberId.trim();
   const hintedEmail = String(hints?.targetEmail ?? "").trim().toLowerCase();
-  const hintedName = String(hints?.targetName ?? "").trim().toLowerCase();
-  if (!trimmedMemberId && !hintedEmail && !hintedName) return [];
-  if ((trimmedMemberId === "__template__" || trimmedMemberId.startsWith("auth-")) && !hintedEmail && !hintedName) {
+  if (!trimmedMemberId && !hintedEmail) return [];
+  if ((trimmedMemberId === "__template__" || trimmedMemberId.startsWith("auth-")) && !hintedEmail) {
     return [];
   }
   const { data: memberRow, error: memberLookupError } = await supabaseClient
@@ -330,16 +329,9 @@ async function resolveRelatedMemberIds(
   if (rowsByEmail.error) {
     console.warn("Supabase related member lookup by email failed:", rowsByEmail.error.message);
   }
-  const rowsByName =
-    hintedName
-      ? await supabaseClient.from("members").select("id").ilike("name", hintedName)
-      : { data: [], error: null as { message: string } | null };
-  if (rowsByName.error) {
-    console.warn("Supabase related member lookup by name failed:", rowsByName.error.message);
-  }
   const ids = Array.from(
     new Set(
-      [...(rowsByEmail.data ?? []), ...(rowsByName.data ?? [])]
+      (rowsByEmail.data ?? [])
         .map((row) => String((row as { id?: string }).id ?? "").trim())
         .filter((id) => Boolean(id) && id !== "__template__" && !id.startsWith("auth-"))
     )

@@ -161,17 +161,11 @@ Deno.serve(async (req) => {
   const normalizedTargetEmails = new Set<string>(
     [targetEmailForUpdate, currentEmail, ...requestedEmails].map((value) => normalizeEmail(value)).filter(Boolean),
   );
-  const normalizedTargetNames = new Set<string>(
-    [
-      normalizeString(payload.targetName).toLowerCase(),
-      normalizeString(changes.name).toLowerCase(),
-      ...(visibleAnchors ?? []).map((row) => normalizeString((row as { name?: string | null }).name).toLowerCase()),
-    ].filter(Boolean),
-  );
   let expandedRows: Array<{ id: string; email: string; owner_user_id: string | null; customer_type: string | null }> = [];
-  if (normalizedTargetEmails.size || normalizedTargetNames.size) {
+  if (normalizedTargetEmails.size) {
     // Legacy data can contain casing/whitespace variants in email, so do a broad fetch
     // and normalize in-memory to find all duplicates that should sync together.
+    // Never match by display name — common names (e.g. "Emil") would overwrite unrelated members.
     const { data: allRows, error: allRowsError } = await adminClient
       .from("members")
       .select("id,email,name,owner_user_id,customer_type");
@@ -180,10 +174,7 @@ Deno.serve(async (req) => {
     }
     expandedRows = (allRows ?? []).filter((row) => {
       const rowEmail = normalizeEmail(row.email);
-      if (rowEmail && normalizedTargetEmails.has(rowEmail)) return true;
-      const rowName = normalizeString((row as { name?: string | null }).name).toLowerCase();
-      if (rowName && normalizedTargetNames.has(rowName)) return true;
-      return false;
+      return Boolean(rowEmail && normalizedTargetEmails.has(rowEmail));
     });
   }
   const visibleExpandedRows = expandedRows.filter(() => {

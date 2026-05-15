@@ -3223,6 +3223,40 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       setFollowUpSaveStatus("Notat lagret.");
   }
 
+  function renderNewMemberForm(options?: { id?: string; title?: string }) {
+    const title = options?.title ?? "Legg til medlem";
+    return (
+      <div
+        id={options?.id}
+        className="scroll-mt-24 rounded-xl border bg-slate-50 p-4 space-y-3"
+        style={{ borderColor: "rgba(15,23,42,0.08)" }}
+      >
+        <div className="text-sm font-semibold text-slate-700">{title}</div>
+        <TextInput value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="Navn" />
+        <TextInput value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} placeholder="E-post" />
+        <TextInput value={newMemberPhone} onChange={(e) => setNewMemberPhone(e.target.value)} placeholder="Telefon (valgfritt)" />
+        <TextInput value={newMemberGoal} onChange={(e) => setNewMemberGoal(e.target.value)} placeholder="Hovedmål (valgfritt)" />
+        <TextInput value={newMemberFocus} onChange={(e) => setNewMemberFocus(e.target.value)} placeholder="Fokus (valgfritt)" />
+        <SelectBox
+          value={newMemberInviteType}
+          onChange={(value) => setNewMemberInviteType(value as "PT-kunde" | "Premium-kunde" | "Medlem")}
+          options={[
+            { value: "PT-kunde", label: "Type ved invitasjon: PT-kunde" },
+            { value: "Premium-kunde", label: "Type ved invitasjon: Premium-kunde" },
+            { value: "Medlem", label: "Type ved invitasjon: Medlem" },
+          ]}
+        />
+        {newMemberError ? <StatusMessage message={newMemberError} tone="error" className="!rounded-xl !px-3 !py-2 !text-xs" /> : null}
+        <GradientButton onClick={() => submitNewMember()} className="w-full md:w-auto">
+          Opprett kunde
+        </GradientButton>
+        <OutlineButton onClick={() => submitNewMember({ inviteAfterCreate: true })} className="w-full md:w-auto">
+          Opprett + send invitasjon
+        </OutlineButton>
+      </div>
+    );
+  }
+
   return (
     <>
     <div className="space-y-4 sm:space-y-6">
@@ -3612,7 +3646,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
               <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Users className="h-5 w-5" /></div>
               <div>
                 <h2 className="text-xl font-semibold tracking-tight">Kunder</h2>
-                <p className="text-sm text-slate-500">Velg kunde fra rullgardin og filtrer listen</p>
+                <p className="text-sm text-slate-500">Velg kunde, filtrer listen, eller legg til ny kunde nedenfor</p>
               </div>
             </div>
             <div className="mt-5 space-y-3">
@@ -3683,6 +3717,10 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 {showInactiveMembers ? "Skjul inaktive" : "Vis inaktive"}
               </OutlineButton>
             </div>
+          </Card>
+
+          <Card className={`p-4 ${showCustomerToolsMobile ? "block" : "hidden"} lg:block`}>
+            {renderNewMemberForm({ title: "Legg til ny kunde" })}
           </Card>
 
           <Card className="p-4 sm:p-5 w-full">
@@ -5446,32 +5484,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
               />
             ) : null}
           </div>
-          <div
-            id="admin-legg-til-medlem"
-            className="scroll-mt-24 rounded-xl border bg-slate-50 p-4 space-y-3"
-            style={{ borderColor: "rgba(15,23,42,0.08)" }}
-          >
-            <div className="text-sm font-semibold text-slate-700">Legg til medlem</div>
-            <TextInput value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="Navn" />
-            <TextInput value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} placeholder="E-post" />
-            <TextInput value={newMemberPhone} onChange={(e) => setNewMemberPhone(e.target.value)} placeholder="Telefon (valgfritt)" />
-            <TextInput value={newMemberGoal} onChange={(e) => setNewMemberGoal(e.target.value)} placeholder="Hovedmål (valgfritt)" />
-            <TextInput value={newMemberFocus} onChange={(e) => setNewMemberFocus(e.target.value)} placeholder="Fokus (valgfritt)" />
-            <SelectBox
-              value={newMemberInviteType}
-              onChange={(value) => setNewMemberInviteType(value as "PT-kunde" | "Premium-kunde" | "Medlem")}
-              options={[
-                { value: "PT-kunde", label: "Type ved invitasjon: PT-kunde" },
-                { value: "Premium-kunde", label: "Type ved invitasjon: Premium-kunde" },
-                { value: "Medlem", label: "Type ved invitasjon: Medlem" },
-              ]}
-            />
-            {newMemberError ? <StatusMessage message={newMemberError} tone="error" className="!rounded-xl !px-3 !py-2 !text-xs" /> : null}
-            <GradientButton onClick={() => submitNewMember()} className="w-full md:w-auto">Opprett medlem</GradientButton>
-            <OutlineButton onClick={() => submitNewMember({ inviteAfterCreate: true })} className="w-full md:w-auto">
-              Opprett + send invitasjon
-            </OutlineButton>
-          </div>
+          {renderNewMemberForm({ id: "admin-legg-til-medlem", title: "Legg til medlem" })}
           <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <div className="text-sm font-semibold text-slate-700">Gjenopprett slettet klient</div>
             <TextInput value={restoreEmail} onChange={(e) => setRestoreEmail(e.target.value)} placeholder="E-post til slettet klient" />

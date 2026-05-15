@@ -160,21 +160,7 @@ Deno.serve(async (req) => {
     if (!targetEmail) return true;
     return email === targetEmail;
   });
-  if (targetEmail && duplicateGroups.length === 0) {
-    const seedRows = memberRows.filter((row) => normalizeEmail(row.email) === targetEmail);
-    const seedNames = new Set(seedRows.map((row) => String(row.name ?? "").trim().toLowerCase()).filter(Boolean));
-    if (seedNames.size > 0) {
-      const connectedRows = memberRows.filter((row) => {
-        const emailKey = normalizeEmail(row.email);
-        if (emailKey === targetEmail) return true;
-        const nameKey = String(row.name ?? "").trim().toLowerCase();
-        return Boolean(nameKey) && seedNames.has(nameKey);
-      });
-      if (connectedRows.length > 1) {
-        duplicateGroups.push([targetEmail, connectedRows]);
-      }
-    }
-  }
+  // Do not group unrelated members by display name — only duplicate emails are merged.
   const groupResults: Array<Record<string, unknown>> = [];
 
   const authUsersByEmail = new Map<string, string[]>();
