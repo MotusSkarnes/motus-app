@@ -3818,28 +3818,6 @@ export function MemberPortal(props: MemberPortalProps) {
         <div className="min-w-0 w-full space-y-4 sm:space-y-6">
           {memberTab === "overview" ? (
             <Card className="min-w-0 w-full p-4 sm:p-6 flex flex-col gap-5 sm:gap-6">
-              <div className="hidden w-full sm:block rounded-[22px] p-4 sm:p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm text-white/80">Hei{viewedMember ? `, ${viewedMember.name}` : ""}</div>
-                  <div className="relative h-12 w-12 overflow-hidden rounded-full border border-white/40 bg-white/20 text-white/80">
-                    <ClientAvatarFallback iconClassName="h-8 w-8" />
-                    {memberAvatarUrl ? (
-                      <img
-                        src={memberAvatarUrl}
-                        alt="Profilbilde"
-                        className="relative z-10 h-full w-full object-cover"
-                        loading="lazy"
-                        decoding="async"
-                        onError={(event) => {
-                          event.currentTarget.style.display = "none";
-                        }}
-                      />
-                    ) : null}
-                  </div>
-                </div>
-                <div className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">Klar for i dag?</div>
-                <div className="mt-2 text-sm text-white/90">Alt du trenger for dagens økt ligger under.</div>
-              </div>
               {!isMemberLimited ? (
               <div className="order-2 flex items-end justify-between gap-3">
                 <div>
