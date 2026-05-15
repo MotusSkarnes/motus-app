@@ -5503,7 +5503,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       </div>
 
                       <div>
-                        <h3 className="text-xl font-bold tracking-tight text-white drop-shadow-sm sm:text-2xl">Ukesoppsummering til Facebook</h3>
+                        <h3 className="text-xl font-bold tracking-tight text-white drop-shadow-sm sm:text-2xl">Ukesoppsummering</h3>
                         <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-white/88">
                           Siste 7 dager — et delbart kort med mine tall og løftefakta, laget for treningsfeed.
                         </p>
