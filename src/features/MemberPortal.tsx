@@ -508,43 +508,85 @@ function computeLiftVolumeKgWeekAndMonth(
   return { weekKg, monthKg };
 }
 
-/** Artig «løftevolum»-tekst (vekt × reps) for progresjonskort — uke først, så måned. */
-function buildProgressLiftPlayfulLineFromKg(weekKg: number, monthKg: number): string {
+function computeShareCardLast7DaysStats(
+  completedLogs: WorkoutLog[],
+  nowTimestamp: number,
+): { workouts: number; trainingDays: number; volumeKg: number; completedSets: number } {
+  const today = getStartOfDay(new Date(nowTimestamp));
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+
+  const parseNum = (raw: string | undefined): number => {
+    const n = Number(String(raw ?? "").replace(",", ".").trim());
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  };
+
+  let workouts = 0;
+  let volumeKg = 0;
+  let completedSets = 0;
+  const dayKeys = new Set<string>();
+
+  for (const log of completedLogs) {
+    const d = parseLogDate(log.date);
+    if (!d) continue;
+    const day = getStartOfDay(d);
+    if (day.getTime() < start.getTime() || day.getTime() > today.getTime()) continue;
+    workouts += 1;
+    dayKeys.add(day.toDateString());
+    for (const result of log.results ?? []) {
+      if (!result.completed) continue;
+      completedSets += 1;
+      if (result.exerciseCategory === "Uttøyning") continue;
+      const durationMinutes = parseNum(result.performedDurationMinutes);
+      const weight = parseNum(result.performedWeight);
+      const reps = parseNum(result.performedReps);
+      if (durationMinutes > 0 && weight <= 0) continue;
+      if (weight > 0 && reps > 0) volumeKg += weight * reps;
+    }
+  }
+
+  return {
+    workouts,
+    trainingDays: dayKeys.size,
+    volumeKg,
+    completedSets,
+  };
+}
+
+/** Artig «løftevolum»-tekst for skrytekort basert på siste 7 dager. */
+function buildProgressLiftPlayfulLineFromKg(weekKg: number): string {
   const fmt = (n: number) => Math.round(n).toLocaleString("nb-NO");
 
-  const lineFor = (kg: number, periodWhen: string): string | null => {
+  const lineFor = (kg: number): string | null => {
     if (!Number.isFinite(kg) || kg < 1) return null;
     if (kg >= 5500) {
-      return `${periodWhen} har jeg løftet ca. ${fmt(kg)} kg totalt (vekt × reps) — grovt i samme gate som massen til en afrikansk elefant. Skryt lov! 🐘`;
+      return `Siste 7 dager har jeg løftet ca. ${fmt(kg)} kg totalt - omtrent som en flodhest.`;
     }
     if (kg >= 3200) {
-      return `${periodWhen} har jeg flyttet ca. ${fmt(kg)} kg med stanga — omtrent som ei lita elbil i masse, fordelt på mange reps. Tag en venn! 🚗`;
+      return `Siste 7 dager har jeg flyttet ca. ${fmt(kg)} kg - omtrent som en liten bil i total vekt.`;
     }
     if (kg >= 1600) {
-      return `${periodWhen} har jeg logget ca. ${fmt(kg)} kg i volum — som å løfte et flygel mange ganger (ca. 300 kg per piano). 🎹`;
+      return `Siste 7 dager har jeg logget ca. ${fmt(kg)} kg - omtrent som flere flygel i samlet vekt.`;
     }
     if (kg >= 700) {
-      return `${periodWhen} har jeg presset gjennom ca. ${fmt(kg)} kg i vekt × reps — omtrent som flere voksne summet. Klart for feed! 🙌`;
+      return `Siste 7 dager har jeg løftet ca. ${fmt(kg)} kg - omtrent som flere voksne til sammen.`;
     }
     if (kg >= 250) {
       const people = Math.max(2, Math.round(kg / 72));
-      return `${periodWhen} har jeg samlet ca. ${fmt(kg)} kg — grovt som å bære ${people} voksne samtidig — i løft-ekvivalent. 💪`;
+      return `Siste 7 dager har jeg samlet ca. ${fmt(kg)} kg - omtrent som ${people} voksne til sammen.`;
     }
     if (kg >= 60) {
       const melons = Math.max(6, Math.round(kg / 8));
-      return `${periodWhen} ble det ca. ${fmt(kg)} kg for meg — omtrent like tungt som ${melons} store vannmeloner. Del gjerne! 🍉`;
+      return `Siste 7 dager ble det ca. ${fmt(kg)} kg for meg - omtrent som ${melons} store vannmeloner.`;
     }
     if (kg >= 15) {
-      return `${periodWhen} har jeg logget ca. ${fmt(kg)} kg i stramme vekt × reps — nok til at en golden retriever hadde blitt imponert. 🐕`;
+      return `Siste 7 dager har jeg logget ca. ${fmt(kg)} kg i vekt x reps - små tall som bygger seg opp.`;
     }
-    return `${periodWhen} har jeg logget ca. ${fmt(kg)} kg i vekt × reps — små tall som blir store når jeg holder på. ✨`;
+    return `Siste 7 dager har jeg logget ca. ${fmt(kg)} kg i vekt x reps.`;
   };
 
-  const weekLine = lineFor(weekKg, "Denne uken");
+  const weekLine = lineFor(weekKg);
   if (weekLine) return weekLine;
-  const monthLine = lineFor(monthKg, "Denne måneden");
-  if (monthLine) return monthLine;
-  return "Jeg logger vekt og reps neste gang — da får dette kortet skikkelig skrytevolum (elefant, piano, vannmelon …).";
+  return "Siste 7 dager har jeg samlet nye økter og bygger videre derfra.";
 }
 
 function getProfileStorageKey(memberId: string): string {
@@ -2401,11 +2443,6 @@ export function MemberPortal(props: MemberPortalProps) {
     setIntervalTimerStatus(`Hoppet til: ${nextStep.label}`);
   }
 
-  const progressShareMonthLabel = useMemo(() => {
-    const s = new Intl.DateTimeFormat("nb-NO", { month: "long", year: "numeric" }).format(nowDate);
-    return s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-  }, [nowDate]);
-
   async function shareMonthlyProgressSummary() {
     if (typeof window === "undefined") return;
     try {
@@ -2475,7 +2512,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
       const memberName = viewedMember?.name ?? "Medlem";
       const displayName = memberName.length > 20 ? `${memberName.slice(0, 20)}…` : memberName;
-      const monthTitle = progressShareMonthLabel;
+      const periodTitle = "Siste 7 dager";
 
       const bg = context.createLinearGradient(0, 0, canvas.width, canvas.height * 1.05);
       bg.addColorStop(0, "#0d9488");
@@ -2507,12 +2544,12 @@ export function MemberPortal(props: MemberPortalProps) {
       context.font = "600 34px system-ui, -apple-system, Segoe UI, sans-serif";
       context.fillText("MOTUS", 72, 95);
       context.font = "300 30px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText(monthTitle, 72, 145);
+      context.fillText(periodTitle, 72, 145);
       context.font = "bold 76px system-ui, -apple-system, Segoe UI, sans-serif";
       context.fillText(displayName, 72, 255);
       context.font = "26px system-ui, -apple-system, Segoe UI, sans-serif";
       context.globalAlpha = 0.88;
-      context.fillText("Skrytekort · min Motus-måned", 72, 318);
+      context.fillText("Skrytekort · mine siste 7 dager", 72, 318);
       context.globalAlpha = 1;
 
       if (shareCardLogo && shareCardLogo.naturalWidth > 0) {
@@ -2545,21 +2582,21 @@ export function MemberPortal(props: MemberPortalProps) {
       let y = cardY + pad + 36;
       context.fillStyle = MOTUS.ink;
       context.font = "bold 40px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Mine tall · skryteklare", cardX + pad, y);
+      context.fillText("Mine tall · siste 7 dager", cardX + pad, y);
       y += 52;
       context.fillStyle = "#64748b";
       context.font = "26px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Økter, streak og månedsvolum (vekt × reps) jeg har logget", cardX + pad, y);
+      context.fillText("Økter, treningsdager, sett og løftevolum jeg har logget", cardX + pad, y);
       y += 72;
 
       const tileGap = 22;
       const tileW = (cardW - pad * 2 - tileGap) / 2;
       const tileH = 168;
       const stats: Array<{ label: string; value: string; accent: string }> = [
-        { label: "Mine økter", value: String(estimatedSessionsThisMonth), accent: MOTUS.turquoise },
-        { label: "Mine treningsdager", value: String(uniqueTrainingDays), accent: MOTUS.pink },
-        { label: "Min streak", value: `${streakWeeks} uker`, accent: "#0d9488" },
-        { label: "Månedsvolum", value: `${Math.round(progressShareMonthLiftKg).toLocaleString("nb-NO")} kg`, accent: "#db2777" },
+        { label: "Mine økter", value: String(progressShareLast7Days.workouts), accent: MOTUS.turquoise },
+        { label: "Mine treningsdager", value: String(progressShareLast7Days.trainingDays), accent: MOTUS.pink },
+        { label: "Mine sett", value: String(progressShareLast7Days.completedSets), accent: "#0d9488" },
+        { label: "Mitt volum", value: `${Math.round(progressShareLast7Days.volumeKg).toLocaleString("nb-NO")} kg`, accent: "#db2777" },
       ];
       stats.forEach((stat, index) => {
         const col = index % 2;
@@ -2629,17 +2666,24 @@ export function MemberPortal(props: MemberPortalProps) {
       fillRoundRect(context, cardX + pad, y, cardW - pad * 2, stripH, 22);
       context.fillStyle = "#ffffff";
       context.font = "bold 28px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText(progressStory.trendLabel, cardX + pad + 32, y + 72);
+      context.fillText(`Jeg fullførte ${progressShareLast7Days.workouts} økter på ${progressShareLast7Days.trainingDays} dager.`, cardX + pad + 32, y + 72);
       y += stripH + 28;
 
       context.fillStyle = "#f1f5f9";
       fillRoundRect(context, cardX + pad, y, cardW - pad * 2, 200, 22);
       context.fillStyle = MOTUS.ink;
       context.font = "bold 26px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Mitt neste stikk", cardX + pad + 28, y + 48);
+      context.fillText("Min siste uke", cardX + pad + 28, y + 48);
       context.fillStyle = "#475569";
       context.font = "26px system-ui, -apple-system, Segoe UI, sans-serif";
-      fillWrappedCanvasText(context, progressStory.nextFocus, cardX + pad + 28, y + 92, cardW - pad * 2 - 56, 36);
+      fillWrappedCanvasText(
+        context,
+        `Jeg logget ${progressShareLast7Days.completedSets} sett og ${Math.round(progressShareLast7Days.volumeKg).toLocaleString("nb-NO")} kg i samlet løftevolum siste 7 dager.`,
+        cardX + pad + 28,
+        y + 92,
+        cardW - pad * 2 - 56,
+        36,
+      );
       y += 220;
 
       context.strokeStyle = "rgba(148,163,184,0.5)";
@@ -2659,7 +2703,7 @@ export function MemberPortal(props: MemberPortalProps) {
         return;
       }
 
-      const file = new File([blob], "motus-denne-maneden.png", { type: "image/png" });
+      const file = new File([blob], "motus-siste-7-dager.png", { type: "image/png" });
       const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };
       const canShareFile = typeof nav.canShare === "function" ? nav.canShare({ files: [file] }) : false;
       if (typeof nav.share === "function" && canShareFile) {
@@ -2892,33 +2936,8 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }
 
-  const progressStory = (() => {
-    const nowMs = nowTimestamp;
-    const dayMs = 24 * 60 * 60 * 1000;
-    const recent14 = completedLogDates.filter((date) => nowMs - date.getTime() <= 14 * dayMs).length;
-    const previous14 = completedLogDates.filter((date) => {
-      const diff = nowMs - date.getTime();
-      return diff > 14 * dayMs && diff <= 28 * dayMs;
-    }).length;
-    const delta = recent14 - previous14;
-    const trendLabel =
-      delta > 0
-        ? "Flere fullførte økter enn forrige 14 dager"
-        : delta < 0
-          ? "Færre fullførte økter enn forrige 14 dager"
-          : "Like mange økter som forrige 14 dager";
-    const nextFocus =
-      recent14 > 0
-        ? "Jeg holder flyten — neste planlagte økt er allerede i kalenderen min."
-        : "Jeg starter med en rolig økt denne uken og bygger skrytegrunnlaget.";
-    return { recent14, previous14, delta, trendLabel, nextFocus };
-  })();
-  const progressShareLiftVolumes = computeLiftVolumeKgWeekAndMonth(completedLogs, nowDate, nowTimestamp);
-  const progressLiftPlayfulLine = buildProgressLiftPlayfulLineFromKg(
-    progressShareLiftVolumes.weekKg,
-    progressShareLiftVolumes.monthKg,
-  );
-  const progressShareMonthLiftKg = progressShareLiftVolumes.monthKg;
+  const progressShareLast7Days = computeShareCardLast7DaysStats(completedLogs, nowTimestamp);
+  const progressLiftPlayfulLine = buildProgressLiftPlayfulLineFromKg(progressShareLast7Days.volumeKg);
   const _nextBestAction = useMemo(() => {
     if (!memberAssignedPrograms.length) {
       return {
@@ -5461,16 +5480,16 @@ export function MemberPortal(props: MemberPortalProps) {
                       <div>
                         <h3 className="text-xl font-bold tracking-tight text-white drop-shadow-sm sm:text-2xl">Skrytekort til Facebook</h3>
                         <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-white/88">
-                          {progressShareMonthLabel} — bilde med mine tall og «jeg har løftet …»-fakta, klart å lime inn i et innlegg.
+                          Siste 7 dager — bilde med mine tall og korte «jeg har …»-fakta, klart å lime inn i et innlegg.
                         </p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                         {[
-                          { k: "Mine økter", v: String(estimatedSessionsThisMonth) },
-                          { k: "Mine dager", v: String(uniqueTrainingDays) },
-                          { k: "Min streak", v: `${streakWeeks} u` },
-                          { k: "Månedsvolum", v: `${Math.round(progressShareMonthLiftKg).toLocaleString("nb-NO")} kg` },
+                          { k: "Mine økter", v: String(progressShareLast7Days.workouts) },
+                          { k: "Mine dager", v: String(progressShareLast7Days.trainingDays) },
+                          { k: "Mine sett", v: String(progressShareLast7Days.completedSets) },
+                          { k: "Mitt volum", v: `${Math.round(progressShareLast7Days.volumeKg).toLocaleString("nb-NO")} kg` },
                         ].map((cell) => (
                           <div
                             key={cell.k}
@@ -5487,16 +5506,8 @@ export function MemberPortal(props: MemberPortalProps) {
                         <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-white/92">{progressLiftPlayfulLine}</p>
                       </div>
 
-                      <p
-                        className={
-                          progressStory.delta > 0
-                            ? "text-xs font-medium text-emerald-200"
-                            : progressStory.delta < 0
-                              ? "text-xs font-medium text-amber-200"
-                              : "text-xs font-medium text-white/80"
-                        }
-                      >
-                        Siste 14 dager: {progressStory.delta > 0 ? "↑" : progressStory.delta < 0 ? "↓" : "—"} {progressStory.trendLabel}.
+                      <p className="text-xs font-medium text-white/80">
+                        Siste 7 dager: {progressShareLast7Days.workouts} økter fordelt på {progressShareLast7Days.trainingDays} treningsdager.
                       </p>
                     </div>
 
