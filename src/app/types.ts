@@ -112,6 +112,8 @@ export type ProgramExercise = {
   durationMinutes?: string;
   speed?: string;
   incline?: string;
+  /** Målpuls som prosent av makspuls (f.eks. 85–90); fritekst. */
+  targetHrPercent?: string;
   restSeconds: string;
   notes: string;
 };

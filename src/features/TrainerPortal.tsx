@@ -251,12 +251,38 @@ function nextLastFollowUpMapForIds(
   return out;
 }
 
-type IntervalPreset = {
-  id: string;
-  name: string;
-  description: string;
-  steps: Array<{ name: string; minutes: number; speed: string; incline: string; restSeconds: string }>;
-};
+/** Øvelse brukt som malrad ved oppretting av kondisjonsintervaller fra øvelsesbanken. */
+function pickCardioIntervalExerciseForTemplate(allExercises: Exercise[]): Exercise | undefined {
+  if (!allExercises.length) return undefined;
+  const eqLo = (e: Exercise) => e.equipment.trim().toLowerCase();
+  const nameLo = (e: Exercise) => e.name.trim().toLowerCase();
+  const isKond = (e: Exercise) => e.category === "Kondisjon";
+  const isTreadmill = (e: Exercise) =>
+    eqLo(e).includes("tredem") || eqLo(e).includes("mølle") || nameLo(e).includes("mølle");
+  const isBike = (e: Exercise) => eqLo(e).includes("sykkel") || nameLo(e).includes("sykkel");
+
+  return (
+    allExercises.find((e) => isKond(e) && isTreadmill(e) && nameLo(e).includes("intervall")) ??
+    allExercises.find((e) => isKond(e) && isTreadmill(e)) ??
+    allExercises.find((e) => isKond(e) && isBike(e)) ??
+    allExercises.find((e) => isKond(e)) ??
+    allExercises[0]
+  );
+}
+
+function hasCardioNedjoggRow(draft: ProgramExercise[]): boolean {
+  return draft.some((row) => row.exerciseName.trim().toLowerCase().startsWith("nedjogg"));
+}
+
+function countCardioDragRows(draft: ProgramExercise[]): number {
+  return draft.filter((row) => /^drag\b/i.test(row.exerciseName.trim())).length;
+}
+
+function cardioTargetHrPrescriptionSuffix(targetHrPercent: string | undefined): string {
+  const raw = String(targetHrPercent ?? "").trim();
+  if (!raw) return "";
+  return ` · målpuls ca. ${raw}% av makspuls`;
+}
 
 const MEMBER_AVATAR_BUCKET = "exercise-images";
 const MEMBER_AVATAR_PREFIX = "member-avatars";
@@ -531,70 +557,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const [programExerciseSearch, setProgramExerciseSearch] = useState("");
   const [programExerciseCategoryFilter, setProgramExerciseCategoryFilter] = useState<"all" | "Styrke" | "Kondisjon">("all");
   const [programExerciseGroupFilter, setProgramExerciseGroupFilter] = useState("all");
-  const intervalPresets = useMemo<IntervalPreset[]>(() => {
-    const hiitTenByOne = Array.from({ length: 10 }, (_, i) => ({
-      name: `Drag ${i + 1}`,
-      minutes: 1,
-      speed: "14",
-      incline: "1",
-      restSeconds: i < 9 ? "45" : "0",
-    }));
-    const tabataEight = Array.from({ length: 8 }, (_, i) => ({
-      name: `Tabata ${i + 1}`,
-      minutes: 20 / 60,
-      speed: "15",
-      incline: "1.5",
-      restSeconds: i < 7 ? "10" : "0",
-    }));
-    return [
-      {
-        id: "classic-4x4",
-        name: "4×4 klassisk",
-        description: "10 min oppvarming, fire drag à 4 min med 3 min aktiv hvile mellom, 5 min nedjogg.",
-        steps: [
-          { name: "Oppvarming", minutes: 10, speed: "7", incline: "1", restSeconds: "0" },
-          { name: "Drag 1", minutes: 4, speed: "13", incline: "1.5", restSeconds: "180" },
-          { name: "Drag 2", minutes: 4, speed: "13", incline: "1.5", restSeconds: "180" },
-          { name: "Drag 3", minutes: 4, speed: "13", incline: "1.5", restSeconds: "180" },
-          { name: "Drag 4", minutes: 4, speed: "13", incline: "1.5", restSeconds: "0" },
-          { name: "Nedjogg", minutes: 5, speed: "5.5", incline: "0", restSeconds: "0" },
-        ],
-      },
-      {
-        id: "tempo-30",
-        name: "Tempo-pyramide",
-        description: "8 min oppvarming, tre progressive tempo-drag med kortere mellompause, 5 min nedjogg.",
-        steps: [
-          { name: "Oppvarming", minutes: 8, speed: "7", incline: "1", restSeconds: "0" },
-          { name: "Tempo 1", minutes: 3, speed: "11", incline: "1", restSeconds: "90" },
-          { name: "Tempo 2", minutes: 4, speed: "11.5", incline: "1", restSeconds: "90" },
-          { name: "Tempo 3", minutes: 5, speed: "12", incline: "1", restSeconds: "0" },
-          { name: "Nedjogg", minutes: 5, speed: "5.5", incline: "0", restSeconds: "0" },
-        ],
-      },
-      {
-        id: "hiit-10x1",
-        name: "HIIT 10 × 1 min",
-        description: "6 min oppvarming, ti ett-minutters drag med 45 s mellompause, 4 min nedjogg.",
-        steps: [
-          { name: "Oppvarming", minutes: 6, speed: "7", incline: "1", restSeconds: "0" },
-          ...hiitTenByOne,
-          { name: "Nedjogg", minutes: 4, speed: "5.5", incline: "0", restSeconds: "0" },
-        ],
-      },
-      {
-        id: "tabata-8",
-        name: "Tabata (8 × 20 s / 10 s)",
-        description: "5 min oppvarming, åtte Tabata-runder (20 sek jobb / 10 sek hvile), 5 min nedjogg.",
-        steps: [
-          { name: "Oppvarming", minutes: 5, speed: "7", incline: "1", restSeconds: "0" },
-          ...tabataEight,
-          { name: "Nedjogg", minutes: 5, speed: "5.5", incline: "0", restSeconds: "0" },
-        ],
-      },
-    ];
-  }, []);
-  const [selectedIntervalPresetId, setSelectedIntervalPresetId] = useState("classic-4x4");
   const [periodPlansByMemberId, setPeriodPlansByMemberId] = useState<Record<string, PeriodSchedulePlan[]>>(() => {
     if (typeof window === "undefined") return {};
     try {
@@ -1647,55 +1609,84 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     setProgramExercisesDraft([]);
   }
 
-  function generateIntervalTemplateDraft() {
-    const preset = intervalPresets.find((item) => item.id === selectedIntervalPresetId) ?? intervalPresets[0];
-    if (!preset) return;
-
-    function pickCardioIntervalExercise(allExercises: Exercise[]): Exercise | undefined {
-      if (!allExercises.length) return undefined;
-      const eqLo = (e: Exercise) => e.equipment.trim().toLowerCase();
-      const nameLo = (e: Exercise) => e.name.trim().toLowerCase();
-      const isKond = (e: Exercise) => e.category === "Kondisjon";
-      const isTreadmill = (e: Exercise) =>
-        eqLo(e).includes("tredem") || eqLo(e).includes("mølle") || nameLo(e).includes("mølle");
-      const isBike = (e: Exercise) => eqLo(e).includes("sykkel") || nameLo(e).includes("sykkel");
-
-      return (
-        allExercises.find((e) => isKond(e) && isTreadmill(e) && nameLo(e).includes("intervall")) ??
-        allExercises.find((e) => isKond(e) && isTreadmill(e)) ??
-        allExercises.find((e) => isKond(e) && isBike(e)) ??
-        allExercises.find((e) => isKond(e)) ??
-        allExercises[0]
-      );
+  function startNewCardioTemplateDraft() {
+    if (programExercisesDraft.length > 0) {
+      const ok = typeof window !== "undefined" && window.confirm("Erstatte gjeldende utkast med ny kondisjonsmal (kun oppvarming)?");
+      if (!ok) return;
     }
-
-    const treadmillExercise = pickCardioIntervalExercise(exercises);
-    if (!treadmillExercise) {
-      setTemplateAssignStatus("Fant ingen kondisjonsøvelse å bygge nedtellingsmal fra.");
+    const base = pickCardioIntervalExerciseForTemplate(exercises);
+    if (!base) {
+      setTemplateAssignStatus("Fant ingen kondisjonsøvelse i biblioteket. Legg til en mølle- eller kondisjonsøvelse først.");
       return;
     }
-
-    const draftExercises: ProgramExercise[] = preset.steps.map((step) => {
-      const durSec = Math.round(step.minutes * 60);
-      const durLabel = step.minutes > 0 && durSec < 60 ? `${durSec} s` : `${step.minutes} min`;
-      return {
-        id: uid("draft-ex"),
-        exerciseId: treadmillExercise.id,
-        exerciseName: step.name,
-        sets: "1",
-        reps: "",
-        weight: "",
-        durationMinutes: String(step.minutes),
-        speed: step.speed,
-        incline: step.incline,
-        restSeconds: step.restSeconds,
-        notes: `${durLabel} · ${step.speed} km/t · stigning ${step.incline}%`,
-      };
-    });
-    setTemplateProgramTitle(`Intervall: ${preset.name}`);
-    setProgramExercisesDraft(draftExercises);
+    const warmup: ProgramExercise = {
+      id: uid("draft-ex"),
+      exerciseId: base.id,
+      exerciseName: "Oppvarming",
+      sets: "1",
+      reps: "",
+      weight: "",
+      durationMinutes: "10",
+      speed: "7",
+      incline: "1",
+      restSeconds: "0",
+      notes: "",
+      targetHrPercent: "65–75",
+    };
+    setProgramExercisesDraft([warmup]);
     setEditingTemplateProgramId(null);
-    setTemplateAssignStatus(`Kondisjonsmal klar: ${preset.name}. Lagre malen og tildel kunden.`);
+    setTemplateAssignStatus("Oppvarming er lagt til. Legg til drag, juster verdier og legg til nedjogg til slutt.");
+  }
+
+  function appendCardioDragRow() {
+    if (hasCardioNedjoggRow(programExercisesDraft)) return;
+    const base = pickCardioIntervalExerciseForTemplate(exercises);
+    if (!base) {
+      setTemplateAssignStatus("Fant ingen kondisjonsøvelse i biblioteket.");
+      return;
+    }
+    const nextIndex = countCardioDragRows(programExercisesDraft) + 1;
+    const drag: ProgramExercise = {
+      id: uid("draft-ex"),
+      exerciseId: base.id,
+      exerciseName: `Drag ${nextIndex}`,
+      sets: "1",
+      reps: "",
+      weight: "",
+      durationMinutes: "4",
+      speed: "13",
+      incline: "1.5",
+      restSeconds: "180",
+      notes: "",
+      targetHrPercent: "85–92",
+    };
+    setProgramExercisesDraft((prev) => [...prev, drag]);
+    setTemplateAssignStatus(null);
+  }
+
+  function appendCardioCooldownRow() {
+    if (hasCardioNedjoggRow(programExercisesDraft)) return;
+    const base = pickCardioIntervalExerciseForTemplate(exercises);
+    if (!base) {
+      setTemplateAssignStatus("Fant ingen kondisjonsøvelse i biblioteket.");
+      return;
+    }
+    const cooldown: ProgramExercise = {
+      id: uid("draft-ex"),
+      exerciseId: base.id,
+      exerciseName: "Nedjogg",
+      sets: "1",
+      reps: "",
+      weight: "",
+      durationMinutes: "5",
+      speed: "5.5",
+      incline: "0",
+      restSeconds: "0",
+      notes: "",
+      targetHrPercent: "55–65",
+    };
+    setProgramExercisesDraft((prev) => [...prev, cooldown]);
+    setTemplateAssignStatus("Nedjogg lagt til. Fjern nedjogg-raden om du vil legge til flere drag.");
   }
 
   function handlePeriodPlanWeeksDraftChange(value: string) {
@@ -2012,7 +2003,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
 
   function buildProgramFingerprint(program: ProgramExercise[] | undefined, title: string, goal: string, notes: string): string {
     const exerciseFingerprint = (program ?? [])
-      .map((item) => `${item.exerciseName}|${item.sets}|${item.reps}|${item.weight}|${item.holdSeconds ?? ""}|${item.durationMinutes ?? ""}|${item.speed ?? ""}|${item.incline ?? ""}|${item.restSeconds}|${item.notes}`)
+      .map((item) => `${item.exerciseName}|${item.sets}|${item.reps}|${item.weight}|${item.holdSeconds ?? ""}|${item.durationMinutes ?? ""}|${item.speed ?? ""}|${item.incline ?? ""}|${item.restSeconds}|${item.targetHrPercent ?? ""}|${item.notes}`)
       .join("||");
     return `${title.trim()}::${goal.trim()}::${notes.trim()}::${exerciseFingerprint}`;
   }
@@ -2126,7 +2117,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
               const prescription = durationMinutes
                 ? `${setCount} runder × ${durationMinutes} min${
                     speed ? ` · ${speed} km/t` : ""
-                  }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause`
+                  }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause${cardioTargetHrPrescriptionSuffix(safeExercise.targetHrPercent)}`
                 : libraryMatch?.category === "Uttøyning"
                   ? `${setCount} sett × ${String(safeExercise.holdSeconds ?? "").trim() || weight || "-"} sek hold · ${restSeconds}s pause`
                   : `${setCount} x ${reps} · ${weight} kg · ${restSeconds}s pause`;
@@ -4527,6 +4518,16 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                                   </div>
                                 </>
                               ) : null}
+                              {isCardio ? (
+                                <div className="space-y-1">
+                                  <div className="text-[11px] font-medium text-slate-500">Puls (% av makspuls)</div>
+                                  <TextInput
+                                    value={item.targetHrPercent ?? ""}
+                                    onChange={(e) => updateDraftExercise(item.id, "targetHrPercent", e.target.value)}
+                                    placeholder="f.eks. 85–90"
+                                  />
+                                </div>
+                              ) : null}
                               <div className="space-y-1">
                                 <div className="text-[11px] font-medium text-slate-500">Hvile (sekunder)</div>
                                 <TextInput value={item.restSeconds} onChange={(e) => updateDraftExercise(item.id, "restSeconds", e.target.value)} placeholder="Hvile sek" />
@@ -5081,6 +5082,16 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                             </div>
                           </>
                         ) : null}
+                        {isCardio ? (
+                          <div className="space-y-1">
+                            <div className="text-[11px] font-medium text-slate-500">Puls (% av makspuls)</div>
+                            <TextInput
+                              value={item.targetHrPercent ?? ""}
+                              onChange={(e) => updateDraftExercise(item.id, "targetHrPercent", e.target.value)}
+                              placeholder="f.eks. 85–90"
+                            />
+                          </div>
+                        ) : null}
                         <div className="space-y-1">
                           <div className="text-[11px] font-medium text-slate-500">Hvile (sekunder)</div>
                           <TextInput value={item.restSeconds} onChange={(e) => updateDraftExercise(item.id, "restSeconds", e.target.value)} placeholder="Hvile sek" />
@@ -5106,21 +5117,31 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                     Avbryt redigering
                   </OutlineButton>
                 ) : null}
-                <div className="rounded-xl border bg-white p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="text-sm font-semibold text-slate-700">Kondisjonsmal med nedtelling</div>
-                  <div className="grid gap-2 md:grid-cols-[1fr_auto]">
-                    <SelectBox
-                      value={selectedIntervalPresetId}
-                      onChange={setSelectedIntervalPresetId}
-                      options={intervalPresets.map((preset) => ({ value: preset.id, label: preset.name }))}
-                    />
-                    <GradientButton onClick={generateIntervalTemplateDraft} className="w-full md:w-auto">
-                      Lag kondisjonsmal
-                    </GradientButton>
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    {intervalPresets.find((preset) => preset.id === selectedIntervalPresetId)?.description}{" "}
-                    Velger automatisk passende kondisjonsøvelse (helst mølle). Malutkastet støtter nedtelling i medlemsappen når alle steg er tidsbaserte kondisjon.
+                <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="text-sm font-semibold text-slate-700">Bygg kondisjonsmal</div>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Skriv inn malnavn øverst først. Start med oppvarming, legg til drag én om gangen og til slutt nedjogg.
+                    Når nedjogg er lagt inn kan du ikke legge til flere drag før du fjerner nedjogg-raden fra utkastet.
+                    Øvelsesradene bruker automatisk valgt kondisjons-/mølleøvelse fra biblioteket; du kan endre tid, fart, stigning og målpuls på hvert steg.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <OutlineButton type="button" onClick={startNewCardioTemplateDraft}>
+                      Start med oppvarming
+                    </OutlineButton>
+                    <OutlineButton
+                      type="button"
+                      onClick={appendCardioDragRow}
+                      disabled={programExercisesDraft.length === 0 || hasCardioNedjoggRow(programExercisesDraft)}
+                    >
+                      Legg til drag
+                    </OutlineButton>
+                    <OutlineButton
+                      type="button"
+                      onClick={appendCardioCooldownRow}
+                      disabled={programExercisesDraft.length === 0 || hasCardioNedjoggRow(programExercisesDraft)}
+                    >
+                      Legg til nedjogg
+                    </OutlineButton>
                   </div>
                 </div>
               </div>
@@ -5263,7 +5284,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                                   <div className="font-medium text-slate-800">{exercise.exerciseName}</div>
                                   <div className="mt-0.5 text-slate-500">
                                     {exercise.durationMinutes
-                                      ? `${exercise.sets || "-"} runder × ${exercise.durationMinutes || "-"} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s`
+                                      ? `${exercise.sets || "-"} runder × ${exercise.durationMinutes || "-"} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}`
                                       : exercises.find((e) => e.id === exercise.exerciseId)?.category === "Uttøyning"
                                         ? `${exercise.sets || "-"} sett × ${(exercise.holdSeconds ?? "").trim() || exercise.weight || "-"} sek · ${exercise.restSeconds || "0"}s`
                                         : `${exercise.sets || "-"}×${exercise.reps || "-"} · ${exercise.weight || "0"}kg · ${exercise.restSeconds || "0"}s`}

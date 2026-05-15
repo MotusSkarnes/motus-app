@@ -193,7 +193,7 @@ function buildTrainingProgramDisplayKey(program: TrainingProgram): string {
   const exerciseFingerprint = program.exercises
     .map(
       (item: ProgramExercise) =>
-        `${item.exerciseName}|${item.sets}|${item.reps}|${item.weight}|${item.holdSeconds ?? ""}|${item.durationMinutes ?? ""}|${item.speed ?? ""}|${item.incline ?? ""}|${item.restSeconds}|${item.notes}`,
+        `${item.exerciseName}|${item.sets}|${item.reps}|${item.weight}|${item.holdSeconds ?? ""}|${item.durationMinutes ?? ""}|${item.speed ?? ""}|${item.incline ?? ""}|${item.restSeconds}|${item.targetHrPercent ?? ""}|${item.notes}`,
     )
     .join("||");
   return `${program.title.trim()}::${program.goal.trim()}::${program.notes.trim()}::${exerciseFingerprint}`;
@@ -637,11 +637,25 @@ function getPeriodPlanCompletedStorageKey(memberId: string): string {
   return `${PERIOD_PLAN_COMPLETED_STORAGE_PREFIX}${memberId}`;
 }
 
+function cardioHrPrescriptionSuffixForMember(programExercise: ProgramExercise): string {
+  const raw = String(programExercise.targetHrPercent ?? "").trim();
+  if (!raw) return "";
+  return ` · målpuls ca. ${raw}% av makspuls`;
+}
+
+function formatIntervalTimerHrHint(targetHrPercent: string | undefined): string {
+  const raw = String(targetHrPercent ?? "").trim();
+  if (!raw) return "";
+  if (/%|HF|hf|maks|makspuls|pul/i.test(raw)) return raw;
+  return `${raw} % av makspuls`;
+}
+
 type IntervalTimerStep = {
   label: string;
   durationSeconds: number;
   speedHint: string;
   inclineHint: string;
+  hrHint: string;
   tone: "warmup" | "work" | "rest" | "cooldown";
 };
 
@@ -1154,6 +1168,7 @@ export function MemberPortal(props: MemberPortalProps) {
           durationSeconds: workDurationSeconds,
           speedHint: exercise.speed ? `${exercise.speed} km/t` : "-",
           inclineHint: exercise.incline ? `${exercise.incline}%` : "-",
+          hrHint: formatIntervalTimerHrHint(exercise.targetHrPercent),
           tone,
         });
       }
@@ -1167,6 +1182,7 @@ export function MemberPortal(props: MemberPortalProps) {
           durationSeconds: restDurationSeconds,
           speedHint: "Rolig",
           inclineHint: "0-1%",
+          hrHint: "",
           tone: "rest",
         });
       }
@@ -3495,7 +3511,7 @@ export function MemberPortal(props: MemberPortalProps) {
               const prescription = exercise.durationMinutes
                 ? `${exercise.sets} runder × ${exercise.durationMinutes} min${
                     exercise.speed ? ` · ${exercise.speed} km/t` : ""
-                  }${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s pause`
+                  }${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s pause${cardioHrPrescriptionSuffixForMember(exercise)}`
                 : libraryMatch?.category === "Uttøyning"
                   ? `${exercise.sets} sett × ${(exercise.holdSeconds ?? "").trim() || exercise.weight || "-"} sek · ${exercise.restSeconds}s pause`
                   : `${exercise.sets} x ${exercise.reps} · ${exercise.weight || "-"} kg · ${exercise.restSeconds}s pause`;
@@ -4551,7 +4567,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                   <div className="font-medium text-sm">{exercise.exerciseName}</div>
                                   <div className="mt-0.5 text-xs text-slate-500">
                                     {exercise.durationMinutes
-                                      ? `${exercise.sets} runder × ${exercise.durationMinutes} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s`
+                                      ? `${exercise.sets} runder × ${exercise.durationMinutes} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s${cardioHrPrescriptionSuffixForMember(exercise)}`
                                       : isStretch
                                         ? `${exercise.sets} sett × ${(exercise.holdSeconds ?? "").trim() || exercise.weight || "-"} sek · ${exercise.restSeconds}s`
                                         : `${exercise.sets}×${exercise.reps} · ${exercise.weight}kg · ${exercise.restSeconds}s`}
@@ -5047,6 +5063,7 @@ export function MemberPortal(props: MemberPortalProps) {
                         <div className="mt-2 text-7xl font-black tracking-tight sm:text-8xl">{formatSeconds(intervalTimerRemainingSeconds)}</div>
                         <div className="mt-2 text-sm text-white/90">
                           Fart: {currentIntervalProgramStep?.speedHint || "-"} · Incline: {currentIntervalProgramStep?.inclineHint || "-"}
+                          {currentIntervalProgramStep?.hrHint ? <> · Puls: {currentIntervalProgramStep.hrHint}</> : null}
                         </div>
                         <div className="mt-2 text-sm text-white/90">
                           Neste: {intervalProgramSteps[intervalTimerStepIndex + 1]?.label || "Siste steg"}
