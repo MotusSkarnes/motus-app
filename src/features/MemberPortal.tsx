@@ -63,6 +63,7 @@ import {
   type PeriodPlanSwapsByPlan,
 } from "../app/periodPlanSwaps";
 import { MuscleSplitCard } from "./MuscleSplitCard";
+import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
 import { PeriodPlanWeekView } from "./PeriodPlanWeekView";
 import {
   buildExerciseGroupByName,
@@ -4614,20 +4615,23 @@ export function MemberPortal(props: MemberPortalProps) {
                           <div className="font-medium text-slate-800">{plan.title}</div>
                           <div className="mt-1 text-xs text-slate-500">Start: {plan.startDate} · {plan.weeks} uker · Lagret {plan.createdAt}</div>
                           {plan.notes ? <div className="mt-2 text-sm text-slate-600">{plan.notes}</div> : null}
-                          {(plan.weeklyPlans ?? []).length > 1 ? (
-                            <div className="mt-3">
-                              <SelectBox
-                                value={String(displayedPeriodWeek?.weekNumber ?? 1)}
-                                onChange={(value) => setSelectedPeriodPlanWeekNumber(Math.max(1, Number(value) || 1))}
-                                options={(plan.weeklyPlans ?? []).map((week) => ({
-                                  value: String(week.weekNumber),
-                                  label:
-                                    week.weekNumber === (activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : -1)
-                                      ? `Uke ${week.weekNumber} (nå)`
-                                      : `Uke ${week.weekNumber}`,
-                                }))}
-                              />
-                            </div>
+                          {(plan.weeklyPlans ?? []).length > 0 ? (
+                            <PeriodPlanWeekNavigator
+                              className="mt-3"
+                              weeks={(plan.weeklyPlans ?? []).map((week) => ({
+                                id: week.id,
+                                weekNumber: week.weekNumber,
+                              }))}
+                              selectedWeekNumber={displayedPeriodWeek?.weekNumber ?? selectedPeriodPlanWeekNumber ?? 1}
+                              onWeekSelectByNumber={setSelectedPeriodPlanWeekNumber}
+                              currentWeekNumber={activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : null}
+                              formatWeekRange={(weekNumber) => {
+                                const monday = resolvePeriodPlanEntryDate(plan, weekNumber, "monday");
+                                const sunday = resolvePeriodPlanEntryDate(plan, weekNumber, "sunday");
+                                if (!monday || !sunday) return null;
+                                return `${monday} – ${sunday}`;
+                              }}
+                            />
                           ) : null}
                           {displayedPeriodWeek ? (
                             <PeriodPlanWeekView

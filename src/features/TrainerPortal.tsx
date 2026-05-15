@@ -30,6 +30,7 @@ import {
   upsertMemberPeriodPlansForTrainer,
 } from "../services/supabaseRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
+import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
 
 function inferStatusTone(message: string): "success" | "error" | "info" {
   const normalized = message.trim().toLowerCase();
@@ -3995,23 +3996,16 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                             placeholder="Overordnet fokus for perioden"
                           />
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          {periodWeeklyPlansDraft.map((week) => (
-                            <button
-                              key={week.id}
-                              type="button"
-                              onClick={() => setActivePeriodWeekId(week.id)}
-                              className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition ${
-                                activePeriodWeek?.id === week.id
-                                  ? "border-transparent text-white"
-                                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                              }`}
-                              style={activePeriodWeek?.id === week.id ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : undefined}
-                            >
-                              Uke {week.weekNumber}
-                            </button>
-                          ))}
-                        </div>
+                        {periodWeeklyPlansDraft.length > 0 ? (
+                          <PeriodPlanWeekNavigator
+                            weeks={periodWeeklyPlansDraft.map((week) => ({
+                              id: week.id,
+                              weekNumber: week.weekNumber,
+                            }))}
+                            selectedWeekId={activePeriodWeekId}
+                            onWeekSelectById={setActivePeriodWeekId}
+                          />
+                        ) : null}
                         {activePeriodWeek ? (
                           <div className="grid gap-2 md:grid-cols-2">
                             {WEEKDAY_PLAN_FIELDS.map((field) => {
