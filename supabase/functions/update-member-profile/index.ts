@@ -276,7 +276,37 @@ Deno.serve(async (req) => {
     mergeUpdated(byIdResult.data);
   }
 
-  // Trainers update profile fields by id only (never blast every row with the same email).
+  if (hasProfileUpdates && userRole === "trainer" && normalizedTargetEmails.size > 0) {
+    const trainerId = user.id;
+    const emailSet = new Set(Array.from(normalizedTargetEmails).filter((value) => value.includes("@")));
+    const { data: allMemberRows, error: profileFanoutError } = await adminClient
+      .from("members")
+      .select("id,email,owner_user_id,customer_type");
+    if (profileFanoutError) {
+      return jsonResponse(500, { error: `Could not fan out profile fields: ${profileFanoutError.message}` });
+    }
+    const profileFanoutIds = Array.from(
+      new Set(
+        (allMemberRows ?? [])
+          .filter((row) => {
+            const rowEmail = normalizeEmail((row as { email?: string }).email);
+            if (!rowEmail || !emailSet.has(rowEmail)) return false;
+            if (isSharedMedlem((row as { customer_type?: string | null }).customer_type)) return true;
+            return normalizeString((row as { owner_user_id?: string | null }).owner_user_id) === trainerId;
+          })
+          .map((row) => normalizeString((row as { id?: string }).id))
+          .filter(Boolean),
+      ),
+    );
+    if (profileFanoutIds.length) {
+      const fanoutResult = await adminClient.from("members").update(profileUpdateFields).in("id", profileFanoutIds).select("id");
+      if (fanoutResult.error) {
+        return jsonResponse(500, { error: `Could not fan out profile fields by email: ${fanoutResult.error.message}` });
+      }
+      mergeUpdated(fanoutResult.data);
+    }
+  }
+
   if (hasProfileUpdates && targetEmails.length && userRole !== "trainer") {
     const byEmailResult = await adminClient.from("members").update(profileUpdateFields).in("email", targetEmails).select("id");
     if (byEmailResult.error) {

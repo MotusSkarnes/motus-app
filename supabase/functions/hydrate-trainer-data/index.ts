@@ -33,13 +33,19 @@ function isSharedMember(row: Record<string, unknown>): boolean {
   return String(row.customer_type ?? "").trim().toLowerCase() === "medlem";
 }
 
+function profileCanonicalScore(row: Record<string, unknown>): number {
+  let score = 0;
+  const customerType = String(row.customer_type ?? "").trim().toLowerCase();
+  if (customerType === "pt-kunde") score += 1000;
+  if (String(row.membership_type ?? "").trim().toLowerCase() === "premium") score += 100;
+  if (row.is_active !== false) score += 10;
+  const createdAt = new Date(String(row.created_at ?? "")).getTime() || 0;
+  return score + createdAt / 1_000_000_000_000;
+}
+
 function pickMostRecentProfileRow(rows: Array<Record<string, unknown>>): Record<string, unknown> | null {
   if (!rows.length) return null;
-  const sorted = [...rows].sort((a, b) => {
-    const aTs = new Date(String(a.created_at ?? "")).getTime() || 0;
-    const bTs = new Date(String(b.created_at ?? "")).getTime() || 0;
-    return bTs - aTs;
-  });
+  const sorted = [...rows].sort((a, b) => profileCanonicalScore(b) - profileCanonicalScore(a));
   return sorted[0] ?? null;
 }
 

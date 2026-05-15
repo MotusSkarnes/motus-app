@@ -4,6 +4,7 @@ import {
   isPrivatePtRosterCustomerType,
   isSharedMedlemCustomerType,
   resolveOwnerUserIdForPersist,
+  scoreMemberProfileSource,
 } from "./memberAccessRules";
 
 const TRAINER_A = "5a8aa65c-f6fb-47ee-9f76-617e52db83aa";
@@ -48,6 +49,15 @@ describe("memberAccessRules", () => {
       selectedOwnerUserId: TRAINER_A,
     });
     expect(ids.sort()).toEqual(["m1", "m2"]);
+  });
+
+  it("prefers owned PT-kunde profile over shared Medlem stub", () => {
+    const ptScore = scoreMemberProfileSource(
+      { customerType: "PT-kunde", membershipType: "Premium", ownerUserId: TRAINER_A },
+      TRAINER_A,
+    );
+    const medlemScore = scoreMemberProfileSource({ customerType: "Medlem", ownerUserId: TRAINER_B }, TRAINER_A);
+    expect(ptScore).toBeGreaterThan(medlemScore);
   });
 
   it("limits PT-kunde saves to rows owned by current PT", () => {

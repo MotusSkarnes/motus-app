@@ -14,6 +14,7 @@ import {
   filterMemberIdsForRosterSave,
   isPrivatePtRosterCustomerType,
   isSharedMedlemCustomerType,
+  scoreMemberProfileSource,
 } from "../services/memberAccessRules";
 import type { InviteMemberResult, InviteTrainerResult } from "../services/supabaseAuth";
 import type {
@@ -742,14 +743,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   }
   function pickCanonicalMemberProfile(base: Member, candidates: Member[]): Member {
     if (!candidates.length) return base;
-    const scoreProfileSource = (member: Member): number => {
-      let score = 0;
-      if (member.customerType === "Medlem") score += 1000;
-      if (member.isActive !== false) score += 100;
-      if (member.membershipType === "Premium") score += 10;
-      return score;
-    };
-    const prioritized = [...candidates].sort((a, b) => scoreProfileSource(b) - scoreProfileSource(a));
+    const prioritized = [...candidates].sort(
+      (a, b) => scoreMemberProfileSource(b, currentTrainerOwnerUserId) - scoreMemberProfileSource(a, currentTrainerOwnerUserId),
+    );
     const pickPreferredNonEmpty = (values: string[]): string => {
       for (let i = 0; i < values.length; i += 1) {
         const value = String(values[i] ?? "").trim();
@@ -956,15 +952,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const selectedMemberProfileSourceMembers = useMemo(() => {
     if (!selectedMember) return [] as Member[];
     const selectedEmail = selectedMember.email.trim().toLowerCase();
-    const selectedName = selectedMember.name.trim().toLowerCase();
-    const byEmail = selectedEmail
-      ? members.filter((member) => member.email.trim().toLowerCase() === selectedEmail)
-      : [];
-    if (byEmail.length > 0) return byEmail;
-    if (selectedName) {
-      return members.filter((member) => member.name.trim().toLowerCase() === selectedName);
-    }
-    return [selectedMember];
+    if (!selectedEmail) return [selectedMember];
+    return members.filter((member) => member.email.trim().toLowerCase() === selectedEmail);
   }, [selectedMember, members]);
   const selectedMemberProfile = useMemo(() => {
     if (!selectedMember) return null;

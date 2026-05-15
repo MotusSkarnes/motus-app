@@ -25,6 +25,24 @@ export function resolveOwnerUserIdForPersist(options: {
 }
 
 /** Which member row ids a trainer may include when saving roster/type changes. */
+/** Which duplicate row should supply profile fields on the kundekort (goal, phone, …). */
+export function scoreMemberProfileSource(member: {
+  customerType?: string | null;
+  membershipType?: string | null;
+  ownerUserId?: string | null;
+  isActive?: boolean | null;
+  invitedAt?: string | null;
+}, currentTrainerOwnerUserId: string): number {
+  const isOwned = String(member.ownerUserId ?? "").trim() === currentTrainerOwnerUserId.trim();
+  let score = 0;
+  if (isOwned && !isSharedMedlemCustomerType(member.customerType)) score += 5000;
+  if (isOwned && String(member.membershipType ?? "").trim() === "Premium") score += 3000;
+  if (isSharedMedlemCustomerType(member.customerType)) score += 500;
+  if (member.isActive !== false) score += 100;
+  if (member.invitedAt) score += 10;
+  return score;
+}
+
 export function filterMemberIdsForRosterSave(options: {
   memberRows: Array<{ id: string; email?: string | null; ownerUserId?: string | null; customerType?: string | null }>;
   previousEmail: string;
