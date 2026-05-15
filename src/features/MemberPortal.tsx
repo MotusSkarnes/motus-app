@@ -4798,13 +4798,35 @@ export function MemberPortal(props: MemberPortalProps) {
                       />
                     ) : (
                       periodPlans.slice(0, 1).map((plan) => (
-                        <div key={plan.id} className="rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                          <div className="font-medium text-slate-800">{plan.title}</div>
-                          <div className="mt-1 text-xs text-slate-500">Start: {plan.startDate} · {plan.weeks} uker · Lagret {plan.createdAt}</div>
-                          {plan.notes ? <div className="mt-2 text-sm text-slate-600">{plan.notes}</div> : null}
+                        <div
+                          key={plan.id}
+                          className="overflow-hidden rounded-2xl border-0 p-0 shadow-md ring-1 ring-teal-500/15"
+                          style={{
+                            background: `linear-gradient(145deg, ${MOTUS.paleMint} 0%, #ffffff 55%, #f1f5f9 100%)`,
+                          }}
+                        >
+                          <div className="border-b border-teal-900/10 px-4 py-3 sm:px-5 sm:py-4" style={{ background: "rgba(255,255,255,0.55)" }}>
+                            <div className="text-base font-bold leading-snug text-slate-900 sm:text-lg">{plan.title}</div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <span className="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-teal-950 shadow-sm ring-1 ring-teal-200/60">
+                                Start {plan.startDate}
+                              </span>
+                              <span className="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-800 shadow-sm ring-1 ring-slate-200/80">
+                                {plan.weeks} {plan.weeks === 1 ? "uke" : "uker"}
+                              </span>
+                              <span className="inline-flex items-center rounded-full bg-white/60 px-2.5 py-1 text-[11px] font-medium text-slate-600 ring-1 ring-slate-200/60">
+                                Lagret {plan.createdAt}
+                              </span>
+                            </div>
+                          </div>
+                          {plan.notes ? (
+                            <div className="mx-4 mt-3 rounded-xl border border-teal-200/50 bg-white/70 px-3 py-2.5 text-sm leading-relaxed text-slate-700 shadow-sm sm:mx-5">
+                              {plan.notes}
+                            </div>
+                          ) : null}
                           {(plan.weeklyPlans ?? []).length > 0 ? (
                             <PeriodPlanWeekNavigator
-                              className="mt-3"
+                              className="mt-4 px-4 sm:px-5"
                               weeks={buildPeriodPlanWeekNavItemsFromPlan(plan)}
                               selectedWeekNumber={selectedPeriodPlanWeekForView}
                               onWeekSelectByNumber={setSelectedPeriodPlanWeekNumber}
@@ -4818,21 +4840,23 @@ export function MemberPortal(props: MemberPortalProps) {
                             />
                           ) : null}
                           {resolvePeriodPlanWeek(plan, selectedPeriodPlanWeekForView) ? (
-                            <PeriodPlanWeekView
-                              key={`${plan.id}-${selectedPeriodPlanWeekForView}`}
-                              plan={plan}
-                              week={resolvePeriodPlanWeek(plan, selectedPeriodPlanWeekForView)!}
-                              swapsByPlan={periodPlanSwapsByPlan}
-                              memberPrograms={memberProgramsInActiveLibrary}
-                              actionStatus={periodPlanActionStatus}
-                              isEntryCompleted={isPeriodPlanEntryCompleted}
-                              onToggleCompleted={togglePeriodPlanEntryCompleted}
-                              onSwapDays={swapPeriodPlanDays}
-                              onResetSwaps={resetPeriodPlanSwapsForWeek}
-                              onStartProgram={handlePeriodPlanStartProgram}
-                              onLogGroup={handlePeriodPlanLogGroup}
-                              resolveEntryDate={resolvePeriodPlanEntryDate}
-                            />
+                            <div className="px-4 pb-4 sm:px-5 sm:pb-5">
+                              <PeriodPlanWeekView
+                                key={`${plan.id}-${selectedPeriodPlanWeekForView}`}
+                                plan={plan}
+                                week={resolvePeriodPlanWeek(plan, selectedPeriodPlanWeekForView)!}
+                                swapsByPlan={periodPlanSwapsByPlan}
+                                memberPrograms={memberProgramsInActiveLibrary}
+                                actionStatus={periodPlanActionStatus}
+                                isEntryCompleted={isPeriodPlanEntryCompleted}
+                                onToggleCompleted={togglePeriodPlanEntryCompleted}
+                                onSwapDays={swapPeriodPlanDays}
+                                onResetSwaps={resetPeriodPlanSwapsForWeek}
+                                onStartProgram={handlePeriodPlanStartProgram}
+                                onLogGroup={handlePeriodPlanLogGroup}
+                                resolveEntryDate={resolvePeriodPlanEntryDate}
+                              />
+                            </div>
                           ) : null}
                         </div>
                       ))
