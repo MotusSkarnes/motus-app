@@ -651,6 +651,9 @@ function formatIntervalTimerHrHint(targetHrPercent: string | undefined): string 
 }
 
 type IntervalTimerStep = {
+  headline: string;
+  phaseBadge: string;
+  afterExerciseName?: string;
   label: string;
   durationSeconds: number;
   speedHint: string;
@@ -658,6 +661,30 @@ type IntervalTimerStep = {
   hrHint: string;
   tone: "warmup" | "work" | "rest" | "cooldown";
 };
+
+function computeIntervalPhaseBadge(tone: IntervalTimerStep["tone"], exerciseNameForBadge: string): string {
+  if (tone === "warmup") return "Oppvarming";
+  if (tone === "cooldown") return "Nedjogg";
+  if (tone === "rest") return "Pause";
+  const lower = exerciseNameForBadge.trim().toLowerCase();
+  if (/\bdrag\b/.test(lower)) return "Drag";
+  if (lower.includes("tempo")) return "Tempo";
+  if (lower.includes("tabata")) return "Tabata";
+  return "Intervall";
+}
+
+function intervalTimerBadgeToneClass(tone: IntervalTimerStep["tone"]): string {
+  switch (tone) {
+    case "warmup":
+      return "bg-emerald-500/35 text-emerald-50 ring-1 ring-emerald-300/50";
+    case "cooldown":
+      return "bg-sky-500/35 text-sky-50 ring-1 ring-sky-300/45";
+    case "rest":
+      return "bg-amber-500/40 text-amber-950 ring-1 ring-amber-200/50";
+    default:
+      return "bg-white/20 text-white ring-1 ring-white/35";
+  }
+}
 
 export function MemberPortal(props: MemberPortalProps) {
   const groupWorkoutClassOptions = [
@@ -1163,8 +1190,12 @@ export function MemberPortal(props: MemberPortalProps) {
         const lowerName = exercise.exerciseName.toLowerCase();
         const tone: IntervalTimerStep["tone"] =
           lowerName.includes("oppvarm") ? "warmup" : lowerName.includes("nedjogg") ? "cooldown" : "work";
+        const nameTrimmed = exercise.exerciseName.trim();
+        const headline = nameTrimmed || `Intervall ${index + 1}`;
         steps.push({
-          label: exercise.exerciseName || `Intervall ${index + 1}`,
+          headline,
+          phaseBadge: computeIntervalPhaseBadge(tone, headline),
+          label: headline,
           durationSeconds: workDurationSeconds,
           speedHint: exercise.speed ? `${exercise.speed} km/t` : "-",
           inclineHint: exercise.incline ? `${exercise.incline}%` : "-",
@@ -1177,11 +1208,15 @@ export function MemberPortal(props: MemberPortalProps) {
       const legacy4x4DragPauseSeconds = rawRestStr === "" && isClassic4x4Drag ? 180 : 0;
       const restDurationSeconds = normalizedRestSeconds > 0 ? normalizedRestSeconds : legacy4x4DragPauseSeconds;
       if (restDurationSeconds > 0 && index < activeIntervalProgram.exercises.length - 1) {
+        const prevName = exercise.exerciseName.trim() || `Intervall ${index + 1}`;
         steps.push({
-          label: `Pause etter ${exercise.exerciseName || `intervall ${index + 1}`}`,
+          headline: "Pause",
+          phaseBadge: "Pause",
+          afterExerciseName: prevName,
+          label: `Pause etter ${prevName}`,
           durationSeconds: restDurationSeconds,
           speedHint: "Rolig",
-          inclineHint: "0-1%",
+          inclineHint: "0–1%",
           hrHint: "",
           tone: "rest",
         });
@@ -2530,7 +2565,7 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     setIntervalTimerStepIndex(nextIndex);
     setIntervalTimerRemainingSeconds(nextStep.durationSeconds);
-    setIntervalTimerStatus(`Hoppet til: ${nextStep.label}`);
+    setIntervalTimerStatus(`Hoppet til: ${nextStep.headline}`);
   }
 
   async function shareMonthlyProgressSummary() {
@@ -5054,24 +5089,92 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                     <div className="motus-scroll-touch flex-1 space-y-4 overflow-auto p-4 sm:p-6">
                       <div
-                        className="rounded-xl p-5 text-white"
-                        style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                        className="overflow-hidden rounded-2xl text-white shadow-md ring-1 ring-black/10"
+                        style={{ background: `linear-gradient(155deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
                       >
-                        <div className="text-sm uppercase tracking-wide text-white/90">
-                          {currentIntervalProgramStep?.label || "Klar"}
-                        </div>
-                        <div className="mt-2 text-7xl font-black tracking-tight sm:text-8xl">{formatSeconds(intervalTimerRemainingSeconds)}</div>
-                        <div className="mt-2 text-sm text-white/90">
-                          Fart: {currentIntervalProgramStep?.speedHint || "-"} · Incline: {currentIntervalProgramStep?.inclineHint || "-"}
-                          {currentIntervalProgramStep?.hrHint ? <> · Puls: {currentIntervalProgramStep.hrHint}</> : null}
-                        </div>
-                        <div className="mt-2 text-sm text-white/90">
-                          Neste: {intervalProgramSteps[intervalTimerStepIndex + 1]?.label || "Siste steg"}
-                        </div>
+                        {currentIntervalProgramStep ? (
+                          <>
+                            <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 sm:px-5 sm:pt-5">
+                              <span
+                                className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${intervalTimerBadgeToneClass(
+                                  currentIntervalProgramStep.tone,
+                                )}`}
+                              >
+                                {currentIntervalProgramStep.phaseBadge}
+                              </span>
+                              <span className="text-[11px] font-semibold text-white/90 tabular-nums">
+                                Steg {Math.min(intervalTimerStepIndex + 1, intervalProgramSteps.length || 1)} av {intervalProgramSteps.length || 0}
+                              </span>
+                            </div>
+                            <div className="px-4 pt-3 sm:px-5">
+                              <h3 className="text-2xl font-bold leading-tight tracking-tight sm:text-3xl">
+                                {currentIntervalProgramStep.headline}
+                              </h3>
+                              {currentIntervalProgramStep.tone === "rest" && currentIntervalProgramStep.afterExerciseName ? (
+                                <p className="mt-2 text-sm leading-snug text-white/90">
+                                  Etter {currentIntervalProgramStep.afterExerciseName}
+                                </p>
+                              ) : null}
+                            </div>
+                            <div className="flex justify-center px-4 py-1 sm:px-5 sm:py-2">
+                              <div className="text-6xl font-black tabular-nums tracking-tight sm:text-8xl">
+                                {formatSeconds(intervalTimerRemainingSeconds)}
+                              </div>
+                            </div>
+                            <div className="mx-4 mb-1 rounded-xl bg-black/18 backdrop-blur-[2px] sm:mx-5">
+                              {currentIntervalProgramStep.speedHint && currentIntervalProgramStep.speedHint !== "-" ? (
+                                <div className="flex items-start justify-between gap-4 border-b border-white/15 px-3 py-2.5 text-sm first:pt-3 sm:px-0">
+                                  <span className="shrink-0 text-white/75">Fart</span>
+                                  <span className="text-right font-semibold tabular-nums">{currentIntervalProgramStep.speedHint}</span>
+                                </div>
+                              ) : null}
+                              {currentIntervalProgramStep.inclineHint && currentIntervalProgramStep.inclineHint !== "-" ? (
+                                <div className="flex items-start justify-between gap-4 border-b border-white/15 px-3 py-2.5 text-sm sm:px-0">
+                                  <span className="shrink-0 text-white/75">Stigning</span>
+                                  <span className="text-right font-semibold tabular-nums">{currentIntervalProgramStep.inclineHint}</span>
+                                </div>
+                              ) : null}
+                              {currentIntervalProgramStep.hrHint ? (
+                                <div className="flex items-start justify-between gap-4 px-3 py-2.5 text-sm sm:px-0">
+                                  <span className="shrink-0 text-white/75">Målpuls</span>
+                                  <span className="text-right font-semibold">{currentIntervalProgramStep.hrHint}</span>
+                                </div>
+                              ) : null}
+                              {!currentIntervalProgramStep.hrHint &&
+                              (!currentIntervalProgramStep.speedHint || currentIntervalProgramStep.speedHint === "-") &&
+                              (!currentIntervalProgramStep.inclineHint || currentIntervalProgramStep.inclineHint === "-") ? (
+                                <div className="px-3 py-3 text-center text-sm text-white/75 sm:px-0">Ingen ekstra instrukser for dette steget.</div>
+                              ) : null}
+                            </div>
+                            {(() => {
+                              const nextSt = intervalProgramSteps[intervalTimerStepIndex + 1];
+                              if (!nextSt) {
+                                return (
+                                  <div className="border-t border-white/15 px-4 py-3 text-center text-sm font-medium text-white/85 sm:px-5">
+                                    Siste steg i økta
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div className="border-t border-white/15 px-4 py-3 sm:px-5">
+                                  <div className="text-[10px] font-bold uppercase tracking-wider text-white/70">Neste</div>
+                                  <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
+                                    <div className="text-base font-semibold leading-snug">{nextSt.headline}</div>
+                                    <div className="text-sm text-white/90 tabular-nums">
+                                      {nextSt.phaseBadge} · {formatSeconds(nextSt.durationSeconds)}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </>
+                        ) : (
+                          <div className="p-8 text-center text-sm text-white/90">Ingen steg i programmet. Velg et intervallprogram.</div>
+                        )}
                       </div>
                       <div className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                         <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
-                          <span>Del {Math.min(intervalTimerStepIndex + 1, intervalProgramSteps.length || 1)} / {intervalProgramSteps.length || 1}</span>
+                          <span>Steg {Math.min(intervalTimerStepIndex + 1, intervalProgramSteps.length || 1)} / {intervalProgramSteps.length || 1}</span>
                           <span>{intervalTimerProgressPercent}%</span>
                         </div>
                         <div className="mt-2 h-3 rounded-full bg-slate-200">
