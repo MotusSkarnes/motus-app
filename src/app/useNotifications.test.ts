@@ -32,6 +32,38 @@ describe("useNotifications workout comment alerts", () => {
     );
 
     expect(result.current.memberUnreadCount).toBeGreaterThan(0);
+    expect(result.current.memberVisibleAlerts.length).toBeGreaterThan(0);
+    expect(result.current.memberVisibleAlerts[0]?.isUnread).toBe(true);
+  });
+
+  it("keeps recent alerts visible after marking as seen", () => {
+    const { result, rerender } = renderHook(
+      (props) => useNotifications(props),
+      {
+        initialProps: {
+          messages: [],
+          programs: [],
+          logs: [makeLog()],
+          members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+          memberViewId: "member-1",
+          setMemberTab: () => {},
+        },
+      },
+    );
+
+    expect(result.current.memberUnreadCount).toBe(1);
+    result.current.handleMemberBellToggle();
+    rerender({
+      messages: [],
+      programs: [],
+      logs: [makeLog()],
+      members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+      memberViewId: "member-1",
+      setMemberTab: () => {},
+    });
+    expect(result.current.memberUnreadCount).toBe(0);
+    expect(result.current.memberVisibleAlerts.length).toBe(1);
+    expect(result.current.memberVisibleAlerts[0]?.isUnread).toBe(false);
   });
 
   it("ignores workout comments on non-completed logs", () => {

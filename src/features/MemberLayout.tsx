@@ -4,17 +4,8 @@ import { Bell, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, Messa
 import { MOTUS } from "../app/data";
 import type { AppState, MemberTab } from "../app/types";
 import { Card } from "../app/ui";
+import type { MemberAlert } from "../app/useNotifications";
 import { MemberPortal } from "./MemberPortal";
-
-type MemberAlert = {
-  id: string;
-  kind: "message" | "program" | "workout-comment";
-  title: string;
-  text: string;
-  detail: string;
-  timestamp: number;
-  targetTab: "messages" | "programs" | "progress";
-};
 
 type MemberLayoutProps = {
   appState: AppState;
@@ -196,26 +187,49 @@ export function MemberLayout({
             </button>
           </div>
           {memberNotificationsOpen ? (
-            <div className="mt-3 max-h-52 overflow-y-auto space-y-2 pr-1">
+            <div className="mt-3 max-h-[min(22rem,70vh)] overflow-y-auto space-y-2 pr-1">
               {memberVisibleAlerts.map((alert) => {
                 const AlertIcon =
                   alert.kind === "message" ? MessageSquare : alert.kind === "workout-comment" ? TrendingUp : ClipboardList;
+                const isOpened = alert.isOpened;
+                const isRead = !alert.isUnread;
                 return (
                   <button
                     key={alert.id}
                     type="button"
                     onClick={() => openAlert(alert)}
-                    className="group flex w-full items-center gap-3 rounded-xl border bg-white px-3 py-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50"
-                    style={{ borderColor: "rgba(20,184,166,0.25)" }}
+                    className={`group flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left shadow-sm transition ${
+                      isOpened
+                        ? "border-slate-200/80 bg-slate-50/90 opacity-75 hover:bg-slate-100"
+                        : isRead
+                          ? "border-slate-200/90 bg-slate-50/70 opacity-90 hover:bg-slate-100"
+                          : "border-emerald-200/80 bg-white hover:-translate-y-0.5 hover:bg-emerald-50"
+                    }`}
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                    <span
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                        isOpened || isRead ? "bg-slate-100 text-slate-400" : "bg-emerald-50 text-emerald-600"
+                      }`}
+                    >
                       <AlertIcon className="h-4 w-4" />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-slate-800">{alert.title}</span>
-                      <span className="block truncate text-xs text-slate-500">{alert.detail}</span>
+                      <span
+                        className={`block text-sm ${
+                          isOpened ? "font-medium text-slate-500" : isRead ? "font-medium text-slate-600" : "font-semibold text-slate-800"
+                        }`}
+                      >
+                        {alert.title}
+                      </span>
+                      <span className={`block truncate text-xs ${isOpened ? "text-slate-400" : "text-slate-500"}`}>
+                        {alert.detail}
+                      </span>
                     </span>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-emerald-500" />
+                    <ChevronRight
+                      className={`h-4 w-4 shrink-0 transition ${
+                        isOpened ? "text-slate-300" : "text-slate-300 group-hover:text-emerald-500"
+                      }`}
+                    />
                   </button>
                 );
               })}
