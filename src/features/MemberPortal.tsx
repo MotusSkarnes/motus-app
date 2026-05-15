@@ -5499,7 +5499,6 @@ export function MemberPortal(props: MemberPortalProps) {
                           <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
                           Ukesoppsummering
                         </span>
-                        <span className="rounded-full bg-black/15 px-2.5 py-0.5 text-xs font-medium text-white/90">9:16 · PNG</span>
                       </div>
 
                       <div>
