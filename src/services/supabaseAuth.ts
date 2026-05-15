@@ -288,7 +288,6 @@ function isInvalidOtpMessage(message: string): boolean {
     normalized.includes("token has expired") ||
     normalized.includes("invalid") ||
     normalized.includes("expired") ||
-    normalized.includes("utlÃ¸pt") ||
     normalized.includes("utløpt") ||
     normalized.includes("ugyldig")
   );
