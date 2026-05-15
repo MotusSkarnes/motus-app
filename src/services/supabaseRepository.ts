@@ -1007,7 +1007,10 @@ function buildTrainingProgramPersistenceFingerprint(input: {
   return `${String(input.title ?? "").trim()}::${String(input.goal ?? "").trim()}::${String(input.notes ?? "").trim()}::${exerciseFingerprint}`;
 }
 
-async function deleteProgram(programId: string) {
+async function deleteProgram(
+  programId: string,
+  context?: { memberIds?: string[]; targetEmail?: string; targetName?: string },
+) {
   if (!supabaseClient) return;
   const { data: programRow, error: lookupError } = await supabaseClient
     .from("training_programs")
@@ -1027,15 +1030,21 @@ async function deleteProgram(programId: string) {
   }
 
   const memberId = String(programRow.member_id ?? "").trim();
-  const targetEmail = memberId.includes("@") ? memberId.toLowerCase() : "";
+  const targetEmail = String(context?.targetEmail ?? "").trim().toLowerCase() || (memberId.includes("@") ? memberId.toLowerCase() : "");
+  const targetName = String(context?.targetName ?? "").trim();
   const title = String(programRow.title ?? "");
   const targetFingerprint = buildTrainingProgramPersistenceFingerprint(programRow as Record<string, unknown>);
   const targetOwnerUserId = String(programRow.owner_user_id ?? "").trim();
+  const contextMemberIds = Array.isArray(context?.memberIds) ? context?.memberIds ?? [] : [];
   const relatedMemberIds =
-    memberId && memberId !== "__template__"
-      ? await resolveRelatedMemberIds(memberId, targetEmail ? { targetEmail } : undefined)
-      : [memberId];
-  const deletionKeys = Array.from(new Set([memberId, targetEmail, ...relatedMemberIds].map((value) => String(value ?? "").trim()).filter(Boolean)));
+    contextMemberIds.length > 0
+      ? contextMemberIds
+      : memberId && memberId !== "__template__"
+        ? await resolveRelatedMemberIds(memberId, targetEmail || targetName ? { targetEmail, targetName } : undefined)
+        : [memberId];
+  const deletionKeys = Array.from(
+    new Set([memberId, targetEmail, ...relatedMemberIds].map((value) => String(value ?? "").trim()).filter(Boolean)),
+  );
   if (!deletionKeys.length && !targetOwnerUserId) return;
 
   let candidateQuery = supabaseClient
@@ -1950,9 +1959,13 @@ export const supabaseAppRepository: AppRepository = {
     void persistMemberProgramLibraryStatus(programId, dbStatus);
     return nextState;
   },
-  deleteProgram(state: AppState, programId: string): AppState {
+  deleteProgram(
+    state: AppState,
+    programId: string,
+    context?: { memberIds?: string[]; targetEmail?: string; targetName?: string },
+  ): AppState {
     const nextState = localAppRepository.deleteProgram(state, programId);
-    void deleteProgram(programId);
+    void deleteProgram(programId, context);
     return nextState;
   },
   appendTrainerMessage(state: AppState, memberId: string, text: string): AppState {

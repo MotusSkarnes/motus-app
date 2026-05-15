@@ -100,7 +100,7 @@ type TrainerPortalProps = {
     programCreatedBy?: "member" | "trainer";
     programCreatedByName?: string;
   }) => void;
-  deleteProgramById: (programId: string) => void;
+  deleteProgramById: (programId: string, context?: { memberIds?: string[]; targetEmail?: string; targetName?: string }) => void;
   sendTrainerMessage: (memberId: string, text: string) => void;
   clearLocalChatCache?: () => number;
   saveExercise: (input: {
@@ -1927,8 +1927,13 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       tone: "danger",
       onConfirm: () => {
         setDismissedProgramFingerprints((prev) => (prev.includes(fingerprint) ? prev : [...prev, fingerprint]));
-        deleteProgramById(target.id);
-        duplicateIds.forEach((id) => deleteProgramById(id));
+        const deleteContext = {
+          memberIds: selectedMemberRelatedIds,
+          targetEmail: selectedMember?.email ?? "",
+          targetName: selectedMember?.name ?? "",
+        };
+        deleteProgramById(target.id, deleteContext);
+        duplicateIds.forEach((id) => deleteProgramById(id, deleteContext));
       },
     });
   }

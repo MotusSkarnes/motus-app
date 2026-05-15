@@ -35,6 +35,12 @@ export type SaveProgramInput = {
   onPersisted?: (result: { ok: boolean; message?: string }) => void;
 };
 
+export type DeleteProgramContext = {
+  memberIds?: string[];
+  targetEmail?: string;
+  targetName?: string;
+};
+
 export type UpdateWorkoutResultInput = {
   exerciseId: string;
   field: "performedWeight" | "performedReps" | "performedDurationMinutes" | "performedSpeed" | "performedIncline" | "completed";
@@ -136,7 +142,7 @@ export interface AppRepository {
   deleteMember(state: AppState, memberId: string): AppState;
   markMemberInvited(state: AppState, memberId: string, invitedAtIso?: string): AppState;
   saveProgram(state: AppState, input: SaveProgramInput): AppState;
-  deleteProgram(state: AppState, programId: string): AppState;
+  deleteProgram(state: AppState, programId: string, context?: DeleteProgramContext): AppState;
   updateProgramMemberLibraryStatus(state: AppState, programId: string, status: MemberProgramLibraryStatus | undefined): AppState;
   appendTrainerMessage(state: AppState, memberId: string, text: string): AppState;
   appendMemberMessage(state: AppState, memberId: string, text: string): AppState;

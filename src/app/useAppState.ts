@@ -1043,8 +1043,8 @@ export function useAppState() {
     setAppState((prev) => syncExercisesWithPrograms(repository.saveProgram(prev, input)));
   }
 
-  function deleteProgramById(programId: string) {
-    setAppState((prev) => repository.deleteProgram(prev, programId));
+  function deleteProgramById(programId: string, context?: { memberIds?: string[]; targetEmail?: string; targetName?: string }) {
+    setAppState((prev) => repository.deleteProgram(prev, programId, context));
   }
 
   function updateProgramMemberLibraryStatus(programId: string, status: MemberProgramLibraryStatus | undefined) {
