@@ -25,6 +25,7 @@ import {
   Users,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
+import motusLogo from "../assets/motus-logo-transparent.svg";
 import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
@@ -3228,10 +3229,56 @@ export function MemberPortal(props: MemberPortalProps) {
       .replace(/'/g, "&#39;");
   }
 
+  function resolvePrintAssetUrl(assetUrl: string): string {
+    const trimmed = assetUrl.trim();
+    if (!trimmed || typeof window === "undefined") return trimmed;
+    if (/^(https?:|data:|blob:)/i.test(trimmed)) return trimmed;
+    try {
+      return new URL(trimmed, window.location.href).href;
+    } catch {
+      return trimmed;
+    }
+  }
+
+  function printHtmlInHiddenFrame(html: string): boolean {
+    if (typeof document === "undefined") return false;
+    const iframe = document.createElement("iframe");
+    iframe.setAttribute("aria-hidden", "true");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
+    const frameWindow = iframe.contentWindow;
+    const frameDoc = frameWindow?.document;
+    if (!frameWindow || !frameDoc) {
+      iframe.remove();
+      return false;
+    }
+    const cleanup = () => {
+      window.setTimeout(() => iframe.remove(), 1500);
+    };
+    frameDoc.open();
+    frameDoc.write(html);
+    frameDoc.close();
+    window.setTimeout(() => {
+      try {
+        frameWindow.focus();
+        frameWindow.print();
+        cleanup();
+      } catch {
+        iframe.remove();
+      }
+    }, 700);
+    return true;
+  }
+
   function handlePrintProgram(program: TrainingProgram) {
     if (typeof window === "undefined") return;
-    const printWindow = window.open("", "_blank", "width=900,height=1100");
-    if (!printWindow) return;
+    try {
+    const printLogoUrl = resolvePrintAssetUrl(motusLogo);
     const recipientName = (viewedMember?.name || editableMember?.name || "Kunde").trim();
     const trainerLabel = (pickFirstName(program.assignedTrainerName ?? "") || pickFirstName(MOTUS.name) || "Trener").trim();
     const exercisesHtml =
@@ -3249,7 +3296,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 : libraryMatch?.category === "Uttøyning"
                   ? `${exercise.sets} sett × ${(exercise.holdSeconds ?? "").trim() || exercise.weight || "-"} sek · ${exercise.restSeconds}s pause`
                   : `${exercise.sets} x ${exercise.reps} · ${exercise.weight || "-"} kg · ${exercise.restSeconds}s pause`;
-              const imageUrl = libraryMatch?.imageUrl?.trim() || "";
+              const imageUrl = resolvePrintAssetUrl(libraryMatch?.imageUrl?.trim() || "");
               const description = libraryMatch?.description?.trim() || "Ingen forklaring tilgjengelig for denne øvelsen.";
               return `<article class="exercise-card">
   <div class="exercise-image-wrap">
@@ -3273,6 +3320,7 @@ export function MemberPortal(props: MemberPortalProps) {
 <html lang="no">
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(program.title)} - Utskrift</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; color: #0f172a; background: #f8fafc; }
@@ -3314,7 +3362,7 @@ export function MemberPortal(props: MemberPortalProps) {
         <div class="meta-line">Av: ${escapeHtml(trainerLabel)} · Til: ${escapeHtml(recipientName)}</div>
       </div>
       <div>
-        <div class="brand-logo-frame"><img src="${escapeHtml(motusSkrytekortLogo)}" alt="Motus logo" class="brand-logo" /></div>
+        <div class="brand-logo-frame"><img src="${escapeHtml(printLogoUrl)}" alt="Motus logo" class="brand-logo" /></div>
       </div>
     </div>
     ${
@@ -3366,9 +3414,81 @@ export function MemberPortal(props: MemberPortalProps) {
   </script>
 </body>
 </html>`;
-    printWindow.document.open();
-    printWindow.document.write(html);
-    printWindow.document.close();
+      const printTab = window.open("about:blank", "_blank");
+      if (!printTab) {
+        if (printHtmlInHiddenFrame(html)) {
+          return;
+        }
+        setConfirmDialog({
+          title: "Popup blokkert",
+          message: "Nettleseren blokkerte vinduet for utskrift. Tillat popup for denne siden og prøv igjen.",
+          confirmLabel: "OK",
+          showCancel: false,
+          tone: "default",
+          onConfirm: () => setConfirmDialog(null),
+        });
+        return;
+      }
+      try {
+        printTab.document.open();
+        printTab.document.write(html);
+        printTab.document.close();
+        window.setTimeout(() => {
+          try {
+            printTab.focus();
+            printTab.print();
+          } catch {
+            // ignore
+          }
+        }, 700);
+        return;
+      } catch (writeError) {
+        console.warn("Member print: direct tab write failed, trying blob fallback.", writeError);
+      }
+
+      try {
+        const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+        const blobUrl = URL.createObjectURL(blob);
+        printTab.location.href = blobUrl;
+        window.setTimeout(() => {
+          try {
+            printTab.focus();
+            printTab.print();
+          } catch {
+            // ignore
+          }
+        }, 900);
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      } catch (error) {
+        console.warn("Member print: blob print failed.", error);
+        try {
+          printTab.close();
+        } catch {
+          // ignore
+        }
+        if (printHtmlInHiddenFrame(html)) {
+          return;
+        }
+        setConfirmDialog({
+          title: "Utskrift feilet",
+          message: "Kunne ikke åpne utskrift/PDF. Prøv igjen, eller tillat popup for denne siden.",
+          confirmLabel: "OK",
+          showCancel: false,
+          tone: "default",
+          onConfirm: () => setConfirmDialog(null),
+        });
+      }
+    } catch (unexpectedError) {
+      console.error("Member print failed before rendering.", unexpectedError);
+      setConfirmDialog({
+        title: "Utskrift feilet",
+        message: "Kunne ikke generere utskrift. Prøv igjen.",
+        confirmLabel: "OK",
+        showCancel: false,
+        tone: "default",
+        onConfirm: () => setConfirmDialog(null),
+      });
+    }
   }
 
   return (
