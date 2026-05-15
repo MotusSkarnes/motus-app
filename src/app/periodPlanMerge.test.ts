@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { normalizePeriodSchedulePlan, resolvePeriodPlanWeek } from "./periodPlanMerge";
+import {
+  buildPeriodPlanWeekNavItemsFromPlan,
+  normalizePeriodSchedulePlan,
+  resolvePeriodPlanWeek,
+} from "./periodPlanMerge";
 import type { PeriodSchedulePlan } from "./types";
 
 function makePlan(weeklyPlans: PeriodSchedulePlan["weeklyPlans"]): PeriodSchedulePlan {
@@ -41,5 +45,23 @@ describe("normalizePeriodSchedulePlan", () => {
     ]);
     const normalized = normalizePeriodSchedulePlan(plan);
     expect(normalized.weeklyPlans.map((week) => week.weekNumber)).toEqual([1, 2]);
+  });
+
+  it("pads weeklyPlans to match plan.weeks", () => {
+    const plan: PeriodSchedulePlan = {
+      id: "plan-1",
+      title: "Test",
+      notes: "",
+      startDate: "2026-01-06",
+      weeks: 4,
+      createdAt: "2026-01-01",
+      weeklyPlans: [
+        { id: "w1", weekNumber: 1, days: { monday: "A", tuesday: "", wednesday: "", thursday: "", friday: "", saturday: "", sunday: "" } },
+      ],
+    };
+    const normalized = normalizePeriodSchedulePlan(plan);
+    expect(normalized.weeklyPlans).toHaveLength(4);
+    expect(buildPeriodPlanWeekNavItemsFromPlan(normalized)).toHaveLength(4);
+    expect(resolvePeriodPlanWeek(normalized, 3)?.days.monday).toBe("");
   });
 });

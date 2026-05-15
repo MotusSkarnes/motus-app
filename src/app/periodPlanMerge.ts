@@ -1,4 +1,9 @@
-import type { PeriodSchedulePlan, WeeklySchedulePlan } from "./types";
+import type { PeriodSchedulePlan, WeeklyDayPlan, WeeklySchedulePlan } from "./types";
+
+export type PeriodPlanWeekNavItem = {
+  id: string;
+  weekNumber: number;
+};
 
 function planStartTimeMs(plan: PeriodSchedulePlan): number {
   const value = plan.startDate?.trim() ?? "";
@@ -20,26 +25,77 @@ function planStartTimeMs(plan: PeriodSchedulePlan): number {
   return Number.isNaN(fallback.getTime()) ? 0 : fallback.getTime();
 }
 
+function createEmptyWeeklyDayPlan(): WeeklyDayPlan {
+  return {
+    monday: "",
+    tuesday: "",
+    wednesday: "",
+    thursday: "",
+    friday: "",
+    saturday: "",
+    sunday: "",
+  };
+}
+
+export function buildPeriodPlanWeekNavItems(
+  weeklyPlans: WeeklySchedulePlan[],
+  totalWeeks: number,
+  planId = "draft",
+): PeriodPlanWeekNavItem[] {
+  const weekCount = Math.max(
+    1,
+    Math.min(12, Math.max(weeklyPlans.length, Math.floor(Number(totalWeeks) || 1))),
+  );
+  return Array.from({ length: weekCount }, (_, index) => {
+    const weekNumber = index + 1;
+    const existing =
+      weeklyPlans.find((week) => Number(week.weekNumber) === weekNumber) ?? weeklyPlans[index];
+    return {
+      id: existing?.id ?? `${planId}-week-${weekNumber}`,
+      weekNumber,
+    };
+  });
+}
+
+export function buildPeriodPlanWeekNavItemsFromPlan(plan: PeriodSchedulePlan): PeriodPlanWeekNavItem[] {
+  return buildPeriodPlanWeekNavItems(plan.weeklyPlans ?? [], plan.weeks, plan.id);
+}
+
 export function normalizePeriodSchedulePlan(plan: PeriodSchedulePlan): PeriodSchedulePlan {
-  const weeklyPlans = (plan.weeklyPlans ?? []).map((week, index) => ({
-    ...week,
-    weekNumber:
-      Number.isFinite(Number(week.weekNumber)) && Number(week.weekNumber) > 0
-        ? Number(week.weekNumber)
-        : index + 1,
-  }));
+  const source = plan.weeklyPlans ?? [];
   const weeks = Math.max(
     1,
-    Number.isFinite(Number(plan.weeks)) && Number(plan.weeks) > 0 ? Number(plan.weeks) : weeklyPlans.length || 1,
+    Math.min(
+      12,
+      Math.max(
+        source.length,
+        Number.isFinite(Number(plan.weeks)) && Number(plan.weeks) > 0 ? Number(plan.weeks) : source.length || 1,
+      ),
+    ),
   );
+  const weeklyPlans: WeeklySchedulePlan[] = Array.from({ length: weeks }, (_, index) => {
+    const weekNumber = index + 1;
+    const existing = source.find((week) => Number(week.weekNumber) === weekNumber) ?? source[index];
+    return {
+      id: existing?.id ?? `${plan.id}-week-${weekNumber}`,
+      weekNumber,
+      days: existing?.days ?? createEmptyWeeklyDayPlan(),
+    };
+  });
   return { ...plan, weeks, weeklyPlans };
 }
 
 export function resolvePeriodPlanWeek(plan: PeriodSchedulePlan, weekNumber: number): WeeklySchedulePlan | null {
-  const weeks = plan.weeklyPlans ?? [];
+  const normalized = normalizePeriodSchedulePlan(plan);
+  const weeks = normalized.weeklyPlans ?? [];
   if (!weeks.length) return null;
-  const target = Math.max(1, Math.floor(Number(weekNumber) || 1));
+  const target = Math.max(1, Math.min(weeks.length, Math.floor(Number(weekNumber) || 1)));
   return weeks.find((week) => Number(week.weekNumber) === target) ?? weeks[target - 1] ?? weeks[0] ?? null;
+}
+
+export function periodPlanSelectableWeekCount(plan: PeriodSchedulePlan): number {
+  const normalized = normalizePeriodSchedulePlan(plan);
+  return normalized.weeklyPlans.length;
 }
 
 export function mergedPeriodPlanListForMember(

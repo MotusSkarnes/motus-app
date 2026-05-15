@@ -30,6 +30,7 @@ import {
   upsertMemberPeriodPlansForTrainer,
 } from "../services/supabaseRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
+import { buildPeriodPlanWeekNavItems } from "../app/periodPlanMerge";
 import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
 
 function inferStatusTone(message: string): "success" | "error" | "info" {
@@ -1212,8 +1213,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
 
   useEffect(() => {
     const parsed = Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1));
-    if (periodWeeklyPlansDraft.length === parsed) return;
     setPeriodWeeklyPlansDraft((prev) => {
+      if (prev.length === parsed) return prev;
       const normalized = prev.slice(0, parsed).map((week, index) => ({ ...week, weekNumber: index + 1 }));
       while (normalized.length < parsed) {
         normalized.push({
@@ -1224,7 +1225,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       }
       return normalized;
     });
-  }, []);
+  }, [periodPlanWeeksDraft]);
   const periodPlanProgramOptions = useMemo(() => {
     const baseOptions = [
       { value: "", label: "Ingen plan valgt" },
@@ -4059,10 +4060,11 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         </div>
                         {periodWeeklyPlansDraft.length > 0 ? (
                           <PeriodPlanWeekNavigator
-                            weeks={periodWeeklyPlansDraft.map((week) => ({
-                              id: week.id,
-                              weekNumber: week.weekNumber,
-                            }))}
+                            weeks={buildPeriodPlanWeekNavItems(
+                              periodWeeklyPlansDraft,
+                              Number(periodPlanWeeksDraft) || 1,
+                              "period-draft",
+                            )}
                             selectedWeekId={activePeriodWeekId}
                             onWeekSelectById={setActivePeriodWeekId}
                           />

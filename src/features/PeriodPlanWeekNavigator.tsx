@@ -1,11 +1,9 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { MOTUS } from "../app/data";
+import type { PeriodPlanWeekNavItem } from "../app/periodPlanMerge";
 
-export type PeriodPlanWeekNavItem = {
-  id: string;
-  weekNumber: number;
-};
+export type { PeriodPlanWeekNavItem };
 
 type PeriodPlanWeekNavigatorProps = {
   weeks: PeriodPlanWeekNavItem[];
@@ -36,7 +34,7 @@ export function PeriodPlanWeekNavigator({
     [weeks],
   );
 
-  const selectedIndex = useMemo(() => {
+  const externalIndex = useMemo(() => {
     if (!sortedWeeks.length) return 0;
     if (selectedWeekId) {
       const byId = sortedWeeks.findIndex((week) => week.id === selectedWeekId);
@@ -50,31 +48,45 @@ export function PeriodPlanWeekNavigator({
     return 0;
   }, [sortedWeeks, selectedWeekId, selectedWeekNumber]);
 
+  const [activeIndex, setActiveIndex] = useState(externalIndex);
+
+  useEffect(() => {
+    setActiveIndex(externalIndex);
+  }, [externalIndex]);
+
+  const goToIndex = useCallback(
+    (index: number) => {
+      if (!sortedWeeks.length) return;
+      const clamped = Math.max(0, Math.min(sortedWeeks.length - 1, index));
+      const week = sortedWeeks[clamped];
+      if (!week) return;
+      setActiveIndex(clamped);
+      onWeekSelectById?.(week.id);
+      onWeekSelectByNumber?.(Number(week.weekNumber));
+    },
+    [sortedWeeks, onWeekSelectById, onWeekSelectByNumber],
+  );
+
   if (!sortedWeeks.length) return null;
 
-  const activeWeek = sortedWeeks[selectedIndex] ?? sortedWeeks[0];
+  const activeWeek = sortedWeeks[activeIndex] ?? sortedWeeks[0];
   const weekRange = formatWeekRange?.(activeWeek.weekNumber) ?? null;
-  const canGoPrev = selectedIndex > 0;
-  const canGoNext = selectedIndex < sortedWeeks.length - 1;
+  const canGoPrev = activeIndex > 0;
+  const canGoNext = activeIndex < sortedWeeks.length - 1;
   const showNowBadge = currentWeekNumber != null;
 
-  function selectWeek(week: PeriodPlanWeekNavItem) {
-    onWeekSelectById?.(week.id);
-    onWeekSelectByNumber?.(Number(week.weekNumber));
-  }
-
   return (
-    <div className={`space-y-2 ${className}`.trim()}>
+    <div className={`relative z-10 space-y-2 ${className}`.trim()}>
       <div className="flex items-stretch gap-2">
         <button
           type="button"
           disabled={!canGoPrev}
-          onClick={() => selectWeek(sortedWeeks[selectedIndex - 1])}
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-white text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          onClick={() => goToIndex(activeIndex - 1)}
+          className="relative z-10 inline-flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-xl border bg-white text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
           style={{ borderColor: "rgba(15,23,42,0.10)" }}
           aria-label="Forrige uke"
         >
-          <ChevronLeft className="h-5 w-5" aria-hidden />
+          <ChevronLeft className="pointer-events-none h-5 w-5" aria-hidden />
         </button>
 
         <div
@@ -89,19 +101,19 @@ export function PeriodPlanWeekNavigator({
           </div>
           {weekRange ? <div className="mt-0.5 text-[11px] text-slate-500">{weekRange}</div> : null}
           <div className="mt-0.5 text-[10px] text-slate-400">
-            {selectedIndex + 1} av {sortedWeeks.length}
+            {activeIndex + 1} av {sortedWeeks.length}
           </div>
         </div>
 
         <button
           type="button"
           disabled={!canGoNext}
-          onClick={() => selectWeek(sortedWeeks[selectedIndex + 1])}
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-white text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          onClick={() => goToIndex(activeIndex + 1)}
+          className="relative z-10 inline-flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-xl border bg-white text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
           style={{ borderColor: "rgba(15,23,42,0.10)" }}
           aria-label="Neste uke"
         >
-          <ChevronRight className="h-5 w-5" aria-hidden />
+          <ChevronRight className="pointer-events-none h-5 w-5" aria-hidden />
         </button>
       </div>
 
@@ -112,16 +124,16 @@ export function PeriodPlanWeekNavigator({
           role="tablist"
           aria-label="Velg uke i periodeplan"
         >
-          {sortedWeeks.map((week) => {
-            const selected = week.id === activeWeek.id;
+          {sortedWeeks.map((week, index) => {
+            const selected = index === activeIndex;
             return (
               <button
                 key={week.id}
                 type="button"
                 role="tab"
                 aria-selected={selected}
-                onClick={() => selectWeek(week)}
-                className={`shrink-0 snap-start rounded-xl border px-3 py-1.5 text-xs font-medium transition ${
+                onClick={() => goToIndex(index)}
+                className={`relative z-10 shrink-0 snap-start touch-manipulation rounded-xl border px-3 py-1.5 text-xs font-medium transition ${
                   selected ? "border-transparent text-white shadow-sm" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                 }`}
                 style={

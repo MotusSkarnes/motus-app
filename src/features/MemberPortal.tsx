@@ -50,7 +50,12 @@ import {
   resolveGroupClassNameFromPeriodEntry,
   resolvePeriodPlanEntryAction,
 } from "../app/periodPlanEntryActions";
-import { mergedPeriodPlanListForMember, resolvePeriodPlanWeek } from "../app/periodPlanMerge";
+import {
+  buildPeriodPlanWeekNavItemsFromPlan,
+  mergedPeriodPlanListForMember,
+  periodPlanSelectableWeekCount,
+  resolvePeriodPlanWeek,
+} from "../app/periodPlanMerge";
 import {
   applyPeriodPlanSwaps,
   getPeriodPlanSwapsStorageKey,
@@ -2080,7 +2085,8 @@ export function MemberPortal(props: MemberPortalProps) {
     const fallbackWeekNumber = activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : 1;
     setSelectedPeriodPlanWeekNumber((prev) => {
       if (prev == null) return fallbackWeekNumber;
-      const weekExists = (activePeriodPlan.weeklyPlans ?? []).some((week) => Number(week.weekNumber) === Number(prev));
+      const weekCount = periodPlanSelectableWeekCount(activePeriodPlan);
+      const weekExists = Number(prev) >= 1 && Number(prev) <= weekCount;
       return weekExists ? prev : fallbackWeekNumber;
     });
   }, [activePeriodPlan, activePeriodWeekIndex]);
@@ -4689,10 +4695,7 @@ export function MemberPortal(props: MemberPortalProps) {
                           {(plan.weeklyPlans ?? []).length > 0 ? (
                             <PeriodPlanWeekNavigator
                               className="mt-3"
-                              weeks={(plan.weeklyPlans ?? []).map((week) => ({
-                                id: week.id,
-                                weekNumber: week.weekNumber,
-                              }))}
+                              weeks={buildPeriodPlanWeekNavItemsFromPlan(plan)}
                               selectedWeekNumber={selectedPeriodPlanWeekForView}
                               onWeekSelectByNumber={setSelectedPeriodPlanWeekNumber}
                               currentWeekNumber={activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : null}
