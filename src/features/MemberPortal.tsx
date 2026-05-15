@@ -4199,9 +4199,6 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                     <div>
                       <h2 className="text-xl font-semibold tracking-tight">Lag egen økt</h2>
-                      <p className="mt-1 text-sm text-slate-600">
-                        1) Legg til øvelser fra listen · 2) Juster sett (og reps eller sekunder ved uttøyning) · 3) Start økt, eller lagre som fast treningsprogram. Vekt fylles inn automatisk om du har trent øvelsen før.
-                      </p>
                     </div>
                   </div>
                 </div>
