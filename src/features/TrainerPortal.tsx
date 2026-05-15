@@ -10,6 +10,11 @@ import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, OutlineB
 import { useToastStatus } from "../app/toast";
 import motusLogo from "../assets/motus-logo-transparent.svg";
 import type { CreateMemberInput, UpdateMemberInput } from "../services/appRepository";
+import {
+  filterMemberIdsForRosterSave,
+  isPrivatePtRosterCustomerType,
+  isSharedMedlemCustomerType,
+} from "../services/memberAccessRules";
 import type { InviteMemberResult, InviteTrainerResult } from "../services/supabaseAuth";
 import type {
   ChatMessage,
@@ -769,8 +774,11 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const deduplicatedMembers = useMemo(() => {
     function memberScore(member: Member): number {
       let score = 0;
+      const isOwned = (member.ownerUserId ?? "").trim() === currentTrainerOwnerUserId;
+      if (isOwned && member.customerType === "PT-kunde") score += 5000;
+      if (isOwned && member.membershipType === "Premium") score += 3000;
       if (member.customerType === "Medlem") score += 2000;
-      if ((member.ownerUserId ?? "").trim() && (member.ownerUserId ?? "").trim() === currentTrainerOwnerUserId) score += 1000;
+      if (isOwned) score += 1000;
       if (member.isActive !== false) score += 8;
       if (member.invitedAt) score += 2;
       if (member.customerType === "PT-kunde") score += 1;
@@ -801,7 +809,11 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const merged: Member[] = [];
     for (const [, group] of byIdentity) {
       if (!group.length) continue;
-      const sorted = [...group].sort((a, b) => memberScore(b) - memberScore(a));
+      const sorted = [...group].sort((a, b) => {
+        const scoreDelta = memberScore(b) - memberScore(a);
+        if (scoreDelta !== 0) return scoreDelta;
+        return a.id.localeCompare(b.id);
+      });
       const base = sorted[0] ?? group[0];
       if (!base) continue;
       const names = group.map((member) => member.name);
@@ -2216,11 +2228,24 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   async function handleSaveSelectedMemberDetails() {
     if (!selectedMember) return;
     const selectedOwnerUserId = (selectedMember.ownerUserId ?? "").trim();
-    const isSharedMemberProfile = selectedMember.customerType === "Medlem" || memberEditIsSharedMember;
-    if (!isSharedMemberProfile && selectedOwnerUserId && currentTrainerOwnerUserId && selectedOwnerUserId !== currentTrainerOwnerUserId) {
+    const storedCustomerType = selectedMember.customerType;
+    const crossOwner =
+      Boolean(selectedOwnerUserId && currentTrainerOwnerUserId && selectedOwnerUserId !== currentTrainerOwnerUserId);
+    const nextCustomerType = memberEditIsSharedMember ? "Medlem" : memberEditIsPtCustomer ? "PT-kunde" : "Oppfølging";
+
+    // Never treat the UI checkbox as proof of ownership — another PT's PT-kunde cannot be edited here.
+    if (crossOwner && storedCustomerType !== "Medlem") {
       setMemberEditStatus("Denne kunden eies av en annen PT. Be eier-PT oppdatere medlemskapstype.");
       return;
     }
+    // Shared «Medlem» rows may sync profile fields, but converting someone else's roster semantics away from Medlem is blocked.
+    if (crossOwner && storedCustomerType === "Medlem" && nextCustomerType !== "Medlem") {
+      setMemberEditStatus(
+        "Kan ikke endre medlemstype på denne profilen — den tilhører en annen PT som PT-/oppfølgingskunde. La eier-PT gjøre det.",
+      );
+      return;
+    }
+
     const nextName = memberEditName.trim();
     const nextEmail = memberEditEmail.trim().toLowerCase();
     if (!nextName) {
@@ -2237,27 +2262,22 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       return;
     }
     const previousEmail = selectedMember.email.trim().toLowerCase();
-    const previousName = (selectedMemberProfile?.name ?? selectedMember.name).trim().toLowerCase();
-    const shouldFanOutSharedMemberUpdates = isSharedMemberProfile;
-    const targetMemberIds = members
-      .filter((member) => {
-        const memberEmail = member.email.trim().toLowerCase();
-        const memberName = member.name.trim().toLowerCase();
-        if (memberEmail && memberEmail === previousEmail) return true;
-        // Some legacy shared rows are connected by name only.
-        if (shouldFanOutSharedMemberUpdates && memberName && memberName === previousName) return true;
-        return false;
-      })
-      .filter((member) => {
-        if (shouldFanOutSharedMemberUpdates) return true;
-        const owner = (member.ownerUserId ?? "").trim();
-        if (!owner) return true;
-        if (currentTrainerOwnerUserId && owner === currentTrainerOwnerUserId) return true;
-        if (selectedOwnerUserId && owner === selectedOwnerUserId) return true;
-        return false;
-      })
-      .map((member) => member.id);
-    const uniqueTargetIds = Array.from(new Set(targetMemberIds.length ? targetMemberIds : [selectedMember.id]));
+    const nextMembershipType = memberEditIsPremiumCustomer ? "Premium" : "Standard";
+    const uniqueTargetIds = filterMemberIdsForRosterSave({
+      memberRows: members.map((member) => ({
+        id: member.id,
+        email: member.email,
+        ownerUserId: member.ownerUserId,
+        customerType: member.customerType,
+      })),
+      previousEmail,
+      nextCustomerType,
+      currentTrainerOwnerUserId,
+      selectedMemberId: selectedMember.id,
+      selectedOwnerUserId,
+    });
+    const assignOwnerToSession =
+      isPrivatePtRosterCustomerType(nextCustomerType) && Boolean(currentTrainerOwnerUserId);
     const normalizedBirthDate = trimmedBirthDateDraft ? normalizeBirthDate(trimmedBirthDateDraft) : "";
     uniqueTargetIds.forEach((memberId) => {
       updateMember({
@@ -2269,8 +2289,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
           birthDate: normalizedBirthDate,
           goal: memberEditGoal,
           injuries: memberEditInjuries,
-          membershipType: memberEditIsPremiumCustomer ? "Premium" : "Standard",
-          customerType: memberEditIsSharedMember ? "Medlem" : memberEditIsPtCustomer ? "PT-kunde" : "Oppfølging",
+          membershipType: nextMembershipType,
+          customerType: nextCustomerType,
+          ...(assignOwnerToSession ? { ownerUserId: currentTrainerOwnerUserId } : {}),
         },
       });
     });
@@ -2297,20 +2318,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
             birthDate: normalizedBirthDate,
             goal: memberEditGoal,
             injuries: memberEditInjuries,
-            membershipType: memberEditIsPremiumCustomer ? "Premium" : "Standard",
-            customerType: memberEditIsSharedMember ? "Medlem" : memberEditIsPtCustomer ? "PT-kunde" : "Oppfølging",
-          },
-        },
-      });
-      const forceResult = await supabaseClient.functions.invoke("dedupe-members", {
-        body: {
-          sharedGlobal: true,
-          apply: true,
-          email: nextEmail,
-          forceProfile: {
-            name: nextName,
-            phone: normalizePhone(memberEditPhone),
-            birthDate: normalizedBirthDate,
+            membershipType: nextMembershipType,
+            customerType: nextCustomerType,
           },
         },
       });
@@ -2318,26 +2327,20 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         syncResult.data && typeof syncResult.data === "object" && "updated" in syncResult.data
           ? Number((syncResult.data as { updated?: unknown }).updated ?? 0)
           : 0;
-      const forcedUpdated =
-        forceResult.data && typeof forceResult.data === "object" && "updatedMembers" in forceResult.data
-          ? Array.isArray((forceResult.data as { updatedMembers?: unknown }).updatedMembers)
-            ? ((forceResult.data as { updatedMembers?: unknown[] }).updatedMembers ?? []).length
-            : 0
-          : 0;
       const primaryError = syncResult.error?.message ?? "";
-      const forceError = forceResult.error?.message ?? "";
-      const syncSucceeded = updated > 0 || forcedUpdated > 0;
+      const syncSucceeded = updated > 0;
       if (!syncSucceeded) {
-        if (primaryError || forceError) {
-          setMemberEditStatus(
-            `Kundekort lokalt oppdatert, men synk feilet: ${[primaryError, forceError].filter(Boolean).join(" | ")}`,
-          );
+        if (primaryError) {
+          setMemberEditStatus(`Kundekort lokalt oppdatert, men synk feilet: ${primaryError}`);
         } else {
           setMemberEditStatus("Kundekort lagret, men ingen profiler ble synket. Prøv igjen.");
         }
         return;
       }
-      setMemberEditStatus(`Kundekort oppdatert. Synk: primary=${updated}, force=${forcedUpdated}.`);
+      const typeHint = isSharedMedlemCustomerType(nextCustomerType)
+        ? "Delt medlem — synlig for alle PT-er."
+        : "PT-kunde — kun synlig for deg.";
+      setMemberEditStatus(`Kundekort oppdatert. ${typeHint}`);
       editLockedMemberIdRef.current = null;
       editLockedIdentityRef.current = null;
       setIsEditingCustomerCard(false);

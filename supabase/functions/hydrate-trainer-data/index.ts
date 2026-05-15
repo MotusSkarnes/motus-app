@@ -55,21 +55,13 @@ function harmonizeSharedMemberProfiles(rows: Array<Record<string, unknown>>): Ar
     "avatar_url",
   ] as const;
   const byEmail = new Map<string, Array<Record<string, unknown>>>();
-  const byName = new Map<string, Array<Record<string, unknown>>>();
   for (const row of rows) {
     if (!isSharedMember(row)) continue;
     const emailKey = normalizeEmail(row.email);
-    const nameKey = String(row.name ?? "").trim().toLowerCase();
-    if (emailKey) {
-      const group = byEmail.get(emailKey) ?? [];
-      group.push(row);
-      byEmail.set(emailKey, group);
-    }
-    if (nameKey) {
-      const group = byName.get(nameKey) ?? [];
-      group.push(row);
-      byName.set(nameKey, group);
-    }
+    if (!emailKey) continue;
+    const group = byEmail.get(emailKey) ?? [];
+    group.push(row);
+    byEmail.set(emailKey, group);
   }
   for (const [, group] of byEmail) {
     if (group.length <= 1) continue;
@@ -81,16 +73,7 @@ function harmonizeSharedMemberProfiles(rows: Array<Record<string, unknown>>): Ar
       }
     }
   }
-  for (const [, group] of byName) {
-    if (group.length <= 1) continue;
-    const canonical = pickMostRecentProfileRow(group);
-    if (!canonical) continue;
-    for (const row of group) {
-      for (const field of PROFILE_FIELDS) {
-        row[field] = canonical[field] ?? row[field];
-      }
-    }
-  }
+  // Never harmonize medlem rows by display name — unrelated people often share names (e.g. "Resepsjon").
   return rows;
 }
 
@@ -129,9 +112,6 @@ Deno.serve(async (req) => {
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
-
-  // Recovery: claim legacy rows with missing owner_user_id.
-  await adminClient.from("members").update({ owner_user_id: ownerUserId }).is("owner_user_id", null);
 
   const { data: ownedMembers } = await adminClient.from("members").select("id").eq("owner_user_id", ownerUserId);
   const ownedMemberIds = (ownedMembers ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);
@@ -202,11 +182,6 @@ Deno.serve(async (req) => {
         .map((row) => normalizeEmail((row as { email?: string }).email))
         .filter((value) => value && value.includes("@")),
     );
-    const relatedNameSet = new Set(
-      (members ?? [])
-        .map((row) => String((row as { name?: string }).name ?? "").trim().toLowerCase())
-        .filter(Boolean),
-    );
     const allMembersWithAvatar = await adminClient
       .from("members")
       .select(membersSelectWithAvatar)
@@ -222,12 +197,8 @@ Deno.serve(async (req) => {
       allMembersRows = (allMembersWithAvatar.data ?? []) as Array<Record<string, unknown>>;
     }
     const widenedMembers = allMembersRows.filter((row) => {
-      if (isSharedMember(row)) return true;
       const rowEmail = normalizeEmail((row as { email?: string }).email);
-      const rowName = String((row as { name?: string }).name ?? "").trim().toLowerCase();
-      if (rowEmail && relatedEmailSet.has(rowEmail)) return true;
-      if (rowName && relatedNameSet.has(rowName)) return true;
-      return false;
+      return Boolean(rowEmail && relatedEmailSet.has(rowEmail));
     });
     members = uniqueById([...(members ?? []), ...widenedMembers]) as Array<Record<string, unknown>>;
     members = harmonizeSharedMemberProfiles(members);

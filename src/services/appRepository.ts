@@ -138,6 +138,7 @@ export type UpdateMemberInput = {
       | "personalGoals"
       | "membershipType"
       | "customerType"
+      | "ownerUserId"
       | "avatarUrl"
     >
   >;
@@ -760,6 +761,10 @@ export function updateMemberInState(state: AppState, input: UpdateMemberInput): 
             membershipType:
               input.changes.membershipType !== undefined ? input.changes.membershipType : member.membershipType,
             customerType: input.changes.customerType !== undefined ? input.changes.customerType : member.customerType,
+            ownerUserId:
+              input.changes.ownerUserId !== undefined
+                ? String(input.changes.ownerUserId ?? "").trim() || undefined
+                : member.ownerUserId,
           }
         : member
     ),

@@ -43,10 +43,14 @@ function normalizeString(value: unknown): string {
   return String(value ?? "").trim();
 }
 
+function isSharedMedlem(customerType: unknown): boolean {
+  return normalizeString(customerType).toLowerCase() === "medlem";
+}
+
 function canTrainerEditAnchor(row: { owner_user_id?: string | null; customer_type?: string | null }, trainerUserId: string): boolean {
   const ownerUserId = normalizeString(row.owner_user_id);
-  const customerType = normalizeString(row.customer_type).toLowerCase();
-  return ownerUserId === trainerUserId || customerType === "medlem";
+  if (isSharedMedlem(row.customer_type)) return true;
+  return ownerUserId === trainerUserId;
 }
 
 Deno.serve(async (req) => {
@@ -151,6 +155,17 @@ Deno.serve(async (req) => {
     }
   }
 
+  const profileUpdateFields: Record<string, string> = { ...updateFields };
+  const rosterUpdateFields: Record<string, string> = {};
+  if (profileUpdateFields.membership_type !== undefined) {
+    rosterUpdateFields.membership_type = profileUpdateFields.membership_type;
+    delete profileUpdateFields.membership_type;
+  }
+  if (profileUpdateFields.customer_type !== undefined) {
+    rosterUpdateFields.customer_type = profileUpdateFields.customer_type;
+    delete profileUpdateFields.customer_type;
+  }
+
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
   const anchorClauses = [];
   if (requestedEmail) anchorClauses.push(`email.eq.${requestedEmail}`);
@@ -195,11 +210,13 @@ Deno.serve(async (req) => {
       return Boolean(rowEmail && normalizedTargetEmails.has(rowEmail));
     });
   }
-  const visibleExpandedRows = expandedRows.filter(() => {
+  const visibleExpandedRows = expandedRows.filter((row) => {
     if (userRole !== "trainer") return true;
-    const hasAuthorizedAnchor = visibleAnchors.length > 0;
-    if (!hasAuthorizedAnchor) return false;
-    return true;
+    if (!visibleAnchors.length) return false;
+    return canTrainerEditAnchor(
+      row as { owner_user_id?: string | null; customer_type?: string | null },
+      user.id,
+    );
   });
 
   const targetIds = Array.from(
@@ -243,26 +260,78 @@ Deno.serve(async (req) => {
   }
 
   const updatedIds = new Set<string>();
-  if (targetIds.length) {
-    const byIdResult = await adminClient.from("members").update(updateFields).in("id", targetIds).select("id");
+  const mergeUpdated = (rows: unknown) => {
+    (rows ?? []).forEach((row) => {
+      const id = normalizeString((row as { id?: string }).id);
+      if (id) updatedIds.add(id);
+    });
+  };
+
+  const hasProfileUpdates = Object.keys(profileUpdateFields).length > 0;
+  if (hasProfileUpdates && targetIds.length) {
+    const byIdResult = await adminClient.from("members").update(profileUpdateFields).in("id", targetIds).select("id");
     if (byIdResult.error) {
       return jsonResponse(500, { error: `Could not update member rows by id: ${byIdResult.error.message}` });
     }
-    (byIdResult.data ?? []).forEach((row) => {
-      const id = normalizeString((row as { id?: string }).id);
-      if (id) updatedIds.add(id);
-    });
+    mergeUpdated(byIdResult.data);
   }
 
-  if (targetEmails.length) {
-    const byEmailResult = await adminClient.from("members").update(updateFields).in("email", targetEmails).select("id");
+  // Trainers update profile fields by id only (never blast every row with the same email).
+  if (hasProfileUpdates && targetEmails.length && userRole !== "trainer") {
+    const byEmailResult = await adminClient.from("members").update(profileUpdateFields).in("email", targetEmails).select("id");
     if (byEmailResult.error) {
       return jsonResponse(500, { error: `Could not update member rows by email: ${byEmailResult.error.message}` });
     }
-    (byEmailResult.data ?? []).forEach((row) => {
-      const id = normalizeString((row as { id?: string }).id);
-      if (id) updatedIds.add(id);
-    });
+    mergeUpdated(byEmailResult.data);
+  }
+
+  if (canEditMembershipFields && Object.keys(rosterUpdateFields).length > 0) {
+    const trainerId = user.id;
+    const nextCustomerType = normalizeString(rosterUpdateFields.customer_type).toLowerCase();
+
+    if (nextCustomerType === "medlem") {
+      const emailSet = new Set(Array.from(normalizedTargetEmails).filter((value) => value.includes("@")));
+      if (emailSet.size) {
+        const { data: allMemberRows, error: medlemLookupError } = await adminClient.from("members").select("id,email");
+        if (medlemLookupError) {
+          return jsonResponse(500, { error: `Could not resolve shared medlem rows: ${medlemLookupError.message}` });
+        }
+        const medlemIds = Array.from(
+          new Set(
+            (allMemberRows ?? [])
+              .filter((row) => emailSet.has(normalizeEmail((row as { email?: string }).email)))
+              .map((row) => normalizeString((row as { id?: string }).id))
+              .filter(Boolean),
+          ),
+        );
+        if (medlemIds.length) {
+          const medlemResult = await adminClient.from("members").update(rosterUpdateFields).in("id", medlemIds).select("id");
+          if (medlemResult.error) {
+            return jsonResponse(500, { error: `Could not update shared medlem roster: ${medlemResult.error.message}` });
+          }
+          mergeUpdated(medlemResult.data);
+        }
+      }
+    } else {
+      let rosterIds = requestedMemberIds.length
+        ? requestedMemberIds.map((value) => normalizeString(value)).filter(Boolean)
+        : visibleAnchors
+            .filter((row) => normalizeString(row.owner_user_id) === trainerId)
+            .map((row) => normalizeString(row.id))
+            .filter(Boolean);
+      rosterIds = Array.from(new Set(rosterIds));
+      if (rosterIds.length) {
+        const privateRosterPayload = {
+          ...rosterUpdateFields,
+          owner_user_id: trainerId,
+        };
+        const rosterResult = await adminClient.from("members").update(privateRosterPayload).in("id", rosterIds).select("id");
+        if (rosterResult.error) {
+          return jsonResponse(500, { error: `Could not update roster fields: ${rosterResult.error.message}` });
+        }
+        mergeUpdated(rosterResult.data);
+      }
+    }
   }
 
   return jsonResponse(200, { message: "Member profile synced", updated: updatedIds.size });

@@ -35,6 +35,7 @@ import {
   type UpdateWorkoutResultInput,
 } from "./appRepository";
 import { supabaseClient } from "./supabaseClient";
+import { isSharedMedlemCustomerType, resolveOwnerUserIdForPersist } from "./memberAccessRules";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
@@ -760,11 +761,16 @@ async function persistMember(member: Member) {
     targetEmail: normalizedEmail,
     targetName: member.name,
   });
+  const memberIdsForSync = isSharedMedlemCustomerType(member.customerType)
+    ? relatedMemberIds.length
+      ? relatedMemberIds
+      : [member.id]
+    : [member.id];
   const syncPayload = {
     email: normalizedEmail,
     emails: [normalizedEmail],
     memberId: member.id,
-    memberIds: relatedMemberIds.length ? relatedMemberIds : [member.id],
+    memberIds: memberIdsForSync,
     targetName: member.name,
     changes: {
       name: member.name,
@@ -890,8 +896,13 @@ async function persistMember(member: Member) {
     return;
   }
 
-  const ownerUserId = await getOwnerUserId();
-  if (!ownerUserId) return;
+  const sessionOwnerId = await getOwnerUserId();
+  if (!sessionOwnerId) return;
+  const ownerForUpsert = resolveOwnerUserIdForPersist({
+    customerType: member.customerType,
+    sessionOwnerId,
+    existingOwnerId: member.ownerUserId,
+  });
 
   // Guard against accidental reactivation from stale clients:
   // if this member (or same email) was previously deactivated, keep it inactive.
@@ -913,7 +924,7 @@ async function persistMember(member: Member) {
   const { error } = await supabaseClient.from("members").upsert(
     {
       id: member.id,
-      owner_user_id: ownerUserId,
+      owner_user_id: ownerForUpsert,
       name: member.name,
       email: normalizedEmail,
       is_active: shouldStayInactive ? false : member.isActive,
@@ -1949,7 +1960,18 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.addMember(state, input);
     const latestMember = nextState.members[nextState.members.length - 1];
     if (latestMember) {
-      void persistMember(latestMember);
+      void (async () => {
+        const sessionOwnerId = (await getOwnerUserId()) ?? "";
+        const withOwner: Member = {
+          ...latestMember,
+          ownerUserId: resolveOwnerUserIdForPersist({
+            customerType: latestMember.customerType,
+            sessionOwnerId,
+            existingOwnerId: latestMember.ownerUserId,
+          }),
+        };
+        await persistMember(withOwner);
+      })();
     }
     return nextState;
   },
