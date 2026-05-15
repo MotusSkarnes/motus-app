@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Repeat2 } from "lucide-react";
+import { Plus, Repeat2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { GradientButton, OutlineButton, TextArea, TextInput } from "../app/ui";
 import type { Exercise, TrainingProgram, WorkoutModeState, WorkoutReflection } from "../app/types";
 import type { ReplaceWorkoutExerciseGroupInput } from "../services/appRepository";
+import { MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE } from "../services/appRepository";
 
 export type LiveWorkoutSessionVariant = "member" | "trainer";
 
@@ -28,6 +29,7 @@ export type LiveWorkoutSessionModalProps = {
     value: string | boolean,
   ) => void;
   replaceWorkoutExerciseGroup: (input: ReplaceWorkoutExerciseGroupInput) => void;
+  appendWorkoutSetForProgramExercise: (programExerciseId: string) => void;
   updateWorkoutModeNote: (note: string) => void;
   finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
   cancelWorkoutMode: () => void;
@@ -51,6 +53,7 @@ export function LiveWorkoutSessionModal({
   onBeforeNextExercise,
   updateWorkoutExerciseResult,
   replaceWorkoutExerciseGroup,
+  appendWorkoutSetForProgramExercise,
   updateWorkoutModeNote,
   finishWorkoutMode,
   cancelWorkoutMode,
@@ -411,6 +414,23 @@ export function LiveWorkoutSessionModal({
                     </div>
                   );
                 })}
+              </div>
+              <div className="mt-2 border-t pt-2" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
+                <button
+                  type="button"
+                  onClick={() => appendWorkoutSetForProgramExercise(currentWorkoutGroup.groupId)}
+                  disabled={currentWorkoutGroup.rows.length >= MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE}
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-teal-400 hover:bg-teal-50/50 disabled:cursor-not-allowed disabled:opacity-45 sm:inline-flex sm:w-auto"
+                  style={{ borderColor: "rgba(148,163,184,0.55)" }}
+                >
+                  <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  Legg til sett
+                </button>
+                {currentWorkoutGroup.rows.length >= MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE ? (
+                  <p className="mt-1.5 text-[10px] text-slate-500">Maks {MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE} sett per øvelse.</p>
+                ) : (
+                  <p className="mt-1.5 text-[10px] text-slate-500">Legger til et ekstra sett under økta — også om du gjør flere enn planlagt.</p>
+                )}
               </div>
             </div>
           ) : null}

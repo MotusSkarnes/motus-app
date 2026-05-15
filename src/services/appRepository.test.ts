@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AppState } from "../app/types";
-import { finishWorkoutModeInState, removeWorkoutLogResultInState, setWorkoutLogResultsInState } from "./appRepository";
+import { appendWorkoutSetForProgramExerciseInState, finishWorkoutModeInState, removeWorkoutLogResultInState, setWorkoutLogResultsInState } from "./appRepository";
 
 function createBaseState(): AppState {
   return {
@@ -29,6 +29,57 @@ function createBaseState(): AppState {
 }
 
 describe("appRepository workout log guards", () => {
+  it("appends an extra set with incremented setNumber for a program exercise", () => {
+    const state = createBaseState();
+    state.programs = [
+      {
+        id: "program-1",
+        memberId: "member-1",
+        title: "Styrke A",
+        goal: "",
+        notes: "",
+        createdAt: "24.04.2026",
+        exercises: [{ id: "pex-1", exerciseId: "ex-1", exerciseName: "Benk", sets: "2", reps: "8", weight: "50", restSeconds: "90", notes: "" }],
+      },
+    ];
+    state.workoutMode = {
+      programId: "program-1",
+      note: "",
+      results: [
+        {
+          exerciseId: "pex-1-set-1",
+          programExerciseId: "pex-1",
+          setNumber: 1,
+          exerciseName: "Benk",
+          plannedSets: "2",
+          plannedReps: "8",
+          plannedWeight: "50",
+          performedWeight: "50",
+          performedReps: "8",
+          completed: false,
+        },
+        {
+          exerciseId: "pex-1-set-2",
+          programExerciseId: "pex-1",
+          setNumber: 2,
+          exerciseName: "Benk",
+          plannedSets: "2",
+          plannedReps: "8",
+          plannedWeight: "50",
+          performedWeight: "52",
+          performedReps: "8",
+          completed: true,
+        },
+      ],
+    };
+    const next = appendWorkoutSetForProgramExerciseInState(state, "pex-1");
+    expect(next.workoutMode?.results).toHaveLength(3);
+    const appended = next.workoutMode?.results[2];
+    expect(appended?.setNumber).toBe(3);
+    expect(appended?.exerciseId).toBe("pex-1-set-3");
+    expect(appended?.completed).toBe(false);
+  });
+
   it("deduplicates duplicate set rows when finishing workout", () => {
     const state = createBaseState();
     state.workoutMode = {

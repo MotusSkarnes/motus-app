@@ -1098,6 +1098,11 @@ export function useAppState() {
     setAppState((prev) => repository.updateWorkoutResult(prev, { exerciseId, field, value }));
   }
 
+  function appendWorkoutSetForProgramExercise(programExerciseId: string) {
+    if (!programExerciseId.trim()) return;
+    setAppState((prev) => repository.appendWorkoutSetForProgramExercise(prev, programExerciseId));
+  }
+
   function replaceWorkoutExerciseGroup(input: ReplaceWorkoutExerciseGroupInput) {
     setAppState((prev) => repository.replaceWorkoutExerciseGroup(prev, input));
   }
@@ -1295,6 +1300,7 @@ export function useAppState() {
     startCustomWorkout,
     updateWorkoutExerciseResult,
     replaceWorkoutExerciseGroup,
+    appendWorkoutSetForProgramExercise,
     removeWorkoutLogResult,
     setWorkoutLogResults,
     updateWorkoutLogTrainerComment,

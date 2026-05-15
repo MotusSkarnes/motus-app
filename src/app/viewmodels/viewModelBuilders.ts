@@ -58,6 +58,7 @@ export function buildTrainerLayoutProps(input: {
   startWorkoutMode: TrainerLayoutProps["startWorkoutMode"];
   updateWorkoutExerciseResult: TrainerLayoutProps["updateWorkoutExerciseResult"];
   replaceWorkoutExerciseGroup: TrainerLayoutProps["replaceWorkoutExerciseGroup"];
+  appendWorkoutSetForProgramExercise: TrainerLayoutProps["appendWorkoutSetForProgramExercise"];
   updateWorkoutModeNote: TrainerLayoutProps["updateWorkoutModeNote"];
   finishWorkoutMode: TrainerLayoutProps["finishWorkoutMode"];
   cancelWorkoutMode: TrainerLayoutProps["cancelWorkoutMode"];
@@ -80,6 +81,7 @@ export function buildMemberLayoutProps(input: {
   updateProgramMemberLibraryStatus: MemberLayoutProps["updateProgramMemberLibraryStatus"];
   updateWorkoutExerciseResult: MemberLayoutProps["updateWorkoutExerciseResult"];
   replaceWorkoutExerciseGroup: MemberLayoutProps["replaceWorkoutExerciseGroup"];
+  appendWorkoutSetForProgramExercise: MemberLayoutProps["appendWorkoutSetForProgramExercise"];
   removeWorkoutLogResult: MemberLayoutProps["removeWorkoutLogResult"];
   setWorkoutLogResults: MemberLayoutProps["setWorkoutLogResults"];
   updateWorkoutModeNote: MemberLayoutProps["updateWorkoutModeNote"];

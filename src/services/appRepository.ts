@@ -8,6 +8,7 @@ import type {
   ProgramExercise,
   TrainingProgram,
   WorkoutCelebration,
+  WorkoutExerciseResult,
   WorkoutLog,
   WorkoutReflection,
 } from "../app/types";
@@ -158,6 +159,7 @@ export interface AppRepository {
   startCustomWorkout(state: AppState, input: StartCustomWorkoutInput, options?: StartWorkoutModeOptions): AppState;
   updateWorkoutResult(state: AppState, input: UpdateWorkoutResultInput): AppState;
   replaceWorkoutExerciseGroup(state: AppState, input: ReplaceWorkoutExerciseGroupInput): AppState;
+  appendWorkoutSetForProgramExercise(state: AppState, programExerciseId: string): AppState;
   removeWorkoutLogResult(state: AppState, input: RemoveWorkoutLogResultInput): AppState;
   removeGroupWorkoutLog(state: AppState, input: RemoveGroupWorkoutLogInput): AppState;
   setWorkoutLogResults(state: AppState, input: SetWorkoutLogResultsInput): AppState;
@@ -412,6 +414,49 @@ export function replaceWorkoutExerciseGroupInState(state: AppState, input: Repla
       results: state.workoutMode.results.map((result) =>
         result.programExerciseId === input.programExerciseId ? { ...result, exerciseName: normalizedName } : result
       ),
+    },
+  };
+}
+
+/** Øvre grense for antall sett per øvelses-gruppe under økt (plan + ekstra sett underveis). */
+export const MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE = 18;
+
+export function appendWorkoutSetForProgramExerciseInState(state: AppState, programExerciseId: string): AppState {
+  if (!state.workoutMode) return state;
+  const pid = programExerciseId.trim();
+  if (!pid) return state;
+
+  const results = state.workoutMode.results;
+  const groupIndices: number[] = [];
+  results.forEach((r, i) => {
+    if (r.programExerciseId === pid) groupIndices.push(i);
+  });
+  if (!groupIndices.length) return state;
+
+  const insertAfterIndex = groupIndices[groupIndices.length - 1];
+  const template = results[insertAfterIndex];
+  const maxExistingSet = Math.max(...groupIndices.map((i) => results[i].setNumber ?? 0));
+  const nextSetNum = maxExistingSet + 1;
+  if (nextSetNum > MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE) return state;
+
+  const newRow: WorkoutExerciseResult = {
+    ...template,
+    exerciseId: `${pid}-set-${nextSetNum}`,
+    setNumber: nextSetNum,
+    completed: false,
+    performedWeight: template.plannedWeight,
+    performedReps: template.plannedReps,
+    performedDurationMinutes: template.plannedDurationMinutes ?? "",
+    performedSpeed: template.plannedSpeed ?? "",
+    performedIncline: template.plannedIncline ?? "",
+  };
+
+  const newResults = [...results.slice(0, insertAfterIndex + 1), newRow, ...results.slice(insertAfterIndex + 1)];
+  return {
+    ...state,
+    workoutMode: {
+      ...state.workoutMode,
+      results: newResults,
     },
   };
 }
@@ -785,6 +830,8 @@ export const localAppRepository: AppRepository = {
   startCustomWorkout: (state, input, options) => startCustomWorkoutInState(state, input, options),
   updateWorkoutResult: (state, input) => updateWorkoutResultInState(state, input.exerciseId, input.field, input.value),
   replaceWorkoutExerciseGroup: (state, input) => replaceWorkoutExerciseGroupInState(state, input),
+  appendWorkoutSetForProgramExercise: (state, programExerciseId) =>
+    appendWorkoutSetForProgramExerciseInState(state, programExerciseId),
   removeWorkoutLogResult: (state, input) => removeWorkoutLogResultInState(state, input),
   removeGroupWorkoutLog: (state, input) => removeGroupWorkoutLogInState(state, input),
   setWorkoutLogResults: (state, input) => setWorkoutLogResultsInState(state, input),
