@@ -647,6 +647,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const workoutWeightInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const memberMessagesContainerRef = useRef<HTMLDivElement | null>(null);
   const profileAutoSaveInFlightRef = useRef(false);
+  const periodPlanCompletedDirtyRef = useRef(false);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [libraryActionStatus, setLibraryActionStatus] = useState<string | null>(null);
   const [showLibraryHiddenSection, setShowLibraryHiddenSection] = useState(false);
@@ -1959,7 +1960,11 @@ export function MemberPortal(props: MemberPortalProps) {
     return () => window.clearTimeout(timer);
   }, [memberTab, editableMember, profileHasUnsavedChanges, saveProfile]);
   useEffect(() => {
-    if (!editableMember || typeof window === "undefined") return;
+    periodPlanCompletedDirtyRef.current = false;
+    if (!editableMember || typeof window === "undefined") {
+      setCompletedPeriodPlanEntryKeys([]);
+      return;
+    }
     try {
       const raw = window.localStorage.getItem(getPeriodPlanCompletedStorageKey(editableMember.id));
       if (!raw) {
@@ -1978,6 +1983,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [editableMember]);
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
+    if (!periodPlanCompletedDirtyRef.current) return;
     try {
       window.localStorage.setItem(
         getPeriodPlanCompletedStorageKey(editableMember.id),
@@ -3045,7 +3051,7 @@ export function MemberPortal(props: MemberPortalProps) {
       logGroupWorkout({
         memberId: activeMemberId,
         className: trimmed,
-        note: "Registrert som gjennomfort fra periodeplan.",
+        note: "Registrert som gjennomført fra periodeplan.",
         reflection: {
           energyLevel: 3,
           difficultyLevel: 3,
@@ -3055,7 +3061,8 @@ export function MemberPortal(props: MemberPortalProps) {
         keepCurrentTab: true,
         date: input.plannedDate ?? undefined,
       });
-      setPeriodPlanActionStatus(`Registrert "${trimmed}" som gjennomfort.`);
+      setPeriodPlanActionStatus(`Registrert «${trimmed}» som gjennomført.`);
+      periodPlanCompletedDirtyRef.current = true;
       setCompletedPeriodPlanEntryKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
       return;
     }
@@ -3066,6 +3073,7 @@ export function MemberPortal(props: MemberPortalProps) {
         date: input.plannedDate ?? undefined,
       });
     }
+    periodPlanCompletedDirtyRef.current = true;
     setCompletedPeriodPlanEntryKeys((prev) => prev.filter((item) => item !== key));
     setPeriodPlanActionStatus(`Fjernet markering for "${input.entry.trim()}".`);
   }
@@ -4363,45 +4371,23 @@ export function MemberPortal(props: MemberPortalProps) {
                                       </span>
                                     </div>
                                     {displayedPeriodWeek.days[day.key]?.trim() ? (
-                                      <div className="mt-2">
-                                        {isPeriodPlanEntryCompleted(plan.id, displayedPeriodWeek.weekNumber, day.key) ? (
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              togglePeriodPlanEntryCompleted({
-                                                planId: plan.id,
-                                                weekNumber: displayedPeriodWeek.weekNumber,
-                                                day: day.key,
-                                                entry: displayedPeriodWeek.days[day.key],
-                                                plannedDate: resolvePeriodPlanEntryDate(plan, displayedPeriodWeek.weekNumber, day.key),
-                                              })
-                                            }
-                                            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
-                                            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                                            aria-label={`Fjern fullfort-markering for ${day.label}`}
-                                          >
-                                            âœ“
-                                          </button>
-                                        ) : (
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              togglePeriodPlanEntryCompleted({
-                                                planId: plan.id,
-                                                weekNumber: displayedPeriodWeek.weekNumber,
-                                                day: day.key,
-                                                entry: displayedPeriodWeek.days[day.key],
-                                                plannedDate: resolvePeriodPlanEntryDate(plan, displayedPeriodWeek.weekNumber, day.key),
-                                              })
-                                            }
-                                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border text-xs font-bold text-slate-600 bg-white"
-                                            style={{ borderColor: "rgba(15,23,42,0.16)" }}
-                                            aria-label={`Marker ${day.label} som fullført`}
-                                          >
-                                            âœ“
-                                          </button>
-                                        )}
-                                      </div>
+                                      <label className="mt-2 inline-flex cursor-pointer items-center gap-2">
+                                        <input
+                                          type="checkbox"
+                                          checked={isPeriodPlanEntryCompleted(plan.id, displayedPeriodWeek.weekNumber, day.key)}
+                                          onChange={() =>
+                                            togglePeriodPlanEntryCompleted({
+                                              planId: plan.id,
+                                              weekNumber: displayedPeriodWeek.weekNumber,
+                                              day: day.key,
+                                              entry: displayedPeriodWeek.days[day.key],
+                                              plannedDate: resolvePeriodPlanEntryDate(plan, displayedPeriodWeek.weekNumber, day.key),
+                                            })
+                                          }
+                                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                        />
+                                        <span className="text-xs font-medium text-slate-600">Gjennomført</span>
+                                      </label>
                                     ) : null}
                                   </div>
                                 ))}
