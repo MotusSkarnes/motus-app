@@ -5559,9 +5559,11 @@ export function MemberPortal(props: MemberPortalProps) {
                         className="group inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-black/25 ring-2 ring-white/50 transition hover:bg-white/95 hover:shadow-xl active:scale-[0.98]"
                       >
                         <Share2 className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5" aria-hidden />
-                        Del til Facebook
+                        Last ned eller del bilde
                       </button>
-                      <p className="text-center text-[11px] leading-snug text-white/75 lg:text-left">Fungerer best på mobil — last ned eller del rett til Facebook.</p>
+                      <p className="text-center text-[11px] leading-snug text-white/75 lg:text-left">
+                        Bildet kan lagres eller deles videre fra galleriet.
+                      </p>
                     </div>
                   </div>
                 </div>
