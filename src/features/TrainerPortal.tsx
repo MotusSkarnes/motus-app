@@ -1201,13 +1201,30 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   );
   useEffect(() => {
     if (!periodWeeklyPlansDraft.length) {
-      if (activePeriodWeekId) setActivePeriodWeekId("");
+      setActivePeriodWeekId("");
       return;
     }
-    if (!activePeriodWeekId || !periodWeeklyPlansDraft.some((week) => week.id === activePeriodWeekId)) {
-      setActivePeriodWeekId(periodWeeklyPlansDraft[0]?.id ?? "");
-    }
-  }, [periodWeeklyPlansDraft, activePeriodWeekId]);
+    setActivePeriodWeekId((prev) => {
+      if (prev && periodWeeklyPlansDraft.some((week) => week.id === prev)) return prev;
+      return periodWeeklyPlansDraft[0]?.id ?? "";
+    });
+  }, [periodWeeklyPlansDraft]);
+
+  useEffect(() => {
+    const parsed = Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1));
+    if (periodWeeklyPlansDraft.length === parsed) return;
+    setPeriodWeeklyPlansDraft((prev) => {
+      const normalized = prev.slice(0, parsed).map((week, index) => ({ ...week, weekNumber: index + 1 }));
+      while (normalized.length < parsed) {
+        normalized.push({
+          id: uid("period-week"),
+          weekNumber: normalized.length + 1,
+          days: createEmptyWeeklyDayPlan(),
+        });
+      }
+      return normalized;
+    });
+  }, []);
   const periodPlanProgramOptions = useMemo(() => {
     const baseOptions = [
       { value: "", label: "Ingen plan valgt" },

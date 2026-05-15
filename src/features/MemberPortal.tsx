@@ -50,7 +50,7 @@ import {
   resolveGroupClassNameFromPeriodEntry,
   resolvePeriodPlanEntryAction,
 } from "../app/periodPlanEntryActions";
-import { mergedPeriodPlanListForMember } from "../app/periodPlanMerge";
+import { mergedPeriodPlanListForMember, resolvePeriodPlanWeek } from "../app/periodPlanMerge";
 import {
   applyPeriodPlanSwaps,
   getPeriodPlanSwapsStorageKey,
@@ -1146,17 +1146,14 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [activePeriodPlan, activePeriodWeekIndex]);
   const displayedPeriodWeek = useMemo(() => {
     if (!activePeriodPlan) return null;
-    const weeks = activePeriodPlan.weeklyPlans ?? [];
-    if (!weeks.length) return null;
     const fallbackWeekNumber = activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : 1;
     const preferredWeekNumber = selectedPeriodPlanWeekNumber ?? fallbackWeekNumber;
-    return (
-      weeks.find((week) => week.weekNumber === preferredWeekNumber) ??
-      weeks.find((week) => week.weekNumber === fallbackWeekNumber) ??
-      weeks[0] ??
-      null
-    );
+    return resolvePeriodPlanWeek(activePeriodPlan, preferredWeekNumber);
   }, [activePeriodPlan, activePeriodWeekIndex, selectedPeriodPlanWeekNumber]);
+  const selectedPeriodPlanWeekForView = useMemo(() => {
+    const fallbackWeekNumber = activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : 1;
+    return selectedPeriodPlanWeekNumber ?? fallbackWeekNumber;
+  }, [activePeriodWeekIndex, selectedPeriodPlanWeekNumber]);
   const activeWeeklyPlanEffectiveDays = useMemo(() => {
     if (!activeWeeklyPlan || !activePeriodPlan) return null;
     const swaps = getSwapsForWeek(periodPlanSwapsByPlan, activePeriodPlan.id, activeWeeklyPlan.weekNumber);
@@ -2019,7 +2016,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const fallbackWeekNumber = activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : 1;
     setSelectedPeriodPlanWeekNumber((prev) => {
       if (prev == null) return fallbackWeekNumber;
-      const weekExists = (activePeriodPlan.weeklyPlans ?? []).some((week) => week.weekNumber === prev);
+      const weekExists = (activePeriodPlan.weeklyPlans ?? []).some((week) => Number(week.weekNumber) === Number(prev));
       return weekExists ? prev : fallbackWeekNumber;
     });
   }, [activePeriodPlan, activePeriodWeekIndex]);
@@ -4655,7 +4652,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                 id: week.id,
                                 weekNumber: week.weekNumber,
                               }))}
-                              selectedWeekNumber={displayedPeriodWeek?.weekNumber ?? selectedPeriodPlanWeekNumber ?? 1}
+                              selectedWeekNumber={selectedPeriodPlanWeekForView}
                               onWeekSelectByNumber={setSelectedPeriodPlanWeekNumber}
                               currentWeekNumber={activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : null}
                               formatWeekRange={(weekNumber) => {
@@ -4666,10 +4663,11 @@ export function MemberPortal(props: MemberPortalProps) {
                               }}
                             />
                           ) : null}
-                          {displayedPeriodWeek ? (
+                          {resolvePeriodPlanWeek(plan, selectedPeriodPlanWeekForView) ? (
                             <PeriodPlanWeekView
+                              key={`${plan.id}-${selectedPeriodPlanWeekForView}`}
                               plan={plan}
-                              week={displayedPeriodWeek}
+                              week={resolvePeriodPlanWeek(plan, selectedPeriodPlanWeekForView)!}
                               swapsByPlan={periodPlanSwapsByPlan}
                               memberPrograms={memberProgramsInActiveLibrary}
                               actionStatus={periodPlanActionStatus}

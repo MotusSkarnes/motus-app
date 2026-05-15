@@ -43,7 +43,8 @@ export function PeriodPlanWeekNavigator({
       if (byId >= 0) return byId;
     }
     if (selectedWeekNumber != null) {
-      const byNumber = sortedWeeks.findIndex((week) => week.weekNumber === selectedWeekNumber);
+      const target = Number(selectedWeekNumber);
+      const byNumber = sortedWeeks.findIndex((week) => Number(week.weekNumber) === target);
       if (byNumber >= 0) return byNumber;
     }
     return 0;
@@ -59,7 +60,7 @@ export function PeriodPlanWeekNavigator({
 
   function selectWeek(week: PeriodPlanWeekNavItem) {
     onWeekSelectById?.(week.id);
-    onWeekSelectByNumber?.(week.weekNumber);
+    onWeekSelectByNumber?.(Number(week.weekNumber));
   }
 
   return (
