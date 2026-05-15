@@ -569,11 +569,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     { id: uid("period-week"), weekNumber: 1, days: createEmptyWeeklyDayPlan() },
   ]);
   const [activePeriodWeekId, setActivePeriodWeekId] = useState<string>(periodWeeklyPlansDraft[0]?.id ?? "");
-  const [selectedPeriodWeekIdsDraft, setSelectedPeriodWeekIdsDraft] = useState<string[]>([
-    periodWeeklyPlansDraft[0]?.id ?? "",
-  ].filter(Boolean));
-  const [bulkPeriodProgramDraft, setBulkPeriodProgramDraft] = useState("");
-  const [bulkPeriodDayKeysDraft, setBulkPeriodDayKeysDraft] = useState<WeekdayPlanKey[]>(["monday", "wednesday", "friday"]);
   const [periodPlanStatus, setPeriodPlanStatus] = useState<string | null>(null);
   const [favoriteExerciseIds, setFavoriteExerciseIds] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
@@ -1297,15 +1292,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   }, [selectedMemberId]);
 
   useEffect(() => {
-    setSelectedPeriodWeekIdsDraft((prev) => {
-      const availableIds = new Set(periodWeeklyPlansDraft.map((week) => week.id));
-      const next = prev.filter((id) => availableIds.has(id));
-      if (next.length) return next;
-      return periodWeeklyPlansDraft[0]?.id ? [periodWeeklyPlansDraft[0].id] : [];
-    });
-  }, [periodWeeklyPlansDraft]);
-
-  useEffect(() => {
     if (typeof window === "undefined") return;
     const raw = window.localStorage.getItem("motus.trainer.todos");
     if (!raw) return;
@@ -1407,9 +1393,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const firstWeek = { id: uid("period-week"), weekNumber: 1, days: createEmptyWeeklyDayPlan() };
     setPeriodWeeklyPlansDraft([firstWeek]);
     setActivePeriodWeekId(firstWeek.id);
-    setSelectedPeriodWeekIdsDraft([firstWeek.id]);
-    setBulkPeriodProgramDraft("");
-    setBulkPeriodDayKeysDraft(["monday", "wednesday", "friday"]);
   }, [selectedMemberId]);
 
   function resetMemberEditDraftFromSelected(member: Member | null) {
@@ -1642,9 +1625,14 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     setPeriodWeeklyPlansDraft((prev) => {
       const active = prev.find((w) => w.id === activePeriodWeek.id);
       if (!active) return prev;
-      const after = prev.map((w) =>
-        w.id === activePeriodWeek.id ? { ...w, days: { ...w.days, [day]: value } } : w,
-      );
+      const after =
+        active.usesGradientPlan === true
+          ? prev.map((w) =>
+              w.usesGradientPlan === true ? { ...w, days: { ...w.days, [day]: value } } : w,
+            )
+          : prev.map((w) =>
+              w.id === activePeriodWeek.id ? { ...w, days: { ...w.days, [day]: value } } : w,
+            );
       return syncGradientMarkedWeekDays(after);
     });
   }
@@ -1689,52 +1677,24 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     setPeriodPlanStatus("Periodeplan lagret.");
   }
 
-  function toggleSelectedPeriodWeek(weekId: string) {
-    setSelectedPeriodWeekIdsDraft((prev) =>
-      prev.includes(weekId) ? prev.filter((id) => id !== weekId) : [...prev, weekId],
-    );
-  }
-
-  function selectAllPeriodWeeks() {
-    setSelectedPeriodWeekIdsDraft(periodWeeklyPlansDraft.map((week) => week.id));
-  }
-
-  function toggleBulkPeriodDay(day: WeekdayPlanKey) {
-    setBulkPeriodDayKeysDraft((prev) =>
-      prev.includes(day) ? prev.filter((key) => key !== day) : [...prev, day],
-    );
-  }
-
-  function applyProgramToSelectedPeriodWeeks() {
-    const programTitle = bulkPeriodProgramDraft.trim();
-    if (!selectedPeriodWeekIdsDraft.length) {
-      setPeriodPlanStatus("Marker minst en uke.");
-      return;
-    }
-    if (!programTitle) {
-      setPeriodPlanStatus("Velg treningsprogram før du bruker det på ukene.");
-      return;
-    }
-    if (!bulkPeriodDayKeysDraft.length) {
-      setPeriodPlanStatus("Velg minst en treningsdag.");
-      return;
-    }
+  function toggleGradientPeriodWeek(weekId: string) {
+    setActivePeriodWeekId(weekId);
     setPeriodWeeklyPlansDraft((prev) => {
-      const selected = new Set(selectedPeriodWeekIdsDraft);
-      const selectedDays = new Set(bulkPeriodDayKeysDraft);
-      const next = prev.map((week) => {
-        if (!selected.has(week.id)) return week;
-        const days = { ...week.days };
-        WEEKDAY_PLAN_FIELDS.forEach((field) => {
-          if (selectedDays.has(field.key)) days[field.key] = programTitle;
-        });
-        return { ...week, days };
-      });
+      const current = prev.find((week) => week.id === weekId);
+      if (!current) return prev;
+      const shouldMark = current.usesGradientPlan !== true;
+      const existingGradient = prev.find((week) => week.usesGradientPlan === true);
+      const sharedDays = shouldMark && existingGradient ? { ...existingGradient.days } : { ...current.days };
+      const next = prev.map((week) =>
+        week.id === weekId
+          ? { ...week, usesGradientPlan: shouldMark, days: shouldMark ? sharedDays : week.days }
+          : week.usesGradientPlan === true && shouldMark
+            ? { ...week, days: sharedDays }
+            : week,
+      );
       return syncGradientMarkedWeekDays(next);
     });
-    setPeriodPlanStatus(`La ${programTitle} inn på ${selectedPeriodWeekIdsDraft.length} uke(r).`);
   }
-
   function removePeriodPlan(planId: string) {
     if (!selectedMemberId || selectedMemberId === "__template__" || selectedMemberRelatedIds.length === 0) return;
     if (isSupabaseConfigured && !isLocalDemoSession) {
@@ -4189,83 +4149,42 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         </div>
                         {periodWeeklyPlansDraft.length > 0 ? (
                           <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <div>
-                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Marker uker</div>
-                                <div className="text-[11px] text-slate-500">Velg ukene programmet skal gjelde for.</div>
-                              </div>
-                              <OutlineButton onClick={selectAllPeriodWeeks} className="px-3 py-1.5 text-xs">
-                                Marker alle
-                              </OutlineButton>
+                            <div>
+                              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Uker i planen</div>
+                              <div className="text-[11px] text-slate-500">Klikk på ukene som skal bruke samme ukeplan. Markerte uker vises med gradient.</div>
                             </div>
                             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                               {periodWeeklyPlansDraft.slice(0, Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1))).map((week) => {
-                                const selected = selectedPeriodWeekIdsDraft.includes(week.id);
+                                const marked = week.usesGradientPlan === true;
                                 const isActive = activePeriodWeekId === week.id;
                                 const plannedDays = WEEKDAY_PLAN_FIELDS.map((field) => week.days[field.key]).filter((entry) => entry.trim()).length;
                                 return (
-                                  <div
+                                  <button
                                     key={week.id}
-                                    className={`rounded-xl border bg-white p-2.5 text-xs transition ${selected ? "ring-2 ring-teal-200" : ""}`}
-                                    style={{ borderColor: selected ? MOTUS.turquoise : "rgba(15,23,42,0.08)" }}
+                                    type="button"
+                                    onClick={() => toggleGradientPeriodWeek(week.id)}
+                                    className={`rounded-xl border p-3 text-left text-xs transition ${
+                                      marked ? "text-white shadow-sm" : "bg-white text-slate-700 hover:bg-slate-50"
+                                    } ${isActive ? "ring-2 ring-teal-200" : ""}`}
+                                    style={
+                                      marked
+                                        ? { borderColor: "transparent", background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
+                                        : { borderColor: "rgba(15,23,42,0.08)" }
+                                    }
+                                    aria-pressed={marked}
                                   >
-                                    <label className="flex cursor-pointer items-start gap-2">
-                                      <input
-                                        type="checkbox"
-                                        checked={selected}
-                                        onChange={() => toggleSelectedPeriodWeek(week.id)}
-                                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                                      />
-                                      <span className="min-w-0">
-                                        <span className="block font-semibold text-slate-800">Uke {week.weekNumber}</span>
-                                        <span className="block text-[11px] text-slate-500">{plannedDays} planlagte dager</span>
-                                      </span>
-                                    </label>
-                                    <button
-                                      type="button"
-                                      onClick={() => setActivePeriodWeekId(week.id)}
-                                      className={`mt-2 w-full rounded-lg px-2 py-1 text-[11px] font-medium transition ${
-                                        isActive ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                                      }`}
-                                    >
-                                      {isActive ? "Redigerer" : "Rediger uke"}
-                                    </button>
-                                  </div>
+                                    <span className="block font-semibold">Uke {week.weekNumber}</span>
+                                    <span className={`mt-1 block text-[11px] ${marked ? "text-white/80" : "text-slate-500"}`}>
+                                      {marked ? "Gradient-merket" : "Egen ukeplan"} · {plannedDays} planlagte dager
+                                    </span>
+                                  </button>
                                 );
                               })}
                             </div>
-                            <div className="grid gap-2 border-t border-slate-100 pt-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                              <label className="space-y-1">
-                                <span className="text-xs font-medium text-slate-600">Treningsprogram</span>
-                                <SelectBox value={bulkPeriodProgramDraft} onChange={setBulkPeriodProgramDraft} options={periodPlanProgramOptions} />
-                              </label>
-                              <div className="space-y-1">
-                                <span className="text-xs font-medium text-slate-600">Treningsdager</span>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {WEEKDAY_PLAN_FIELDS.map((field) => (
-                                    <button
-                                      key={field.key}
-                                      type="button"
-                                      onClick={() => toggleBulkPeriodDay(field.key)}
-                                      className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
-                                        bulkPeriodDayKeysDraft.includes(field.key)
-                                          ? "border-teal-300 bg-teal-50 text-teal-800"
-                                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                                      }`}
-                                    >
-                                      {field.label.slice(0, 3)}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                            <OutlineButton onClick={applyProgramToSelectedPeriodWeeks} className="w-full sm:w-auto">
-                              Bruk program på markerte uker
-                            </OutlineButton>
                           </div>
                         ) : null}
                         <p className="text-[11px] text-slate-500 leading-snug">
-                          Nye uker starter tomme. Marker én eller flere uker, velg treningsprogram og treningsdager, og bruk programmet på alle markerte uker.
+                          Alle gradient-merkede uker får samme ukeplan. Rediger en markert uke under, så oppdateres de andre markerte ukene samtidig.
                         </p>
                         {activePeriodWeek ? (
                           <div className="grid gap-2 md:grid-cols-2">
