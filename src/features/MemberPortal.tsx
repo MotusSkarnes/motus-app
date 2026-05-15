@@ -553,7 +553,13 @@ function computeShareCardLast7DaysStats(
 }
 
 /** Artig «løftevolum»-tekst for skrytekort basert på siste 7 dager. */
-function buildProgressLiftPlayfulLineFromKg(weekKg: number): string {
+function buildProgressLiftPlayfulLine(stats: {
+  workouts: number;
+  trainingDays: number;
+  volumeKg: number;
+  completedSets: number;
+}): string {
+  const { workouts, trainingDays, volumeKg, completedSets } = stats;
   const fmt = (n: number) => Math.round(n).toLocaleString("nb-NO");
 
   const lineFor = (kg: number): string | null => {
@@ -584,8 +590,24 @@ function buildProgressLiftPlayfulLineFromKg(weekKg: number): string {
     return `Siste 7 dager har jeg logget ca. ${fmt(kg)} kg i vekt x reps.`;
   };
 
-  const weekLine = lineFor(weekKg);
+  const weekLine = lineFor(volumeKg);
   if (weekLine) return weekLine;
+
+  if (completedSets >= 24) {
+    return `Siste 7 dager fullførte jeg ${completedSets} sett fordelt på ${workouts} økter.`;
+  }
+  if (workouts >= 4 && trainingDays >= 4) {
+    return `Siste 7 dager trente jeg ${workouts} økter fordelt på ${trainingDays} treningsdager.`;
+  }
+  if (workouts >= 3) {
+    return `Siste 7 dager holdt jeg flyten med ${workouts} økter og ${completedSets} fullførte sett.`;
+  }
+  if (trainingDays >= 2) {
+    return `Siste 7 dager fikk jeg inn ${trainingDays} treningsdager og bygger videre derfra.`;
+  }
+  if (workouts >= 1) {
+    return `Siste 7 dager fikk jeg inn ${workouts} økt og ${completedSets} sett på veien.`;
+  }
   return "Siste 7 dager har jeg samlet nye økter og bygger videre derfra.";
 }
 
@@ -2937,7 +2959,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   const progressShareLast7Days = computeShareCardLast7DaysStats(completedLogs, nowTimestamp);
-  const progressLiftPlayfulLine = buildProgressLiftPlayfulLineFromKg(progressShareLast7Days.volumeKg);
+  const progressLiftPlayfulLine = buildProgressLiftPlayfulLine(progressShareLast7Days);
   const _nextBestAction = useMemo(() => {
     if (!memberAssignedPrograms.length) {
       return {
