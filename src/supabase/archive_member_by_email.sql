@@ -14,7 +14,7 @@ where lower(trim(email)) = lower(trim('lene.norex@gmail.com'))
 order by created_at desc;
 
 update public.members
-set is_active = false, updated_at = now()
+set is_active = false
 where lower(trim(email)) = lower(trim('lene.norex@gmail.com'));
 
 select

@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
   const ids = Array.from(new Set(matchingRows.map((row) => String(row.id)).filter(Boolean)));
   const { error } = await adminClient
     .from("members")
-    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .update({ is_active: false })
     .in("id", ids);
 
   if (error) {

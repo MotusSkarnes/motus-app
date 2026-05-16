@@ -27,6 +27,6 @@ group by lower(trim(email));
 
 -- Aktiver alle inaktive rader for e-posten (kun om diagnose viser is_active = false):
 -- update public.members
--- set is_active = true, updated_at = now()
+-- set is_active = true
 -- where lower(trim(email)) = lower(trim('emil.ringstad@icloud.com'))
 --   and is_active = false;
