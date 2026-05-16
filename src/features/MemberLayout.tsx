@@ -1,14 +1,40 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ComponentProps } from "react";
 import { Bell, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp, type LucideIcon } from "lucide-react";
 import { MOTUS } from "../app/data";
+import {
+  createEmptyOnboardingDraft,
+  mergeOnboardingIntoPersonalGoals,
+  primaryGoalFromOnboarding,
+  shouldShowMemberOnboarding,
+  type MemberOnboardingAnswers,
+} from "../app/memberOnboarding";
 import { normalizePeriodSchedulePlan, readPeriodPlansByMemberId, writePeriodPlansByMemberId } from "../app/periodPlanMerge";
-import type { AppState, MemberTab, PeriodSchedulePlan } from "../app/types";
+import type { AppState, Member, MemberTab, PeriodSchedulePlan } from "../app/types";
 import { Card } from "../app/ui";
 import type { MemberAlert } from "../app/useNotifications";
 import { upsertMemberPeriodPlansForTrainer } from "../services/supabaseRepository";
+import { MemberOnboarding } from "./MemberOnboarding";
 import { MemberPortal } from "./MemberPortal";
 import { InspirationHub } from "./InspirationHub";
+
+function resolveActiveMemberForUser(appState: AppState): Member | null {
+  const currentUser = appState.currentUser;
+  if (!currentUser) return null;
+  const normalizedEmail = currentUser.email.trim().toLowerCase();
+  const candidates = appState.members.filter((member) => {
+    if (currentUser.memberId && member.id === currentUser.memberId) return true;
+    if (appState.memberViewId && member.id === appState.memberViewId) return true;
+    return Boolean(normalizedEmail && member.email.trim().toLowerCase() === normalizedEmail);
+  });
+  if (!candidates.length) return null;
+  return (
+    candidates.find((member) => member.customerType === "PT-kunde") ??
+    candidates.find((member) => member.membershipType === "Premium") ??
+    candidates.find((member) => member.customerType !== "Medlem") ??
+    candidates[0]
+  );
+}
 
 type MemberLayoutProps = {
   appState: AppState;
@@ -97,11 +123,46 @@ export function MemberLayout({
   remoteMemberPeriodPlanRows,
   refreshRemoteHydration,
 }: MemberLayoutProps) {
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const activeMember = useMemo(() => resolveActiveMemberForUser(appState), [appState]);
+  const needsOnboarding = useMemo(() => {
+    if (onboardingDismissed) return false;
+    return shouldShowMemberOnboarding(activeMember, appState.currentUser?.role);
+  }, [activeMember, appState.currentUser?.role, onboardingDismissed]);
+
   useEffect(() => {
     if (memberTab === "inspiration") {
       markMemberInspirationAsSeen();
     }
   }, [memberTab, markMemberInspirationAsSeen]);
+
+  async function persistOnboardingAnswers(answers: MemberOnboardingAnswers) {
+    if (!activeMember) return;
+    const personalGoals = mergeOnboardingIntoPersonalGoals(activeMember.personalGoals, answers);
+    const focusSummary = answers.trainingGoals.slice(0, 3).join(" · ");
+    updateMember({
+      memberId: activeMember.id,
+      changes: {
+        goal: primaryGoalFromOnboarding(answers),
+        level: answers.level,
+        injuries: answers.injuries.trim() || activeMember.injuries,
+        personalGoals,
+        ...(focusSummary ? { focus: focusSummary } : {}),
+      },
+    });
+    setOnboardingDismissed(true);
+    void refreshRemoteHydration?.();
+  }
+
+  function handleSkipOnboarding() {
+    const skipped: MemberOnboardingAnswers = {
+      ...createEmptyOnboardingDraft(),
+      version: 1,
+      completedAt: new Date().toISOString(),
+      skipped: true,
+    };
+    void persistOnboardingAnswers(skipped);
+  }
 
   const isMemberLimited = useMemo(() => {
     const currentUser = appState.currentUser;
@@ -196,6 +257,16 @@ export function MemberLayout({
       window.sessionStorage.setItem("motus.member.openPeriodPlanOnPrograms", "1");
     }
     setMemberTab("programs");
+  }
+
+  if (needsOnboarding && activeMember) {
+    return (
+      <MemberOnboarding
+        memberName={activeMember.name}
+        onComplete={persistOnboardingAnswers}
+        onSkip={handleSkipOnboarding}
+      />
+    );
   }
 
   return (

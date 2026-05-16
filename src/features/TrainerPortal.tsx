@@ -47,6 +47,7 @@ import {
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { buildDefaultStartWorkoutOptions } from "../app/buildStartWorkoutOptions";
+import { MemberOnboardingSummary } from "./MemberOnboardingSummary";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
 import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
 
@@ -4139,6 +4140,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         <div className="text-[11px] text-white/70">Skader/hensyn</div>
                         <div className="font-medium text-white/95">{selectedMemberProfile?.injuries || selectedMember.injuries || "Ingen registrerte skader"}</div>
                       </div>
+                      <div className="mt-3 rounded-xl border border-white/25 bg-white/10 p-3">
+                        <MemberOnboardingSummary member={selectedMemberProfile ?? selectedMember} variant="inline" tone="dark" />
+                      </div>
                       <div className="mt-2 text-sm text-white/85">
                         Sist trening: {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}
                       </div>
@@ -4359,6 +4363,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         <div><span className="font-medium text-slate-800">Skader/hensyn:</span> {selectedMemberProfile?.injuries || selectedMember.injuries || "Ingen registrerte skader"}</div>
                       </div>
                     </div>
+                    <MemberOnboardingSummary member={selectedMemberProfile ?? selectedMember} className="xl:col-span-2" />
                     <div className="rounded-xl border bg-slate-50 p-4">
                       <div className="font-semibold">Oppfølgingspunkter</div>
                       <div className="mt-3 space-y-2 text-sm text-slate-600">

@@ -135,6 +135,7 @@ export type UpdateMemberInput = {
       | "birthDate"
       | "goal"
       | "focus"
+      | "level"
       | "injuries"
       | "personalGoals"
       | "membershipType"
@@ -799,6 +800,7 @@ export function updateMemberInState(state: AppState, input: UpdateMemberInput): 
             phone: input.changes.phone !== undefined ? input.changes.phone.trim() : member.phone,
             birthDate: input.changes.birthDate !== undefined ? input.changes.birthDate.trim() : member.birthDate,
             goal: input.changes.goal !== undefined ? input.changes.goal.trim() : member.goal,
+            level: input.changes.level !== undefined ? input.changes.level : member.level,
             focus: input.changes.focus !== undefined ? input.changes.focus.trim() : member.focus,
             injuries: input.changes.injuries !== undefined ? input.changes.injuries.trim() : member.injuries,
             personalGoals: input.changes.personalGoals !== undefined ? input.changes.personalGoals.trim() : member.personalGoals,

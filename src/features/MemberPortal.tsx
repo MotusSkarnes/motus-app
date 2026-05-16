@@ -10,6 +10,7 @@ import {
   History,
   Layers,
   MessageSquare,
+  MoreHorizontal,
   Plus,
   Play,
   Printer,
@@ -237,7 +238,11 @@ type SyncedHomePreferences = {
   favoritePersonalRecords?: string[];
 };
 
-type ProfileMetricsPayload = ProfileMetricsDraft & SyncedHomePreferences;
+type ProfileMetricsPayload = SyncedHomePreferences &
+  ProfileMetricsDraft & {
+    onboarding?: import("../app/memberOnboarding").MemberOnboardingAnswers;
+    onboardingCompletedAt?: string;
+  };
 
 function normalizeFavoritePersonalRecordNames(names?: string[]): string[] | undefined {
   if (!Array.isArray(names)) return undefined;
@@ -263,13 +268,23 @@ function normalizeHomeVisibilityForStorage(
   return Object.keys(normalized).length ? normalized : undefined;
 }
 
-function encodeMemberProfileMetrics(metrics: ProfileMetricsDraft, preferences?: SyncedHomePreferences): string {
-  const normalizedHomeVisibility = normalizeHomeVisibilityForStorage(preferences?.homeVisibility);
-  const normalizedFavoritePersonalRecords = normalizeFavoritePersonalRecordNames(preferences?.favoritePersonalRecords);
+function encodeMemberProfileMetrics(
+  metrics: ProfileMetricsDraft,
+  preferences?: SyncedHomePreferences,
+  existingPersonalGoals?: string,
+): string {
+  const existing = decodeMemberProfilePayload(existingPersonalGoals);
+  const normalizedHomeVisibility = normalizeHomeVisibilityForStorage(
+    preferences?.homeVisibility ?? existing?.homeVisibility,
+  );
+  const normalizedFavoritePersonalRecords = normalizeFavoritePersonalRecordNames(
+    preferences?.favoritePersonalRecords ?? existing?.favoritePersonalRecords,
+  );
   const payload: ProfileMetricsPayload = {
     ...metrics,
     ...(normalizedHomeVisibility ? { homeVisibility: normalizedHomeVisibility } : {}),
     ...(normalizedFavoritePersonalRecords ? { favoritePersonalRecords: normalizedFavoritePersonalRecords } : {}),
+    ...(existing?.onboarding ? { onboarding: existing.onboarding, onboardingCompletedAt: existing.onboardingCompletedAt } : {}),
   };
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;
 }
@@ -279,6 +294,7 @@ function decodeMemberProfilePayload(personalGoals: string | undefined): ProfileM
   try {
     const parsed = JSON.parse(personalGoals.slice(PROFILE_METRICS_PREFIX.length)) as Partial<ProfileMetricsPayload>;
     if (!parsed || typeof parsed !== "object") return null;
+    const onboardingRaw = parsed.onboarding;
     return {
       sessionsPerWeekTarget: String(parsed.sessionsPerWeekTarget ?? ""),
       dailyStepsTarget: String(parsed.dailyStepsTarget ?? ""),
@@ -286,6 +302,12 @@ function decodeMemberProfilePayload(personalGoals: string | undefined): ProfileM
       currentDailySteps: String(parsed.currentDailySteps ?? ""),
       homeVisibility: normalizeHomeVisibilityForStorage(parsed.homeVisibility),
       favoritePersonalRecords: normalizeFavoritePersonalRecordNames(parsed.favoritePersonalRecords),
+      ...(onboardingRaw && typeof onboardingRaw === "object"
+        ? {
+            onboarding: onboardingRaw as ProfileMetricsPayload["onboarding"],
+            onboardingCompletedAt: String(parsed.onboardingCompletedAt ?? ""),
+          }
+        : {}),
     };
   } catch {
     return null;
@@ -2097,10 +2119,14 @@ export function MemberPortal(props: MemberPortalProps) {
       targetWeight: profileTargetWeight.trim(),
       currentDailySteps: profileCurrentDailySteps.trim(),
     };
-    const metricsForSync = encodeMemberProfileMetrics(next, {
-      homeVisibility,
-      favoritePersonalRecords: cleanedFavoritePersonalRecordNames,
-    });
+    const metricsForSync = encodeMemberProfileMetrics(
+      next,
+      {
+        homeVisibility,
+        favoritePersonalRecords: cleanedFavoritePersonalRecordNames,
+      },
+      editableMember.personalGoals,
+    );
     window.localStorage.setItem(getProfileStorageKey(editableMember.id), JSON.stringify(next));
     const targetMemberIds = Array.from(
       new Set(
@@ -2304,6 +2330,7 @@ export function MemberPortal(props: MemberPortalProps) {
             currentDailySteps: String(parsed.currentDailySteps ?? ""),
           },
           { homeVisibility: dbHomeVisibility ?? undefined },
+          editableMember.personalGoals,
         );
         targetIds.forEach((memberId) => {
           updateMember({
@@ -2490,10 +2517,14 @@ export function MemberPortal(props: MemberPortalProps) {
       targetWeight: profileTargetWeight.trim(),
       currentDailySteps: profileCurrentDailySteps.trim(),
     };
-    const encoded = encodeMemberProfileMetrics(nextMetrics, {
-      homeVisibility: normalizedHomeVisibility,
-      favoritePersonalRecords: cleanedFavoritePersonalRecordNames,
-    });
+    const encoded = encodeMemberProfileMetrics(
+      nextMetrics,
+      {
+        homeVisibility: normalizedHomeVisibility,
+        favoritePersonalRecords: cleanedFavoritePersonalRecordNames,
+      },
+      editableMember.personalGoals,
+    );
     const targetIds = Array.from(new Set([editableMember.id, ...relatedMemberIds].filter(Boolean)));
     targetIds.forEach((memberId) => {
       updateMember({
@@ -2551,10 +2582,14 @@ export function MemberPortal(props: MemberPortalProps) {
       targetWeight: profileTargetWeight.trim(),
       currentDailySteps: profileCurrentDailySteps.trim(),
     };
-    const encoded = encodeMemberProfileMetrics(nextMetrics, {
-      homeVisibility: normalizeHomeVisibilityForStorage(homeVisibility),
-      favoritePersonalRecords: cleanedLocal,
-    });
+    const encoded = encodeMemberProfileMetrics(
+      nextMetrics,
+      {
+        homeVisibility: normalizeHomeVisibilityForStorage(homeVisibility),
+        favoritePersonalRecords: cleanedLocal,
+      },
+      editableMember.personalGoals,
+    );
     const targetIds = Array.from(new Set([editableMember.id, ...relatedMemberIds].filter(Boolean)));
     targetIds.forEach((memberId) => {
       updateMember({
@@ -4581,22 +4616,17 @@ export function MemberPortal(props: MemberPortalProps) {
                                 <span>Start</span>
                               </span>
                             </GradientButton>
-                          </div>
-                        </div>
-
-                        <div className="border-t pt-1.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                          <OutlineButton
-                            type="button"
-                            className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
-                            onClick={() => setProgramLibraryMenuId((prev) => (prev === program.id ? null : program.id))}
-                          >
-                            <span className="inline-flex items-center gap-1">
-                              <ChevronRight className={`h-3 w-3 transition ${isLibraryMenuOpen ? "rotate-90" : ""}`} />
-                              <span>{isLibraryMenuOpen ? "Skjul valg" : "Administrer program"}</span>
-                            </span>
-                          </OutlineButton>
-                          {isLibraryMenuOpen ? (
-                            <div className="mt-1.5 flex w-full flex-wrap items-center gap-1">
+                            <OutlineButton
+                              type="button"
+                              className={`!min-h-7 !px-1.5 !py-1 !text-[10px] !leading-tight ${isLibraryMenuOpen ? "!border-teal-300 !bg-teal-50" : ""}`}
+                              onClick={() => setProgramLibraryMenuId((prev) => (prev === program.id ? null : program.id))}
+                              aria-label={isLibraryMenuOpen ? "Skjul programvalg" : "Flere programvalg"}
+                              title={isLibraryMenuOpen ? "Skjul valg" : "Mer"}
+                            >
+                              <MoreHorizontal className="h-3.5 w-3.5" aria-hidden />
+                            </OutlineButton>
+                            {isLibraryMenuOpen ? (
+                              <>
                           <OutlineButton
                             type="button"
                             className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
@@ -4649,8 +4679,9 @@ export function MemberPortal(props: MemberPortalProps) {
                               </span>
                             </DangerButton>
                           ) : null}
-                            </div>
-                          ) : null}
+                              </>
+                            ) : null}
+                          </div>
                         </div>
 
                         {isExpanded ? (
