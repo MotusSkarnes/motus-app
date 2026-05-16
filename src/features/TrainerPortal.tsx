@@ -4251,6 +4251,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                     ) : (
                       <OutlineButton
                         onClick={() => handleDeactivateMember(selectedMember.id)}
+                        aria-label="Arkiver kunde"
                         className={`${CUSTOMER_CARD_ACTION_BTN} w-full sm:w-auto`}
                       >
                         Arkiver

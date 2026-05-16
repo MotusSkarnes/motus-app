@@ -54,7 +54,12 @@ Deno.serve(async (req) => {
     bodyEmail = "";
   }
 
-  const requesterEmail = bodyEmail || normalizeEmail(userData.user.email);
+  const sessionEmail = normalizeEmail(userData.user.email);
+  if (bodyEmail && bodyEmail !== sessionEmail) {
+    return jsonResponse(403, { error: "Email does not match authenticated user" });
+  }
+
+  const requesterEmail = sessionEmail;
   if (!requesterEmail.includes("@")) {
     return jsonResponse(400, { error: "Valid email is required" });
   }

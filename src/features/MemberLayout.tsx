@@ -158,14 +158,15 @@ export function MemberLayout({
     if (!base) return null;
     return enrichMemberWithBestProfile(base, appState.members);
   }, [appState]);
+  const currentUserRole = appState.currentUser?.role;
   const onboardingIdentityKey = activeMember ? memberOnboardingIdentityKey(activeMember) : "";
   const onboardingCompleted = useMemo(
     () => isOnboardingCompleted(activeMember?.personalGoals),
     [activeMember?.personalGoals],
   );
   const needsOnboardingPrompt = useMemo(
-    () => shouldShowMemberOnboarding(activeMember, appState.currentUser?.role, appState.members),
-    [activeMember, appState.currentUser?.role, appState.members],
+    () => shouldShowMemberOnboarding(activeMember, currentUserRole, appState.members),
+    [activeMember, currentUserRole, appState.members],
   );
 
   useEffect(() => {
