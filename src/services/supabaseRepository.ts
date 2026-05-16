@@ -773,11 +773,7 @@ async function persistMember(member: Member) {
     targetEmail: normalizedEmail,
     targetName: member.name,
   });
-  const memberIdsForSync = isSharedMedlemCustomerType(member.customerType)
-    ? relatedMemberIds.length
-      ? relatedMemberIds
-      : [member.id]
-    : [member.id];
+  const memberIdsForSync = relatedMemberIds.length > 0 ? relatedMemberIds : [member.id];
   const syncPayload = {
     email: normalizedEmail,
     emails: [normalizedEmail],

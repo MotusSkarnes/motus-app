@@ -369,11 +369,54 @@ export function formatOnboardingSummaryLines(onboarding: MemberOnboardingAnswers
   return lines;
 }
 
+function scoreOnboardingRichness(onboarding: MemberOnboardingAnswers): number {
+  if (onboarding.skipped) return 0;
+  return (
+    onboarding.trainingGoals.length * 10 +
+    onboarding.motivations.length * 5 +
+    onboarding.trainingForms.length * 3 +
+    (onboarding.goalsNotes.trim() ? 4 : 0) +
+    (onboarding.injuries.trim() ? 2 : 0)
+  );
+}
+
+/** Finn rikeste oppstartsskjema på tvers av flere personal_goals-blobs. */
+export function resolveOnboardingFromPersonalGoalCandidates(
+  candidates: Array<string | undefined | null>,
+): MemberOnboardingAnswers | null {
+  let bestDetailed: MemberOnboardingAnswers | null = null;
+  let bestDetailedScore = -1;
+  let bestCompleted: MemberOnboardingAnswers | null = null;
+
+  for (const raw of candidates) {
+    const onboarding = getOnboardingFromPersonalGoals(raw);
+    if (!onboarding?.completedAt) continue;
+    if (!bestCompleted) bestCompleted = onboarding;
+    if (onboarding.skipped) continue;
+    const score = scoreOnboardingRichness(onboarding);
+    if (score > bestDetailedScore) {
+      bestDetailedScore = score;
+      bestDetailed = onboarding;
+    }
+  }
+
+  return bestDetailed ?? bestCompleted;
+}
+
 export function resolveMemberOnboarding(
   member: Member | null | undefined,
   allMembers?: Member[],
 ): MemberOnboardingAnswers | null {
   if (!member) return null;
+  const email = member.email.trim().toLowerCase();
+  const related =
+    allMembers?.length && email
+      ? allMembers.filter((row) => row.email.trim().toLowerCase() === email)
+      : [member];
+  const personalGoalsCandidates = related.map((row) => row.personalGoals);
+  const fromRelated = resolveOnboardingFromPersonalGoalCandidates(personalGoalsCandidates);
+  if (fromRelated) return fromRelated;
+
   const profile = allMembers?.length ? enrichMemberWithBestProfile(member, allMembers) : member;
   return getOnboardingFromPersonalGoals(profile.personalGoals);
 }

@@ -789,7 +789,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const goals = prioritized.map((member) => member.goal);
     const injuries = prioritized.map((member) => member.injuries);
     const focuses = prioritized.map((member) => member.focus);
-    const personalGoalsList = prioritized.map((member) => member.personalGoals);
+    const personalGoalsList = candidates.map((member) => member.personalGoals);
     return {
       ...base,
       name: pickPreferredNonEmpty(names) || base.name,
@@ -854,6 +854,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       const birthDates = group.map((member) => member.birthDate);
       const goals = group.map((member) => member.goal);
       const injuries = group.map((member) => member.injuries);
+      const personalGoalsList = group.map((member) => member.personalGoals);
       merged.push({
         ...base,
         name: pickLatestNonEmpty(names) || base.name,
@@ -861,6 +862,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         birthDate: pickLatestNonEmpty(birthDates) || base.birthDate,
         goal: pickLatestNonEmpty(goals) || base.goal,
         injuries: pickLatestNonEmpty(injuries) || base.injuries,
+        personalGoals: pickBestPersonalGoals(personalGoalsList) || base.personalGoals,
       });
     }
     return merged;

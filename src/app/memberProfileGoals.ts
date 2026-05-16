@@ -9,7 +9,9 @@ export function pickBestPersonalGoals(candidates: Array<string | undefined | nul
     if (!value) continue;
     let score = 0;
     if (value.startsWith(PROFILE_METRICS_PREFIX)) score += 100;
-    if (value.includes('"onboarding"') || value.includes("onboardingCompletedAt")) score += 40;
+    if (value.includes("onboardingCompletedAt")) score += 200;
+    if (value.includes('"onboarding"') && value.includes("completedAt")) score += 160;
+    else if (value.includes('"onboarding"')) score += 80;
     if (value.includes('"monthlyCheckIns"')) score += 50;
     score += Math.min(20, Math.floor(value.length / 200));
     if (score > bestScore) {
