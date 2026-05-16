@@ -13,9 +13,33 @@ export function notifyInspirationItemsChanged() {
   window.dispatchEvent(new CustomEvent(INSPIRATION_CHANGED_EVENT));
 }
 
-export function saveInspirationItemsToStorage(items: unknown[]) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(INSPIRATION_STORAGE_KEY, JSON.stringify(items));
+const MAX_INSPIRATION_STORAGE_BYTES = 4_000_000;
+
+export type InspirationSaveResult = { ok: true } | { ok: false; error: string };
+
+export function saveInspirationItemsToStorage(items: unknown[]): InspirationSaveResult {
+  if (typeof window === "undefined") return { ok: true };
+  try {
+    const serialized = JSON.stringify(items);
+    if (serialized.length > MAX_INSPIRATION_STORAGE_BYTES) {
+      return {
+        ok: false,
+        error: "Innholdet er for stort til å lagre. Prøv et mindre bilde eller kortere tekst.",
+      };
+    }
+    window.localStorage.setItem(INSPIRATION_STORAGE_KEY, serialized);
+    return { ok: true };
+  } catch (error) {
+    const isQuota =
+      (error instanceof DOMException && (error.name === "QuotaExceededError" || error.code === 22)) ||
+      (error instanceof Error && /quota/i.test(error.message));
+    return {
+      ok: false,
+      error: isQuota
+        ? "Kunne ikke lagre bildet (for stor fil). Prøv et mindre bilde."
+        : "Kunne ikke lagre inspirasjon. Prøv igjen.",
+    };
+  }
 }
 
 export function loadInspirationNotificationItems(): InspirationNotificationItem[] {

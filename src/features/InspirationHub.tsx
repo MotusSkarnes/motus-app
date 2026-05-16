@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarRange, ChevronLeft, ChevronRight, ClipboardList, ImagePlus, Lightbulb, Newspaper, Pencil, Plus, Soup, Sparkles, Trash2 } from "lucide-react";
 import { MOTUS } from "../app/data";
+import { compressImageDataUrl, compressImageFile } from "../app/imageCompress";
 import {
   INSPIRATION_STORAGE_KEY,
   notifyInspirationItemsChanged,
   saveInspirationItemsToStorage,
 } from "../app/inspirationStorage";
+import { buildPeriodPlanProgramSelectOptions, WEEKDAY_PLAN_FIELDS } from "../app/periodPlanBuilder";
+import { normalizePeriodSchedulePlan, syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { WEEKDAY_PLAN_LABELS, WEEKDAY_PLAN_ORDER } from "../app/periodPlanSwaps";
 import { uid } from "../app/storage";
 import { GradientButton, OutlineButton, SelectBox, TextArea, TextInput } from "../app/ui";
@@ -190,11 +193,20 @@ type InspirationHubProps = {
   authorName?: string;
   memberId?: string;
   memberName?: string;
+  /** PT-programmaler (`__template__`) til valg i periodeplan-uker. */
+  programTemplates?: Array<{ id: string; title: string }>;
   onAddProgram?: (program: ProgramTemplateInput) => void;
   onAddPeriodPlan?: (plan: PeriodSchedulePlan) => void;
 };
 
-export function InspirationHub({ canManage = false, authorName = "Motus", memberName = "Medlem", onAddProgram, onAddPeriodPlan }: InspirationHubProps) {
+export function InspirationHub({
+  canManage = false,
+  authorName = "Motus",
+  memberName = "Medlem",
+  programTemplates = [],
+  onAddProgram,
+  onAddPeriodPlan,
+}: InspirationHubProps) {
   const [items, setItems] = useState<InspirationItem[]>(() => loadInspirationItems());
   const [activeCategory, setActiveCategory] = useState<InspirationCategory | "all">("all");
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
@@ -209,17 +221,62 @@ export function InspirationHub({ canManage = false, authorName = "Motus", member
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [programTemplateDraft, setProgramTemplateDraft] = useState<ProgramTemplateInput | null>(null);
   const [periodPlanTemplateDraft, setPeriodPlanTemplateDraft] = useState<PeriodSchedulePlan | null>(null);
-  const [activePeriodWeekNumber, setActivePeriodWeekNumber] = useState(1);
+  const [activePeriodWeekId, setActivePeriodWeekId] = useState("");
+  const [isImageProcessing, setIsImageProcessing] = useState(false);
   const carouselRef = useRef<HTMLDivElement | null>(null);
 
+  const periodPlanProgramOptions = useMemo(() => {
+    const titles = [
+      ...programTemplates.map((program) => program.title),
+      ...items.filter((item) => item.kind === "program").map((item) => item.title),
+      ...items
+        .filter((item) => item.programTemplate?.title)
+        .map((item) => item.programTemplate!.title),
+    ];
+    return buildPeriodPlanProgramSelectOptions(titles);
+  }, [programTemplates, items]);
+
+  const activePeriodWeek = useMemo(
+    () =>
+      periodPlanTemplateDraft?.weeklyPlans.find((week) => week.id === activePeriodWeekId) ??
+      periodPlanTemplateDraft?.weeklyPlans[0] ??
+      null,
+    [periodPlanTemplateDraft, activePeriodWeekId],
+  );
+
   useEffect(() => {
-    saveInspirationItemsToStorage(items);
-  }, [items]);
+    const weeks = periodPlanTemplateDraft?.weeklyPlans ?? [];
+    if (!weeks.length) {
+      setActivePeriodWeekId("");
+      return;
+    }
+    setActivePeriodWeekId((prev) => {
+      if (prev && weeks.some((week) => week.id === prev)) return prev;
+      return weeks[0]?.id ?? "";
+    });
+  }, [periodPlanTemplateDraft]);
 
   useEffect(() => {
     if (canManage) return;
     notifyInspirationItemsChanged();
   }, [canManage]);
+
+  function commitItems(next: InspirationItem[]): boolean {
+    const result = saveInspirationItemsToStorage(next);
+    if (!result.ok) {
+      setActionStatus(result.error);
+      return false;
+    }
+    setItems(next);
+    return true;
+  }
+
+  async function resolveImageForStorage(value: string): Promise<string | undefined> {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    if (!trimmed.startsWith("data:image/")) return trimmed;
+    return compressImageDataUrl(trimmed);
+  }
 
   const filteredItems = useMemo(() => {
     const sorted = [...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -247,7 +304,7 @@ export function InspirationHub({ canManage = false, authorName = "Motus", member
     setKindDraft("article");
     setProgramTemplateDraft(null);
     setPeriodPlanTemplateDraft(null);
-    setActivePeriodWeekNumber(1);
+    setActivePeriodWeekId("");
   }
 
   function beginEdit(item: InspirationItem) {
@@ -260,8 +317,9 @@ export function InspirationHub({ canManage = false, authorName = "Motus", member
     setCategoryDraft(item.category);
     setKindDraft(item.kind);
     setProgramTemplateDraft(item.programTemplate ? structuredClone(item.programTemplate) : null);
-    setPeriodPlanTemplateDraft(item.periodPlanTemplate ? structuredClone(item.periodPlanTemplate) : null);
-    setActivePeriodWeekNumber(item.periodPlanTemplate?.weeklyPlans[0]?.weekNumber ?? 1);
+    const clonedPlan = item.periodPlanTemplate ? normalizePeriodSchedulePlan(structuredClone(item.periodPlanTemplate)) : null;
+    setPeriodPlanTemplateDraft(clonedPlan);
+    setActivePeriodWeekId(clonedPlan?.weeklyPlans[0]?.id ?? "");
     setExpandedItemId(item.id);
     setActionStatus(null);
   }
@@ -271,7 +329,7 @@ export function InspirationHub({ canManage = false, authorName = "Motus", member
   }
 
   function ensurePeriodPlanTemplateDraft(nextTitle: string, nextBody: string) {
-    setPeriodPlanTemplateDraft((prev) => prev ?? createDefaultPeriodPlan(nextTitle, nextBody));
+    setPeriodPlanTemplateDraft((prev) => normalizePeriodSchedulePlan(prev ?? createDefaultPeriodPlan(nextTitle, nextBody)));
   }
 
   function updateProgramExercise(exerciseId: string, field: keyof ProgramExercise, value: string) {
@@ -314,28 +372,65 @@ export function InspirationHub({ canManage = false, authorName = "Motus", member
           },
         );
       }
-      return { ...base, weeks: clamped, weeklyPlans };
+      return normalizePeriodSchedulePlan({ ...base, weeks: clamped, weeklyPlans });
     });
-    setActivePeriodWeekNumber((current) => Math.min(current, clamped));
   }
 
-  function updatePeriodPlanDay(weekNumber: number, day: WeekdayPlanKey, value: string) {
+  function toggleGradientPeriodWeek(weekId: string) {
+    setActivePeriodWeekId(weekId);
     setPeriodPlanTemplateDraft((prev) => {
       if (!prev) return prev;
-      return {
+      const current = prev.weeklyPlans.find((week) => week.id === weekId);
+      if (!current) return prev;
+      const shouldMark = current.usesGradientPlan !== true;
+      const existingGradient = prev.weeklyPlans.find((week) => week.usesGradientPlan === true);
+      const sharedDays = shouldMark && existingGradient ? { ...existingGradient.days } : { ...current.days };
+      const nextWeeks = prev.weeklyPlans.map((week) =>
+        week.id === weekId
+          ? { ...week, usesGradientPlan: shouldMark, days: shouldMark ? sharedDays : week.days }
+          : week.usesGradientPlan === true && shouldMark
+            ? { ...week, days: sharedDays }
+            : week,
+      );
+      return normalizePeriodSchedulePlan({
         ...prev,
-        weeklyPlans: prev.weeklyPlans.map((week) =>
-          week.weekNumber === weekNumber ? { ...week, days: { ...week.days, [day]: value } } : week,
-        ),
-      };
+        weeklyPlans: syncGradientMarkedWeekDays(nextWeeks),
+      });
     });
   }
 
-  function saveItem() {
+  function updateActivePeriodWeekDay(day: WeekdayPlanKey, value: string) {
+    if (!activePeriodWeek) return;
+    setPeriodPlanTemplateDraft((prev) => {
+      if (!prev) return prev;
+      const after =
+        activePeriodWeek.usesGradientPlan === true
+          ? prev.weeklyPlans.map((week) =>
+              week.usesGradientPlan === true ? { ...week, days: { ...week.days, [day]: value } } : week,
+            )
+          : prev.weeklyPlans.map((week) =>
+              week.id === activePeriodWeek.id ? { ...week, days: { ...week.days, [day]: value } } : week,
+            );
+      return normalizePeriodSchedulePlan({
+        ...prev,
+        weeklyPlans: syncGradientMarkedWeekDays(after),
+      });
+    });
+  }
+
+  async function saveItem() {
     const nextTitle = title.trim();
     const nextDescription = description.trim();
     const nextBody = body.trim();
     if (!nextTitle || !nextDescription || !nextBody) return;
+
+    let storedImageUrl: string | undefined;
+    try {
+      storedImageUrl = await resolveImageForStorage(imageUrl);
+    } catch {
+      setActionStatus("Kunne ikke behandle bildet. Prøv et annet bilde.");
+      return;
+    }
 
     const kind = categoryDraft === "programs" ? kindDraft : "article";
     let programTemplate: ProgramTemplateInput | undefined;
@@ -353,38 +448,37 @@ export function InspirationHub({ canManage = false, authorName = "Motus", member
     }
     if (kind === "periodPlan") {
       const draft = periodPlanTemplateDraft ?? createDefaultPeriodPlan(nextTitle, nextBody);
-      periodPlanTemplate = {
+      periodPlanTemplate = normalizePeriodSchedulePlan({
         ...draft,
         title: nextTitle,
         notes: nextBody,
         weeks: draft.weeklyPlans.length || draft.weeks,
         weeklyPlans: draft.weeklyPlans.length ? draft.weeklyPlans : createDefaultPeriodPlan(nextTitle, nextBody).weeklyPlans,
-      };
+      });
     }
 
     if (editingItemId) {
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === editingItemId
-            ? {
-                ...item,
-                category: categoryDraft,
-                kind,
-                title: nextTitle,
-                description: nextDescription,
-                body: nextBody,
-                tag: tag.trim() || CATEGORY_META[categoryDraft].label,
-                imageUrl: imageUrl.trim() || undefined,
-                programTemplate: kind === "program" ? programTemplate : undefined,
-                periodPlanTemplate: kind === "periodPlan" ? periodPlanTemplate : undefined,
-              }
-            : item,
-        ),
+      const next = items.map((item) =>
+        item.id === editingItemId
+          ? {
+              ...item,
+              category: categoryDraft,
+              kind,
+              title: nextTitle,
+              description: nextDescription,
+              body: nextBody,
+              tag: tag.trim() || CATEGORY_META[categoryDraft].label,
+              imageUrl: storedImageUrl,
+              programTemplate: kind === "program" ? programTemplate : undefined,
+              periodPlanTemplate: kind === "periodPlan" ? periodPlanTemplate : undefined,
+            }
+          : item,
       );
+      if (!commitItems(next)) return;
       setActionStatus("Endringene er lagret.");
     } else {
       const now = new Date();
-      const next: InspirationItem = {
+      const nextItem: InspirationItem = {
         id: `inspiration-${now.getTime()}`,
         category: categoryDraft,
         kind,
@@ -394,11 +488,11 @@ export function InspirationHub({ canManage = false, authorName = "Motus", member
         tag: tag.trim() || CATEGORY_META[categoryDraft].label,
         author: authorName.trim() || "Motus",
         createdAt: now.toISOString().slice(0, 10),
-        imageUrl: imageUrl.trim() || undefined,
+        imageUrl: storedImageUrl,
         programTemplate,
         periodPlanTemplate,
       };
-      setItems((prev) => [next, ...prev]);
+      if (!commitItems([nextItem, ...items])) return;
       setActionStatus("Innlegget er publisert.");
       setActiveCategory(categoryDraft);
       notifyInspirationItemsChanged();
@@ -410,16 +504,12 @@ export function InspirationHub({ canManage = false, authorName = "Motus", member
     const item = items.find((entry) => entry.id === id);
     if (!item) return;
     if (!window.confirm(`Slette «${item.title}» fra inspirasjon?`)) return;
-    setItems((prev) => prev.filter((entry) => entry.id !== id));
+    const next = items.filter((entry) => entry.id !== id);
+    if (!commitItems(next)) return;
     if (editingItemId === id) resetComposer();
     if (expandedItemId === id) setExpandedItemId(null);
     setActionStatus("Innlegget er slettet.");
   }
-
-  const activePeriodWeek =
-    periodPlanTemplateDraft?.weeklyPlans.find((week) => week.weekNumber === activePeriodWeekNumber) ??
-    periodPlanTemplateDraft?.weeklyPlans[0] ??
-    null;
 
   function handleAddProgram(item: InspirationItem) {
     const template = item.programTemplate ?? createDefaultProgram(item.title, item.description, item.body);
@@ -433,11 +523,22 @@ export function InspirationHub({ canManage = false, authorName = "Motus", member
     setActionStatus(`${item.title} er lagt til under Mine periodeplaner.`);
   }
 
-  function handleImageFile(file: File | null) {
+  async function handleImageFile(file: File | null) {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setImageUrl(typeof reader.result === "string" ? reader.result : "");
-    reader.readAsDataURL(file);
+    if (!file.type.startsWith("image/")) {
+      setActionStatus("Velg en bildefil (JPG, PNG eller WebP).");
+      return;
+    }
+    setIsImageProcessing(true);
+    setActionStatus(null);
+    try {
+      const compressed = await compressImageFile(file);
+      setImageUrl(compressed);
+    } catch {
+      setActionStatus("Kunne ikke lese bildefilen. Prøv et mindre bilde.");
+    } finally {
+      setIsImageProcessing(false);
+    }
   }
 
   return (
@@ -486,7 +587,17 @@ export function InspirationHub({ canManage = false, authorName = "Motus", member
         })}
       </div>
 
-      {actionStatus ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900">{actionStatus}</div> : null}
+      {actionStatus ? (
+        <div
+          className={`rounded-xl border px-3 py-2 text-sm font-medium ${
+            /kunne ikke|for stort/i.test(actionStatus)
+              ? "border-rose-200 bg-rose-50 text-rose-900"
+              : "border-emerald-200 bg-emerald-50 text-emerald-900"
+          }`}
+        >
+          {actionStatus}
+        </div>
+      ) : null}
 
       <div className="rounded-2xl border bg-white p-3 shadow-sm sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
         <div className="mb-3 flex items-center justify-between gap-3">
@@ -575,11 +686,11 @@ export function InspirationHub({ canManage = false, authorName = "Motus", member
       </div>
 
       {expandedItem ? (
-        <div className="rounded-2xl border bg-white p-4 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+        <div className="mx-auto w-full max-w-lg rounded-2xl border bg-white p-4 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Les mer</div>
-              <h3 className="mt-1 text-xl font-semibold text-slate-950">{expandedItem.title}</h3>
+              <h3 className="mt-1 text-lg font-semibold leading-snug text-slate-950 sm:text-xl">{expandedItem.title}</h3>
               <p className="mt-1 text-sm text-slate-500">{expandedItem.description}</p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -598,6 +709,11 @@ export function InspirationHub({ canManage = false, authorName = "Motus", member
               </button>
             </div>
           </div>
+          {expandedItem.imageUrl ? (
+            <div className="mt-4 overflow-hidden rounded-xl bg-slate-100">
+              <img src={expandedItem.imageUrl} alt="" className="max-h-56 w-full object-cover" loading="lazy" decoding="async" />
+            </div>
+          ) : null}
           <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{expandedItem.body}</p>
           {expandedItem.periodPlanTemplate ? (
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -671,10 +787,18 @@ export function InspirationHub({ canManage = false, authorName = "Motus", member
             <TextInput value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Tittel" />
             <TextInput value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Kort info under bildet" />
             <TextInput value={tag} onChange={(event) => setTag(event.target.value)} placeholder="Tagg" />
-            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+            <label
+              className={`flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 ${isImageProcessing ? "pointer-events-none opacity-60" : ""}`}
+            >
               <ImagePlus className="h-4 w-4" />
-              <span>{imageUrl ? "Bilde valgt" : "Velg kvadratisk bilde"}</span>
-              <input type="file" accept="image/*" className="hidden" onChange={(event) => handleImageFile(event.target.files?.[0] ?? null)} />
+              <span>{isImageProcessing ? "Behandler bilde…" : imageUrl ? "Bilde valgt" : "Velg kvadratisk bilde"}</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={isImageProcessing}
+                onChange={(event) => void handleImageFile(event.target.files?.[0] ?? null)}
+              />
             </label>
           </div>
           <TextArea value={body} onChange={(event) => setBody(event.target.value)} className="mt-3 min-h-[110px]" placeholder="Detaljer som vises under Les mer" />
@@ -720,45 +844,83 @@ export function InspirationHub({ canManage = false, authorName = "Motus", member
                     className="w-24"
                   />
                 </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {(periodPlanTemplateDraft?.weeklyPlans ?? []).map((week) => (
-                    <button
-                      key={week.id}
-                      type="button"
-                      onClick={() => setActivePeriodWeekNumber(week.weekNumber)}
-                      className={`rounded-md border px-2.5 py-1 text-xs font-semibold ${
-                        activePeriodWeekNumber === week.weekNumber ? "border-teal-400 bg-teal-100 text-teal-900" : "border-slate-200 bg-white text-slate-700"
-                      }`}
-                    >
-                      Uke {week.weekNumber}
-                    </button>
-                  ))}
-                </div>
               </div>
+              {(periodPlanTemplateDraft?.weeklyPlans ?? []).length > 0 ? (
+                <div className="rounded-xl border bg-white p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="text-sm font-semibold text-slate-900">Uker i planen</div>
+                  <p className="text-xs text-slate-500">
+                    Trykk en uke for å redigere. Trykk igjen for å markere flere uker med samme plan (farget).
+                  </p>
+                  <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5 lg:grid-cols-8">
+                    {(periodPlanTemplateDraft?.weeklyPlans ?? []).map((week) => {
+                      const marked = week.usesGradientPlan === true;
+                      const isActive = activePeriodWeekId === week.id;
+                      return (
+                        <button
+                          key={week.id}
+                          type="button"
+                          onClick={() => toggleGradientPeriodWeek(week.id)}
+                          className={`rounded-md border px-1 py-1.5 text-center text-xs font-semibold leading-tight transition ${
+                            marked ? "text-white shadow-sm" : "bg-white text-slate-700 hover:bg-slate-50"
+                          } ${isActive ? "ring-2 ring-teal-200" : ""}`}
+                          style={
+                            marked
+                              ? {
+                                  borderColor: "transparent",
+                                  background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
+                                }
+                              : { borderColor: "rgba(15,23,42,0.08)" }
+                          }
+                          aria-pressed={marked}
+                        >
+                          Uke {week.weekNumber}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+              {programTemplates.length > 0 ? (
+                <p className="text-xs text-slate-600">
+                  Programmaler fra PT er tilgjengelige i dagvelgeren under ({programTemplates.length} stk).
+                </p>
+              ) : null}
               {activePeriodWeek ? (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {WEEKDAY_PLAN_ORDER.map((day) => (
-                    <label key={day} className="grid gap-1">
-                      <span className="text-xs font-semibold text-slate-700">{WEEKDAY_PLAN_LABELS[day]}</span>
-                      <TextInput
-                        value={activePeriodWeek.days[day]}
-                        onChange={(event) => updatePeriodPlanDay(activePeriodWeek.weekNumber, day, event.target.value)}
-                        placeholder="Plan for dagen"
-                      />
-                    </label>
-                  ))}
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-slate-900">
+                    Ukedager {activePeriodWeek.usesGradientPlan ? "(gjelder alle markerte uker)" : `(uke ${activePeriodWeek.weekNumber})`}
+                  </div>
+                  <div className="grid gap-2 lg:grid-cols-2">
+                    {WEEKDAY_PLAN_FIELDS.map((field) => {
+                      const currentValue = activePeriodWeek.days[field.key];
+                      const hasCurrentValueInOptions = periodPlanProgramOptions.some((option) => option.value === currentValue);
+                      const options = hasCurrentValueInOptions
+                        ? periodPlanProgramOptions
+                        : [...periodPlanProgramOptions, { value: currentValue, label: `${currentValue} (tilpasset)` }];
+                      return (
+                        <label key={field.key} className="grid gap-1">
+                          <span className="text-xs font-semibold text-slate-700">{field.label}</span>
+                          <SelectBox value={currentValue} onChange={(value) => updateActivePeriodWeekDay(field.key, value)} options={options} />
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
               ) : null}
             </div>
           ) : null}
 
+          
           <div className="mt-3 flex flex-wrap justify-end gap-2">
             {editingItemId ? (
               <OutlineButton type="button" onClick={resetComposer}>
                 Avbryt redigering
               </OutlineButton>
             ) : null}
-            <GradientButton onClick={saveItem} disabled={!title.trim() || !description.trim() || !body.trim()}>
+            <GradientButton
+              onClick={() => void saveItem()}
+              disabled={isImageProcessing || !title.trim() || !description.trim() || !body.trim()}
+            >
               {editingItemId ? "Lagre endringer" : "Publiser"}
             </GradientButton>
           </div>

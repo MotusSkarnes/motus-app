@@ -338,7 +338,13 @@ export function TrainerLayout({
             </button>
           ) : null}
           {trainerTab === "inspiration" ? (
-            <InspirationHub canManage authorName={appState.currentUser?.name ?? "Motus"} />
+            <InspirationHub
+              canManage
+              authorName={appState.currentUser?.name ?? "Motus"}
+              programTemplates={appState.programs
+                .filter((program) => program.memberId === "__template__")
+                .map((program) => ({ id: program.id, title: program.title }))}
+            />
           ) : (
             <TrainerPortal {...trainerPortalProps} />
           )}
