@@ -31,7 +31,7 @@ export function MemberWeeklyStreakCard({
       <div className={compact ? "p-3" : "p-4"}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Ukerytme</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Streak</div>
             <p className="mt-0.5 text-[11px] text-slate-500">Minst én fullført økt per kalenderuke</p>
             <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
               {streakWeeks > 0 ? (
@@ -39,10 +39,10 @@ export function MemberWeeklyStreakCard({
                   <span className={`font-bold tabular-nums tracking-tight text-slate-900 ${compact ? "text-2xl" : "text-3xl"}`}>
                     {streakWeeks}
                   </span>
-                  <span className="text-sm font-semibold text-slate-700">{streakWeeks === 1 ? "uke på rad" : "uker på rad"}</span>
+                  <span className="text-sm font-semibold text-slate-700">ukers streak</span>
                 </>
               ) : (
-                <span className="text-base font-semibold text-slate-800 sm:text-lg">Ingen aktiv ukerytme ennå</span>
+                <span className="text-base font-semibold text-slate-800 sm:text-lg">Ingen aktiv streak ennå</span>
               )}
             </div>
             <p className={`leading-relaxed text-slate-600 ${compact ? "mt-1.5 text-xs" : "mt-2 text-sm"}`}>{streakSubline}</p>
@@ -72,7 +72,7 @@ export function MemberWeeklyStreakCard({
                     className="inline-block h-2 w-2 rounded-sm"
                     style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
                   />
-                  I rytme
+                  I streak
                 </span>
               </span>
             </div>
@@ -80,7 +80,7 @@ export function MemberWeeklyStreakCard({
               {recentStreakWeeks.map((week) => (
                 <div key={week.key} className="flex min-w-0 flex-col items-center gap-1">
                   <div
-                    title={week.trained ? (week.inActiveStreak ? "Økt logget · teller i rytmen" : "Økt logget") : "Ingen økt denne uken"}
+                    title={week.trained ? (week.inActiveStreak ? "Økt logget · teller i streaken" : "Økt logget") : "Ingen økt denne uken"}
                     className={`h-9 w-full rounded-lg border transition ${week.inActiveStreak ? "ring-2 ring-teal-400/80 ring-offset-1" : ""}`}
                     style={
                       week.inActiveStreak

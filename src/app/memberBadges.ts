@@ -72,8 +72,8 @@ const PERMANENT_BADGE_DEFINITIONS: PermanentBadgeDefinition[] = [
   },
   {
     id: "week-streak-4",
-    title: "4 uker i rytme",
-    description: "Minst én økt per uke, 4 uker på rad",
+    title: "4-ukers streak",
+    description: "Minst én økt per uke, 4 uker i streak",
     icon: "week-streak",
     target: 4,
     current: (input) => input.streakWeeks,
@@ -104,8 +104,8 @@ const PERMANENT_BADGE_DEFINITIONS: PermanentBadgeDefinition[] = [
   },
   {
     id: "week-streak-8",
-    title: "8 uker i rytme",
-    description: "Hold ukerytmen i 8 uker",
+    title: "8-ukers streak",
+    description: "Hold streaken i 8 uker",
     icon: "week-streak",
     target: 8,
     current: (input) => input.streakWeeks,
@@ -180,8 +180,8 @@ const MONTHLY_BADGE_POOL: MonthlyBadgeTemplate[] = [
   },
   {
     id: "m-streak-2",
-    title: "2 ukers rytme",
-    description: "Hold ukerytmen på minst 2 uker",
+    title: "2-ukers streak",
+    description: "Hold streaken på minst 2 uker",
     icon: "week-streak",
     metric: "streakWeeks",
     target: 2,

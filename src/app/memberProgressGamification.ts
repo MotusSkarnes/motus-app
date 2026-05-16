@@ -3,7 +3,7 @@ export const ACHIEVEMENT_MAX_LEVEL = 10;
 export const PROGRESS_STEP_LABELS = [
   "Kom i gang",
   "Første vaner",
-  "Bygger rytme",
+  "Bygger vanen",
   "Stabil uke",
   "Holder flyten",
   "Jevn trener",
@@ -131,7 +131,7 @@ export function buildProgressGoals(
   return [
     {
       id: `streak-${workingLevel}`,
-      title: "Ukerytme",
+      title: "Streak",
       description: `Tren minst én gang i ${streakTarget} uker etter hverandre`,
       current: stats.streakWeeks,
       target: streakTarget,
@@ -197,14 +197,14 @@ export function buildStreakSubline(
   trainingWeekKeys: string[],
 ): string {
   if (streakWeeks === 0) {
-    return "Fullfør én økt denne uken — da starter ukerytmen din.";
+    return "Fullfør én økt denne uken — da starter streaken din.";
   }
   const trainedThisWeek = trainingWeekKeys.includes(getWeekKey(nowDate));
   if (!trainedThisWeek) {
-    return "Du har fortsatt rytme fra tidligere uker. Logg én økt denne uken for å holde den.";
+    return "Du har fortsatt en rekke fra tidligere uker. Logg én økt denne uken for å holde den.";
   }
   if (streakWeeks >= streakMilestoneTarget) {
-    return "Flott — ukerytmen din er god nok for dette steget. Fortsett jevnt!";
+    return "Flott — streaken din er god nok for dette steget. Fortsett jevnt!";
   }
   const remaining = streakMilestoneTarget - streakWeeks;
   return remaining === 1
@@ -271,7 +271,7 @@ export function buildCelebrationCopy(achievedLevel: number): { title: string; bo
   if (achievedLevel >= ACHIEVEMENT_MAX_LEVEL) {
     return {
       title: "Du har nådd siste steg",
-      body: `Gratulerer — du er «${label}». Du holder jevn ukerytme, mange økter og god variasjon over tid.`,
+      body: `Gratulerer — du er «${label}». Du holder jevn streak, mange økter og god variasjon over tid.`,
     };
   }
   return {

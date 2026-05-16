@@ -19,7 +19,7 @@ describe("memberProgressGamification", () => {
   it("builds three clear goals for the working level", () => {
     const goals = buildProgressGoals(2, { completedSessions: 12, streakWeeks: 4, uniqueTrainingDays: 8 });
     expect(goals).toHaveLength(3);
-    expect(goals.map((goal) => goal.title)).toEqual(["Ukerytme", "Fullførte økter", "Ulike treningsdager"]);
+    expect(goals.map((goal) => goal.title)).toEqual(["Streak", "Fullførte økter", "Ulike treningsdager"]);
   });
 
   it("uses friendly step labels", () => {
@@ -29,7 +29,7 @@ describe("memberProgressGamification", () => {
 
   it("explains celebration in plain language", () => {
     const copy = buildCelebrationCopy(3);
-    expect(copy.title).toContain("Bygger rytme");
+    expect(copy.title).toContain("Bygger vanen");
     expect(copy.body).toContain("steg 3");
   });
 

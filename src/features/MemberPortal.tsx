@@ -5658,7 +5658,7 @@ export function MemberPortal(props: MemberPortalProps) {
             <div className="space-y-4">
                             <MemberTabHero
                 title="Fremgang"
-                description="Ukerytme, treningsmål, personlige rekorder og muskelfordeling."
+                description="Streak, treningsmål, personlige rekorder og muskelfordeling."
               />
               <Card className="p-4 sm:p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">

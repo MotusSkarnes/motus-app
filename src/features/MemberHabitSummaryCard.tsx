@@ -22,7 +22,7 @@ export function MemberHabitSummaryCard({ progress, onOpenProgress }: MemberHabit
             <Flame className="h-4 w-4" />
           </div>
           <div>
-            <div className="text-sm font-semibold text-slate-800">Din treningsrytme</div>
+            <div className="text-sm font-semibold text-slate-800">Treningsvanen din</div>
             <p className="text-xs text-slate-500">Én økt per uke holder vanen — ikke perfekt, bare jevn</p>
           </div>
         </div>
