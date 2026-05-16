@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, Pencil, Play, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
+import { ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, MessageSquare, Pencil, Play, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
@@ -4218,26 +4218,47 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                               : "Ny kunde"}
                       </span>
                     </div>
-                    <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                      <OutlineButton onClick={() => setCustomerSubTab("programs")} className="w-full">
-                        Lag program
-                      </OutlineButton>
-                      <OutlineButton
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCustomerSubTab("programs")}
+                        className="flex min-h-[58px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-tight text-slate-800 transition hover:border-teal-300 hover:bg-teal-50"
+                        title="Lag program"
+                      >
+                        <ClipboardList className="h-4 w-4 shrink-0 text-teal-700" aria-hidden />
+                        <span className="max-w-full break-words">Program</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => {
                           setCustomerSubTab("messages");
                           if (!trainerMessage.trim()) setTrainerMessage(`Hei ${selectedMemberProfile?.name ?? selectedMember.name}! Hvordan går treningen denne uka?`);
                         }}
-                        className="w-full"
+                        className="flex min-h-[58px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-tight text-slate-800 transition hover:border-teal-300 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-45"
                         disabled={selectedMemberMessagesLocked}
+                        title="Send melding"
                       >
-                        Send melding
-                      </OutlineButton>
-                      <OutlineButton onClick={() => setCustomerSubTab("workouts")} className="w-full">
-                        Se økter
-                      </OutlineButton>
-                      <OutlineButton onClick={() => setCustomerSubTab("overview")} className="w-full">
-                        Oppfølgingslogg
-                      </OutlineButton>
+                        <MessageSquare className="h-4 w-4 shrink-0 text-pink-700" aria-hidden />
+                        <span className="max-w-full break-words">Melding</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCustomerSubTab("workouts")}
+                        className="flex min-h-[58px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-tight text-slate-800 transition hover:border-teal-300 hover:bg-teal-50"
+                        title="Se økter"
+                      >
+                        <Play className="h-4 w-4 shrink-0 text-slate-700" aria-hidden />
+                        <span className="max-w-full break-words">Økter</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCustomerSubTab("overview")}
+                        className="flex min-h-[58px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-tight text-slate-800 transition hover:border-teal-300 hover:bg-teal-50"
+                        title="Oppfølgingslogg"
+                      >
+                        <Pencil className="h-4 w-4 shrink-0 text-amber-700" aria-hidden />
+                        <span className="max-w-full break-words">Logg</span>
+                      </button>
                     </div>
                   </div>
                   <div className="rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
