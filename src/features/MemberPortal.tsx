@@ -1115,7 +1115,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const nextProgram = memberProgramsInActiveLibrary[0] ?? null;
   useEffect(() => {
     if (!isMemberLimited) return;
-    if (memberTab === "overview" || memberTab === "programs" || memberTab === "profile") return;
+    if (memberTab === "overview" || memberTab === "programs" || memberTab === "profile" || memberTab === "inspiration") return;
     setMemberTab("overview");
   }, [isMemberLimited, memberTab, setMemberTab]);
   const workoutResultGroups = useMemo(() => {
@@ -3794,11 +3794,13 @@ export function MemberPortal(props: MemberPortalProps) {
             ? [
                 { id: "overview", label: "Hjem" },
                 { id: "programs", label: "Trening" },
+                { id: "inspiration", label: "Inspirasjon" },
                 { id: "profile", label: "Profil" },
               ]
             : [
             { id: "overview", label: "Hjem" },
             { id: "programs", label: "Trening" },
+            { id: "inspiration", label: "Inspirasjon" },
             { id: "progress", label: "Fremgang" },
             { id: "messages", label: "Meldinger" },
             { id: "profile", label: "Profil" },

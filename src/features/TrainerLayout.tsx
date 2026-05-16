@@ -1,11 +1,12 @@
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
-import { BarChart3, Bell, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, Clock3, Dumbbell, LayoutDashboard, MessageSquare, Settings, ShieldCheck, UserPlus, Users, type LucideIcon } from "lucide-react";
+import { BarChart3, Bell, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, Clock3, Dumbbell, LayoutDashboard, MessageSquare, Settings, ShieldCheck, Sparkles, UserPlus, Users, type LucideIcon } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { AppState, TrainerTab } from "../app/types";
 import { Card } from "../app/ui";
 import type { TrainerAlert } from "../app/useNotifications";
 import { TrainerPortal } from "./TrainerPortal";
 import type { MemberPortal } from "./MemberPortal";
+import { InspirationHub } from "./InspirationHub";
 
 type TrainerWorkoutBridge = Pick<
   ComponentProps<typeof MemberPortal>,
@@ -60,6 +61,7 @@ const trainerMenuItems: Array<{ key: TrainerTab; label: string; icon: LucideIcon
   { key: "customers", label: "Klienter", icon: Users },
   { key: "exerciseBank", label: "Øvelsesbank", icon: Dumbbell },
   { key: "programs", label: "Programmer", icon: ClipboardList },
+  { key: "inspiration", label: "Inspirasjon", icon: Sparkles },
   { key: "calendar", label: "Kalender", icon: CalendarDays },
   { key: "statistics", label: "Statistikk", icon: BarChart3 },
   { key: "settings", label: "Innstillinger", icon: Settings },
@@ -70,6 +72,7 @@ const mobileTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
   { id: "dashboard", label: "Oversikt", icon: LayoutDashboard },
   { id: "customers", label: "Kunder", icon: Users },
   { id: "programs", label: "Program", icon: ClipboardList },
+  { id: "inspiration", label: "Inspo", icon: Sparkles },
   { id: "exerciseBank", label: "Øvelser", icon: Dumbbell },
 ];
 
@@ -334,7 +337,11 @@ export function TrainerLayout({
               <ChevronRight className="h-4 w-4 text-slate-400" />
             </button>
           ) : null}
-          <TrainerPortal {...trainerPortalProps} />
+          {trainerTab === "inspiration" ? (
+            <InspirationHub canManage authorName={appState.currentUser?.name ?? "Motus"} />
+          ) : (
+            <TrainerPortal {...trainerPortalProps} />
+          )}
         </div>
       </div>
 
@@ -347,7 +354,7 @@ export function TrainerLayout({
           style={{ borderColor: "rgba(15,23,42,0.06)" }}
         >
           <div
-            className="grid w-full grid-cols-4 items-center gap-0.5 rounded-[14px] p-0.5"
+            className="grid w-full grid-cols-5 items-center gap-0.5 rounded-[14px] p-0.5"
             style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
           >
             {visibleMobileTabs.map((tab) => {

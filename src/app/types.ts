@@ -9,10 +9,11 @@ export type TrainerTab =
   | "exerciseBank"
   | "admin"
   | "calendar"
+  | "inspiration"
   | "statistics"
   | "settings";
 export type CustomerSubTab = "overview" | "profile" | "programs" | "workouts" | "messages";
-export type MemberTab = "overview" | "programs" | "progress" | "messages" | "profile";
+export type MemberTab = "overview" | "programs" | "progress" | "messages" | "profile" | "inspiration";
 
 export type WorkoutExerciseResult = {
   exerciseId: string;
