@@ -283,10 +283,30 @@ export function getOnboardingFromPersonalGoals(personalGoals: string | undefined
   };
 }
 
+/** Fullført med reelle svar — ikke bare tom «completedAt»-markør i profilblob. */
+export function hasSubstantiveOnboardingAnswers(personalGoals: string | undefined): boolean {
+  const onboarding = getOnboardingFromPersonalGoals(personalGoals);
+  if (!onboarding?.completedAt) return false;
+  if (onboarding.skipped) return true;
+  return (
+    onboarding.trainingGoals.length > 0 ||
+    onboarding.motivations.length > 0 ||
+    onboarding.trainingForms.length > 0 ||
+    Boolean(onboarding.currentWeeklySessions.trim()) ||
+    Boolean(onboarding.energyInTraining.trim()) ||
+    Boolean(onboarding.goalsNotes.trim())
+  );
+}
+
 export function isOnboardingCompleted(personalGoals: string | undefined): boolean {
-  if (getOnboardingFromPersonalGoals(personalGoals)?.completedAt) return true;
-  const payload = parsePersonalGoalsJson(personalGoals);
-  return Boolean(String(payload?.onboardingCompletedAt ?? "").trim());
+  return hasSubstantiveOnboardingAnswers(personalGoals);
+}
+
+export function onboardingDraftFromStored(personalGoals: string | undefined): Omit<MemberOnboardingAnswers, "completedAt" | "version"> {
+  const stored = getOnboardingFromPersonalGoals(personalGoals);
+  if (!stored || stored.skipped) return createEmptyOnboardingDraft();
+  const { completedAt: _c, version: _v, skipped: _s, ...draft } = stored;
+  return draft;
 }
 
 const ONBOARDING_GATE_SEEN_KEY_PREFIX = "motus.member.onboarding.gateSeen.v1:";

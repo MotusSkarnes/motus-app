@@ -25,6 +25,7 @@ type Draft = Omit<MemberOnboardingAnswers, "completedAt" | "version">;
 
 type MemberOnboardingProps = {
   memberName: string;
+  initialDraft?: Draft;
   onComplete: (answers: MemberOnboardingAnswers) => void | Promise<void>;
   onClose?: () => void;
 };
@@ -87,9 +88,9 @@ function ImportanceSlider({ value, onChange }: { value: number; onChange: (next:
   );
 }
 
-export function MemberOnboarding({ memberName, onComplete, onClose }: MemberOnboardingProps) {
+export function MemberOnboarding({ memberName, initialDraft, onComplete, onClose }: MemberOnboardingProps) {
   const [pageIndex, setPageIndex] = useState(0);
-  const [draft, setDraft] = useState<Draft>(() => createEmptyOnboardingDraft());
+  const [draft, setDraft] = useState<Draft>(() => initialDraft ?? createEmptyOnboardingDraft());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

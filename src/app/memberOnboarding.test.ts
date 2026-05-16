@@ -26,9 +26,9 @@ describe("memberOnboarding", () => {
     expect(primaryGoalFromOnboarding(answers)).toBe("Bli sterkere");
   });
 
-  it("detects completion from onboardingCompletedAt when row has sparse blob", () => {
+  it("treats sparse onboardingCompletedAt-only blob as incomplete", () => {
     const sparse = `MOTUS_PROFILE_V1:${JSON.stringify({ onboardingCompletedAt: "2026-05-16T12:00:00.000Z" })}`;
-    expect(isOnboardingCompleted(sparse)).toBe(true);
+    expect(isOnboardingCompleted(sparse)).toBe(false);
     expect(getOnboardingFromPersonalGoals(sparse)?.completedAt).toBe("2026-05-16T12:00:00.000Z");
   });
 

@@ -8,6 +8,7 @@ import {
   markOnboardingGateSeen,
   memberOnboardingIdentityKey,
   mergeOnboardingIntoPersonalGoals,
+  onboardingDraftFromStored,
   primaryGoalFromOnboarding,
   shouldShowMemberOnboarding,
   hasSeenOnboardingGate,
@@ -154,10 +155,7 @@ export function MemberLayout({
   );
 
   useEffect(() => {
-    if (!needsOnboardingPrompt || !onboardingIdentityKey) {
-      setOnboardingGateOpen(false);
-      return;
-    }
+    if (!needsOnboardingPrompt || !onboardingIdentityKey) return;
     if (hasSeenOnboardingGate(onboardingIdentityKey)) return;
     markOnboardingGateSeen(onboardingIdentityKey);
     setOnboardingGateOpen(true);
@@ -274,7 +272,8 @@ export function MemberLayout({
     refreshRemoteHydration,
     onOpenMonthlyCheckIn: () => setMemberCheckInOverlayOpen(true),
     onOpenOnboarding: () => setOnboardingGateOpen(true),
-    showOnboardingHomePrompt: needsOnboardingPrompt && !onboardingGateOpen,
+    showOnboardingHomePrompt: !onboardingGateOpen && !onboardingCompleted,
+    onboardingSubstantivelyComplete: onboardingCompleted,
   };
   const inspirationMemberId =
     appState.memberViewId ||
@@ -469,9 +468,10 @@ export function MemberLayout({
       </div>
       ) : null}
 
-      {onboardingGateOpen && activeMember && !onboardingCompleted ? (
+      {onboardingGateOpen && activeMember ? (
         <MemberOnboarding
           memberName={activeMember.name}
+          initialDraft={onboardingDraftFromStored(activeMember.personalGoals)}
           onComplete={persistOnboardingAnswers}
           onClose={() => setOnboardingGateOpen(false)}
         />

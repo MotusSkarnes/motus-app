@@ -31,7 +31,7 @@ import motusLogo from "../assets/motus-logo-transparent.svg";
 import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, normalizeStoredLogDate, storedLogDatesMatch } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
-import { parsePersonalGoalsJson, readProfileExtensions } from "../app/memberOnboarding";
+import { hasSubstantiveOnboardingAnswers, parsePersonalGoalsJson, readProfileExtensions } from "../app/memberOnboarding";
 import {
   buildCheckInNotificationCopy,
   resolveCheckInWindow,
@@ -195,6 +195,8 @@ type MemberPortalProps = {
   onOpenMonthlyCheckIn?: () => void;
   onOpenOnboarding?: () => void;
   showOnboardingHomePrompt?: boolean;
+  /** Når false: vis knapp for å fylle ut / sende skjema på nytt (f.eks. etter mislykket sky-lagring). */
+  onboardingSubstantivelyComplete?: boolean;
 };
 
 const MEMBER_AVATAR_BUCKET = "exercise-images";
@@ -817,6 +819,7 @@ export function MemberPortal(props: MemberPortalProps) {
     onOpenMonthlyCheckIn,
     onOpenOnboarding,
     showOnboardingHomePrompt = false,
+    onboardingSubstantivelyComplete = false,
   } = props;
   const [messageText, setMessageText] = useState("");
   const [memberChatSendStatus, setMemberChatSendStatus] = useState<string | null>(null);
@@ -4165,7 +4168,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 title="Hjem"
                 description="Kalender, planlagte økter og snarveier — et raskt overblikk over treningsuken din."
               />
-              {showOnboardingHomePrompt && onOpenOnboarding ? (
+              {onOpenOnboarding && (showOnboardingHomePrompt || !onboardingSubstantivelyComplete) ? (
                 <Card
                   className="border p-4 sm:p-5"
                   style={{ borderColor: "rgba(20,184,166,0.35)", background: "linear-gradient(135deg, rgba(20,184,166,0.08) 0%, rgba(236,72,153,0.06) 100%)" }}
@@ -6124,6 +6127,37 @@ export function MemberPortal(props: MemberPortalProps) {
                       <div><span className="font-medium text-slate-800">Siste trening:</span> {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}</div>
                     </div>
                   </div>
+                  {onOpenOnboarding ? (
+                    <div
+                      className="rounded-xl border p-4"
+                      style={{
+                        borderColor: "rgba(20,184,166,0.35)",
+                        background: "linear-gradient(135deg, rgba(20,184,166,0.08) 0%, rgba(236,72,153,0.06) 100%)",
+                      }}
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-3">
+                          <div
+                            className="rounded-xl p-2 text-white shadow-sm"
+                            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                          >
+                            <UserCircle2 className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-slate-900">Oppstartsskjema</div>
+                            <p className="mt-1 text-sm text-slate-600">
+                              {showOnboardingHomePrompt || !onboardingSubstantivelyComplete
+                                ? "Fyll ut én gang — PT bruker svarene til å lage et treningsprogram tilpasset deg."
+                                : "Send inn på nytt hvis treneren ikke ser svarene dine, eller oppdater svarene."}
+                            </p>
+                          </div>
+                        </div>
+                        <GradientButton type="button" onClick={onOpenOnboarding} className="w-full shrink-0 sm:w-auto">
+                          {showOnboardingHomePrompt || !onboardingSubstantivelyComplete ? "Start skjema" : "Åpne skjema"}
+                        </GradientButton>
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="rounded-xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="text-sm font-semibold text-slate-700">Profilbilde</div>
                     <div className="relative h-24 w-24 overflow-hidden rounded-full border bg-slate-100 text-slate-400" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
