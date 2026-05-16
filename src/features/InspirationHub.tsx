@@ -45,6 +45,10 @@ const CATEGORY_META: Record<InspirationCategory, { label: string; plural: string
 };
 
 /** Vertikal rekkefølge på inspo-feed (øverst → nederst). */
+/** Maks lengde for undertekst på inspo-kort (ca. 2 linjer i karusellen). */
+const INSPO_CARD_DESCRIPTION_MAX = 100;
+const INSPO_CARD_TITLE_MAX = 72;
+
 const INSPIRATION_FEED_SECTIONS: readonly { category: InspirationCategory; title: string }[] = [
   { category: "news", title: "Info fra senteret" },
   { category: "programs", title: "Treningsprogram" },
@@ -311,15 +315,15 @@ function resolveComposerCopy(
   categoryDraft: InspirationCategory,
   kindDraft: InspirationKind,
 ): { title: string; description: string; body: string } | null {
-  const nextTitle = title.trim();
+  const nextTitle = title.trim().slice(0, INSPO_CARD_TITLE_MAX);
   if (!nextTitle) return null;
   const kind = resolveComposerKind(categoryDraft, kindDraft);
   if (kind === "program") {
-    const nextDescription = description.trim() || nextTitle;
+    const nextDescription = (description.trim() || nextTitle).slice(0, INSPO_CARD_DESCRIPTION_MAX);
     const nextBody = body.trim() || nextDescription;
     return { title: nextTitle, description: nextDescription, body: nextBody };
   }
-  const nextDescription = description.trim();
+  const nextDescription = description.trim().slice(0, INSPO_CARD_DESCRIPTION_MAX);
   const nextBody = body.trim();
   if (!nextDescription || !nextBody) return null;
   return { title: nextTitle, description: nextDescription, body: nextBody };
@@ -557,7 +561,11 @@ export function InspirationHub({
     const meta = CATEGORY_META[item.category];
     const Icon = meta.icon;
     return (
-      <article key={item.id} className="relative w-56 shrink-0 snap-start overflow-hidden rounded-xl border bg-white sm:w-60" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+      <article
+        key={item.id}
+        className="relative flex h-full w-56 shrink-0 snap-start flex-col overflow-hidden rounded-xl border bg-white sm:w-60"
+        style={{ borderColor: "rgba(15,23,42,0.08)" }}
+      >
         {canManage ? (
           <div className="absolute right-2 top-2 z-10 flex gap-1">
             <button
@@ -580,8 +588,8 @@ export function InspirationHub({
             </button>
           </div>
         ) : null}
-        <button type="button" onClick={() => setExpandedItemId(item.id)} className="block w-full text-left">
-          <div className="aspect-square w-full overflow-hidden bg-slate-100" style={!item.imageUrl ? { background: meta.image } : undefined}>
+        <button type="button" onClick={() => setExpandedItemId(item.id)} className="flex flex-1 flex-col text-left">
+          <div className="aspect-square w-full shrink-0 overflow-hidden bg-slate-100" style={!item.imageUrl ? { background: meta.image } : undefined}>
             {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
             {!item.imageUrl ? (
               <div className="flex h-full w-full items-center justify-center text-white/90">
@@ -589,20 +597,19 @@ export function InspirationHub({
               </div>
             ) : null}
           </div>
-          <div className="p-3">
-            <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-1 flex-col p-3">
+            <div className="flex min-h-[1.25rem] items-center justify-between gap-2">
               <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ${meta.accent}`}>
                 <Icon className="h-3 w-3" />
                 {item.kind === "periodPlan" ? "Ukesplan" : item.kind === "program" ? "Program" : meta.label}
               </span>
-              <span className="text-[10px] text-slate-400">{item.tag}</span>
+              <span className="truncate text-[10px] text-slate-400">{item.tag}</span>
             </div>
-            <h3 className="mt-2 line-clamp-2 text-base font-semibold leading-tight text-slate-950">{item.title}</h3>
-            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500">{item.description}</p>
-            <div className="mt-3 text-xs font-semibold text-teal-700">Les mer</div>
+            <h3 className="mt-2 min-h-[2.75rem] line-clamp-2 text-base font-semibold leading-snug text-slate-950">{item.title}</h3>
+            <p className="mt-1 min-h-[2.25rem] line-clamp-2 text-xs leading-snug text-slate-500">{item.description || "\u00a0"}</p>
           </div>
         </button>
-        <div className="border-t border-slate-100 p-3">
+        <div className="shrink-0 border-t border-slate-100 p-3">
           {item.kind === "program" && onAddProgram ? (
             <GradientButton onClick={() => handleAddProgram(item)} className="w-full !px-3 !py-2 !text-xs">
               Legg til program
@@ -1075,7 +1082,7 @@ export function InspirationHub({
                 ref={(node) => {
                   carouselRefs.current[category] = node;
                 }}
-                className="-mx-1 flex min-w-0 snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-1 pb-2"
+                className="-mx-1 flex min-w-0 items-stretch snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-1 pb-2"
               >
                 {sectionItems.map(renderInspirationCard)}
               </div>
@@ -1158,8 +1165,18 @@ export function InspirationHub({
             ) : (
               <TextInput value={tag} onChange={(event) => setTag(event.target.value)} placeholder="Tagg, f.eks. 20 min eller mobilitet" />
             )}
-            <TextInput value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Tittel" />
-            <TextInput value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Kort info under bildet" />
+            <TextInput
+              value={title}
+              onChange={(event) => setTitle(event.target.value.slice(0, INSPO_CARD_TITLE_MAX))}
+              placeholder={`Tittel (maks ${INSPO_CARD_TITLE_MAX} tegn)`}
+              maxLength={INSPO_CARD_TITLE_MAX}
+            />
+            <TextInput
+              value={description}
+              onChange={(event) => setDescription(event.target.value.slice(0, INSPO_CARD_DESCRIPTION_MAX))}
+              placeholder={`Undertekst under bildet (maks ${INSPO_CARD_DESCRIPTION_MAX} tegn, ca. 2 linjer)`}
+              maxLength={INSPO_CARD_DESCRIPTION_MAX}
+            />
             <TextInput value={tag} onChange={(event) => setTag(event.target.value)} placeholder="Tagg" />
             <label
               className={`flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 ${isImageProcessing ? "pointer-events-none opacity-60" : ""}`}

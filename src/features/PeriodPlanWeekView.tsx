@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, CalendarOff, Play, Users } from "lucide-react";
+import { ArrowLeftRight, CalendarOff, Check, Circle, Play, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { resolvePeriodPlanEntryAction } from "../app/periodPlanEntryActions";
 import {
@@ -109,45 +109,86 @@ export function PeriodPlanWeekView({
           return (
             <div
               key={`${week.id}-${dayKey}`}
-              className={`overflow-hidden rounded-xl border bg-white shadow-sm transition ${
-                isSwapSource ? "border-teal-400 ring-2 ring-teal-200" : "border-slate-200/90 hover:border-teal-200"
+              className={`overflow-hidden rounded-xl border shadow-sm transition ${
+                completed
+                  ? "border-emerald-200/90 bg-emerald-50/40"
+                  : isSwapSource
+                    ? "border-teal-400 bg-white ring-2 ring-teal-200"
+                    : "border-slate-200/90 bg-white hover:border-teal-200"
               }`}
             >
-              <div className="flex items-start justify-between gap-2 p-3">
+              <div className="flex items-start gap-2 p-2.5 sm:p-3">
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-teal-900 ring-1 ring-teal-100">
+                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ${
+                        completed
+                          ? "bg-emerald-100 text-emerald-900 ring-emerald-200/80"
+                          : "bg-teal-50 text-teal-900 ring-teal-100"
+                      }`}
+                    >
                       {dayLabel}
                     </span>
-                    {plannedDate ? <span className="text-xs text-slate-400">{plannedDate}</span> : null}
+                    {completed ? (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-600/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                        <Check className="h-3 w-3" aria-hidden />
+                        Fullført
+                      </span>
+                    ) : null}
+                    {plannedDate ? <span className="text-[11px] text-slate-400">{plannedDate}</span> : null}
                   </div>
                   {entry ? (
-                    <p className={`mt-2 text-sm leading-snug ${completed ? "text-slate-400 line-through decoration-slate-300" : "font-medium text-slate-900"}`}>
-                      {entry}
-                    </p>
+                    <p className={`mt-1.5 text-sm leading-snug ${completed ? "text-slate-600" : "font-medium text-slate-900"}`}>{entry}</p>
                   ) : (
-                    <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-slate-400">
+                    <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400">
                       <CalendarOff className="h-3.5 w-3.5 shrink-0" aria-hidden />
                       Ingen plan
                     </p>
                   )}
-                  {sourceDay ? <div className="mt-1.5 text-[11px] font-medium text-slate-500">Flyttet fra {WEEKDAY_PLAN_LABELS[sourceDay].toLowerCase()}</div> : null}
+                  {sourceDay ? (
+                    <p className="mt-1 text-[11px] font-medium text-slate-500">Flyttet fra {WEEKDAY_PLAN_LABELS[sourceDay].toLowerCase()}</p>
+                  ) : null}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSwapFromDay((prev) => (prev === dayKey ? null : dayKey))}
-                  className={`shrink-0 rounded-lg border p-1.5 transition ${
-                    isSwapSource
-                      ? "border-transparent text-white shadow-sm"
-                      : "border-slate-200 bg-white text-slate-500 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-900"
-                  }`}
-                  style={isSwapSource ? { background: MOTUS_GRADIENT } : undefined}
-                  aria-label={isSwapSource ? `Avbryt bytte for ${dayLabel}` : `Bytt ${dayLabel} med annen dag`}
-                  aria-expanded={isSwapSource}
-                  title={isSwapSource ? "Avbryt" : "Bytt dag"}
-                >
-                  <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden />
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  {entry ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onToggleCompleted({
+                          planId: plan.id,
+                          weekNumber: week.weekNumber,
+                          day: dayKey,
+                          entry: effectiveDays[dayKey],
+                          plannedDate,
+                        })
+                      }
+                      className={`rounded-lg border p-1.5 transition ${
+                        completed
+                          ? "border-emerald-300 bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
+                          : "border-slate-200 bg-white text-slate-400 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
+                      }`}
+                      aria-label={completed ? `Angre fullført for ${dayLabel}` : `Marker ${dayLabel} som fullført`}
+                      title={completed ? "Angre fullført" : "Marker fullført"}
+                    >
+                      {completed ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Circle className="h-3.5 w-3.5" aria-hidden />}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setSwapFromDay((prev) => (prev === dayKey ? null : dayKey))}
+                    className={`rounded-lg border p-1.5 transition ${
+                      isSwapSource
+                        ? "border-transparent text-white shadow-sm"
+                        : "border-slate-200 bg-white text-slate-500 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-900"
+                    }`}
+                    style={isSwapSource ? { background: MOTUS_GRADIENT } : undefined}
+                    aria-label={isSwapSource ? `Avbryt bytte for ${dayLabel}` : `Bytt ${dayLabel} med annen dag`}
+                    aria-expanded={isSwapSource}
+                    title={isSwapSource ? "Avbryt" : "Bytt dag"}
+                  >
+                    <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                </div>
               </div>
 
               {isSwapSource ? (
@@ -171,15 +212,15 @@ export function PeriodPlanWeekView({
                 </div>
               ) : null}
 
-              {entry ? (
-                <div className="flex flex-col gap-2 border-t border-slate-100 bg-white/70 px-3 py-2.5">
+              {entry && !completed && (entryAction.kind === "start-program" || entryAction.kind === "log-group") ? (
+                <div className="flex flex-wrap gap-1.5 border-t border-slate-100/80 px-2.5 pb-2.5 pt-2 sm:px-3">
                   {entryAction.kind === "start-program" ? (
                     <GradientButton
                       type="button"
                       onClick={() => onStartProgram(entryAction.program.id)}
-                      className="!min-h-9 w-full !px-3 !py-2 !text-xs shadow-sm"
+                      className="!min-h-8 flex-1 !px-2.5 !py-1.5 !text-[11px] shadow-sm"
                     >
-                      <Play className="mr-1.5 inline h-3.5 w-3.5" aria-hidden />
+                      <Play className="mr-1 inline h-3 w-3" aria-hidden />
                       Start økt
                     </GradientButton>
                   ) : null}
@@ -195,29 +236,12 @@ export function PeriodPlanWeekView({
                           day: dayKey,
                         })
                       }
-                      className="!min-h-9 w-full !px-3 !py-2 !text-xs"
+                      className="!min-h-8 flex-1 !px-2.5 !py-1.5 !text-[11px]"
                     >
-                      <Users className="mr-1.5 inline h-3.5 w-3.5" aria-hidden />
+                      <Users className="mr-1 inline h-3 w-3" aria-hidden />
                       Logg gruppetime
                     </OutlineButton>
                   ) : null}
-                  <label className="inline-flex cursor-pointer items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={completed}
-                      onChange={() =>
-                        onToggleCompleted({
-                          planId: plan.id,
-                          weekNumber: week.weekNumber,
-                          day: dayKey,
-                          entry: effectiveDays[dayKey],
-                          plannedDate,
-                        })
-                      }
-                      className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                    />
-                    <span className="text-xs font-semibold text-slate-700">Gjennomført</span>
-                  </label>
                 </div>
               ) : null}
             </div>
