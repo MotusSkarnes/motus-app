@@ -16,6 +16,35 @@ export function Card({ children, className = "" }: { children: React.ReactNode; 
   return <div className={`rounded-lg border bg-white ${className}`} style={{ borderColor: "rgba(15,23,42,0.10)" }}>{children}</div>;
 }
 
+export function MemberTabHero({
+  title,
+  description,
+  children,
+  className = "",
+}: {
+  title: string;
+  description?: string;
+  children?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`overflow-hidden rounded-2xl border shadow-sm ${className}`}
+      style={{
+        borderColor: "rgba(48,227,190,0.20)",
+        background: `linear-gradient(135deg, ${MOTUS.paleMint} 0%, #ffffff 48%, rgba(217,18,120,0.08) 100%)`,
+      }}
+    >
+      <div className="h-1.5" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
+      <div className="p-4 sm:p-5">
+        <h2 className="text-2xl font-bold tracking-tight text-slate-950">{title}</h2>
+        {description ? <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">{description}</p> : null}
+        {children ? <div className="mt-4">{children}</div> : null}
+      </div>
+    </div>
+  );
+}
+
 export function Badge({ children }: { children: React.ReactNode }) {
   return <span className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold" style={{ backgroundColor: MOTUS.paleMint, color: MOTUS.ink, borderColor: MOTUS.turquoise }}>{children}</span>;
 }

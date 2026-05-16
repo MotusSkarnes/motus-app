@@ -32,7 +32,7 @@ import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { supabaseClient } from "../services/supabaseClient";
 import { isWebPushConfigurable, registerWebPushWithSupabase } from "../services/webPush";
-import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput } from "../app/ui";
+import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, MemberTabHero, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { useToastStatus } from "../app/toast";
 import { uid } from "../app/storage";
 import type {
@@ -4420,214 +4420,11 @@ export function MemberPortal(props: MemberPortalProps) {
           {memberTab === "programs" ? (
             <>
               <div className="flex flex-col gap-4">
-              {!isMemberLimited ? (
-              <Card className="order-last p-5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-xl p-2.5 text-white shrink-0" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
-                      <Sparkles className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-semibold tracking-tight">Lag egen økt</h2>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-5 space-y-5">
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Din økt</div>
-                    {customWorkoutLines.length === 0 ? (
-                      <EmptyState
-                        icon="🏋️"
-                        title="Ingen øvelser ennå"
-                        description="Finn øvelser i listen under og trykk «Legg til»."
-                        className="mt-2"
-                      />
-                    ) : (
-                      <div className="mt-2 space-y-2">
-                        {customWorkoutLines.map((line) => {
-                          const ex = exercises.find((e) => e.id === line.exerciseId);
-                          const isStretch = ex?.category === "Uttøyning";
-                          return (
-                            <div key={line.key} className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div className="min-w-0 font-medium text-sm text-slate-800">{ex?.name ?? "Ukjent øvelse"}</div>
-                                <DangerButton type="button" onClick={() => removeCustomWorkoutLine(line.key)} className="shrink-0 px-2 py-1 text-xs">
-                                  Fjern
-                                </DangerButton>
-                              </div>
-                              <div className={`mt-3 grid gap-2 ${isStretch ? "grid-cols-2" : "grid-cols-3"}`}>
-                                <label className="space-y-1">
-                                  <span className="text-[11px] font-semibold text-slate-600">Sett</span>
-                                  <TextInput value={line.sets} onChange={(e) => updateCustomWorkoutLine(line.key, { sets: e.target.value })} placeholder="3" />
-                                </label>
-                                {!isStretch ? (
-                                  <label className="space-y-1">
-                                    <span className="text-[11px] font-semibold text-slate-600">Reps</span>
-                                    <TextInput value={line.reps} onChange={(e) => updateCustomWorkoutLine(line.key, { reps: e.target.value })} placeholder="10" />
-                                  </label>
-                                ) : null}
-                                <label className="space-y-1">
-                                  <span className="text-[11px] font-semibold text-slate-600">{isStretch ? "Sek. (hold)" : "kg"}</span>
-                                  <TextInput
-                                    value={isStretch ? (line.holdSeconds ?? "") : line.weight}
-                                    onChange={(e) =>
-                                      updateCustomWorkoutLine(line.key, isStretch ? { holdSeconds: e.target.value } : { weight: e.target.value })
-                                    }
-                                    placeholder={isStretch ? "30" : "–"}
-                                  />
-                                </label>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    <label className="mt-3 block max-w-md space-y-1">
-                      <span className="text-[11px] font-semibold text-slate-600">Programnavn (ved lagring som program)</span>
-                      <TextInput
-                        value={memberSavedProgramTitle}
-                        onChange={(e) => setMemberSavedProgramTitle(e.target.value)}
-                        placeholder="Mitt treningsprogram"
-                      />
-                    </label>
-                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                    <GradientButton
-                      onClick={handleStartCustomWorkout}
-                      disabled={!customWorkoutLines.length || !activeMemberId.trim()}
-                      className="w-full sm:w-auto"
-                    >
-                      {customWorkoutLines.length
-                        ? `Start egen økt (${customWorkoutLines.length} øvelse${customWorkoutLines.length === 1 ? "" : "r"})`
-                        : "Legg til øvelser for å starte"}
-                    </GradientButton>
-                    <OutlineButton
-                      type="button"
-                      onClick={handleSaveMemberTrainingProgram}
-                      disabled={!customWorkoutLines.length || !activeMemberId.trim()}
-                      className="w-full sm:w-auto"
-                    >
-                      Lagre som treningsprogram
-                    </OutlineButton>
-                    </div>
-                    {customProgramSaveStatus ? (
-                      <StatusMessage
-                        message={customProgramSaveStatus}
-                        tone="success"
-                        className="mt-2 !rounded-xl !px-3 !py-2 !text-xs"
-                      />
-                    ) : null}
-                  </div>
-
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Øvelsesbank</div>
-                    <p className="mt-1 text-sm text-slate-600">Søk eller filtrer, scroll i listen, trykk «Legg til».</p>
-                    <div className="relative mt-3">
-                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
-                      <TextInput
-                        value={customWorkoutSearch}
-                        onChange={(e) => setCustomWorkoutSearch(e.target.value)}
-                        placeholder="Søk etter øvelse…"
-                        className="pl-10"
-                      />
-                    </div>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,220px)_1fr] sm:items-end">
-                      <label className="space-y-1">
-                        <span className="text-[11px] font-semibold text-slate-600">Kategori</span>
-                        <select
-                          value={customWorkoutCategoryFilter}
-                          onChange={(event) => setCustomWorkoutCategoryFilter(event.target.value)}
-                          className="h-10 w-full rounded-xl border bg-white px-3 text-sm text-slate-700"
-                          style={{ borderColor: "rgba(15,23,42,0.12)" }}
-                        >
-                          <option value="all">Alle</option>
-                          {customWorkoutCategories.map((category) => (
-                            <option key={category} value={category}>
-                              {category}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <div className="text-xs text-slate-500 sm:pb-2 sm:text-right">
-                        {customWorkoutBankFiltered.length === 0 && exercises.length > 0 ? (
-                          <span>Ingen treff – prøv annet søk eller kategori.</span>
-                        ) : !customWorkoutSearch.trim() && !showAllCustomWorkoutOptions && customWorkoutBankOverflow > 0 ? (
-                          <span>
-                            Viser {customWorkoutExerciseOptions.length} av {customWorkoutBankFiltered.length} øvelser
-                          </span>
-                        ) : (
-                          <span>{customWorkoutBankFiltered.length} øvelse{customWorkoutBankFiltered.length === 1 ? "" : "r"}</span>
-                        )}
-                      </div>
-                    </div>
-                    {exercises.length === 0 ? (
-                      <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
-                        Øvelsesbanken er tom. Oppdater siden eller kontakt treneren din.
-                      </div>
-                    ) : (
-                      <div
-                        className="mt-3 max-h-[min(50vh,320px)] overflow-y-auto rounded-xl border bg-white"
-                        style={{ borderColor: "rgba(15,23,42,0.1)" }}
-                      >
-                        <ul className="divide-y" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
-                          {customWorkoutExerciseOptions.map((ex) => {
-                            const already = customWorkoutLines.some((line) => line.exerciseId === ex.id);
-                            return (
-                              <li key={ex.id} className="flex items-center gap-2 px-3 py-2.5 sm:px-3.5">
-                                <div className="min-w-0 flex-1">
-                                  <div className="text-sm font-medium text-slate-800">{ex.name}</div>
-                                  <div className="text-[11px] text-slate-500">
-                                    {[ex.category, ex.group].filter(Boolean).join(" · ")}
-                                  </div>
-                                </div>
-                                <button
-                                  type="button"
-                                  disabled={already}
-                                  onClick={() => addCustomWorkoutLine(ex.id)}
-                                  className={`shrink-0 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
-                                    already
-                                      ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-                                      : "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
-                                  }`}
-                                >
-                                  {already ? "Lagt til" : (
-                                    <span className="inline-flex items-center gap-1">
-                                      <Plus className="h-3.5 w-3.5" /> Legg til
-                                    </span>
-                                  )}
-                                </button>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                    )}
-                    {!customWorkoutSearch.trim() && !showAllCustomWorkoutOptions && customWorkoutBankOverflow > 0 ? (
-                      <OutlineButton type="button" onClick={() => setShowAllCustomWorkoutOptions(true)} className="mt-3 w-full sm:w-auto">
-                        Vis alle øvelser ({customWorkoutBankFiltered.length})
-                      </OutlineButton>
-                    ) : null}
-                  </div>
-                </div>
-              </Card>
-              ) : null}
-              <Card className="p-4 sm:p-5">
-              <div className="flex items-start gap-3">
-                <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Layers className="h-5 w-5" aria-hidden /></div>
-                <div>
-                  <h2 className="text-xl font-semibold tracking-tight">Mine programmer</h2>
-                  <p className="text-sm text-slate-500">Enkel oversikt</p>
-                </div>
-              </div>
-              <div className="mt-3 rounded-lg border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
-                <div className="flex items-center gap-2">
-                  <div
-                    className="rounded-lg p-1.5 text-white shadow-sm"
-                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                  >
-                    <Dumbbell className="h-3.5 w-3.5" aria-hidden />
-                  </div>
-                  <div className="text-xs font-semibold text-slate-800">Mine treningsprogram</div>
-                </div>
+              <MemberTabHero
+                title="Trening"
+                description="Mine programmer, periodeplan og egen økt — alt samlet på ett sted."
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Mine treningsprogram</p>
                 <div className="mt-2 space-y-2">
                   {memberAssignedPrograms.length === 0 ? (
                     <EmptyState
@@ -4636,7 +4433,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       description={
                         isMemberLimited
                           ? "Treneren din kan tildele et program her."
-                          : "Be trener tildele et program, eller lagre eget opplegg som program fra «Lag egen økt» over."
+                          : "Be trener tildele et program, eller lagre eget opplegg som program fra «Lag egen økt» nedenfor."
                       }
                       className="bg-white"
                       action={
@@ -4906,8 +4703,199 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                   ) : null}
                 </div>
-              </div>
-              <div className="mt-6 rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+              </MemberTabHero>
+              {!isMemberLimited ? (
+              <Card className="order-last p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-xl p-2.5 text-white shrink-0" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
+                      <Sparkles className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-semibold tracking-tight">Lag egen økt</h2>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-5 space-y-5">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Din økt</div>
+                    {customWorkoutLines.length === 0 ? (
+                      <EmptyState
+                        icon="🏋️"
+                        title="Ingen øvelser ennå"
+                        description="Finn øvelser i listen under og trykk «Legg til»."
+                        className="mt-2"
+                      />
+                    ) : (
+                      <div className="mt-2 space-y-2">
+                        {customWorkoutLines.map((line) => {
+                          const ex = exercises.find((e) => e.id === line.exerciseId);
+                          const isStretch = ex?.category === "Uttøyning";
+                          return (
+                            <div key={line.key} className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="min-w-0 font-medium text-sm text-slate-800">{ex?.name ?? "Ukjent øvelse"}</div>
+                                <DangerButton type="button" onClick={() => removeCustomWorkoutLine(line.key)} className="shrink-0 px-2 py-1 text-xs">
+                                  Fjern
+                                </DangerButton>
+                              </div>
+                              <div className={`mt-3 grid gap-2 ${isStretch ? "grid-cols-2" : "grid-cols-3"}`}>
+                                <label className="space-y-1">
+                                  <span className="text-[11px] font-semibold text-slate-600">Sett</span>
+                                  <TextInput value={line.sets} onChange={(e) => updateCustomWorkoutLine(line.key, { sets: e.target.value })} placeholder="3" />
+                                </label>
+                                {!isStretch ? (
+                                  <label className="space-y-1">
+                                    <span className="text-[11px] font-semibold text-slate-600">Reps</span>
+                                    <TextInput value={line.reps} onChange={(e) => updateCustomWorkoutLine(line.key, { reps: e.target.value })} placeholder="10" />
+                                  </label>
+                                ) : null}
+                                <label className="space-y-1">
+                                  <span className="text-[11px] font-semibold text-slate-600">{isStretch ? "Sek. (hold)" : "kg"}</span>
+                                  <TextInput
+                                    value={isStretch ? (line.holdSeconds ?? "") : line.weight}
+                                    onChange={(e) =>
+                                      updateCustomWorkoutLine(line.key, isStretch ? { holdSeconds: e.target.value } : { weight: e.target.value })
+                                    }
+                                    placeholder={isStretch ? "30" : "–"}
+                                  />
+                                </label>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <label className="mt-3 block max-w-md space-y-1">
+                      <span className="text-[11px] font-semibold text-slate-600">Programnavn (ved lagring som program)</span>
+                      <TextInput
+                        value={memberSavedProgramTitle}
+                        onChange={(e) => setMemberSavedProgramTitle(e.target.value)}
+                        placeholder="Mitt treningsprogram"
+                      />
+                    </label>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                    <GradientButton
+                      onClick={handleStartCustomWorkout}
+                      disabled={!customWorkoutLines.length || !activeMemberId.trim()}
+                      className="w-full sm:w-auto"
+                    >
+                      {customWorkoutLines.length
+                        ? `Start egen økt (${customWorkoutLines.length} øvelse${customWorkoutLines.length === 1 ? "" : "r"})`
+                        : "Legg til øvelser for å starte"}
+                    </GradientButton>
+                    <OutlineButton
+                      type="button"
+                      onClick={handleSaveMemberTrainingProgram}
+                      disabled={!customWorkoutLines.length || !activeMemberId.trim()}
+                      className="w-full sm:w-auto"
+                    >
+                      Lagre som treningsprogram
+                    </OutlineButton>
+                    </div>
+                    {customProgramSaveStatus ? (
+                      <StatusMessage
+                        message={customProgramSaveStatus}
+                        tone="success"
+                        className="mt-2 !rounded-xl !px-3 !py-2 !text-xs"
+                      />
+                    ) : null}
+                  </div>
+
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Øvelsesbank</div>
+                    <p className="mt-1 text-sm text-slate-600">Søk eller filtrer, scroll i listen, trykk «Legg til».</p>
+                    <div className="relative mt-3">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+                      <TextInput
+                        value={customWorkoutSearch}
+                        onChange={(e) => setCustomWorkoutSearch(e.target.value)}
+                        placeholder="Søk etter øvelse…"
+                        className="pl-10"
+                      />
+                    </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,220px)_1fr] sm:items-end">
+                      <label className="space-y-1">
+                        <span className="text-[11px] font-semibold text-slate-600">Kategori</span>
+                        <select
+                          value={customWorkoutCategoryFilter}
+                          onChange={(event) => setCustomWorkoutCategoryFilter(event.target.value)}
+                          className="h-10 w-full rounded-xl border bg-white px-3 text-sm text-slate-700"
+                          style={{ borderColor: "rgba(15,23,42,0.12)" }}
+                        >
+                          <option value="all">Alle</option>
+                          {customWorkoutCategories.map((category) => (
+                            <option key={category} value={category}>
+                              {category}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <div className="text-xs text-slate-500 sm:pb-2 sm:text-right">
+                        {customWorkoutBankFiltered.length === 0 && exercises.length > 0 ? (
+                          <span>Ingen treff – prøv annet søk eller kategori.</span>
+                        ) : !customWorkoutSearch.trim() && !showAllCustomWorkoutOptions && customWorkoutBankOverflow > 0 ? (
+                          <span>
+                            Viser {customWorkoutExerciseOptions.length} av {customWorkoutBankFiltered.length} øvelser
+                          </span>
+                        ) : (
+                          <span>{customWorkoutBankFiltered.length} øvelse{customWorkoutBankFiltered.length === 1 ? "" : "r"}</span>
+                        )}
+                      </div>
+                    </div>
+                    {exercises.length === 0 ? (
+                      <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+                        Øvelsesbanken er tom. Oppdater siden eller kontakt treneren din.
+                      </div>
+                    ) : (
+                      <div
+                        className="mt-3 max-h-[min(50vh,320px)] overflow-y-auto rounded-xl border bg-white"
+                        style={{ borderColor: "rgba(15,23,42,0.1)" }}
+                      >
+                        <ul className="divide-y" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
+                          {customWorkoutExerciseOptions.map((ex) => {
+                            const already = customWorkoutLines.some((line) => line.exerciseId === ex.id);
+                            return (
+                              <li key={ex.id} className="flex items-center gap-2 px-3 py-2.5 sm:px-3.5">
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-sm font-medium text-slate-800">{ex.name}</div>
+                                  <div className="text-[11px] text-slate-500">
+                                    {[ex.category, ex.group].filter(Boolean).join(" · ")}
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  disabled={already}
+                                  onClick={() => addCustomWorkoutLine(ex.id)}
+                                  className={`shrink-0 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+                                    already
+                                      ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                                      : "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
+                                  }`}
+                                >
+                                  {already ? "Lagt til" : (
+                                    <span className="inline-flex items-center gap-1">
+                                      <Plus className="h-3.5 w-3.5" /> Legg til
+                                    </span>
+                                  )}
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
+                    {!customWorkoutSearch.trim() && !showAllCustomWorkoutOptions && customWorkoutBankOverflow > 0 ? (
+                      <OutlineButton type="button" onClick={() => setShowAllCustomWorkoutOptions(true)} className="mt-3 w-full sm:w-auto">
+                        Vis alle øvelser ({customWorkoutBankFiltered.length})
+                      </OutlineButton>
+                    ) : null}
+                  </div>
+                </div>
+              </Card>
+              ) : null}
+
+              <div className="rounded-xl border bg-white p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-2">
                     <div
@@ -5452,7 +5440,6 @@ export function MemberPortal(props: MemberPortalProps) {
                   })}
                 </div>
               </div>
-              </Card>
               </div>
               {showIntervalTimerModal ? (
                 <div className="motus-modal-insets fixed inset-0 z-[10012] overscroll-contain bg-slate-900/60">
@@ -5612,29 +5599,16 @@ export function MemberPortal(props: MemberPortalProps) {
           ) : null}
 
           {!isMemberLimited && memberTab === "progress" ? (
-            <Card className="p-4 sm:p-5">
-              <div className="flex items-start gap-3">
-                <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><TrendingUp className="h-5 w-5" /></div>
+            <div className="space-y-4">
+              <MemberTabHero
+                title="Fremgang"
+                description="Utvikling, PR-er og treningsflyt — streaks og personlige rekorder."
+              >
                 <div>
-                  <h2 className="text-xl font-semibold tracking-tight">Fremgang</h2>
-                  <p className="text-sm text-slate-500">Utvikling, PR-er og treningsflyt</p>
-                </div>
-              </div>
-
-              <div className="mt-5 rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="flex items-start gap-2">
-                  <div
-                    className="shrink-0 rounded-xl p-2 text-white shadow-sm"
-                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                  >
-                    <Trophy className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-slate-800">Streaks og achievements</div>
-                    <div className="mt-1 text-xs text-slate-500">
-                      Små milepæler som holder motivasjonen oppe. Nivå {achievementLevel} av {achievementMaxLevel}
-                      {hasCompletedAllAchievementLevels ? " · Maksnivå nådd ✨" : ""}
-                    </div>
+                  <div className="text-sm font-semibold text-slate-800">Streaks og achievements</div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    Små milepæler som holder motivasjonen oppe. Nivå {achievementLevel} av {achievementMaxLevel}
+                    {hasCompletedAllAchievementLevels ? " · Maksnivå nådd ✨" : ""}
                   </div>
                 </div>
                 <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -5665,22 +5639,11 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                   ))}
                 </div>
-              </div>
 
-              <div className="mt-4 rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="flex items-start gap-2">
-                  <div
-                    className="shrink-0 rounded-xl p-2 text-white shadow-sm"
-                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                  >
-                    <Dumbbell className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-slate-800">Personlige rekorder</div>
-                    <div className="mt-1 text-xs text-slate-500">Stjernemerk opptil tre rekorder du vil fremheve først.</div>
-                  </div>
-                </div>
-                <div className="mt-4 space-y-3">
+                <div className="mt-6 border-t pt-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="text-sm font-semibold text-slate-800">Personlige rekorder</div>
+                  <div className="mt-1 text-xs text-slate-500">Stjernemerk opptil tre rekorder du vil fremheve først.</div>
+                  <div className="mt-4 space-y-3">
                   {personalRecords.length === 0 ? (
                     <EmptyState
                       icon="🏅"
@@ -5720,7 +5683,8 @@ export function MemberPortal(props: MemberPortalProps) {
                     </OutlineButton>
                   ) : null}
                 </div>
-              </div>
+                </div>
+              </MemberTabHero>
 
               <MuscleSplitCard
                 stats={muscleSplitStats}
@@ -5814,7 +5778,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   className="mt-3 !rounded-xl !px-3 !py-2 !text-xs"
                 />
               ) : null}
-            </Card>
+            </div>
           ) : null}
 
           {!isMemberLimited && memberTab === "messages" ? (
