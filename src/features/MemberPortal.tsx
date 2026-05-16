@@ -479,6 +479,18 @@ function parseDateOnly(value: string): Date | null {
   return parseLogDate(value);
 }
 
+function toIsoDateInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatStoredLogDateFromIso(iso: string): string {
+  const parsed = parseDateOnly(iso);
+  return parsed ? formatDateDdMmYyyy(parsed) : "";
+}
+
 function getStartOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
@@ -787,6 +799,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [memberFocusDraft, setMemberFocusDraft] = useState("");
   const [memberInjuriesDraft, setMemberInjuriesDraft] = useState("");
   const [groupWorkoutClassName, setGroupWorkoutClassName] = useState("Smilepuls");
+  const [groupWorkoutDateIso, setGroupWorkoutDateIso] = useState(() => toIsoDateInputValue(new Date()));
   const [groupWorkoutEnergyLevel, setGroupWorkoutEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [groupWorkoutDifficultyLevel, setGroupWorkoutDifficultyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [groupWorkoutMotivationLevel, setGroupWorkoutMotivationLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
@@ -3287,17 +3300,24 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function handleLogGroupWorkout() {
     if (!activeMemberId || !groupWorkoutClassName.trim()) return;
+    const storedDate = formatStoredLogDateFromIso(groupWorkoutDateIso);
+    if (!storedDate) {
+      setGroupWorkoutStatus("Velg en gyldig dato for gruppetime.");
+      return;
+    }
     logGroupWorkout({
       memberId: activeMemberId,
       className: groupWorkoutClassName.trim(),
       note: groupWorkoutNote.trim(),
       reflection: buildGroupWorkoutReflection(),
+      date: storedDate,
     });
     setGroupWorkoutStatus("Gruppetime lagret. PT kan nå se denne økta.");
     setGroupWorkoutEnergyLevel(3);
     setGroupWorkoutDifficultyLevel(3);
     setGroupWorkoutMotivationLevel(3);
     setGroupWorkoutNote("");
+    setGroupWorkoutDateIso(toIsoDateInputValue(new Date()));
   }
 
   function resolvePeriodPlanEntryDate(plan: PeriodSchedulePlan, weekNumber: number, day: WeekdayPlanKey): string | null {
@@ -5097,7 +5117,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-slate-800">Logg gruppetrening</div>
-                      <div className="mt-1 text-xs text-slate-500">Registrer gruppetimer slik at PT ser all aktivitet.</div>
+                      <div className="mt-1 text-xs text-slate-500">Registrer gruppetimer slik at PT ser all aktivitet. Velg annen dato hvis du glemte å logge.</div>
                     </div>
                   </div>
                   <OutlineButton onClick={() => setShowGroupWorkoutLogger((prev) => !prev)} className="w-full sm:w-auto">
@@ -5106,7 +5126,16 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
                 {showGroupWorkoutLogger ? (
                   <div className="mt-4 rounded-xl border bg-slate-50 p-4 space-y-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-slate-600">Dato</span>
+                        <TextInput
+                          type="date"
+                          value={groupWorkoutDateIso}
+                          max={toIsoDateInputValue(new Date())}
+                          onChange={(event) => setGroupWorkoutDateIso(event.target.value)}
+                        />
+                      </label>
                       <label className="space-y-1">
                         <span className="text-xs font-medium text-slate-600">Gruppetime</span>
                         <SelectBox
