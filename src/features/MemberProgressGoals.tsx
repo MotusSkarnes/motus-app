@@ -1,3 +1,4 @@
+import { Check, Circle } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { ProgressGoal } from "../app/memberProgressGamification";
 
@@ -45,8 +46,13 @@ export function MemberProgressGoals({ goals, workingLevel, stepLabel, hasComplet
                   <div className="font-semibold">{goal.title}</div>
                   <p className="mt-0.5 text-[11px] leading-snug opacity-90">{goal.description}</p>
                 </div>
-                <span className="text-lg" aria-hidden>
-                  {goal.unlocked ? "✓" : goal.emoji}
+                <span
+                  className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${
+                    goal.unlocked ? "border-emerald-200 bg-emerald-100 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-400"
+                  }`}
+                  aria-hidden
+                >
+                  {goal.unlocked ? <Check className="h-4 w-4" strokeWidth={3} /> : <Circle className="h-3.5 w-3.5" />}
                 </span>
               </div>
               <div className="mt-2.5 h-1.5 rounded-full bg-slate-200/80">

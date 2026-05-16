@@ -27,7 +27,6 @@ export type ProgressGoal = {
   current: number;
   target: number;
   unlocked: boolean;
-  emoji: string;
 };
 
 export type MonthHabitGoal = {
@@ -136,7 +135,6 @@ export function buildProgressGoals(
       current: stats.streakWeeks,
       target: streakTarget,
       unlocked: stats.streakWeeks >= streakTarget,
-      emoji: "🔥",
     },
     {
       id: `sessions-${workingLevel}`,
@@ -145,7 +143,6 @@ export function buildProgressGoals(
       current: stats.completedSessions,
       target: sessionsTarget,
       unlocked: stats.completedSessions >= sessionsTarget,
-      emoji: "💪",
     },
     {
       id: `days-${workingLevel}`,
@@ -154,7 +151,6 @@ export function buildProgressGoals(
       current: stats.uniqueTrainingDays,
       target: trainingDaysTarget,
       unlocked: stats.uniqueTrainingDays >= trainingDaysTarget,
-      emoji: "📅",
     },
   ];
 }

@@ -679,50 +679,50 @@ function buildProgressLiftPlayfulLine(stats: {
   const lineFor = (kg: number): string | null => {
     if (!Number.isFinite(kg) || kg < 1) return null;
     if (kg >= 5500) {
-      return `Siste 7 dager har jeg løftet ca. ${fmt(kg)} kg totalt - omtrent som en flodhest 🦛`;
+      return `Siste 7 dager har jeg løftet ca. ${fmt(kg)} kg totalt - omtrent som en flodhest`;
     }
     if (kg >= 3200) {
-      return `Siste 7 dager har jeg flyttet ca. ${fmt(kg)} kg - omtrent som en liten bil 🚗`;
+      return `Siste 7 dager har jeg flyttet ca. ${fmt(kg)} kg - omtrent som en liten bil`;
     }
     if (kg >= 1600) {
-      return `Siste 7 dager har jeg logget ca. ${fmt(kg)} kg - omtrent som flere flygel 🎹`;
+      return `Siste 7 dager har jeg logget ca. ${fmt(kg)} kg - omtrent som flere flygel`;
     }
     if (kg >= 700) {
-      return `Siste 7 dager har jeg løftet ca. ${fmt(kg)} kg - omtrent som flere voksne til sammen 🙌`;
+      return `Siste 7 dager har jeg løftet ca. ${fmt(kg)} kg - omtrent som flere voksne til sammen`;
     }
     if (kg >= 250) {
       const people = Math.max(2, Math.round(kg / 72));
-      return `Siste 7 dager har jeg samlet ca. ${fmt(kg)} kg - omtrent som ${people} voksne til sammen 💪`;
+      return `Siste 7 dager har jeg samlet ca. ${fmt(kg)} kg - omtrent som ${people} voksne til sammen`;
     }
     if (kg >= 60) {
       const melons = Math.max(6, Math.round(kg / 8));
-      return `Siste 7 dager ble det ca. ${fmt(kg)} kg for meg - omtrent som ${melons} store vannmeloner 🍉`;
+      return `Siste 7 dager ble det ca. ${fmt(kg)} kg for meg - omtrent som ${melons} store vannmeloner`;
     }
     if (kg >= 15) {
-      return `Siste 7 dager har jeg logget ca. ${fmt(kg)} kg i vekt x reps - litt etter litt bygger det seg opp ✨`;
+      return `Siste 7 dager har jeg logget ca. ${fmt(kg)} kg i vekt x reps - litt etter litt bygger det seg opp`;
     }
-    return `Siste 7 dager har jeg logget ca. ${fmt(kg)} kg i vekt x reps ✨`;
+    return `Siste 7 dager har jeg logget ca. ${fmt(kg)} kg i vekt x reps`;
   };
 
   const weekLine = lineFor(volumeKg);
   if (weekLine) return weekLine;
 
   if (completedSets >= 24) {
-    return `Siste 7 dager fullførte jeg ${completedSets} sett fordelt på ${workouts} økter 🔥`;
+    return `Siste 7 dager fullførte jeg ${completedSets} sett fordelt på ${workouts} økter`;
   }
   if (workouts >= 4 && trainingDays >= 4) {
-    return `Siste 7 dager trente jeg ${workouts} økter fordelt på ${trainingDays} treningsdager 🙌`;
+    return `Siste 7 dager trente jeg ${workouts} økter fordelt på ${trainingDays} treningsdager`;
   }
   if (workouts >= 3) {
-    return `Siste 7 dager holdt jeg flyten med ${workouts} økter og ${completedSets} fullførte sett ✨`;
+    return `Siste 7 dager holdt jeg flyten med ${workouts} økter og ${completedSets} fullførte sett`;
   }
   if (trainingDays >= 2) {
-    return `Siste 7 dager fikk jeg inn ${trainingDays} treningsdager - nå bygger jeg videre 💫`;
+    return `Siste 7 dager fikk jeg inn ${trainingDays} treningsdager - nå bygger jeg videre`;
   }
   if (workouts >= 1) {
-    return `Siste 7 dager fikk jeg inn ${workouts} økt og ${completedSets} sett på veien 💪`;
+    return `Siste 7 dager fikk jeg inn ${workouts} økt og ${completedSets} sett på veien`;
   }
-  return "Siste 7 dager har jeg startet uka mi i riktig retning ✨";
+  return "Siste 7 dager har jeg startet uka mi i riktig retning";
 }
 
 function getProfileStorageKey(memberId: string): string {
@@ -3027,7 +3027,7 @@ export function MemberPortal(props: MemberPortalProps) {
       if (typeof nav.share === "function" && canShareFile) {
         await nav.share({
           title: "Min Motus-oppsummering",
-          text: "Siste 7 dager – se tallene mine 💪 #Motus",
+          text: "Siste 7 dager - se tallene mine #Motus",
           files: [file],
         });
         setProgressShareStatus("Kort delt.");
@@ -6123,5 +6123,4 @@ export function MemberPortal(props: MemberPortalProps) {
     </>
   );
 }
-
 
