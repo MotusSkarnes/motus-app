@@ -4304,7 +4304,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <PillButton active={customerSubTab === "overview"} onClick={() => setCustomerSubTab("overview")}>Oversikt og logg</PillButton>
                     <PillButton active={customerSubTab === "programs"} onClick={() => setCustomerSubTab("programs")}>Program</PillButton>
-                    <PillButton active={customerSubTab === "workouts"} onClick={() => setCustomerSubTab("workouts")}>Økter og kommentar</PillButton>
+                    <PillButton active={customerSubTab === "workouts"} onClick={() => setCustomerSubTab("workouts")}>Økter</PillButton>
                     <PillButton active={customerSubTab === "messages"} onClick={() => setCustomerSubTab("messages")}>Meldinger</PillButton>
                   </div>
                 </div>
@@ -4912,7 +4912,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 ) : null}
 
                 {customerSubTab === "workouts" ? (
-                  <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+                  <div className="grid gap-4 2xl:grid-cols-[0.95fr_1.05fr]">
                     <div className="rounded-xl border bg-slate-50 p-4">
                       <div className="mb-3 grid gap-2 sm:grid-cols-3">
                         <StatCard label="Økter siste 7 dager" value={String(workoutInsights.workoutsLast7Days)} hint="Alle økter" />
