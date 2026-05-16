@@ -48,6 +48,7 @@ import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient
 import { syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { buildDefaultStartWorkoutOptions } from "../app/buildStartWorkoutOptions";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
+import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
 
 function inferStatusTone(message: string): "success" | "error" | "info" {
   const normalized = message.trim().toLowerCase();
@@ -4299,6 +4300,11 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         {periodWeeklyPlansDraft.length > 0 ? (
                           <div className="rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                             <div className="text-base font-semibold text-slate-900">Uker i planen</div>
+                            <PeriodPlanWeekNavigator
+                              weeks={periodWeeklyPlansDraft.slice(0, Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1)))}
+                              selectedWeekId={activePeriodWeekId}
+                              onWeekSelectById={setActivePeriodWeekId}
+                            />
                             <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
                               {periodWeeklyPlansDraft.slice(0, Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1))).map((week) => {
                                 const marked = week.usesGradientPlan === true;
