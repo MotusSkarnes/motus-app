@@ -1,19 +1,29 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentProps } from "react";
-import { Bell, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp, type LucideIcon } from "lucide-react";
+import { Bell, CheckCircle2, ChevronRight, ClipboardList, ClipboardPenLine, LayoutDashboard, MessageSquare, Sparkles, TrendingUp, type LucideIcon } from "lucide-react";
 import { MOTUS } from "../app/data";
 import {
-  createEmptyOnboardingDraft,
+  enrichMemberWithBestProfile,
+  isOnboardingCompleted,
+  markOnboardingGateSeen,
+  memberOnboardingIdentityKey,
   mergeOnboardingIntoPersonalGoals,
   primaryGoalFromOnboarding,
   shouldShowMemberOnboarding,
+  hasSeenOnboardingGate,
   type MemberOnboardingAnswers,
 } from "../app/memberOnboarding";
 import { normalizePeriodSchedulePlan, readPeriodPlansByMemberId, writePeriodPlansByMemberId } from "../app/periodPlanMerge";
 import type { AppState, Member, MemberTab, PeriodSchedulePlan } from "../app/types";
 import { Card } from "../app/ui";
 import type { MemberAlert } from "../app/useNotifications";
-import { upsertMemberPeriodPlansForTrainer } from "../services/supabaseRepository";
+import { upsertMemberPeriodPlansForTrainer, waitForMemberPersist } from "../services/supabaseRepository";
+import {
+  mergeCheckInIntoPersonalGoals,
+  resolveCheckInWindow,
+  type MemberMonthlyCheckInAnswers,
+} from "../app/memberMonthlyCheckIn";
+import { MemberMonthlyCheckIn } from "./MemberMonthlyCheckIn";
 import { MemberOnboarding } from "./MemberOnboarding";
 import { MemberPortal } from "./MemberPortal";
 import { InspirationHub } from "./InspirationHub";
@@ -72,6 +82,8 @@ type MemberLayoutProps = {
   clearMemberFocusInspirationItemId: () => void;
   memberFocusWorkoutLogId: string | null;
   clearMemberFocusWorkoutLogId: () => void;
+  memberCheckInOverlayOpen: boolean;
+  setMemberCheckInOverlayOpen: (open: boolean) => void;
   remoteMemberPeriodPlanRows: ComponentProps<typeof MemberPortal>["remoteMemberPeriodPlanRows"];
   refreshRemoteHydration?: ComponentProps<typeof MemberPortal>["refreshRemoteHydration"];
 };
@@ -120,15 +132,36 @@ export function MemberLayout({
   clearMemberFocusInspirationItemId,
   memberFocusWorkoutLogId,
   clearMemberFocusWorkoutLogId,
+  memberCheckInOverlayOpen,
+  setMemberCheckInOverlayOpen,
   remoteMemberPeriodPlanRows,
   refreshRemoteHydration,
 }: MemberLayoutProps) {
-  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
-  const activeMember = useMemo(() => resolveActiveMemberForUser(appState), [appState]);
-  const needsOnboarding = useMemo(() => {
-    if (onboardingDismissed) return false;
-    return shouldShowMemberOnboarding(activeMember, appState.currentUser?.role);
-  }, [activeMember, appState.currentUser?.role, onboardingDismissed]);
+  const [onboardingGateOpen, setOnboardingGateOpen] = useState(false);
+  const activeMember = useMemo(() => {
+    const base = resolveActiveMemberForUser(appState);
+    if (!base) return null;
+    return enrichMemberWithBestProfile(base, appState.members);
+  }, [appState]);
+  const onboardingIdentityKey = activeMember ? memberOnboardingIdentityKey(activeMember) : "";
+  const onboardingCompleted = useMemo(
+    () => isOnboardingCompleted(activeMember?.personalGoals),
+    [activeMember?.personalGoals],
+  );
+  const needsOnboardingPrompt = useMemo(
+    () => shouldShowMemberOnboarding(activeMember, appState.currentUser?.role, appState.members),
+    [activeMember, appState.currentUser?.role, appState.members],
+  );
+
+  useEffect(() => {
+    if (!needsOnboardingPrompt || !onboardingIdentityKey) {
+      setOnboardingGateOpen(false);
+      return;
+    }
+    if (hasSeenOnboardingGate(onboardingIdentityKey)) return;
+    markOnboardingGateSeen(onboardingIdentityKey);
+    setOnboardingGateOpen(true);
+  }, [needsOnboardingPrompt, onboardingIdentityKey]);
 
   useEffect(() => {
     if (memberTab === "inspiration") {
@@ -150,18 +183,21 @@ export function MemberLayout({
         ...(focusSummary ? { focus: focusSummary } : {}),
       },
     });
-    setOnboardingDismissed(true);
-    void refreshRemoteHydration?.();
+    setOnboardingGateOpen(false);
+    await waitForMemberPersist(activeMember.id);
   }
 
-  function handleSkipOnboarding() {
-    const skipped: MemberOnboardingAnswers = {
-      ...createEmptyOnboardingDraft(),
-      version: 1,
-      completedAt: new Date().toISOString(),
-      skipped: true,
-    };
-    void persistOnboardingAnswers(skipped);
+  const checkInWindow = useMemo(() => resolveCheckInWindow(), []);
+
+  async function persistMonthlyCheckInAnswers(answers: MemberMonthlyCheckInAnswers) {
+    if (!activeMember) return;
+    const personalGoals = mergeCheckInIntoPersonalGoals(activeMember.personalGoals, answers);
+    updateMember({
+      memberId: activeMember.id,
+      changes: { personalGoals },
+    });
+    await waitForMemberPersist(activeMember.id);
+    setMemberCheckInOverlayOpen(false);
   }
 
   const isMemberLimited = useMemo(() => {
@@ -230,6 +266,9 @@ export function MemberLayout({
     clearMemberFocusWorkoutLogId,
     remoteMemberPeriodPlanRows,
     refreshRemoteHydration,
+    onOpenMonthlyCheckIn: () => setMemberCheckInOverlayOpen(true),
+    onOpenOnboarding: () => setOnboardingGateOpen(true),
+    showOnboardingHomePrompt: needsOnboardingPrompt && !onboardingGateOpen,
   };
   const inspirationMemberId =
     appState.memberViewId ||
@@ -257,16 +296,6 @@ export function MemberLayout({
       window.sessionStorage.setItem("motus.member.openPeriodPlanOnPrograms", "1");
     }
     setMemberTab("programs");
-  }
-
-  if (needsOnboarding && activeMember) {
-    return (
-      <MemberOnboarding
-        memberName={activeMember.name}
-        onComplete={persistOnboardingAnswers}
-        onSkip={handleSkipOnboarding}
-      />
-    );
   }
 
   return (
@@ -320,7 +349,9 @@ export function MemberLayout({
                       ? TrendingUp
                       : alert.kind === "inspiration"
                         ? Sparkles
-                        : ClipboardList;
+                        : alert.kind === "check-in"
+                          ? ClipboardPenLine
+                          : ClipboardList;
                 const isOpened = alert.isOpened;
                 const isRead = !alert.isUnread;
                 return (
@@ -429,6 +460,23 @@ export function MemberLayout({
           </div>
         </div>
       </div>
+
+      {onboardingGateOpen && activeMember && !onboardingCompleted ? (
+        <MemberOnboarding
+          memberName={activeMember.name}
+          onComplete={persistOnboardingAnswers}
+          onClose={() => setOnboardingGateOpen(false)}
+        />
+      ) : null}
+
+      {memberCheckInOverlayOpen && activeMember && checkInWindow ? (
+        <MemberMonthlyCheckIn
+          memberName={activeMember.name}
+          window={checkInWindow}
+          onComplete={persistMonthlyCheckInAnswers}
+          onClose={() => setMemberCheckInOverlayOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

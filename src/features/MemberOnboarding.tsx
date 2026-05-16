@@ -26,7 +26,7 @@ type Draft = Omit<MemberOnboardingAnswers, "completedAt" | "version">;
 type MemberOnboardingProps = {
   memberName: string;
   onComplete: (answers: MemberOnboardingAnswers) => void | Promise<void>;
-  onSkip?: () => void;
+  onClose?: () => void;
 };
 
 function toggleInList(list: string[], value: string): string[] {
@@ -87,7 +87,7 @@ function ImportanceSlider({ value, onChange }: { value: number; onChange: (next:
   );
 }
 
-export function MemberOnboarding({ memberName, onComplete, onSkip }: MemberOnboardingProps) {
+export function MemberOnboarding({ memberName, onComplete, onClose }: MemberOnboardingProps) {
   const [pageIndex, setPageIndex] = useState(0);
   const [draft, setDraft] = useState<Draft>(() => createEmptyOnboardingDraft());
   const [submitting, setSubmitting] = useState(false);
@@ -146,9 +146,9 @@ export function MemberOnboarding({ memberName, onComplete, onSkip }: MemberOnboa
           <span>
             Side {pageIndex + 1} av {ONBOARDING_PAGE_COUNT}
           </span>
-          {onSkip ? (
-            <button type="button" onClick={onSkip} className="text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline">
-              Hopp over for nå
+          {onClose ? (
+            <button type="button" onClick={onClose} className="text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline">
+              Lukk
             </button>
           ) : null}
         </div>

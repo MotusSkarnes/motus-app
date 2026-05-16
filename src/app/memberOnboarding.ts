@@ -1,3 +1,4 @@
+import { pickBestPersonalGoals } from "./memberProfileGoals";
 import type { Level, Member } from "./types";
 
 /** Stored inside members.personal_goals (MOTUS_PROFILE_V1 JSON). */
@@ -165,15 +166,53 @@ export function createEmptyOnboardingDraft(): Omit<MemberOnboardingAnswers, "com
   };
 }
 
-function parsePersonalGoalsJson(personalGoals: string | undefined): Record<string, unknown> | null {
-  if (!personalGoals?.startsWith(PROFILE_METRICS_PREFIX)) return null;
+export function parsePersonalGoalsJson(personalGoals: string | undefined): Record<string, unknown> | null {
+  const trimmed = String(personalGoals ?? "").trim();
+  if (!trimmed) return null;
+
+  let jsonPart = "";
+  if (trimmed.startsWith(PROFILE_METRICS_PREFIX)) {
+    jsonPart = trimmed.slice(PROFILE_METRICS_PREFIX.length);
+  } else {
+    const prefixIndex = trimmed.indexOf(PROFILE_METRICS_PREFIX);
+    if (prefixIndex >= 0) {
+      jsonPart = trimmed.slice(prefixIndex + PROFILE_METRICS_PREFIX.length);
+    } else if (trimmed.startsWith("{")) {
+      jsonPart = trimmed;
+    } else {
+      return null;
+    }
+  }
+
   try {
-    const parsed = JSON.parse(personalGoals.slice(PROFILE_METRICS_PREFIX.length)) as unknown;
+    const parsed = JSON.parse(jsonPart) as unknown;
     if (!parsed || typeof parsed !== "object") return null;
     return parsed as Record<string, unknown>;
   } catch {
     return null;
   }
+}
+
+/** Bevar skjema-/sjekk-inn-data ved andre profil-lagringer. */
+export function readProfileExtensions(personalGoals: string | undefined): Record<string, unknown> {
+  const payload = parsePersonalGoalsJson(personalGoals);
+  if (!payload) return {};
+  const extensions: Record<string, unknown> = {};
+  if (payload.onboarding && typeof payload.onboarding === "object") {
+    extensions.onboarding = payload.onboarding;
+  }
+  const completedAt = String(payload.onboardingCompletedAt ?? "").trim();
+  if (completedAt) extensions.onboardingCompletedAt = completedAt;
+  if (Array.isArray(payload.monthlyCheckIns)) {
+    extensions.monthlyCheckIns = payload.monthlyCheckIns;
+  }
+  if (payload.homeVisibility && typeof payload.homeVisibility === "object") {
+    extensions.homeVisibility = payload.homeVisibility;
+  }
+  if (Array.isArray(payload.favoritePersonalRecords)) {
+    extensions.favoritePersonalRecords = payload.favoritePersonalRecords;
+  }
+  return extensions;
 }
 
 function normalizeStringArray(value: unknown): string[] {
@@ -212,6 +251,7 @@ function normalizeOnboardingRaw(raw: unknown): MemberOnboardingAnswers | null {
     wantsTrainerStructure: String(data.wantsTrainerStructure ?? "").trim(),
     coachNotesFromMember: String(data.coachNotesFromMember ?? "").trim(),
     completedAt: String(data.completedAt ?? "").trim(),
+    ...(data.skipped ? { skipped: true } : {}),
   };
 }
 
@@ -224,11 +264,56 @@ function clampImportance(value: unknown): number {
 export function getOnboardingFromPersonalGoals(personalGoals: string | undefined): MemberOnboardingAnswers | null {
   const payload = parsePersonalGoalsJson(personalGoals);
   if (!payload) return null;
-  return normalizeOnboardingRaw(payload.onboarding);
+  const fromOnboarding = normalizeOnboardingRaw(payload.onboarding);
+  if (fromOnboarding) return fromOnboarding;
+
+  const completedAt = String(payload.onboardingCompletedAt ?? "").trim();
+  if (!completedAt) return null;
+
+  const skipped =
+    payload.onboarding &&
+    typeof payload.onboarding === "object" &&
+    Boolean((payload.onboarding as { skipped?: boolean }).skipped);
+
+  return {
+    ...createEmptyOnboardingDraft(),
+    version: MEMBER_ONBOARDING_VERSION,
+    completedAt,
+    ...(skipped ? { skipped: true } : {}),
+  };
 }
 
 export function isOnboardingCompleted(personalGoals: string | undefined): boolean {
-  return Boolean(getOnboardingFromPersonalGoals(personalGoals)?.completedAt);
+  if (getOnboardingFromPersonalGoals(personalGoals)?.completedAt) return true;
+  const payload = parsePersonalGoalsJson(personalGoals);
+  return Boolean(String(payload?.onboardingCompletedAt ?? "").trim());
+}
+
+const ONBOARDING_GATE_SEEN_KEY_PREFIX = "motus.member.onboarding.gateSeen.v1:";
+
+export function memberOnboardingIdentityKey(member: Member): string {
+  return member.id.trim() || member.email.trim().toLowerCase();
+}
+
+export function hasSeenOnboardingGate(identityKey: string): boolean {
+  if (typeof window === "undefined" || !identityKey) return false;
+  return window.localStorage.getItem(`${ONBOARDING_GATE_SEEN_KEY_PREFIX}${identityKey}`) === "1";
+}
+
+export function markOnboardingGateSeen(identityKey: string): void {
+  if (typeof window === "undefined" || !identityKey) return;
+  window.localStorage.setItem(`${ONBOARDING_GATE_SEEN_KEY_PREFIX}${identityKey}`, "1");
+}
+
+/** Slå sammen profil fra duplikat-rader (samme e-post) slik at lagret skjema ikke «forsvinner». */
+export function enrichMemberWithBestProfile(member: Member, allMembers: Member[]): Member {
+  const email = member.email.trim().toLowerCase();
+  const candidates = email
+    ? allMembers.filter((row) => row.email.trim().toLowerCase() === email)
+    : [member];
+  const personalGoals = pickBestPersonalGoals(candidates.map((row) => row.personalGoals));
+  if (!personalGoals || personalGoals === member.personalGoals) return member;
+  return { ...member, personalGoals };
 }
 
 export function mergeOnboardingIntoPersonalGoals(
@@ -247,6 +332,7 @@ export function mergeOnboardingIntoPersonalGoals(
     ...(Array.isArray(existing.favoritePersonalRecords)
       ? { favoritePersonalRecords: existing.favoritePersonalRecords }
       : {}),
+    ...(Array.isArray(existing.monthlyCheckIns) ? { monthlyCheckIns: existing.monthlyCheckIns } : {}),
     onboarding,
     onboardingCompletedAt: onboarding.completedAt,
   };
@@ -283,12 +369,21 @@ export function formatOnboardingSummaryLines(onboarding: MemberOnboardingAnswers
   return lines;
 }
 
-export function resolveMemberOnboarding(member: Member | null | undefined): MemberOnboardingAnswers | null {
+export function resolveMemberOnboarding(
+  member: Member | null | undefined,
+  allMembers?: Member[],
+): MemberOnboardingAnswers | null {
   if (!member) return null;
-  return getOnboardingFromPersonalGoals(member.personalGoals);
+  const profile = allMembers?.length ? enrichMemberWithBestProfile(member, allMembers) : member;
+  return getOnboardingFromPersonalGoals(profile.personalGoals);
 }
 
-export function shouldShowMemberOnboarding(member: Member | null | undefined, role: string | undefined): boolean {
+export function shouldShowMemberOnboarding(
+  member: Member | null | undefined,
+  role: string | undefined,
+  allMembers?: Member[],
+): boolean {
   if (!member || role !== "member") return false;
-  return !isOnboardingCompleted(member.personalGoals);
+  const profile = allMembers?.length ? enrichMemberWithBestProfile(member, allMembers) : member;
+  return !isOnboardingCompleted(profile.personalGoals);
 }

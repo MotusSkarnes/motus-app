@@ -10,6 +10,12 @@ import {
   type InspirationNotificationItem,
 } from "./inspirationStorage";
 import { trainerInactiveDaysForFollowUp } from "./memberActivity";
+import { buildMemberFormTrainerAlerts } from "./memberFormTrainerAlerts";
+import {
+  buildCheckInNotificationCopy,
+  resolveCheckInWindow,
+  shouldPromptMonthlyCheckIn,
+} from "./memberMonthlyCheckIn";
 import type { ChatMessage, Member, MemberTab, TrainingProgram, WorkoutLog } from "./types";
 import { readWorkoutLogIdFromLocation, stripWorkoutLogIdFromLocation, workoutLogIdFromMemberAlertId } from "./workoutLogDeepLink";
 
@@ -20,7 +26,7 @@ const TRAINER_OPERATIONAL_TIMESTAMP_BASE = 9_000_000_000_000;
 
 export type MemberAlert = {
   id: string;
-  kind: "message" | "program" | "workout-comment" | "inspiration";
+  kind: "message" | "program" | "workout-comment" | "inspiration" | "check-in";
   title: string;
   text: string;
   detail: string;
@@ -33,7 +39,7 @@ export type MemberAlert = {
 
 export type TrainerAlert = {
   id: string;
-  kind: "message" | "missing-invite" | "inactive-member";
+  kind: "message" | "missing-invite" | "inactive-member" | "member-form";
   memberId: string;
   title: string;
   text: string;
@@ -69,18 +75,22 @@ export function useNotifications({
   logs,
   members,
   memberViewId,
+  currentUserRole,
   setMemberTab,
   onTrainerOpenMessage,
   onTrainerOpenCustomers,
+  onTrainerOpenMemberForm,
 }: {
   messages: ChatMessage[];
   programs: TrainingProgram[];
   logs: WorkoutLog[];
   members: Member[];
   memberViewId: string;
+  currentUserRole?: "trainer" | "member";
   setMemberTab: (tab: MemberTab) => void;
   onTrainerOpenMessage?: (memberId: string) => void;
   onTrainerOpenCustomers?: () => void;
+  onTrainerOpenMemberForm?: (memberId: string) => void;
 }) {
   const [trainerNotificationsOpen, setTrainerNotificationsOpen] = useState(false);
   const [memberNotificationsOpen, setMemberNotificationsOpen] = useState(false);
@@ -153,6 +163,17 @@ export function useNotifications({
   const [inspirationItems, setInspirationItems] = useState<InspirationNotificationItem[]>(() => loadInspirationNotificationItems());
   const [memberFocusInspirationItemId, setMemberFocusInspirationItemId] = useState<string | null>(null);
   const [memberFocusWorkoutLogId, setMemberFocusWorkoutLogId] = useState<string | null>(() => readWorkoutLogIdFromLocation());
+  const [memberCheckInOverlayOpen, setMemberCheckInOverlayOpen] = useState(false);
+  const [seenTrainerMemberFormKeys, setSeenTrainerMemberFormKeys] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem("motus.notifications.trainerSeenMemberFormKeys");
+      const parsed = JSON.parse(raw ?? "[]");
+      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+    } catch {
+      return [];
+    }
+  });
 
   const syncInspirationItemsFromStorage = useCallback(() => {
     setInspirationItems(loadInspirationNotificationItems());
@@ -206,6 +227,11 @@ export function useNotifications({
 
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
 
+  const activeMember = useMemo(
+    () => (memberViewId ? memberById.get(memberViewId) ?? null : null),
+    [memberById, memberViewId],
+  );
+
   const rosterMembers = useMemo(() => members.filter((member) => member.isActive !== false), [members]);
 
   const missingInviteMemberIds = useMemo(
@@ -247,6 +273,21 @@ export function useNotifications({
     [messages, memberById, trainerAlertsSeenAt],
   );
 
+  const trainerMemberFormAlerts = useMemo(
+    () =>
+      buildMemberFormTrainerAlerts(members, new Set(seenTrainerMemberFormKeys)).map((alert) => ({
+        id: alert.id,
+        kind: "member-form" as const,
+        memberId: alert.memberId,
+        title: alert.title,
+        text: alert.text,
+        detail: alert.detail,
+        timestamp: alert.timestamp,
+        unread: true,
+      })),
+    [members, seenTrainerMemberFormKeys],
+  );
+
   const trainerOperationalAlerts = useMemo<TrainerAlert[]>(() => {
     const alerts: TrainerAlert[] = [];
     if (missingInviteMemberIds.length > 0) {
@@ -282,6 +323,17 @@ export function useNotifications({
 
   const trainerRecentAlerts = useMemo<TrainerAlert[]>(() => {
     const combined: TrainerAlert[] = [
+      ...trainerMemberFormAlerts.map((alert) => ({
+        id: alert.id,
+        kind: alert.kind,
+        memberId: alert.memberId,
+        title: alert.title,
+        text: alert.text,
+        detail: alert.detail,
+        timestamp: alert.timestamp,
+        isUnread: alert.unread,
+        isOpened: openedTrainerAlertIds.includes(alert.id),
+      })),
       ...trainerMessageAlerts.map((alert) => ({
         id: alert.id,
         kind: alert.kind,
@@ -296,7 +348,7 @@ export function useNotifications({
       ...trainerOperationalAlerts,
     ];
     return combined.sort((a, b) => b.timestamp - a.timestamp).slice(0, ALERT_HISTORY_LIMIT);
-  }, [trainerMessageAlerts, trainerOperationalAlerts, openedTrainerAlertIds]);
+  }, [trainerMemberFormAlerts, trainerMessageAlerts, trainerOperationalAlerts, openedTrainerAlertIds]);
 
   const memberPrograms = useMemo(
     () =>
@@ -385,6 +437,24 @@ export function useNotifications({
     [memberPrograms, seenMemberProgramIds],
   );
 
+  const memberCheckInAlert = useMemo(() => {
+    if (!activeMember || currentUserRole !== "member") return null;
+    if (!shouldPromptMonthlyCheckIn(activeMember, currentUserRole)) return null;
+    const window = resolveCheckInWindow();
+    if (!window) return null;
+    const copy = buildCheckInNotificationCopy(window);
+    return {
+      id: `member-check-in-${window.monthKey}`,
+      kind: "check-in" as const,
+      title: copy.title,
+      text: copy.text,
+      detail: copy.detail,
+      timestamp: window.opensAt.getTime(),
+      targetTab: "overview" as const,
+      unread: true,
+    };
+  }, [activeMember, currentUserRole]);
+
   const memberInspirationAlerts = useMemo(
     () =>
       inspirationItems.map((item, index) => {
@@ -413,6 +483,20 @@ export function useNotifications({
   }, [setMemberTab]);
 
   const memberRecentAlerts = useMemo<MemberAlert[]>(() => {
+    const checkInAlert = memberCheckInAlert
+      ? {
+          id: memberCheckInAlert.id,
+          kind: memberCheckInAlert.kind,
+          title: memberCheckInAlert.title,
+          text: memberCheckInAlert.text,
+          detail: memberCheckInAlert.detail,
+          timestamp: memberCheckInAlert.timestamp,
+          targetTab: memberCheckInAlert.targetTab,
+          isUnread: memberCheckInAlert.unread,
+          isOpened: openedMemberAlertIds.includes(memberCheckInAlert.id),
+        }
+      : null;
+
     const combined: MemberAlert[] = [
       ...memberMessageAlerts.map((alert) => ({
         id: alert.id,
@@ -459,8 +543,18 @@ export function useNotifications({
         isOpened: openedMemberAlertIds.includes(alert.id),
       })),
     ];
-    return sortAlertsForDisplay(combined).slice(0, ALERT_HISTORY_LIMIT);
-  }, [memberMessageAlerts, memberProgramAlerts, memberWorkoutCommentAlerts, memberInspirationAlerts, openedMemberAlertIds]);
+    const sorted = sortAlertsForDisplay(combined);
+    const withoutCheckIn = checkInAlert ? sorted.filter((alert) => alert.id !== checkInAlert.id) : sorted;
+    const merged = checkInAlert ? [checkInAlert, ...withoutCheckIn] : withoutCheckIn;
+    return merged.slice(0, ALERT_HISTORY_LIMIT);
+  }, [
+    memberMessageAlerts,
+    memberProgramAlerts,
+    memberWorkoutCommentAlerts,
+    memberInspirationAlerts,
+    memberCheckInAlert,
+    openedMemberAlertIds,
+  ]);
 
   const memberUnreadAlerts = useMemo(
     () => memberRecentAlerts.filter((alert) => alert.isUnread),
@@ -516,6 +610,13 @@ export function useNotifications({
       if (alert.memberId) {
         onTrainerOpenMessage?.(alert.memberId);
       }
+    } else if (alert.kind === "member-form") {
+      setSeenTrainerMemberFormKeys((prev) => Array.from(new Set([...prev, alert.id])));
+      if (alert.memberId) {
+        onTrainerOpenMemberForm?.(alert.memberId);
+      } else {
+        onTrainerOpenCustomers?.();
+      }
     } else {
       setSeenTrainerOperationalAlertKey(trainerOperationalAlertKey);
       onTrainerOpenCustomers?.();
@@ -557,6 +658,8 @@ export function useNotifications({
         setSeenMemberInspirationIds((prev) => Array.from(new Set([...prev, inspirationId])));
         setMemberFocusInspirationItemId(inspirationId);
       }
+    } else if (alert.kind === "check-in") {
+      setMemberCheckInOverlayOpen(true);
     }
 
     setMemberTab(alert.targetTab);
@@ -606,6 +709,11 @@ export function useNotifications({
     window.localStorage.setItem("motus.notifications.memberSeenInspirationIds", JSON.stringify(seenMemberInspirationIds));
   }, [seenMemberInspirationIds]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("motus.notifications.trainerSeenMemberFormKeys", JSON.stringify(seenTrainerMemberFormKeys));
+  }, [seenTrainerMemberFormKeys]);
+
   return {
     trainerNotificationsOpen,
     setTrainerNotificationsOpen,
@@ -623,5 +731,7 @@ export function useNotifications({
     clearMemberFocusInspirationItemId: () => setMemberFocusInspirationItemId(null),
     memberFocusWorkoutLogId,
     clearMemberFocusWorkoutLogId: () => setMemberFocusWorkoutLogId(null),
+    memberCheckInOverlayOpen,
+    setMemberCheckInOverlayOpen,
   };
 }

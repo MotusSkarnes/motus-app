@@ -45,8 +45,10 @@ import {
   upsertMemberPeriodPlansForTrainer,
 } from "../services/supabaseRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
+import { pickBestPersonalGoals } from "../app/memberProfileGoals";
 import { syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { buildDefaultStartWorkoutOptions } from "../app/buildStartWorkoutOptions";
+import { MemberMonthlyCheckInSummary } from "./MemberMonthlyCheckInSummary";
 import { MemberOnboardingSummary } from "./MemberOnboardingSummary";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
 import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
@@ -786,13 +788,17 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const birthDates = prioritized.map((member) => member.birthDate);
     const goals = prioritized.map((member) => member.goal);
     const injuries = prioritized.map((member) => member.injuries);
+    const focuses = prioritized.map((member) => member.focus);
+    const personalGoalsList = prioritized.map((member) => member.personalGoals);
     return {
       ...base,
       name: pickPreferredNonEmpty(names) || base.name,
       phone: pickPreferredNonEmpty(phones) || base.phone,
       birthDate: pickPreferredNonEmpty(birthDates) || base.birthDate,
       goal: pickPreferredNonEmpty(goals) || base.goal,
+      focus: pickPreferredNonEmpty(focuses) || base.focus,
       injuries: pickPreferredNonEmpty(injuries) || base.injuries,
+      personalGoals: pickBestPersonalGoals(personalGoalsList) || base.personalGoals,
     };
   }
   const deduplicatedMembers = useMemo(() => {
@@ -3662,66 +3668,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         </Card>
       ) : null}
 
-      {trainerTab === "calendar" ? (
-        <Card className="p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="font-semibold text-slate-800">Kalender</div>
-            <div className="flex items-center gap-2">
-              <OutlineButton onClick={() => setDashboardMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))} className="px-3 py-1.5 text-xs">Forrige</OutlineButton>
-              <OutlineButton onClick={() => setDashboardMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))} className="px-3 py-1.5 text-xs">Neste</OutlineButton>
-            </div>
-          </div>
-          <div className="text-sm text-slate-600">{monthLabel}</div>
-          <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-slate-500">
-            <span>Ma</span><span>Ti</span><span>On</span><span>To</span><span>Fr</span><span>Lo</span><span>So</span>
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {dashboardCalendarCells.map((day, index) => {
-              if (!day) return <div key={`cal-empty-${index}`} />;
-              const dateIso = `${dashboardMonth.getFullYear()}-${String(dashboardMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-              const hasTodo = todoDateSet.has(dateIso);
-              const isSelected = selectedTodoDate === dateIso;
-              return (
-                <button
-                  key={dateIso}
-                  type="button"
-                  onClick={() => setSelectedTodoDate(dateIso)}
-                  className={`rounded-lg px-1 py-2 text-center text-xs ${isSelected ? "text-white font-semibold" : "text-slate-600 bg-white"}`}
-                  style={
-                    isSelected
-                      ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
-                      : hasTodo
-                      ? { border: `1px solid ${MOTUS.turquoise}` }
-                      : { border: "1px solid rgba(15,23,42,0.06)" }
-                  }
-                >
-                  {day}
-                </button>
-              );
-            })}
-          </div>
-          <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-            <div className="font-semibold text-slate-800">Oppgaver for valgt dag</div>
-            <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
-              <TextInput value={todoTitle} onChange={(e) => setTodoTitle(e.target.value)} placeholder="Ny oppgave (f.eks. ring Martin)" />
-              <TextInput type="date" value={selectedTodoDate} onChange={(e) => setSelectedTodoDate(e.target.value)} />
-              <GradientButton onClick={addTodoItem}>Legg til</GradientButton>
-            </div>
-            <div className="space-y-2">
-              {todoItemsForSelectedDate.length === 0 ? <div className="rounded-xl border border-dashed bg-white p-3 text-sm text-slate-500">Ingen oppgaver for valgt dag.</div> : null}
-              {todoItemsForSelectedDate.map((todo) => (
-                <div key={todo.id} className="flex items-center justify-between gap-2 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <button type="button" onClick={() => toggleTodoDone(todo.id)} className={`text-left text-sm ${todo.done ? "line-through text-slate-400" : "text-slate-700"}`}>
-                    {todo.title}
-                  </button>
-                  <OutlineButton onClick={() => deleteTodo(todo.id)} className="px-3 py-1.5 text-xs">Slett</OutlineButton>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-      ) : null}
-
       {trainerTab === "statistics" ? (
         <Card className="p-5 space-y-4">
           <div className="font-semibold text-slate-800">Statistikk og prioritering</div>
@@ -4141,7 +4087,12 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         <div className="font-medium text-white/95">{selectedMemberProfile?.injuries || selectedMember.injuries || "Ingen registrerte skader"}</div>
                       </div>
                       <div className="mt-3 rounded-xl border border-white/25 bg-white/10 p-3">
-                        <MemberOnboardingSummary member={selectedMemberProfile ?? selectedMember} variant="inline" tone="dark" />
+                        <MemberOnboardingSummary
+                          member={selectedMemberProfile ?? selectedMember}
+                          allMembers={members}
+                          variant="inline"
+                          tone="dark"
+                        />
                       </div>
                       <div className="mt-2 text-sm text-white/85">
                         Sist trening: {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}
@@ -4363,7 +4314,12 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         <div><span className="font-medium text-slate-800">Skader/hensyn:</span> {selectedMemberProfile?.injuries || selectedMember.injuries || "Ingen registrerte skader"}</div>
                       </div>
                     </div>
-                    <MemberOnboardingSummary member={selectedMemberProfile ?? selectedMember} className="xl:col-span-2" />
+                    <MemberOnboardingSummary
+                      member={selectedMemberProfile ?? selectedMember}
+                      allMembers={members}
+                      className="xl:col-span-2"
+                    />
+                    <MemberMonthlyCheckInSummary member={selectedMemberProfile ?? selectedMember} className="xl:col-span-2" />
                     <div className="rounded-xl border bg-slate-50 p-4">
                       <div className="font-semibold">Oppfølgingspunkter</div>
                       <div className="mt-3 space-y-2 text-sm text-slate-600">

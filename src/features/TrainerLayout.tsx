@@ -1,5 +1,5 @@
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
-import { BarChart3, Bell, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, Clock3, Dumbbell, LayoutDashboard, MessageSquare, Settings, ShieldCheck, Sparkles, UserPlus, Users, type LucideIcon } from "lucide-react";
+import { BarChart3, Bell, CheckCircle2, ChevronRight, ClipboardList, ClipboardPenLine, Clock3, Dumbbell, LayoutDashboard, MessageSquare, Settings, ShieldCheck, Sparkles, UserPlus, Users, type LucideIcon } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { AppState, TrainerTab } from "../app/types";
 import { Card } from "../app/ui";
@@ -62,7 +62,6 @@ const trainerMenuItems: Array<{ key: TrainerTab; label: string; icon: LucideIcon
   { key: "exerciseBank", label: "Øvelsesbank", icon: Dumbbell },
   { key: "programs", label: "Programmer", icon: ClipboardList },
   { key: "inspiration", label: "Inspirasjon", icon: Sparkles },
-  { key: "calendar", label: "Kalender", icon: CalendarDays },
   { key: "statistics", label: "Statistikk", icon: BarChart3 },
   { key: "settings", label: "Innstillinger", icon: Settings },
   { key: "admin", label: "Admin", icon: ShieldCheck },
@@ -254,9 +253,11 @@ export function TrainerLayout({
                   const AlertIcon =
                     alert.kind === "message"
                       ? MessageSquare
-                      : alert.kind === "missing-invite"
-                        ? UserPlus
-                        : Clock3;
+                      : alert.kind === "member-form"
+                        ? ClipboardPenLine
+                        : alert.kind === "missing-invite"
+                          ? UserPlus
+                          : Clock3;
                   const isOpened = alert.isOpened;
                   const isRead = !alert.isUnread;
                   return (

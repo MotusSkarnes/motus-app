@@ -4,6 +4,7 @@ import {
   CalendarRange,
   ChevronRight,
   ClipboardList,
+  ClipboardPenLine,
   Dumbbell,
   Eye,
   EyeOff,
@@ -30,6 +31,12 @@ import motusLogo from "../assets/motus-logo-transparent.svg";
 import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, normalizeStoredLogDate, storedLogDatesMatch } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
+import { parsePersonalGoalsJson, readProfileExtensions } from "../app/memberOnboarding";
+import {
+  buildCheckInNotificationCopy,
+  resolveCheckInWindow,
+  shouldPromptMonthlyCheckIn,
+} from "../app/memberMonthlyCheckIn";
 import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { supabaseClient } from "../services/supabaseClient";
 import { isWebPushConfigurable, registerWebPushWithSupabase } from "../services/webPush";
@@ -185,6 +192,9 @@ type MemberPortalProps = {
   remoteMemberPeriodPlanRows?: Array<{ memberId: string; plan: PeriodSchedulePlan }>;
   /** Etter lagring: kjør hydrate fra Supabase (persist er asynk) */
   refreshRemoteHydration?: () => void | Promise<void>;
+  onOpenMonthlyCheckIn?: () => void;
+  onOpenOnboarding?: () => void;
+  showOnboardingHomePrompt?: boolean;
 };
 
 const MEMBER_AVATAR_BUCKET = "exercise-images";
@@ -196,7 +206,6 @@ const DEFAULT_HOME_VISIBILITY = {
   streakChallenges: true,
   nextStep: true,
   nextOnPlan: true,
-  quickActions: true,
   calendar: true,
 } as const;
 type HomeSectionKey = keyof typeof DEFAULT_HOME_VISIBILITY;
@@ -242,6 +251,7 @@ type ProfileMetricsPayload = SyncedHomePreferences &
   ProfileMetricsDraft & {
     onboarding?: import("../app/memberOnboarding").MemberOnboardingAnswers;
     onboardingCompletedAt?: string;
+    monthlyCheckIns?: unknown[];
   };
 
 function normalizeFavoritePersonalRecordNames(names?: string[]): string[] | undefined {
@@ -280,38 +290,51 @@ function encodeMemberProfileMetrics(
   const normalizedFavoritePersonalRecords = normalizeFavoritePersonalRecordNames(
     preferences?.favoritePersonalRecords ?? existing?.favoritePersonalRecords,
   );
+  const profileExtensions = readProfileExtensions(existingPersonalGoals);
   const payload: ProfileMetricsPayload = {
     ...metrics,
     ...(normalizedHomeVisibility ? { homeVisibility: normalizedHomeVisibility } : {}),
     ...(normalizedFavoritePersonalRecords ? { favoritePersonalRecords: normalizedFavoritePersonalRecords } : {}),
-    ...(existing?.onboarding ? { onboarding: existing.onboarding, onboardingCompletedAt: existing.onboardingCompletedAt } : {}),
+    ...(profileExtensions.onboarding
+      ? {
+          onboarding: profileExtensions.onboarding as ProfileMetricsPayload["onboarding"],
+          onboardingCompletedAt: String(profileExtensions.onboardingCompletedAt ?? ""),
+        }
+      : profileExtensions.onboardingCompletedAt
+        ? { onboardingCompletedAt: String(profileExtensions.onboardingCompletedAt) }
+        : {}),
+    ...(Array.isArray(profileExtensions.monthlyCheckIns)
+      ? { monthlyCheckIns: profileExtensions.monthlyCheckIns }
+      : {}),
   };
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;
 }
 
 function decodeMemberProfilePayload(personalGoals: string | undefined): ProfileMetricsPayload | null {
-  if (!personalGoals?.startsWith(PROFILE_METRICS_PREFIX)) return null;
-  try {
-    const parsed = JSON.parse(personalGoals.slice(PROFILE_METRICS_PREFIX.length)) as Partial<ProfileMetricsPayload>;
-    if (!parsed || typeof parsed !== "object") return null;
-    const onboardingRaw = parsed.onboarding;
-    return {
-      sessionsPerWeekTarget: String(parsed.sessionsPerWeekTarget ?? ""),
-      dailyStepsTarget: String(parsed.dailyStepsTarget ?? ""),
-      targetWeight: String(parsed.targetWeight ?? ""),
-      currentDailySteps: String(parsed.currentDailySteps ?? ""),
-      homeVisibility: normalizeHomeVisibilityForStorage(parsed.homeVisibility),
-      favoritePersonalRecords: normalizeFavoritePersonalRecordNames(parsed.favoritePersonalRecords),
-      ...(onboardingRaw && typeof onboardingRaw === "object"
-        ? {
-            onboarding: onboardingRaw as ProfileMetricsPayload["onboarding"],
-            onboardingCompletedAt: String(parsed.onboardingCompletedAt ?? ""),
-          }
+  const parsed = parsePersonalGoalsJson(personalGoals);
+  if (!parsed) return null;
+  const onboardingRaw = parsed.onboarding;
+  return {
+    sessionsPerWeekTarget: String(parsed.sessionsPerWeekTarget ?? ""),
+    dailyStepsTarget: String(parsed.dailyStepsTarget ?? ""),
+    targetWeight: String(parsed.targetWeight ?? ""),
+    currentDailySteps: String(parsed.currentDailySteps ?? ""),
+    homeVisibility: normalizeHomeVisibilityForStorage(
+      parsed.homeVisibility as Partial<Record<HomeSectionKey, boolean>> | undefined,
+    ),
+    favoritePersonalRecords: normalizeFavoritePersonalRecordNames(
+      parsed.favoritePersonalRecords as string[] | undefined,
+    ),
+    ...(onboardingRaw && typeof onboardingRaw === "object"
+      ? {
+          onboarding: onboardingRaw as ProfileMetricsPayload["onboarding"],
+          onboardingCompletedAt: String(parsed.onboardingCompletedAt ?? ""),
+        }
+      : String(parsed.onboardingCompletedAt ?? "").trim()
+        ? { onboardingCompletedAt: String(parsed.onboardingCompletedAt) }
         : {}),
-    };
-  } catch {
-    return null;
-  }
+    ...(Array.isArray(parsed.monthlyCheckIns) ? { monthlyCheckIns: parsed.monthlyCheckIns } : {}),
+  };
 }
 
 function decodeMemberProfileMetrics(personalGoals: string | undefined): ProfileMetricsDraft | null {
@@ -791,6 +814,9 @@ export function MemberPortal(props: MemberPortalProps) {
     clearMemberFocusWorkoutLogId,
     remoteMemberPeriodPlanRows = EMPTY_REMOTE_PERIOD_PLAN_ROWS,
     refreshRemoteHydration,
+    onOpenMonthlyCheckIn,
+    onOpenOnboarding,
+    showOnboardingHomePrompt = false,
   } = props;
   const [messageText, setMessageText] = useState("");
   const [memberChatSendStatus, setMemberChatSendStatus] = useState<string | null>(null);
@@ -894,6 +920,24 @@ export function MemberPortal(props: MemberPortalProps) {
   const periodPlanSwapsDirtyRef = useRef(false);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [programLibraryMenuId, setProgramLibraryMenuId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!programLibraryMenuId) return;
+    const closeMenu = (event: MouseEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("[data-program-library-menu]")) return;
+      setProgramLibraryMenuId(null);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setProgramLibraryMenuId(null);
+    };
+    document.addEventListener("mousedown", closeMenu);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeMenu);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [programLibraryMenuId]);
   const [libraryActionStatus, setLibraryActionStatus] = useState<string | null>(null);
   const [showLibraryHiddenSection, setShowLibraryHiddenSection] = useState(false);
   const [showLibraryArchivedSection, setShowLibraryArchivedSection] = useState(false);
@@ -927,6 +971,13 @@ export function MemberPortal(props: MemberPortalProps) {
     currentUserRole === "member"
       ? currentMemberByEmail ?? viewedMember ?? null
       : viewedMember ?? members[0] ?? null;
+  const monthlyCheckInPrompt = useMemo(() => {
+    if (!editableMember || currentUserRole !== "member") return null;
+    if (!shouldPromptMonthlyCheckIn(editableMember, currentUserRole)) return null;
+    const window = resolveCheckInWindow();
+    if (!window) return null;
+    return { window, copy: buildCheckInNotificationCopy(window) };
+  }, [editableMember, currentUserRole]);
   const activeMemberId = editableMember?.id ?? memberViewId;
   const relatedMemberIds = useMemo(() => {
     const collectedIds = new Set<string>();
@@ -4114,15 +4165,61 @@ export function MemberPortal(props: MemberPortalProps) {
                 title="Hjem"
                 description="Kalender, planlagte økter og snarveier — et raskt overblikk over treningsuken din."
               />
-            <Card className="min-w-0 w-full p-4 sm:p-6 flex flex-col gap-5 sm:gap-6">
-              {!isMemberLimited ? (
-              <div className="order-2 flex items-end justify-between gap-3">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Snarveier</div>
-                </div>
-              </div>
+              {showOnboardingHomePrompt && onOpenOnboarding ? (
+                <Card
+                  className="border p-4 sm:p-5"
+                  style={{ borderColor: "rgba(20,184,166,0.35)", background: "linear-gradient(135deg, rgba(20,184,166,0.08) 0%, rgba(236,72,153,0.06) 100%)" }}
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="rounded-xl p-2 text-white shadow-sm"
+                        style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                      >
+                        <UserCircle2 className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Oppstartsskjema</div>
+                        <div className="mt-0.5 text-base font-semibold text-slate-900">Fortell oss litt om deg</div>
+                        <p className="mt-1 text-sm text-slate-600">Fyll ut én gang — tar ca. 3–5 minutter. Treneren bruker svarene på kundekortet ditt.</p>
+                      </div>
+                    </div>
+                    <GradientButton type="button" onClick={onOpenOnboarding} className="w-full shrink-0 sm:w-auto">
+                      Start skjema
+                    </GradientButton>
+                  </div>
+                </Card>
               ) : null}
-              <div className="order-2 grid w-full auto-rows-fr items-stretch gap-4 lg:grid-cols-2">
+              {monthlyCheckInPrompt && onOpenMonthlyCheckIn ? (
+                <Card
+                  className="border p-4 sm:p-5"
+                  style={{ borderColor: "rgba(20,184,166,0.35)", background: "linear-gradient(135deg, rgba(20,184,166,0.08) 0%, rgba(236,72,153,0.06) 100%)" }}
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="rounded-xl p-2 text-white shadow-sm"
+                        style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                      >
+                        <ClipboardPenLine className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Månedlig sjekk-inn</div>
+                        <div className="mt-0.5 text-base font-semibold text-slate-900">{monthlyCheckInPrompt.copy.text}</div>
+                        <p className="mt-1 text-sm text-slate-600">{monthlyCheckInPrompt.copy.detail}</p>
+                        <p className="mt-1 text-xs font-medium text-slate-500">
+                          {monthlyCheckInPrompt.window.daysRemaining} dager igjen · ca. 2 min
+                        </p>
+                      </div>
+                    </div>
+                    <GradientButton type="button" onClick={onOpenMonthlyCheckIn} className="w-full shrink-0 sm:w-auto">
+                      Start sjekk-inn
+                    </GradientButton>
+                  </div>
+                </Card>
+              ) : null}
+            <Card className="min-w-0 w-full p-4 sm:p-6 flex flex-col gap-5 sm:gap-6">
+              <div className="order-2 w-full">
                   <div className="flex h-full min-w-0 flex-col rounded-2xl border bg-white p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
@@ -4155,32 +4252,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                   )}
                 </div>
-                {!isMemberLimited ? (
-                  <div className="flex h-full min-w-0 flex-col rounded-2xl border bg-white p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="rounded-xl p-2 text-white shadow-sm"
-                        style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                      >
-                        <Sparkles className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold text-slate-800">Hurtighandlinger</div>
-                        <div className="text-xs text-slate-500">Rask tilgang</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                    {!isMemberLimited ? (
-                      <>
-                        <OutlineButton onClick={() => setMemberTab("messages")} className="w-full sm:w-auto">Send melding til PT</OutlineButton>
-                        <OutlineButton onClick={() => setMemberTab("progress")} className="w-full sm:w-auto">Se fremgang</OutlineButton>
-                      </>
-                    ) : null}
-                  </div>
-                </div>
-                ) : null}
+                
               </div>
               <div className="order-1 grid gap-4">
                 <div className="min-w-0 w-full overflow-hidden rounded-2xl border bg-slate-50 p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -4585,7 +4657,8 @@ export function MemberPortal(props: MemberPortalProps) {
                             ) : null}
                             <div className="mt-0.5 text-[10px] text-slate-400">{program.createdAt}</div>
                           </div>
-                          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                          <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:flex-nowrap sm:items-center">
+                            <div className="flex flex-nowrap items-center justify-end gap-1">
                             <OutlineButton
                               className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
                               onClick={() => setExpandedProgramId((prev) => (prev === program.id ? null : program.id))}
@@ -4595,7 +4668,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                 <span>{isExpanded ? "Skjul" : "Vis"}</span>
                               </span>
                             </OutlineButton>
-                            <OutlineButton className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight" onClick={() => handlePrintProgram(program)}> 
+                            <OutlineButton className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight" onClick={() => handlePrintProgram(program)}>
                               <span className="inline-flex items-center justify-center gap-1">
                                 <Printer className="h-3 w-3" />
                                 <span>PDF</span>
@@ -4616,71 +4689,76 @@ export function MemberPortal(props: MemberPortalProps) {
                                 <span>Start</span>
                               </span>
                             </GradientButton>
-                            <OutlineButton
-                              type="button"
-                              className={`!min-h-7 !px-1.5 !py-1 !text-[10px] !leading-tight ${isLibraryMenuOpen ? "!border-teal-300 !bg-teal-50" : ""}`}
-                              onClick={() => setProgramLibraryMenuId((prev) => (prev === program.id ? null : program.id))}
-                              aria-label={isLibraryMenuOpen ? "Skjul programvalg" : "Flere programvalg"}
-                              title={isLibraryMenuOpen ? "Skjul valg" : "Mer"}
-                            >
-                              <MoreHorizontal className="h-3.5 w-3.5" aria-hidden />
-                            </OutlineButton>
-                            {isLibraryMenuOpen ? (
-                              <>
-                          <OutlineButton
-                            type="button"
-                            className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
-                            onClick={() => {
-                              updateProgramMemberLibraryStatus(program.id, "hidden");
-                              setLibraryActionStatus("Programmet er skjult fra oversikten.");
-                              setProgramLibraryMenuId(null);
-                            }}
-                          >
-                            <span className="inline-flex items-center gap-1">
-                              <EyeOff className="h-3 w-3" />
-                              <span>Skjul</span>
-                            </span>
-                          </OutlineButton>
-                          <OutlineButton
-                            type="button"
-                            className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
-                            onClick={() => {
-                              updateProgramMemberLibraryStatus(program.id, "archived");
-                              setLibraryActionStatus("Programmet er arkivert.");
-                              setProgramLibraryMenuId(null);
-                            }}
-                          >
-                            <span className="inline-flex items-center gap-1">
-                              <Archive className="h-3 w-3" />
-                              <span>Arkiver</span>
-                            </span>
-                          </OutlineButton>
-                          {program.programCreatedBy === "member" ? (
-                            <DangerButton
-                              type="button"
-                              className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
-                              onClick={() =>
-                                setConfirmDialog({
-                                  title: "Slette program?",
-                                  message: `Dette sletter «${program.title.trim()}» fra biblioteket og tilhørende økter som er logget på dette programmet.`,
-                                  confirmLabel: "Slett",
-                                  tone: "danger",
-                                  onConfirm: () => {
-                                    deleteProgramById(program.id);
-                                    setLibraryActionStatus("Programmet er slettet.");
-                                    setProgramLibraryMenuId(null);
-                                  },
-                                })
-                              }
-                            >
-                              <span className="inline-flex items-center gap-1">
-                                <Trash2 className="h-3 w-3" />
-                                <span>Slett</span>
-                              </span>
-                            </DangerButton>
-                          ) : null}
-                              </>
-                            ) : null}
+                            <div className="relative shrink-0" data-program-library-menu>
+                              <OutlineButton
+                                type="button"
+                                className={`!min-h-7 !px-1.5 !py-1 !text-[10px] !leading-tight ${isLibraryMenuOpen ? "!border-teal-300 !bg-teal-50" : ""}`}
+                                onClick={() => setProgramLibraryMenuId((prev) => (prev === program.id ? null : program.id))}
+                                aria-label={isLibraryMenuOpen ? "Lukk meny" : "Flere valg"}
+                                aria-expanded={isLibraryMenuOpen}
+                                title="Mer"
+                              >
+                                <MoreHorizontal className="h-3.5 w-3.5" aria-hidden />
+                              </OutlineButton>
+                              {isLibraryMenuOpen ? (
+                                <div
+                                  className="absolute right-0 top-[calc(100%+4px)] z-30 w-44 overflow-hidden rounded-xl border bg-white py-1 shadow-lg ring-1 ring-black/5"
+                                  style={{ borderColor: "rgba(15,23,42,0.1)" }}
+                                  role="menu"
+                                >
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                                    onClick={() => {
+                                      updateProgramMemberLibraryStatus(program.id, "hidden");
+                                      setLibraryActionStatus("Programmet er skjult fra oversikten.");
+                                      setProgramLibraryMenuId(null);
+                                    }}
+                                  >
+                                    <EyeOff className="h-4 w-4 shrink-0 text-slate-500" />
+                                    Skjul fra oversikt
+                                  </button>
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                                    onClick={() => {
+                                      updateProgramMemberLibraryStatus(program.id, "archived");
+                                      setLibraryActionStatus("Programmet er arkivert.");
+                                      setProgramLibraryMenuId(null);
+                                    }}
+                                  >
+                                    <Archive className="h-4 w-4 shrink-0 text-slate-500" />
+                                    Arkiver
+                                  </button>
+                                  {program.programCreatedBy === "member" ? (
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-rose-600 hover:bg-rose-50"
+                                      onClick={() => {
+                                        setProgramLibraryMenuId(null);
+                                        setConfirmDialog({
+                                          title: "Slette program?",
+                                          message: `Dette sletter «${program.title.trim()}» fra biblioteket og tilhørende økter som er logget på dette programmet.`,
+                                          confirmLabel: "Slett",
+                                          tone: "danger",
+                                          onConfirm: () => {
+                                            deleteProgramById(program.id);
+                                            setLibraryActionStatus("Programmet er slettet.");
+                                          },
+                                        });
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4 shrink-0" />
+                                      Slett program
+                                    </button>
+                                  ) : null}
+                                </div>
+                              ) : null}
+                            </div>
+                            </div>
                           </div>
                         </div>
 

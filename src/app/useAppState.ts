@@ -18,6 +18,7 @@ import {
   type StartWorkoutModeOptions,
   type UpdateMemberInput,
 } from "../services/appRepository";
+import { pickBestPersonalGoals } from "./memberProfileGoals";
 import { notifyInspirationItemsChanged, saveInspirationItemsToStorage } from "./inspirationStorage";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { fetchExercisesFromSupabase, fetchHydratedMemberData, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
@@ -77,6 +78,8 @@ function mergeTwoMemberSnapshots(primary: Member, secondary: Member): Member {
   const pInv = primary.invitedAt?.trim();
   const sInv = secondary.invitedAt?.trim();
   merged.invitedAt = sInv || pInv || "";
+  merged.personalGoals =
+    pickBestPersonalGoals([primary.personalGoals, secondary.personalGoals, merged.personalGoals]) || merged.personalGoals;
   return merged;
 }
 
@@ -549,6 +552,8 @@ export function useAppState() {
                   const remoteInv = member.invitedAt?.trim();
                   const localInv = localMember.invitedAt?.trim();
                   mergedRow.invitedAt = remoteInv || localInv || "";
+                  mergedRow.personalGoals =
+                    pickBestPersonalGoals([localMember.personalGoals, member.personalGoals]) || mergedRow.personalGoals;
                   return mergedRow;
                 });
               } else {

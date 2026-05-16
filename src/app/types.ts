@@ -8,7 +8,6 @@ export type TrainerTab =
   | "programs"
   | "exerciseBank"
   | "admin"
-  | "calendar"
   | "inspiration"
   | "statistics"
   | "settings";

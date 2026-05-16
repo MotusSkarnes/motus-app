@@ -1,45 +1,44 @@
-import { formatOnboardingSummaryLines, resolveMemberOnboarding } from "../app/memberOnboarding";
+import { formatCheckInSummaryLines, resolveLatestMonthlyCheckIn } from "../app/memberMonthlyCheckIn";
 import type { Member } from "../app/types";
 import { Card } from "../app/ui";
 
-type MemberOnboardingSummaryProps = {
+type MemberMonthlyCheckInSummaryProps = {
   member: Member;
-  allMembers?: Member[];
   variant?: "card" | "inline";
   tone?: "light" | "dark";
   className?: string;
 };
 
-export function MemberOnboardingSummary({
+export function MemberMonthlyCheckInSummary({
   member,
-  allMembers,
   variant = "card",
   tone = "light",
   className = "",
-}: MemberOnboardingSummaryProps) {
-  const onboarding = resolveMemberOnboarding(member, allMembers);
+}: MemberMonthlyCheckInSummaryProps) {
+  const checkIn = resolveLatestMonthlyCheckIn(member.personalGoals);
   const isDark = tone === "dark";
-  if (!onboarding) {
+
+  if (!checkIn) {
     const empty = (
       <p className={`text-sm ${isDark ? "text-white/75" : "text-slate-500"} ${className}`}>
-        Medlemmet har ikke fullført oppstartsskjema ennå.
+        Ingen månedlig sjekk-inn registrert ennå.
       </p>
     );
     return variant === "card" ? <Card className={`p-4 ${className}`}>{empty}</Card> : empty;
   }
 
-  const lines = formatOnboardingSummaryLines(onboarding);
-  const completedLabel = onboarding.completedAt
-    ? new Date(onboarding.completedAt).toLocaleDateString("nb-NO", { day: "numeric", month: "short", year: "numeric" })
-    : null;
+  const lines = formatCheckInSummaryLines(checkIn);
+  const completedLabel = new Date(checkIn.completedAt).toLocaleDateString("nb-NO", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 
   const content = (
     <div className={`space-y-3 ${className}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h4 className={`text-sm font-semibold ${isDark ? "text-white" : "text-slate-900"}`}>Oppstartsskjema</h4>
-        {completedLabel ? (
-          <span className={`text-xs ${isDark ? "text-white/70" : "text-slate-500"}`}>Fullført {completedLabel}</span>
-        ) : null}
+        <h4 className={`text-sm font-semibold ${isDark ? "text-white" : "text-slate-900"}`}>Månedlig sjekk-inn</h4>
+        <span className={`text-xs ${isDark ? "text-white/70" : "text-slate-500"}`}>Fullført {completedLabel}</span>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         {lines.map((line) => (

@@ -37,12 +37,15 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     clearMemberFocusInspirationItemId,
     memberFocusWorkoutLogId,
     clearMemberFocusWorkoutLogId,
+    memberCheckInOverlayOpen,
+    setMemberCheckInOverlayOpen,
   } = useNotifications({
     messages: state.appState.messages,
     programs: state.appState.programs,
     logs: state.appState.logs,
     members: state.appState.members,
     memberViewId: state.appState.memberViewId,
+    currentUserRole: state.appState.currentUser?.role,
     setMemberTab: state.setMemberTab,
     onTrainerOpenMessage: (memberId) => {
       state.patchState({ selectedMemberId: memberId });
@@ -50,6 +53,10 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
       setOpenCustomerMessagesSignal((prev) => prev + 1);
     },
     onTrainerOpenCustomers: () => {
+      state.setTrainerTab("customers");
+    },
+    onTrainerOpenMemberForm: (memberId) => {
+      state.patchState({ selectedMemberId: memberId });
       state.setTrainerTab("customers");
     },
   });
@@ -144,6 +151,8 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     clearMemberFocusInspirationItemId,
     memberFocusWorkoutLogId,
     clearMemberFocusWorkoutLogId,
+    memberCheckInOverlayOpen,
+    setMemberCheckInOverlayOpen,
     remoteMemberPeriodPlanRows: state.remoteMemberPeriodPlanRows,
     refreshRemoteHydration: state.refreshRemoteHydration,
   });

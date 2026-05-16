@@ -760,6 +760,12 @@ async function persistProgram(
   return { ok: true };
 }
 
+const pendingMemberPersists = new Map<string, Promise<void>>();
+
+export function waitForMemberPersist(memberId: string): Promise<void> {
+  return pendingMemberPersists.get(memberId.trim()) ?? Promise.resolve();
+}
+
 async function persistMember(member: Member) {
   if (!supabaseClient) return;
   const normalizedEmail = member.email.trim().toLowerCase();
@@ -2189,7 +2195,11 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.updateMember(state, input);
     const updatedMember = nextState.members.find((member) => member.id === input.memberId);
     if (updatedMember) {
-      void persistMember(updatedMember);
+      const memberId = updatedMember.id.trim();
+      const persistPromise = persistMember(updatedMember).finally(() => {
+        pendingMemberPersists.delete(memberId);
+      });
+      pendingMemberPersists.set(memberId, persistPromise);
     }
     return nextState;
   },
