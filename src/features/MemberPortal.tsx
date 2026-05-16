@@ -4423,9 +4423,11 @@ export function MemberPortal(props: MemberPortalProps) {
               <MemberTabHero
                 title="Trening"
                 description="Mine programmer, periodeplan og egen økt — alt samlet på ett sted."
-              >
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Mine treningsprogram</p>
-                <div className="mt-2 space-y-2">
+              />
+              <Card className="p-4 sm:p-5">
+                <h3 className="text-sm font-semibold text-slate-900">Mine treningsprogram</h3>
+                <p className="mt-0.5 text-xs text-slate-500">Enkel oversikt over programmene dine.</p>
+                <div className="mt-3 space-y-2">
                   {memberAssignedPrograms.length === 0 ? (
                     <EmptyState
                       icon="📋"
@@ -4703,7 +4705,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                   ) : null}
                 </div>
-              </MemberTabHero>
+              </Card>
               {!isMemberLimited ? (
               <Card className="order-last p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -5602,16 +5604,15 @@ export function MemberPortal(props: MemberPortalProps) {
             <div className="space-y-4">
               <MemberTabHero
                 title="Fremgang"
-                description="Utvikling, PR-er og treningsflyt — streaks og personlige rekorder."
-              >
-                <div>
-                  <div className="text-sm font-semibold text-slate-800">Streaks og achievements</div>
-                  <div className="mt-1 text-xs text-slate-500">
-                    Små milepæler som holder motivasjonen oppe. Nivå {achievementLevel} av {achievementMaxLevel}
-                    {hasCompletedAllAchievementLevels ? " · Maksnivå nådd ✨" : ""}
-                  </div>
-                </div>
-                <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                description="Utvikling, PR-er og treningsflyt — streaks, personlige rekorder og muskelfordeling."
+              />
+              <Card className="p-4 sm:p-5">
+                <h3 className="text-sm font-semibold text-slate-900">Streaks og achievements</h3>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Små milepæler som holder motivasjonen oppe. Nivå {achievementLevel} av {achievementMaxLevel}
+                  {hasCompletedAllAchievementLevels ? " · Maksnivå nådd ✨" : ""}
+                </p>
+                <div className="mt-3 rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Streak denne perioden: {streakWeeks} uker</div>
                   <div className="mt-2 text-xs text-slate-500">Streak teller sammenhengende treningsuker med fullførte økter.</div>
                 </div>
@@ -5639,11 +5640,12 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                   ))}
                 </div>
+              </Card>
 
-                <div className="mt-6 border-t pt-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="text-sm font-semibold text-slate-800">Personlige rekorder</div>
-                  <div className="mt-1 text-xs text-slate-500">Stjernemerk opptil tre rekorder du vil fremheve først.</div>
-                  <div className="mt-4 space-y-3">
+              <Card className="p-4 sm:p-5">
+                <h3 className="text-sm font-semibold text-slate-900">Personlige rekorder</h3>
+                <p className="mt-0.5 text-xs text-slate-500">Stjernemerk opptil tre rekorder du vil fremheve først.</p>
+                <div className="mt-4 space-y-3">
                   {personalRecords.length === 0 ? (
                     <EmptyState
                       icon="🏅"
@@ -5683,8 +5685,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     </OutlineButton>
                   ) : null}
                 </div>
-                </div>
-              </MemberTabHero>
+              </Card>
 
               <MuscleSplitCard
                 stats={muscleSplitStats}

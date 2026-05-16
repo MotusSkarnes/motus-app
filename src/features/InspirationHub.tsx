@@ -37,11 +37,13 @@ type InspirationItem = {
   periodPlanTemplate?: PeriodSchedulePlan;
 };
 
-const CATEGORY_META: Record<InspirationCategory, { label: string; plural: string; icon: typeof Soup; accent: string; image: string }> = {
-  recipes: { label: "Oppskrift", plural: "Oppskrifter", icon: Soup, accent: "bg-emerald-50 text-emerald-800 ring-emerald-100", image: "linear-gradient(135deg,#d1fae5,#ffffff,#fce7f3)" },
-  programs: { label: "Trening", plural: "Treningsprogram", icon: ClipboardList, accent: "bg-sky-50 text-sky-800 ring-sky-100", image: "linear-gradient(135deg,#cffafe,#f8fafc,#fbcfe8)" },
-  tips: { label: "Tips", plural: "Råd og tips", icon: Lightbulb, accent: "bg-amber-50 text-amber-800 ring-amber-100", image: "linear-gradient(135deg,#fef3c7,#ffffff,#ccfbf1)" },
-  news: { label: "Info", plural: "Info fra senteret", icon: Newspaper, accent: "bg-pink-50 text-pink-800 ring-pink-100", image: "linear-gradient(135deg,#fce7f3,#ffffff,#ccfbf1)" },
+const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
+
+const CATEGORY_META: Record<InspirationCategory, { label: string; plural: string; icon: typeof Soup }> = {
+  recipes: { label: "Oppskrift", plural: "Oppskrifter", icon: Soup },
+  programs: { label: "Trening", plural: "Treningsprogram", icon: ClipboardList },
+  tips: { label: "Tips", plural: "Råd og tips", icon: Lightbulb },
+  news: { label: "Info", plural: "Info fra senteret", icon: Newspaper },
 };
 
 /** Vertikal rekkefølge på inspo-feed (øverst → nederst). */
@@ -652,7 +654,7 @@ export function InspirationHub({
         <button type="button" onClick={() => setExpandedItemId(item.id)} className="flex min-h-0 flex-1 flex-col text-left">
           <div
             className={`w-full shrink-0 overflow-hidden bg-slate-100 ${INSPO_FEED_CARD_IMAGE_CLASS}`}
-            style={!item.imageUrl ? { background: meta.image } : undefined}
+            style={!item.imageUrl ? { background: MOTUS_GRADIENT } : undefined}
           >
             {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
             {!item.imageUrl ? (
@@ -663,7 +665,10 @@ export function InspirationHub({
           </div>
           <div className="flex min-h-0 flex-1 flex-col p-2.5">
             <div className="flex min-h-[1.125rem] items-center justify-between gap-1.5">
-              <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold ring-1 ${meta.accent}`}>
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm"
+                style={{ background: MOTUS_GRADIENT }}
+              >
                 <Icon className="h-2.5 w-2.5" />
                 {item.kind === "periodPlan" ? "Ukesplan" : item.kind === "program" ? "Program" : meta.label}
               </span>
@@ -1026,13 +1031,16 @@ export function InspirationHub({
               <img src={expandedItem.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
             </div>
           ) : (
-            <div className="flex aspect-[4/3] w-full items-center justify-center sm:aspect-[16/10]" style={{ background: detailMeta.image }}>
+            <div className="flex aspect-[4/3] w-full items-center justify-center sm:aspect-[16/10]" style={{ background: MOTUS_GRADIENT }}>
               <DetailIcon className="h-16 w-16 text-white/90 drop-shadow-sm" />
             </div>
           )}
           <div className="p-4 sm:p-6">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${detailMeta.accent}`}>
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold text-white shadow-sm"
+                style={{ background: MOTUS_GRADIENT }}
+              >
                 <DetailIcon className="h-3.5 w-3.5" />
                 {expandedItem.kind === "periodPlan" ? "Ukesplan" : expandedItem.kind === "program" ? "Program" : detailMeta.label}
               </span>
@@ -1158,7 +1166,7 @@ export function InspirationHub({
         className="overflow-hidden rounded-2xl border shadow-sm"
         style={{ borderColor: "rgba(48,227,190,0.20)", background: `linear-gradient(135deg, ${MOTUS.paleMint} 0%, #ffffff 48%, rgba(217,18,120,0.08) 100%)` }}
       >
-        <div className="h-1.5" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
+        <div className="h-1.5" style={{ background: MOTUS_GRADIENT }} />
         <div className="p-4 sm:p-5">
           <h2 className="text-2xl font-bold tracking-tight text-slate-950">Inspirasjon</h2>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">
@@ -1189,7 +1197,10 @@ export function InspirationHub({
             <section key={category} className="min-w-0 overflow-hidden rounded-2xl border bg-white p-3 shadow-sm sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className={`inline-flex shrink-0 rounded-lg p-1.5 ring-1 ${sectionMeta.accent}`}>
+                  <span
+                    className="inline-flex shrink-0 rounded-lg p-1.5 text-white shadow-sm"
+                    style={{ background: MOTUS_GRADIENT }}
+                  >
                     <SectionIcon className="h-4 w-4" />
                   </span>
                   <div className="min-w-0">
@@ -1233,7 +1244,7 @@ export function InspirationHub({
       {canManage ? (
         <div className="min-w-0 rounded-2xl border bg-white p-4 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
           <div className="flex items-center gap-2">
-            <span className="rounded-lg p-2 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
+            <span className="rounded-lg p-2 text-white" style={{ background: MOTUS_GRADIENT }}>
               {editingItemId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             </span>
             <div>
