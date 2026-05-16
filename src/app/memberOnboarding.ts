@@ -119,7 +119,7 @@ export const TRAINER_STRUCTURE_OPTIONS = [
 ] as const;
 
 export const ONBOARDING_PAGE_THEMES = [
-  { title: "Målsetninger", subtitle: "Hva vil du oppnå med treningen?" },
+  { title: "Målsetninger", subtitle: "PT bruker svarene dine til å lage et treningsprogram tilpasset deg." },
   { title: "Treningsnivå", subtitle: "Hvor er du i dag?" },
   { title: "Treningsvaner", subtitle: "Hvor ofte og hvordan vil du trene?" },
   { title: "Motivasjon & energi", subtitle: "Hva driver deg — og hvordan føles kroppen?" },

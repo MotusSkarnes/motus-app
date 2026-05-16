@@ -53,7 +53,7 @@ const INSPO_CARD_DESCRIPTION_MAX = 100;
 const INSPO_CARD_TITLE_MAX = 72;
 const INSPO_FEED_CARD_WIDTH_CLASS = "w-52 sm:w-56";
 const INSPO_FEED_CARD_HEIGHT_CLASS = "h-[22.5rem] sm:h-[23.5rem]";
-const INSPO_FEED_CARD_IMAGE_CLASS = "min-h-[9rem] flex-1 sm:min-h-[9.5rem]";
+const INSPO_FEED_CARD_IMAGE_CLASS = "h-[10rem] sm:h-[10.5rem]";
 const INSPO_FEED_CARD_ACTION_CLASS = "!min-h-8 !px-2.5 !py-1.5 !text-[11px] !leading-tight";
 
 const INSPIRATION_FEED_SECTIONS: readonly { category: InspirationCategory; title: string }[] = [
@@ -684,7 +684,7 @@ export function InspirationHub({
         ) : null}
         <button type="button" onClick={() => setExpandedItemId(item.id)} className="flex min-h-0 flex-1 flex-col text-left">
           <div
-            className={`w-full min-h-0 overflow-hidden bg-slate-100 ${INSPO_FEED_CARD_IMAGE_CLASS}`}
+            className={`w-full shrink-0 overflow-hidden bg-slate-100 ${INSPO_FEED_CARD_IMAGE_CLASS}`}
             style={!item.imageUrl ? { background: MOTUS_GRADIENT } : undefined}
           >
             {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
@@ -712,6 +712,7 @@ export function InspirationHub({
               {item.description || "\u00a0"}
             </p>
           </div>
+          <div className="min-h-0 flex-1" aria-hidden />
         </button>
         <div className="shrink-0 border-t border-slate-100 px-2.5 py-1.5">
           <OutlineButton onClick={() => setExpandedItemId(item.id)} className={`w-full ${INSPO_FEED_CARD_ACTION_CLASS}`}>

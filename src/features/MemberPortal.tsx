@@ -4181,7 +4181,9 @@ export function MemberPortal(props: MemberPortalProps) {
                       <div>
                         <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Oppstartsskjema</div>
                         <div className="mt-0.5 text-base font-semibold text-slate-900">Fortell oss litt om deg</div>
-                        <p className="mt-1 text-sm text-slate-600">Fyll ut én gang — tar ca. 3–5 minutter. Treneren bruker svarene på kundekortet ditt.</p>
+                        <p className="mt-1 text-sm text-slate-600">
+                          Fyll ut én gang — tar ca. 3–5 minutter. PT bruker svarene dine til å lage et treningsprogram tilpasset deg.
+                        </p>
                       </div>
                     </div>
                     <GradientButton type="button" onClick={onOpenOnboarding} className="w-full shrink-0 sm:w-auto">

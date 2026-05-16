@@ -428,6 +428,7 @@ export function MemberLayout({
         )}
       </div>
 
+      {!onboardingGateOpen && !memberCheckInOverlayOpen ? (
       <div
         className="fixed inset-x-0 bottom-0 z-[9999] border-t bg-white/95 px-2 pt-2 backdrop-blur lg:hidden"
         style={{ borderColor: "rgba(15,23,42,0.08)", paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))" }}
@@ -460,6 +461,7 @@ export function MemberLayout({
           </div>
         </div>
       </div>
+      ) : null}
 
       {onboardingGateOpen && activeMember && !onboardingCompleted ? (
         <MemberOnboarding

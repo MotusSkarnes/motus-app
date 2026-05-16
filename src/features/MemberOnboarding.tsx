@@ -139,7 +139,7 @@ export function MemberOnboarding({ memberName, onComplete, onClose }: MemberOnbo
   }
 
   return (
-    <div className="fixed inset-0 z-[80] flex flex-col bg-white">
+    <div className="fixed inset-0 z-[10050] flex flex-col bg-white">
       <div className="h-1.5 shrink-0" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
       <div className="mx-auto flex w-full max-w-lg flex-1 flex-col px-4 py-5 sm:px-6">
         <div className="mb-4 flex items-center justify-between gap-3 text-xs font-semibold text-slate-500">
@@ -411,7 +411,10 @@ export function MemberOnboarding({ memberName, onComplete, onClose }: MemberOnbo
             {error ? <p className="mt-3 text-sm text-rose-600">{error}</p> : null}
           </div>
 
-          <div className="flex gap-2 border-t border-slate-100 px-4 py-4 sm:px-5">
+          <div
+            className="flex gap-2 border-t border-slate-100 px-4 py-4 sm:px-5"
+            style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+          >
             <OutlineButton
               type="button"
               onClick={() => {
