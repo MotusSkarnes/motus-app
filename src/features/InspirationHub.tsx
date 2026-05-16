@@ -63,16 +63,6 @@ const INSPIRATION_FEED_SECTIONS: readonly { category: InspirationCategory; title
   { category: "tips", title: "Råd og tips" },
 ];
 
-const DAY_LABELS: Record<WeekdayPlanKey, string> = {
-  monday: "Mandag",
-  tuesday: "Tirsdag",
-  wednesday: "Onsdag",
-  thursday: "Torsdag",
-  friday: "Fredag",
-  saturday: "Lørdag",
-  sunday: "Søndag",
-};
-
 const BODY_STYLE_OPTIONS: Array<{ value: InspirationBodyStyle; label: string; className: string }> = [
   { value: "normal", label: "Vanlig", className: "font-normal not-italic" },
   { value: "bold", label: "Bold", className: "font-bold not-italic" },
@@ -1126,12 +1116,15 @@ export function InspirationHub({
 
             {expandedItem.periodPlanTemplate ? (
               <div className="mt-6 grid gap-2 sm:grid-cols-2">
-                {Object.entries(expandedItem.periodPlanTemplate.weeklyPlans[0]?.days ?? {}).map(([day, entry]) => (
-                  <div key={day} className="rounded-xl bg-slate-50 px-3 py-2.5 text-sm ring-1 ring-slate-100">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{DAY_LABELS[day as WeekdayPlanKey]}</div>
+                {WEEKDAY_PLAN_FIELDS.map((field) => {
+                  const entry = expandedItem.periodPlanTemplate?.weeklyPlans[0]?.days[field.key]?.trim() ?? "";
+                  return (
+                  <div key={field.key} className="rounded-xl bg-slate-50 px-3 py-2.5 text-sm ring-1 ring-slate-100">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{field.label}</div>
                     <div className="mt-1 font-medium text-slate-800">{entry || "Ingen plan"}</div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : null}
 
@@ -1357,6 +1350,25 @@ export function InspirationHub({
                 : "Detaljer som vises under Les mer"
             }
           />
+          {categoryDraft === "news" ? (
+            <div className="mt-2 inline-flex rounded-xl border bg-slate-50 p-1" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              {BODY_STYLE_OPTIONS.map((option) => {
+                const active = bodyStyle === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setBodyStyle(option.value)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                      active ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-200" : "text-slate-600 hover:bg-white/70"
+                    } ${option.className}`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
 
           {categoryDraft === "programs" && kindDraft === "program" ? (
             <div className="mt-4 space-y-3 rounded-xl border border-sky-100 bg-sky-50/50 p-3">
