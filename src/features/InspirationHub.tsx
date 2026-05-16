@@ -356,6 +356,9 @@ type InspirationHubProps = {
   exerciseBank?: Exercise[];
   onAddProgram?: (program: ProgramTemplateInput) => void;
   onAddPeriodPlan?: (plan: PeriodSchedulePlan) => void;
+  /** Åpne detalj for innlegg (f.eks. fra varsel). */
+  focusItemId?: string | null;
+  onFocusItemHandled?: () => void;
 };
 
 export function InspirationHub({
@@ -366,6 +369,8 @@ export function InspirationHub({
   exerciseBank = [],
   onAddProgram,
   onAddPeriodPlan,
+  focusItemId = null,
+  onFocusItemHandled,
 }: InspirationHubProps) {
   const [items, setItems] = useState<InspirationItem[]>(() => loadInspirationItems());
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
@@ -479,6 +484,14 @@ export function InspirationHub({
     window.addEventListener(INSPIRATION_CHANGED_EVENT, syncFromRemote);
     return () => window.removeEventListener(INSPIRATION_CHANGED_EVENT, syncFromRemote);
   }, []);
+
+  useEffect(() => {
+    if (!focusItemId?.trim()) return;
+    const match = items.some((item) => item.id === focusItemId);
+    if (!match) return;
+    setExpandedItemId(focusItemId);
+    onFocusItemHandled?.();
+  }, [focusItemId, items, onFocusItemHandled]);
 
   async function commitItems(next: InspirationItem[]): Promise<{ ok: true; message: string } | { ok: false }> {
     const result = await persistInspirationItems(next);
@@ -873,7 +886,7 @@ export function InspirationHub({
         body: nextBody,
         tag: tag.trim() || CATEGORY_META[categoryDraft].label,
         author: authorName.trim() || "Motus",
-        createdAt: now.toISOString().slice(0, 10),
+        createdAt: now.toISOString(),
         imageUrl: storedImageUrl,
         programTemplate,
         periodPlanTemplate,

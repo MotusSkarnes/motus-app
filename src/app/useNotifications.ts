@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  buildInspirationNotificationAlertCopy,
+  parseInspirationNotificationTimestamp,
+} from "./inspirationNotifications";
+import {
   INSPIRATION_CHANGED_EVENT,
   loadInspirationNotificationItems,
   refreshInspirationNotificationItemsFromRemote,
@@ -23,6 +27,7 @@ export type MemberAlert = {
   targetTab: "messages" | "programs" | "progress" | "inspiration";
   isUnread: boolean;
   isOpened: boolean;
+  inspirationItemId?: string;
 };
 
 export type TrainerAlert = {
@@ -136,6 +141,7 @@ export function useNotifications({
     }
   });
   const [inspirationItems, setInspirationItems] = useState<InspirationNotificationItem[]>(() => loadInspirationNotificationItems());
+  const [memberFocusInspirationItemId, setMemberFocusInspirationItemId] = useState<string | null>(null);
 
   const syncInspirationItemsFromStorage = useCallback(() => {
     setInspirationItems(loadInspirationNotificationItems());
@@ -371,17 +377,20 @@ export function useNotifications({
     () =>
       inspirationItems
         .filter((item) => !seenMemberInspirationIds.includes(item.id))
-        .map((item, index) => ({
-          id: `member-inspiration-${item.id}`,
-          kind: "inspiration" as const,
-          title: "Nytt i inspirasjon",
-          text: item.title,
-          detail: item.description || "Åpne inspo for å se mer.",
-          timestamp: parseTimestamp(item.createdAt, index + 1),
-          targetTab: "inspiration" as const,
-          unread: true,
-          inspirationId: item.id,
-        })),
+        .map((item, index) => {
+          const copy = buildInspirationNotificationAlertCopy(item);
+          return {
+            id: `member-inspiration-${item.id}`,
+            kind: "inspiration" as const,
+            title: copy.title,
+            text: copy.text,
+            detail: copy.detail,
+            timestamp: parseInspirationNotificationTimestamp(item) || parseTimestamp(item.createdAt, index + 1),
+            targetTab: "inspiration" as const,
+            unread: true,
+            inspirationItemId: item.id,
+          };
+        }),
     [inspirationItems, seenMemberInspirationIds],
   );
 
@@ -522,9 +531,10 @@ export function useNotifications({
         setSeenMemberWorkoutCommentKeys((prev) => Array.from(new Set([...prev, workoutAlert.seenKey])));
       }
     } else if (alert.kind === "inspiration") {
-      const inspirationId = alert.id.replace(/^member-inspiration-/, "");
+      const inspirationId = alert.inspirationItemId ?? alert.id.replace(/^member-inspiration-/, "");
       if (inspirationId) {
         setSeenMemberInspirationIds((prev) => Array.from(new Set([...prev, inspirationId])));
+        setMemberFocusInspirationItemId(inspirationId);
       }
     }
 
@@ -588,5 +598,7 @@ export function useNotifications({
     openTrainerAlert,
     openAlert,
     markMemberInspirationAsSeen,
+    memberFocusInspirationItemId,
+    clearMemberFocusInspirationItemId: () => setMemberFocusInspirationItemId(null),
   };
 }

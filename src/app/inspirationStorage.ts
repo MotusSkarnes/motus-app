@@ -14,6 +14,8 @@ export type InspirationNotificationItem = {
   title: string;
   description: string;
   createdAt: string;
+  category?: string;
+  kind?: string;
 };
 
 export type InspirationSaveResult =
@@ -70,6 +72,8 @@ export function mapRawToInspirationNotificationItems(items: unknown[]): Inspirat
       title: String(item.title ?? ""),
       description: String(item.description ?? ""),
       createdAt: String(item.createdAt ?? ""),
+      category: String(item.category ?? ""),
+      kind: String(item.kind ?? "article"),
     }))
     .filter((item) => item.id.length > 0 && item.title.length > 0);
 }

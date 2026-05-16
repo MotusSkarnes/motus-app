@@ -176,7 +176,14 @@ describe("useNotifications workout comment alerts", () => {
       INSPIRATION_STORAGE_KEY,
       JSON.stringify([
         { id: "default-recipe-1", title: "Gammel", description: "Eksisterer", createdAt: "2026-05-01" },
-        { id: "inspiration-new", title: "Ny oppskrift", description: "Fersk inspo", createdAt: "2026-05-16" },
+        {
+          id: "inspiration-new",
+          title: "Proteinpannekaker",
+          description: "Fersk inspo",
+          createdAt: "2026-05-16",
+          category: "recipes",
+          kind: "article",
+        },
       ]),
     );
 
@@ -186,7 +193,10 @@ describe("useNotifications workout comment alerts", () => {
 
     await waitFor(() => {
       expect(result.current.memberUnreadCount).toBe(1);
-      expect(result.current.memberVisibleAlerts.some((alert) => alert.kind === "inspiration")).toBe(true);
+      const inspoAlert = result.current.memberVisibleAlerts.find((alert) => alert.kind === "inspiration");
+      expect(inspoAlert).toBeDefined();
+      expect(inspoAlert?.title).toBe("Ny oppskrift i inspirasjon");
+      expect(inspoAlert?.detail).toBe("Proteinpannekaker");
     });
   });
 

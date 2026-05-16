@@ -98,6 +98,8 @@ export function buildMemberLayoutProps(input: {
   handleMemberBellToggle: () => void;
   openAlert: MemberLayoutProps["openAlert"];
   markMemberInspirationAsSeen: MemberLayoutProps["markMemberInspirationAsSeen"];
+  memberFocusInspirationItemId: MemberLayoutProps["memberFocusInspirationItemId"];
+  clearMemberFocusInspirationItemId: MemberLayoutProps["clearMemberFocusInspirationItemId"];
   remoteMemberPeriodPlanRows: MemberLayoutProps["remoteMemberPeriodPlanRows"];
   refreshRemoteHydration?: MemberLayoutProps["refreshRemoteHydration"];
 }): MemberLayoutProps {

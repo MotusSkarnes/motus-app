@@ -40,6 +40,8 @@ type MemberLayoutProps = {
   handleMemberBellToggle: () => void;
   openAlert: (alert: MemberAlert) => void;
   markMemberInspirationAsSeen: () => void;
+  memberFocusInspirationItemId: string | null;
+  clearMemberFocusInspirationItemId: () => void;
   remoteMemberPeriodPlanRows: ComponentProps<typeof MemberPortal>["remoteMemberPeriodPlanRows"];
   refreshRemoteHydration?: ComponentProps<typeof MemberPortal>["refreshRemoteHydration"];
 };
@@ -84,6 +86,8 @@ export function MemberLayout({
   handleMemberBellToggle,
   openAlert,
   markMemberInspirationAsSeen,
+  memberFocusInspirationItemId,
+  clearMemberFocusInspirationItemId,
   remoteMemberPeriodPlanRows,
   refreshRemoteHydration,
 }: MemberLayoutProps) {
@@ -305,6 +309,8 @@ export function MemberLayout({
             memberId={inspirationMemberId}
             memberName={appState.currentUser?.name ?? "Medlem"}
             exerciseBank={appState.exercises}
+            focusItemId={memberFocusInspirationItemId}
+            onFocusItemHandled={clearMemberFocusInspirationItemId}
             onAddProgram={(program) => {
               if (!inspirationMemberId) return;
               saveProgramForMember({ ...program, memberId: inspirationMemberId, programCreatedBy: "member", programCreatedByName: appState.currentUser?.name ?? "Medlem" });
