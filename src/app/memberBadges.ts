@@ -1,8 +1,16 @@
+export type BadgeIconId =
+  | "first-session"
+  | "week-streak"
+  | "sessions"
+  | "lift"
+  | "lift-heavy"
+  | "month-goal";
+
 export type MemberBadge = {
   id: string;
   title: string;
   description: string;
-  emoji: string;
+  icon: BadgeIconId;
   unlocked: boolean;
   current: number;
   target: number;
@@ -20,7 +28,7 @@ type BadgeDefinition = {
   id: string;
   title: string;
   description: string;
-  emoji: string;
+  icon: BadgeIconId;
   target: number;
   current: (input: MemberBadgeInput) => number;
 };
@@ -30,7 +38,7 @@ const BADGE_DEFINITIONS: BadgeDefinition[] = [
     id: "first-session",
     title: "Første økt",
     description: "Fullfør din første registrerte økt",
-    emoji: "🚀",
+    icon: "first-session",
     target: 1,
     current: (input) => input.completedSessionCount,
   },
@@ -38,7 +46,7 @@ const BADGE_DEFINITIONS: BadgeDefinition[] = [
     id: "week-streak-4",
     title: "4 uker i rytme",
     description: "Minst én økt per uke, 4 uker på rad",
-    emoji: "🔥",
+    icon: "week-streak",
     target: 4,
     current: (input) => input.streakWeeks,
   },
@@ -46,7 +54,7 @@ const BADGE_DEFINITIONS: BadgeDefinition[] = [
     id: "sessions-10",
     title: "10 økter",
     description: "Logg 10 fullførte økter totalt",
-    emoji: "💪",
+    icon: "sessions",
     target: 10,
     current: (input) => input.completedSessionCount,
   },
@@ -54,7 +62,7 @@ const BADGE_DEFINITIONS: BadgeDefinition[] = [
     id: "lift-50",
     title: "50 kg-løft",
     description: "Løft 50 kg eller mer i ett sett",
-    emoji: "🏋️",
+    icon: "lift",
     target: 50,
     current: (input) => input.maxLiftKg,
   },
@@ -62,7 +70,7 @@ const BADGE_DEFINITIONS: BadgeDefinition[] = [
     id: "lift-100",
     title: "100 kg-løft",
     description: "Løft 100 kg eller mer i ett sett",
-    emoji: "⚡",
+    icon: "lift-heavy",
     target: 100,
     current: (input) => input.maxLiftKg,
   },
@@ -70,7 +78,7 @@ const BADGE_DEFINITIONS: BadgeDefinition[] = [
     id: "week-streak-8",
     title: "8 uker i rytme",
     description: "Hold ukerytmen i 8 uker",
-    emoji: "🌟",
+    icon: "week-streak",
     target: 8,
     current: (input) => input.streakWeeks,
   },
@@ -78,7 +86,7 @@ const BADGE_DEFINITIONS: BadgeDefinition[] = [
     id: "lift-150",
     title: "150 kg-løft",
     description: "Løft 150 kg eller mer i ett sett",
-    emoji: "🦾",
+    icon: "lift-heavy",
     target: 150,
     current: (input) => input.maxLiftKg,
   },
@@ -86,7 +94,7 @@ const BADGE_DEFINITIONS: BadgeDefinition[] = [
     id: "month-goal",
     title: "Månedsmål",
     description: "Nå målet ditt for økter denne måneden",
-    emoji: "📅",
+    icon: "month-goal",
     target: 0,
     current: (input) => input.monthGoalCurrent,
   },
@@ -109,7 +117,7 @@ export function computeMaxLiftKgFromLogs(
 
 export function computeMemberBadges(input: MemberBadgeInput): MemberBadge[] {
   const monthTarget = Math.max(1, input.monthGoalTarget);
-  return BADGE_DEFINITIONS.map((definition) => {
+  const badges = BADGE_DEFINITIONS.map((definition) => {
     const target = definition.id === "month-goal" ? monthTarget : definition.target;
     const current = definition.id === "month-goal" ? input.monthGoalCurrent : definition.current(input);
     const cappedCurrent = Math.min(current, target);
@@ -117,10 +125,11 @@ export function computeMemberBadges(input: MemberBadgeInput): MemberBadge[] {
       id: definition.id,
       title: definition.title,
       description: definition.description,
-      emoji: definition.emoji,
+      icon: definition.icon,
       current: cappedCurrent,
       target,
       unlocked: current >= target,
     };
   });
+  return [...badges].sort((a, b) => Number(b.unlocked) - Number(a.unlocked));
 }

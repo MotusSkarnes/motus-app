@@ -4092,7 +4092,6 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 </Card>
               ) : null}
-              {!isMemberLimited ? <MemberBadgesCarousel badges={memberBadges} /> : null}
             <Card className="min-w-0 w-full p-4 sm:p-6 flex flex-col gap-5 sm:gap-6">
               <div className="order-2 w-full">
                   <div className="flex h-full min-w-0 flex-col rounded-2xl border bg-white p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -4356,6 +4355,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               ) : null}
             </Card>
+              {!isMemberLimited ? <MemberBadgesCarousel badges={memberBadges} /> : null}
             </div>
           ) : null}
 
