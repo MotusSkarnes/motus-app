@@ -95,7 +95,7 @@ export function LoginScreen(props: LoginScreenProps) {
             <div className="mt-2 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
               <div>• Periodeplan med uke-for-uke styring</div>
               <div>• Tildelbare intervallprogrammer</div>
-              <div>• Streaks og achievements nivå 1-10</div>
+              <div>• Ukerytme og treningssteg (1–10)</div>
             </div>
           </div>
         </div>

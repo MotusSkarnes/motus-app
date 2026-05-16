@@ -84,6 +84,13 @@ import {
   WEEKDAY_PLAN_ORDER,
   type PeriodPlanSwapsByPlan,
 } from "../app/periodPlanSwaps";
+import {
+  ACHIEVEMENT_MAX_LEVEL,
+  buildCelebrationCopy,
+  computeMemberProgressState,
+} from "../app/memberProgressGamification";
+import { MemberHabitSummaryCard } from "./MemberHabitSummaryCard";
+import { MemberProgressGoals } from "./MemberProgressGoals";
 import { MemberWeeklyStreakCard } from "./MemberWeeklyStreakCard";
 import { MuscleSplitCard } from "./MuscleSplitCard";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
@@ -1756,16 +1763,6 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }, []);
 
-  function getWeekKey(date: Date): string {
-    const d = new Date(date);
-    const day = (d.getDay() + 6) % 7;
-    d.setDate(d.getDate() - day + 3);
-    const firstThursday = new Date(d.getFullYear(), 0, 4);
-    const firstDay = (firstThursday.getDay() + 6) % 7;
-    firstThursday.setDate(firstThursday.getDate() - firstDay + 3);
-    const week = 1 + Math.round((d.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000));
-    return `${d.getFullYear()}-${String(week).padStart(2, "0")}`;
-  }
   const completedLogs = useMemo(() => memberLogs.filter((log) => log.status === "Fullført"), [memberLogs]);
   const recentCompletedLogs = useMemo(
     () =>
@@ -1828,142 +1825,28 @@ export function MemberPortal(props: MemberPortalProps) {
     () => completedLogs.map((log) => parseLogDate(log.date)).filter((date): date is Date => Boolean(date)),
     [completedLogs],
   );
-  const uniqueTrainingDays = useMemo(() => new Set(completedLogDates.map((date) => date.toDateString())).size, [completedLogDates]);
   const estimatedSessionsThisMonth = useMemo(
     () => completedLogDates.filter((date) => date.getMonth() === nowDate.getMonth() && date.getFullYear() === nowDate.getFullYear()).length,
     [completedLogDates, nowDate],
   );
-  const trainingWeekKeys = useMemo(() => Array.from(new Set(completedLogDates.map((date) => getWeekKey(date)))).sort().reverse(), [completedLogDates]);
-  const streakWeeks = useMemo(() => {
-    if (!trainingWeekKeys.length) return 0;
-    let streak = 1;
-    let current = trainingWeekKeys[0];
-    for (let i = 1; i < trainingWeekKeys.length; i += 1) {
-      const [year, week] = current.split("-").map(Number);
-      const prevWeekDate = new Date(year, 0, 4 + (week - 2) * 7);
-      const expectedPrev = getWeekKey(prevWeekDate);
-      if (trainingWeekKeys[i] !== expectedPrev) break;
-      streak += 1;
-      current = trainingWeekKeys[i];
-    }
-    return streak;
-  }, [trainingWeekKeys]);
-  const activeStreakWeekKeys = useMemo(() => {
-    if (!trainingWeekKeys.length) return new Set<string>();
-    const keys = new Set<string>([trainingWeekKeys[0]]);
-    let current = trainingWeekKeys[0];
-    for (let i = 1; i < trainingWeekKeys.length; i += 1) {
-      const [year, week] = current.split("-").map(Number);
-      const prevWeekDate = new Date(year, 0, 4 + (week - 2) * 7);
-      const expectedPrev = getWeekKey(prevWeekDate);
-      if (trainingWeekKeys[i] !== expectedPrev) break;
-      current = trainingWeekKeys[i];
-      keys.add(current);
-    }
-    return keys;
-  }, [trainingWeekKeys]);
-  const achievementMaxLevel = 10;
-  const achievedLevel = useMemo(() => {
-    let highestUnlockedLevel = 0;
-    for (let level = 1; level <= achievementMaxLevel; level += 1) {
-      const sessionsTarget = 10 + (level - 1) * 5;
-      const streakTarget = 3 + (level - 1);
-      const trainingDaysTarget = 5 + (level - 1) * 2;
-      const firstSessionTarget = level;
-      const isLevelUnlocked =
-        completedLogs.length >= sessionsTarget &&
-        streakWeeks >= streakTarget &&
-        uniqueTrainingDays >= trainingDaysTarget &&
-        completedLogs.length >= firstSessionTarget;
-      if (!isLevelUnlocked) break;
-      highestUnlockedLevel = level;
-    }
-    return highestUnlockedLevel;
-  }, [completedLogs.length, streakWeeks, uniqueTrainingDays]);
-  const achievementLevel = achievedLevel >= achievementMaxLevel ? achievementMaxLevel : achievedLevel + 1;
-  const hasCompletedAllAchievementLevels = achievedLevel >= achievementMaxLevel;
-  const achievements = useMemo(() => {
-    const firstSessionTarget = achievementLevel;
-    const streakTarget = 3 + (achievementLevel - 1);
-    const sessionsTarget = 10 + (achievementLevel - 1) * 5;
-    const trainingDaysTarget = 5 + (achievementLevel - 1) * 2;
-    const levelHint = `(Nivå ${achievementLevel})`;
-    const items: Array<{ id: string; label: string; hint: string; unlocked: boolean; current: number; target: number; icon: string }> = [
-      {
-        id: `first-session-level-${achievementLevel}`,
-        label: "Økter logget",
-        hint: `${levelHint} Logg minst ${firstSessionTarget} fullførte økter`,
-        unlocked: completedLogs.length >= firstSessionTarget,
-        current: completedLogs.length,
-        target: firstSessionTarget,
-        icon: "🚀",
-      },
-      {
-        id: `streak-level-${achievementLevel}`,
-        label: "Ukestreak",
-        hint: `Tren minst én gang i ${streakTarget} uker på rad`,
-        unlocked: streakWeeks >= streakTarget,
-        current: streakWeeks,
-        target: streakTarget,
-        icon: "🔥",
-      },
-      {
-        id: `sessions-level-${achievementLevel}`,
-        label: "Total økter",
-        hint: `${levelHint} Fullfør totalt ${sessionsTarget} økter`,
-        unlocked: completedLogs.length >= sessionsTarget,
-        current: completedLogs.length,
-        target: sessionsTarget,
-        icon: "💪",
-      },
-      {
-        id: `days-level-${achievementLevel}`,
-        label: "Treningsdager",
-        hint: `${levelHint} Tren på ${trainingDaysTarget} ulike dager`,
-        unlocked: uniqueTrainingDays >= trainingDaysTarget,
-        current: uniqueTrainingDays,
-        target: trainingDaysTarget,
-        icon: "📅",
-      },
-    ];
-    return items;
-  }, [achievementLevel, completedLogs.length, streakWeeks, uniqueTrainingDays]);
-  const currentStreakMilestoneTarget = 3 + (achievementLevel - 1);
-  const recentStreakWeeks = useMemo(() => {
-    const trainedSet = new Set(trainingWeekKeys);
-    const monday = new Date(nowDate);
-    const day = (monday.getDay() + 6) % 7;
-    monday.setHours(12, 0, 0, 0);
-    monday.setDate(monday.getDate() - day);
-    const items: Array<{ key: string; shortLabel: string; trained: boolean; inActiveStreak: boolean }> = [];
-    for (let offset = 7; offset >= 0; offset -= 1) {
-      const weekDate = new Date(monday);
-      weekDate.setDate(weekDate.getDate() - offset * 7);
-      const key = getWeekKey(weekDate);
-      const weekNum = Number(key.split("-")[1]);
-      items.push({
-        key,
-        shortLabel: offset === 0 ? "Nå" : `U${weekNum}`,
-        trained: trainedSet.has(key),
-        inActiveStreak: activeStreakWeekKeys.has(key),
-      });
-    }
-    return items;
-  }, [activeStreakWeekKeys, nowDate, trainingWeekKeys]);
-  const streakSubline = useMemo(() => {
-    if (streakWeeks === 0) {
-      return "Fullfør minst én økt i en kalenderuke — da starter ukestreaken din.";
-    }
-    const trainedThisWeek = trainingWeekKeys.includes(getWeekKey(nowDate));
-    if (!trainedThisWeek) {
-      return "Du har fortsatt streak fra tidligere uker. Logg en økt denne uken for å holde den i live.";
-    }
-    if (streakWeeks >= currentStreakMilestoneTarget) {
-      return "Du holder flyten — streak-kravet for dette nivået er oppfylt.";
-    }
-    const remaining = currentStreakMilestoneTarget - streakWeeks;
-    return `Tren også neste ${remaining === 1 ? "uke" : `${remaining} uker`} på rad for å nå streak-målet på nivå ${achievementLevel}.`;
-  }, [achievementLevel, currentStreakMilestoneTarget, nowDate, streakWeeks, trainingWeekKeys]);
+  const memberProgress = useMemo(
+    () =>
+      computeMemberProgressState({
+        completedLogDates,
+        nowDate,
+        sessionsPerWeekTarget: Number(profileSessionsPerWeekTarget) || 0,
+      }),
+    [completedLogDates, nowDate, profileSessionsPerWeekTarget],
+  );
+  const achievementMaxLevel = ACHIEVEMENT_MAX_LEVEL;
+  const achievedLevel = memberProgress.achievedLevel;
+  const achievementLevel = memberProgress.workingLevel;
+  const hasCompletedAllAchievementLevels = memberProgress.hasCompletedAllLevels;
+  const achievements = memberProgress.goals;
+  const streakWeeks = memberProgress.streakWeeks;
+  const streakSubline = memberProgress.streakSubline;
+  const recentStreakWeeks = memberProgress.recentStreakWeeks;
+  const currentStreakMilestoneTarget = memberProgress.streakMilestoneTarget;
 
   const calendarDayLoad = useMemo(() => {
     const byDay = new Map<number, number>();
@@ -3408,49 +3291,6 @@ export function MemberPortal(props: MemberPortalProps) {
       break;
     }
   }
-  const streakChallenges = useMemo(() => {
-    const dayMs = 24 * 60 * 60 * 1000;
-    const today = getStartOfDay(new Date(nowTimestamp));
-    const uniqueDayKeys = Array.from(new Set(completedLogDates.map((date) => getStartOfDay(date).toDateString())));
-    const last7DaysCount = uniqueDayKeys.filter((dayKey) => {
-      const date = new Date(dayKey);
-      return today.getTime() - date.getTime() <= 6 * dayMs;
-    }).length;
-    const sevenDayTarget = 4;
-
-    const sortedUniqueDays = uniqueDayKeys
-      .map((dayKey) => new Date(dayKey))
-      .sort((a, b) => b.getTime() - a.getTime());
-    let streakDays = 0;
-    let cursor = today;
-    for (const day of sortedUniqueDays) {
-      const diffDays = Math.round((cursor.getTime() - day.getTime()) / dayMs);
-      if (diffDays === 0) {
-        streakDays += 1;
-        cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() - 1);
-        continue;
-      }
-      if (diffDays === 1) {
-        streakDays += 1;
-        cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() - 2);
-        continue;
-      }
-      if (streakDays === 0 && diffDays <= 2) {
-        // Allow streak to start if last session was yesterday.
-        streakDays = 1;
-      }
-      break;
-    }
-
-    const monthTargetFromProfile = Number(profileSessionsPerWeekTarget) > 0 ? Number(profileSessionsPerWeekTarget) * 4 : 10;
-    const monthTarget = Math.max(8, Math.min(24, monthTargetFromProfile));
-    const monthProgress = estimatedSessionsThisMonth;
-    return {
-      sevenDay: { current: last7DaysCount, target: sevenDayTarget, unlocked: last7DaysCount >= sevenDayTarget },
-      month: { current: monthProgress, target: monthTarget, unlocked: monthProgress >= monthTarget },
-      streakDays,
-    };
-  }, [completedLogDates, estimatedSessionsThisMonth, nowTimestamp, profileSessionsPerWeekTarget]);
   const customerStatusLabel = (() => {
     const isPtCustomer = viewedMember?.customerType === "PT-kunde";
     const isPremiumCustomer = viewedMember?.membershipType === "Premium";
@@ -4496,45 +4336,9 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               {!isMemberLimited ? (
-              <div className="order-3 w-full rounded-2xl border bg-white p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="rounded-xl p-2 text-white shadow-sm"
-                      style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                    >
-                      <Target className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-slate-800">Streaks & challenges</div>
-                      <div className="text-xs text-slate-500">Motivasjon</div>
-                    </div>
-                  </div>
+              <div className="order-3">
+                  <MemberHabitSummaryCard progress={memberProgress} onOpenProgress={() => setMemberTab("progress")} />
                 </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  <div className="rounded-xl border bg-slate-50 px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="text-xs font-semibold text-slate-600">7-dagers challenge</div>
-                    <div className="mt-1 text-sm font-semibold text-slate-800">
-                      {streakChallenges.sevenDay.current}/{streakChallenges.sevenDay.target} treningsdager
-                    </div>
-                    <div className="mt-1 text-xs text-slate-500">
-                      {streakChallenges.sevenDay.unlocked ? "Badge låst opp ✨" : "Fortsett - du er snart i mål"}
-                    </div>
-                  </div>
-                  <div className="rounded-xl border bg-slate-50 px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="text-xs font-semibold text-slate-600">Månedsmål</div>
-                    <div className="mt-1 text-sm font-semibold text-slate-800">
-                      {streakChallenges.month.current}/{streakChallenges.month.target} økter denne måneden
-                    </div>
-                    <div className="mt-1 text-xs text-slate-500">
-                      {streakChallenges.month.unlocked ? "Mål nådd 🎉" : "Bygg jevnt videre mot månedsmålet"}
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-3 rounded-xl border bg-emerald-50/60 px-3 py-2 text-sm text-emerald-800" style={{ borderColor: "rgba(16,185,129,0.25)" }}>
-                  Aktiv streak: <span className="font-semibold">{streakChallenges.streakDays} dager</span>
-                </div>
-              </div>
               ) : null}
             </Card>
             </div>
@@ -4604,16 +4408,12 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="mx-auto inline-flex rounded-full bg-slate-100 p-3 ring-1 ring-slate-200/90">
                   <TrendingUp className="h-8 w-8 text-teal-700" aria-hidden />
                 </div>
-                <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Fremdrift på oversikten</p>
+                <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Nytt steg i treningsflyten</p>
                 <h2 id="milestone-heading" className="mt-2 text-xl font-bold tracking-tight text-slate-900">
-                  {achievementCelebration.achievedLevel >= achievementMaxLevel
-                    ? "Gratulerer — maksnivå"
-                    : `Du er opp på nivå ${achievementCelebration.achievedLevel}`}
+                  {buildCelebrationCopy(achievementCelebration.achievedLevel).title}
                 </h2>
                 <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                  {achievementCelebration.achievedLevel >= achievementMaxLevel
-                    ? `Du har nådd høyeste steg (${achievementMaxLevel}) i fremdriftssystemet ut fra økter, ukers streak og antall ulike treningsdager.`
-                    : `Dette nivået beregnes på oversikten fra økter, streak og variasjon i treningsdager. Neste steg er nivå ${achievementCelebration.achievedLevel + 1}.`}
+                  {buildCelebrationCopy(achievementCelebration.achievedLevel).body}
                 </p>
                 <p className="mt-3 text-xs leading-snug text-slate-500">
                   Varsler om ny PR etter økt vises som før og påvirkes ikke av denne innstillingen.
@@ -5831,48 +5631,41 @@ export function MemberPortal(props: MemberPortalProps) {
 
           {!isMemberLimited && memberTab === "progress" ? (
             <div className="space-y-4">
-              <MemberTabHero
+                            <MemberTabHero
                 title="Fremgang"
-                description="Utvikling, PR-er og treningsflyt — streaks, personlige rekorder og muskelfordeling."
+                description="Ukerytme, treningsmål, personlige rekorder og muskelfordeling."
               />
               <Card className="p-4 sm:p-5">
-                <h3 className="text-sm font-semibold text-slate-900">Streaks og achievements</h3>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Nivå {achievementLevel} av {achievementMaxLevel}
-                  {hasCompletedAllAchievementLevels ? " · Maksnivå nådd ✨" : ""}
-                  {" · "}Ukestreak = minst én fullført økt per kalenderuke, uten hull mellom ukene.
-                </p>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">Din treningsflyt</h3>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {hasCompletedAllAchievementLevels
+                        ? `Du har fullført alle ${achievementMaxLevel} steg — fantastisk kontinuitet.`
+                        : memberProgress.nextStepLabel
+                          ? `Steg ${achievementLevel} av ${achievementMaxLevel}: «${memberProgress.stepLabel}». Neste blir «${memberProgress.nextStepLabel}».`
+                          : `Steg ${achievementLevel} av ${achievementMaxLevel}: «${memberProgress.stepLabel}».`}
+                    </p>
+                  </div>
+                  <span
+                    className="rounded-full px-3 py-1 text-xs font-bold text-white"
+                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                  >
+                    {hasCompletedAllAchievementLevels ? "Maksnivå" : `Steg ${achievementLevel}`}
+                  </span>
+                </div>
                 <MemberWeeklyStreakCard
                   streakWeeks={streakWeeks}
                   streakSubline={streakSubline}
                   recentStreakWeeks={recentStreakWeeks}
                   currentStreakMilestoneTarget={currentStreakMilestoneTarget}
-                  achievementLevel={achievementLevel}
                 />
-                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                  {achievements.map((achievement) => (
-                    <div key={achievement.id} className={`rounded-xl border px-3 py-2 text-sm ${achievement.unlocked ? "border-emerald-300 bg-emerald-50/80 text-emerald-900" : "border-slate-200 bg-white text-slate-600"}`}>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="font-semibold">{achievement.label}</div>
-                        <div className="text-lg">{achievement.icon}</div>
-                      </div>
-                      <div className="mt-0.5 text-[11px]">{achievement.hint}</div>
-                      <div className="mt-2 h-1.5 rounded-full bg-slate-200">
-                        <div
-                          className="h-1.5 rounded-full"
-                          style={{
-                            width: `${Math.min(100, Math.round((Math.min(achievement.current, achievement.target) / achievement.target) * 100))}%`,
-                            background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
-                          }}
-                        />
-                      </div>
-                      <div className="mt-1 flex items-center justify-between text-[11px] font-semibold">
-                        <span>{Math.min(achievement.current, achievement.target)}/{achievement.target}</span>
-                        <span>{achievement.unlocked ? "Låst opp ✨" : "På vei"}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <MemberProgressGoals
+                  goals={achievements}
+                  workingLevel={achievementLevel}
+                  stepLabel={memberProgress.stepLabel}
+                  hasCompletedAllLevels={hasCompletedAllAchievementLevels}
+                />
               </Card>
 
               <Card className="p-4 sm:p-5">
