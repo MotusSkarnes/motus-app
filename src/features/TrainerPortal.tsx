@@ -4434,7 +4434,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
 
                 {customerSubTab === "programs" ? (
                   <div className="space-y-3">
-                    <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)] xl:items-start">
+                    <div className="grid gap-3 2xl:grid-cols-[minmax(0,1fr)_minmax(300px,340px)] 2xl:items-start">
                     <div className="rounded-xl border bg-white p-3 sm:p-4 space-y-3">
                       <div className="flex items-center justify-between gap-3">
                         <div className="font-semibold">{editingProgramId ? "Rediger program" : "Bygg program"}</div>
@@ -4449,7 +4449,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                           </span>
                         </summary>
                         <div className="mt-3 space-y-4 border-t border-slate-200/80 pt-3">
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-4 lg:grid-cols-2">
                           <label className="grid gap-2">
                             <span className="text-base font-semibold text-slate-900">Navn på periodeplan</span>
                             <TextInput
@@ -4464,7 +4464,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                             <TextInput value={periodPlanStartDateDraft} onChange={(e) => setPeriodPlanStartDateDraft(e.target.value)} type="date" />
                           </label>
                         </div>
-                        <div className="grid gap-4 md:grid-cols-[minmax(0,160px)_minmax(0,1fr)]">
+                        <div className="grid gap-4 lg:grid-cols-[minmax(0,160px)_minmax(0,1fr)]">
                           <label className="grid gap-2">
                             <span className="text-base font-semibold text-slate-900">Antall uker</span>
                             <TextInput
@@ -4491,7 +4491,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         {periodWeeklyPlansDraft.length > 0 ? (
                           <div className="rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                             <div className="text-base font-semibold text-slate-900">Uker i planen</div>
-                            <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
+                            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5 lg:grid-cols-8 xl:grid-cols-10">
                               {periodWeeklyPlansDraft.slice(0, Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1))).map((week) => {
                                 const marked = week.usesGradientPlan === true;
                                 const isActive = activePeriodWeekId === week.id;
@@ -4520,7 +4520,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         {activePeriodWeek ? (
                           <div className="space-y-3">
                             <div className="text-base font-semibold text-slate-900">Ukedager i uken du redigerer</div>
-                            <div className="grid gap-3 md:grid-cols-2">
+                            <div className="grid gap-3 lg:grid-cols-2">
                             {WEEKDAY_PLAN_FIELDS.map((field) => {
                               const currentValue = activePeriodWeek.days[field.key];
                               const hasCurrentValueInOptions = periodPlanProgramOptions.some((option) => option.value === currentValue);
@@ -4695,7 +4695,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                               const isStretch = linkedExercise?.category === "Uttøyning";
                               const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
                               return (
-                            <div className={`grid gap-3 sm:grid-cols-2 ${isCardio ? "xl:grid-cols-5" : "xl:grid-cols-5"}`}>
+                            <div className={`grid gap-3 sm:grid-cols-2 ${isCardio ? "2xl:grid-cols-5" : "2xl:grid-cols-5"}`}>
                               <div className="space-y-1">
                                 <div className="text-[11px] font-medium text-slate-500">Antall sett</div>
                                 <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder="Sett" />
@@ -4790,7 +4790,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       ) : null}
                     </div>
 
-                    <div className="space-y-3 xl:sticky xl:top-4">
+                    <div className="space-y-3 2xl:sticky 2xl:top-4">
                     <div className="rounded-xl border bg-slate-50 p-3 space-y-2.5">
                       <div className="text-sm font-semibold text-slate-800">Øvelser</div>
                       <TextInput
