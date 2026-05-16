@@ -1,6 +1,5 @@
 import { useState, type ComponentProps, type Dispatch, type SetStateAction } from "react";
 import {
-  BarChart3,
   Bell,
   CheckCircle2,
   ChevronRight,
@@ -80,7 +79,6 @@ const trainerMenuItems: Array<{ key: TrainerTab; label: string; icon: LucideIcon
   { key: "exerciseBank", label: "Øvelsesbank", icon: Dumbbell },
   { key: "programs", label: "Programmer", icon: ClipboardList },
   { key: "inspiration", label: "Inspirasjon", icon: Sparkles },
-  { key: "statistics", label: "Statistikk", icon: BarChart3 },
   { key: "settings", label: "Innstillinger", icon: Settings },
   { key: "admin", label: "Admin", icon: ShieldCheck },
 ];
@@ -94,7 +92,6 @@ const mobileTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
 ];
 
 const mobileMoreTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
-  { id: "statistics", label: "Statistikk", icon: BarChart3 },
   { id: "settings", label: "Innstillinger", icon: Settings },
   { id: "admin", label: "Admin", icon: ShieldCheck },
 ];

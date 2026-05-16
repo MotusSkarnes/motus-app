@@ -763,6 +763,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   useToastStatus(memberLinkStatus, { title: "Medlemskobling", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   useToastStatus(exerciseFormStatus, { title: "Øvelse", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   useToastStatus(trainerWorkoutCommentStatus, { title: "Øktkommentar", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
+  useEffect(() => {
+    if (trainerTab === "statistics") setTrainerTab("dashboard");
+  }, [trainerTab, setTrainerTab]);
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
   const selectedMemberHasMessagingAccess = selectedMember
     ? selectedMember.customerType === "PT-kunde" || selectedMember.membershipType === "Premium"
@@ -3787,7 +3790,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
           <div className="font-semibold text-slate-800">Innstillinger</div>
           <div className="rounded-xl border bg-slate-50 p-3 text-sm text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             Her samles PT-innstillinger. Foreløpig kan du styre medlemsvisning via:
-            søk/filter i klientlisten, vis/skjul inaktive kunder, og prioritetssortering i statistikk.
+            søk/filter i klientlisten, vis/skjul inaktive kunder, og prioritetssortering i oversikten.
           </div>
           <div className="rounded-xl border bg-slate-50 p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <div className="text-sm font-medium text-slate-700">Gjenopprett testmedlemmer</div>
