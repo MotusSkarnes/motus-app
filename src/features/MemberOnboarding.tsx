@@ -93,6 +93,7 @@ export function MemberOnboarding({ memberName, initialDraft, onComplete, onClose
   const [draft, setDraft] = useState<Draft>(() => initialDraft ?? createEmptyOnboardingDraft());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   const theme = ONBOARDING_PAGE_THEMES[pageIndex];
   const isLastPage = pageIndex === ONBOARDING_PAGE_COUNT - 1;
@@ -132,11 +133,34 @@ export function MemberOnboarding({ memberName, initialDraft, onComplete, onClose
         completedAt: new Date().toISOString(),
       };
       await onComplete(completed);
+      setSaved(true);
     } catch {
-      setError("Kunne ikke lagre svarene. Prøv igjen.");
+      setError("Kunne ikke lagre svarene til skyen. Sjekk nettverk og prøv igjen.");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (saved) {
+    return (
+      <div className="fixed inset-0 z-[10050] flex flex-col items-center justify-center bg-white px-6">
+        <Card className="max-w-md p-6 text-center">
+          <div className="text-lg font-semibold text-slate-900">Takk — svarene er lagret</div>
+          <p className="mt-2 text-sm text-slate-600">PT kan nå se oppstartsskjemaet ditt på kundekortet.</p>
+          {onClose ? (
+            <GradientButton
+              type="button"
+              className="mt-4 w-full"
+              onClick={() => {
+                onClose();
+              }}
+            >
+              Lukk
+            </GradientButton>
+          ) : null}
+        </Card>
+      </div>
+    );
   }
 
   return (

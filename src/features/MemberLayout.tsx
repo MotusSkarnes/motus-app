@@ -4,6 +4,7 @@ import { Bell, CheckCircle2, ChevronRight, ClipboardList, ClipboardPenLine, Layo
 import { MOTUS } from "../app/data";
 import {
   enrichMemberWithBestProfile,
+  findMembersByEmail,
   isOnboardingCompleted,
   markOnboardingGateSeen,
   memberOnboardingIdentityKey,
@@ -171,24 +172,25 @@ export function MemberLayout({
     if (!activeMember) return;
     const personalGoals = mergeOnboardingIntoPersonalGoals(activeMember.personalGoals, answers);
     const focusSummary = answers.trainingGoals.slice(0, 3).join(" · ");
-    updateMember({
-      memberId: activeMember.id,
-      changes: {
-        goal: primaryGoalFromOnboarding(answers),
-        level: answers.level,
-        injuries: answers.injuries.trim() || activeMember.injuries,
-        personalGoals,
-        ...(focusSummary ? { focus: focusSummary } : {}),
-      },
-    });
-    setOnboardingGateOpen(false);
+    const changes = {
+      goal: primaryGoalFromOnboarding(answers),
+      level: answers.level,
+      injuries: answers.injuries.trim() || activeMember.injuries,
+      personalGoals,
+      ...(focusSummary ? { focus: focusSummary } : {}),
+    };
+    const targetMembers = findMembersByEmail(activeMember, appState.members);
+    const targetIds = Array.from(new Set(targetMembers.map((member) => member.id.trim()).filter(Boolean)));
+    for (const memberId of targetIds.length ? targetIds : [activeMember.id]) {
+      updateMember({ memberId, changes });
+    }
     try {
-      await waitForMemberPersist(activeMember.id);
+      await Promise.all((targetIds.length ? targetIds : [activeMember.id]).map((memberId) => waitForMemberPersist(memberId)));
     } catch (error) {
       setOnboardingGateOpen(true);
       throw error;
     }
-    refreshRemoteHydration?.();
+    void refreshRemoteHydration?.();
   }
 
   const checkInWindow = useMemo(() => resolveCheckInWindow(), []);
@@ -470,10 +472,14 @@ export function MemberLayout({
 
       {onboardingGateOpen && activeMember ? (
         <MemberOnboarding
+          key={`${activeMember.id}:${activeMember.personalGoals ?? ""}`}
           memberName={activeMember.name}
           initialDraft={onboardingDraftFromStored(activeMember.personalGoals)}
           onComplete={persistOnboardingAnswers}
-          onClose={() => setOnboardingGateOpen(false)}
+          onClose={() => {
+            setOnboardingGateOpen(false);
+            void refreshRemoteHydration?.();
+          }}
         />
       ) : null}
 

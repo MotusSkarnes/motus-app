@@ -32,6 +32,7 @@ import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, normalizeStoredLogDate, storedLogDatesMatch } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { hasSubstantiveOnboardingAnswers, parsePersonalGoalsJson, readProfileExtensions } from "../app/memberOnboarding";
+import { pickBestPersonalGoals } from "../app/memberProfileGoals";
 import {
   buildCheckInNotificationCopy,
   resolveCheckInWindow,
@@ -348,6 +349,20 @@ function decodeMemberProfileMetrics(personalGoals: string | undefined): ProfileM
     targetWeight: payload.targetWeight,
     currentDailySteps: payload.currentDailySteps,
   };
+}
+
+function resolveBestPersonalGoalsForRelatedMembers(
+  anchor: Member,
+  membersList: Member[],
+  relatedIds: Set<string>,
+): string {
+  const normalizedEmail = anchor.email.trim().toLowerCase();
+  const candidates = membersList.filter((member) => {
+    if (member.id === anchor.id) return true;
+    if (relatedIds.has(member.id)) return true;
+    return Boolean(normalizedEmail && member.email.trim().toLowerCase() === normalizedEmail);
+  });
+  return pickBestPersonalGoals(candidates.map((member) => member.personalGoals)) || anchor.personalGoals || "";
 }
 
 /** Same canonical choice as useAppState.resolveMemberViewIdForUser — avoids feil rad ved duplikat-e-post. */
@@ -2179,7 +2194,7 @@ export function MemberPortal(props: MemberPortalProps) {
         homeVisibility,
         favoritePersonalRecords: cleanedFavoritePersonalRecordNames,
       },
-      editableMember.personalGoals,
+      resolveBestPersonalGoalsForRelatedMembers(editableMember, members, relatedMemberIdSet),
     );
     window.localStorage.setItem(getProfileStorageKey(editableMember.id), JSON.stringify(next));
     const targetMemberIds = Array.from(
@@ -2384,7 +2399,7 @@ export function MemberPortal(props: MemberPortalProps) {
             currentDailySteps: String(parsed.currentDailySteps ?? ""),
           },
           { homeVisibility: dbHomeVisibility ?? undefined },
-          editableMember.personalGoals,
+          resolveBestPersonalGoalsForRelatedMembers(editableMember, members, relatedMemberIdSet),
         );
         targetIds.forEach((memberId) => {
           updateMember({
