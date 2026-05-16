@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, ClipboardList, ImagePlus, Lightbulb, Newspaper, Pencil, Plus, Soup, Trash2 } from "lucide-react";
+import { ArrowLeft, Bold, ChevronLeft, ChevronRight, ClipboardList, ImagePlus, Italic, Lightbulb, Newspaper, Pencil, Plus, Soup, Trash2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { compressImageDataUrl, compressImageFile } from "../app/imageCompress";
 import {
@@ -71,6 +71,33 @@ const BODY_STYLE_OPTIONS: Array<{ value: InspirationBodyStyle; label: string; cl
 
 function bodyStyleClass(style?: InspirationBodyStyle): string {
   return BODY_STYLE_OPTIONS.find((option) => option.value === style)?.className ?? BODY_STYLE_OPTIONS[0].className;
+}
+
+function renderFormattedBody(value: string) {
+  const nodes = [];
+  const pattern = /(\*\*[^*]+?\*\*|\*[^*]+?\*)/g;
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(value)) !== null) {
+    if (match.index > cursor) nodes.push(value.slice(cursor, match.index));
+    const token = match[0];
+    if (token.startsWith("**")) {
+      nodes.push(
+        <strong key={`b-${match.index}`} className="font-bold text-slate-900">
+          {token.slice(2, -2)}
+        </strong>,
+      );
+    } else {
+      nodes.push(
+        <em key={`i-${match.index}`} className="italic">
+          {token.slice(1, -1)}
+        </em>,
+      );
+    }
+    cursor = match.index + token.length;
+  }
+  if (cursor < value.length) nodes.push(value.slice(cursor));
+  return nodes;
 }
 
 function splitMultiValue(value: string): string[] {
@@ -431,6 +458,7 @@ export function InspirationHub({
   const [categoryDraft, setCategoryDraft] = useState<InspirationCategory>("recipes");
   const [kindDraft, setKindDraft] = useState<InspirationKind>("article");
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [composerOpen, setComposerOpen] = useState(false);
   const [programTemplateDraft, setProgramTemplateDraft] = useState<ProgramTemplateInput | null>(null);
   const [periodPlanTemplateDraft, setPeriodPlanTemplateDraft] = useState<PeriodSchedulePlan | null>(null);
   const [activePeriodWeekId, setActivePeriodWeekId] = useState("");
@@ -438,6 +466,7 @@ export function InspirationHub({
   const [programExerciseSearch, setProgramExerciseSearch] = useState("");
   const [programExerciseCategoryFilter, setProgramExerciseCategoryFilter] = useState<"all" | "Styrke" | "Kondisjon" | "Uttøyning">("all");
   const [programExerciseGroupFilter, setProgramExerciseGroupFilter] = useState("all");
+  const bodyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const carouselRefs = useRef<Record<InspirationCategory, HTMLDivElement | null>>({
     news: null,
     programs: null,
@@ -693,7 +722,7 @@ export function InspirationHub({
     );
   }
 
-  function resetComposer() {
+  function resetComposerFields() {
     setEditingItemId(null);
     setTitle("");
     setDescription("");
@@ -706,6 +735,17 @@ export function InspirationHub({
     setProgramTemplateDraft(null);
     setPeriodPlanTemplateDraft(null);
     setActivePeriodWeekId("");
+  }
+
+  function resetComposer() {
+    resetComposerFields();
+    setComposerOpen(false);
+  }
+
+  function openCreateComposer() {
+    resetComposerFields();
+    setComposerOpen(true);
+    setActionStatus(null);
   }
 
   function beginEdit(item: InspirationItem) {
@@ -729,7 +769,7 @@ export function InspirationHub({
     const clonedPlan = item.periodPlanTemplate ? normalizePeriodSchedulePlan(structuredClone(item.periodPlanTemplate)) : null;
     setPeriodPlanTemplateDraft(clonedPlan);
     setActivePeriodWeekId(clonedPlan?.weeklyPlans[0]?.id ?? "");
-    setExpandedItemId(null);
+    setComposerOpen(true);
     setActionStatus(null);
   }
 
@@ -771,6 +811,23 @@ export function InspirationHub({
     setProgramTemplateDraft((prev) => {
       if (!prev) return prev;
       return { ...prev, exercises: prev.exercises.filter((exercise) => exercise.id !== exerciseId) };
+    });
+  }
+
+  function wrapSelectedBodyText(marker: "**" | "*") {
+    const textarea = bodyTextareaRef.current;
+    const start = textarea?.selectionStart ?? body.length;
+    const end = textarea?.selectionEnd ?? body.length;
+    const selected = body.slice(start, end);
+    const fallback = marker === "**" ? "bold tekst" : "kursiv tekst";
+    const wrapped = `${marker}${selected || fallback}${marker}`;
+    const nextBody = `${body.slice(0, start)}${wrapped}${body.slice(end)}`;
+    setBody(nextBody);
+    window.requestAnimationFrame(() => {
+      const nextStart = start + marker.length;
+      const nextEnd = nextStart + (selected || fallback).length;
+      bodyTextareaRef.current?.focus();
+      bodyTextareaRef.current?.setSelectionRange(nextStart, nextEnd);
     });
   }
 
@@ -972,7 +1029,7 @@ export function InspirationHub({
   function handleAddPeriodPlan(item: InspirationItem) {
     const template = item.periodPlanTemplate ?? createDefaultPeriodPlan(item.title, item.body);
     onAddPeriodPlan?.({ ...template, title: template.title || item.title });
-    setActionStatus(`${item.title} er lagt til under Mine periodeplaner.`);
+    setActionStatus(`${item.title} er lagt til under Trening → Periodeplan.`);
   }
 
   async function handleImageFile(file: File | null) {
@@ -993,7 +1050,7 @@ export function InspirationHub({
     }
   }
 
-  if (expandedItem) {
+  if (expandedItem && !composerOpen) {
     const detailMeta = CATEGORY_META[expandedItem.category];
     const DetailIcon = detailMeta.icon;
     const showProgramPreview = expandedItem.kind === "program" || Boolean(expandedItem.programTemplate);
@@ -1045,7 +1102,7 @@ export function InspirationHub({
             <h1 className="mt-4 text-2xl font-bold leading-snug tracking-tight text-slate-950 sm:text-3xl">{expandedItem.title}</h1>
             <p className="mt-2 text-base text-slate-600">{expandedItem.description}</p>
             {expandedItem.body.trim() && !showProgramPreview ? (
-              <p className={`mt-5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 sm:text-base ${bodyStyleClass(expandedItem.bodyStyle)}`}>{expandedItem.body}</p>
+              <p className={`mt-5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 sm:text-base ${bodyStyleClass(expandedItem.bodyStyle)}`}>{renderFormattedBody(expandedItem.body)}</p>
             ) : null}
 
             {programPreview ? (
@@ -1166,11 +1223,25 @@ export function InspirationHub({
         style={{ borderColor: "rgba(48,227,190,0.20)", background: `linear-gradient(135deg, ${MOTUS.paleMint} 0%, #ffffff 48%, rgba(217,18,120,0.08) 100%)` }}
       >
         <div className="h-1.5" style={{ background: MOTUS_GRADIENT }} />
-        <div className="p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3 p-4 sm:p-5">
+          <div className="min-w-0">
           <h2 className="text-2xl font-bold tracking-tight text-slate-950">Inspirasjon</h2>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">
             Sveip horisontalt i hver kategori. Trykk les mer for detaljer — der kan du legge treningsprogram og ukesplaner til i treningen din.
           </p>
+          </div>
+          {canManage ? (
+            <button
+              type="button"
+              onClick={openCreateComposer}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm transition hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-teal-200"
+              style={{ background: MOTUS_GRADIENT }}
+              aria-label="Legg til inspirasjon"
+              title="Legg til"
+            >
+              <Plus className="h-5 w-5" aria-hidden />
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -1240,13 +1311,15 @@ export function InspirationHub({
       </div>
 
 
-      {canManage ? (
-        <div className="min-w-0 rounded-2xl border bg-white p-4 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-          <div className="flex items-center gap-2">
+      {canManage && composerOpen ? (
+        <div className="fixed inset-0 z-[10020] overflow-y-auto bg-slate-950/45 p-3 backdrop-blur-sm sm:p-6">
+          <div className="mx-auto min-w-0 max-w-5xl rounded-2xl border bg-white p-4 shadow-xl" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
             <span className="rounded-lg p-2 text-white" style={{ background: MOTUS_GRADIENT }}>
               {editingItemId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             </span>
-            <div>
+            <div className="min-w-0">
               <div className="font-semibold text-slate-900">{editingItemId ? "Rediger inspirasjon" : "Legg ut inspirasjon"}</div>
               <div className="text-xs text-slate-500">
                 {editingItemId
@@ -1254,6 +1327,10 @@ export function InspirationHub({
                   : "Velg bilde og kort tekst. Detaljer vises når man trykker les mer."}
               </div>
             </div>
+            </div>
+            <OutlineButton type="button" onClick={resetComposer} className="shrink-0">
+              Lukk
+            </OutlineButton>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <SelectBox
@@ -1341,6 +1418,7 @@ export function InspirationHub({
             </label>
           </div>
           <TextArea
+            ref={bodyTextareaRef}
             value={body}
             onChange={(event) => setBody(event.target.value)}
             className="mt-3 min-h-[110px]"
@@ -1350,25 +1428,35 @@ export function InspirationHub({
                 : "Detaljer som vises under Les mer"
             }
           />
-          {categoryDraft === "news" ? (
-            <div className="mt-2 inline-flex rounded-xl border bg-slate-50 p-1" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-              {BODY_STYLE_OPTIONS.map((option) => {
-                const active = bodyStyle === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setBodyStyle(option.value)}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      active ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-200" : "text-slate-600 hover:bg-white/70"
-                    } ${option.className}`}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
+          <div className="mt-2 inline-flex rounded-xl border bg-slate-50 p-1" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <button
+              type="button"
+              onClick={() => wrapSelectedBodyText("**")}
+              className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-white hover:text-slate-950"
+              aria-label="Gjør markert tekst bold"
+              title="Bold"
+            >
+              <Bold className="h-3.5 w-3.5" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => wrapSelectedBodyText("*")}
+              className="rounded-lg px-3 py-1.5 text-xs italic text-slate-700 transition hover:bg-white hover:text-slate-950"
+              aria-label="Gjør markert tekst kursiv"
+              title="Kursiv"
+            >
+              <Italic className="h-3.5 w-3.5" aria-hidden />
+            </button>
+            {categoryDraft === "news" && bodyStyle !== "normal" ? (
+              <button
+                type="button"
+                onClick={() => setBodyStyle("normal")}
+                className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-white hover:text-slate-950"
+              >
+                Vanlig
+              </button>
+            ) : null}
             </div>
-          ) : null}
 
           {categoryDraft === "programs" && kindDraft === "program" ? (
             <div className="mt-4 space-y-3 rounded-xl border border-sky-100 bg-sky-50/50 p-3">
@@ -1609,16 +1697,15 @@ export function InspirationHub({
           <div className="mt-3 flex flex-col items-end gap-2">
             {!publishValidation.ok ? <p className="w-full text-right text-xs text-slate-500">{publishValidation.message}</p> : null}
             <div className="flex flex-wrap justify-end gap-2">
-              {editingItemId ? (
-                <OutlineButton type="button" onClick={resetComposer}>
-                  Avbryt redigering
-                </OutlineButton>
-              ) : null}
+              <OutlineButton type="button" onClick={resetComposer}>
+                {editingItemId ? "Avbryt redigering" : "Lukk"}
+              </OutlineButton>
               <GradientButton type="button" onClick={() => void saveItem()} disabled={!publishValidation.ok}>
                 {editingItemId ? "Lagre endringer" : "Publiser"}
               </GradientButton>
             </div>
           </div>
+        </div>
         </div>
       ) : null}
     </div>

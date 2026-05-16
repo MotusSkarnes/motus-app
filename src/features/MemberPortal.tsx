@@ -2623,12 +2623,6 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [relatedMemberIds, remoteMemberPeriodPlanRows, periodPlanStorageRevision]);
 
   useEffect(() => {
-    if (memberTab === "periodPlans") {
-      setShowPeriodPlanPanel(true);
-    }
-  }, [memberTab]);
-
-  useEffect(() => {
     if (!memberFocusWorkoutLogId) return;
     const log = completedLogs.find((item) => item.id === memberFocusWorkoutLogId);
     if (!log) return;
@@ -2659,7 +2653,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function openProgramsWithPeriodPlan() {
     setShowPeriodPlanPanel(true);
-    setMemberTab("periodPlans");
+    setMemberTab("programs");
   }
 
   useEffect(() => {
@@ -4011,14 +4005,12 @@ export function MemberPortal(props: MemberPortalProps) {
             ? [
                 { id: "overview", label: "Hjem" },
                 { id: "programs", label: "Trening" },
-                { id: "periodPlans", label: "Mine periodeplaner" },
                 { id: "inspiration", label: "Inspirasjon" },
                 { id: "profile", label: "Profil" },
               ]
             : [
             { id: "overview", label: "Hjem" },
             { id: "programs", label: "Trening" },
-            { id: "periodPlans", label: "Mine periodeplaner" },
             { id: "inspiration", label: "Inspirasjon" },
             { id: "progress", label: "Fremgang" },
             { id: "messages", label: "Meldinger" },
@@ -4506,16 +4498,12 @@ export function MemberPortal(props: MemberPortalProps) {
             </div>
           ) : null}
 
-          {memberTab === "programs" || memberTab === "periodPlans" ? (
+          {memberTab === "programs" ? (
             <>
               <div className="flex flex-col gap-4">
               <MemberTabHero
-                title={memberTab === "periodPlans" ? "Mine periodeplaner" : "Trening"}
-                description={
-                  memberTab === "periodPlans"
-                    ? "Velg aktiv periodeplan, bla mellom ukene og start eller logg planlagte økter."
-                    : "Mine programmer, periodeplan og egen økt — alt samlet på ett sted."
-                }
+                title="Trening"
+                description="Mine programmer, periodeplan og egen økt — alt samlet på ett sted."
               />
               <Card className="p-4 sm:p-5">
                 <h3 className="text-sm font-semibold text-slate-900">Mine treningsprogram</h3>

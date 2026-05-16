@@ -4537,7 +4537,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                           </span>
                           <div>
                             <h3 className="text-lg font-bold text-slate-900">Lag periodeplan</h3>
-                            <p className="mt-1 text-sm text-slate-600">Planlegg én eller flere uker. Medlemmet ser planen under Mine periodeplaner.</p>
+                            <p className="mt-1 text-sm text-slate-600">Planlegg én eller flere uker. Medlemmet ser planen under Trening → Periodeplan.</p>
                           </div>
                         </div>
                         {selectedPeriodPlans.length > 0 ? (

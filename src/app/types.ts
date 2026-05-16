@@ -13,7 +13,7 @@ export type TrainerTab =
   | "statistics"
   | "settings";
 export type CustomerSubTab = "overview" | "profile" | "programs" | "workouts" | "messages";
-export type MemberTab = "overview" | "programs" | "periodPlans" | "progress" | "messages" | "profile" | "inspiration";
+export type MemberTab = "overview" | "programs" | "progress" | "messages" | "profile" | "inspiration";
 
 export type WorkoutExerciseResult = {
   exerciseId: string;

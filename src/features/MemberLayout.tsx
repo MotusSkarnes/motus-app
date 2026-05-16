@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import type { ComponentProps } from "react";
-import { Bell, CalendarRange, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp, type LucideIcon } from "lucide-react";
+import { Bell, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp, type LucideIcon } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { normalizePeriodSchedulePlan, readPeriodPlansByMemberId, writePeriodPlansByMemberId } from "../app/periodPlanMerge";
 import type { AppState, MemberTab, PeriodSchedulePlan } from "../app/types";
@@ -53,7 +53,6 @@ type MemberLayoutProps = {
 const mobileTabs: Array<{ id: MemberTab; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Hjem", icon: LayoutDashboard },
   { id: "programs", label: "Trening", icon: ClipboardList },
-  { id: "periodPlans", label: "Planer", icon: CalendarRange },
   { id: "inspiration", label: "Inspo", icon: Sparkles },
   { id: "progress", label: "Fremgang", icon: TrendingUp },
   { id: "messages", label: "Meldinger", icon: MessageSquare },
@@ -119,7 +118,7 @@ export function MemberLayout({
     return candidates.some((member) => member.customerType === "Medlem" && member.membershipType !== "Premium");
   }, [appState.currentUser, appState.members, appState.memberViewId]);
   const visibleMobileTabs = isMemberLimited
-    ? mobileTabs.filter((tab) => tab.id === "overview" || tab.id === "programs" || tab.id === "periodPlans" || tab.id === "inspiration")
+    ? mobileTabs.filter((tab) => tab.id === "overview" || tab.id === "programs" || tab.id === "inspiration")
     : mobileTabs;
 
   useEffect(() => {
@@ -193,7 +192,10 @@ export function MemberLayout({
     ];
     writePeriodPlansByMemberId(byMember);
     void upsertMemberPeriodPlansForTrainer([inspirationMemberId], memberPlan).then(() => refreshRemoteHydration?.());
-    setMemberTab("periodPlans");
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem("motus.member.openPeriodPlanOnPrograms", "1");
+    }
+    setMemberTab("programs");
   }
 
   return (
