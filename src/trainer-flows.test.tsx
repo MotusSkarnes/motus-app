@@ -60,7 +60,7 @@ describe("Trainer flows", () => {
     await user.click(screen.getAllByRole("button", { name: "Klienter" })[0]);
     await user.click(screen.getAllByRole("button", { name: "Program" })[0]);
 
-    expect(screen.getByText("Bygg program")).toBeInTheDocument();
+    expect(await screen.findByText("Lag treningsprogram")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Lagre program på kunde" })).toBeInTheDocument();
   });
 
@@ -140,7 +140,7 @@ describe("Trainer flows", () => {
         id: "legacy-log-1",
         memberId: "m1",
         programTitle: "Legacy styrkeøkt",
-        date: "23.04.2026",
+        date: `${String(new Date().getDate()).padStart(2, "0")}.${String(new Date().getMonth() + 1).padStart(2, "0")}.${new Date().getFullYear()}`,
         status: "Fullført",
         note: "Fra legacy member-id",
       },
@@ -175,8 +175,8 @@ describe("Trainer flows", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Økter" }));
-    expect(screen.getAllByText("Legacy styrkeøkt").length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: "Åpne økter" }));
+    expect((await screen.findAllByText("Legacy styrkeøkt")).length).toBeGreaterThan(0);
   });
 
   it("shows workout insight cards for last 7 and 30 days", async () => {
@@ -271,7 +271,7 @@ describe("Trainer flows", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Økter" }));
+    await user.click(screen.getByRole("button", { name: "Åpne økter" }));
     expect(screen.getByText("Økter siste 7 dager")).toBeInTheDocument();
     expect(screen.getByText("Gruppetimer siste 30 dager")).toBeInTheDocument();
     expect(screen.getByText("Snitt belastning 30 dager")).toBeInTheDocument();

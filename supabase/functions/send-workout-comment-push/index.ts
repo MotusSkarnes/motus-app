@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
   const payload = JSON.stringify({
     title: `Ny kommentar på ${programTitle}`,
     body: bodyText,
-    url: "/",
+    url: `/?workoutLogId=${encodeURIComponent(logId)}`,
   });
 
   let sent = 0;

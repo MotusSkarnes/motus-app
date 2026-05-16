@@ -4259,6 +4259,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         type="button"
                         onClick={() => setCustomerSubTab("programs")}
                         className="flex min-h-[58px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-tight text-slate-800 transition hover:border-teal-300 hover:bg-teal-50"
+                        aria-label="Program"
                         title="Treningsprogram eller periodeplan"
                       >
                         <ClipboardList className="h-4 w-4 shrink-0 text-teal-700" aria-hidden />
@@ -4281,6 +4282,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         type="button"
                         onClick={() => setCustomerSubTab("workouts")}
                         className="flex min-h-[58px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-tight text-slate-800 transition hover:border-teal-300 hover:bg-teal-50"
+                        aria-label="Åpne økter"
                         title="Se økter"
                       >
                         <Play className="h-4 w-4 shrink-0 text-slate-700" aria-hidden />

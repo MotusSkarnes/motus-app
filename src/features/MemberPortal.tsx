@@ -75,6 +75,7 @@ import {
   WEEKDAY_PLAN_ORDER,
   type PeriodPlanSwapsByPlan,
 } from "../app/periodPlanSwaps";
+import { MemberWeeklyStreakCard } from "./MemberWeeklyStreakCard";
 import { MuscleSplitCard } from "./MuscleSplitCard";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
 import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
@@ -177,6 +178,8 @@ type MemberPortalProps = {
   cancelWorkoutMode: () => void;
   workoutCelebration: WorkoutCelebration | null;
   dismissWorkoutCelebration: () => void;
+  memberFocusWorkoutLogId?: string | null;
+  clearMemberFocusWorkoutLogId?: () => void;
   /** Periodeplaner fra Supabase (hydrate-member-data). */
   remoteMemberPeriodPlanRows?: Array<{ memberId: string; plan: PeriodSchedulePlan }>;
   /** Etter lagring: kjør hydrate fra Supabase (persist er asynk) */
@@ -762,6 +765,8 @@ export function MemberPortal(props: MemberPortalProps) {
     cancelWorkoutMode,
     workoutCelebration,
     dismissWorkoutCelebration,
+    memberFocusWorkoutLogId = null,
+    clearMemberFocusWorkoutLogId,
     remoteMemberPeriodPlanRows = EMPTY_REMOTE_PERIOD_PLAN_ROWS,
     refreshRemoteHydration,
   } = props;
@@ -1677,6 +1682,13 @@ export function MemberPortal(props: MemberPortalProps) {
         .slice(0, 3),
     [completedLogs],
   );
+  const recentCompletedLogsForDisplay = useMemo(() => {
+    if (!memberFocusWorkoutLogId) return recentCompletedLogs;
+    const focused = completedLogs.find((log) => log.id === memberFocusWorkoutLogId);
+    if (!focused) return recentCompletedLogs;
+    if (recentCompletedLogs.some((log) => log.id === focused.id)) return recentCompletedLogs;
+    return [focused, ...recentCompletedLogs.slice(0, 2)];
+  }, [completedLogs, memberFocusWorkoutLogId, recentCompletedLogs]);
   const latestCompletedLog = completedLogs[0] ?? null;
   function findSuggestedWeightForExercise(exerciseName: string): string {
     const normalizedExerciseName = exerciseName.trim().toLowerCase();
@@ -1744,6 +1756,20 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     return streak;
   }, [trainingWeekKeys]);
+  const activeStreakWeekKeys = useMemo(() => {
+    if (!trainingWeekKeys.length) return new Set<string>();
+    const keys = new Set<string>([trainingWeekKeys[0]]);
+    let current = trainingWeekKeys[0];
+    for (let i = 1; i < trainingWeekKeys.length; i += 1) {
+      const [year, week] = current.split("-").map(Number);
+      const prevWeekDate = new Date(year, 0, 4 + (week - 2) * 7);
+      const expectedPrev = getWeekKey(prevWeekDate);
+      if (trainingWeekKeys[i] !== expectedPrev) break;
+      current = trainingWeekKeys[i];
+      keys.add(current);
+    }
+    return keys;
+  }, [trainingWeekKeys]);
   const achievementMaxLevel = 10;
   const achievedLevel = useMemo(() => {
     let highestUnlockedLevel = 0;
@@ -1782,8 +1808,8 @@ export function MemberPortal(props: MemberPortalProps) {
       },
       {
         id: `streak-level-${achievementLevel}`,
-        label: "Streak",
-        hint: `${levelHint} Hold flyt i ${streakTarget} uker`,
+        label: "Ukestreak",
+        hint: `Tren minst én gang i ${streakTarget} uker på rad`,
         unlocked: streakWeeks >= streakTarget,
         current: streakWeeks,
         target: streakTarget,
@@ -1810,6 +1836,42 @@ export function MemberPortal(props: MemberPortalProps) {
     ];
     return items;
   }, [achievementLevel, completedLogs.length, streakWeeks, uniqueTrainingDays]);
+  const currentStreakMilestoneTarget = 3 + (achievementLevel - 1);
+  const recentStreakWeeks = useMemo(() => {
+    const trainedSet = new Set(trainingWeekKeys);
+    const monday = new Date(nowDate);
+    const day = (monday.getDay() + 6) % 7;
+    monday.setHours(12, 0, 0, 0);
+    monday.setDate(monday.getDate() - day);
+    const items: Array<{ key: string; shortLabel: string; trained: boolean; inActiveStreak: boolean }> = [];
+    for (let offset = 7; offset >= 0; offset -= 1) {
+      const weekDate = new Date(monday);
+      weekDate.setDate(weekDate.getDate() - offset * 7);
+      const key = getWeekKey(weekDate);
+      const weekNum = Number(key.split("-")[1]);
+      items.push({
+        key,
+        shortLabel: offset === 0 ? "Nå" : `U${weekNum}`,
+        trained: trainedSet.has(key),
+        inActiveStreak: activeStreakWeekKeys.has(key),
+      });
+    }
+    return items;
+  }, [activeStreakWeekKeys, nowDate, trainingWeekKeys]);
+  const streakSubline = useMemo(() => {
+    if (streakWeeks === 0) {
+      return "Fullfør minst én økt i en kalenderuke — da starter ukestreaken din.";
+    }
+    const trainedThisWeek = trainingWeekKeys.includes(getWeekKey(nowDate));
+    if (!trainedThisWeek) {
+      return "Du har fortsatt streak fra tidligere uker. Logg en økt denne uken for å holde den i live.";
+    }
+    if (streakWeeks >= currentStreakMilestoneTarget) {
+      return "Du holder flyten — streak-kravet for dette nivået er oppfylt.";
+    }
+    const remaining = currentStreakMilestoneTarget - streakWeeks;
+    return `Tren også neste ${remaining === 1 ? "uke" : `${remaining} uker`} på rad for å nå streak-målet på nivå ${achievementLevel}.`;
+  }, [achievementLevel, currentStreakMilestoneTarget, nowDate, streakWeeks, trainingWeekKeys]);
 
   const calendarDayLoad = useMemo(() => {
     const byDay = new Map<number, number>();
@@ -2561,10 +2623,30 @@ export function MemberPortal(props: MemberPortalProps) {
 
   useEffect(() => {
     if (memberTab === "periodPlans") {
-      setMemberTab("programs");
       setShowPeriodPlanPanel(true);
     }
-  }, [memberTab, setMemberTab]);
+  }, [memberTab]);
+
+  useEffect(() => {
+    if (!memberFocusWorkoutLogId) return;
+    const log = completedLogs.find((item) => item.id === memberFocusWorkoutLogId);
+    if (!log) return;
+    setExpandedRecentLogId(memberFocusWorkoutLogId);
+    if (memberTab !== "programs") {
+      setMemberTab("programs");
+    }
+    const scrollTargetId = `member-workout-log-${memberFocusWorkoutLogId}`;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(scrollTargetId)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [memberFocusWorkoutLogId, completedLogs, memberTab, setMemberTab]);
+
+  useEffect(() => {
+    if (memberTab !== "programs" && memberFocusWorkoutLogId) {
+      clearMemberFocusWorkoutLogId?.();
+    }
+  }, [memberTab, memberFocusWorkoutLogId, clearMemberFocusWorkoutLogId]);
 
   useEffect(() => {
     if (memberTab !== "programs" || typeof window === "undefined") return;
@@ -2575,10 +2657,8 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [memberTab]);
 
   function openProgramsWithPeriodPlan() {
-    if (typeof window !== "undefined") {
-      window.sessionStorage.setItem("motus.member.openPeriodPlanOnPrograms", "1");
-    }
-    setMemberTab("programs");
+    setShowPeriodPlanPanel(true);
+    setMemberTab("periodPlans");
   }
 
   useEffect(() => {
@@ -3930,12 +4010,14 @@ export function MemberPortal(props: MemberPortalProps) {
             ? [
                 { id: "overview", label: "Hjem" },
                 { id: "programs", label: "Trening" },
+                { id: "periodPlans", label: "Mine periodeplaner" },
                 { id: "inspiration", label: "Inspirasjon" },
                 { id: "profile", label: "Profil" },
               ]
             : [
             { id: "overview", label: "Hjem" },
             { id: "programs", label: "Trening" },
+            { id: "periodPlans", label: "Mine periodeplaner" },
             { id: "inspiration", label: "Inspirasjon" },
             { id: "progress", label: "Fremgang" },
             { id: "messages", label: "Meldinger" },
@@ -3999,6 +4081,11 @@ export function MemberPortal(props: MemberPortalProps) {
 
         <div className="min-w-0 w-full space-y-4 sm:space-y-6">
           {memberTab === "overview" ? (
+            <div className="space-y-4">
+              <MemberTabHero
+                title="Hjem"
+                description="Kalender, planlagte økter og snarveier — et raskt overblikk over treningsuken din."
+              />
             <Card className="min-w-0 w-full p-4 sm:p-6 flex flex-col gap-5 sm:gap-6">
               {!isMemberLimited ? (
               <div className="order-2 flex items-end justify-between gap-3">
@@ -4330,6 +4417,7 @@ export function MemberPortal(props: MemberPortalProps) {
               </div>
               ) : null}
             </Card>
+            </div>
           ) : null}
 
           {!isMemberLimited && shouldShowPrCelebration ? (
@@ -4417,12 +4505,16 @@ export function MemberPortal(props: MemberPortalProps) {
             </div>
           ) : null}
 
-          {memberTab === "programs" ? (
+          {memberTab === "programs" || memberTab === "periodPlans" ? (
             <>
               <div className="flex flex-col gap-4">
               <MemberTabHero
-                title="Trening"
-                description="Mine programmer, periodeplan og egen økt — alt samlet på ett sted."
+                title={memberTab === "periodPlans" ? "Mine periodeplaner" : "Trening"}
+                description={
+                  memberTab === "periodPlans"
+                    ? "Velg aktiv periodeplan, bla mellom ukene og start eller logg planlagte økter."
+                    : "Mine programmer, periodeplan og egen økt — alt samlet på ett sted."
+                }
               />
               <Card className="p-4 sm:p-5">
                 <h3 className="text-sm font-semibold text-slate-900">Mine treningsprogram</h3>
@@ -5261,13 +5353,15 @@ export function MemberPortal(props: MemberPortalProps) {
                       className="bg-white"
                     />
                   ) : null}
-                  {recentCompletedLogs.map((log) => {
+                  {recentCompletedLogsForDisplay.map((log) => {
                     const isExpanded = expandedRecentLogId === log.id;
                     const fromPeriodPlan = isPeriodPlanWorkoutLog(log);
+                    const isFocusedFromNotification = memberFocusWorkoutLogId === log.id;
                     return (
                     <div
                       key={log.id}
-                      className="overflow-hidden rounded-lg border bg-white"
+                      id={`member-workout-log-${log.id}`}
+                      className={`overflow-hidden rounded-lg border bg-white ${isFocusedFromNotification ? "ring-2 ring-teal-400/80 ring-offset-1" : ""}`}
                       style={{ borderColor: "rgba(15,23,42,0.08)" }}
                     >
                       <button
@@ -5609,13 +5703,17 @@ export function MemberPortal(props: MemberPortalProps) {
               <Card className="p-4 sm:p-5">
                 <h3 className="text-sm font-semibold text-slate-900">Streaks og achievements</h3>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  Små milepæler som holder motivasjonen oppe. Nivå {achievementLevel} av {achievementMaxLevel}
+                  Nivå {achievementLevel} av {achievementMaxLevel}
                   {hasCompletedAllAchievementLevels ? " · Maksnivå nådd ✨" : ""}
+                  {" · "}Ukestreak = minst én fullført økt per kalenderuke, uten hull mellom ukene.
                 </p>
-                <div className="mt-3 rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="text-sm font-semibold text-slate-700">Streak denne perioden: {streakWeeks} uker</div>
-                  <div className="mt-2 text-xs text-slate-500">Streak teller sammenhengende treningsuker med fullførte økter.</div>
-                </div>
+                <MemberWeeklyStreakCard
+                  streakWeeks={streakWeeks}
+                  streakSubline={streakSubline}
+                  recentStreakWeeks={recentStreakWeeks}
+                  currentStreakMilestoneTarget={currentStreakMilestoneTarget}
+                  achievementLevel={achievementLevel}
+                />
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                   {achievements.map((achievement) => (
                     <div key={achievement.id} className={`rounded-xl border px-3 py-2 text-sm ${achievement.unlocked ? "border-emerald-300 bg-emerald-50/80 text-emerald-900" : "border-slate-200 bg-white text-slate-600"}`}>
@@ -5783,14 +5881,13 @@ export function MemberPortal(props: MemberPortalProps) {
           ) : null}
 
           {!isMemberLimited && memberTab === "messages" ? (
+            <div className="space-y-4">
+              <MemberTabHero
+                title="Meldinger"
+                description="Skriv med personlig trener. Samtalen lagres her slik at dere begge ser oppdateringene."
+              />
             <Card className="p-5">
-              <div className="flex items-start gap-3">
-                <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><MessageSquare className="h-5 w-5" /></div>
-                <div>
-                  <h2 className="text-xl font-semibold tracking-tight">Meldinger</h2>
-                </div>
-              </div>
-              <div className="mt-5 space-y-4">
+              <div className="space-y-4">
                 <div ref={memberMessagesContainerRef} className="max-h-[min(52vh,20rem)] space-y-3 overflow-auto rounded-xl border bg-white p-3 sm:p-4">
                   {memberMessages.length === 0 ? (
                     <EmptyState
@@ -5837,6 +5934,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 ) : null}
               </div>
             </Card>
+            </div>
           ) : null}
 
           {memberTab === "profile" ? (

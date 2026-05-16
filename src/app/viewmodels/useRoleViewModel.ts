@@ -35,6 +35,8 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     markMemberInspirationAsSeen,
     memberFocusInspirationItemId,
     clearMemberFocusInspirationItemId,
+    memberFocusWorkoutLogId,
+    clearMemberFocusWorkoutLogId,
   } = useNotifications({
     messages: state.appState.messages,
     programs: state.appState.programs,
@@ -140,6 +142,8 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     markMemberInspirationAsSeen,
     memberFocusInspirationItemId,
     clearMemberFocusInspirationItemId,
+    memberFocusWorkoutLogId,
+    clearMemberFocusWorkoutLogId,
     remoteMemberPeriodPlanRows: state.remoteMemberPeriodPlanRows,
     refreshRemoteHydration: state.refreshRemoteHydration,
   });

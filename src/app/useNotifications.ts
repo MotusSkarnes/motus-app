@@ -11,6 +11,7 @@ import {
 } from "./inspirationStorage";
 import { trainerInactiveDaysForFollowUp } from "./memberActivity";
 import type { ChatMessage, Member, MemberTab, TrainingProgram, WorkoutLog } from "./types";
+import { readWorkoutLogIdFromLocation, stripWorkoutLogIdFromLocation, workoutLogIdFromMemberAlertId } from "./workoutLogDeepLink";
 
 const MEMBER_INSPIRATION_BASELINE_KEY = "motus.notifications.memberInspirationBaselineAt";
 
@@ -142,6 +143,7 @@ export function useNotifications({
   });
   const [inspirationItems, setInspirationItems] = useState<InspirationNotificationItem[]>(() => loadInspirationNotificationItems());
   const [memberFocusInspirationItemId, setMemberFocusInspirationItemId] = useState<string | null>(null);
+  const [memberFocusWorkoutLogId, setMemberFocusWorkoutLogId] = useState<string | null>(() => readWorkoutLogIdFromLocation());
 
   const syncInspirationItemsFromStorage = useCallback(() => {
     setInspirationItems(loadInspirationNotificationItems());
@@ -320,9 +322,10 @@ export function useNotifications({
                 ? `${comment.slice(0, 72)}...`
                 : `${authorName ? `${authorName}: ` : ""}${comment}`,
             timestamp,
-            targetTab: "progress" as const,
+            targetTab: "programs" as const,
             unread: !seenMemberWorkoutCommentKeys.includes(seenKey),
             seenKey,
+            workoutLogId: log.id,
           };
         }),
     [logs, memberViewId, seenMemberWorkoutCommentKeys],
@@ -393,6 +396,14 @@ export function useNotifications({
         }),
     [inspirationItems, seenMemberInspirationIds],
   );
+
+  useEffect(() => {
+    const logIdFromUrl = readWorkoutLogIdFromLocation();
+    if (!logIdFromUrl) return;
+    setMemberFocusWorkoutLogId(logIdFromUrl);
+    setMemberTab("programs");
+    stripWorkoutLogIdFromLocation();
+  }, [setMemberTab]);
 
   const memberRecentAlerts = useMemo<MemberAlert[]>(() => {
     const combined: MemberAlert[] = [
@@ -530,6 +541,10 @@ export function useNotifications({
       if (workoutAlert?.seenKey) {
         setSeenMemberWorkoutCommentKeys((prev) => Array.from(new Set([...prev, workoutAlert.seenKey])));
       }
+      const logId = workoutAlert?.workoutLogId ?? workoutLogIdFromMemberAlertId(alert.id);
+      if (logId) {
+        setMemberFocusWorkoutLogId(logId);
+      }
     } else if (alert.kind === "inspiration") {
       const inspirationId = alert.inspirationItemId ?? alert.id.replace(/^member-inspiration-/, "");
       if (inspirationId) {
@@ -600,5 +615,7 @@ export function useNotifications({
     markMemberInspirationAsSeen,
     memberFocusInspirationItemId,
     clearMemberFocusInspirationItemId: () => setMemberFocusInspirationItemId(null),
+    memberFocusWorkoutLogId,
+    clearMemberFocusWorkoutLogId: () => setMemberFocusWorkoutLogId(null),
   };
 }

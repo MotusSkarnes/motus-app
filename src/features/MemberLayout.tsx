@@ -1,10 +1,12 @@
 import { useEffect, useMemo } from "react";
 import type { ComponentProps } from "react";
-import { Bell, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp, type LucideIcon } from "lucide-react";
+import { Bell, CalendarRange, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp, type LucideIcon } from "lucide-react";
 import { MOTUS } from "../app/data";
-import type { AppState, MemberTab } from "../app/types";
+import { normalizePeriodSchedulePlan, readPeriodPlansByMemberId, writePeriodPlansByMemberId } from "../app/periodPlanMerge";
+import type { AppState, MemberTab, PeriodSchedulePlan } from "../app/types";
 import { Card } from "../app/ui";
 import type { MemberAlert } from "../app/useNotifications";
+import { upsertMemberPeriodPlansForTrainer } from "../services/supabaseRepository";
 import { MemberPortal } from "./MemberPortal";
 import { InspirationHub } from "./InspirationHub";
 
@@ -42,6 +44,8 @@ type MemberLayoutProps = {
   markMemberInspirationAsSeen: () => void;
   memberFocusInspirationItemId: string | null;
   clearMemberFocusInspirationItemId: () => void;
+  memberFocusWorkoutLogId: string | null;
+  clearMemberFocusWorkoutLogId: () => void;
   remoteMemberPeriodPlanRows: ComponentProps<typeof MemberPortal>["remoteMemberPeriodPlanRows"];
   refreshRemoteHydration?: ComponentProps<typeof MemberPortal>["refreshRemoteHydration"];
 };
@@ -49,6 +53,7 @@ type MemberLayoutProps = {
 const mobileTabs: Array<{ id: MemberTab; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Hjem", icon: LayoutDashboard },
   { id: "programs", label: "Trening", icon: ClipboardList },
+  { id: "periodPlans", label: "Planer", icon: CalendarRange },
   { id: "inspiration", label: "Inspo", icon: Sparkles },
   { id: "progress", label: "Fremgang", icon: TrendingUp },
   { id: "messages", label: "Meldinger", icon: MessageSquare },
@@ -88,6 +93,8 @@ export function MemberLayout({
   markMemberInspirationAsSeen,
   memberFocusInspirationItemId,
   clearMemberFocusInspirationItemId,
+  memberFocusWorkoutLogId,
+  clearMemberFocusWorkoutLogId,
   remoteMemberPeriodPlanRows,
   refreshRemoteHydration,
 }: MemberLayoutProps) {
@@ -112,7 +119,7 @@ export function MemberLayout({
     return candidates.some((member) => member.customerType === "Medlem" && member.membershipType !== "Premium");
   }, [appState.currentUser, appState.members, appState.memberViewId]);
   const visibleMobileTabs = isMemberLimited
-    ? mobileTabs.filter((tab) => tab.id === "overview" || tab.id === "programs" || tab.id === "inspiration")
+    ? mobileTabs.filter((tab) => tab.id === "overview" || tab.id === "programs" || tab.id === "periodPlans" || tab.id === "inspiration")
     : mobileTabs;
 
   useEffect(() => {
@@ -159,6 +166,8 @@ export function MemberLayout({
     cancelWorkoutMode,
     workoutCelebration: appState.workoutCelebration,
     dismissWorkoutCelebration,
+    memberFocusWorkoutLogId,
+    clearMemberFocusWorkoutLogId,
     remoteMemberPeriodPlanRows,
     refreshRemoteHydration,
   };
@@ -168,31 +177,23 @@ export function MemberLayout({
     appState.members.find((member) => member.email.trim().toLowerCase() === appState.currentUser?.email.trim().toLowerCase())?.id ||
     "";
 
-  function addInspirationPeriodPlan(plan: import("../app/types").PeriodSchedulePlan) {
+  function addInspirationPeriodPlan(plan: PeriodSchedulePlan) {
     if (!inspirationMemberId || typeof window === "undefined") return;
-    const storageKey = "motus.trainer.periodPlansByMemberId";
-    let byMember: Record<string, import("../app/types").PeriodSchedulePlan[]> = {};
-    try {
-      const raw = window.localStorage.getItem(storageKey);
-      byMember = raw ? (JSON.parse(raw) as Record<string, import("../app/types").PeriodSchedulePlan[]>) : {};
-    } catch {
-      byMember = {};
-    }
+    const byMember = readPeriodPlansByMemberId();
     const existing = byMember[inspirationMemberId] ?? [];
+    const memberPlan = normalizePeriodSchedulePlan({
+      ...plan,
+      id: `${plan.id}-${Date.now()}`,
+      createdAt: new Date().toISOString().slice(0, 10),
+      periodPlanAddedBy: "member",
+    });
     byMember[inspirationMemberId] = [
-      {
-        ...plan,
-        id: `${plan.id}-${Date.now()}`,
-        createdAt: new Date().toISOString().slice(0, 10),
-        periodPlanAddedBy: "member",
-      },
+      memberPlan,
       ...existing,
     ];
-    window.localStorage.setItem(storageKey, JSON.stringify(byMember));
-    if (typeof window !== "undefined") {
-      window.sessionStorage.setItem("motus.member.openPeriodPlanOnPrograms", "1");
-    }
-    setMemberTab("programs");
+    writePeriodPlansByMemberId(byMember);
+    void upsertMemberPeriodPlansForTrainer([inspirationMemberId], memberPlan).then(() => refreshRemoteHydration?.());
+    setMemberTab("periodPlans");
   }
 
   return (

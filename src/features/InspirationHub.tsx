@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, CalendarRange, ChevronLeft, ChevronRight, ClipboardList, ImagePlus, Lightbulb, Newspaper, Pencil, Plus, Soup, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ClipboardList, ImagePlus, Lightbulb, Newspaper, Pencil, Plus, Soup, Trash2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { compressImageDataUrl, compressImageFile } from "../app/imageCompress";
 import {
@@ -12,7 +12,6 @@ import {
 } from "../app/inspirationStorage";
 import { buildPeriodPlanProgramSelectOptions, WEEKDAY_PLAN_FIELDS } from "../app/periodPlanBuilder";
 import { normalizePeriodSchedulePlan, syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
-import { WEEKDAY_PLAN_LABELS, WEEKDAY_PLAN_ORDER } from "../app/periodPlanSwaps";
 import { uid } from "../app/storage";
 import { EmptyState, GradientButton, OutlineButton, SelectBox, TextArea, TextInput } from "../app/ui";
 import type { Exercise, PeriodSchedulePlan, ProgramExercise, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "../app/types";
@@ -20,6 +19,7 @@ import type { SaveProgramInput } from "../services/appRepository";
 
 type InspirationCategory = "recipes" | "programs" | "tips" | "news";
 type InspirationKind = "article" | "program" | "periodPlan";
+type InspirationBodyStyle = "normal" | "bold" | "italic";
 type ProgramTemplateInput = Omit<SaveProgramInput, "memberId">;
 
 type InspirationItem = {
@@ -29,6 +29,7 @@ type InspirationItem = {
   title: string;
   description: string;
   body: string;
+  bodyStyle?: InspirationBodyStyle;
   tag: string;
   author: string;
   createdAt: string;
@@ -50,9 +51,9 @@ const CATEGORY_META: Record<InspirationCategory, { label: string; plural: string
 /** Maks lengde for undertekst på inspo-kort (ca. 2 linjer i karusellen). */
 const INSPO_CARD_DESCRIPTION_MAX = 100;
 const INSPO_CARD_TITLE_MAX = 72;
-const INSPO_FEED_CARD_WIDTH_CLASS = "w-44 sm:w-48";
-const INSPO_FEED_CARD_HEIGHT_CLASS = "h-[19.75rem] sm:h-[20.75rem]";
-const INSPO_FEED_CARD_IMAGE_CLASS = "h-[7.25rem] sm:h-[7.75rem]";
+const INSPO_FEED_CARD_WIDTH_CLASS = "w-52 sm:w-56";
+const INSPO_FEED_CARD_HEIGHT_CLASS = "h-[22.5rem] sm:h-[23.5rem]";
+const INSPO_FEED_CARD_IMAGE_CLASS = "h-[8.5rem] sm:h-[9rem]";
 const INSPO_FEED_CARD_ACTION_CLASS = "!min-h-8 !px-2.5 !py-1.5 !text-[11px] !leading-tight";
 
 const INSPIRATION_FEED_SECTIONS: readonly { category: InspirationCategory; title: string }[] = [
@@ -71,6 +72,16 @@ const DAY_LABELS: Record<WeekdayPlanKey, string> = {
   saturday: "Lørdag",
   sunday: "Søndag",
 };
+
+const BODY_STYLE_OPTIONS: Array<{ value: InspirationBodyStyle; label: string; className: string }> = [
+  { value: "normal", label: "Vanlig", className: "font-normal not-italic" },
+  { value: "bold", label: "Bold", className: "font-bold not-italic" },
+  { value: "italic", label: "Kursiv", className: "font-normal italic" },
+];
+
+function bodyStyleClass(style?: InspirationBodyStyle): string {
+  return BODY_STYLE_OPTIONS.find((option) => option.value === style)?.className ?? BODY_STYLE_OPTIONS[0].className;
+}
 
 function splitMultiValue(value: string): string[] {
   return String(value ?? "")
@@ -424,6 +435,7 @@ export function InspirationHub({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [body, setBody] = useState("");
+  const [bodyStyle, setBodyStyle] = useState<InspirationBodyStyle>("normal");
   const [tag, setTag] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [categoryDraft, setCategoryDraft] = useState<InspirationCategory>("recipes");
@@ -616,7 +628,7 @@ export function InspirationHub({
   function scrollSectionCarousel(category: InspirationCategory, direction: "left" | "right") {
     const node = carouselRefs.current[category];
     if (!node) return;
-    const amount = Math.max(260, Math.round(node.clientWidth * 0.82));
+    const amount = Math.max(300, Math.round(node.clientWidth * 0.82));
     node.scrollBy({ left: direction === "left" ? -amount : amount, behavior: "smooth" });
   }
 
@@ -696,6 +708,7 @@ export function InspirationHub({
     setTitle("");
     setDescription("");
     setBody("");
+    setBodyStyle("normal");
     setTag("");
     setImageUrl("");
     setCategoryDraft("recipes");
@@ -710,6 +723,7 @@ export function InspirationHub({
     setTitle(item.title);
     setDescription(item.description);
     setBody(item.body);
+    setBodyStyle(item.bodyStyle ?? "normal");
     setTag(item.tag);
     setImageUrl(item.imageUrl ?? "");
     setCategoryDraft(item.category);
@@ -904,6 +918,7 @@ export function InspirationHub({
               title: nextTitle,
               description: nextDescription,
               body: nextBody,
+              bodyStyle: categoryDraft === "news" ? bodyStyle : undefined,
               tag: tag.trim() || CATEGORY_META[categoryDraft].label,
               imageUrl: storedImageUrl,
               programTemplate: kind === "program" ? programTemplate : undefined,
@@ -923,6 +938,7 @@ export function InspirationHub({
         title: nextTitle,
         description: nextDescription,
         body: nextBody,
+        bodyStyle: categoryDraft === "news" ? bodyStyle : undefined,
         tag: tag.trim() || CATEGORY_META[categoryDraft].label,
         author: authorName.trim() || "Motus",
         createdAt: now.toISOString(),
@@ -1039,7 +1055,7 @@ export function InspirationHub({
             <h1 className="mt-4 text-2xl font-bold leading-snug tracking-tight text-slate-950 sm:text-3xl">{expandedItem.title}</h1>
             <p className="mt-2 text-base text-slate-600">{expandedItem.description}</p>
             {expandedItem.body.trim() && !showProgramPreview ? (
-              <p className="mt-5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 sm:text-base">{expandedItem.body}</p>
+              <p className={`mt-5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 sm:text-base ${bodyStyleClass(expandedItem.bodyStyle)}`}>{expandedItem.body}</p>
             ) : null}
 
             {programPreview ? (

@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { INSPIRATION_CHANGED_EVENT, INSPIRATION_STORAGE_KEY } from "./inspirationStorage";
 import { useNotifications } from "./useNotifications";
-import type { WorkoutLog } from "./types";
+import type { MemberTab, WorkoutLog } from "./types";
 
 function makeLog(overrides: Partial<WorkoutLog> = {}): WorkoutLog {
   return {
@@ -198,6 +198,32 @@ describe("useNotifications workout comment alerts", () => {
       expect(inspoAlert?.title).toBe("Ny oppskrift i inspirasjon");
       expect(inspoAlert?.detail).toBe("Proteinpannekaker");
     });
+  });
+
+  it("opens programs tab and focuses workout when comment alert is opened", () => {
+    let memberTab: MemberTab = "overview";
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [],
+        logs: [makeLog()],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+        memberViewId: "member-1",
+        setMemberTab: (tab) => {
+          memberTab = tab;
+        },
+      }),
+    );
+
+    const alert = result.current.memberVisibleAlerts.find((item) => item.kind === "workout-comment");
+    expect(alert).toBeDefined();
+
+    act(() => {
+      result.current.openAlert(alert!);
+    });
+
+    expect(memberTab).toBe("programs");
+    expect(result.current.memberFocusWorkoutLogId).toBe("log-1");
   });
 
   it("ignores workout comments on non-completed logs", () => {
