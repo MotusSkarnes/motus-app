@@ -84,11 +84,13 @@ import {
   WEEKDAY_PLAN_ORDER,
   type PeriodPlanSwapsByPlan,
 } from "../app/periodPlanSwaps";
+import { computeMaxLiftKgFromLogs, computeMemberBadges } from "../app/memberBadges";
 import {
   ACHIEVEMENT_MAX_LEVEL,
   buildCelebrationCopy,
   computeMemberProgressState,
 } from "../app/memberProgressGamification";
+import { MemberBadgesCarousel } from "./MemberBadgesCarousel";
 import { MemberHabitSummaryCard } from "./MemberHabitSummaryCard";
 import { MemberProgressGoals } from "./MemberProgressGoals";
 import { MemberWeeklyStreakCard } from "./MemberWeeklyStreakCard";
@@ -1847,6 +1849,18 @@ export function MemberPortal(props: MemberPortalProps) {
   const streakSubline = memberProgress.streakSubline;
   const recentStreakWeeks = memberProgress.recentStreakWeeks;
   const currentStreakMilestoneTarget = memberProgress.streakMilestoneTarget;
+  const maxLiftKg = useMemo(() => computeMaxLiftKgFromLogs(completedLogs), [completedLogs]);
+  const memberBadges = useMemo(
+    () =>
+      computeMemberBadges({
+        completedSessionCount: completedLogs.length,
+        streakWeeks: memberProgress.streakWeeks,
+        maxLiftKg,
+        monthGoalCurrent: memberProgress.monthGoal.current,
+        monthGoalTarget: memberProgress.monthGoal.target,
+      }),
+    [completedLogs.length, maxLiftKg, memberProgress.monthGoal, memberProgress.streakWeeks],
+  );
 
   const calendarDayLoad = useMemo(() => {
     const byDay = new Map<number, number>();
@@ -4078,6 +4092,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 </Card>
               ) : null}
+              {!isMemberLimited ? <MemberBadgesCarousel badges={memberBadges} /> : null}
             <Card className="min-w-0 w-full p-4 sm:p-6 flex flex-col gap-5 sm:gap-6">
               <div className="order-2 w-full">
                   <div className="flex h-full min-w-0 flex-col rounded-2xl border bg-white p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
