@@ -696,7 +696,7 @@ export function InspirationHub({
               </div>
             ) : null}
           </div>
-          <div className="flex shrink-0 flex-col px-2 pb-1 pt-1.5">
+          <div className="flex shrink-0 flex-col px-2 pb-2 pt-1.5">
             <div className="flex min-h-[1.125rem] items-center justify-between gap-1.5">
               <span
                 className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm"
@@ -708,14 +708,12 @@ export function InspirationHub({
               <span className="truncate text-[9px] text-slate-400">{item.tag}</span>
             </div>
             <h3 className={`mt-0.5 ${INSPO_FEED_CARD_TITLE_CLASS}`}>{item.title}</h3>
-            <p className={`mt-0.5 ${INSPO_FEED_CARD_DESCRIPTION_CLASS}`}>{item.description || "\u00a0"}</p>
+            <div className="mt-0.5 flex items-end gap-1.5">
+              <p className={`min-w-0 flex-1 ${INSPO_FEED_CARD_DESCRIPTION_CLASS}`}>{item.description || "\u00a0"}</p>
+              <span className={`shrink-0 ${INSPO_FEED_CARD_ACTION_CLASS} font-semibold text-teal-700`}>Les mer</span>
+            </div>
           </div>
         </button>
-        <div className="shrink-0 border-t border-slate-100 px-2 pb-2 pt-0">
-          <OutlineButton onClick={() => setExpandedItemId(item.id)} className={`w-full ${INSPO_FEED_CARD_ACTION_CLASS}`}>
-            Les mer
-          </OutlineButton>
-        </div>
       </article>
     );
   }

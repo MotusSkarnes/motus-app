@@ -2162,6 +2162,39 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
   }));
 }
 
+export async function archiveMemberByEmailFromSupabase(
+  email: string,
+  memberId?: string,
+): Promise<{ ok: boolean; message: string }> {
+  if (!supabaseClient) {
+    return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const trimmedMemberId = String(memberId ?? "").trim();
+  if (!trimmedMemberId && (!normalizedEmail || !normalizedEmail.includes("@"))) {
+    return { ok: false, message: "Mangler gyldig e-post for arkivering." };
+  }
+
+  try {
+    const { data, error } = await supabaseClient.functions.invoke("archive-member", {
+      body: { email: normalizedEmail || undefined, memberId: trimmedMemberId || undefined },
+    });
+    if (!error) {
+      const archivedCount = Number((data as { archivedCount?: number } | null)?.archivedCount ?? 0);
+      if (archivedCount <= 0) {
+        return { ok: false, message: "Fant ingen klient å arkivere i databasen." };
+      }
+      return { ok: true, message: "Klient arkivert i databasen." };
+    }
+    console.warn("archive-member invoke failed:", error.message);
+  } catch (error) {
+    console.warn("archive-member invoke threw:", error);
+  }
+
+  return { ok: false, message: "Kunne ikke arkivere i databasen. Deploy archive-member og prøv igjen." };
+}
+
 export async function restoreMemberByEmailFromSupabase(email: string): Promise<{ ok: boolean; message: string }> {
   if (!supabaseClient) {
     return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
@@ -2260,25 +2293,14 @@ export const supabaseAppRepository: AppRepository = {
     return nextState;
   },
   deactivateMember(state: AppState, memberId: string): AppState {
+    const targetMember = state.members.find((member) => member.id === memberId);
+    const emailKey = targetMember?.email.trim().toLowerCase() ?? "";
     const nextState = localAppRepository.deactivateMember(state, memberId);
-    const emailKey =
-      state.members.find((member) => member.id === memberId)?.email.trim().toLowerCase() ?? "";
-    const targets = nextState.members.filter((member) => {
-      if (member.id === memberId) return true;
-      return Boolean(emailKey && member.email.trim().toLowerCase() === emailKey);
+    void archiveMemberByEmailFromSupabase(emailKey, memberId).then((result) => {
+      if (!result.ok) {
+        console.warn("archive-member:", result.message);
+      }
     });
-    for (const member of targets) {
-      void persistMember({ ...member, isActive: false });
-    }
-    if (emailKey && supabaseClient) {
-      void supabaseClient
-        .from("members")
-        .update({ is_active: false })
-        .ilike("email", emailKey)
-        .then(({ error }) => {
-          if (error) console.warn("Supabase archive by email failed:", error.message);
-        });
-    }
     return nextState;
   },
   deleteMember(state: AppState, memberId: string): AppState {

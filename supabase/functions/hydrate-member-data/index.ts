@@ -227,7 +227,7 @@ Deno.serve(async (req) => {
       .select(membersSelectWithAvatar)
       .eq("owner_user_id", requesterUserId)
       .order("created_at", { ascending: false });
-    const fallbackMembers = (ownerScopedMembers ?? []) as Array<Record<string, unknown>>;
+    const fallbackMembers = ((ownerScopedMembers ?? []) as Array<Record<string, unknown>>).filter(rowIsActive);
     if (fallbackMembers.length > 0) {
       const fallbackById = new Map<string, Record<string, unknown>>();
       [...scopedMembers, ...fallbackMembers].forEach((row) => {
@@ -238,6 +238,9 @@ Deno.serve(async (req) => {
       memberIds = Array.from(fallbackById.keys());
       scopedMembers = Array.from(fallbackById.values());
     }
+  }
+  if (emailRowsForAccess.length > 0 && !emailRowsForAccess.some(rowIsActive)) {
+    return memberArchivedResponse();
   }
   if (!memberIds.length) {
     if (emailRowsForAccess.length > 0) {
