@@ -582,6 +582,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     { id: uid("period-week"), weekNumber: 1, days: createEmptyWeeklyDayPlan() },
   ]);
   const [activePeriodWeekId, setActivePeriodWeekId] = useState<string>(periodWeeklyPlansDraft[0]?.id ?? "");
+  const [savedPeriodPlanWeekByPlanId, setSavedPeriodPlanWeekByPlanId] = useState<Record<string, number>>({});
   const [periodPlanStatus, setPeriodPlanStatus] = useState<string | null>(null);
   const [favoriteExerciseIds, setFavoriteExerciseIds] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
@@ -4469,11 +4470,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         {periodWeeklyPlansDraft.length > 0 ? (
                           <div className="rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                             <div className="text-base font-semibold text-slate-900">Uker i planen</div>
-                            <PeriodPlanWeekNavigator
-                              weeks={periodWeeklyPlansDraft.slice(0, Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1)))}
-                              selectedWeekId={activePeriodWeekId}
-                              onWeekSelectById={setActivePeriodWeekId}
-                            />
                             <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
                               {periodWeeklyPlansDraft.slice(0, Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1))).map((week) => {
                                 const marked = week.usesGradientPlan === true;
@@ -4543,26 +4539,49 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                               Ingen periodeplan lagret for kunden ennå.
                             </div>
                           ) : (
-                            selectedPeriodPlans.slice(0, 4).map((plan) => (
-                              <div key={plan.id} className="rounded-xl border bg-slate-50 p-4 text-sm text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                <div className="flex items-start justify-between gap-2">
-                                  <div>
-                                    <div className="text-base font-semibold text-slate-900">{plan.title}</div>
-                                    <div className="mt-1 text-sm text-slate-600">Start: {plan.startDate} · {plan.weeks} uker · Lagret {plan.createdAt}</div>
-                                  </div>
-                                  <OutlineButton className="px-3 py-1.5 text-sm" onClick={() => removePeriodPlan(plan.id)}>
-                                    Slett
-                                  </OutlineButton>
-                                </div>
-                                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                                  {plan.weeklyPlans.slice(0, 2).map((week) => (
-                                    <div key={week.id} className="rounded-lg border bg-white px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                      <div className="text-sm font-semibold text-slate-900">Uke {week.weekNumber}</div>
+                            selectedPeriodPlans.slice(0, 4).map((plan) => {
+                              const sortedWeeks = [...plan.weeklyPlans].sort((a, b) => a.weekNumber - b.weekNumber);
+                              const selectedWeekNumber = savedPeriodPlanWeekByPlanId[plan.id] ?? sortedWeeks[0]?.weekNumber ?? 1;
+                              const selectedWeek = sortedWeeks.find((week) => week.weekNumber === selectedWeekNumber) ?? sortedWeeks[0] ?? null;
+                              return (
+                                <div key={plan.id} className="rounded-xl border bg-slate-50 p-4 text-sm text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div>
+                                      <div className="text-base font-semibold text-slate-900">{plan.title}</div>
+                                      <div className="mt-1 text-sm text-slate-600">Start: {plan.startDate} · {plan.weeks} uker · Lagret {plan.createdAt}</div>
                                     </div>
-                                  ))}
+                                    <OutlineButton className="px-3 py-1.5 text-sm" onClick={() => removePeriodPlan(plan.id)}>
+                                      Slett
+                                    </OutlineButton>
+                                  </div>
+                                  <div className="mt-3">
+                                    <PeriodPlanWeekNavigator
+                                      weeks={sortedWeeks}
+                                      selectedWeekNumber={selectedWeek?.weekNumber ?? 1}
+                                      onWeekSelectByNumber={(weekNumber) =>
+                                        setSavedPeriodPlanWeekByPlanId((prev) => ({ ...prev, [plan.id]: weekNumber }))
+                                      }
+                                    />
+                                  </div>
+                                  {selectedWeek ? (
+                                    <div className="mt-3 rounded-lg border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                      <div className="text-sm font-semibold text-slate-900">Uke {selectedWeek.weekNumber}</div>
+                                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                        {WEEKDAY_PLAN_FIELDS.map((field) => {
+                                          const entry = selectedWeek.days[field.key]?.trim();
+                                          return (
+                                            <div key={field.key} className="rounded-lg bg-slate-50 px-3 py-2">
+                                              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{field.label}</div>
+                                              <div className="mt-1 text-sm text-slate-800">{entry || "Ingen plan"}</div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  ) : null}
                                 </div>
-                              </div>
-                            ))
+                              );
+                            })
                           )}
                         </div>
                         </div>
