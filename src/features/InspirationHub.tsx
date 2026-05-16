@@ -41,12 +41,12 @@ const CATEGORY_META: Record<InspirationCategory, { label: string; plural: string
   recipes: { label: "Oppskrift", plural: "Oppskrifter", icon: Soup, accent: "bg-emerald-50 text-emerald-800 ring-emerald-100", image: "linear-gradient(135deg,#d1fae5,#ffffff,#fce7f3)" },
   programs: { label: "Trening", plural: "Treningsprogram", icon: ClipboardList, accent: "bg-sky-50 text-sky-800 ring-sky-100", image: "linear-gradient(135deg,#cffafe,#f8fafc,#fbcfe8)" },
   tips: { label: "Tips", plural: "Råd og tips", icon: Lightbulb, accent: "bg-amber-50 text-amber-800 ring-amber-100", image: "linear-gradient(135deg,#fef3c7,#ffffff,#ccfbf1)" },
-  news: { label: "Nyhet", plural: "Nyheter på senteret", icon: Newspaper, accent: "bg-pink-50 text-pink-800 ring-pink-100", image: "linear-gradient(135deg,#fce7f3,#ffffff,#ccfbf1)" },
+  news: { label: "Info", plural: "Info fra senteret", icon: Newspaper, accent: "bg-pink-50 text-pink-800 ring-pink-100", image: "linear-gradient(135deg,#fce7f3,#ffffff,#ccfbf1)" },
 };
 
 /** Vertikal rekkefølge på inspo-feed (øverst → nederst). */
 const INSPIRATION_FEED_SECTIONS: readonly { category: InspirationCategory; title: string }[] = [
-  { category: "news", title: "Nyheter" },
+  { category: "news", title: "Info fra senteret" },
   { category: "programs", title: "Treningsprogram" },
   { category: "recipes", title: "Oppskrifter" },
   { category: "tips", title: "Råd og tips" },
@@ -445,7 +445,6 @@ export function InspirationHub({
     return grouped;
   }, [sortedItems]);
 
-  const featured = sortedItems.find((item) => item.category === "news") ?? sortedItems[0] ?? DEFAULT_ITEMS[0];
   const expandedItem = items.find((item) => item.id === expandedItemId) ?? null;
 
   useEffect(() => {
@@ -922,18 +921,11 @@ export function InspirationHub({
         style={{ borderColor: "rgba(48,227,190,0.20)", background: `linear-gradient(135deg, ${MOTUS.paleMint} 0%, #ffffff 48%, rgba(217,18,120,0.08) 100%)` }}
       >
         <div className="h-1.5" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
-        <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-end">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-slate-950">Inspirasjon</h2>
-            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">
-              Sveip horisontalt i hver kategori. Trykk les mer for detaljer, eller legg programmer og ukesplaner rett inn i treningen din.
-            </p>
-          </div>
-          <div className="rounded-xl border bg-white/80 p-3 text-sm shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Fremhevet nå</div>
-            <div className="mt-1 font-semibold text-slate-900">{featured.title}</div>
-            <div className="mt-1 text-xs text-slate-500">{featured.description}</div>
-          </div>
+        <div className="p-4 sm:p-5">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-950">Inspirasjon</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">
+            Sveip horisontalt i hver kategori. Trykk les mer for detaljer, eller legg programmer og ukesplaner rett inn i treningen din.
+          </p>
         </div>
       </div>
 
@@ -1031,7 +1023,7 @@ export function InspirationHub({
                 { value: "recipes", label: "Oppskrift" },
                 { value: "programs", label: "Trening / program / ukesplan" },
                 { value: "tips", label: "Råd og tips" },
-                { value: "news", label: "Nyhet på senteret" },
+                { value: "news", label: "Info fra senteret" },
               ]}
             />
             {categoryDraft === "programs" ? (
