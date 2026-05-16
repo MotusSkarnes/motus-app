@@ -101,6 +101,7 @@ import { MemberProgressGoals } from "./MemberProgressGoals";
 import { MemberWeeklyStreakCard } from "./MemberWeeklyStreakCard";
 import { MuscleSplitCard } from "./MuscleSplitCard";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
+import { PersonalRecordProgressModal } from "./PersonalRecordProgressModal";
 import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
 import { PeriodPlanWeekView } from "./PeriodPlanWeekView";
 import {
@@ -874,6 +875,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [customWorkoutCategoryFilter, setCustomWorkoutCategoryFilter] = useState<string>("all");
   const [showAllCustomWorkoutOptions, setShowAllCustomWorkoutOptions] = useState(false);
   const [showAllPersonalRecords, setShowAllPersonalRecords] = useState(false);
+  const [prProgressExerciseName, setPrProgressExerciseName] = useState<string | null>(null);
   const [muscleSplitPeriod, setMuscleSplitPeriod] = useState<MuscleSplitPeriod>(28);
   const [muscleSplitMetric, setMuscleSplitMetric] = useState<MuscleSplitMetric>("sets");
   const [favoritePersonalRecordNames, setFavoritePersonalRecordNames] = useState<string[]>([]);
@@ -5693,7 +5695,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
               <Card className="p-4 sm:p-5">
                 <h3 className="text-sm font-semibold text-slate-900">Personlige rekorder</h3>
-                <p className="mt-0.5 text-xs text-slate-500">Stjernemerk opptil tre rekorder du vil fremheve først.</p>
+                <p className="mt-0.5 text-xs text-slate-500">Trykk på en øvelse for styrkeutvikling over tid. Stjernemerk opptil tre rekorder du vil fremheve først.</p>
                 <div className="mt-4 space-y-3">
                   {personalRecords.length === 0 ? (
                     <EmptyState
@@ -5706,13 +5708,24 @@ export function MemberPortal(props: MemberPortalProps) {
                   {personalRecordsPreview.map((record) => (
                     <div key={record.name} className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="font-medium">{record.name}</div>
-                          <div className="mt-1 text-sm text-slate-500">Beste registrerte: {record.weight} kg × {record.reps}</div>
-                        </div>
                         <button
                           type="button"
-                          onClick={() => toggleFavoritePersonalRecord(record.name)}
+                          onClick={() => setPrProgressExerciseName(record.name)}
+                          className="min-w-0 flex-1 rounded-lg px-1 py-0.5 text-left transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500"
+                        >
+                          <div className="flex items-center gap-2 font-medium text-slate-900">
+                            <span className="truncate">{record.name}</span>
+                            <TrendingUp className="h-4 w-4 shrink-0 text-teal-600" aria-hidden />
+                          </div>
+                          <div className="mt-1 text-sm text-slate-500">Beste registrerte: {record.weight} kg × {record.reps}</div>
+                          <div className="mt-0.5 text-xs font-medium text-teal-700">Se styrkeutvikling</div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleFavoritePersonalRecord(record.name);
+                          }}
                           className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border p-1.5 transition ${
                             cleanedFavoritePersonalRecordNames.includes(record.name)
                               ? "border-transparent text-white"
@@ -6087,6 +6100,13 @@ export function MemberPortal(props: MemberPortalProps) {
         </div>
       </div>
     </div>
+    {prProgressExerciseName ? (
+      <PersonalRecordProgressModal
+        exerciseName={prProgressExerciseName}
+        logs={completedLogs}
+        onClose={() => setPrProgressExerciseName(null)}
+      />
+    ) : null}
     <ConfirmDialog
       open={Boolean(confirmDialog)}
       title={confirmDialog?.title ?? ""}
