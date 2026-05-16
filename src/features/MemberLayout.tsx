@@ -21,7 +21,7 @@ import type { AppState, Member, MemberTab, PeriodSchedulePlan } from "../app/typ
 import { ensureMemberAuthLink } from "../services/supabaseAuth";
 import { Card } from "../app/ui";
 import type { MemberAlert } from "../app/useNotifications";
-import { upsertMemberPeriodPlansForTrainer, waitForMemberPersist } from "../services/supabaseRepository";
+import { persistOnboardingToSupabase, upsertMemberPeriodPlansForTrainer } from "../services/supabaseRepository";
 import {
   mergeCheckInIntoPersonalGoals,
   resolveCheckInWindow,
@@ -174,6 +174,7 @@ export function MemberLayout({
 
   async function persistOnboardingAnswers(answers: MemberOnboardingAnswers) {
     if (!activeMember) return;
+    const loginEmail = appState.currentUser?.email.trim().toLowerCase() ?? "";
     const canonicalMember = pickCanonicalMemberRowForProfile(activeMember, appState.members);
     const personalGoals = mergeOnboardingIntoPersonalGoals(canonicalMember.personalGoals, answers);
     const focusSummary = answers.trainingGoals.slice(0, 3).join(" · ");
@@ -182,53 +183,62 @@ export function MemberLayout({
       level: answers.level,
       injuries: answers.injuries.trim() || canonicalMember.injuries,
       personalGoals,
-      ...(focusSummary ? { focus: focusSummary } : {}),
+      focus: focusSummary || canonicalMember.focus,
     };
-    const targetMembers = findMembersByEmail(canonicalMember, appState.members);
+    const emailKey = loginEmail || canonicalMember.email.trim().toLowerCase();
+    const targetMembers = emailKey
+      ? appState.members.filter((member) => member.email.trim().toLowerCase() === emailKey)
+      : findMembersByEmail(canonicalMember, appState.members);
     const targetIds = Array.from(new Set(targetMembers.map((member) => member.id.trim()).filter(Boolean)));
-    const persistIds = targetIds.filter((id) => !id.startsWith("auth-"));
-    const idsToUpdate = persistIds.length ? persistIds : targetIds.length ? targetIds : [canonicalMember.id];
-    for (const memberId of idsToUpdate) {
-      updateMember({ memberId, changes });
-    }
+
+    let canonicalId = "";
     try {
-      await Promise.all(idsToUpdate.map((memberId) => waitForMemberPersist(memberId)));
+      canonicalId = await persistOnboardingToSupabase(
+        { ...canonicalMember, email: emailKey || canonicalMember.email },
+        changes,
+        targetIds,
+      );
     } catch (error) {
       setOnboardingGateOpen(true);
       throw error;
     }
-    const canonicalId =
-      idsToUpdate.find((id) => !id.startsWith("auth-")) ?? canonicalMember.id;
-    if (appState.currentUser?.email && canonicalId && !canonicalId.startsWith("auth-")) {
-      await ensureMemberAuthLink(appState.currentUser.email, canonicalId);
+
+    if (loginEmail && canonicalId && !canonicalId.startsWith("auth-")) {
+      await ensureMemberAuthLink(loginEmail, canonicalId);
     }
+
     patchState((prev) => {
-      const email = canonicalMember.email.trim().toLowerCase();
-      const bestGoals = personalGoals;
       const members = prev.members
         .filter((member) => {
-          if (!email) return true;
+          if (!emailKey) return true;
           if (!member.id.startsWith("auth-")) return true;
-          return member.email.trim().toLowerCase() !== email;
+          return member.email.trim().toLowerCase() !== emailKey;
         })
         .map((member) => {
           const samePerson =
-            member.id === canonicalId ||
+            (canonicalId && member.id === canonicalId) ||
             targetIds.includes(member.id) ||
-            (email && member.email.trim().toLowerCase() === email);
-          return samePerson ? { ...member, ...changes, personalGoals: bestGoals } : member;
+            (emailKey && member.email.trim().toLowerCase() === emailKey);
+          return samePerson ? { ...member, ...changes } : member;
         });
+      const viewId =
+        canonicalId && !canonicalId.startsWith("auth-")
+          ? canonicalId
+          : members.find((m) => emailKey && m.email.trim().toLowerCase() === emailKey && !m.id.startsWith("auth-"))?.id ??
+            prev.memberViewId;
       return {
         ...prev,
         members,
-        memberViewId: canonicalId,
-        selectedMemberId: canonicalId,
+        memberViewId: viewId,
+        selectedMemberId: viewId,
         currentUser: prev.currentUser
-          ? { ...prev.currentUser, memberId: canonicalId.startsWith("auth-") ? prev.currentUser.memberId : canonicalId }
+          ? {
+              ...prev.currentUser,
+              memberId: viewId.startsWith("auth-") ? prev.currentUser.memberId : viewId,
+            }
           : prev.currentUser,
       };
     });
-    void refreshRemoteHydration?.();
   }
 
   const checkInWindow = useMemo(() => resolveCheckInWindow(), []);
@@ -510,7 +520,6 @@ export function MemberLayout({
 
       {onboardingGateOpen && activeMember ? (
         <MemberOnboarding
-          key={`${activeMember.id}:${activeMember.personalGoals ?? ""}`}
           memberName={activeMember.name}
           initialDraft={onboardingDraftFromStored(activeMember.personalGoals)}
           onComplete={persistOnboardingAnswers}

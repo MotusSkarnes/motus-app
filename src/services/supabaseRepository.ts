@@ -766,6 +766,108 @@ export function waitForMemberPersist(memberId: string): Promise<void> {
   return pendingMemberPersists.get(memberId.trim()) ?? Promise.resolve();
 }
 
+/** Lagre oppstartsskjema én gang med verifisert sky-skriving (unngår race ved flere updateMember-kall). */
+export async function persistOnboardingToSupabase(
+  member: Member,
+  changes: Pick<Member, "goal" | "level" | "injuries" | "personalGoals" | "focus">,
+  relatedMemberIds: string[],
+): Promise<string> {
+  if (!supabaseClient) {
+    throw new Error("Supabase er ikke konfigurert — svarene kan ikke lagres i skyen.");
+  }
+
+  const {
+    data: { user },
+  } = await supabaseClient.auth.getUser();
+  const authEmail = String(user?.email ?? "").trim().toLowerCase();
+  const memberEmail = member.email.trim().toLowerCase();
+  const syncEmail = authEmail && authEmail.includes("@") ? authEmail : memberEmail;
+  if (!syncEmail.includes("@")) {
+    throw new Error("Mangler gyldig innloggings-e-post for å lagre oppstartsskjema.");
+  }
+
+  const canonicalId = await resolveCanonicalMemberIdForPersistence(member.id, {
+    targetEmail: syncEmail,
+  });
+  const persistId =
+    canonicalId && !canonicalId.startsWith("auth-") ? canonicalId : member.id.startsWith("auth-") ? "" : member.id;
+
+  const memberForSync: Member = {
+    ...member,
+    ...(persistId ? { id: persistId } : {}),
+    email: syncEmail,
+    goal: changes.goal,
+    level: changes.level,
+    injuries: changes.injuries,
+    personalGoals: changes.personalGoals,
+    focus: changes.focus,
+  };
+
+  const dbMemberIds = Array.from(
+    new Set(
+      [...relatedMemberIds, persistId, member.id]
+        .map((id) => String(id ?? "").trim())
+        .filter((id) => id && !id.startsWith("auth-") && id !== "__template__"),
+    ),
+  );
+
+  let updated = await syncMemberProfileViaEdgeFunction(memberForSync, authEmail, dbMemberIds);
+
+  if (updated === 0) {
+    const clauses = [
+      ...(persistId ? [`id.eq.${persistId}`] : []),
+      ...dbMemberIds.map((id) => `id.eq.${id}`),
+      `email.eq.${syncEmail}`,
+    ];
+    const directUpdate = await supabaseClient
+      .from("members")
+      .update({
+        goal: changes.goal,
+        focus: changes.focus,
+        injuries: changes.injuries,
+        personal_goals: changes.personalGoals,
+        level: changes.level,
+      })
+      .or(Array.from(new Set(clauses)).join(","))
+      .select("id");
+    if (!directUpdate.error && (directUpdate.data?.length ?? 0) > 0) {
+      updated = directUpdate.data?.length ?? 0;
+    } else {
+      console.warn(
+        "Onboarding direct update failed:",
+        directUpdate.error?.message || "No rows updated",
+      );
+    }
+  }
+
+  if (updated === 0) {
+    throw new Error(
+      "Kunne ikke lagre oppstartsskjema i databasen. Sjekk at du er logget inn med riktig e-post og prøv igjen.",
+    );
+  }
+
+  const resolvedId = persistId || dbMemberIds[0] || "";
+  if (resolvedId && !resolvedId.startsWith("auth-")) {
+    const { data: verifyRow, error: verifyError } = await supabaseClient
+      .from("members")
+      .select("personal_goals")
+      .eq("id", resolvedId)
+      .maybeSingle();
+    if (!verifyError) {
+      const stored = String(verifyRow?.personal_goals ?? "");
+      if (
+        stored &&
+        !stored.includes('"onboarding"') &&
+        !stored.includes("onboardingCompletedAt")
+      ) {
+        console.warn("Onboarding verify: row updated but personal_goals missing onboarding blob");
+      }
+    }
+  }
+
+  return resolvedId || persistId || member.id;
+}
+
 function personalGoalsContainsProfileBlob(personalGoals: string | undefined): boolean {
   const value = String(personalGoals ?? "").trim();
   return (

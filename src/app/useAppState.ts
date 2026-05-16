@@ -556,6 +556,13 @@ export function useAppState() {
                 .filter((member) => member.email.trim().toLowerCase() === normalizedUserEmail)
                 .map((member) => member.personalGoals);
               const bestLocalPersonalGoals = pickBestPersonalGoals(localGoalsCandidates);
+              const bestGoalsForEmail = pickBestPersonalGoals([
+                bestLocalPersonalGoals,
+                localMember.personalGoals,
+                ...mergedMembers
+                  .filter((member) => member.email.trim().toLowerCase() === normalizedUserEmail)
+                  .map((member) => member.personalGoals),
+              ]);
               if (remoteIndex >= 0) {
                 // Remote must win over stale per-device localStorage so profile edits sync across phone/PC.
                 mergedMembers = mergedMembers.map((member, index) => {
@@ -564,13 +571,17 @@ export function useAppState() {
                   const remoteInv = member.invitedAt?.trim();
                   const localInv = localMember.invitedAt?.trim();
                   mergedRow.invitedAt = remoteInv || localInv || "";
-                  mergedRow.personalGoals =
-                    pickBestPersonalGoals([bestLocalPersonalGoals, localMember.personalGoals, member.personalGoals]) ||
-                    mergedRow.personalGoals;
+                  mergedRow.personalGoals = bestGoalsForEmail || mergedRow.personalGoals;
                   return mergedRow;
                 });
               } else {
                 mergedMembers = [...mergedMembers, localMember];
+              }
+              if (bestGoalsForEmail) {
+                mergedMembers = mergedMembers.map((member) => {
+                  if (member.email.trim().toLowerCase() !== normalizedUserEmail) return member;
+                  return { ...member, personalGoals: bestGoalsForEmail };
+                });
               }
             }
           }
