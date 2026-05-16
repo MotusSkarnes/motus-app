@@ -131,6 +131,50 @@ function linkProgramExercisesToBank(exercises: ProgramExercise[], bank: Exercise
   });
 }
 
+function resolveProgramTemplateForItem(item: InspirationItem, exerciseBank: Exercise[]): ProgramTemplateInput {
+  const base = item.programTemplate ?? createDefaultProgram(item.title, item.description, item.body);
+  return {
+    ...base,
+    title: base.title?.trim() || item.title,
+    goal: base.goal?.trim() || item.description,
+    notes: base.notes?.trim() || item.body,
+    exercises: linkProgramExercisesToBank(base.exercises ?? [], exerciseBank),
+  };
+}
+
+function resolveLinkedExerciseForPreview(
+  exercise: ProgramExercise,
+  exercisesById: Map<string, Exercise>,
+  exerciseBank: Exercise[],
+): Exercise | undefined {
+  const byId = exercisesById.get(exercise.exerciseId);
+  if (byId) return byId;
+  return exerciseBank.find((entry) => entry.name.trim().toLowerCase() === exercise.exerciseName.trim().toLowerCase());
+}
+
+function formatProgramExercisePrescription(exercise: ProgramExercise, linked?: Exercise): string {
+  const sets = exercise.sets?.trim() || "—";
+  const isCardio = linked?.category === "Kondisjon";
+  const isStretch = linked?.category === "Uttøyning";
+  const isTreadmill = (linked?.equipment ?? "").trim().toLowerCase().includes("tredem");
+
+  if (isCardio) {
+    const parts = [`${sets} sett`, exercise.durationMinutes?.trim() ? `${exercise.durationMinutes} min` : null];
+    if (exercise.speed?.trim()) parts.push(`${exercise.speed} km/t`);
+    if (isTreadmill && exercise.incline?.trim()) parts.push(`${exercise.incline}% stigning`);
+    return parts.filter(Boolean).join(" · ");
+  }
+
+  if (isStretch) {
+    const hold = exercise.holdSeconds?.trim() || exercise.reps?.trim();
+    return `${sets} sett · ${hold || "—"} sek`;
+  }
+
+  const weight = exercise.weight?.trim();
+  const weightPart = weight && weight !== "0" ? ` · ${weight} kg` : "";
+  return `${sets} sett × ${exercise.reps?.trim() || "—"} reps${weightPart}`;
+}
+
 function makeExercise(name: string, sets = "3", reps = "10", notes = ""): ProgramExercise {
   return {
     id: uid("inspo-ex"),
@@ -951,6 +995,8 @@ export function InspirationHub({
   if (expandedItem) {
     const detailMeta = CATEGORY_META[expandedItem.category];
     const DetailIcon = detailMeta.icon;
+    const showProgramPreview = expandedItem.kind === "program" || Boolean(expandedItem.programTemplate);
+    const programPreview = showProgramPreview ? resolveProgramTemplateForItem(expandedItem, exerciseBank) : null;
     return (
       <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
         <button
@@ -994,7 +1040,75 @@ export function InspirationHub({
             </div>
             <h1 className="mt-4 text-2xl font-bold leading-snug tracking-tight text-slate-950 sm:text-3xl">{expandedItem.title}</h1>
             <p className="mt-2 text-base text-slate-600">{expandedItem.description}</p>
-            <p className="mt-5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 sm:text-base">{expandedItem.body}</p>
+            {expandedItem.body.trim() && !showProgramPreview ? (
+              <p className="mt-5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 sm:text-base">{expandedItem.body}</p>
+            ) : null}
+
+            {programPreview ? (
+              <div className="mt-6 space-y-3 rounded-xl border border-sky-100 bg-sky-50/40 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-sm font-semibold text-slate-900">Forhåndsvisning av treningsprogram</h2>
+                  <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 ring-1 ring-sky-100">
+                    {programPreview.exercises.length} øvelse{programPreview.exercises.length === 1 ? "" : "r"}
+                  </span>
+                </div>
+                {programPreview.goal?.trim() && programPreview.goal.trim() !== expandedItem.description.trim() ? (
+                  <p className="text-sm text-slate-600">{programPreview.goal}</p>
+                ) : null}
+                {programPreview.notes?.trim() && programPreview.notes.trim() !== expandedItem.body.trim() ? (
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{programPreview.notes}</p>
+                ) : null}
+                {programPreview.exercises.length === 0 ? (
+                  <EmptyState
+                    icon="🏋️"
+                    title="Ingen øvelser i programmet"
+                    description="PT kan legge til øvelser ved redigering av innlegget."
+                    className="bg-white"
+                  />
+                ) : (
+                  <ol className="space-y-2">
+                    {programPreview.exercises.map((exercise, index) => {
+                      const linked = resolveLinkedExerciseForPreview(exercise, exercisesById, exerciseBank);
+                      return (
+                        <li
+                          key={exercise.id}
+                          className="flex gap-3 rounded-xl border bg-white px-3 py-2.5 shadow-sm"
+                          style={{ borderColor: "rgba(15,23,42,0.06)" }}
+                        >
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sky-50 text-xs font-bold text-sky-800 ring-1 ring-sky-100">
+                            {index + 1}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-slate-900">{exercise.exerciseName}</div>
+                            {linked ? (
+                              <div className="mt-0.5 text-xs text-slate-500">
+                                {linked.category} · {linked.group}
+                              </div>
+                            ) : null}
+                            <div className="mt-1 text-sm text-slate-700">{formatProgramExercisePrescription(exercise, linked)}</div>
+                            {exercise.restSeconds?.trim() ? (
+                              <div className="mt-0.5 text-xs text-slate-500">Hvile {exercise.restSeconds} sek</div>
+                            ) : null}
+                            {exercise.notes?.trim() ? (
+                              <div className="mt-1 text-xs text-slate-600">{exercise.notes}</div>
+                            ) : null}
+                          </div>
+                          {linked ? (
+                            <img
+                              src={getExercisePreviewSrc(linked)}
+                              alt=""
+                              className="h-12 w-12 shrink-0 rounded-lg object-cover ring-1 ring-slate-200"
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
+              </div>
+            ) : null}
 
             {expandedItem.periodPlanTemplate ? (
               <div className="mt-6 grid gap-2 sm:grid-cols-2">
