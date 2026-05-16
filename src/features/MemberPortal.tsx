@@ -871,6 +871,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const periodPlanCompletedDirtyRef = useRef(false);
   const periodPlanSwapsDirtyRef = useRef(false);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
+  const [programLibraryMenuId, setProgramLibraryMenuId] = useState<string | null>(null);
   const [libraryActionStatus, setLibraryActionStatus] = useState<string | null>(null);
   const [showLibraryHiddenSection, setShowLibraryHiddenSection] = useState(false);
   const [showLibraryArchivedSection, setShowLibraryArchivedSection] = useState(false);
@@ -4546,6 +4547,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null}
                   {memberProgramsInActiveLibrary.map((program) => {
                     const isExpanded = expandedProgramId === program.id;
+                    const isLibraryMenuOpen = programLibraryMenuId === program.id;
                     const programAuthorLine = programAuthorCredit(program);
                     return (
                       <div key={program.id} className="rounded-lg border bg-white p-2.5 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -4594,14 +4596,26 @@ export function MemberPortal(props: MemberPortalProps) {
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-1 border-t pt-1.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                          <span className="mr-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-400">Bibliotek</span>
+                        <div className="border-t pt-1.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                          <OutlineButton
+                            type="button"
+                            className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
+                            onClick={() => setProgramLibraryMenuId((prev) => (prev === program.id ? null : program.id))}
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              <ChevronRight className={`h-3 w-3 transition ${isLibraryMenuOpen ? "rotate-90" : ""}`} />
+                              <span>{isLibraryMenuOpen ? "Skjul valg" : "Administrer program"}</span>
+                            </span>
+                          </OutlineButton>
+                          {isLibraryMenuOpen ? (
+                            <div className="mt-1.5 flex w-full flex-wrap items-center gap-1">
                           <OutlineButton
                             type="button"
                             className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
                             onClick={() => {
                               updateProgramMemberLibraryStatus(program.id, "hidden");
                               setLibraryActionStatus("Programmet er skjult fra oversikten.");
+                              setProgramLibraryMenuId(null);
                             }}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -4615,6 +4629,7 @@ export function MemberPortal(props: MemberPortalProps) {
                             onClick={() => {
                               updateProgramMemberLibraryStatus(program.id, "archived");
                               setLibraryActionStatus("Programmet er arkivert.");
+                              setProgramLibraryMenuId(null);
                             }}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -4635,6 +4650,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                   onConfirm: () => {
                                     deleteProgramById(program.id);
                                     setLibraryActionStatus("Programmet er slettet.");
+                                    setProgramLibraryMenuId(null);
                                   },
                                 })
                               }
@@ -4644,6 +4660,8 @@ export function MemberPortal(props: MemberPortalProps) {
                                 <span>Slett</span>
                               </span>
                             </DangerButton>
+                          ) : null}
+                            </div>
                           ) : null}
                         </div>
 
