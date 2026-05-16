@@ -56,9 +56,7 @@ export function MemberHabitSummaryCard({ progress, onOpenProgress }: MemberHabit
             className="h-2 rounded-full"
             style={{
               width: `${monthPct}%`,
-              background: progress.monthGoal.unlocked
-                ? "rgb(16 185 129)"
-                : `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
+              background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
             }}
           />
         </div>
