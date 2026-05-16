@@ -53,6 +53,8 @@ import { MemberOnboardingSummary } from "./MemberOnboardingSummary";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
 import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
 
+const CUSTOMER_CARD_ACTION_BTN = "!min-h-8 !px-2.5 !py-1.5 !text-xs !rounded-md";
+
 function inferStatusTone(message: string): "success" | "error" | "info" {
   const normalized = message.trim().toLowerCase();
   if (!normalized) return "info";
@@ -2067,11 +2069,29 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const member = members.find((entry) => entry.id === memberId);
     setConfirmDialog({
       title: "Arkiver kunde",
-      message: `Arkivere ${member?.name?.trim() || "kunden"}? Kunden mister tilgang til appen og skjules fra listen, men økter, programmer og meldinger beholdes. Du kan finne vedkommende igjen under «Vis inaktive» eller gjenopprette i Admin.`,
+      message: `Arkivere ${member?.name?.trim() || "kunden"}? Kunden mister tilgang til appen og skjules fra listen, men økter, programmer og meldinger beholdes. Du kan finne vedkommende igjen under «Vis inaktive» eller trykke «Aktiver kunde igjen» på kundekortet.`,
       confirmLabel: "Arkiver",
       tone: "danger",
       onConfirm: () => {
         deactivateMember(memberId);
+      },
+    });
+  }
+
+  function handleReactivateSelectedMember(memberId: string) {
+    const member = members.find((entry) => entry.id === memberId);
+    const email = member?.email?.trim() ?? "";
+    if (!email) {
+      setMemberEditStatus("Kunden har ingen e-post — kan ikke aktiveres på nytt.");
+      return;
+    }
+    setConfirmDialog({
+      title: "Aktiver kunde igjen",
+      message: `Gi ${member?.name?.trim() || "kunden"} tilgang til appen igjen? Medlemsraden med e-post ${email} settes aktiv.`,
+      confirmLabel: "Aktiver",
+      tone: "default",
+      onConfirm: () => {
+        void handleRestoreMember(email);
       },
     });
   }
@@ -4177,11 +4197,14 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       </div>
                     </>
                   )}
-                  <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
+                  <div className="mt-4 flex flex-wrap gap-1.5">
                     {isEditingCustomerCard ? (
                       <>
-                        <GradientButton onClick={handleSaveSelectedMemberDetails} className="w-full sm:w-auto">
-                          Lagre endringer
+                        <GradientButton
+                          onClick={handleSaveSelectedMemberDetails}
+                          className={`${CUSTOMER_CARD_ACTION_BTN} w-full sm:w-auto`}
+                        >
+                          Lagre
                         </GradientButton>
                         <OutlineButton
                           onClick={() => {
@@ -4190,9 +4213,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                             editLockedIdentityRef.current = null;
                             setIsEditingCustomerCard(false);
                           }}
-                          className="w-full sm:w-auto"
+                          className={`${CUSTOMER_CARD_ACTION_BTN} w-full sm:w-auto`}
                         >
-                          Avbryt redigering
+                          Avbryt
                         </OutlineButton>
                       </>
                     ) : (
@@ -4205,17 +4228,34 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                           };
                           setIsEditingCustomerCard(true);
                         }}
-                        className="w-full sm:w-auto"
+                        className={`${CUSTOMER_CARD_ACTION_BTN} w-full sm:w-auto`}
                       >
-                        Rediger kundekort
+                        Rediger
                       </OutlineButton>
                     )}
-                    <OutlineButton onClick={() => void handleInviteSelectedMember()} disabled={isInvitingMember} className="w-full sm:w-auto">
-                      {isInvitingMember ? "Sender invitasjon..." : "Send invitasjon på nytt"}
+                    <OutlineButton
+                      onClick={() => void handleInviteSelectedMember()}
+                      disabled={isInvitingMember}
+                      className={`${CUSTOMER_CARD_ACTION_BTN} w-full sm:w-auto`}
+                    >
+                      {isInvitingMember ? "Sender…" : "Inviter på nytt"}
                     </OutlineButton>
-                    <OutlineButton onClick={() => handleDeactivateMember(selectedMember.id)} className="w-full sm:w-auto">
-                      Arkiver kunde
-                    </OutlineButton>
+                    {selectedMember.isActive === false ? (
+                      <GradientButton
+                        onClick={() => handleReactivateSelectedMember(selectedMember.id)}
+                        disabled={isRestoringMember}
+                        className={`${CUSTOMER_CARD_ACTION_BTN} w-full sm:w-auto`}
+                      >
+                        {isRestoringMember ? "Aktiverer…" : "Aktiver kunde igjen"}
+                      </GradientButton>
+                    ) : (
+                      <OutlineButton
+                        onClick={() => handleDeactivateMember(selectedMember.id)}
+                        className={`${CUSTOMER_CARD_ACTION_BTN} w-full sm:w-auto`}
+                      >
+                        Arkiver
+                      </OutlineButton>
+                    )}
                   </div>
                 </div>
 
