@@ -50,6 +50,38 @@ export function syncGradientMarkedWeekDays(weeklyPlans: WeeklySchedulePlan[]): W
   return weeklyPlans.map((week) => (week.usesGradientPlan === true ? { ...week, days: { ...days } } : { ...week }));
 }
 
+export function updatePeriodPlanWeekSelection(
+  plan: PeriodSchedulePlan,
+  clickedWeekId: string,
+  activeWeekId: string,
+): { plan: PeriodSchedulePlan; activeWeekId: string } {
+  const current = plan.weeklyPlans.find((week) => week.id === clickedWeekId);
+  if (!current) return { plan, activeWeekId };
+
+  if (clickedWeekId !== activeWeekId) {
+    return { plan, activeWeekId: clickedWeekId };
+  }
+
+  const shouldMark = current.usesGradientPlan !== true;
+  const existingGradient = plan.weeklyPlans.find((week) => week.usesGradientPlan === true);
+  const sharedDays = shouldMark && existingGradient ? { ...existingGradient.days } : { ...current.days };
+  const nextWeeks = plan.weeklyPlans.map((week) =>
+    week.id === clickedWeekId
+      ? { ...week, usesGradientPlan: shouldMark, days: shouldMark ? sharedDays : week.days }
+      : week.usesGradientPlan === true && shouldMark
+        ? { ...week, days: sharedDays }
+        : week,
+  );
+
+  return {
+    activeWeekId: clickedWeekId,
+    plan: normalizePeriodSchedulePlan({
+      ...plan,
+      weeklyPlans: syncGradientMarkedWeekDays(nextWeeks),
+    }),
+  };
+}
+
 export function buildPeriodPlanWeekNavItems(
   weeklyPlans: WeeklySchedulePlan[],
   totalWeeks: number,

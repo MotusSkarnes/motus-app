@@ -5,6 +5,7 @@ import {
   normalizePeriodSchedulePlan,
   resolvePeriodPlanWeek,
   syncGradientMarkedWeekDays,
+  updatePeriodPlanWeekSelection,
 } from "./periodPlanMerge";
 import type { PeriodSchedulePlan, WeeklySchedulePlan } from "./types";
 
@@ -113,6 +114,34 @@ describe("syncGradientMarkedWeekDays", () => {
     expect(out[1].days.monday).toBe("2");
   });
 });
+
+describe("updatePeriodPlanWeekSelection", () => {
+  it("selects a different week without marking it or overwriting its days", () => {
+    const plan = makePlan([
+      { id: "w1", weekNumber: 1, days: { ...empty, monday: "Week 1" }, usesGradientPlan: true },
+      { id: "w2", weekNumber: 2, days: { ...empty, monday: "Week 2" } },
+    ]);
+
+    const result = updatePeriodPlanWeekSelection(plan, "w2", "w1");
+
+    expect(result.activeWeekId).toBe("w2");
+    expect(result.plan.weeklyPlans[1].usesGradientPlan).toBeUndefined();
+    expect(result.plan.weeklyPlans[1].days.monday).toBe("Week 2");
+  });
+
+  it("toggles gradient marking when clicking the already active week", () => {
+    const plan = makePlan([
+      { id: "w1", weekNumber: 1, days: { ...empty, monday: "Shared" }, usesGradientPlan: true },
+      { id: "w2", weekNumber: 2, days: { ...empty, monday: "Distinct" } },
+    ]);
+
+    const result = updatePeriodPlanWeekSelection(plan, "w2", "w2");
+
+    expect(result.plan.weeklyPlans[1].usesGradientPlan).toBe(true);
+    expect(result.plan.weeklyPlans[1].days.monday).toBe("Shared");
+  });
+});
+
 
 describe("isMemberOwnedPeriodPlan", () => {
   const trainerIds = new Set(["trainer-plan-1"]);
