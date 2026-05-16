@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, CalendarOff, Check, Circle, Play, Users } from "lucide-react";
+import { ArrowLeftRight, CalendarOff, Check, Play, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { resolvePeriodPlanEntryAction } from "../app/periodPlanEntryActions";
 import {
@@ -164,13 +164,14 @@ export function PeriodPlanWeekView({
                       }
                       className={`rounded-lg border p-1.5 transition ${
                         completed
-                          ? "border-emerald-300 bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
-                          : "border-slate-200 bg-white text-slate-400 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
+                          ? "border-transparent text-white shadow-sm"
+                          : "border-slate-200 bg-white text-slate-300 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-600"
                       }`}
+                      style={completed ? { background: MOTUS_GRADIENT } : undefined}
                       aria-label={completed ? `Angre fullført for ${dayLabel}` : `Marker ${dayLabel} som fullført`}
                       title={completed ? "Angre fullført" : "Marker fullført"}
                     >
-                      {completed ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Circle className="h-3.5 w-3.5" aria-hidden />}
+                      <Check className="h-3.5 w-3.5" strokeWidth={completed ? 3 : 2.25} aria-hidden />
                     </button>
                   ) : null}
                   <button
