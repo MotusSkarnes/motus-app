@@ -49,8 +49,8 @@ const CATEGORY_META: Record<InspirationCategory, { label: string; plural: string
 
 /** Vertikal rekkefølge på inspo-feed (øverst → nederst). */
 /** Maks lengde for undertekst på inspo-kort (ca. 2 linjer i karusellen). */
-const INSPO_CARD_DESCRIPTION_MAX = 100;
-const INSPO_CARD_TITLE_MAX = 72;
+const INSPO_CARD_DESCRIPTION_MAX = 58;
+const INSPO_CARD_TITLE_MAX = 48;
 const INSPO_FEED_CARD_WIDTH_CLASS = "w-52 sm:w-56";
 const INSPO_FEED_CARD_HEIGHT_CLASS = "h-[19.25rem] sm:h-[20rem]";
 const INSPO_FEED_CARD_IMAGE_CLASS = "h-[10rem] sm:h-[10.5rem]";
@@ -1389,18 +1389,24 @@ export function InspirationHub({
             ) : (
               <TextInput value={tag} onChange={(event) => setTag(event.target.value)} placeholder="Tagg, f.eks. 20 min eller mobilitet" />
             )}
-            <TextInput
-              value={title}
-              onChange={(event) => setTitle(event.target.value.slice(0, INSPO_CARD_TITLE_MAX))}
-              placeholder={`Tittel (maks ${INSPO_CARD_TITLE_MAX} tegn)`}
-              maxLength={INSPO_CARD_TITLE_MAX}
-            />
-            <TextInput
-              value={description}
-              onChange={(event) => setDescription(event.target.value.slice(0, INSPO_CARD_DESCRIPTION_MAX))}
-              placeholder={`Undertekst under bildet (maks ${INSPO_CARD_DESCRIPTION_MAX} tegn, ca. 2 linjer)`}
-              maxLength={INSPO_CARD_DESCRIPTION_MAX}
-            />
+            <label className="grid gap-1">
+              <TextInput
+                value={title}
+                onChange={(event) => setTitle(event.target.value.slice(0, INSPO_CARD_TITLE_MAX))}
+                placeholder={`Tittel (maks ${INSPO_CARD_TITLE_MAX} tegn)`}
+                maxLength={INSPO_CARD_TITLE_MAX}
+              />
+              <span className="text-[11px] text-slate-500">{title.length}/{INSPO_CARD_TITLE_MAX} tegn</span>
+            </label>
+            <label className="grid gap-1">
+              <TextInput
+                value={description}
+                onChange={(event) => setDescription(event.target.value.slice(0, INSPO_CARD_DESCRIPTION_MAX))}
+                placeholder={`Kort info under bildet (maks ${INSPO_CARD_DESCRIPTION_MAX} tegn)`}
+                maxLength={INSPO_CARD_DESCRIPTION_MAX}
+              />
+              <span className="text-[11px] text-slate-500">{description.length}/{INSPO_CARD_DESCRIPTION_MAX} tegn</span>
+            </label>
             <TextInput value={tag} onChange={(event) => setTag(event.target.value)} placeholder="Tagg" />
             <label
               className={`flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 ${isImageProcessing ? "pointer-events-none opacity-60" : ""}`}
