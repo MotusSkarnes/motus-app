@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { MOTUS } from "../app/data";
 import type { PeriodPlanWeekNavItem } from "../app/periodPlanMerge";
 
 export type { PeriodPlanWeekNavItem };
+
+const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
 
 type PeriodPlanWeekNavigatorProps = {
   weeks: PeriodPlanWeekNavItem[];
@@ -83,17 +86,17 @@ export function PeriodPlanWeekNavigator({
         </button>
 
         <div
-          className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-lg border bg-white px-3 py-2 text-center"
-          style={{ borderColor: "rgba(15,23,42,0.10)" }}
+          className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-lg border px-3 py-2 text-center text-white shadow-sm"
+          style={{ borderColor: "transparent", background: MOTUS_GRADIENT }}
         >
-          <div className="text-sm font-semibold text-slate-800">
+          <div className="text-sm font-semibold">
             Uke {activeWeek.weekNumber}
             {showNowBadge && currentWeekNumber === activeWeek.weekNumber ? (
-              <span className="ml-1 text-xs font-medium text-teal-700">(nå)</span>
+              <span className="ml-1 text-xs font-medium text-white/85">(nå)</span>
             ) : null}
           </div>
-          {weekRange ? <div className="mt-0.5 text-[11px] text-slate-500">{weekRange}</div> : null}
-          <div className="mt-0.5 text-[10px] text-slate-400">
+          {weekRange ? <div className="mt-0.5 text-[11px] text-white/80">{weekRange}</div> : null}
+          <div className="mt-0.5 text-[10px] text-white/70">
             {activeIndex + 1} av {sortedWeeks.length}
           </div>
         </div>
@@ -129,9 +132,10 @@ export function PeriodPlanWeekNavigator({
                 onClick={() => goToIndex(index)}
                 className={`relative z-10 shrink-0 snap-start touch-manipulation rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
                   selected
-                    ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+                    ? "border-transparent text-white shadow-sm"
                     : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                 }`}
+                style={selected ? { background: MOTUS_GRADIENT } : undefined}
               >
                 Uke {week.weekNumber}
               </button>

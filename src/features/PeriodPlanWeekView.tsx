@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowLeftRight, CalendarOff, Play, Users } from "lucide-react";
+import { MOTUS } from "../app/data";
 import { resolvePeriodPlanEntryAction } from "../app/periodPlanEntryActions";
 import {
   applyPeriodPlanSwaps,
@@ -9,8 +10,11 @@ import {
   WEEKDAY_PLAN_ORDER,
   type PeriodPlanSwapsByPlan,
 } from "../app/periodPlanSwaps";
-import { OutlineButton } from "../app/ui";
+import { GradientButton, OutlineButton } from "../app/ui";
 import type { PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklySchedulePlan } from "../app/types";
+
+const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
+const MOTUS_SOFT_BACKGROUND = `linear-gradient(160deg, ${MOTUS.paleMint} 0%, #ffffff 42%, rgba(217,18,120,0.045) 100%)`;
 
 type PeriodPlanWeekViewProps = {
   plan: PeriodSchedulePlan;
@@ -62,17 +66,26 @@ export function PeriodPlanWeekView({
   }, [plan.id, week.weekNumber]);
 
   return (
-    <div className="mt-3 overflow-hidden rounded-xl border bg-white shadow-sm" style={{ borderColor: "rgba(15,23,42,0.10)" }}>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-slate-50 px-3 py-3 sm:px-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-        <div>
-          <div className="text-sm font-semibold text-slate-900">Uke {week.weekNumber}</div>
-          <div className="mt-0.5 text-xs text-slate-500">Planlagte økter denne uken</div>
+    <div
+      className="mt-3 overflow-hidden rounded-xl border shadow-sm"
+      style={{ borderColor: "rgba(48,227,190,0.20)", background: MOTUS_SOFT_BACKGROUND }}
+    >
+      <div className="h-1.5" style={{ background: MOTUS_GRADIENT }} aria-hidden />
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-white/75 px-3 py-3 backdrop-blur sm:px-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-black text-white shadow-sm" style={{ background: MOTUS_GRADIENT }}>
+            {week.weekNumber}
+          </span>
+          <div>
+            <div className="text-sm font-semibold text-slate-950">Uke {week.weekNumber}</div>
+            <div className="mt-0.5 text-xs text-slate-500">Planlagte økter denne uken</div>
+          </div>
         </div>
         {weekSwaps.length > 0 ? (
           <button
             type="button"
             onClick={() => onResetSwaps(plan.id, week.weekNumber)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="rounded-lg border border-teal-200 bg-white px-3 py-1.5 text-xs font-semibold text-teal-900 transition hover:bg-teal-50"
           >
             Tilbakestill bytter
           </button>
@@ -96,14 +109,16 @@ export function PeriodPlanWeekView({
           return (
             <div
               key={`${week.id}-${dayKey}`}
-              className={`overflow-hidden rounded-lg border bg-white transition ${
-                isSwapSource ? "border-slate-900 ring-2 ring-slate-200" : "border-slate-200"
+              className={`overflow-hidden rounded-xl border bg-white shadow-sm transition ${
+                isSwapSource ? "border-teal-400 ring-2 ring-teal-200" : "border-slate-200/90 hover:border-teal-200"
               }`}
             >
               <div className="flex items-start justify-between gap-2 p-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{dayLabel}</span>
+                    <span className="rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-teal-900 ring-1 ring-teal-100">
+                      {dayLabel}
+                    </span>
                     {plannedDate ? <span className="text-xs text-slate-400">{plannedDate}</span> : null}
                   </div>
                   {entry ? (
@@ -123,9 +138,10 @@ export function PeriodPlanWeekView({
                   onClick={() => setSwapFromDay((prev) => (prev === dayKey ? null : dayKey))}
                   className={`shrink-0 rounded-lg border p-1.5 transition ${
                     isSwapSource
-                      ? "border-slate-900 bg-slate-900 text-white"
-                      : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                      ? "border-transparent text-white shadow-sm"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-900"
                   }`}
+                  style={isSwapSource ? { background: MOTUS_GRADIENT } : undefined}
                   aria-label={isSwapSource ? `Avbryt bytte for ${dayLabel}` : `Bytt ${dayLabel} med annen dag`}
                   aria-expanded={isSwapSource}
                   title={isSwapSource ? "Avbryt" : "Bytt dag"}
@@ -135,8 +151,8 @@ export function PeriodPlanWeekView({
               </div>
 
               {isSwapSource ? (
-                <div className="mx-3 mb-3 rounded-lg border border-slate-200 bg-slate-50 p-2">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Bytt med</div>
+                <div className="mx-3 mb-3 rounded-lg border border-teal-200 bg-teal-50/70 p-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-teal-900">Bytt med</div>
                   <div className="mt-1.5 flex flex-wrap gap-1">
                     {WEEKDAY_PLAN_ORDER.filter((key) => key !== dayKey).map((key) => (
                       <button
@@ -146,7 +162,7 @@ export function PeriodPlanWeekView({
                           onSwapDays(plan.id, week.weekNumber, dayKey, key);
                           setSwapFromDay(null);
                         }}
-                        className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
+                        className="rounded-md border border-teal-100 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-teal-400 hover:text-teal-950"
                       >
                         {WEEKDAY_PLAN_LABELS[key]}
                       </button>
@@ -156,16 +172,16 @@ export function PeriodPlanWeekView({
               ) : null}
 
               {entry ? (
-                <div className="flex flex-col gap-2 border-t border-slate-100 bg-slate-50/70 px-3 py-2.5">
+                <div className="flex flex-col gap-2 border-t border-slate-100 bg-white/70 px-3 py-2.5">
                   {entryAction.kind === "start-program" ? (
-                    <OutlineButton
+                    <GradientButton
                       type="button"
                       onClick={() => onStartProgram(entryAction.program.id)}
-                      className="!min-h-9 w-full !px-3 !py-2 !text-xs"
+                      className="!min-h-9 w-full !px-3 !py-2 !text-xs shadow-sm"
                     >
                       <Play className="mr-1.5 inline h-3.5 w-3.5" aria-hidden />
                       Start økt
-                    </OutlineButton>
+                    </GradientButton>
                   ) : null}
                   {entryAction.kind === "log-group" ? (
                     <OutlineButton
@@ -198,7 +214,7 @@ export function PeriodPlanWeekView({
                           plannedDate,
                         })
                       }
-                      className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+                      className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                     />
                     <span className="text-xs font-semibold text-slate-700">Gjennomført</span>
                   </label>
