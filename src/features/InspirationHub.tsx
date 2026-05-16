@@ -683,19 +683,9 @@ export function InspirationHub({
           </div>
         </button>
         <div className="shrink-0 border-t border-slate-100 px-2.5 py-2">
-          {item.kind === "program" && onAddProgram ? (
-            <GradientButton onClick={() => handleAddProgram(item)} className={`w-full ${INSPO_FEED_CARD_ACTION_CLASS}`}>
-              Legg til program
-            </GradientButton>
-          ) : item.kind === "periodPlan" && onAddPeriodPlan ? (
-            <GradientButton onClick={() => handleAddPeriodPlan(item)} className={`w-full ${INSPO_FEED_CARD_ACTION_CLASS}`}>
-              Legg til plan
-            </GradientButton>
-          ) : (
-            <OutlineButton onClick={() => setExpandedItemId(item.id)} className={`w-full ${INSPO_FEED_CARD_ACTION_CLASS}`}>
-              Les mer
-            </OutlineButton>
-          )}
+          <OutlineButton onClick={() => setExpandedItemId(item.id)} className={`w-full ${INSPO_FEED_CARD_ACTION_CLASS}`}>
+            Les mer
+          </OutlineButton>
         </div>
       </article>
     );
@@ -1132,7 +1122,7 @@ export function InspirationHub({
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               {expandedItem.kind === "program" && onAddProgram ? (
                 <GradientButton onClick={() => handleAddProgram(expandedItem)} className="w-full sm:w-auto">
-                  Legg til program
+                  Legg til i mine programmer
                 </GradientButton>
               ) : null}
               {expandedItem.kind === "periodPlan" && onAddPeriodPlan ? (
@@ -1170,7 +1160,7 @@ export function InspirationHub({
         <div className="p-4 sm:p-5">
           <h2 className="text-2xl font-bold tracking-tight text-slate-950">Inspirasjon</h2>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">
-            Sveip horisontalt i hver kategori. Trykk les mer for detaljer, eller legg programmer og ukesplaner rett inn i treningen din.
+            Sveip horisontalt i hver kategori. Trykk les mer for detaljer — der kan du legge treningsprogram og ukesplaner til i treningen din.
           </p>
         </div>
       </div>

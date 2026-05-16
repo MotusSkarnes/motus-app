@@ -1121,7 +1121,11 @@ async function persistMemberProgramLibraryStatus(programId: string, status: "hid
     return;
   }
   if (error) {
-    console.warn("Supabase member_library_status update failed:", error.message);
+    const hint =
+      /permission denied|row-level security|policy/i.test(error.message)
+        ? " Kjør training_programs_member_library_rls.sql i Supabase."
+        : "";
+    console.warn("Supabase member_library_status update failed:", error.message + hint);
   }
 }
 

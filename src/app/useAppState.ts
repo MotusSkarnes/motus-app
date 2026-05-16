@@ -92,6 +92,21 @@ function mergeMembersById(primary: AppState["members"] | null, secondary: AppSta
   return Array.from(merged.values());
 }
 
+function mergeMemberLibraryStatus(
+  remote: MemberProgramLibraryStatus | undefined,
+  local: MemberProgramLibraryStatus | undefined,
+): MemberProgramLibraryStatus | undefined {
+  return remote ?? local;
+}
+
+function mergeTrainingProgramSnapshots(primary: TrainingProgram, secondary: TrainingProgram): TrainingProgram {
+  return {
+    ...primary,
+    ...secondary,
+    memberLibraryStatus: mergeMemberLibraryStatus(secondary.memberLibraryStatus, primary.memberLibraryStatus),
+  };
+}
+
 /** Union hydrate + direct table fetch so rows visible under RLS are not dropped when edge list is partial. */
 function mergeTrainingProgramsById(
   hydrated: TrainingProgram[] | null | undefined,
@@ -104,9 +119,20 @@ function mergeTrainingProgramsById(
   }
   for (const p of direct ?? []) {
     const id = p.id?.trim();
-    if (id) byId.set(id, p);
+    if (!id) continue;
+    const existing = byId.get(id);
+    byId.set(id, existing ? mergeTrainingProgramSnapshots(existing, p) : p);
   }
   return Array.from(byId.values());
+}
+
+function mergeRemoteProgramsWithLocal(remotePrograms: TrainingProgram[], localPrograms: TrainingProgram[]): TrainingProgram[] {
+  const localById = new Map(localPrograms.map((program) => [program.id, program]));
+  return remotePrograms.map((remoteProgram) => {
+    const localProgram = localById.get(remoteProgram.id);
+    if (!localProgram) return remoteProgram;
+    return mergeTrainingProgramSnapshots(localProgram, remoteProgram);
+  });
 }
 
 function mergeWorkoutLogsById(
@@ -559,10 +585,10 @@ export function useAppState() {
         if (trustRemotePrograms) {
           const mergedProgs = remotePrograms ?? [];
           if (mergedProgs.length > 0 || shouldAdoptRemote(mergedProgs, prev.programs)) {
-            next.programs = mergedProgs;
+            next.programs = mergeRemoteProgramsWithLocal(mergedProgs, prev.programs);
           }
         } else if (shouldAdoptRemote(remotePrograms, prev.programs)) {
-          next.programs = remotePrograms!;
+          next.programs = mergeRemoteProgramsWithLocal(remotePrograms!, prev.programs);
         }
 
         if (trustRemoteLogs) {
