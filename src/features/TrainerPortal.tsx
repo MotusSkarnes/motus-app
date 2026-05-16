@@ -3142,7 +3142,11 @@ function programAuthorLabel(program: TrainingProgram): string | null {
           lastFollowUpIso: bestLastFollowUpIso,
         };
       })
-      .filter((item) => item.score >= 2)
+      .filter((item) => {
+        const lastFollowUpMs = item.lastFollowUpIso ? new Date(item.lastFollowUpIso).getTime() : 0;
+        if (lastFollowUpMs > 0 && nowMs - lastFollowUpMs <= sevenDaysMs) return false;
+        return item.score >= 2;
+      })
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         const ak = trainerActivitySortKey(a.member, members, logs);
@@ -3287,7 +3291,13 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       relatedIds.forEach((id) => {
         next[id] = [...(next[id] ?? []), newEntry];
       });
-      setLastFollowUpByMemberId((pl) => nextLastFollowUpMapForIds(pl, relatedIds, next));
+      return next;
+    });
+    setLastFollowUpByMemberId((prev) => {
+      const next = { ...prev };
+      relatedIds.forEach((id) => {
+        next[id] = nowIso;
+      });
       return next;
     });
   }
