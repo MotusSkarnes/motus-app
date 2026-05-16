@@ -259,6 +259,72 @@ const DEFAULT_ITEMS: InspirationItem[] = [
   },
 ];
 
+type InspirationPublishValidation = { ok: true } | { ok: false; message: string };
+
+function resolveComposerKind(categoryDraft: InspirationCategory, kindDraft: InspirationKind): InspirationKind {
+  return categoryDraft === "programs" ? kindDraft : "article";
+}
+
+function validateInspirationPublish(input: {
+  title: string;
+  description: string;
+  body: string;
+  categoryDraft: InspirationCategory;
+  kindDraft: InspirationKind;
+  usesExerciseBank: boolean;
+  programExerciseCount: number;
+  isImageProcessing: boolean;
+}): InspirationPublishValidation {
+  if (input.isImageProcessing) {
+    return { ok: false, message: "Vent til bildet er ferdig behandlet." };
+  }
+  if (!input.title.trim()) {
+    return { ok: false, message: "Fyll inn tittel." };
+  }
+
+  const kind = resolveComposerKind(input.categoryDraft, input.kindDraft);
+  if (kind === "program") {
+    if (input.usesExerciseBank && input.programExerciseCount < 1) {
+      return { ok: false, message: "Legg til minst én øvelse fra øvelsesbanken." };
+    }
+    return { ok: true };
+  }
+  if (kind === "periodPlan") {
+    if (!input.body.trim()) {
+      return { ok: false, message: "Fyll inn detaljer for ukesplanen." };
+    }
+    return { ok: true };
+  }
+  if (!input.description.trim()) {
+    return { ok: false, message: "Fyll inn kort info under bildet." };
+  }
+  if (!input.body.trim()) {
+    return { ok: false, message: "Fyll inn detaljer som vises under Les mer." };
+  }
+  return { ok: true };
+}
+
+function resolveComposerCopy(
+  title: string,
+  description: string,
+  body: string,
+  categoryDraft: InspirationCategory,
+  kindDraft: InspirationKind,
+): { title: string; description: string; body: string } | null {
+  const nextTitle = title.trim();
+  if (!nextTitle) return null;
+  const kind = resolveComposerKind(categoryDraft, kindDraft);
+  if (kind === "program") {
+    const nextDescription = description.trim() || nextTitle;
+    const nextBody = body.trim() || nextDescription;
+    return { title: nextTitle, description: nextDescription, body: nextBody };
+  }
+  const nextDescription = description.trim();
+  const nextBody = body.trim();
+  if (!nextDescription || !nextBody) return null;
+  return { title: nextTitle, description: nextDescription, body: nextBody };
+}
+
 function loadInspirationItems(): InspirationItem[] {
   if (typeof window === "undefined") return DEFAULT_ITEMS;
   try {
@@ -446,6 +512,30 @@ export function InspirationHub({
   }, [sortedItems]);
 
   const expandedItem = items.find((item) => item.id === expandedItemId) ?? null;
+  const composerKind = resolveComposerKind(categoryDraft, kindDraft);
+  const publishValidation = useMemo(
+    () =>
+      validateInspirationPublish({
+        title,
+        description,
+        body,
+        categoryDraft,
+        kindDraft,
+        usesExerciseBank,
+        programExerciseCount: programTemplateDraft?.exercises.length ?? 0,
+        isImageProcessing,
+      }),
+    [
+      title,
+      description,
+      body,
+      categoryDraft,
+      kindDraft,
+      usesExerciseBank,
+      programTemplateDraft?.exercises.length,
+      isImageProcessing,
+    ],
+  );
 
   useEffect(() => {
     if (!expandedItemId || typeof window === "undefined") return;
@@ -672,10 +762,13 @@ export function InspirationHub({
   }
 
   async function saveItem() {
-    const nextTitle = title.trim();
-    const nextDescription = description.trim();
-    const nextBody = body.trim();
-    if (!nextTitle || !nextDescription || !nextBody) return;
+    if (!publishValidation.ok) {
+      setActionStatus(publishValidation.message);
+      return;
+    }
+    const resolved = resolveComposerCopy(title, description, body, categoryDraft, kindDraft);
+    if (!resolved) return;
+    const { title: nextTitle, description: nextDescription, body: nextBody } = resolved;
 
     let storedImageUrl: string | undefined;
     try {
@@ -685,7 +778,7 @@ export function InspirationHub({
       return;
     }
 
-    const kind = categoryDraft === "programs" ? kindDraft : "article";
+    const kind = composerKind;
     let programTemplate: ProgramTemplateInput | undefined;
     let periodPlanTemplate: PeriodSchedulePlan | undefined;
 
@@ -1017,6 +1110,15 @@ export function InspirationHub({
                   setKindDraft("article");
                   setProgramTemplateDraft(null);
                   setPeriodPlanTemplateDraft(null);
+                } else if (kindDraft === "article") {
+                  setKindDraft("program");
+                  setProgramTemplateDraft(
+                    (prev) =>
+                      prev ??
+                      (usesExerciseBank
+                        ? createEmptyProgramTemplate(title.trim(), description.trim(), body.trim())
+                        : createDefaultProgram(title.trim(), description.trim(), body.trim())),
+                  );
                 }
               }}
               options={[
@@ -1073,7 +1175,16 @@ export function InspirationHub({
               />
             </label>
           </div>
-          <TextArea value={body} onChange={(event) => setBody(event.target.value)} className="mt-3 min-h-[110px]" placeholder="Detaljer som vises under Les mer" />
+          <TextArea
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
+            className="mt-3 min-h-[110px]"
+            placeholder={
+              composerKind === "program"
+                ? "Detaljer under Les mer (valgfritt for program)"
+                : "Detaljer som vises under Les mer"
+            }
+          />
 
           {categoryDraft === "programs" && kindDraft === "program" ? (
             <div className="mt-4 space-y-3 rounded-xl border border-sky-100 bg-sky-50/50 p-3">
@@ -1311,18 +1422,18 @@ export function InspirationHub({
           ) : null}
 
           
-          <div className="mt-3 flex flex-wrap justify-end gap-2">
-            {editingItemId ? (
-              <OutlineButton type="button" onClick={resetComposer}>
-                Avbryt redigering
-              </OutlineButton>
-            ) : null}
-            <GradientButton
-              onClick={() => void saveItem()}
-              disabled={isImageProcessing || !title.trim() || !description.trim() || !body.trim()}
-            >
-              {editingItemId ? "Lagre endringer" : "Publiser"}
-            </GradientButton>
+          <div className="mt-3 flex flex-col items-end gap-2">
+            {!publishValidation.ok ? <p className="w-full text-right text-xs text-slate-500">{publishValidation.message}</p> : null}
+            <div className="flex flex-wrap justify-end gap-2">
+              {editingItemId ? (
+                <OutlineButton type="button" onClick={resetComposer}>
+                  Avbryt redigering
+                </OutlineButton>
+              ) : null}
+              <GradientButton type="button" onClick={() => void saveItem()} disabled={!publishValidation.ok}>
+                {editingItemId ? "Lagre endringer" : "Publiser"}
+              </GradientButton>
+            </div>
           </div>
         </div>
       ) : null}
