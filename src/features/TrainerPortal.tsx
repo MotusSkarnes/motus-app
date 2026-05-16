@@ -4299,7 +4299,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         {periodWeeklyPlansDraft.length > 0 ? (
                           <div className="rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                             <div className="text-base font-semibold text-slate-900">Uker i planen</div>
-                            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
+                            <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
                               {periodWeeklyPlansDraft.slice(0, Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1))).map((week) => {
                                 const marked = week.usesGradientPlan === true;
                                 const isActive = activePeriodWeekId === week.id;
@@ -4308,7 +4308,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                                     key={week.id}
                                     type="button"
                                     onClick={() => toggleGradientPeriodWeek(week.id)}
-                                    className={`rounded-lg border px-1.5 py-2 text-center text-sm font-semibold leading-tight transition ${
+                                    className={`rounded-md border px-1 py-1.5 text-center text-xs font-semibold leading-tight transition ${
                                       marked ? "text-white shadow-sm" : "bg-white text-slate-700 hover:bg-slate-50"
                                     } ${isActive ? "ring-2 ring-teal-200" : ""}`}
                                     style={

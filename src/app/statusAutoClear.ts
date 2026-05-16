@@ -2,7 +2,11 @@ import { useEffect, useRef } from "react";
 
 export function useAutoClearStatus(status: string | null, clearStatus: () => void, delayMs = 3000): void {
   const clearRef = useRef(clearStatus);
-  clearRef.current = clearStatus;
+
+  useEffect(() => {
+    clearRef.current = clearStatus;
+  }, [clearStatus]);
+
   useEffect(() => {
     if (!status) return;
     const timerId = window.setTimeout(() => {
