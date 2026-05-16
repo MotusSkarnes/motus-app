@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import type { ComponentProps } from "react";
-import { Bell, CalendarRange, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp, type LucideIcon } from "lucide-react";
+import { Bell, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp, type LucideIcon } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { AppState, MemberTab } from "../app/types";
 import { Card } from "../app/ui";
@@ -39,6 +39,7 @@ type MemberLayoutProps = {
   memberVisibleAlerts: MemberAlert[];
   handleMemberBellToggle: () => void;
   openAlert: (alert: MemberAlert) => void;
+  markMemberInspirationAsSeen: () => void;
   remoteMemberPeriodPlanRows: ComponentProps<typeof MemberPortal>["remoteMemberPeriodPlanRows"];
   refreshRemoteHydration?: ComponentProps<typeof MemberPortal>["refreshRemoteHydration"];
 };
@@ -46,7 +47,6 @@ type MemberLayoutProps = {
 const mobileTabs: Array<{ id: MemberTab; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Hjem", icon: LayoutDashboard },
   { id: "programs", label: "Trening", icon: ClipboardList },
-  { id: "periodPlans", label: "Planer", icon: CalendarRange },
   { id: "inspiration", label: "Inspo", icon: Sparkles },
   { id: "progress", label: "Fremgang", icon: TrendingUp },
   { id: "messages", label: "Meldinger", icon: MessageSquare },
@@ -83,9 +83,16 @@ export function MemberLayout({
   memberVisibleAlerts,
   handleMemberBellToggle,
   openAlert,
+  markMemberInspirationAsSeen,
   remoteMemberPeriodPlanRows,
   refreshRemoteHydration,
 }: MemberLayoutProps) {
+  useEffect(() => {
+    if (memberTab === "inspiration") {
+      markMemberInspirationAsSeen();
+    }
+  }, [memberTab, markMemberInspirationAsSeen]);
+
   const isMemberLimited = useMemo(() => {
     const currentUser = appState.currentUser;
     if (!currentUser) return false;
@@ -101,7 +108,7 @@ export function MemberLayout({
     return candidates.some((member) => member.customerType === "Medlem" && member.membershipType !== "Premium");
   }, [appState.currentUser, appState.members, appState.memberViewId]);
   const visibleMobileTabs = isMemberLimited
-    ? mobileTabs.filter((tab) => tab.id === "overview" || tab.id === "programs" || tab.id === "periodPlans" || tab.id === "inspiration")
+    ? mobileTabs.filter((tab) => tab.id === "overview" || tab.id === "programs" || tab.id === "inspiration")
     : mobileTabs;
 
   useEffect(() => {
@@ -168,9 +175,20 @@ export function MemberLayout({
       byMember = {};
     }
     const existing = byMember[inspirationMemberId] ?? [];
-    byMember[inspirationMemberId] = [{ ...plan, id: `${plan.id}-${Date.now()}`, createdAt: new Date().toISOString().slice(0, 10) }, ...existing];
+    byMember[inspirationMemberId] = [
+      {
+        ...plan,
+        id: `${plan.id}-${Date.now()}`,
+        createdAt: new Date().toISOString().slice(0, 10),
+        periodPlanAddedBy: "member",
+      },
+      ...existing,
+    ];
     window.localStorage.setItem(storageKey, JSON.stringify(byMember));
-    setMemberTab("periodPlans");
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem("motus.member.openPeriodPlanOnPrograms", "1");
+    }
+    setMemberTab("programs");
   }
 
   return (
@@ -218,7 +236,13 @@ export function MemberLayout({
             <div className="mt-3 max-h-[min(22rem,70vh)] overflow-y-auto space-y-2 pr-1">
               {memberVisibleAlerts.map((alert) => {
                 const AlertIcon =
-                  alert.kind === "message" ? MessageSquare : alert.kind === "workout-comment" ? TrendingUp : ClipboardList;
+                  alert.kind === "message"
+                    ? MessageSquare
+                    : alert.kind === "workout-comment"
+                      ? TrendingUp
+                      : alert.kind === "inspiration"
+                        ? Sparkles
+                        : ClipboardList;
                 const isOpened = alert.isOpened;
                 const isRead = !alert.isUnread;
                 return (
@@ -269,7 +293,9 @@ export function MemberLayout({
             </div>
           ) : (
             <div className="mt-2 text-xs sm:text-sm text-slate-500">
-              {memberUnreadCount > 0 ? "Åpne for å gå rett til melding eller program." : "Nye meldinger og programmer dukker opp her."}
+              {memberUnreadCount > 0
+                ? "Åpne for å gå rett til melding, program eller inspo."
+                : "Nye meldinger, programmer og inspirasjon dukker opp her."}
             </div>
           )}
         </Card>

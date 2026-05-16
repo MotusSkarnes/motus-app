@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPeriodPlanWeekNavItemsFromPlan,
+  isMemberOwnedPeriodPlan,
   normalizePeriodSchedulePlan,
   resolvePeriodPlanWeek,
   syncGradientMarkedWeekDays,
@@ -110,5 +111,23 @@ describe("syncGradientMarkedWeekDays", () => {
     const out = syncGradientMarkedWeekDays(weeks);
     expect(out[0].days.monday).toBe("1");
     expect(out[1].days.monday).toBe("2");
+  });
+});
+
+describe("isMemberOwnedPeriodPlan", () => {
+  const trainerIds = new Set(["trainer-plan-1"]);
+
+  it("treats explicit member flag as member-owned", () => {
+    expect(isMemberOwnedPeriodPlan({ ...makePlan([]), periodPlanAddedBy: "member" }, trainerIds)).toBe(true);
+  });
+
+  it("treats remote trainer plans as not member-owned", () => {
+    expect(isMemberOwnedPeriodPlan({ ...makePlan([]), id: "trainer-plan-1", periodPlanAddedBy: "trainer" }, trainerIds)).toBe(
+      false,
+    );
+  });
+
+  it("detects inspiration suffix ids as member-owned", () => {
+    expect(isMemberOwnedPeriodPlan({ ...makePlan([]), id: "inspo-period-abc-1715789012345" }, trainerIds)).toBe(true);
   });
 });

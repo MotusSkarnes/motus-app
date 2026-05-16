@@ -119,6 +119,95 @@ export function periodPlanSelectableWeekCount(plan: PeriodSchedulePlan): number 
   return normalized.weeklyPlans.length;
 }
 
+export const PERIOD_PLANS_BY_MEMBER_STORAGE_KEY = "motus.trainer.periodPlansByMemberId";
+export const HIDDEN_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY = "motus.member.hiddenPeriodPlanIdsByMemberId";
+
+/** Planer fra Supabase / trener er ikke medlems-eide. */
+export function buildTrainerPeriodPlanIdSet(
+  relatedMemberIds: string[],
+  remoteRows: Array<{ memberId: string; plan: PeriodSchedulePlan }>,
+): Set<string> {
+  const idSet = new Set(relatedMemberIds.map((id) => id.trim()).filter(Boolean));
+  const trainerIds = new Set<string>();
+  for (const row of remoteRows) {
+    if (!idSet.has(row.memberId.trim())) continue;
+    trainerIds.add(row.plan.id);
+  }
+  return trainerIds;
+}
+
+export function isMemberOwnedPeriodPlan(plan: PeriodSchedulePlan, trainerPlanIds: ReadonlySet<string>): boolean {
+  if (plan.periodPlanAddedBy === "member") return true;
+  if (plan.periodPlanAddedBy === "trainer") return false;
+  if (trainerPlanIds.has(plan.id)) return false;
+  return /-\d{10,}$/.test(plan.id);
+}
+
+export function readPeriodPlansByMemberId(): Record<string, PeriodSchedulePlan[]> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(PERIOD_PLANS_BY_MEMBER_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, PeriodSchedulePlan[]>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+export function writePeriodPlansByMemberId(byMember: Record<string, PeriodSchedulePlan[]>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(PERIOD_PLANS_BY_MEMBER_STORAGE_KEY, JSON.stringify(byMember));
+}
+
+export function readHiddenPeriodPlanIdsForMembers(memberIds: string[]): string[] {
+  if (typeof window === "undefined" || memberIds.length === 0) return [];
+  try {
+    const raw = window.localStorage.getItem(HIDDEN_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Record<string, string[]>;
+    if (!parsed || typeof parsed !== "object") return [];
+    const hidden = new Set<string>();
+    for (const memberId of memberIds) {
+      for (const planId of parsed[memberId] ?? []) {
+        if (typeof planId === "string" && planId.trim()) hidden.add(planId);
+      }
+    }
+    return Array.from(hidden);
+  } catch {
+    return [];
+  }
+}
+
+export function writeHiddenPeriodPlanIdsForMember(memberId: string, planIds: string[]) {
+  if (typeof window === "undefined" || !memberId.trim()) return;
+  let byMember: Record<string, string[]> = {};
+  try {
+    const raw = window.localStorage.getItem(HIDDEN_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY);
+    byMember = raw ? (JSON.parse(raw) as Record<string, string[]>) : {};
+    if (!byMember || typeof byMember !== "object") byMember = {};
+  } catch {
+    byMember = {};
+  }
+  byMember[memberId] = planIds;
+  window.localStorage.setItem(HIDDEN_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY, JSON.stringify(byMember));
+}
+
+export function removeMemberOwnedPeriodPlanFromStorage(memberIds: string[], planId: string): boolean {
+  const byMember = readPeriodPlansByMemberId();
+  let changed = false;
+  for (const memberId of memberIds) {
+    const previous = byMember[memberId] ?? [];
+    const next = previous.filter((plan) => plan.id !== planId);
+    if (next.length !== previous.length) {
+      byMember[memberId] = next;
+      changed = true;
+    }
+  }
+  if (changed) writePeriodPlansByMemberId(byMember);
+  return changed;
+}
+
 export function mergedPeriodPlanListForMember(
   relatedMemberIds: string[],
   localByMember: Record<string, PeriodSchedulePlan[]>,

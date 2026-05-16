@@ -97,6 +97,7 @@ export function buildMemberLayoutProps(input: {
   memberVisibleAlerts: MemberLayoutProps["memberVisibleAlerts"];
   handleMemberBellToggle: () => void;
   openAlert: MemberLayoutProps["openAlert"];
+  markMemberInspirationAsSeen: MemberLayoutProps["markMemberInspirationAsSeen"];
   remoteMemberPeriodPlanRows: MemberLayoutProps["remoteMemberPeriodPlanRows"];
   refreshRemoteHydration?: MemberLayoutProps["refreshRemoteHydration"];
 }): MemberLayoutProps {

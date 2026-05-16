@@ -185,6 +185,10 @@ export type PeriodSchedulePlan = {
   weeks: number;
   createdAt: string;
   weeklyPlans: WeeklySchedulePlan[];
+  /** Hvem la planen inn i medlemmets bibliotek (inspirasjon = member). */
+  periodPlanAddedBy?: "trainer" | "member";
+  /** Medlem kan skjule trenerplaner lokalt uten å slette dem hos trener. */
+  memberPeriodPlanStatus?: "hidden";
 };
 
 export type AppState = {

@@ -242,6 +242,10 @@ export function parsePeriodSchedulePlan(value: unknown): PeriodSchedulePlan | nu
     ? (weeklyRaw.map(parseWeeklySchedulePlan).filter(Boolean) as WeeklySchedulePlan[])
     : [];
   const weeks = Number(o.weeks);
+  const addedByRaw = String(o.periodPlanAddedBy ?? "").trim();
+  const periodPlanAddedBy = addedByRaw === "member" || addedByRaw === "trainer" ? addedByRaw : "trainer";
+  const statusRaw = String(o.memberPeriodPlanStatus ?? "").trim();
+  const memberPeriodPlanStatus = statusRaw === "hidden" ? ("hidden" as const) : undefined;
   return {
     id,
     title: String(o.title ?? "").trim() || "Periodeplan",
@@ -250,6 +254,8 @@ export function parsePeriodSchedulePlan(value: unknown): PeriodSchedulePlan | nu
     weeks: Number.isFinite(weeks) ? weeks : weeklyPlans.length || 1,
     createdAt: String(o.createdAt ?? "").trim(),
     weeklyPlans,
+    periodPlanAddedBy,
+    memberPeriodPlanStatus,
   };
 }
 

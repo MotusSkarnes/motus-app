@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, MessageSquare, Pencil, Play, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
+import { CalendarRange, ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, MessageSquare, Pencil, Play, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
@@ -566,6 +566,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const trainerSendAttemptRef = useRef(0);
   const [trainerChatSendStatus, setTrainerChatSendStatus] = useState<string | null>(null);
   const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
+  const [customerProgramBuilderFocus, setCustomerProgramBuilderFocus] = useState<"training" | "period">("training");
   const [selectedWorkoutLogId, setSelectedWorkoutLogId] = useState<string | null>(null);
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
   const [templateProgramTitle, setTemplateProgramTitle] = useState("Ny treningsmal");
@@ -1465,6 +1466,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     setWorkoutTypeFilter("all");
     setWorkoutSearchQuery("");
     setWorkoutSortOrder("newest");
+    setCustomerProgramBuilderFocus("training");
     setPeriodPlanStatus(null);
     setPeriodPlanTitleDraft("Periodeplan");
     setPeriodPlanNotesDraft("");
@@ -1646,6 +1648,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     setProgramGoal(program.goal);
     setProgramNotes(program.notes);
     setProgramExercisesDraft(program.exercises.map((exercise) => ({ ...exercise })));
+    setCustomerProgramBuilderFocus("training");
     setCustomerSubTab("programs");
     setTrainerTab("customers");
   }
@@ -1801,6 +1804,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       weeks,
       createdAt: existingPeriodPlan?.createdAt ?? formatDateDdMmYyyy(new Date()),
       weeklyPlans,
+      periodPlanAddedBy: "trainer",
     };
     setPeriodPlansByMemberId((prev) => {
       const next = { ...prev };
@@ -4245,10 +4249,10 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         type="button"
                         onClick={() => setCustomerSubTab("programs")}
                         className="flex min-h-[58px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-tight text-slate-800 transition hover:border-teal-300 hover:bg-teal-50"
-                        title="Lag program"
+                        title="Treningsprogram eller periodeplan"
                       >
                         <ClipboardList className="h-4 w-4 shrink-0 text-teal-700" aria-hidden />
-                        <span className="max-w-full break-words">Program</span>
+                        <span className="max-w-full break-words">Program & plan</span>
                       </button>
                       <button
                         type="button"
@@ -4325,7 +4329,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 <div className="rounded-xl border bg-slate-50/80 p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <PillButton active={customerSubTab === "overview"} onClick={() => setCustomerSubTab("overview")}>Oversikt og logg</PillButton>
-                    <PillButton active={customerSubTab === "programs"} onClick={() => setCustomerSubTab("programs")}>Program</PillButton>
+                    <PillButton active={customerSubTab === "programs"} onClick={() => setCustomerSubTab("programs")}>Program & planer</PillButton>
                     <PillButton active={customerSubTab === "workouts"} onClick={() => setCustomerSubTab("workouts")}>Økter</PillButton>
                     <PillButton active={customerSubTab === "messages"} onClick={() => setCustomerSubTab("messages")}>Meldinger</PillButton>
                   </div>
@@ -4455,22 +4459,79 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 ) : null}
 
                 {customerSubTab === "programs" ? (
-                  <div className="space-y-3">
-                    <div className="grid gap-3 2xl:grid-cols-[minmax(0,1fr)_minmax(300px,340px)] 2xl:items-start">
-                    <div className="rounded-xl border bg-white p-3 sm:p-4 space-y-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="font-semibold">{editingProgramId ? "Rediger program" : "Bygg program"}</div>
-                        {editingProgramId ? <OutlineButton onClick={resetProgramBuilder}>Avbryt redigering</OutlineButton> : null}
-                      </div>
-                      <details className="rounded-xl border border-slate-200/80 bg-slate-50/60 open:bg-slate-50" open={periodWeeklyPlansDraft.length > 0 || selectedPeriodPlans.length > 0}>
-                        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-1.5 text-base font-semibold text-slate-900 [&::-webkit-details-marker]:hidden">
-                          <span>Periodeplan + ukesplan</span>
-                          <span className="flex items-center gap-1 text-sm font-normal text-slate-500">
-                            {selectedPeriodPlans.length > 0 ? `${selectedPeriodPlans.length} lagret` : "Valgfritt"}
-                            <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+                  <div className="space-y-4">
+                    <div
+                      className="rounded-2xl border bg-white p-4 shadow-sm"
+                      style={{ borderColor: "rgba(48,227,190,0.18)", background: `linear-gradient(135deg, ${MOTUS.paleMint}33 0%, #ffffff 72%)` }}
+                    >
+                      <div className="text-sm font-semibold text-slate-900">To ulike verktøy for kunden</div>
+                      <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                        <strong className="text-teal-900">Periodeplan</strong> er ukeoversikt (mandag–søndag).{" "}
+                        <strong className="text-slate-900">Treningsprogram</strong> er en konkret økt med øvelser, sett og reps som logges.
+                      </p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <button
+                          type="button"
+                          onClick={() => setCustomerProgramBuilderFocus("period")}
+                          className={`flex items-start gap-3 rounded-xl border p-3 text-left transition ${
+                            customerProgramBuilderFocus === "period"
+                              ? "border-teal-400 bg-teal-50/90 ring-2 ring-teal-200"
+                              : "border-slate-200 bg-white hover:border-teal-200 hover:bg-slate-50"
+                          }`}
+                        >
+                          <span
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white shadow-sm"
+                            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                          >
+                            <CalendarRange className="h-5 w-5" aria-hidden />
                           </span>
-                        </summary>
-                        <div className="mt-3 space-y-4 border-t border-slate-200/80 pt-3">
+                          <span>
+                            <span className="block text-sm font-bold text-slate-900">Periodeplan</span>
+                            <span className="mt-0.5 block text-xs leading-snug text-slate-600">Uke-for-uke: hva kunden skal gjøre hver dag</span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCustomerProgramBuilderFocus("training")}
+                          className={`flex items-start gap-3 rounded-xl border p-3 text-left transition ${
+                            customerProgramBuilderFocus === "training"
+                              ? "border-slate-400 bg-slate-50 ring-2 ring-slate-200"
+                              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                          }`}
+                        >
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white shadow-sm">
+                            <ClipboardList className="h-5 w-5" aria-hidden />
+                          </span>
+                          <span>
+                            <span className="block text-sm font-bold text-slate-900">Treningsprogram</span>
+                            <span className="mt-0.5 block text-xs leading-snug text-slate-600">Øvelser med sett og reps — logges som økt</span>
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {customerProgramBuilderFocus === "period" ? (
+                    <div className="rounded-xl border-2 border-teal-200/80 bg-white p-3 sm:p-5 space-y-4 shadow-sm">
+                      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-teal-100 pb-3">
+                        <div className="flex items-start gap-3">
+                          <span
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm"
+                            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                          >
+                            <CalendarRange className="h-5 w-5" aria-hidden />
+                          </span>
+                          <div>
+                            <h3 className="text-lg font-bold text-slate-900">Lag periodeplan</h3>
+                            <p className="mt-1 text-sm text-slate-600">Planlegg én eller flere uker. Medlemmet ser planen under Mine periodeplaner.</p>
+                          </div>
+                        </div>
+                        {selectedPeriodPlans.length > 0 ? (
+                          <span className="rounded-full bg-teal-100 px-2.5 py-1 text-xs font-semibold text-teal-900">
+                            {selectedPeriodPlans.length} lagret
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="space-y-4">
                         <div className="grid gap-4 lg:grid-cols-2">
                           <label className="grid gap-2">
                             <span className="text-base font-semibold text-slate-900">Navn på periodeplan</span>
@@ -4627,8 +4688,23 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                             })
                           )}
                         </div>
+                      </div>
+                    </div>
+                    ) : (
+                    <div className="grid gap-3 2xl:grid-cols-[minmax(0,1fr)_minmax(300px,340px)] 2xl:items-start">
+                    <div className="rounded-xl border-2 border-slate-200 bg-white p-3 sm:p-4 space-y-3 shadow-sm">
+                      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                        <div className="flex items-start gap-3">
+                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
+                            <ClipboardList className="h-5 w-5" aria-hidden />
+                          </span>
+                          <div>
+                            <h3 className="text-lg font-bold text-slate-900">{editingProgramId ? "Rediger treningsprogram" : "Lag treningsprogram"}</h3>
+                            <p className="mt-1 text-sm text-slate-600">Bygg en økt med øvelser. Medlemmet starter og logger under Trening.</p>
+                          </div>
                         </div>
-                      </details>
+                        {editingProgramId ? <OutlineButton onClick={resetProgramBuilder}>Avbryt redigering</OutlineButton> : null}
+                      </div>
                       <div className="grid gap-2 sm:grid-cols-2">
                       <TextInput value={programTitle} onChange={(e) => setProgramTitle(e.target.value)} placeholder="Navn på program" />
                       <TextInput value={programGoal} onChange={(e) => setProgramGoal(e.target.value)} placeholder="Mål" />
@@ -4930,6 +5006,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                     </div>
                     </div>
                     </div>
+                    )}
                   </div>
                 ) : null}
 

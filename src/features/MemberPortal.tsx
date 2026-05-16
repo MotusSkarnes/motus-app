@@ -51,9 +51,15 @@ import {
 } from "../app/periodPlanEntryActions";
 import {
   buildPeriodPlanWeekNavItemsFromPlan,
+  buildTrainerPeriodPlanIdSet,
+  isMemberOwnedPeriodPlan,
   mergedPeriodPlanListForMember,
   periodPlanSelectableWeekCount,
+  readHiddenPeriodPlanIdsForMembers,
+  readPeriodPlansByMemberId,
+  removeMemberOwnedPeriodPlanFromStorage,
   resolvePeriodPlanWeek,
+  writeHiddenPeriodPlanIdsForMember,
 } from "../app/periodPlanMerge";
 import {
   applyPeriodPlanSwaps,
@@ -176,7 +182,6 @@ type MemberPortalProps = {
 
 const MEMBER_AVATAR_BUCKET = "exercise-images";
 const MEMBER_AVATAR_PREFIX = "member-avatars";
-const PERIOD_PLANS_STORAGE_KEY = "motus.trainer.periodPlansByMemberId";
 const EMPTY_REMOTE_PERIOD_PLAN_ROWS: Array<{ memberId: string; plan: PeriodSchedulePlan }> = [];
 const PERIOD_PLAN_COMPLETED_STORAGE_PREFIX = "MOTUS_PERIOD_PLAN_COMPLETED_V1:";
 const DEFAULT_HOME_VISIBILITY = {
@@ -819,6 +824,10 @@ export function MemberPortal(props: MemberPortalProps) {
   const [activeMemberPeriodPlanId, setActiveMemberPeriodPlanId] = useState<string | null>(null);
   const [selectedPeriodPlanWeekNumber, setSelectedPeriodPlanWeekNumber] = useState<number | null>(null);
   const [periodPlanActionStatus, setPeriodPlanActionStatus] = useState<string | null>(null);
+  const [hiddenPeriodPlanIds, setHiddenPeriodPlanIds] = useState<string[]>([]);
+  const [showPeriodPlanHiddenSection, setShowPeriodPlanHiddenSection] = useState(false);
+  const [showPeriodPlanManageSection, setShowPeriodPlanManageSection] = useState(false);
+  const [periodPlanStorageRevision, setPeriodPlanStorageRevision] = useState(0);
   const [completedPeriodPlanEntryKeys, setCompletedPeriodPlanEntryKeys] = useState<string[]>([]);
   const [periodPlanSwapsByPlan, setPeriodPlanSwapsByPlan] = useState<PeriodPlanSwapsByPlan>({});
   const [selectedIntervalProgramId, setSelectedIntervalProgramId] = useState("");
@@ -944,6 +953,19 @@ export function MemberPortal(props: MemberPortalProps) {
     currentUserSupabaseId,
   ]);
   const relatedMemberIdSet = useMemo(() => new Set(relatedMemberIds), [relatedMemberIds]);
+  const trainerPeriodPlanIds = useMemo(
+    () => buildTrainerPeriodPlanIdSet(relatedMemberIds, remoteMemberPeriodPlanRows),
+    [relatedMemberIds, remoteMemberPeriodPlanRows],
+  );
+  const visiblePeriodPlans = useMemo(
+    () => periodPlans.filter((plan) => !hiddenPeriodPlanIds.includes(plan.id)),
+    [periodPlans, hiddenPeriodPlanIds],
+  );
+  const hiddenPeriodPlans = useMemo(
+    () => periodPlans.filter((plan) => hiddenPeriodPlanIds.includes(plan.id)),
+    [periodPlans, hiddenPeriodPlanIds],
+  );
+  const primaryMemberIdForPeriodPlans = relatedMemberIds[0] ?? memberViewId ?? "";
   const relatedMembersForProfile = useMemo(
     () => members.filter((member) => relatedMemberIdSet.has(member.id)),
     [members, relatedMemberIdSet],
@@ -1116,7 +1138,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const nextProgram = memberProgramsInActiveLibrary[0] ?? null;
   useEffect(() => {
     if (!isMemberLimited) return;
-    if (memberTab === "overview" || memberTab === "programs" || memberTab === "periodPlans" || memberTab === "profile" || memberTab === "inspiration") return;
+    if (memberTab === "overview" || memberTab === "programs" || memberTab === "profile" || memberTab === "inspiration") return;
     setMemberTab("overview");
   }, [isMemberLimited, memberTab, setMemberTab]);
   const workoutResultGroups = useMemo(() => {
@@ -1287,7 +1309,8 @@ export function MemberPortal(props: MemberPortalProps) {
     if (day === 5) return "friday";
     return "saturday";
   }, [nowTimestamp]);
-  const activePeriodPlan = periodPlans.find((plan) => plan.id === activeMemberPeriodPlanId) ?? periodPlans[0] ?? null;
+  const activePeriodPlan =
+    visiblePeriodPlans.find((plan) => plan.id === activeMemberPeriodPlanId) ?? visiblePeriodPlans[0] ?? null;
   const activePeriodPlanId = activePeriodPlan?.id ?? null;
   const activePeriodSelectableWeekCount = activePeriodPlan ? periodPlanSelectableWeekCount(activePeriodPlan) : 0;
   const activePeriodPlanStartDate = activePeriodPlan ? parseDateOnly(activePeriodPlan.startDate) : null;
@@ -1792,7 +1815,7 @@ export function MemberPortal(props: MemberPortalProps) {
       sunday: 6,
     };
     const byDay = new Map<number, string[]>();
-    periodPlans.forEach((plan) => {
+    visiblePeriodPlans.forEach((plan) => {
       const startDate = parseDateOnly(plan.startDate);
       if (!startDate) return;
       (plan.weeklyPlans ?? []).forEach((week) => {
@@ -1812,7 +1835,7 @@ export function MemberPortal(props: MemberPortalProps) {
       });
     });
     return byDay;
-  }, [periodPlans, periodPlanSwapsByPlan, calendarMonth]);
+  }, [visiblePeriodPlans, periodPlanSwapsByPlan, calendarMonth]);
   const calendarDayStatusByDay = useMemo(() => {
     const statusByDay = new Map<number, "completed" | "planned" | "missed">();
     const todayStart = getStartOfDay(new Date(nowTimestamp));
@@ -2495,25 +2518,41 @@ export function MemberPortal(props: MemberPortalProps) {
     container.scrollTop = container.scrollHeight;
   }, [memberTab, memberMessages.length]);
   useEffect(() => {
-    let localByMember: Record<string, PeriodSchedulePlan[]> = {};
-    if (typeof window !== "undefined") {
-      try {
-        const raw = window.localStorage.getItem(PERIOD_PLANS_STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw) as Record<string, PeriodSchedulePlan[]>;
-          if (parsed && typeof parsed === "object") {
-            localByMember = parsed;
-          }
-        }
-      } catch {
-        localByMember = {};
-      }
-    }
+    const localByMember = readPeriodPlansByMemberId();
     const combined = mergedPeriodPlanListForMember(relatedMemberIds, localByMember, remoteMemberPeriodPlanRows);
     combined.sort((a, b) => (parseDateOnly(b.startDate)?.getTime() ?? 0) - (parseDateOnly(a.startDate)?.getTime() ?? 0));
+    const hiddenIds = readHiddenPeriodPlanIdsForMembers(relatedMemberIds);
+    const visible = combined.filter((plan) => !hiddenIds.includes(plan.id));
     setPeriodPlans(combined);
-    setActiveMemberPeriodPlanId((prev) => (prev && combined.some((plan) => plan.id === prev) ? prev : combined[0]?.id ?? null));
-  }, [relatedMemberIds, remoteMemberPeriodPlanRows]);
+    setHiddenPeriodPlanIds(hiddenIds);
+    setActiveMemberPeriodPlanId((prev) => {
+      if (prev && visible.some((plan) => plan.id === prev)) return prev;
+      return visible[0]?.id ?? null;
+    });
+  }, [relatedMemberIds, remoteMemberPeriodPlanRows, periodPlanStorageRevision]);
+
+  useEffect(() => {
+    if (memberTab === "periodPlans") {
+      setMemberTab("programs");
+      setShowPeriodPlanPanel(true);
+    }
+  }, [memberTab, setMemberTab]);
+
+  useEffect(() => {
+    if (memberTab !== "programs" || typeof window === "undefined") return;
+    if (window.sessionStorage.getItem("motus.member.openPeriodPlanOnPrograms") === "1") {
+      window.sessionStorage.removeItem("motus.member.openPeriodPlanOnPrograms");
+      setShowPeriodPlanPanel(true);
+    }
+  }, [memberTab]);
+
+  function openProgramsWithPeriodPlan() {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem("motus.member.openPeriodPlanOnPrograms", "1");
+    }
+    setMemberTab("programs");
+  }
+
   useEffect(() => {
     if (!activeIntervalProgram || isIntervalTimerRunning) return;
     const firstStep = intervalProgramSteps[0] ?? null;
@@ -3283,6 +3322,36 @@ export function MemberPortal(props: MemberPortalProps) {
     return `${planId}:${weekNumber}:${day}`;
   }
 
+  function hideTrainerPeriodPlan(planId: string) {
+    if (!primaryMemberIdForPeriodPlans) return;
+    const nextHidden = Array.from(new Set([...hiddenPeriodPlanIds, planId]));
+    writeHiddenPeriodPlanIdsForMember(primaryMemberIdForPeriodPlans, nextHidden);
+    setHiddenPeriodPlanIds(nextHidden);
+    if (activeMemberPeriodPlanId === planId) {
+      const nextActive = visiblePeriodPlans.find((plan) => plan.id !== planId)?.id ?? null;
+      setActiveMemberPeriodPlanId(nextActive);
+    }
+    setPeriodPlanActionStatus("Periodeplanen er skjult fra oversikten.");
+  }
+
+  function unhideTrainerPeriodPlan(planId: string) {
+    if (!primaryMemberIdForPeriodPlans) return;
+    const nextHidden = hiddenPeriodPlanIds.filter((id) => id !== planId);
+    writeHiddenPeriodPlanIdsForMember(primaryMemberIdForPeriodPlans, nextHidden);
+    setHiddenPeriodPlanIds(nextHidden);
+    setPeriodPlanActionStatus("Periodeplanen er tilbake i oversikten.");
+  }
+
+  function deleteMemberOwnedPeriodPlan(plan: PeriodSchedulePlan) {
+    if (!isMemberOwnedPeriodPlan(plan, trainerPeriodPlanIds)) return;
+    removeMemberOwnedPeriodPlanFromStorage(relatedMemberIds, plan.id);
+    setPeriodPlanStorageRevision((value) => value + 1);
+    if (activeMemberPeriodPlanId === plan.id) {
+      setActiveMemberPeriodPlanId(null);
+    }
+    setPeriodPlanActionStatus("Periodeplanen er slettet.");
+  }
+
   function isPeriodPlanEntryCompleted(planId: string, weekNumber: number, day: WeekdayPlanKey): boolean {
     const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
     return completedPeriodPlanEntryKeys.includes(key);
@@ -3796,14 +3865,12 @@ export function MemberPortal(props: MemberPortalProps) {
             ? [
                 { id: "overview", label: "Hjem" },
                 { id: "programs", label: "Trening" },
-                { id: "periodPlans", label: "Mine periodeplaner" },
                 { id: "inspiration", label: "Inspirasjon" },
                 { id: "profile", label: "Profil" },
               ]
             : [
             { id: "overview", label: "Hjem" },
             { id: "programs", label: "Trening" },
-            { id: "periodPlans", label: "Mine periodeplaner" },
             { id: "inspiration", label: "Inspirasjon" },
             { id: "progress", label: "Fremgang" },
             { id: "messages", label: "Meldinger" },
@@ -3895,7 +3962,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     <>
                       <div className="mt-1 text-sm font-medium text-slate-800">{nextPlannedWorkout.dayLabel}</div>
                       <div className="mt-1 text-sm text-slate-600">{nextPlannedWorkout.entry}</div>
-                      <OutlineButton onClick={() => setMemberTab("programs")} className="mt-3 w-full sm:w-auto">
+                      <OutlineButton onClick={openProgramsWithPeriodPlan} className="mt-3 w-full sm:w-auto">
                         Se periodeplan
                       </OutlineButton>
                     </>
@@ -4785,8 +4852,8 @@ export function MemberPortal(props: MemberPortalProps) {
                       <CalendarRange className="h-4 w-4" aria-hidden />
                     </div>
                     <div className="min-w-0">
-                      <div className="text-sm font-semibold text-slate-800">Periodeplan fra PT</div>
-                      <div className="mt-1 text-xs text-slate-500">Viser hva som er planlagt dag for dag.</div>
+                      <div className="text-sm font-semibold text-slate-800">Periodeplan</div>
+                      <div className="mt-1 text-xs text-slate-500">Uke for uke — start økter og logg det du gjør.</div>
                     </div>
                   </div>
                   <OutlineButton onClick={() => setShowPeriodPlanPanel((prev) => !prev)} className="w-full sm:w-auto">
@@ -4795,78 +4862,227 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
                 {showPeriodPlanPanel ? (
                   <div className="mt-4 space-y-3">
-                    {periodPlans.length === 0 ? (
-                      <EmptyState
-                        icon="🗓️"
-                        title="Ingen periodeplan tilgjengelig"
-                        description="Be treneren din opprette en periodeplan."
-                        className="bg-slate-50 py-4"
-                      />
-                    ) : (
-                      periodPlans.slice(0, 1).map((plan) => (
-                        <div
-                          key={plan.id}
-                          className="overflow-hidden rounded-2xl border-0 p-0 shadow-md ring-1 ring-teal-500/15"
-                          style={{
-                            background: `linear-gradient(145deg, ${MOTUS.paleMint} 0%, #ffffff 55%, #f1f5f9 100%)`,
-                          }}
-                        >
-                          <div className="border-b border-teal-900/10 px-4 py-3 sm:px-5 sm:py-4" style={{ background: "rgba(255,255,255,0.55)" }}>
-                            <div className="text-base font-bold leading-snug text-slate-900 sm:text-lg">{plan.title}</div>
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              <span className="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-teal-950 shadow-sm ring-1 ring-teal-200/60">
-                                Start {plan.startDate}
-                              </span>
-                              <span className="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-800 shadow-sm ring-1 ring-slate-200/80">
-                                {plan.weeks} {plan.weeks === 1 ? "uke" : "uker"}
-                              </span>
-                              <span className="inline-flex items-center rounded-full bg-white/60 px-2.5 py-1 text-[11px] font-medium text-slate-600 ring-1 ring-slate-200/60">
-                                Lagret {plan.createdAt}
-                              </span>
-                            </div>
-                          </div>
-                          {plan.notes ? (
-                            <div className="mx-4 mt-3 rounded-xl border border-teal-200/50 bg-white/70 px-3 py-2.5 text-sm leading-relaxed text-slate-700 shadow-sm sm:mx-5">
-                              {plan.notes}
-                            </div>
-                          ) : null}
-                          {(plan.weeklyPlans ?? []).length > 0 ? (
-                            <PeriodPlanWeekNavigator
-                              className="mt-4 px-4 sm:px-5"
-                              weeks={buildPeriodPlanWeekNavItemsFromPlan(plan)}
-                              selectedWeekNumber={selectedPeriodPlanWeekForView}
-                              onWeekSelectByNumber={setSelectedPeriodPlanWeekNumber}
-                              currentWeekNumber={activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : null}
-                              formatWeekRange={(weekNumber) => {
-                                const monday = resolvePeriodPlanEntryDate(plan, weekNumber, "monday");
-                                const sunday = resolvePeriodPlanEntryDate(plan, weekNumber, "sunday");
-                                if (!monday || !sunday) return null;
-                                return `${monday} – ${sunday}`;
+                    {visiblePeriodPlans.length > 1 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {visiblePeriodPlans.map((plan) => {
+                          const active = activePeriodPlan?.id === plan.id;
+                          const memberOwned = isMemberOwnedPeriodPlan(plan, trainerPeriodPlanIds);
+                          return (
+                            <button
+                              key={plan.id}
+                              type="button"
+                              onClick={() => {
+                                setActiveMemberPeriodPlanId(plan.id);
+                                setSelectedPeriodPlanWeekNumber(1);
                               }}
-                            />
-                          ) : null}
-                          {resolvePeriodPlanWeek(plan, selectedPeriodPlanWeekForView) ? (
-                            <div className="px-4 pb-4 sm:px-5 sm:pb-5">
-                              <PeriodPlanWeekView
-                                key={`${plan.id}-${selectedPeriodPlanWeekForView}`}
-                                plan={plan}
-                                week={resolvePeriodPlanWeek(plan, selectedPeriodPlanWeekForView)!}
-                                swapsByPlan={periodPlanSwapsByPlan}
-                                memberPrograms={memberProgramsInActiveLibrary}
-                                actionStatus={periodPlanActionStatus}
-                                isEntryCompleted={isPeriodPlanEntryCompleted}
-                                onToggleCompleted={togglePeriodPlanEntryCompleted}
-                                onSwapDays={swapPeriodPlanDays}
-                                onResetSwaps={resetPeriodPlanSwapsForWeek}
-                                onStartProgram={handlePeriodPlanStartProgram}
-                                onLogGroup={handlePeriodPlanLogGroup}
-                                resolveEntryDate={resolvePeriodPlanEntryDate}
-                              />
-                            </div>
-                          ) : null}
+                              className={`rounded-full px-3 py-1.5 text-left text-xs font-semibold transition ${
+                                active
+                                  ? "bg-teal-100 text-teal-900 ring-2 ring-teal-200"
+                                  : "bg-slate-100 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200"
+                              }`}
+                            >
+                              {plan.title}
+                              <span className="ml-1 font-normal text-slate-500">
+                                · {memberOwned ? "Din" : "PT"}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                    {visiblePeriodPlans.length === 0 ? (
+                      periodPlans.length > 0 ? (
+                        <div className="rounded-xl border border-dashed bg-slate-50 px-3 py-4 text-sm text-slate-600">
+                          Alle periodeplaner er skjult. Åpne «Administrer planer» for å vise dem igjen.
                         </div>
-                      ))
-                    )}
+                      ) : (
+                        <EmptyState
+                          icon="🗓️"
+                          title="Ingen periodeplan ennå"
+                          description="Legg til en plan fra Inspirasjon, eller be treneren din om en periodeplan."
+                          className="bg-slate-50 py-4"
+                        />
+                      )
+                    ) : activePeriodPlan ? (
+                      <div
+                        className="overflow-hidden rounded-2xl border-0 p-0 shadow-md ring-1 ring-teal-500/15"
+                        style={{
+                          background: `linear-gradient(145deg, ${MOTUS.paleMint} 0%, #ffffff 55%, #f1f5f9 100%)`,
+                        }}
+                      >
+                        <div className="border-b border-teal-900/10 px-4 py-3 sm:px-5 sm:py-4" style={{ background: "rgba(255,255,255,0.55)" }}>
+                          <div className="text-base font-bold leading-snug text-slate-900 sm:text-lg">{activePeriodPlan.title}</div>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <span className="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-teal-950 shadow-sm ring-1 ring-teal-200/60">
+                              Start {activePeriodPlan.startDate}
+                            </span>
+                            <span className="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-800 shadow-sm ring-1 ring-slate-200/80">
+                              {activePeriodPlan.weeks} {activePeriodPlan.weeks === 1 ? "uke" : "uker"}
+                            </span>
+                            <span className="inline-flex items-center rounded-full bg-white/60 px-2.5 py-1 text-[11px] font-medium text-slate-600 ring-1 ring-slate-200/60">
+                              {isMemberOwnedPeriodPlan(activePeriodPlan, trainerPeriodPlanIds) ? "Lagt til av deg" : "Fra trener"}
+                            </span>
+                          </div>
+                        </div>
+                        {activePeriodPlan.notes ? (
+                          <div className="mx-4 mt-3 rounded-xl border border-teal-200/50 bg-white/70 px-3 py-2.5 text-sm leading-relaxed text-slate-700 shadow-sm sm:mx-5">
+                            {activePeriodPlan.notes}
+                          </div>
+                        ) : null}
+                        {(activePeriodPlan.weeklyPlans ?? []).length > 0 ? (
+                          <PeriodPlanWeekNavigator
+                            className="mt-4 px-4 sm:px-5"
+                            weeks={buildPeriodPlanWeekNavItemsFromPlan(activePeriodPlan)}
+                            selectedWeekNumber={selectedPeriodPlanWeekForView}
+                            onWeekSelectByNumber={setSelectedPeriodPlanWeekNumber}
+                            currentWeekNumber={activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : null}
+                            formatWeekRange={(weekNumber) => {
+                              const monday = resolvePeriodPlanEntryDate(activePeriodPlan, weekNumber, "monday");
+                              const sunday = resolvePeriodPlanEntryDate(activePeriodPlan, weekNumber, "sunday");
+                              if (!monday || !sunday) return null;
+                              return `${monday} – ${sunday}`;
+                            }}
+                          />
+                        ) : null}
+                        {resolvePeriodPlanWeek(activePeriodPlan, selectedPeriodPlanWeekForView) ? (
+                          <div className="px-4 pb-4 sm:px-5 sm:pb-5">
+                            <PeriodPlanWeekView
+                              key={`${activePeriodPlan.id}-${selectedPeriodPlanWeekForView}`}
+                              plan={activePeriodPlan}
+                              week={resolvePeriodPlanWeek(activePeriodPlan, selectedPeriodPlanWeekForView)!}
+                              swapsByPlan={periodPlanSwapsByPlan}
+                              memberPrograms={memberProgramsInActiveLibrary}
+                              actionStatus={periodPlanActionStatus}
+                              isEntryCompleted={isPeriodPlanEntryCompleted}
+                              onToggleCompleted={togglePeriodPlanEntryCompleted}
+                              onSwapDays={swapPeriodPlanDays}
+                              onResetSwaps={resetPeriodPlanSwapsForWeek}
+                              onStartProgram={handlePeriodPlanStartProgram}
+                              onLogGroup={handlePeriodPlanLogGroup}
+                              resolveEntryDate={resolvePeriodPlanEntryDate}
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {periodPlans.length > 0 ? (
+                      <div className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
+                        <button
+                          type="button"
+                          onClick={() => setShowPeriodPlanManageSection((open) => !open)}
+                          className="flex w-full items-center justify-between gap-2 text-left"
+                        >
+                          <span className="text-sm font-semibold text-slate-800">Administrer planer</span>
+                          <span className="text-xs font-medium text-slate-500">
+                            {showPeriodPlanManageSection ? "Skjul" : "Vis"}
+                          </span>
+                        </button>
+                        {showPeriodPlanManageSection ? (
+                          <div className="mt-3 space-y-2">
+                            {visiblePeriodPlans.map((plan) => {
+                              const active = activePeriodPlan?.id === plan.id;
+                              const memberOwned = isMemberOwnedPeriodPlan(plan, trainerPeriodPlanIds);
+                              return (
+                                <div
+                                  key={plan.id}
+                                  className={`rounded-xl border bg-white p-3 ${active ? "border-teal-200 ring-1 ring-teal-100" : ""}`}
+                                  style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                                >
+                                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveMemberPeriodPlanId(plan.id);
+                                        setSelectedPeriodPlanWeekNumber(1);
+                                      }}
+                                      className="min-w-0 text-left"
+                                    >
+                                      <div className="text-sm font-semibold text-slate-900">{plan.title}</div>
+                                      <div className="mt-0.5 text-xs text-slate-500">
+                                        {plan.weeks} {plan.weeks === 1 ? "uke" : "uker"} · start {plan.startDate}
+                                        {active ? " · Aktiv" : ""}
+                                      </div>
+                                    </button>
+                                    <div className="flex shrink-0 flex-wrap gap-1.5">
+                                      {memberOwned ? (
+                                        <DangerButton
+                                          type="button"
+                                          className="rounded-lg px-2 py-1 text-[11px] font-medium"
+                                          onClick={() =>
+                                            setConfirmDialog({
+                                              title: "Slette periodeplan?",
+                                              message: `Dette fjerner «${plan.title.trim()}» fra dine periodeplaner.`,
+                                              confirmLabel: "Slett",
+                                              tone: "danger",
+                                              onConfirm: () => deleteMemberOwnedPeriodPlan(plan),
+                                            })
+                                          }
+                                        >
+                                          <span className="inline-flex items-center gap-1.5">
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                            <span>Slett</span>
+                                          </span>
+                                        </DangerButton>
+                                      ) : (
+                                        <OutlineButton
+                                          type="button"
+                                          className="rounded-lg px-2 py-1 text-[11px] font-medium"
+                                          onClick={() => hideTrainerPeriodPlan(plan.id)}
+                                        >
+                                          <span className="inline-flex items-center gap-1.5">
+                                            <EyeOff className="h-3.5 w-3.5" />
+                                            <span>Skjul</span>
+                                          </span>
+                                        </OutlineButton>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {hiddenPeriodPlans.length > 0 ? (
+                              <div className="mt-2 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowPeriodPlanHiddenSection((open) => !open)}
+                                  className="flex w-full items-center justify-between gap-2 text-left"
+                                >
+                                  <span className="text-sm font-semibold text-slate-800">
+                                    Skjulte planer ({hiddenPeriodPlans.length})
+                                  </span>
+                                  <span className="text-xs font-medium text-slate-500">
+                                    {showPeriodPlanHiddenSection ? "Skjul liste" : "Vis liste"}
+                                  </span>
+                                </button>
+                                {showPeriodPlanHiddenSection ? (
+                                  <div className="mt-3 space-y-2">
+                                    {hiddenPeriodPlans.map((plan) => (
+                                      <div
+                                        key={plan.id}
+                                        className="flex flex-col gap-2 rounded-xl border bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between"
+                                        style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                                      >
+                                        <div className="min-w-0">
+                                          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Skjult</div>
+                                          <div className="font-medium text-sm text-slate-800">{plan.title}</div>
+                                        </div>
+                                        <OutlineButton
+                                          type="button"
+                                          className="w-full shrink-0 px-3 py-2 text-xs sm:w-auto"
+                                          onClick={() => unhideTrainerPeriodPlan(plan.id)}
+                                        >
+                                          Vis igjen
+                                        </OutlineButton>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -5296,83 +5512,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 cancelWorkoutMode={cancelWorkoutMode}
               />
             </>
-          ) : null}
-
-          {memberTab === "periodPlans" ? (
-            <Card className="p-4 sm:p-5">
-              <div className="flex items-start gap-3">
-                <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><CalendarRange className="h-5 w-5" /></div>
-                <div>
-                  <h2 className="text-xl font-semibold tracking-tight">Mine periodeplaner</h2>
-                  <p className="text-sm text-slate-500">Velg hvilken plan som skal være aktiv i treningsvisningen.</p>
-                </div>
-              </div>
-              {periodPlans.length === 0 ? (
-                <EmptyState
-                  icon="🗓️"
-                  title="Ingen periodeplaner ennå"
-                  description="Legg til en ukesplan fra Inspirasjon eller få en plan fra PT."
-                  className="mt-4 bg-slate-50"
-                />
-              ) : (
-                <div className="mt-4 grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)]">
-                  <div className="space-y-2">
-                    {periodPlans.map((plan) => {
-                      const active = activePeriodPlan?.id === plan.id;
-                      return (
-                        <button
-                          key={plan.id}
-                          type="button"
-                          onClick={() => {
-                            setActiveMemberPeriodPlanId(plan.id);
-                            setSelectedPeriodPlanWeekNumber(1);
-                          }}
-                          className={`w-full rounded-xl border p-3 text-left transition ${
-                            active ? "border-teal-300 bg-teal-50 ring-2 ring-teal-100" : "border-slate-200 bg-white hover:bg-slate-50"
-                          }`}
-                        >
-                          <div className="text-sm font-semibold text-slate-900">{plan.title}</div>
-                          <div className="mt-1 text-xs text-slate-500">{plan.weeks} {plan.weeks === 1 ? "uke" : "uker"} · start {plan.startDate}</div>
-                          {active ? <div className="mt-2 text-[11px] font-bold uppercase tracking-wide text-teal-700">Aktiv</div> : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {activePeriodPlan ? (
-                    <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <div className="text-lg font-semibold text-slate-950">{activePeriodPlan.title}</div>
-                          <div className="mt-1 text-sm text-slate-500">{activePeriodPlan.notes || "Ingen notater på planen."}</div>
-                        </div>
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
-                          Aktiv periodeplan
-                        </span>
-                      </div>
-                      <PeriodPlanWeekNavigator
-                        className="mt-4"
-                        weeks={buildPeriodPlanWeekNavItemsFromPlan(activePeriodPlan)}
-                        selectedWeekNumber={selectedPeriodPlanWeekForView}
-                        onWeekSelectByNumber={setSelectedPeriodPlanWeekNumber}
-                      />
-                      {resolvePeriodPlanWeek(activePeriodPlan, selectedPeriodPlanWeekForView) ? (
-                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                          {WEEKDAY_PLAN_ORDER.map((dayKey) => {
-                            const week = resolvePeriodPlanWeek(activePeriodPlan, selectedPeriodPlanWeekForView)!;
-                            return (
-                              <div key={dayKey} className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{WEEKDAY_PLAN_LABELS[dayKey]}</div>
-                                <div className="mt-1 text-sm font-medium text-slate-800">{week.days[dayKey] || "Ingen plan"}</div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              )}
-            </Card>
           ) : null}
 
           {!isMemberLimited && memberTab === "progress" ? (

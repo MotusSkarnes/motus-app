@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
+import { INSPIRATION_CHANGED_EVENT, loadInspirationNotificationItems } from "./inspirationStorage";
 import { trainerInactiveDaysForFollowUp } from "./memberActivity";
 import type { ChatMessage, Member, MemberTab, TrainingProgram, WorkoutLog } from "./types";
+
+const MEMBER_INSPIRATION_BASELINE_KEY = "motus.notifications.memberInspirationBaselineAt";
 
 const ALERT_HISTORY_LIMIT = 5;
 const TRAINER_OPERATIONAL_TIMESTAMP_BASE = 9_000_000_000_000;
 
 export type MemberAlert = {
   id: string;
-  kind: "message" | "program" | "workout-comment";
+  kind: "message" | "program" | "workout-comment" | "inspiration";
   title: string;
   text: string;
   detail: string;
   timestamp: number;
-  targetTab: "messages" | "programs" | "progress";
+  targetTab: "messages" | "programs" | "progress" | "inspiration";
   isUnread: boolean;
   isOpened: boolean;
 };
@@ -117,6 +120,35 @@ export function useNotifications({
     if (typeof window === "undefined") return "";
     return window.localStorage.getItem("motus.notifications.trainerOperationalSeenKey") ?? "";
   });
+  const [seenMemberInspirationIds, setSeenMemberInspirationIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem("motus.notifications.memberSeenInspirationIds");
+      const parsed = JSON.parse(raw ?? "[]");
+      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+    } catch {
+      return [];
+    }
+  });
+  const [inspirationRevision, setInspirationRevision] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = () => setInspirationRevision((value) => value + 1);
+    window.addEventListener(INSPIRATION_CHANGED_EVENT, handler);
+    return () => window.removeEventListener(INSPIRATION_CHANGED_EVENT, handler);
+  }, []);
+
+  const inspirationItems = useMemo(() => loadInspirationNotificationItems(), [inspirationRevision]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.localStorage.getItem(MEMBER_INSPIRATION_BASELINE_KEY)) return;
+    if (inspirationItems.length === 0) return;
+    const baselineAt = Date.now();
+    window.localStorage.setItem(MEMBER_INSPIRATION_BASELINE_KEY, String(baselineAt));
+    setSeenMemberInspirationIds((prev) => Array.from(new Set([...prev, ...inspirationItems.map((item) => item.id)])));
+  }, [inspirationItems]);
 
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
 
@@ -298,6 +330,24 @@ export function useNotifications({
     [memberPrograms, seenMemberProgramIds],
   );
 
+  const memberInspirationAlerts = useMemo(
+    () =>
+      inspirationItems
+        .filter((item) => !seenMemberInspirationIds.includes(item.id))
+        .map((item, index) => ({
+          id: `member-inspiration-${item.id}`,
+          kind: "inspiration" as const,
+          title: "Nytt i inspirasjon",
+          text: item.title,
+          detail: item.description || "Åpne inspo for å se mer.",
+          timestamp: parseTimestamp(item.createdAt, index + 1),
+          targetTab: "inspiration" as const,
+          unread: true,
+          inspirationId: item.id,
+        })),
+    [inspirationItems, seenMemberInspirationIds],
+  );
+
   const memberRecentAlerts = useMemo<MemberAlert[]>(() => {
     const combined: MemberAlert[] = [
       ...memberMessageAlerts.map((alert) => ({
@@ -333,9 +383,20 @@ export function useNotifications({
         isUnread: alert.unread,
         isOpened: openedMemberAlertIds.includes(alert.id),
       })),
+      ...memberInspirationAlerts.map((alert) => ({
+        id: alert.id,
+        kind: alert.kind,
+        title: alert.title,
+        text: alert.text,
+        detail: alert.detail,
+        timestamp: alert.timestamp,
+        targetTab: alert.targetTab,
+        isUnread: alert.unread,
+        isOpened: openedMemberAlertIds.includes(alert.id),
+      })),
     ];
     return combined.sort((a, b) => b.timestamp - a.timestamp).slice(0, ALERT_HISTORY_LIMIT);
-  }, [memberMessageAlerts, memberProgramAlerts, memberWorkoutCommentAlerts, openedMemberAlertIds]);
+  }, [memberMessageAlerts, memberProgramAlerts, memberWorkoutCommentAlerts, memberInspirationAlerts, openedMemberAlertIds]);
 
   const memberUnreadAlerts = useMemo(
     () => memberRecentAlerts.filter((alert) => alert.isUnread),
@@ -357,16 +418,23 @@ export function useNotifications({
     }
   }
 
+  function markMemberInspirationAsSeen() {
+    setSeenMemberInspirationIds((prev) => Array.from(new Set([...prev, ...inspirationItems.map((item) => item.id)])));
+  }
+
   function markMemberAlertsAsSeen() {
-    const latestAlertTime = [...memberMessageAlerts, ...memberProgramAlerts, ...memberWorkoutCommentAlerts].reduce(
-      (max, alert) => Math.max(max, alert.timestamp),
-      0,
-    );
+    const latestAlertTime = [
+      ...memberMessageAlerts,
+      ...memberProgramAlerts,
+      ...memberWorkoutCommentAlerts,
+      ...memberInspirationAlerts,
+    ].reduce((max, alert) => Math.max(max, alert.timestamp), 0);
     setMemberAlertsSeenAt(latestAlertTime);
     setSeenMemberProgramIds((prev) => Array.from(new Set([...prev, ...memberPrograms.map((program) => program.id)])));
     setSeenMemberWorkoutCommentKeys((prev) =>
       Array.from(new Set([...prev, ...memberWorkoutCommentAlerts.map((alert) => alert.seenKey)])),
     );
+    markMemberInspirationAsSeen();
   }
 
   function handleTrainerBellToggle() {
@@ -416,6 +484,11 @@ export function useNotifications({
       if (workoutAlert?.seenKey) {
         setSeenMemberWorkoutCommentKeys((prev) => Array.from(new Set([...prev, workoutAlert.seenKey])));
       }
+    } else if (alert.kind === "inspiration") {
+      const inspirationId = alert.id.replace(/^member-inspiration-/, "");
+      if (inspirationId) {
+        setSeenMemberInspirationIds((prev) => Array.from(new Set([...prev, inspirationId])));
+      }
     }
 
     setMemberTab(alert.targetTab);
@@ -460,6 +533,11 @@ export function useNotifications({
     window.localStorage.setItem("motus.notifications.trainerOperationalSeenKey", seenTrainerOperationalAlertKey);
   }, [seenTrainerOperationalAlertKey]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("motus.notifications.memberSeenInspirationIds", JSON.stringify(seenMemberInspirationIds));
+  }, [seenMemberInspirationIds]);
+
   return {
     trainerNotificationsOpen,
     setTrainerNotificationsOpen,
@@ -472,5 +550,6 @@ export function useNotifications({
     handleMemberBellToggle,
     openTrainerAlert,
     openAlert,
+    markMemberInspirationAsSeen,
   };
 }

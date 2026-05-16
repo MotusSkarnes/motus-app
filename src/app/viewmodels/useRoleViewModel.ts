@@ -32,6 +32,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     handleMemberBellToggle,
     openTrainerAlert,
     openAlert,
+    markMemberInspirationAsSeen,
   } = useNotifications({
     messages: state.appState.messages,
     programs: state.appState.programs,
@@ -134,6 +135,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     memberVisibleAlerts,
     handleMemberBellToggle,
     openAlert,
+    markMemberInspirationAsSeen,
     remoteMemberPeriodPlanRows: state.remoteMemberPeriodPlanRows,
     refreshRemoteHydration: state.refreshRemoteHydration,
   });

@@ -1,5 +1,6 @@
-import { renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { INSPIRATION_CHANGED_EVENT, INSPIRATION_STORAGE_KEY } from "./inspirationStorage";
 import { useNotifications } from "./useNotifications";
 import type { WorkoutLog } from "./types";
 
@@ -19,6 +20,12 @@ function makeLog(overrides: Partial<WorkoutLog> = {}): WorkoutLog {
 }
 
 describe("useNotifications workout comment alerts", () => {
+  afterEach(() => {
+    window.localStorage.removeItem(INSPIRATION_STORAGE_KEY);
+    window.localStorage.removeItem("motus.notifications.memberInspirationBaselineAt");
+    window.localStorage.removeItem("motus.notifications.memberSeenInspirationIds");
+  });
+
   it("counts unread workout comment alerts for completed logs", () => {
     const { result } = renderHook(() =>
       useNotifications({
@@ -146,6 +153,39 @@ describe("useNotifications workout comment alerts", () => {
     expect(result.current.trainerVisibleAlerts.filter((a) => a.kind === "missing-invite")).toHaveLength(0);
     expect(result.current.trainerVisibleAlerts.filter((a) => a.kind === "inactive-member")).toHaveLength(0);
     expect(result.current.trainerUnreadCount).toBe(0);
+  });
+
+  it("counts unread inspiration alerts when a new inspo item is published", () => {
+    window.localStorage.setItem("motus.notifications.memberInspirationBaselineAt", String(Date.now()));
+    window.localStorage.setItem("motus.notifications.memberSeenInspirationIds", JSON.stringify(["default-recipe-1"]));
+
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [],
+        logs: [],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+        memberViewId: "member-1",
+        setMemberTab: () => {},
+      }),
+    );
+
+    expect(result.current.memberUnreadCount).toBe(0);
+
+    window.localStorage.setItem(
+      INSPIRATION_STORAGE_KEY,
+      JSON.stringify([
+        { id: "default-recipe-1", title: "Gammel", description: "Eksisterer", createdAt: "2026-05-01" },
+        { id: "inspiration-new", title: "Ny oppskrift", description: "Fersk inspo", createdAt: "2026-05-16" },
+      ]),
+    );
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent(INSPIRATION_CHANGED_EVENT));
+    });
+
+    expect(result.current.memberUnreadCount).toBe(1);
+    expect(result.current.memberVisibleAlerts.some((alert) => alert.kind === "inspiration")).toBe(true);
   });
 
   it("ignores workout comments on non-completed logs", () => {
