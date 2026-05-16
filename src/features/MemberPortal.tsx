@@ -84,7 +84,12 @@ import {
   WEEKDAY_PLAN_ORDER,
   type PeriodPlanSwapsByPlan,
 } from "../app/periodPlanSwaps";
-import { computeMaxLiftKgFromLogs, computeMemberBadges } from "../app/memberBadges";
+import {
+  computeMaxLiftKgFromLogs,
+  computeMemberBadges,
+  computeMonthUniqueDays,
+  computeMonthWeeksWithSession,
+} from "../app/memberBadges";
 import {
   ACHIEVEMENT_MAX_LEVEL,
   buildCelebrationCopy,
@@ -1850,16 +1855,19 @@ export function MemberPortal(props: MemberPortalProps) {
   const recentStreakWeeks = memberProgress.recentStreakWeeks;
   const currentStreakMilestoneTarget = memberProgress.streakMilestoneTarget;
   const maxLiftKg = useMemo(() => computeMaxLiftKgFromLogs(completedLogs), [completedLogs]);
-  const memberBadges = useMemo(
+  const memberBadgeCollection = useMemo(
     () =>
       computeMemberBadges({
         completedSessionCount: completedLogs.length,
         streakWeeks: memberProgress.streakWeeks,
         maxLiftKg,
-        monthGoalCurrent: memberProgress.monthGoal.current,
+        monthSessions: estimatedSessionsThisMonth,
+        monthUniqueDays: computeMonthUniqueDays(completedLogDates, nowDate),
+        monthWeeksWithSession: computeMonthWeeksWithSession(completedLogDates, nowDate),
         monthGoalTarget: memberProgress.monthGoal.target,
+        nowDate,
       }),
-    [completedLogs.length, maxLiftKg, memberProgress.monthGoal, memberProgress.streakWeeks],
+    [completedLogDates, completedLogs.length, estimatedSessionsThisMonth, maxLiftKg, memberProgress.monthGoal.target, memberProgress.streakWeeks, nowDate],
   );
 
   const calendarDayLoad = useMemo(() => {
@@ -4355,7 +4363,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               ) : null}
             </Card>
-              {!isMemberLimited ? <MemberBadgesCarousel badges={memberBadges} /> : null}
+              {!isMemberLimited ? <MemberBadgesCarousel collection={memberBadgeCollection} /> : null}
             </div>
           ) : null}
 
