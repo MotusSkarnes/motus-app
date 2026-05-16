@@ -48,6 +48,10 @@ const CATEGORY_META: Record<InspirationCategory, { label: string; plural: string
 /** Maks lengde for undertekst på inspo-kort (ca. 2 linjer i karusellen). */
 const INSPO_CARD_DESCRIPTION_MAX = 100;
 const INSPO_CARD_TITLE_MAX = 72;
+const INSPO_FEED_CARD_WIDTH_CLASS = "w-44 sm:w-48";
+const INSPO_FEED_CARD_HEIGHT_CLASS = "h-[19.75rem] sm:h-[20.75rem]";
+const INSPO_FEED_CARD_IMAGE_CLASS = "h-[7.25rem] sm:h-[7.75rem]";
+const INSPO_FEED_CARD_ACTION_CLASS = "!min-h-8 !px-2.5 !py-1.5 !text-[11px] !leading-tight";
 
 const INSPIRATION_FEED_SECTIONS: readonly { category: InspirationCategory; title: string }[] = [
   { category: "news", title: "Info fra senteret" },
@@ -560,14 +564,10 @@ export function InspirationHub({
   function renderInspirationCard(item: InspirationItem) {
     const meta = CATEGORY_META[item.category];
     const Icon = meta.icon;
-    const isTrainingBlock = item.kind === "program" || item.kind === "periodPlan";
-    const compactActionClass = "!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight";
     return (
       <article
         key={item.id}
-        className={`relative flex h-full shrink-0 snap-start flex-col overflow-hidden rounded-xl border bg-white ${
-          isTrainingBlock ? "w-40 sm:w-44" : "w-48 sm:w-52"
-        }`}
+        className={`relative flex shrink-0 snap-start flex-col overflow-hidden rounded-xl border bg-white ${INSPO_FEED_CARD_WIDTH_CLASS} ${INSPO_FEED_CARD_HEIGHT_CLASS}`}
         style={{ borderColor: "rgba(15,23,42,0.08)" }}
       >
         {canManage ? (
@@ -592,19 +592,19 @@ export function InspirationHub({
             </button>
           </div>
         ) : null}
-        <button type="button" onClick={() => setExpandedItemId(item.id)} className="flex flex-1 flex-col text-left">
+        <button type="button" onClick={() => setExpandedItemId(item.id)} className="flex min-h-0 flex-1 flex-col text-left">
           <div
-            className={`w-full shrink-0 overflow-hidden bg-slate-100 ${isTrainingBlock ? "aspect-[3/2]" : "aspect-square"}`}
+            className={`w-full shrink-0 overflow-hidden bg-slate-100 ${INSPO_FEED_CARD_IMAGE_CLASS}`}
             style={!item.imageUrl ? { background: meta.image } : undefined}
           >
             {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
             {!item.imageUrl ? (
               <div className="flex h-full w-full items-center justify-center text-white/90">
-                <Icon className={`drop-shadow-sm ${isTrainingBlock ? "h-8 w-8" : "h-10 w-10"}`} />
+                <Icon className="h-9 w-9 drop-shadow-sm" />
               </div>
             ) : null}
           </div>
-          <div className={`flex flex-1 flex-col ${isTrainingBlock ? "p-2" : "p-2.5"}`}>
+          <div className="flex min-h-0 flex-1 flex-col p-2.5">
             <div className="flex min-h-[1.125rem] items-center justify-between gap-1.5">
               <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold ring-1 ${meta.accent}`}>
                 <Icon className="h-2.5 w-2.5" />
@@ -612,36 +612,25 @@ export function InspirationHub({
               </span>
               <span className="truncate text-[9px] text-slate-400">{item.tag}</span>
             </div>
-            <h3
-              className={`mt-1.5 line-clamp-2 text-sm font-semibold leading-snug text-slate-950 ${
-                isTrainingBlock ? "min-h-[2.25rem]" : "min-h-[2.5rem]"
-              }`}
-            >
+            <h3 className="mt-1.5 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-snug text-slate-950">
               {item.title}
             </h3>
-            <p
-              className={`mt-0.5 line-clamp-2 leading-snug text-slate-500 ${
-                isTrainingBlock ? "min-h-[1.875rem] text-[11px]" : "min-h-[2rem] text-xs"
-              }`}
-            >
+            <p className="mt-0.5 line-clamp-2 min-h-[2rem] text-xs leading-snug text-slate-500">
               {item.description || "\u00a0"}
             </p>
           </div>
         </button>
-        <div className={`shrink-0 border-t border-slate-100 ${isTrainingBlock ? "px-2 py-1.5" : "px-2.5 py-2"}`}>
+        <div className="shrink-0 border-t border-slate-100 px-2.5 py-2">
           {item.kind === "program" && onAddProgram ? (
-            <GradientButton onClick={() => handleAddProgram(item)} className={`w-full ${compactActionClass}`}>
+            <GradientButton onClick={() => handleAddProgram(item)} className={`w-full ${INSPO_FEED_CARD_ACTION_CLASS}`}>
               Legg til program
             </GradientButton>
           ) : item.kind === "periodPlan" && onAddPeriodPlan ? (
-            <GradientButton onClick={() => handleAddPeriodPlan(item)} className={`w-full ${compactActionClass}`}>
+            <GradientButton onClick={() => handleAddPeriodPlan(item)} className={`w-full ${INSPO_FEED_CARD_ACTION_CLASS}`}>
               Legg til plan
             </GradientButton>
           ) : (
-            <OutlineButton
-              onClick={() => setExpandedItemId(item.id)}
-              className="w-full !min-h-8 !px-2.5 !py-1.5 !text-[11px] !leading-tight"
-            >
+            <OutlineButton onClick={() => setExpandedItemId(item.id)} className={`w-full ${INSPO_FEED_CARD_ACTION_CLASS}`}>
               Les mer
             </OutlineButton>
           )}
