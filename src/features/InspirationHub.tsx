@@ -8,8 +8,8 @@ import {
   INSPIRATION_STORAGE_KEY,
   notifyInspirationItemsChanged,
   persistInspirationItems,
+  syncLocalInspirationToSupabaseIfNeeded,
 } from "../app/inspirationStorage";
-import { isSupabaseConfigured } from "../services/supabaseClient";
 import { buildPeriodPlanProgramSelectOptions, WEEKDAY_PLAN_FIELDS } from "../app/periodPlanBuilder";
 import { normalizePeriodSchedulePlan, syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { WEEKDAY_PLAN_LABELS, WEEKDAY_PLAN_ORDER } from "../app/periodPlanSwaps";
@@ -259,51 +259,57 @@ export function InspirationHub({
     });
   }, [periodPlanTemplateDraft]);
 
+  function resolveHubItems(fetched: InspirationItem[] | null): InspirationItem[] {
+    if (fetched && fetched.length > 0) return fetched;
+    return loadInspirationItems();
+  }
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const remote = await fetchInspirationItemsForHub<InspirationItem>();
+      const fetched = await fetchInspirationItemsForHub<InspirationItem>();
       if (cancelled) return;
-      if (remote !== null) {
-        setItems(remote.length > 0 ? remote : isSupabaseConfigured ? [] : loadInspirationItems());
-        return;
+      const resolved = resolveHubItems(fetched);
+      setItems(resolved);
+      if (canManage) {
+        const synced = await syncLocalInspirationToSupabaseIfNeeded(resolved);
+        if (synced && !cancelled) {
+          const afterSync = await fetchInspirationItemsForHub<InspirationItem>();
+          if (!cancelled) setItems(resolveHubItems(afterSync));
+        }
       }
-      setItems(loadInspirationItems());
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [canManage]);
 
   useEffect(() => {
     const syncFromRemote = () => {
       void (async () => {
-        const remote = await fetchInspirationItemsForHub<InspirationItem>();
-        if (remote !== null) {
-          setItems(remote.length > 0 ? remote : isSupabaseConfigured ? [] : loadInspirationItems());
-        }
+        const fetched = await fetchInspirationItemsForHub<InspirationItem>();
+        setItems(resolveHubItems(fetched));
       })();
     };
     window.addEventListener(INSPIRATION_CHANGED_EVENT, syncFromRemote);
     return () => window.removeEventListener(INSPIRATION_CHANGED_EVENT, syncFromRemote);
   }, []);
 
-  async function commitItems(next: InspirationItem[]): Promise<boolean> {
+  async function commitItems(next: InspirationItem[]): Promise<{ ok: true; message: string } | { ok: false }> {
     const result = await persistInspirationItems(next);
     if (!result.ok) {
       setActionStatus(result.error);
-      return false;
+      return { ok: false };
     }
     const refreshed = await fetchInspirationItemsForHub<InspirationItem>();
-    if (refreshed && refreshed.length > 0) {
-      setItems(refreshed);
-    } else if (refreshed && isSupabaseConfigured) {
-      setItems(refreshed);
-    } else {
-      setItems(next);
-    }
+    setItems(resolveHubItems(refreshed));
     notifyInspirationItemsChanged();
-    return true;
+    const message = result.warning
+      ? result.warning
+      : result.cloudSynced
+        ? "Lagret og synket til alle brukere."
+        : "Lagret på denne enheten.";
+    return { ok: true, message };
   }
 
   async function resolveImageForStorage(value: string): Promise<string | undefined> {
@@ -509,8 +515,9 @@ export function InspirationHub({
             }
           : item,
       );
-      if (!(await commitItems(next))) return;
-      setActionStatus("Endringene er lagret.");
+      const saved = await commitItems(next);
+      if (!saved.ok) return;
+      setActionStatus(saved.message === "Lagret på denne enheten." ? "Endringene er lagret." : saved.message);
     } else {
       const now = new Date();
       const nextItem: InspirationItem = {
@@ -527,8 +534,9 @@ export function InspirationHub({
         programTemplate,
         periodPlanTemplate,
       };
-      if (!(await commitItems([nextItem, ...items]))) return;
-      setActionStatus("Innlegget er publisert.");
+      const published = await commitItems([nextItem, ...items]);
+      if (!published.ok) return;
+      setActionStatus(published.message === "Lagret på denne enheten." ? "Innlegget er publisert." : published.message);
       setActiveCategory(categoryDraft);
     }
     resetComposer();
@@ -540,7 +548,8 @@ export function InspirationHub({
     if (!window.confirm(`Slette «${item.title}» fra inspirasjon?`)) return;
     const next = items.filter((entry) => entry.id !== id);
     void (async () => {
-      if (!(await commitItems(next))) return;
+      const deleted = await commitItems(next);
+      if (!deleted.ok) return;
       if (editingItemId === id) resetComposer();
       if (expandedItemId === id) setExpandedItemId(null);
       setActionStatus("Innlegget er slettet.");
@@ -578,7 +587,7 @@ export function InspirationHub({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
       <div
         className="overflow-hidden rounded-2xl border shadow-sm"
         style={{ borderColor: "rgba(48,227,190,0.20)", background: `linear-gradient(135deg, ${MOTUS.paleMint} 0%, #ffffff 48%, rgba(217,18,120,0.08) 100%)` }}
@@ -603,7 +612,7 @@ export function InspirationHub({
         </div>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex flex-wrap gap-2 pb-1">
         {(["all", "recipes", "programs", "tips", "news"] as const).map((category) => {
           const active = activeCategory === category;
           const label = category === "all" ? "Alt" : CATEGORY_META[category].plural;
@@ -635,7 +644,7 @@ export function InspirationHub({
         </div>
       ) : null}
 
-      <div className="rounded-2xl border bg-white p-3 shadow-sm sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+      <div className="min-w-0 overflow-hidden rounded-2xl border bg-white p-3 shadow-sm sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <div className="text-sm font-semibold text-slate-900">Sveip for inspirasjon</div>
@@ -650,12 +659,12 @@ export function InspirationHub({
             </button>
           </div>
         </div>
-        <div ref={carouselRef} className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-2">
+        <div ref={carouselRef} className="-mx-1 flex min-w-0 snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-1 pb-2">
           {filteredItems.map((item) => {
             const meta = CATEGORY_META[item.category];
             const Icon = meta.icon;
             return (
-              <article key={item.id} className="relative w-[min(82vw,280px)] shrink-0 snap-start overflow-hidden rounded-xl border bg-white" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <article key={item.id} className="relative w-56 shrink-0 snap-start overflow-hidden rounded-xl border bg-white sm:w-60" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 {canManage ? (
                   <div className="absolute right-2 top-2 z-10 flex gap-1">
                     <button
@@ -765,7 +774,7 @@ export function InspirationHub({
       ) : null}
 
       {canManage ? (
-        <div className="rounded-2xl border bg-white p-4 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+        <div className="min-w-0 rounded-2xl border bg-white p-4 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
           <div className="flex items-center gap-2">
             <span className="rounded-lg p-2 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
               {editingItemId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
@@ -887,7 +896,7 @@ export function InspirationHub({
                   <p className="text-xs text-slate-500">
                     Trykk en uke for å redigere. Trykk igjen for å markere flere uker med samme plan (farget).
                   </p>
-                  <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5 lg:grid-cols-8">
+                  <div className="flex flex-wrap gap-1.5">
                     {(periodPlanTemplateDraft?.weeklyPlans ?? []).map((week) => {
                       const marked = week.usesGradientPlan === true;
                       const isActive = activePeriodWeekId === week.id;

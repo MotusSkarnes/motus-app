@@ -9,6 +9,7 @@ describe("saveInspirationItemsToStorage", () => {
   it("persists items", () => {
     const result = saveInspirationItemsToStorage([{ id: "a", title: "Test" }]);
     expect(result.ok).toBe(true);
+    if (result.ok) expect(result.cloudSynced).toBe(false);
     expect(window.localStorage.getItem(INSPIRATION_STORAGE_KEY)).toContain('"Test"');
   });
 

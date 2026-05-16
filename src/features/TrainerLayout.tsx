@@ -169,7 +169,7 @@ export function TrainerLayout({
 
   return (
     <>
-      <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
         <Card className="hidden h-fit p-3 shadow-sm ring-1 ring-black/5 lg:block">
           <div className="mb-2 px-2">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">PT-meny</div>
@@ -202,7 +202,7 @@ export function TrainerLayout({
             })}
           </nav>
         </Card>
-        <div className="space-y-4 sm:space-y-5">
+        <div className="min-w-0 space-y-4 overflow-x-hidden sm:space-y-5">
           {isLocalDemoSession ? (
             <Card className="border-amber-200 bg-amber-50 p-2.5 sm:p-3">
               <div className="text-xs sm:text-sm font-semibold text-amber-900">Demo-innlogging aktiv</div>
