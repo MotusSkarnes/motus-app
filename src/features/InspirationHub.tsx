@@ -8,7 +8,7 @@ import {
   saveInspirationItemsToStorage,
 } from "../app/inspirationStorage";
 import { buildPeriodPlanProgramSelectOptions, WEEKDAY_PLAN_FIELDS } from "../app/periodPlanBuilder";
-import { normalizePeriodSchedulePlan, syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
+import { normalizePeriodSchedulePlan, syncGradientMarkedWeekDays, updatePeriodPlanWeekSelection } from "../app/periodPlanMerge";
 import { WEEKDAY_PLAN_LABELS, WEEKDAY_PLAN_ORDER } from "../app/periodPlanSwaps";
 import { uid } from "../app/storage";
 import { GradientButton, OutlineButton, SelectBox, TextArea, TextInput } from "../app/ui";
@@ -376,26 +376,12 @@ export function InspirationHub({
     });
   }
 
-  function toggleGradientPeriodWeek(weekId: string) {
+  function handlePeriodPlanWeekClick(weekId: string) {
+    const currentActiveWeekId = activePeriodWeekId;
     setActivePeriodWeekId(weekId);
     setPeriodPlanTemplateDraft((prev) => {
       if (!prev) return prev;
-      const current = prev.weeklyPlans.find((week) => week.id === weekId);
-      if (!current) return prev;
-      const shouldMark = current.usesGradientPlan !== true;
-      const existingGradient = prev.weeklyPlans.find((week) => week.usesGradientPlan === true);
-      const sharedDays = shouldMark && existingGradient ? { ...existingGradient.days } : { ...current.days };
-      const nextWeeks = prev.weeklyPlans.map((week) =>
-        week.id === weekId
-          ? { ...week, usesGradientPlan: shouldMark, days: shouldMark ? sharedDays : week.days }
-          : week.usesGradientPlan === true && shouldMark
-            ? { ...week, days: sharedDays }
-            : week,
-      );
-      return normalizePeriodSchedulePlan({
-        ...prev,
-        weeklyPlans: syncGradientMarkedWeekDays(nextWeeks),
-      });
+      return updatePeriodPlanWeekSelection(prev, weekId, currentActiveWeekId).plan;
     });
   }
 
@@ -859,7 +845,7 @@ export function InspirationHub({
                         <button
                           key={week.id}
                           type="button"
-                          onClick={() => toggleGradientPeriodWeek(week.id)}
+                          onClick={() => handlePeriodPlanWeekClick(week.id)}
                           className={`rounded-md border px-1 py-1.5 text-center text-xs font-semibold leading-tight transition ${
                             marked ? "text-white shadow-sm" : "bg-white text-slate-700 hover:bg-slate-50"
                           } ${isActive ? "ring-2 ring-teal-200" : ""}`}
