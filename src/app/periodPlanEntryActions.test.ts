@@ -3,6 +3,7 @@ import type { TrainingProgram } from "./types";
 import {
   findProgramForPeriodPlanEntry,
   isGroupPeriodPlanEntry,
+  isPeriodPlanEntryDateInFuture,
   resolveGroupClassNameFromPeriodEntry,
   resolvePeriodPlanEntryAction,
 } from "./periodPlanEntryActions";
@@ -40,5 +41,13 @@ describe("periodPlanEntryActions", () => {
     expect(resolvePeriodPlanEntryAction("Styrke A", programs).kind).toBe("start-program");
     expect(resolvePeriodPlanEntryAction("Gruppetime: Yoga", programs).kind).toBe("log-group");
     expect(resolvePeriodPlanEntryAction("Hvile / restitusjon", programs).kind).toBe("none");
+  });
+
+  it("blocks future plan dates for completion", () => {
+    const now = new Date(2026, 4, 16);
+    expect(isPeriodPlanEntryDateInFuture("17.05.2026", now)).toBe(true);
+    expect(isPeriodPlanEntryDateInFuture("16.05.2026", now)).toBe(false);
+    expect(isPeriodPlanEntryDateInFuture("15.05.2026", now)).toBe(false);
+    expect(isPeriodPlanEntryDateInFuture(null, now)).toBe(false);
   });
 });

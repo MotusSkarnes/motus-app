@@ -2,6 +2,7 @@
 import {
   Archive,
   CalendarRange,
+  ChevronRight,
   ClipboardList,
   Dumbbell,
   Eye,
@@ -26,7 +27,7 @@ import {
 import { MOTUS } from "../app/data";
 import motusLogo from "../assets/motus-logo-transparent.svg";
 import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
-import { formatDateDdMmYyyy } from "../app/dateFormat";
+import { formatDateDdMmYyyy, normalizeStoredLogDate, storedLogDatesMatch } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { supabaseClient } from "../services/supabaseClient";
@@ -45,7 +46,9 @@ import type {
 } from "../services/appRepository";
 import {
   findProgramForPeriodPlanEntry,
+  groupWorkoutLogTitle,
   isGroupPeriodPlanEntry,
+  isPeriodPlanEntryDateInFuture,
   resolveGroupClassNameFromPeriodEntry,
   resolvePeriodPlanEntryAction,
 } from "../app/periodPlanEntryActions";
@@ -652,6 +655,11 @@ function getUiPreferencesStorageKey(memberId: string): string {
 
 function getPeriodPlanCompletedStorageKey(memberId: string): string {
   return `${PERIOD_PLAN_COMPLETED_STORAGE_PREFIX}${memberId}`;
+}
+
+function isPeriodPlanWorkoutLog(log: WorkoutLog): boolean {
+  const note = log.note?.trim().toLowerCase() ?? "";
+  return note.includes("periodeplan");
 }
 
 function cardioHrPrescriptionSuffixForMember(programExercise: ProgramExercise): string {
@@ -1662,6 +1670,13 @@ export function MemberPortal(props: MemberPortalProps) {
     return `${d.getFullYear()}-${String(week).padStart(2, "0")}`;
   }
   const completedLogs = useMemo(() => memberLogs.filter((log) => log.status === "Fullført"), [memberLogs]);
+  const recentCompletedLogs = useMemo(
+    () =>
+      [...completedLogs]
+        .sort((a, b) => (parseLogDate(b.date)?.getTime() ?? 0) - (parseLogDate(a.date)?.getTime() ?? 0))
+        .slice(0, 3),
+    [completedLogs],
+  );
   const latestCompletedLog = completedLogs[0] ?? null;
   function findSuggestedWeightForExercise(exerciseName: string): string {
     const normalizedExerciseName = exerciseName.trim().toLowerCase();
@@ -3449,13 +3464,33 @@ export function MemberPortal(props: MemberPortalProps) {
     setPeriodPlanActionStatus(`«${trimmed}» er logget.`);
   }
 
+  function resolvePeriodPlanLogTitle(entry: string): string {
+    const trimmed = entry.trim();
+    if (isGroupPeriodPlanEntry(trimmed)) {
+      return groupWorkoutLogTitle(resolveGroupClassNameFromPeriodEntry(trimmed));
+    }
+    const program = findProgramForPeriodPlanEntry(trimmed, memberProgramsInActiveLibrary);
+    return program?.title ?? trimmed;
+  }
+
+  function resolvePeriodPlanStoredDate(plannedDate?: string | null): string {
+    return plannedDate?.trim() ? normalizeStoredLogDate(plannedDate) : formatDateDdMmYyyy(new Date());
+  }
+
   function togglePeriodPlanEntryCompleted(input: { planId: string; weekNumber: number; day: WeekdayPlanKey; entry: string; plannedDate?: string | null }) {
     const key = buildPeriodPlanEntryKey(input.planId, input.weekNumber, input.day);
     const alreadyCompleted = completedPeriodPlanEntryKeys.includes(key);
     const trimmed = input.entry.trim();
     if (!trimmed || !activeMemberId) return;
 
+    const storedDate = resolvePeriodPlanStoredDate(input.plannedDate);
+    const logTitle = resolvePeriodPlanLogTitle(trimmed);
+
     if (!alreadyCompleted) {
+      if (isPeriodPlanEntryDateInFuture(input.plannedDate)) {
+        setPeriodPlanActionStatus("Du kan bare markere økter med dato i dag eller tidligere.");
+        return;
+      }
       if (isGroupPeriodPlanEntry(trimmed)) {
         logGroupWorkout({
           memberId: activeMemberId,
@@ -3463,17 +3498,16 @@ export function MemberPortal(props: MemberPortalProps) {
           note: "Registrert som gjennomført fra periodeplan.",
           reflection: defaultPeriodPlanReflection,
           keepCurrentTab: true,
-          date: input.plannedDate ?? undefined,
+          date: storedDate,
         });
       } else {
-        const program = findProgramForPeriodPlanEntry(trimmed, memberProgramsInActiveLibrary);
         logCompletedPlanEntry({
           memberId: activeMemberId,
-          programTitle: program?.title ?? trimmed,
+          programTitle: logTitle,
           note: "Registrert som gjennomført fra periodeplan.",
           reflection: defaultPeriodPlanReflection,
           keepCurrentTab: true,
-          date: input.plannedDate ?? undefined,
+          date: storedDate,
         });
       }
       markPeriodPlanDayCompleted(input.planId, input.weekNumber, input.day);
@@ -3481,19 +3515,30 @@ export function MemberPortal(props: MemberPortalProps) {
       return;
     }
 
+    const matchingLog = memberLogs.find(
+      (log) =>
+        log.memberId === activeMemberId &&
+        log.status === "Fullført" &&
+        log.programTitle.trim().toLowerCase() === logTitle.trim().toLowerCase() &&
+        isPeriodPlanWorkoutLog(log) &&
+        storedLogDatesMatch(log.date, storedDate),
+    );
+
     if (isGroupPeriodPlanEntry(trimmed)) {
       removeGroupWorkoutLog({
         memberId: activeMemberId,
         className: resolveGroupClassNameFromPeriodEntry(trimmed),
-        date: input.plannedDate ?? undefined,
+        date: storedDate,
       });
     } else {
-      const program = findProgramForPeriodPlanEntry(trimmed, memberProgramsInActiveLibrary);
       removeCompletedPlanEntryLog({
         memberId: activeMemberId,
-        programTitle: program?.title ?? trimmed,
-        date: input.plannedDate ?? undefined,
+        programTitle: logTitle,
+        date: storedDate,
       });
+    }
+    if (matchingLog?.id === expandedRecentLogId) {
+      setExpandedRecentLogId(null);
     }
     unmarkPeriodPlanDayCompleted(input.planId, input.weekNumber, input.day);
     setPeriodPlanActionStatus(`Fjernet markering for «${trimmed}».`);
@@ -5226,29 +5271,49 @@ export function MemberPortal(props: MemberPortalProps) {
                       className="bg-white"
                     />
                   ) : null}
-                  {completedLogs.slice(0, 3).map((log) => (
-                    <div key={log.id} className="rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="font-medium">{log.programTitle}</div>
-                          <div className="mt-1 text-sm text-slate-500">{log.date}</div>
+                  {recentCompletedLogs.map((log) => {
+                    const isExpanded = expandedRecentLogId === log.id;
+                    const fromPeriodPlan = isPeriodPlanWorkoutLog(log);
+                    return (
+                    <div
+                      key={log.id}
+                      className="overflow-hidden rounded-lg border bg-white"
+                      style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setExpandedRecentLogId((prev) => (prev === log.id ? null : log.id))}
+                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-slate-50"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-semibold text-slate-900">{log.date}</div>
+                          <div className="truncate text-xs text-slate-500">{log.programTitle}</div>
                         </div>
-                        <GradientButton
-                          className="px-3 py-1.5 text-xs"
-                          onClick={() => setExpandedRecentLogId((prev) => (prev === log.id ? null : log.id))}
-                        >
-                          {expandedRecentLogId === log.id ? "Skjul detaljer" : "Se detaljer"}
-                        </GradientButton>
-                      </div>
-                      {log.note ? <div className="mt-2 text-sm text-slate-600">{log.note}</div> : null}
-                      {log.trainerComment ? (
-                        <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-                          <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Kommentar fra trener</div>
-                          <div className="mt-1">{log.trainerComment}</div>
-                        </div>
-                      ) : null}
-                      {expandedRecentLogId === log.id ? (
-                        <div className="mt-3 rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                        <span className="shrink-0 text-[11px] font-semibold text-teal-700">
+                          {isExpanded ? "Skjul" : "Detaljer"}
+                        </span>
+                        <ChevronRight
+                          className={`h-4 w-4 shrink-0 text-slate-400 transition ${isExpanded ? "rotate-90" : ""}`}
+                          aria-hidden
+                        />
+                      </button>
+                      {isExpanded ? (
+                        <div className="space-y-2 border-t border-slate-100 px-3 pb-3 pt-2">
+                          {fromPeriodPlan && log.note ? (
+                            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-900">
+                              {log.note}
+                            </div>
+                          ) : null}
+                          {!fromPeriodPlan && log.note ? (
+                            <div className="text-sm text-slate-600">{log.note}</div>
+                          ) : null}
+                          {log.trainerComment ? (
+                            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                              <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Kommentar fra trener</div>
+                              <div className="mt-1">{log.trainerComment}</div>
+                            </div>
+                          ) : null}
+                          <div className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Utført i økta</div>
                           <div className="mt-2 space-y-2">
                             {(log.results ?? []).length === 0 ? (
@@ -5379,9 +5444,12 @@ export function MemberPortal(props: MemberPortalProps) {
                             )}
                           </div>
                         </div>
+
+                        </div>
                       ) : null}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
               </Card>

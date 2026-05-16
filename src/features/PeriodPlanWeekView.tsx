@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeftRight, CalendarOff, Check, Play, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
-import { resolvePeriodPlanEntryAction } from "../app/periodPlanEntryActions";
+import { isPeriodPlanEntryDateInFuture, resolvePeriodPlanEntryAction } from "../app/periodPlanEntryActions";
 import {
   applyPeriodPlanSwaps,
   getSwapsForWeek,
@@ -104,6 +104,8 @@ export function PeriodPlanWeekView({
           const plannedDate = resolveEntryDate(plan, week.weekNumber, dayKey);
           const entryAction = entry ? resolvePeriodPlanEntryAction(entry, memberPrograms) : { kind: "none" as const };
           const completed = isEntryCompleted(plan.id, week.weekNumber, dayKey);
+          const isFutureDate = isPeriodPlanEntryDateInFuture(plannedDate);
+          const canMarkCompleted = completed || !isFutureDate;
           const isSwapSource = swapFromDay === dayKey;
 
           return (
@@ -153,23 +155,35 @@ export function PeriodPlanWeekView({
                   {entry ? (
                     <button
                       type="button"
-                      onClick={() =>
+                      disabled={!canMarkCompleted}
+                      onClick={() => {
+                        if (!canMarkCompleted) return;
                         onToggleCompleted({
                           planId: plan.id,
                           weekNumber: week.weekNumber,
                           day: dayKey,
                           entry: effectiveDays[dayKey],
                           plannedDate,
-                        })
-                      }
+                        });
+                      }}
                       className={`rounded-lg border p-1.5 transition ${
                         completed
                           ? "border-transparent text-white shadow-sm"
-                          : "border-slate-200 bg-white text-slate-300 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-600"
+                          : canMarkCompleted
+                            ? "border-slate-200 bg-white text-slate-300 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-600"
+                            : "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-200"
                       }`}
                       style={completed ? { background: MOTUS_GRADIENT } : undefined}
-                      aria-label={completed ? `Angre fullført for ${dayLabel}` : `Marker ${dayLabel} som fullført`}
-                      title={completed ? "Angre fullført" : "Marker fullført"}
+                      aria-label={
+                        completed
+                          ? `Angre fullført for ${dayLabel}`
+                          : isFutureDate
+                            ? `${dayLabel} kan markeres fra og med planlagt dato`
+                            : `Marker ${dayLabel} som fullført`
+                      }
+                      title={
+                        completed ? "Angre fullført" : isFutureDate ? "Kan ikke markeres før planlagt dato" : "Marker fullført"
+                      }
                     >
                       <Check className="h-3.5 w-3.5" strokeWidth={completed ? 3 : 2.25} aria-hidden />
                     </button>

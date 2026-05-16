@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { AppState } from "../app/types";
-import { appendWorkoutSetForProgramExerciseInState, finishWorkoutModeInState, removeWorkoutLogResultInState, setWorkoutLogResultsInState } from "./appRepository";
+import {
+  appendWorkoutSetForProgramExerciseInState,
+  finishWorkoutModeInState,
+  logCompletedPlanEntryInState,
+  removeCompletedPlanEntryLogInState,
+  removeWorkoutLogResultInState,
+  setWorkoutLogResultsInState,
+} from "./appRepository";
 
 function createBaseState(): AppState {
   return {
@@ -201,5 +208,37 @@ describe("appRepository workout log guards", () => {
     });
     expect(next.logs[0].results?.[0].performedWeight).toBe("65");
     expect(next.logs[0].results?.[0].performedReps).toBe("6");
+  });
+
+  it("removes completed plan logs when stored date format differs from input", () => {
+    const state = createBaseState();
+    state.logs = [
+      {
+        id: "log-plan",
+        memberId: "member-1",
+        programTitle: "Styrke A",
+        date: "2026-05-10",
+        status: "Fullført",
+        note: "Registrert som gjennomført fra periodeplan.",
+        results: [],
+      },
+    ];
+    const next = removeCompletedPlanEntryLogInState(state, {
+      memberId: "member-1",
+      programTitle: "Styrke A",
+      date: "10.05.2026",
+    });
+    expect(next.logs).toHaveLength(0);
+  });
+
+  it("stores completed plan entry dates in dd.mm.yyyy", () => {
+    const state = createBaseState();
+    const next = logCompletedPlanEntryInState(state, {
+      memberId: "member-1",
+      programTitle: "Styrke A",
+      date: "2026-05-10",
+      note: "Test",
+    });
+    expect(next.logs[0]?.date).toBe("10.05.2026");
   });
 });

@@ -13,7 +13,7 @@ import type {
   WorkoutExerciseResult,
   WorkoutLog,
 } from "../app/types";
-import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy } from "../app/dateFormat";
+import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate } from "../app/dateFormat";
 import {
   localAppRepository,
   type AppRepository,
@@ -1264,7 +1264,7 @@ async function deleteGroupWorkoutLogs(input: RemoveGroupWorkoutLogInput) {
   if (!supabaseClient) return;
   const memberId = input.memberId.trim();
   const className = input.className.trim();
-  const date = input.date?.trim() ?? "";
+  const date = input.date?.trim() ? normalizeStoredLogDate(input.date) : "";
   if (!memberId || !className) return;
   let query = supabaseClient
     .from("workout_logs")
@@ -1284,7 +1284,7 @@ async function deleteCompletedPlanEntryLogs(input: RemoveCompletedPlanEntryLogIn
   if (!supabaseClient) return;
   const memberId = input.memberId.trim();
   const programTitle = input.programTitle.trim();
-  const date = input.date?.trim() ?? "";
+  const date = input.date?.trim() ? normalizeStoredLogDate(input.date) : "";
   if (!memberId || !programTitle) return;
   let query = supabaseClient.from("workout_logs").delete().eq("member_id", memberId).eq("program_title", programTitle);
   if (date) {

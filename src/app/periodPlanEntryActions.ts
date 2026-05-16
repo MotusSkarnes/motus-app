@@ -1,4 +1,16 @@
+import { parseStoredLogDate } from "./dateFormat";
 import type { TrainingProgram } from "./types";
+
+/** Planlagt periodeplan-dato er etter dagens dato (lokal kalenderdag). */
+export function isPeriodPlanEntryDateInFuture(plannedDate: string | null | undefined, now = new Date()): boolean {
+  const trimmed = plannedDate?.trim();
+  if (!trimmed) return false;
+  const parsed = parseStoredLogDate(trimmed);
+  if (!parsed) return false;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const planned = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  return planned.getTime() > today.getTime();
+}
 
 export function isGroupPeriodPlanEntry(entry: string): boolean {
   const normalized = entry.trim().toLowerCase();

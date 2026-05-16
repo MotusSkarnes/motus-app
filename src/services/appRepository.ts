@@ -12,7 +12,7 @@ import type {
   WorkoutLog,
   WorkoutReflection,
 } from "../app/types";
-import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy } from "../app/dateFormat";
+import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate, storedLogDatesMatch } from "../app/dateFormat";
 
 export type CreateMemberInput = {
   name: string;
@@ -587,14 +587,14 @@ export function startCustomWorkoutInState(
 export function logGroupWorkoutInState(state: AppState, input: LogGroupWorkoutInput): AppState {
   const memberId = input.memberId.trim();
   const className = input.className.trim();
-  const date = input.date?.trim() || formatDateDdMmYyyy(new Date());
+  const date = normalizeStoredLogDate(input.date?.trim() || formatDateDdMmYyyy(new Date()));
   if (!memberId || !className) return state;
   const normalizedTitle = `Gruppetime: ${className}`;
   const duplicateExists = state.logs.some(
     (log) =>
       log.memberId === memberId &&
       log.programTitle.trim().toLowerCase() === normalizedTitle.trim().toLowerCase() &&
-      log.date.trim() === date &&
+      storedLogDatesMatch(log.date, date) &&
       log.status === "Fullført"
   );
   if (duplicateExists) return state;
@@ -619,7 +619,7 @@ export function logGroupWorkoutInState(state: AppState, input: LogGroupWorkoutIn
 export function removeGroupWorkoutLogInState(state: AppState, input: RemoveGroupWorkoutLogInput): AppState {
   const memberId = input.memberId.trim();
   const className = input.className.trim();
-  const date = input.date?.trim() ?? "";
+  const date = input.date?.trim() ? normalizeStoredLogDate(input.date) : "";
   if (!memberId || !className) return state;
   const normalizedTitle = `Gruppetime: ${className}`.trim().toLowerCase();
   return {
@@ -627,7 +627,7 @@ export function removeGroupWorkoutLogInState(state: AppState, input: RemoveGroup
     logs: state.logs.filter((log) => {
       if (log.memberId !== memberId) return true;
       if (log.programTitle.trim().toLowerCase() !== normalizedTitle) return true;
-      if (date && log.date.trim() !== date) return true;
+      if (date && !storedLogDatesMatch(log.date, date)) return true;
       return false;
     }),
   };
@@ -636,14 +636,14 @@ export function removeGroupWorkoutLogInState(state: AppState, input: RemoveGroup
 export function logCompletedPlanEntryInState(state: AppState, input: LogCompletedPlanEntryInput): AppState {
   const memberId = input.memberId.trim();
   const programTitle = input.programTitle.trim();
-  const date = input.date?.trim() || formatDateDdMmYyyy(new Date());
+  const date = normalizeStoredLogDate(input.date?.trim() || formatDateDdMmYyyy(new Date()));
   if (!memberId || !programTitle) return state;
   const normalizedTitle = programTitle.toLowerCase();
   const duplicateExists = state.logs.some(
     (log) =>
       log.memberId === memberId &&
       log.programTitle.trim().toLowerCase() === normalizedTitle &&
-      log.date.trim() === date &&
+      storedLogDatesMatch(log.date, date) &&
       log.status === "Fullført",
   );
   if (duplicateExists) return state;
@@ -668,7 +668,7 @@ export function logCompletedPlanEntryInState(state: AppState, input: LogComplete
 export function removeCompletedPlanEntryLogInState(state: AppState, input: RemoveCompletedPlanEntryLogInput): AppState {
   const memberId = input.memberId.trim();
   const programTitle = input.programTitle.trim();
-  const date = input.date?.trim() ?? "";
+  const date = input.date?.trim() ? normalizeStoredLogDate(input.date) : "";
   if (!memberId || !programTitle) return state;
   const normalizedTitle = programTitle.toLowerCase();
   return {
@@ -676,7 +676,7 @@ export function removeCompletedPlanEntryLogInState(state: AppState, input: Remov
     logs: state.logs.filter((log) => {
       if (log.memberId !== memberId) return true;
       if (log.programTitle.trim().toLowerCase() !== normalizedTitle) return true;
-      if (date && log.date.trim() !== date) return true;
+      if (date && !storedLogDatesMatch(log.date, date)) return true;
       return false;
     }),
   };
