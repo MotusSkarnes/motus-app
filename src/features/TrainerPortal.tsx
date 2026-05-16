@@ -82,6 +82,23 @@ function trainerPtStatusShouldToast(message: string): boolean {
   return !message.trim().toLowerCase().startsWith("sender");
 }
 
+const WORKOUT_LIST_RECENT_MS = 7 * 24 * 60 * 60 * 1000;
+
+function workoutLogMatchesTypeAndSearch(
+  log: WorkoutLog,
+  workoutTypeFilter: "all" | "program" | "group",
+  query: string,
+): boolean {
+  const isGroupWorkout = log.programTitle.trim().toLowerCase().startsWith("gruppetime:");
+  if (workoutTypeFilter === "group" && !isGroupWorkout) return false;
+  if (workoutTypeFilter === "program" && isGroupWorkout) return false;
+  if (query) {
+    const haystack = `${log.programTitle} ${log.note ?? ""} ${log.reflection?.note ?? ""}`.toLowerCase();
+    if (!haystack.includes(query)) return false;
+  }
+  return true;
+}
+
 function ClientAvatarFallback({ className = "", iconClassName = "h-5 w-5" }: { className?: string; iconClassName?: string }) {
   return (
     <div className={`absolute inset-0 flex items-center justify-center ${className}`} aria-hidden="true">
@@ -709,7 +726,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   } | null>(null);
   const editLockedMemberIdRef = useRef<string | null>(null);
   const editLockedIdentityRef = useRef<{ email: string; name: string } | null>(null);
-  const [workoutDateRangeFilter, setWorkoutDateRangeFilter] = useState<"7d" | "30d" | "all">("all");
+  const [workoutDateRangeFilter, setWorkoutDateRangeFilter] = useState<"7d" | "30d" | "all">("7d");
   const [workoutTypeFilter, setWorkoutTypeFilter] = useState<"all" | "program" | "group">("all");
   const [workoutSearchQuery, setWorkoutSearchQuery] = useState("");
   const [workoutSortOrder, setWorkoutSortOrder] = useState<"newest" | "oldest">("newest");
@@ -1138,21 +1155,26 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const withParsedDate = selectedLogs.map((log) => ({ log, dateMs: parseLogDateMs(log.date) }));
     const filtered = withParsedDate.filter(({ log, dateMs }) => {
       if (workoutDateRangeFilter !== "all" && dateMs > 0) {
-        const maxAgeMs = workoutDateRangeFilter === "7d" ? 7 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
+        const maxAgeMs = workoutDateRangeFilter === "7d" ? WORKOUT_LIST_RECENT_MS : 30 * 24 * 60 * 60 * 1000;
         if (now - dateMs > maxAgeMs) return false;
       }
-      const isGroupWorkout = log.programTitle.trim().toLowerCase().startsWith("gruppetime:");
-      if (workoutTypeFilter === "group" && !isGroupWorkout) return false;
-      if (workoutTypeFilter === "program" && isGroupWorkout) return false;
-      if (query) {
-        const haystack = `${log.programTitle} ${log.note ?? ""} ${log.reflection?.note ?? ""}`.toLowerCase();
-        if (!haystack.includes(query)) return false;
-      }
-      return true;
+      return workoutLogMatchesTypeAndSearch(log, workoutTypeFilter, query);
     });
     filtered.sort((a, b) => (workoutSortOrder === "newest" ? b.dateMs - a.dateMs : a.dateMs - b.dateMs));
     return filtered.map((entry) => entry.log);
   }, [selectedLogs, workoutDateRangeFilter, workoutTypeFilter, workoutSearchQuery, workoutSortOrder]);
+  const olderMatchingWorkoutCount = useMemo(() => {
+    const now = Date.now();
+    const query = workoutSearchQuery.trim().toLowerCase();
+    let count = 0;
+    for (const log of selectedLogs) {
+      const dateMs = parseLogDateMs(log.date);
+      if (dateMs <= 0 || now - dateMs <= WORKOUT_LIST_RECENT_MS) continue;
+      if (!workoutLogMatchesTypeAndSearch(log, workoutTypeFilter, query)) continue;
+      count += 1;
+    }
+    return count;
+  }, [selectedLogs, workoutTypeFilter, workoutSearchQuery]);
   const workoutInsights = useMemo(() => {
     const now = Date.now();
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
@@ -1439,7 +1461,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
 
   useEffect(() => {
     // Reset workout list controls when changing customer so prior filters/search do not hide fresh logs.
-    setWorkoutDateRangeFilter("all");
+    setWorkoutDateRangeFilter("7d");
     setWorkoutTypeFilter("all");
     setWorkoutSearchQuery("");
     setWorkoutSortOrder("newest");
@@ -4952,10 +4974,19 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                           ]}
                         />
                       </div>
-                      <div className="font-semibold">Siste økter</div>
+                      <div>
+                        <div className="font-semibold">Siste økter</div>
+                        <div className="mt-0.5 text-xs text-slate-500">
+                          {workoutDateRangeFilter === "7d"
+                            ? "Viser økter fra de siste 7 dagene"
+                            : workoutDateRangeFilter === "30d"
+                              ? "Viser økter fra de siste 30 dagene"
+                              : "Viser alle økter"}
+                        </div>
+                      </div>
                       {filteredWorkoutLogs.length ? (
                         <div className="mt-3 space-y-2">
-                          {filteredWorkoutLogs.slice(0, 12).map((log) => (
+                          {filteredWorkoutLogs.map((log) => (
                             <button
                               key={log.id}
                               type="button"
@@ -4975,8 +5006,30 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                           ))}
                         </div>
                       ) : (
-                        <div className="mt-3 text-sm text-slate-500">Ingen økter matcher filtrene.</div>
+                        <div className="mt-3 text-sm text-slate-500">
+                          {workoutDateRangeFilter === "7d"
+                            ? "Ingen økter de siste 7 dagene."
+                            : "Ingen økter matcher filtrene."}
+                        </div>
                       )}
+                      {workoutDateRangeFilter === "7d" && olderMatchingWorkoutCount > 0 ? (
+                        <OutlineButton
+                          type="button"
+                          className="mt-3 w-full text-xs"
+                          onClick={() => setWorkoutDateRangeFilter("all")}
+                        >
+                          Vis flere økter ({olderMatchingWorkoutCount} eldre)
+                        </OutlineButton>
+                      ) : null}
+                      {workoutDateRangeFilter !== "7d" ? (
+                        <button
+                          type="button"
+                          className="mt-3 w-full text-center text-xs font-semibold text-teal-800 underline-offset-2 hover:text-teal-950 hover:underline"
+                          onClick={() => setWorkoutDateRangeFilter("7d")}
+                        >
+                          Vis kun siste 7 dager
+                        </button>
+                      ) : null}
                     </div>
                     <div className="rounded-xl border bg-slate-50 p-4">
                       <div className="font-semibold">Øktdetaljer</div>

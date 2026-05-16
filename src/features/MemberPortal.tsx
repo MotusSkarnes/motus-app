@@ -816,6 +816,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const achievementCelebrationBaselineRef = useRef<number | null>(null);
   const [periodPlans, setPeriodPlans] = useState<PeriodSchedulePlan[]>([]);
   const [showPeriodPlanPanel, setShowPeriodPlanPanel] = useState(true);
+  const [activeMemberPeriodPlanId, setActiveMemberPeriodPlanId] = useState<string | null>(null);
   const [selectedPeriodPlanWeekNumber, setSelectedPeriodPlanWeekNumber] = useState<number | null>(null);
   const [periodPlanActionStatus, setPeriodPlanActionStatus] = useState<string | null>(null);
   const [completedPeriodPlanEntryKeys, setCompletedPeriodPlanEntryKeys] = useState<string[]>([]);
@@ -1115,7 +1116,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const nextProgram = memberProgramsInActiveLibrary[0] ?? null;
   useEffect(() => {
     if (!isMemberLimited) return;
-    if (memberTab === "overview" || memberTab === "programs" || memberTab === "profile" || memberTab === "inspiration") return;
+    if (memberTab === "overview" || memberTab === "programs" || memberTab === "periodPlans" || memberTab === "profile" || memberTab === "inspiration") return;
     setMemberTab("overview");
   }, [isMemberLimited, memberTab, setMemberTab]);
   const workoutResultGroups = useMemo(() => {
@@ -1286,7 +1287,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (day === 5) return "friday";
     return "saturday";
   }, [nowTimestamp]);
-  const activePeriodPlan = periodPlans[0] ?? null;
+  const activePeriodPlan = periodPlans.find((plan) => plan.id === activeMemberPeriodPlanId) ?? periodPlans[0] ?? null;
   const activePeriodPlanId = activePeriodPlan?.id ?? null;
   const activePeriodSelectableWeekCount = activePeriodPlan ? periodPlanSelectableWeekCount(activePeriodPlan) : 0;
   const activePeriodPlanStartDate = activePeriodPlan ? parseDateOnly(activePeriodPlan.startDate) : null;
@@ -2511,6 +2512,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const combined = mergedPeriodPlanListForMember(relatedMemberIds, localByMember, remoteMemberPeriodPlanRows);
     combined.sort((a, b) => (parseDateOnly(b.startDate)?.getTime() ?? 0) - (parseDateOnly(a.startDate)?.getTime() ?? 0));
     setPeriodPlans(combined);
+    setActiveMemberPeriodPlanId((prev) => (prev && combined.some((plan) => plan.id === prev) ? prev : combined[0]?.id ?? null));
   }, [relatedMemberIds, remoteMemberPeriodPlanRows]);
   useEffect(() => {
     if (!activeIntervalProgram || isIntervalTimerRunning) return;
@@ -3794,12 +3796,14 @@ export function MemberPortal(props: MemberPortalProps) {
             ? [
                 { id: "overview", label: "Hjem" },
                 { id: "programs", label: "Trening" },
+                { id: "periodPlans", label: "Mine periodeplaner" },
                 { id: "inspiration", label: "Inspirasjon" },
                 { id: "profile", label: "Profil" },
               ]
             : [
             { id: "overview", label: "Hjem" },
             { id: "programs", label: "Trening" },
+            { id: "periodPlans", label: "Mine periodeplaner" },
             { id: "inspiration", label: "Inspirasjon" },
             { id: "progress", label: "Fremgang" },
             { id: "messages", label: "Meldinger" },
@@ -5292,6 +5296,83 @@ export function MemberPortal(props: MemberPortalProps) {
                 cancelWorkoutMode={cancelWorkoutMode}
               />
             </>
+          ) : null}
+
+          {memberTab === "periodPlans" ? (
+            <Card className="p-4 sm:p-5">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><CalendarRange className="h-5 w-5" /></div>
+                <div>
+                  <h2 className="text-xl font-semibold tracking-tight">Mine periodeplaner</h2>
+                  <p className="text-sm text-slate-500">Velg hvilken plan som skal være aktiv i treningsvisningen.</p>
+                </div>
+              </div>
+              {periodPlans.length === 0 ? (
+                <EmptyState
+                  icon="🗓️"
+                  title="Ingen periodeplaner ennå"
+                  description="Legg til en ukesplan fra Inspirasjon eller få en plan fra PT."
+                  className="mt-4 bg-slate-50"
+                />
+              ) : (
+                <div className="mt-4 grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)]">
+                  <div className="space-y-2">
+                    {periodPlans.map((plan) => {
+                      const active = activePeriodPlan?.id === plan.id;
+                      return (
+                        <button
+                          key={plan.id}
+                          type="button"
+                          onClick={() => {
+                            setActiveMemberPeriodPlanId(plan.id);
+                            setSelectedPeriodPlanWeekNumber(1);
+                          }}
+                          className={`w-full rounded-xl border p-3 text-left transition ${
+                            active ? "border-teal-300 bg-teal-50 ring-2 ring-teal-100" : "border-slate-200 bg-white hover:bg-slate-50"
+                          }`}
+                        >
+                          <div className="text-sm font-semibold text-slate-900">{plan.title}</div>
+                          <div className="mt-1 text-xs text-slate-500">{plan.weeks} {plan.weeks === 1 ? "uke" : "uker"} · start {plan.startDate}</div>
+                          {active ? <div className="mt-2 text-[11px] font-bold uppercase tracking-wide text-teal-700">Aktiv</div> : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {activePeriodPlan ? (
+                    <div className="rounded-2xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <div className="text-lg font-semibold text-slate-950">{activePeriodPlan.title}</div>
+                          <div className="mt-1 text-sm text-slate-500">{activePeriodPlan.notes || "Ingen notater på planen."}</div>
+                        </div>
+                        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+                          Aktiv periodeplan
+                        </span>
+                      </div>
+                      <PeriodPlanWeekNavigator
+                        className="mt-4"
+                        weeks={buildPeriodPlanWeekNavItemsFromPlan(activePeriodPlan)}
+                        selectedWeekNumber={selectedPeriodPlanWeekForView}
+                        onWeekSelectByNumber={setSelectedPeriodPlanWeekNumber}
+                      />
+                      {resolvePeriodPlanWeek(activePeriodPlan, selectedPeriodPlanWeekForView) ? (
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          {WEEKDAY_PLAN_ORDER.map((dayKey) => {
+                            const week = resolvePeriodPlanWeek(activePeriodPlan, selectedPeriodPlanWeekForView)!;
+                            return (
+                              <div key={dayKey} className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{WEEKDAY_PLAN_LABELS[dayKey]}</div>
+                                <div className="mt-1 text-sm font-medium text-slate-800">{week.days[dayKey] || "Ingen plan"}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </Card>
           ) : null}
 
           {!isMemberLimited && memberTab === "progress" ? (

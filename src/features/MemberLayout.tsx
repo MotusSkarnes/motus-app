@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import type { ComponentProps } from "react";
-import { Bell, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp, type LucideIcon } from "lucide-react";
+import { Bell, CalendarRange, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp, type LucideIcon } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { AppState, MemberTab } from "../app/types";
 import { Card } from "../app/ui";
@@ -46,6 +46,7 @@ type MemberLayoutProps = {
 const mobileTabs: Array<{ id: MemberTab; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Hjem", icon: LayoutDashboard },
   { id: "programs", label: "Trening", icon: ClipboardList },
+  { id: "periodPlans", label: "Planer", icon: CalendarRange },
   { id: "inspiration", label: "Inspo", icon: Sparkles },
   { id: "progress", label: "Fremgang", icon: TrendingUp },
   { id: "messages", label: "Meldinger", icon: MessageSquare },
@@ -100,7 +101,7 @@ export function MemberLayout({
     return candidates.some((member) => member.customerType === "Medlem" && member.membershipType !== "Premium");
   }, [appState.currentUser, appState.members, appState.memberViewId]);
   const visibleMobileTabs = isMemberLimited
-    ? mobileTabs.filter((tab) => tab.id === "overview" || tab.id === "programs" || tab.id === "inspiration")
+    ? mobileTabs.filter((tab) => tab.id === "overview" || tab.id === "programs" || tab.id === "periodPlans" || tab.id === "inspiration")
     : mobileTabs;
 
   useEffect(() => {
@@ -150,6 +151,28 @@ export function MemberLayout({
     remoteMemberPeriodPlanRows,
     refreshRemoteHydration,
   };
+  const inspirationMemberId =
+    appState.memberViewId ||
+    appState.currentUser?.memberId ||
+    appState.members.find((member) => member.email.trim().toLowerCase() === appState.currentUser?.email.trim().toLowerCase())?.id ||
+    "";
+
+  function addInspirationPeriodPlan(plan: import("../app/types").PeriodSchedulePlan) {
+    if (!inspirationMemberId || typeof window === "undefined") return;
+    const storageKey = "motus.trainer.periodPlansByMemberId";
+    let byMember: Record<string, import("../app/types").PeriodSchedulePlan[]> = {};
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      byMember = raw ? (JSON.parse(raw) as Record<string, import("../app/types").PeriodSchedulePlan[]>) : {};
+    } catch {
+      byMember = {};
+    }
+    const existing = byMember[inspirationMemberId] ?? [];
+    byMember[inspirationMemberId] = [{ ...plan, id: `${plan.id}-${Date.now()}`, createdAt: new Date().toISOString().slice(0, 10) }, ...existing];
+    window.localStorage.setItem(storageKey, JSON.stringify(byMember));
+    setMemberTab("periodPlans");
+  }
+
   return (
     <>
       <div className="space-y-4 sm:space-y-5">
@@ -251,7 +274,20 @@ export function MemberLayout({
           )}
         </Card>
         ) : null}
-        {memberTab === "inspiration" ? <InspirationHub /> : <MemberPortal {...memberPortalProps} />}
+        {memberTab === "inspiration" ? (
+          <InspirationHub
+            memberId={inspirationMemberId}
+            memberName={appState.currentUser?.name ?? "Medlem"}
+            onAddProgram={(program) => {
+              if (!inspirationMemberId) return;
+              saveProgramForMember({ ...program, memberId: inspirationMemberId, programCreatedBy: "member", programCreatedByName: appState.currentUser?.name ?? "Medlem" });
+              setMemberTab("programs");
+            }}
+            onAddPeriodPlan={addInspirationPeriodPlan}
+          />
+        ) : (
+          <MemberPortal {...memberPortalProps} />
+        )}
       </div>
 
       <div
