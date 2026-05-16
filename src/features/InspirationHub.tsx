@@ -560,10 +560,14 @@ export function InspirationHub({
   function renderInspirationCard(item: InspirationItem) {
     const meta = CATEGORY_META[item.category];
     const Icon = meta.icon;
+    const isTrainingBlock = item.kind === "program" || item.kind === "periodPlan";
+    const compactActionClass = "!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight";
     return (
       <article
         key={item.id}
-        className="relative flex h-full w-56 shrink-0 snap-start flex-col overflow-hidden rounded-xl border bg-white sm:w-60"
+        className={`relative flex h-full shrink-0 snap-start flex-col overflow-hidden rounded-xl border bg-white ${
+          isTrainingBlock ? "w-40 sm:w-44" : "w-48 sm:w-52"
+        }`}
         style={{ borderColor: "rgba(15,23,42,0.08)" }}
       >
         {canManage ? (
@@ -589,37 +593,55 @@ export function InspirationHub({
           </div>
         ) : null}
         <button type="button" onClick={() => setExpandedItemId(item.id)} className="flex flex-1 flex-col text-left">
-          <div className="aspect-square w-full shrink-0 overflow-hidden bg-slate-100" style={!item.imageUrl ? { background: meta.image } : undefined}>
+          <div
+            className={`w-full shrink-0 overflow-hidden bg-slate-100 ${isTrainingBlock ? "aspect-[3/2]" : "aspect-square"}`}
+            style={!item.imageUrl ? { background: meta.image } : undefined}
+          >
             {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
             {!item.imageUrl ? (
               <div className="flex h-full w-full items-center justify-center text-white/90">
-                <Icon className="h-12 w-12 drop-shadow-sm" />
+                <Icon className={`drop-shadow-sm ${isTrainingBlock ? "h-8 w-8" : "h-10 w-10"}`} />
               </div>
             ) : null}
           </div>
-          <div className="flex flex-1 flex-col p-3">
-            <div className="flex min-h-[1.25rem] items-center justify-between gap-2">
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ${meta.accent}`}>
-                <Icon className="h-3 w-3" />
+          <div className={`flex flex-1 flex-col ${isTrainingBlock ? "p-2" : "p-2.5"}`}>
+            <div className="flex min-h-[1.125rem] items-center justify-between gap-1.5">
+              <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold ring-1 ${meta.accent}`}>
+                <Icon className="h-2.5 w-2.5" />
                 {item.kind === "periodPlan" ? "Ukesplan" : item.kind === "program" ? "Program" : meta.label}
               </span>
-              <span className="truncate text-[10px] text-slate-400">{item.tag}</span>
+              <span className="truncate text-[9px] text-slate-400">{item.tag}</span>
             </div>
-            <h3 className="mt-2 min-h-[2.75rem] line-clamp-2 text-base font-semibold leading-snug text-slate-950">{item.title}</h3>
-            <p className="mt-1 min-h-[2.25rem] line-clamp-2 text-xs leading-snug text-slate-500">{item.description || "\u00a0"}</p>
+            <h3
+              className={`mt-1.5 line-clamp-2 text-sm font-semibold leading-snug text-slate-950 ${
+                isTrainingBlock ? "min-h-[2.25rem]" : "min-h-[2.5rem]"
+              }`}
+            >
+              {item.title}
+            </h3>
+            <p
+              className={`mt-0.5 line-clamp-2 leading-snug text-slate-500 ${
+                isTrainingBlock ? "min-h-[1.875rem] text-[11px]" : "min-h-[2rem] text-xs"
+              }`}
+            >
+              {item.description || "\u00a0"}
+            </p>
           </div>
         </button>
-        <div className="shrink-0 border-t border-slate-100 p-3">
+        <div className={`shrink-0 border-t border-slate-100 ${isTrainingBlock ? "px-2 py-1.5" : "px-2.5 py-2"}`}>
           {item.kind === "program" && onAddProgram ? (
-            <GradientButton onClick={() => handleAddProgram(item)} className="w-full !px-3 !py-2 !text-xs">
+            <GradientButton onClick={() => handleAddProgram(item)} className={`w-full ${compactActionClass}`}>
               Legg til program
             </GradientButton>
           ) : item.kind === "periodPlan" && onAddPeriodPlan ? (
-            <GradientButton onClick={() => handleAddPeriodPlan(item)} className="w-full !px-3 !py-2 !text-xs">
-              Legg til periodeplan
+            <GradientButton onClick={() => handleAddPeriodPlan(item)} className={`w-full ${compactActionClass}`}>
+              Legg til plan
             </GradientButton>
           ) : (
-            <OutlineButton onClick={() => setExpandedItemId(item.id)} className="w-full !px-3 !py-2 !text-xs">
+            <OutlineButton
+              onClick={() => setExpandedItemId(item.id)}
+              className="w-full !min-h-8 !px-2.5 !py-1.5 !text-[11px] !leading-tight"
+            >
               Les mer
             </OutlineButton>
           )}
