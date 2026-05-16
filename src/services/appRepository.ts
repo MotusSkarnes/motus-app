@@ -209,14 +209,19 @@ export function addMemberToState(state: AppState, input: CreateMemberInput): App
 }
 
 export function deactivateMemberInState(state: AppState, memberId: string): AppState {
-  const activeMembers = state.members.filter((member) => member.id !== memberId && member.isActive !== false);
+  const target = state.members.find((member) => member.id === memberId);
+  const emailKey = target?.email.trim().toLowerCase() ?? "";
+  const members = state.members.map((member) => {
+    const samePerson = member.id === memberId || (emailKey && member.email.trim().toLowerCase() === emailKey);
+    return samePerson ? { ...member, isActive: false } : member;
+  });
+  const activeMembers = members.filter((member) => member.isActive !== false);
+  const pickNextId = (currentId: string) => (currentId === memberId ? activeMembers[0]?.id ?? "" : currentId);
   return {
     ...state,
-    members: state.members.map((member) =>
-      member.id === memberId ? { ...member, isActive: false } : member
-    ),
-    selectedMemberId: state.selectedMemberId === memberId ? activeMembers[0]?.id ?? "" : state.selectedMemberId,
-    memberViewId: state.memberViewId === memberId ? activeMembers[0]?.id ?? "" : state.memberViewId,
+    members,
+    selectedMemberId: pickNextId(state.selectedMemberId),
+    memberViewId: pickNextId(state.memberViewId),
   };
 }
 

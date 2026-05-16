@@ -156,6 +156,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     setMemberCheckInOverlayOpen,
     remoteMemberPeriodPlanRows: state.remoteMemberPeriodPlanRows,
     refreshRemoteHydration: state.refreshRemoteHydration,
+    onLogout: state.handleLogout,
   });
 
   return {

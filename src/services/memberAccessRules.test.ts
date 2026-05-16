@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   filterMemberIdsForRosterSave,
+  isMemberAppAccessBlocked,
   isPrivatePtRosterCustomerType,
   isSharedMedlemCustomerType,
+  memberRecordIsActive,
   resolveOwnerUserIdForPersist,
   scoreMemberProfileSource,
 } from "./memberAccessRules";
@@ -58,6 +60,21 @@ describe("memberAccessRules", () => {
     );
     const medlemScore = scoreMemberProfileSource({ customerType: "Medlem", ownerUserId: TRAINER_B }, TRAINER_A);
     expect(ptScore).toBeGreaterThan(medlemScore);
+  });
+
+  it("blocks app access when all rows for email are inactive", () => {
+    expect(memberRecordIsActive({ isActive: false })).toBe(false);
+    expect(
+      isMemberAppAccessBlocked(
+        [
+          { email: "x@y.no", isActive: false },
+          { email: "x@y.no", isActive: false },
+        ],
+        "x@y.no",
+      ),
+    ).toBe(true);
+    expect(isMemberAppAccessBlocked([{ email: "x@y.no", isActive: true }], "x@y.no")).toBe(false);
+    expect(isMemberAppAccessBlocked([], "x@y.no")).toBe(false);
   });
 
   it("limits PT-kunde saves to rows owned by current PT", () => {

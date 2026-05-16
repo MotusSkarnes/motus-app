@@ -1,5 +1,24 @@
 import type { Member } from "../app/types";
 
+export const MEMBER_ARCHIVED_APP_MESSAGE =
+  "Kundekontoen er arkivert. Kontakt din PT for å gjenåpne tilgang til appen.";
+
+export function memberRecordIsActive(member: { isActive?: boolean | null }): boolean {
+  return member.isActive !== false;
+}
+
+/** True when the email has roster row(s) and every matching row is archived/inactive. */
+export function isMemberAppAccessBlocked(
+  members: Array<{ email?: string | null; isActive?: boolean | null }>,
+  email: string,
+): boolean {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized.includes("@")) return false;
+  const rows = members.filter((member) => member.email?.trim().toLowerCase() === normalized);
+  if (!rows.length) return false;
+  return !rows.some(memberRecordIsActive);
+}
+
 /** Shared roster row — visible to every PT in hydrate-trainer-data. */
 export function isSharedMedlemCustomerType(customerType: string | undefined | null): boolean {
   return String(customerType ?? "").trim().toLowerCase() === "medlem";

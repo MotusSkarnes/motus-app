@@ -35,7 +35,11 @@ import {
   type UpdateWorkoutResultInput,
 } from "./appRepository";
 import { supabaseClient } from "./supabaseClient";
-import { isSharedMedlemCustomerType, resolveOwnerUserIdForPersist } from "./memberAccessRules";
+import {
+  isSharedMedlemCustomerType,
+  MEMBER_ARCHIVED_APP_MESSAGE,
+  resolveOwnerUserIdForPersist,
+} from "./memberAccessRules";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
@@ -1603,6 +1607,11 @@ export type HydratedTrainerDebug = {
   generatedAt: string;
 };
 
+export type MemberAccessDenied = {
+  code: "member_archived";
+  message: string;
+};
+
 export type HydratedMemberData = {
   members: Member[];
   messages: ChatMessage[];
@@ -1611,7 +1620,31 @@ export type HydratedMemberData = {
   periodPlanRows: Array<{ memberId: string; plan: PeriodSchedulePlan }>;
   exercises: Exercise[];
   inspirationItems: unknown[];
+  accessDenied?: MemberAccessDenied;
 };
+
+const EMPTY_HYDRATED_MEMBER_DATA: HydratedMemberData = {
+  members: [],
+  messages: [],
+  programs: [],
+  logs: [],
+  periodPlanRows: [],
+  exercises: [],
+  inspirationItems: [],
+};
+
+function memberArchivedHydratePayload(message: string): HydratedMemberData {
+  return {
+    ...EMPTY_HYDRATED_MEMBER_DATA,
+    accessDenied: { code: "member_archived", message },
+  };
+}
+
+function parseMemberArchivedHydrateBody(body: Record<string, unknown>): HydratedMemberData | null {
+  if (body.error !== "member_archived") return null;
+  const message = String(body.message ?? "").trim();
+  return memberArchivedHydratePayload(message || MEMBER_ARCHIVED_APP_MESSAGE);
+}
 
 function trainingProgramFromHydrateRow(program: Record<string, unknown>): TrainingProgram {
   const rawBy = String(program.program_created_by ?? "").trim();
@@ -1637,6 +1670,9 @@ function trainingProgramFromHydrateRow(program: Record<string, unknown>): Traini
 }
 
 function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemberData {
+  const archived = parseMemberArchivedHydrateBody(payload);
+  if (archived) return archived;
+
   const membersRows = Array.isArray(payload.members) ? payload.members : [];
   const messagesRows = Array.isArray(payload.messages) ? payload.messages : [];
   const programsRows = Array.isArray(payload.programs) ? payload.programs : [];
@@ -1935,10 +1971,22 @@ export async function fetchHydratedMemberData(): Promise<HydratedMemberData | nu
 
   const { data, error } = await supabaseClient.functions.invoke("hydrate-member-data");
   if (!error && data && typeof data === "object") {
-    return mapHydrateMemberPayload(data as Record<string, unknown>);
+    const mapped = mapHydrateMemberPayload(data as Record<string, unknown>);
+    if (mapped.accessDenied) return mapped;
+    return mapped;
   }
 
   if (error) {
+    const errorContext = (error as { context?: Response }).context;
+    if (errorContext) {
+      try {
+        const archivedBody = (await errorContext.clone().json()) as Record<string, unknown>;
+        const archived = parseMemberArchivedHydrateBody(archivedBody);
+        if (archived) return archived;
+      } catch {
+        // fall through to fetch fallback
+      }
+    }
     console.warn("hydrate-member-data invoke failed:", error.message);
   }
 
@@ -1958,6 +2006,15 @@ export async function fetchHydratedMemberData(): Promise<HydratedMemberData | nu
       });
       const raw = await response.text();
       if (!response.ok) {
+        if (response.status === 403) {
+          try {
+            const archivedBody = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+            const archived = parseMemberArchivedHydrateBody(archivedBody);
+            if (archived) return archived;
+          } catch {
+            // fall through
+          }
+        }
         console.warn("hydrate-member-data fallback HTTP", response.status, raw.slice(0, 400));
         return null;
       }
@@ -1968,6 +2025,8 @@ export async function fetchHydratedMemberData(): Promise<HydratedMemberData | nu
         console.warn("hydrate-member-data fallback: invalid JSON");
         return null;
       }
+      const archived = parseMemberArchivedHydrateBody(parsed);
+      if (archived) return archived;
       if (typeof parsed.error === "string" && parsed.error && !Array.isArray(parsed.members)) {
         console.warn("hydrate-member-data fallback:", parsed.error);
         return null;
@@ -2201,10 +2260,24 @@ export const supabaseAppRepository: AppRepository = {
     return nextState;
   },
   deactivateMember(state: AppState, memberId: string): AppState {
-    const targetMember = state.members.find((member) => member.id === memberId);
     const nextState = localAppRepository.deactivateMember(state, memberId);
-    if (targetMember) {
-      void persistMember({ ...targetMember, isActive: false });
+    const emailKey =
+      state.members.find((member) => member.id === memberId)?.email.trim().toLowerCase() ?? "";
+    const targets = nextState.members.filter((member) => {
+      if (member.id === memberId) return true;
+      return Boolean(emailKey && member.email.trim().toLowerCase() === emailKey);
+    });
+    for (const member of targets) {
+      void persistMember({ ...member, isActive: false });
+    }
+    if (emailKey && supabaseClient) {
+      void supabaseClient
+        .from("members")
+        .update({ is_active: false })
+        .ilike("email", emailKey)
+        .then(({ error }) => {
+          if (error) console.warn("Supabase archive by email failed:", error.message);
+        });
     }
     return nextState;
   },

@@ -2067,7 +2067,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const member = members.find((entry) => entry.id === memberId);
     setConfirmDialog({
       title: "Arkiver kunde",
-      message: `Arkivere ${member?.name?.trim() || "kunden"}? Kunden skjules fra listen, men økter, programmer og meldinger beholdes. Du kan finne vedkommende igjen under «Vis inaktive» eller gjenopprette i Admin.`,
+      message: `Arkivere ${member?.name?.trim() || "kunden"}? Kunden mister tilgang til appen og skjules fra listen, men økter, programmer og meldinger beholdes. Du kan finne vedkommende igjen under «Vis inaktive» eller gjenopprette i Admin.`,
       confirmLabel: "Arkiver",
       tone: "danger",
       onConfirm: () => {
@@ -4368,11 +4368,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 {customerSubTab === "overview" ? (
                   <div className="space-y-4">
                     <div className="grid gap-4 xl:grid-cols-2">
-                    <MemberOnboardingSummary
-                      member={selectedMemberProfile ?? selectedMember}
-                      allMembers={members}
-                      className="xl:col-span-2"
-                    />
                     <MemberMonthlyCheckInSummary member={selectedMemberProfile ?? selectedMember} className="xl:col-span-2" />
                     <div className="rounded-xl border bg-slate-50 p-4">
                       <div className="font-semibold">Oppfølgingspunkter</div>

@@ -21,6 +21,7 @@ import type { AppState, Member, MemberTab, PeriodSchedulePlan } from "../app/typ
 import { ensureMemberAuthLink } from "../services/supabaseAuth";
 import { Card } from "../app/ui";
 import type { MemberAlert } from "../app/useNotifications";
+import { isMemberAppAccessBlocked, memberRecordIsActive, MEMBER_ARCHIVED_APP_MESSAGE } from "../services/memberAccessRules";
 import { persistOnboardingToSupabase, upsertMemberPeriodPlansForTrainer } from "../services/supabaseRepository";
 import {
   mergeCheckInIntoPersonalGoals,
@@ -37,6 +38,7 @@ function resolveActiveMemberForUser(appState: AppState): Member | null {
   if (!currentUser) return null;
   const normalizedEmail = currentUser.email.trim().toLowerCase();
   const candidates = appState.members.filter((member) => {
+    if (!memberRecordIsActive(member)) return false;
     if (currentUser.memberId && member.id === currentUser.memberId) return true;
     if (appState.memberViewId && member.id === appState.memberViewId) return true;
     return Boolean(normalizedEmail && member.email.trim().toLowerCase() === normalizedEmail);
@@ -91,6 +93,7 @@ type MemberLayoutProps = {
   setMemberCheckInOverlayOpen: (open: boolean) => void;
   remoteMemberPeriodPlanRows: ComponentProps<typeof MemberPortal>["remoteMemberPeriodPlanRows"];
   refreshRemoteHydration?: ComponentProps<typeof MemberPortal>["refreshRemoteHydration"];
+  onLogout: () => void;
 };
 
 const mobileTabs: Array<{ id: MemberTab; label: string; icon: LucideIcon }> = [
@@ -142,8 +145,14 @@ export function MemberLayout({
   setMemberCheckInOverlayOpen,
   remoteMemberPeriodPlanRows,
   refreshRemoteHydration,
+  onLogout,
 }: MemberLayoutProps) {
   const [onboardingGateOpen, setOnboardingGateOpen] = useState(false);
+  const memberAccessBlocked = useMemo(() => {
+    const email = appState.currentUser?.email ?? "";
+    if (!email) return false;
+    return isMemberAppAccessBlocked(appState.members, email);
+  }, [appState.currentUser?.email, appState.members]);
   const activeMember = useMemo(() => {
     const base = resolveActiveMemberForUser(appState);
     if (!base) return null;
@@ -351,6 +360,23 @@ export function MemberLayout({
       window.sessionStorage.setItem("motus.member.openPeriodPlanOnPrograms", "1");
     }
     setMemberTab("programs");
+  }
+
+  if (memberAccessBlocked) {
+    return (
+      <Card className="mx-auto max-w-lg p-6 text-center shadow-sm ring-1 ring-black/5 sm:p-8">
+        <h2 className="text-lg font-semibold text-slate-900">Ingen tilgang</h2>
+        <p className="mt-3 text-sm leading-relaxed text-slate-600">{MEMBER_ARCHIVED_APP_MESSAGE}</p>
+        <button
+          type="button"
+          onClick={() => onLogout()}
+          className="mt-6 rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow-sm"
+          style={{ background: MOTUS.gradient }}
+        >
+          Logg ut
+        </button>
+      </Card>
+    );
   }
 
   return (

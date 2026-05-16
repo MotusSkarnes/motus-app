@@ -17,6 +17,17 @@ function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
 }
 
+function rowIsActive(row: Record<string, unknown>): boolean {
+  return (row as { is_active?: boolean | null }).is_active !== false;
+}
+
+const MEMBER_ARCHIVED_MESSAGE =
+  "Kundekontoen er arkivert. Kontakt din PT for å gjenåpne tilgang til appen.";
+
+function memberArchivedResponse() {
+  return jsonResponse(403, { error: "member_archived", message: MEMBER_ARCHIVED_MESSAGE });
+}
+
 function toFirstName(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return "";
@@ -201,7 +212,11 @@ Deno.serve(async (req) => {
       if (!dedupedMembersById.has(id)) dedupedMembersById.set(id, row);
     }
   }
-  let scopedMembers = Array.from(dedupedMembersById.values());
+  const emailRowsForAccess = rowsByLoginEmail ?? [];
+  if (emailRowsForAccess.length > 0 && !emailRowsForAccess.some(rowIsActive)) {
+    return memberArchivedResponse();
+  }
+  let scopedMembers = Array.from(dedupedMembersById.values()).filter(rowIsActive);
 
   let memberIds = (scopedMembers ?? [])
     .map((row) => String((row as { id?: string }).id ?? "").trim())
@@ -225,6 +240,9 @@ Deno.serve(async (req) => {
     }
   }
   if (!memberIds.length) {
+    if (emailRowsForAccess.length > 0) {
+      return memberArchivedResponse();
+    }
     const authFallbackIds = Array.from(
       new Set(
         [authMemberId, requesterUserId, requesterUserId ? `auth-${requesterUserId}` : ""]
