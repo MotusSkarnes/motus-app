@@ -17,3 +17,6 @@ select
 from public.members
 where lower(trim(email)) in ('lene.norex@gmail.com', 'leneruud@msn.com')
 order by email, created_at desc;
+
+-- Hvis status er «mangler skjema»: medlemmet må logge inn med SAMME e-post som kundekortet
+-- og fullføre oppstartsskjema på nytt (etter siste app-deploy).

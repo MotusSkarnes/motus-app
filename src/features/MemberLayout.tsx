@@ -184,7 +184,13 @@ export function MemberLayout({
       },
     });
     setOnboardingGateOpen(false);
-    await waitForMemberPersist(activeMember.id);
+    try {
+      await waitForMemberPersist(activeMember.id);
+    } catch (error) {
+      setOnboardingGateOpen(true);
+      throw error;
+    }
+    refreshRemoteHydration?.();
   }
 
   const checkInWindow = useMemo(() => resolveCheckInWindow(), []);

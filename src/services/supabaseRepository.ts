@@ -766,6 +766,89 @@ export function waitForMemberPersist(memberId: string): Promise<void> {
   return pendingMemberPersists.get(memberId.trim()) ?? Promise.resolve();
 }
 
+function personalGoalsContainsProfileBlob(personalGoals: string | undefined): boolean {
+  const value = String(personalGoals ?? "").trim();
+  return (
+    value.startsWith("MOTUS_PROFILE_V1:") ||
+    value.includes("onboardingCompletedAt") ||
+    value.includes('"onboarding"')
+  );
+}
+
+async function syncMemberProfileViaEdgeFunction(
+  member: Member,
+  authenticatedEmail: string,
+  relatedMemberIds: string[],
+): Promise<number> {
+  if (!supabaseClient) return 0;
+  const normalizedEmail = member.email.trim().toLowerCase();
+  const syncEmails = Array.from(
+    new Set(
+      [normalizedEmail, authenticatedEmail]
+        .map((value) => String(value ?? "").trim().toLowerCase())
+        .filter((value) => value && value.includes("@")),
+    ),
+  );
+  const syncPayload = {
+    email: authenticatedEmail || normalizedEmail,
+    emails: syncEmails,
+    memberId: member.id,
+    memberIds: relatedMemberIds.length ? relatedMemberIds : [member.id],
+    targetName: member.name,
+    changes: {
+      name: member.name,
+      phone: member.phone,
+      birthDate: member.birthDate,
+      goal: member.goal,
+      focus: member.focus,
+      injuries: member.injuries,
+      personalGoals: member.personalGoals,
+      avatarUrl: member.avatarUrl ?? "",
+    },
+  };
+
+  let updated = 0;
+  const invokeResult = await supabaseClient.functions.invoke("update-member-profile", { body: syncPayload });
+  if (!invokeResult.error) {
+    updated =
+      invokeResult.data && typeof invokeResult.data === "object" && "updated" in invokeResult.data
+        ? Number((invokeResult.data as { updated?: unknown }).updated ?? 0)
+        : 0;
+  } else {
+    console.warn("update-member-profile invoke failed:", invokeResult.error.message);
+  }
+
+  if (updated === 0 && supabaseUrl && supabaseAnonKey) {
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession();
+    const accessToken = session?.access_token ?? "";
+    if (accessToken) {
+      try {
+        const response = await fetch(`${supabaseUrl}/functions/v1/update-member-profile`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: supabaseAnonKey,
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(syncPayload),
+        });
+        const body = (await response.json().catch(() => null)) as { updated?: number; error?: string; message?: string } | null;
+        if (response.ok) {
+          updated = Number(body?.updated ?? 0);
+        } else {
+          console.warn("update-member-profile direct fetch failed:", body?.error || body?.message || `HTTP ${response.status}`);
+        }
+      } catch (error) {
+        console.warn("update-member-profile direct fetch threw:", error);
+      }
+    }
+  }
+
+  return updated;
+}
+
 async function persistMember(member: Member) {
   if (!supabaseClient) return;
   const normalizedEmail = member.email.trim().toLowerCase();
@@ -806,76 +889,23 @@ async function persistMember(member: Member) {
     return "";
   })();
 
+  const isProfileBlobSave = personalGoalsContainsProfileBlob(member.personalGoals);
   const shouldUseMemberProfileSync =
-    roleClaim === "member" || (authenticatedEmail && authenticatedEmail === normalizedEmail);
+    roleClaim === "member" ||
+    (authenticatedEmail && authenticatedEmail === normalizedEmail) ||
+    (Boolean(authenticatedEmail) && isProfileBlobSave);
 
   if (shouldUseMemberProfileSync) {
     const syncEmails = Array.from(
       new Set(
         [normalizedEmail, authenticatedEmail]
           .map((value) => String(value ?? "").trim().toLowerCase())
-          .filter((value) => value && value.includes("@"))
-      )
+          .filter((value) => value && value.includes("@")),
+      ),
     );
-    const syncPayload = {
-      email: authenticatedEmail || normalizedEmail,
-      emails: syncEmails,
-      memberId: member.id,
-      memberIds: relatedMemberIds,
-      targetName: member.name,
-      changes: {
-        name: member.name,
-        phone: member.phone,
-        birthDate: member.birthDate,
-        goal: member.goal,
-        focus: member.focus,
-        injuries: member.injuries,
-        personalGoals: member.personalGoals,
-        avatarUrl: member.avatarUrl ?? "",
-      },
-    };
+    let updated = await syncMemberProfileViaEdgeFunction(member, authenticatedEmail, relatedMemberIds);
 
-    let synced = false;
-    const invokeResult = await supabaseClient.functions.invoke("update-member-profile", { body: syncPayload });
-    if (!invokeResult.error) {
-      const updated =
-        invokeResult.data && typeof invokeResult.data === "object" && "updated" in invokeResult.data
-          ? Number((invokeResult.data as { updated?: unknown }).updated ?? 0)
-          : 0;
-      synced = updated > 0;
-    } else {
-      console.warn("update-member-profile invoke failed:", invokeResult.error.message);
-    }
-
-    if (!synced && supabaseUrl && supabaseAnonKey) {
-      const {
-        data: { session },
-      } = await supabaseClient.auth.getSession();
-      const accessToken = session?.access_token ?? "";
-      if (accessToken) {
-        try {
-          const response = await fetch(`${supabaseUrl}/functions/v1/update-member-profile`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: supabaseAnonKey,
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify(syncPayload),
-          });
-          const body = (await response.json().catch(() => null)) as { updated?: number; error?: string; message?: string } | null;
-          if (response.ok && Number(body?.updated ?? 0) > 0) {
-            synced = true;
-          } else if (!response.ok) {
-            console.warn("update-member-profile direct fetch failed:", body?.error || body?.message || `HTTP ${response.status}`);
-          }
-        } catch (error) {
-          console.warn("update-member-profile direct fetch threw:", error);
-        }
-      }
-    }
-
-    if (!synced) {
+    if (updated === 0) {
       const directClauses = [
         `id.eq.${member.id.trim()}`,
         ...syncEmails.map((email) => `email.eq.${email}`),
@@ -895,12 +925,20 @@ async function persistMember(member: Member) {
         })
         .or(directClauses.join(","))
         .select("id");
-      if (directUpdate.error || (directUpdate.data?.length ?? 0) === 0) {
+      if (!directUpdate.error && (directUpdate.data?.length ?? 0) > 0) {
+        updated = directUpdate.data?.length ?? 0;
+      } else {
         console.warn(
           "Supabase member fallback update failed:",
-          directUpdate.error?.message || "No rows updated via fallback path"
+          directUpdate.error?.message || "No rows updated via fallback path",
         );
       }
+    }
+
+    if (updated === 0 && isProfileBlobSave) {
+      throw new Error(
+        "Kunne ikke lagre oppstartsskjema til skyen. Sjekk nettverk og at du er logget inn med riktig e-post, og prøv igjen.",
+      );
     }
     return;
   }
