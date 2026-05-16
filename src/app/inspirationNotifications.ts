@@ -10,7 +10,17 @@ export function parseInspirationNotificationTimestamp(item: InspirationNotificat
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-/** Varseltekst i klokken — tittel beskriver type, detalj er innleggets navn. */
+function inspirationAlertTypeLabel(item: InspirationNotificationItem): string {
+  if (item.kind === "program") return "Nytt treningsprogram";
+  if (item.kind === "periodPlan") return "Ny periodeplan";
+  if (item.category === "news") return "Ny info fra senteret";
+  if (item.category === "recipes") return "Ny oppskrift";
+  if (item.category === "tips") return "Nytt råd";
+  if (item.category === "programs") return "Nytt program";
+  return "Nytt i inspirasjon";
+}
+
+/** Varseltekst i klokken — tittel er innleggets navn, detalj er type. */
 export function buildInspirationNotificationAlertCopy(item: InspirationNotificationItem): {
   title: string;
   text: string;
@@ -18,29 +28,15 @@ export function buildInspirationNotificationAlertCopy(item: InspirationNotificat
 } {
   const postTitle = item.title.trim();
   const description = item.description.trim();
-
-  let title: string;
-  if (item.kind === "program") {
-    title = "Nytt treningsprogram i inspirasjon";
-  } else if (item.kind === "periodPlan") {
-    title = "Ny periodeplan i inspirasjon";
-  } else if (item.category === "news") {
-    title = "Ny info fra senteret";
-  } else if (item.category === "recipes") {
-    title = "Ny oppskrift i inspirasjon";
-  } else if (item.category === "tips") {
-    title = "Nytt råd i inspirasjon";
-  } else if (item.category === "programs") {
-    title = "Nytt i treningsprogram";
-  } else {
-    title = "Nytt i inspirasjon";
-  }
-
-  const detail = postTitle || (description.length > 72 ? `${description.slice(0, 72)}…` : description) || "Trykk for å åpne innlegget.";
+  const typeLabel = inspirationAlertTypeLabel(item);
+  const summary =
+    postTitle ||
+    (description.length > 72 ? `${description.slice(0, 72)}…` : description) ||
+    "Nytt innlegg i inspirasjon";
 
   return {
-    title,
-    text: postTitle || title,
-    detail,
+    title: summary,
+    text: summary,
+    detail: typeLabel,
   };
 }

@@ -13,12 +13,12 @@ function item(partial: Partial<InspirationNotificationItem> & Pick<InspirationNo
 }
 
 describe("inspirationNotifications", () => {
-  it("uses program-specific alert title", () => {
+  it("uses post title as primary alert text and type as detail", () => {
     const copy = buildInspirationNotificationAlertCopy(
       item({ id: "inspiration-1", title: "Styrke A", kind: "program", category: "programs" }),
     );
-    expect(copy.title).toBe("Nytt treningsprogram i inspirasjon");
-    expect(copy.detail).toBe("Styrke A");
+    expect(copy.title).toBe("Styrke A");
+    expect(copy.detail).toBe("Nytt treningsprogram");
   });
 
   it("parses publish time from inspiration id", () => {

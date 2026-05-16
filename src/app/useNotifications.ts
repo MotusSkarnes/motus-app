@@ -48,6 +48,15 @@ function parseTimestamp(value: string, fallbackOrder: number): number {
   return Number.isFinite(parsed) ? parsed : fallbackOrder;
 }
 
+function sortAlertsForDisplay<T extends { timestamp: number; isUnread?: boolean; unread?: boolean }>(alerts: T[]): T[] {
+  return [...alerts].sort((a, b) => {
+    const aUnread = Boolean(a.isUnread ?? a.unread);
+    const bUnread = Boolean(b.isUnread ?? b.unread);
+    if (aUnread !== bUnread) return aUnread ? -1 : 1;
+    return b.timestamp - a.timestamp;
+  });
+}
+
 function isCompletedWorkoutLog(log: WorkoutLog): boolean {
   const status = String(log.status ?? "").trim();
   if (status === "Fullført") return true;
@@ -378,22 +387,20 @@ export function useNotifications({
 
   const memberInspirationAlerts = useMemo(
     () =>
-      inspirationItems
-        .filter((item) => !seenMemberInspirationIds.includes(item.id))
-        .map((item, index) => {
-          const copy = buildInspirationNotificationAlertCopy(item);
-          return {
-            id: `member-inspiration-${item.id}`,
-            kind: "inspiration" as const,
-            title: copy.title,
-            text: copy.text,
-            detail: copy.detail,
-            timestamp: parseInspirationNotificationTimestamp(item) || parseTimestamp(item.createdAt, index + 1),
-            targetTab: "inspiration" as const,
-            unread: true,
-            inspirationItemId: item.id,
-          };
-        }),
+      inspirationItems.map((item, index) => {
+        const copy = buildInspirationNotificationAlertCopy(item);
+        return {
+          id: `member-inspiration-${item.id}`,
+          kind: "inspiration" as const,
+          title: copy.title,
+          text: copy.text,
+          detail: copy.detail,
+          timestamp: parseInspirationNotificationTimestamp(item) || parseTimestamp(item.createdAt, index + 1),
+          targetTab: "inspiration" as const,
+          unread: !seenMemberInspirationIds.includes(item.id),
+          inspirationItemId: item.id,
+        };
+      }),
     [inspirationItems, seenMemberInspirationIds],
   );
 
@@ -452,7 +459,7 @@ export function useNotifications({
         isOpened: openedMemberAlertIds.includes(alert.id),
       })),
     ];
-    return combined.sort((a, b) => b.timestamp - a.timestamp).slice(0, ALERT_HISTORY_LIMIT);
+    return sortAlertsForDisplay(combined).slice(0, ALERT_HISTORY_LIMIT);
   }, [memberMessageAlerts, memberProgramAlerts, memberWorkoutCommentAlerts, memberInspirationAlerts, openedMemberAlertIds]);
 
   const memberUnreadAlerts = useMemo(
@@ -491,7 +498,6 @@ export function useNotifications({
     setSeenMemberWorkoutCommentKeys((prev) =>
       Array.from(new Set([...prev, ...memberWorkoutCommentAlerts.map((alert) => alert.seenKey)])),
     );
-    markMemberInspirationAsSeen();
   }
 
   function handleTrainerBellToggle() {

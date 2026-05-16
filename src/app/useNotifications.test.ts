@@ -195,8 +195,55 @@ describe("useNotifications workout comment alerts", () => {
       expect(result.current.memberUnreadCount).toBe(1);
       const inspoAlert = result.current.memberVisibleAlerts.find((alert) => alert.kind === "inspiration");
       expect(inspoAlert).toBeDefined();
-      expect(inspoAlert?.title).toBe("Ny oppskrift i inspirasjon");
-      expect(inspoAlert?.detail).toBe("Proteinpannekaker");
+      expect(inspoAlert?.title).toBe("Proteinpannekaker");
+      expect(inspoAlert?.detail).toBe("Ny oppskrift");
+    });
+  });
+
+  it("keeps unread inspiration visible after opening the bell", async () => {
+    window.localStorage.setItem("motus.notifications.memberInspirationBaselineAt", String(Date.now()));
+    window.localStorage.setItem("motus.notifications.memberSeenInspirationIds", JSON.stringify([]));
+
+    window.localStorage.setItem(
+      INSPIRATION_STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: "inspiration-new",
+          title: "Sommerkondis",
+          description: "Ny økt",
+          createdAt: "2026-05-16",
+          category: "programs",
+          kind: "article",
+        },
+      ]),
+    );
+
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [],
+        logs: [],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+        memberViewId: "member-1",
+        setMemberTab: () => {},
+      }),
+    );
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent(INSPIRATION_CHANGED_EVENT));
+    });
+
+    await waitFor(() => expect(result.current.memberUnreadCount).toBe(1));
+
+    act(() => {
+      result.current.handleMemberBellToggle();
+    });
+
+    await waitFor(() => {
+      const inspoAlert = result.current.memberVisibleAlerts.find((alert) => alert.kind === "inspiration");
+      expect(inspoAlert).toBeDefined();
+      expect(inspoAlert?.title).toBe("Sommerkondis");
+      expect(inspoAlert?.isUnread).toBe(true);
     });
   });
 
