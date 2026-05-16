@@ -811,38 +811,56 @@ export async function persistOnboardingToSupabase(
     ),
   );
 
-  let updated = await syncMemberProfileViaEdgeFunction(memberForSync, authEmail, dbMemberIds);
+  const syncResult = await syncMemberProfileViaEdgeFunction(memberForSync, authEmail, dbMemberIds);
+  let updated = syncResult.updated;
+  let lastError = syncResult.errorMessage;
 
   if (updated === 0) {
-    const clauses = [
+    const idClauses = [
       ...(persistId ? [`id.eq.${persistId}`] : []),
       ...dbMemberIds.map((id) => `id.eq.${id}`),
-      `email.eq.${syncEmail}`,
     ];
-    const directUpdate = await supabaseClient
-      .from("members")
-      .update({
-        goal: changes.goal,
-        focus: changes.focus,
-        injuries: changes.injuries,
-        personal_goals: changes.personalGoals,
-        level: changes.level,
-      })
-      .or(Array.from(new Set(clauses)).join(","))
-      .select("id");
+    let directUpdate = idClauses.length
+      ? await supabaseClient
+          .from("members")
+          .update({
+            goal: changes.goal,
+            focus: changes.focus,
+            injuries: changes.injuries,
+            personal_goals: changes.personalGoals,
+            level: changes.level,
+          })
+          .or(idClauses.join(","))
+          .select("id")
+      : { data: [] as Array<{ id: string }>, error: null as { message: string } | null };
+
+    if ((directUpdate.data?.length ?? 0) === 0) {
+      directUpdate = await supabaseClient
+        .from("members")
+        .update({
+          goal: changes.goal,
+          focus: changes.focus,
+          injuries: changes.injuries,
+          personal_goals: changes.personalGoals,
+          level: changes.level,
+        })
+        .ilike("email", syncEmail)
+        .select("id");
+    }
+
     if (!directUpdate.error && (directUpdate.data?.length ?? 0) > 0) {
       updated = directUpdate.data?.length ?? 0;
     } else {
-      console.warn(
-        "Onboarding direct update failed:",
-        directUpdate.error?.message || "No rows updated",
-      );
+      lastError = directUpdate.error?.message || lastError || "Ingen medlemsrader ble oppdatert";
+      console.warn("Onboarding direct update failed:", lastError);
     }
   }
 
   if (updated === 0) {
     throw new Error(
-      "Kunne ikke lagre oppstartsskjema i databasen. Sjekk at du er logget inn med riktig e-post og prøv igjen.",
+      lastError
+        ? `Kunne ikke lagre oppstartsskjema: ${lastError}`
+        : "Kunne ikke lagre oppstartsskjema i databasen. Sjekk at du er logget inn med riktig e-post og prøv igjen.",
     );
   }
 
@@ -877,12 +895,14 @@ function personalGoalsContainsProfileBlob(personalGoals: string | undefined): bo
   );
 }
 
+type ProfileSyncResult = { updated: number; errorMessage: string | null };
+
 async function syncMemberProfileViaEdgeFunction(
   member: Member,
   authenticatedEmail: string,
   relatedMemberIds: string[],
-): Promise<number> {
-  if (!supabaseClient) return 0;
+): Promise<ProfileSyncResult> {
+  if (!supabaseClient) return { updated: 0, errorMessage: "Supabase-klient mangler" };
   const normalizedEmail = member.email.trim().toLowerCase();
   const syncEmails = Array.from(
     new Set(
@@ -910,13 +930,20 @@ async function syncMemberProfileViaEdgeFunction(
   };
 
   let updated = 0;
+  let errorMessage: string | null = null;
   const invokeResult = await supabaseClient.functions.invoke("update-member-profile", { body: syncPayload });
   if (!invokeResult.error) {
-    updated =
-      invokeResult.data && typeof invokeResult.data === "object" && "updated" in invokeResult.data
-        ? Number((invokeResult.data as { updated?: unknown }).updated ?? 0)
-        : 0;
+    const data = invokeResult.data;
+    if (data && typeof data === "object") {
+      if ("error" in data && typeof (data as { error?: unknown }).error === "string") {
+        errorMessage = String((data as { error: string }).error);
+      }
+      if ("updated" in data) {
+        updated = Number((data as { updated?: unknown }).updated ?? 0);
+      }
+    }
   } else {
+    errorMessage = invokeResult.error.message;
     console.warn("update-member-profile invoke failed:", invokeResult.error.message);
   }
 
@@ -939,16 +966,19 @@ async function syncMemberProfileViaEdgeFunction(
         const body = (await response.json().catch(() => null)) as { updated?: number; error?: string; message?: string } | null;
         if (response.ok) {
           updated = Number(body?.updated ?? 0);
+          if (updated === 0 && body?.error) errorMessage = String(body.error);
         } else {
-          console.warn("update-member-profile direct fetch failed:", body?.error || body?.message || `HTTP ${response.status}`);
+          errorMessage = body?.error || body?.message || `HTTP ${response.status}`;
+          console.warn("update-member-profile direct fetch failed:", errorMessage);
         }
       } catch (error) {
+        errorMessage = error instanceof Error ? error.message : "Nettverksfeil mot update-member-profile";
         console.warn("update-member-profile direct fetch threw:", error);
       }
     }
   }
 
-  return updated;
+  return { updated, errorMessage };
 }
 
 async function persistMember(member: Member) {
@@ -1010,14 +1040,11 @@ async function persistMember(member: Member) {
           .filter((value) => value && value.includes("@")),
       ),
     );
-    let updated = await syncMemberProfileViaEdgeFunction(memberForPersist, authenticatedEmail, relatedMemberIds);
+    const syncResult = await syncMemberProfileViaEdgeFunction(memberForPersist, authenticatedEmail, relatedMemberIds);
+    let updated = syncResult.updated;
 
     if (updated === 0) {
-      const directClauses = [
-        `id.eq.${memberForPersist.id.trim()}`,
-        ...syncEmails.map((email) => `email.eq.${email}`),
-      ];
-      const directUpdate = await supabaseClient
+      let directUpdate = await supabaseClient
         .from("members")
         .update({
           name: memberForPersist.name,
@@ -1030,14 +1057,31 @@ async function persistMember(member: Member) {
           personal_goals: memberForPersist.personalGoals,
           avatar_url: memberForPersist.avatarUrl ?? "",
         })
-        .or(directClauses.join(","))
+        .eq("id", memberForPersist.id.trim())
         .select("id");
+      if ((directUpdate.data?.length ?? 0) === 0) {
+        directUpdate = await supabaseClient
+          .from("members")
+          .update({
+            name: memberForPersist.name,
+            email: normalizedEmail,
+            phone: memberForPersist.phone,
+            birth_date: memberForPersist.birthDate,
+            goal: memberForPersist.goal,
+            focus: memberForPersist.focus,
+            injuries: memberForPersist.injuries,
+            personal_goals: memberForPersist.personalGoals,
+            avatar_url: memberForPersist.avatarUrl ?? "",
+          })
+          .ilike("email", normalizedEmail)
+          .select("id");
+      }
       if (!directUpdate.error && (directUpdate.data?.length ?? 0) > 0) {
         updated = directUpdate.data?.length ?? 0;
       } else {
         console.warn(
           "Supabase member fallback update failed:",
-          directUpdate.error?.message || "No rows updated via fallback path",
+          directUpdate.error?.message || syncResult.errorMessage || "No rows updated via fallback path",
         );
       }
     }

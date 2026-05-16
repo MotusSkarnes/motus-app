@@ -134,8 +134,12 @@ export function MemberOnboarding({ memberName, initialDraft, onComplete, onClose
       };
       await onComplete(completed);
       setSaved(true);
-    } catch {
-      setError("Kunne ikke lagre svarene til skyen. Sjekk nettverk og prøv igjen.");
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Kunne ikke lagre svarene til skyen. Sjekk nettverk og prøv igjen.",
+      );
     } finally {
       setSubmitting(false);
     }

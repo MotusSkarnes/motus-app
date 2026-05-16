@@ -175,20 +175,24 @@ Deno.serve(async (req) => {
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
-  const anchorClauses = [];
-  if (requestedEmail) anchorClauses.push(`email.eq.${requestedEmail}`);
-  anchorClauses.push(`email.eq.${currentEmail}`);
-  requestedEmails.forEach((email) => anchorClauses.push(`email.eq.${email}`));
-  if (authMemberId) anchorClauses.push(`id.eq.${authMemberId}`);
-  if (requestedMemberId) anchorClauses.push(`id.eq.${requestedMemberId}`);
-  requestedMemberIds.forEach((id) => anchorClauses.push(`id.eq.${id}`));
-  const { data: anchorRows, error: anchorError } = await adminClient
-    .from("members")
-    .select("id,email,name,owner_user_id,customer_type")
-    .or(anchorClauses.join(","));
-
-  if (anchorError) {
-    return jsonResponse(500, { error: `Could not resolve member anchors: ${anchorError.message}` });
+  // PostgREST `.or('email.eq.foo@bar.com')` breaks on dots in values — resolve anchors by id + in-memory email match.
+  const anchorIdCandidates = Array.from(
+    new Set(
+      [authMemberId, requestedMemberId, ...requestedMemberIds]
+        .map((value) => normalizeString(value))
+        .filter(Boolean),
+    ),
+  );
+  let anchorRows: Array<{ id: string; email: string; owner_user_id: string | null; customer_type: string | null }> = [];
+  if (anchorIdCandidates.length) {
+    const { data: byIdRows, error: byIdError } = await adminClient
+      .from("members")
+      .select("id,email,name,owner_user_id,customer_type")
+      .in("id", anchorIdCandidates);
+    if (byIdError) {
+      return jsonResponse(500, { error: `Could not resolve member anchors by id: ${byIdError.message}` });
+    }
+    anchorRows = (byIdRows ?? []) as Array<{ id: string; email: string; owner_user_id: string | null; customer_type: string | null }>;
   }
 
   const visibleAnchors = (anchorRows ?? []).filter((row) => {
@@ -315,12 +319,25 @@ Deno.serve(async (req) => {
     }
   }
 
-  if (hasProfileUpdates && targetEmails.length && userRole !== "trainer") {
-    const byEmailResult = await adminClient.from("members").update(profileUpdateFields).in("email", targetEmails).select("id");
-    if (byEmailResult.error) {
-      return jsonResponse(500, { error: `Could not update member rows by email: ${byEmailResult.error.message}` });
+  if (hasProfileUpdates && normalizedTargetEmails.size > 0 && userRole !== "trainer") {
+    const emailMatchedIds = Array.from(
+      new Set(
+        expandedRows
+          .map((row) => normalizeString(row.id))
+          .filter(Boolean),
+      ),
+    );
+    if (emailMatchedIds.length) {
+      const byEmailIdsResult = await adminClient
+        .from("members")
+        .update(profileUpdateFields)
+        .in("id", emailMatchedIds)
+        .select("id");
+      if (byEmailIdsResult.error) {
+        return jsonResponse(500, { error: `Could not update member rows by email: ${byEmailIdsResult.error.message}` });
+      }
+      mergeUpdated(byEmailIdsResult.data);
     }
-    mergeUpdated(byEmailResult.data);
   }
 
   if (canEditMembershipFields && Object.keys(rosterUpdateFields).length > 0) {
