@@ -53,7 +53,7 @@ const INSPO_CARD_DESCRIPTION_MAX = 100;
 const INSPO_CARD_TITLE_MAX = 72;
 const INSPO_FEED_CARD_WIDTH_CLASS = "w-52 sm:w-56";
 const INSPO_FEED_CARD_HEIGHT_CLASS = "h-[22.5rem] sm:h-[23.5rem]";
-const INSPO_FEED_CARD_IMAGE_CLASS = "h-[8.5rem] sm:h-[9rem]";
+const INSPO_FEED_CARD_IMAGE_CLASS = "min-h-[9rem] flex-1 sm:min-h-[9.5rem]";
 const INSPO_FEED_CARD_ACTION_CLASS = "!min-h-8 !px-2.5 !py-1.5 !text-[11px] !leading-tight";
 
 const INSPIRATION_FEED_SECTIONS: readonly { category: InspirationCategory; title: string }[] = [
@@ -684,7 +684,7 @@ export function InspirationHub({
         ) : null}
         <button type="button" onClick={() => setExpandedItemId(item.id)} className="flex min-h-0 flex-1 flex-col text-left">
           <div
-            className={`w-full shrink-0 overflow-hidden bg-slate-100 ${INSPO_FEED_CARD_IMAGE_CLASS}`}
+            className={`w-full min-h-0 overflow-hidden bg-slate-100 ${INSPO_FEED_CARD_IMAGE_CLASS}`}
             style={!item.imageUrl ? { background: MOTUS_GRADIENT } : undefined}
           >
             {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
@@ -694,7 +694,7 @@ export function InspirationHub({
               </div>
             ) : null}
           </div>
-          <div className="flex min-h-0 flex-1 flex-col p-2.5">
+          <div className="shrink-0 flex flex-col p-2.5 pt-2">
             <div className="flex min-h-[1.125rem] items-center justify-between gap-1.5">
               <span
                 className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm"
@@ -705,15 +705,15 @@ export function InspirationHub({
               </span>
               <span className="truncate text-[9px] text-slate-400">{item.tag}</span>
             </div>
-            <h3 className="mt-1.5 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-snug text-slate-950">
+            <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-slate-950">
               {item.title}
             </h3>
-            <p className="mt-0.5 line-clamp-2 min-h-[2rem] text-xs leading-snug text-slate-500">
+            <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-slate-500">
               {item.description || "\u00a0"}
             </p>
           </div>
         </button>
-        <div className="shrink-0 border-t border-slate-100 px-2.5 py-2">
+        <div className="shrink-0 border-t border-slate-100 px-2.5 py-1.5">
           <OutlineButton onClick={() => setExpandedItemId(item.id)} className={`w-full ${INSPO_FEED_CARD_ACTION_CLASS}`}>
             Les mer
           </OutlineButton>
