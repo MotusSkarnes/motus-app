@@ -4618,17 +4618,17 @@ export function MemberPortal(props: MemberPortalProps) {
                   <p className="text-sm text-slate-500">Enkel oversikt</p>
                 </div>
               </div>
-              <div className="mt-5 rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+              <div className="mt-3 rounded-lg border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex items-center gap-2">
                   <div
-                    className="rounded-xl p-2 text-white shadow-sm"
+                    className="rounded-lg p-1.5 text-white shadow-sm"
                     style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
                   >
-                    <Dumbbell className="h-4 w-4" aria-hidden />
+                    <Dumbbell className="h-3.5 w-3.5" aria-hidden />
                   </div>
-                  <div className="text-sm font-semibold text-slate-800">Mine treningsprogram</div>
+                  <div className="text-xs font-semibold text-slate-800">Mine treningsprogram</div>
                 </div>
-                <div className="mt-4 space-y-3">
+                <div className="mt-2 space-y-2">
                   {memberAssignedPrograms.length === 0 ? (
                     <EmptyState
                       icon="📋"
@@ -4657,36 +4657,36 @@ export function MemberPortal(props: MemberPortalProps) {
                     const isExpanded = expandedProgramId === program.id;
                     const programAuthorLine = programAuthorCredit(program);
                     return (
-                      <div key={program.id} className="rounded-xl border bg-white p-3 sm:p-4 space-y-3">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="min-w-0">
-                            <div className="font-semibold text-sm">{program.title}</div>
+                      <div key={program.id} className="rounded-lg border bg-white p-2.5 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-semibold leading-snug text-slate-900">{program.title}</div>
                             {program.goal?.trim() ? (
-                              <div className="mt-0.5 text-xs text-slate-500">{program.goal.trim()}</div>
+                              <div className="mt-0.5 line-clamp-1 text-[11px] text-slate-500">{program.goal.trim()}</div>
                             ) : null}
                             {programAuthorLine ? (
-                              <div className="mt-1 text-[11px] font-medium text-slate-600">{programAuthorLine}</div>
+                              <div className="mt-0.5 text-[10px] font-medium text-slate-600">{programAuthorLine}</div>
                             ) : null}
-                            <div className="mt-1 text-[11px] text-slate-400">{program.createdAt}</div>
+                            <div className="mt-0.5 text-[10px] text-slate-400">{program.createdAt}</div>
                           </div>
-                          <div className="grid grid-cols-3 gap-1.5 sm:flex sm:flex-row sm:gap-2">
+                          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
                             <OutlineButton
-                              className="w-full rounded-lg px-2 py-1.5 text-[11px] font-medium sm:w-auto sm:px-2.5"
+                              className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
                               onClick={() => setExpandedProgramId((prev) => (prev === program.id ? null : program.id))}
                             >
-                              <span className="inline-flex items-center justify-center gap-1.5">
-                                {isExpanded ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                                <span>{isExpanded ? "Skjul" : "Vis økt"}</span>
+                              <span className="inline-flex items-center justify-center gap-1">
+                                {isExpanded ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                                <span>{isExpanded ? "Skjul" : "Vis"}</span>
                               </span>
                             </OutlineButton>
-                            <OutlineButton className="w-full rounded-lg px-2 py-1.5 text-[11px] font-medium sm:w-auto sm:px-2.5" onClick={() => handlePrintProgram(program)}> 
-                              <span className="inline-flex items-center justify-center gap-1.5">
-                                <Printer className="h-3.5 w-3.5" />
+                            <OutlineButton className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight" onClick={() => handlePrintProgram(program)}> 
+                              <span className="inline-flex items-center justify-center gap-1">
+                                <Printer className="h-3 w-3" />
                                 <span>PDF</span>
                               </span>
                             </OutlineButton>
                             <GradientButton
-                              className="w-full rounded-lg px-2 py-1.5 text-[11px] font-medium sm:w-auto sm:px-2.5"
+                              className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
                               onClick={() => {
                                 if (intervalProgramIdSet.has(program.id)) {
                                   openIntervalTimerModal(program.id);
@@ -4695,46 +4695,46 @@ export function MemberPortal(props: MemberPortalProps) {
                                 startWorkoutMode(program.id, buildStartWorkoutOptions(program));
                               }}
                             >
-                              <span className="inline-flex items-center justify-center gap-1.5">
-                                <Play className="h-3.5 w-3.5" />
+                              <span className="inline-flex items-center justify-center gap-1">
+                                <Play className="h-3 w-3" />
                                 <span>Start</span>
                               </span>
                             </GradientButton>
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-1.5 border-t pt-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                          <span className="mr-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Bibliotek</span>
+                        <div className="flex flex-wrap items-center gap-1 border-t pt-1.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                          <span className="mr-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-400">Bibliotek</span>
                           <OutlineButton
                             type="button"
-                            className="rounded-lg px-2 py-1 text-[11px] font-medium"
+                            className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
                             onClick={() => {
                               updateProgramMemberLibraryStatus(program.id, "hidden");
                               setLibraryActionStatus("Programmet er skjult fra oversikten.");
                             }}
                           >
-                            <span className="inline-flex items-center gap-1.5">
-                              <EyeOff className="h-3.5 w-3.5" />
+                            <span className="inline-flex items-center gap-1">
+                              <EyeOff className="h-3 w-3" />
                               <span>Skjul</span>
                             </span>
                           </OutlineButton>
                           <OutlineButton
                             type="button"
-                            className="rounded-lg px-2 py-1 text-[11px] font-medium"
+                            className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
                             onClick={() => {
                               updateProgramMemberLibraryStatus(program.id, "archived");
                               setLibraryActionStatus("Programmet er arkivert.");
                             }}
                           >
-                            <span className="inline-flex items-center gap-1.5">
-                              <Archive className="h-3.5 w-3.5" />
+                            <span className="inline-flex items-center gap-1">
+                              <Archive className="h-3 w-3" />
                               <span>Arkiver</span>
                             </span>
                           </OutlineButton>
                           {program.programCreatedBy === "member" ? (
                             <DangerButton
                               type="button"
-                              className="rounded-lg px-2 py-1 text-[11px] font-medium"
+                              className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
                               onClick={() =>
                                 setConfirmDialog({
                                   title: "Slette program?",
@@ -4748,8 +4748,8 @@ export function MemberPortal(props: MemberPortalProps) {
                                 })
                               }
                             >
-                              <span className="inline-flex items-center gap-1.5">
-                                <Trash2 className="h-3.5 w-3.5" />
+                              <span className="inline-flex items-center gap-1">
+                                <Trash2 className="h-3 w-3" />
                                 <span>Slett</span>
                               </span>
                             </DangerButton>
@@ -4758,9 +4758,9 @@ export function MemberPortal(props: MemberPortalProps) {
 
                         {isExpanded ? (
                           <>
-                            {program.notes ? <div className="rounded-xl border bg-slate-50 p-3 text-sm text-slate-600">{program.notes}</div> : null}
+                            {program.notes ? <div className="rounded-lg border bg-slate-50 px-2.5 py-2 text-xs text-slate-600">{program.notes}</div> : null}
 
-                            <div className="space-y-2">
+                            <div className="space-y-1.5">
                               {program.exercises.length === 0 ? (
                                 <EmptyState
                                   icon="🧩"
@@ -4773,9 +4773,9 @@ export function MemberPortal(props: MemberPortalProps) {
                                 const lib = exercises.find((e) => e.id === exercise.exerciseId);
                                 const isStretch = lib?.category === "Uttøyning";
                                 return (
-                                <div key={exercise.id} className="rounded-xl border bg-slate-50 p-2.5">
-                                  <div className="font-medium text-sm">{exercise.exerciseName}</div>
-                                  <div className="mt-0.5 text-xs text-slate-500">
+                                <div key={exercise.id} className="rounded-lg border bg-slate-50 px-2 py-1.5" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
+                                  <div className="text-xs font-medium text-slate-800">{exercise.exerciseName}</div>
+                                  <div className="mt-0.5 text-[11px] text-slate-500">
                                     {exercise.durationMinutes
                                       ? `${exercise.sets} runder × ${exercise.durationMinutes} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s${cardioHrPrescriptionSuffixForMember(exercise)}`
                                       : isStretch
@@ -4783,8 +4783,8 @@ export function MemberPortal(props: MemberPortalProps) {
                                         : `${exercise.sets}×${exercise.reps} · ${exercise.weight}kg · ${exercise.restSeconds}s`}
                                   </div>
                                   {!exercise.durationMinutes && !isStretch ? (
-                                    <div className="mt-2 rounded-lg border bg-white px-2.5 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                      <div className="text-[11px] text-slate-500">Foreslått vekt fra forrige gang (kan endres)</div>
+                                    <div className="mt-1.5 rounded-lg border bg-white px-2 py-1.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                      <div className="text-[10px] text-slate-500">Foreslått vekt fra forrige gang (kan endres)</div>
                                       <TextInput
                                         value={resolveSuggestedWorkoutWeight(exercise)}
                                         onChange={(event) =>
@@ -4794,12 +4794,12 @@ export function MemberPortal(props: MemberPortalProps) {
                                           }))
                                         }
                                         placeholder="Kg"
-                                        className="mt-1"
+                                        className="mt-1 !h-8 !text-xs"
                                       />
                                     </div>
                                   ) : !exercise.durationMinutes && isStretch ? (
-                                    <div className="mt-2 rounded-lg border bg-white px-2.5 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                      <div className="text-[11px] text-slate-500">Foreslått hold fra forrige gang (kan endres)</div>
+                                    <div className="mt-1.5 rounded-lg border bg-white px-2 py-1.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                      <div className="text-[10px] text-slate-500">Foreslått hold fra forrige gang (kan endres)</div>
                                       <TextInput
                                         value={resolveSuggestedWorkoutWeight(exercise)}
                                         onChange={(event) =>
@@ -4809,11 +4809,11 @@ export function MemberPortal(props: MemberPortalProps) {
                                           }))
                                         }
                                         placeholder="Sekunder"
-                                        className="mt-1"
+                                        className="mt-1 !h-8 !text-xs"
                                       />
                                     </div>
                                   ) : null}
-                                  {exercise.notes ? <div className="mt-0.5 text-[11px] text-slate-500">{exercise.notes}</div> : null}
+                                  {exercise.notes ? <div className="mt-0.5 text-[10px] text-slate-500">{exercise.notes}</div> : null}
                                 </div>
                               );
                               })}
@@ -4830,7 +4830,7 @@ export function MemberPortal(props: MemberPortalProps) {
                         onClick={() => setShowLibraryHiddenSection((open) => !open)}
                         className="flex w-full items-center justify-between gap-2 text-left"
                       >
-                        <span className="text-sm font-semibold text-slate-800">Skjulte program ({memberProgramsLibraryHidden.length})</span>
+                        <span className="text-xs font-semibold text-slate-800">Skjulte program ({memberProgramsLibraryHidden.length})</span>
                         <span className="text-xs font-medium text-slate-500">{showLibraryHiddenSection ? "Skjul liste" : "Vis liste"}</span>
                       </button>
                       {showLibraryHiddenSection ? (
@@ -4838,7 +4838,7 @@ export function MemberPortal(props: MemberPortalProps) {
                           {memberProgramsLibraryHidden.map((program) => (
                             <div
                               key={program.id}
-                              className="flex flex-col gap-2 rounded-xl border bg-white p-3 sm:flex-row sm:items-center sm:justify-between"
+                              className="flex items-center justify-between gap-2 rounded-lg border bg-white px-2.5 py-2"
                               style={{ borderColor: "rgba(15,23,42,0.08)" }}
                             >
                               <div className="min-w-0">
@@ -4850,7 +4850,7 @@ export function MemberPortal(props: MemberPortalProps) {
                               </div>
                               <OutlineButton
                                 type="button"
-                                className="w-full shrink-0 px-3 py-2 text-xs sm:w-auto"
+                                className="shrink-0 !min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
                                 onClick={() => {
                                   updateProgramMemberLibraryStatus(program.id, undefined);
                                   setLibraryActionStatus("Programmet er tilbake i oversikten.");
@@ -4871,7 +4871,7 @@ export function MemberPortal(props: MemberPortalProps) {
                         onClick={() => setShowLibraryArchivedSection((open) => !open)}
                         className="flex w-full items-center justify-between gap-2 text-left"
                       >
-                        <span className="text-sm font-semibold text-slate-800">Arkiverte program ({memberProgramsLibraryArchived.length})</span>
+                        <span className="text-xs font-semibold text-slate-800">Arkiverte program ({memberProgramsLibraryArchived.length})</span>
                         <span className="text-xs font-medium text-slate-500">{showLibraryArchivedSection ? "Skjul liste" : "Vis liste"}</span>
                       </button>
                       {showLibraryArchivedSection ? (
