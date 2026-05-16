@@ -49,14 +49,14 @@ const CATEGORY_META: Record<InspirationCategory, { label: string; plural: string
 
 /** Vertikal rekkefølge på inspo-feed (øverst → nederst). */
 /** Maks lengde for undertekst på inspo-kort (ca. 2 linjer i karusellen). */
-const INSPO_CARD_DESCRIPTION_MAX = 58;
-const INSPO_CARD_TITLE_MAX = 48;
+const INSPO_CARD_DESCRIPTION_MAX = 88;
+const INSPO_CARD_TITLE_MAX = 64;
 const INSPO_FEED_CARD_WIDTH_CLASS = "w-52 sm:w-56";
-const INSPO_FEED_CARD_HEIGHT_CLASS = "h-[19.25rem] sm:h-[20rem]";
+const INSPO_FEED_CARD_HEIGHT_CLASS = "h-[21rem] sm:h-[21.75rem]";
 const INSPO_FEED_CARD_IMAGE_CLASS = "h-[10rem] sm:h-[10.5rem]";
-const INSPO_FEED_CARD_TITLE_CLASS = "line-clamp-2 max-h-[2.5rem] overflow-hidden text-sm font-semibold leading-[1.25rem] text-slate-950";
+const INSPO_FEED_CARD_TITLE_CLASS = "line-clamp-2 min-h-[2.5rem] max-h-[2.5rem] overflow-hidden text-sm font-semibold leading-[1.25rem] text-slate-950";
 const INSPO_FEED_CARD_DESCRIPTION_CLASS =
-  "line-clamp-2 max-h-[2.25rem] overflow-hidden text-xs leading-[1.125rem] text-slate-500";
+  "line-clamp-2 min-h-[2.25rem] max-h-[2.25rem] overflow-hidden text-xs leading-[1.125rem] text-slate-500";
 const INSPO_FEED_CARD_ACTION_CLASS = "!min-h-8 !px-2 !py-1.5 !text-[11px] !leading-tight";
 
 const INSPIRATION_FEED_SECTIONS: readonly { category: InspirationCategory; title: string }[] = [
