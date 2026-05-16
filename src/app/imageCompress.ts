@@ -44,3 +44,20 @@ export async function compressImageFile(file: File, maxSide = 960, quality = 0.8
   const original = await readImageFileAsDataUrl(file);
   return compressImageDataUrl(original, maxSide, quality);
 }
+
+export function dataUrlToBlob(dataUrl: string): Blob | null {
+  const parts = dataUrl.split(",");
+  if (parts.length < 2) return null;
+  const mimeMatch = parts[0].match(/data:(.*?);base64/);
+  const mime = mimeMatch?.[1] ?? "image/jpeg";
+  try {
+    const binary = atob(parts[1]);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mime });
+  } catch {
+    return null;
+  }
+}

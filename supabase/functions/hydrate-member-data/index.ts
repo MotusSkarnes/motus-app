@@ -400,6 +400,12 @@ Deno.serve(async (req) => {
       };
     });
 
+  let inspirationItems: unknown[] = [];
+  const inspirationFeed = await adminClient.from("inspiration_feed").select("items").eq("id", "shared").maybeSingle();
+  if (!inspirationFeed.error && Array.isArray(inspirationFeed.data?.items)) {
+    inspirationItems = inspirationFeed.data.items;
+  }
+
   return jsonResponse(200, {
     members: scopedMembers ?? [],
     programs,
@@ -407,5 +413,6 @@ Deno.serve(async (req) => {
     messages: dedupedMessages ?? [],
     periodPlans,
     exercises,
+    inspirationItems,
   });
 });

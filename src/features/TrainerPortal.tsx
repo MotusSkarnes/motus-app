@@ -4499,7 +4499,10 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                               : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
                           }`}
                         >
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white shadow-sm">
+                          <span
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white shadow-sm"
+                            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                          >
                             <ClipboardList className="h-5 w-5" aria-hidden />
                           </span>
                           <span>
@@ -4695,7 +4698,10 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                     <div className="rounded-xl border-2 border-slate-200 bg-white p-3 sm:p-4 space-y-3 shadow-sm">
                       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-3">
                         <div className="flex items-start gap-3">
-                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
+                          <span
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm"
+                            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                          >
                             <ClipboardList className="h-5 w-5" aria-hidden />
                           </span>
                           <div>

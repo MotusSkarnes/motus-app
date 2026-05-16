@@ -3,10 +3,13 @@ import { CalendarRange, ChevronLeft, ChevronRight, ClipboardList, ImagePlus, Lig
 import { MOTUS } from "../app/data";
 import { compressImageDataUrl, compressImageFile } from "../app/imageCompress";
 import {
+  fetchInspirationItemsForHub,
+  INSPIRATION_CHANGED_EVENT,
   INSPIRATION_STORAGE_KEY,
   notifyInspirationItemsChanged,
-  saveInspirationItemsToStorage,
+  persistInspirationItems,
 } from "../app/inspirationStorage";
+import { isSupabaseConfigured } from "../services/supabaseClient";
 import { buildPeriodPlanProgramSelectOptions, WEEKDAY_PLAN_FIELDS } from "../app/periodPlanBuilder";
 import { normalizePeriodSchedulePlan, syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { WEEKDAY_PLAN_LABELS, WEEKDAY_PLAN_ORDER } from "../app/periodPlanSwaps";
@@ -257,17 +260,49 @@ export function InspirationHub({
   }, [periodPlanTemplateDraft]);
 
   useEffect(() => {
-    if (canManage) return;
-    notifyInspirationItemsChanged();
-  }, [canManage]);
+    let cancelled = false;
+    void (async () => {
+      const remote = await fetchInspirationItemsForHub<InspirationItem>();
+      if (cancelled) return;
+      if (remote !== null) {
+        setItems(remote.length > 0 ? remote : isSupabaseConfigured ? [] : loadInspirationItems());
+        return;
+      }
+      setItems(loadInspirationItems());
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  function commitItems(next: InspirationItem[]): boolean {
-    const result = saveInspirationItemsToStorage(next);
+  useEffect(() => {
+    const syncFromRemote = () => {
+      void (async () => {
+        const remote = await fetchInspirationItemsForHub<InspirationItem>();
+        if (remote !== null) {
+          setItems(remote.length > 0 ? remote : isSupabaseConfigured ? [] : loadInspirationItems());
+        }
+      })();
+    };
+    window.addEventListener(INSPIRATION_CHANGED_EVENT, syncFromRemote);
+    return () => window.removeEventListener(INSPIRATION_CHANGED_EVENT, syncFromRemote);
+  }, []);
+
+  async function commitItems(next: InspirationItem[]): Promise<boolean> {
+    const result = await persistInspirationItems(next);
     if (!result.ok) {
       setActionStatus(result.error);
       return false;
     }
-    setItems(next);
+    const refreshed = await fetchInspirationItemsForHub<InspirationItem>();
+    if (refreshed && refreshed.length > 0) {
+      setItems(refreshed);
+    } else if (refreshed && isSupabaseConfigured) {
+      setItems(refreshed);
+    } else {
+      setItems(next);
+    }
+    notifyInspirationItemsChanged();
     return true;
   }
 
@@ -474,7 +509,7 @@ export function InspirationHub({
             }
           : item,
       );
-      if (!commitItems(next)) return;
+      if (!(await commitItems(next))) return;
       setActionStatus("Endringene er lagret.");
     } else {
       const now = new Date();
@@ -492,10 +527,9 @@ export function InspirationHub({
         programTemplate,
         periodPlanTemplate,
       };
-      if (!commitItems([nextItem, ...items])) return;
+      if (!(await commitItems([nextItem, ...items]))) return;
       setActionStatus("Innlegget er publisert.");
       setActiveCategory(categoryDraft);
-      notifyInspirationItemsChanged();
     }
     resetComposer();
   }
@@ -505,10 +539,12 @@ export function InspirationHub({
     if (!item) return;
     if (!window.confirm(`Slette «${item.title}» fra inspirasjon?`)) return;
     const next = items.filter((entry) => entry.id !== id);
-    if (!commitItems(next)) return;
-    if (editingItemId === id) resetComposer();
-    if (expandedItemId === id) setExpandedItemId(null);
-    setActionStatus("Innlegget er slettet.");
+    void (async () => {
+      if (!(await commitItems(next))) return;
+      if (editingItemId === id) resetComposer();
+      if (expandedItemId === id) setExpandedItemId(null);
+      setActionStatus("Innlegget er slettet.");
+    })();
   }
 
   function handleAddProgram(item: InspirationItem) {
