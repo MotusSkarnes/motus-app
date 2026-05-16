@@ -305,12 +305,16 @@ export function markOnboardingGateSeen(identityKey: string): void {
   window.localStorage.setItem(`${ONBOARDING_GATE_SEEN_KEY_PREFIX}${identityKey}`, "1");
 }
 
-/** Slå sammen profil fra duplikat-rader (samme e-post) slik at lagret skjema ikke «forsvinner». */
-export function enrichMemberWithBestProfile(member: Member, allMembers: Member[]): Member {
+/** Duplikat-rader med samme e-post (aldri koble på navn — ulike personer kan ha like navn). */
+export function findMembersByEmail(member: Member, allMembers: Member[]): Member[] {
   const email = member.email.trim().toLowerCase();
-  const candidates = email
-    ? allMembers.filter((row) => row.email.trim().toLowerCase() === email)
-    : [member];
+  if (!email || !allMembers.length) return [member];
+  return allMembers.filter((row) => row.email.trim().toLowerCase() === email);
+}
+
+/** Slå sammen profil fra duplikat-rader slik at lagret skjema ikke «forsvinner». */
+export function enrichMemberWithBestProfile(member: Member, allMembers: Member[]): Member {
+  const candidates = allMembers.length ? findMembersByEmail(member, allMembers) : [member];
   const personalGoals = pickBestPersonalGoals(candidates.map((row) => row.personalGoals));
   if (!personalGoals || personalGoals === member.personalGoals) return member;
   return { ...member, personalGoals };
@@ -408,13 +412,8 @@ export function resolveMemberOnboarding(
   allMembers?: Member[],
 ): MemberOnboardingAnswers | null {
   if (!member) return null;
-  const email = member.email.trim().toLowerCase();
-  const related =
-    allMembers?.length && email
-      ? allMembers.filter((row) => row.email.trim().toLowerCase() === email)
-      : [member];
-  const personalGoalsCandidates = related.map((row) => row.personalGoals);
-  const fromRelated = resolveOnboardingFromPersonalGoalCandidates(personalGoalsCandidates);
+  const related = allMembers?.length ? findMembersByEmail(member, allMembers) : [member];
+  const fromRelated = resolveOnboardingFromPersonalGoalCandidates(related.map((row) => row.personalGoals));
   if (fromRelated) return fromRelated;
 
   const profile = allMembers?.length ? enrichMemberWithBestProfile(member, allMembers) : member;

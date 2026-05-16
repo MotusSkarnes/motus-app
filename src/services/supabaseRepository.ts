@@ -340,8 +340,8 @@ async function resolveRelatedMemberIds(
     new Set(
       (rowsByEmail.data ?? [])
         .map((row) => String((row as { id?: string }).id ?? "").trim())
-        .filter((id) => Boolean(id) && id !== "__template__" && !id.startsWith("auth-"))
-    )
+        .filter((id) => Boolean(id) && id !== "__template__" && !id.startsWith("auth-")),
+    ),
   );
   if (ids.length) return ids;
   if (trimmedMemberId && trimmedMemberId !== "__template__" && !trimmedMemberId.startsWith("auth-")) return [trimmedMemberId];

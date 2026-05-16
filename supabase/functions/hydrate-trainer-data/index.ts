@@ -49,7 +49,43 @@ function pickMostRecentProfileRow(rows: Array<Record<string, unknown>>): Record<
   return sorted[0] ?? null;
 }
 
-function harmonizeSharedMemberProfiles(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+function scorePersonalGoalsBlob(value: unknown): number {
+  const raw = String(value ?? "").trim();
+  if (!raw) return -1;
+  let score = 0;
+  if (raw.startsWith("MOTUS_PROFILE_V1:")) score += 100;
+  if (raw.includes("onboardingCompletedAt")) score += 200;
+  if (raw.includes('"onboarding"') && raw.includes("completedAt")) score += 160;
+  else if (raw.includes('"onboarding"')) score += 80;
+  if (raw.includes('"monthlyCheckIns"')) score += 50;
+  score += Math.min(20, Math.floor(raw.length / 200));
+  return score;
+}
+
+function pickBestPersonalGoalsFromRows(rows: Array<Record<string, unknown>>): string {
+  let best = "";
+  let bestScore = -1;
+  for (const row of rows) {
+    const value = String(row.personal_goals ?? "").trim();
+    const score = scorePersonalGoalsBlob(value);
+    if (score > bestScore) {
+      bestScore = score;
+      best = value;
+    }
+  }
+  return best;
+}
+
+function pickFirstNonEmptyField(rows: Array<Record<string, unknown>>, field: string): unknown {
+  for (const row of rows) {
+    const value = String(row[field] ?? "").trim();
+    if (value) return row[field];
+  }
+  return "";
+}
+
+/** Synk duplikat-rader per e-post — behold rikest personal_goals (oppstartsskjema), ikke nyeste tomme rad. */
+function harmonizeMemberProfilesByEmail(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
   const PROFILE_FIELDS = [
     "name",
     "phone",
@@ -62,7 +98,6 @@ function harmonizeSharedMemberProfiles(rows: Array<Record<string, unknown>>): Ar
   ] as const;
   const byEmail = new Map<string, Array<Record<string, unknown>>>();
   for (const row of rows) {
-    if (!isSharedMember(row)) continue;
     const emailKey = normalizeEmail(row.email);
     if (!emailKey) continue;
     const group = byEmail.get(emailKey) ?? [];
@@ -71,15 +106,21 @@ function harmonizeSharedMemberProfiles(rows: Array<Record<string, unknown>>): Ar
   }
   for (const [, group] of byEmail) {
     if (group.length <= 1) continue;
+    const bestPersonalGoals = pickBestPersonalGoalsFromRows(group);
     const canonical = pickMostRecentProfileRow(group);
     if (!canonical) continue;
     for (const row of group) {
       for (const field of PROFILE_FIELDS) {
-        row[field] = canonical[field] ?? row[field];
+        if (field === "personal_goals") {
+          if (bestPersonalGoals) row[field] = bestPersonalGoals;
+          continue;
+        }
+        const preferred = pickFirstNonEmptyField(group, field);
+        if (preferred) row[field] = preferred;
+        else if (canonical[field]) row[field] = canonical[field];
       }
     }
   }
-  // Never harmonize medlem rows by display name — unrelated people often share names (e.g. "Resepsjon").
   return rows;
 }
 
@@ -207,7 +248,7 @@ Deno.serve(async (req) => {
       return Boolean(rowEmail && relatedEmailSet.has(rowEmail));
     });
     members = uniqueById([...(members ?? []), ...widenedMembers]) as Array<Record<string, unknown>>;
-    members = harmonizeSharedMemberProfiles(members);
+    members = harmonizeMemberProfilesByEmail(members);
   }
 
   const visibleMemberIds = (members ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);

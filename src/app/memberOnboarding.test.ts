@@ -6,6 +6,7 @@ import {
   isOnboardingCompleted,
   mergeOnboardingIntoPersonalGoals,
   primaryGoalFromOnboarding,
+  findMembersByEmail,
   resolveMemberOnboarding,
 } from "./memberOnboarding";
 import type { Member } from "./types";
@@ -92,5 +93,37 @@ describe("memberOnboarding", () => {
     const memberRow = { ...base, id: "member-row", personalGoals: onboardingBlob };
     const resolved = resolveMemberOnboarding(base, [base, memberRow]);
     expect(resolved?.trainingGoals).toEqual(["Utholdenhet"]);
+  });
+
+  it("kobler ikke oppstartsskjema mellom ulike e-poster", () => {
+    const onboardingBlob = mergeOnboardingIntoPersonalGoals("", {
+      ...createEmptyOnboardingDraft(),
+      version: 1,
+      trainingGoals: ["Styrke"],
+      completedAt: "2026-05-16T12:00:00.000Z",
+    });
+    const msn: Member = {
+      id: "msn-row",
+      name: "Lene Ruud",
+      email: "leneruud@msn.com",
+      personalGoals: "",
+      goal: "",
+      focus: "",
+      injuries: "",
+      level: "Nybegynner",
+      membershipType: "Premium",
+      customerType: "PT-kunde",
+      daysSinceActivity: 0,
+      phone: "",
+      birthDate: "",
+      coachNotes: "",
+      avatarUrl: "",
+      invitedAt: "",
+      isActive: true,
+    };
+    const gmail = { ...msn, id: "gmail-row", email: "lene.norex@gmail.com", personalGoals: onboardingBlob };
+    expect(findMembersByEmail(msn, [msn, gmail]).map((row) => row.id)).toEqual(["msn-row"]);
+    expect(resolveMemberOnboarding(msn, [msn, gmail])).toBeNull();
+    expect(resolveMemberOnboarding(gmail, [msn, gmail])?.trainingGoals).toEqual(["Styrke"]);
   });
 });

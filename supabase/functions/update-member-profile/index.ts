@@ -231,8 +231,8 @@ Deno.serve(async (req) => {
     new Set(
       [...visibleAnchors, ...visibleExpandedRows]
         .map((row) => normalizeString(row.id))
-        .filter(Boolean)
-    )
+        .filter(Boolean),
+    ),
   );
   const targetEmails = Array.from(
     new Set(
