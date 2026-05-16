@@ -126,6 +126,21 @@ Deno.serve(async (req) => {
     return jsonResponse(400, { error: "Authenticated user email is missing" });
   }
 
+  const { data: rosterRowsEarly, error: rosterEarlyError } = await adminClient
+    .from("members")
+    .select("id, email, is_active")
+    .ilike("email", requesterEmail);
+  if (rosterEarlyError) {
+    return jsonResponse(500, { error: rosterEarlyError.message });
+  }
+  const emailRosterEarly = (rosterRowsEarly ?? []).filter(
+    (row) => normalizeEmail((row as { email?: string }).email) === requesterEmail,
+  );
+  if (emailRosterEarly.length > 0 && !emailRosterEarly.some(rowIsActive)) {
+    return memberArchivedResponse();
+  }
+  const hasEmailRoster = emailRosterEarly.length > 0;
+
   const membersSelectWithAvatar =
     "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url, created_at";
   const membersSelectWithoutAvatar =
@@ -243,7 +258,7 @@ Deno.serve(async (req) => {
     return memberArchivedResponse();
   }
   if (!memberIds.length) {
-    if (emailRowsForAccess.length > 0) {
+    if (hasEmailRoster || emailRowsForAccess.length > 0) {
       return memberArchivedResponse();
     }
     const authFallbackIds = Array.from(

@@ -23,6 +23,7 @@ import { notifyInspirationItemsChanged, saveInspirationItemsToStorage } from "./
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import {
   fetchExercisesFromSupabase,
+  checkMemberAccessBlocked,
   fetchHydratedMemberData,
   fetchHydratedTrainerData,
   fetchLogsFromSupabase,
@@ -396,18 +397,29 @@ export function useAppState() {
     return fallbackId;
   }
 
-  async function blockArchivedMemberAccess(message = MEMBER_ARCHIVED_APP_MESSAGE) {
+  async function blockArchivedMemberAccess(message = MEMBER_ARCHIVED_APP_MESSAGE, email?: string) {
+    const normalizedEmail = email?.trim().toLowerCase() ?? "";
     await signOutSupabase();
     setLoginError(message);
-    setAppState((prev) => ({
-      ...prev,
-      currentUser: null,
-      role: "trainer",
-      memberViewId: "",
-      selectedMemberId: prev.selectedMemberId && prev.members.some((m) => m.id === prev.selectedMemberId && m.isActive !== false)
-        ? prev.selectedMemberId
-        : "",
-    }));
+    setAppState((prev) => {
+      const members =
+        normalizedEmail && normalizedEmail.includes("@")
+          ? prev.members.map((member) =>
+              member.email.trim().toLowerCase() === normalizedEmail ? { ...member, isActive: false } : member,
+            )
+          : prev.members;
+      return {
+        ...prev,
+        members,
+        currentUser: null,
+        role: "trainer",
+        memberViewId: "",
+        selectedMemberId:
+          prev.selectedMemberId && members.some((m) => m.id === prev.selectedMemberId && m.isActive !== false)
+            ? prev.selectedMemberId
+            : "",
+      };
+    });
   }
 
   function hydratedMemberAccessDenied(hydratedMember: HydratedMemberData | null): string | null {
@@ -435,6 +447,28 @@ export function useAppState() {
     }, 1000);
     return () => window.clearTimeout(timer);
   }, [passwordRecoveryCooldownSeconds]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    if (appState.currentUser?.role !== "member") return;
+    const email = appState.currentUser.email.trim().toLowerCase();
+    if (!email.includes("@")) return;
+
+    let cancelled = false;
+    async function verifyMemberAccess() {
+      if (await checkMemberAccessBlocked(email)) {
+        if (!cancelled) await blockArchivedMemberAccess(MEMBER_ARCHIVED_APP_MESSAGE, email);
+      }
+    }
+    void verifyMemberAccess();
+    const interval = window.setInterval(() => {
+      void verifyMemberAccess();
+    }, 12000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [appState.currentUser?.role, appState.currentUser?.email]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -472,9 +506,16 @@ export function useAppState() {
         isMemberLikeSession ? fetchProgramsFromSupabase() : Promise.resolve(null),
         isMemberLikeSession ? fetchLogsFromSupabase() : Promise.resolve(null),
       ]);
+      const sessionEmail = sessionUser?.email?.trim().toLowerCase() ?? "";
       const archivedMessage = hydratedMemberAccessDenied(hydratedMember);
-      if (!cancelled && isMemberLikeSession && archivedMessage) {
-        await blockArchivedMemberAccess(archivedMessage);
+      const accessBlocked =
+        isMemberLikeSession && sessionEmail
+          ? archivedMessage
+            ? true
+            : await checkMemberAccessBlocked(sessionEmail)
+          : false;
+      if (!cancelled && isMemberLikeSession && accessBlocked) {
+        await blockArchivedMemberAccess(archivedMessage ?? MEMBER_ARCHIVED_APP_MESSAGE, sessionEmail);
         return;
       }
       const directTrainerMembers = isTrainerSession ? await fetchMembersFromSupabase() : null;
@@ -551,10 +592,10 @@ export function useAppState() {
 
       if (
         isMemberLikeSession &&
-        sessionUser?.email &&
-        isMemberAppAccessBlocked(remoteMembers ?? [], sessionUser.email)
+        sessionEmail &&
+        (isMemberAppAccessBlocked(remoteMembers ?? [], sessionEmail) || (await checkMemberAccessBlocked(sessionEmail)))
       ) {
-        await blockArchivedMemberAccess();
+        await blockArchivedMemberAccess(MEMBER_ARCHIVED_APP_MESSAGE, sessionEmail);
         return;
       }
 
@@ -998,6 +1039,10 @@ export function useAppState() {
       const supabaseResult = await signInWithSupabase(normalizedEmail, loginPassword);
       if (supabaseResult.ok) {
         const supabaseUser = supabaseResult.user;
+        if (supabaseUser.role === "member" && (await checkMemberAccessBlocked(normalizedEmail))) {
+          await blockArchivedMemberAccess(MEMBER_ARCHIVED_APP_MESSAGE, normalizedEmail);
+          return;
+        }
         setAppState((prev) => {
           const baseState = ensureMemberRecordForUser(prev, supabaseUser, supabaseUser.memberId ?? prev.memberViewId);
           const resolvedSelectedMemberId =
@@ -1149,10 +1194,11 @@ export function useAppState() {
     }
     const user = result.user;
     if (user.role === "member") {
+      const email = user.email.trim().toLowerCase();
       const hydratedMember = await fetchHydratedMemberData();
       const archivedMessage = hydratedMemberAccessDenied(hydratedMember);
-      if (archivedMessage) {
-        await blockArchivedMemberAccess(archivedMessage);
+      if (archivedMessage || (await checkMemberAccessBlocked(email))) {
+        await blockArchivedMemberAccess(archivedMessage ?? MEMBER_ARCHIVED_APP_MESSAGE, email);
         return;
       }
     }

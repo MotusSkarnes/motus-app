@@ -2162,6 +2162,67 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
   }));
 }
 
+export async function checkMemberAccessBlocked(email: string): Promise<boolean> {
+  if (!supabaseClient) return false;
+
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail.includes("@")) return false;
+
+  const parseArchived = (body: Record<string, unknown>) =>
+    body.error === "member_archived" || body.status === "archived";
+
+  try {
+    const { data, error } = await supabaseClient.functions.invoke("check-member-access", {
+      body: { email: normalizedEmail },
+    });
+    if (!error && data && typeof data === "object" && parseArchived(data as Record<string, unknown>)) {
+      return true;
+    }
+    if (error) {
+      const errorContext = (error as { context?: Response }).context;
+      if (errorContext) {
+        try {
+          const body = (await errorContext.clone().json()) as Record<string, unknown>;
+          if (parseArchived(body)) return true;
+        } catch {
+          // fall through
+        }
+      }
+    }
+  } catch {
+    // fall through to fetch
+  }
+
+  if (!supabaseUrl || !supabaseAnonKey) return false;
+
+  try {
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession();
+    const response = await fetch(`${supabaseUrl}/functions/v1/check-member-access`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${session?.access_token ?? ""}`,
+      },
+      body: JSON.stringify({ email: normalizedEmail }),
+    });
+    if (response.status === 403) {
+      try {
+        const body = (await response.json()) as Record<string, unknown>;
+        if (parseArchived(body)) return true;
+      } catch {
+        return true;
+      }
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
+}
+
 export async function archiveMemberByEmailFromSupabase(
   email: string,
   memberId?: string,
