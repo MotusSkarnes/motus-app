@@ -5768,12 +5768,29 @@ export function MemberPortal(props: MemberPortalProps) {
                         <button
                           type="button"
                           onClick={() => toggleFavoritePersonalRecord(record.name)}
-                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-white text-slate-500 transition hover:text-amber-500"
-                          style={{ borderColor: "rgba(15,23,42,0.10)" }}
-                          title={cleanedFavoritePersonalRecordNames.includes(record.name) ? "Fjern fra fremhevede PR-er" : "Fremhev denne PR-en"}
+                          className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border p-1.5 transition ${
+                            cleanedFavoritePersonalRecordNames.includes(record.name)
+                              ? "border-transparent text-white"
+                              : "border-slate-200 bg-white text-slate-400"
+                          }`}
+                          style={
+                            cleanedFavoritePersonalRecordNames.includes(record.name)
+                              ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
+                              : { borderColor: "rgba(148,163,184,0.45)" }
+                          }
+                          aria-label={
+                            cleanedFavoritePersonalRecordNames.includes(record.name)
+                              ? "Fjern fra fremhevede PR-er"
+                              : "Fremhev denne PR-en"
+                          }
+                          title={
+                            cleanedFavoritePersonalRecordNames.includes(record.name)
+                              ? "Fjern fra fremhevede PR-er"
+                              : "Fremhev denne PR-en"
+                          }
                         >
                           <Star
-                            className={`h-4 w-4 ${cleanedFavoritePersonalRecordNames.includes(record.name) ? "fill-amber-400 text-amber-500" : ""}`}
+                            className={`h-4 w-4 ${cleanedFavoritePersonalRecordNames.includes(record.name) ? "text-white" : ""}`}
                           />
                         </button>
                       </div>
