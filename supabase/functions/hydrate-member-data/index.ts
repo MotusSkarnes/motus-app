@@ -30,6 +30,54 @@ function nameFromEmail(email: string): string {
   return toFirstName(normalized);
 }
 
+function scorePersonalGoalsBlob(value: string): number {
+  const raw = value.trim();
+  if (!raw) return 0;
+  let score = 0;
+  if (raw.startsWith("MOTUS_PROFILE_V1:")) score += 100;
+  if (raw.includes("onboardingCompletedAt")) score += 200;
+  if (raw.includes('"onboarding"') && raw.includes("completedAt")) score += 160;
+  else if (raw.includes('"onboarding"')) score += 80;
+  if (raw.includes('"monthlyCheckIns"')) score += 50;
+  score += Math.min(20, Math.floor(raw.length / 200));
+  return score;
+}
+
+function pickBestPersonalGoalsFromRows(rows: Array<Record<string, unknown>>): string {
+  let best = "";
+  let bestScore = -1;
+  for (const row of rows) {
+    const value = String(row.personal_goals ?? "").trim();
+    const score = scorePersonalGoalsBlob(value);
+    if (score > bestScore) {
+      bestScore = score;
+      best = value;
+    }
+  }
+  return best;
+}
+
+/** Synk duplikat-rader per e-post — behold rikest personal_goals (oppstartsskjema). */
+function harmonizeMemberProfilesByEmail(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  const byEmail = new Map<string, Array<Record<string, unknown>>>();
+  for (const row of rows) {
+    const emailKey = normalizeEmail(row.email);
+    if (!emailKey) continue;
+    const group = byEmail.get(emailKey) ?? [];
+    group.push(row);
+    byEmail.set(emailKey, group);
+  }
+  for (const [, group] of byEmail) {
+    if (group.length <= 1) continue;
+    const bestPersonalGoals = pickBestPersonalGoalsFromRows(group);
+    if (!bestPersonalGoals) continue;
+    for (const row of group) {
+      row.personal_goals = bestPersonalGoals;
+    }
+  }
+  return rows;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -406,8 +454,10 @@ Deno.serve(async (req) => {
     inspirationItems = inspirationFeed.data.items;
   }
 
+  const harmonizedMembers = harmonizeMemberProfilesByEmail([...(scopedMembers ?? [])]);
+
   return jsonResponse(200, {
-    members: scopedMembers ?? [],
+    members: harmonizedMembers,
     programs,
     logs: logs ?? [],
     messages: dedupedMessages ?? [],

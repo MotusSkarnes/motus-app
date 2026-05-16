@@ -325,6 +325,23 @@ export function markOnboardingGateSeen(identityKey: string): void {
   window.localStorage.setItem(`${ONBOARDING_GATE_SEEN_KEY_PREFIX}${identityKey}`, "1");
 }
 
+function scoreMemberRowForCanonicalPick(member: Member): number {
+  let score = 0;
+  if (!member.id.trim().startsWith("auth-")) score += 10_000;
+  if (member.customerType === "PT-kunde") score += 1_000;
+  if (member.membershipType === "Premium") score += 500;
+  if (hasSubstantiveOnboardingAnswers(member.personalGoals)) score += 200;
+  if (String(member.personalGoals ?? "").includes("onboardingCompletedAt")) score += 80;
+  return score;
+}
+
+/** Velg én DB-rad per innlogget medlem (unngå syntetisk auth-* når ekte rad finnes). */
+export function pickCanonicalMemberRowForProfile(member: Member, allMembers: Member[]): Member {
+  const related = allMembers.length ? findMembersByEmail(member, allMembers) : [member];
+  if (!related.length) return member;
+  return [...related].sort((a, b) => scoreMemberRowForCanonicalPick(b) - scoreMemberRowForCanonicalPick(a))[0];
+}
+
 /** Duplikat-rader med samme e-post (aldri koble på navn — ulike personer kan ha like navn). */
 export function findMembersByEmail(member: Member, allMembers: Member[]): Member[] {
   const email = member.email.trim().toLowerCase();

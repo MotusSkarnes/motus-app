@@ -362,9 +362,17 @@ export function useAppState() {
         programCountByMemberId.set(program.memberId, (programCountByMemberId.get(program.memberId) ?? 0) + 1);
       });
       const bestCandidate = [...byEmailCandidates].sort((a, b) => {
-        const aCount = programCountByMemberId.get(a.id) ?? 0;
-        const bCount = programCountByMemberId.get(b.id) ?? 0;
-        if (bCount !== aCount) return bCount - aCount;
+        const score = (member: (typeof byEmailCandidates)[number]) => {
+          let value = 0;
+          if (!member.id.trim().startsWith("auth-")) value += 10_000;
+          if (member.customerType === "PT-kunde") value += 1_000;
+          if (member.membershipType === "Premium") value += 500;
+          value += programCountByMemberId.get(member.id) ?? 0;
+          if (String(member.personalGoals ?? "").includes("onboardingCompletedAt")) value += 80;
+          return value;
+        };
+        const diff = score(b) - score(a);
+        if (diff !== 0) return diff;
         return a.id.localeCompare(b.id);
       })[0];
       if (bestCandidate) return bestCandidate.id;
@@ -907,7 +915,11 @@ export function useAppState() {
     appState.selectedMemberId,
   ]);
 
-  function patchState(patch: Partial<AppState>) {
+  function patchState(patch: Partial<AppState> | ((prev: AppState) => AppState)) {
+    if (typeof patch === "function") {
+      setAppState((prev) => patch(prev));
+      return;
+    }
     setAppState((prev) => ({ ...prev, ...patch }));
   }
 

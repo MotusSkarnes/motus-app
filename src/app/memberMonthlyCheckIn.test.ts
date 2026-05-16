@@ -34,7 +34,13 @@ function memberWithGoals(personalGoals: string): Member {
 }
 
 const onboardingDone = `MOTUS_PROFILE_V1:${JSON.stringify({
-  onboarding: { version: 1, completedAt: "2026-01-01T00:00:00.000Z", skipped: false },
+  onboarding: {
+    version: 1,
+    completedAt: "2026-01-01T00:00:00.000Z",
+    skipped: false,
+    trainingGoals: ["Bli sterkere"],
+    motivations: ["Helse"],
+  },
 })}`;
 
 describe("resolveCheckInWindow", () => {

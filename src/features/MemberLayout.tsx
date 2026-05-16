@@ -6,6 +6,7 @@ import {
   enrichMemberWithBestProfile,
   findMembersByEmail,
   isOnboardingCompleted,
+  pickCanonicalMemberRowForProfile,
   markOnboardingGateSeen,
   memberOnboardingIdentityKey,
   mergeOnboardingIntoPersonalGoals,
@@ -17,6 +18,7 @@ import {
 } from "../app/memberOnboarding";
 import { normalizePeriodSchedulePlan, readPeriodPlansByMemberId, writePeriodPlansByMemberId } from "../app/periodPlanMerge";
 import type { AppState, Member, MemberTab, PeriodSchedulePlan } from "../app/types";
+import { ensureMemberAuthLink } from "../services/supabaseAuth";
 import { Card } from "../app/ui";
 import type { MemberAlert } from "../app/useNotifications";
 import { upsertMemberPeriodPlansForTrainer, waitForMemberPersist } from "../services/supabaseRepository";
@@ -50,6 +52,7 @@ function resolveActiveMemberForUser(appState: AppState): Member | null {
 
 type MemberLayoutProps = {
   appState: AppState;
+  patchState: (patch: Partial<AppState> | ((prev: AppState) => AppState)) => void;
   memberTab: MemberTab;
   setMemberTab: (tab: MemberTab) => void;
   updateMember: ComponentProps<typeof MemberPortal>["updateMember"];
@@ -100,6 +103,7 @@ const mobileTabs: Array<{ id: MemberTab; label: string; icon: LucideIcon }> = [
 
 export function MemberLayout({
   appState,
+  patchState,
   memberTab,
   setMemberTab,
   updateMember,
@@ -170,26 +174,60 @@ export function MemberLayout({
 
   async function persistOnboardingAnswers(answers: MemberOnboardingAnswers) {
     if (!activeMember) return;
-    const personalGoals = mergeOnboardingIntoPersonalGoals(activeMember.personalGoals, answers);
+    const canonicalMember = pickCanonicalMemberRowForProfile(activeMember, appState.members);
+    const personalGoals = mergeOnboardingIntoPersonalGoals(canonicalMember.personalGoals, answers);
     const focusSummary = answers.trainingGoals.slice(0, 3).join(" · ");
     const changes = {
       goal: primaryGoalFromOnboarding(answers),
       level: answers.level,
-      injuries: answers.injuries.trim() || activeMember.injuries,
+      injuries: answers.injuries.trim() || canonicalMember.injuries,
       personalGoals,
       ...(focusSummary ? { focus: focusSummary } : {}),
     };
-    const targetMembers = findMembersByEmail(activeMember, appState.members);
+    const targetMembers = findMembersByEmail(canonicalMember, appState.members);
     const targetIds = Array.from(new Set(targetMembers.map((member) => member.id.trim()).filter(Boolean)));
-    for (const memberId of targetIds.length ? targetIds : [activeMember.id]) {
+    const persistIds = targetIds.filter((id) => !id.startsWith("auth-"));
+    const idsToUpdate = persistIds.length ? persistIds : targetIds.length ? targetIds : [canonicalMember.id];
+    for (const memberId of idsToUpdate) {
       updateMember({ memberId, changes });
     }
     try {
-      await Promise.all((targetIds.length ? targetIds : [activeMember.id]).map((memberId) => waitForMemberPersist(memberId)));
+      await Promise.all(idsToUpdate.map((memberId) => waitForMemberPersist(memberId)));
     } catch (error) {
       setOnboardingGateOpen(true);
       throw error;
     }
+    const canonicalId =
+      idsToUpdate.find((id) => !id.startsWith("auth-")) ?? canonicalMember.id;
+    if (appState.currentUser?.email && canonicalId && !canonicalId.startsWith("auth-")) {
+      await ensureMemberAuthLink(appState.currentUser.email, canonicalId);
+    }
+    patchState((prev) => {
+      const email = canonicalMember.email.trim().toLowerCase();
+      const bestGoals = personalGoals;
+      const members = prev.members
+        .filter((member) => {
+          if (!email) return true;
+          if (!member.id.startsWith("auth-")) return true;
+          return member.email.trim().toLowerCase() !== email;
+        })
+        .map((member) => {
+          const samePerson =
+            member.id === canonicalId ||
+            targetIds.includes(member.id) ||
+            (email && member.email.trim().toLowerCase() === email);
+          return samePerson ? { ...member, ...changes, personalGoals: bestGoals } : member;
+        });
+      return {
+        ...prev,
+        members,
+        memberViewId: canonicalId,
+        selectedMemberId: canonicalId,
+        currentUser: prev.currentUser
+          ? { ...prev.currentUser, memberId: canonicalId.startsWith("auth-") ? prev.currentUser.memberId : canonicalId }
+          : prev.currentUser,
+      };
+    });
     void refreshRemoteHydration?.();
   }
 

@@ -68,6 +68,7 @@ export function buildTrainerLayoutProps(input: {
 
 export function buildMemberLayoutProps(input: {
   appState: AppState;
+  patchState: MemberLayoutProps["patchState"];
   memberTab: MemberLayoutProps["memberTab"];
   setMemberTab: MemberLayoutProps["setMemberTab"];
   updateMember: MemberLayoutProps["updateMember"];

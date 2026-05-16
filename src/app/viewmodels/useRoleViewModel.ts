@@ -117,6 +117,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
 
   const memberLayoutProps: ComponentProps<typeof MemberLayout> = buildMemberLayoutProps({
     appState: state.appState,
+    patchState: state.patchState,
     memberTab: state.memberTab,
     setMemberTab: state.setMemberTab,
     updateMember: state.updateMember,

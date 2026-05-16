@@ -852,29 +852,34 @@ async function syncMemberProfileViaEdgeFunction(
 async function persistMember(member: Member) {
   if (!supabaseClient) return;
   const normalizedEmail = member.email.trim().toLowerCase();
-  const relatedMemberIds = await resolveRelatedMemberIds(member.id, {
+  const canonicalMemberId = await resolveCanonicalMemberIdForPersistence(member.id, {
     targetEmail: normalizedEmail,
-    targetName: member.name,
   });
-  const memberIdsForSync = relatedMemberIds.length > 0 ? relatedMemberIds : [member.id];
+  const memberForPersist =
+    canonicalMemberId && canonicalMemberId !== member.id ? { ...member, id: canonicalMemberId } : member;
+  const relatedMemberIds = await resolveRelatedMemberIds(memberForPersist.id, {
+    targetEmail: normalizedEmail,
+    targetName: memberForPersist.name,
+  });
+  const memberIdsForSync = relatedMemberIds.length > 0 ? relatedMemberIds : [memberForPersist.id];
   const syncPayload = {
     email: normalizedEmail,
     emails: [normalizedEmail],
-    memberId: member.id,
+    memberId: memberForPersist.id,
     memberIds: memberIdsForSync,
-    targetName: member.name,
+    targetName: memberForPersist.name,
     changes: {
-      name: member.name,
-      phone: member.phone,
-      birthDate: member.birthDate,
-      goal: member.goal,
-      focus: member.focus,
-      injuries: member.injuries,
-      personalGoals: member.personalGoals,
-      avatarUrl: member.avatarUrl ?? "",
-      membershipType: member.membershipType,
-      customerType: member.customerType,
-      ...(member.invitedAt?.trim() ? { invitedAt: member.invitedAt.trim() } : {}),
+      name: memberForPersist.name,
+      phone: memberForPersist.phone,
+      birthDate: memberForPersist.birthDate,
+      goal: memberForPersist.goal,
+      focus: memberForPersist.focus,
+      injuries: memberForPersist.injuries,
+      personalGoals: memberForPersist.personalGoals,
+      avatarUrl: memberForPersist.avatarUrl ?? "",
+      membershipType: memberForPersist.membershipType,
+      customerType: memberForPersist.customerType,
+      ...(memberForPersist.invitedAt?.trim() ? { invitedAt: memberForPersist.invitedAt.trim() } : {}),
     },
   };
   const {
@@ -889,7 +894,7 @@ async function persistMember(member: Member) {
     return "";
   })();
 
-  const isProfileBlobSave = personalGoalsContainsProfileBlob(member.personalGoals);
+  const isProfileBlobSave = personalGoalsContainsProfileBlob(memberForPersist.personalGoals);
   const shouldUseMemberProfileSync =
     roleClaim === "member" ||
     (authenticatedEmail && authenticatedEmail === normalizedEmail) ||
@@ -903,25 +908,25 @@ async function persistMember(member: Member) {
           .filter((value) => value && value.includes("@")),
       ),
     );
-    let updated = await syncMemberProfileViaEdgeFunction(member, authenticatedEmail, relatedMemberIds);
+    let updated = await syncMemberProfileViaEdgeFunction(memberForPersist, authenticatedEmail, relatedMemberIds);
 
     if (updated === 0) {
       const directClauses = [
-        `id.eq.${member.id.trim()}`,
+        `id.eq.${memberForPersist.id.trim()}`,
         ...syncEmails.map((email) => `email.eq.${email}`),
       ];
       const directUpdate = await supabaseClient
         .from("members")
         .update({
-          name: member.name,
+          name: memberForPersist.name,
           email: normalizedEmail,
-          phone: member.phone,
-          birth_date: member.birthDate,
-          goal: member.goal,
-          focus: member.focus,
-          injuries: member.injuries,
-          personal_goals: member.personalGoals,
-          avatar_url: member.avatarUrl ?? "",
+          phone: memberForPersist.phone,
+          birth_date: memberForPersist.birthDate,
+          goal: memberForPersist.goal,
+          focus: memberForPersist.focus,
+          injuries: memberForPersist.injuries,
+          personal_goals: memberForPersist.personalGoals,
+          avatar_url: memberForPersist.avatarUrl ?? "",
         })
         .or(directClauses.join(","))
         .select("id");
