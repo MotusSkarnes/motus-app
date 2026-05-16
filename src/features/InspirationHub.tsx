@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, CalendarRange, ChevronLeft, ChevronRight, ClipboardList, ImagePlus, Lightbulb, Newspaper, Pencil, Plus, Soup, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarRange, ChevronLeft, ChevronRight, ClipboardList, ImagePlus, Lightbulb, Newspaper, Pencil, Plus, Soup, Trash2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { compressImageDataUrl, compressImageFile } from "../app/imageCompress";
 import {
@@ -835,11 +835,7 @@ export function InspirationHub({
         <div className="h-1.5" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
         <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-end">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-white">
-              <Sparkles className="h-3.5 w-3.5 text-teal-600" />
-              Åpen for alle medlemmer og PT-er
-            </div>
-            <h2 className="mt-3 text-2xl font-bold tracking-tight text-slate-950">Inspirasjon</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-950">Inspirasjon</h2>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">
               Kort inspirasjon først. Trykk les mer for detaljer, eller legg programmer og ukesplaner rett inn i din egen trening.
             </p>
