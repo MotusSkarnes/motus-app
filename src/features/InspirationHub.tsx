@@ -14,8 +14,8 @@ import { buildPeriodPlanProgramSelectOptions, WEEKDAY_PLAN_FIELDS } from "../app
 import { normalizePeriodSchedulePlan, syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { WEEKDAY_PLAN_LABELS, WEEKDAY_PLAN_ORDER } from "../app/periodPlanSwaps";
 import { uid } from "../app/storage";
-import { GradientButton, OutlineButton, SelectBox, TextArea, TextInput } from "../app/ui";
-import type { PeriodSchedulePlan, ProgramExercise, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "../app/types";
+import { EmptyState, GradientButton, OutlineButton, SelectBox, TextArea, TextInput } from "../app/ui";
+import type { Exercise, PeriodSchedulePlan, ProgramExercise, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "../app/types";
 import type { SaveProgramInput } from "../services/appRepository";
 
 type InspirationCategory = "recipes" | "programs" | "tips" | "news";
@@ -54,6 +54,67 @@ const DAY_LABELS: Record<WeekdayPlanKey, string> = {
   sunday: "Søndag",
 };
 
+function splitMultiValue(value: string): string[] {
+  return String(value ?? "")
+    .split(/[,;|/]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function multiValueIncludes(value: string, candidate: string): boolean {
+  const normalized = candidate.trim().toLowerCase();
+  return splitMultiValue(value).some((item) => item.toLowerCase() === normalized);
+}
+
+function getExerciseSketchDataUri(exercise: Exercise): string {
+  const accent = exercise.category === "Kondisjon" ? "#f97316" : exercise.category === "Uttøyning" ? "#0ea5e9" : "#14b8a6";
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'>
+      <rect width='96' height='96' rx='16' fill='#ffffff'/>
+      <circle cx='48' cy='20' r='8' fill='${accent}'/>
+      <path d='M48 30 L48 50 M48 38 L30 45 M48 38 L66 45 M48 50 L35 72 M48 50 L61 72' stroke='#0f172a' stroke-width='4' stroke-linecap='round' fill='none'/>
+      <path d='M12 84 H84' stroke='${accent}' stroke-width='4' stroke-linecap='round'/>
+    </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+function getExercisePreviewSrc(exercise: Exercise): string {
+  const customImage = exercise.imageUrl?.trim();
+  return customImage ? customImage : getExerciseSketchDataUri(exercise);
+}
+
+function programExerciseFromBank(exercise: Exercise): ProgramExercise {
+  const isCardio = exercise.category === "Kondisjon";
+  const isStretch = exercise.category === "Uttøyning";
+  const isTreadmill = exercise.equipment.trim().toLowerCase().includes("tredem");
+  return {
+    id: uid("inspo-prog-ex"),
+    exerciseId: exercise.id,
+    exerciseName: exercise.name,
+    sets: isStretch ? "2" : "3",
+    reps: isCardio ? "" : isStretch ? "1" : "10",
+    weight: isCardio || isStretch ? "" : "0",
+    holdSeconds: isStretch ? "30" : "",
+    durationMinutes: isCardio ? "20" : "",
+    speed: isTreadmill ? "8" : "",
+    incline: isTreadmill ? "1" : "",
+    restSeconds: isStretch ? "30" : "90",
+    notes: "",
+  };
+}
+
+function linkProgramExercisesToBank(exercises: ProgramExercise[], bank: Exercise[]): ProgramExercise[] {
+  if (!bank.length) return exercises;
+  const byId = new Map(bank.map((exercise) => [exercise.id, exercise]));
+  const byName = new Map(bank.map((exercise) => [exercise.name.trim().toLowerCase(), exercise]));
+  return exercises.map((row) => {
+    const linked = byId.get(row.exerciseId);
+    if (linked) return { ...row, exerciseName: linked.name };
+    const match = byName.get(row.exerciseName.trim().toLowerCase());
+    if (match) return { ...row, exerciseId: match.id, exerciseName: match.name };
+    return row;
+  });
+}
+
 function makeExercise(name: string, sets = "3", reps = "10", notes = ""): ProgramExercise {
   return {
     id: uid("inspo-ex"),
@@ -64,6 +125,17 @@ function makeExercise(name: string, sets = "3", reps = "10", notes = ""): Progra
     weight: "",
     restSeconds: "60",
     notes,
+  };
+}
+
+function createEmptyProgramTemplate(title: string, description: string, body: string): ProgramTemplateInput {
+  return {
+    title,
+    goal: description || "Inspirasjonsprogram",
+    notes: body,
+    exercises: [],
+    programCreatedBy: "member",
+    programCreatedByName: "Motus inspirasjon",
   };
 }
 
@@ -198,6 +270,8 @@ type InspirationHubProps = {
   memberName?: string;
   /** PT-programmaler (`__template__`) til valg i periodeplan-uker. */
   programTemplates?: Array<{ id: string; title: string }>;
+  /** Felles øvelsesbank – påkrevd for treningsprogram under inspo. */
+  exerciseBank?: Exercise[];
   onAddProgram?: (program: ProgramTemplateInput) => void;
   onAddPeriodPlan?: (plan: PeriodSchedulePlan) => void;
 };
@@ -207,6 +281,7 @@ export function InspirationHub({
   authorName = "Motus",
   memberName = "Medlem",
   programTemplates = [],
+  exerciseBank = [],
   onAddProgram,
   onAddPeriodPlan,
 }: InspirationHubProps) {
@@ -226,7 +301,31 @@ export function InspirationHub({
   const [periodPlanTemplateDraft, setPeriodPlanTemplateDraft] = useState<PeriodSchedulePlan | null>(null);
   const [activePeriodWeekId, setActivePeriodWeekId] = useState("");
   const [isImageProcessing, setIsImageProcessing] = useState(false);
+  const [programExerciseSearch, setProgramExerciseSearch] = useState("");
+  const [programExerciseCategoryFilter, setProgramExerciseCategoryFilter] = useState<"all" | "Styrke" | "Kondisjon" | "Uttøyning">("all");
+  const [programExerciseGroupFilter, setProgramExerciseGroupFilter] = useState("all");
   const carouselRef = useRef<HTMLDivElement | null>(null);
+  const usesExerciseBank = exerciseBank.length > 0;
+  const exercisesById = useMemo(() => new Map(exerciseBank.map((exercise) => [exercise.id, exercise])), [exerciseBank]);
+  const programExerciseGroupOptions = useMemo(() => {
+    const groups = Array.from(new Set(exerciseBank.flatMap((exercise) => splitMultiValue(exercise.group))));
+    return groups.sort((a, b) => a.localeCompare(b, "no"));
+  }, [exerciseBank]);
+  const visibleProgramExercises = useMemo(() => {
+    const query = programExerciseSearch.trim().toLowerCase();
+    const filtered = exerciseBank.filter((exercise) => {
+      if (programExerciseCategoryFilter !== "all" && exercise.category !== programExerciseCategoryFilter) return false;
+      if (programExerciseGroupFilter !== "all" && !multiValueIncludes(exercise.group, programExerciseGroupFilter)) return false;
+      if (!query) return true;
+      return (
+        exercise.name.toLowerCase().includes(query) ||
+        exercise.group.toLowerCase().includes(query) ||
+        exercise.equipment.toLowerCase().includes(query) ||
+        exercise.description.toLowerCase().includes(query)
+      );
+    });
+    return filtered.sort((a, b) => a.name.localeCompare(b.name, "no"));
+  }, [exerciseBank, programExerciseSearch, programExerciseCategoryFilter, programExerciseGroupFilter]);
 
   const periodPlanProgramOptions = useMemo(() => {
     const titles = [
@@ -366,7 +465,14 @@ export function InspirationHub({
     setImageUrl(item.imageUrl ?? "");
     setCategoryDraft(item.category);
     setKindDraft(item.kind);
-    setProgramTemplateDraft(item.programTemplate ? structuredClone(item.programTemplate) : null);
+    setProgramTemplateDraft(
+      item.programTemplate
+        ? {
+            ...structuredClone(item.programTemplate),
+            exercises: linkProgramExercisesToBank(structuredClone(item.programTemplate.exercises), exerciseBank),
+          }
+        : null,
+    );
     const clonedPlan = item.periodPlanTemplate ? normalizePeriodSchedulePlan(structuredClone(item.periodPlanTemplate)) : null;
     setPeriodPlanTemplateDraft(clonedPlan);
     setActivePeriodWeekId(clonedPlan?.weeklyPlans[0]?.id ?? "");
@@ -375,7 +481,23 @@ export function InspirationHub({
   }
 
   function ensureProgramTemplateDraft(nextTitle: string, nextDescription: string, nextBody: string) {
-    setProgramTemplateDraft((prev) => prev ?? createDefaultProgram(nextTitle, nextDescription, nextBody));
+    setProgramTemplateDraft((prev) =>
+      prev ??
+      (usesExerciseBank
+        ? createEmptyProgramTemplate(nextTitle, nextDescription, nextBody)
+        : createDefaultProgram(nextTitle, nextDescription, nextBody)),
+    );
+  }
+
+  function addProgramExerciseFromBank(exercise: Exercise) {
+    setProgramTemplateDraft((prev) => {
+      const base =
+        prev ??
+        (usesExerciseBank
+          ? createEmptyProgramTemplate(title.trim() || "Nytt program", description.trim(), body.trim())
+          : createDefaultProgram(title.trim() || "Nytt program", description.trim(), body.trim()));
+      return { ...base, exercises: [...base.exercises, programExerciseFromBank(exercise)] };
+    });
   }
 
   function ensurePeriodPlanTemplateDraft(nextTitle: string, nextBody: string) {
@@ -392,18 +514,10 @@ export function InspirationHub({
     });
   }
 
-  function addProgramExercise() {
-    setProgramTemplateDraft((prev) => {
-      const base = prev ?? createDefaultProgram(title.trim() || "Nytt program", description.trim(), body.trim());
-      return { ...base, exercises: [...base.exercises, makeExercise("Ny øvelse")] };
-    });
-  }
-
   function removeProgramExercise(exerciseId: string) {
     setProgramTemplateDraft((prev) => {
       if (!prev) return prev;
-      const next = prev.exercises.filter((exercise) => exercise.id !== exerciseId);
-      return { ...prev, exercises: next.length ? next : [makeExercise("Ny øvelse")] };
+      return { ...prev, exercises: prev.exercises.filter((exercise) => exercise.id !== exerciseId) };
     });
   }
 
@@ -487,13 +601,34 @@ export function InspirationHub({
     let periodPlanTemplate: PeriodSchedulePlan | undefined;
 
     if (kind === "program") {
-      const draft = programTemplateDraft ?? createDefaultProgram(nextTitle, nextDescription, nextBody);
+      const draft =
+        programTemplateDraft ??
+        (usesExerciseBank
+          ? createEmptyProgramTemplate(nextTitle, nextDescription, nextBody)
+          : createDefaultProgram(nextTitle, nextDescription, nextBody));
+      const linkedExercises = linkProgramExercisesToBank(draft.exercises, exerciseBank);
+      if (usesExerciseBank) {
+        if (!linkedExercises.length) {
+          setActionStatus("Legg til minst én øvelse fra øvelsesbanken.");
+          return;
+        }
+        const bankIds = new Set(exerciseBank.map((exercise) => exercise.id));
+        const unlinked = linkedExercises.filter((row) => !bankIds.has(row.exerciseId));
+        if (unlinked.length) {
+          setActionStatus("Alle øvelser må velges fra øvelsesbanken. Fjern rader som ikke er koblet.");
+          return;
+        }
+      }
       programTemplate = {
         ...draft,
         title: nextTitle,
         goal: nextDescription,
         notes: nextBody,
-        exercises: draft.exercises.length ? draft.exercises : createDefaultProgram(nextTitle, nextDescription, nextBody).exercises,
+        exercises: linkedExercises.length
+          ? linkedExercises
+          : usesExerciseBank
+            ? []
+            : createDefaultProgram(nextTitle, nextDescription, nextBody).exercises,
       };
     }
     if (kind === "periodPlan") {
@@ -566,8 +701,14 @@ export function InspirationHub({
   }
 
   function handleAddProgram(item: InspirationItem) {
-    const template = item.programTemplate ?? createDefaultProgram(item.title, item.description, item.body);
-    onAddProgram?.({ ...template, title: template.title || item.title, programCreatedByName: memberName });
+    const base = item.programTemplate ?? createDefaultProgram(item.title, item.description, item.body);
+    const template = {
+      ...base,
+      title: base.title || item.title,
+      exercises: linkProgramExercisesToBank(base.exercises, exerciseBank),
+      programCreatedByName: memberName,
+    };
+    onAddProgram?.(template);
     setActionStatus(`${item.title} er lagt til under Mine treningsprogram.`);
   }
 
@@ -870,7 +1011,15 @@ export function InspirationHub({
                 onChange={(value) => {
                   const next = value as InspirationKind;
                   setKindDraft(next);
-                  if (next === "program") ensureProgramTemplateDraft(title.trim(), description.trim(), body.trim());
+                  if (next === "program") {
+                    if (usesExerciseBank) {
+                      setProgramTemplateDraft(
+                        programTemplateDraft ?? createEmptyProgramTemplate(title.trim(), description.trim(), body.trim()),
+                      );
+                    } else {
+                      ensureProgramTemplateDraft(title.trim(), description.trim(), body.trim());
+                    }
+                  }
                   if (next === "periodPlan") ensurePeriodPlanTemplateDraft(title.trim(), body.trim());
                   if (next === "article") {
                     setProgramTemplateDraft(null);
@@ -907,29 +1056,157 @@ export function InspirationHub({
 
           {categoryDraft === "programs" && kindDraft === "program" ? (
             <div className="mt-4 space-y-3 rounded-xl border border-sky-100 bg-sky-50/50 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-sm font-semibold text-slate-900">Øvelser i programmet</div>
-                <OutlineButton type="button" onClick={addProgramExercise} className="!px-2.5 !py-1.5 !text-xs">
-                  Legg til øvelse
-                </OutlineButton>
+              <div>
+                <div className="text-sm font-semibold text-slate-900">Treningsprogram fra øvelsesbank</div>
+                <p className="mt-1 text-xs text-slate-500">
+                  {usesExerciseBank
+                    ? "Velg øvelser fra banken. Medlemmer får samme kobling som i vanlige programmer."
+                    : "Øvelsesbanken er ikke lastet. Last PT-appen på nytt."}
+                </p>
               </div>
-              {(programTemplateDraft?.exercises ?? []).map((exercise) => (
-                <div key={exercise.id} className="rounded-xl border bg-white p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="flex items-center justify-between gap-2">
-                    <TextInput value={exercise.exerciseName} onChange={(event) => updateProgramExercise(exercise.id, "exerciseName", event.target.value)} placeholder="Øvelsesnavn" />
-                    <button type="button" onClick={() => removeProgramExercise(exercise.id)} className="rounded-lg border border-rose-200 p-1.5 text-rose-700 hover:bg-rose-50" aria-label="Fjern øvelse">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-4">
-                    <TextInput value={exercise.sets} onChange={(event) => updateProgramExercise(exercise.id, "sets", event.target.value)} placeholder="Sett" />
-                    <TextInput value={exercise.reps} onChange={(event) => updateProgramExercise(exercise.id, "reps", event.target.value)} placeholder="Reps" />
-                    <TextInput value={exercise.restSeconds} onChange={(event) => updateProgramExercise(exercise.id, "restSeconds", event.target.value)} placeholder="Hvile sek" />
-                    <TextInput value={exercise.notes} onChange={(event) => updateProgramExercise(exercise.id, "notes", event.target.value)} placeholder="Notat" />
-                  </div>
+              <div className={`grid gap-4 ${usesExerciseBank ? "xl:grid-cols-[1.05fr_0.95fr]" : ""}`}>
+                <div className="space-y-3">
+                  {(programTemplateDraft?.exercises ?? []).length === 0 ? (
+                    <EmptyState
+                      icon="🏋️"
+                      title="Ingen øvelser valgt"
+                      description={usesExerciseBank ? "Trykk en øvelse i banken." : "Last øvelsesbanken først."}
+                      className="bg-white"
+                    />
+                  ) : null}
+                  {(programTemplateDraft?.exercises ?? []).map((item) => {
+                    const linkedExercise = exercisesById.get(item.exerciseId);
+                    const isCardio = linkedExercise?.category === "Kondisjon";
+                    const isStretch = linkedExercise?.category === "Uttøyning";
+                    const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
+                    return (
+                      <div key={item.id} className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="font-medium text-slate-900">{item.exerciseName}</div>
+                            {linkedExercise ? (
+                              <div className="mt-0.5 text-xs text-slate-500">
+                                {linkedExercise.category} · {linkedExercise.group}
+                              </div>
+                            ) : usesExerciseBank ? (
+                              <div className="mt-1 text-xs font-medium text-amber-700">Ikke koblet – fjern og velg på nytt</div>
+                            ) : null}
+                          </div>
+                          <button type="button" onClick={() => removeProgramExercise(item.id)} className="rounded-lg border border-rose-200 p-1.5 text-rose-700 hover:bg-rose-50" aria-label="Fjern">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className={`grid gap-2 sm:grid-cols-2 ${isCardio ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}>
+                          <div className="space-y-1">
+                            <div className="text-[11px] font-medium text-slate-500">Sett</div>
+                            <TextInput value={item.sets} onChange={(e) => updateProgramExercise(item.id, "sets", e.target.value)} placeholder="Sett" />
+                          </div>
+                          {isCardio ? (
+                            <div className="space-y-1">
+                              <div className="text-[11px] font-medium text-slate-500">Tid (min)</div>
+                              <TextInput value={item.durationMinutes ?? ""} onChange={(e) => updateProgramExercise(item.id, "durationMinutes", e.target.value)} placeholder="Min" />
+                            </div>
+                          ) : isStretch ? (
+                            <div className="space-y-1">
+                              <div className="text-[11px] font-medium text-slate-500">Hold (sek)</div>
+                              <TextInput value={item.holdSeconds ?? ""} onChange={(e) => updateProgramExercise(item.id, "holdSeconds", e.target.value)} placeholder="Sek" />
+                            </div>
+                          ) : (
+                            <>
+                              <div className="space-y-1">
+                                <div className="text-[11px] font-medium text-slate-500">Reps</div>
+                                <TextInput value={item.reps} onChange={(e) => updateProgramExercise(item.id, "reps", e.target.value)} placeholder="Reps" />
+                              </div>
+                              <div className="space-y-1">
+                                <div className="text-[11px] font-medium text-slate-500">Kg</div>
+                                <TextInput value={item.weight} onChange={(e) => updateProgramExercise(item.id, "weight", e.target.value)} placeholder="Kg" />
+                              </div>
+                            </>
+                          )}
+                          {isCardio && isTreadmill ? (
+                            <>
+                              <div className="space-y-1">
+                                <div className="text-[11px] font-medium text-slate-500">Fart</div>
+                                <TextInput value={item.speed ?? ""} onChange={(e) => updateProgramExercise(item.id, "speed", e.target.value)} placeholder="km/t" />
+                              </div>
+                              <div className="space-y-1">
+                                <div className="text-[11px] font-medium text-slate-500">Stigning</div>
+                                <TextInput value={item.incline ?? ""} onChange={(e) => updateProgramExercise(item.id, "incline", e.target.value)} placeholder="%" />
+                              </div>
+                            </>
+                          ) : null}
+                          <div className="space-y-1">
+                            <div className="text-[11px] font-medium text-slate-500">Hvile (sek)</div>
+                            <TextInput value={item.restSeconds} onChange={(e) => updateProgramExercise(item.id, "restSeconds", e.target.value)} placeholder="Sek" />
+                          </div>
+                          <div className={`space-y-1 ${isCardio ? "sm:col-span-2 lg:col-span-3" : "sm:col-span-2 lg:col-span-4"}`}>
+                            <div className="text-[11px] font-medium text-slate-500">Notat</div>
+                            <TextInput value={item.notes} onChange={(e) => updateProgramExercise(item.id, "notes", e.target.value)} placeholder="Notat" />
+                          </div>
+                        </div>
+                        {!linkedExercise && !usesExerciseBank ? (
+                          <TextInput value={item.exerciseName} onChange={(e) => updateProgramExercise(item.id, "exerciseName", e.target.value)} placeholder="Øvelsesnavn" />
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+                {usesExerciseBank ? (
+                  <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="font-semibold text-slate-900">Øvelsesbank</div>
+                    <TextInput value={programExerciseSearch} onChange={(e) => setProgramExerciseSearch(e.target.value)} placeholder="Søk øvelse, muskelgruppe eller utstyr" />
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <SelectBox
+                        value={programExerciseCategoryFilter}
+                        onChange={(value) => setProgramExerciseCategoryFilter(value as typeof programExerciseCategoryFilter)}
+                        options={[
+                          { value: "all", label: "Alle typer" },
+                          { value: "Styrke", label: "Styrke" },
+                          { value: "Kondisjon", label: "Kondisjon" },
+                          { value: "Uttøyning", label: "Uttøyning" },
+                        ]}
+                      />
+                      <SelectBox
+                        value={programExerciseGroupFilter}
+                        onChange={setProgramExerciseGroupFilter}
+                        options={[{ value: "all", label: "Alle muskelgrupper" }, ...programExerciseGroupOptions.map((g) => ({ value: g, label: g }))]}
+                      />
+                    </div>
+                    <div className="max-h-[420px] space-y-2 overflow-auto pr-1">
+                      {visibleProgramExercises.length === 0 ? (
+                        <EmptyState icon="🔎" title="Ingen øvelser matcher" description="Prøv annet søk." className="bg-slate-50 py-4" />
+                      ) : null}
+                      {visibleProgramExercises.map((exercise) => (
+                        <button
+                          key={exercise.id}
+                          type="button"
+                          onClick={() => addProgramExerciseFromBank(exercise)}
+                          className="flex w-full items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-left hover:border-teal-200 hover:bg-teal-50/40"
+                        >
+                          <img
+                            src={getExercisePreviewSrc(exercise)}
+                            alt=""
+                            className="mt-0.5 h-10 w-10 shrink-0 rounded-lg border object-cover bg-white"
+                            style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                            loading="lazy"
+                            onError={(event) => {
+                              event.currentTarget.src = getExerciseSketchDataUri(exercise);
+                            }}
+                          />
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-slate-900">{exercise.name}</div>
+                            <div className="text-xs text-slate-500">
+                              {exercise.category} · {exercise.group}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
+
           ) : null}
 
           {categoryDraft === "programs" && kindDraft === "periodPlan" ? (

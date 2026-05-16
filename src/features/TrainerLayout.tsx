@@ -341,6 +341,7 @@ export function TrainerLayout({
             <InspirationHub
               canManage
               authorName={appState.currentUser?.name ?? "Motus"}
+              exerciseBank={appState.exercises}
               programTemplates={appState.programs
                 .filter((program) => program.memberId === "__template__")
                 .map((program) => ({ id: program.id, title: program.title }))}

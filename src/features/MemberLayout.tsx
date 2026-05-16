@@ -304,6 +304,7 @@ export function MemberLayout({
           <InspirationHub
             memberId={inspirationMemberId}
             memberName={appState.currentUser?.name ?? "Medlem"}
+            exerciseBank={appState.exercises}
             onAddProgram={(program) => {
               if (!inspirationMemberId) return;
               saveProgramForMember({ ...program, memberId: inspirationMemberId, programCreatedBy: "member", programCreatedByName: appState.currentUser?.name ?? "Medlem" });
