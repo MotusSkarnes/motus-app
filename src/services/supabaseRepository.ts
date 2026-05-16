@@ -2114,10 +2114,14 @@ export async function restoreMemberByEmailFromSupabase(email: string): Promise<{
   }
 
   try {
-    const { error } = await supabaseClient.functions.invoke("restore-member", {
+    const { data, error } = await supabaseClient.functions.invoke("restore-member", {
       body: { email: normalizedEmail },
     });
     if (!error) {
+      const restoredCount = Number((data as { restoredCount?: number } | null)?.restoredCount ?? 0);
+      if (restoredCount <= 0) {
+        return { ok: false, message: "Fant ingen klient med denne e-posten i databasen." };
+      }
       return { ok: true, message: "Klient gjenopprettet. Oppdaterer liste..." };
     }
     console.warn("restore-member invoke failed, trying direct update:", error.message);
@@ -2125,7 +2129,24 @@ export async function restoreMemberByEmailFromSupabase(email: string): Promise<{
     console.warn("restore-member invoke threw, trying direct update:", error);
   }
 
-  const { error } = await supabaseClient.from("members").update({ is_active: true }).eq("email", normalizedEmail).eq("is_active", false);
+  const { data: matchingRows, error: fetchError } = await supabaseClient
+    .from("members")
+    .select("id, email, is_active")
+    .ilike("email", normalizedEmail);
+
+  if (fetchError) {
+    return { ok: false, message: `Gjenoppretting feilet: ${fetchError.message}` };
+  }
+
+  const ids = (matchingRows ?? [])
+    .filter((row) => String(row.email ?? "").trim().toLowerCase() === normalizedEmail)
+    .map((row) => String(row.id));
+
+  if (!ids.length) {
+    return { ok: false, message: "Fant ingen klient med denne e-posten." };
+  }
+
+  const { error } = await supabaseClient.from("members").update({ is_active: true }).in("id", ids);
 
   if (error) {
     return { ok: false, message: `Gjenoppretting feilet: ${error.message}` };

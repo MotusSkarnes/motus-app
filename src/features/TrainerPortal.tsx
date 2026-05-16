@@ -863,6 +863,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         goal: pickLatestNonEmpty(goals) || base.goal,
         injuries: pickLatestNonEmpty(injuries) || base.injuries,
         personalGoals: pickBestPersonalGoals(personalGoalsList) || base.personalGoals,
+        invitedAt: pickLatestNonEmpty(group.map((member) => member.invitedAt)) || base.invitedAt,
+        isActive: group.some((member) => member.isActive !== false),
       });
     }
     return merged;
@@ -893,6 +895,21 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         return true;
       });
   }, [visibleMembers, memberSearch, memberFilter, customerTypeFilter, members, logs]);
+  const memberSearchRecovery = useMemo(() => {
+    const query = memberSearch.trim().toLowerCase();
+    if (!query || query.length < 3) return null;
+    const rawMatches = members.filter((member) => {
+      const email = member.email.trim().toLowerCase();
+      const name = member.name.trim().toLowerCase();
+      return email.includes(query) || name.includes(query);
+    });
+    if (!rawMatches.length) return null;
+    const visibleIdentityKeys = new Set(visibleMembers.map((member) => getMemberIdentityKey(member)));
+    const hiddenMatches = rawMatches.filter((member) => !visibleIdentityKeys.has(getMemberIdentityKey(member)));
+    const inactiveMatches = rawMatches.filter((member) => member.isActive === false);
+    const primaryEmail = rawMatches.find((member) => member.email.trim())?.email.trim().toLowerCase() ?? "";
+    return { rawMatches, hiddenMatches, inactiveMatches, primaryEmail };
+  }, [memberSearch, members, visibleMembers]);
   const sortedMembers = useMemo(() => {
     return [...filteredMembers].sort((a, b) => {
       if (memberSort === "nameAsc") return a.name.localeCompare(b.name, "no");
@@ -2047,15 +2064,26 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   }
 
   function handleDeactivateMember(memberId: string) {
-    deactivateMember(memberId);
+    const member = members.find((entry) => entry.id === memberId);
+    setConfirmDialog({
+      title: "Arkiver kunde",
+      message: `Arkivere ${member?.name?.trim() || "kunden"}? Kunden skjules fra listen, men økter, programmer og meldinger beholdes. Du kan finne vedkommende igjen under «Vis inaktive» eller gjenopprette i Admin.`,
+      confirmLabel: "Arkiver",
+      tone: "danger",
+      onConfirm: () => {
+        deactivateMember(memberId);
+      },
+    });
   }
 
   function handleDeleteMember(memberId: string) {
     if (!canAccessAdminTools) return;
+    const member = members.find((entry) => entry.id === memberId);
     setConfirmDialog({
       title: "Slette kunde permanent",
-      message: "Admin: Slette kunden permanent? Dette sletter også programmer, logger og meldinger, og kan ikke angres.",
+      message: `Dette sletter ${member?.name?.trim() || "kunden"} permanent, inkludert programmer, logger og meldinger. Handlingen kan ikke angres. Vurder «Arkiver kunde» i stedet hvis du bare vil skjule kunden.`,
       confirmLabel: "Slett permanent",
+      cancelLabel: "Avbryt",
       tone: "danger",
       onConfirm: () => {
         deleteMember(memberId);
@@ -2671,17 +2699,23 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     setIsRepairingMemberLink(false);
   }
 
-  async function handleRestoreMember() {
-    if (!restoreEmail.trim()) {
+  async function handleRestoreMember(emailOverride?: string) {
+    const email = (emailOverride ?? restoreEmail).trim();
+    if (!email) {
       setRestoreStatus("Skriv inn e-post før gjenoppretting.");
       return;
     }
     setIsRestoringMember(true);
     setRestoreStatus(null);
-    const result = await restoreMemberByEmail(restoreEmail);
+    const result = await restoreMemberByEmail(email);
     setRestoreStatus(result.message);
     if (result.ok) {
       setRestoreEmail("");
+      setShowInactiveMembers(true);
+      const restoredMember = members.find((member) => member.email.trim().toLowerCase() === email.toLowerCase());
+      if (restoredMember) {
+        setSelectedMemberId(restoredMember.id);
+      }
     }
     setIsRestoringMember(false);
   }
@@ -3907,8 +3941,45 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 </div>
               ) : null}
               {sortedMembers.length === 0 ? (
-                <div className="rounded-xl border border-dashed bg-slate-50 p-4 text-center text-sm text-slate-500">
-                  Ingen kunder matcher sok/filter. Proev et enklere sok eller bytt filter.
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-dashed bg-slate-50 p-4 text-center text-sm text-slate-500">
+                    Ingen kunder matcher sok/filter. Proev et enklere sok eller bytt filter.
+                  </div>
+                  {memberSearchRecovery ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                      <p className="font-semibold">Fant klient i systemet, men ikke i listen</p>
+                      <p className="mt-1 text-xs text-amber-900">
+                        {memberSearchRecovery.rawMatches.length === 1
+                          ? `${memberSearchRecovery.rawMatches[0]?.name || "Ukjent navn"} (${memberSearchRecovery.primaryEmail || "uten e-post"})`
+                          : `${memberSearchRecovery.rawMatches.length} rader matcher soket.`}
+                        {memberSearchRecovery.inactiveMatches.length
+                          ? " Minst en rad er markert inaktiv (ofte etter duplikatopprydding)."
+                          : " Raden kan vaere skjult av filter."}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <OutlineButton type="button" onClick={() => setShowInactiveMembers(true)} className="text-xs">
+                          Vis inaktive
+                        </OutlineButton>
+                        {memberSearchRecovery.primaryEmail ? (
+                          <GradientButton
+                            type="button"
+                            disabled={isRestoringMember}
+                            onClick={() => void handleRestoreMember(memberSearchRecovery.primaryEmail)}
+                            className="text-xs"
+                          >
+                            {isRestoringMember ? "Gjenoppretter..." : "Gjenopprett klient"}
+                          </GradientButton>
+                        ) : null}
+                      </div>
+                      {restoreStatus ? (
+                        <StatusMessage
+                          message={restoreStatus}
+                          tone={restoreStatus.toLowerCase().includes("feilet") || restoreStatus.toLowerCase().includes("fant ingen") ? "error" : "success"}
+                          className="mt-3 !rounded-xl !px-3 !py-2 !text-xs"
+                        />
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
               <OutlineButton onClick={() => setShowInactiveMembers((prev) => !prev)} className="w-full">
@@ -4142,19 +4213,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                     <OutlineButton onClick={() => void handleInviteSelectedMember()} disabled={isInvitingMember} className="w-full sm:w-auto">
                       {isInvitingMember ? "Sender invitasjon..." : "Send invitasjon på nytt"}
                     </OutlineButton>
-                    {canAccessAdminTools ? (
-                      <OutlineButton onClick={() => void handleRepairSelectedMemberLink()} disabled={isRepairingMemberLink} className="w-full sm:w-auto">
-                        {isRepairingMemberLink ? "Reparerer kobling..." : "Reparer medlemskobling"}
-                      </OutlineButton>
-                    ) : null}
                     <OutlineButton onClick={() => handleDeactivateMember(selectedMember.id)} className="w-full sm:w-auto">
                       Arkiver kunde
                     </OutlineButton>
-                    {canAccessAdminTools ? (
-                      <DangerButton onClick={() => handleDeleteMember(selectedMember.id)} className="w-full sm:w-auto">
-                        Slett kunde permanent
-                      </DangerButton>
-                    ) : null}
                   </div>
                 </div>
 
@@ -6011,6 +6072,44 @@ function programAuthorLabel(program: TrainingProgram): string | null {
             <OutlineButton onClick={() => void handleRestoreMember()} className="w-full md:w-auto" disabled={isRestoringMember}>
               {isRestoringMember ? "Gjenoppretter..." : "Gjenopprett klient"}
             </OutlineButton>
+          </div>
+          <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="text-sm font-semibold text-slate-700">Reparer medlemskobling</div>
+            <p className="text-xs leading-relaxed text-slate-600">
+              Kun nødvendig hvis medlem har fått invitasjon, men ikke kommer inn på riktig konto (feil e-post, duplikat-rad eller gammel innlogging).
+              Kobler Supabase-brukeren til valgt kundekort på nytt. Be medlemmet logge ut og inn etterpå.
+            </p>
+            {selectedMember ? (
+              <OutlineButton
+                onClick={() => void handleRepairSelectedMemberLink()}
+                disabled={isRepairingMemberLink}
+                className="w-full md:w-auto"
+              >
+                {isRepairingMemberLink ? "Reparerer kobling..." : `Reparer kobling for ${selectedMember.name}`}
+              </OutlineButton>
+            ) : (
+              <p className="text-xs text-slate-500">Velg kunden under Klienter først.</p>
+            )}
+            {memberLinkStatus ? (
+              <StatusMessage
+                message={memberLinkStatus}
+                tone={memberLinkStatus.toLowerCase().includes("feilet") || memberLinkStatus.toLowerCase().includes("kan ikke") ? "error" : "success"}
+                className="!rounded-xl !px-3 !py-2 !text-xs"
+              />
+            ) : null}
+          </div>
+          <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-4 space-y-3" style={{ borderColor: "rgba(244,63,94,0.25)" }}>
+            <div className="text-sm font-semibold text-rose-950">Slett kunde permanent</div>
+            <p className="text-xs leading-relaxed text-rose-900/90">
+              Sletter all data og kan ikke angres. Bruk «Arkiver kunde» under Klienter i stedet hvis kunden bare skal skjules midlertidig.
+            </p>
+            {selectedMember ? (
+              <DangerButton onClick={() => handleDeleteMember(selectedMember.id)} className="w-full md:w-auto">
+                Slett {selectedMember.name} permanent
+              </DangerButton>
+            ) : (
+              <p className="text-xs text-rose-800/80">Velg kunden under Klienter først.</p>
+            )}
           </div>
           <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <div className="text-sm font-semibold text-slate-700">Slå sammen duplikatkunder</div>

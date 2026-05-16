@@ -1,5 +1,23 @@
-import type { ComponentProps, Dispatch, SetStateAction } from "react";
-import { BarChart3, Bell, CheckCircle2, ChevronRight, ClipboardList, ClipboardPenLine, Clock3, Dumbbell, LayoutDashboard, MessageSquare, Settings, ShieldCheck, Sparkles, UserPlus, Users, type LucideIcon } from "lucide-react";
+import { useState, type ComponentProps, type Dispatch, type SetStateAction } from "react";
+import {
+  BarChart3,
+  Bell,
+  CheckCircle2,
+  ChevronRight,
+  ClipboardList,
+  ClipboardPenLine,
+  Clock3,
+  Dumbbell,
+  LayoutDashboard,
+  MessageSquare,
+  MoreHorizontal,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  UserPlus,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { AppState, TrainerTab } from "../app/types";
 import { Card } from "../app/ui";
@@ -75,6 +93,12 @@ const mobileTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
   { id: "exerciseBank", label: "Øvelser", icon: Dumbbell },
 ];
 
+const mobileMoreTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
+  { id: "statistics", label: "Statistikk", icon: BarChart3 },
+  { id: "settings", label: "Innstillinger", icon: Settings },
+  { id: "admin", label: "Admin", icon: ShieldCheck },
+];
+
 export function TrainerLayout({
   appState,
   trainerTab,
@@ -118,9 +142,11 @@ export function TrainerLayout({
   finishWorkoutMode,
   cancelWorkoutMode,
 }: TrainerLayoutProps) {
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const canAccessAdminTools = true;
   const visibleTrainerMenuItems = trainerMenuItems;
   const visibleMobileTabs = mobileTabs;
+  const isMoreTabActive = mobileMoreTabs.some((tab) => tab.id === trainerTab);
 
   const trainerPortalProps: ComponentProps<typeof TrainerPortal> = {
     members: appState.members,
@@ -168,8 +194,8 @@ export function TrainerLayout({
 
   return (
     <>
-      <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <Card className="hidden h-fit p-3 shadow-sm ring-1 ring-black/5 lg:block">
+      <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
+        <Card className="hidden h-fit p-3 shadow-sm ring-1 ring-black/5 xl:block">
           <div className="mb-2 px-2">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">PT-meny</div>
           </div>
@@ -322,22 +348,6 @@ export function TrainerLayout({
               </div>
             )}
           </Card>
-          {canAccessAdminTools ? (
-            <button
-              type="button"
-              onClick={() => setTrainerTab("admin")}
-              className="flex w-full items-center justify-between rounded-xl border bg-white px-4 py-3 text-left text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 lg:hidden"
-              style={{ borderColor: "rgba(15,23,42,0.08)" }}
-            >
-              <span className="inline-flex items-center gap-2">
-                <span className="rounded-lg bg-slate-100 p-2 text-slate-700">
-                  <ShieldCheck className="h-4 w-4" />
-                </span>
-                <span>Adminverktøy</span>
-              </span>
-              <ChevronRight className="h-4 w-4 text-slate-400" />
-            </button>
-          ) : null}
           {trainerTab === "inspiration" ? (
             <InspirationHub
               canManage
@@ -354,15 +364,53 @@ export function TrainerLayout({
       </div>
 
       <div
-        className="fixed inset-x-0 bottom-0 z-[9999] overflow-x-hidden border-t bg-white/95 px-1 pt-1 backdrop-blur lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-[9999] border-t bg-white/95 px-2 pt-2 backdrop-blur xl:hidden"
         style={{ borderColor: "rgba(15,23,42,0.08)", paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))" }}
       >
+        {moreMenuOpen ? (
+          <button
+            type="button"
+            className="fixed inset-0 z-[9998] cursor-default bg-slate-900/20"
+            aria-label="Lukk meny"
+            onClick={() => setMoreMenuOpen(false)}
+          />
+        ) : null}
+        {moreMenuOpen ? (
+          <div
+            className="absolute bottom-full left-2 right-2 z-[10000] mb-2 overflow-hidden rounded-2xl border bg-white shadow-xl"
+            style={{ borderColor: "rgba(15,23,42,0.1)" }}
+            role="menu"
+          >
+            {mobileMoreTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = trainerTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setTrainerTab(tab.id);
+                    setMoreMenuOpen(false);
+                  }}
+                  className={`flex w-full items-center gap-3 border-b px-4 py-3 text-left text-sm font-medium last:border-b-0 ${
+                    isActive ? "bg-teal-50 text-teal-900" : "text-slate-700 hover:bg-slate-50"
+                  }`}
+                  style={{ borderColor: "rgba(15,23,42,0.06)" }}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
         <div
-          className="mx-auto flex w-[min(100%,22rem)] items-center gap-0.5 rounded-[18px] border bg-slate-50/90 p-0.5 shadow-lg"
+          className="relative z-[10001] mx-auto flex max-w-lg items-center gap-1.5 rounded-[22px] border bg-slate-50/90 p-1.5 shadow-lg"
           style={{ borderColor: "rgba(15,23,42,0.06)" }}
         >
           <div
-            className="grid w-full grid-cols-5 items-center gap-0.5 rounded-[14px] p-0.5"
+            className="flex w-full items-center gap-1 rounded-[18px] p-1"
             style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
           >
             {visibleMobileTabs.map((tab) => {
@@ -372,16 +420,31 @@ export function TrainerLayout({
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setTrainerTab(tab.id)}
-                  className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-md px-0.5 py-1.5 text-[9px] font-semibold transition ${
+                  onClick={() => {
+                    setMoreMenuOpen(false);
+                    setTrainerTab(tab.id);
+                  }}
+                  className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition ${
                     isActive ? "bg-white text-slate-900 shadow-sm" : "bg-white/20 text-white hover:bg-white/30"
                   }`}
                 >
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <Icon className="h-4 w-4 shrink-0" />
                   <span className="truncate">{tab.label}</span>
                 </button>
               );
             })}
+            <button
+              type="button"
+              onClick={() => setMoreMenuOpen((open) => !open)}
+              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition ${
+                isMoreTabActive || moreMenuOpen ? "bg-white text-slate-900 shadow-sm" : "bg-white/20 text-white hover:bg-white/30"
+              }`}
+              aria-expanded={moreMenuOpen}
+              aria-haspopup="menu"
+            >
+              <MoreHorizontal className="h-4 w-4 shrink-0" />
+              <span>Mer</span>
+            </button>
           </div>
         </div>
       </div>

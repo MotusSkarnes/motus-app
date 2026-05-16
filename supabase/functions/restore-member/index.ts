@@ -48,10 +48,27 @@ Deno.serve(async (req) => {
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
-  const { error } = await adminClient.from("members").update({ is_active: true }).eq("email", email).eq("is_active", false);
+  const { data: rows, error: fetchError } = await adminClient.from("members").select("id, email, is_active").ilike("email", email);
+
+  if (fetchError) {
+    return jsonResponse(500, { error: fetchError.message });
+  }
+
+  const matchingRows = (rows ?? []).filter((row) => normalizeEmail(String(row.email ?? "")) === email);
+  if (!matchingRows.length) {
+    return jsonResponse(404, { error: "Ingen klient funnet med denne e-posten" });
+  }
+
+  const ids = matchingRows.map((row) => String(row.id));
+  const { error } = await adminClient.from("members").update({ is_active: true }).in("id", ids);
   if (error) {
     return jsonResponse(500, { error: error.message });
   }
 
-  return jsonResponse(200, { message: "Member restored" });
+  const reactivatedCount = matchingRows.filter((row) => row.is_active === false).length;
+  return jsonResponse(200, {
+    message: "Member restored",
+    restoredCount: ids.length,
+    reactivatedCount,
+  });
 });

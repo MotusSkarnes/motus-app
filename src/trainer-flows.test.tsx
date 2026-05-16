@@ -85,6 +85,7 @@ describe("Trainer flows", () => {
     await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
     await user.click(screen.getAllByRole("button", { name: "Klienter" })[0]);
     await user.click(screen.getByRole("button", { name: "Arkiver kunde" }));
+    await user.click(screen.getByRole("button", { name: "Arkiver" }));
     expect(screen.getByRole("button", { name: "Vis inaktive" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Vis inaktive" }));
