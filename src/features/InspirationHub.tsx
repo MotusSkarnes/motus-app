@@ -52,9 +52,11 @@ const CATEGORY_META: Record<InspirationCategory, { label: string; plural: string
 const INSPO_CARD_DESCRIPTION_MAX = 100;
 const INSPO_CARD_TITLE_MAX = 72;
 const INSPO_FEED_CARD_WIDTH_CLASS = "w-52 sm:w-56";
-const INSPO_FEED_CARD_HEIGHT_CLASS = "h-[22.5rem] sm:h-[23.5rem]";
 const INSPO_FEED_CARD_IMAGE_CLASS = "h-[10rem] sm:h-[10.5rem]";
-const INSPO_FEED_CARD_ACTION_CLASS = "!min-h-8 !px-2.5 !py-1.5 !text-[11px] !leading-tight";
+const INSPO_FEED_CARD_TITLE_CLASS = "line-clamp-2 max-h-[2.5rem] overflow-hidden text-sm font-semibold leading-[1.25rem] text-slate-950";
+const INSPO_FEED_CARD_DESCRIPTION_CLASS =
+  "line-clamp-2 max-h-[2.25rem] overflow-hidden text-xs leading-[1.125rem] text-slate-500";
+const INSPO_FEED_CARD_ACTION_CLASS = "!min-h-7 !px-2 !py-1 !text-[11px] !leading-tight";
 
 const INSPIRATION_FEED_SECTIONS: readonly { category: InspirationCategory; title: string }[] = [
   { category: "news", title: "Info fra senteret" },
@@ -657,7 +659,7 @@ export function InspirationHub({
     return (
       <article
         key={item.id}
-        className={`relative flex shrink-0 snap-start flex-col overflow-hidden rounded-xl border bg-white ${INSPO_FEED_CARD_WIDTH_CLASS} ${INSPO_FEED_CARD_HEIGHT_CLASS}`}
+        className={`relative flex shrink-0 snap-start flex-col overflow-hidden rounded-xl border bg-white ${INSPO_FEED_CARD_WIDTH_CLASS}`}
         style={{ borderColor: "rgba(15,23,42,0.08)" }}
       >
         {canManage ? (
@@ -682,7 +684,7 @@ export function InspirationHub({
             </button>
           </div>
         ) : null}
-        <button type="button" onClick={() => setExpandedItemId(item.id)} className="flex min-h-0 flex-1 flex-col text-left">
+        <button type="button" onClick={() => setExpandedItemId(item.id)} className="flex flex-col text-left">
           <div
             className={`w-full shrink-0 overflow-hidden bg-slate-100 ${INSPO_FEED_CARD_IMAGE_CLASS}`}
             style={!item.imageUrl ? { background: MOTUS_GRADIENT } : undefined}
@@ -694,7 +696,7 @@ export function InspirationHub({
               </div>
             ) : null}
           </div>
-          <div className="shrink-0 flex flex-col p-2.5 pt-2">
+          <div className="flex shrink-0 flex-col px-2 pb-1 pt-1.5">
             <div className="flex min-h-[1.125rem] items-center justify-between gap-1.5">
               <span
                 className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm"
@@ -705,16 +707,11 @@ export function InspirationHub({
               </span>
               <span className="truncate text-[9px] text-slate-400">{item.tag}</span>
             </div>
-            <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-slate-950">
-              {item.title}
-            </h3>
-            <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-slate-500">
-              {item.description || "\u00a0"}
-            </p>
+            <h3 className={`mt-0.5 ${INSPO_FEED_CARD_TITLE_CLASS}`}>{item.title}</h3>
+            <p className={`mt-0.5 ${INSPO_FEED_CARD_DESCRIPTION_CLASS}`}>{item.description || "\u00a0"}</p>
           </div>
-          <div className="min-h-0 flex-1" aria-hidden />
         </button>
-        <div className="shrink-0 border-t border-slate-100 px-2.5 py-1.5">
+        <div className="shrink-0 border-t border-slate-100 px-2 pb-2 pt-0">
           <OutlineButton onClick={() => setExpandedItemId(item.id)} className={`w-full ${INSPO_FEED_CARD_ACTION_CLASS}`}>
             Les mer
           </OutlineButton>
