@@ -925,7 +925,7 @@ async function syncMemberProfileViaEdgeFunction(
       focus: member.focus,
       injuries: member.injuries,
       personalGoals: member.personalGoals,
-      avatarUrl: member.avatarUrl ?? "",
+      ...(member.avatarUrl?.trim() ? { avatarUrl: member.avatarUrl.trim() } : {}),
     },
   };
 

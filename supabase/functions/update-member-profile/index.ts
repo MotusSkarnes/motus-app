@@ -49,6 +49,30 @@ function isSharedMedlem(customerType: unknown): boolean {
   return normalizeString(customerType).toLowerCase() === "medlem";
 }
 
+function withoutAvatarUrl(fields: Record<string, string>): Record<string, string> {
+  const next = { ...fields };
+  delete next.avatar_url;
+  return next;
+}
+
+function isMissingAvatarColumnError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return lower.includes("avatar_url") && (lower.includes("schema cache") || lower.includes("column"));
+}
+
+async function updateMembersById(
+  adminClient: ReturnType<typeof createClient>,
+  fields: Record<string, string>,
+  ids: string[],
+) {
+  if (!ids.length) return { data: [] as { id?: string }[], error: null as null };
+  let result = await adminClient.from("members").update(fields).in("id", ids).select("id");
+  if (result.error && isMissingAvatarColumnError(result.error.message) && "avatar_url" in fields) {
+    result = await adminClient.from("members").update(withoutAvatarUrl(fields)).in("id", ids).select("id");
+  }
+  return result;
+}
+
 function canTrainerEditAnchor(row: { owner_user_id?: string | null; customer_type?: string | null }, trainerUserId: string): boolean {
   const ownerUserId = normalizeString(row.owner_user_id);
   if (isSharedMedlem(row.customer_type)) return true;
@@ -142,7 +166,8 @@ Deno.serve(async (req) => {
   if (changes.focus !== undefined) updateFields.focus = normalizeString(changes.focus);
   if (changes.injuries !== undefined) updateFields.injuries = normalizeString(changes.injuries);
   if (changes.personalGoals !== undefined) updateFields.personal_goals = normalizeString(changes.personalGoals);
-  if (changes.avatarUrl !== undefined) updateFields.avatar_url = normalizeString(changes.avatarUrl);
+  const avatarUrl = normalizeString(changes.avatarUrl);
+  if (avatarUrl) updateFields.avatar_url = avatarUrl;
 
   // Membership / customer type: ikke for medlem-session; trener eller JWT uten role (eldre trener-kontoer).
   const canEditMembershipFields = userRole === "trainer" || userRole === "";
@@ -262,9 +287,13 @@ Deno.serve(async (req) => {
       focus: normalizeString(changes.focus),
       injuries: normalizeString(changes.injuries),
       personal_goals: normalizeString(changes.personalGoals),
-      avatar_url: normalizeString(changes.avatarUrl),
     };
-    const bootstrapResult = await adminClient.from("members").upsert(insertPayload, { onConflict: "id" }).select("id");
+    if (avatarUrl) insertPayload.avatar_url = avatarUrl;
+    let bootstrapResult = await adminClient.from("members").upsert(insertPayload, { onConflict: "id" }).select("id");
+    if (bootstrapResult.error && isMissingAvatarColumnError(bootstrapResult.error.message) && "avatar_url" in insertPayload) {
+      const { avatar_url: _removed, ...bootstrapWithoutAvatar } = insertPayload;
+      bootstrapResult = await adminClient.from("members").upsert(bootstrapWithoutAvatar, { onConflict: "id" }).select("id");
+    }
     if (bootstrapResult.error) {
       return jsonResponse(500, { error: `Could not bootstrap member row: ${bootstrapResult.error.message}` });
     }
@@ -281,7 +310,7 @@ Deno.serve(async (req) => {
 
   const hasProfileUpdates = Object.keys(profileUpdateFields).length > 0;
   if (hasProfileUpdates && targetIds.length) {
-    const byIdResult = await adminClient.from("members").update(profileUpdateFields).in("id", targetIds).select("id");
+    const byIdResult = await updateMembersById(adminClient, profileUpdateFields, targetIds);
     if (byIdResult.error) {
       return jsonResponse(500, { error: `Could not update member rows by id: ${byIdResult.error.message}` });
     }
@@ -311,7 +340,7 @@ Deno.serve(async (req) => {
       ),
     );
     if (profileFanoutIds.length) {
-      const fanoutResult = await adminClient.from("members").update(profileUpdateFields).in("id", profileFanoutIds).select("id");
+      const fanoutResult = await updateMembersById(adminClient, profileUpdateFields, profileFanoutIds);
       if (fanoutResult.error) {
         return jsonResponse(500, { error: `Could not fan out profile fields by email: ${fanoutResult.error.message}` });
       }
@@ -328,11 +357,7 @@ Deno.serve(async (req) => {
       ),
     );
     if (emailMatchedIds.length) {
-      const byEmailIdsResult = await adminClient
-        .from("members")
-        .update(profileUpdateFields)
-        .in("id", emailMatchedIds)
-        .select("id");
+      const byEmailIdsResult = await updateMembersById(adminClient, profileUpdateFields, emailMatchedIds);
       if (byEmailIdsResult.error) {
         return jsonResponse(500, { error: `Could not update member rows by email: ${byEmailIdsResult.error.message}` });
       }

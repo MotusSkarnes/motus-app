@@ -47,7 +47,7 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full border px-3 py-1.5 text-left text-sm font-medium transition ${
+      className={`rounded-full border px-2.5 py-1 text-left text-xs font-medium transition sm:px-3 sm:py-1.5 sm:text-sm ${
         active
           ? "border-transparent text-white shadow-sm"
           : "border-slate-200 bg-white text-slate-700 hover:border-teal-200 hover:bg-teal-50/50"
@@ -61,10 +61,10 @@ function Chip({
 
 function ImportanceSlider({ value, onChange }: { value: number; onChange: (next: number) => void }) {
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between text-sm">
+    <div className="space-y-2 sm:space-y-3">
+      <div className="flex items-center justify-between gap-2 text-xs sm:text-sm">
         <span className="text-slate-600">Lite viktig</span>
-        <span className="text-2xl font-bold tabular-nums text-slate-900">{value}</span>
+        <span className="text-xl font-bold tabular-nums text-slate-900 sm:text-2xl">{value}</span>
         <span className="text-slate-600">Svært viktig</span>
       </div>
       <input
@@ -79,7 +79,7 @@ function ImportanceSlider({ value, onChange }: { value: number; onChange: (next:
           background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
         }}
       />
-      <div className="flex justify-between text-[11px] text-slate-400">
+      <div className="hidden justify-between text-[11px] text-slate-400 sm:flex">
         {Array.from({ length: 10 }, (_, index) => (
           <span key={index + 1}>{index + 1}</span>
         ))}
@@ -168,10 +168,13 @@ export function MemberOnboarding({ memberName, initialDraft, onComplete, onClose
   }
 
   return (
-    <div className="fixed inset-0 z-[10050] flex flex-col bg-white">
+    <div
+      className="fixed inset-0 z-[10050] flex min-h-0 flex-col bg-white"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
       <div className="h-1.5 shrink-0" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
-      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col px-4 py-5 sm:px-6">
-        <div className="mb-4 flex items-center justify-between gap-3 text-xs font-semibold text-slate-500">
+      <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col px-4 py-3 sm:px-6 sm:py-5">
+        <div className="mb-2 flex shrink-0 items-center justify-between gap-3 text-xs font-semibold text-slate-500 sm:mb-4">
           <span>
             Side {pageIndex + 1} av {ONBOARDING_PAGE_COUNT}
           </span>
@@ -181,7 +184,7 @@ export function MemberOnboarding({ memberName, initialDraft, onComplete, onClose
             </button>
           ) : null}
         </div>
-        <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <div className="mb-2 h-1.5 shrink-0 overflow-hidden rounded-full bg-slate-100">
           <div
             className="h-full rounded-full transition-all duration-300"
             style={{
@@ -191,16 +194,16 @@ export function MemberOnboarding({ memberName, initialDraft, onComplete, onClose
           />
         </div>
 
-        <Card className="flex flex-1 flex-col overflow-hidden border-0 shadow-lg ring-1 ring-slate-200/80">
-          <div className="border-b border-slate-100 px-4 py-4 sm:px-5">
+        <Card className="flex min-h-0 flex-1 flex-col overflow-hidden border-0 shadow-lg ring-1 ring-slate-200/80">
+          <div className="shrink-0 border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">{theme.title}</p>
-            <h1 className="mt-1 text-xl font-bold text-slate-950 sm:text-2xl">Hei {memberName.split(" ")[0] || "der"}!</h1>
-            <p className="mt-1 text-sm text-slate-600">{theme.subtitle}</p>
+            <h1 className="mt-0.5 text-lg font-bold text-slate-950 sm:mt-1 sm:text-2xl">Hei {memberName.split(" ")[0] || "der"}!</h1>
+            <p className="mt-0.5 text-xs text-slate-600 sm:mt-1 sm:text-sm">{theme.subtitle}</p>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 sm:px-5 sm:py-4">
             {pageIndex === 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div>
                   <p className="text-sm font-medium text-slate-800">Hva er målene dine med trening?</p>
                   <p className="mt-0.5 text-xs text-slate-500">Velg ett eller flere.</p>
@@ -220,14 +223,14 @@ export function MemberOnboarding({ memberName, initialDraft, onComplete, onClose
                   <TextArea
                     value={draft.goalsNotes}
                     onChange={(event) => patchDraft({ goalsNotes: event.target.value })}
-                    className="min-h-[80px]"
+                    className="min-h-[56px] sm:min-h-[80px]"
                     placeholder="F.eks. sterkere i markløft, mer energi i hverdagen…"
                   />
                 </label>
                 <div>
                   <p className="text-sm font-medium text-slate-800">Hvor viktig er dette for deg akkurat nå?</p>
                   <p className="mt-0.5 text-xs text-slate-500">Dra markøren fra 1 til 10.</p>
-                  <div className="mt-3">
+                  <div className="mt-2">
                     <ImportanceSlider value={draft.importanceNow} onChange={(importanceNow) => patchDraft({ importanceNow })} />
                   </div>
                 </div>
@@ -441,8 +444,8 @@ export function MemberOnboarding({ memberName, initialDraft, onComplete, onClose
           </div>
 
           <div
-            className="flex gap-2 border-t border-slate-100 px-4 py-4 sm:px-5"
-            style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+            className="flex shrink-0 gap-2 border-t border-slate-100 px-4 py-3 sm:px-5 sm:py-4"
+            style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
           >
             <OutlineButton
               type="button"

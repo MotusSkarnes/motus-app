@@ -4307,15 +4307,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 {customerSubTab === "overview" ? (
                   <div className="space-y-4">
                     <div className="grid gap-4 xl:grid-cols-2">
-                    <div className="rounded-xl border bg-slate-50 p-4">
-                      <div className="font-semibold">Kundestatus</div>
-                      <div className="mt-3 space-y-2 text-sm text-slate-600">
-                        <div><span className="font-medium text-slate-800">Mål:</span> {selectedMemberProfile?.goal || selectedMember.goal || "Ikke satt"}</div>
-                        <div><span className="font-medium text-slate-800">Kundetype:</span> {selectedMember.customerType}</div>
-                        <div><span className="font-medium text-slate-800">Medlemskap:</span> {selectedMember.membershipType}</div>
-                        <div><span className="font-medium text-slate-800">Skader/hensyn:</span> {selectedMemberProfile?.injuries || selectedMember.injuries || "Ingen registrerte skader"}</div>
-                      </div>
-                    </div>
                     <MemberOnboardingSummary
                       member={selectedMemberProfile ?? selectedMember}
                       allMembers={members}
