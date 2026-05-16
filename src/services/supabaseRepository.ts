@@ -1415,6 +1415,7 @@ export type HydratedMemberData = {
   logs: WorkoutLog[];
   periodPlanRows: Array<{ memberId: string; plan: PeriodSchedulePlan }>;
   exercises: Exercise[];
+  inspirationItems: unknown[];
 };
 
 function trainingProgramFromHydrateRow(program: Record<string, unknown>): TrainingProgram {
@@ -1512,6 +1513,7 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
       } as WorkoutLog;
     }),
     periodPlanRows,
+    inspirationItems: Array.isArray(payload.inspirationItems) ? payload.inspirationItems : [],
     exercises: exercisesRows.map((row) => {
       const exercise = row as Record<string, unknown>;
       return {

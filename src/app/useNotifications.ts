@@ -1,5 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { INSPIRATION_CHANGED_EVENT, loadInspirationNotificationItems } from "./inspirationStorage";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  INSPIRATION_CHANGED_EVENT,
+  loadInspirationNotificationItems,
+  refreshInspirationNotificationItemsFromRemote,
+  type InspirationNotificationItem,
+} from "./inspirationStorage";
 import { trainerInactiveDaysForFollowUp } from "./memberActivity";
 import type { ChatMessage, Member, MemberTab, TrainingProgram, WorkoutLog } from "./types";
 
@@ -130,16 +135,48 @@ export function useNotifications({
       return [];
     }
   });
-  const [inspirationRevision, setInspirationRevision] = useState(0);
+  const [inspirationItems, setInspirationItems] = useState<InspirationNotificationItem[]>(() => loadInspirationNotificationItems());
+
+  const syncInspirationItemsFromStorage = useCallback(() => {
+    setInspirationItems(loadInspirationNotificationItems());
+  }, []);
+
+  const pullInspirationItemsFromRemote = useCallback(() => {
+    void refreshInspirationNotificationItemsFromRemote().then((items) => {
+      setInspirationItems(items);
+    });
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const handler = () => setInspirationRevision((value) => value + 1);
-    window.addEventListener(INSPIRATION_CHANGED_EVENT, handler);
-    return () => window.removeEventListener(INSPIRATION_CHANGED_EVENT, handler);
-  }, []);
 
-  const inspirationItems = useMemo(() => loadInspirationNotificationItems(), [inspirationRevision]);
+    const onInspirationChanged = () => {
+      syncInspirationItemsFromStorage();
+      pullInspirationItemsFromRemote();
+    };
+
+    window.addEventListener(INSPIRATION_CHANGED_EVENT, onInspirationChanged);
+
+    if (!memberViewId) {
+      return () => window.removeEventListener(INSPIRATION_CHANGED_EVENT, onInspirationChanged);
+    }
+
+    pullInspirationItemsFromRemote();
+
+    const intervalId = window.setInterval(pullInspirationItemsFromRemote, 60_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") pullInspirationItemsFromRemote();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", pullInspirationItemsFromRemote);
+
+    return () => {
+      window.removeEventListener(INSPIRATION_CHANGED_EVENT, onInspirationChanged);
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", pullInspirationItemsFromRemote);
+    };
+  }, [memberViewId, pullInspirationItemsFromRemote, syncInspirationItemsFromStorage]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

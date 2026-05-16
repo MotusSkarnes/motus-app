@@ -62,6 +62,18 @@ export function saveInspirationItemsToStorage(items: unknown[]): InspirationSave
   }
 }
 
+export function mapRawToInspirationNotificationItems(items: unknown[]): InspirationNotificationItem[] {
+  return items
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .map((item) => ({
+      id: String(item.id ?? ""),
+      title: String(item.title ?? ""),
+      description: String(item.description ?? ""),
+      createdAt: String(item.createdAt ?? ""),
+    }))
+    .filter((item) => item.id.length > 0 && item.title.length > 0);
+}
+
 export function loadInspirationNotificationItems(): InspirationNotificationItem[] {
   if (typeof window === "undefined") return [];
   try {
@@ -69,18 +81,29 @@ export function loadInspirationNotificationItems(): InspirationNotificationItem[
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
-      .map((item) => ({
-        id: String(item.id ?? ""),
-        title: String(item.title ?? ""),
-        description: String(item.description ?? ""),
-        createdAt: String(item.createdAt ?? ""),
-      }))
-      .filter((item) => item.id.length > 0 && item.title.length > 0);
+    return mapRawToInspirationNotificationItems(parsed);
   } catch {
     return [];
   }
+}
+
+/** Hent delt inspo-feed fra Supabase, oppdater lokal cache og varsle lyttere (medlemmer). */
+export async function refreshInspirationNotificationItemsFromRemote(): Promise<InspirationNotificationItem[]> {
+  if (typeof window === "undefined") return [];
+  if (!isSupabaseConfigured) return loadInspirationNotificationItems();
+
+  const remote = await fetchInspirationItemsFromSupabase();
+  if (remote === null || remote.length === 0) {
+    return loadInspirationNotificationItems();
+  }
+
+  const previousRaw = window.localStorage.getItem(INSPIRATION_STORAGE_KEY) ?? "";
+  saveInspirationItemsToStorage(remote);
+  const nextRaw = window.localStorage.getItem(INSPIRATION_STORAGE_KEY) ?? "";
+  if (nextRaw !== previousRaw) {
+    notifyInspirationItemsChanged();
+  }
+  return mapRawToInspirationNotificationItems(remote);
 }
 
 export async function fetchInspirationItemsFromSupabase(): Promise<unknown[] | null> {

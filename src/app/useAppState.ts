@@ -18,6 +18,7 @@ import {
   type StartWorkoutModeOptions,
   type UpdateMemberInput,
 } from "../services/appRepository";
+import { notifyInspirationItemsChanged, saveInspirationItemsToStorage } from "./inspirationStorage";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { fetchExercisesFromSupabase, fetchHydratedMemberData, fetchHydratedTrainerData, fetchLogsFromSupabase, fetchMembersFromSupabase, fetchMessagesFromSupabase, fetchProgramsFromSupabase, restoreMemberByEmailFromSupabase, supabaseAppRepository } from "../services/supabaseRepository";
 import {
@@ -480,6 +481,12 @@ export function useAppState() {
       }
       if (hydratedMember) {
         setRemoteMemberPeriodPlanRows(hydratedMember.periodPlanRows ?? []);
+        if (!cancelled && hydratedMember.inspirationItems.length > 0) {
+          const inspirationSaved = saveInspirationItemsToStorage(hydratedMember.inspirationItems);
+          if (inspirationSaved.ok) {
+            notifyInspirationItemsChanged();
+          }
+        }
       }
 
       setAppState((prev) => {

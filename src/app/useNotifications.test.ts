@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { INSPIRATION_CHANGED_EVENT, INSPIRATION_STORAGE_KEY } from "./inspirationStorage";
 import { useNotifications } from "./useNotifications";
@@ -155,7 +155,7 @@ describe("useNotifications workout comment alerts", () => {
     expect(result.current.trainerUnreadCount).toBe(0);
   });
 
-  it("counts unread inspiration alerts when a new inspo item is published", () => {
+  it("counts unread inspiration alerts when a new inspo item is published", async () => {
     window.localStorage.setItem("motus.notifications.memberInspirationBaselineAt", String(Date.now()));
     window.localStorage.setItem("motus.notifications.memberSeenInspirationIds", JSON.stringify(["default-recipe-1"]));
 
@@ -184,8 +184,10 @@ describe("useNotifications workout comment alerts", () => {
       window.dispatchEvent(new CustomEvent(INSPIRATION_CHANGED_EVENT));
     });
 
-    expect(result.current.memberUnreadCount).toBe(1);
-    expect(result.current.memberVisibleAlerts.some((alert) => alert.kind === "inspiration")).toBe(true);
+    await waitFor(() => {
+      expect(result.current.memberUnreadCount).toBe(1);
+      expect(result.current.memberVisibleAlerts.some((alert) => alert.kind === "inspiration")).toBe(true);
+    });
   });
 
   it("ignores workout comments on non-completed logs", () => {
