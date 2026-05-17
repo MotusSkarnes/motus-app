@@ -27,6 +27,9 @@ function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
 }
 
+const MEMBER_ARCHIVED_MESSAGE =
+  "Kundekontoen er arkivert. Kontakt din PT for å gjenåpne tilgang til appen.";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -84,14 +87,14 @@ Deno.serve(async (req) => {
 
   let { data: memberRow, error: memberError } = await adminClient
     .from("members")
-    .select("id, email, owner_user_id")
+    .select("id, email, owner_user_id, is_active")
     .eq("id", memberId)
     .maybeSingle();
 
   if ((memberError || !memberRow) && requesterRole === "member" && requesterEmail) {
     const { data: byEmail, error: emailLookupError } = await adminClient
       .from("members")
-      .select("id, email, owner_user_id")
+      .select("id, email, owner_user_id, is_active")
       .ilike("email", requesterEmail)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -109,10 +112,14 @@ Deno.serve(async (req) => {
   const canonicalMemberId = String((memberRow as { id?: string }).id ?? "").trim();
   const memberEmail = normalizeEmail((memberRow as { email?: string }).email);
   const memberOwner = String((memberRow as { owner_user_id?: string }).owner_user_id ?? "").trim();
+  const memberIsActive = (memberRow as { is_active?: boolean | null }).is_active !== false;
   const isMemberOwner = requesterRole === "trainer" && memberOwner === requesterId;
   const isSameMemberEmail = requesterRole === "member" && requesterEmail && requesterEmail === memberEmail;
   if (!isMemberOwner && !isSameMemberEmail) {
     return jsonResponse(403, { error: "Not authorized to persist workout log for this member" });
+  }
+  if (requesterRole === "member" && !memberIsActive) {
+    return jsonResponse(403, { error: "member_archived", message: MEMBER_ARCHIVED_MESSAGE });
   }
 
   let ownerUserId = memberOwner;

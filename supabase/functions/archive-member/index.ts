@@ -11,8 +11,45 @@ type ArchivePayload = {
   memberId?: string;
 };
 
+type AuthUser = {
+  id?: string;
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+};
+
+type MemberRow = {
+  id: string;
+  email: string | null;
+  is_active: boolean | null;
+  owner_user_id: string | null;
+  customer_type: string | null;
+};
+
 function normalizeEmail(value: string | null | undefined): string {
   return String(value ?? "").trim().toLowerCase();
+}
+
+function normalizeString(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+function isTrainerUser(user: AuthUser): boolean {
+  const appRole = normalizeString(user.app_metadata?.role).toLowerCase();
+  if (appRole === "trainer") return true;
+  const metaRole = normalizeString(user.user_metadata?.role).toLowerCase();
+  return metaRole === "trainer";
+}
+
+function isSharedMemberRow(row: MemberRow): boolean {
+  return normalizeString(row.customer_type).toLowerCase() === "medlem";
+}
+
+function canManageMemberRow(row: MemberRow, user: AuthUser): boolean {
+  const userId = normalizeString(user.id);
+  const ownerUserId = normalizeString(row.owner_user_id);
+  if (userId && ownerUserId === userId) return true;
+  if (!isTrainerUser(user)) return false;
+  return !ownerUserId || isSharedMemberRow(row);
 }
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -50,12 +87,31 @@ Deno.serve(async (req) => {
     return jsonResponse(400, { error: "email or memberId is required" });
   }
 
-  const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  const authHeader = req.headers.get("Authorization") || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!token) {
+    return jsonResponse(401, { error: "Missing bearer token" });
+  }
 
-  let matchingRows: Array<{ id: string; email: string | null; is_active: boolean | null }> = [];
+  const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const {
+    data: { user },
+    error: userError,
+  } = await adminClient.auth.getUser(token);
+  if (userError || !user?.id) {
+    return jsonResponse(401, { error: "Invalid user session" });
+  }
+
+  let matchingRows: MemberRow[] = [];
 
   if (email && email.includes("@")) {
-    const { data: rows, error: fetchError } = await adminClient.from("members").select("id, email, is_active").ilike("email", email);
+    const { data: rows, error: fetchError } = await adminClient
+      .from("members")
+      .select("id, email, is_active, owner_user_id, customer_type")
+      .ilike("email", email);
     if (fetchError) {
       return jsonResponse(500, { error: fetchError.message });
     }
@@ -65,14 +121,14 @@ Deno.serve(async (req) => {
   if (memberId && !matchingRows.some((row) => row.id === memberId)) {
     const { data: row, error: rowError } = await adminClient
       .from("members")
-      .select("id, email, is_active")
+      .select("id, email, is_active, owner_user_id, customer_type")
       .eq("id", memberId)
       .maybeSingle();
     if (rowError) {
       return jsonResponse(500, { error: rowError.message });
     }
     if (row) {
-      matchingRows.push(row as { id: string; email: string | null; is_active: boolean | null });
+      matchingRows.push(row as MemberRow);
     }
   }
 
@@ -80,7 +136,12 @@ Deno.serve(async (req) => {
     return jsonResponse(404, { error: "Ingen klient funnet med denne e-posten eller id" });
   }
 
-  const ids = Array.from(new Set(matchingRows.map((row) => String(row.id)).filter(Boolean)));
+  const unauthorizedRows = matchingRows.filter((row) => !canManageMemberRow(row, user));
+  if (unauthorizedRows.length > 0) {
+    return jsonResponse(403, { error: "Not authorized to archive this member" });
+  }
+
+  const ids = Array.from(new Set(matchingRows.map((row) => normalizeString(row.id)).filter(Boolean)));
   const { error } = await adminClient
     .from("members")
     .update({ is_active: false })
