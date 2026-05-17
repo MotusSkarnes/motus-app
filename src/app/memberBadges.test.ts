@@ -13,30 +13,35 @@ describe("memberBadges", () => {
     nowDate: new Date("2026-05-16T12:00:00"),
   };
 
-  it("builds categories with several badge levels", () => {
+  it("builds categories with one badge per achievement track", () => {
     const collection = computeMemberBadges(baseInput);
     expect(collection.categories.length).toBeGreaterThan(3);
-    expect(collection.allBadges.length).toBeGreaterThan(20);
-    expect(collection.categories.every((category) => category.badges.length > 1)).toBe(true);
+    expect(collection.allBadges.length).toBe(6);
+    expect(collection.allBadges.every((badge) => badge.levels.length === 5)).toBe(true);
+    expect(collection.allBadges.every((badge) => !badge.id.includes("-bronze"))).toBe(true);
   });
 
-  it("unlocks the first session badge level", () => {
+  it("unlocks and upgrades the same session badge", () => {
     const collection = computeMemberBadges({
       ...baseInput,
       completedSessionCount: 1,
     });
-    const first = collection.allBadges.find((badge) => badge.id === "sessions-bronze");
-    expect(first?.unlocked).toBe(true);
-    expect(first?.level).toBe("bronze");
-    expect(first?.category).toBe("training");
+    const sessions = collection.allBadges.find((badge) => badge.id === "sessions");
+    expect(sessions?.unlocked).toBe(true);
+    expect(sessions?.level).toBe("bronze");
+    expect(sessions?.category).toBe("training");
+    expect(sessions?.target).toBe(10);
+    expect(sessions?.levels.filter((level) => level.unlocked)).toHaveLength(1);
   });
 
-  it("tracks lift progress toward gold strength level", () => {
+  it("tracks lift progress toward the next strength level", () => {
     const collection = computeMemberBadges(baseInput);
-    const liftGold = collection.allBadges.find((badge) => badge.id === "lift-gold");
-    expect(liftGold?.unlocked).toBe(false);
-    expect(liftGold?.current).toBe(80);
-    expect(liftGold?.target).toBe(90);
+    const lift = collection.allBadges.find((badge) => badge.id === "lift");
+    expect(lift?.unlocked).toBe(true);
+    expect(lift?.level).toBe("silver");
+    expect(lift?.current).toBe(80);
+    expect(lift?.target).toBe(90);
+    expect(lift?.levels.filter((level) => level.unlocked)).toHaveLength(2);
   });
 
   it("reads max lift from completed sets", () => {

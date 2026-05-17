@@ -13,6 +13,14 @@ export type BadgeLevelId = "bronze" | "silver" | "gold" | "diamond" | "legendary
 
 export type MemberBadgeCategoryId = "training" | "strength" | "consistency" | "activity" | "challenge";
 
+export type MemberBadgeLevel = {
+  level: BadgeLevelId;
+  levelLabel: string;
+  levelName: string;
+  target: number;
+  unlocked: boolean;
+};
+
 export type MemberBadge = {
   id: string;
   category: MemberBadgeCategoryId;
@@ -22,9 +30,13 @@ export type MemberBadge = {
   icon: BadgeIconId;
   level: BadgeLevelId;
   levelLabel: string;
+  levelName: string;
   unlocked: boolean;
   current: number;
   target: number;
+  progressPct: number;
+  achievedLevelIndex: number;
+  levels: MemberBadgeLevel[];
 };
 
 export type MemberBadgeInput = {
@@ -50,6 +62,8 @@ export type MemberBadgeCollection = {
   allBadges: MemberBadge[];
   totalCount: number;
   totalUnlocked: number;
+  totalLevels: number;
+  totalUnlockedLevels: number;
 };
 
 type BadgeMetric = "completedSessionCount" | "streakWeeks" | "maxLiftKg" | "monthSessions" | "monthUniqueDays" | "monthGoalPercent";
@@ -71,6 +85,14 @@ const BADGE_LEVEL_LABELS: Record<BadgeLevelId, string> = {
   gold: "Nivå 3",
   diamond: "Nivå 4",
   legendary: "Legendarisk",
+};
+
+const BADGE_LEVEL_NAMES: Record<BadgeLevelId, string> = {
+  bronze: "Bronse",
+  silver: "Sølv",
+  gold: "Gull",
+  diamond: "Diamant",
+  legendary: "Legend",
 };
 
 const BADGE_TRACKS: BadgeTrack[] = [
@@ -193,21 +215,48 @@ function readMetric(metric: BadgeMetric, input: MemberBadgeInput): number {
   }
 }
 
-function buildTrackBadges(track: BadgeTrack, input: MemberBadgeInput): MemberBadge[] {
+function buildTrackBadge(track: BadgeTrack, input: MemberBadgeInput): MemberBadge {
   const current = readMetric(track.metric, input);
-  return track.levels.map(({ level, target }) => ({
-    id: `${track.id}-${level}`,
+  let achievedLevelIndex = -1;
+  track.levels.forEach(({ target }, index) => {
+    if (current >= target) achievedLevelIndex = index;
+  });
+
+  const unlocked = achievedLevelIndex >= 0;
+  const displayLevelIndex = unlocked ? achievedLevelIndex : 0;
+  const displayLevel = track.levels[displayLevelIndex];
+  const completedAllLevels = achievedLevelIndex >= track.levels.length - 1;
+  const nextLevelIndex = completedAllLevels ? achievedLevelIndex : achievedLevelIndex + 1;
+  const nextLevel = track.levels[Math.max(0, nextLevelIndex)];
+  const previousTarget = unlocked ? track.levels[achievedLevelIndex].target : 0;
+  const targetSpan = Math.max(1, nextLevel.target - previousTarget);
+  const progressPct = completedAllLevels
+    ? 100
+    : Math.max(0, Math.min(100, Math.round(((current - previousTarget) / targetSpan) * 100)));
+
+  return {
+    id: track.id,
     category: track.category,
     categoryTitle: track.categoryTitle,
     title: track.title,
     description: track.description,
     icon: track.icon,
-    level,
-    levelLabel: BADGE_LEVEL_LABELS[level],
-    current: Math.min(current, target),
-    target,
-    unlocked: current >= target,
-  }));
+    level: displayLevel.level,
+    levelLabel: unlocked ? BADGE_LEVEL_LABELS[displayLevel.level] : "Låst",
+    levelName: unlocked ? BADGE_LEVEL_NAMES[displayLevel.level] : "Ikke låst opp",
+    current,
+    target: nextLevel.target,
+    progressPct,
+    achievedLevelIndex,
+    unlocked,
+    levels: track.levels.map(({ level, target }, index) => ({
+      level,
+      levelLabel: BADGE_LEVEL_LABELS[level],
+      levelName: BADGE_LEVEL_NAMES[level],
+      target,
+      unlocked: index <= achievedLevelIndex,
+    })),
+  };
 }
 
 export function computeMaxLiftKgFromLogs(
@@ -248,7 +297,7 @@ export function computeMonthWeeksWithSession(completedLogDates: Date[], nowDate:
 }
 
 export function computeMemberBadges(input: MemberBadgeInput): MemberBadgeCollection {
-  const allBadges = BADGE_TRACKS.flatMap((track) => buildTrackBadges(track, input));
+  const allBadges = BADGE_TRACKS.map((track) => buildTrackBadge(track, input));
   const categories = BADGE_TRACKS.reduce<MemberBadgeCategory[]>((acc, track) => {
     if (acc.some((category) => category.id === track.category)) return acc;
     const badges = allBadges.filter((badge) => badge.category === track.category);
@@ -266,6 +315,8 @@ export function computeMemberBadges(input: MemberBadgeInput): MemberBadgeCollect
     allBadges,
     totalCount: allBadges.length,
     totalUnlocked: allBadges.filter((badge) => badge.unlocked).length,
+    totalLevels: allBadges.reduce((sum, badge) => sum + badge.levels.length, 0),
+    totalUnlockedLevels: allBadges.reduce((sum, badge) => sum + badge.levels.filter((level) => level.unlocked).length, 0),
   };
 }
 
