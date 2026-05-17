@@ -1,0 +1,27 @@
+<svg width="260" height="242" viewBox="0 0 260 242" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="260" height="242" rx="18" fill="white"/>
+  <g filter="url(#shadow)">
+    <path d="M130 18L211 62V151L130 197L49 151V62L130 18Z" fill="url(#face)" stroke="#30E3BE" stroke-width="4"/>
+    <path d="M130 30L199 68V145L130 184L61 145V68L130 30Z" fill="none" stroke="#D91278" stroke-width="2.5" opacity="0.85"/>
+    <path d="M82 101C94 70 122 58 151 65C177 71 190 95 185 120C180 147 154 163 127 158C101 153 83 131 82 106" stroke="#30E3BE" stroke-width="12" stroke-linecap="round"/>
+    <path d="M82 101L72 75L99 82" stroke="#30E3BE" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M178 117C167 147 139 160 110 153C84 147 70 123 75 98C80 72 106 55 133 60C159 65 177 87 178 112" stroke="#D91278" stroke-width="12" stroke-linecap="round"/>
+    <path d="M178 117L188 143L161 136" stroke="#D91278" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="130" cy="108" r="34" fill="white" stroke="#E2E8F0" stroke-width="3"/>
+    <text x="130" y="103" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" font-weight="900" fill="#0F172A">14</text>
+    <text x="130" y="128" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="900" fill="#0F172A">DAGER</text>
+    <path d="M82 49L87 59L98 61L90 69L92 80L82 75L72 80L74 69L66 61L77 59L82 49Z" fill="#D91278" opacity="0.88"/>
+    <path d="M179 48L184 58L195 60L187 68L189 79L179 74L169 79L171 68L163 60L174 58L179 48Z" fill="#30E3BE" opacity="0.9"/>
+  </g>
+  <text x="130" y="221" text-anchor="middle" font-family="Arial, sans-serif" font-size="19" font-weight="800" fill="#0F172A">Aldri to uker uten</text>
+  <defs>
+    <linearGradient id="face" x1="63" y1="40" x2="198" y2="180" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="0.55" stop-color="#F8FFFD"/>
+      <stop offset="1" stop-color="#FFF2F8"/>
+    </linearGradient>
+    <filter id="shadow" x="35" y="8" width="190" height="202" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+</svg>

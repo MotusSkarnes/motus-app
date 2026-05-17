@@ -266,8 +266,85 @@ function hasMay17Workout(completedLogDates: Date[] = []): boolean {
   return completedLogDates.some((date) => date.getMonth() === 4 && date.getDate() === 17);
 }
 
+function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function daysBetween(from: Date, to: Date): number {
+  return Math.floor((startOfDay(to).getTime() - startOfDay(from).getTime()) / 86_400_000);
+}
+
+function localDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function hasNoTrainingGapOver14DaysForSixMonths(completedLogDates: Date[] = [], nowDate: Date): boolean {
+  const now = startOfDay(nowDate);
+  const sixMonthsAgo = new Date(now);
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+  const uniqueDates = Array.from(
+    new Set(
+      completedLogDates
+        .map(startOfDay)
+        .filter((date) => date >= sixMonthsAgo && date <= now)
+        .map(localDateKey),
+    ),
+  )
+    .map((value) => new Date(`${value}T00:00:00`))
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  if (!uniqueDates.length) return false;
+  if (daysBetween(sixMonthsAgo, uniqueDates[0]) > 14) return false;
+  if (daysBetween(uniqueDates[uniqueDates.length - 1], now) > 14) return false;
+
+  for (let i = 1; i < uniqueDates.length; i += 1) {
+    if (daysBetween(uniqueDates[i - 1], uniqueDates[i]) > 14) return false;
+  }
+
+  return true;
+}
+
+function buildSecretBadge(input: { id: string; title: string; description: string; levelName: string }): MemberBadge {
+  return {
+    id: input.id,
+    category: "secret",
+    categoryTitle: "Skjulte",
+    title: input.title,
+    description: input.description,
+    icon: "first-session",
+    level: "legendary",
+    levelLabel: "Skjult",
+    levelName: input.levelName,
+    current: 1,
+    target: 1,
+    progressPct: 100,
+    achievedLevelIndex: 0,
+    unlocked: true,
+    hidden: true,
+    secret: true,
+    levels: [
+      {
+        level: "legendary",
+        levelLabel: "Skjult",
+        levelName: input.levelName,
+        target: 1,
+        unlocked: true,
+      },
+    ],
+  };
+}
+
 function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
-  if (!hasMay17Workout(input.completedLogDates)) return [];
+  const hasSixMonthFlow = hasNoTrainingGapOver14DaysForSixMonths(input.completedLogDates, input.nowDate);
+  const sixMonthBadge = buildSecretBadge({
+    id: "never-two-weeks-without",
+    title: "Aldri to uker uten",
+    description: "Ingen treningspause over 14 dager på 6 måneder.",
+    levelName: "6 mnd",
+  });
+
+  if (!hasMay17Workout(input.completedLogDates)) return hasSixMonthFlow ? [sixMonthBadge] : [];
 
   return [
     {
@@ -297,6 +374,7 @@ function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
         },
       ],
     },
+    ...(hasSixMonthFlow ? [sixMonthBadge] : []),
   ];
 }
 

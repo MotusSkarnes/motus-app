@@ -221,6 +221,14 @@ const MEMBER_AVATAR_PREFIX = "member-avatars";
 const EMPTY_REMOTE_PERIOD_PLAN_ROWS: Array<{ memberId: string; plan: PeriodSchedulePlan }> = [];
 const PERIOD_PLAN_COMPLETED_STORAGE_PREFIX = "MOTUS_PERIOD_PLAN_COMPLETED_V1:";
 const HIDDEN_BADGE_SEEN_STORAGE_PREFIX = "MOTUS_HIDDEN_BADGE_SEEN_V1:";
+const HIDDEN_BADGE_IMAGES: Record<string, string> = {
+  "may-17-workout": "/badges/21-17-mai.svg",
+  "never-two-weeks-without": "/badges/22-aldri-to-uker-uten.svg",
+};
+const HIDDEN_BADGE_POPUP_COPY: Record<string, string> = {
+  "may-17-workout": "Du registrerte en økt på 17. mai. Sterk nasjonaldagsinnsats.",
+  "never-two-weeks-without": "Du har holdt treningen i gang i 6 måneder uten pause over 14 dager.",
+};
 const DEFAULT_HOME_VISIBILITY = {
   weeklyStats: true,
   streakChallenges: true,
@@ -4447,12 +4455,16 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="h-2" style={{ background: `linear-gradient(90deg, #BA0C2F 0%, #FFFFFF 24%, #00205B 50%, #FFFFFF 76%, #BA0C2F 100%)` }} />
                 <div className="p-6">
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Skjult badge låst opp</p>
-                  <img src="/badges/21-17-mai.svg" alt="" className="mx-auto mt-4 h-36 w-36 object-contain drop-shadow-sm" />
+                  <img
+                    src={HIDDEN_BADGE_IMAGES[hiddenBadgeCelebration.id] ?? "/badges/21-17-mai.svg"}
+                    alt=""
+                    className="mx-auto mt-4 h-36 w-36 object-contain drop-shadow-sm"
+                  />
                   <h2 id="hidden-badge-heading" className="mt-3 text-2xl font-black tracking-tight text-slate-900">
                     {hiddenBadgeCelebration.title}
                   </h2>
                   <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                    Du registrerte en økt på 17. mai. Sterk nasjonaldagsinnsats.
+                    {HIDDEN_BADGE_POPUP_COPY[hiddenBadgeCelebration.id] ?? hiddenBadgeCelebration.description}
                   </p>
                   <div className="mt-5 rounded-2xl border bg-slate-50 px-4 py-3 text-left" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Hemmelig samling</div>

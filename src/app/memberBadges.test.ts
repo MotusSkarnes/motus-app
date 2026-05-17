@@ -91,6 +91,28 @@ describe("memberBadges", () => {
     expect(withMay17.categories.some((category) => category.id === "secret")).toBe(true);
   });
 
+  it("unlocks hidden no-two-weeks-without badge after six months without a 14 day break", () => {
+    const nowDate = new Date("2026-05-16T12:00:00");
+    const steadyDates: Date[] = [];
+    for (let date = new Date("2025-11-16T12:00:00"); date <= nowDate; date.setDate(date.getDate() + 14)) {
+      steadyDates.push(new Date(date));
+    }
+
+    const steady = computeMemberBadges({
+      ...baseInput,
+      nowDate,
+      completedLogDates: steadyDates,
+    });
+    expect(steady.allBadges.find((badge) => badge.id === "never-two-weeks-without")?.unlocked).toBe(true);
+
+    const withGap = computeMemberBadges({
+      ...baseInput,
+      nowDate,
+      completedLogDates: [new Date("2025-11-16T12:00:00"), new Date("2025-12-02T12:00:00")],
+    });
+    expect(withGap.allBadges.some((badge) => badge.id === "never-two-weeks-without")).toBe(false);
+  });
+
   it("counts unique training days in month", () => {
     const days = computeMonthUniqueDays(
       [new Date("2026-05-03"), new Date("2026-05-03"), new Date("2026-05-10")],
