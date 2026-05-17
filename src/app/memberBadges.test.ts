@@ -113,6 +113,20 @@ describe("memberBadges", () => {
     expect(withGap.allBadges.some((badge) => badge.id === "never-two-weeks-without")).toBe(false);
   });
 
+  it("unlocks hidden comeback badge after a long training pause", () => {
+    const comeback = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-01-01T12:00:00"), new Date("2026-02-01T12:00:00")],
+    });
+    expect(comeback.allBadges.find((badge) => badge.id === "back-again")?.unlocked).toBe(true);
+
+    const shortPause = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-01-01T12:00:00"), new Date("2026-01-29T12:00:00")],
+    });
+    expect(shortPause.allBadges.some((badge) => badge.id === "back-again")).toBe(false);
+  });
+
   it("counts unique training days in month", () => {
     const days = computeMonthUniqueDays(
       [new Date("2026-05-03"), new Date("2026-05-03"), new Date("2026-05-10")],

@@ -224,10 +224,12 @@ const HIDDEN_BADGE_SEEN_STORAGE_PREFIX = "MOTUS_HIDDEN_BADGE_SEEN_V1:";
 const HIDDEN_BADGE_IMAGES: Record<string, string> = {
   "may-17-workout": "/badges/21-17-mai.svg",
   "never-two-weeks-without": "/badges/22-aldri-to-uker-uten.svg",
+  "back-again": "/badges/23-tilbake-igjen.svg",
 };
 const HIDDEN_BADGE_POPUP_COPY: Record<string, string> = {
   "may-17-workout": "Du registrerte en økt på 17. mai. Sterk nasjonaldagsinnsats.",
   "never-two-weeks-without": "Du har holdt treningen i gang i 6 måneder uten pause over 14 dager.",
+  "back-again": "Du kom tilbake etter en lang pause. Det teller.",
 };
 const DEFAULT_HOME_VISIBILITY = {
   weeklyStats: true,

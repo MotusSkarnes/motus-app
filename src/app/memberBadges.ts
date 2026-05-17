@@ -305,6 +305,18 @@ function hasNoTrainingGapOver14DaysForSixMonths(completedLogDates: Date[] = [], 
   return true;
 }
 
+function hasReturnedAfterLongPause(completedLogDates: Date[] = []): boolean {
+  const uniqueDates = Array.from(new Set(completedLogDates.map(startOfDay).map(localDateKey)))
+    .map((value) => new Date(`${value}T00:00:00`))
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  for (let i = 1; i < uniqueDates.length; i += 1) {
+    if (daysBetween(uniqueDates[i - 1], uniqueDates[i]) >= 30) return true;
+  }
+
+  return false;
+}
+
 function buildSecretBadge(input: { id: string; title: string; description: string; levelName: string }): MemberBadge {
   return {
     id: input.id,
@@ -337,14 +349,24 @@ function buildSecretBadge(input: { id: string; title: string; description: strin
 
 function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
   const hasSixMonthFlow = hasNoTrainingGapOver14DaysForSixMonths(input.completedLogDates, input.nowDate);
+  const hasComeback = hasReturnedAfterLongPause(input.completedLogDates);
   const sixMonthBadge = buildSecretBadge({
     id: "never-two-weeks-without",
     title: "Aldri to uker uten",
     description: "Ingen treningspause over 14 dager på 6 måneder.",
     levelName: "6 mnd",
   });
+  const comebackBadge = buildSecretBadge({
+    id: "back-again",
+    title: "Tilbake igjen",
+    description: "Kom tilbake etter en lang treningspause.",
+    levelName: "Comeback",
+  });
+  const unlockedSecretBadges = [hasSixMonthFlow ? sixMonthBadge : null, hasComeback ? comebackBadge : null].filter(
+    (badge): badge is MemberBadge => badge !== null,
+  );
 
-  if (!hasMay17Workout(input.completedLogDates)) return hasSixMonthFlow ? [sixMonthBadge] : [];
+  if (!hasMay17Workout(input.completedLogDates)) return unlockedSecretBadges;
 
   return [
     {
@@ -374,7 +396,7 @@ function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
         },
       ],
     },
-    ...(hasSixMonthFlow ? [sixMonthBadge] : []),
+    ...unlockedSecretBadges,
   ];
 }
 

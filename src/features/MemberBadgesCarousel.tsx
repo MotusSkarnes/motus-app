@@ -25,6 +25,7 @@ const BADGE_IMAGES: Record<string, string> = {
   "goal-percent": "/badges/01-forste-steg.png",
   "may-17-workout": "/badges/21-17-mai.svg",
   "never-two-weeks-without": "/badges/22-aldri-to-uker-uten.svg",
+  "back-again": "/badges/23-tilbake-igjen.svg",
 };
 
 const LEVEL_ORDER: BadgeLevelId[] = ["bronze", "silver", "gold", "diamond", "legendary"];
