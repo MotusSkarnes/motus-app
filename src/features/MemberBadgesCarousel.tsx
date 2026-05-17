@@ -1,18 +1,18 @@
 import { useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Award, CalendarCheck, Check, Dumbbell, Flame, Lock, PlayCircle, RefreshCw, Trophy, Zap } from "lucide-react";
+import { Award, CalendarCheck, Check, Crown, Diamond, Dumbbell, Flame, Lock, RefreshCw, Shield, Star, Trophy } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { BadgeIconId, BadgeLevelId, MemberBadge, MemberBadgeCategoryId, MemberBadgeCollection } from "../app/memberBadges";
 
 const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
 
 const BADGE_ICONS: Record<BadgeIconId, LucideIcon> = {
-  "first-session": PlayCircle,
+  "first-session": Check,
   "week-streak": Flame,
-  sessions: Trophy,
+  sessions: CalendarCheck,
   lift: Dumbbell,
-  "lift-heavy": Zap,
-  "month-goal": CalendarCheck,
+  "lift-heavy": Dumbbell,
+  "month-goal": Trophy,
   monthly: RefreshCw,
 };
 
@@ -26,46 +26,54 @@ const LEVEL_ROMAN: Record<BadgeLevelId, string> = {
   legendary: "V",
 };
 
-const LEVEL_STYLES: Record<BadgeLevelId, { label: string; color: string; border: string; glow: string; soft: string; surface: string }> = {
+const LEVEL_SYMBOLS: Record<BadgeLevelId, LucideIcon> = {
+  bronze: Star,
+  silver: Shield,
+  gold: Star,
+  diamond: Diamond,
+  legendary: Crown,
+};
+
+const LEVEL_STYLES: Record<BadgeLevelId, { label: string; color: string; border: string; fill: string; glow: string; surface: string }> = {
   bronze: {
     label: "Bronse",
-    color: "#B86E45",
-    border: "rgba(184,110,69,0.34)",
-    glow: "rgba(184,110,69,0.16)",
-    soft: "rgba(184,110,69,0.10)",
-    surface: "linear-gradient(145deg, rgba(184,110,69,0.14) 0%, rgba(255,255,255,0.96) 45%, rgba(48,227,190,0.08) 100%)",
+    color: "#B8734D",
+    border: "rgba(184,115,77,0.36)",
+    fill: "rgba(184,115,77,0.12)",
+    glow: "rgba(184,115,77,0.18)",
+    surface: "linear-gradient(145deg, rgba(184,115,77,0.15) 0%, rgba(255,255,255,0.96) 45%, rgba(48,227,190,0.07) 100%)",
   },
   silver: {
     label: "Sølv",
     color: "#64748B",
-    border: "rgba(100,116,139,0.28)",
+    border: "rgba(100,116,139,0.32)",
+    fill: "rgba(100,116,139,0.10)",
     glow: "rgba(100,116,139,0.13)",
-    soft: "rgba(100,116,139,0.09)",
-    surface: "linear-gradient(145deg, rgba(100,116,139,0.12) 0%, rgba(255,255,255,0.97) 48%, rgba(48,227,190,0.08) 100%)",
+    surface: "linear-gradient(145deg, rgba(100,116,139,0.12) 0%, rgba(255,255,255,0.97) 50%, rgba(48,227,190,0.07) 100%)",
   },
   gold: {
     label: "Gull",
-    color: "#B88916",
-    border: "rgba(184,137,22,0.32)",
-    glow: "rgba(184,137,22,0.16)",
-    soft: "rgba(184,137,22,0.10)",
-    surface: "linear-gradient(145deg, rgba(184,137,22,0.15) 0%, rgba(255,255,255,0.96) 46%, rgba(217,18,120,0.07) 100%)",
+    color: "#D89A17",
+    border: "rgba(216,154,23,0.34)",
+    fill: "rgba(216,154,23,0.12)",
+    glow: "rgba(216,154,23,0.18)",
+    surface: "linear-gradient(145deg, rgba(216,154,23,0.15) 0%, rgba(255,255,255,0.96) 46%, rgba(217,18,120,0.07) 100%)",
   },
   diamond: {
     label: "Diamant",
     color: MOTUS.turquoise,
-    border: "rgba(48,227,190,0.34)",
-    glow: "rgba(48,227,190,0.18)",
-    soft: "rgba(48,227,190,0.11)",
-    surface: "linear-gradient(145deg, rgba(48,227,190,0.16) 0%, rgba(255,255,255,0.96) 48%, rgba(217,18,120,0.07) 100%)",
+    border: "rgba(48,227,190,0.36)",
+    fill: "rgba(48,227,190,0.12)",
+    glow: "rgba(48,227,190,0.20)",
+    surface: "linear-gradient(145deg, rgba(48,227,190,0.17) 0%, rgba(255,255,255,0.96) 48%, rgba(217,18,120,0.07) 100%)",
   },
   legendary: {
-    label: "Legend",
+    label: "Legendarisk",
     color: MOTUS.pink,
-    border: "rgba(217,18,120,0.34)",
-    glow: "rgba(217,18,120,0.17)",
-    soft: "rgba(217,18,120,0.11)",
-    surface: "linear-gradient(145deg, rgba(217,18,120,0.15) 0%, rgba(255,255,255,0.96) 47%, rgba(48,227,190,0.09) 100%)",
+    border: "rgba(217,18,120,0.36)",
+    fill: "rgba(217,18,120,0.12)",
+    glow: "rgba(217,18,120,0.20)",
+    surface: "linear-gradient(145deg, rgba(217,18,120,0.16) 0%, rgba(255,255,255,0.96) 48%, rgba(48,227,190,0.08) 100%)",
   },
 };
 
@@ -81,6 +89,33 @@ function formatBadgeValue(badge: MemberBadge, value: number) {
   return `${value}`;
 }
 
+function LevelLegendItem({ levelId }: { levelId: BadgeLevelId }) {
+  const style = LEVEL_STYLES[levelId];
+  const Symbol = LEVEL_SYMBOLS[levelId];
+
+  return (
+    <span className="inline-flex shrink-0 items-center gap-2 rounded-xl border bg-white px-3 py-2 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
+      <span
+        className="flex h-8 w-8 items-center justify-center border"
+        style={{
+          background: `linear-gradient(145deg, #ffffff 0%, ${style.fill} 100%)`,
+          borderColor: style.border,
+          color: style.color,
+          clipPath: "polygon(50% 0%, 90% 17%, 90% 73%, 50% 100%, 10% 73%, 10% 17%)",
+        }}
+      >
+        <Symbol className="h-4 w-4" strokeWidth={2.2} />
+      </span>
+      <span className="leading-tight">
+        <span className="block text-[10px] font-black uppercase text-slate-900">Nivå {LEVEL_ROMAN[levelId]}</span>
+        <span className="block text-[10px] font-bold uppercase" style={{ color: style.color }}>
+          {style.label}
+        </span>
+      </span>
+    </span>
+  );
+}
+
 function LevelMarker({ badge, levelIndex }: { badge: MemberBadge; levelIndex: number }) {
   const level = badge.levels[levelIndex];
   if (!level) return null;
@@ -89,9 +124,9 @@ function LevelMarker({ badge, levelIndex }: { badge: MemberBadge; levelIndex: nu
 
   return (
     <span
-      className="flex h-8 min-w-0 items-center justify-center border text-[10px] font-black leading-none shadow-sm"
+      className="flex h-7 min-w-0 items-center justify-center border text-[9px] font-black leading-none shadow-sm"
       style={{
-        background: level.unlocked ? `linear-gradient(145deg, #ffffff 0%, ${style.soft} 100%)` : "rgba(241,245,249,0.84)",
+        background: level.unlocked ? `linear-gradient(145deg, #ffffff 0%, ${style.fill} 100%)` : "rgba(241,245,249,0.82)",
         borderColor: level.unlocked ? style.border : "rgba(148,163,184,0.20)",
         color: level.unlocked ? style.color : "#94A3B8",
         clipPath: "polygon(50% 0%, 90% 18%, 82% 78%, 50% 100%, 18% 78%, 10% 18%)",
@@ -103,78 +138,69 @@ function LevelMarker({ badge, levelIndex }: { badge: MemberBadge; levelIndex: nu
   );
 }
 
-function AchievementBadge({ badge, index }: { badge: MemberBadge; index: number }) {
+function BadgeMedallion({ badge }: { badge: MemberBadge }) {
   const Icon = BADGE_ICONS[badge.icon];
+  const level = LEVEL_STYLES[badge.level];
+
+  return (
+    <span
+      className="relative flex h-24 w-24 items-center justify-center border shadow-[0_12px_24px_rgba(15,23,42,0.10)]"
+      style={{
+        background: badge.unlocked ? level.surface : "linear-gradient(145deg, #ffffff 0%, #f8fafc 55%, #eef2f7 100%)",
+        borderColor: badge.unlocked ? level.border : "rgba(148,163,184,0.22)",
+        clipPath: "polygon(50% 0%, 91% 17%, 91% 72%, 50% 100%, 9% 72%, 9% 17%)",
+      }}
+    >
+      <span
+        className="absolute inset-2 border"
+        style={{
+          borderColor: badge.unlocked ? level.border : "rgba(148,163,184,0.18)",
+          clipPath: "polygon(50% 0%, 91% 17%, 91% 72%, 50% 100%, 9% 72%, 9% 17%)",
+        }}
+      />
+      <span
+        className="absolute h-14 w-14 rounded-full blur-xl"
+        style={{ background: badge.unlocked ? level.glow : "rgba(148,163,184,0.12)" }}
+      />
+      <Icon className="relative h-10 w-10" strokeWidth={2.35} aria-hidden style={{ color: badge.unlocked ? level.color : "#94A3B8" }} />
+    </span>
+  );
+}
+
+function AchievementBadge({ badge, index }: { badge: MemberBadge; index: number }) {
   const level = LEVEL_STYLES[badge.level];
   const isComplete = badge.achievedLevelIndex >= badge.levels.length - 1;
 
   return (
-    <article
-      className="relative flex h-[19rem] w-60 shrink-0 snap-start flex-col overflow-hidden rounded-2xl border p-4 text-slate-900 shadow-sm"
-      style={{
-        background: badge.unlocked ? level.surface : "linear-gradient(145deg, rgba(248,250,252,0.98) 0%, rgba(255,255,255,0.96) 56%, rgba(226,232,240,0.72) 100%)",
-        borderColor: badge.unlocked ? level.border : "rgba(15,23,42,0.08)",
-      }}
-    >
-      <div
-        className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full blur-3xl"
-        style={{ background: badge.unlocked ? level.glow : "rgba(148,163,184,0.13)" }}
-      />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-1.5" style={{ background: badge.unlocked ? MOTUS_GRADIENT : "rgba(203,213,225,0.62)" }} />
-      <div className="pointer-events-none absolute left-4 right-4 top-[5.25rem] h-px" style={{ background: badge.unlocked ? `linear-gradient(90deg, transparent 0%, ${level.border} 50%, transparent 100%)` : "rgba(148,163,184,0.15)" }} />
+    <article className="relative flex h-[15.75rem] w-44 shrink-0 snap-start flex-col items-center rounded-2xl border bg-white p-3 text-center shadow-sm" style={{ borderColor: badge.unlocked ? level.border : "rgba(15,23,42,0.08)" }}>
+      <div className="absolute left-3 top-3 rounded-full border bg-white/90 px-1.5 py-0.5 text-[10px] font-black text-slate-500 shadow-sm">{String(index + 1).padStart(2, "0")}</div>
+      <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border bg-white/90 px-1.5 py-0.5 text-[9px] font-black uppercase shadow-sm" style={{ borderColor: badge.unlocked ? level.border : "rgba(148,163,184,0.20)", color: badge.unlocked ? level.color : "#64748B" }}>
+        {badge.unlocked ? <Check className="h-3 w-3" strokeWidth={3} /> : <Lock className="h-3 w-3" />}
+        {badge.levelLabel}
+      </span>
 
-      <div className="relative flex items-start justify-between gap-2">
-        <span className="rounded-full border bg-white/75 px-2 py-1 text-[10px] font-bold text-slate-500 shadow-sm">{String(index + 1).padStart(2, "0")}</span>
-        <span
-          className="inline-flex max-w-[8.5rem] items-center gap-1 rounded-full border bg-white/80 px-2 py-1 text-[10px] font-bold uppercase leading-none shadow-sm"
-          style={{ borderColor: badge.unlocked ? level.border : "rgba(148,163,184,0.20)", color: badge.unlocked ? level.color : "#64748B" }}
-        >
-          {badge.unlocked ? <Check className="h-3 w-3" strokeWidth={3} /> : <Lock className="h-3 w-3" />}
-          <span className="truncate">{badge.levelLabel}</span>
-        </span>
+      <div className="mt-7">
+        <BadgeMedallion badge={badge} />
       </div>
 
-      <div className="relative mt-4 flex flex-col items-center text-center">
-        <span
-          className="relative flex h-24 w-24 items-center justify-center border shadow-sm"
-          style={{
-            background: badge.unlocked
-              ? `radial-gradient(circle at 50% 24%, #ffffff 0%, ${level.soft} 54%, rgba(255,255,255,0.62) 100%)`
-              : "linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%)",
-            borderColor: badge.unlocked ? level.border : "rgba(148,163,184,0.20)",
-            clipPath: "polygon(50% 0%, 90% 17%, 90% 73%, 50% 100%, 10% 73%, 10% 17%)",
-          }}
-        >
-          <span
-            className="absolute inset-2 border opacity-70"
-            style={{
-              borderColor: badge.unlocked ? level.border : "rgba(148,163,184,0.18)",
-              clipPath: "polygon(50% 0%, 90% 17%, 90% 73%, 50% 100%, 10% 73%, 10% 17%)",
-            }}
-          />
-          <Icon className="relative h-10 w-10" strokeWidth={2.15} aria-hidden style={{ color: badge.unlocked ? level.color : "#94A3B8" }} />
-        </span>
+      <h3 className="mt-3 line-clamp-2 min-h-[2.1rem] text-sm font-black uppercase leading-tight text-slate-950">{badge.title}</h3>
+      <p className="mt-1 text-[10px] font-black uppercase tracking-wide" style={{ color: badge.unlocked ? level.color : "#64748B" }}>
+        {badge.levelName}
+      </p>
+      <p className="mt-1.5 line-clamp-2 min-h-[1.75rem] text-[11px] leading-snug text-slate-500">{badge.description}</p>
 
-        <h3 className="mt-3 line-clamp-2 min-h-[2.5rem] text-lg font-black uppercase leading-tight text-slate-950">{badge.title}</h3>
-        <p className="mt-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: badge.unlocked ? level.color : "#64748B" }}>
-          {badge.levelName}
-        </p>
-        <p className="mt-2 line-clamp-2 min-h-[2rem] text-xs leading-snug text-slate-600">{badge.description}</p>
-      </div>
-
-      <div className="relative mt-auto">
-        <div className="grid grid-cols-5 gap-1.5">
+      <div className="mt-auto w-full">
+        <div className="grid grid-cols-5 gap-1">
           {LEVEL_ORDER.map((levelId, levelIndex) => (
             <LevelMarker key={levelId} badge={badge} levelIndex={levelIndex} />
           ))}
         </div>
-
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
           <div className="h-full rounded-full transition-all" style={{ width: `${badge.progressPct}%`, background: badge.unlocked ? MOTUS_GRADIENT : "rgba(148,163,184,0.55)" }} />
         </div>
-        <div className="mt-2 flex items-center justify-between gap-2 text-[11px] font-semibold text-slate-500">
+        <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] font-bold text-slate-500">
           <span>{formatBadgeValue(badge, badge.current)}</span>
-          <span className="text-right">{isComplete ? "Maks nivå" : `${formatBadgeValue(badge, badge.target)}`}</span>
+          <span className="text-right">{isComplete ? "Maks nivå" : formatBadgeValue(badge, badge.target)}</span>
         </div>
       </div>
     </article>
@@ -202,10 +228,7 @@ export function MemberBadgesCarousel({ collection }: MemberBadgesCarouselProps) 
   const overallPct = collection.totalLevels > 0 ? Math.round((collection.totalUnlockedLevels / collection.totalLevels) * 100) : 0;
 
   return (
-    <section
-      className="min-w-0 overflow-hidden rounded-2xl border bg-white p-4 shadow-sm sm:p-5"
-      style={{ borderColor: "rgba(15,23,42,0.08)" }}
-    >
+    <section className="min-w-0 overflow-hidden rounded-2xl border bg-white p-4 shadow-sm sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
       <div className="flex items-start gap-3">
         <span className="inline-flex shrink-0 rounded-xl p-2 text-white shadow-sm" style={{ background: MOTUS_GRADIENT }}>
           <Award className="h-4 w-4" />
@@ -224,6 +247,12 @@ export function MemberBadgesCarousel({ collection }: MemberBadgesCarouselProps) 
             <div className="h-full rounded-full" style={{ width: `${overallPct}%`, background: MOTUS_GRADIENT }} />
           </div>
         </div>
+      </div>
+
+      <div className="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1">
+        {LEVEL_ORDER.map((levelId) => (
+          <LevelLegendItem key={levelId} levelId={levelId} />
+        ))}
       </div>
 
       <div className="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1">
