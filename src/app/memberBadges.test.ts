@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { computeMaxLiftKgFromLogs, computeMemberBadges, computeMonthUniqueDays } from "./memberBadges";
+import {
+  computeMaxLiftKgFromLogs,
+  computeMemberBadges,
+  computeMonthUniqueDays,
+  formatBadgeMetricValue,
+  getBadgeProgressLabel,
+  getBadgeUnlockHint,
+} from "./memberBadges";
 
 describe("memberBadges", () => {
   const baseInput = {
@@ -56,6 +63,15 @@ describe("memberBadges", () => {
       { status: "Planlagt", results: [{ completed: true, performedWeight: 200 }] },
     ]);
     expect(max).toBe(105);
+  });
+
+  it("formats unlock hints with concrete targets", () => {
+    const collection = computeMemberBadges(baseInput);
+    const sessions = collection.allBadges.find((badge) => badge.id === "sessions");
+    expect(sessions).toBeDefined();
+    expect(getBadgeUnlockHint(sessions!)).toContain("10 økter");
+    expect(getBadgeProgressLabel(sessions!)).toBe("5 økter av 10 økter");
+    expect(formatBadgeMetricValue("streak", 2)).toBe("2 uker");
   });
 
   it("counts unique training days in month", () => {

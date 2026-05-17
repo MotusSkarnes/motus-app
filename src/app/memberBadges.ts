@@ -323,3 +323,56 @@ export function computeMemberBadges(input: MemberBadgeInput): MemberBadgeCollect
 export function flattenMemberBadges(collection: MemberBadgeCollection): MemberBadge[] {
   return collection.allBadges;
 }
+
+export function formatBadgeMetricValue(badgeId: string, value: number): string {
+  switch (badgeId) {
+    case "streak":
+      return value === 1 ? "1 uke" : `${value} uker`;
+    case "lift":
+      return `${value} kg`;
+    case "goal-percent":
+      return `${value}%`;
+    case "month-sessions":
+    case "sessions":
+      return value === 1 ? "1 økt" : `${value} økter`;
+    case "training-days":
+      return value === 1 ? "1 dag" : `${value} dager`;
+    default:
+      return String(value);
+  }
+}
+
+export function getBadgeNextLevel(badge: MemberBadge): MemberBadgeLevel | null {
+  const nextIndex = badge.achievedLevelIndex + 1;
+  if (nextIndex >= badge.levels.length) return null;
+  return badge.levels[nextIndex];
+}
+
+export function getBadgeProgressLabel(badge: MemberBadge): string {
+  const next = getBadgeNextLevel(badge);
+  if (!next) return "Alle nivåer er låst opp";
+  return `${formatBadgeMetricValue(badge.id, badge.current)} av ${formatBadgeMetricValue(badge.id, next.target)}`;
+}
+
+export function getBadgeUnlockHint(badge: MemberBadge): string {
+  const next = getBadgeNextLevel(badge);
+  if (!next) return "Du har nådd høyeste nivå på denne badge-en.";
+
+  const target = formatBadgeMetricValue(badge.id, next.target);
+  switch (badge.id) {
+    case "sessions":
+      return `Fullfør ${target} registrerte økter totalt for å nå ${next.levelName}.`;
+    case "streak":
+      return `Hold streak med minst én økt per uke i ${target} på rad for å nå ${next.levelName}.`;
+    case "lift":
+      return `Registrer ditt tyngste sett på minst ${target} for å nå ${next.levelName}.`;
+    case "month-sessions":
+      return `Fullfør ${target} i inneværende måned for å nå ${next.levelName}.`;
+    case "training-days":
+      return `Tren på ${target} ulike dager denne måneden for å nå ${next.levelName}.`;
+    case "goal-percent":
+      return `Nå ${target} av månedens øktmål for å nå ${next.levelName}.`;
+    default:
+      return badge.description;
+  }
+}
