@@ -11,7 +11,7 @@ export type BadgeIconId =
 
 export type BadgeLevelId = "bronze" | "silver" | "gold" | "diamond" | "legendary";
 
-export type MemberBadgeCategoryId = "training" | "strength" | "consistency" | "activity" | "challenge";
+export type MemberBadgeCategoryId = "training" | "strength" | "consistency" | "activity" | "challenge" | "secret";
 
 export type MemberBadgeLevel = {
   level: BadgeLevelId;
@@ -37,6 +37,8 @@ export type MemberBadge = {
   progressPct: number;
   achievedLevelIndex: number;
   levels: MemberBadgeLevel[];
+  hidden?: boolean;
+  secret?: boolean;
 };
 
 export type MemberBadgeInput = {
@@ -48,6 +50,7 @@ export type MemberBadgeInput = {
   monthWeeksWithSession: number;
   monthGoalTarget: number;
   nowDate: Date;
+  completedLogDates?: Date[];
 };
 
 export type MemberBadgeCategory = {
@@ -259,6 +262,44 @@ function buildTrackBadge(track: BadgeTrack, input: MemberBadgeInput): MemberBadg
   };
 }
 
+function hasMay17Workout(completedLogDates: Date[] = []): boolean {
+  return completedLogDates.some((date) => date.getMonth() === 4 && date.getDate() === 17);
+}
+
+function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
+  if (!hasMay17Workout(input.completedLogDates)) return [];
+
+  return [
+    {
+      id: "may-17-workout",
+      category: "secret",
+      categoryTitle: "Skjulte",
+      title: "17. mai-økt",
+      description: "Registrerte trening på Norges nasjonaldag.",
+      icon: "first-session",
+      level: "legendary",
+      levelLabel: "Skjult",
+      levelName: "17. mai",
+      current: 1,
+      target: 1,
+      progressPct: 100,
+      achievedLevelIndex: 0,
+      unlocked: true,
+      hidden: true,
+      secret: true,
+      levels: [
+        {
+          level: "legendary",
+          levelLabel: "Skjult",
+          levelName: "17. mai",
+          target: 1,
+          unlocked: true,
+        },
+      ],
+    },
+  ];
+}
+
 export function computeMaxLiftKgFromLogs(
   logs: Array<{ status: string; results?: Array<{ completed?: boolean; performedWeight?: number | string }> }>,
 ): number {
@@ -297,13 +338,17 @@ export function computeMonthWeeksWithSession(completedLogDates: Date[], nowDate:
 }
 
 export function computeMemberBadges(input: MemberBadgeInput): MemberBadgeCollection {
-  const allBadges = BADGE_TRACKS.map((track) => buildTrackBadge(track, input));
-  const categories = BADGE_TRACKS.reduce<MemberBadgeCategory[]>((acc, track) => {
-    if (acc.some((category) => category.id === track.category)) return acc;
-    const badges = allBadges.filter((badge) => badge.category === track.category);
+  const allBadges = [...BADGE_TRACKS.map((track) => buildTrackBadge(track, input)), ...buildSecretBadges(input)];
+  const categorySeeds = [
+    ...BADGE_TRACKS.map((track) => ({ id: track.category, title: track.categoryTitle })),
+    ...allBadges.filter((badge) => badge.secret).map((badge) => ({ id: badge.category, title: badge.categoryTitle })),
+  ];
+  const categories = categorySeeds.reduce<MemberBadgeCategory[]>((acc, seed) => {
+    if (acc.some((category) => category.id === seed.id)) return acc;
+    const badges = allBadges.filter((badge) => badge.category === seed.id);
     acc.push({
-      id: track.category,
-      title: track.categoryTitle,
+      id: seed.id,
+      title: seed.title,
       badges,
       unlockedCount: badges.filter((badge) => badge.unlocked).length,
     });

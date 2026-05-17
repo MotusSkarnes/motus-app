@@ -74,6 +74,23 @@ describe("memberBadges", () => {
     expect(formatBadgeMetricValue("streak", 2)).toBe("2 uker");
   });
 
+  it("keeps 17. mai badge hidden until a workout is completed on May 17", () => {
+    const withoutMay17 = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-05-16T12:00:00")],
+    });
+    expect(withoutMay17.allBadges.some((badge) => badge.id === "may-17-workout")).toBe(false);
+
+    const withMay17 = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-05-17T12:00:00")],
+    });
+    const badge = withMay17.allBadges.find((item) => item.id === "may-17-workout");
+    expect(badge?.unlocked).toBe(true);
+    expect(badge?.secret).toBe(true);
+    expect(withMay17.categories.some((category) => category.id === "secret")).toBe(true);
+  });
+
   it("counts unique training days in month", () => {
     const days = computeMonthUniqueDays(
       [new Date("2026-05-03"), new Date("2026-05-03"), new Date("2026-05-10")],

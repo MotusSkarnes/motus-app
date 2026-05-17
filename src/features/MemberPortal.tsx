@@ -89,6 +89,7 @@ import {
   computeMemberBadges,
   computeMonthUniqueDays,
   computeMonthWeeksWithSession,
+  type MemberBadge,
 } from "../app/memberBadges";
 import {
   ACHIEVEMENT_MAX_LEVEL,
@@ -219,6 +220,7 @@ const MEMBER_AVATAR_BUCKET = "exercise-images";
 const MEMBER_AVATAR_PREFIX = "member-avatars";
 const EMPTY_REMOTE_PERIOD_PLAN_ROWS: Array<{ memberId: string; plan: PeriodSchedulePlan }> = [];
 const PERIOD_PLAN_COMPLETED_STORAGE_PREFIX = "MOTUS_PERIOD_PLAN_COMPLETED_V1:";
+const HIDDEN_BADGE_SEEN_STORAGE_PREFIX = "MOTUS_HIDDEN_BADGE_SEEN_V1:";
 const DEFAULT_HOME_VISIBILITY = {
   weeklyStats: true,
   streakChallenges: true,
@@ -924,6 +926,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [selectedCalendarLogId, setSelectedCalendarLogId] = useState<string | null>(null);
   const [progressShareStatus, setProgressShareStatus] = useState<string | null>(null);
   const [achievementCelebration, setAchievementCelebration] = useState<{ achievedLevel: number } | null>(null);
+  const [hiddenBadgeCelebration, setHiddenBadgeCelebration] = useState<MemberBadge | null>(null);
   const [liveWorkoutCelebration, setLiveWorkoutCelebration] = useState<WorkoutCelebration | null>(null);
   /** Unngår popup ved første lasting; feirer kun når `achievedLevel` faktisk øker. */
   const achievementCelebrationBaselineRef = useRef<number | null>(null);
@@ -1868,6 +1871,7 @@ export function MemberPortal(props: MemberPortalProps) {
         monthWeeksWithSession: computeMonthWeeksWithSession(completedLogDates, nowDate),
         monthGoalTarget: memberProgress.monthGoal.target,
         nowDate,
+        completedLogDates,
       }),
     [completedLogDates, completedLogs.length, estimatedSessionsThisMonth, maxLiftKg, memberProgress.monthGoal.target, memberProgress.streakWeeks, nowDate],
   );
@@ -2707,6 +2711,16 @@ export function MemberPortal(props: MemberPortalProps) {
     achievementCelebrationBaselineRef.current = achievedLevel;
     setAchievementCelebration({ achievedLevel });
   }, [achievedLevel]);
+
+  useEffect(() => {
+    if (isMemberLimited || !activeMemberId || typeof window === "undefined") return;
+    const secretBadge = memberBadgeCollection.allBadges.find((badge) => badge.secret && badge.unlocked);
+    if (!secretBadge) return;
+    const storageKey = `${HIDDEN_BADGE_SEEN_STORAGE_PREFIX}${activeMemberId}:${secretBadge.id}`;
+    if (window.localStorage.getItem(storageKey) === "seen") return;
+    window.localStorage.setItem(storageKey, "seen");
+    setHiddenBadgeCelebration(secretBadge);
+  }, [activeMemberId, isMemberLimited, memberBadgeCollection.allBadges]);
 
   function handleStartIntervalProgramTimer() {
     if (!activeIntervalProgram || !intervalProgramSteps.length) return;
@@ -4421,7 +4435,37 @@ export function MemberPortal(props: MemberPortalProps) {
               </div>
             </div>
           ) : null}
-          {!isMemberLimited && microCelebrationsEnabled && achievementCelebration && !shouldShowPrCelebration ? (
+          {!isMemberLimited && hiddenBadgeCelebration && !shouldShowPrCelebration ? (
+            <div className="motus-modal-insets fixed inset-0 z-[10019] flex justify-center overflow-y-auto overscroll-contain bg-slate-900/45 px-4 py-12 pt-[max(2.5rem,env(safe-area-inset-top))]">
+              <div
+                className="motus-pop-in h-fit w-full max-w-sm overflow-hidden rounded-2xl border bg-white text-center shadow-xl"
+                style={{ borderColor: "rgba(15,23,42,0.1)" }}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="hidden-badge-heading"
+              >
+                <div className="h-2" style={{ background: `linear-gradient(90deg, #BA0C2F 0%, #FFFFFF 24%, #00205B 50%, #FFFFFF 76%, #BA0C2F 100%)` }} />
+                <div className="p-6">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Skjult badge låst opp</p>
+                  <img src="/badges/21-17-mai.svg" alt="" className="mx-auto mt-4 h-36 w-36 object-contain drop-shadow-sm" />
+                  <h2 id="hidden-badge-heading" className="mt-3 text-2xl font-black tracking-tight text-slate-900">
+                    {hiddenBadgeCelebration.title}
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                    Du registrerte en økt på 17. mai. Sterk nasjonaldagsinnsats.
+                  </p>
+                  <div className="mt-5 rounded-2xl border bg-slate-50 px-4 py-3 text-left" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Hemmelig samling</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-900">Denne badgen vises nå i oversikten din.</div>
+                  </div>
+                  <GradientButton onClick={() => setHiddenBadgeCelebration(null)} className="mt-6 w-full min-h-11 font-semibold">
+                    Hurra — videre
+                  </GradientButton>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          {!isMemberLimited && microCelebrationsEnabled && achievementCelebration && !shouldShowPrCelebration && !hiddenBadgeCelebration ? (
             <div className="motus-modal-insets fixed inset-0 z-[10019] flex justify-center overflow-y-auto overscroll-contain bg-slate-900/40 px-4 py-12 pt-[max(2.5rem,env(safe-area-inset-top))]">
               <div
                 className="motus-pop-in h-fit w-full max-w-sm rounded-2xl border bg-white p-6 text-center shadow-xl"
@@ -6123,4 +6167,3 @@ export function MemberPortal(props: MemberPortalProps) {
     </>
   );
 }
-

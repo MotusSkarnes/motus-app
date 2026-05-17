@@ -23,6 +23,7 @@ const BADGE_IMAGES: Record<string, string> = {
   "month-sessions": "/badges/07-vanebygger.png",
   "training-days": "/badges/13-konsistent.png",
   "goal-percent": "/badges/01-forste-steg.png",
+  "may-17-workout": "/badges/21-17-mai.svg",
 };
 
 const LEVEL_ORDER: BadgeLevelId[] = ["bronze", "silver", "gold", "diamond", "legendary"];
@@ -188,7 +189,7 @@ function BadgeCard({ badge }: { badge: MemberBadge }) {
 
   return (
     <article
-      className={`relative overflow-hidden rounded-2xl border p-4 shadow-sm ${badge.unlocked ? "bg-white" : "bg-slate-50/90"}`}
+      className={`relative w-[19rem] shrink-0 snap-start overflow-hidden rounded-2xl border p-4 shadow-sm sm:w-[21rem] ${badge.unlocked ? "bg-white" : "bg-slate-50/90"}`}
       style={{
         borderColor: badge.unlocked ? `${level.border}66` : "rgba(15,23,42,0.08)",
         boxShadow: badge.unlocked ? `0 8px 24px ${level.fill}` : undefined,
@@ -343,7 +344,7 @@ export function MemberBadgesCarousel({ collection }: MemberBadgesCarouselProps) 
         })}
       </div>
 
-      <div className="mt-4 space-y-3">
+      <div className="-mx-1 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-3">
         {visibleBadges.map((badge) => (
           <BadgeCard key={badge.id} badge={badge} />
         ))}
