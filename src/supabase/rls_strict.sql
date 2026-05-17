@@ -72,8 +72,16 @@ create policy "chat_messages_select_trainer_or_member"
       where m.id = chat_messages.member_id
         and m.owner_user_id = auth.uid()
     )
-    or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-    or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+    or exists (
+      select 1
+      from public.members m
+      where m.id::text = chat_messages.member_id
+        and m.is_active = true
+        and m.id::text = coalesce(
+          nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', ''),
+          nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+        )
+    )
   );
 create policy "chat_messages_insert_own"
   on public.chat_messages
@@ -90,8 +98,16 @@ create policy "training_programs_select_trainer_or_member"
   for select to authenticated
   using (
     owner_user_id = auth.uid()
-    or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-    or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+    or exists (
+      select 1
+      from public.members m
+      where m.id::text = training_programs.member_id
+        and m.is_active = true
+        and m.id::text = coalesce(
+          nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', ''),
+          nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+        )
+    )
   );
 create policy "training_programs_insert_own"
   on public.training_programs
@@ -117,8 +133,16 @@ create policy "workout_logs_select_trainer_or_member"
   for select to authenticated
   using (
     owner_user_id = auth.uid()
-    or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-    or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+    or exists (
+      select 1
+      from public.members m
+      where m.id::text = workout_logs.member_id
+        and m.is_active = true
+        and m.id::text = coalesce(
+          nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', ''),
+          nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+        )
+    )
   );
 create policy "workout_logs_insert_own"
   on public.workout_logs
@@ -158,8 +182,16 @@ create policy "member_period_plans_select_trainer_or_member"
   for select to authenticated
   using (
     owner_user_id = auth.uid()
-    or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-    or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+    or exists (
+      select 1
+      from public.members m
+      where m.id::text = member_period_plans.member_id
+        and m.is_active = true
+        and m.id::text = coalesce(
+          nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', ''),
+          nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+        )
+    )
   );
 
 create policy "member_period_plans_insert_trainer"
