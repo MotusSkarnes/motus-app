@@ -12,9 +12,7 @@
     <path d="M166 139L174 147L190 128" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M91 48L96 58L107 60L99 68L101 79L91 74L81 79L83 68L75 60L86 58L91 48Z" fill="#30E3BE" opacity="0.9"/>
     <path d="M176 46L181 55L192 57L184 65L186 76L176 71L166 76L168 65L160 57L171 55L176 46Z" fill="#D91278" opacity="0.85"/>
-    <text x="130" y="132" text-anchor="middle" font-family="Arial, sans-serif" font-size="56" font-weight="900" fill="#0F172A">17</text>
   </g>
-  <text x="130" y="226" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="800" fill="#0F172A">17. mai-økt</text>
   <defs>
     <linearGradient id="face" x1="63" y1="40" x2="198" y2="180" gradientUnits="userSpaceOnUse">
       <stop stop-color="#FFFFFF"/>

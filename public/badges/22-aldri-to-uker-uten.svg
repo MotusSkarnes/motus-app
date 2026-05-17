@@ -13,7 +13,6 @@
     <path d="M82 49L87 59L98 61L90 69L92 80L82 75L72 80L74 69L66 61L77 59L82 49Z" fill="#D91278" opacity="0.88"/>
     <path d="M179 48L184 58L195 60L187 68L189 79L179 74L169 79L171 68L163 60L174 58L179 48Z" fill="#30E3BE" opacity="0.9"/>
   </g>
-  <text x="130" y="221" text-anchor="middle" font-family="Arial, sans-serif" font-size="19" font-weight="800" fill="#0F172A">Aldri to uker uten</text>
   <defs>
     <linearGradient id="face" x1="63" y1="40" x2="198" y2="180" gradientUnits="userSpaceOnUse">
       <stop stop-color="#FFFFFF"/>

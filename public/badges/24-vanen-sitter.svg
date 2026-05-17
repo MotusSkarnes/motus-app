@@ -12,7 +12,6 @@
   <text x="256" y="292" text-anchor="middle" font-family="Arial, sans-serif" font-size="74" font-weight="900" fill="#0F172A">100</text>
   <path d="M191 352c43 33 87 33 130 0" stroke="#D91278" stroke-width="14" stroke-linecap="round"/>
   <path d="M209 374c31 21 63 21 94 0" stroke="#30E3BE" stroke-width="10" stroke-linecap="round"/>
-  <text x="256" y="476" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="900" fill="#0F172A">VANEN SITTER</text>
   <defs>
     <linearGradient id="paint0_linear_144_24" x1="177" y1="186" x2="335" y2="228" gradientUnits="userSpaceOnUse">
       <stop stop-color="#30E3BE"/>
