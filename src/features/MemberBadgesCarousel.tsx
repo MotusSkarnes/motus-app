@@ -1,13 +1,12 @@
 import { useId, useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Award, CalendarCheck, Check, Crown, Diamond, Dumbbell, Flame, Lock, RefreshCw, Shield, Sparkles, Star, Target, Trophy } from "lucide-react";
+import { Award, Crown, Diamond, Lock, Shield, Sparkles, Star, Target } from "lucide-react";
 import { MOTUS } from "../app/data";
 import {
   formatBadgeMetricValue,
   getBadgeNextLevel,
   getBadgeProgressLabel,
   getBadgeUnlockHint,
-  type BadgeIconId,
   type BadgeLevelId,
   type MemberBadge,
   type MemberBadgeCategoryId,
@@ -17,14 +16,13 @@ import {
 
 const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
 
-const BADGE_ICONS: Record<BadgeIconId, LucideIcon> = {
-  "first-session": Check,
-  "week-streak": Flame,
-  sessions: CalendarCheck,
-  lift: Dumbbell,
-  "lift-heavy": Dumbbell,
-  "month-goal": Trophy,
-  monthly: RefreshCw,
+const BADGE_IMAGES: Record<string, string> = {
+  sessions: "/badges/02-motte-opp.png",
+  streak: "/badges/08-streak-start.png",
+  lift: "/badges/11-tungt-arbeid.png",
+  "month-sessions": "/badges/07-vanebygger.png",
+  "training-days": "/badges/13-konsistent.png",
+  "goal-percent": "/badges/01-forste-steg.png",
 };
 
 const LEVEL_ORDER: BadgeLevelId[] = ["bronze", "silver", "gold", "diamond", "legendary"];
@@ -184,12 +182,9 @@ function LevelStep({ level, badge, active }: { level: MemberBadgeLevel; badge: M
 }
 function BadgeCard({ badge }: { badge: MemberBadge }) {
   const level = LEVEL_STYLES[badge.level];
-  const Icon = BADGE_ICONS[badge.icon];
-  const uid = useId();
   const nextLevel = getBadgeNextLevel(badge);
   const isMaxed = !nextLevel;
-  const hexSize = 88;
-  const hexHeight = Math.round(hexSize * 1.15);
+  const badgeImage = BADGE_IMAGES[badge.id] ?? "/badges/01-forste-steg.png";
 
   return (
     <article
@@ -204,11 +199,13 @@ function BadgeCard({ badge }: { badge: MemberBadge }) {
       ) : null}
 
       <div className="relative flex gap-4">
-        <div className="relative shrink-0" style={{ width: hexSize, height: hexHeight }}>
-          <HexFrame level={level} unlocked={badge.unlocked} size={hexSize} uid={`badge-${badge.id}-${uid}`} emphasize={badge.unlocked} />
-          <span className={`absolute inset-0 flex items-center justify-center pb-1 ${badge.unlocked ? "" : "opacity-40 grayscale"}`}>
-            <Icon className="h-10 w-10" strokeWidth={2.2} style={{ color: badge.unlocked ? level.icon : "#94A3B8" }} aria-hidden />
-          </span>
+        <div className="relative flex h-[6.6rem] w-[6.1rem] shrink-0 items-center justify-center">
+          <img
+            src={badgeImage}
+            alt=""
+            className={`h-full w-full object-contain drop-shadow-sm ${badge.unlocked ? "" : "opacity-45 grayscale"}`}
+            loading="lazy"
+          />
           {!badge.unlocked ? (
             <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-slate-100 text-slate-400 shadow-md">
               <Lock className="h-3.5 w-3.5" strokeWidth={2.4} />
