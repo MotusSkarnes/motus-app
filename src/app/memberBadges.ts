@@ -124,6 +124,22 @@ const BADGE_TRACKS: BadgeTrack[] = [
     ],
   },
   {
+    id: "workout-club",
+    category: "training",
+    categoryTitle: "Trening",
+    title: "100 klubben",
+    description: "Nå store øktmilepæler",
+    icon: "sessions",
+    metric: "completedSessionCount",
+    levels: [
+      { level: "bronze", target: 100 },
+      { level: "silver", target: 200 },
+      { level: "gold", target: 300 },
+      { level: "diamond", target: 400 },
+      { level: "legendary", target: 500 },
+    ],
+  },
+  {
     id: "streak",
     category: "consistency",
     categoryTitle: "Streaks",
@@ -285,7 +301,7 @@ function buildTrackBadge(track: BadgeTrack, input: MemberBadgeInput): MemberBadg
     id: track.id,
     category: track.category,
     categoryTitle: track.categoryTitle,
-    title: track.title,
+    title: track.id === "workout-club" ? `${displayLevel.target} klubben` : track.title,
     description: track.description,
     icon: track.icon,
     level: displayLevel.level,
@@ -674,6 +690,7 @@ export function formatBadgeMetricValue(badgeId: string, value: number): string {
     case "goal-percent":
       return `${value}%`;
     case "month-sessions":
+    case "workout-club":
     case "sessions":
       return value === 1 ? "1 økt" : `${value} økter`;
     case "training-days":
@@ -703,6 +720,8 @@ export function getBadgeUnlockHint(badge: MemberBadge): string {
   switch (badge.id) {
     case "sessions":
       return `Fullfør ${target} registrerte økter totalt for å nå ${next.levelName}.`;
+    case "workout-club":
+      return `Fullfør ${target} totalt for å oppgradere klubben.`;
     case "streak":
       return `Hold streak med minst én økt per uke i ${target} på rad for å nå ${next.levelName}.`;
     case "monday-hero":

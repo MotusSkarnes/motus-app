@@ -25,7 +25,7 @@ describe("memberBadges", () => {
   it("builds categories with one badge per achievement track", () => {
     const collection = computeMemberBadges(baseInput);
     expect(collection.categories.length).toBeGreaterThan(3);
-    expect(collection.allBadges.length).toBe(8);
+    expect(collection.allBadges.length).toBe(9);
     expect(collection.allBadges.every((badge) => badge.levels.length === 5)).toBe(true);
     expect(collection.allBadges.every((badge) => !badge.id.includes("-bronze"))).toBe(true);
   });
@@ -41,6 +41,24 @@ describe("memberBadges", () => {
     expect(sessions?.category).toBe("training");
     expect(sessions?.target).toBe(10);
     expect(sessions?.levels.filter((level) => level.unlocked)).toHaveLength(1);
+  });
+
+  it("upgrades the workout club badge title by hundred milestones", () => {
+    const firstClub = computeMemberBadges({
+      ...baseInput,
+      completedSessionCount: 100,
+    }).allBadges.find((badge) => badge.id === "workout-club");
+    expect(firstClub?.title).toBe("100 klubben");
+    expect(firstClub?.level).toBe("bronze");
+    expect(firstClub?.target).toBe(200);
+
+    const secondClub = computeMemberBadges({
+      ...baseInput,
+      completedSessionCount: 250,
+    }).allBadges.find((badge) => badge.id === "workout-club");
+    expect(secondClub?.title).toBe("200 klubben");
+    expect(secondClub?.level).toBe("silver");
+    expect(secondClub?.target).toBe(300);
   });
 
   it("unlocks and upgrades Monday hero from consecutive Monday workouts", () => {

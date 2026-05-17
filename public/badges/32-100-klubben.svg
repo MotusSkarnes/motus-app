@@ -1,0 +1,18 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M256 42 421 137v190L256 422 91 327V137L256 42Z" fill="white" stroke="#30E3BE" stroke-width="14"/>
+  <path d="M256 72 395 152v160L256 392 117 312V152L256 72Z" fill="#FDFEFF" stroke="#D91278" stroke-width="6"/>
+  <circle cx="256" cy="244" r="96" fill="url(#face)" stroke="white" stroke-width="10"/>
+  <text x="256" y="265" text-anchor="middle" font-family="Arial, sans-serif" font-size="78" font-weight="900" fill="white">100</text>
+  <text x="256" y="304" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="900" fill="white">KLUBBEN</text>
+  <path d="M181 339c50 32 100 32 150 0" stroke="#30E3BE" stroke-width="15" stroke-linecap="round"/>
+  <path d="M211 365c30 13 60 13 90 0" stroke="#D91278" stroke-width="10" stroke-linecap="round"/>
+  <path d="M158 128L168 148L191 152L174 168L178 191L158 180L138 191L142 168L125 152L148 148L158 128Z" fill="#30E3BE"/>
+  <path d="M354 128L364 148L387 152L370 168L374 191L354 180L334 191L338 168L321 152L344 148L354 128Z" fill="#D91278"/>
+  <defs>
+    <linearGradient id="face" x1="160" y1="148" x2="352" y2="340" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#30E3BE"/>
+      <stop offset=".48" stop-color="#0F766E"/>
+      <stop offset="1" stop-color="#D91278"/>
+    </linearGradient>
+  </defs>
+</svg>

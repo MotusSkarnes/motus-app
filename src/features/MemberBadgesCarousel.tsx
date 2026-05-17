@@ -17,6 +17,7 @@ const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.p
 
 const BADGE_IMAGES: Record<string, string> = {
   sessions: "/badges/02-motte-opp.png",
+  "workout-club": "/badges/32-100-klubben.svg",
   streak: "/badges/08-streak-start.png",
   "monday-hero": "/badges/30-mandagshelt.svg",
   "weekend-warrior": "/badges/31-helgekriger.svg",
