@@ -227,6 +227,7 @@ const HIDDEN_BADGE_IMAGES: Record<string, string> = {
   "back-again": "/badges/23-tilbake-igjen.svg",
   "habit-sticks": "/badges/24-vanen-sitter.svg",
   "before-sunrise": "/badges/25-for-sola.svg",
+  "summer-loyal": "/badges/26-sommertrofast.svg",
 };
 const HIDDEN_BADGE_POPUP_COPY: Record<string, string> = {
   "may-17-workout": "Du registrerte en økt på 17. mai. Sterk nasjonaldagsinnsats.",
@@ -234,6 +235,7 @@ const HIDDEN_BADGE_POPUP_COPY: Record<string, string> = {
   "back-again": "Du kom tilbake etter en lang pause. Det teller.",
   "habit-sticks": "Det har gått 100 dager siden første økt. Vanen sitter.",
   "before-sunrise": "Du trente før 05:30. Dagen startet sterkt.",
+  "summer-loyal": "Du trente i juli. Sommerformen holdes i gang.",
 };
 const DEFAULT_HOME_VISIBILITY = {
   weeklyStats: true,

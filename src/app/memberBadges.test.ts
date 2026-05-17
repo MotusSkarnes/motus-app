@@ -157,6 +157,20 @@ describe("memberBadges", () => {
     expect(tooLate.allBadges.some((badge) => badge.id === "before-sunrise")).toBe(false);
   });
 
+  it("unlocks hidden summer-loyal badge for workouts in July", () => {
+    const inJuly = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-07-12T12:00:00")],
+    });
+    expect(inJuly.allBadges.find((badge) => badge.id === "summer-loyal")?.unlocked).toBe(true);
+
+    const outsideJuly = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-08-01T12:00:00")],
+    });
+    expect(outsideJuly.allBadges.some((badge) => badge.id === "summer-loyal")).toBe(false);
+  });
+
   it("counts unique training days in month", () => {
     const days = computeMonthUniqueDays(
       [new Date("2026-05-03"), new Date("2026-05-03"), new Date("2026-05-10")],
