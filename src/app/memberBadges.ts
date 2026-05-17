@@ -69,7 +69,15 @@ export type MemberBadgeCollection = {
   totalUnlockedLevels: number;
 };
 
-type BadgeMetric = "completedSessionCount" | "streakWeeks" | "maxLiftKg" | "monthSessions" | "monthUniqueDays" | "monthGoalPercent";
+type BadgeMetric =
+  | "completedSessionCount"
+  | "streakWeeks"
+  | "maxLiftKg"
+  | "monthSessions"
+  | "monthUniqueDays"
+  | "monthGoalPercent"
+  | "mondayStreak"
+  | "weekendPairs";
 
 type BadgeTrack = {
   id: string;
@@ -129,6 +137,38 @@ const BADGE_TRACKS: BadgeTrack[] = [
       { level: "gold", target: 8 },
       { level: "diamond", target: 12 },
       { level: "legendary", target: 20 },
+    ],
+  },
+  {
+    id: "monday-hero",
+    category: "consistency",
+    categoryTitle: "Streaks",
+    title: "Mandagshelt",
+    description: "Tren pÃ¥ mandager uke etter uke",
+    icon: "week-streak",
+    metric: "mondayStreak",
+    levels: [
+      { level: "bronze", target: 4 },
+      { level: "silver", target: 8 },
+      { level: "gold", target: 12 },
+      { level: "diamond", target: 16 },
+      { level: "legendary", target: 20 },
+    ],
+  },
+  {
+    id: "weekend-warrior",
+    category: "consistency",
+    categoryTitle: "Streaks",
+    title: "Helgekriger",
+    description: "Tren både lørdag og søndag",
+    icon: "week-streak",
+    metric: "weekendPairs",
+    levels: [
+      { level: "bronze", target: 1 },
+      { level: "silver", target: 2 },
+      { level: "gold", target: 4 },
+      { level: "diamond", target: 8 },
+      { level: "legendary", target: 12 },
     ],
   },
   {
@@ -209,6 +249,10 @@ function readMetric(metric: BadgeMetric, input: MemberBadgeInput): number {
       return input.monthSessions;
     case "monthUniqueDays":
       return input.monthUniqueDays;
+    case "mondayStreak":
+      return computeConsecutiveMondayWorkouts(input.completedLogDates ?? []);
+    case "weekendPairs":
+      return computeWeekendWorkoutPairs(input.completedLogDates ?? []);
     case "monthGoalPercent": {
       const target = Math.max(1, input.monthGoalTarget || 10);
       return Math.round((input.monthSessions / target) * 100);
@@ -280,6 +324,43 @@ function daysBetween(from: Date, to: Date): number {
 
 function localDateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+export function computeConsecutiveMondayWorkouts(completedLogDates: Date[] = []): number {
+  const mondayDates = Array.from(new Set(completedLogDates.filter((date) => date.getDay() === 1).map(startOfDay).map(localDateKey)))
+    .map((value) => new Date(`${value}T00:00:00`))
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  let currentStreak = 0;
+  let bestStreak = 0;
+  mondayDates.forEach((date, index) => {
+    if (index === 0 || daysBetween(mondayDates[index - 1], date) !== 7) {
+      currentStreak = 1;
+    } else {
+      currentStreak += 1;
+    }
+    bestStreak = Math.max(bestStreak, currentStreak);
+  });
+
+  return bestStreak;
+}
+
+export function computeWeekendWorkoutPairs(completedLogDates: Date[] = []): number {
+  const completedDays = new Set(completedLogDates.map(startOfDay).map(localDateKey));
+  const saturdayKeys = Array.from(
+    new Set(
+      completedLogDates
+        .filter((date) => date.getDay() === 6)
+        .map(startOfDay)
+        .map(localDateKey),
+    ),
+  );
+
+  return saturdayKeys.filter((key) => {
+    const saturday = new Date(`${key}T00:00:00`);
+    const sunday = addCalendarDays(saturday, 1);
+    return completedDays.has(localDateKey(sunday));
+  }).length;
 }
 
 function hasNoTrainingGapOver14DaysForSixMonths(completedLogDates: Date[] = [], nowDate: Date): boolean {
@@ -584,6 +665,10 @@ export function formatBadgeMetricValue(badgeId: string, value: number): string {
   switch (badgeId) {
     case "streak":
       return value === 1 ? "1 uke" : `${value} uker`;
+    case "monday-hero":
+      return value === 1 ? "1 mandag" : `${value} mandager`;
+    case "weekend-warrior":
+      return value === 1 ? "1 helg" : `${value} helger`;
     case "lift":
       return `${value} kg`;
     case "goal-percent":
@@ -620,6 +705,10 @@ export function getBadgeUnlockHint(badge: MemberBadge): string {
       return `Fullfør ${target} registrerte økter totalt for å nå ${next.levelName}.`;
     case "streak":
       return `Hold streak med minst én økt per uke i ${target} på rad for å nå ${next.levelName}.`;
+    case "monday-hero":
+      return `Tren ${target} på rad for å nå ${next.levelName}.`;
+    case "weekend-warrior":
+      return `Tren både lørdag og søndag i ${target} for å nå ${next.levelName}.`;
     case "lift":
       return `Registrer ditt tyngste sett på minst ${target} for å nå ${next.levelName}.`;
     case "month-sessions":

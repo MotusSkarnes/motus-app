@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  computeConsecutiveMondayWorkouts,
   computeMaxLiftKgFromLogs,
   computeMemberBadges,
   computeMonthUniqueDays,
+  computeWeekendWorkoutPairs,
   formatBadgeMetricValue,
   getBadgeProgressLabel,
   getBadgeUnlockHint,
@@ -23,7 +25,7 @@ describe("memberBadges", () => {
   it("builds categories with one badge per achievement track", () => {
     const collection = computeMemberBadges(baseInput);
     expect(collection.categories.length).toBeGreaterThan(3);
-    expect(collection.allBadges.length).toBe(6);
+    expect(collection.allBadges.length).toBe(8);
     expect(collection.allBadges.every((badge) => badge.levels.length === 5)).toBe(true);
     expect(collection.allBadges.every((badge) => !badge.id.includes("-bronze"))).toBe(true);
   });
@@ -39,6 +41,69 @@ describe("memberBadges", () => {
     expect(sessions?.category).toBe("training");
     expect(sessions?.target).toBe(10);
     expect(sessions?.levels.filter((level) => level.unlocked)).toHaveLength(1);
+  });
+
+  it("unlocks and upgrades Monday hero from consecutive Monday workouts", () => {
+    const mondays = [
+      new Date("2026-01-05T12:00:00"),
+      new Date("2026-01-12T12:00:00"),
+      new Date("2026-01-19T12:00:00"),
+      new Date("2026-01-26T12:00:00"),
+      new Date("2026-02-02T12:00:00"),
+      new Date("2026-02-09T12:00:00"),
+      new Date("2026-02-16T12:00:00"),
+      new Date("2026-02-23T12:00:00"),
+    ];
+
+    expect(computeConsecutiveMondayWorkouts(mondays)).toBe(8);
+    const collection = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: mondays,
+    });
+    const badge = collection.allBadges.find((item) => item.id === "monday-hero");
+    expect(badge?.unlocked).toBe(true);
+    expect(badge?.level).toBe("silver");
+    expect(badge?.target).toBe(12);
+    expect(badge?.levels.filter((level) => level.unlocked)).toHaveLength(2);
+  });
+
+  it("resets Monday hero when a Monday is skipped", () => {
+    const dates = [
+      new Date("2026-01-05T12:00:00"),
+      new Date("2026-01-12T12:00:00"),
+      new Date("2026-01-26T12:00:00"),
+      new Date("2026-02-02T12:00:00"),
+    ];
+    expect(computeConsecutiveMondayWorkouts(dates)).toBe(2);
+  });
+
+  it("unlocks and upgrades weekend warrior from Saturday and Sunday pairs", () => {
+    const dates = [
+      new Date("2026-01-03T12:00:00"),
+      new Date("2026-01-04T12:00:00"),
+      new Date("2026-01-10T12:00:00"),
+      new Date("2026-01-11T12:00:00"),
+    ];
+
+    expect(computeWeekendWorkoutPairs(dates)).toBe(2);
+    const collection = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: dates,
+    });
+    const badge = collection.allBadges.find((item) => item.id === "weekend-warrior");
+    expect(badge?.unlocked).toBe(true);
+    expect(badge?.level).toBe("silver");
+    expect(badge?.target).toBe(4);
+  });
+
+  it("counts only complete Saturday and Sunday pairs for weekend warrior", () => {
+    const dates = [
+      new Date("2026-01-03T12:00:00"),
+      new Date("2026-01-04T12:00:00"),
+      new Date("2026-01-10T12:00:00"),
+      new Date("2026-01-18T12:00:00"),
+    ];
+    expect(computeWeekendWorkoutPairs(dates)).toBe(1);
   });
 
   it("tracks lift progress toward the next strength level", () => {
