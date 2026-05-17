@@ -31,6 +31,7 @@ const BADGE_IMAGES: Record<string, string> = {
   "summer-loyal": "/badges/26-sommertrofast.svg",
   "new-start": "/badges/27-ny-start.svg",
   "easter-pump": "/badges/28-paskepump.svg",
+  "christmas-pump": "/badges/29-julepump.svg",
 };
 
 const LEVEL_ORDER: BadgeLevelId[] = ["bronze", "silver", "gold", "diamond", "legendary"];

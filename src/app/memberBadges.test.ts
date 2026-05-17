@@ -205,6 +205,26 @@ describe("memberBadges", () => {
     expect(outsideEaster.allBadges.some((badge) => badge.id === "easter-pump")).toBe(false);
   });
 
+  it("unlocks hidden christmas-pump badge for workouts between December 24 and 26", () => {
+    const christmasEve = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-12-24T12:00:00")],
+    });
+    expect(christmasEve.allBadges.find((badge) => badge.id === "christmas-pump")?.unlocked).toBe(true);
+
+    const boxingDay = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-12-26T12:00:00")],
+    });
+    expect(boxingDay.allBadges.find((badge) => badge.id === "christmas-pump")?.unlocked).toBe(true);
+
+    const outsideChristmas = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-12-27T12:00:00")],
+    });
+    expect(outsideChristmas.allBadges.some((badge) => badge.id === "christmas-pump")).toBe(false);
+  });
+
   it("counts unique training days in month", () => {
     const days = computeMonthUniqueDays(
       [new Date("2026-05-03"), new Date("2026-05-03"), new Date("2026-05-10")],

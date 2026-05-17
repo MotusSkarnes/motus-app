@@ -375,6 +375,10 @@ function hasEasterWorkout(completedLogDates: Date[] = []): boolean {
   });
 }
 
+function hasChristmasWorkout(completedLogDates: Date[] = []): boolean {
+  return completedLogDates.some((date) => date.getMonth() === 11 && date.getDate() >= 24 && date.getDate() <= 26);
+}
+
 function buildSecretBadge(input: { id: string; title: string; description: string; levelName: string }): MemberBadge {
   return {
     id: input.id,
@@ -413,6 +417,7 @@ function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
   const hasSummerWorkout = hasJulyWorkout(input.completedLogDates);
   const hasNewYearWorkout = hasJanuaryWorkout(input.completedLogDates);
   const hasEasterPump = hasEasterWorkout(input.completedLogDates);
+  const hasChristmasPump = hasChristmasWorkout(input.completedLogDates);
   const sixMonthBadge = buildSecretBadge({
     id: "never-two-weeks-without",
     title: "Aldri to uker uten",
@@ -455,6 +460,12 @@ function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
     description: "Trente i påsken.",
     levelName: "Påske",
   });
+  const christmasBadge = buildSecretBadge({
+    id: "christmas-pump",
+    title: "Julepump",
+    description: "Trente mellom 24. og 26. desember.",
+    levelName: "Jul",
+  });
   const unlockedSecretBadges = [
     hasSixMonthFlow ? sixMonthBadge : null,
     hasComeback ? comebackBadge : null,
@@ -463,6 +474,7 @@ function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
     hasSummerWorkout ? summerBadge : null,
     hasNewYearWorkout ? newYearBadge : null,
     hasEasterPump ? easterBadge : null,
+    hasChristmasPump ? christmasBadge : null,
   ].filter((badge): badge is MemberBadge => badge !== null);
 
   if (!hasMay17Workout(input.completedLogDates)) return unlockedSecretBadges;
