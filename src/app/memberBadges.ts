@@ -341,6 +341,40 @@ function hasJanuaryWorkout(completedLogDates: Date[] = []): boolean {
   return completedLogDates.some((date) => date.getMonth() === 0);
 }
 
+function getEasterSunday(year: number): Date {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31) - 1;
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month, day);
+}
+
+function addCalendarDays(date: Date, days: number): Date {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return startOfDay(nextDate);
+}
+
+function hasEasterWorkout(completedLogDates: Date[] = []): boolean {
+  return completedLogDates.some((date) => {
+    const workoutDate = startOfDay(date);
+    const easterSunday = getEasterSunday(workoutDate.getFullYear());
+    const easterStart = addCalendarDays(easterSunday, -3);
+    const easterEnd = addCalendarDays(easterSunday, 1);
+    return workoutDate >= easterStart && workoutDate <= easterEnd;
+  });
+}
+
 function buildSecretBadge(input: { id: string; title: string; description: string; levelName: string }): MemberBadge {
   return {
     id: input.id,
@@ -378,6 +412,7 @@ function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
   const hasEarlyWorkout = hasWorkoutBeforeSunrise(input.completedLogDates);
   const hasSummerWorkout = hasJulyWorkout(input.completedLogDates);
   const hasNewYearWorkout = hasJanuaryWorkout(input.completedLogDates);
+  const hasEasterPump = hasEasterWorkout(input.completedLogDates);
   const sixMonthBadge = buildSecretBadge({
     id: "never-two-weeks-without",
     title: "Aldri to uker uten",
@@ -414,6 +449,12 @@ function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
     description: "Registrerte første økt i et nytt år.",
     levelName: "Nytt år",
   });
+  const easterBadge = buildSecretBadge({
+    id: "easter-pump",
+    title: "Påskepump",
+    description: "Trente i påsken.",
+    levelName: "Påske",
+  });
   const unlockedSecretBadges = [
     hasSixMonthFlow ? sixMonthBadge : null,
     hasComeback ? comebackBadge : null,
@@ -421,6 +462,7 @@ function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
     hasEarlyWorkout ? earlyBadge : null,
     hasSummerWorkout ? summerBadge : null,
     hasNewYearWorkout ? newYearBadge : null,
+    hasEasterPump ? easterBadge : null,
   ].filter((badge): badge is MemberBadge => badge !== null);
 
   if (!hasMay17Workout(input.completedLogDates)) return unlockedSecretBadges;

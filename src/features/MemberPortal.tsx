@@ -229,6 +229,7 @@ const HIDDEN_BADGE_IMAGES: Record<string, string> = {
   "before-sunrise": "/badges/25-for-sola.svg",
   "summer-loyal": "/badges/26-sommertrofast.svg",
   "new-start": "/badges/27-ny-start.svg",
+  "easter-pump": "/badges/28-paskepump.svg",
 };
 const HIDDEN_BADGE_POPUP_COPY: Record<string, string> = {
   "may-17-workout": "Du registrerte en økt på 17. mai. Sterk nasjonaldagsinnsats.",
@@ -238,6 +239,7 @@ const HIDDEN_BADGE_POPUP_COPY: Record<string, string> = {
   "before-sunrise": "Du trente før 05:30. Dagen startet sterkt.",
   "summer-loyal": "Du trente i juli. Sommerformen holdes i gang.",
   "new-start": "Du registrerte årets første økt. Nytt år, ny start.",
+  "easter-pump": "Du trente i påsken. Påskeegget fikk litt pump.",
 };
 const DEFAULT_HOME_VISIBILITY = {
   weeklyStats: true,

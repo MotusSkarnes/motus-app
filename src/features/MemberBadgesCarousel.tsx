@@ -30,6 +30,7 @@ const BADGE_IMAGES: Record<string, string> = {
   "before-sunrise": "/badges/25-for-sola.svg",
   "summer-loyal": "/badges/26-sommertrofast.svg",
   "new-start": "/badges/27-ny-start.svg",
+  "easter-pump": "/badges/28-paskepump.svg",
 };
 
 const LEVEL_ORDER: BadgeLevelId[] = ["bronze", "silver", "gold", "diamond", "legendary"];
