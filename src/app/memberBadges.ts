@@ -271,7 +271,11 @@ function startOfDay(date: Date): Date {
 }
 
 function daysBetween(from: Date, to: Date): number {
-  return Math.floor((startOfDay(to).getTime() - startOfDay(from).getTime()) / 86_400_000);
+  const fromDay = startOfDay(from);
+  const toDay = startOfDay(to);
+  const fromUtc = Date.UTC(fromDay.getFullYear(), fromDay.getMonth(), fromDay.getDate());
+  const toUtc = Date.UTC(toDay.getFullYear(), toDay.getMonth(), toDay.getDate());
+  return Math.floor((toUtc - fromUtc) / 86_400_000);
 }
 
 function localDateKey(date: Date): string {
@@ -317,6 +321,14 @@ function hasReturnedAfterLongPause(completedLogDates: Date[] = []): boolean {
   return false;
 }
 
+function hasBeenTrainingFor100Days(completedLogDates: Date[] = [], nowDate: Date): boolean {
+  const firstCompletedDate = completedLogDates
+    .map(startOfDay)
+    .sort((a, b) => a.getTime() - b.getTime())[0];
+
+  return firstCompletedDate ? daysBetween(firstCompletedDate, nowDate) >= 100 : false;
+}
+
 function buildSecretBadge(input: { id: string; title: string; description: string; levelName: string }): MemberBadge {
   return {
     id: input.id,
@@ -350,6 +362,7 @@ function buildSecretBadge(input: { id: string; title: string; description: strin
 function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
   const hasSixMonthFlow = hasNoTrainingGapOver14DaysForSixMonths(input.completedLogDates, input.nowDate);
   const hasComeback = hasReturnedAfterLongPause(input.completedLogDates);
+  const has100DaysSinceFirstWorkout = hasBeenTrainingFor100Days(input.completedLogDates, input.nowDate);
   const sixMonthBadge = buildSecretBadge({
     id: "never-two-weeks-without",
     title: "Aldri to uker uten",
@@ -362,9 +375,17 @@ function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
     description: "Kom tilbake etter en lang treningspause.",
     levelName: "Comeback",
   });
-  const unlockedSecretBadges = [hasSixMonthFlow ? sixMonthBadge : null, hasComeback ? comebackBadge : null].filter(
-    (badge): badge is MemberBadge => badge !== null,
-  );
+  const habitBadge = buildSecretBadge({
+    id: "habit-sticks",
+    title: "Vanen sitter",
+    description: "100 dager siden første registrerte økt.",
+    levelName: "100 dager",
+  });
+  const unlockedSecretBadges = [
+    hasSixMonthFlow ? sixMonthBadge : null,
+    hasComeback ? comebackBadge : null,
+    has100DaysSinceFirstWorkout ? habitBadge : null,
+  ].filter((badge): badge is MemberBadge => badge !== null);
 
   if (!hasMay17Workout(input.completedLogDates)) return unlockedSecretBadges;
 

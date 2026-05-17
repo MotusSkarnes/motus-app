@@ -1,0 +1,22 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="120" fill="#F8FAFC"/>
+  <path d="M256 42 421 137v190L256 422 91 327V137L256 42Z" fill="white" stroke="#D91278" stroke-width="14"/>
+  <path d="M256 72 395 152v160L256 392 117 312V152L256 72Z" fill="#FDFEFF" stroke="#30E3BE" stroke-width="6"/>
+  <circle cx="256" cy="248" r="108" fill="#F1F5F9"/>
+  <path d="M256 145a103 103 0 1 1-88 156" stroke="#30E3BE" stroke-width="28" stroke-linecap="round"/>
+  <path d="M256 145a103 103 0 0 1 98 71" stroke="#D91278" stroke-width="28" stroke-linecap="round"/>
+  <path d="M193 169 160 166 179 139" stroke="#30E3BE" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="177" y="186" width="158" height="134" rx="28" fill="white" stroke="#CBD5E1" stroke-width="8"/>
+  <rect x="177" y="186" width="158" height="42" rx="22" fill="url(#paint0_linear_144_24)"/>
+  <path d="M217 168v40M295 168v40" stroke="#334155" stroke-width="14" stroke-linecap="round"/>
+  <text x="256" y="292" text-anchor="middle" font-family="Arial, sans-serif" font-size="74" font-weight="900" fill="#0F172A">100</text>
+  <path d="M191 352c43 33 87 33 130 0" stroke="#D91278" stroke-width="14" stroke-linecap="round"/>
+  <path d="M209 374c31 21 63 21 94 0" stroke="#30E3BE" stroke-width="10" stroke-linecap="round"/>
+  <text x="256" y="476" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="900" fill="#0F172A">VANEN SITTER</text>
+  <defs>
+    <linearGradient id="paint0_linear_144_24" x1="177" y1="186" x2="335" y2="228" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#30E3BE"/>
+      <stop offset="1" stop-color="#D91278"/>
+    </linearGradient>
+  </defs>
+</svg>

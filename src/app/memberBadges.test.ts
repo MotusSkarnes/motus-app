@@ -127,6 +127,22 @@ describe("memberBadges", () => {
     expect(shortPause.allBadges.some((badge) => badge.id === "back-again")).toBe(false);
   });
 
+  it("unlocks hidden habit badge 100 days after first workout", () => {
+    const after100Days = computeMemberBadges({
+      ...baseInput,
+      nowDate: new Date("2026-05-16T12:00:00"),
+      completedLogDates: [new Date("2026-02-05T12:00:00")],
+    });
+    expect(after100Days.allBadges.find((badge) => badge.id === "habit-sticks")?.unlocked).toBe(true);
+
+    const before100Days = computeMemberBadges({
+      ...baseInput,
+      nowDate: new Date("2026-05-16T12:00:00"),
+      completedLogDates: [new Date("2026-02-06T12:00:00")],
+    });
+    expect(before100Days.allBadges.some((badge) => badge.id === "habit-sticks")).toBe(false);
+  });
+
   it("counts unique training days in month", () => {
     const days = computeMonthUniqueDays(
       [new Date("2026-05-03"), new Date("2026-05-03"), new Date("2026-05-10")],
