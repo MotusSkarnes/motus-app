@@ -9,14 +9,19 @@ export type BadgeIconId =
   | "month-goal"
   | "monthly";
 
-export type MemberBadgeKind = "permanent" | "monthly";
+export type BadgeLevelId = "bronze" | "silver" | "gold" | "diamond" | "legendary";
+
+export type MemberBadgeCategoryId = "training" | "strength" | "consistency" | "activity" | "challenge";
 
 export type MemberBadge = {
   id: string;
-  kind: MemberBadgeKind;
+  category: MemberBadgeCategoryId;
+  categoryTitle: string;
   title: string;
   description: string;
   icon: BadgeIconId;
+  level: BadgeLevelId;
+  levelLabel: string;
   unlocked: boolean;
   current: number;
   target: number;
@@ -33,192 +38,191 @@ export type MemberBadgeInput = {
   nowDate: Date;
 };
 
+export type MemberBadgeCategory = {
+  id: MemberBadgeCategoryId;
+  title: string;
+  badges: MemberBadge[];
+  unlockedCount: number;
+};
+
 export type MemberBadgeCollection = {
-  permanent: MemberBadge[];
-  monthly: MemberBadge[];
-  monthLabel: string;
-  allPermanentUnlocked: boolean;
-  allMonthlyUnlocked: boolean;
+  categories: MemberBadgeCategory[];
+  allBadges: MemberBadge[];
+  totalCount: number;
+  totalUnlocked: number;
 };
 
-type PermanentBadgeDefinition = {
+type BadgeMetric = "completedSessionCount" | "streakWeeks" | "maxLiftKg" | "monthSessions" | "monthUniqueDays" | "monthGoalPercent";
+
+type BadgeTrack = {
   id: string;
+  category: MemberBadgeCategoryId;
+  categoryTitle: string;
   title: string;
   description: string;
   icon: BadgeIconId;
-  target: number;
-  current: (input: MemberBadgeInput) => number;
+  metric: BadgeMetric;
+  levels: Array<{ level: BadgeLevelId; target: number }>;
 };
 
-type MonthlyMetric = "monthSessions" | "monthUniqueDays" | "monthWeeksWithSession" | "streakWeeks" | "monthGoalFromProfile";
-
-type MonthlyBadgeTemplate = {
-  id: string;
-  title: string;
-  description: string;
-  icon: BadgeIconId;
-  metric: MonthlyMetric;
-  target: number | ((input: MemberBadgeInput) => number);
+const BADGE_LEVEL_LABELS: Record<BadgeLevelId, string> = {
+  bronze: "Nivå 1",
+  silver: "Nivå 2",
+  gold: "Nivå 3",
+  diamond: "Nivå 4",
+  legendary: "Legendarisk",
 };
 
-const PERMANENT_BADGE_DEFINITIONS: PermanentBadgeDefinition[] = [
+const BADGE_TRACKS: BadgeTrack[] = [
   {
-    id: "first-session",
-    title: "Første økt",
-    description: "Fullfør din første registrerte økt",
-    icon: "first-session",
-    target: 1,
-    current: (input) => input.completedSessionCount,
-  },
-  {
-    id: "week-streak-4",
-    title: "4-ukers streak",
-    description: "Minst én økt per uke, 4 uker i streak",
-    icon: "week-streak",
-    target: 4,
-    current: (input) => input.streakWeeks,
-  },
-  {
-    id: "sessions-10",
-    title: "10 økter",
-    description: "Logg 10 fullførte økter totalt",
+    id: "sessions",
+    category: "training",
+    categoryTitle: "Trening",
+    title: "Øktjeger",
+    description: "Fullfør registrerte økter",
     icon: "sessions",
-    target: 10,
-    current: (input) => input.completedSessionCount,
+    metric: "completedSessionCount",
+    levels: [
+      { level: "bronze", target: 1 },
+      { level: "silver", target: 10 },
+      { level: "gold", target: 25 },
+      { level: "diamond", target: 50 },
+      { level: "legendary", target: 100 },
+    ],
   },
   {
-    id: "lift-50",
-    title: "50 kg-løft",
-    description: "Løft 50 kg eller mer i ett sett",
-    icon: "lift",
-    target: 50,
-    current: (input) => input.maxLiftKg,
-  },
-  {
-    id: "lift-100",
-    title: "100 kg-løft",
-    description: "Løft 100 kg eller mer i ett sett",
-    icon: "lift-heavy",
-    target: 100,
-    current: (input) => input.maxLiftKg,
-  },
-  {
-    id: "week-streak-8",
-    title: "8-ukers streak",
-    description: "Hold streaken i 8 uker",
-    icon: "week-streak",
-    target: 8,
-    current: (input) => input.streakWeeks,
-  },
-  {
-    id: "lift-150",
-    title: "150 kg-løft",
-    description: "Løft 150 kg eller mer i ett sett",
-    icon: "lift-heavy",
-    target: 150,
-    current: (input) => input.maxLiftKg,
-  },
-];
-
-/** Roterer — 3 utvalgte per kalendermåned. */
-const MONTHLY_BADGE_POOL: MonthlyBadgeTemplate[] = [
-  {
-    id: "m-sessions-4",
-    title: "4 økter denne måneden",
-    description: "Fullfør 4 økter før måneden er omme",
-    icon: "month-goal",
-    metric: "monthSessions",
-    target: 4,
-  },
-  {
-    id: "m-sessions-6",
-    title: "6 økter denne måneden",
-    description: "Bygg jevn aktivitet gjennom måneden",
-    icon: "month-goal",
-    metric: "monthSessions",
-    target: 6,
-  },
-  {
-    id: "m-sessions-8",
-    title: "8 økter denne måneden",
-    description: "Hold et høyt treningsvolum denne måneden",
-    icon: "month-goal",
-    metric: "monthSessions",
-    target: 8,
-  },
-  {
-    id: "m-days-4",
-    title: "4 treningsdager",
-    description: "Tren på minst 4 ulike dager denne måneden",
-    icon: "sessions",
-    metric: "monthUniqueDays",
-    target: 4,
-  },
-  {
-    id: "m-days-6",
-    title: "6 treningsdager",
-    description: "Spred treningen på flere dager i måneden",
-    icon: "sessions",
-    metric: "monthUniqueDays",
-    target: 6,
-  },
-  {
-    id: "m-weeks-2",
-    title: "2 aktive uker",
-    description: "Tren minst én gang i 2 uker denne måneden",
-    icon: "week-streak",
-    metric: "monthWeeksWithSession",
-    target: 2,
-  },
-  {
-    id: "m-weeks-3",
-    title: "3 aktive uker",
-    description: "Tren minst én gang i 3 uker denne måneden",
-    icon: "week-streak",
-    metric: "monthWeeksWithSession",
-    target: 3,
-  },
-  {
-    id: "m-streak-2",
-    title: "2-ukers streak",
-    description: "Hold streaken på minst 2 uker",
+    id: "streak",
+    category: "consistency",
+    categoryTitle: "Streaks",
+    title: "Streak",
+    description: "Tren minst én gang per uke over tid",
     icon: "week-streak",
     metric: "streakWeeks",
-    target: 2,
+    levels: [
+      { level: "bronze", target: 2 },
+      { level: "silver", target: 4 },
+      { level: "gold", target: 8 },
+      { level: "diamond", target: 12 },
+      { level: "legendary", target: 20 },
+    ],
   },
   {
-    id: "m-profile-goal",
-    title: "Ditt månedsmål",
-    description: "Nå målet du har satt for økter per måned",
+    id: "lift",
+    category: "strength",
+    categoryTitle: "Styrke",
+    title: "Tungvekter",
+    description: "Tyngste registrerte sett",
+    icon: "lift-heavy",
+    metric: "maxLiftKg",
+    levels: [
+      { level: "bronze", target: 40 },
+      { level: "silver", target: 60 },
+      { level: "gold", target: 90 },
+      { level: "diamond", target: 120 },
+      { level: "legendary", target: 150 },
+    ],
+  },
+  {
+    id: "month-sessions",
+    category: "activity",
+    categoryTitle: "Aktivitet",
+    title: "Månedsdriv",
+    description: "Fullfør økter i inneværende måned",
+    icon: "month-goal",
+    metric: "monthSessions",
+    levels: [
+      { level: "bronze", target: 4 },
+      { level: "silver", target: 6 },
+      { level: "gold", target: 8 },
+      { level: "diamond", target: 12 },
+      { level: "legendary", target: 16 },
+    ],
+  },
+  {
+    id: "training-days",
+    category: "activity",
+    categoryTitle: "Aktivitet",
+    title: "Treningsdager",
+    description: "Tren på ulike dager i måneden",
     icon: "monthly",
-    metric: "monthGoalFromProfile",
-    target: (input) => Math.max(4, Math.min(24, input.monthGoalTarget || 10)),
+    metric: "monthUniqueDays",
+    levels: [
+      { level: "bronze", target: 3 },
+      { level: "silver", target: 5 },
+      { level: "gold", target: 7 },
+      { level: "diamond", target: 10 },
+      { level: "legendary", target: 14 },
+    ],
+  },
+  {
+    id: "goal-percent",
+    category: "challenge",
+    categoryTitle: "Utfordringer",
+    title: "Målknuser",
+    description: "Nå øktmålet du har satt",
+    icon: "first-session",
+    metric: "monthGoalPercent",
+    levels: [
+      { level: "bronze", target: 25 },
+      { level: "silver", target: 50 },
+      { level: "gold", target: 75 },
+      { level: "diamond", target: 100 },
+      { level: "legendary", target: 125 },
+    ],
   },
 ];
 
-const MONTHLY_BADGES_PER_MONTH = 3;
-
-function monthSeed(year: number, monthIndex: number): number {
-  return year * 12 + monthIndex;
-}
-
-function seededShuffle<T>(items: T[], seed: number): T[] {
-  const copy = [...items];
-  let state = seed || 1;
-  const rand = () => {
-    state = (state * 1664525 + 1013904223) % 0x100000000;
-    return state / 0x100000000;
-  };
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rand() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
+function readMetric(metric: BadgeMetric, input: MemberBadgeInput): number {
+  switch (metric) {
+    case "completedSessionCount":
+      return input.completedSessionCount;
+    case "streakWeeks":
+      return input.streakWeeks;
+    case "maxLiftKg":
+      return input.maxLiftKg;
+    case "monthSessions":
+      return input.monthSessions;
+    case "monthUniqueDays":
+      return input.monthUniqueDays;
+    case "monthGoalPercent": {
+      const target = Math.max(1, input.monthGoalTarget || 10);
+      return Math.round((input.monthSessions / target) * 100);
+    }
+    default:
+      return 0;
   }
-  return copy;
 }
 
-export function pickMonthlyBadgeIds(year: number, monthIndex: number, count = MONTHLY_BADGES_PER_MONTH): string[] {
-  const shuffled = seededShuffle(MONTHLY_BADGE_POOL, monthSeed(year, monthIndex));
-  return shuffled.slice(0, count).map((item) => item.id);
+function buildTrackBadges(track: BadgeTrack, input: MemberBadgeInput): MemberBadge[] {
+  const current = readMetric(track.metric, input);
+  return track.levels.map(({ level, target }) => ({
+    id: `${track.id}-${level}`,
+    category: track.category,
+    categoryTitle: track.categoryTitle,
+    title: track.title,
+    description: track.description,
+    icon: track.icon,
+    level,
+    levelLabel: BADGE_LEVEL_LABELS[level],
+    current: Math.min(current, target),
+    target,
+    unlocked: current >= target,
+  }));
+}
+
+export function computeMaxLiftKgFromLogs(
+  logs: Array<{ status: string; results?: Array<{ completed?: boolean; performedWeight?: number | string }> }>,
+): number {
+  let max = 0;
+  logs.forEach((log) => {
+    if (log.status !== "Fullført") return;
+    (log.results ?? []).forEach((result) => {
+      if (!result.completed) return;
+      const weight = Number(result.performedWeight) || 0;
+      if (weight > max) max = weight;
+    });
+  });
+  return max;
 }
 
 export function computeMonthUniqueDays(completedLogDates: Date[], nowDate: Date): number {
@@ -243,111 +247,28 @@ export function computeMonthWeeksWithSession(completedLogDates: Date[], nowDate:
   return weeks.size;
 }
 
-function readMonthlyMetric(metric: MonthlyMetric, input: MemberBadgeInput): number {
-  switch (metric) {
-    case "monthSessions":
-      return input.monthSessions;
-    case "monthUniqueDays":
-      return input.monthUniqueDays;
-    case "monthWeeksWithSession":
-      return input.monthWeeksWithSession;
-    case "streakWeeks":
-      return input.streakWeeks;
-    case "monthGoalFromProfile":
-      return input.monthSessions;
-    default:
-      return 0;
-  }
-}
-
-function buildBadge(
-  definition: {
-    id: string;
-    title: string;
-    description: string;
-    icon: BadgeIconId;
-    target: number;
-    current: number;
-  },
-  kind: MemberBadgeKind,
-): MemberBadge {
-  const cappedCurrent = Math.min(definition.current, definition.target);
-  return {
-    id: definition.id,
-    kind,
-    title: definition.title,
-    description: definition.description,
-    icon: definition.icon,
-    current: cappedCurrent,
-    target: definition.target,
-    unlocked: definition.current >= definition.target,
-  };
-}
-
-export function computeMaxLiftKgFromLogs(
-  logs: Array<{ status: string; results?: Array<{ completed?: boolean; performedWeight?: number | string }> }>,
-): number {
-  let max = 0;
-  logs.forEach((log) => {
-    if (log.status !== "Fullført") return;
-    (log.results ?? []).forEach((result) => {
-      if (!result.completed) return;
-      const weight = Number(result.performedWeight) || 0;
-      if (weight > max) max = weight;
-    });
-  });
-  return max;
-}
-
 export function computeMemberBadges(input: MemberBadgeInput): MemberBadgeCollection {
-  const permanent = PERMANENT_BADGE_DEFINITIONS.map((definition) =>
-    buildBadge(
-      {
-        id: definition.id,
-        title: definition.title,
-        description: definition.description,
-        icon: definition.icon,
-        target: definition.target,
-        current: definition.current(input),
-      },
-      "permanent",
-    ),
-  ).sort((a, b) => Number(b.unlocked) - Number(a.unlocked));
-
-  const year = input.nowDate.getFullYear();
-  const monthIndex = input.nowDate.getMonth();
-  const monthLabel = input.nowDate.toLocaleDateString("nb-NO", { month: "long", year: "numeric" });
-  const selectedIds = new Set(pickMonthlyBadgeIds(year, monthIndex));
-  const monthlyTemplates = MONTHLY_BADGE_POOL.filter((item) => selectedIds.has(item.id));
-
-  const monthly = monthlyTemplates
-    .map((template) => {
-      const target = typeof template.target === "function" ? template.target(input) : template.target;
-      const current = readMonthlyMetric(template.metric, input);
-      return buildBadge(
-        {
-          id: `${template.id}-${year}-${monthIndex}`,
-          title: template.title,
-          description: template.description,
-          icon: template.icon,
-          target,
-          current,
-        },
-        "monthly",
-      );
-    })
-    .sort((a, b) => Number(b.unlocked) - Number(a.unlocked));
+  const allBadges = BADGE_TRACKS.flatMap((track) => buildTrackBadges(track, input));
+  const categories = BADGE_TRACKS.reduce<MemberBadgeCategory[]>((acc, track) => {
+    if (acc.some((category) => category.id === track.category)) return acc;
+    const badges = allBadges.filter((badge) => badge.category === track.category);
+    acc.push({
+      id: track.category,
+      title: track.categoryTitle,
+      badges,
+      unlockedCount: badges.filter((badge) => badge.unlocked).length,
+    });
+    return acc;
+  }, []);
 
   return {
-    permanent,
-    monthly,
-    monthLabel,
-    allPermanentUnlocked: permanent.every((badge) => badge.unlocked),
-    allMonthlyUnlocked: monthly.length > 0 && monthly.every((badge) => badge.unlocked),
+    categories,
+    allBadges,
+    totalCount: allBadges.length,
+    totalUnlocked: allBadges.filter((badge) => badge.unlocked).length,
   };
 }
 
-/** Flat liste for enkel visning (permanente først, deretter månedens). */
 export function flattenMemberBadges(collection: MemberBadgeCollection): MemberBadge[] {
-  return [...collection.permanent, ...collection.monthly];
+  return collection.allBadges;
 }

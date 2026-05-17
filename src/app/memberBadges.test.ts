@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  computeMaxLiftKgFromLogs,
-  computeMemberBadges,
-  computeMonthUniqueDays,
-  pickMonthlyBadgeIds,
-} from "./memberBadges";
+import { computeMaxLiftKgFromLogs, computeMemberBadges, computeMonthUniqueDays } from "./memberBadges";
 
 describe("memberBadges", () => {
   const baseInput = {
@@ -18,37 +13,30 @@ describe("memberBadges", () => {
     nowDate: new Date("2026-05-16T12:00:00"),
   };
 
-  it("unlocks first session badge permanently", () => {
+  it("builds categories with several badge levels", () => {
+    const collection = computeMemberBadges(baseInput);
+    expect(collection.categories.length).toBeGreaterThan(3);
+    expect(collection.allBadges.length).toBeGreaterThan(20);
+    expect(collection.categories.every((category) => category.badges.length > 1)).toBe(true);
+  });
+
+  it("unlocks the first session badge level", () => {
     const collection = computeMemberBadges({
       ...baseInput,
       completedSessionCount: 1,
     });
-    const first = collection.permanent.find((badge) => badge.id === "first-session");
+    const first = collection.allBadges.find((badge) => badge.id === "sessions-bronze");
     expect(first?.unlocked).toBe(true);
-    expect(first?.kind).toBe("permanent");
+    expect(first?.level).toBe("bronze");
+    expect(first?.category).toBe("training");
   });
 
-  it("provides three rotating monthly badges", () => {
+  it("tracks lift progress toward gold strength level", () => {
     const collection = computeMemberBadges(baseInput);
-    expect(collection.monthly).toHaveLength(3);
-    expect(collection.monthly.every((badge) => badge.kind === "monthly")).toBe(true);
-    expect(collection.monthLabel.toLowerCase()).toContain("2026");
-  });
-
-  it("rotates monthly badge set by calendar month", () => {
-    const may = pickMonthlyBadgeIds(2026, 4);
-    const june = pickMonthlyBadgeIds(2026, 5);
-    expect(may).toHaveLength(3);
-    expect(june).toHaveLength(3);
-    expect(may.join(",")).not.toBe(june.join(","));
-  });
-
-  it("tracks lift progress toward 100 kg", () => {
-    const collection = computeMemberBadges(baseInput);
-    const lift100 = collection.permanent.find((badge) => badge.id === "lift-100");
-    expect(lift100?.unlocked).toBe(false);
-    expect(lift100?.current).toBe(80);
-    expect(lift100?.target).toBe(100);
+    const liftGold = collection.allBadges.find((badge) => badge.id === "lift-gold");
+    expect(liftGold?.unlocked).toBe(false);
+    expect(liftGold?.current).toBe(80);
+    expect(liftGold?.target).toBe(90);
   });
 
   it("reads max lift from completed sets", () => {

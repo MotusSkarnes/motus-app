@@ -1,21 +1,7 @@
-import { useRef } from "react";
 import type { LucideIcon } from "lucide-react";
-import {
-  Award,
-  CalendarCheck,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Dumbbell,
-  Flame,
-  Lock,
-  PlayCircle,
-  RefreshCw,
-  Trophy,
-  Zap,
-} from "lucide-react";
+import { Award, CalendarCheck, Check, Dumbbell, Flame, Lock, PlayCircle, RefreshCw, Trophy, Zap } from "lucide-react";
 import { MOTUS } from "../app/data";
-import type { BadgeIconId, MemberBadge, MemberBadgeCollection } from "../app/memberBadges";
+import type { BadgeIconId, BadgeLevelId, MemberBadge, MemberBadgeCollection } from "../app/memberBadges";
 
 const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
 
@@ -29,64 +15,78 @@ const BADGE_ICONS: Record<BadgeIconId, LucideIcon> = {
   monthly: RefreshCw,
 };
 
+const LEVEL_STYLES: Record<BadgeLevelId, { label: string; color: string; border: string; glow: string }> = {
+  bronze: { label: "Bronse", color: "#B77955", border: "rgba(183,121,85,0.45)", glow: "rgba(183,121,85,0.14)" },
+  silver: { label: "Sølv", color: "#94A3B8", border: "rgba(148,163,184,0.45)", glow: "rgba(148,163,184,0.16)" },
+  gold: { label: "Gull", color: "#D6A737", border: "rgba(214,167,55,0.50)", glow: "rgba(214,167,55,0.16)" },
+  diamond: { label: "Diamant", color: MOTUS.turquoise, border: "rgba(48,227,190,0.45)", glow: "rgba(48,227,190,0.16)" },
+  legendary: { label: "Legendarisk", color: MOTUS.pink, border: "rgba(217,18,120,0.45)", glow: "rgba(217,18,120,0.16)" },
+};
+
 type MemberBadgesCarouselProps = {
   collection: MemberBadgeCollection;
 };
 
-function AchievementBadge({ badge }: { badge: MemberBadge }) {
+function AchievementBadge({ badge, index }: { badge: MemberBadge; index: number }) {
   const Icon = BADGE_ICONS[badge.icon];
+  const level = LEVEL_STYLES[badge.level];
   const progressPct = badge.target > 0 ? Math.min(100, Math.round((badge.current / badge.target) * 100)) : 0;
-  const accent = badge.kind === "monthly" ? MOTUS.pink : MOTUS.turquoise;
-  const statusLabel = badge.unlocked ? "Fullført" : `${Math.min(badge.current, badge.target)}/${badge.target}`;
 
   return (
     <article
-      className={`flex h-32 w-44 shrink-0 snap-start flex-col rounded-xl border p-3 shadow-sm transition sm:w-48 ${
+      className={`relative flex min-h-[9.5rem] flex-col overflow-hidden rounded-xl border p-3 shadow-sm ${
         badge.unlocked ? "bg-white" : "bg-slate-50/80"
       }`}
-      style={{ borderColor: badge.unlocked ? "rgba(48,227,190,0.28)" : "rgba(15,23,42,0.08)" }}
+      style={{ borderColor: badge.unlocked ? level.border : "rgba(15,23,42,0.08)" }}
     >
-      <div className="flex items-start justify-between gap-2">
-        <span
-          className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
-            badge.unlocked ? "bg-white" : "bg-white text-slate-400"
-          }`}
-          style={{
-            borderColor: badge.unlocked ? "rgba(48,227,190,0.28)" : "rgba(15,23,42,0.08)",
-            color: badge.unlocked ? accent : undefined,
-          }}
-        >
-          <Icon className="h-5 w-5" strokeWidth={badge.unlocked ? 2.2 : 1.8} aria-hidden />
-        </span>
-
+      <div
+        className="absolute -right-8 -top-8 h-20 w-20 rounded-full blur-2xl"
+        style={{ background: badge.unlocked ? level.glow : "rgba(148,163,184,0.10)" }}
+      />
+      <div className="relative flex items-start justify-between gap-2">
+        <span className="rounded-full bg-slate-950 px-1.5 py-0.5 text-[10px] font-bold text-white">{index + 1}</span>
         <span
           className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold ${
             badge.unlocked ? "text-white" : "bg-white text-slate-500"
           }`}
-          style={badge.unlocked ? { background: accent } : { border: "1px solid rgba(15,23,42,0.08)" }}
+          style={badge.unlocked ? { background: level.color } : { border: "1px solid rgba(15,23,42,0.08)" }}
         >
           {badge.unlocked ? <Check className="h-3 w-3" strokeWidth={3} /> : <Lock className="h-3 w-3" />}
-          {statusLabel}
+          {badge.levelLabel}
         </span>
       </div>
 
-      <h3
-        className={`mt-3 line-clamp-2 min-h-[2rem] text-left text-sm font-semibold leading-tight ${
-          badge.unlocked ? "text-slate-900" : "text-slate-600"
-        }`}
-      >
-        {badge.title}
-      </h3>
+      <div className="relative mt-2 flex items-center gap-2">
+        <span
+          className="flex h-12 w-12 shrink-0 items-center justify-center text-white shadow-sm"
+          style={{
+            background: badge.unlocked ? `linear-gradient(135deg, ${level.color} 0%, ${MOTUS.pink} 120%)` : "#cbd5e1",
+            clipPath: "polygon(50% 0%, 88% 18%, 88% 72%, 50% 100%, 12% 72%, 12% 18%)",
+          }}
+        >
+          <Icon className="h-5 w-5" strokeWidth={2.2} aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <h3 className={`line-clamp-2 text-sm font-bold leading-tight ${badge.unlocked ? "text-slate-950" : "text-slate-600"}`}>
+            {badge.title}
+          </h3>
+          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide" style={{ color: badge.unlocked ? level.color : "#94a3b8" }}>
+            {level.label}
+          </p>
+        </div>
+      </div>
 
-      <div className="mt-auto">
+      <p className="relative mt-2 line-clamp-2 text-[11px] leading-snug text-slate-500">{badge.description}</p>
+
+      <div className="relative mt-auto pt-3">
         <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
           <div
             className="h-full rounded-full transition-all"
-            style={{ width: `${badge.unlocked ? 100 : progressPct}%`, background: badge.unlocked ? accent : MOTUS_GRADIENT }}
+            style={{ width: `${badge.unlocked ? 100 : progressPct}%`, background: badge.unlocked ? level.color : MOTUS_GRADIENT }}
           />
         </div>
         <div className="mt-1.5 flex items-center justify-between text-[10px] font-semibold text-slate-500">
-          <span>{badge.kind === "monthly" ? "Måned" : "Fast"}</span>
+          <span>{Math.min(badge.current, badge.target)}/{badge.target}</span>
           <span>{badge.unlocked ? "Låst opp" : `${progressPct}%`}</span>
         </div>
       </div>
@@ -94,81 +94,9 @@ function AchievementBadge({ badge }: { badge: MemberBadge }) {
   );
 }
 
-function BadgeRow({
-  title,
-  hint,
-  badges,
-  scrollRef,
-  onScroll,
-}: {
-  title: string;
-  hint: string;
-  badges: MemberBadge[];
-  scrollRef: React.RefObject<HTMLDivElement | null>;
-  onScroll: (direction: "left" | "right") => void;
-}) {
-  if (!badges.length) return null;
-
-  const unlocked = badges.filter((badge) => badge.unlocked).length;
-
-  return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="text-xs font-semibold text-slate-800">{title}</h3>
-          <p className="text-[11px] text-slate-500">
-            {unlocked}/{badges.length} · {hint}
-          </p>
-        </div>
-        <div className="flex shrink-0 gap-1">
-          <button
-            type="button"
-            onClick={() => onScroll("left")}
-            className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50"
-            aria-label={`Forrige ${title}`}
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onScroll("right")}
-            className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50"
-            aria-label={`Neste ${title}`}
-          >
-            <ChevronRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </div>
-      <div
-        ref={scrollRef}
-        className="-mx-0.5 flex min-w-0 snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-0.5 pb-1 pt-0.5"
-      >
-        {badges.map((badge) => (
-          <AchievementBadge key={badge.id} badge={badge} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export function MemberBadgesCarousel({ collection }: MemberBadgesCarouselProps) {
-  const permanentRef = useRef<HTMLDivElement | null>(null);
-  const monthlyRef = useRef<HTMLDivElement | null>(null);
-
-  const permanentUnlocked = collection.permanent.filter((badge) => badge.unlocked).length;
-  const monthlyUnlocked = collection.monthly.filter((badge) => badge.unlocked).length;
-  const totalCount = collection.permanent.length + collection.monthly.length;
-  const totalUnlocked = permanentUnlocked + monthlyUnlocked;
-  const overallPct = totalCount > 0 ? Math.round((totalUnlocked / totalCount) * 100) : 0;
-
-  function scrollRow(ref: React.RefObject<HTMLDivElement | null>, direction: "left" | "right") {
-    const node = ref.current;
-    if (!node) return;
-    const amount = Math.max(180, Math.round(node.clientWidth * 0.75));
-    node.scrollBy({ left: direction === "left" ? -amount : amount, behavior: "smooth" });
-  }
-
-  if (!totalCount) return null;
+  if (!collection.totalCount) return null;
+  const overallPct = Math.round((collection.totalUnlocked / collection.totalCount) * 100);
 
   return (
     <section
@@ -180,11 +108,9 @@ export function MemberBadgesCarousel({ collection }: MemberBadgesCarouselProps) 
           <Award className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold text-slate-900">Utmerkelser</h2>
+          <h2 className="text-sm font-semibold text-slate-900">Badges</h2>
           <p className="mt-0.5 text-xs text-slate-500">
-            {totalUnlocked} av {totalCount} fullført
-            {collection.allPermanentUnlocked ? " · alle faste er dine" : ""}
-            {collection.allMonthlyUnlocked ? " · måneden er i mål" : ""}
+            {collection.totalUnlocked} av {collection.totalCount} låst opp
           </p>
           <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
             <div className="h-full rounded-full" style={{ width: `${overallPct}%`, background: MOTUS_GRADIENT }} />
@@ -192,30 +118,32 @@ export function MemberBadgesCarousel({ collection }: MemberBadgesCarouselProps) 
         </div>
       </div>
 
-      {collection.monthly.length > 0 ? (
-        <p className="mt-3 text-[11px] leading-snug text-slate-500">
-          <span className="font-medium text-slate-700">Månedens utfordringer</span> ({collection.monthLabel}) byttes 1. neste
-          måned. Faste utmerkelser beholder du.
-        </p>
-      ) : null}
+      <div className="mt-4 flex flex-wrap gap-1.5">
+        {Object.entries(LEVEL_STYLES).map(([key, level]) => (
+          <span key={key} className="rounded-full border bg-white px-2 py-1 text-[10px] font-semibold" style={{ borderColor: level.border, color: level.color }}>
+            {level.label}
+          </span>
+        ))}
+      </div>
 
-      <div className="mt-4 space-y-5">
-        <BadgeRow
-          title="Faste"
-          hint="beholdes alltid"
-          badges={collection.permanent}
-          scrollRef={permanentRef}
-          onScroll={(direction) => scrollRow(permanentRef, direction)}
-        />
-        {collection.monthly.length > 0 ? (
-          <BadgeRow
-            title="Denne måneden"
-            hint="roterende utfordringer"
-            badges={collection.monthly}
-            scrollRef={monthlyRef}
-            onScroll={(direction) => scrollRow(monthlyRef, direction)}
-          />
-        ) : null}
+      <div className="mt-5 space-y-5">
+        {collection.categories.map((category) => (
+          <div key={category.id}>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-700">{category.title}</h3>
+                <p className="text-[11px] text-slate-500">
+                  {category.unlockedCount}/{category.badges.length} låst opp
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {category.badges.map((badge, index) => (
+                <AchievementBadge key={badge.id} badge={badge} index={index} />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );
