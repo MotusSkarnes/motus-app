@@ -143,6 +143,20 @@ describe("memberBadges", () => {
     expect(before100Days.allBadges.some((badge) => badge.id === "habit-sticks")).toBe(false);
   });
 
+  it("unlocks hidden before-sunrise badge for workouts before 05:30", () => {
+    const early = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-05-16T05:29:00")],
+    });
+    expect(early.allBadges.find((badge) => badge.id === "before-sunrise")?.unlocked).toBe(true);
+
+    const tooLate = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-05-16T05:30:00")],
+    });
+    expect(tooLate.allBadges.some((badge) => badge.id === "before-sunrise")).toBe(false);
+  });
+
   it("counts unique training days in month", () => {
     const days = computeMonthUniqueDays(
       [new Date("2026-05-03"), new Date("2026-05-03"), new Date("2026-05-10")],

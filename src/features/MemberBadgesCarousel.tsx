@@ -27,6 +27,7 @@ const BADGE_IMAGES: Record<string, string> = {
   "never-two-weeks-without": "/badges/22-aldri-to-uker-uten.svg",
   "back-again": "/badges/23-tilbake-igjen.svg",
   "habit-sticks": "/badges/24-vanen-sitter.svg",
+  "before-sunrise": "/badges/25-for-sola.svg",
 };
 
 const LEVEL_ORDER: BadgeLevelId[] = ["bronze", "silver", "gold", "diamond", "legendary"];

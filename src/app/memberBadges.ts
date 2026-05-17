@@ -329,6 +329,10 @@ function hasBeenTrainingFor100Days(completedLogDates: Date[] = [], nowDate: Date
   return firstCompletedDate ? daysBetween(firstCompletedDate, nowDate) >= 100 : false;
 }
 
+function hasWorkoutBeforeSunrise(completedLogDates: Date[] = []): boolean {
+  return completedLogDates.some((date) => date.getHours() < 5 || (date.getHours() === 5 && date.getMinutes() < 30));
+}
+
 function buildSecretBadge(input: { id: string; title: string; description: string; levelName: string }): MemberBadge {
   return {
     id: input.id,
@@ -363,6 +367,7 @@ function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
   const hasSixMonthFlow = hasNoTrainingGapOver14DaysForSixMonths(input.completedLogDates, input.nowDate);
   const hasComeback = hasReturnedAfterLongPause(input.completedLogDates);
   const has100DaysSinceFirstWorkout = hasBeenTrainingFor100Days(input.completedLogDates, input.nowDate);
+  const hasEarlyWorkout = hasWorkoutBeforeSunrise(input.completedLogDates);
   const sixMonthBadge = buildSecretBadge({
     id: "never-two-weeks-without",
     title: "Aldri to uker uten",
@@ -381,10 +386,17 @@ function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
     description: "100 dager siden første registrerte økt.",
     levelName: "100 dager",
   });
+  const earlyBadge = buildSecretBadge({
+    id: "before-sunrise",
+    title: "Før sola",
+    description: "Trente før 05:30.",
+    levelName: "05:30",
+  });
   const unlockedSecretBadges = [
     hasSixMonthFlow ? sixMonthBadge : null,
     hasComeback ? comebackBadge : null,
     has100DaysSinceFirstWorkout ? habitBadge : null,
+    hasEarlyWorkout ? earlyBadge : null,
   ].filter((badge): badge is MemberBadge => badge !== null);
 
   if (!hasMay17Workout(input.completedLogDates)) return unlockedSecretBadges;
