@@ -1,11 +1,10 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Award, CalendarCheck, Check, Crown, Diamond, Dumbbell, Flame, Lock, RefreshCw, Shield, Star, Trophy } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { BadgeIconId, BadgeLevelId, MemberBadge, MemberBadgeCategoryId, MemberBadgeCollection } from "../app/memberBadges";
 
 const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
-const HEX_CLIP = "polygon(50% 0%, 93% 16%, 93% 84%, 50% 100%, 7% 84%, 7% 16%)";
 
 const BADGE_ICONS: Record<BadgeIconId, LucideIcon> = {
   "first-session": Check,
@@ -35,43 +34,23 @@ const LEVEL_SYMBOLS: Record<BadgeLevelId, LucideIcon> = {
   legendary: Crown,
 };
 
-const LEVEL_STYLES: Record<
-  BadgeLevelId,
-  { label: string; color: string; border: string; iconGlow: string; dark?: boolean }
-> = {
-  bronze: {
-    label: "Bronse",
-    color: "#B8734D",
-    border: "rgba(184,115,77,0.55)",
-    iconGlow: "rgba(184,115,77,0.25)",
-  },
-  silver: {
-    label: "Sølv",
-    color: "#8B9AAB",
-    border: "rgba(139,154,171,0.55)",
-    iconGlow: "rgba(139,154,171,0.22)",
-  },
-  gold: {
-    label: "Gull",
-    color: "#D89A17",
-    border: "rgba(216,154,23,0.58)",
-    iconGlow: "rgba(216,154,23,0.28)",
-  },
-  diamond: {
-    label: "Diamant",
-    color: MOTUS.turquoise,
-    border: "rgba(48,227,190,0.65)",
-    iconGlow: "rgba(48,227,190,0.35)",
-    dark: true,
-  },
-  legendary: {
-    label: "Legendarisk",
-    color: MOTUS.pink,
-    border: "rgba(217,18,120,0.65)",
-    iconGlow: "rgba(217,18,120,0.35)",
-    dark: true,
-  },
+type LevelStyle = {
+  label: string;
+  accent: string;
+  border: string;
+  icon: string;
+  darkFace?: boolean;
 };
+
+const LEVEL_STYLES: Record<BadgeLevelId, LevelStyle> = {
+  bronze: { label: "Bronse", accent: "#B8734D", border: "#C98A5E", icon: "#B8734D" },
+  silver: { label: "Sølv", accent: "#8B9AAB", border: "#A8B4C2", icon: "#7B8A9A" },
+  gold: { label: "Gull", accent: "#D89A17", border: "#E8B23A", icon: "#D89A17" },
+  diamond: { label: "Diamant", accent: MOTUS.turquoise, border: MOTUS.turquoise, icon: MOTUS.turquoise },
+  legendary: { label: "Legendarisk", accent: MOTUS.pink, border: MOTUS.pink, icon: MOTUS.pink, darkFace: true },
+};
+
+const HEX_POINTS = "50,3 93,26 93,74 50,97 7,74 7,26";
 
 type MemberBadgesCarouselProps = {
   collection: MemberBadgeCollection;
@@ -85,131 +64,148 @@ function formatBadgeValue(badge: MemberBadge, value: number) {
   return `${value}`;
 }
 
+function HexFrame({ level, unlocked, size = 76, uid }: { level: LevelStyle; unlocked: boolean; size?: number; uid: string }) {
+  const useDark = unlocked && level.darkFace === true;
+  const border = unlocked ? level.border : "#CBD5E1";
+  const height = Math.round(size * 1.15);
+
+  return (
+    <svg width={size} height={height} viewBox="0 0 100 115" className="block shrink-0" aria-hidden>
+      <defs>
+        <linearGradient id={`${uid}-face`} x1="0%" y1="0%" x2="0%" y2="100%">
+          {useDark ? (
+            <>
+              <stop offset="0%" stopColor="#2d3a4f" />
+              <stop offset="55%" stopColor="#141c28" />
+              <stop offset="100%" stopColor="#0b1018" />
+            </>
+          ) : (
+            <>
+              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="45%" stopColor="#f8fafc" />
+              <stop offset="100%" stopColor="#e8edf3" />
+            </>
+          )}
+        </linearGradient>
+        <linearGradient id={`${uid}-shine`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.55)" />
+          <stop offset="40%" stopColor="rgba(255,255,255,0.08)" />
+          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+        </linearGradient>
+        <filter id={`${uid}-shadow`} x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="rgba(15,23,42,0.14)" />
+        </filter>
+        {unlocked && useDark ? (
+          <filter id={`${uid}-glow`} x="-40%" y="-40%" width="180%" height="180%">
+            <feDropShadow dx="0" dy="0" stdDeviation="5" floodColor={level.accent} floodOpacity="0.45" />
+          </filter>
+        ) : null}
+      </defs>
+      <polygon
+        points={HEX_POINTS}
+        fill={`url(#${uid}-face)`}
+        stroke={border}
+        strokeWidth="2.8"
+        strokeLinejoin="round"
+        filter={unlocked && useDark ? `url(#${uid}-glow)` : `url(#${uid}-shadow)`}
+      />
+      <polygon points={HEX_POINTS} fill={`url(#${uid}-shine)`} stroke="none" />
+      <polygon
+        points="50,10 86,28 86,72 50,90 14,72 14,28"
+        fill="none"
+        stroke={unlocked ? level.border : "#CBD5E1"}
+        strokeOpacity={unlocked ? 0.35 : 0.25}
+        strokeWidth="1.2"
+      />
+    </svg>
+  );
+}
+
 function LevelLegendItem({ levelId }: { levelId: BadgeLevelId }) {
   const style = LEVEL_STYLES[levelId];
   const Symbol = LEVEL_SYMBOLS[levelId];
-  const useDark = style.dark === true;
+  const uid = useId();
 
-  return (
-    <span className="inline-flex shrink-0 flex-col items-center gap-1.5 px-1">
-      <span
-        className="relative flex h-9 w-9 items-center justify-center border-2 shadow-[0_4px_10px_rgba(15,23,42,0.08)]"
-        style={{
-          clipPath: HEX_CLIP,
-          background: useDark
-            ? "linear-gradient(165deg, #1e293b 0%, #0f172a 100%)"
-            : "linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%)",
-          borderColor: style.border,
-          color: style.color,
-          boxShadow: useDark ? `0 0 14px ${style.iconGlow}` : undefined,
-        }}
-      >
-        <Symbol className="relative h-4 w-4" strokeWidth={2.2} />
-      </span>
-      <span className="max-w-[4.5rem] text-center leading-tight">
-        <span className="block text-[9px] font-black uppercase tracking-wide text-slate-800">Nivå {LEVEL_ROMAN[levelId]}</span>
-        <span className="block text-[9px] font-bold uppercase tracking-wide" style={{ color: style.color }}>
-          {style.label}
-        </span>
-      </span>
-    </span>
-  );
+  return <LegendTile levelId={levelId} style={style} Symbol={Symbol} uid={uid} />;
 }
 
-function BadgeHex({ badge }: { badge: MemberBadge }) {
-  const Icon = BADGE_ICONS[badge.icon];
-  const level = LEVEL_STYLES[badge.level];
-  const useDark = badge.unlocked && level.dark === true;
-
+function LegendTile({ levelId, style, Symbol, uid }: { levelId: BadgeLevelId; style: LevelStyle; Symbol: LucideIcon; uid: string }) {
   return (
-    <span
-      className="relative flex h-[4.75rem] w-[4.25rem] items-center justify-center"
-      style={{
-        filter: badge.unlocked ? "drop-shadow(0 8px 14px rgba(15,23,42,0.12))" : "drop-shadow(0 4px 8px rgba(15,23,42,0.06))",
-      }}
-    >
-      <span
-        className="absolute inset-0 border-2"
-        style={{
-          clipPath: HEX_CLIP,
-          background: !badge.unlocked
-            ? "linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%)"
-            : useDark
-              ? "linear-gradient(165deg, #1e293b 0%, #0f172a 100%)"
-              : "linear-gradient(180deg, #ffffff 0%, #f8fafc 55%, #eef2f7 100%)",
-          borderColor: badge.unlocked ? level.border : "rgba(148,163,184,0.35)",
-          boxShadow: badge.unlocked && useDark ? `0 0 18px ${level.iconGlow}, inset 0 1px 0 rgba(255,255,255,0.08)` : "inset 0 1px 0 rgba(255,255,255,0.9)",
-        }}
-      />
-      <span
-        className="absolute inset-[5px] border"
-        style={{
-          clipPath: HEX_CLIP,
-          borderColor: badge.unlocked ? level.border : "rgba(148,163,184,0.2)",
-          opacity: badge.unlocked ? 0.55 : 0.4,
-        }}
-      />
-      {badge.unlocked ? (
-        <span className="absolute h-10 w-10 rounded-full blur-lg" style={{ background: level.iconGlow }} aria-hidden />
-      ) : null}
-      <Icon
-        className="relative h-8 w-8"
-        strokeWidth={2.35}
-        aria-hidden
-        style={{
-          color: badge.unlocked ? level.color : "#94A3B8",
-          filter: badge.unlocked && useDark ? `drop-shadow(0 0 6px ${level.iconGlow})` : undefined,
-        }}
-      />
-      {!badge.unlocked ? (
-        <span className="absolute bottom-1 right-0 flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-400 shadow-sm">
-          <Lock className="h-2.5 w-2.5" strokeWidth={2.5} />
+    <div className="flex min-w-[4.25rem] shrink-0 flex-col items-center gap-2">
+      <div className="relative" style={{ width: 40, height: 46 }}>
+        <HexFrame level={style} unlocked size={40} uid={`legend-${levelId}-${uid}`} />
+        <span className="absolute inset-0 flex items-center justify-center pb-1">
+          <Symbol className="h-4 w-4" strokeWidth={2.2} style={{ color: style.icon }} />
         </span>
-      ) : null}
-    </span>
-  );
-}
-
-function BadgeProgress({ badge }: { badge: MemberBadge }) {
-  return (
-    <div className="mt-2 w-full px-0.5">
-      <div className="h-1 overflow-hidden rounded-full bg-slate-100">
-        <div
-          className="h-full rounded-full transition-all"
-          style={{
-            width: `${badge.progressPct}%`,
-            background: badge.unlocked ? MOTUS_GRADIENT : "rgba(148,163,184,0.45)",
-          }}
-        />
       </div>
-      <div className="mt-1 flex justify-between gap-1 text-[8px] font-semibold text-slate-400">
-        <span>{formatBadgeValue(badge, badge.current)}</span>
-        <span>{formatBadgeValue(badge, badge.target)}</span>
+      <div className="text-center leading-tight">
+        <p className="text-[9px] font-black uppercase tracking-[0.06em] text-slate-800">Nivå {LEVEL_ROMAN[levelId]}</p>
+        <p className="text-[9px] font-bold uppercase tracking-[0.05em]" style={{ color: style.accent }}>
+          {style.label}
+        </p>
       </div>
     </div>
   );
 }
 
-function AchievementBadge({ badge }: { badge: MemberBadge }) {
+function TileProgress({ badge, level }: { badge: MemberBadge; level: LevelStyle }) {
+  return (
+    <div className="mt-2 w-full max-w-[5.25rem]">
+      <div className="h-1 overflow-hidden rounded-full bg-white/90 ring-1 ring-slate-200/80">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{
+            width: `${badge.progressPct}%`,
+            background: badge.unlocked ? MOTUS_GRADIENT : "rgba(148,163,184,0.5)",
+          }}
+        />
+      </div>
+      <div className="mt-1 flex justify-between gap-1 text-[8px] font-semibold text-slate-400">
+        <span>{formatBadgeValue(badge, badge.current)}</span>
+        <span style={{ color: badge.unlocked ? level.accent : undefined }}>{formatBadgeValue(badge, badge.target)}</span>
+      </div>
+    </div>
+  );
+}
+
+function BadgeTile({ badge }: { badge: MemberBadge }) {
   const level = LEVEL_STYLES[badge.level];
+  const Icon = BADGE_ICONS[badge.icon];
+  const uid = useId();
   const isComplete = badge.achievedLevelIndex >= badge.levels.length - 1;
+  const hexSize = 76;
 
   return (
-    <article className="relative flex w-[5.5rem] shrink-0 snap-start flex-col items-center text-center">
-      <BadgeHex badge={badge} />
-      <h3 className="mt-2 line-clamp-2 text-[10px] font-black uppercase leading-tight tracking-wide text-slate-800">{badge.title}</h3>
-      {badge.unlocked ? (
-        <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide" style={{ color: level.color }}>
+    <article className="flex w-[5.75rem] shrink-0 snap-start flex-col items-center text-center sm:w-[6.25rem]">
+      <div className="relative" style={{ width: hexSize, height: Math.round(hexSize * 1.15) }}>
+        <HexFrame level={level} unlocked={badge.unlocked} size={hexSize} uid={`badge-${badge.id}-${uid}`} />
+        <span className={`absolute inset-0 flex items-center justify-center pb-1 ${badge.unlocked ? "" : "opacity-45 grayscale"}`}>
+          <Icon className="h-9 w-9" strokeWidth={2.2} style={{ color: badge.unlocked ? level.icon : "#94A3B8" }} aria-hidden />
+        </span>
+        {!badge.unlocked ? (
+          <span className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-white bg-slate-100 text-slate-400 shadow-md">
+            <Lock className="h-3 w-3" strokeWidth={2.4} />
+          </span>
+        ) : null}
+      </div>
+
+      <h3 className="mt-2.5 line-clamp-2 text-[10px] font-black uppercase leading-[1.15] tracking-[0.04em] text-slate-800">
+        {badge.title}
+      </h3>
+
+      {badge.unlocked && !isComplete ? (
+        <p className="mt-1 text-[9px] font-bold uppercase tracking-wide" style={{ color: level.accent }}>
           {badge.levelName}
         </p>
       ) : null}
+
       {isComplete ? (
-        <span className="mt-1.5 inline-flex items-center gap-0.5 text-[9px] font-bold uppercase" style={{ color: level.color }}>
+        <span className="mt-2 inline-flex items-center gap-0.5 text-[9px] font-bold uppercase" style={{ color: level.accent }}>
           <Check className="h-3 w-3" strokeWidth={3} />
           Maks
         </span>
       ) : (
-        <BadgeProgress badge={badge} />
+        <TileProgress badge={badge} level={level} />
       )}
     </article>
   );
@@ -257,10 +253,12 @@ export function MemberBadgesCarousel({ collection }: MemberBadgesCarouselProps) 
         </div>
       </div>
 
-      <div className="mt-5 flex justify-between gap-1 overflow-x-auto pb-1">
-        {LEVEL_ORDER.map((levelId) => (
-          <LevelLegendItem key={levelId} levelId={levelId} />
-        ))}
+      <div className="mt-5 rounded-xl bg-slate-50/80 px-3 py-4">
+        <div className="flex justify-between gap-2 overflow-x-auto pb-0.5">
+          {LEVEL_ORDER.map((levelId) => (
+            <LevelLegendItem key={levelId} levelId={levelId} />
+          ))}
+        </div>
       </div>
 
       <div className="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1">
@@ -282,9 +280,9 @@ export function MemberBadgesCarousel({ collection }: MemberBadgesCarouselProps) 
         })}
       </div>
 
-      <div className="-mx-1 mt-5 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-2">
+      <div className="mt-4 grid grid-flow-col auto-cols-[5.75rem] gap-x-3 gap-y-5 overflow-x-auto pb-2 sm:auto-cols-[6.25rem] sm:gap-x-4">
         {visibleBadges.map((badge) => (
-          <AchievementBadge key={badge.id} badge={badge} />
+          <BadgeTile key={badge.id} badge={badge} />
         ))}
       </div>
     </section>
