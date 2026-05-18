@@ -47,6 +47,7 @@ import {
 } from "../services/supabaseRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
+import { printHtmlDocument } from "../app/printHtmlDocument";
 import { syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { buildDefaultStartWorkoutOptions } from "../app/buildStartWorkoutOptions";
 import { MemberMonthlyCheckInSummary } from "./MemberMonthlyCheckInSummary";
@@ -2252,19 +2253,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   function handlePrintProgram(program: TrainingProgram) {
     if (typeof window === "undefined") return;
     try {
-      // Open tab immediately within click gesture to avoid popup blockers in Edge.
-      const printTab = window.open("about:blank", "_blank");
-      if (!printTab) {
-        setConfirmDialog({
-          title: "Popup blokkert",
-          message: "Nettleseren blokkerte popup-vinduet for utskrift. Tillat popup for denne siden.",
-          confirmLabel: "OK",
-          showCancel: false,
-          tone: "default",
-          onConfirm: () => {},
-        });
-        return;
-      }
       const recipientName = String(selectedMember?.name ?? "Kunde").trim() || "Kunde";
       const trainerLabel = (
         pickFirstName(program.assignedTrainerName ?? "") ||
@@ -2413,52 +2401,16 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   </script>
 </body>
 </html>`;
-      try {
-      // Prefer direct write to the pre-opened tab (most stable in Edge).
-      printTab.document.open();
-      printTab.document.write(html);
-      printTab.document.close();
-      window.setTimeout(() => {
-        try {
-          printTab.focus();
-          printTab.print();
-        } catch {
-          // ignore
-        }
-      }, 700);
-        return;
-      } catch (writeError) {
-      console.warn("Trainer print: direct tab write failed, trying blob fallback.", writeError);
-      }
-
-      try {
-      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-      const blobUrl = URL.createObjectURL(blob);
-      printTab.location.href = blobUrl;
-      window.setTimeout(() => {
-        try {
-          printTab.focus();
-          printTab.print();
-        } catch {
-          // ignore
-        }
-      }, 900);
-        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
-      } catch (error) {
-      console.warn("Trainer print: blob print failed.", error);
-      try {
-        printTab.close();
-      } catch {
-        // ignore
-      }
-      setConfirmDialog({
-        title: "Utskrift feilet",
-        message: "Kunne ikke generere PDF/utskrift. Prøv igjen.",
-        confirmLabel: "OK",
-        showCancel: false,
-        tone: "default",
-        onConfirm: () => {},
-      });
+      const printResult = printHtmlDocument(html);
+      if (!printResult.ok) {
+        setConfirmDialog({
+          title: printResult.reason === "popup_blocked" ? "Popup blokkert" : "Utskrift feilet",
+          message: printResult.message,
+          confirmLabel: "OK",
+          showCancel: false,
+          tone: "default",
+          onConfirm: () => {},
+        });
       }
     } catch (unexpectedError) {
       console.error("Trainer print failed before rendering.", unexpectedError);

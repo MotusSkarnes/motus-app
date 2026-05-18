@@ -34,6 +34,7 @@ import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { hasSubstantiveOnboardingAnswers, parsePersonalGoalsJson, readProfileExtensions } from "../app/memberOnboarding";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
 import { motusShareStatusMessage, sharePersonalRecordCard } from "../app/motusShareCard";
+import { printHtmlDocument } from "../app/printHtmlDocument";
 import { buildWorkoutResultGroups } from "../app/programBlocks";
 import {
   buildCheckInNotificationCopy,
@@ -3781,41 +3782,6 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }
 
-  function printHtmlInHiddenFrame(html: string): boolean {
-    if (typeof document === "undefined") return false;
-    const iframe = document.createElement("iframe");
-    iframe.setAttribute("aria-hidden", "true");
-    iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
-    iframe.style.border = "0";
-    document.body.appendChild(iframe);
-    const frameWindow = iframe.contentWindow;
-    const frameDoc = frameWindow?.document;
-    if (!frameWindow || !frameDoc) {
-      iframe.remove();
-      return false;
-    }
-    const cleanup = () => {
-      window.setTimeout(() => iframe.remove(), 1500);
-    };
-    frameDoc.open();
-    frameDoc.write(html);
-    frameDoc.close();
-    window.setTimeout(() => {
-      try {
-        frameWindow.focus();
-        frameWindow.print();
-        cleanup();
-      } catch {
-        iframe.remove();
-      }
-    }, 700);
-    return true;
-  }
-
   function handlePrintProgram(program: TrainingProgram) {
     if (typeof window === "undefined") return;
     try {
@@ -3955,64 +3921,11 @@ export function MemberPortal(props: MemberPortalProps) {
   </script>
 </body>
 </html>`;
-      const printTab = window.open("about:blank", "_blank");
-      if (!printTab) {
-        if (printHtmlInHiddenFrame(html)) {
-          return;
-        }
+      const printResult = printHtmlDocument(html);
+      if (!printResult.ok) {
         setConfirmDialog({
-          title: "Popup blokkert",
-          message: "Nettleseren blokkerte vinduet for utskrift. Tillat popup for denne siden og prøv igjen.",
-          confirmLabel: "OK",
-          showCancel: false,
-          tone: "default",
-          onConfirm: () => setConfirmDialog(null),
-        });
-        return;
-      }
-      try {
-        printTab.document.open();
-        printTab.document.write(html);
-        printTab.document.close();
-        window.setTimeout(() => {
-          try {
-            printTab.focus();
-            printTab.print();
-          } catch {
-            // ignore
-          }
-        }, 700);
-        return;
-      } catch (writeError) {
-        console.warn("Member print: direct tab write failed, trying blob fallback.", writeError);
-      }
-
-      try {
-        const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-        const blobUrl = URL.createObjectURL(blob);
-        printTab.location.href = blobUrl;
-        window.setTimeout(() => {
-          try {
-            printTab.focus();
-            printTab.print();
-          } catch {
-            // ignore
-          }
-        }, 900);
-        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
-      } catch (error) {
-        console.warn("Member print: blob print failed.", error);
-        try {
-          printTab.close();
-        } catch {
-          // ignore
-        }
-        if (printHtmlInHiddenFrame(html)) {
-          return;
-        }
-        setConfirmDialog({
-          title: "Utskrift feilet",
-          message: "Kunne ikke åpne utskrift/PDF. Prøv igjen, eller tillat popup for denne siden.",
+          title: printResult.reason === "popup_blocked" ? "Popup blokkert" : "Utskrift feilet",
+          message: printResult.message,
           confirmLabel: "OK",
           showCancel: false,
           tone: "default",
