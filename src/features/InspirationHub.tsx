@@ -332,6 +332,94 @@ const DEFAULT_ITEMS: InspirationItem[] = [
     createdAt: "2026-05-01",
   },
   {
+    id: "default-tip-2",
+    category: "tips",
+    kind: "article",
+    title: "Slik bruker du øktmodus",
+    description: "Start program, logg sett underveis og fullfør økten.",
+    body: "Øktmodus er den guidede treningsvisningen når du følger et program sett for sett.\n\n**Kom i gang**\n1. Gå til **Trening** og finn programmet du skal kjøre.\n2. Trykk **Start** på programkortet.\n3. Øktmodus åpnes med første øvelse øverst.\n\n**Under økten**\n- Fyll inn det du faktisk gjør (reps, vekt, tid osv.) og huk av hvert sett når det er gjort.\n- Trykk på **bilde/Info** ved øvelsen for større bilde og forklaring uten å avslutte økta.\n- **Bytt** lar deg velge en annen øvelse i samme muskelgruppe hvis utstyr er opptatt.\n- **Ta neste øvelse først** hopper over nåværende øvelse midlertidig – den kommer tilbake rett etter neste.\n\n**Avslutte**\nNår du er ferdig, fullfør økten i øktmodus. Da lagres loggen i historikken din, og eventuelle personlige rekorder feires underveis.",
+    tag: "App-guide",
+    author: "Motus",
+    createdAt: "2026-05-16",
+  },
+  {
+    id: "default-tip-3",
+    category: "tips",
+    kind: "article",
+    title: "Lag egne treningsprogram",
+    description: "Bygg en økt under Trening og lagre den i biblioteket.",
+    body: "Du trenger ikke vente på trener for å komme i gang – du kan lage egne opplegg.\n\n**Bygg økten**\n1. Gå til **Trening** og scroll til **Lag egen økt**.\n2. Søk i øvelseslisten og trykk **Legg til** på øvelsene du vil ha.\n3. Juster sett, reps og vekt (eller sekunder for uttøyning) på hver linje.\n\n**To måter å bruke den på**\n- **Start egen økt** – tren med en gang uten å lagre programmet.\n- **Lagre som treningsprogram** – gi programmet et navn og legg det i biblioteket ditt, slik at du kan starte det på nytt senere med **Start**.\n\nEgne programmer kan **skjules, arkiveres eller slettes** fra menyen (⋯) på programkortet. Programmer fra trener kan du skjule eller arkivere, men ikke slette.",
+    tag: "App-guide",
+    author: "Motus",
+    createdAt: "2026-05-16",
+  },
+  {
+    id: "default-tip-4",
+    category: "tips",
+    kind: "article",
+    title: "Endre øvelser i program og under økt",
+    description: "Bytt under trening, eller lag et nytt program med andre øvelser.",
+    body: "**Under en pågående økt (øktmodus)**\nTrykk **Bytt** ved øvelsen du står på. Du får forslag i samme muskelgruppe – velg den som passer utstyr og tid. Endringen gjelder resten av den økten.\n\n**Før du starter**\n- For **egne programmer**: gå til **Lag egen økt**, bygg økten på nytt og trykk **Lagre som treningsprogram** (du kan slette det gamle programmet fra ⋯-menyen hvis du vil).\n- For **program fra trener**: be trener om justering, eller bruk **Bytt** i øktmodus når noe ikke passer den dagen.\n\n**Se innholdet**\nUnder **Trening** kan du trykke **Vis** på et programkort for å se alle øvelser, sett og plan før du starter.",
+    tag: "App-guide",
+    author: "Motus",
+    createdAt: "2026-05-16",
+  },
+  {
+    id: "default-tip-5",
+    category: "tips",
+    kind: "article",
+    title: "Intervalløkter med nedtelling",
+    description: "Kondisjonsprogram med automatisk steg-for-steg-timer.",
+    body: "Noen kondisjonsprogram (f.eks. mølleintervaller) bruker **intervallvindu** i stedet for vanlig øktmodus.\n\n**Start**\n1. Gå til **Trening** og finn intervallprogrammet (ofte merket som intervall/kondisjon).\n2. Trykk **Start** – da åpnes intervallvinduet med nedtelling.\n3. Trykk **Start økt** når du er klar.\n\n**Under økten**\n- Stor **nedtelling** viser tid igjen på aktivt steg (arbeid, pause, oppvarming osv.).\n- Du ser **fart, stigning og målpuls** når trener har lagt det inn.\n- **Neste**-feltet viser hva som kommer etterpå.\n- **Pause** / **Fortsett**, **Hopp over** og **Nullstill** ligger nederst.\n\nNår siste steg er fullført, får du beskjed om at intervalløkten er ferdig. Vanlige styrkeprogram bruker fortsatt øktmodus – bare intervallprogram åpner denne timeren.",
+    tag: "App-guide",
+    author: "Motus",
+    createdAt: "2026-05-16",
+  },
+  {
+    id: "default-tip-6",
+    category: "tips",
+    kind: "article",
+    title: "Legg Motus på hjemskjermen",
+    description: "Raskere tilgang på iPhone, iPad og Android.",
+    body: "Motus kan legges på hjemskjermen som en app – da åpner den seg i fullskjerm uten nettleserens adresselinje.\n\n**iPhone og iPad (Safari)**\n1. Åpne Motus i **Safari** (ikke Chrome på iOS).\n2. Trykk **Del**-ikonet (firkant med pil opp).\n3. Velg **Legg til på Hjem-skjerm** / **Add to Home Screen**.\n4. Bekreft navnet og trykk **Legg til**.\n\n**Android (Chrome)**\n1. Åpne Motus i **Chrome**.\n2. Trykk **meny** (tre prikker) øverst til høyre.\n3. Velg **Legg til på startskjerm** eller **Installer app** (teksten kan variere).\n4. Bekreft – ikonet dukker opp på hjemskjermen.\n\n**Tips:** Bruk samme innlogging som før. Oppdater siden én gang etter installasjon hvis noe virker gammelt. På iOS må du bruke Safari for å få «Legg til på Hjem-skjerm».",
+    tag: "App-guide",
+    author: "Motus",
+    createdAt: "2026-05-16",
+  },
+  {
+    id: "default-tip-7",
+    category: "tips",
+    kind: "article",
+    title: "Organiser programbiblioteket",
+    description: "Skjul, arkiver eller slett – hold oversikten ryddig.",
+    body: "Under **Trening** samles programmer fra trener og dine egne.\n\n**Menyen (⋯) på hvert program**\n- **Skjul fra oversikt** – programmet forsvinner fra hovedlisten, men ligger fortsatt lagret.\n- **Arkiver** – for programmer du er ferdig med, men vil beholde.\n- **Slett program** – kun for programmer du selv har laget.\n\n**Gjenopprette**\nScroll til seksjonene for skjulte eller arkiverte programmer og velg å vise dem igjen.\n\nDette endrer ikke det trener har skrevet – det styrer bare hva **du** ser i appen.",
+    tag: "App-guide",
+    author: "Motus",
+    createdAt: "2026-05-16",
+  },
+  {
+    id: "default-tip-8",
+    category: "tips",
+    kind: "article",
+    title: "Følg fremgang og personlige rekorder",
+    description: "Historikk, streak og feiring når du slår rekorden din.",
+    body: "Motus husker øktene du fullfører.\n\n**Etter trening**\n- Fullførte økter lagres med dato, program og det du logget.\n- Under **Fremgang** (eller tilsvarende oversikt i appen) ser du trend, streak og aktivitet siste dager.\n\n**Personlige rekorder (PR)**\nI øktmodus sammenlignes resultatet ditt med tidligere beste på samme øvelse. Slår du rekorden, får du en kort feiring – den gjelder **øvelsen du nettopp gjorde**, ikke hele økta.\n\n**Badges og deling**\nNoen milepæler gir badges. Du kan også dele en enkel fremgangsgraf med venner – nyttig for motivasjon uten å dele hele treningsloggen.",
+    tag: "App-guide",
+    author: "Motus",
+    createdAt: "2026-05-16",
+  },
+  {
+    id: "default-tip-9",
+    category: "tips",
+    kind: "article",
+    title: "Inspirasjon, oppskrifter og meldinger",
+    description: "Finn tips, nyheter og svar fra trener på ett sted.",
+    body: "**Inspirasjon-fanen** samler:\n- **Råd og tips** – blant annet guider om hvordan du bruker appen (som denne).\n- **Oppskrifter og artikler** fra senteret eller trener.\n- **Program og ukeplaner** du kan legge til biblioteket (hvis trener har publisert dem).\n\nTrykk på et kort for å lese hele teksten. Nye innlegg kan også dukke opp som **varsler** – da kan du hoppe rett til innlegget.\n\nHar du spørsmål om program eller skader? Bruk **melding** til trener i stedet for å gjette – da får du svar tilpasset deg.",
+    tag: "App-guide",
+    author: "Motus",
+    createdAt: "2026-05-16",
+  },
+  {
     id: "default-news-1",
     category: "news",
     kind: "article",
@@ -410,13 +498,21 @@ function resolveComposerCopy(
   return { title: nextTitle, description: nextDescription, body: nextBody };
 }
 
+function mergeDefaultInspirationItems(items: InspirationItem[]): InspirationItem[] {
+  const existingIds = new Set(items.map((item) => item.id));
+  const missing = DEFAULT_ITEMS.filter((item) => !existingIds.has(item.id));
+  if (!missing.length) return items;
+  return [...items, ...missing];
+}
+
 function loadInspirationItems(): InspirationItem[] {
   if (typeof window === "undefined") return DEFAULT_ITEMS;
   try {
     const raw = window.localStorage.getItem(INSPIRATION_STORAGE_KEY);
     if (!raw) return DEFAULT_ITEMS;
     const parsed = JSON.parse(raw) as InspirationItem[];
-    return Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_ITEMS;
+    if (!Array.isArray(parsed) || !parsed.length) return DEFAULT_ITEMS;
+    return mergeDefaultInspirationItems(parsed);
   } catch {
     return DEFAULT_ITEMS;
   }
@@ -530,8 +626,8 @@ export function InspirationHub({
   }, [periodPlanTemplateDraft]);
 
   function resolveHubItems(fetched: InspirationItem[] | null): InspirationItem[] {
-    if (fetched && fetched.length > 0) return fetched;
-    return loadInspirationItems();
+    const base = fetched && fetched.length > 0 ? fetched : loadInspirationItems();
+    return mergeDefaultInspirationItems(base);
   }
 
   useEffect(() => {
@@ -976,17 +1072,17 @@ export function InspirationHub({
       if (!saved.ok) return;
       setActionStatus(saved.message === "Lagret på denne enheten." ? "Endringene er lagret." : saved.message);
     } else {
-      const now = new Date();
+    const now = new Date();
       const nextItem: InspirationItem = {
-        id: `inspiration-${now.getTime()}`,
-        category: categoryDraft,
+      id: `inspiration-${now.getTime()}`,
+      category: categoryDraft,
         kind,
-        title: nextTitle,
-        description: nextDescription,
-        body: nextBody,
+      title: nextTitle,
+      description: nextDescription,
+      body: nextBody,
         bodyStyle: categoryDraft === "news" ? bodyStyle : undefined,
-        tag: tag.trim() || CATEGORY_META[categoryDraft].label,
-        author: authorName.trim() || "Motus",
+      tag: tag.trim() || CATEGORY_META[categoryDraft].label,
+      author: authorName.trim() || "Motus",
         createdAt: now.toISOString(),
         imageUrl: storedImageUrl,
         programTemplate,
@@ -1054,7 +1150,7 @@ export function InspirationHub({
     const DetailIcon = detailMeta.icon;
     const showProgramPreview = expandedItem.kind === "program" || Boolean(expandedItem.programTemplate);
     const programPreview = showProgramPreview ? resolveProgramTemplateForItem(expandedItem, exerciseBank) : null;
-    return (
+  return (
       <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
         <button
           type="button"
@@ -1074,18 +1170,18 @@ export function InspirationHub({
             }`}
           >
             {actionStatus}
-          </div>
+            </div>
         ) : null}
 
         <article className="mx-auto w-full max-w-2xl overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
           {expandedItem.imageUrl ? (
             <div className="aspect-[4/3] w-full overflow-hidden bg-slate-100 sm:aspect-[16/10]">
               <img src={expandedItem.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
-            </div>
+          </div>
           ) : (
             <div className="flex aspect-[4/3] w-full items-center justify-center sm:aspect-[16/10]" style={{ background: MOTUS_GRADIENT }}>
               <DetailIcon className="h-16 w-16 text-white/90 drop-shadow-sm" />
-            </div>
+          </div>
           )}
           <div className="p-4 sm:p-6">
             <div className="flex flex-wrap items-center gap-2">
@@ -1097,7 +1193,7 @@ export function InspirationHub({
                 {expandedItem.kind === "periodPlan" ? "Ukesplan" : expandedItem.kind === "program" ? "Program" : detailMeta.label}
               </span>
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">{expandedItem.tag}</span>
-            </div>
+        </div>
             <h1 className="mt-4 text-2xl font-bold leading-snug tracking-tight text-slate-950 sm:text-3xl">{expandedItem.title}</h1>
             <p className="mt-2 text-base text-slate-600">{expandedItem.description}</p>
             {expandedItem.body.trim() && !showProgramPreview ? (
@@ -1129,7 +1225,7 @@ export function InspirationHub({
                   <ol className="space-y-2">
                     {programPreview.exercises.map((exercise, index) => {
                       const linked = resolveLinkedExerciseForPreview(exercise, exercisesById, exerciseBank);
-                      return (
+          return (
                         <li
                           key={exercise.id}
                           className="flex gap-3 rounded-xl border bg-white px-3 py-2.5 shadow-sm"
@@ -1163,43 +1259,43 @@ export function InspirationHub({
                             />
                           ) : null}
                         </li>
-                      );
-                    })}
+          );
+        })}
                   </ol>
                 )}
-              </div>
+      </div>
             ) : null}
 
             {expandedItem.periodPlanTemplate ? (
               <div className="mt-6 grid gap-2 sm:grid-cols-2">
                 {WEEKDAY_PLAN_FIELDS.map((field) => {
                   const entry = expandedItem.periodPlanTemplate?.weeklyPlans[0]?.days[field.key]?.trim() ?? "";
-                  return (
+            return (
                   <div key={field.key} className="rounded-xl bg-slate-50 px-3 py-2.5 text-sm ring-1 ring-slate-100">
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{field.label}</div>
                     <div className="mt-1 font-medium text-slate-800">{entry || "Ingen plan"}</div>
-                  </div>
+                      </div>
                   );
                 })}
-              </div>
+                  </div>
             ) : null}
 
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               {expandedItem.kind === "program" && onAddProgram ? (
                 <GradientButton onClick={() => handleAddProgram(expandedItem)} className="w-full sm:w-auto">
                   Legg til i mine programmer
-                </GradientButton>
+                    </GradientButton>
               ) : null}
               {expandedItem.kind === "periodPlan" && onAddPeriodPlan ? (
                 <GradientButton onClick={() => handleAddPeriodPlan(expandedItem)} className="w-full sm:w-auto">
-                  Legg til periodeplan
-                </GradientButton>
+                      Legg til periodeplan
+                    </GradientButton>
               ) : null}
               {canManage ? (
                 <>
                   <OutlineButton onClick={() => beginEdit(expandedItem)} className="w-full sm:w-auto">
                     Rediger
-                  </OutlineButton>
+                    </OutlineButton>
                   <OutlineButton
                     onClick={() => confirmDeleteItem(expandedItem.id)}
                     className="w-full !border-rose-200 !text-rose-700 hover:!bg-rose-50 sm:w-auto"
@@ -1209,8 +1305,8 @@ export function InspirationHub({
                 </>
               ) : null}
             </div>
-          </div>
-        </article>
+                </div>
+              </article>
       </div>
     );
   }
@@ -1253,7 +1349,7 @@ export function InspirationHub({
           }`}
         >
           {actionStatus}
-        </div>
+            </div>
       ) : null}
 
       <div className="space-y-4">
@@ -1293,9 +1389,9 @@ export function InspirationHub({
                     aria-label={`Neste i ${title}`}
                   >
                     <ChevronRight className="h-4 w-4" />
-                  </button>
+            </button>
+          </div>
                 </div>
-              </div>
               <div
                 ref={(node) => {
                   carouselRefs.current[category] = node;
@@ -1303,11 +1399,11 @@ export function InspirationHub({
                 className="-mx-1 flex min-w-0 items-stretch snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-1 pb-2"
               >
                 {sectionItems.map(renderInspirationCard)}
-              </div>
+            </div>
             </section>
           );
         })}
-      </div>
+        </div>
 
 
       {canManage && composerOpen ? (
@@ -1324,7 +1420,7 @@ export function InspirationHub({
                 {editingItemId
                   ? "Endre tekst, bilde, program eller ukesplan. Lagres for alle som bruker inspo."
                   : "Velg bilde og kort tekst. Detaljer vises når man trykker les mer."}
-              </div>
+            </div>
             </div>
             </div>
             <OutlineButton type="button" onClick={resetComposer} className="shrink-0">
@@ -1707,10 +1803,10 @@ export function InspirationHub({
               </OutlineButton>
               <GradientButton type="button" onClick={() => void saveItem()} disabled={!publishValidation.ok}>
                 {editingItemId ? "Lagre endringer" : "Publiser"}
-              </GradientButton>
+            </GradientButton>
             </div>
           </div>
-        </div>
+          </div>
         </div>
       ) : null}
     </div>

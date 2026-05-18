@@ -1,0 +1,101 @@
+import { describe, expect, it } from "vitest";
+import {
+  buildWorkoutResultGroups,
+  expandProgramExercisesToWorkoutResults,
+  linkProgramExercisesAsBlock,
+  splitProgramExercisesIntoSegments,
+  workoutResultGroupId,
+} from "./programBlocks";
+import type { Exercise, ProgramExercise } from "./types";
+
+const bank: Exercise[] = [
+  {
+    id: "ex-a",
+    name: "Knebøy",
+    category: "Styrke",
+    group: "Bein",
+    equipment: "Stang",
+    level: "Litt øvet",
+    description: "",
+  },
+  {
+    id: "ex-b",
+    name: "Utfall",
+    category: "Styrke",
+    group: "Bein",
+    equipment: "Kroppsvekt",
+    level: "Litt øvet",
+    description: "",
+  },
+  {
+    id: "ex-c",
+    name: "Planke",
+    category: "Styrke",
+    group: "Core",
+    equipment: "Kroppsvekt",
+    level: "Litt øvet",
+    description: "",
+  },
+];
+
+function line(id: string, name: string, sets: string, block?: Partial<ProgramExercise>): ProgramExercise {
+  return {
+    id,
+    exerciseId: `ex-${id}`,
+    exerciseName: name,
+    sets,
+    reps: "10",
+    weight: "40",
+    restSeconds: "60",
+    notes: "",
+    ...block,
+  };
+}
+
+describe("programBlocks", () => {
+  it("expands superset interleaved by round", () => {
+    const exercises = linkProgramExercisesAsBlock(
+      [line("a", "Knebøy", "2"), line("b", "Utfall", "2")],
+      0,
+      2,
+      "superset",
+    );
+    const results = expandProgramExercisesToWorkoutResults(exercises, bank);
+    expect(results.map((r) => `${r.exerciseName}-r${r.blockRound}`)).toEqual([
+      "Knebøy-r1",
+      "Utfall-r1",
+      "Knebøy-r2",
+      "Utfall-r2",
+    ]);
+    expect(new Set(results.map((r) => r.blockId)).size).toBe(1);
+  });
+
+  it("groups workout results by blockId in øktmodus", () => {
+    const exercises = linkProgramExercisesAsBlock(
+      [line("a", "Knebøy", "2"), line("b", "Utfall", "2"), line("c", "Planke", "1")],
+      0,
+      2,
+      "superset",
+    );
+    const results = expandProgramExercisesToWorkoutResults(exercises, bank);
+    const groups = buildWorkoutResultGroups(results);
+    expect(groups).toHaveLength(2);
+    expect(groups[0]?.blockType).toBe("superset");
+    expect(groups[0]?.exerciseNames).toEqual(["Knebøy", "Utfall"]);
+    expect(groups[0]?.rounds).toHaveLength(2);
+    expect(groups[1]?.exerciseName).toBe("Planke");
+  });
+
+  it("splits program into block and single segments", () => {
+    const exercises = linkProgramExercisesAsBlock(
+      [line("a", "A", "3"), line("b", "B", "3"), line("c", "C", "3")],
+      0,
+      3,
+      "triset",
+    );
+    const segments = splitProgramExercisesIntoSegments(exercises);
+    expect(segments).toHaveLength(1);
+    expect(segments[0]).toHaveLength(3);
+    expect(workoutResultGroupId({ exerciseId: "x", blockId: "blk", exerciseName: "A", plannedSets: "1", plannedReps: "1", plannedWeight: "1", performedWeight: "1", performedReps: "1", completed: false })).toBe("blk");
+  });
+});

@@ -33,6 +33,7 @@ import { formatDateDdMmYyyy, normalizeStoredLogDate, storedLogDatesMatch } from 
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { hasSubstantiveOnboardingAnswers, parsePersonalGoalsJson, readProfileExtensions } from "../app/memberOnboarding";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
+import { buildWorkoutResultGroups } from "../app/programBlocks";
 import {
   buildCheckInNotificationCopy,
   resolveCheckInWindow,
@@ -1302,31 +1303,10 @@ export function MemberPortal(props: MemberPortalProps) {
     if (memberTab === "overview" || memberTab === "programs" || memberTab === "profile" || memberTab === "inspiration") return;
     setMemberTab("overview");
   }, [isMemberLimited, memberTab, setMemberTab]);
-  const workoutResultGroups = useMemo(() => {
-    if (!workoutMode) return [];
-    const grouped = new Map<string, { exerciseName: string; plannedReps: string; plannedWeight: string; rows: WorkoutModeState["results"] }>();
-    workoutMode.results.forEach((result) => {
-      const groupId = result.programExerciseId ?? result.exerciseId;
-      const existing = grouped.get(groupId);
-      if (!existing) {
-        grouped.set(groupId, {
-          exerciseName: result.exerciseName,
-          plannedReps: result.plannedReps,
-          plannedWeight: result.plannedWeight,
-          rows: [result],
-        });
-        return;
-      }
-      existing.rows.push(result);
-    });
-    return Array.from(grouped.entries()).map(([groupId, value]) => ({
-      groupId,
-      exerciseName: value.exerciseName,
-      plannedReps: value.plannedReps,
-      plannedWeight: value.plannedWeight,
-      rows: value.rows.sort((a, b) => (a.setNumber ?? 0) - (b.setNumber ?? 0)),
-    }));
-  }, [workoutMode]);
+  const workoutResultGroups = useMemo(
+    () => (workoutMode ? buildWorkoutResultGroups(workoutMode.results, activeWorkoutProgram) : []),
+    [workoutMode, activeWorkoutProgram],
+  );
   const currentWorkoutGroup = workoutResultGroups[syncedWorkoutExerciseIndex] ?? null;
   const exerciseByName = useMemo(
     () => new Map(exercises.map((exercise) => [exercise.name.trim().toLowerCase(), exercise])),
@@ -4428,7 +4408,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     Sterkere enn før
                   </h2>
                   <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-600">
-                    Du satte ny beste estimerte 1&nbsp;RM på denne øvelsen i økta du nettopp fullførte.
+                    Du satte ny personlig rekord i øvelsen du nettopp gjorde.
                   </p>
                   <div className="mt-5 w-full rounded-2xl border border-emerald-200/90 bg-emerald-50 px-4 py-4 text-left shadow-inner" style={{ borderColor: "rgba(16,185,129,0.35)" }}>
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-900/80">Øvelse</div>
@@ -4440,7 +4420,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       <span className="text-xs font-medium text-emerald-900/70">1RM (estimat)</span>
                     </div>
                     <div className="mt-2 text-xs text-slate-600">
-                      Basert på {activeCelebration?.weight}&nbsp;kg × {activeCelebration?.reps} reps i økta.
+                      Basert på {activeCelebration?.weight}&nbsp;kg × {activeCelebration?.reps} reps i settet du nettopp logget.
                     </div>
                   </div>
                   <GradientButton
@@ -4695,8 +4675,24 @@ export function MemberPortal(props: MemberPortalProps) {
                               {program.exercises.map((exercise) => {
                                 const lib = exercises.find((e) => e.id === exercise.exerciseId);
                                 const isStretch = lib?.category === "Uttøyning";
+                                const blockPeers = exercise.blockId
+                                  ? program.exercises.filter((peer) => peer.blockId?.trim() === exercise.blockId?.trim())
+                                  : [];
+                                const showBlockHeader =
+                                  exercise.blockType && blockPeers.length > 0 && blockPeers[0]?.id === exercise.id;
                                 return (
                                 <div key={exercise.id} className="rounded-lg border bg-slate-50 px-2 py-1.5" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
+                                  {showBlockHeader ? (
+                                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-teal-700">
+                                      {exercise.blockType === "superset"
+                                        ? "Supersett"
+                                        : exercise.blockType === "triset"
+                                          ? "Trisett"
+                                          : "Sirkel"}
+                                      {" · "}
+                                      {blockPeers.map((peer) => peer.exerciseName).join(" → ")}
+                                    </div>
+                                  ) : null}
                                   <div className="text-xs font-medium text-slate-800">{exercise.exerciseName}</div>
                                   <div className="mt-0.5 text-[11px] text-slate-500">
                                     {exercise.durationMinutes

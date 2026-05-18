@@ -1,3 +1,4 @@
+import { expandProgramExercisesToWorkoutResults, workoutResultGroupId } from "../app/programBlocks";
 import { uid } from "../app/storage";
 import type {
   AppState,
@@ -353,35 +354,8 @@ export function startWorkoutModeInState(state: AppState, programId: string, opti
   const program = state.programs.find((p) => p.id === programId);
   if (!program) return state;
 
-  const expandedResults = program.exercises.flatMap((ex) => {
-    const meta = state.exercises.find((item) => item.id === ex.exerciseId);
-    const isStretch = meta?.category === "Uttøyning";
-    const suggestedWeightRaw = options?.suggestedWeightByProgramExerciseId?.[ex.id];
-    const suggestedWeight = suggestedWeightRaw !== undefined ? suggestedWeightRaw.trim() : "";
-    const holdPlan = (ex.holdSeconds ?? "").trim() || (isStretch ? ex.weight.trim() : "");
-    const initialWeight = isStretch ? suggestedWeight || holdPlan || "30" : suggestedWeight || ex.weight;
-    const plannedRepsForRow = isStretch ? (ex.reps.trim() || "1") : ex.reps;
-    const setCount = Math.max(1, Math.min(12, Number(ex.sets) || 1));
-    return Array.from({ length: setCount }, (_, index) => ({
-      exerciseId: `${ex.id}-set-${index + 1}`,
-      programExerciseId: ex.id,
-      setNumber: index + 1,
-      exerciseName: ex.exerciseName,
-      exerciseCategory: meta?.category,
-      exerciseEquipment: meta?.equipment,
-      plannedSets: ex.sets,
-      plannedReps: plannedRepsForRow,
-      plannedWeight: initialWeight,
-      plannedDurationMinutes: ex.durationMinutes ?? "",
-      plannedSpeed: ex.speed ?? "",
-      plannedIncline: ex.incline ?? "",
-      performedWeight: initialWeight,
-      performedReps: plannedRepsForRow,
-      performedDurationMinutes: ex.durationMinutes ?? "",
-      performedSpeed: ex.speed ?? "",
-      performedIncline: ex.incline ?? "",
-      completed: false,
-    }));
+  const expandedResults = expandProgramExercisesToWorkoutResults(program.exercises, state.exercises, {
+    suggestedWeightByProgramExerciseId: options?.suggestedWeightByProgramExerciseId,
   });
 
   return {
@@ -468,15 +442,11 @@ export function appendWorkoutSetForProgramExerciseInState(state: AppState, progr
   };
 }
 
-function workoutGroupId(result: WorkoutExerciseResult): string {
-  return result.programExerciseId ?? result.exerciseId;
-}
-
 function buildWorkoutGroupOrder(results: WorkoutExerciseResult[]): string[] {
   const order: string[] = [];
   const seen = new Set<string>();
   results.forEach((result) => {
-    const groupId = workoutGroupId(result);
+    const groupId = workoutResultGroupId(result);
     if (seen.has(groupId)) return;
     seen.add(groupId);
     order.push(groupId);
@@ -484,15 +454,15 @@ function buildWorkoutGroupOrder(results: WorkoutExerciseResult[]): string[] {
   return order;
 }
 
-/** Flytt aktiv øvelse ett hakk bak – neste øvelse tas først, denne kommer rett etter. */
-export function deferWorkoutExerciseGroupInState(state: AppState, programExerciseId: string): AppState {
+/** Flytt aktiv øvelse/blokk ett hakk bak – neste tas først, denne kommer rett etter. */
+export function deferWorkoutExerciseGroupInState(state: AppState, groupId: string): AppState {
   if (!state.workoutMode) return state;
-  const pid = programExerciseId.trim();
-  if (!pid) return state;
+  const gid = groupId.trim();
+  if (!gid) return state;
 
   const results = state.workoutMode.results;
   const groupOrder = buildWorkoutGroupOrder(results);
-  const currentIndex = groupOrder.indexOf(pid);
+  const currentIndex = groupOrder.indexOf(gid);
   if (currentIndex < 0 || currentIndex >= groupOrder.length - 1) return state;
 
   const nextOrder = [...groupOrder];
@@ -501,13 +471,13 @@ export function deferWorkoutExerciseGroupInState(state: AppState, programExercis
 
   const rowsByGroup = new Map<string, WorkoutExerciseResult[]>();
   results.forEach((result) => {
-    const groupId = workoutGroupId(result);
-    const existing = rowsByGroup.get(groupId);
+    const resultGroupId = workoutResultGroupId(result);
+    const existing = rowsByGroup.get(resultGroupId);
     if (existing) {
       existing.push(result);
       return;
     }
-    rowsByGroup.set(groupId, [result]);
+    rowsByGroup.set(resultGroupId, [result]);
   });
 
   const reorderedResults = nextOrder.flatMap((groupId) => rowsByGroup.get(groupId) ?? []);

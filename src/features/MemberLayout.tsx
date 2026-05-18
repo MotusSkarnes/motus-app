@@ -8,12 +8,13 @@ import {
   isOnboardingCompleted,
   pickCanonicalMemberRowForProfile,
   markOnboardingGateSeen,
+  markMemberWelcomeSeen,
   memberOnboardingIdentityKey,
   mergeOnboardingIntoPersonalGoals,
   onboardingDraftFromStored,
   primaryGoalFromOnboarding,
   shouldShowMemberOnboarding,
-  hasSeenOnboardingGate,
+  hasSeenMemberWelcome,
   type MemberOnboardingAnswers,
 } from "../app/memberOnboarding";
 import { normalizePeriodSchedulePlan, readPeriodPlansByMemberId, writePeriodPlansByMemberId } from "../app/periodPlanMerge";
@@ -30,6 +31,7 @@ import {
 } from "../app/memberMonthlyCheckIn";
 import { MemberMonthlyCheckIn } from "./MemberMonthlyCheckIn";
 import { MemberOnboarding } from "./MemberOnboarding";
+import { MemberWelcomeModal } from "./MemberWelcomeModal";
 import { MemberPortal } from "./MemberPortal";
 import { InspirationHub } from "./InspirationHub";
 
@@ -150,6 +152,7 @@ export function MemberLayout({
   onLogout,
 }: MemberLayoutProps) {
   const [onboardingGateOpen, setOnboardingGateOpen] = useState(false);
+  const [welcomeModalOpen, setWelcomeModalOpen] = useState(false);
   const memberAccessBlocked = useMemo(() => {
     const email = appState.currentUser?.email ?? "";
     if (!email) return false;
@@ -172,11 +175,31 @@ export function MemberLayout({
   );
 
   useEffect(() => {
-    if (!needsOnboardingPrompt || !onboardingIdentityKey) return;
-    if (hasSeenOnboardingGate(onboardingIdentityKey)) return;
+    if (currentUserRole !== "member" || !activeMember || !onboardingIdentityKey) return;
+    if (hasSeenMemberWelcome(onboardingIdentityKey)) return;
+    setWelcomeModalOpen(true);
+  }, [activeMember, currentUserRole, onboardingIdentityKey]);
+
+  function dismissWelcomeModal() {
+    if (!onboardingIdentityKey) return;
+    markMemberWelcomeSeen(onboardingIdentityKey);
     markOnboardingGateSeen(onboardingIdentityKey);
-    setOnboardingGateOpen(true);
-  }, [needsOnboardingPrompt, onboardingIdentityKey]);
+    setWelcomeModalOpen(false);
+  }
+
+  function startOnboardingFromWelcome() {
+    if (!onboardingIdentityKey) return;
+    markMemberWelcomeSeen(onboardingIdentityKey);
+    setWelcomeModalOpen(false);
+    if (needsOnboardingPrompt) {
+      setOnboardingGateOpen(true);
+    }
+  }
+
+  function browseTipsFromWelcome() {
+    dismissWelcomeModal();
+    setMemberTab("inspiration");
+  }
 
   useEffect(() => {
     if (memberTab === "inspiration") {
@@ -335,7 +358,7 @@ export function MemberLayout({
     refreshRemoteHydration,
     onOpenMonthlyCheckIn: () => setMemberCheckInOverlayOpen(true),
     onOpenOnboarding: () => setOnboardingGateOpen(true),
-    showOnboardingHomePrompt: !onboardingGateOpen && !onboardingCompleted,
+    showOnboardingHomePrompt: !welcomeModalOpen && !onboardingGateOpen && !onboardingCompleted,
     onboardingSubstantivelyComplete: onboardingCompleted,
   };
   const inspirationMemberId =
@@ -513,7 +536,7 @@ export function MemberLayout({
         )}
       </div>
 
-      {!onboardingGateOpen && !memberCheckInOverlayOpen ? (
+      {!welcomeModalOpen && !onboardingGateOpen && !memberCheckInOverlayOpen ? (
       <div
         className="fixed inset-x-0 bottom-0 z-[9999] border-t bg-white/95 px-2 pt-2 backdrop-blur lg:hidden"
         style={{ borderColor: "rgba(15,23,42,0.08)", paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))" }}
@@ -546,6 +569,16 @@ export function MemberLayout({
           </div>
         </div>
       </div>
+      ) : null}
+
+      {welcomeModalOpen && activeMember ? (
+        <MemberWelcomeModal
+          memberName={activeMember.name}
+          needsOnboarding={needsOnboardingPrompt}
+          onStartOnboarding={startOnboardingFromWelcome}
+          onBrowseTips={browseTipsFromWelcome}
+          onDismiss={dismissWelcomeModal}
+        />
       ) : null}
 
       {onboardingGateOpen && activeMember ? (

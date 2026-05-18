@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Repeat2, SkipForward } from "lucide-react";
+import { ArrowLeft, Plus, Repeat2, SkipForward, X } from "lucide-react";
 import { MOTUS } from "../app/data";
+import { buildWorkoutResultGroups, EXERCISE_BLOCK_LABELS } from "../app/programBlocks";
 import { GradientButton, OutlineButton, TextArea, TextInput } from "../app/ui";
 import type { Exercise, TrainingProgram, WorkoutModeState, WorkoutReflection } from "../app/types";
 import type { ReplaceWorkoutExerciseGroupInput } from "../services/appRepository";
@@ -70,32 +71,12 @@ export function LiveWorkoutSessionModal({
   const [reflectionDifficultyLevel, setReflectionDifficultyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [reflectionMotivationLevel, setReflectionMotivationLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [reflectionNote, setReflectionNote] = useState("");
+  const [showExerciseDetail, setShowExerciseDetail] = useState(false);
 
-  const workoutResultGroups = useMemo(() => {
-    if (!workoutMode) return [];
-    const grouped = new Map<string, { exerciseName: string; plannedReps: string; plannedWeight: string; rows: WorkoutModeState["results"] }>();
-    workoutMode.results.forEach((result) => {
-      const groupId = result.programExerciseId ?? result.exerciseId;
-      const existing = grouped.get(groupId);
-      if (!existing) {
-        grouped.set(groupId, {
-          exerciseName: result.exerciseName,
-          plannedReps: result.plannedReps,
-          plannedWeight: result.plannedWeight,
-          rows: [result],
-        });
-        return;
-      }
-      existing.rows.push(result);
-    });
-    return Array.from(grouped.entries()).map(([groupId, value]) => ({
-      groupId,
-      exerciseName: value.exerciseName,
-      plannedReps: value.plannedReps,
-      plannedWeight: value.plannedWeight,
-      rows: value.rows.sort((a, b) => (a.setNumber ?? 0) - (b.setNumber ?? 0)),
-    }));
-  }, [workoutMode]);
+  const workoutResultGroups = useMemo(
+    () => (workoutMode ? buildWorkoutResultGroups(workoutMode.results, activeProgram) : []),
+    [workoutMode, activeProgram],
+  );
 
   const activeWorkoutModeProgramId = workoutMode?.programId ?? "";
 
@@ -131,7 +112,17 @@ export function LiveWorkoutSessionModal({
 
   useEffect(() => {
     setShowReplacementOptions(false);
+    setShowExerciseDetail(false);
   }, [currentWorkoutGroup?.groupId]);
+
+  useEffect(() => {
+    if (!showExerciseDetail) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowExerciseDetail(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showExerciseDetail]);
 
   const exerciseByName = useMemo(
     () => new Map(exercises.map((exercise) => [exercise.name.trim().toLowerCase(), exercise])),
@@ -139,7 +130,7 @@ export function LiveWorkoutSessionModal({
   );
 
   const replacementCandidates = useMemo(() => {
-    if (!activeProgram || !currentWorkoutGroup) return [] as Exercise[];
+    if (!activeProgram || !currentWorkoutGroup || currentWorkoutGroup.blockType) return [] as Exercise[];
     const sourceProgramExercise = activeProgram.exercises.find((exercise) => exercise.id === currentWorkoutGroup.groupId);
     if (!sourceProgramExercise) return [];
     const sourceExercise = exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
@@ -154,18 +145,38 @@ export function LiveWorkoutSessionModal({
     return exercises.filter((exercise) => exercise.id !== sourceExercise.id && exercise.category === sourceExercise.category);
   }, [activeProgram, currentWorkoutGroup, exercises]);
 
-  const currentWorkoutExerciseImageUrl = useMemo(() => {
-    if (!currentWorkoutGroup) return "";
+  const currentWorkoutExercise = useMemo(() => {
+    if (!currentWorkoutGroup) return null;
     if (activeProgram) {
       const sourceProgramExercise = activeProgram.exercises.find((exercise) => exercise.id === currentWorkoutGroup.groupId);
       if (sourceProgramExercise) {
         const sourceExercise = exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
-        if (sourceExercise?.imageUrl) return sourceExercise.imageUrl;
+        if (sourceExercise) return sourceExercise;
       }
     }
-    const byName = exerciseByName.get(currentWorkoutGroup.exerciseName.trim().toLowerCase());
-    return byName?.imageUrl ?? "";
+    return exerciseByName.get(currentWorkoutGroup.exerciseName.trim().toLowerCase()) ?? null;
   }, [activeProgram, currentWorkoutGroup, exerciseByName, exercises]);
+
+  const currentWorkoutExerciseImageUrl = currentWorkoutExercise?.imageUrl?.trim() ?? "";
+
+  const currentWorkoutPlanLabel = useMemo(() => {
+    if (!currentWorkoutGroup) return "";
+    if (currentWorkoutGroup.blockType) {
+      const label = EXERCISE_BLOCK_LABELS[currentWorkoutGroup.blockType];
+      const rounds = currentWorkoutGroup.blockRounds ?? currentWorkoutGroup.rounds.length;
+      return `${label} · ${rounds} runde${rounds === 1 ? "" : "r"} · ${currentWorkoutGroup.exerciseNames.join(" → ")}`;
+    }
+    const row = currentWorkoutGroup.rows[0];
+    if (row?.exerciseCategory === "Kondisjon") {
+      return `${currentWorkoutGroup.rows.length} runder × ${row.plannedDurationMinutes || "0"} min${
+        row.plannedSpeed ? ` · ${row.plannedSpeed} km/t` : ""
+      }${row.plannedIncline ? ` · ${row.plannedIncline}% incline` : ""}`;
+    }
+    if (row?.exerciseCategory === "Uttøyning") {
+      return `${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedWeight} sek`;
+    }
+    return `${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedReps} reps · ${currentWorkoutGroup.plannedWeight} kg`;
+  }, [currentWorkoutGroup]);
 
   function handleReplaceCurrentWorkoutExercise(replacementExerciseId: string) {
     if (!currentWorkoutGroup || !replacementExerciseId) return;
@@ -215,6 +226,107 @@ export function LiveWorkoutSessionModal({
     }
   }
 
+  function renderWorkoutSetRow(
+    row: WorkoutModeState["results"][number],
+    options?: { exerciseLabel?: string; compact?: boolean },
+  ) {
+    const resolvedExercise = exerciseByName.get(row.exerciseName.trim().toLowerCase());
+    const isCardio = (row.exerciseCategory ?? resolvedExercise?.category) === "Kondisjon";
+    const isStretch = (row.exerciseCategory ?? resolvedExercise?.category) === "Uttøyning";
+    const isTreadmill = (row.exerciseEquipment ?? resolvedExercise?.equipment ?? "").toLowerCase().includes("tredem");
+    const isCompactSetView = options?.compact ?? false;
+
+    return (
+      <div
+        key={row.exerciseId}
+        className={`rounded-xl border bg-white ${isCompactSetView ? "p-2.5" : "p-3"} ${row.completed ? "border-emerald-300" : "border-slate-200"}`}
+      >
+        <div className={`${isCompactSetView ? "mb-1.5" : "mb-2"} flex items-center justify-between gap-2`}>
+          <div className="min-w-0 text-xs font-semibold text-slate-600">
+            {options?.exerciseLabel ? <span className="block text-slate-800">{options.exerciseLabel}</span> : null}
+            <span>Sett {row.setNumber ?? row.blockRound ?? 1}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => updateWorkoutExerciseResult(row.exerciseId, "completed", !row.completed)}
+            className={`rounded-full ${isCompactSetView ? "px-2.5 py-0.5" : "px-3 py-1"} text-xs font-semibold ${row.completed ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-700"}`}
+          >
+            {row.completed ? "Fullført" : "Marker"}
+          </button>
+        </div>
+        {isCardio ? (
+          <div className={`grid ${isCompactSetView ? "gap-2" : "gap-3"} ${isTreadmill ? "grid-cols-3" : "grid-cols-1"}`}>
+            <div className="space-y-1">
+              <div className="text-[11px] font-medium text-slate-500">Tid utført (min)</div>
+              <TextInput
+                value={row.performedDurationMinutes ?? ""}
+                onChange={(e) => handleWorkoutResultInputChange(row, "performedDurationMinutes", e.target.value)}
+                placeholder="0"
+                className={isCompactSetView ? "h-9 text-xs" : ""}
+              />
+            </div>
+            {isTreadmill ? (
+              <>
+                <div className="space-y-1">
+                  <div className="text-[11px] font-medium text-slate-500">Fart (km/t)</div>
+                  <TextInput
+                    value={row.performedSpeed ?? ""}
+                    onChange={(e) => handleWorkoutResultInputChange(row, "performedSpeed", e.target.value)}
+                    placeholder="0"
+                    className={isCompactSetView ? "h-9 text-xs" : ""}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <div className="text-[11px] font-medium text-slate-500">Incline (%)</div>
+                  <TextInput
+                    value={row.performedIncline ?? ""}
+                    onChange={(e) => handleWorkoutResultInputChange(row, "performedIncline", e.target.value)}
+                    placeholder="0"
+                    className={isCompactSetView ? "h-9 text-xs" : ""}
+                  />
+                </div>
+              </>
+            ) : null}
+          </div>
+        ) : isStretch ? (
+          <div className="space-y-1">
+            <div className="text-[11px] font-medium text-slate-500">Sekunder (hold)</div>
+            <TextInput
+              value={row.performedWeight}
+              onChange={(e) => handleWorkoutResultInputChange(row, "performedWeight", e.target.value)}
+              onFocus={(event) => event.currentTarget.select()}
+              placeholder="0"
+              className={`${isCompactSetView ? "h-9 text-xs" : ""} ${row.performedWeight === row.plannedWeight ? "text-slate-400" : "text-slate-800"}`}
+            />
+          </div>
+        ) : (
+          <div className={`grid grid-cols-2 ${isCompactSetView ? "gap-2" : "gap-3"}`}>
+            <div className="space-y-1">
+              <div className="text-[11px] font-medium text-slate-500">Kg utført</div>
+              <TextInput
+                value={row.performedWeight}
+                onChange={(e) => handleWorkoutResultInputChange(row, "performedWeight", e.target.value)}
+                onFocus={(event) => event.currentTarget.select()}
+                placeholder="0"
+                className={`${isCompactSetView ? "h-9 text-xs" : ""} ${row.performedWeight === row.plannedWeight ? "text-slate-400" : "text-slate-800"}`}
+              />
+            </div>
+            <div className="space-y-1">
+              <div className="text-[11px] font-medium text-slate-500">Reps utført</div>
+              <TextInput
+                value={row.performedReps}
+                onChange={(e) => handleWorkoutResultInputChange(row, "performedReps", e.target.value)}
+                onFocus={(event) => event.currentTarget.select()}
+                placeholder="0"
+                className={`${isCompactSetView ? "h-9 text-xs" : ""} ${row.performedReps === row.plannedReps ? "text-slate-400" : "text-slate-800"}`}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (!activeProgram || !workoutMode) return null;
 
   const badgeLabel =
@@ -255,7 +367,7 @@ export function LiveWorkoutSessionModal({
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="text-xs text-slate-400">
-                    Øvelse {workoutExerciseIndex + 1} av {workoutResultGroups.length}
+                    {currentWorkoutGroup.blockType ? "Blokk" : "Øvelse"} {workoutExerciseIndex + 1} av {workoutResultGroups.length}
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="font-medium">{currentWorkoutGroup.exerciseName}</div>
@@ -273,29 +385,30 @@ export function LiveWorkoutSessionModal({
                       </button>
                     ) : null}
                   </div>
-                  <div className="mt-1 text-sm text-slate-500">
-                    {currentWorkoutGroup.rows[0]?.exerciseCategory === "Kondisjon"
-                      ? `Plan: ${currentWorkoutGroup.rows.length} runder × ${currentWorkoutGroup.rows[0]?.plannedDurationMinutes || "0"} min${
-                          currentWorkoutGroup.rows[0]?.plannedSpeed ? ` · ${currentWorkoutGroup.rows[0]?.plannedSpeed} km/t` : ""
-                        }${currentWorkoutGroup.rows[0]?.plannedIncline ? ` · ${currentWorkoutGroup.rows[0]?.plannedIncline}% incline` : ""}`
-                      : currentWorkoutGroup.rows[0]?.exerciseCategory === "Uttøyning"
-                        ? `Plan: ${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedWeight} sek`
-                        : `Plan: ${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedReps} reps · ${currentWorkoutGroup.plannedWeight}kg`}
-                  </div>
+                  <div className="mt-1 text-sm text-slate-500">Plan: {currentWorkoutPlanLabel}</div>
                 </div>
-                {currentWorkoutExerciseImageUrl ? (
-                  <div
-                    className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border bg-white sm:h-24 sm:w-24"
+                {currentWorkoutExercise ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowExerciseDetail(true)}
+                    className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border bg-white text-left shadow-sm transition hover:ring-2 hover:ring-teal-400/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 sm:h-24 sm:w-24"
                     style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                    aria-label={`Vis informasjon om ${currentWorkoutGroup.exerciseName}`}
                   >
-                    <img
-                      src={currentWorkoutExerciseImageUrl}
-                      alt={`Illustrasjon av ${currentWorkoutGroup.exerciseName}`}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  </div>
+                    {currentWorkoutExerciseImageUrl ? (
+                      <img
+                        src={currentWorkoutExerciseImageUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <span className="flex h-full w-full flex-col items-center justify-center gap-1 bg-slate-100 px-1 text-center text-[10px] font-semibold text-slate-500">
+                        Info
+                      </span>
+                    )}
+                  </button>
                 ) : null}
               </div>
               {replacementCandidates.length > 0 && showReplacementOptions ? (
@@ -338,122 +451,53 @@ export function LiveWorkoutSessionModal({
                   </button>
                 </div>
               ) : null}
-              <div className={`mt-3 ${currentWorkoutGroup.rows.length <= 3 ? "space-y-1.5" : "space-y-2"}`}>
-                {currentWorkoutGroup.rows.map((row) => {
-                  const resolvedExercise = exerciseByName.get(row.exerciseName.trim().toLowerCase());
-                  const isCardio = (row.exerciseCategory ?? resolvedExercise?.category) === "Kondisjon";
-                  const isStretch = (row.exerciseCategory ?? resolvedExercise?.category) === "Uttøyning";
-                  const isTreadmill = (row.exerciseEquipment ?? resolvedExercise?.equipment ?? "").toLowerCase().includes("tredem");
-                  const isCompactSetView = currentWorkoutGroup.rows.length <= 3;
-                  return (
-                    <div
-                      key={row.exerciseId}
-                      className={`rounded-xl border bg-white ${isCompactSetView ? "p-2.5" : "p-3"} ${row.completed ? "border-emerald-300" : "border-slate-200"}`}
-                    >
-                      <div className={`${isCompactSetView ? "mb-1.5" : "mb-2"} flex items-center justify-between gap-2`}>
-                        <div className="text-xs font-semibold text-slate-600">Sett {row.setNumber ?? 1}</div>
-                        <button
-                          type="button"
-                          onClick={() => updateWorkoutExerciseResult(row.exerciseId, "completed", !row.completed)}
-                          className={`rounded-full ${isCompactSetView ? "px-2.5 py-0.5" : "px-3 py-1"} text-xs font-semibold ${row.completed ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-700"}`}
-                        >
-                          {row.completed ? "Fullført" : "Marker"}
-                        </button>
+              <div className="mt-3 space-y-3">
+                {currentWorkoutGroup.blockType && currentWorkoutGroup.rounds.length > 0
+                  ? currentWorkoutGroup.rounds.map((round) => (
+                      <div key={`round-${round.round}`} className="space-y-2 rounded-xl border bg-white/80 p-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">
+                          Runde {round.round}
+                          {currentWorkoutGroup.blockRounds ? ` av ${currentWorkoutGroup.blockRounds}` : ""}
+                        </div>
+                        <div className="space-y-2">
+                          {round.segments.map((segment) =>
+                            segment.row
+                              ? renderWorkoutSetRow(segment.row, {
+                                  exerciseLabel: segment.exerciseName,
+                                  compact: true,
+                                })
+                              : null,
+                          )}
+                        </div>
                       </div>
-                      {isCardio ? (
-                        <div className={`grid ${isCompactSetView ? "gap-2" : "gap-3"} ${isTreadmill ? "grid-cols-3" : "grid-cols-1"}`}>
-                          <div className="space-y-1">
-                            <div className="text-[11px] font-medium text-slate-500">Tid utført (min)</div>
-                            <TextInput
-                              value={row.performedDurationMinutes ?? ""}
-                              onChange={(e) =>
-                                handleWorkoutResultInputChange(row, "performedDurationMinutes", e.target.value)
-                              }
-                              placeholder="0"
-                              className={isCompactSetView ? "h-9 text-xs" : ""}
-                            />
-                          </div>
-                          {isTreadmill ? (
-                            <>
-                              <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">Fart (km/t)</div>
-                                <TextInput
-                                  value={row.performedSpeed ?? ""}
-                                  onChange={(e) => handleWorkoutResultInputChange(row, "performedSpeed", e.target.value)}
-                                  placeholder="0"
-                                  className={isCompactSetView ? "h-9 text-xs" : ""}
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">Incline (%)</div>
-                                <TextInput
-                                  value={row.performedIncline ?? ""}
-                                  onChange={(e) =>
-                                    handleWorkoutResultInputChange(row, "performedIncline", e.target.value)
-                                  }
-                                  placeholder="0"
-                                  className={isCompactSetView ? "h-9 text-xs" : ""}
-                                />
-                              </div>
-                            </>
-                          ) : null}
-                        </div>
-                      ) : isStretch ? (
-                        <div className="space-y-1">
-                          <div className="text-[11px] font-medium text-slate-500">Sekunder (hold)</div>
-                          <TextInput
-                            value={row.performedWeight}
-                            onChange={(e) => handleWorkoutResultInputChange(row, "performedWeight", e.target.value)}
-                            onFocus={(event) => event.currentTarget.select()}
-                            placeholder="0"
-                            className={`${isCompactSetView ? "h-9 text-xs" : ""} ${row.performedWeight === row.plannedWeight ? "text-slate-400" : "text-slate-800"}`}
-                          />
-                        </div>
-                      ) : (
-                        <div className={`grid grid-cols-2 ${isCompactSetView ? "gap-2" : "gap-3"}`}>
-                          <div className="space-y-1">
-                            <div className="text-[11px] font-medium text-slate-500">Kg utført</div>
-                            <TextInput
-                              value={row.performedWeight}
-                              onChange={(e) => handleWorkoutResultInputChange(row, "performedWeight", e.target.value)}
-                              onFocus={(event) => event.currentTarget.select()}
-                              placeholder="0"
-                              className={`${isCompactSetView ? "h-9 text-xs" : ""} ${row.performedWeight === row.plannedWeight ? "text-slate-400" : "text-slate-800"}`}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <div className="text-[11px] font-medium text-slate-500">Reps utført</div>
-                            <TextInput
-                              value={row.performedReps}
-                              onChange={(e) => handleWorkoutResultInputChange(row, "performedReps", e.target.value)}
-                              onFocus={(event) => event.currentTarget.select()}
-                              placeholder="0"
-                              className={`${isCompactSetView ? "h-9 text-xs" : ""} ${row.performedReps === row.plannedReps ? "text-slate-400" : "text-slate-800"}`}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    ))
+                  : currentWorkoutGroup.rows.map((row) =>
+                      renderWorkoutSetRow(row, { compact: currentWorkoutGroup.rows.length <= 3 }),
+                    )}
               </div>
-              <div className="mt-2 border-t pt-2" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
-                <button
-                  type="button"
-                  onClick={() => appendWorkoutSetForProgramExercise(currentWorkoutGroup.groupId)}
-                  disabled={currentWorkoutGroup.rows.length >= MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE}
-                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-teal-400 hover:bg-teal-50/50 disabled:cursor-not-allowed disabled:opacity-45 sm:inline-flex sm:w-auto"
-                  style={{ borderColor: "rgba(148,163,184,0.55)" }}
-                >
-                  <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                  Legg til sett
-                </button>
-                {currentWorkoutGroup.rows.length >= MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE ? (
-                  <p className="mt-1.5 text-[10px] text-slate-500">Maks {MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE} sett per øvelse.</p>
-                ) : (
-                  <p className="mt-1.5 text-[10px] text-slate-500">Legger til et ekstra sett under økta — også om du gjør flere enn planlagt.</p>
-                )}
-              </div>
+              {!currentWorkoutGroup.blockType && currentWorkoutGroup.segments[0] ? (
+                <div className="mt-2 border-t pt-2" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
+                  <button
+                    type="button"
+                    onClick={() => appendWorkoutSetForProgramExercise(currentWorkoutGroup.segments[0]!.programExerciseId)}
+                    disabled={currentWorkoutGroup.rows.length >= MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE}
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-teal-400 hover:bg-teal-50/50 disabled:cursor-not-allowed disabled:opacity-45 sm:inline-flex sm:w-auto"
+                    style={{ borderColor: "rgba(148,163,184,0.55)" }}
+                  >
+                    <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    Legg til sett
+                  </button>
+                  {currentWorkoutGroup.rows.length >= MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE ? (
+                    <p className="mt-1.5 text-[10px] text-slate-500">Maks {MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE} sett per øvelse.</p>
+                  ) : (
+                    <p className="mt-1.5 text-[10px] text-slate-500">Legger til et ekstra sett under økta — også om du gjør flere enn planlagt.</p>
+                  )}
+                </div>
+              ) : currentWorkoutGroup.blockType ? (
+                <p className="mt-2 text-[10px] text-slate-500">
+                  Kjør øvelsene i rekkefølge per runde{currentWorkoutGroup.blockType === "circuit" ? " — full sirkel før neste runde" : ""}.
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -566,6 +610,92 @@ export function LiveWorkoutSessionModal({
           </div>
         </div>
       </div>
+
+      {showExerciseDetail && currentWorkoutExercise && currentWorkoutGroup ? (
+        <div
+          className="motus-modal-insets fixed inset-0 z-[10015] flex flex-col overscroll-contain bg-slate-900/55"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="workout-exercise-detail-title"
+        >
+          <div className="mx-auto flex h-full w-full max-w-xl flex-col rounded-2xl bg-white shadow-2xl">
+            <div
+              className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3"
+              style={{ borderColor: "rgba(15,23,42,0.08)" }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowExerciseDetail(false)}
+                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                aria-label="Tilbake til øktmodus"
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden />
+                Tilbake
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowExerciseDetail(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100"
+                aria-label="Lukk"
+              >
+                <X className="h-5 w-5" aria-hidden />
+              </button>
+            </div>
+
+            <div className="motus-scroll-touch flex-1 overflow-auto p-4">
+              {currentWorkoutExerciseImageUrl ? (
+                <div
+                  className="overflow-hidden rounded-2xl border bg-slate-100"
+                  style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                >
+                  <img
+                    src={currentWorkoutExerciseImageUrl}
+                    alt={`Illustrasjon av ${currentWorkoutGroup.exerciseName}`}
+                    className="max-h-[min(52vh,420px)] w-full object-contain"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              ) : (
+                <div className="rounded-2xl border bg-slate-100 px-4 py-10 text-center text-sm text-slate-500" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  Ingen bilde tilgjengelig for denne øvelsen.
+                </div>
+              )}
+
+              <h2 id="workout-exercise-detail-title" className="mt-4 text-xl font-bold text-slate-900">
+                {currentWorkoutGroup.exerciseName}
+              </h2>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{currentWorkoutExercise.category}</span>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{currentWorkoutExercise.group}</span>
+                {currentWorkoutExercise.equipment ? (
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{currentWorkoutExercise.equipment}</span>
+                ) : null}
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{currentWorkoutExercise.level}</span>
+              </div>
+
+              <div className="mt-4 rounded-xl border bg-slate-50 px-3 py-3 text-sm text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Plan i dag</div>
+                <div className="mt-1 font-medium">{currentWorkoutPlanLabel}</div>
+              </div>
+
+              {currentWorkoutExercise.description?.trim() ? (
+                <div className="mt-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Om øvelsen</div>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-700">{currentWorkoutExercise.description}</p>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="shrink-0 border-t p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <GradientButton type="button" className="w-full" onClick={() => setShowExerciseDetail(false)}>
+                Tilbake til øktmodus
+              </GradientButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

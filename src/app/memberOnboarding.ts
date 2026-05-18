@@ -310,6 +310,7 @@ export function onboardingDraftFromStored(personalGoals: string | undefined): Om
 }
 
 const ONBOARDING_GATE_SEEN_KEY_PREFIX = "motus.member.onboarding.gateSeen.v1:";
+const MEMBER_WELCOME_SEEN_KEY_PREFIX = "motus.member.welcome.seen.v1:";
 
 export function memberOnboardingIdentityKey(member: Member): string {
   return member.id.trim() || member.email.trim().toLowerCase();
@@ -323,6 +324,16 @@ export function hasSeenOnboardingGate(identityKey: string): boolean {
 export function markOnboardingGateSeen(identityKey: string): void {
   if (typeof window === "undefined" || !identityKey) return;
   window.localStorage.setItem(`${ONBOARDING_GATE_SEEN_KEY_PREFIX}${identityKey}`, "1");
+}
+
+export function hasSeenMemberWelcome(identityKey: string): boolean {
+  if (typeof window === "undefined" || !identityKey) return false;
+  return window.localStorage.getItem(`${MEMBER_WELCOME_SEEN_KEY_PREFIX}${identityKey}`) === "1";
+}
+
+export function markMemberWelcomeSeen(identityKey: string): void {
+  if (typeof window === "undefined" || !identityKey) return;
+  window.localStorage.setItem(`${MEMBER_WELCOME_SEEN_KEY_PREFIX}${identityKey}`, "1");
 }
 
 function scoreMemberRowForCanonicalPick(member: Member): number {

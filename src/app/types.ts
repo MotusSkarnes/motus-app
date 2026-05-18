@@ -14,10 +14,16 @@ export type TrainerTab =
 export type CustomerSubTab = "overview" | "profile" | "programs" | "workouts" | "messages";
 export type MemberTab = "overview" | "programs" | "progress" | "messages" | "profile" | "inspiration";
 
+export type ExerciseBlockType = "superset" | "triset" | "circuit";
+
 export type WorkoutExerciseResult = {
   exerciseId: string;
   programExerciseId?: string;
   setNumber?: number;
+  /** Felles id for supersett/trisett/sirkel i øktmodus. */
+  blockId?: string;
+  blockType?: ExerciseBlockType;
+  blockRound?: number;
   exerciseName: string;
   exerciseCategory?: Exercise["category"];
   exerciseEquipment?: string;
@@ -116,6 +122,11 @@ export type ProgramExercise = {
   targetHrPercent?: string;
   restSeconds: string;
   notes: string;
+  /** Supersett, trisett eller sirkel – delt blockId med andre øvelser i samme blokk. */
+  blockId?: string;
+  blockType?: ExerciseBlockType;
+  /** Antall runder i sirkel (valgfritt; ellers høyeste «sett» i blokken). */
+  blockRounds?: string;
 };
 
 /** Medlemsbibliotek: skjul/arkiver fra hovedlisten under «Mine treningsprogram» (synkes via Supabase). */

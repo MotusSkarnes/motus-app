@@ -3,15 +3,47 @@ import {
   createEmptyOnboardingDraft,
   enrichMemberWithBestProfile,
   getOnboardingFromPersonalGoals,
+  hasSeenMemberWelcome,
   isOnboardingCompleted,
+  markMemberWelcomeSeen,
   mergeOnboardingIntoPersonalGoals,
   primaryGoalFromOnboarding,
   findMembersByEmail,
+  memberOnboardingIdentityKey,
   resolveMemberOnboarding,
 } from "./memberOnboarding";
 import type { Member } from "./types";
 
 describe("memberOnboarding", () => {
+  it("tracks first-login welcome per member identity", () => {
+    const member: Member = {
+      id: "welcome-test",
+      name: "Test",
+      email: "welcome@test.no",
+      personalGoals: "",
+      goal: "",
+      focus: "",
+      injuries: "",
+      level: "Nybegynner",
+      membershipType: "Premium",
+      customerType: "PT-kunde",
+      daysSinceActivity: 0,
+      phone: "",
+      birthDate: "",
+      coachNotes: "",
+      avatarUrl: "",
+      invitedAt: "",
+      isActive: true,
+    };
+    const key = memberOnboardingIdentityKey(member);
+    const storageKey = `motus.member.welcome.seen.v1:${key}`;
+    window.localStorage.removeItem(storageKey);
+    expect(hasSeenMemberWelcome(key)).toBe(false);
+    markMemberWelcomeSeen(key);
+    expect(hasSeenMemberWelcome(key)).toBe(true);
+    window.localStorage.removeItem(storageKey);
+  });
+
   it("roundtrips onboarding in personal_goals", () => {
     const answers = {
       ...createEmptyOnboardingDraft(),

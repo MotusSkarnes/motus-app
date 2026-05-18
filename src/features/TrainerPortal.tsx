@@ -50,7 +50,9 @@ import { syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { buildDefaultStartWorkoutOptions } from "../app/buildStartWorkoutOptions";
 import { MemberMonthlyCheckInSummary } from "./MemberMonthlyCheckInSummary";
 import { MemberOnboardingSummary } from "./MemberOnboardingSummary";
+import { unlinkProgramExerciseBlock } from "../app/programBlocks";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
+import { ProgramExerciseBlockActions } from "./ProgramExerciseBlockActions";
 import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
 
 const CUSTOMER_CARD_ACTION_BTN = "!min-h-8 !px-2.5 !py-1.5 !text-xs !rounded-md";
@@ -1659,7 +1661,17 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   }
 
   function removeDraftExercise(id: string) {
-    setProgramExercisesDraft((prev) => prev.filter((item) => item.id !== id));
+    setProgramExercisesDraft((prev) => {
+      const removed = prev.find((item) => item.id === id);
+      let next = prev.filter((item) => item.id !== id);
+      if (removed?.blockId?.trim()) {
+        const remainingInBlock = next.filter((item) => item.blockId?.trim() === removed.blockId?.trim());
+        if (remainingInBlock.length < 2) {
+          next = unlinkProgramExerciseBlock(next, removed.blockId);
+        }
+      }
+      return next;
+    });
   }
 
   function moveDraftExerciseByOffset(exerciseId: string, offset: -1 | 1) {
@@ -4835,8 +4847,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                             }}
                             className={`rounded-2xl border bg-white p-4 space-y-3 cursor-move transition ${
                               dragOverDraftExerciseId === item.id ? "ring-2 ring-emerald-300 border-emerald-300" : ""
-                            }`}
+                            } ${item.blockId ? "ring-1 ring-teal-200/80" : ""}`}
                           >
+                            <ProgramExerciseBlockActions exercises={programExercisesDraft} index={index} onChange={setProgramExercisesDraft} />
                             <div className="flex items-center justify-between gap-3">
                               <div className="font-medium">{item.exerciseName}</div>
                               <div className="flex items-center gap-2">
@@ -5435,8 +5448,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       }}
                       className={`rounded-2xl border bg-white p-3 sm:p-4 space-y-3 cursor-move transition ${
                         dragOverDraftExerciseId === item.id ? "ring-2 ring-emerald-300 border-emerald-300" : ""
-                      }`}
+                      } ${item.blockId ? "ring-1 ring-teal-200/80" : ""}`}
                     >
+                      <ProgramExerciseBlockActions exercises={programExercisesDraft} index={index} onChange={setProgramExercisesDraft} />
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="font-medium">{item.exerciseName}</div>
                         <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center">
