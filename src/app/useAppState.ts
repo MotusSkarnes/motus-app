@@ -52,7 +52,7 @@ import {
   ensureAuthSessionForPasswordUpdate,
   ensureMemberAuthLink,
   establishRecoverySessionFromTokens,
-  exchangeAuthCodeForSession,
+  establishSessionFromAuthBootstrap,
   getSupabaseSessionUser,
   inviteMemberByEmail,
   inviteTrainerByEmail,
@@ -63,11 +63,16 @@ import {
   signOutSupabase,
   updateSupabasePassword,
   verifyEmailOtpSignIn,
-  verifyInviteToken,
-  verifyRecoveryToken,
   type InviteMemberResult,
   type InviteTrainerResult,
 } from "../services/supabaseAuth";
+import {
+  clearPersistedAuthBootstrapParams,
+  hasAuthBootstrapSecrets,
+  persistAuthBootstrapParams,
+  readAuthParamsFromLocation,
+  readPersistedAuthBootstrapParams,
+} from "./supabaseAuthBootstrap";
 import { parseStoredLogDate } from "./dateFormat";
 import { mergeRemoteMessagesWithLocalOptimistic } from "./messageHydrationMerge";
 import type {
@@ -287,64 +292,27 @@ function captureInitialSupabaseAuthUrl(): {
   recoveryAuthCode: string | null;
   recoveryInfo: string | null;
   initialRecoveryError: string | null;
-  stripSensitiveAfterCapture: boolean;
 } | null {
   if (typeof window === "undefined" || !isSupabaseConfigured) return null;
-  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  const query = new URLSearchParams(window.location.search);
-  const type = hash.get("type") ?? query.get("type");
-  const recoveryFlag = hash.get("recovery") ?? query.get("recovery");
-  const inviteFlag = hash.get("invite") ?? query.get("invite");
-  const tokenHash = hash.get("token_hash") ?? query.get("token_hash");
-  const accessToken = hash.get("access_token") ?? query.get("access_token");
-  const refreshToken = hash.get("refresh_token") ?? query.get("refresh_token");
-  const authCode = query.get("code");
-  const hasSecrets = Boolean(tokenHash || accessToken || refreshToken || authCode);
-  const isInviteType = type === "invite" || type === "signup" || inviteFlag === "1";
-  if (type === "recovery" || recoveryFlag === "1") {
-    return {
-      isRecoveryMode: true,
-      recoveryInviteFlow: false,
-      recoveryTokenHash: tokenHash,
-      recoveryAccessToken: accessToken,
-      recoveryRefreshToken: refreshToken,
-      recoveryAuthCode: authCode,
-      recoveryInfo: hasSecrets ? "Verifiserer recovery-lenke..." : null,
-      initialRecoveryError: hasSecrets
-        ? null
+  const params = readAuthParamsFromLocation(window.location.href);
+  if (!params) return null;
+  persistAuthBootstrapParams(params);
+  const hasSecrets = hasAuthBootstrapSecrets(params);
+  const invite = params.recoveryInviteFlow;
+  return {
+    isRecoveryMode: true,
+    recoveryInviteFlow: invite,
+    recoveryTokenHash: params.tokenHash,
+    recoveryAccessToken: params.accessToken,
+    recoveryRefreshToken: params.refreshToken,
+    recoveryAuthCode: params.authCode,
+    recoveryInfo: hasSecrets ? (invite ? "Verifiserer invitasjon..." : "Verifiserer recovery-lenke...") : null,
+    initialRecoveryError: hasSecrets
+      ? null
+      : invite
+        ? "Invitasjonslenken mangler sikkerhetstoken. Åpne lenken direkte fra e-posten på nytt (ikke bare adresselinjen)."
         : "Recovery-lenken mangler sikkerhetstoken. Åpne lenken direkte fra e-posten på nytt.",
-      stripSensitiveAfterCapture: hasSecrets,
-    };
-  }
-  if (isInviteType) {
-    return {
-      isRecoveryMode: true,
-      recoveryInviteFlow: true,
-      recoveryTokenHash: tokenHash,
-      recoveryAccessToken: accessToken,
-      recoveryRefreshToken: refreshToken,
-      recoveryAuthCode: authCode,
-      recoveryInfo: hasSecrets ? "Verifiserer invitasjon..." : null,
-      initialRecoveryError: hasSecrets
-        ? null
-        : "Invitasjonslenken mangler sikkerhetstoken. Åpne lenken direkte fra e-posten på nytt (ikke bare adresselinjen).",
-      stripSensitiveAfterCapture: hasSecrets,
-    };
-  }
-  if (authCode) {
-    return {
-      isRecoveryMode: true,
-      recoveryInviteFlow: false,
-      recoveryTokenHash: tokenHash,
-      recoveryAccessToken: accessToken,
-      recoveryRefreshToken: refreshToken,
-      recoveryAuthCode: authCode,
-      recoveryInfo: "Verifiserer lenke...",
-      initialRecoveryError: null,
-      stripSensitiveAfterCapture: true,
-    };
-  }
-  return null;
+  };
 }
 
 function stripSensitiveSupabaseAuthFromBrowserUrl(): void {
@@ -927,76 +895,25 @@ export function useAppState() {
   }, []);
 
   useEffect(() => {
-    if (!INITIAL_SUPABASE_AUTH_FROM_URL?.stripSensitiveAfterCapture) return;
-    stripSensitiveSupabaseAuthFromBrowserUrl();
-  }, []);
-
-  useEffect(() => {
-    if (!isRecoveryMode || !recoveryTokenHash) return;
+    if (!isRecoveryMode) return;
     let cancelled = false;
-    async function hydrateRecoverySession() {
-      setRecoverySessionReady(false);
-      const result = recoveryInviteFlow
-        ? await verifyInviteToken(recoveryTokenHash)
-        : await verifyRecoveryToken(recoveryTokenHash);
-      if (cancelled) return;
-      if (!result.ok) {
-        setRecoverySessionReady(false);
-        setRecoveryError(
-          recoveryInviteFlow ? `Invitasjonslenke feilet: ${result.message}` : `Recovery-lenke feilet: ${result.message}`,
-        );
-        return;
-      }
-      setRecoveryError(null);
-      setRecoverySessionReady(true);
-      setRecoveryInfo(
-        recoveryInviteFlow ? "Invitasjon verifisert. Velg et passord for kontoen din." : "Recovery-lenke verifisert. Du kan sette nytt passord.",
-      );
-    }
-    void hydrateRecoverySession();
-    return () => {
-      cancelled = true;
-    };
-  }, [isRecoveryMode, recoveryInviteFlow, recoveryTokenHash]);
 
-  useEffect(() => {
-    if (!isRecoveryMode || !recoveryAccessToken || !recoveryRefreshToken) return;
-    let cancelled = false;
-    async function hydrateRecoverySessionFromTokens() {
+    async function bootstrapRecoveryAuth() {
       setRecoverySessionReady(false);
-      const result = await establishRecoverySessionFromTokens({
+      const bootstrapParams = {
+        recoveryInviteFlow,
+        tokenHash: recoveryTokenHash,
         accessToken: recoveryAccessToken,
         refreshToken: recoveryRefreshToken,
-      });
-      if (cancelled) return;
-      if (!result.ok) {
-        setRecoverySessionReady(false);
-        setRecoveryError(
-          recoveryInviteFlow ? `Invitasjonslenke feilet: ${result.message}` : `Recovery-lenke feilet: ${result.message}`,
-        );
-        return;
-      }
-      setRecoveryError(null);
-      setRecoverySessionReady(true);
-      setRecoveryInfo(
-        recoveryInviteFlow
-          ? "Invitasjon verifisert. Velg et passord for kontoen din."
-          : "Recovery-session opprettet. Du kan sette nytt passord.",
-      );
-    }
-    void hydrateRecoverySessionFromTokens();
-    return () => {
-      cancelled = true;
-    };
-  }, [isRecoveryMode, recoveryInviteFlow, recoveryAccessToken, recoveryRefreshToken]);
+        authCode: recoveryAuthCode,
+      };
+      persistAuthBootstrapParams(bootstrapParams);
 
-  useEffect(() => {
-    if (!isRecoveryMode || !recoveryAuthCode) return;
-    let cancelled = false;
-    async function hydrateRecoverySessionFromCode() {
-      setRecoverySessionReady(false);
-      const result = await exchangeAuthCodeForSession(recoveryAuthCode);
+      const result = await establishSessionFromAuthBootstrap(bootstrapParams);
       if (cancelled) return;
+
+      stripSensitiveSupabaseAuthFromBrowserUrl();
+
       if (!result.ok) {
         setRecoverySessionReady(false);
         setRecoveryError(
@@ -1012,11 +929,12 @@ export function useAppState() {
           : "Recovery-lenke verifisert. Du kan sette nytt passord.",
       );
     }
-    void hydrateRecoverySessionFromCode();
+
+    void bootstrapRecoveryAuth();
     return () => {
       cancelled = true;
     };
-  }, [isRecoveryMode, recoveryInviteFlow, recoveryAuthCode]);
+  }, [isRecoveryMode, recoveryInviteFlow, recoveryTokenHash, recoveryAccessToken, recoveryRefreshToken, recoveryAuthCode]);
 
   useEffect(() => {
     if (!isSupabaseConfigured || isRecoveryMode) return;
@@ -1358,6 +1276,7 @@ export function useAppState() {
     setRecoveryRefreshToken(null);
     setRecoveryAuthCode(null);
     setRecoverySessionReady(false);
+    clearPersistedAuthBootstrapParams();
     if (typeof window !== "undefined") {
       window.history.replaceState({}, document.title, window.location.pathname);
     }

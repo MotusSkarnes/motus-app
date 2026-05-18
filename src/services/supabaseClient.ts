@@ -18,8 +18,10 @@ export const configuredSupabaseProjectRef = (() => {
 export const supabaseClient = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
-        // Vi håndterer invite/recovery/magic-link selv i useAppState slik at brukeren først får passordskjerm (invite/recovery).
-        detectSessionInUrl: false,
+        // PKCE + auto-detection som fallback; passordskjerm styres fortsatt i useAppState.
+        detectSessionInUrl: true,
+        flowType: "pkce",
+        persistSession: true,
       },
     })
   : null;
