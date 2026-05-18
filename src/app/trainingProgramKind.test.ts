@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildExerciseCategoryById,
+  exerciseMatchesBankSubTab,
   filterTemplateProgramsBySubTab,
   isConditioningTrainingProgram,
   isStrengthTrainingProgram,
@@ -53,5 +54,12 @@ describe("trainingProgramKind", () => {
     const templates = [program("e1"), program("e2", "10")];
     expect(filterTemplateProgramsBySubTab(templates, "strength", categories)).toHaveLength(1);
     expect(filterTemplateProgramsBySubTab(templates, "conditioning", categories)).toHaveLength(1);
+  });
+
+  it("matches exercise bank sub tabs by category", () => {
+    expect(exerciseMatchesBankSubTab("Kondisjon", "conditioning")).toBe(true);
+    expect(exerciseMatchesBankSubTab("Kondisjon", "strength")).toBe(false);
+    expect(exerciseMatchesBankSubTab("Styrke", "strength")).toBe(true);
+    expect(exerciseMatchesBankSubTab("Uttøyning", "strength")).toBe(true);
   });
 });

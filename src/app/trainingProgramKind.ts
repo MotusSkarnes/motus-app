@@ -2,6 +2,13 @@ import type { Exercise, TrainingProgram } from "./types";
 
 export type ProgramsSubTab = "strength" | "conditioning";
 
+export type ExerciseBankSubTab = ProgramsSubTab;
+
+export function exerciseMatchesBankSubTab(category: Exercise["category"], subTab: ExerciseBankSubTab): boolean {
+  if (subTab === "conditioning") return category === "Kondisjon";
+  return category === "Styrke" || category === "Uttøyning";
+}
+
 export function buildExerciseCategoryById(exercises: Exercise[]): Map<string, Exercise["category"]> {
   const byId = new Map<string, Exercise["category"]>();
   exercises.forEach((exercise) => {

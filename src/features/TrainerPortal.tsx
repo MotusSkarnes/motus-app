@@ -8,8 +8,10 @@ import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhon
 import { uid } from "../app/storage";
 import {
   buildExerciseCategoryById,
+  exerciseMatchesBankSubTab,
   filterTemplateProgramsBySubTab,
   isConditioningTrainingProgram,
+  type ExerciseBankSubTab,
   type ProgramsSubTab,
 } from "../app/trainingProgramKind";
 import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
@@ -578,6 +580,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const [trainerChatSendStatus, setTrainerChatSendStatus] = useState<string | null>(null);
   const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
   const [programsSubTab, setProgramsSubTab] = useState<ProgramsSubTab>("strength");
+  const [exerciseBankSubTab, setExerciseBankSubTab] = useState<ExerciseBankSubTab>("strength");
   const [customerProgramBuilderFocus, setCustomerProgramBuilderFocus] = useState<"training" | "period">("training");
   const [selectedWorkoutLogId, setSelectedWorkoutLogId] = useState<string | null>(null);
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
@@ -1299,7 +1302,10 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const visibleExercises = useMemo(() => {
     const query = exerciseSearch.trim().toLowerCase();
     const filtered = exercises.filter((exercise) => {
-      const categoryOk = exerciseCategoryFilter === "all" || exercise.category === exerciseCategoryFilter;
+      const categoryOk =
+        trainerTab === "exerciseBank"
+          ? exerciseMatchesBankSubTab(exercise.category, exerciseBankSubTab)
+          : exerciseCategoryFilter === "all" || exercise.category === exerciseCategoryFilter;
       if (!categoryOk) return false;
       if (!query) return true;
       return (
@@ -1315,7 +1321,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       if (aFavorite !== bFavorite) return bFavorite - aFavorite;
       return a.name.localeCompare(b.name, "no");
     });
-  }, [exercises, exerciseSearch, exerciseCategoryFilter, favoriteExerciseIds]);
+  }, [exercises, exerciseSearch, exerciseCategoryFilter, exerciseBankSubTab, favoriteExerciseIds, trainerTab]);
   const programExerciseGroupOptions = useMemo(() => {
     const groups = Array.from(new Set(exercises.flatMap((exercise) => splitMultiValue(exercise.group))));
     return groups.sort((a, b) => a.localeCompare(b, "no"));
@@ -1467,6 +1473,11 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     if (trainerTab !== "programs") return;
     setProgramExerciseCategoryFilter(programsSubTab === "conditioning" ? "Kondisjon" : "Styrke");
   }, [programsSubTab, trainerTab]);
+
+  useEffect(() => {
+    if (trainerTab !== "exerciseBank") return;
+    setExerciseCategoryFilter(exerciseBankSubTab === "conditioning" ? "Kondisjon" : "Styrke");
+  }, [exerciseBankSubTab, trainerTab]);
 
   useEffect(() => {
     if (!pendingProgramMemberEmail) return;
@@ -2949,7 +2960,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   function resetExerciseForm() {
     setEditingExerciseId(null);
     setExerciseFormName("");
-    setExerciseFormCategory("Styrke");
+    setExerciseFormCategory(exerciseBankSubTab === "conditioning" ? "Kondisjon" : "Styrke");
     setExerciseFormGroup("");
     setExerciseFormEquipment("");
     setExerciseFormLevel("Nybegynner");
@@ -2958,6 +2969,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   }
 
   function startEditExercise(exercise: Exercise) {
+    setExerciseBankSubTab(exercise.category === "Kondisjon" ? "conditioning" : "strength");
     setEditingExerciseId(exercise.id);
     setExpandedExerciseId(exercise.id);
     setExerciseFormName(exercise.name);
@@ -5867,12 +5879,27 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       ) : null}
 
       {trainerTab === "exerciseBank" ? (
-        <Card className="p-5">
+        <div className="grid gap-4">
+          <div className="flex flex-wrap gap-2">
+            <PillButton active={exerciseBankSubTab === "strength"} onClick={() => setExerciseBankSubTab("strength")}>
+              Styrkeøvelser
+            </PillButton>
+            <PillButton active={exerciseBankSubTab === "conditioning"} onClick={() => setExerciseBankSubTab("conditioning")}>
+              Kondisjon
+            </PillButton>
+          </div>
+          <Card className="p-5">
           <div className="flex items-start gap-3">
             <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Dumbbell className="h-5 w-5" /></div>
             <div>
-              <h2 className="text-xl font-semibold tracking-tight">Øvelsesbank</h2>
-              <p className="text-sm text-slate-500">Opprett og rediger øvelser. Navn og muskelgruppe må fylles ut.</p>
+              <h2 className="text-xl font-semibold tracking-tight">
+                {exerciseBankSubTab === "strength" ? "Styrkeøvelser" : "Kondisjonsøvelser"}
+              </h2>
+              <p className="text-sm text-slate-500">
+                {exerciseBankSubTab === "strength"
+                  ? "Opprett og rediger styrke- og uttøyningsøvelser. Navn og muskelgruppe må fylles ut."
+                  : "Opprett og rediger kondisjonsøvelser til intervall og utholdenhet."}
+              </p>
             </div>
           </div>
           <div className="mt-5 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
@@ -5966,27 +5993,19 @@ function programAuthorLabel(program: TrainingProgram): string | null {
               </div>
             </div>
             <div className="space-y-3">
-              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-                <TextInput value={exerciseSearch} onChange={(e) => setExerciseSearch(e.target.value)} placeholder="Søk på navn, muskelgruppe, utstyr eller forklaring" />
-                <SelectBox
-                  value={exerciseCategoryFilter}
-                  onChange={(value) => setExerciseCategoryFilter(value as "all" | Exercise["category"])}
-                  options={[
-                    { value: "all", label: "Alle kategorier" },
-                    { value: "Styrke", label: "Styrke" },
-                    { value: "Kondisjon", label: "Kondisjon" },
-                    { value: "Uttøyning", label: "Uttøyning" },
-                  ]}
-                />
-              </div>
+              <TextInput value={exerciseSearch} onChange={(e) => setExerciseSearch(e.target.value)} placeholder="Søk på navn, muskelgruppe, utstyr eller forklaring" />
               <div className="text-xs text-slate-500">{visibleExercises.length} øvelser vist</div>
               <div className="text-xs text-slate-500">Favoritter vises alltid øverst.</div>
               <div className="space-y-2">
                 {visibleExercises.length === 0 ? (
                   <EmptyState
                     icon="🏋️"
-                    title="Ingen øvelser lagt til ennå"
-                    description="Juster søk/filter eller legg til en ny øvelse for å komme i gang."
+                    title={
+                      exerciseBankSubTab === "strength"
+                        ? "Ingen styrkeøvelser ennå"
+                        : "Ingen kondisjonsøvelser ennå"
+                    }
+                    description="Juster søket eller legg til en ny øvelse for å komme i gang."
                     className="bg-white"
                     action={<GradientButton onClick={resetExerciseForm}>Legg til øvelse</GradientButton>}
                   />
@@ -6127,6 +6146,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
             </div>
           </div>
         </Card>
+        </div>
       ) : null}
 
       {trainerTab === "admin" && canAccessAdminTools ? (
