@@ -29,6 +29,19 @@ function isSharedMedlem(customerType: string | null | undefined): boolean {
   return String(customerType ?? "").trim().toLowerCase() === "medlem";
 }
 
+function getUserRole(user: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }): string {
+  const appRole = user.app_metadata?.role;
+  if (appRole === "trainer" || appRole === "member") return appRole;
+  const userRole = user.user_metadata?.role;
+  if (userRole === "trainer" || userRole === "member") return userRole;
+  return "";
+}
+
+function canTrainerAccessMember(row: MemberRow, trainerUserId: string): boolean {
+  const ownerUserId = String(row.owner_user_id ?? "").trim();
+  return !ownerUserId || ownerUserId === trainerUserId || isSharedMedlem(row.customer_type);
+}
+
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -132,13 +145,37 @@ Deno.serve(async (req) => {
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
+  if (!token) {
+    return jsonResponse(401, { error: "Missing bearer token" });
+  }
+  const { data: userData, error: userError } = await adminClient.auth.getUser(token);
+  if (userError || !userData?.user) {
+    return jsonResponse(401, { error: "Invalid session token" });
+  }
+  const requesterId = String(userData.user.id ?? "").trim();
+  const requesterRole = getUserRole(userData.user);
+  if (!requesterId || requesterRole === "member" || (ownerUserId && ownerUserId !== requesterId)) {
+    return jsonResponse(403, { error: "Not authorized to restore members for this owner" });
+  }
+  const trainerOwnerUserId = ownerUserId || requesterId;
 
   try {
-    let matchingRows = await listMembersByEmail(adminClient, email);
+    const allMatchingRows = await listMembersByEmail(adminClient, email);
+    let matchingRows = allMatchingRows.filter((row) => canTrainerAccessMember(row, trainerOwnerUserId));
     let recreated = false;
 
-    if (!matchingRows.length && ownerUserId && !lookupOnly) {
-      const recreatedRow = await recreateMemberFromAuth(adminClient, email, ownerUserId);
+    if (!matchingRows.length && allMatchingRows.length > 0) {
+      return jsonResponse(404, {
+        error: "Ingen klient funnet med denne e-posten",
+        email,
+        lookupOnly,
+      });
+    }
+
+    if (!matchingRows.length && !allMatchingRows.length && trainerOwnerUserId && !lookupOnly) {
+      const recreatedRow = await recreateMemberFromAuth(adminClient, email, trainerOwnerUserId);
       if (recreatedRow) {
         matchingRows = [recreatedRow];
         recreated = true;
@@ -176,8 +213,8 @@ Deno.serve(async (req) => {
         is_active: true,
       };
       const currentOwner = String(row.owner_user_id ?? "").trim();
-      if (ownerUserId && !isSharedMedlem(row.customer_type) && (!currentOwner || currentOwner === ownerUserId)) {
-        patch.owner_user_id = ownerUserId;
+      if (trainerOwnerUserId && !isSharedMedlem(row.customer_type) && (!currentOwner || currentOwner === trainerOwnerUserId)) {
+        patch.owner_user_id = trainerOwnerUserId;
       }
       const { error } = await adminClient.from("members").update(patch).eq("id", id);
       if (error) {

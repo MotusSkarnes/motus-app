@@ -33,6 +33,14 @@ function isSharedMember(row: Record<string, unknown>): boolean {
   return String(row.customer_type ?? "").trim().toLowerCase() === "medlem";
 }
 
+function getUserRole(user: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }): string {
+  const appRole = user.app_metadata?.role;
+  if (appRole === "trainer" || appRole === "member") return appRole;
+  const userRole = user.user_metadata?.role;
+  if (userRole === "trainer" || userRole === "member") return userRole;
+  return "";
+}
+
 function profileCanonicalScore(row: Record<string, unknown>): number {
   let score = 0;
   const customerType = String(row.customer_type ?? "").trim().toLowerCase();
@@ -159,6 +167,20 @@ Deno.serve(async (req) => {
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
+  if (!token) {
+    return jsonResponse(401, { error: "Missing bearer token" });
+  }
+  const { data: userData, error: userError } = await adminClient.auth.getUser(token);
+  if (userError || !userData?.user) {
+    return jsonResponse(401, { error: "Invalid session token" });
+  }
+  const requesterId = String(userData.user.id ?? "").trim();
+  const requesterRole = getUserRole(userData.user);
+  if (!requesterId || requesterId !== ownerUserId || requesterRole === "member") {
+    return jsonResponse(403, { error: "Not authorized to hydrate trainer data for this owner" });
+  }
 
   const { data: ownedMembers } = await adminClient.from("members").select("id").eq("owner_user_id", ownerUserId);
   const ownedMemberIds = (ownedMembers ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);
