@@ -5,7 +5,6 @@ export const INSPIRATION_STORAGE_KEY = "motus.inspiration.items.v2";
 export const INSPIRATION_CHANGED_EVENT = "motus:inspiration-changed";
 export const INSPIRATION_FEED_ROW_ID = "shared";
 export const INSPIRATION_SUPPRESSED_IDS_KEY = "motus.inspiration.suppressedIds.v1";
-const INSPIRATION_LOCAL_WRITE_AT_KEY = "motus.inspiration.lastLocalWriteAt";
 
 const INSPIRATION_IMAGE_BUCKET = "exercise-images";
 const INSPIRATION_IMAGE_PREFIX = "inspiration";
@@ -20,6 +19,12 @@ export type InspirationNotificationItem = {
   kind?: string;
 };
 
+export type InspirationFeedSnapshot = {
+  items: unknown[];
+  suppressedItemIds: string[];
+  updatedAt: number;
+};
+
 export type InspirationSaveResult =
   | { ok: true; cloudSynced: boolean; warning?: string }
   | { ok: false; error: string };
@@ -27,6 +32,11 @@ export type InspirationSaveResult =
 export function notifyInspirationItemsChanged() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent(INSPIRATION_CHANGED_EVENT));
+}
+
+function parseSuppressedItemIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
 }
 
 export function loadInspirationItemsFromLocalStorage<T>(): T[] | null {
@@ -46,26 +56,35 @@ export function loadSuppressedInspirationIds(): Set<string> {
   try {
     const raw = window.localStorage.getItem(INSPIRATION_SUPPRESSED_IDS_KEY);
     const parsed = JSON.parse(raw ?? "[]") as unknown;
-    if (!Array.isArray(parsed)) return new Set();
-    return new Set(parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0));
+    return new Set(parseSuppressedItemIds(parsed));
   } catch {
     return new Set();
   }
 }
 
-export function suppressInspirationItemId(id: string): void {
+export function saveSuppressedInspirationIds(ids: string[]): void {
   if (typeof window === "undefined") return;
+  window.localStorage.setItem(INSPIRATION_SUPPRESSED_IDS_KEY, JSON.stringify(parseSuppressedItemIds(ids)));
+}
+
+export function suppressInspirationItemId(id: string): void {
   const trimmed = id.trim();
   if (!trimmed) return;
   const next = loadSuppressedInspirationIds();
   next.add(trimmed);
-  window.localStorage.setItem(INSPIRATION_SUPPRESSED_IDS_KEY, JSON.stringify(Array.from(next)));
+  saveSuppressedInspirationIds(Array.from(next));
 }
 
 export function filterSuppressedInspirationItems<T extends { id: string }>(items: T[]): T[] {
   const suppressed = loadSuppressedInspirationIds();
   if (!suppressed.size) return items;
   return items.filter((item) => !suppressed.has(item.id));
+}
+
+export function cacheInspirationFeedSnapshot(snapshot: InspirationFeedSnapshot): void {
+  if (typeof window === "undefined") return;
+  saveInspirationItemsToStorage(snapshot.items, { trackLocalWrite: false });
+  saveSuppressedInspirationIds(snapshot.suppressedItemIds);
 }
 
 export function saveInspirationItemsToStorage(
@@ -82,9 +101,7 @@ export function saveInspirationItemsToStorage(
       };
     }
     window.localStorage.setItem(INSPIRATION_STORAGE_KEY, serialized);
-    if (options?.trackLocalWrite !== false) {
-      window.localStorage.setItem(INSPIRATION_LOCAL_WRITE_AT_KEY, String(Date.now()));
-    }
+    void options;
     return { ok: true, cloudSynced: false };
   } catch (error) {
     const isQuota =
@@ -126,41 +143,23 @@ export function loadInspirationNotificationItems(): InspirationNotificationItem[
   }
 }
 
-/** Hent delt inspo-feed fra Supabase, oppdater lokal cache og varsle lyttere (medlemmer). */
-export async function refreshInspirationNotificationItemsFromRemote(): Promise<InspirationNotificationItem[]> {
-  if (typeof window === "undefined") return [];
-  if (!isSupabaseConfigured) return loadInspirationNotificationItems();
-
-  const remote = await fetchInspirationItemsFromSupabase();
-  if (remote === null || remote.length === 0) {
-    return loadInspirationNotificationItems();
-  }
-
-  const previousRaw = window.localStorage.getItem(INSPIRATION_STORAGE_KEY) ?? "";
-  saveInspirationItemsToStorage(remote);
-  const nextRaw = window.localStorage.getItem(INSPIRATION_STORAGE_KEY) ?? "";
-  if (nextRaw !== previousRaw) {
-    notifyInspirationItemsChanged();
-  }
-  return mapRawToInspirationNotificationItems(remote);
-}
-
-export async function fetchInspirationFeedFromSupabase(): Promise<{ items: unknown[]; updatedAt: number } | null> {
+export async function fetchInspirationFeedFromSupabase(): Promise<InspirationFeedSnapshot | null> {
   if (!supabaseClient) return null;
   const { data, error } = await supabaseClient
     .from("inspiration_feed")
-    .select("items, updated_at")
+    .select("items, suppressed_item_ids, updated_at")
     .eq("id", INSPIRATION_FEED_ROW_ID)
     .maybeSingle();
   if (error) {
     console.warn("inspiration_feed fetch failed:", error.message);
     return null;
   }
-  if (!data) return { items: [], updatedAt: 0 };
+  if (!data) return { items: [], suppressedItemIds: [], updatedAt: 0 };
   const items = data.items;
   const updatedAt = new Date(String(data.updated_at ?? "")).getTime();
   return {
     items: Array.isArray(items) ? items : [],
+    suppressedItemIds: parseSuppressedItemIds(data.suppressed_item_ids),
     updatedAt: Number.isFinite(updatedAt) ? updatedAt : 0,
   };
 }
@@ -170,11 +169,15 @@ export async function fetchInspirationItemsFromSupabase(): Promise<unknown[] | n
   return feed?.items ?? null;
 }
 
-export async function saveInspirationItemsToSupabase(items: unknown[]): Promise<boolean> {
+export async function saveInspirationFeedToSupabase(snapshot: {
+  items: unknown[];
+  suppressedItemIds: string[];
+}): Promise<boolean> {
   if (!supabaseClient) return false;
   const { error } = await supabaseClient.from("inspiration_feed").upsert({
     id: INSPIRATION_FEED_ROW_ID,
-    items,
+    items: snapshot.items,
+    suppressed_item_ids: parseSuppressedItemIds(snapshot.suppressedItemIds),
     updated_at: new Date().toISOString(),
   });
   if (error) {
@@ -182,6 +185,38 @@ export async function saveInspirationItemsToSupabase(items: unknown[]): Promise<
     return false;
   }
   return true;
+}
+
+/** @deprecated Use saveInspirationFeedToSupabase */
+export async function saveInspirationItemsToSupabase(items: unknown[]): Promise<boolean> {
+  return saveInspirationFeedToSupabase({ items, suppressedItemIds: Array.from(loadSuppressedInspirationIds()) });
+}
+
+/** Hent feed fra Supabase, oppdater lokal cache og returner snapshot. */
+export async function pullInspirationFeedFromRemote(): Promise<InspirationFeedSnapshot | null> {
+  if (!isSupabaseConfigured) return null;
+  const snapshot = await fetchInspirationFeedFromSupabase();
+  if (!snapshot) return null;
+  cacheInspirationFeedSnapshot(snapshot);
+  return snapshot;
+}
+
+/** Hent delt inspo-feed fra Supabase, oppdater lokal cache og varsle lyttere (medlemmer). */
+export async function refreshInspirationNotificationItemsFromRemote(): Promise<InspirationNotificationItem[]> {
+  if (typeof window === "undefined") return [];
+  if (!isSupabaseConfigured) return loadInspirationNotificationItems();
+
+  const previousRaw = window.localStorage.getItem(INSPIRATION_STORAGE_KEY) ?? "";
+  const snapshot = await pullInspirationFeedFromRemote();
+  if (!snapshot) {
+    return loadInspirationNotificationItems();
+  }
+
+  const nextRaw = window.localStorage.getItem(INSPIRATION_STORAGE_KEY) ?? "";
+  if (nextRaw !== previousRaw) {
+    notifyInspirationItemsChanged();
+  }
+  return mapRawToInspirationNotificationItems(snapshot.items);
 }
 
 async function uploadInspirationItemImage(itemId: string, imageUrl?: string): Promise<string | undefined> {
@@ -221,9 +256,10 @@ async function prepareItemsWithRemoteImages<T extends { id: string; imageUrl?: s
   );
 }
 
-/** Lagrer alltid lokalt. Prøver sky hvis konfigurert, men feiler ikke hele lagringen ved sky-feil. */
+/** Lagrer lokalt og i Supabase (kilde på tvers av enheter). */
 export async function persistInspirationItems<T extends { id: string; imageUrl?: string }>(items: T[]): Promise<InspirationSaveResult> {
   const prepared = await prepareItemsWithRemoteImages(items);
+  const suppressedItemIds = Array.from(loadSuppressedInspirationIds());
 
   const localResult = saveInspirationItemsToStorage(prepared);
   if (!localResult.ok) return localResult;
@@ -232,47 +268,33 @@ export async function persistInspirationItems<T extends { id: string; imageUrl?:
     return { ok: true, cloudSynced: false };
   }
 
-  const cloudSynced = await saveInspirationItemsToSupabase(prepared);
+  const cloudSynced = await saveInspirationFeedToSupabase({ items: prepared, suppressedItemIds });
   if (!cloudSynced) {
     return {
       ok: true,
       cloudSynced: false,
-      warning: "Lagret på denne enheten. Kunne ikke synce til skyen — kjør inspiration_feed_schema.sql i Supabase for deling med medlemmer.",
+      warning: "Lagret på denne enheten. Kunne ikke synce til skyen — kjør inspiration_feed_suppressed_ids.sql i Supabase.",
     };
   }
 
+  cacheInspirationFeedSnapshot({ items: prepared, suppressedItemIds, updatedAt: Date.now() });
   return { ok: true, cloudSynced: true };
 }
 
 /**
- * Henter inspo: sky først hvis den har innhold, ellers lokalt cache.
- * Tom sky-feed overskriver ikke lokale data.
+ * Henter inspo fra databasen (kilde), med lokal cache som offline-reserve.
  */
 export async function fetchInspirationItemsForHub<T>(): Promise<T[] | null> {
-  const local = loadInspirationItemsFromLocalStorage<T>();
-  const localWriteAt = Number(
-    typeof window !== "undefined" ? window.localStorage.getItem(INSPIRATION_LOCAL_WRITE_AT_KEY) ?? "0" : "0",
-  );
-
   if (!isSupabaseConfigured) {
-    return local;
+    return loadInspirationItemsFromLocalStorage<T>();
   }
 
-  const feed = await fetchInspirationFeedFromSupabase();
-  if (feed === null) {
-    return local;
+  const snapshot = await pullInspirationFeedFromRemote();
+  if (snapshot) {
+    return snapshot.items as T[];
   }
 
-  if (local && localWriteAt > feed.updatedAt) {
-    return local;
-  }
-
-  if (feed.items.length > 0) {
-    saveInspirationItemsToStorage(feed.items, { trackLocalWrite: false });
-    return feed.items as T[];
-  }
-
-  return local;
+  return loadInspirationItemsFromLocalStorage<T>();
 }
 
 /** PT: sky tom, men lokalt innhold finnes — fyll skyen én gang. */
@@ -280,7 +302,10 @@ export async function syncLocalInspirationToSupabaseIfNeeded<T extends { id: str
   localItems: T[] | null,
 ): Promise<boolean> {
   if (!isSupabaseConfigured || !localItems?.length) return false;
-  const remote = await fetchInspirationItemsFromSupabase();
-  if (remote === null || remote.length > 0) return false;
-  return saveInspirationItemsToSupabase(localItems);
+  const remote = await fetchInspirationFeedFromSupabase();
+  if (remote === null || remote.items.length > 0) return false;
+  return saveInspirationFeedToSupabase({
+    items: localItems,
+    suppressedItemIds: Array.from(loadSuppressedInspirationIds()),
+  });
 }

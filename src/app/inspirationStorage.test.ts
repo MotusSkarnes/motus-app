@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  cacheInspirationFeedSnapshot,
   filterSuppressedInspirationItems,
   INSPIRATION_STORAGE_KEY,
   INSPIRATION_SUPPRESSED_IDS_KEY,
+  loadSuppressedInspirationIds,
   saveInspirationItemsToStorage,
   suppressInspirationItemId,
 } from "./inspirationStorage";
@@ -42,5 +44,15 @@ describe("suppressed inspiration items", () => {
       { id: "custom-1", title: "B" },
     ]);
     expect(filtered.map((item) => item.id)).toEqual(["custom-1"]);
+  });
+
+  it("caches suppressed ids from database snapshot in localStorage", () => {
+    cacheInspirationFeedSnapshot({
+      items: [{ id: "custom-1", title: "Hei" }],
+      suppressedItemIds: ["default-tip-2"],
+      updatedAt: Date.now(),
+    });
+    expect(loadSuppressedInspirationIds().has("default-tip-2")).toBe(true);
+    expect(filterSuppressedInspirationItems([{ id: "default-tip-2", title: "X" }])).toEqual([]);
   });
 });

@@ -2,8 +2,12 @@
 create table if not exists public.inspiration_feed (
   id text primary key default 'shared',
   items jsonb not null default '[]'::jsonb,
+  suppressed_item_ids jsonb not null default '[]'::jsonb,
   updated_at timestamptz not null default now()
 );
+
+alter table public.inspiration_feed
+  add column if not exists suppressed_item_ids jsonb not null default '[]'::jsonb;
 
 alter table public.inspiration_feed enable row level security;
 

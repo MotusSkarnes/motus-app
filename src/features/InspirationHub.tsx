@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Bold, ChevronLeft, ChevronRight, ClipboardList, ImagePlus, Italic, Lightbulb, Newspaper, Pencil, Plus, Soup, Trash2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { compressImageDataUrl, compressImageFile } from "../app/imageCompress";
@@ -10,6 +10,7 @@ import {
   loadInspirationItemsFromLocalStorage,
   notifyInspirationItemsChanged,
   persistInspirationItems,
+  pullInspirationFeedFromRemote,
   suppressInspirationItemId,
   syncLocalInspirationToSupabaseIfNeeded,
 } from "../app/inspirationStorage";
@@ -644,6 +645,11 @@ export function InspirationHub({
     });
   }, [periodPlanTemplateDraft]);
 
+  const refreshInspirationFromDatabase = useCallback(async () => {
+    const fetched = await fetchInspirationItemsForHub<InspirationItem>();
+    setItems(resolveInspirationHubItems(fetched));
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -666,19 +672,20 @@ export function InspirationHub({
 
   useEffect(() => {
     const syncFromRemote = () => {
-      void (async () => {
-        if (canManage) {
-          const local = loadInspirationItemsFromLocalStorage<InspirationItem>();
-          setItems(resolveInspirationHubItems(local));
-          return;
-        }
-        const fetched = await fetchInspirationItemsForHub<InspirationItem>();
-        setItems(resolveInspirationHubItems(fetched));
-      })();
+      void refreshInspirationFromDatabase();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refreshInspirationFromDatabase();
     };
     window.addEventListener(INSPIRATION_CHANGED_EVENT, syncFromRemote);
-    return () => window.removeEventListener(INSPIRATION_CHANGED_EVENT, syncFromRemote);
-  }, [canManage]);
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", syncFromRemote);
+    return () => {
+      window.removeEventListener(INSPIRATION_CHANGED_EVENT, syncFromRemote);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", syncFromRemote);
+    };
+  }, [refreshInspirationFromDatabase]);
 
   useEffect(() => {
     if (!focusItemId?.trim()) return;
@@ -694,7 +701,8 @@ export function InspirationHub({
       setActionStatus(result.error);
       return { ok: false };
     }
-    setItems(resolveInspirationHubItems(next));
+    const snapshot = await pullInspirationFeedFromRemote();
+    setItems(resolveInspirationHubItems(snapshot?.items ?? next));
     notifyInspirationItemsChanged();
     const message = result.warning
       ? result.warning
