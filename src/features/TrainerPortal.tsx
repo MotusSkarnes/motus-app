@@ -6,6 +6,12 @@ import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClear";
 import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { uid } from "../app/storage";
+import {
+  buildExerciseCategoryById,
+  filterTemplateProgramsBySubTab,
+  isConditioningTrainingProgram,
+  type ProgramsSubTab,
+} from "../app/trainingProgramKind";
 import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { useToastStatus } from "../app/toast";
 import motusLogo from "../assets/motus-logo-transparent.svg";
@@ -571,6 +577,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const trainerSendAttemptRef = useRef(0);
   const [trainerChatSendStatus, setTrainerChatSendStatus] = useState<string | null>(null);
   const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
+  const [programsSubTab, setProgramsSubTab] = useState<ProgramsSubTab>("strength");
   const [customerProgramBuilderFocus, setCustomerProgramBuilderFocus] = useState<"training" | "period">("training");
   const [selectedWorkoutLogId, setSelectedWorkoutLogId] = useState<string | null>(null);
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
@@ -1111,7 +1118,15 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     });
     return Array.from(deduplicated.values());
   }, [periodPlansByMemberId, selectedMemberRelatedIds]);
-  const templatePrograms = programs.filter((program) => program.memberId === "__template__");
+  const templatePrograms = useMemo(
+    () => programs.filter((program) => program.memberId === "__template__"),
+    [programs],
+  );
+  const exerciseCategoryById = useMemo(() => buildExerciseCategoryById(exercises), [exercises]);
+  const activeTemplatePrograms = useMemo(
+    () => filterTemplateProgramsBySubTab(templatePrograms, programsSubTab, exerciseCategoryById),
+    [templatePrograms, programsSubTab, exerciseCategoryById],
+  );
   const selectedLogs = useMemo(() => {
     const selected = members.find((member) => member.id === selectedMemberId) ?? null;
     const isSharedMember = selected?.customerType === "Medlem";
@@ -1439,14 +1454,19 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   }, [todos]);
 
   useEffect(() => {
-    if (!templatePrograms.length) {
+    if (!activeTemplatePrograms.length) {
       setSelectedTemplateProgramId("");
       return;
     }
-    if (!templatePrograms.some((program) => program.id === selectedTemplateProgramId)) {
-      setSelectedTemplateProgramId(templatePrograms[0].id);
+    if (!activeTemplatePrograms.some((program) => program.id === selectedTemplateProgramId)) {
+      setSelectedTemplateProgramId(activeTemplatePrograms[0].id);
     }
-  }, [templatePrograms, selectedTemplateProgramId]);
+  }, [activeTemplatePrograms, selectedTemplateProgramId]);
+
+  useEffect(() => {
+    if (trainerTab !== "programs") return;
+    setProgramExerciseCategoryFilter(programsSubTab === "conditioning" ? "Kondisjon" : "Styrke");
+  }, [programsSubTab, trainerTab]);
 
   useEffect(() => {
     if (!pendingProgramMemberEmail) return;
@@ -1949,6 +1969,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   }
 
   function startEditTemplateProgram(program: TrainingProgram) {
+    setProgramsSubTab(
+      isConditioningTrainingProgram(program, exerciseCategoryById) ? "conditioning" : "strength",
+    );
     setEditingTemplateProgramId(program.id);
     setExpandedTemplateProgramId(program.id);
     setTemplateProgramTitle(program.title);
@@ -1990,7 +2013,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       setTemplateAssignStatus("Velg kunde før tildeling.");
       return;
     }
-    const template = templatePrograms.find((program) => program.id === selectedTemplateProgramId) ?? templatePrograms[0];
+    const template =
+      activeTemplatePrograms.find((program) => program.id === selectedTemplateProgramId) ?? activeTemplatePrograms[0];
     if (!template) {
       setTemplateAssignStatus("Ingen treningsmaler å tildele ennå.");
       return;
@@ -5426,12 +5450,26 @@ function programAuthorLabel(program: TrainingProgram): string | null {
 
       {trainerTab === "programs" ? (
         <div className="grid gap-4">
+          <div className="flex flex-wrap gap-2">
+            <PillButton active={programsSubTab === "strength"} onClick={() => setProgramsSubTab("strength")}>
+              Styrkeøkter
+            </PillButton>
+            <PillButton active={programsSubTab === "conditioning"} onClick={() => setProgramsSubTab("conditioning")}>
+              Kondisjon
+            </PillButton>
+          </div>
           <Card className="p-4 sm:p-5">
             <div className="flex items-start gap-3">
               <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><ClipboardList className="h-5 w-5" /></div>
               <div>
-                <h2 className="text-xl font-semibold tracking-tight">Lag treningsmal</h2>
-                <p className="text-sm text-slate-500">Bygg mal med filtrering, favoritter og drag-and-drop</p>
+                <h2 className="text-xl font-semibold tracking-tight">
+                  {programsSubTab === "strength" ? "Lag styrkemal" : "Lag kondisjonsmal"}
+                </h2>
+                <p className="text-sm text-slate-500">
+                  {programsSubTab === "strength"
+                    ? "Bygg styrkeprogram med sett, reps og vekt — drag-and-drop fra biblioteket."
+                    : "Bygg intervall- og kondisjonsøkter med oppvarming, drag og nedjogg."}
+                </p>
               </div>
             </div>
             <div className="mt-5 grid gap-4">
@@ -5594,8 +5632,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                     Avbryt redigering
                   </OutlineButton>
                 ) : null}
+                {programsSubTab === "conditioning" ? (
                 <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="text-sm font-semibold text-slate-700">Bygg kondisjonsmal</div>
+                  <div className="text-sm font-semibold text-slate-700">Steg for intervalløkt</div>
                   <p className="text-xs text-slate-500 leading-relaxed">
                     Skriv inn malnavn øverst først. Start med oppvarming, legg til drag én om gangen og til slutt nedjogg.
                     Når nedjogg er lagt inn kan du ikke legge til flere drag før du fjerner nedjogg-raden fra utkastet.
@@ -5621,6 +5660,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                     </OutlineButton>
                   </div>
                 </div>
+                ) : null}
               </div>
               <div className="min-w-0 rounded-xl border bg-slate-50 p-3 sm:p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="font-semibold">Øvelser</div>
@@ -5633,11 +5673,17 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                   <SelectBox
                     value={programExerciseCategoryFilter}
                     onChange={(value) => setProgramExerciseCategoryFilter(value as "all" | "Styrke" | "Kondisjon")}
-                    options={[
-                      { value: "all", label: "Alle typer" },
-                      { value: "Styrke", label: "Styrke" },
-                      { value: "Kondisjon", label: "Kondisjon" },
-                    ]}
+                    options={
+                      programsSubTab === "strength"
+                        ? [
+                            { value: "Styrke", label: "Styrke" },
+                            { value: "all", label: "Alle typer" },
+                          ]
+                        : [
+                            { value: "Kondisjon", label: "Kondisjon" },
+                            { value: "all", label: "Alle typer" },
+                          ]
+                    }
                   />
                   <SelectBox
                     value={programExerciseGroupFilter}
@@ -5708,16 +5754,20 @@ function programAuthorLabel(program: TrainingProgram): string | null {
               </div>
               <div className="rounded-xl border bg-slate-50 p-3 sm:p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center justify-between gap-2">
-                  <div className="font-semibold">Lagrede treningsmaler</div>
-                  <div className="text-xs text-slate-500">{templatePrograms.length} maler</div>
+                  <div className="font-semibold">
+                    {programsSubTab === "strength" ? "Lagrede styrkemaler" : "Lagrede kondisjonsmaler"}
+                  </div>
+                  <div className="text-xs text-slate-500">{activeTemplatePrograms.length} maler</div>
                 </div>
-                {templatePrograms.length === 0 ? (
+                {activeTemplatePrograms.length === 0 ? (
                   <div className="rounded-xl border border-dashed bg-white p-4 text-sm text-slate-500">
-                    Ingen treningsmaler lagret ennå.
+                    {programsSubTab === "strength"
+                      ? "Ingen styrkemaler lagret ennå."
+                      : "Ingen kondisjonsmaler lagret ennå."}
                   </div>
                 ) : null}
                 <div className="max-h-[360px] space-y-2 overflow-auto pr-1">
-                  {templatePrograms.map((program) => {
+                  {activeTemplatePrograms.map((program) => {
                     const isExpanded = expandedTemplateProgramId === program.id;
                     return (
                     <div key={program.id} className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -5789,9 +5839,17 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                   value={selectedTemplateProgramId}
                   onChange={setSelectedTemplateProgramId}
                   options={
-                    templatePrograms.length
-                      ? templatePrograms.map((program) => ({ value: program.id, label: program.title }))
-                      : [{ value: "", label: "Ingen treningsmaler lagret ennå" }]
+                    activeTemplatePrograms.length
+                      ? activeTemplatePrograms.map((program) => ({ value: program.id, label: program.title }))
+                      : [
+                          {
+                            value: "",
+                            label:
+                              programsSubTab === "strength"
+                                ? "Ingen styrkemaler lagret ennå"
+                                : "Ingen kondisjonsmaler lagret ennå",
+                          },
+                        ]
                   }
                 />
               </div>
