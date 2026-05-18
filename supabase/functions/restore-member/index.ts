@@ -36,15 +36,54 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
   });
 }
 
+const MEMBER_SELECT = "id, email, name, is_active, owner_user_id, customer_type";
+
 async function listMembersByEmail(adminClient: ReturnType<typeof createClient>, email: string): Promise<MemberRow[]> {
   const { data: rows, error: fetchError } = await adminClient
     .from("members")
-    .select("id, email, name, is_active, owner_user_id, customer_type")
+    .select(MEMBER_SELECT)
     .ilike("email", email);
   if (fetchError) {
     throw new Error(fetchError.message);
   }
   return (rows ?? []).filter((row) => normalizeEmail(String((row as MemberRow).email ?? "")) === email) as MemberRow[];
+}
+
+/** Når members.email er overskrevet, finnes raden fortsatt via auth.users member_id-metadata. */
+async function listMembersByAuthLoginEmail(
+  adminClient: ReturnType<typeof createClient>,
+  email: string,
+): Promise<MemberRow[]> {
+  const { data: listData, error: listError } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  if (listError) {
+    throw new Error(`Kunne ikke slå opp Auth-bruker: ${listError.message}`);
+  }
+  const matchedUser = (listData?.users ?? []).find((user) => normalizeEmail(user.email) === email);
+  if (!matchedUser) return [];
+
+  const memberId =
+    String(matchedUser.app_metadata?.member_id ?? "").trim() ||
+    String(matchedUser.user_metadata?.member_id ?? "").trim();
+  if (!memberId) return [];
+
+  const { data: row, error: rowError } = await adminClient
+    .from("members")
+    .select(MEMBER_SELECT)
+    .eq("id", memberId)
+    .maybeSingle();
+  if (rowError) {
+    throw new Error(rowError.message);
+  }
+  return row ? [row as MemberRow] : [];
+}
+
+async function resolveMembersForLoginEmail(
+  adminClient: ReturnType<typeof createClient>,
+  email: string,
+): Promise<MemberRow[]> {
+  const byEmail = await listMembersByEmail(adminClient, email);
+  if (byEmail.length) return byEmail;
+  return listMembersByAuthLoginEmail(adminClient, email);
 }
 
 async function recreateMemberFromAuth(
@@ -134,7 +173,7 @@ Deno.serve(async (req) => {
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
   try {
-    let matchingRows = await listMembersByEmail(adminClient, email);
+    let matchingRows = await resolveMembersForLoginEmail(adminClient, email);
     let recreated = false;
 
     if (!matchingRows.length && ownerUserId && !lookupOnly) {
@@ -175,9 +214,16 @@ Deno.serve(async (req) => {
       const patch: Record<string, unknown> = {
         is_active: true,
       };
+      const rowEmail = normalizeEmail(row.email);
+      if (rowEmail !== email) {
+        patch.email = email;
+      }
       const currentOwner = String(row.owner_user_id ?? "").trim();
       if (ownerUserId && !isSharedMedlem(row.customer_type) && (!currentOwner || currentOwner === ownerUserId)) {
         patch.owner_user_id = ownerUserId;
+      }
+      if (ownerUserId && !isSharedMedlem(row.customer_type) && !String(row.customer_type ?? "").trim()) {
+        patch.customer_type = "PT-kunde";
       }
       const { error } = await adminClient.from("members").update(patch).eq("id", id);
       if (error) {
