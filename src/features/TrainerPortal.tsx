@@ -133,7 +133,10 @@ type TrainerPortalProps = {
   markMemberInvited: (memberId: string, invitedAtIso?: string) => void;
   inviteMember: (email: string, memberId: string) => Promise<InviteMemberResult>;
   inviteTrainer: (email: string) => Promise<InviteTrainerResult>;
-  restoreMemberByEmail: (email: string) => Promise<{ ok: boolean; message: string }>;
+  restoreMemberByEmail: (
+    email: string,
+    options?: { ownerUserId?: string; claimForTrainer?: boolean },
+  ) => Promise<{ ok: boolean; message: string }>;
   restoreMissingTestData: () => Promise<{ ok: boolean; message: string }>;
   restoreOriginalExerciseBank: () => Promise<{ ok: boolean; message: string }>;
   saveProgramForMember: (input: {
@@ -2697,7 +2700,10 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     setIsRestoringMember(true);
     setRestoringArchivedEmail(normalizedEmail);
     setRestoreStatus(null);
-    const result = await restoreMemberByEmail(email);
+    const result = await restoreMemberByEmail(email, {
+      ownerUserId: currentTrainerOwnerUserId,
+      claimForTrainer: true,
+    });
     setRestoreStatus(result.message);
     if (result.ok) {
       setRestoreEmail("");

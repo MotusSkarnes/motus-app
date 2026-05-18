@@ -42,6 +42,7 @@ import {
   fetchProgramsFromSupabase,
   registerMessagesPersistedListener,
   restoreMemberByEmailFromSupabase,
+  type RestoreMemberOptions,
   supabaseAppRepository,
   type HydratedMemberData,
 } from "../services/supabaseRepository";
@@ -441,6 +442,16 @@ export function useAppState() {
     const { role, memberId, email, members, programs, fallbackId } = input;
     if (role !== "member") return fallbackId;
     const normalizedEmail = email.trim().toLowerCase();
+    const linkedMemberId = memberId?.trim() ?? "";
+    if (linkedMemberId && normalizedEmail) {
+      const authLinked = members.find(
+        (member) =>
+          member.id === linkedMemberId &&
+          member.isActive !== false &&
+          member.email.trim().toLowerCase() === normalizedEmail,
+      );
+      if (authLinked) return linkedMemberId;
+    }
     const byEmailCandidates = normalizedEmail
       ? members.filter((member) => member.email.trim().toLowerCase() === normalizedEmail && member.isActive !== false)
       : [];
@@ -721,12 +732,10 @@ export function useAppState() {
                 .map((member) => member.personalGoals),
               ...mergedMembers.map((member) => member.personalGoals),
             ]);
-            if (bestGoalsForEmail) {
-              mergedMembers = mergedMembers.map((member) => ({
-                ...member,
-                personalGoals: bestGoalsForEmail,
-              }));
-            }
+            mergedMembers = mergedMembers.map((member) => ({
+              ...member,
+              personalGoals: bestGoalsForEmail || member.personalGoals,
+            }));
           }
           if (currentUser?.role === "trainer") {
             // Remote kan ha tom invitedAt på raden (RLS/direkte fetch vs hydrate) rett etter invitasjon — ikke overskriv optimistisk/lokal verdi.
@@ -1610,17 +1619,24 @@ export function useAppState() {
     return inviteMemberByEmail(email, memberId);
   }
 
-  async function restoreMemberByEmail(email: string): Promise<{ ok: boolean; message: string }> {
+  async function restoreMemberByEmail(
+    email: string,
+    options?: RestoreMemberOptions,
+  ): Promise<{ ok: boolean; message: string }> {
     if (!isSupabaseConfigured) {
       return { ok: false, message: "Gjenoppretting er ikke tilgjengelig akkurat nå." };
     }
-    const result = await restoreMemberByEmailFromSupabase(email);
-    if (!result.ok) return result;
-
     const {
       data: { session },
     } = supabaseClient ? await supabaseClient.auth.getSession() : { data: { session: null } };
-    const ownerUserId = String(session?.user?.id ?? "").trim();
+    const sessionOwnerUserId = String(session?.user?.id ?? "").trim();
+    const result = await restoreMemberByEmailFromSupabase(email, {
+      ownerUserId: options?.ownerUserId ?? sessionOwnerUserId,
+      claimForTrainer: options?.claimForTrainer ?? true,
+    });
+    if (!result.ok) return result;
+
+    const ownerUserId = String(options?.ownerUserId ?? sessionOwnerUserId).trim();
     const hydratedTrainer = ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
     const directTrainerMembers = await fetchMembersFromSupabase();
     const remoteMembers = hydratedTrainer

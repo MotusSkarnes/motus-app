@@ -10,6 +10,8 @@ type RestorePayload = {
   email?: string;
   ownerUserId?: string;
   lookupOnly?: boolean;
+  /** Når true: overfør PT-kunde til innlogget trener (brukes av «Gjenopprett og knytt til meg»). */
+  claimForTrainer?: boolean;
 };
 
 type MemberRow = {
@@ -72,6 +74,22 @@ async function fetchMemberById(adminClient: ReturnType<typeof createClient>, mem
   const { data: row, error } = await adminClient.from("members").select(MEMBER_SELECT).eq("id", trimmed).maybeSingle();
   if (error) throw new Error(error.message);
   return row ? (row as MemberRow) : null;
+}
+
+async function migrateMemberDataToTrainer(
+  adminClient: ReturnType<typeof createClient>,
+  memberIds: string[],
+  ownerUserId: string,
+): Promise<void> {
+  const ids = Array.from(new Set(memberIds.map((id) => id.trim()).filter(Boolean)));
+  const owner = ownerUserId.trim();
+  if (!ids.length || !owner) return;
+  for (const table of ["training_programs", "workout_logs", "chat_messages"] as const) {
+    const { error } = await adminClient.from(table).update({ owner_user_id: owner }).in("member_id", ids);
+    if (error) {
+      console.warn(`restore-member: could not migrate ${table}.owner_user_id:`, error.message);
+    }
+  }
 }
 
 async function syncAuthMemberId(adminClient: ReturnType<typeof createClient>, authUser: AuthUser, memberId: string): Promise<void> {
@@ -179,18 +197,18 @@ async function relinkAuthLoginToDedicatedMemberRow(
   email: string,
   ownerUserId: string,
   authUser: AuthUser,
+  claimForTrainer: boolean,
 ): Promise<MemberRow> {
   const byEmail = await listMembersByEmail(adminClient, email);
   if (byEmail.length) {
     const row = byEmail[0] as MemberRow;
     const id = String(row.id ?? "").trim();
     if (id) {
-      const patch: Record<string, unknown> = { is_active: true, email };
-      const currentOwner = String(row.owner_user_id ?? "").trim();
-      if (ownerUserId && !isSharedMedlem(row.customer_type) && (!currentOwner || currentOwner === ownerUserId)) {
-        patch.owner_user_id = ownerUserId;
-      }
+      const patch = buildMemberRestorePatch(row, email, ownerUserId, claimForTrainer);
       await adminClient.from("members").update(patch).eq("id", id);
+      if (claimForTrainer && ownerUserId) {
+        await migrateMemberDataToTrainer(adminClient, [id], ownerUserId);
+      }
       await syncAuthMemberId(adminClient, authUser, id);
       const updated = await fetchMemberById(adminClient, id);
       return updated ?? row;
@@ -218,7 +236,34 @@ async function recreateMemberFromAuth(
 ): Promise<MemberRow | null> {
   const authUser = await findAuthUserByEmail(adminClient, email);
   if (!authUser) return null;
-  return relinkAuthLoginToDedicatedMemberRow(adminClient, email, ownerUserId, authUser);
+  return relinkAuthLoginToDedicatedMemberRow(adminClient, email, ownerUserId, authUser, true);
+}
+
+function buildMemberRestorePatch(
+  row: MemberRow,
+  loginEmail: string,
+  ownerUserId: string,
+  claimForTrainer: boolean,
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = { is_active: true };
+  const rowEmail = normalizeEmail(row.email);
+  if (rowEmail !== loginEmail) {
+    patch.email = loginEmail;
+  }
+  if (!ownerUserId || isSharedMedlem(row.customer_type)) {
+    return patch;
+  }
+  const currentOwner = String(row.owner_user_id ?? "").trim();
+  if (claimForTrainer) {
+    patch.owner_user_id = ownerUserId;
+    patch.customer_type = "PT-kunde";
+  } else if (!currentOwner || currentOwner === ownerUserId) {
+    patch.owner_user_id = ownerUserId;
+  }
+  if (!String(row.customer_type ?? "").trim()) {
+    patch.customer_type = "PT-kunde";
+  }
+  return patch;
 }
 
 function mapMemberForResponse(row: MemberRow, loginEmail: string, emailMismatch: boolean) {
@@ -260,8 +305,12 @@ Deno.serve(async (req) => {
   const email = normalizeEmail(payload.email);
   const ownerUserId = String(payload.ownerUserId ?? "").trim();
   const lookupOnly = payload.lookupOnly === true;
+  const claimForTrainer = payload.claimForTrainer === true;
   if (!email || !email.includes("@")) {
     return jsonResponse(400, { error: "Valid email is required" });
+  }
+  if (!lookupOnly && !ownerUserId) {
+    return jsonResponse(400, { error: "ownerUserId is required for restore" });
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
@@ -303,7 +352,13 @@ Deno.serve(async (req) => {
     }
 
     if (emailMismatch && resolved.authUser && ownerUserId) {
-      const relinked = await relinkAuthLoginToDedicatedMemberRow(adminClient, email, ownerUserId, resolved.authUser);
+      const relinked = await relinkAuthLoginToDedicatedMemberRow(
+        adminClient,
+        email,
+        ownerUserId,
+        resolved.authUser,
+        claimForTrainer,
+      );
       return jsonResponse(200, {
         message: "Klient koblet på nytt med riktig e-post",
         restoredCount: 1,
@@ -318,20 +373,7 @@ Deno.serve(async (req) => {
     for (const row of matchingRows) {
       const id = String(row.id ?? "").trim();
       if (!id) continue;
-      const patch: Record<string, unknown> = {
-        is_active: true,
-      };
-      const rowEmail = normalizeEmail(row.email);
-      if (rowEmail !== email) {
-        patch.email = email;
-      }
-      const currentOwner = String(row.owner_user_id ?? "").trim();
-      if (ownerUserId && !isSharedMedlem(row.customer_type) && (!currentOwner || currentOwner === ownerUserId)) {
-        patch.owner_user_id = ownerUserId;
-      }
-      if (ownerUserId && !isSharedMedlem(row.customer_type) && !String(row.customer_type ?? "").trim()) {
-        patch.customer_type = "PT-kunde";
-      }
+      const patch = buildMemberRestorePatch(row, email, ownerUserId, claimForTrainer);
       const { error } = await adminClient.from("members").update(patch).eq("id", id);
       if (error) {
         return jsonResponse(500, { error: error.message, memberId: id });
@@ -342,12 +384,17 @@ Deno.serve(async (req) => {
       restoredIds.push(id);
     }
 
+    if (claimForTrainer && ownerUserId && restoredIds.length) {
+      await migrateMemberDataToTrainer(adminClient, restoredIds, ownerUserId);
+    }
+
     const reactivatedCount = matchingRows.filter((row) => row.is_active === false).length;
     return jsonResponse(200, {
       message: recreated ? "Member row recreated and restored" : "Member restored",
       restoredCount: restoredIds.length,
       reactivatedCount,
       recreated,
+      claimedForTrainer: claimForTrainer && Boolean(ownerUserId),
       memberIds: restoredIds,
     });
   } catch (error) {

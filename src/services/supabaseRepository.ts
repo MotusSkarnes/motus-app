@@ -35,6 +35,7 @@ import {
   type UpdateWorkoutLogTrainerCommentInput,
   type UpdateWorkoutResultInput,
 } from "./appRepository";
+import { isContaminatedDemoMemberProfile } from "../app/memberLocalCatalog";
 import { ensureMemberAuthLink } from "./supabaseAuth";
 import { supabaseClient } from "./supabaseClient";
 import {
@@ -832,16 +833,15 @@ export async function syncMemberLocalCatalogToSupabase(state: AppState): Promise
   emailMembers.forEach((member) => memberIds.add(member.id.trim()));
 
   const anchorMember =
-    emailMembers.find((member) => member.id === canonicalMemberId) ??
-    emailMembers[0] ??
-    state.members.find((member) => memberIds.has(member.id)) ??
+    emailMembers.find((member) => member.id === canonicalMemberId && !isContaminatedDemoMemberProfile(member)) ??
+    emailMembers.find((member) => !isContaminatedDemoMemberProfile(member)) ??
     null;
 
   const hints = {
     targetEmail: sessionEmail,
     targetName: String(anchorMember?.name ?? state.currentUser.name ?? "").trim(),
-    customerType: String(anchorMember?.customerType ?? "").trim(),
-    membershipType: String(anchorMember?.membershipType ?? "").trim(),
+    customerType: String(anchorMember?.customerType ?? "PT-kunde").trim(),
+    membershipType: String(anchorMember?.membershipType ?? "Premium").trim(),
     fallbackOwnerUserId: String(state.currentUser.id ?? "").trim(),
   };
 
@@ -941,7 +941,7 @@ export async function persistOnboardingToSupabase(
     ];
     let directUpdate = idClauses.length
       ? await supabaseClient
-          .from("members")
+      .from("members")
           .update({
             goal: changes.goal,
             focus: changes.focus,
@@ -1102,6 +1102,10 @@ async function syncMemberProfileViaEdgeFunction(
 
 async function persistMember(member: Member) {
   if (!supabaseClient) return;
+  if (isContaminatedDemoMemberProfile(member)) {
+    console.warn("persistMember skipped contaminated demo profile:", member.id, member.email, member.name);
+    return;
+  }
   const normalizedEmail = member.email.trim().toLowerCase();
   const canonicalMemberId = await resolveCanonicalMemberIdForPersistence(member.id, {
     targetEmail: normalizedEmail,
@@ -1349,9 +1353,9 @@ async function deleteProgram(
   }
 
   if (!programRow) {
-    const { error } = await supabaseClient.from("training_programs").delete().eq("id", programId);
-    if (error) {
-      console.warn("Supabase program delete failed:", error.message);
+  const { error } = await supabaseClient.from("training_programs").delete().eq("id", programId);
+  if (error) {
+    console.warn("Supabase program delete failed:", error.message);
     }
     return;
   }
@@ -1933,8 +1937,8 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
   const { data, error } = await supabaseClient.functions.invoke("hydrate-trainer-data", {
     body: { ownerUserId, includeDebug: true },
   });
-  if (error) {
-    console.warn("hydrate-trainer-data invoke failed:", error.message);
+    if (error) {
+      console.warn("hydrate-trainer-data invoke failed:", error.message);
     let fallbackMessage = error.message;
     if (supabaseUrl && supabaseAnonKey) {
       try {
@@ -2245,13 +2249,13 @@ export async function fetchProgramsFromSupabase(): Promise<TrainingProgram[] | n
     const memberLibraryStatus: MemberProgramLibraryStatus | undefined =
       rawLibrary === "hidden" || rawLibrary === "archived" ? (rawLibrary as MemberProgramLibraryStatus) : undefined;
     return {
-      id: String(row.id),
-      memberId: String(row.member_id),
-      title: String(row.title ?? ""),
-      goal: String(row.goal ?? ""),
-      notes: String(row.notes ?? ""),
-      createdAt: mapIsoToProgramDate(String(row.created_at ?? "")),
-      exercises: Array.isArray(row.exercises) ? (row.exercises as ProgramExercise[]) : [],
+    id: String(row.id),
+    memberId: String(row.member_id),
+    title: String(row.title ?? ""),
+    goal: String(row.goal ?? ""),
+    notes: String(row.notes ?? ""),
+    createdAt: mapIsoToProgramDate(String(row.created_at ?? "")),
+    exercises: Array.isArray(row.exercises) ? (row.exercises as ProgramExercise[]) : [],
       ...(memberLibraryStatus ? { memberLibraryStatus } : {}),
     };
   });
@@ -2273,17 +2277,17 @@ export async function fetchLogsFromSupabase(): Promise<WorkoutLog[] | null> {
   return (data ?? []).map((row) => {
     const parsedNote = parseWorkoutNote(row.note);
     return {
-      id: String(row.id),
-      memberId: String(row.member_id),
-      programTitle: String(row.program_title ?? ""),
-      date: String(row.date ?? ""),
-      status: row.status === "Planlagt" ? "Planlagt" : "Fullført",
+    id: String(row.id),
+    memberId: String(row.member_id),
+    programTitle: String(row.program_title ?? ""),
+    date: String(row.date ?? ""),
+    status: row.status === "Planlagt" ? "Planlagt" : "Fullført",
       note: parsedNote.note,
       reflection: parsedNote.reflection,
       trainerComment: parsedNote.trainerComment,
       trainerCommentUpdatedAt: parsedNote.trainerCommentUpdatedAt,
       trainerCommentAuthorName: parsedNote.trainerCommentAuthorName,
-      results: Array.isArray(row.results) ? (row.results as WorkoutExerciseResult[]) : undefined,
+    results: Array.isArray(row.results) ? (row.results as WorkoutExerciseResult[]) : undefined,
     };
   });
 }
@@ -2410,7 +2414,7 @@ export async function archiveMemberByEmailFromSupabase(
       const archivedCount = Number((data as { archivedCount?: number } | null)?.archivedCount ?? 0);
       if (archivedCount <= 0) {
         return { ok: false, message: "Fant ingen klient å arkivere i databasen." };
-      }
+    }
       return { ok: true, message: "Klient arkivert i databasen." };
     }
     console.warn("archive-member invoke failed:", error.message);
@@ -2528,7 +2532,16 @@ export async function lookupMembersByEmailForTrainer(
   };
 }
 
-export async function restoreMemberByEmailFromSupabase(email: string): Promise<{ ok: boolean; message: string }> {
+export type RestoreMemberOptions = {
+  ownerUserId?: string | null;
+  /** Overfør PT-kunde til innlogget trener (programmer, logger, chat). */
+  claimForTrainer?: boolean;
+};
+
+export async function restoreMemberByEmailFromSupabase(
+  email: string,
+  options?: RestoreMemberOptions,
+): Promise<{ ok: boolean; message: string }> {
   if (!supabaseClient) {
     return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
   }
@@ -2538,25 +2551,36 @@ export async function restoreMemberByEmailFromSupabase(email: string): Promise<{
     return { ok: false, message: "Skriv inn en gyldig e-post." };
   }
 
-  const ownerUserId = String((await getOwnerUserId()) ?? "").trim();
+  const claimForTrainer = options?.claimForTrainer === true;
+  const ownerUserId = String(options?.ownerUserId ?? (await getOwnerUserId()) ?? "").trim();
+  if (claimForTrainer && !ownerUserId) {
+    return { ok: false, message: "Kunne ikke identifisere PT-bruker. Logg ut og inn igjen." };
+  }
+
   const invoke = await invokeRestoreMemberFunction({
     email: normalizedEmail,
     ownerUserId,
+    claimForTrainer,
   });
   if (invoke.ok && invoke.data) {
     const restoredCount = Number(invoke.data.restoredCount ?? 0);
-    if (restoredCount <= 0) {
+    const relinked = invoke.data.relinked === true;
+    if (restoredCount <= 0 && !relinked) {
       return { ok: false, message: "Fant ingen klient med denne e-posten i databasen." };
     }
     const recreated = invoke.data.recreated === true;
-    const relinked = invoke.data.relinked === true;
+    const claimed = invoke.data.claimedForTrainer === true;
     return {
       ok: true,
       message: relinked
-        ? "Klienten er koblet på nytt med riktig e-post. Oppdaterer liste..."
+        ? claimed
+          ? "Klienten er koblet på nytt og knyttet til deg. Oppdaterer liste..."
+          : "Klienten er koblet på nytt med riktig e-post. Oppdaterer liste..."
         : recreated
           ? "Klientrad opprettet på nytt og aktivert. Oppdaterer liste..."
-          : "Klient gjenopprettet. Oppdaterer liste...",
+          : claimed
+            ? "Klienten er knyttet til deg. Oppdaterer liste..."
+            : "Klient gjenopprettet. Oppdaterer liste...",
     };
   }
 
@@ -2661,9 +2685,6 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.saveProgram(state, input);
     void (async () => {
       try {
-        if (anchorMember) {
-          await persistMember(anchorMember);
-        }
         const result = await persistProgram(input, hints);
         input.onPersisted?.(result);
       } catch (error) {

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   collectCanonicalMemberIds,
   filterMembersForSessionEmail,
+  isContaminatedDemoMemberProfile,
   isDemoSeedMemberId,
   sessionOwnerEmailChanged,
   stripDemoSeedCatalog,
@@ -35,6 +36,16 @@ describe("memberLocalCatalog", () => {
     expect(next.members.map((m) => m.id)).toEqual(["member-nmn08uu"]);
     expect(next.programs.map((p) => p.id)).toEqual(["p2"]);
     expect(next.logs).toEqual([]);
+  });
+
+  it("detects demo name on real member email as contaminated", () => {
+    expect(
+      isContaminatedDemoMemberProfile({
+        id: "member-nmn08uu",
+        name: "Emma Hansen",
+        email: "leneruud@msn.com",
+      } as AppState["members"][number]),
+    ).toBe(true);
   });
 
   it("filters remote members to session email", () => {

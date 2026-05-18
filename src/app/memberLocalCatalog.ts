@@ -1,24 +1,36 @@
 import { getSupabaseBootstrapState } from "./data";
 import type { AppState, Member, TrainingProgram, WorkoutLog } from "./types";
 
-export const CATALOG_SCHEMA_VERSION = 2;
+export const CATALOG_SCHEMA_VERSION = 3;
 export const CATALOG_SCHEMA_VERSION_KEY = "motus.catalogSchemaVersion";
 export const SESSION_OWNER_EMAIL_KEY = "motus.sessionOwnerEmail";
 
 const DEMO_MEMBER_ID_PATTERN = /^m\d+$/;
+const DEMO_SEED_MEMBER_NAMES = new Set(["emma hansen", "martin johansen"]);
 
 export function isDemoSeedMemberId(memberId: string): boolean {
   return DEMO_MEMBER_ID_PATTERN.test(memberId.trim());
 }
 
+/** Demo-navn på ekte e-post (feil merge fra localStorage) — skal aldri synkes til sky eller vises som innlogget bruker. */
+export function isContaminatedDemoMemberProfile(member: Pick<Member, "id" | "name" | "email">): boolean {
+  if (isDemoSeedMemberId(member.id)) return true;
+  const name = member.name.trim().toLowerCase();
+  if (!DEMO_SEED_MEMBER_NAMES.has(name)) return false;
+  const email = member.email.trim().toLowerCase();
+  return Boolean(email.includes("@") && !email.endsWith("@example.com"));
+}
+
 export function stripDemoSeedCatalog<T extends Pick<AppState, "members" | "programs" | "logs">>(state: T): T {
-  const demoMemberIds = new Set(state.members.filter((member) => isDemoSeedMemberId(member.id)).map((member) => member.id));
-  if (!demoMemberIds.size) return state;
+  const contaminatedIds = new Set(
+    state.members.filter((member) => isContaminatedDemoMemberProfile(member)).map((member) => member.id),
+  );
+  if (!contaminatedIds.size) return state;
   return {
     ...state,
-    members: state.members.filter((member) => !demoMemberIds.has(member.id)),
-    programs: state.programs.filter((program) => !demoMemberIds.has(program.memberId.trim())),
-    logs: state.logs.filter((log) => !demoMemberIds.has(log.memberId.trim())),
+    members: state.members.filter((member) => !contaminatedIds.has(member.id)),
+    programs: state.programs.filter((program) => !contaminatedIds.has(program.memberId.trim())),
+    logs: state.logs.filter((log) => !contaminatedIds.has(log.memberId.trim())),
   };
 }
 

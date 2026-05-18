@@ -10,9 +10,8 @@ set
   customer_type = 'PT-kunde',
   membership_type = coalesce(nullif(trim(membership_type), ''), 'Premium'),
   is_active = true,
-  owner_user_id = coalesce(
-    (select id from auth.users where lower(trim(email)) = lower('iben@motus-skarnes.no') limit 1),
-    owner_user_id
+  owner_user_id = (
+    select id from auth.users where lower(trim(email)) = lower('lene@motus-skarnes.no') limit 1
   )
 where id = 'member-nmn08uu';
 
