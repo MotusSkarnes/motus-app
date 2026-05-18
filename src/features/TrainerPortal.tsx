@@ -4328,6 +4328,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                     className="!rounded-xl !px-3 !py-2 !text-xs"
                   />
                 ) : null}
+                {customerSubTab !== "workouts" && customerSubTab !== "messages" ? (
                 <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
                   <div className="rounded-xl border bg-white p-4 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -4427,7 +4428,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                     </div>
                   </div>
                 </div>
-                {customerSubTab !== "programs" ? (
+                ) : null}
+                {customerSubTab !== "programs" && customerSubTab !== "workouts" ? (
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <StatCard label="Programmer" value={String(selectedPrograms.length)} hint="På denne kunden" />
                     <StatCard label="Logger" value={String(selectedLogs.length)} hint="På denne kunden" />
@@ -5128,14 +5130,14 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 ) : null}
 
                 {customerSubTab === "workouts" ? (
-                  <div className="grid gap-4 2xl:grid-cols-[0.95fr_1.05fr]">
-                    <div className="rounded-xl border bg-slate-50 p-4">
+                  <div className="grid gap-5 xl:grid-cols-[minmax(300px,22rem)_minmax(0,1fr)] xl:items-start">
+                    <div className="flex min-h-0 flex-col rounded-xl border bg-slate-50 p-4 xl:max-h-[min(78vh,920px)]">
                       <div className="mb-3 grid gap-2 sm:grid-cols-3">
                         <StatCard label="Økter siste 7 dager" value={String(workoutInsights.workoutsLast7Days)} hint="Alle økter" />
                         <StatCard label="Gruppetimer siste 30 dager" value={String(workoutInsights.groupWorkoutsLast30Days)} hint="Kun gruppetimer" />
                         <StatCard label="Snitt belastning 30 dager" value={workoutInsights.averageDifficulty} hint="Basert på refleksjon" />
                       </div>
-                      <div className="mb-3 grid gap-2 sm:grid-cols-2">
+                      <div className="mb-3 grid gap-2 lg:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                         <SelectBox
                           value={workoutDateRangeFilter}
                           onChange={(value) => setWorkoutDateRangeFilter(value as "7d" | "30d" | "all")}
@@ -5168,7 +5170,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                           ]}
                         />
                       </div>
-                      <div>
+                      <div className="flex min-h-0 flex-1 flex-col">
                         <div className="font-semibold">Siste økter</div>
                         <div className="mt-0.5 text-xs text-slate-500">
                           {workoutDateRangeFilter === "7d"
@@ -5177,9 +5179,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                               ? "Viser økter fra de siste 30 dagene"
                               : "Viser alle økter"}
                         </div>
-                      </div>
                       {filteredWorkoutLogs.length ? (
-                        <div className="mt-3 space-y-2">
+                        <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
                           {filteredWorkoutLogs.map((log) => (
                             <button
                               key={log.id}
@@ -5224,11 +5225,12 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                           Vis kun siste 7 dager
                         </button>
                       ) : null}
+                      </div>
                     </div>
-                    <div className="rounded-xl border bg-slate-50 p-4">
+                    <div className="flex min-h-0 flex-col rounded-xl border bg-slate-50 p-4 xl:max-h-[min(78vh,920px)]">
                       <div className="font-semibold">Øktdetaljer</div>
                       {filteredSelectedWorkoutLog ? (
-                        <div className="mt-3 space-y-3">
+                        <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
                           <div className="rounded-2xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                             <div className="flex items-center justify-between gap-3">
                               <div className="font-medium text-slate-800">{filteredSelectedWorkoutLog.programTitle}</div>
@@ -5279,8 +5281,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                                       {result.completed ? "Fullført" : "Ikke fullført"}
                                     </div>
                                   </div>
-                                  <div className="mt-2 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
-                                    <div>
+                                  <div className="mt-2 grid gap-1.5 text-xs text-slate-600 md:grid-cols-2">
+                                    <div className="min-w-0">
                                       Plan:{" "}
                                       {result.exerciseCategory === "Kondisjon" && (result.plannedDurationMinutes ?? "").trim()
                                         ? `${result.plannedSets} runder × ${result.plannedDurationMinutes} min`

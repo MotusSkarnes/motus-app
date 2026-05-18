@@ -6,7 +6,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <div className="min-h-screen min-h-dvh p-3 sm:p-4 md:p-8 text-slate-900 bg-white">
-        <div className="mx-auto max-w-7xl">{children}</div>
+        <div className="mx-auto w-full max-w-[90rem] px-1 sm:px-0">{children}</div>
       </div>
     </ToastProvider>
   );
