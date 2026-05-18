@@ -2879,6 +2879,37 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     setAdminCacheStatus(`Lokale meldinger ryddet. Fjernet ${removed} melding${removed === 1 ? "" : "er"}.`);
   }
 
+  async function applyMemberDedupeCleanup(ownerUserId: string, duplicateGroups: number) {
+    if (!supabaseClient) return;
+    setIsRunningMemberDedupe(true);
+    setMemberDedupeStatus(null);
+    try {
+      const applyResult = await supabaseClient.functions.invoke("dedupe-members", {
+        body: { ownerUserId, apply: true },
+      });
+      if (applyResult.error) {
+        setMemberDedupeStatus(`Opprydding feilet: ${applyResult.error.message}`);
+        return;
+      }
+
+      const applyData = (applyResult.data ?? {}) as { groups?: Array<{ deactivatedMembers?: number }> };
+      const deactivatedTotal = (applyData.groups ?? []).reduce((sum, group) => sum + Number(group.deactivatedMembers ?? 0), 0);
+      setMemberDedupeStatus(
+        `Opprydding fullført: ${duplicateGroups} duplikatgruppe${duplicateGroups === 1 ? "" : "r"}, ${deactivatedTotal} rader satt inaktive. Sjekk «Vis inaktive» om noen mangler i listen.`,
+      );
+      const cleanedAt = new Date().toISOString();
+      setLastMemberCleanupAt(cleanedAt);
+      setAdminDuplicateGroupCount(0);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("motus.admin.lastMemberCleanupAt", cleanedAt);
+      }
+    } catch (error) {
+      setMemberDedupeStatus(`Opprydding feilet: ${String(error)}`);
+    } finally {
+      setIsRunningMemberDedupe(false);
+    }
+  }
+
   async function handleRunSafeMemberCleanup() {
     if (!isSupabaseConfigured || !supabaseClient) {
       setMemberDedupeStatus("Opprydding er ikke tilgjengelig akkurat nå.");
@@ -2908,25 +2939,22 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         return;
       }
 
-      const applyResult = await supabaseClient.functions.invoke("dedupe-members", {
-        body: { ownerUserId, apply: true },
+      setConfirmDialog({
+        title: "Bekreft duplikatopprydding",
+        message:
+          `Fant ${duplicateGroups} duplikatgruppe${duplicateGroups === 1 ? "" : "r"} (samme e-post, flere medlemsrader). ` +
+          "Ekstra rader settes inaktive — de slettes ikke. Aktive kunder skal fortsatt vises; inaktive finnes under «Vis inaktive» eller kan gjenopprettes med «Gjenopprett klient». " +
+          "Ikke kjør dette på testbrukere med lignende navn men ulik e-post.",
+        confirmLabel: "Kjør opprydding",
+        cancelLabel: "Avbryt",
+        tone: "danger",
+        onConfirm: () => {
+          void applyMemberDedupeCleanup(ownerUserId, duplicateGroups);
+        },
       });
-      if (applyResult.error) {
-        setMemberDedupeStatus(`Opprydding feilet: ${applyResult.error.message}`);
-        return;
-      }
-
-      const applyData = (applyResult.data ?? {}) as { groups?: Array<{ deactivatedMembers?: number }> };
-      const deactivatedTotal = (applyData.groups ?? []).reduce((sum, group) => sum + Number(group.deactivatedMembers ?? 0), 0);
       setMemberDedupeStatus(
-        `Opprydding fullført: ${duplicateGroups} duplikatgruppe${duplicateGroups === 1 ? "" : "r"}, ${deactivatedTotal} rader satt inaktive.`
+        `Dry-run: ${duplicateGroups} duplikatgruppe${duplicateGroups === 1 ? "" : "r"}. Bekreft i dialogen for å kjøre.`,
       );
-      const cleanedAt = new Date().toISOString();
-      setLastMemberCleanupAt(cleanedAt);
-      setAdminDuplicateGroupCount(0);
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("motus.admin.lastMemberCleanupAt", cleanedAt);
-      }
     } catch (error) {
       setMemberDedupeStatus(`Opprydding feilet: ${String(error)}`);
     } finally {
@@ -6239,7 +6267,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
           <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <div className="text-sm font-semibold text-slate-700">Slå sammen duplikatkunder</div>
             <div className="text-xs text-slate-600">
-              Går gjennom kunder med samme e-post og rydder opp trygt.
+              Kun for flere medlemsrader med identisk e-post. Inaktive kunder forsvinner ikke — bruk «Vis inaktive» eller «Gjenopprett klient». Kjør ikke uten dry-run og bekreftelse.
             </div>
             {memberDedupeStatus ? (
               <StatusMessage
