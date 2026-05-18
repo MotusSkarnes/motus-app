@@ -33,10 +33,29 @@ function isSharedMember(row: Record<string, unknown>): boolean {
   return String(row.customer_type ?? "").trim().toLowerCase() === "medlem";
 }
 
+function isPrivateRosterMember(row: Record<string, unknown>): boolean {
+  return !isSharedMember(row);
+}
+
 function isVisibleToTrainer(row: Record<string, unknown>, ownerUserId: string): boolean {
   const rowOwnerUserId = String(row.owner_user_id ?? "").trim();
   if (rowOwnerUserId === ownerUserId) return true;
   return isSharedMember(row);
+}
+
+function canIncludeLinkedMemberRow(
+  row: Record<string, unknown>,
+  ownerUserId: string,
+  linkedMemberIds: Set<string>,
+): boolean {
+  const id = String((row as { id?: string }).id ?? "").trim();
+  if (!id || !linkedMemberIds.has(id)) return false;
+  if (isVisibleToTrainer(row, ownerUserId)) return true;
+  const rowOwnerUserId = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
+  if (isPrivateRosterMember(row) && rowOwnerUserId && rowOwnerUserId !== ownerUserId) {
+    return false;
+  }
+  return !rowOwnerUserId || rowOwnerUserId === ownerUserId;
 }
 
 function rowBelongsToOwner(row: Record<string, unknown>, ownerUserId: string): boolean {
@@ -263,7 +282,8 @@ Deno.serve(async (req) => {
     } else if (linkedMembersQuery.error) {
       membersError = membersError ?? linkedMembersQuery.error;
     }
-    members = uniqueById([...(members ?? []), ...linkedRows]) as Array<Record<string, unknown>>;
+    const safeLinkedRows = linkedRows.filter((row) => canIncludeLinkedMemberRow(row, ownerUserId, linkedMemberIds));
+    members = uniqueById([...(members ?? []), ...safeLinkedRows]) as Array<Record<string, unknown>>;
   }
 
   if (!membersError && (members ?? []).length > 0) {
@@ -293,11 +313,7 @@ Deno.serve(async (req) => {
     members = uniqueById([...(members ?? []), ...widenedMembers]) as Array<Record<string, unknown>>;
     members = harmonizeMemberProfilesByEmail(members);
   }
-  members = (members ?? []).filter((row) => {
-    if (isVisibleToTrainer(row, ownerUserId)) return true;
-    const id = String((row as { id?: string }).id ?? "").trim();
-    return Boolean(id && linkedMemberIds.has(id));
-  });
+  members = (members ?? []).filter((row) => isVisibleToTrainer(row, ownerUserId));
 
   const visibleMemberIds = (members ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);
   const visibleMemberEmails = Array.from(
