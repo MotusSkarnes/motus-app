@@ -247,7 +247,8 @@ function buildMemberRestorePatch(
 ): Record<string, unknown> {
   const patch: Record<string, unknown> = { is_active: true };
   const rowEmail = normalizeEmail(row.email);
-  if (rowEmail !== loginEmail) {
+  // Never overwrite another customer's email (e.g. ruudlene@gmail.com → resepsjon@motus-skarnes.no).
+  if (rowEmail !== loginEmail && !rowEmail) {
     patch.email = loginEmail;
   }
   if (!ownerUserId || isSharedMedlem(row.customer_type)) {
@@ -373,6 +374,10 @@ Deno.serve(async (req) => {
     for (const row of matchingRows) {
       const id = String(row.id ?? "").trim();
       if (!id) continue;
+      const rowEmail = normalizeEmail(row.email);
+      if (rowEmail && rowEmail !== email) {
+        continue;
+      }
       const patch = buildMemberRestorePatch(row, email, ownerUserId, claimForTrainer);
       const { error } = await adminClient.from("members").update(patch).eq("id", id);
       if (error) {
