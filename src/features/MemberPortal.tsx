@@ -30,6 +30,7 @@ import { MOTUS } from "../app/data";
 import motusLogo from "../assets/motus-logo-transparent.svg";
 import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
+import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { hasSubstantiveOnboardingAnswers, parsePersonalGoalsJson, readProfileExtensions } from "../app/memberOnboarding";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
@@ -620,7 +621,7 @@ function computeLiftVolumeKgWeekAndMonth(
     let sum = 0;
     for (const r of results ?? []) {
       if (!r.completed) continue;
-      if (r.exerciseCategory === "Uttøyning") continue;
+      if (r.exerciseCategory && isHoldBasedExerciseCategory(r.exerciseCategory)) continue;
       const dur = parseNum(r.performedDurationMinutes);
       const w = parseNum(r.performedWeight);
       const reps = parseNum(r.performedReps);
@@ -671,7 +672,7 @@ function computeShareCardLast7DaysStats(
     for (const result of log.results ?? []) {
       if (!result.completed) continue;
       completedSets += 1;
-      if (result.exerciseCategory === "Uttøyning") continue;
+      if (result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)) continue;
       const durationMinutes = parseNum(result.performedDurationMinutes);
       const weight = parseNum(result.performedWeight);
       const reps = parseNum(result.performedReps);
@@ -1539,7 +1540,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const fromHistory = findSuggestedWeightForExercise(programExercise.exerciseName);
     if (fromHistory) return fromHistory;
     const meta = exercises.find((e) => e.id === programExercise.exerciseId);
-    if (meta?.category === "Uttøyning") {
+    if (meta?.category && isHoldBasedExerciseCategory(meta.category)) {
       return (programExercise.holdSeconds ?? "").trim() || programExercise.weight.trim() || "30";
     }
     return programExercise.weight;
@@ -1605,7 +1606,7 @@ export function MemberPortal(props: MemberPortalProps) {
     for (const line of customWorkoutLines) {
       const ex = exercises.find((e) => e.id === line.exerciseId);
       if (!ex) continue;
-      const isStretch = ex.category === "Uttøyning";
+      const isStretch = isHoldBasedExerciseCategory(ex.category);
       built.push({
         id: uid("prog-ex"),
         exerciseId: ex.id,
@@ -1822,7 +1823,7 @@ export function MemberPortal(props: MemberPortalProps) {
     setCustomWorkoutLines((prev) => {
       if (prev.some((line) => line.exerciseId === id)) return prev;
       const ex = exercises.find((e) => e.id === id);
-      const isStretch = ex?.category === "Uttøyning";
+      const isStretch = Boolean(ex?.category && isHoldBasedExerciseCategory(ex.category));
       const weightHint = ex && !isStretch ? findSuggestedWeightForExercise(ex.name) : "";
       const secHint = ex && isStretch ? findSuggestedWeightForExercise(ex.name) : "";
       return [
@@ -3654,7 +3655,7 @@ export function MemberPortal(props: MemberPortalProps) {
     memberLogs.forEach((log) => {
       (log.results ?? []).forEach((result) => {
         if (!result.completed || result.exerciseName !== exerciseName) return;
-        if (result.exerciseCategory === "Uttøyning") return;
+        if (result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)) return;
         const estimated = estimate1RM(Number(result.performedWeight) || 0, Number(result.performedReps) || 0);
         if (estimated > best) best = estimated;
       });
@@ -3666,7 +3667,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!currentWorkoutGroup || !activeMemberId) return;
     let bestCandidate: WorkoutCelebration | null = null;
     currentWorkoutGroup.rows.forEach((row) => {
-      if (row.exerciseCategory === "Uttøyning") return;
+      if (row.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory)) return;
       const weight = Number(row.performedWeight) || 0;
       const reps = Number(row.performedReps) || 0;
       const currentEstimated = estimate1RM(weight, reps);
@@ -3785,7 +3786,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 ? `${exercise.sets} runder × ${exercise.durationMinutes} min${
                     exercise.speed ? ` · ${exercise.speed} km/t` : ""
                   }${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s pause${cardioHrPrescriptionSuffixForMember(exercise)}`
-                : libraryMatch?.category === "Uttøyning"
+                : libraryMatch?.category && isHoldBasedExerciseCategory(libraryMatch.category)
                   ? `${exercise.sets} sett × ${(exercise.holdSeconds ?? "").trim() || exercise.weight || "-"} sek · ${exercise.restSeconds}s pause`
                   : `${exercise.sets} x ${exercise.reps} · ${exercise.weight || "-"} kg · ${exercise.restSeconds}s pause`;
               const imageUrl = resolvePrintAssetUrl(libraryMatch?.imageUrl?.trim() || "");
@@ -4266,7 +4267,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                         <div className="mt-1 text-xs text-slate-600">
                                           {result.performedDurationMinutes
                                             ? `Utført: ${result.performedDurationMinutes || "-"} min${result.performedSpeed ? ` · ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` · ${result.performedIncline}% incline` : ""}`
-                                            : result.exerciseCategory === "Uttøyning"
+                                            : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)
                                               ? `Utført: ${result.performedWeight || "-"} sek hold`
                                               : `Utført: ${result.performedReps || "-"} reps @ ${result.performedWeight || "-"} kg`}
                                         </div>
@@ -4274,7 +4275,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                           Plan:{" "}
                                           {result.plannedDurationMinutes
                                             ? `${result.plannedDurationMinutes} min${result.plannedSpeed ? ` · ${result.plannedSpeed} km/t` : ""}${result.plannedIncline ? ` · ${result.plannedIncline}% incline` : ""}`
-                                            : result.exerciseCategory === "Uttøyning"
+                                            : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)
                                               ? `${result.plannedSets} sett × ${result.plannedWeight || "0"} sek`
                                               : `${result.plannedSets}x${result.plannedReps} @ ${result.plannedWeight || "0"} kg`}
                                         </div>
@@ -4611,7 +4612,7 @@ export function MemberPortal(props: MemberPortalProps) {
                               ) : null}
                               {program.exercises.map((exercise) => {
                                 const lib = exercises.find((e) => e.id === exercise.exerciseId);
-                                const isStretch = lib?.category === "Uttøyning";
+                                const isStretch = Boolean(lib?.category && isHoldBasedExerciseCategory(lib.category));
                                 const blockPeers = exercise.blockId
                                   ? program.exercises.filter((peer) => peer.blockId?.trim() === exercise.blockId?.trim())
                                   : [];
@@ -4789,7 +4790,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       <div className="mt-2 space-y-2">
                         {customWorkoutLines.map((line) => {
                           const ex = exercises.find((e) => e.id === line.exerciseId);
-                          const isStretch = ex?.category === "Uttøyning";
+                          const isStretch = Boolean(ex?.category && isHoldBasedExerciseCategory(ex.category));
                           return (
                             <div key={line.key} className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
                               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -5449,7 +5450,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                                     placeholder="Incline %"
                                                   />
                                                 </div>
-                                              ) : result.exerciseCategory === "Uttøyning" ? (
+                                              ) : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory) ? (
                                                 <div className="grid grid-cols-1 gap-2">
                                                   <TextInput
                                                     value={editingLoggedExerciseDraft.performedWeight}
@@ -5484,7 +5485,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                             <div className="mt-1 text-xs text-slate-600">
                                               {result.exerciseCategory === "Kondisjon"
                                                 ? `Utført: ${result.performedDurationMinutes || "0"} min${result.performedSpeed ? ` · ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` · ${result.performedIncline}% incline` : ""}`
-                                                : result.exerciseCategory === "Uttøyning"
+                                                : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)
                                                   ? `Utført: ${result.performedWeight || "0"} sek`
                                                   : `Utført: ${result.performedWeight || "0"} kg x ${result.performedReps || "0"} reps`}
                                               {result.completed ? " - Fullført" : " - Ikke markert fullført"}

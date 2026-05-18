@@ -1,13 +1,13 @@
 import type { Exercise, TrainingProgram } from "./types";
+import {
+  exerciseMatchesSubTab,
+  subTabForExerciseCategory,
+  type ExerciseBankSubTab,
+  type ProgramsSubTab,
+  type TrainingSubTab,
+} from "./exerciseCategories";
 
-export type ProgramsSubTab = "strength" | "conditioning";
-
-export type ExerciseBankSubTab = ProgramsSubTab;
-
-export function exerciseMatchesBankSubTab(category: Exercise["category"], subTab: ExerciseBankSubTab): boolean {
-  if (subTab === "conditioning") return category === "Kondisjon";
-  return category === "Styrke" || category === "Uttøyning";
-}
+export type { ExerciseBankSubTab, ProgramsSubTab, TrainingSubTab };
 
 export function buildExerciseCategoryById(exercises: Exercise[]): Map<string, Exercise["category"]> {
   const byId = new Map<string, Exercise["category"]>();
@@ -30,21 +30,51 @@ export function isConditioningTrainingProgram(
   });
 }
 
-export function isStrengthTrainingProgram(
+export function getTrainingProgramSubTab(
   program: Pick<TrainingProgram, "exercises">,
   exerciseCategoryById: Map<string, Exercise["category"]>,
+): TrainingSubTab {
+  if (program.exercises.length === 0) return "strength";
+  if (isConditioningTrainingProgram(program, exerciseCategoryById)) return "conditioning";
+
+  const categories = program.exercises.map(
+    (exercise) => exerciseCategoryById.get(exercise.exerciseId) ?? "Styrke",
+  );
+  if (categories.every((category) => category === "Rehab")) return "rehab";
+  if (categories.every((category) => category === "Mobilitet" || category === "Uttøyning")) {
+    return "mobility";
+  }
+  if (categories.every((category) => category === "Styrke")) return "strength";
+
+  const counts: Record<TrainingSubTab, number> = {
+    strength: 0,
+    conditioning: 0,
+    mobility: 0,
+    rehab: 0,
+  };
+  categories.forEach((category) => {
+    counts[subTabForExerciseCategory(category)] += 1;
+  });
+  return (Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "strength") as TrainingSubTab;
+}
+
+export function trainingProgramMatchesSubTab(
+  program: Pick<TrainingProgram, "exercises">,
+  subTab: TrainingSubTab,
+  exerciseCategoryById: Map<string, Exercise["category"]>,
 ): boolean {
-  return !isConditioningTrainingProgram(program, exerciseCategoryById);
+  return getTrainingProgramSubTab(program, exerciseCategoryById) === subTab;
 }
 
 export function filterTemplateProgramsBySubTab(
   programs: TrainingProgram[],
-  subTab: ProgramsSubTab,
+  subTab: TrainingSubTab,
   exerciseCategoryById: Map<string, Exercise["category"]>,
 ): TrainingProgram[] {
-  return programs.filter((program) =>
-    subTab === "conditioning"
-      ? isConditioningTrainingProgram(program, exerciseCategoryById)
-      : isStrengthTrainingProgram(program, exerciseCategoryById),
-  );
+  return programs.filter((program) => trainingProgramMatchesSubTab(program, subTab, exerciseCategoryById));
+}
+
+/** @deprecated Bruk exerciseMatchesSubTab */
+export function exerciseMatchesBankSubTab(category: Exercise["category"], subTab: ExerciseBankSubTab): boolean {
+  return exerciseMatchesSubTab(category, subTab);
 }

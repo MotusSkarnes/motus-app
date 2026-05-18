@@ -1,3 +1,4 @@
+import { isHoldBasedExerciseCategory } from "./exerciseCategories";
 import type { Exercise, TrainingProgram } from "./types";
 import type { StartWorkoutModeOptions } from "../services/appRepository";
 
@@ -9,7 +10,7 @@ export function buildDefaultStartWorkoutOptions(program: TrainingProgram, exerci
   program.exercises.forEach((exercise) => {
     if (Number(exercise.durationMinutes) > 0) return;
     const meta = exerciseBank.find((e) => e.id === exercise.exerciseId);
-    const isStretch = meta?.category === "Uttøyning";
+    const isStretch = meta ? isHoldBasedExerciseCategory(meta.category) : false;
     const suggested = isStretch
       ? (exercise.holdSeconds ?? "").trim() || exercise.weight.trim() || "30"
       : exercise.weight.trim();

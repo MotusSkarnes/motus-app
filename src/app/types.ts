@@ -99,7 +99,7 @@ export type Member = {
 export type Exercise = {
   id: string;
   name: string;
-  category: "Styrke" | "Kondisjon" | "Uttøyning";
+  category: "Styrke" | "Kondisjon" | "Mobilitet" | "Rehab" | "Uttøyning";
   group: string;
   equipment: string;
   level: Level;
@@ -115,7 +115,7 @@ export type ProgramExercise = {
   sets: string;
   reps: string;
   weight: string;
-  /** Hold/strekk: sekunder per sett (Uttøyning). */
+  /** Hold/strekk: sekunder per sett (mobilitet, rehab, uttøyning). */
   holdSeconds?: string;
   durationMinutes?: string;
   speed?: string;

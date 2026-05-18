@@ -1,3 +1,4 @@
+import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import type { Exercise, WorkoutLog } from "../app/types";
 
 export type MuscleSplitPeriod = 28 | 90 | "all";
@@ -83,7 +84,7 @@ export function computeMuscleGroupStats(
 
     for (const result of log.results ?? []) {
       if (!result.completed) continue;
-      if (result.exerciseCategory === "Uttøyning") continue;
+      if (result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)) continue;
 
       const groupRaw = exerciseGroupByName.get(result.exerciseName.trim().toLowerCase()) ?? "Ukjent";
       const parts = splitMuscleGroupLabel(groupRaw);

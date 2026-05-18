@@ -14,6 +14,7 @@ import type {
   WorkoutLog,
 } from "../app/types";
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate } from "../app/dateFormat";
+import { normalizeStoredExerciseCategory } from "../app/exerciseCategories";
 import {
   localAppRepository,
   type AppRepository,
@@ -1955,7 +1956,7 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
       return {
         id: String(exercise.id ?? ""),
         name: String(exercise.name ?? ""),
-        category: exercise.category === "Kondisjon" || exercise.category === "Uttøyning" ? exercise.category : "Styrke",
+        category: normalizeStoredExerciseCategory(String(exercise.category ?? "")),
         group: String(exercise.muscle_group ?? ""),
         equipment: String(exercise.equipment ?? ""),
         level: exercise.level === "Litt øvet" || exercise.level === "Øvet" ? exercise.level : "Nybegynner",
@@ -2158,7 +2159,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
       return {
         id: String(exercise.id ?? ""),
         name: String(exercise.name ?? ""),
-        category: exercise.category === "Kondisjon" || exercise.category === "Uttøyning" ? exercise.category : "Styrke",
+        category: normalizeStoredExerciseCategory(String(exercise.category ?? "")),
         group: String(exercise.muscle_group ?? ""),
         equipment: String(exercise.equipment ?? ""),
         level: exercise.level === "Litt øvet" || exercise.level === "Øvet" ? exercise.level : "Nybegynner",
@@ -2646,7 +2647,7 @@ export async function fetchExercisesFromSupabase(): Promise<Exercise[] | null> {
   return (data ?? []).map((row) => ({
     id: String(row.id),
     name: String(row.name ?? ""),
-    category: row.category === "Kondisjon" || row.category === "Uttøyning" ? row.category : "Styrke",
+    category: normalizeStoredExerciseCategory(String(row.category ?? "")),
     group: String(row.muscle_group ?? ""),
     equipment: String(row.equipment ?? ""),
     level: row.level === "Litt øvet" || row.level === "Øvet" ? row.level : "Nybegynner",

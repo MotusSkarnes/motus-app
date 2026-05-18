@@ -1,3 +1,4 @@
+import { isHoldBasedExerciseCategory } from "./exerciseCategories";
 import type { Exercise, ProgramExercise, TrainingProgram, WorkoutExerciseResult } from "./types";
 
 export type ExerciseBlockType = "superset" | "triset" | "circuit";
@@ -75,7 +76,7 @@ function buildWorkoutRow(
   options: { suggestedWeightByProgramExerciseId?: Record<string, string> },
   blockMeta?: { blockId: string; blockType: ExerciseBlockType; blockRound: number },
 ): WorkoutExerciseResult {
-  const isStretch = meta?.category === "Uttøyning";
+  const isStretch = meta ? isHoldBasedExerciseCategory(meta.category) : false;
   const suggestedWeightRaw = options.suggestedWeightByProgramExerciseId?.[ex.id];
   const suggestedWeight = suggestedWeightRaw !== undefined ? suggestedWeightRaw.trim() : "";
   const holdPlan = (ex.holdSeconds ?? "").trim() || (isStretch ? ex.weight.trim() : "");

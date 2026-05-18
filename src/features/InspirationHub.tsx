@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Bold, ChevronLeft, ChevronRight, ClipboardList, ImagePlus, Italic, Lightbulb, Newspaper, Pencil, Plus, Soup, Trash2 } from "lucide-react";
 import { MOTUS } from "../app/data";
+import { EXERCISE_CATEGORY_OPTIONS, exerciseCategoryAccentColor, isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { compressImageDataUrl, compressImageFile } from "../app/imageCompress";
 import {
   fetchInspirationItemsForHub,
@@ -121,7 +122,7 @@ function multiValueIncludes(value: string, candidate: string): boolean {
 }
 
 function getExerciseSketchDataUri(exercise: Exercise): string {
-  const accent = exercise.category === "Kondisjon" ? "#f97316" : exercise.category === "Uttøyning" ? "#0ea5e9" : "#14b8a6";
+  const accent = exerciseCategoryAccentColor(exercise.category);
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'>
       <rect width='96' height='96' rx='16' fill='#ffffff'/>
       <circle cx='48' cy='20' r='8' fill='${accent}'/>
@@ -138,7 +139,7 @@ function getExercisePreviewSrc(exercise: Exercise): string {
 
 function programExerciseFromBank(exercise: Exercise): ProgramExercise {
   const isCardio = exercise.category === "Kondisjon";
-  const isStretch = exercise.category === "Uttøyning";
+  const isStretch = isHoldBasedExerciseCategory(exercise.category);
   const isTreadmill = exercise.equipment.trim().toLowerCase().includes("tredem");
   return {
     id: uid("inspo-prog-ex"),
@@ -193,7 +194,7 @@ function resolveLinkedExerciseForPreview(
 function formatProgramExercisePrescription(exercise: ProgramExercise, linked?: Exercise): string {
   const sets = exercise.sets?.trim() || "—";
   const isCardio = linked?.category === "Kondisjon";
-  const isStretch = linked?.category === "Uttøyning";
+  const isStretch = Boolean(linked?.category && isHoldBasedExerciseCategory(linked.category));
   const isTreadmill = (linked?.equipment ?? "").trim().toLowerCase().includes("tredem");
 
   if (isCardio) {
@@ -577,7 +578,7 @@ export function InspirationHub({
   const [activePeriodWeekId, setActivePeriodWeekId] = useState("");
   const [isImageProcessing, setIsImageProcessing] = useState(false);
   const [programExerciseSearch, setProgramExerciseSearch] = useState("");
-  const [programExerciseCategoryFilter, setProgramExerciseCategoryFilter] = useState<"all" | "Styrke" | "Kondisjon" | "Uttøyning">("all");
+  const [programExerciseCategoryFilter, setProgramExerciseCategoryFilter] = useState<"all" | Exercise["category"]>("all");
   const [programExerciseGroupFilter, setProgramExerciseGroupFilter] = useState("all");
   const bodyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const carouselRefs = useRef<Record<InspirationCategory, HTMLDivElement | null>>({
@@ -1607,7 +1608,7 @@ export function InspirationHub({
                   {(programTemplateDraft?.exercises ?? []).map((item) => {
                     const linkedExercise = exercisesById.get(item.exerciseId);
                     const isCardio = linkedExercise?.category === "Kondisjon";
-                    const isStretch = linkedExercise?.category === "Uttøyning";
+                    const isStretch = Boolean(linkedExercise?.category && isHoldBasedExerciseCategory(linkedExercise.category));
                     const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
                     return (
                       <div key={item.id} className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -1691,9 +1692,7 @@ export function InspirationHub({
                         onChange={(value) => setProgramExerciseCategoryFilter(value as typeof programExerciseCategoryFilter)}
                         options={[
                           { value: "all", label: "Alle typer" },
-                          { value: "Styrke", label: "Styrke" },
-                          { value: "Kondisjon", label: "Kondisjon" },
-                          { value: "Uttøyning", label: "Uttøyning" },
+                          ...EXERCISE_CATEGORY_OPTIONS.map((category) => ({ value: category, label: category })),
                         ]}
                       />
                       <SelectBox

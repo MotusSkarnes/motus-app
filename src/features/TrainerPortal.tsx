@@ -7,12 +7,26 @@ import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClea
 import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { uid } from "../app/storage";
 import {
+  categoryForSubTab,
+  emptyExerciseBankMessage,
+  emptyTemplatesMessage,
+  EXERCISE_CATEGORY_OPTIONS,
+  exerciseBankDescription,
+  exerciseBankTitle,
+  exerciseMatchesSubTab,
+  exerciseCategoryAccentColor,
+  isHoldBasedExerciseCategory,
+  programsBuilderDescription,
+  programsBuilderTitle,
+  savedTemplatesTitle,
+  subTabForExerciseCategory,
+  TRAINING_SUB_TAB_OPTIONS,
+  type TrainingSubTab,
+} from "../app/exerciseCategories";
+import {
   buildExerciseCategoryById,
-  exerciseMatchesBankSubTab,
   filterTemplateProgramsBySubTab,
-  isConditioningTrainingProgram,
-  type ExerciseBankSubTab,
-  type ProgramsSubTab,
+  getTrainingProgramSubTab,
 } from "../app/trainingProgramKind";
 import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { useToastStatus } from "../app/toast";
@@ -379,6 +393,7 @@ const DEFAULT_EXERCISE_GROUP_OPTIONS = [
   "Helkropp",
   "Kondisjon",
   "Mobilitet",
+  "Rehab",
 ];
 
 const DEFAULT_EXERCISE_EQUIPMENT_OPTIONS = [
@@ -579,8 +594,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const trainerSendAttemptRef = useRef(0);
   const [trainerChatSendStatus, setTrainerChatSendStatus] = useState<string | null>(null);
   const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
-  const [programsSubTab, setProgramsSubTab] = useState<ProgramsSubTab>("strength");
-  const [exerciseBankSubTab, setExerciseBankSubTab] = useState<ExerciseBankSubTab>("strength");
+  const [programsSubTab, setProgramsSubTab] = useState<TrainingSubTab>("strength");
+  const [exerciseBankSubTab, setExerciseBankSubTab] = useState<TrainingSubTab>("strength");
   const [customerProgramBuilderFocus, setCustomerProgramBuilderFocus] = useState<"training" | "period">("training");
   const [selectedWorkoutLogId, setSelectedWorkoutLogId] = useState<string | null>(null);
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
@@ -594,7 +609,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const [isDraftDropZoneActive, setIsDraftDropZoneActive] = useState(false);
   const [dragOverDraftExerciseId, setDragOverDraftExerciseId] = useState<string | null>(null);
   const [programExerciseSearch, setProgramExerciseSearch] = useState("");
-  const [programExerciseCategoryFilter, setProgramExerciseCategoryFilter] = useState<"all" | "Styrke" | "Kondisjon">("all");
+  const [programExerciseCategoryFilter, setProgramExerciseCategoryFilter] = useState<"all" | Exercise["category"]>("all");
   const [programExerciseGroupFilter, setProgramExerciseGroupFilter] = useState("all");
   const [periodPlansByMemberId, setPeriodPlansByMemberId] = useState<Record<string, PeriodSchedulePlan[]>>(() => {
     if (typeof window === "undefined") return {};
@@ -1304,7 +1319,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const filtered = exercises.filter((exercise) => {
       const categoryOk =
         trainerTab === "exerciseBank"
-          ? exerciseMatchesBankSubTab(exercise.category, exerciseBankSubTab)
+          ? exerciseMatchesSubTab(exercise.category, exerciseBankSubTab)
           : exerciseCategoryFilter === "all" || exercise.category === exerciseCategoryFilter;
       if (!categoryOk) return false;
       if (!query) return true;
@@ -1340,7 +1355,10 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const visibleProgramExercises = useMemo(() => {
     const query = programExerciseSearch.trim().toLowerCase();
     const filtered = exercises.filter((exercise) => {
-      if (programExerciseCategoryFilter !== "all" && exercise.category !== programExerciseCategoryFilter) return false;
+      if (trainerTab === "programs" && !exerciseMatchesSubTab(exercise.category, programsSubTab)) return false;
+      if (trainerTab !== "programs" && programExerciseCategoryFilter !== "all" && exercise.category !== programExerciseCategoryFilter) {
+        return false;
+      }
       if (programExerciseGroupFilter !== "all" && !multiValueIncludes(exercise.group, programExerciseGroupFilter)) return false;
       if (!query) return true;
       return (
@@ -1356,7 +1374,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       if (aFavorite !== bFavorite) return bFavorite - aFavorite;
       return a.name.localeCompare(b.name, "no");
     });
-  }, [exercises, programExerciseSearch, programExerciseCategoryFilter, programExerciseGroupFilter, favoriteExerciseIds]);
+  }, [exercises, programExerciseSearch, programExerciseCategoryFilter, programExerciseGroupFilter, favoriteExerciseIds, programsSubTab, trainerTab]);
   const exercisesById = useMemo(() => new Map(exercises.map((exercise) => [exercise.id, exercise])), [exercises]);
   const activePeriodWeek = useMemo(
     () => periodWeeklyPlansDraft.find((week) => week.id === activePeriodWeekId) ?? periodWeeklyPlansDraft[0] ?? null,
@@ -1471,12 +1489,12 @@ function programAuthorLabel(program: TrainingProgram): string | null {
 
   useEffect(() => {
     if (trainerTab !== "programs") return;
-    setProgramExerciseCategoryFilter(programsSubTab === "conditioning" ? "Kondisjon" : "Styrke");
+    setProgramExerciseCategoryFilter(categoryForSubTab(programsSubTab));
   }, [programsSubTab, trainerTab]);
 
   useEffect(() => {
     if (trainerTab !== "exerciseBank") return;
-    setExerciseCategoryFilter(exerciseBankSubTab === "conditioning" ? "Kondisjon" : "Styrke");
+    setExerciseCategoryFilter(categoryForSubTab(exerciseBankSubTab));
   }, [exerciseBankSubTab, trainerTab]);
 
   useEffect(() => {
@@ -1664,7 +1682,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
 
   function addExerciseToDraft(exercise: Exercise) {
     const isCardio = exercise.category === "Kondisjon";
-    const isStretch = exercise.category === "Uttøyning";
+    const isStretch = isHoldBasedExerciseCategory(exercise.category);
     const isTreadmill = exercise.equipment.trim().toLowerCase().includes("tredem");
     setProgramExercisesDraft((prev) => [
       ...prev,
@@ -1980,9 +1998,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   }
 
   function startEditTemplateProgram(program: TrainingProgram) {
-    setProgramsSubTab(
-      isConditioningTrainingProgram(program, exerciseCategoryById) ? "conditioning" : "strength",
-    );
+    setProgramsSubTab(getTrainingProgramSubTab(program, exerciseCategoryById));
     setEditingTemplateProgramId(program.id);
     setExpandedTemplateProgramId(program.id);
     setTemplateProgramTitle(program.title);
@@ -2281,7 +2297,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 ? `${setCount} runder × ${durationMinutes} min${
                     speed ? ` · ${speed} km/t` : ""
                   }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause${cardioTargetHrPrescriptionSuffix(safeExercise.targetHrPercent)}`
-                : libraryMatch?.category === "Uttøyning"
+                : libraryMatch && isHoldBasedExerciseCategory(libraryMatch.category)
                   ? `${setCount} sett × ${String(safeExercise.holdSeconds ?? "").trim() || weight || "-"} sek hold · ${restSeconds}s pause`
                   : `${setCount} x ${reps} · ${weight} kg · ${restSeconds}s pause`;
               const imageUrl = libraryMatch?.imageUrl?.trim() || "";
@@ -2960,7 +2976,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   function resetExerciseForm() {
     setEditingExerciseId(null);
     setExerciseFormName("");
-    setExerciseFormCategory(exerciseBankSubTab === "conditioning" ? "Kondisjon" : "Styrke");
+    setExerciseFormCategory(categoryForSubTab(exerciseBankSubTab));
     setExerciseFormGroup("");
     setExerciseFormEquipment("");
     setExerciseFormLevel("Nybegynner");
@@ -2969,7 +2985,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   }
 
   function startEditExercise(exercise: Exercise) {
-    setExerciseBankSubTab(exercise.category === "Kondisjon" ? "conditioning" : "strength");
+    setExerciseBankSubTab(subTabForExerciseCategory(exercise.category));
     setEditingExerciseId(exercise.id);
     setExpandedExerciseId(exercise.id);
     setExerciseFormName(exercise.name);
@@ -3128,7 +3144,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   }
 
   function getExerciseSketchDataUri(exercise: Exercise): string {
-    const accent = exercise.category === "Kondisjon" ? "#f97316" : exercise.category === "Uttøyning" ? "#0ea5e9" : "#14b8a6";
+    const accent = exerciseCategoryAccentColor(exercise.category);
     const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'>
       <rect width='96' height='96' rx='16' fill='#ffffff'/>
       <circle cx='48' cy='20' r='8' fill='${accent}'/>
@@ -4952,7 +4968,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                             {(() => {
                               const linkedExercise = exercisesById.get(item.exerciseId);
                               const isCardio = linkedExercise?.category === "Kondisjon";
-                              const isStretch = linkedExercise?.category === "Uttøyning";
+                              const isStretch = linkedExercise ? isHoldBasedExerciseCategory(linkedExercise.category) : false;
                               const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
                               return (
                             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -5061,11 +5077,10 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       <div className="grid gap-2 sm:grid-cols-2">
                         <SelectBox
                           value={programExerciseCategoryFilter}
-                          onChange={(value) => setProgramExerciseCategoryFilter(value as "all" | "Styrke" | "Kondisjon")}
+                          onChange={(value) => setProgramExerciseCategoryFilter(value as "all" | Exercise["category"])}
                           options={[
                             { value: "all", label: "Alle typer" },
-                            { value: "Styrke", label: "Styrke" },
-                            { value: "Kondisjon", label: "Kondisjon" },
+                            ...EXERCISE_CATEGORY_OPTIONS.map((category) => ({ value: category, label: category })),
                           ]}
                         />
                         <SelectBox
@@ -5329,7 +5344,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                                       Plan:{" "}
                                       {result.exerciseCategory === "Kondisjon" && (result.plannedDurationMinutes ?? "").trim()
                                         ? `${result.plannedSets} runder × ${result.plannedDurationMinutes} min`
-                                        : result.exerciseCategory === "Uttøyning"
+                                        : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)
                                           ? `${result.plannedSets} sett × ${result.plannedWeight || "0"} sek`
                                           : `${result.plannedSets} x ${result.plannedReps} @ ${result.plannedWeight || "0"} kg`}
                                     </div>
@@ -5337,7 +5352,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                                       Utført:{" "}
                                       {result.exerciseCategory === "Kondisjon" && (result.performedDurationMinutes ?? "").trim()
                                         ? `${result.performedDurationMinutes || "-"} min`
-                                        : result.exerciseCategory === "Uttøyning"
+                                        : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)
                                           ? `${result.performedWeight || "-"} sek`
                                           : `${result.performedReps || "-"} reps @ ${result.performedWeight || "-"} kg`}
                                     </div>
@@ -5463,25 +5478,18 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       {trainerTab === "programs" ? (
         <div className="grid gap-4">
           <div className="flex flex-wrap gap-2">
-            <PillButton active={programsSubTab === "strength"} onClick={() => setProgramsSubTab("strength")}>
-              Styrkeøkter
-            </PillButton>
-            <PillButton active={programsSubTab === "conditioning"} onClick={() => setProgramsSubTab("conditioning")}>
-              Kondisjon
-            </PillButton>
+            {TRAINING_SUB_TAB_OPTIONS.map((tab) => (
+              <PillButton key={tab.id} active={programsSubTab === tab.id} onClick={() => setProgramsSubTab(tab.id)}>
+                {tab.programsLabel}
+              </PillButton>
+            ))}
           </div>
           <Card className="p-4 sm:p-5">
             <div className="flex items-start gap-3">
               <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><ClipboardList className="h-5 w-5" /></div>
               <div>
-                <h2 className="text-xl font-semibold tracking-tight">
-                  {programsSubTab === "strength" ? "Lag styrkemal" : "Lag kondisjonsmal"}
-                </h2>
-                <p className="text-sm text-slate-500">
-                  {programsSubTab === "strength"
-                    ? "Bygg styrkeprogram med sett, reps og vekt — drag-and-drop fra biblioteket."
-                    : "Bygg intervall- og kondisjonsøkter med oppvarming, drag og nedjogg."}
-                </p>
+                <h2 className="text-xl font-semibold tracking-tight">{programsBuilderTitle(programsSubTab)}</h2>
+                <p className="text-sm text-slate-500">{programsBuilderDescription(programsSubTab)}</p>
               </div>
             </div>
             <div className="mt-5 grid gap-4">
@@ -5563,7 +5571,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       {(() => {
                         const linkedExercise = exercisesById.get(item.exerciseId);
                         const isCardio = linkedExercise?.category === "Kondisjon";
-                        const isStretch = linkedExercise?.category === "Uttøyning";
+                        const isStretch = linkedExercise ? isHoldBasedExerciseCategory(linkedExercise.category) : false;
                         const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
                         return (
                       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -5684,18 +5692,11 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 <div className="grid gap-2 sm:grid-cols-2">
                   <SelectBox
                     value={programExerciseCategoryFilter}
-                    onChange={(value) => setProgramExerciseCategoryFilter(value as "all" | "Styrke" | "Kondisjon")}
-                    options={
-                      programsSubTab === "strength"
-                        ? [
-                            { value: "Styrke", label: "Styrke" },
-                            { value: "all", label: "Alle typer" },
-                          ]
-                        : [
-                            { value: "Kondisjon", label: "Kondisjon" },
-                            { value: "all", label: "Alle typer" },
-                          ]
-                    }
+                    onChange={(value) => setProgramExerciseCategoryFilter(value as "all" | Exercise["category"])}
+                    options={[
+                      { value: categoryForSubTab(programsSubTab), label: categoryForSubTab(programsSubTab) },
+                      { value: "all", label: "Alle typer" },
+                    ]}
                   />
                   <SelectBox
                     value={programExerciseGroupFilter}
@@ -5766,16 +5767,12 @@ function programAuthorLabel(program: TrainingProgram): string | null {
               </div>
               <div className="rounded-xl border bg-slate-50 p-3 sm:p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="flex items-center justify-between gap-2">
-                  <div className="font-semibold">
-                    {programsSubTab === "strength" ? "Lagrede styrkemaler" : "Lagrede kondisjonsmaler"}
-                  </div>
+                  <div className="font-semibold">{savedTemplatesTitle(programsSubTab)}</div>
                   <div className="text-xs text-slate-500">{activeTemplatePrograms.length} maler</div>
                 </div>
                 {activeTemplatePrograms.length === 0 ? (
                   <div className="rounded-xl border border-dashed bg-white p-4 text-sm text-slate-500">
-                    {programsSubTab === "strength"
-                      ? "Ingen styrkemaler lagret ennå."
-                      : "Ingen kondisjonsmaler lagret ennå."}
+                    {emptyTemplatesMessage(programsSubTab)}
                   </div>
                 ) : null}
                 <div className="max-h-[360px] space-y-2 overflow-auto pr-1">
@@ -5824,7 +5821,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                                   <div className="mt-0.5 text-slate-500">
                                     {exercise.durationMinutes
                                       ? `${exercise.sets || "-"} runder × ${exercise.durationMinutes || "-"} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}`
-                                      : exercises.find((e) => e.id === exercise.exerciseId)?.category === "Uttøyning"
+                                      : isHoldBasedExerciseCategory(
+                                          exercises.find((e) => e.id === exercise.exerciseId)?.category ?? "Styrke",
+                                        )
                                         ? `${exercise.sets || "-"} sett × ${(exercise.holdSeconds ?? "").trim() || exercise.weight || "-"} sek · ${exercise.restSeconds || "0"}s`
                                         : `${exercise.sets || "-"}×${exercise.reps || "-"} · ${exercise.weight || "0"}kg · ${exercise.restSeconds || "0"}s`}
                                   </div>
@@ -5856,10 +5855,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       : [
                           {
                             value: "",
-                            label:
-                              programsSubTab === "strength"
-                                ? "Ingen styrkemaler lagret ennå"
-                                : "Ingen kondisjonsmaler lagret ennå",
+                            label: emptyTemplatesMessage(programsSubTab),
                           },
                         ]
                   }
@@ -5881,25 +5877,18 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       {trainerTab === "exerciseBank" ? (
         <div className="grid gap-4">
           <div className="flex flex-wrap gap-2">
-            <PillButton active={exerciseBankSubTab === "strength"} onClick={() => setExerciseBankSubTab("strength")}>
-              Styrkeøvelser
-            </PillButton>
-            <PillButton active={exerciseBankSubTab === "conditioning"} onClick={() => setExerciseBankSubTab("conditioning")}>
-              Kondisjon
-            </PillButton>
+            {TRAINING_SUB_TAB_OPTIONS.map((tab) => (
+              <PillButton key={tab.id} active={exerciseBankSubTab === tab.id} onClick={() => setExerciseBankSubTab(tab.id)}>
+                {tab.exerciseBankLabel}
+              </PillButton>
+            ))}
           </div>
           <Card className="p-5">
           <div className="flex items-start gap-3">
             <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Dumbbell className="h-5 w-5" /></div>
             <div>
-              <h2 className="text-xl font-semibold tracking-tight">
-                {exerciseBankSubTab === "strength" ? "Styrkeøvelser" : "Kondisjonsøvelser"}
-              </h2>
-              <p className="text-sm text-slate-500">
-                {exerciseBankSubTab === "strength"
-                  ? "Opprett og rediger styrke- og uttøyningsøvelser. Navn og muskelgruppe må fylles ut."
-                  : "Opprett og rediger kondisjonsøvelser til intervall og utholdenhet."}
-              </p>
+              <h2 className="text-xl font-semibold tracking-tight">{exerciseBankTitle(exerciseBankSubTab)}</h2>
+              <p className="text-sm text-slate-500">{exerciseBankDescription(exerciseBankSubTab)}</p>
             </div>
           </div>
           <div className="mt-5 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
@@ -5907,16 +5896,22 @@ function programAuthorLabel(program: TrainingProgram): string | null {
               <div className="font-semibold">{editingExerciseId ? "Rediger øvelse" : "Legg til ny øvelse"}</div>
               <TextInput value={exerciseFormName} onChange={(e) => setExerciseFormName(e.target.value)} placeholder="Navn på øvelse" />
               <div className="grid gap-2 sm:grid-cols-2">
-                <SelectBox
-                  value={exerciseFormCategory}
-                  onChange={(value) => setExerciseFormCategory(value as Exercise["category"])}
-                  options={["Styrke", "Kondisjon", "Uttøyning"]}
-                />
-                <SelectBox
-                  value={exerciseFormLevel}
-                  onChange={(value) => setExerciseFormLevel(value as Exercise["level"])}
-                  options={["Nybegynner", "Litt øvet", "Øvet"]}
-                />
+                <label className="grid gap-1">
+                  <span className="text-[11px] font-medium text-slate-500">Type øvelse</span>
+                  <SelectBox
+                    value={exerciseFormCategory}
+                    onChange={(value) => setExerciseFormCategory(value as Exercise["category"])}
+                    options={EXERCISE_CATEGORY_OPTIONS}
+                  />
+                </label>
+                <label className="grid gap-1">
+                  <span className="text-[11px] font-medium text-slate-500">Nivå</span>
+                  <SelectBox
+                    value={exerciseFormLevel}
+                    onChange={(value) => setExerciseFormLevel(value as Exercise["level"])}
+                    options={["Nybegynner", "Litt øvet", "Øvet"]}
+                  />
+                </label>
               </div>
               {renderExerciseMultiSelectField({
                 label: "Muskelgruppe",
@@ -6000,11 +5995,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 {visibleExercises.length === 0 ? (
                   <EmptyState
                     icon="🏋️"
-                    title={
-                      exerciseBankSubTab === "strength"
-                        ? "Ingen styrkeøvelser ennå"
-                        : "Ingen kondisjonsøvelser ennå"
-                    }
+                    title={emptyExerciseBankMessage(exerciseBankSubTab)}
                     description="Juster søket eller legg til en ny øvelse for å komme i gang."
                     className="bg-white"
                     action={<GradientButton onClick={resetExerciseForm}>Legg til øvelse</GradientButton>}
@@ -6103,7 +6094,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                           <SelectBox
                             value={exerciseFormCategory}
                             onChange={(value) => setExerciseFormCategory(value as Exercise["category"])}
-                            options={["Styrke", "Kondisjon", "Uttøyning"]}
+                            options={EXERCISE_CATEGORY_OPTIONS}
                           />
                           <SelectBox
                             value={exerciseFormLevel}

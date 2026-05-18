@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Plus, Repeat2, SkipForward, X } from "lucide-react";
 import { MOTUS } from "../app/data";
+import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { buildWorkoutResultGroups, EXERCISE_BLOCK_LABELS } from "../app/programBlocks";
 import { GradientButton, OutlineButton, TextArea, TextInput } from "../app/ui";
 import type { Exercise, TrainingProgram, WorkoutModeState, WorkoutReflection } from "../app/types";
@@ -204,7 +205,7 @@ export function LiveWorkoutSessionModal({
         row.plannedSpeed ? ` · ${row.plannedSpeed} km/t` : ""
       }${row.plannedIncline ? ` · ${row.plannedIncline}% incline` : ""}`;
     }
-    if (row?.exerciseCategory === "Uttøyning") {
+    if (row?.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory)) {
       return `${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedWeight} sek`;
     }
     return `${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedReps} reps · ${currentWorkoutGroup.plannedWeight} kg`;
@@ -242,7 +243,7 @@ export function LiveWorkoutSessionModal({
   ) {
     updateWorkoutExerciseResult(row.exerciseId, field, value);
     const isCardio = row.exerciseCategory === "Kondisjon";
-    const isStretch = row.exerciseCategory === "Uttøyning";
+    const isStretch = Boolean(row.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory));
     const isTreadmill = (row.exerciseEquipment ?? "").toLowerCase().includes("tredem");
     const nextWeight = field === "performedWeight" ? value.trim() : row.performedWeight.trim();
     const nextReps = field === "performedReps" ? value.trim() : row.performedReps.trim();
@@ -264,7 +265,8 @@ export function LiveWorkoutSessionModal({
   ) {
     const resolvedExercise = exerciseByName.get(row.exerciseName.trim().toLowerCase());
     const isCardio = (row.exerciseCategory ?? resolvedExercise?.category) === "Kondisjon";
-    const isStretch = (row.exerciseCategory ?? resolvedExercise?.category) === "Uttøyning";
+    const holdCategory = row.exerciseCategory ?? resolvedExercise?.category;
+    const isStretch = Boolean(holdCategory && isHoldBasedExerciseCategory(holdCategory));
     const isTreadmill = (row.exerciseEquipment ?? resolvedExercise?.equipment ?? "").toLowerCase().includes("tredem");
     const isCompactSetView = options?.compact ?? false;
 

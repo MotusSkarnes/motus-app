@@ -1,3 +1,4 @@
+import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { expandProgramExercisesToWorkoutResults, workoutResultGroupId } from "../app/programBlocks";
 import { uid } from "../app/storage";
 import type {
@@ -557,7 +558,7 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
       if (log.memberId !== memberId) return;
       (log.results ?? []).forEach((result) => {
         if (!result.completed || result.exerciseName !== exerciseName) return;
-        if (result.exerciseCategory === "Uttøyning") return;
+        if (result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)) return;
         const weight = Number(result.performedWeight) || 0;
         const reps = Number(result.performedReps) || 0;
         const estimated = estimate1RM(weight, reps);
@@ -570,7 +571,7 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
   let bestCelebration: WorkoutCelebration | null = null;
   current.results.forEach((result) => {
     if (!result.completed) return;
-    if (result.exerciseCategory === "Uttøyning") return;
+    if (result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)) return;
     const weight = Number(result.performedWeight) || 0;
     const reps = Number(result.performedReps) || 0;
     const newEstimated = estimate1RM(weight, reps);
