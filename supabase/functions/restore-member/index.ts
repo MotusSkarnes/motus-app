@@ -174,7 +174,6 @@ Deno.serve(async (req) => {
       if (!id) continue;
       const patch: Record<string, unknown> = {
         is_active: true,
-        updated_at: new Date().toISOString(),
       };
       const currentOwner = String(row.owner_user_id ?? "").trim();
       if (ownerUserId && !isSharedMedlem(row.customer_type) && (!currentOwner || currentOwner === ownerUserId)) {
