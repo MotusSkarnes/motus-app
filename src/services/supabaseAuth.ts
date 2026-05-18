@@ -3,6 +3,7 @@ import { supabaseClient } from "./supabaseClient";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const TRAINER_EMAIL_DOMAIN = "@motus-skarnes.no";
 
 /**
  * Kanonisk app-origin for e-postlenker (invitasjon, OTP, passord).
@@ -34,8 +35,23 @@ function emailRedirectBase(): string | undefined {
   return origin ? `${origin}/` : undefined;
 }
 
-function parseRole(value: unknown): Role {
-  return value === "member" ? "member" : "trainer";
+function isTrainerStaffEmail(email: string): boolean {
+  return email.trim().toLowerCase().endsWith(TRAINER_EMAIL_DOMAIN);
+}
+
+function resolveAuthRole(user: {
+  email?: string | null;
+  user_metadata?: Record<string, unknown>;
+  app_metadata?: Record<string, unknown>;
+}): Role {
+  const email = String(user.email ?? "").trim();
+  if (isTrainerStaffEmail(email)) return "trainer";
+
+  const appRole = user.app_metadata?.role;
+  if (appRole === "trainer" || appRole === "member") return appRole;
+  const userRole = user.user_metadata?.role;
+  if (userRole === "trainer" || userRole === "member") return userRole;
+  return "trainer";
 }
 
 function mapSupabaseUserToAuthUser(user: {
@@ -44,19 +60,18 @@ function mapSupabaseUserToAuthUser(user: {
   user_metadata?: Record<string, unknown>;
   app_metadata?: Record<string, unknown>;
 }): AuthUser {
-  const role =
-    parseRole(user.app_metadata?.role) === "member"
-      ? "member"
-      : parseRole(user.user_metadata?.role);
+  const role = resolveAuthRole(user);
   const name =
     (typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name) ||
     (typeof user.user_metadata?.name === "string" && user.user_metadata.name) ||
     (user.email ?? "Bruker");
   const memberId =
-    typeof user.app_metadata?.member_id === "string"
-      ? user.app_metadata.member_id
-      : typeof user.user_metadata?.member_id === "string"
-      ? user.user_metadata.member_id
+    role === "member"
+      ? typeof user.app_metadata?.member_id === "string"
+        ? user.app_metadata.member_id
+        : typeof user.user_metadata?.member_id === "string"
+        ? user.user_metadata.member_id
+        : undefined
       : undefined;
 
   return {
@@ -255,6 +270,10 @@ const MEMBER_INVITE_COOLDOWN_MS = 60_000;
 const memberInviteInFlightByKey = new Map<string, Promise<InviteMemberResult>>();
 const memberInviteLastSentAtByKey = new Map<string, number>();
 
+function isTrainerEmail(email: string): boolean {
+  return isTrainerStaffEmail(email);
+}
+
 async function syncMemberAuthLink(email: string, memberId?: string): Promise<void> {
   if (!supabaseClient) return;
   const payload = memberId ? { email, memberId } : { email };
@@ -291,6 +310,10 @@ export async function ensureMemberAuthLink(email: string, memberId?: string): Pr
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedMemberId = memberId?.trim();
   if (!normalizedEmail || !normalizedEmail.includes("@")) return;
+  if (isTrainerEmail(normalizedEmail)) {
+    console.warn("Skipping member auth link for trainer-domain email:", normalizedEmail);
+    return;
+  }
   await syncMemberAuthLink(normalizedEmail, normalizedMemberId);
 }
 

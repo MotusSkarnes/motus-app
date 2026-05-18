@@ -516,6 +516,8 @@ export function useAppState() {
       } = supabaseClient ? await supabaseClient.auth.getSession() : { data: { session: null } };
       const sessionUser = session?.user ?? null;
       const sessionRole = (() => {
+        const sessionEmail = sessionUser?.email?.trim().toLowerCase() ?? "";
+        if (sessionEmail.endsWith("@motus-skarnes.no")) return "trainer";
         const appRole = sessionUser?.app_metadata?.role;
         if (appRole === "member" || appRole === "trainer") return appRole;
         const userRole = sessionUser?.user_metadata?.role;
@@ -1017,17 +1019,11 @@ export function useAppState() {
         const previousMember = prev.members.find((member) => member.id === missingId) ?? null;
         if (!previousMember) return fallbackId;
         const previousEmail = previousMember.email.trim().toLowerCase();
-        const previousName = previousMember.name.trim().toLowerCase();
         const byEmail =
           previousEmail
             ? prev.members.find((member) => member.email.trim().toLowerCase() === previousEmail)
             : null;
         if (byEmail?.id) return byEmail.id;
-        const byName =
-          previousName
-            ? prev.members.find((member) => member.name.trim().toLowerCase() === previousName)
-            : null;
-        if (byName?.id) return byName.id;
         return fallbackId;
       };
       const selectedStillExists = prev.members.some((member) => member.id === prev.selectedMemberId);

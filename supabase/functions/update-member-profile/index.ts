@@ -49,6 +49,10 @@ function isSharedMedlem(customerType: unknown): boolean {
   return normalizeString(customerType).toLowerCase() === "medlem";
 }
 
+function isTrainerStaffEmail(email: string): boolean {
+  return normalizeEmail(email).endsWith("@motus-skarnes.no");
+}
+
 function withoutAvatarUrl(fields: Record<string, string>): Record<string, string> {
   const next = { ...fields };
   delete next.avatar_url;
@@ -118,7 +122,9 @@ Deno.serve(async (req) => {
     return jsonResponse(401, { error: "Invalid user session" });
   }
 
+  const currentEmail = normalizeEmail(user.email);
   const userRole = (() => {
+    if (isTrainerStaffEmail(currentEmail)) return "trainer";
     const appRole = user.app_metadata?.role;
     if (appRole === "member" || appRole === "trainer") return appRole;
     const userRoleValue = user.user_metadata?.role;
@@ -131,7 +137,6 @@ Deno.serve(async (req) => {
     return jsonResponse(403, { error: "Only members/trainers can update profile through this endpoint" });
   }
 
-  const currentEmail = normalizeEmail(user.email);
   const requestedEmail = normalizeEmail(payload.email);
   const requestedEmails = Array.isArray(payload.emails)
     ? payload.emails.map((value) => normalizeEmail(value)).filter((value) => value && value.includes("@"))
@@ -274,6 +279,11 @@ Deno.serve(async (req) => {
     )
   );
   if (!targetIds.length && !targetEmails.length) {
+    if (isTrainerStaffEmail(currentEmail)) {
+      return jsonResponse(403, {
+        error: "Trainer accounts cannot bootstrap a member profile row from this endpoint.",
+      });
+    }
     // Last-resort bootstrap for missing member row: create one tied to auth user.
     const fallbackMemberId = authMemberId || requestedMemberId || `member-${crypto.randomUUID().slice(0, 8)}`;
     const insertPayload: Record<string, unknown> = {
