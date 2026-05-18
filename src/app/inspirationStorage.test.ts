@@ -5,6 +5,7 @@ import {
   INSPIRATION_STORAGE_KEY,
   INSPIRATION_SUPPRESSED_IDS_KEY,
   loadSuppressedInspirationIds,
+  mergeDefaultInspirationItems,
   saveInspirationItemsToStorage,
   suppressInspirationItemId,
 } from "./inspirationStorage";
@@ -54,5 +55,22 @@ describe("suppressed inspiration items", () => {
     });
     expect(loadSuppressedInspirationIds().has("default-tip-2")).toBe(true);
     expect(filterSuppressedInspirationItems([{ id: "default-tip-2", title: "X" }])).toEqual([]);
+  });
+
+  it("keeps local suppressed ids when caching an older remote snapshot", () => {
+    suppressInspirationItemId("custom-deleted");
+    cacheInspirationFeedSnapshot({
+      items: [{ id: "custom-deleted", title: "Stale" }, { id: "custom-2", title: "Ok" }],
+      suppressedItemIds: [],
+      updatedAt: Date.now(),
+    });
+    expect(loadSuppressedInspirationIds().has("custom-deleted")).toBe(true);
+    expect(filterSuppressedInspirationItems([{ id: "custom-deleted", title: "Stale" }])).toEqual([]);
+  });
+
+  it("does not re-add suppressed default inspiration items", () => {
+    suppressInspirationItemId("default-tip-1");
+    const merged = mergeDefaultInspirationItems([], [{ id: "default-tip-1", title: "Tips" }, { id: "default-tip-2", title: "Tips 2" }]);
+    expect(merged.map((item) => item.id)).toEqual(["default-tip-2"]);
   });
 });

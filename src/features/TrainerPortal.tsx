@@ -2702,10 +2702,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     if (result.ok) {
       setRestoreEmail("");
       setShowInactiveMembers(true);
-      const restoredMember = members.find((member) => member.email.trim().toLowerCase() === normalizedEmail);
-      if (restoredMember) {
-        setSelectedMemberId(restoredMember.id);
-      }
+      setMemberSearch(normalizedEmail);
     }
     setRestoringArchivedEmail(null);
     setIsRestoringMember(false);
@@ -4000,7 +3997,21 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       <ul className="mt-2 space-y-1 text-xs">
                         {databaseEmailLookup.members.map((row) => (
                           <li key={row.id}>
-                            {row.name || "Ukjent navn"} · {row.email}
+                            {row.name || "Ukjent navn"}
+                            {row.emailMismatch && row.loginEmail ? (
+                              <>
+                                {" "}
+                                · innlogging <span className="font-medium">{row.loginEmail}</span>
+                                {row.linkedMemberEmail ? (
+                                  <>
+                                    {" "}
+                                    · medlemsrad <span className="font-medium">{row.linkedMemberEmail}</span>
+                                  </>
+                                ) : null}
+                              </>
+                            ) : (
+                              <> · {row.email}</>
+                            )}
                             {row.isActive ? "" : " · inaktiv"}
                             {row.ownerUserId && row.ownerUserId !== currentTrainerOwnerUserId ? " · annen eier" : ""}
                           </li>
@@ -4787,8 +4798,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       </div>
                     </div>
                     ) : (
-                    <div className="grid gap-3 2xl:grid-cols-[minmax(0,1fr)_minmax(300px,340px)] 2xl:items-start">
-                    <div className="rounded-xl border-2 border-slate-200 bg-white p-3 sm:p-4 space-y-3 shadow-sm">
+                    <div className="grid gap-4">
+                    <div className="min-w-0 rounded-xl border-2 border-slate-200 bg-white p-3 sm:p-4 space-y-3 shadow-sm">
                       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-3">
                         <div className="flex items-start gap-3">
                           <span
@@ -4893,7 +4904,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                               const isStretch = linkedExercise?.category === "Uttøyning";
                               const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
                               return (
-                            <div className={`grid gap-3 sm:grid-cols-2 ${isCardio ? "2xl:grid-cols-5" : "2xl:grid-cols-5"}`}>
+                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                               <div className="space-y-1">
                                 <div className="text-[11px] font-medium text-slate-500">Antall sett</div>
                                 <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder="Sett" />
@@ -4988,7 +4999,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       ) : null}
                     </div>
 
-                    <div className="space-y-3 2xl:sticky 2xl:top-4">
+                    <div className="min-w-0 space-y-3">
                     <div className="rounded-xl border bg-slate-50 p-3 space-y-2.5">
                       <div className="text-sm font-semibold text-slate-800">Øvelser</div>
                       <TextInput
@@ -5015,7 +5026,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                           ]}
                         />
                       </div>
-                      <div className="max-h-[min(320px,40vh)] space-y-1.5 overflow-auto pr-1">
+                      <div className="max-h-[min(420px,55vh)] space-y-1.5 overflow-auto pr-1">
                         {visibleProgramExercises.length === 0 ? (
                           <div className="rounded-xl border border-dashed p-3 text-sm text-slate-500 bg-white">
                             Ingen øvelser matcher søk/filter.
@@ -5408,8 +5419,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 <p className="text-sm text-slate-500">Bygg mal med filtrering, favoritter og drag-and-drop</p>
               </div>
             </div>
-            <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-              <div className="space-y-3">
+            <div className="mt-5 grid gap-4">
+              <div className="min-w-0 space-y-3">
                 <TextInput value={templateProgramTitle} onChange={(e) => setTemplateProgramTitle(e.target.value)} placeholder="Navn på treningsmal" />
                 <div
                   className={`space-y-3 rounded-2xl p-1 transition ${
@@ -5490,7 +5501,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         const isStretch = linkedExercise?.category === "Uttøyning";
                         const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
                         return (
-                      <div className={`grid gap-3 sm:grid-cols-2 ${isCardio ? "xl:grid-cols-5" : "xl:grid-cols-5"}`}>
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         <div className="space-y-1">
                           <div className="text-[11px] font-medium text-slate-500">Antall sett</div>
                           <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder="Sett" />
@@ -5596,7 +5607,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                   </div>
                 </div>
               </div>
-              <div className="rounded-xl border bg-slate-50 p-3 sm:p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <div className="min-w-0 rounded-xl border bg-slate-50 p-3 sm:p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="font-semibold">Øvelser</div>
                 <TextInput
                   value={programExerciseSearch}

@@ -21,6 +21,13 @@ type MemberRow = {
   customer_type?: string | null;
 };
 
+type AuthUser = {
+  id: string;
+  email?: string;
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+};
+
 function normalizeEmail(value: string | null | undefined): string {
   return String(value ?? "").trim().toLowerCase();
 }
@@ -49,84 +56,104 @@ async function listMembersByEmail(adminClient: ReturnType<typeof createClient>, 
   return (rows ?? []).filter((row) => normalizeEmail(String((row as MemberRow).email ?? "")) === email) as MemberRow[];
 }
 
-/** Når members.email er overskrevet, finnes raden fortsatt via auth.users member_id-metadata. */
-async function listMembersByAuthLoginEmail(
-  adminClient: ReturnType<typeof createClient>,
-  email: string,
-): Promise<MemberRow[]> {
+async function findAuthUserByEmail(adminClient: ReturnType<typeof createClient>, email: string): Promise<AuthUser | null> {
   const { data: listData, error: listError } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
   if (listError) {
     throw new Error(`Kunne ikke slå opp Auth-bruker: ${listError.message}`);
   }
-  const matchedUser = (listData?.users ?? []).find((user) => normalizeEmail(user.email) === email);
-  if (!matchedUser) return [];
+  const matched = (listData?.users ?? []).find((user) => normalizeEmail(user.email) === email);
+  if (!matched?.id) return null;
+  return matched as AuthUser;
+}
 
-  const memberId =
-    String(matchedUser.app_metadata?.member_id ?? "").trim() ||
-    String(matchedUser.user_metadata?.member_id ?? "").trim();
-  if (!memberId) return [];
+async function fetchMemberById(adminClient: ReturnType<typeof createClient>, memberId: string): Promise<MemberRow | null> {
+  const trimmed = memberId.trim();
+  if (!trimmed) return null;
+  const { data: row, error } = await adminClient.from("members").select(MEMBER_SELECT).eq("id", trimmed).maybeSingle();
+  if (error) throw new Error(error.message);
+  return row ? (row as MemberRow) : null;
+}
 
-  const { data: row, error: rowError } = await adminClient
-    .from("members")
-    .select(MEMBER_SELECT)
-    .eq("id", memberId)
-    .maybeSingle();
-  if (rowError) {
-    throw new Error(rowError.message);
+async function syncAuthMemberId(adminClient: ReturnType<typeof createClient>, authUser: AuthUser, memberId: string): Promise<void> {
+  const trimmedMemberId = memberId.trim();
+  if (!trimmedMemberId) return;
+  const appMetadata =
+    authUser.app_metadata && typeof authUser.app_metadata === "object"
+      ? (authUser.app_metadata as Record<string, unknown>)
+      : {};
+  const userMetadata =
+    authUser.user_metadata && typeof authUser.user_metadata === "object"
+      ? (authUser.user_metadata as Record<string, unknown>)
+      : {};
+  const { error } = await adminClient.auth.admin.updateUserById(authUser.id, {
+    app_metadata: { ...appMetadata, role: "member", member_id: trimmedMemberId },
+    user_metadata: { ...userMetadata, role: "member", member_id: trimmedMemberId },
+  });
+  if (error) {
+    throw new Error(`Kunne ikke oppdatere Auth-kobling: ${error.message}`);
   }
-  return row ? [row as MemberRow] : [];
+}
+
+function displayNameFromAuth(authUser: AuthUser, email: string): string {
+  const meta = authUser.user_metadata ?? {};
+  const full = String(meta.full_name ?? meta.name ?? "").trim();
+  if (full) return full;
+  const local = email.split("@")[0] ?? "";
+  return local.replace(/[._-]+/g, " ").trim() || "Medlem";
+}
+
+/** Når members.email er overskrevet, finnes raden via auth member_id — kan peke på feil person. */
+async function listMembersByAuthLoginEmail(
+  adminClient: ReturnType<typeof createClient>,
+  email: string,
+): Promise<{ rows: MemberRow[]; authUser: AuthUser | null; emailMismatch: boolean }> {
+  const authUser = await findAuthUserByEmail(adminClient, email);
+  if (!authUser) return { rows: [], authUser: null, emailMismatch: false };
+
+  const metadataMemberId =
+    String(authUser.app_metadata?.member_id ?? "").trim() ||
+    String(authUser.user_metadata?.member_id ?? "").trim();
+  if (!metadataMemberId) {
+    return { rows: [], authUser, emailMismatch: false };
+  }
+
+  const row = await fetchMemberById(adminClient, metadataMemberId);
+  if (!row) return { rows: [], authUser, emailMismatch: false };
+
+  const rowEmail = normalizeEmail(row.email);
+  const emailMismatch = rowEmail !== email;
+  return { rows: [row], authUser, emailMismatch };
 }
 
 async function resolveMembersForLoginEmail(
   adminClient: ReturnType<typeof createClient>,
   email: string,
-): Promise<MemberRow[]> {
+): Promise<{ rows: MemberRow[]; authUser: AuthUser | null; emailMismatch: boolean }> {
   const byEmail = await listMembersByEmail(adminClient, email);
-  if (byEmail.length) return byEmail;
+  if (byEmail.length) return { rows: byEmail, authUser: null, emailMismatch: false };
   return listMembersByAuthLoginEmail(adminClient, email);
 }
 
-async function recreateMemberFromAuth(
+async function upsertMemberRow(
   adminClient: ReturnType<typeof createClient>,
-  email: string,
-  ownerUserId: string,
-): Promise<MemberRow | null> {
-  const { data: listData, error: listError } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  if (listError) {
-    throw new Error(`Kunne ikke slå opp Auth-bruker: ${listError.message}`);
-  }
-  const matchedUser = (listData?.users ?? []).find((user) => normalizeEmail(user.email) === email);
-  if (!matchedUser) return null;
-
-  const memberId =
-    String(matchedUser.app_metadata?.member_id ?? "").trim() ||
-    String(matchedUser.user_metadata?.member_id ?? "").trim() ||
-    String(matchedUser.id ?? "").trim();
-  if (!memberId) return null;
-
-  const fallbackName =
-    String(matchedUser.user_metadata?.full_name ?? matchedUser.user_metadata?.name ?? "").trim() ||
-    email.split("@")[0] ||
-    "Medlem";
-
-  const row: MemberRow = {
-    id: memberId,
-    email,
-    name: fallbackName,
-    is_active: true,
-    owner_user_id: ownerUserId || String(matchedUser.id ?? "").trim() || null,
-    customer_type: "PT-kunde",
-  };
-
+  row: {
+    id: string;
+    email: string;
+    name: string;
+    ownerUserId: string;
+    customerType?: string;
+    isActive?: boolean;
+  },
+): Promise<MemberRow> {
   const { error: upsertError } = await adminClient.from("members").upsert(
     {
-      id: memberId,
-      owner_user_id: row.owner_user_id,
-      name: fallbackName,
-      email,
-      is_active: true,
+      id: row.id,
+      owner_user_id: row.ownerUserId || null,
+      name: row.name,
+      email: row.email,
+      is_active: row.isActive !== false,
       membership_type: "Standard",
-      customer_type: "PT-kunde",
+      customer_type: row.customerType ?? "PT-kunde",
       days_since_activity: "0",
       goal: "",
       focus: "",
@@ -137,9 +164,76 @@ async function recreateMemberFromAuth(
     { onConflict: "id" },
   );
   if (upsertError) {
-    throw new Error(`Kunne ikke opprette medlemsrad: ${upsertError.message}`);
+    throw new Error(`Kunne ikke lagre medlemsrad: ${upsertError.message}`);
   }
-  return row;
+  const saved = await fetchMemberById(adminClient, row.id);
+  if (!saved) {
+    throw new Error("Medlemsrad ble ikke funnet etter lagring.");
+  }
+  return saved;
+}
+
+/** Opprett/knytt egen medlemsrad for innlogging — ikke overskriv feil koblet rad. */
+async function relinkAuthLoginToDedicatedMemberRow(
+  adminClient: ReturnType<typeof createClient>,
+  email: string,
+  ownerUserId: string,
+  authUser: AuthUser,
+): Promise<MemberRow> {
+  const byEmail = await listMembersByEmail(adminClient, email);
+  if (byEmail.length) {
+    const row = byEmail[0] as MemberRow;
+    const id = String(row.id ?? "").trim();
+    if (id) {
+      const patch: Record<string, unknown> = { is_active: true, email };
+      const currentOwner = String(row.owner_user_id ?? "").trim();
+      if (ownerUserId && !isSharedMedlem(row.customer_type) && (!currentOwner || currentOwner === ownerUserId)) {
+        patch.owner_user_id = ownerUserId;
+      }
+      await adminClient.from("members").update(patch).eq("id", id);
+      await syncAuthMemberId(adminClient, authUser, id);
+      const updated = await fetchMemberById(adminClient, id);
+      return updated ?? row;
+    }
+  }
+
+  const canonicalMemberId = String(authUser.id).trim();
+  const name = displayNameFromAuth(authUser, email);
+  const saved = await upsertMemberRow(adminClient, {
+    id: canonicalMemberId,
+    email,
+    name,
+    ownerUserId,
+    customerType: "PT-kunde",
+    isActive: true,
+  });
+  await syncAuthMemberId(adminClient, authUser, canonicalMemberId);
+  return saved;
+}
+
+async function recreateMemberFromAuth(
+  adminClient: ReturnType<typeof createClient>,
+  email: string,
+  ownerUserId: string,
+): Promise<MemberRow | null> {
+  const authUser = await findAuthUserByEmail(adminClient, email);
+  if (!authUser) return null;
+  return relinkAuthLoginToDedicatedMemberRow(adminClient, email, ownerUserId, authUser);
+}
+
+function mapMemberForResponse(row: MemberRow, loginEmail: string, emailMismatch: boolean) {
+  const rowEmail = normalizeEmail(row.email);
+  return {
+    id: String(row.id ?? ""),
+    email: rowEmail,
+    loginEmail,
+    emailMismatch,
+    linkedMemberEmail: rowEmail,
+    name: String(row.name ?? "").trim(),
+    isActive: row.is_active !== false,
+    ownerUserId: String(row.owner_user_id ?? "").trim(),
+    customerType: String(row.customer_type ?? "").trim(),
+  };
 }
 
 Deno.serve(async (req) => {
@@ -173,13 +267,16 @@ Deno.serve(async (req) => {
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
   try {
-    let matchingRows = await resolveMembersForLoginEmail(adminClient, email);
+    const resolved = await resolveMembersForLoginEmail(adminClient, email);
+    let matchingRows = resolved.rows;
+    let emailMismatch = resolved.emailMismatch;
     let recreated = false;
 
     if (!matchingRows.length && ownerUserId && !lookupOnly) {
       const recreatedRow = await recreateMemberFromAuth(adminClient, email, ownerUserId);
       if (recreatedRow) {
         matchingRows = [recreatedRow];
+        emailMismatch = false;
         recreated = true;
       }
     }
@@ -193,17 +290,27 @@ Deno.serve(async (req) => {
     }
 
     if (lookupOnly) {
+      const message = emailMismatch
+        ? `Innloggingen er ${email}, men medlemsraden har e-post ${normalizeEmail(matchingRows[0]?.email)}. Bruk «Gjenopprett» for å koble riktig.`
+        : `Fant ${matchingRows.length} rad${matchingRows.length === 1 ? "" : "er"} i databasen.`;
       return jsonResponse(200, {
         email,
         lookupOnly: true,
-        members: matchingRows.map((row) => ({
-          id: String(row.id ?? ""),
-          email: normalizeEmail(row.email),
-          name: String(row.name ?? "").trim(),
-          isActive: row.is_active !== false,
-          ownerUserId: String(row.owner_user_id ?? "").trim(),
-          customerType: String(row.customer_type ?? "").trim(),
-        })),
+        emailMismatch,
+        members: matchingRows.map((row) => mapMemberForResponse(row, email, emailMismatch)),
+        message,
+      });
+    }
+
+    if (emailMismatch && resolved.authUser && ownerUserId) {
+      const relinked = await relinkAuthLoginToDedicatedMemberRow(adminClient, email, ownerUserId, resolved.authUser);
+      return jsonResponse(200, {
+        message: "Klient koblet på nytt med riktig e-post",
+        restoredCount: 1,
+        reactivatedCount: relinked.is_active === false ? 1 : 0,
+        recreated: false,
+        relinked: true,
+        memberIds: [String(relinked.id ?? "")],
       });
     }
 
@@ -228,6 +335,9 @@ Deno.serve(async (req) => {
       const { error } = await adminClient.from("members").update(patch).eq("id", id);
       if (error) {
         return jsonResponse(500, { error: error.message, memberId: id });
+      }
+      if (resolved.authUser) {
+        await syncAuthMemberId(adminClient, resolved.authUser, id);
       }
       restoredIds.push(id);
     }

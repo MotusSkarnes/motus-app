@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentProps } from "react";
-import { Bell, CheckCircle2, ChevronRight, ClipboardList, ClipboardPenLine, LayoutDashboard, MessageSquare, Sparkles, TrendingUp, type LucideIcon } from "lucide-react";
+import { Bell, CheckCircle2, ChevronRight, ClipboardList, ClipboardPenLine, MessageSquare, Sparkles, TrendingUp } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatNotificationTimestamp } from "../app/dateFormat";
 import {
@@ -35,6 +35,7 @@ import { MemberOnboarding } from "./MemberOnboarding";
 import { MemberWelcomeModal } from "./MemberWelcomeModal";
 import { MemberPortal } from "./MemberPortal";
 import { InspirationHub } from "./InspirationHub";
+import { MemberDesktopTabNav, MemberMobileTabNav } from "./MemberTabNavigation";
 
 function resolveActiveMemberForUser(appState: AppState): Member | null {
   const currentUser = appState.currentUser;
@@ -100,14 +101,6 @@ type MemberLayoutProps = {
   refreshRemoteHydration?: ComponentProps<typeof MemberPortal>["refreshRemoteHydration"];
   onLogout: () => void;
 };
-
-const mobileTabs: Array<{ id: MemberTab; label: string; icon: LucideIcon }> = [
-  { id: "overview", label: "Hjem", icon: LayoutDashboard },
-  { id: "programs", label: "Trening", icon: ClipboardList },
-  { id: "inspiration", label: "Inspo", icon: Sparkles },
-  { id: "progress", label: "Fremgang", icon: TrendingUp },
-  { id: "messages", label: "Meldinger", icon: MessageSquare },
-];
 
 export function MemberLayout({
   appState,
@@ -306,10 +299,6 @@ export function MemberLayout({
     }
     return candidates.some((member) => member.customerType === "Medlem" && member.membershipType !== "Premium");
   }, [appState.currentUser, appState.members, appState.memberViewId]);
-  const visibleMobileTabs = isMemberLimited
-    ? mobileTabs.filter((tab) => tab.id === "overview" || tab.id === "programs" || tab.id === "inspiration")
-    : mobileTabs;
-
   useEffect(() => {
     if (!isMemberLimited) return;
     if (memberTab === "messages" || memberTab === "progress") {
@@ -550,6 +539,8 @@ export function MemberLayout({
           )}
         </Card>
         ) : null}
+        <MemberDesktopTabNav memberTab={memberTab} setMemberTab={setMemberTab} isMemberLimited={isMemberLimited} />
+        <div className="pb-24 lg:pb-0">
         {memberTab === "inspiration" ? (
           <InspirationHub
             memberId={inspirationMemberId}
@@ -570,38 +561,7 @@ export function MemberLayout({
       </div>
 
       {!welcomeModalOpen && !onboardingGateOpen && !memberCheckInOverlayOpen ? (
-      <div
-        className="fixed inset-x-0 bottom-0 z-[9999] border-t bg-white/95 px-2 pt-2 backdrop-blur lg:hidden"
-        style={{ borderColor: "rgba(15,23,42,0.08)", paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))" }}
-      >
-        <div
-          className="mx-auto flex max-w-md items-center gap-1.5 rounded-[22px] border bg-slate-50/90 p-1.5 shadow-lg"
-          style={{ borderColor: "rgba(15,23,42,0.06)" }}
-        >
-          <div
-            className="flex w-full items-center gap-1.5 rounded-[18px] p-1.5"
-            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-          >
-            {visibleMobileTabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = memberTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setMemberTab(tab.id)}
-                  className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-semibold transition ${
-                    isActive ? "bg-white text-slate-900 shadow-sm" : "bg-white/20 text-white hover:bg-white/30"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="truncate">{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+        <MemberMobileTabNav memberTab={memberTab} setMemberTab={setMemberTab} isMemberLimited={isMemberLimited} />
       ) : null}
 
       {welcomeModalOpen && activeMember ? (
@@ -634,6 +594,7 @@ export function MemberLayout({
           onClose={() => setMemberCheckInOverlayOpen(false)}
         />
       ) : null}
+      </div>
     </>
   );
 }

@@ -83,8 +83,23 @@ export function filterSuppressedInspirationItems<T extends { id: string }>(items
 
 export function cacheInspirationFeedSnapshot(snapshot: InspirationFeedSnapshot): void {
   if (typeof window === "undefined") return;
-  saveInspirationItemsToStorage(snapshot.items, { trackLocalWrite: false });
-  saveSuppressedInspirationIds(snapshot.suppressedItemIds);
+  const localSuppressed = loadSuppressedInspirationIds();
+  const mergedSuppressed = Array.from(
+    new Set([...parseSuppressedItemIds(snapshot.suppressedItemIds), ...localSuppressed]),
+  );
+  saveSuppressedInspirationIds(mergedSuppressed);
+  saveInspirationItemsToStorage(filterSuppressedInspirationItems(snapshot.items as Array<{ id: string }>), {
+    trackLocalWrite: false,
+  });
+}
+
+/** Re-add built-in defaults unless the user/PT has explicitly deleted them. */
+export function mergeDefaultInspirationItems<T extends { id: string }>(items: T[], defaultItems: T[]): T[] {
+  const suppressed = loadSuppressedInspirationIds();
+  const existingIds = new Set(items.map((item) => item.id));
+  const missing = defaultItems.filter((item) => !existingIds.has(item.id) && !suppressed.has(item.id));
+  if (!missing.length) return items;
+  return [...items, ...missing];
 }
 
 export function saveInspirationItemsToStorage(
@@ -137,7 +152,7 @@ export function loadInspirationNotificationItems(): InspirationNotificationItem[
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return mapRawToInspirationNotificationItems(parsed);
+    return mapRawToInspirationNotificationItems(filterSuppressedInspirationItems(parsed as Array<{ id: string }>));
   } catch {
     return [];
   }
@@ -197,8 +212,13 @@ export async function pullInspirationFeedFromRemote(): Promise<InspirationFeedSn
   if (!isSupabaseConfigured) return null;
   const snapshot = await fetchInspirationFeedFromSupabase();
   if (!snapshot) return null;
-  cacheInspirationFeedSnapshot(snapshot);
-  return snapshot;
+  const localSuppressed = loadSuppressedInspirationIds();
+  const mergedSuppressed = Array.from(
+    new Set([...snapshot.suppressedItemIds, ...localSuppressed]),
+  );
+  const merged: InspirationFeedSnapshot = { ...snapshot, suppressedItemIds: mergedSuppressed };
+  cacheInspirationFeedSnapshot(merged);
+  return merged;
 }
 
 /** Hent delt inspo-feed fra Supabase, oppdater lokal cache og varsle lyttere (medlemmer). */
@@ -216,7 +236,7 @@ export async function refreshInspirationNotificationItemsFromRemote(): Promise<I
   if (nextRaw !== previousRaw) {
     notifyInspirationItemsChanged();
   }
-  return mapRawToInspirationNotificationItems(snapshot.items);
+  return mapRawToInspirationNotificationItems(filterSuppressedInspirationItems(snapshot.items as Array<{ id: string }>));
 }
 
 async function uploadInspirationItemImage(itemId: string, imageUrl?: string): Promise<string | undefined> {
@@ -291,7 +311,7 @@ export async function fetchInspirationItemsForHub<T>(): Promise<T[] | null> {
 
   const snapshot = await pullInspirationFeedFromRemote();
   if (snapshot) {
-    return snapshot.items as T[];
+    return filterSuppressedInspirationItems(snapshot.items as Array<T & { id: string }>) as T[];
   }
 
   return loadInspirationItemsFromLocalStorage<T>();

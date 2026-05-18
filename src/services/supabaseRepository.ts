@@ -577,7 +577,7 @@ async function persistProgram(
   },
 ) : Promise<{ ok: boolean; message?: string }> {
   if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
-  const ownerUserId = await getOwnerUserId(hints?.fallbackOwnerUserId);
+  const sessionUserId = await getOwnerUserId(hints?.fallbackOwnerUserId);
   const memberId = await resolveCanonicalMemberIdForPersistence(input.memberId.trim(), {
     targetEmail: hints?.targetEmail,
   });
@@ -675,6 +675,7 @@ async function persistProgram(
   });
   const targetMemberIds = Array.from(new Set((relatedMemberIds.length ? relatedMemberIds : [memberId]).filter(Boolean)));
   if (!targetMemberIds.length) return { ok: false, message: "Fant ingen medlemsprofiler å lagre programmet på." };
+  const ownerUserId = (await resolveOwnerUserIdForMember(memberId, sessionUserId)) ?? sessionUserId;
   if (!ownerUserId) {
     console.warn("save-training-program fallback skipped because owner_user_id could not be resolved client-side");
     return { ok: false, message: "Kunne ikke bekrefte innlogget bruker under lagring." };
@@ -2287,6 +2288,9 @@ export type TrainerMemberLookupRow = {
   isActive: boolean;
   ownerUserId: string;
   customerType: string;
+  loginEmail?: string;
+  emailMismatch?: boolean;
+  linkedMemberEmail?: string;
 };
 
 async function invokeRestoreMemberFunction(body: Record<string, unknown>): Promise<{
@@ -2365,15 +2369,22 @@ export async function lookupMembersByEmailForTrainer(
         isActive: row.isActive !== false,
         ownerUserId: String(row.ownerUserId ?? "").trim(),
         customerType: String(row.customerType ?? "").trim(),
+        loginEmail: String(row.loginEmail ?? normalizedEmail).trim().toLowerCase(),
+        emailMismatch: row.emailMismatch === true,
+        linkedMemberEmail: String(row.linkedMemberEmail ?? row.email ?? "").trim().toLowerCase(),
       }))
     : [];
+
+  const responseMessage = typeof invoke.data.message === "string" ? invoke.data.message.trim() : "";
 
   return {
     ok: true,
     members,
-    message: members.length
-      ? `Fant ${members.length} rad${members.length === 1 ? "" : "er"} i databasen.`
-      : "Ingen rader i databasen for denne e-posten.",
+    message: responseMessage
+      ? responseMessage
+      : members.length
+        ? `Fant ${members.length} rad${members.length === 1 ? "" : "er"} i databasen.`
+        : "Ingen rader i databasen for denne e-posten.",
   };
 }
 
@@ -2398,11 +2409,14 @@ export async function restoreMemberByEmailFromSupabase(email: string): Promise<{
       return { ok: false, message: "Fant ingen klient med denne e-posten i databasen." };
     }
     const recreated = invoke.data.recreated === true;
+    const relinked = invoke.data.relinked === true;
     return {
       ok: true,
-      message: recreated
-        ? "Klientrad opprettet på nytt og aktivert. Oppdaterer liste..."
-        : "Klient gjenopprettet. Oppdaterer liste...",
+      message: relinked
+        ? "Klienten er koblet på nytt med riktig e-post. Oppdaterer liste..."
+        : recreated
+          ? "Klientrad opprettet på nytt og aktivert. Oppdaterer liste..."
+          : "Klient gjenopprettet. Oppdaterer liste...",
     };
   }
 

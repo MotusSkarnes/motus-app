@@ -227,6 +227,38 @@ async function resolveRelatedMemberIds(
   return { ids: [id], email };
 }
 
+/** PT som skal eie raden i training_programs — ikke medlemmets auth-id. */
+async function resolveProgramOwnerUserId(
+  adminClient: ReturnType<typeof createClient>,
+  role: "member" | "trainer",
+  requesterUserId: string,
+  memberIds: string[],
+): Promise<string> {
+  if (role === "trainer") return requesterUserId;
+  const uniqueMemberIds = Array.from(new Set(memberIds.map((id) => id.trim()).filter(Boolean)));
+  for (const memberId of uniqueMemberIds) {
+    const { data } = await adminClient.from("members").select("owner_user_id").eq("id", memberId).maybeSingle();
+    const ptOwner = String((data as { owner_user_id?: string } | null)?.owner_user_id ?? "").trim();
+    if (ptOwner) return ptOwner;
+  }
+  for (const memberId of uniqueMemberIds) {
+    const { data: rows } = await adminClient
+      .from("training_programs")
+      .select("owner_user_id")
+      .eq("member_id", memberId)
+      .not("owner_user_id", "is", null)
+      .neq("owner_user_id", requesterUserId)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    for (const row of rows ?? []) {
+      const candidate = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
+      if (candidate) return candidate;
+    }
+  }
+  console.warn("save-training-program: could not resolve PT owner_user_id for member save");
+  return requesterUserId;
+}
+
 async function syncAuthMemberLink(
   adminClient: ReturnType<typeof createClient>,
   email: string,
@@ -301,7 +333,7 @@ Deno.serve(async (req) => {
   const goal = String(payload.goal ?? "").trim();
   const notes = String(payload.notes ?? "").trim();
   const exercises = Array.isArray(payload.exercises) ? payload.exercises : [];
-  const ownerUserId = String(userData.user.id ?? "").trim();
+  const requesterUserId = String(userData.user.id ?? "").trim();
   const programId = String(payload.id ?? "").trim();
   const targetEmail = normalizeEmail(payload.targetEmail);
   const targetName = String(payload.targetName ?? "").trim();
@@ -309,7 +341,7 @@ Deno.serve(async (req) => {
   const membershipType = String(payload.membershipType ?? "").trim();
   const role = roleFromUser(userData.user);
 
-  if (!ownerUserId) return jsonResponse(401, { error: "Missing authenticated user id" });
+  if (!requesterUserId) return jsonResponse(401, { error: "Missing authenticated user id" });
   if (!title) return jsonResponse(400, { error: "Title is required" });
 
   // Clients sometimes keep a synthetic `auth-*` id; map to DB `members.id` so upsert and RLS stay consistent.
@@ -340,7 +372,7 @@ Deno.serve(async (req) => {
     const { error } = await upsertTrainingProgramWithAuthorFallback(adminClient, {
       id,
       member_id: memberId,
-      owner_user_id: ownerUserId,
+      owner_user_id: requesterUserId,
       title,
       goal,
       notes,
@@ -358,8 +390,15 @@ Deno.serve(async (req) => {
     targetName,
     customerType,
     membershipType,
-    ownerUserId,
+    ownerUserId: requesterUserId,
   });
+
+  const programOwnerUserId = await resolveProgramOwnerUserId(
+    adminClient,
+    role,
+    requesterUserId,
+    targetMemberIds.length ? targetMemberIds : [memberId],
+  );
 
   if (role === "member") {
     const email = normalizeEmail(userData.user.email);
@@ -387,7 +426,7 @@ Deno.serve(async (req) => {
     const { error: primaryError } = await upsertTrainingProgramWithAuthorFallback(adminClient, {
       id: programId,
       member_id: canonicalTargetMemberId,
-      owner_user_id: ownerUserId,
+      owner_user_id: programOwnerUserId,
       title,
       goal,
       notes,
@@ -404,7 +443,7 @@ Deno.serve(async (req) => {
       const { data: existingRows, error: lookupError } = await adminClient
         .from("training_programs")
         .select("id")
-        .eq("owner_user_id", ownerUserId)
+        .eq("owner_user_id", programOwnerUserId)
         .eq("member_id", targetMemberId)
         .eq("title", title)
         .order("created_at", { ascending: false })
@@ -416,7 +455,7 @@ Deno.serve(async (req) => {
         const { error: updateError } = await upsertTrainingProgramWithAuthorFallback(adminClient, {
           id: existingId,
           member_id: targetMemberId,
-          owner_user_id: ownerUserId,
+          owner_user_id: programOwnerUserId,
           title,
           goal,
           notes,
@@ -432,7 +471,7 @@ Deno.serve(async (req) => {
         const { error: insertError } = await insertTrainingProgramWithAuthorFallback(adminClient, {
           id: siblingId,
           member_id: targetMemberId,
-          owner_user_id: ownerUserId,
+          owner_user_id: programOwnerUserId,
           title,
           goal,
           notes,
@@ -452,7 +491,7 @@ Deno.serve(async (req) => {
       const { data: existingRows, error: lookupError } = await adminClient
         .from("training_programs")
         .select("id, title, goal, notes, exercises")
-        .eq("owner_user_id", ownerUserId)
+        .eq("owner_user_id", programOwnerUserId)
         .eq("member_id", targetMemberId)
         .eq("title", title)
         .order("created_at", { ascending: false });
@@ -465,7 +504,7 @@ Deno.serve(async (req) => {
         const { error: updateError } = await upsertTrainingProgramWithAuthorFallback(adminClient, {
           id: existingId,
           member_id: targetMemberId,
-          owner_user_id: ownerUserId,
+          owner_user_id: programOwnerUserId,
           title,
           goal,
           notes,
@@ -483,7 +522,7 @@ Deno.serve(async (req) => {
       const { error } = await insertTrainingProgramWithAuthorFallback(adminClient, {
         id: nextId,
         member_id: targetMemberId,
-        owner_user_id: ownerUserId,
+        owner_user_id: programOwnerUserId,
         title,
         goal,
         notes,

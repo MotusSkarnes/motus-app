@@ -316,6 +316,21 @@ Deno.serve(async (req) => {
   members = (members ?? []).filter((row) => isVisibleToTrainer(row, ownerUserId));
 
   const visibleMemberIds = (members ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);
+  const memberOwnerById = new Map<string, string>();
+  for (const row of members ?? []) {
+    const memberId = String((row as { id?: string }).id ?? "").trim();
+    const ptOwner = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
+    if (memberId && ptOwner) memberOwnerById.set(memberId, ptOwner);
+  }
+  if (visibleMemberIds.length > 0) {
+    for (const memberId of visibleMemberIds) {
+      const ptOwner = memberOwnerById.get(memberId);
+      if (!ptOwner) continue;
+      await adminClient.from("training_programs").update({ owner_user_id: ptOwner }).eq("member_id", memberId).neq("owner_user_id", ptOwner);
+      await adminClient.from("workout_logs").update({ owner_user_id: ptOwner }).eq("member_id", memberId).neq("owner_user_id", ptOwner);
+      await adminClient.from("chat_messages").update({ owner_user_id: ptOwner }).eq("member_id", memberId).neq("owner_user_id", ptOwner);
+    }
+  }
   const visibleMemberEmails = Array.from(
     new Set(
       (members ?? [])

@@ -1,15 +1,25 @@
-import { STORAGE_KEY, getDefaultState } from "./data";
+import { STORAGE_KEY, getDefaultState, getSupabaseBootstrapState } from "./data";
+import { isSupabaseConfigured } from "../services/supabaseClient";
 import type { AppState } from "./types";
 
 export function uid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function useSupabaseProductionBootstrap(): boolean {
+  if (!isSupabaseConfigured) return false;
+  return !(import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_MODE === "true");
+}
+
 export function loadState(): AppState {
-  if (typeof window === "undefined") return getDefaultState();
+  if (typeof window === "undefined") {
+    return useSupabaseProductionBootstrap() ? getSupabaseBootstrapState() : getDefaultState();
+  }
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return getDefaultState();
+    if (!raw) {
+      return useSupabaseProductionBootstrap() ? getSupabaseBootstrapState() : getDefaultState();
+    }
     const parsed = JSON.parse(raw) as Partial<AppState>;
     const defaults = getDefaultState();
     const defaultExercisesById = new Map(defaults.exercises.map((exercise) => [exercise.id, exercise]));

@@ -8,6 +8,7 @@ import {
   INSPIRATION_CHANGED_EVENT,
   INSPIRATION_STORAGE_KEY,
   loadInspirationItemsFromLocalStorage,
+  mergeDefaultInspirationItems,
   notifyInspirationItemsChanged,
   persistInspirationItems,
   pullInspirationFeedFromRemote,
@@ -502,13 +503,6 @@ function resolveComposerCopy(
   return { title: nextTitle, description: nextDescription, body: nextBody };
 }
 
-function mergeDefaultInspirationItems(items: InspirationItem[]): InspirationItem[] {
-  const existingIds = new Set(items.map((item) => item.id));
-  const missing = DEFAULT_ITEMS.filter((item) => !existingIds.has(item.id));
-  if (!missing.length) return items;
-  return [...items, ...missing];
-}
-
 function resolveInspirationHubItems(fetched: InspirationItem[] | null): InspirationItem[] {
   const base =
     fetched && fetched.length > 0
@@ -520,9 +514,9 @@ function resolveInspirationHubItems(fetched: InspirationItem[] | null): Inspirat
   if (!withoutSuppressed.length && typeof window === "undefined") return DEFAULT_ITEMS;
   if (!withoutSuppressed.length) {
     const defaults = filterSuppressedInspirationItems(DEFAULT_ITEMS);
-    return defaults.length ? defaults : DEFAULT_ITEMS;
+    return defaults;
   }
-  return mergeDefaultInspirationItems(withoutSuppressed);
+  return mergeDefaultInspirationItems(withoutSuppressed, DEFAULT_ITEMS);
 }
 
 function loadInspirationItems(): InspirationItem[] {
@@ -701,8 +695,12 @@ export function InspirationHub({
       setActionStatus(result.error);
       return { ok: false };
     }
-    const snapshot = await pullInspirationFeedFromRemote();
-    setItems(resolveInspirationHubItems(snapshot?.items ?? next));
+    if (result.cloudSynced) {
+      const snapshot = await pullInspirationFeedFromRemote();
+      setItems(resolveInspirationHubItems(snapshot?.items ?? next));
+    } else {
+      setItems(resolveInspirationHubItems(next));
+    }
     notifyInspirationItemsChanged();
     const message = result.warning
       ? result.warning

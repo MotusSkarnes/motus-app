@@ -153,6 +153,20 @@ function mergeRemoteProgramsWithLocal(remotePrograms: TrainingProgram[], localPr
   });
 }
 
+function visibleMemberIdSet(members: Member[]): Set<string> {
+  return new Set(members.map((member) => member.id.trim()).filter(Boolean));
+}
+
+function filterProgramsForMembers(programs: TrainingProgram[], memberIds: Set<string>): TrainingProgram[] {
+  if (!memberIds.size) return programs;
+  return programs.filter((program) => memberIds.has(program.memberId.trim()));
+}
+
+function filterLogsForMembers(logs: WorkoutLog[], memberIds: Set<string>): WorkoutLog[] {
+  if (!memberIds.size) return logs;
+  return logs.filter((log) => memberIds.has(log.memberId.trim()));
+}
+
 function mergeWorkoutLogsById(
   hydrated: WorkoutLog[] | null | undefined,
   direct: WorkoutLog[] | null | undefined,
@@ -360,7 +374,11 @@ export function useAppState() {
     const existingById = resolvedMemberId ? state.members.find((member) => member.id === resolvedMemberId) : null;
     const existingByEmail =
       normalizedEmail ? state.members.find((member) => member.email.trim().toLowerCase() === normalizedEmail) : null;
-    const existing = existingById ?? existingByEmail ?? null;
+    const idMatchesEmail =
+      existingById &&
+      normalizedEmail &&
+      existingById.email.trim().toLowerCase() === normalizedEmail;
+    const existing = idMatchesEmail ? existingById : existingByEmail ?? existingById ?? null;
     if (existing) return state;
 
     const fallbackMember = {
@@ -690,15 +708,16 @@ export function useAppState() {
                   .map((member) => member.personalGoals),
               ]);
               if (remoteIndex >= 0) {
-                // Remote must win over stale per-device localStorage so profile edits sync across phone/PC.
+                // Remote must win over stale per-device localStorage (and demo seed rows with same id).
                 mergedMembers = mergedMembers.map((member, index) => {
                   if (index !== remoteIndex) return member;
-                  const mergedRow = { ...localMember, ...member };
                   const remoteInv = member.invitedAt?.trim();
                   const localInv = localMember.invitedAt?.trim();
-                  mergedRow.invitedAt = remoteInv || localInv || "";
-                  mergedRow.personalGoals = bestGoalsForEmail || mergedRow.personalGoals;
-                  return mergedRow;
+                  return {
+                    ...member,
+                    invitedAt: remoteInv || localInv || "",
+                    personalGoals: bestGoalsForEmail || member.personalGoals,
+                  };
                 });
               } else {
                 mergedMembers = [...mergedMembers, localMember];
@@ -737,9 +756,16 @@ export function useAppState() {
           next.messages = remoteMessages;
         }
 
+        const visibleMemberIds = visibleMemberIdSet(next.members);
+        const trainerHydrateOk = Boolean(hydratedTrainer) && !trainerHydrateFailed;
+
         if (trustRemotePrograms) {
           const mergedProgs = remotePrograms ?? [];
-          if (mergedProgs.length > 0 || shouldAdoptRemote(mergedProgs, prev.programs)) {
+          if (isMemberLikeSession && hydratedMember !== null) {
+            next.programs = filterProgramsForMembers(mergedProgs, visibleMemberIds);
+          } else if (isTrainerSession && trainerHydrateOk) {
+            next.programs = mergedProgs;
+          } else if (mergedProgs.length > 0 || shouldAdoptRemote(mergedProgs, prev.programs)) {
             next.programs = mergeRemoteProgramsWithLocal(mergedProgs, prev.programs);
           }
         } else if (shouldAdoptRemote(remotePrograms, prev.programs)) {
@@ -748,7 +774,15 @@ export function useAppState() {
 
         if (trustRemoteLogs) {
           const mergedLogs = remoteLogs ?? [];
-          if (mergedLogs.length > 0 || shouldAdoptRemote(mergedLogs, prev.logs)) {
+          if (isMemberLikeSession && hydratedMember !== null) {
+            next.logs = mergeRemoteWorkoutLogsWithLocalOptimistic(
+              filterLogsForMembers(mergedLogs, visibleMemberIds),
+              [],
+              next.members,
+            );
+          } else if (isTrainerSession && trainerHydrateOk) {
+            next.logs = mergeRemoteWorkoutLogsWithLocalOptimistic(mergedLogs, prev.logs, next.members);
+          } else if (mergedLogs.length > 0 || shouldAdoptRemote(mergedLogs, prev.logs)) {
             next.logs = mergeRemoteWorkoutLogsWithLocalOptimistic(mergedLogs, prev.logs, [...next.members, ...prev.members]);
           }
         } else if (shouldAdoptRemote(remoteLogs, prev.logs)) {

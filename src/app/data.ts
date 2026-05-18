@@ -308,3 +308,17 @@ export function getDefaultState(): AppState {
     memberViewId: initialMembers[0]?.id ?? "",
   };
 }
+
+/** Tom katalog for produksjon — unngår at demo-programmer (m1/m2) vises før Supabase-hydrering. */
+export function getSupabaseBootstrapState(): AppState {
+  const defaults = getDefaultState();
+  return {
+    ...defaults,
+    members: [],
+    programs: [],
+    logs: [],
+    messages: [],
+    selectedMemberId: "",
+    memberViewId: "",
+  };
+}

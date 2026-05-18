@@ -116,19 +116,30 @@ Deno.serve(async (req) => {
   }
 
   let ownerUserId = memberOwner;
+  if (requesterRole === "member" && ownerUserId === requesterId) {
+    ownerUserId = "";
+  }
   if (!ownerUserId) {
-    const { data: programOwnerRow } = await adminClient
+    const { data: programOwnerRows } = await adminClient
       .from("training_programs")
       .select("owner_user_id")
       .eq("member_id", canonicalMemberId)
       .not("owner_user_id", "is", null)
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    ownerUserId = String((programOwnerRow as { owner_user_id?: string } | null)?.owner_user_id ?? "").trim();
+      .limit(10);
+    for (const row of programOwnerRows ?? []) {
+      const candidate = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
+      if (!candidate) continue;
+      if (requesterRole === "member" && candidate === requesterId) continue;
+      ownerUserId = candidate;
+      break;
+    }
   }
   if (!ownerUserId && requesterRole === "trainer") {
     ownerUserId = requesterId;
+  }
+  if (requesterRole === "member" && ownerUserId === requesterId) {
+    ownerUserId = "";
   }
   if (!ownerUserId) {
     return jsonResponse(409, { error: "Could not resolve trainer owner for member log" });

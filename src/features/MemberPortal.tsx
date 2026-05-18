@@ -3938,43 +3938,6 @@ export function MemberPortal(props: MemberPortalProps) {
   return (
     <>
     <div className="space-y-4 sm:space-y-6">
-      <Card className="hidden overflow-hidden lg:block">
-        <div
-          className="flex gap-2 overflow-auto px-3 py-3"
-          style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-        >
-          {(isMemberLimited
-            ? [
-                { id: "overview", label: "Hjem" },
-                { id: "programs", label: "Trening" },
-                { id: "inspiration", label: "Inspirasjon" },
-                { id: "profile", label: "Profil" },
-              ]
-            : [
-            { id: "overview", label: "Hjem" },
-            { id: "programs", label: "Trening" },
-            { id: "inspiration", label: "Inspirasjon" },
-            { id: "progress", label: "Fremgang" },
-            { id: "messages", label: "Meldinger" },
-            { id: "profile", label: "Profil" },
-          ]).map((tab) => {
-            const isActive = memberTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setMemberTab(tab.id as MemberTab)}
-                className={`shrink-0 rounded-2xl px-4 py-2 text-sm font-medium transition ${
-                  isActive ? "bg-white text-slate-900 shadow-sm" : "bg-white/20 text-white hover:bg-white/30"
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </Card>
-
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-[280px_1fr]">
         <Card className="hidden p-4 h-fit xl:p-5 lg:block">
           <div className="flex items-start gap-3">
