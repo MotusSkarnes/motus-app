@@ -127,17 +127,6 @@ Deno.serve(async (req) => {
       .maybeSingle();
     ownerUserId = String((programOwnerRow as { owner_user_id?: string } | null)?.owner_user_id ?? "").trim();
   }
-  if (!ownerUserId && memberEmail) {
-    const { data: ownerMemberByEmail } = await adminClient
-      .from("members")
-      .select("owner_user_id")
-      .eq("email", memberEmail)
-      .not("owner_user_id", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    ownerUserId = String((ownerMemberByEmail as { owner_user_id?: string } | null)?.owner_user_id ?? "").trim();
-  }
   if (!ownerUserId && requesterRole === "trainer") {
     ownerUserId = requesterId;
   }

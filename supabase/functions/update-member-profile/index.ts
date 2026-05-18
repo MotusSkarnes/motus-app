@@ -409,12 +409,18 @@ Deno.serve(async (req) => {
         mergeUpdated(medlemResult.data);
       }
     } else {
+      const editableAnchorIds = new Set(
+        visibleAnchors
+          .filter((row) => {
+            const ownerUserId = normalizeString(row.owner_user_id);
+            return ownerUserId === trainerId || !ownerUserId;
+          })
+          .map((row) => normalizeString(row.id))
+          .filter(Boolean),
+      );
       let rosterIds = requestedMemberIds.length
-        ? requestedMemberIds.map((value) => normalizeString(value)).filter(Boolean)
-        : visibleAnchors
-            .filter((row) => normalizeString(row.owner_user_id) === trainerId)
-            .map((row) => normalizeString(row.id))
-            .filter(Boolean);
+        ? requestedMemberIds.map((value) => normalizeString(value)).filter((id) => editableAnchorIds.has(id))
+        : Array.from(editableAnchorIds);
       rosterIds = Array.from(new Set(rosterIds));
       if (rosterIds.length) {
         const privateRosterPayload = {

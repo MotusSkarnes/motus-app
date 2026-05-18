@@ -7,6 +7,7 @@ import motusLogo from "../assets/motus-logo-transparent.svg";
 
 export function AppHeader({
   currentUser,
+  memberDisplayName,
   role,
   showQuickLogin,
   onSwitchRole,
@@ -15,6 +16,7 @@ export function AppHeader({
   onOpenMemberProfile,
 }: {
   currentUser: AuthUser;
+  memberDisplayName?: string;
   role: Role;
   showQuickLogin: boolean;
   onSwitchRole: (role: Role) => void;
@@ -24,10 +26,10 @@ export function AppHeader({
 }) {
   const showProductionSafeQuickTools = showQuickLogin && (import.meta.env.DEV || import.meta.env.MODE === "test");
   const memberFirstName = useMemo(() => {
-    const rawName = currentUser.name?.trim() ?? "";
+    const rawName = (memberDisplayName || currentUser.name || "").trim();
     if (!rawName) return "du";
     return rawName.split(/\s+/)[0] || "du";
-  }, [currentUser.name]);
+  }, [currentUser.name, memberDisplayName]);
 
   const memberMotivationText = useMemo(() => {
     const options = [

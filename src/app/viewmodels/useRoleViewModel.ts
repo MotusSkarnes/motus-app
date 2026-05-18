@@ -1,4 +1,4 @@
-import { useState, type ComponentProps } from "react";
+import { useMemo, useState, type ComponentProps } from "react";
 import { AppHeader, MemberLayout, TrainerLayout } from "../../features";
 import { buildAppHeaderProps, buildMemberLayoutProps, buildTrainerLayoutProps } from "./viewModelBuilders";
 import type { AppStateHookResult, RoleViewModel } from "./types";
@@ -61,8 +61,33 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     },
   });
 
+  const memberHeaderDisplayName = useMemo(() => {
+    const currentUser = state.appState.currentUser;
+    if (!currentUser || currentUser.role !== "member") return undefined;
+    const normalizedEmail = currentUser.email.trim().toLowerCase();
+    const currentMemberId = currentUser.memberId?.trim() ?? "";
+    const viewMemberId = state.appState.memberViewId.trim();
+    const selectedMemberId = state.appState.selectedMemberId.trim();
+    const match =
+      (currentMemberId ? state.appState.members.find((member) => member.id === currentMemberId) : null) ??
+      (viewMemberId ? state.appState.members.find((member) => member.id === viewMemberId) : null) ??
+      (selectedMemberId ? state.appState.members.find((member) => member.id === selectedMemberId) : null) ??
+      (normalizedEmail
+        ? state.appState.members.find((member) => member.email.trim().toLowerCase() === normalizedEmail)
+        : null) ??
+      null;
+    const name = match?.name.trim() ?? "";
+    return name || undefined;
+  }, [
+    state.appState.currentUser,
+    state.appState.memberViewId,
+    state.appState.members,
+    state.appState.selectedMemberId,
+  ]);
+
   const appHeaderProps: ComponentProps<typeof AppHeader> = buildAppHeaderProps({
     currentUser: state.appState.currentUser!,
+    memberDisplayName: memberHeaderDisplayName,
     role: state.appState.role,
     showQuickLogin: state.showQuickLogin,
     onSwitchRole: (role) => state.patchState({ role }),

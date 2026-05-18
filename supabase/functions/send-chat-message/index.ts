@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
     const recipientAuthByEmail = await resolveAuthUserByEmail(adminClient, anchorEmail);
     const recipientAuthUserId = recipientAuthByMemberId.userId || recipientAuthByEmail.userId;
     const recipientAuthMemberId = recipientAuthByMemberId.memberId || recipientAuthByEmail.memberId;
-    let canonicalMemberId = recipientAuthMemberId || memberId;
+    const canonicalMemberId = recipientAuthMemberId || memberId;
     let canonicalMemberOwnerUserId = "";
     let canonicalEmail = anchorEmail;
     const canonicalMemberRow =
@@ -200,33 +200,6 @@ Deno.serve(async (req) => {
       ).trim();
       canonicalEmail =
         String((canonicalMemberRow.data as { email?: string }).email ?? "").trim().toLowerCase() || canonicalEmail;
-    }
-    if (!recipientAuthMemberId && anchorEmail && anchorEmail.includes("@")) {
-      const { data: siblingRows } = await adminClient
-        .from("members")
-        .select("id, email, owner_user_id, is_active, created_at")
-        .ilike("email", anchorEmail);
-      const siblings = (siblingRows ?? [])
-        .map((row) => ({
-          id: String((row as { id?: string }).id ?? "").trim(),
-          email: String((row as { email?: string }).email ?? "").trim().toLowerCase(),
-          ownerUserId: String((row as { owner_user_id?: string }).owner_user_id ?? "").trim(),
-          isActive: (row as { is_active?: boolean | null }).is_active !== false,
-          createdAtMs: new Date(String((row as { created_at?: string }).created_at ?? "")).getTime() || 0,
-        }))
-        .filter((row) => Boolean(row.id));
-      if (siblings.length) {
-        const sorted = [...siblings].sort((a, b) => {
-          const activeDelta = Number(b.isActive) - Number(a.isActive);
-          if (activeDelta !== 0) return activeDelta;
-          if (b.createdAtMs !== a.createdAtMs) return b.createdAtMs - a.createdAtMs;
-          return a.id.localeCompare(b.id);
-        });
-        const chosen = sorted[0];
-        canonicalMemberId = chosen.id;
-        canonicalMemberOwnerUserId = chosen.ownerUserId || canonicalMemberOwnerUserId;
-        canonicalEmail = chosen.email || canonicalEmail;
-      }
     }
     if (sender === "trainer" && recipientAuthUserId) {
       // Always align recipient auth link with canonical member row.

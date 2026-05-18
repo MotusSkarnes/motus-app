@@ -207,6 +207,20 @@ Deno.serve(async (req) => {
     programCountByMemberId.set(resolvedMemberId, (programCountByMemberId.get(resolvedMemberId) ?? 0) + 1);
   });
 
+  const requestedCandidate = memberId ? candidates.find((candidate) => candidate.id === memberId) : null;
+  if (!requestedCandidate) {
+    const candidateOwnerIds = Array.from(
+      new Set(candidates.map((candidate) => String(candidate.owner_user_id ?? "").trim()).filter(Boolean)),
+    );
+    if (candidateOwnerIds.length > 1) {
+      return jsonResponse(409, {
+        error: "Refusing to auto-link member auth across multiple trainer owners",
+        updated: 0,
+        ownerCount: candidateOwnerIds.length,
+      });
+    }
+  }
+
   // Canonical choice:
   // 1) member with most programs
   // 2) active member preferred
@@ -224,7 +238,6 @@ Deno.serve(async (req) => {
     return a.id.localeCompare(b.id);
   })[0];
 
-  const requestedCandidate = memberId ? candidates.find((candidate) => candidate.id === memberId) : null;
   // Respect explicitly requested member row when provided and valid.
   const selectedCandidate = requestedCandidate ?? canonicalCandidate ?? null;
   memberId = (selectedCandidate?.id || "").trim();
@@ -245,6 +258,19 @@ Deno.serve(async (req) => {
   const targetUsers = users.filter((user) => normalizeEmail(user.email) === email);
   if (!targetUsers.length) {
     return jsonResponse(200, { message: "No matching auth user found for email", updated: 0 });
+  }
+
+  const trainerUsers = targetUsers.filter((user) => {
+    const appRole = String(user.app_metadata?.role ?? "").trim().toLowerCase();
+    const userRole = String(user.user_metadata?.role ?? "").trim().toLowerCase();
+    return appRole === "trainer" || userRole === "trainer";
+  });
+  if (trainerUsers.length > 0) {
+    return jsonResponse(409, {
+      error: "Refusing to link trainer auth user as member",
+      updated: 0,
+      trainerEmails: trainerUsers.map((user) => String(user.email ?? "").trim()).filter(Boolean),
+    });
   }
 
   let updated = 0;
@@ -322,33 +348,42 @@ Deno.serve(async (req) => {
       .eq("member_id", normalizedLegacyId);
     legacyProgramCounts[normalizedLegacyId] = Number(programCountBefore ?? 0);
 
-    const { data: programRows, error: programUpdateError } = await adminClient
+    let programUpdate = adminClient
       .from("training_programs")
       .update({ member_id: memberId })
-      .eq("member_id", normalizedLegacyId)
-      .select("id");
+      .eq("member_id", normalizedLegacyId);
+    if (canonicalOwnerUserId) {
+      programUpdate = programUpdate.eq("owner_user_id", canonicalOwnerUserId);
+    }
+    const { data: programRows, error: programUpdateError } = await programUpdate.select("id");
     if (programUpdateError) {
       console.warn(`link-member-auth: program member_id migrate failed for ${normalizedLegacyId}:`, programUpdateError.message);
     } else {
       migratedPrograms += (programRows ?? []).length;
     }
 
-    const { data: logRows, error: logUpdateError } = await adminClient
+    let logUpdate = adminClient
       .from("workout_logs")
       .update({ member_id: memberId })
-      .eq("member_id", normalizedLegacyId)
-      .select("id");
+      .eq("member_id", normalizedLegacyId);
+    if (canonicalOwnerUserId) {
+      logUpdate = logUpdate.eq("owner_user_id", canonicalOwnerUserId);
+    }
+    const { data: logRows, error: logUpdateError } = await logUpdate.select("id");
     if (logUpdateError) {
       console.warn(`link-member-auth: workout_log member_id migrate failed for ${normalizedLegacyId}:`, logUpdateError.message);
     } else {
       migratedLogs += (logRows ?? []).length;
     }
 
-    const { data: messageRows, error: messageUpdateError } = await adminClient
+    let messageUpdate = adminClient
       .from("chat_messages")
       .update({ member_id: memberId })
-      .eq("member_id", normalizedLegacyId)
-      .select("id");
+      .eq("member_id", normalizedLegacyId);
+    if (canonicalOwnerUserId) {
+      messageUpdate = messageUpdate.eq("owner_user_id", canonicalOwnerUserId);
+    }
+    const { data: messageRows, error: messageUpdateError } = await messageUpdate.select("id");
     if (messageUpdateError) {
       console.warn(`link-member-auth: chat_message member_id migrate failed for ${normalizedLegacyId}:`, messageUpdateError.message);
     } else {

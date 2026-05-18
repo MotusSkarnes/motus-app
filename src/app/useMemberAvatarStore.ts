@@ -23,17 +23,6 @@ function decodeEmailFromPath(value: string): string {
   }
 }
 
-function decodeNameFromPath(value: string): string {
-  const normalized = value.trim();
-  if (!normalized) return "";
-  const padded = normalized.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (normalized.length % 4)) % 4);
-  try {
-    return decodeURIComponent(escape(atob(padded))).trim().toLowerCase();
-  } catch {
-    return "";
-  }
-}
-
 export function useMemberAvatarStore({
   currentUser,
   members,
@@ -47,11 +36,6 @@ export function useMemberAvatarStore({
     const normalized = email.trim().toLowerCase();
     return normalized ? `email:${normalized}` : "";
   }
-  function nameAvatarKey(name: string): string {
-    const normalized = name.trim().toLowerCase();
-    return normalized ? `name:${normalized}` : "";
-  }
-
   const [memberAvatarById, setMemberAvatarById] = useState<Record<string, string>>(() => {
     if (typeof window === "undefined") return {};
     try {
@@ -80,14 +64,12 @@ export function useMemberAvatarStore({
     if (direct) return direct;
     const directByEmail = currentUser?.email ? memberAvatarById[emailAvatarKey(currentUser.email)] : "";
     if (directByEmail) return directByEmail;
-    const directByName = currentUser?.name ? memberAvatarById[nameAvatarKey(currentUser.name)] : "";
-    if (directByName) return directByName;
     for (const memberId of currentMemberAvatarTargetIds) {
       const avatar = memberAvatarById[memberId];
       if (avatar) return avatar;
     }
     return "";
-  }, [memberAvatarById, memberViewId, currentMemberAvatarTargetIds, currentUser?.email, currentUser?.name]);
+  }, [memberAvatarById, memberViewId, currentMemberAvatarTargetIds, currentUser?.email]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -115,9 +97,7 @@ export function useMemberAvatarStore({
           const dotIndex = entry.name.lastIndexOf(".");
           const rawName = dotIndex >= 0 ? entry.name.slice(0, dotIndex) : entry.name;
           const emailEncoded = rawName.startsWith("email-") ? rawName.slice("email-".length) : rawName;
-          const nameEncoded = rawName.startsWith("name-") ? rawName.slice("name-".length) : "";
           const decodedEmail = decodeEmailFromPath(emailEncoded);
-          const decodedName = decodeNameFromPath(nameEncoded);
           let didSet = false;
           if (decodedEmail) {
             const emailKey = emailAvatarKey(decodedEmail);
@@ -126,14 +106,7 @@ export function useMemberAvatarStore({
               didSet = true;
             }
           }
-          if (decodedName) {
-            const nameKey = nameAvatarKey(decodedName);
-            if (next[nameKey] !== versionedUrl) {
-              next[nameKey] = versionedUrl;
-              didSet = true;
-            }
-          }
-          if (!didSet && !decodedEmail && !decodedName) return;
+          if (!didSet && !decodedEmail) return;
           changed = true;
         });
         return changed ? next : prev;
@@ -193,25 +166,17 @@ export function useMemberAvatarStore({
       const targetMember = members.find((member) => member.id === memberId);
       if (!targetMember) return prev;
       const normalizedEmail = targetMember.email.trim().toLowerCase();
-      const normalizedName = targetMember.name.trim().toLowerCase();
       const relatedIds = normalizedEmail
         ? members.filter((member) => member.email.trim().toLowerCase() === normalizedEmail).map((member) => member.id)
         : [memberId];
-      const relatedNameIds = normalizedName
-        ? members.filter((member) => member.name.trim().toLowerCase() === normalizedName).map((member) => member.id)
-        : [];
       const emailKey = emailAvatarKey(normalizedEmail);
-      const nameKey = nameAvatarKey(normalizedName);
-      const uniqueIds = Array.from(new Set([...(relatedIds.length ? relatedIds : [memberId]), ...relatedNameIds]));
+      const uniqueIds = Array.from(new Set(relatedIds.length ? relatedIds : [memberId]));
       const next = { ...prev };
       uniqueIds.forEach((id) => {
         next[id] = avatarUrl;
       });
       if (emailKey) {
         next[emailKey] = avatarUrl;
-      }
-      if (nameKey) {
-        next[nameKey] = avatarUrl;
       }
       if (normalizedEmail) {
         const encodedEmail = encodeEmailForPath(normalizedEmail);
@@ -233,7 +198,6 @@ export function useMemberAvatarStore({
       if (url) {
         const next = { ...prev };
         const currentEmailKey = currentUser?.email ? emailAvatarKey(currentUser.email) : "";
-        const currentNameKey = currentUser?.name ? nameAvatarKey(currentUser.name) : "";
         currentMemberAvatarTargetIds.forEach((memberId) => {
           if (!memberId) return;
           next[memberId] = url;
@@ -244,18 +208,13 @@ export function useMemberAvatarStore({
         if (currentEmailKey) {
           next[currentEmailKey] = url;
         }
-        if (currentNameKey) {
-          next[currentNameKey] = url;
-        }
         return next;
       }
       if (!currentMemberAvatarTargetIds.length && !memberViewId) return prev;
       const currentEmailKey = currentUser?.email ? emailAvatarKey(currentUser.email) : "";
-      const currentNameKey = currentUser?.name ? nameAvatarKey(currentUser.name) : "";
       return Object.fromEntries(
         Object.entries(prev).filter(([key]) => {
           if (currentEmailKey && key === currentEmailKey) return false;
-          if (currentNameKey && key === currentNameKey) return false;
           if (currentMemberAvatarTargetIds.length) {
             return !currentMemberAvatarTargetIds.includes(key);
           }

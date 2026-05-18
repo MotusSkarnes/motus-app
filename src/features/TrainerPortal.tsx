@@ -443,13 +443,6 @@ function encodeEmailForPath(email: string): string {
   return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
-function encodeNameForPath(name: string): string {
-  const normalized = name.trim().toLowerCase();
-  if (!normalized) return "";
-  const base64 = btoa(unescape(encodeURIComponent(normalized)));
-  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
 function parseChatCreatedAtMs(value: string): number {
   if (!value) return 0;
   const iso = new Date(value);
@@ -472,16 +465,10 @@ function computeSelectedMemberRelatedIds(members: Member[], selectedMemberId: st
   const selected = members.find((member) => member.id === selectedMemberId);
   if (!selected) return [selectedMemberId];
   const normalizedEmail = selected.email.trim().toLowerCase();
-  const normalizedName = selected.name.trim().toLowerCase();
   const byEmailIds = normalizedEmail
     ? members.filter((member) => member.email.trim().toLowerCase() === normalizedEmail).map((member) => member.id)
     : [];
-  // Legacy data may contain duplicated member rows where email changed between IDs.
-  // Include name matches so trainer still sees historical logs/programs.
-  const byNameIds = normalizedName
-    ? members.filter((member) => member.name.trim().toLowerCase() === normalizedName).map((member) => member.id)
-    : [];
-  const merged = Array.from(new Set([...byEmailIds, ...byNameIds, selectedMemberId]));
+  const merged = Array.from(new Set([...byEmailIds, selectedMemberId]));
   return merged.length ? merged : [selectedMemberId];
 }
 
@@ -744,7 +731,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     onConfirm: () => void;
   } | null>(null);
   const editLockedMemberIdRef = useRef<string | null>(null);
-  const editLockedIdentityRef = useRef<{ email: string; name: string } | null>(null);
+  const editLockedIdentityRef = useRef<{ email: string } | null>(null);
   const [workoutDateRangeFilter, setWorkoutDateRangeFilter] = useState<"7d" | "30d" | "all">("7d");
   const [workoutTypeFilter, setWorkoutTypeFilter] = useState<"all" | "program" | "group">("all");
   const [workoutSearchQuery, setWorkoutSearchQuery] = useState("");
@@ -786,8 +773,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const selectedMemberMessagesLocked = Boolean(selectedMember && !selectedMemberHasMessagingAccess);
   function getMemberIdentityKey(member: Member): string {
     const emailKey = member.email.trim().toLowerCase();
-    const nameKey = member.name.trim().toLowerCase();
-    return emailKey || `name:${nameKey}`;
+    return emailKey || `id:${member.id}`;
   }
   function pickCanonicalMemberProfile(base: Member, candidates: Member[]): Member {
     if (!candidates.length) return base;
@@ -1001,11 +987,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   }, [members, currentTrainerOwnerUserId]);
   const memberAvatarByEmail = useMemo(() => {
     const byEmail: Record<string, string> = {};
-    const byName: Record<string, string> = {};
     const byIdentity: Record<string, string> = {};
     members.forEach((member) => {
       const normalizedEmail = member.email.trim().toLowerCase();
-      const normalizedName = member.name.trim().toLowerCase();
       const identityKey = getMemberIdentityKey(member);
       if (normalizedEmail) {
         const emailKeyAvatar = memberAvatarById[`email:${normalizedEmail}`];
@@ -1014,24 +998,13 @@ function programAuthorLabel(program: TrainingProgram): string | null {
           if (!byIdentity[identityKey]) byIdentity[identityKey] = emailKeyAvatar;
         }
       }
-      if (normalizedName) {
-        const nameKeyAvatar = memberAvatarById[`name:${normalizedName}`];
-        if (nameKeyAvatar && !byName[normalizedName]) {
-          byName[normalizedName] = nameKeyAvatar;
-          if (!byIdentity[identityKey]) byIdentity[identityKey] = nameKeyAvatar;
-        }
-      }
       const avatarUrl = memberAvatarById[member.id];
       if (normalizedEmail && avatarUrl && !byEmail[normalizedEmail]) {
         byEmail[normalizedEmail] = avatarUrl;
         if (!byIdentity[identityKey]) byIdentity[identityKey] = avatarUrl;
       }
-      if (normalizedName && avatarUrl && !byName[normalizedName]) {
-        byName[normalizedName] = avatarUrl;
-        if (!byIdentity[identityKey]) byIdentity[identityKey] = avatarUrl;
-      }
     });
-    return { byEmail, byName, byIdentity };
+    return { byEmail, byIdentity };
   }, [members, memberAvatarById]);
   const avatarCacheBust = useMemo(() => String(Date.now()), []);
   function resolveMemberAvatarUrl(member: Member): string {
@@ -1042,11 +1015,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       const byEmail = memberAvatarByEmail.byEmail[normalizedEmail];
       if (byEmail) return byEmail;
     }
-    const normalizedName = member.name.trim().toLowerCase();
-    if (normalizedName) {
-      const byName = memberAvatarByEmail.byName[normalizedName];
-      if (byName) return byName;
-    }
     const byIdentity = memberAvatarByEmail.byIdentity[getMemberIdentityKey(member)];
     if (byIdentity) return byIdentity;
     if (!supabaseClient || !normalizedEmail || !normalizedEmail.includes("@")) return "";
@@ -1056,11 +1024,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       const { data } = supabaseClient.storage.from(MEMBER_AVATAR_BUCKET).getPublicUrl(path);
       if (data.publicUrl) return `${data.publicUrl}?v=${avatarCacheBust}`;
     }
-    const encodedName = encodeNameForPath(member.name);
-    if (!encodedName) return "";
-    const namePath = `${MEMBER_AVATAR_PREFIX}/name-${encodedName}.jpg`;
-    const { data: nameData } = supabaseClient.storage.from(MEMBER_AVATAR_BUCKET).getPublicUrl(namePath);
-    return nameData.publicUrl ? `${nameData.publicUrl}?v=${avatarCacheBust}` : "";
+    return "";
   }
   const selectedMemberRelatedIds = useMemo(
     () => computeSelectedMemberRelatedIds(members, selectedMemberId),
@@ -1084,7 +1048,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       const selected = members.find((member) => member.id === selectedMemberId) ?? null;
       const isSharedMember = selected?.customerType === "Medlem";
       const selectedEmail = selected?.email.trim().toLowerCase() ?? "";
-      const selectedName = selected?.name.trim().toLowerCase() ?? "";
       const matchingPrograms = programs
         .filter((program) => {
           if (selectedMemberRelatedIdSet.has(program.memberId)) return true;
@@ -1094,9 +1057,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
           const ownerMember = memberById.get(program.memberId);
           if (!ownerMember) return false;
           const ownerEmail = ownerMember.email.trim().toLowerCase();
-          const ownerName = ownerMember.name.trim().toLowerCase();
           if (selectedEmail && ownerEmail && ownerEmail === selectedEmail) return true;
-          if (selectedName && ownerName && ownerName === selectedName) return true;
           return false;
         })
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -1150,7 +1111,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const selected = members.find((member) => member.id === selectedMemberId) ?? null;
     const isSharedMember = selected?.customerType === "Medlem";
     const selectedEmail = selected?.email.trim().toLowerCase() ?? "";
-    const selectedName = selected?.name.trim().toLowerCase() ?? "";
     return logs
       .filter((log) => {
         if (selectedMemberRelatedIdSet.has(log.memberId)) return true;
@@ -1160,9 +1120,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         const ownerMember = memberById.get(log.memberId);
         if (!ownerMember) return false;
         const ownerEmail = ownerMember.email.trim().toLowerCase();
-        const ownerName = ownerMember.name.trim().toLowerCase();
         if (selectedEmail && ownerEmail && ownerEmail === selectedEmail) return true;
-        if (selectedName && ownerName && ownerName === selectedName) return true;
         return false;
       })
       .sort((a, b) => parseLogDateMs(b.date) - parseLogDateMs(a.date));
@@ -1171,7 +1129,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const selected = members.find((member) => member.id === selectedMemberId) ?? null;
     const isSharedMember = selected?.customerType === "Medlem";
     const selectedEmail = selected?.email.trim().toLowerCase() ?? "";
-    const selectedName = selected?.name.trim().toLowerCase() ?? "";
     const filtered = messages
       .filter((message) => {
         if (selectedMemberRelatedIdSet.has(message.memberId)) return true;
@@ -1181,9 +1138,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         const ownerMember = memberById.get(message.memberId);
         if (!ownerMember) return false;
         const ownerEmail = ownerMember.email.trim().toLowerCase();
-        const ownerName = ownerMember.name.trim().toLowerCase();
         if (selectedEmail && ownerEmail && ownerEmail === selectedEmail) return true;
-        if (selectedName && ownerName && ownerName === selectedName) return true;
         return false;
       })
       .sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
@@ -1606,10 +1561,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const lockedStillExists = members.some((member) => member.id === lockedId);
     if (!lockedStillExists) {
       const lockedEmail = editLockedIdentityRef.current?.email ?? "";
-      const lockedName = editLockedIdentityRef.current?.name ?? "";
       const replacement =
         members.find((member) => lockedEmail && member.email.trim().toLowerCase() === lockedEmail) ??
-        members.find((member) => lockedName && member.name.trim().toLowerCase() === lockedName) ??
         null;
       if (replacement?.id) {
         editLockedMemberIdRef.current = replacement.id;
@@ -2193,7 +2146,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const selected = members.find((member) => member.id === selectedMemberId) ?? null;
     const isSharedMember = selected?.customerType === "Medlem";
     const selectedEmail = selected?.email.trim().toLowerCase() ?? "";
-    const selectedName = selected?.name.trim().toLowerCase() ?? "";
     if (selectedMemberRelatedIdSet.has(program.memberId)) return true;
     if (!isSharedMember) return false;
     const rawProgramMemberId = program.memberId.trim().toLowerCase();
@@ -2201,9 +2153,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const ownerMember = memberById.get(program.memberId);
     if (!ownerMember) return false;
     const ownerEmail = ownerMember.email.trim().toLowerCase();
-    const ownerName = ownerMember.name.trim().toLowerCase();
     if (selectedEmail && ownerEmail && ownerEmail === selectedEmail) return true;
-    if (selectedName && ownerName && ownerName === selectedName) return true;
     return false;
   }, [memberById, members, selectedMemberId, selectedMemberRelatedIdSet]);
 
@@ -2611,13 +2561,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         const selectedEmail = selectedMember.email.trim().toLowerCase();
         if (selectedEmail) {
           const { data: rowsByEmail } = await supabaseClient.from("members").select("id").ilike("email", selectedEmail);
-          const selectedName = selectedMember.name.trim();
-          const { data: rowsByName } = selectedName
-            ? await supabaseClient.from("members").select("id").ilike("name", selectedName)
-            : { data: [] as Array<{ id?: string }> };
           validTargetMemberIds = Array.from(
             new Set(
-              [...(rowsByEmail ?? []), ...(rowsByName ?? [])]
+              (rowsByEmail ?? [])
                 .map((row) => String((row as { id?: string }).id ?? "").trim())
                 .filter((memberId) => memberId && memberId !== "__template__" && !memberId.startsWith("auth-")),
             ),
@@ -3151,10 +3097,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     return customImage ? customImage : getExerciseSketchDataUri(exercise);
   }
 
-  const followUpCount = useMemo(
-    () => activeMembers.filter((member) => (trainerInactiveDaysForFollowUp(member, members, logs) ?? -1) >= 7).length,
-    [activeMembers, members, logs]
-  );
   const membersWithoutProgramCount = useMemo(
     () => activeMembers.filter((member) => !programs.some((program) => program.memberId === member.id)).length,
     [activeMembers, programs],
@@ -3193,18 +3135,12 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const byCanonicalId = new Map<string, Set<string>>();
     deduplicatedMembers.forEach((member) => {
       const normalizedEmail = member.email.trim().toLowerCase();
-      const normalizedName = member.name.trim().toLowerCase();
       const byEmailIds = normalizedEmail
         ? members
             .filter((row) => row.email.trim().toLowerCase() === normalizedEmail)
             .map((row) => row.id)
         : [];
-      const byNameIds = normalizedName
-        ? members
-            .filter((row) => row.name.trim().toLowerCase() === normalizedName)
-            .map((row) => row.id)
-        : [];
-      byCanonicalId.set(member.id, new Set([...byEmailIds, ...byNameIds, member.id]));
+      byCanonicalId.set(member.id, new Set([...byEmailIds, member.id]));
     });
     return byCanonicalId;
   }, [deduplicatedMembers, members]);
@@ -3276,6 +3212,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       })
       .slice(0, 6);
   }, [activeMembers, logs, memberRelatedIdSetByCanonicalId, lastFollowUpByMemberId, members]);
+  const followUpCount = followUpCandidates.length;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -3309,9 +3246,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       return;
     }
     const selected = members.find((member) => member.id === selectedMemberId) ?? null;
-    const identity = selected
-      ? selected.email.trim().toLowerCase() || `name:${selected.name.trim().toLowerCase()}`
-      : selectedMemberId;
+    const identity = selected ? getMemberIdentityKey(selected) : selectedMemberId;
     if (followUpDraftHydratedIdentityRef.current === identity) {
       return;
     }
@@ -4320,7 +4255,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                           editLockedMemberIdRef.current = selectedMember.id;
                           editLockedIdentityRef.current = {
                             email: selectedMember.email.trim().toLowerCase(),
-                            name: selectedMember.name.trim().toLowerCase(),
                           };
                           setIsEditingCustomerCard(true);
                         }}
