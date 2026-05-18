@@ -33,6 +33,16 @@ function isSharedMember(row: Record<string, unknown>): boolean {
   return String(row.customer_type ?? "").trim().toLowerCase() === "medlem";
 }
 
+function isVisibleToTrainer(row: Record<string, unknown>, ownerUserId: string): boolean {
+  const rowOwnerUserId = String(row.owner_user_id ?? "").trim();
+  if (rowOwnerUserId === ownerUserId) return true;
+  return isSharedMember(row);
+}
+
+function rowBelongsToOwner(row: Record<string, unknown>, ownerUserId: string): boolean {
+  return String(row.owner_user_id ?? "").trim() === ownerUserId;
+}
+
 function profileCanonicalScore(row: Record<string, unknown>): number {
   let score = 0;
   const customerType = String(row.customer_type ?? "").trim().toLowerCase();
@@ -223,6 +233,7 @@ Deno.serve(async (req) => {
     >;
     membersError = ownedMembersWithAvatar.error ?? sharedMembersWithAvatar.error;
   }
+  members = (members ?? []).filter((row) => isVisibleToTrainer(row, ownerUserId));
 
   const linkedMemberIds = new Set<string>();
   const [{ data: programLinks }, { data: logLinks }, { data: messageLinks }] = await Promise.all([
@@ -277,11 +288,16 @@ Deno.serve(async (req) => {
     }
     const widenedMembers = allMembersRows.filter((row) => {
       const rowEmail = normalizeEmail((row as { email?: string }).email);
-      return Boolean(rowEmail && relatedEmailSet.has(rowEmail));
+      return Boolean(rowEmail && relatedEmailSet.has(rowEmail) && isVisibleToTrainer(row, ownerUserId));
     });
     members = uniqueById([...(members ?? []), ...widenedMembers]) as Array<Record<string, unknown>>;
     members = harmonizeMemberProfilesByEmail(members);
   }
+  members = (members ?? []).filter((row) => {
+    if (isVisibleToTrainer(row, ownerUserId)) return true;
+    const id = String((row as { id?: string }).id ?? "").trim();
+    return Boolean(id && linkedMemberIds.has(id));
+  });
 
   const visibleMemberIds = (members ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);
   const visibleMemberEmails = Array.from(
@@ -324,13 +340,13 @@ Deno.serve(async (req) => {
 
   const { data: logsByOwner, error: logsByOwnerError } = await adminClient
     .from("workout_logs")
-    .select("id, member_id, program_title, date, status, note, results, created_at")
+    .select("id, member_id, owner_user_id, program_title, date, status, note, results, created_at")
     .eq("owner_user_id", ownerUserId)
     .order("created_at", { ascending: false });
 
   const { data: messagesByOwner, error: messagesByOwnerError } = await adminClient
     .from("chat_messages")
-    .select("id, member_id, sender, text, created_at")
+    .select("id, member_id, owner_user_id, sender, text, created_at")
     .eq("owner_user_id", ownerUserId)
     .order("created_at", { ascending: true });
 
@@ -347,27 +363,27 @@ Deno.serve(async (req) => {
       .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by, program_created_by_name")
       .in("member_id", Array.from(programLookupMemberIds))
       .order("created_at", { ascending: false });
-    programsByMember = (data ?? []) as Array<Record<string, unknown>>;
+    programsByMember = ((data ?? []) as Array<Record<string, unknown>>).filter((row) => rowBelongsToOwner(row, ownerUserId));
     programsByMemberError = error;
   }
 
   if (visibleMemberIds.length > 0) {
     const { data, error } = await adminClient
       .from("workout_logs")
-      .select("id, member_id, program_title, date, status, note, results, created_at")
+      .select("id, member_id, owner_user_id, program_title, date, status, note, results, created_at")
       .in("member_id", visibleMemberIds)
       .order("created_at", { ascending: false });
-    logsByMember = (data ?? []) as Array<Record<string, unknown>>;
+    logsByMember = ((data ?? []) as Array<Record<string, unknown>>).filter((row) => rowBelongsToOwner(row, ownerUserId));
     logsByMemberError = error;
   }
 
   if (visibleMemberIds.length > 0) {
     const { data, error } = await adminClient
       .from("chat_messages")
-      .select("id, member_id, sender, text, created_at")
+      .select("id, member_id, owner_user_id, sender, text, created_at")
       .in("member_id", visibleMemberIds)
       .order("created_at", { ascending: true });
-    messagesByMember = (data ?? []) as Array<Record<string, unknown>>;
+    messagesByMember = ((data ?? []) as Array<Record<string, unknown>>).filter((row) => rowBelongsToOwner(row, ownerUserId));
     messagesByMemberError = error;
   }
 
@@ -380,15 +396,17 @@ Deno.serve(async (req) => {
   let periodPlanRows: Array<{ member_id: string; plan: unknown }> = [];
   const { data: periodRows, error: periodPlansError } =
     visibleMemberIds.length > 0
-      ? await adminClient.from("member_period_plans").select("member_id, plan").in("member_id", visibleMemberIds)
-      : await adminClient.from("member_period_plans").select("member_id, plan").eq("owner_user_id", ownerUserId);
+      ? await adminClient.from("member_period_plans").select("member_id, owner_user_id, plan").in("member_id", visibleMemberIds)
+      : await adminClient.from("member_period_plans").select("member_id, owner_user_id, plan").eq("owner_user_id", ownerUserId);
   if (periodPlansError) {
     console.warn("hydrate-trainer-data: member_period_plans query failed (table may be missing):", periodPlansError.message);
   } else {
-    periodPlanRows = (periodRows ?? []).map((row) => ({
-      member_id: String((row as { member_id?: string }).member_id ?? ""),
-      plan: (row as { plan?: unknown }).plan,
-    }));
+    periodPlanRows = ((periodRows ?? []) as Array<Record<string, unknown>>)
+      .filter((row) => rowBelongsToOwner(row, ownerUserId))
+      .map((row) => ({
+        member_id: String((row as { member_id?: string }).member_id ?? ""),
+        plan: (row as { plan?: unknown }).plan,
+      }));
   }
 
   const mergedPrograms = uniqueById([...(programsByOwner ?? []), ...programsByMember]);

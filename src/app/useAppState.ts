@@ -54,6 +54,7 @@ import {
   type InviteMemberResult,
   type InviteTrainerResult,
 } from "../services/supabaseAuth";
+import { parseStoredLogDate } from "./dateFormat";
 import { mergeRemoteMessagesWithLocalOptimistic } from "./messageHydrationMerge";
 import type {
   AppState,
@@ -166,6 +167,39 @@ function mergeWorkoutLogsById(
     if (id) byId.set(id, l);
   }
   return Array.from(byId.values());
+}
+
+const LOCAL_OPTIMISTIC_WORKOUT_LOG_KEEP_MS = 48 * 60 * 60 * 1000;
+
+function workoutLogDateMs(log: WorkoutLog): number {
+  return parseStoredLogDate(log.date)?.getTime() ?? 0;
+}
+
+function mergeRemoteWorkoutLogsWithLocalOptimistic(
+  remoteLogs: WorkoutLog[],
+  localLogs: WorkoutLog[],
+  visibleMembers: Member[],
+  nowMs = Date.now(),
+): WorkoutLog[] {
+  const visibleMemberIds = new Set(visibleMembers.map((member) => member.id.trim()).filter(Boolean));
+  const byId = new Map<string, WorkoutLog>();
+  for (const log of remoteLogs) {
+    const id = log.id.trim();
+    if (id) byId.set(id, log);
+  }
+
+  for (const localLog of localLogs) {
+    const id = localLog.id.trim();
+    if (!id || byId.has(id)) continue;
+    if (!visibleMemberIds.has(localLog.memberId.trim())) continue;
+    const dateMs = workoutLogDateMs(localLog);
+    if (!dateMs) continue;
+    const ageMs = nowMs - dateMs;
+    if (ageMs < 0 || ageMs > LOCAL_OPTIMISTIC_WORKOUT_LOG_KEEP_MS) continue;
+    byId.set(id, localLog);
+  }
+
+  return Array.from(byId.values()).sort((a, b) => workoutLogDateMs(b) - workoutLogDateMs(a));
 }
 
 function syncExercisesWithPrograms(state: AppState): AppState {
@@ -713,10 +747,10 @@ export function useAppState() {
         if (trustRemoteLogs) {
           const mergedLogs = remoteLogs ?? [];
           if (mergedLogs.length > 0 || shouldAdoptRemote(mergedLogs, prev.logs)) {
-            next.logs = mergedLogs;
+            next.logs = mergeRemoteWorkoutLogsWithLocalOptimistic(mergedLogs, prev.logs, [...next.members, ...prev.members]);
           }
         } else if (shouldAdoptRemote(remoteLogs, prev.logs)) {
-          next.logs = remoteLogs!;
+          next.logs = mergeRemoteWorkoutLogsWithLocalOptimistic(remoteLogs!, prev.logs, [...next.members, ...prev.members]);
         }
 
         if (shouldAdoptNonEmptyRemoteOnly(remoteExercises)) {

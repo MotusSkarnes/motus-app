@@ -512,17 +512,7 @@ async function extractFunctionErrorDetails(error: unknown): Promise<string> {
 }
 
 function parseLogDate(value: string): Date | null {
-  if (!value) return null;
-  const isoCandidate = new Date(value);
-  if (!Number.isNaN(isoCandidate.getTime())) return isoCandidate;
-  const parts = value.split(".");
-  if (parts.length < 3) return null;
-  const day = Number(parts[0]);
-  const month = Number(parts[1]) - 1;
-  const year = Number(parts[2]);
-  const parsed = new Date(year, month, day);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed;
+  return parseStoredLogDate(value);
 }
 
 function parseChatCreatedAtMs(value: string): number {
@@ -1809,7 +1799,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (recentCompletedLogs.some((log) => log.id === focused.id)) return recentCompletedLogs;
     return [focused, ...recentCompletedLogs.slice(0, 2)];
   }, [completedLogs, memberFocusWorkoutLogId, recentCompletedLogs]);
-  const latestCompletedLog = completedLogs[0] ?? null;
+  const latestCompletedLog = recentCompletedLogs[0] ?? null;
   function findSuggestedWeightForExercise(exerciseName: string): string {
     const normalizedExerciseName = exerciseName.trim().toLowerCase();
     if (!normalizedExerciseName) return "";

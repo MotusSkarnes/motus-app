@@ -156,9 +156,10 @@ Deno.serve(async (req) => {
 
   const changes = payload.changes ?? {};
   const targetEmailForUpdate = requestedEmail || currentEmail;
-  const updateFields: Record<string, string> = {
-    email: targetEmailForUpdate,
-  };
+  // Email is an identity/routing key here, not a profile field. Never rewrite an
+  // existing member row's email from this endpoint; stale auth member_id metadata
+  // can otherwise overwrite an unrelated member with the logged-in user's email.
+  const updateFields: Record<string, string> = {};
   if (changes.name !== undefined) updateFields.name = normalizeString(changes.name);
   if (changes.phone !== undefined) updateFields.phone = normalizeString(changes.phone);
   if (changes.birthDate !== undefined) updateFields.birth_date = normalizeString(changes.birthDate);
@@ -221,7 +222,10 @@ Deno.serve(async (req) => {
   }
 
   const visibleAnchors = (anchorRows ?? []).filter((row) => {
-    if (userRole !== "trainer") return true;
+    if (userRole !== "trainer") {
+      const rowEmail = normalizeEmail(row.email);
+      return rowEmail === currentEmail || requestedEmails.includes(rowEmail);
+    }
     return canTrainerEditAnchor(
       row as { owner_user_id?: string | null; customer_type?: string | null },
       user.id,
@@ -370,27 +374,29 @@ Deno.serve(async (req) => {
     const nextCustomerType = normalizeString(rosterUpdateFields.customer_type).toLowerCase();
 
     if (nextCustomerType === "medlem") {
-      const emailSet = new Set(Array.from(normalizedTargetEmails).filter((value) => value.includes("@")));
-      if (emailSet.size) {
-        const { data: allMemberRows, error: medlemLookupError } = await adminClient.from("members").select("id,email");
-        if (medlemLookupError) {
-          return jsonResponse(500, { error: `Could not resolve shared medlem rows: ${medlemLookupError.message}` });
+      const rosterIds = Array.from(
+        new Set(
+          (requestedMemberIds.length ? requestedMemberIds : visibleAnchors.map((row) => normalizeString(row.id)))
+            .map((value) => normalizeString(value))
+            .filter(Boolean),
+        ),
+      );
+      const ownedRosterIds = rosterIds.length
+        ? visibleAnchors
+            .filter((row) => rosterIds.includes(normalizeString(row.id)))
+            .filter((row) => {
+              const ownerUserId = normalizeString(row.owner_user_id);
+              return ownerUserId === trainerId || !ownerUserId;
+            })
+            .map((row) => normalizeString(row.id))
+            .filter(Boolean)
+        : [];
+      if (ownedRosterIds.length) {
+        const medlemResult = await adminClient.from("members").update(rosterUpdateFields).in("id", ownedRosterIds).select("id");
+        if (medlemResult.error) {
+          return jsonResponse(500, { error: `Could not update shared medlem roster: ${medlemResult.error.message}` });
         }
-        const medlemIds = Array.from(
-          new Set(
-            (allMemberRows ?? [])
-              .filter((row) => emailSet.has(normalizeEmail((row as { email?: string }).email)))
-              .map((row) => normalizeString((row as { id?: string }).id))
-              .filter(Boolean),
-          ),
-        );
-        if (medlemIds.length) {
-          const medlemResult = await adminClient.from("members").update(rosterUpdateFields).in("id", medlemIds).select("id");
-          if (medlemResult.error) {
-            return jsonResponse(500, { error: `Could not update shared medlem roster: ${medlemResult.error.message}` });
-          }
-          mergeUpdated(medlemResult.data);
-        }
+        mergeUpdated(medlemResult.data);
       }
     } else {
       let rosterIds = requestedMemberIds.length
