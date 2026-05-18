@@ -43,6 +43,21 @@ import {
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
+let messagesPersistedListener: (() => void | Promise<void>) | null = null;
+
+/** Called after a chat message is persisted so UI can refresh without full page reload. */
+export function registerMessagesPersistedListener(listener: (() => void | Promise<void>) | null): void {
+  messagesPersistedListener = listener;
+}
+
+async function notifyMessagesPersisted(): Promise<void> {
+  try {
+    await messagesPersistedListener?.();
+  } catch (error) {
+    console.warn("messagesPersistedListener failed:", error);
+  }
+}
+
 function mapMembershipType(value: unknown): Member["membershipType"] {
   return String(value ?? "").trim().toLowerCase() === "premium" ? "Premium" : "Standard";
 }
@@ -357,11 +372,11 @@ async function persistMessage(
   sender: "trainer" | "member",
   text: string,
   hints?: { targetEmail?: string; targetName?: string },
-) {
-  if (!supabaseClient) return;
+): Promise<boolean> {
+  if (!supabaseClient) return false;
   const trimmedMemberId = memberId.trim();
   const trimmedText = text.trim();
-  if (!trimmedMemberId || !trimmedText) return;
+  if (!trimmedMemberId || !trimmedText) return false;
   let targetMemberIds = await resolveRelatedMemberIds(trimmedMemberId, hints);
   if (!targetMemberIds.length) {
     const {
@@ -386,7 +401,7 @@ async function persistMessage(
   }
   if (!targetMemberIds.length) {
     console.warn("persistMessage: no valid target member ids resolved");
-    return;
+    return false;
   }
   const canonicalTargetMemberId = await (async () => {
     const requestedId = trimmedMemberId;
@@ -439,7 +454,7 @@ async function persistMessage(
   })();
   if (!canonicalTargetMemberId) {
     console.warn("persistMessage: canonical target member id unresolved");
-    return;
+    return false;
   }
   const clientMessageId = crypto.randomUUID();
   const persistedMessageIds: string[] = [];
@@ -516,10 +531,10 @@ async function persistMessage(
     const memberOwnerUserId = await resolveOwnerUserIdForMember(canonicalTargetMemberId, senderOwnerUserId);
     if (sender === "member" && (!memberOwnerUserId || memberOwnerUserId === senderOwnerUserId)) {
       console.warn("Supabase message direct insert fallback skipped: trainer owner was not resolved for member sender.");
-      return;
+      return false;
     }
     const chosenOwnerUserId = memberOwnerUserId || senderOwnerUserId;
-    if (!chosenOwnerUserId) return;
+    if (!chosenOwnerUserId) return false;
     const directInsert = await supabaseClient
       .from("chat_messages")
       .insert({
@@ -543,6 +558,12 @@ async function persistMessage(
   persistedMessageIds.forEach((id) => {
     void supabaseClient.functions.invoke("send-message-push", { body: { messageId: id } });
   });
+
+  const persisted = persistedMessageIds.length > 0;
+  if (persisted) {
+    void notifyMessagesPersisted();
+  }
+  return persisted;
 }
 
 async function persistProgram(
@@ -1052,7 +1073,6 @@ async function persistMember(member: Member) {
         .from("members")
         .update({
           name: memberForPersist.name,
-          email: normalizedEmail,
           phone: memberForPersist.phone,
           birth_date: memberForPersist.birthDate,
           goal: memberForPersist.goal,
@@ -1068,7 +1088,6 @@ async function persistMember(member: Member) {
           .from("members")
           .update({
             name: memberForPersist.name,
-            email: normalizedEmail,
             phone: memberForPersist.phone,
             birth_date: memberForPersist.birthDate,
             goal: memberForPersist.goal,
@@ -1403,9 +1422,14 @@ async function notifyWorkoutCommentPush(logId: string) {
   void supabaseClient.functions.invoke("send-workout-comment-push", { body: { logId: trimmedLogId } });
 }
 
-async function persistWorkoutLog(log: WorkoutLog) {
+function buildMemberPersistenceHints(state: AppState, memberId: string): { targetEmail?: string } {
+  const member = state.members.find((item) => item.id === memberId);
+  return { targetEmail: String(member?.email ?? "").trim().toLowerCase() };
+}
+
+async function persistWorkoutLog(log: WorkoutLog, hints?: { targetEmail?: string }) {
   if (!supabaseClient) return;
-  const memberId = await resolveCanonicalMemberIdForPersistence(log.memberId, {});
+  const memberId = await resolveCanonicalMemberIdForPersistence(log.memberId, hints);
   const serializedNote = serializeWorkoutNote(log);
   const invokeResult = await supabaseClient.functions.invoke("persist-workout-log", {
     body: {
@@ -2517,9 +2541,9 @@ export const supabaseAppRepository: AppRepository = {
       targetEmail: String(anchorMember?.email ?? "").trim().toLowerCase(),
       targetName: String(anchorMember?.name ?? "").trim(),
     };
+    const nextState = localAppRepository.appendTrainerMessage(state, memberId, text);
     void persistMessage(memberId, "trainer", text.trim(), hints);
-    // Avoid optimistic local row on Supabase mode; hydrate returns canonical member_id row.
-    return state;
+    return nextState;
   },
   appendMemberMessage(state: AppState, memberId: string, text: string): AppState {
     const anchorMember = state.members.find((member) => member.id === memberId);
@@ -2527,9 +2551,9 @@ export const supabaseAppRepository: AppRepository = {
       targetEmail: String(anchorMember?.email ?? state.currentUser.email ?? "").trim().toLowerCase(),
       targetName: String(anchorMember?.name ?? "").trim(),
     };
+    const nextState = localAppRepository.appendMemberMessage(state, memberId, text);
     void persistMessage(memberId, "member", text.trim(), hints);
-    // Avoid optimistic local row on Supabase mode; hydrate returns canonical member_id row.
-    return state;
+    return nextState;
   },
   startWorkoutMode(state: AppState, programId: string, options?: StartWorkoutModeOptions): AppState {
     return localAppRepository.startWorkoutMode(state, programId, options);
@@ -2553,7 +2577,7 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.removeWorkoutLogResult(state, input);
     const updatedLog = nextState.logs.find((log) => log.id === input.logId);
     if (updatedLog) {
-      void persistWorkoutLog(updatedLog);
+      void persistWorkoutLog(updatedLog, buildMemberPersistenceHints(state, updatedLog.memberId));
     }
     return nextState;
   },
@@ -2566,7 +2590,7 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.setWorkoutLogResults(state, input);
     const updatedLog = nextState.logs.find((log) => log.id === input.logId);
     if (updatedLog) {
-      void persistWorkoutLog(updatedLog);
+      void persistWorkoutLog(updatedLog, buildMemberPersistenceHints(state, updatedLog.memberId));
     }
     return nextState;
   },
@@ -2575,7 +2599,7 @@ export const supabaseAppRepository: AppRepository = {
     const updatedLog = nextState.logs.find((log) => log.id === input.logId);
     if (updatedLog) {
       void (async () => {
-        await persistWorkoutLog(updatedLog);
+        await persistWorkoutLog(updatedLog, buildMemberPersistenceHints(state, updatedLog.memberId));
         if (input.trainerComment.trim()) {
           await notifyWorkoutCommentPush(updatedLog.id);
         }
@@ -2596,7 +2620,7 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.finishWorkoutMode(state, input);
     const latestLog = nextState.logs[0];
     if (latestLog) {
-      void persistWorkoutLog(latestLog);
+      void persistWorkoutLog(latestLog, buildMemberPersistenceHints(state, latestLog.memberId));
     }
     return nextState;
   },
@@ -2604,7 +2628,7 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.logGroupWorkout(state, input);
     const latestLog = nextState.logs[0];
     if (latestLog) {
-      void persistWorkoutLog(latestLog);
+      void persistWorkoutLog(latestLog, buildMemberPersistenceHints(state, latestLog.memberId));
     }
     return nextState;
   },
@@ -2612,7 +2636,7 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.logCompletedPlanEntry(state, input);
     const latestLog = nextState.logs[0];
     if (latestLog) {
-      void persistWorkoutLog(latestLog);
+      void persistWorkoutLog(latestLog, buildMemberPersistenceHints(state, latestLog.memberId));
     }
     return nextState;
   },

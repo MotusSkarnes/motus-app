@@ -56,6 +56,21 @@ export function formatDateTimeDdMmYyyy(input: Date | string | number): string {
   return `${datePart} kl ${hours}:${minutes}`;
 }
 
+/** Visningstekst for når et varsel kom inn (varselliste). */
+export function formatNotificationTimestamp(timestampMs: number, nowMs = Date.now()): string {
+  if (!Number.isFinite(timestampMs) || timestampMs <= 0) return "";
+  const date = new Date(timestampMs);
+  if (Number.isNaN(date.getTime())) return "";
+  const today = formatDateDdMmYyyy(new Date(nowMs));
+  const datePart = formatDateDdMmYyyy(date);
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  if (datePart === today) return `I dag kl ${hours}:${minutes}`;
+  const yesterdayMs = nowMs - 24 * 60 * 60 * 1000;
+  if (datePart === formatDateDdMmYyyy(new Date(yesterdayMs))) return `I går kl ${hours}:${minutes}`;
+  return `${datePart} kl ${hours}:${minutes}`;
+}
+
 /**
  * Neste kommende kalendermandag (lokal tid). Er det allerede mandag — brukes i dag.
  * Brukes som standard «startdato» for periodeplan når trener ikke har valgt annet.

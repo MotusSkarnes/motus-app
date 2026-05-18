@@ -16,6 +16,8 @@ import {
   resolveCheckInWindow,
   shouldPromptMonthlyCheckIn,
 } from "./memberMonthlyCheckIn";
+import { formatNotificationTimestamp } from "./dateFormat";
+import { parseChatMessageCreatedAtMs } from "./messageHydrationMerge";
 import type { ChatMessage, Member, MemberTab, TrainingProgram, WorkoutLog } from "./types";
 import { readWorkoutLogIdFromLocation, stripWorkoutLogIdFromLocation, workoutLogIdFromMemberAlertId } from "./workoutLogDeepLink";
 
@@ -23,7 +25,8 @@ const MEMBER_INSPIRATION_BASELINE_KEY = "motus.notifications.memberInspirationBa
 const TRAINER_NOTIFICATIONS_BASELINE_KEY = "motus.notifications.trainerBaselineAt";
 
 const ALERT_HISTORY_LIMIT = 5;
-const TRAINER_OPERATIONAL_TIMESTAMP_BASE = 9_000_000_000_000;
+/** Operational varsler sorteres etter ekte hendelser når begge er uleste. */
+const TRAINER_OPERATIONAL_TIMESTAMP_BASE = 1;
 
 export type MemberAlert = {
   id: string;
@@ -51,15 +54,24 @@ export type TrainerAlert = {
 };
 
 function parseTimestamp(value: string, fallbackOrder: number): number {
-  const parsed = new Date(value).getTime();
-  return Number.isFinite(parsed) ? parsed : fallbackOrder;
+  const parsed = parseChatMessageCreatedAtMs(value);
+  return parsed > 0 ? parsed : fallbackOrder;
 }
 
-function sortAlertsForDisplay<T extends { timestamp: number; isUnread?: boolean; unread?: boolean }>(alerts: T[]): T[] {
+function isOperationalTrainerAlertKind(kind?: string): boolean {
+  return kind === "missing-invite" || kind === "inactive-member";
+}
+
+function sortAlertsForDisplay<T extends { timestamp: number; isUnread?: boolean; unread?: boolean; kind?: string }>(
+  alerts: T[],
+): T[] {
   return [...alerts].sort((a, b) => {
     const aUnread = Boolean(a.isUnread ?? a.unread);
     const bUnread = Boolean(b.isUnread ?? b.unread);
     if (aUnread !== bUnread) return aUnread ? -1 : 1;
+    const aOperational = isOperationalTrainerAlertKind(a.kind);
+    const bOperational = isOperationalTrainerAlertKind(b.kind);
+    if (aOperational !== bOperational) return aOperational ? 1 : -1;
     return b.timestamp - a.timestamp;
   });
 }
@@ -367,7 +379,7 @@ export function useNotifications({
       })),
       ...trainerOperationalAlerts,
     ];
-    return combined.sort((a, b) => b.timestamp - a.timestamp).slice(0, ALERT_HISTORY_LIMIT);
+    return sortAlertsForDisplay(combined).slice(0, ALERT_HISTORY_LIMIT);
   }, [trainerMemberFormAlerts, trainerMessageAlerts, trainerOperationalAlerts, openedTrainerAlertIds]);
 
   const memberPrograms = useMemo(
@@ -503,21 +515,22 @@ export function useNotifications({
   }, [setMemberTab]);
 
   const memberRecentAlerts = useMemo<MemberAlert[]>(() => {
-    const checkInAlert = memberCheckInAlert
-      ? {
-          id: memberCheckInAlert.id,
-          kind: memberCheckInAlert.kind,
-          title: memberCheckInAlert.title,
-          text: memberCheckInAlert.text,
-          detail: memberCheckInAlert.detail,
-          timestamp: memberCheckInAlert.timestamp,
-          targetTab: memberCheckInAlert.targetTab,
-          isUnread: memberCheckInAlert.unread,
-          isOpened: openedMemberAlertIds.includes(memberCheckInAlert.id),
-        }
-      : null;
-
     const combined: MemberAlert[] = [
+      ...(memberCheckInAlert
+        ? [
+            {
+              id: memberCheckInAlert.id,
+              kind: memberCheckInAlert.kind,
+              title: memberCheckInAlert.title,
+              text: memberCheckInAlert.text,
+              detail: memberCheckInAlert.detail,
+              timestamp: memberCheckInAlert.timestamp,
+              targetTab: memberCheckInAlert.targetTab,
+              isUnread: memberCheckInAlert.unread,
+              isOpened: openedMemberAlertIds.includes(memberCheckInAlert.id),
+            },
+          ]
+        : []),
       ...memberMessageAlerts.map((alert) => ({
         id: alert.id,
         kind: alert.kind,
@@ -563,10 +576,7 @@ export function useNotifications({
         isOpened: openedMemberAlertIds.includes(alert.id),
       })),
     ];
-    const sorted = sortAlertsForDisplay(combined);
-    const withoutCheckIn = checkInAlert ? sorted.filter((alert) => alert.id !== checkInAlert.id) : sorted;
-    const merged = checkInAlert ? [checkInAlert, ...withoutCheckIn] : withoutCheckIn;
-    return merged.slice(0, ALERT_HISTORY_LIMIT);
+    return sortAlertsForDisplay(combined).slice(0, ALERT_HISTORY_LIMIT);
   }, [
     memberMessageAlerts,
     memberProgramAlerts,
@@ -588,38 +598,12 @@ export function useNotifications({
   const trainerUnreadCount = trainerUnreadAlerts.length;
   const memberUnreadCount = memberUnreadAlerts.length;
 
-  function markTrainerAlertsAsSeen() {
-    const latestMessageTime = trainerMessageAlerts.reduce((max, alert) => Math.max(max, alert.timestamp), 0);
-    setTrainerAlertsSeenAt(latestMessageTime);
-    if (hasTrainerOperationalAlerts) {
-      setSeenTrainerOperationalAlertKey(trainerOperationalAlertKey);
-    }
-  }
-
   function markMemberInspirationAsSeen() {
     setSeenMemberInspirationIds((prev) => Array.from(new Set([...prev, ...inspirationItems.map((item) => item.id)])));
   }
 
-  function markMemberAlertsAsSeen() {
-    const latestAlertTime = [
-      ...memberMessageAlerts,
-      ...memberProgramAlerts,
-      ...memberWorkoutCommentAlerts,
-      ...memberInspirationAlerts,
-    ].reduce((max, alert) => Math.max(max, alert.timestamp), 0);
-    setMemberAlertsSeenAt(latestAlertTime);
-    setSeenMemberProgramIds((prev) => Array.from(new Set([...prev, ...memberPrograms.map((program) => program.id)])));
-    setSeenMemberWorkoutCommentKeys((prev) =>
-      Array.from(new Set([...prev, ...memberWorkoutCommentAlerts.map((alert) => alert.seenKey)])),
-    );
-  }
-
   function handleTrainerBellToggle() {
-    const willOpen = !trainerNotificationsOpen;
-    setTrainerNotificationsOpen(willOpen);
-    if (willOpen) {
-      markTrainerAlertsAsSeen();
-    }
+    setTrainerNotificationsOpen((open) => !open);
   }
 
   function openTrainerAlert(alert: TrainerAlert) {
@@ -646,11 +630,7 @@ export function useNotifications({
   }
 
   function handleMemberBellToggle() {
-    const willOpen = !memberNotificationsOpen;
-    setMemberNotificationsOpen(willOpen);
-    if (willOpen) {
-      markMemberAlertsAsSeen();
-    }
+    setMemberNotificationsOpen((open) => !open);
   }
 
   function openAlert(alert: MemberAlert) {

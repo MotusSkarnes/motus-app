@@ -30,6 +30,7 @@ import {
   fetchMembersFromSupabase,
   fetchMessagesFromSupabase,
   fetchProgramsFromSupabase,
+  registerMessagesPersistedListener,
   restoreMemberByEmailFromSupabase,
   supabaseAppRepository,
   type HydratedMemberData,
@@ -746,6 +747,21 @@ export function useAppState() {
       await hydrateRemoteData();
     };
 
+    registerMessagesPersistedListener(async () => {
+      if (cancelled) return;
+      const remoteMessages = await fetchMessagesFromSupabase();
+      if (!remoteMessages?.length) return;
+      setAppState((prev) => ({
+        ...prev,
+        messages: mergeRemoteMessagesWithLocalOptimistic(
+          remoteMessages,
+          prev.messages,
+          prev.members,
+          Date.now(),
+        ),
+      }));
+    });
+
     void hydrateRemoteData();
     const interval = window.setInterval(() => {
       void hydrateRemoteData();
@@ -759,6 +775,7 @@ export function useAppState() {
     return () => {
       cancelled = true;
       remoteHydrateRef.current = null;
+      registerMessagesPersistedListener(null);
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
     };

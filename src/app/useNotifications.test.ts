@@ -47,8 +47,8 @@ describe("useNotifications workout comment alerts", () => {
     expect(result.current.memberVisibleAlerts[0]?.isUnread).toBe(true);
   });
 
-  it("keeps recent alerts visible after marking as seen", () => {
-    const { result, rerender } = renderHook(
+  it("keeps unread styling until the alert is opened", () => {
+    const { result } = renderHook(
       (props) => useNotifications(props),
       {
         initialProps: {
@@ -63,24 +63,68 @@ describe("useNotifications workout comment alerts", () => {
     );
 
     expect(result.current.memberUnreadCount).toBe(1);
-    result.current.handleMemberBellToggle();
-    rerender({
-      messages: [],
-      programs: [],
-      logs: [makeLog()],
-      members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
-      memberViewId: "member-1",
-      setMemberTab: () => {},
+    act(() => {
+      result.current.handleMemberBellToggle();
+    });
+    expect(result.current.memberNotificationsOpen).toBe(true);
+    expect(result.current.memberUnreadCount).toBe(1);
+    expect(result.current.memberVisibleAlerts[0]?.isUnread).toBe(true);
+
+    act(() => {
+      result.current.openAlert(result.current.memberVisibleAlerts[0]!);
     });
     expect(result.current.memberUnreadCount).toBe(0);
     expect(result.current.memberVisibleAlerts.length).toBe(1);
     expect(result.current.memberVisibleAlerts[0]?.isUnread).toBe(false);
   });
 
-  it("keeps recent trainer alerts visible after marking as seen", () => {
+  it("sorts newest trainer message alerts first among unread", () => {
+    window.localStorage.setItem("motus.notifications.trainerBaselineAt", "1");
     const members = [
       { id: "member-1", name: "Kari", email: "kari@example.com", invitedAt: "2026-01-01" } as never,
-      { id: "member-2", name: "Ola", email: "ola@example.com" } as never,
+      { id: "member-2", name: "Ola", email: "ola@example.com", invitedAt: "2026-01-01" } as never,
+    ];
+    const messages = [
+      {
+        id: "msg-old",
+        memberId: "member-1",
+        sender: "member" as const,
+        text: "Gammel",
+        createdAt: "10.05.2026 kl 09:00",
+      },
+      {
+        id: "msg-new",
+        memberId: "member-2",
+        sender: "member" as const,
+        text: "Nyeste",
+        createdAt: "15.05.2026 kl 14:30",
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages,
+        programs: [],
+        logs: [],
+        members,
+        memberViewId: "member-1",
+        setMemberTab: () => {},
+        currentUserRole: "trainer",
+      }),
+    );
+
+    expect(result.current.trainerVisibleAlerts[0]?.id).toBe("trainer-msg-msg-new");
+    expect(result.current.trainerVisibleAlerts[0]?.isUnread).toBe(true);
+  });
+
+  it("keeps trainer alerts unread until opened", () => {
+    window.localStorage.setItem("motus.notifications.trainerBaselineAt", "1");
+    window.localStorage.setItem(
+      "motus.notifications.trainerSeenAt",
+      String(new Date("2026-05-15T10:00:00.000Z").getTime()),
+    );
+    const members = [
+      { id: "member-1", name: "Kari", email: "kari@example.com", invitedAt: "2026-01-01" } as never,
     ];
     const messages = [
       {
@@ -92,32 +136,28 @@ describe("useNotifications workout comment alerts", () => {
       },
     ];
 
-    const { result, rerender } = renderHook(
-      (props) => useNotifications(props),
-      {
-        initialProps: {
-          messages,
-          programs: [],
-          logs: [],
-          members,
-          memberViewId: "member-1",
-          setMemberTab: () => {},
-        },
-      },
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages,
+        programs: [],
+        logs: [],
+        members,
+        memberViewId: "member-1",
+        setMemberTab: () => {},
+        currentUserRole: "trainer",
+      }),
     );
 
     expect(result.current.trainerUnreadCount).toBeGreaterThan(0);
-    result.current.handleTrainerBellToggle();
-    rerender({
-      messages,
-      programs: [],
-      logs: [],
-      members,
-      memberViewId: "member-1",
-      setMemberTab: () => {},
+    act(() => {
+      result.current.handleTrainerBellToggle();
+    });
+    expect(result.current.trainerUnreadCount).toBeGreaterThan(0);
+
+    act(() => {
+      result.current.openTrainerAlert(result.current.trainerVisibleAlerts[0]!);
     });
     expect(result.current.trainerUnreadCount).toBe(0);
-    expect(result.current.trainerVisibleAlerts.length).toBeGreaterThan(0);
     expect(result.current.trainerVisibleAlerts[0]?.isUnread).toBe(false);
   });
 
