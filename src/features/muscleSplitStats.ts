@@ -35,6 +35,16 @@ function parseNum(raw: string | undefined): number {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
+/** Lår-detaljer vises som «Bein» i muskelsplitt (unngår Bein + forside + bakside samtidig). */
+const LEG_SPLIT_SUBGROUPS = new Set(["forside lår", "bakside lår", "innside lår"]);
+
+export function normalizeMuscleSplitGroup(group: string): string {
+  const trimmed = group.trim();
+  if (!trimmed) return "Ukjent";
+  if (LEG_SPLIT_SUBGROUPS.has(trimmed.toLowerCase())) return "Bein";
+  return trimmed;
+}
+
 /** Deler sammensatte muskelgrupper (f.eks. «Bryst/Triceps») for fordeling av sett og volum. */
 export function splitMuscleGroupLabel(group: string): string[] {
   const trimmed = group.trim();
@@ -90,10 +100,11 @@ export function computeMuscleGroupStats(
       }
 
       for (const part of parts) {
-        const current = agg.get(part) ?? { sets: 0, volumeKg: 0 };
+        const bucket = normalizeMuscleSplitGroup(part);
+        const current = agg.get(bucket) ?? { sets: 0, volumeKg: 0 };
         current.sets += share;
         current.volumeKg += volumeKg * share;
-        agg.set(part, current);
+        agg.set(bucket, current);
       }
     }
   }
