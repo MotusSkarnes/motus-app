@@ -1,6 +1,17 @@
 /** Klientlogger bruker ofte norsk dd.mm.yyyy — må parses eksplisitt. */
 export function parseLogDateMs(value: string): number {
   if (!value) return 0;
+  const withTime = value.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})\s+kl\s+(\d{1,2}):(\d{2})$/i);
+  if (withTime) {
+    const parsed = new Date(
+      Number(withTime[3]),
+      Number(withTime[2]) - 1,
+      Number(withTime[1]),
+      Number(withTime[4]),
+      Number(withTime[5]),
+    );
+    return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+  }
   const match = value.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
   if (match) {
     const day = Number(match[1]);

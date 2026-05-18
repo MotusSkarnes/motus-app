@@ -160,7 +160,7 @@ const BADGE_TRACKS: BadgeTrack[] = [
     category: "consistency",
     categoryTitle: "Streaks",
     title: "Mandagshelt",
-    description: "Tren pÃ¥ mandager uke etter uke",
+    description: "Tren på mandager uke etter uke",
     icon: "week-streak",
     metric: "mondayStreak",
     levels: [
@@ -181,10 +181,10 @@ const BADGE_TRACKS: BadgeTrack[] = [
     metric: "weekendPairs",
     levels: [
       { level: "bronze", target: 1 },
-      { level: "silver", target: 2 },
-      { level: "gold", target: 4 },
-      { level: "diamond", target: 8 },
-      { level: "legendary", target: 12 },
+      { level: "silver", target: 8 },
+      { level: "gold", target: 16 },
+      { level: "diamond", target: 24 },
+      { level: "legendary", target: 32 },
     ],
   },
   {
@@ -426,8 +426,14 @@ function hasBeenTrainingFor100Days(completedLogDates: Date[] = [], nowDate: Date
   return firstCompletedDate ? daysBetween(firstCompletedDate, nowDate) >= 100 : false;
 }
 
-function hasWorkoutBeforeSunrise(completedLogDates: Date[] = []): boolean {
-  return completedLogDates.some((date) => date.getHours() < 5 || (date.getHours() === 5 && date.getMinutes() < 30));
+/** Morgenfugl: økt registrert mellom 05:00 og 08:00 (lokal tid). */
+export function isMorningBirdWorkoutTime(date: Date): boolean {
+  const totalMinutes = date.getHours() * 60 + date.getMinutes();
+  return totalMinutes >= 5 * 60 && totalMinutes <= 8 * 60;
+}
+
+function hasMorningBirdWorkout(completedLogDates: Date[] = []): boolean {
+  return completedLogDates.some(isMorningBirdWorkoutTime);
 }
 
 function hasJulyWorkout(completedLogDates: Date[] = []): boolean {
@@ -476,6 +482,47 @@ function hasChristmasWorkout(completedLogDates: Date[] = []): boolean {
   return completedLogDates.some((date) => date.getMonth() === 11 && date.getDate() >= 24 && date.getDate() <= 26);
 }
 
+/** Alle skjulte badges – vises først i appen når medlemmet oppnår dem. */
+export const SECRET_BADGE_CATALOG = [
+  { id: "may-17-workout", title: "17. mai-økt", description: "Registrerte trening på Norges nasjonaldag.", levelName: "17. mai" },
+  { id: "never-two-weeks-without", title: "Aldri to uker uten", description: "Ingen treningspause over 14 dager på 6 måneder.", levelName: "6 mnd" },
+  { id: "back-again", title: "Tilbake igjen", description: "Kom tilbake etter en lang treningspause.", levelName: "Comeback" },
+  { id: "habit-sticks", title: "Vanen sitter", description: "100 dager siden første registrerte økt.", levelName: "100 dager" },
+  { id: "before-sunrise", title: "Morgenfugl", description: "Registrerte trening mellom kl. 05:00 og 08:00.", levelName: "05–08" },
+  { id: "summer-loyal", title: "Sommertrofast", description: "Registrerte en treningsøkt i juli.", levelName: "Juli" },
+  { id: "new-start", title: "Ny start", description: "Registrerte første økt i et nytt år.", levelName: "Nytt år" },
+  { id: "easter-pump", title: "Påskepump", description: "Trente i påsken.", levelName: "Påske" },
+  { id: "christmas-pump", title: "Julepump", description: "Trente mellom 24. og 26. desember.", levelName: "Jul" },
+] as const;
+
+export const SECRET_BADGE_COUNT = SECRET_BADGE_CATALOG.length;
+
+function isSecretBadgeUnlocked(badgeId: (typeof SECRET_BADGE_CATALOG)[number]["id"], input: MemberBadgeInput): boolean {
+  const dates = input.completedLogDates ?? [];
+  switch (badgeId) {
+    case "may-17-workout":
+      return hasMay17Workout(dates);
+    case "never-two-weeks-without":
+      return hasNoTrainingGapOver14DaysForSixMonths(dates, input.nowDate);
+    case "back-again":
+      return hasReturnedAfterLongPause(dates);
+    case "habit-sticks":
+      return hasBeenTrainingFor100Days(dates, input.nowDate);
+    case "before-sunrise":
+      return hasMorningBirdWorkout(dates);
+    case "summer-loyal":
+      return hasJulyWorkout(dates);
+    case "new-start":
+      return hasJanuaryWorkout(dates);
+    case "easter-pump":
+      return hasEasterWorkout(dates);
+    case "christmas-pump":
+      return hasChristmasWorkout(dates);
+    default:
+      return false;
+  }
+}
+
 function buildSecretBadge(input: { id: string; title: string; description: string; levelName: string }): MemberBadge {
   return {
     id: input.id,
@@ -507,105 +554,9 @@ function buildSecretBadge(input: { id: string; title: string; description: strin
 }
 
 function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
-  const hasSixMonthFlow = hasNoTrainingGapOver14DaysForSixMonths(input.completedLogDates, input.nowDate);
-  const hasComeback = hasReturnedAfterLongPause(input.completedLogDates);
-  const has100DaysSinceFirstWorkout = hasBeenTrainingFor100Days(input.completedLogDates, input.nowDate);
-  const hasEarlyWorkout = hasWorkoutBeforeSunrise(input.completedLogDates);
-  const hasSummerWorkout = hasJulyWorkout(input.completedLogDates);
-  const hasNewYearWorkout = hasJanuaryWorkout(input.completedLogDates);
-  const hasEasterPump = hasEasterWorkout(input.completedLogDates);
-  const hasChristmasPump = hasChristmasWorkout(input.completedLogDates);
-  const sixMonthBadge = buildSecretBadge({
-    id: "never-two-weeks-without",
-    title: "Aldri to uker uten",
-    description: "Ingen treningspause over 14 dager på 6 måneder.",
-    levelName: "6 mnd",
-  });
-  const comebackBadge = buildSecretBadge({
-    id: "back-again",
-    title: "Tilbake igjen",
-    description: "Kom tilbake etter en lang treningspause.",
-    levelName: "Comeback",
-  });
-  const habitBadge = buildSecretBadge({
-    id: "habit-sticks",
-    title: "Vanen sitter",
-    description: "100 dager siden første registrerte økt.",
-    levelName: "100 dager",
-  });
-  const earlyBadge = buildSecretBadge({
-    id: "before-sunrise",
-    title: "Før sola",
-    description: "Trente før 05:30.",
-    levelName: "05:30",
-  });
-  const summerBadge = buildSecretBadge({
-    id: "summer-loyal",
-    title: "Sommertrofast",
-    description: "Registrerte en treningsøkt i juli.",
-    levelName: "Juli",
-  });
-  const newYearBadge = buildSecretBadge({
-    id: "new-start",
-    title: "Ny start",
-    description: "Registrerte første økt i et nytt år.",
-    levelName: "Nytt år",
-  });
-  const easterBadge = buildSecretBadge({
-    id: "easter-pump",
-    title: "Påskepump",
-    description: "Trente i påsken.",
-    levelName: "Påske",
-  });
-  const christmasBadge = buildSecretBadge({
-    id: "christmas-pump",
-    title: "Julepump",
-    description: "Trente mellom 24. og 26. desember.",
-    levelName: "Jul",
-  });
-  const unlockedSecretBadges = [
-    hasSixMonthFlow ? sixMonthBadge : null,
-    hasComeback ? comebackBadge : null,
-    has100DaysSinceFirstWorkout ? habitBadge : null,
-    hasEarlyWorkout ? earlyBadge : null,
-    hasSummerWorkout ? summerBadge : null,
-    hasNewYearWorkout ? newYearBadge : null,
-    hasEasterPump ? easterBadge : null,
-    hasChristmasPump ? christmasBadge : null,
-  ].filter((badge): badge is MemberBadge => badge !== null);
-
-  if (!hasMay17Workout(input.completedLogDates)) return unlockedSecretBadges;
-
-  return [
-    {
-      id: "may-17-workout",
-      category: "secret",
-      categoryTitle: "Skjulte",
-      title: "17. mai-økt",
-      description: "Registrerte trening på Norges nasjonaldag.",
-      icon: "first-session",
-      level: "legendary",
-      levelLabel: "Skjult",
-      levelName: "17. mai",
-      current: 1,
-      target: 1,
-      progressPct: 100,
-      achievedLevelIndex: 0,
-      unlocked: true,
-      hidden: true,
-      secret: true,
-      levels: [
-        {
-          level: "legendary",
-          levelLabel: "Skjult",
-          levelName: "17. mai",
-          target: 1,
-          unlocked: true,
-        },
-      ],
-    },
-    ...unlockedSecretBadges,
-  ];
+  return SECRET_BADGE_CATALOG.filter((definition) => isSecretBadgeUnlocked(definition.id, input)).map((definition) =>
+    buildSecretBadge(definition),
+  );
 }
 
 export function computeMaxLiftKgFromLogs(

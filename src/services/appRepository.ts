@@ -496,6 +496,22 @@ export function updateWorkoutNoteInState(state: AppState, note: string): AppStat
   return { ...state, workoutMode: { ...state.workoutMode, note } };
 }
 
+export function updateWorkoutExerciseNoteInState(state: AppState, programExerciseId: string, note: string): AppState {
+  if (!state.workoutMode) return state;
+  const pid = programExerciseId.trim();
+  if (!pid) return state;
+  const trimmed = note;
+  return {
+    ...state,
+    workoutMode: {
+      ...state.workoutMode,
+      results: state.workoutMode.results.map((result) =>
+        result.programExerciseId === pid ? { ...result, exerciseNote: trimmed } : result,
+      ),
+    },
+  };
+}
+
 export function cancelWorkoutModeInState(state: AppState): AppState {
   if (!state.workoutMode) {
     return { ...state, workoutMode: null };
@@ -575,7 +591,7 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
         id: uid("log"),
         memberId: program.memberId,
         programTitle: program.title,
-        date: formatDateDdMmYyyy(new Date()),
+        date: formatDateTimeDdMmYyyy(new Date()),
         status: "Fullført",
         note: current.note,
         reflection: input?.reflection,
@@ -869,6 +885,7 @@ export const localAppRepository: AppRepository = {
   setWorkoutLogResults: (state, input) => setWorkoutLogResultsInState(state, input),
   updateWorkoutLogTrainerComment: (state, input) => updateWorkoutLogTrainerCommentInState(state, input),
   updateWorkoutNote: updateWorkoutNoteInState,
+  updateWorkoutExerciseNote: updateWorkoutExerciseNoteInState,
   cancelWorkoutMode: cancelWorkoutModeInState,
   finishWorkoutMode: finishWorkoutModeInState,
   logGroupWorkout: logGroupWorkoutInState,

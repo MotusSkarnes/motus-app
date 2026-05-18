@@ -112,6 +112,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     appendWorkoutSetForProgramExercise: state.appendWorkoutSetForProgramExercise,
     deferWorkoutExerciseGroup: state.deferWorkoutExerciseGroup,
     updateWorkoutModeNote: state.updateWorkoutModeNote,
+    updateWorkoutExerciseNote: state.updateWorkoutExerciseNote,
     finishWorkoutMode: state.finishWorkoutMode,
     cancelWorkoutMode: state.cancelWorkoutMode,
   });
@@ -137,6 +138,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     removeWorkoutLogResult: state.removeWorkoutLogResult,
     setWorkoutLogResults: state.setWorkoutLogResults,
     updateWorkoutModeNote: state.updateWorkoutModeNote,
+    updateWorkoutExerciseNote: state.updateWorkoutExerciseNote,
     finishWorkoutMode: state.finishWorkoutMode,
     logGroupWorkout: state.logGroupWorkout,
     logCompletedPlanEntry: state.logCompletedPlanEntry,

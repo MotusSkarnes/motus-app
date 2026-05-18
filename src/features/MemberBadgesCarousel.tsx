@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { Award, Lock, Sparkles, Target } from "lucide-react";
+import { Award, Lock, Share2, Sparkles, Target } from "lucide-react";
 import { MOTUS } from "../app/data";
+import { motusShareStatusMessage, shareBadgeCard } from "../app/motusShareCard";
 import {
   formatBadgeMetricValue,
   getBadgeNextLevel,
@@ -9,6 +10,7 @@ import {
   type BadgeLevelId,
   type MemberBadge,
   type MemberBadgeCategoryId,
+  SECRET_BADGE_COUNT,
   type MemberBadgeCollection,
   type MemberBadgeLevel,
 } from "../app/memberBadges";
@@ -61,6 +63,8 @@ const LEVEL_STYLES: Record<BadgeLevelId, LevelStyle> = {
 
 type MemberBadgesCarouselProps = {
   collection: MemberBadgeCollection;
+  memberDisplayName: string;
+  shareLogoSrc: string;
 };
 
 type ActiveCategoryId = "all" | MemberBadgeCategoryId;
@@ -88,11 +92,43 @@ function LevelStep({ level, badge, active }: { level: MemberBadgeLevel; badge: M
     </div>
   );
 }
-function BadgeCard({ badge }: { badge: MemberBadge }) {
+function BadgeCard({
+  badge,
+  memberDisplayName,
+  shareLogoSrc,
+  onShareStatus,
+}: {
+  badge: MemberBadge;
+  memberDisplayName: string;
+  shareLogoSrc: string;
+  onShareStatus: (message: string | null) => void;
+}) {
+  const [isSharing, setIsSharing] = useState(false);
   const level = LEVEL_STYLES[badge.level];
   const nextLevel = getBadgeNextLevel(badge);
   const isMaxed = !nextLevel;
   const badgeImage = BADGE_IMAGES[badge.id] ?? "/badges/01-forste-steg.png";
+
+  async function shareBadge() {
+    if (!badge.unlocked || isSharing) return;
+    setIsSharing(true);
+    onShareStatus(null);
+    try {
+      const outcome = await shareBadgeCard({
+        logoSrc: shareLogoSrc,
+        memberDisplayName,
+        badgeImageSrc: badgeImage,
+        badgeTitle: badge.title,
+        badgeDescription: badge.description,
+        levelName: badge.levelName,
+        categoryTitle: badge.categoryTitle,
+        accentColor: level.accent,
+      });
+      onShareStatus(motusShareStatusMessage(outcome));
+    } finally {
+      setIsSharing(false);
+    }
+  }
 
   return (
     <article
@@ -175,13 +211,26 @@ function BadgeCard({ badge }: { badge: MemberBadge }) {
             <LevelStep key={lvl.level} level={lvl} badge={badge} active={lvl.level === badge.level} />
           ))}
         </div>
+        {badge.unlocked ? (
+          <button
+            type="button"
+            onClick={() => void shareBadge()}
+            disabled={isSharing}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 transition hover:border-teal-200 hover:bg-teal-50/80 disabled:opacity-60"
+            title="Del på Facebook eller andre apper"
+          >
+            <Share2 className="h-3.5 w-3.5 shrink-0 text-teal-700" aria-hidden />
+            {isSharing ? "Lager skrytekort…" : "Del badgen"}
+          </button>
+        ) : null}
       </div>
     </article>
   );
 }
 
-export function MemberBadgesCarousel({ collection }: MemberBadgesCarouselProps) {
+export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoSrc }: MemberBadgesCarouselProps) {
   const [activeCategoryId, setActiveCategoryId] = useState<ActiveCategoryId>("all");
+  const [badgeShareStatus, setBadgeShareStatus] = useState<string | null>(null);
 
   const menuItems = useMemo(
     () => [
@@ -195,6 +244,11 @@ export function MemberBadgesCarousel({ collection }: MemberBadgesCarouselProps) 
     if (activeCategoryId === "all") return collection.allBadges;
     return collection.categories.find((category) => category.id === activeCategoryId)?.badges ?? [];
   }, [activeCategoryId, collection.allBadges, collection.categories]);
+
+  const unlockedSecretBadgeCount = useMemo(
+    () => collection.allBadges.filter((badge) => badge.secret).length,
+    [collection.allBadges],
+  );
 
   if (!collection.totalCount) return null;
 
@@ -241,11 +295,29 @@ export function MemberBadgesCarousel({ collection }: MemberBadgesCarouselProps) 
         })}
       </div>
 
+      {badgeShareStatus ? (
+        <p className="mt-3 rounded-xl border border-teal-200/80 bg-teal-50 px-3 py-2 text-xs font-medium text-teal-950">{badgeShareStatus}</p>
+      ) : null}
+
       <div className="-mx-1 mt-3 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-1 pb-2">
         {visibleBadges.map((badge) => (
-          <BadgeCard key={badge.id} badge={badge} />
+          <BadgeCard
+            key={badge.id}
+            badge={badge}
+            memberDisplayName={memberDisplayName}
+            shareLogoSrc={shareLogoSrc}
+            onShareStatus={setBadgeShareStatus}
+          />
         ))}
       </div>
+
+      <p className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/90 px-3 py-2.5 text-xs leading-relaxed text-slate-600">
+        Det finnes {SECRET_BADGE_COUNT} skjulte badges som ikke vises her før du oppnår dem — da dukker de opp i listen med
+        fanen «Skjulte».
+        {unlockedSecretBadgeCount > 0
+          ? ` Du har funnet ${unlockedSecretBadgeCount} av ${SECRET_BADGE_COUNT}.`
+          : " Oppdag dem ved å trene jevnlig, på ulike tidspunkter og gjennom året."}
+      </p>
     </section>
   );
 }

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { LineChart, X } from "lucide-react";
+import { LineChart, Share2, X } from "lucide-react";
 import { MOTUS } from "../app/data";
+import { motusShareStatusMessage, sharePersonalRecordCard } from "../app/motusShareCard";
 import { buildExerciseStrengthHistory, buildStrengthChartGeometry } from "../app/personalRecordProgress";
 import type { WorkoutLog } from "../app/types";
 import { GradientButton, OutlineButton } from "../app/ui";
@@ -12,11 +13,31 @@ const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.p
 type PersonalRecordProgressModalProps = {
   exerciseName: string;
   logs: WorkoutLog[];
+  memberDisplayName?: string;
+  shareLogoSrc?: string;
+  onShareStatus?: (message: string | null) => void;
   onClose: () => void;
 };
 
-export function PersonalRecordProgressModal({ exerciseName, logs, onClose }: PersonalRecordProgressModalProps) {
+function parseBestSetLabel(label: string): { weightKg: number; reps: number } | null {
+  const match = label.match(/^([\d.,]+)\s*kg\s*×\s*(\d+)/i);
+  if (!match) return null;
+  const weightKg = Number.parseFloat(match[1].replace(",", "."));
+  const reps = Number.parseInt(match[2], 10);
+  if (!Number.isFinite(weightKg) || !Number.isFinite(reps) || weightKg <= 0 || reps <= 0) return null;
+  return { weightKg, reps };
+}
+
+export function PersonalRecordProgressModal({
+  exerciseName,
+  logs,
+  memberDisplayName,
+  shareLogoSrc,
+  onShareStatus,
+  onClose,
+}: PersonalRecordProgressModalProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
 
   const history = useMemo(() => buildExerciseStrengthHistory(logs, exerciseName), [exerciseName, logs]);
   const geometry = useMemo(
@@ -28,6 +49,28 @@ export function PersonalRecordProgressModal({ exerciseName, logs, onClose }: Per
   const first = history[0] ?? null;
   const changeKg =
     latest && first && history.length > 1 ? Math.round((latest.estimated1RmKg - first.estimated1RmKg) * 10) / 10 : null;
+  const canShare = Boolean(memberDisplayName && shareLogoSrc && latest);
+  const latestSet = latest ? parseBestSetLabel(latest.bestSetLabel) : null;
+
+  async function shareLatestRecord() {
+    if (!canShare || !latest || !latestSet || !memberDisplayName || !shareLogoSrc || isSharing) return;
+    setIsSharing(true);
+    onShareStatus?.(null);
+    try {
+      const outcome = await sharePersonalRecordCard({
+        logoSrc: shareLogoSrc,
+        memberDisplayName,
+        exerciseName,
+        weightKg: latestSet.weightKg,
+        reps: latestSet.reps,
+        estimated1RmKg: latest.estimated1RmKg,
+        previousEstimated1RmKg: history.length > 1 ? first?.estimated1RmKg : undefined,
+      });
+      onShareStatus?.(motusShareStatusMessage(outcome));
+    } finally {
+      setIsSharing(false);
+    }
+  }
 
   return (
     <div
@@ -165,6 +208,17 @@ export function PersonalRecordProgressModal({ exerciseName, logs, onClose }: Per
         )}
 
         <div className="mt-5 flex flex-wrap gap-2">
+          {canShare && latestSet ? (
+            <OutlineButton
+              type="button"
+              onClick={() => void shareLatestRecord()}
+              disabled={isSharing}
+              className="min-h-11 w-full font-semibold sm:w-auto sm:flex-1"
+            >
+              <Share2 className="mr-2 inline h-4 w-4 shrink-0" aria-hidden />
+              {isSharing ? "Lager skrytekort…" : "Del rekorden"}
+            </OutlineButton>
+          ) : null}
           <GradientButton type="button" onClick={onClose} className="min-h-11 flex-1 font-semibold">
             Lukk
           </GradientButton>

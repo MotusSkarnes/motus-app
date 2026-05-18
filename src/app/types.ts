@@ -39,6 +39,8 @@ export type WorkoutExerciseResult = {
   performedSpeed?: string;
   performedIncline?: string;
   completed: boolean;
+  /** Valgfri kommentar til øvelsen (lagres på alle sett for samme programExerciseId). */
+  exerciseNote?: string;
 };
 
 export type WorkoutModeState = {

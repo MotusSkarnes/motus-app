@@ -29,10 +29,11 @@ import {
 import { MOTUS } from "../app/data";
 import motusLogo from "../assets/motus-logo-transparent.svg";
 import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
-import { formatDateDdMmYyyy, normalizeStoredLogDate, storedLogDatesMatch } from "../app/dateFormat";
+import { formatDateDdMmYyyy, normalizeStoredLogDate, parseStoredLogDate, storedLogDatesMatch } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { hasSubstantiveOnboardingAnswers, parsePersonalGoalsJson, readProfileExtensions } from "../app/memberOnboarding";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
+import { motusShareStatusMessage, sharePersonalRecordCard } from "../app/motusShareCard";
 import { buildWorkoutResultGroups } from "../app/programBlocks";
 import {
   buildCheckInNotificationCopy,
@@ -197,6 +198,7 @@ type MemberPortalProps = {
   removeWorkoutLogResult: (input: { logId: string; exerciseId: string }) => void;
   setWorkoutLogResults: (input: { logId: string; results: WorkoutLog["results"] }) => void;
   updateWorkoutModeNote: (note: string) => void;
+  updateWorkoutExerciseNote: (programExerciseId: string, note: string) => void;
   finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
   logGroupWorkout: (input: LogGroupWorkoutInput) => void;
   logCompletedPlanEntry: (input: LogCompletedPlanEntryInput) => void;
@@ -239,7 +241,7 @@ const HIDDEN_BADGE_POPUP_COPY: Record<string, string> = {
   "never-two-weeks-without": "Du har holdt treningen i gang i 6 måneder uten pause over 14 dager.",
   "back-again": "Du kom tilbake etter en lang pause. Det teller.",
   "habit-sticks": "Det har gått 100 dager siden første økt. Vanen sitter.",
-  "before-sunrise": "Du trente før 05:30. Dagen startet sterkt.",
+  "before-sunrise": "Du registrerte trening mellom kl. 05:00 og 08:00. Morgenfugl!",
   "summer-loyal": "Du trente i juli. Sommerformen holdes i gang.",
   "new-start": "Du registrerte årets første økt. Nytt år, ny start.",
   "easter-pump": "Du trente i påsken. Påskeegget fikk litt pump.",
@@ -548,6 +550,7 @@ function formatLoggedResultTitle(result: NonNullable<WorkoutLog["results"]>[numb
 function groupLoggedResultsForDisplay(results: NonNullable<WorkoutLog["results"]>): Array<{
   key: string;
   exerciseName: string;
+  exerciseNote: string;
   rows: Array<{ result: NonNullable<WorkoutLog["results"]>[number]; originalIndex: number }>;
 }> {
   const groups = new Map<
@@ -563,11 +566,15 @@ function groupLoggedResultsForDisplay(results: NonNullable<WorkoutLog["results"]
     const existing = groups.get(key);
     if (existing) {
       existing.rows.push({ result, originalIndex });
+      if (!existing.exerciseNote && result.exerciseNote?.trim()) {
+        existing.exerciseNote = result.exerciseNote.trim();
+      }
       return;
     }
     groups.set(key, {
       key,
       exerciseName: result.exerciseName.trim() || "Øvelse",
+      exerciseNote: result.exerciseNote?.trim() ?? "",
       rows: [{ result, originalIndex }],
     });
   });
@@ -861,6 +868,7 @@ export function MemberPortal(props: MemberPortalProps) {
     removeWorkoutLogResult,
     setWorkoutLogResults,
     updateWorkoutModeNote,
+    updateWorkoutExerciseNote,
     finishWorkoutMode,
     logGroupWorkout,
     logCompletedPlanEntry,
@@ -950,6 +958,8 @@ export function MemberPortal(props: MemberPortalProps) {
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<number | null>(null);
   const [selectedCalendarLogId, setSelectedCalendarLogId] = useState<string | null>(null);
   const [progressShareStatus, setProgressShareStatus] = useState<string | null>(null);
+  const [motusCardShareStatus, setMotusCardShareStatus] = useState<string | null>(null);
+  const [isSharingCelebrationPr, setIsSharingCelebrationPr] = useState(false);
   const [achievementCelebration, setAchievementCelebration] = useState<{ achievedLevel: number } | null>(null);
   const [hiddenBadgeCelebration, setHiddenBadgeCelebration] = useState<MemberBadge | null>(null);
   const [liveWorkoutCelebration, setLiveWorkoutCelebration] = useState<WorkoutCelebration | null>(null);
@@ -1009,6 +1019,7 @@ export function MemberPortal(props: MemberPortalProps) {
   });
   const normalizedCurrentUserEmail = currentUserEmail.trim().toLowerCase();
   const viewedMember = members.find((member) => member.id === memberViewId) ?? null;
+  const motusShareLogoSrc = `${motusSkrytekortLogo}${motusSkrytekortLogo.includes("?") ? "&" : "?"}motus_skrytekort=2026-02`;
   const currentMemberByEmail =
     currentUserRole === "member" && normalizedCurrentUserEmail
       ? pickCanonicalMemberRow(normalizedCurrentUserEmail, members, programs, currentUserMemberId)
@@ -1017,6 +1028,7 @@ export function MemberPortal(props: MemberPortalProps) {
   useAutoClearStatus(pushRegisterStatus, () => setPushRegisterStatus(null), getStatusClearDelayMs(pushRegisterStatus));
   useAutoClearStatus(groupWorkoutStatus, () => setGroupWorkoutStatus(null), getStatusClearDelayMs(groupWorkoutStatus));
   useAutoClearStatus(progressShareStatus, () => setProgressShareStatus(null), getStatusClearDelayMs(progressShareStatus));
+  useAutoClearStatus(motusCardShareStatus, () => setMotusCardShareStatus(null), getStatusClearDelayMs(motusCardShareStatus));
   useAutoClearStatus(periodPlanActionStatus, () => setPeriodPlanActionStatus(null), getStatusClearDelayMs(periodPlanActionStatus));
   useAutoClearStatus(intervalTimerStatus, () => setIntervalTimerStatus(null), getStatusClearDelayMs(intervalTimerStatus));
   useAutoClearStatus(libraryActionStatus, () => setLibraryActionStatus(null), getStatusClearDelayMs(libraryActionStatus));
@@ -1025,6 +1037,7 @@ export function MemberPortal(props: MemberPortalProps) {
   useToastStatus(pushRegisterStatus, { title: "Varsler", tone: inferStatusTone });
   useToastStatus(groupWorkoutStatus, { title: "Gruppetrening", tone: inferStatusTone });
   useToastStatus(progressShareStatus, { title: "Fremgang", tone: inferStatusTone });
+  useToastStatus(motusCardShareStatus, { title: "Deling", tone: inferStatusTone });
   useToastStatus(periodPlanActionStatus, { title: "Periodeplan", tone: inferStatusTone });
   useToastStatus(intervalTimerStatus, { title: "Intervalltimer", tone: inferStatusTone });
   useToastStatus(libraryActionStatus, { title: "Mine programmer", tone: inferStatusTone });
@@ -1838,7 +1851,7 @@ export function MemberPortal(props: MemberPortalProps) {
     });
   }
   const completedLogDates = useMemo(
-    () => completedLogs.map((log) => parseLogDate(log.date)).filter((date): date is Date => Boolean(date)),
+    () => completedLogs.map((log) => parseStoredLogDate(log.date)).filter((date): date is Date => Boolean(date)),
     [completedLogs],
   );
   const estimatedSessionsThisMonth = useMemo(
@@ -2778,6 +2791,44 @@ export function MemberPortal(props: MemberPortalProps) {
     setIntervalTimerStatus(`Hoppet til: ${nextStep.headline}`);
   }
 
+  async function sharePersonalRecordEntry(
+    record: { name: string; weight: number; reps: number },
+    previousEstimated1RmKg?: number,
+  ) {
+    if (typeof window === "undefined") return;
+    setMotusCardShareStatus(null);
+    try {
+      const outcome = await sharePersonalRecordCard({
+        logoSrc: motusShareLogoSrc,
+        memberDisplayName: memberShareDisplayName,
+        exerciseName: record.name,
+        weightKg: record.weight,
+        reps: record.reps,
+        previousEstimated1RmKg,
+      });
+      setMotusCardShareStatus(motusShareStatusMessage(outcome));
+    } catch {
+      setMotusCardShareStatus("Kunne ikke dele akkurat nå.");
+    }
+  }
+
+  async function shareActiveCelebrationPr() {
+    if (!activeCelebration || isSharingCelebrationPr) return;
+    setIsSharingCelebrationPr(true);
+    try {
+      await sharePersonalRecordEntry(
+        {
+          name: activeCelebration.exerciseName,
+          weight: activeCelebration.weight,
+          reps: activeCelebration.reps,
+        },
+        activeCelebration.previousEstimated1RM,
+      );
+    } finally {
+      setIsSharingCelebrationPr(false);
+    }
+  }
+
   async function shareMonthlyProgressSummary() {
     if (typeof window === "undefined") return;
     try {
@@ -3274,6 +3325,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
   const progressShareLast7Days = computeShareCardLast7DaysStats(completedLogs, nowTimestamp);
   const progressLiftPlayfulLine = buildProgressLiftPlayfulLine(progressShareLast7Days);
+  const memberShareDisplayName = viewedMember?.name ?? editableMember?.name ?? "Medlem";
   const _nextBestAction = useMemo(() => {
     if (!memberAssignedPrograms.length) {
       return {
@@ -4383,7 +4435,13 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               ) : null}
             </Card>
-              {!isMemberLimited ? <MemberBadgesCarousel collection={memberBadgeCollection} /> : null}
+              {!isMemberLimited ? (
+                <MemberBadgesCarousel
+                  collection={memberBadgeCollection}
+                  memberDisplayName={memberShareDisplayName}
+                  shareLogoSrc={motusShareLogoSrc}
+                />
+              ) : null}
             </div>
           ) : null}
 
@@ -4423,18 +4481,29 @@ export function MemberPortal(props: MemberPortalProps) {
                       Basert på {activeCelebration?.weight}&nbsp;kg × {activeCelebration?.reps} reps i settet du nettopp logget.
                     </div>
                   </div>
-                  <GradientButton
-                    onClick={() => {
-                      if (liveWorkoutCelebration) {
-                        setLiveWorkoutCelebration(null);
-                        return;
-                      }
-                      dismissWorkoutCelebration();
-                    }}
-                    className="mt-6 w-full min-h-11 text-base font-semibold"
-                  >
-                    Supert — videre
-                  </GradientButton>
+                  <div className="mt-6 flex w-full flex-col gap-2">
+                    <OutlineButton
+                      type="button"
+                      onClick={() => void shareActiveCelebrationPr()}
+                      disabled={isSharingCelebrationPr}
+                      className="min-h-11 w-full font-semibold"
+                    >
+                      <Share2 className="mr-2 inline h-4 w-4 shrink-0" aria-hidden />
+                      {isSharingCelebrationPr ? "Lager skrytekort…" : "Del rekorden"}
+                    </OutlineButton>
+                    <GradientButton
+                      onClick={() => {
+                        if (liveWorkoutCelebration) {
+                          setLiveWorkoutCelebration(null);
+                          return;
+                        }
+                        dismissWorkoutCelebration();
+                      }}
+                      className="w-full min-h-11 text-base font-semibold"
+                    >
+                      Supert — videre
+                    </GradientButton>
+                  </div>
                 </div>
               </div>
             </div>
@@ -5439,6 +5508,10 @@ export function MemberPortal(props: MemberPortalProps) {
                                       <div className="mt-0.5 text-[11px] text-slate-500">
                                         {group.rows.length === 1 ? "1 sett logget" : `${group.rows.length} sett logget`}
                                       </div>
+                                      {group.exerciseNote ? (
+                                        <div className="mt-1 text-xs text-slate-600 italic">«{group.exerciseNote}»
+                                      </div>
+                                      ) : null}
                                     </div>
                                     <button
                                       type="button"
@@ -5717,6 +5790,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 appendWorkoutSetForProgramExercise={appendWorkoutSetForProgramExercise}
                 deferWorkoutExerciseGroup={deferWorkoutExerciseGroup}
                 updateWorkoutModeNote={updateWorkoutModeNote}
+                updateWorkoutExerciseNote={updateWorkoutExerciseNote}
                 finishWorkoutMode={finishWorkoutMode}
                 cancelWorkoutMode={cancelWorkoutMode}
               />
@@ -5788,6 +5862,18 @@ export function MemberPortal(props: MemberPortalProps) {
                           </div>
                           <div className="mt-1 text-sm text-slate-500">Beste registrerte: {record.weight} kg × {record.reps}</div>
                           <div className="mt-0.5 text-xs font-medium text-teal-700">Se styrkeutvikling</div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void sharePersonalRecordEntry(record);
+                          }}
+                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-500 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                          aria-label={`Del personlig rekord for ${record.name}`}
+                          title="Del på Facebook eller andre apper"
+                        >
+                          <Share2 className="h-4 w-4" aria-hidden />
                         </button>
                         <button
                           type="button"
@@ -6173,6 +6259,9 @@ export function MemberPortal(props: MemberPortalProps) {
       <PersonalRecordProgressModal
         exerciseName={prProgressExerciseName}
         logs={completedLogs}
+        memberDisplayName={memberShareDisplayName}
+        shareLogoSrc={motusShareLogoSrc}
+        onShareStatus={setMotusCardShareStatus}
         onClose={() => setPrProgressExerciseName(null)}
       />
     ) : null}

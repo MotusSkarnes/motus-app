@@ -1437,6 +1437,11 @@ export function useAppState() {
     setAppState((prev) => repository.updateWorkoutNote(prev, note));
   }
 
+  function updateWorkoutExerciseNote(programExerciseId: string, note: string) {
+    if (!programExerciseId.trim()) return;
+    setAppState((prev) => repository.updateWorkoutExerciseNote(prev, programExerciseId, note));
+  }
+
   function cancelWorkoutMode() {
     setAppState((prev) => repository.cancelWorkoutMode(prev));
   }
@@ -1616,6 +1621,7 @@ export function useAppState() {
     setWorkoutLogResults,
     updateWorkoutLogTrainerComment,
     updateWorkoutModeNote,
+    updateWorkoutExerciseNote,
     finishWorkoutMode,
     logGroupWorkout,
     logCompletedPlanEntry,

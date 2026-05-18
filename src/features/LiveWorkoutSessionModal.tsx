@@ -33,6 +33,7 @@ export type LiveWorkoutSessionModalProps = {
   appendWorkoutSetForProgramExercise: (programExerciseId: string) => void;
   deferWorkoutExerciseGroup: (programExerciseId: string) => void;
   updateWorkoutModeNote: (note: string) => void;
+  updateWorkoutExerciseNote: (programExerciseId: string, note: string) => void;
   finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
   cancelWorkoutMode: () => void;
   /** Vises som undertittel ved variant trainer */
@@ -58,6 +59,7 @@ export function LiveWorkoutSessionModal({
   appendWorkoutSetForProgramExercise,
   deferWorkoutExerciseGroup,
   updateWorkoutModeNote,
+  updateWorkoutExerciseNote,
   finishWorkoutMode,
   cancelWorkoutMode,
   trainerSubtitle,
@@ -109,6 +111,36 @@ export function LiveWorkoutSessionModal({
   const currentWorkoutGroup = workoutResultGroups[workoutExerciseIndex] ?? null;
   const nextWorkoutGroup = workoutResultGroups[workoutExerciseIndex + 1] ?? null;
   const canDeferCurrentExercise = Boolean(currentWorkoutGroup && nextWorkoutGroup);
+  const isLastWorkoutGroup = workoutExerciseIndex >= workoutResultGroups.length - 1;
+
+  function getExerciseNote(programExerciseId: string): string {
+    if (!workoutMode) return "";
+    const row = workoutMode.results.find((result) => result.programExerciseId === programExerciseId);
+    return row?.exerciseNote ?? "";
+  }
+
+  function renderExerciseNoteFields() {
+    if (!currentWorkoutGroup) return null;
+    return (
+      <div className="mt-3 space-y-3 border-t pt-3" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
+        {currentWorkoutGroup.segments.map((segment) => (
+          <label key={segment.programExerciseId} className="block space-y-1">
+            <span className="text-[11px] font-semibold text-slate-600">
+              {currentWorkoutGroup.segments.length > 1
+                ? `Kommentar til ${segment.exerciseName} (valgfritt)`
+                : "Kommentar til øvelsen (valgfritt)"}
+            </span>
+            <TextArea
+              value={getExerciseNote(segment.programExerciseId)}
+              onChange={(event) => updateWorkoutExerciseNote(segment.programExerciseId, event.target.value)}
+              className="min-h-[72px] !text-sm"
+              placeholder="Teknikk, følelse, justeringer…"
+            />
+          </label>
+        ))}
+      </div>
+    );
+  }
 
   useEffect(() => {
     setShowReplacementOptions(false);
@@ -498,18 +530,25 @@ export function LiveWorkoutSessionModal({
                   Kjør øvelsene i rekkefølge per runde{currentWorkoutGroup.blockType === "circuit" ? " — full sirkel før neste runde" : ""}.
                 </p>
               ) : null}
+              {renderExerciseNoteFields()}
             </div>
           ) : null}
 
-          {variant === "member" ? (
-            !showWorkoutReflection ? (
-              <TextArea value={workoutMode.note} onChange={(e) => updateWorkoutModeNote(e.target.value)} className="min-h-[110px]" placeholder="Hvordan gikk økta?" />
-            ) : (
+          {variant === "member" && showWorkoutReflection ? (
               <div className="rounded-xl border bg-slate-50 p-4 space-y-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div>
                   <div className="text-sm font-semibold text-slate-800">Etter økta</div>
                   <div className="text-xs text-slate-500">Svar med emoji før økta lagres.</div>
                 </div>
+                <label className="block space-y-1">
+                  <span className="text-xs font-semibold text-slate-700">Kommentar til økten (valgfritt)</span>
+                  <TextArea
+                    value={workoutMode.note}
+                    onChange={(e) => updateWorkoutModeNote(e.target.value)}
+                    className="min-h-[90px]"
+                    placeholder="Hvordan gikk økta som helhet?"
+                  />
+                </label>
                 {[
                   { key: "energy", question: "Hvordan føles energinivået nå?", value: reflectionEnergyLevel, setValue: setReflectionEnergyLevel },
                   { key: "difficulty", question: "Hvor tung opplevdes økta?", value: reflectionDifficultyLevel, setValue: setReflectionDifficultyLevel },
@@ -545,10 +584,19 @@ export function LiveWorkoutSessionModal({
                   placeholder="Notat til PT (valgfritt)"
                 />
               </div>
-            )
-          ) : (
-            <TextArea value={workoutMode.note} onChange={(e) => updateWorkoutModeNote(e.target.value)} className="min-h-[110px]" placeholder="Notat fra PT-økta (valgfritt)" />
-          )}
+          ) : null}
+
+          {variant === "trainer" && isLastWorkoutGroup ? (
+            <label className="block space-y-1 rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              <span className="text-xs font-semibold text-slate-700">Kommentar til økten (valgfritt)</span>
+              <TextArea
+                value={workoutMode.note}
+                onChange={(e) => updateWorkoutModeNote(e.target.value)}
+                className="min-h-[90px]"
+                placeholder="Oppsummering av PT-økten…"
+              />
+            </label>
+          ) : null}
         </div>
 
         <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>

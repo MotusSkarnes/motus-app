@@ -8,9 +8,26 @@ import {
   formatBadgeMetricValue,
   getBadgeProgressLabel,
   getBadgeUnlockHint,
+  SECRET_BADGE_CATALOG,
+  SECRET_BADGE_COUNT,
 } from "./memberBadges";
 
 describe("memberBadges", () => {
+  it("lists all hidden badges in the secret catalog", () => {
+    expect(SECRET_BADGE_COUNT).toBe(9);
+    expect(SECRET_BADGE_CATALOG.map((badge) => badge.id)).toEqual([
+      "may-17-workout",
+      "never-two-weeks-without",
+      "back-again",
+      "habit-sticks",
+      "before-sunrise",
+      "summer-loyal",
+      "new-start",
+      "easter-pump",
+      "christmas-pump",
+    ]);
+  });
+
   const baseInput = {
     completedSessionCount: 5,
     streakWeeks: 2,
@@ -110,8 +127,9 @@ describe("memberBadges", () => {
     });
     const badge = collection.allBadges.find((item) => item.id === "weekend-warrior");
     expect(badge?.unlocked).toBe(true);
-    expect(badge?.level).toBe("silver");
-    expect(badge?.target).toBe(4);
+    expect(badge?.level).toBe("bronze");
+    expect(badge?.target).toBe(8);
+    expect(badge?.levels.filter((level) => level.unlocked)).toHaveLength(1);
   });
 
   it("counts only complete Saturday and Sunday pairs for weekend warrior", () => {
@@ -226,18 +244,37 @@ describe("memberBadges", () => {
     expect(before100Days.allBadges.some((badge) => badge.id === "habit-sticks")).toBe(false);
   });
 
-  it("unlocks hidden before-sunrise badge for workouts before 05:30", () => {
-    const early = computeMemberBadges({
+  it("unlocks hidden morgenfugl badge for workouts registered 05:00–08:00", () => {
+    const atFive = computeMemberBadges({
       ...baseInput,
-      completedLogDates: [new Date("2026-05-16T05:29:00")],
+      completedLogDates: [new Date("2026-05-16T05:00:00")],
     });
-    expect(early.allBadges.find((badge) => badge.id === "before-sunrise")?.unlocked).toBe(true);
+    expect(atFive.allBadges.find((badge) => badge.id === "before-sunrise")?.title).toBe("Morgenfugl");
+    expect(atFive.allBadges.find((badge) => badge.id === "before-sunrise")?.unlocked).toBe(true);
+
+    const atEight = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-05-16T08:00:00")],
+    });
+    expect(atEight.allBadges.find((badge) => badge.id === "before-sunrise")?.unlocked).toBe(true);
+
+    const tooEarly = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-05-16T04:59:00")],
+    });
+    expect(tooEarly.allBadges.some((badge) => badge.id === "before-sunrise")).toBe(false);
 
     const tooLate = computeMemberBadges({
       ...baseInput,
-      completedLogDates: [new Date("2026-05-16T05:30:00")],
+      completedLogDates: [new Date("2026-05-16T08:01:00")],
     });
     expect(tooLate.allBadges.some((badge) => badge.id === "before-sunrise")).toBe(false);
+
+    const dateOnlyMidnight = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date(2026, 4, 16)],
+    });
+    expect(dateOnlyMidnight.allBadges.some((badge) => badge.id === "before-sunrise")).toBe(false);
   });
 
   it("unlocks hidden summer-loyal badge for workouts in July", () => {

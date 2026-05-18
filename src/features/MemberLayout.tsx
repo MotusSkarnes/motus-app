@@ -75,6 +75,7 @@ type MemberLayoutProps = {
   removeWorkoutLogResult: ComponentProps<typeof MemberPortal>["removeWorkoutLogResult"];
   setWorkoutLogResults: ComponentProps<typeof MemberPortal>["setWorkoutLogResults"];
   updateWorkoutModeNote: ComponentProps<typeof MemberPortal>["updateWorkoutModeNote"];
+  updateWorkoutExerciseNote: ComponentProps<typeof MemberPortal>["updateWorkoutExerciseNote"];
   finishWorkoutMode: ComponentProps<typeof MemberPortal>["finishWorkoutMode"];
   logGroupWorkout: ComponentProps<typeof MemberPortal>["logGroupWorkout"];
   logCompletedPlanEntry: ComponentProps<typeof MemberPortal>["logCompletedPlanEntry"];
@@ -128,6 +129,7 @@ export function MemberLayout({
   removeWorkoutLogResult,
   setWorkoutLogResults,
   updateWorkoutModeNote,
+  updateWorkoutExerciseNote,
   finishWorkoutMode,
   logGroupWorkout,
   logCompletedPlanEntry,
@@ -344,6 +346,7 @@ export function MemberLayout({
     removeWorkoutLogResult,
     setWorkoutLogResults,
     updateWorkoutModeNote,
+    updateWorkoutExerciseNote,
     finishWorkoutMode,
     logGroupWorkout,
     logCompletedPlanEntry,

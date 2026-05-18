@@ -2502,6 +2502,9 @@ export const supabaseAppRepository: AppRepository = {
   updateWorkoutNote(state: AppState, note: string): AppState {
     return localAppRepository.updateWorkoutNote(state, note);
   },
+  updateWorkoutExerciseNote(state: AppState, programExerciseId: string, note: string): AppState {
+    return localAppRepository.updateWorkoutExerciseNote(state, programExerciseId, note);
+  },
   cancelWorkoutMode(state: AppState): AppState {
     return localAppRepository.cancelWorkoutMode(state);
   },

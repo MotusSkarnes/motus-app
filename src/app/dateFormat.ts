@@ -7,10 +7,23 @@ export function formatDateDdMmYyyy(input: Date | string | number): string {
   return `${day}.${month}.${year}`;
 }
 
-/** Parser dato fra lagret øktlogg (dd.mm.yyyy, yyyy-mm-dd eller ISO). */
+/** Parser dato (og evt. klokkeslett) fra lagret øktlogg. */
 export function parseStoredLogDate(value: string): Date | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
+
+  const withTime = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})\s+kl\s+(\d{1,2}):(\d{2})$/i);
+  if (withTime) {
+    const parsed = new Date(
+      Number(withTime[3]),
+      Number(withTime[2]) - 1,
+      Number(withTime[1]),
+      Number(withTime[4]),
+      Number(withTime[5]),
+    );
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
   const isoLike = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (isoLike) {
     const parsed = new Date(Number(isoLike[1]), Number(isoLike[2]) - 1, Number(isoLike[3]));
