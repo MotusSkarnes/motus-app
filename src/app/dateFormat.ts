@@ -56,6 +56,30 @@ export function formatDateTimeDdMmYyyy(input: Date | string | number): string {
   return `${datePart} kl ${hours}:${minutes}`;
 }
 
+/**
+ * Normaliserer øktlogg-dato til lagringsformat med klokkeslett.
+ * Dato uten kl (f.eks. fra date-input eller periodeplan) får klokkeslett fra referenceNow.
+ */
+export function resolveWorkoutLogDateTime(value?: string, referenceNow: Date = new Date()): string {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) return formatDateTimeDdMmYyyy(referenceNow);
+
+  const isoOnly = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoOnly) {
+    const combined = new Date(Number(isoOnly[1]), Number(isoOnly[2]) - 1, Number(isoOnly[3]));
+    combined.setHours(referenceNow.getHours(), referenceNow.getMinutes(), 0, 0);
+    return formatDateTimeDdMmYyyy(combined);
+  }
+
+  const parsed = parseStoredLogDate(trimmed);
+  if (!parsed) return formatDateTimeDdMmYyyy(referenceNow);
+  if (/\bkl\s+\d{1,2}:\d{2}/i.test(trimmed)) {
+    return formatDateTimeDdMmYyyy(parsed);
+  }
+  parsed.setHours(referenceNow.getHours(), referenceNow.getMinutes(), 0, 0);
+  return formatDateTimeDdMmYyyy(parsed);
+}
+
 /** Visningstekst for når et varsel kom inn (varselliste). */
 export function formatNotificationTimestamp(timestampMs: number, nowMs = Date.now()): string {
   if (!Number.isFinite(timestampMs) || timestampMs <= 0) return "";

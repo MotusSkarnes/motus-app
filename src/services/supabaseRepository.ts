@@ -20,6 +20,7 @@ import {
   type CreateMemberInput,
   type FinishWorkoutInput,
   type LogGroupWorkoutInput,
+  type LogIntervalWorkoutInput,
   type LogCompletedPlanEntryInput,
   type RemoveCompletedPlanEntryLogInput,
   type RemoveGroupWorkoutLogInput,
@@ -2838,6 +2839,14 @@ export const supabaseAppRepository: AppRepository = {
   },
   logGroupWorkout(state: AppState, input: LogGroupWorkoutInput): AppState {
     const nextState = localAppRepository.logGroupWorkout(state, input);
+    const latestLog = nextState.logs[0];
+    if (latestLog) {
+      void persistWorkoutLog(latestLog, buildMemberPersistenceHints(state, latestLog.memberId));
+    }
+    return nextState;
+  },
+  logIntervalWorkout(state: AppState, input: LogIntervalWorkoutInput): AppState {
+    const nextState = localAppRepository.logIntervalWorkout(state, input);
     const latestLog = nextState.logs[0];
     if (latestLog) {
       void persistWorkoutLog(latestLog, buildMemberPersistenceHints(state, latestLog.memberId));

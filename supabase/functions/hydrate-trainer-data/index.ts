@@ -62,6 +62,38 @@ function rowBelongsToOwner(row: Record<string, unknown>, ownerUserId: string): b
   return String(row.owner_user_id ?? "").trim() === ownerUserId;
 }
 
+function buildSharedMedlemLookup(members: Array<Record<string, unknown>>): {
+  sharedMemberIds: Set<string>;
+  sharedMemberEmails: Set<string>;
+} {
+  const sharedMemberIds = new Set<string>();
+  const sharedMemberEmails = new Set<string>();
+  for (const row of members) {
+    if (!isSharedMember(row)) continue;
+    const id = String((row as { id?: string }).id ?? "").trim();
+    if (id) sharedMemberIds.add(id);
+    const email = normalizeEmail((row as { email?: string }).email);
+    if (email && email.includes("@")) sharedMemberEmails.add(email);
+  }
+  return { sharedMemberIds, sharedMemberEmails };
+}
+
+/** PT-kunde: kun egen owner. Medlem (delt): alle PT-er ser program på kunden. */
+function programRowVisibleToTrainer(
+  row: Record<string, unknown>,
+  ownerUserId: string,
+  sharedMemberIds: Set<string>,
+  sharedMemberEmails: Set<string>,
+): boolean {
+  if (rowBelongsToOwner(row, ownerUserId)) return true;
+  const memberId = String((row as { member_id?: string }).member_id ?? "").trim();
+  if (!memberId || memberId === "__template__") return false;
+  if (sharedMemberIds.has(memberId)) return true;
+  const memberIdLower = memberId.toLowerCase();
+  if (memberIdLower.includes("@") && sharedMemberEmails.has(memberIdLower)) return true;
+  return false;
+}
+
 function profileCanonicalScore(row: Record<string, unknown>): number {
   let score = 0;
   const customerType = String(row.customer_type ?? "").trim().toLowerCase();
@@ -322,8 +354,15 @@ Deno.serve(async (req) => {
     const ptOwner = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
     if (memberId && ptOwner) memberOwnerById.set(memberId, ptOwner);
   }
+  const memberRowById = new Map<string, Record<string, unknown>>();
+  for (const row of members ?? []) {
+    const id = String((row as { id?: string }).id ?? "").trim();
+    if (id) memberRowById.set(id, row);
+  }
   if (visibleMemberIds.length > 0) {
     for (const memberId of visibleMemberIds) {
+      const memberRow = memberRowById.get(memberId);
+      if (memberRow && isSharedMember(memberRow)) continue;
       const ptOwner = memberOwnerById.get(memberId);
       if (!ptOwner) continue;
       await adminClient.from("training_programs").update({ owner_user_id: ptOwner }).eq("member_id", memberId).neq("owner_user_id", ptOwner);
@@ -338,6 +377,7 @@ Deno.serve(async (req) => {
         .filter((email) => email && email.includes("@")),
     ),
   );
+  const { sharedMemberIds, sharedMemberEmails } = buildSharedMedlemLookup(members ?? []);
   const programLookupMemberIds = new Set(visibleMemberIds);
   if (visibleMemberEmails.length > 0) {
     const { data: authUsersData, error: authUsersError } = await adminClient.auth.admin.listUsers({
@@ -394,7 +434,9 @@ Deno.serve(async (req) => {
       .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by, program_created_by_name")
       .in("member_id", Array.from(programLookupMemberIds))
       .order("created_at", { ascending: false });
-    programsByMember = ((data ?? []) as Array<Record<string, unknown>>).filter((row) => rowBelongsToOwner(row, ownerUserId));
+    programsByMember = ((data ?? []) as Array<Record<string, unknown>>).filter((row) =>
+      programRowVisibleToTrainer(row, ownerUserId, sharedMemberIds, sharedMemberEmails),
+    );
     programsByMemberError = error;
   }
 

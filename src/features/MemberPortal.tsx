@@ -29,7 +29,7 @@ import {
 import { MOTUS } from "../app/data";
 import motusLogo from "../assets/motus-logo-transparent.svg";
 import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
-import { formatDateDdMmYyyy, normalizeStoredLogDate, parseStoredLogDate, storedLogDatesMatch } from "../app/dateFormat";
+import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { hasSubstantiveOnboardingAnswers, parsePersonalGoalsJson, readProfileExtensions } from "../app/memberOnboarding";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
@@ -50,6 +50,7 @@ import { uid } from "../app/storage";
 import type {
   LogCompletedPlanEntryInput,
   LogGroupWorkoutInput,
+  LogIntervalWorkoutInput,
   ReplaceWorkoutExerciseGroupInput,
   SaveProgramInput,
   StartCustomWorkoutInput,
@@ -104,6 +105,7 @@ import { MemberHabitSummaryCard } from "./MemberHabitSummaryCard";
 import { MemberProgressGoals } from "./MemberProgressGoals";
 import { MemberWeeklyStreakCard } from "./MemberWeeklyStreakCard";
 import { MuscleSplitCard } from "./MuscleSplitCard";
+import { IntervalWorkoutSessionModal } from "./IntervalWorkoutSessionModal";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
 import { PersonalRecordProgressModal } from "./PersonalRecordProgressModal";
 import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
@@ -202,6 +204,7 @@ type MemberPortalProps = {
   updateWorkoutExerciseNote: (programExerciseId: string, note: string) => void;
   finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
   logGroupWorkout: (input: LogGroupWorkoutInput) => void;
+  logIntervalWorkout: (input: LogIntervalWorkoutInput) => void;
   logCompletedPlanEntry: (input: LogCompletedPlanEntryInput) => void;
   removeGroupWorkoutLog: (input: { memberId: string; className: string; date?: string }) => void;
   removeCompletedPlanEntryLog: (input: { memberId: string; programTitle: string; date?: string }) => void;
@@ -593,11 +596,6 @@ function toIsoDateInputValue(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function formatStoredLogDateFromIso(iso: string): string {
-  const parsed = parseDateOnly(iso);
-  return parsed ? formatDateDdMmYyyy(parsed) : "";
-}
-
 function getStartOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
@@ -862,6 +860,7 @@ export function MemberPortal(props: MemberPortalProps) {
     updateWorkoutExerciseNote,
     finishWorkoutMode,
     logGroupWorkout,
+    logIntervalWorkout,
     logCompletedPlanEntry,
     removeGroupWorkoutLog,
     removeCompletedPlanEntryLog,
@@ -3417,8 +3416,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function handleLogGroupWorkout() {
     if (!activeMemberId || !groupWorkoutClassName.trim()) return;
-    const storedDate = formatStoredLogDateFromIso(groupWorkoutDateIso);
-    if (!storedDate) {
+    if (!groupWorkoutDateIso.trim()) {
       setGroupWorkoutStatus("Velg en gyldig dato for gruppetime.");
       return;
     }
@@ -3427,7 +3425,7 @@ export function MemberPortal(props: MemberPortalProps) {
       className: groupWorkoutClassName.trim(),
       note: groupWorkoutNote.trim(),
       reflection: buildGroupWorkoutReflection(),
-      date: storedDate,
+      date: groupWorkoutDateIso,
     });
     setGroupWorkoutStatus("Gruppetime lagret. PT kan nå se denne økta.");
     setGroupWorkoutEnergyLevel(3);
@@ -3576,7 +3574,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   function resolvePeriodPlanStoredDate(plannedDate?: string | null): string {
-    return plannedDate?.trim() ? normalizeStoredLogDate(plannedDate) : formatDateDdMmYyyy(new Date());
+    return resolveWorkoutLogDateTime(plannedDate ?? "");
   }
 
   function togglePeriodPlanEntryCompleted(input: { planId: string; weekNumber: number; day: WeekdayPlanKey; entry: string; plannedDate?: string | null }) {
@@ -5510,146 +5508,14 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </div>
               </div>
-              {showIntervalTimerModal ? (
-                <div className="motus-modal-insets fixed inset-0 z-[10012] overscroll-contain bg-slate-900/60">
-                  <div className="mx-auto flex h-full w-full max-w-2xl flex-col rounded-2xl bg-white shadow-lg">
-                    <div className="border-b p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="text-xs uppercase tracking-wide text-slate-400">Intervallvindu</div>
-                          <div className="text-xl font-semibold text-slate-900">{activeIntervalProgram?.title || "Intervalløkt"}</div>
-                          <div className="mt-1 text-xs text-slate-500">{activeIntervalProgram?.goal || "Nedtelling per intervallsteg"}</div>
-                        </div>
-                        <OutlineButton onClick={closeIntervalTimerModal}>Lukk</OutlineButton>
-                      </div>
-                    </div>
-                    <div className="motus-scroll-touch flex-1 space-y-4 overflow-auto p-4 sm:p-6">
-                      <div
-                        className="overflow-hidden rounded-2xl text-white shadow-md ring-1 ring-black/10"
-                        style={{ background: `linear-gradient(155deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                      >
-                        {currentIntervalProgramStep ? (
-                          <>
-                            <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 sm:px-5 sm:pt-5">
-                              <span
-                                className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${intervalTimerBadgeToneClass(
-                                  currentIntervalProgramStep.tone,
-                                )}`}
-                              >
-                                {currentIntervalProgramStep.phaseBadge}
-                              </span>
-                              <span className="text-[11px] font-semibold text-white/90 tabular-nums">
-                                Steg {Math.min(intervalTimerStepIndex + 1, intervalProgramSteps.length || 1)} av {intervalProgramSteps.length || 0}
-                              </span>
-                            </div>
-                            <div className="px-4 pt-3 sm:px-5">
-                              <h3 className="text-2xl font-bold leading-tight tracking-tight sm:text-3xl">
-                                {currentIntervalProgramStep.headline}
-                              </h3>
-                              {currentIntervalProgramStep.tone === "rest" && currentIntervalProgramStep.afterExerciseName ? (
-                                <p className="mt-2 text-sm leading-snug text-white/90">
-                                  Etter {currentIntervalProgramStep.afterExerciseName}
-                                </p>
-                              ) : null}
-                            </div>
-                            <div className="flex justify-center px-4 py-1 sm:px-5 sm:py-2">
-                              <div className="text-6xl font-black tabular-nums tracking-tight sm:text-8xl">
-                                {formatSeconds(intervalTimerRemainingSeconds)}
-                              </div>
-                            </div>
-                            <div className="mx-4 mb-1 rounded-xl bg-black/18 backdrop-blur-[2px] sm:mx-5">
-                              {currentIntervalProgramStep.speedHint && currentIntervalProgramStep.speedHint !== "-" ? (
-                                <div className="flex items-start justify-between gap-4 border-b border-white/15 px-3 py-2.5 text-sm first:pt-3 sm:px-0">
-                                  <span className="shrink-0 text-white/75">Fart</span>
-                                  <span className="text-right font-semibold tabular-nums">{currentIntervalProgramStep.speedHint}</span>
-                                </div>
-                              ) : null}
-                              {currentIntervalProgramStep.inclineHint && currentIntervalProgramStep.inclineHint !== "-" ? (
-                                <div className="flex items-start justify-between gap-4 border-b border-white/15 px-3 py-2.5 text-sm sm:px-0">
-                                  <span className="shrink-0 text-white/75">Stigning</span>
-                                  <span className="text-right font-semibold tabular-nums">{currentIntervalProgramStep.inclineHint}</span>
-                                </div>
-                              ) : null}
-                              {currentIntervalProgramStep.hrHint ? (
-                                <div className="flex items-start justify-between gap-4 px-3 py-2.5 text-sm sm:px-0">
-                                  <span className="shrink-0 text-white/75">Målpuls</span>
-                                  <span className="text-right font-semibold">{currentIntervalProgramStep.hrHint}</span>
-                                </div>
-                              ) : null}
-                              {!currentIntervalProgramStep.hrHint &&
-                              (!currentIntervalProgramStep.speedHint || currentIntervalProgramStep.speedHint === "-") &&
-                              (!currentIntervalProgramStep.inclineHint || currentIntervalProgramStep.inclineHint === "-") ? (
-                                <div className="px-3 py-3 text-center text-sm text-white/75 sm:px-0">Ingen ekstra instrukser for dette steget.</div>
-                              ) : null}
-                            </div>
-                            {(() => {
-                              const nextSt = intervalProgramSteps[intervalTimerStepIndex + 1];
-                              if (!nextSt) {
-                                return (
-                                  <div className="border-t border-white/15 px-4 py-3 text-center text-sm font-medium text-white/85 sm:px-5">
-                                    Siste steg i økta
-                                  </div>
-                                );
-                              }
-                              return (
-                                <div className="border-t border-white/15 px-4 py-3 sm:px-5">
-                                  <div className="text-[10px] font-bold uppercase tracking-wider text-white/70">Neste</div>
-                                  <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
-                                    <div className="text-base font-semibold leading-snug">{nextSt.headline}</div>
-                                    <div className="text-sm text-white/90 tabular-nums">
-                                      {nextSt.phaseBadge} · {formatSeconds(nextSt.durationSeconds)}
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                          </>
-                        ) : (
-                          <div className="p-8 text-center text-sm text-white/90">Ingen steg i programmet. Velg et intervallprogram.</div>
-                        )}
-                      </div>
-                      <div className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                        <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
-                          <span>Steg {Math.min(intervalTimerStepIndex + 1, intervalProgramSteps.length || 1)} / {intervalProgramSteps.length || 1}</span>
-                          <span>{intervalTimerProgressPercent}%</span>
-                        </div>
-                        <div className="mt-2 h-3 rounded-full bg-slate-200">
-                          <div
-                            className="h-3 rounded-full"
-                            style={{ width: `${intervalTimerProgressPercent}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                          />
-                        </div>
-                        <div className="mt-2 text-xs text-slate-500">
-                          Total tid: {formatSeconds(intervalTimerElapsedSeconds)} / {formatSeconds(intervalTimerTotalSeconds)}
-                        </div>
-                      </div>
-                      {intervalTimerStatus ? (
-                        <StatusMessage
-                          message={intervalTimerStatus}
-                          tone={intervalTimerStatus.toLowerCase().includes("fullført") ? "success" : "info"}
-                          className="!rounded-xl !px-3 !py-2 !text-xs"
-                        />
-                      ) : null}
-                    </div>
-                    <div className="border-t p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="grid gap-2 sm:grid-cols-4">
-                        <GradientButton onClick={handleStartIntervalProgramTimer} disabled={!intervalProgramSteps.length}>
-                          Start økt
-                        </GradientButton>
-                        <OutlineButton onClick={handlePauseResumeIntervalProgramTimer} disabled={!isIntervalTimerRunning}>
-                          {isIntervalTimerPaused ? "Fortsett" : "Pause"}
-                        </OutlineButton>
-                        <OutlineButton onClick={handleSkipIntervalProgramStep} disabled={!intervalProgramSteps.length}>
-                          Hopp over
-                        </OutlineButton>
-                        <OutlineButton onClick={handleResetIntervalProgramTimer} disabled={!intervalProgramSteps.length}>
-                          Nullstill
-                        </OutlineButton>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
+              <IntervalWorkoutSessionModal
+                open={showIntervalTimerModal}
+                program={activeIntervalProgram}
+                exercises={exercises}
+                memberId={activeMemberId}
+                onClose={() => setShowIntervalTimerModal(false)}
+                logIntervalWorkout={logIntervalWorkout}
+              />
               <LiveWorkoutSessionModal
                 variant="member"
                 workoutMode={workoutMode}

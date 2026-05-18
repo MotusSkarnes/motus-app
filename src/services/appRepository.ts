@@ -13,7 +13,13 @@ import type {
   WorkoutLog,
   WorkoutReflection,
 } from "../app/types";
-import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate, storedLogDatesMatch } from "../app/dateFormat";
+import {
+  formatDateDdMmYyyy,
+  formatDateTimeDdMmYyyy,
+  normalizeStoredLogDate,
+  resolveWorkoutLogDateTime,
+  storedLogDatesMatch,
+} from "../app/dateFormat";
 
 export type CreateMemberInput = {
   name: string;
@@ -111,6 +117,15 @@ export type LogCompletedPlanEntryInput = {
   date?: string;
 };
 
+export type LogIntervalWorkoutInput = {
+  memberId: string;
+  programId: string;
+  results: WorkoutExerciseResult[];
+  note?: string;
+  reflection: WorkoutReflection;
+  keepCurrentTab?: boolean;
+};
+
 export type RemoveCompletedPlanEntryLogInput = {
   memberId: string;
   programTitle: string;
@@ -174,6 +189,7 @@ export interface AppRepository {
   cancelWorkoutMode(state: AppState): AppState;
   finishWorkoutMode(state: AppState, input?: FinishWorkoutInput): AppState;
   logGroupWorkout(state: AppState, input: LogGroupWorkoutInput): AppState;
+  logIntervalWorkout(state: AppState, input: LogIntervalWorkoutInput): AppState;
   logCompletedPlanEntry(state: AppState, input: LogCompletedPlanEntryInput): AppState;
   removeCompletedPlanEntryLog(state: AppState, input: RemoveCompletedPlanEntryLogInput): AppState;
   saveExercise(state: AppState, input: SaveExerciseInput): AppState;
@@ -636,7 +652,7 @@ export function startCustomWorkoutInState(
 export function logGroupWorkoutInState(state: AppState, input: LogGroupWorkoutInput): AppState {
   const memberId = input.memberId.trim();
   const className = input.className.trim();
-  const date = normalizeStoredLogDate(input.date?.trim() || formatDateDdMmYyyy(new Date()));
+  const date = resolveWorkoutLogDateTime(input.date);
   if (!memberId || !className) return state;
   const normalizedTitle = `Gruppetime: ${className}`;
   const duplicateExists = state.logs.some(
@@ -682,10 +698,40 @@ export function removeGroupWorkoutLogInState(state: AppState, input: RemoveGroup
   };
 }
 
+export function logIntervalWorkoutInState(state: AppState, input: LogIntervalWorkoutInput): AppState {
+  const memberId = input.memberId.trim();
+  const program = state.programs.find((item) => item.id === input.programId.trim());
+  if (!memberId || !program) return state;
+  const date = formatDateTimeDdMmYyyy(new Date());
+  const deduplicatedResults = (input.results ?? []).filter((result, index, list) => {
+    const key = `${result.programExerciseId || result.exerciseName.trim().toLowerCase()}::${result.setNumber ?? 0}`;
+    return list.findIndex((candidate) => {
+      const candidateKey = `${candidate.programExerciseId || candidate.exerciseName.trim().toLowerCase()}::${candidate.setNumber ?? 0}`;
+      return candidateKey === key;
+    }) === index;
+  });
+  return {
+    ...state,
+    logs: [
+      {
+        id: uid("log"),
+        memberId,
+        programTitle: program.title,
+        date,
+        status: "Fullført",
+        note: input.note?.trim() ?? "",
+        reflection: input.reflection,
+        results: deduplicatedResults,
+      },
+      ...state.logs,
+    ],
+  };
+}
+
 export function logCompletedPlanEntryInState(state: AppState, input: LogCompletedPlanEntryInput): AppState {
   const memberId = input.memberId.trim();
   const programTitle = input.programTitle.trim();
-  const date = normalizeStoredLogDate(input.date?.trim() || formatDateDdMmYyyy(new Date()));
+  const date = resolveWorkoutLogDateTime(input.date);
   if (!memberId || !programTitle) return state;
   const normalizedTitle = programTitle.toLowerCase();
   const duplicateExists = state.logs.some(
@@ -892,6 +938,7 @@ export const localAppRepository: AppRepository = {
   cancelWorkoutMode: cancelWorkoutModeInState,
   finishWorkoutMode: finishWorkoutModeInState,
   logGroupWorkout: logGroupWorkoutInState,
+  logIntervalWorkout: logIntervalWorkoutInState,
   logCompletedPlanEntry: logCompletedPlanEntryInState,
   removeCompletedPlanEntryLog: removeCompletedPlanEntryLogInState,
   saveExercise: saveExerciseInState,

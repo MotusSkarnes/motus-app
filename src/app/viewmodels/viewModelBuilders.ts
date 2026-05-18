@@ -92,6 +92,7 @@ export function buildMemberLayoutProps(input: {
   updateWorkoutModeNote: MemberLayoutProps["updateWorkoutModeNote"];
   finishWorkoutMode: MemberLayoutProps["finishWorkoutMode"];
   logGroupWorkout: MemberLayoutProps["logGroupWorkout"];
+  logIntervalWorkout: MemberLayoutProps["logIntervalWorkout"];
   logCompletedPlanEntry: MemberLayoutProps["logCompletedPlanEntry"];
   removeGroupWorkoutLog: MemberLayoutProps["removeGroupWorkoutLog"];
   removeCompletedPlanEntryLog: MemberLayoutProps["removeCompletedPlanEntryLog"];

@@ -7,6 +7,7 @@ import {
   type FinishWorkoutInput,
   type LogCompletedPlanEntryInput,
   type LogGroupWorkoutInput,
+  type LogIntervalWorkoutInput,
   type RemoveCompletedPlanEntryLogInput,
   type RemoveGroupWorkoutLogInput,
   type RemoveWorkoutLogResultInput,
@@ -1593,6 +1594,13 @@ export function useAppState() {
     }
   }
 
+  function logIntervalWorkout(input: LogIntervalWorkoutInput) {
+    setAppState((prev) => repository.logIntervalWorkout(prev, input));
+    if (input.keepCurrentTab !== true) {
+      setMemberTab("progress");
+    }
+  }
+
   function removeGroupWorkoutLog(input: RemoveGroupWorkoutLogInput) {
     setAppState((prev) => repository.removeGroupWorkoutLog(prev, input));
   }
@@ -1785,6 +1793,7 @@ export function useAppState() {
     updateWorkoutExerciseNote,
     finishWorkoutMode,
     logGroupWorkout,
+    logIntervalWorkout,
     logCompletedPlanEntry,
     removeGroupWorkoutLog,
     removeCompletedPlanEntryLog,
