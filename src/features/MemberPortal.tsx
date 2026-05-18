@@ -1140,6 +1140,7 @@ export function MemberPortal(props: MemberPortalProps) {
     () => periodPlans.filter((plan) => hiddenPeriodPlanIds.includes(plan.id)),
     [periodPlans, hiddenPeriodPlanIds],
   );
+  const memberHasVisiblePeriodPlan = visiblePeriodPlans.length > 0;
   const primaryMemberIdForPeriodPlans = relatedMemberIds[0] ?? memberViewId ?? "";
   const relatedMembersForProfile = useMemo(
     () => members.filter((member) => relatedMemberIdSet.has(member.id)),
@@ -4173,6 +4174,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 </Card>
               ) : null}
             <Card className="min-w-0 w-full p-4 sm:p-6 flex flex-col gap-5 sm:gap-6">
+              {memberHasVisiblePeriodPlan ? (
               <div className="order-2 w-full">
                   <div className="flex h-full min-w-0 flex-col rounded-2xl border bg-white p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-center justify-between gap-3">
@@ -4208,6 +4210,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
                 
               </div>
+              ) : null}
               <div className="order-1 grid gap-4">
                 <div className="min-w-0 w-full overflow-hidden rounded-2xl border bg-slate-50 p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="flex items-start justify-between gap-3">
@@ -4576,7 +4579,11 @@ export function MemberPortal(props: MemberPortalProps) {
               <div className="flex flex-col gap-4">
               <MemberTabHero
                 title="Trening"
-                description="Mine programmer, periodeplan og egen økt — alt samlet på ett sted."
+                description={
+                  memberHasVisiblePeriodPlan
+                    ? "Mine programmer, periodeplan og egen økt — alt samlet på ett sted."
+                    : "Mine programmer og egen økt — alt samlet på ett sted."
+                }
               />
               <Card className="p-4 sm:p-5">
                 <h3 className="text-sm font-semibold text-slate-900">Mine treningsprogram</h3>
@@ -5086,6 +5093,7 @@ export function MemberPortal(props: MemberPortalProps) {
               </Card>
               ) : null}
 
+              {memberHasVisiblePeriodPlan ? (
               <div className="rounded-xl border bg-white p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-2">
@@ -5330,6 +5338,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 ) : null}
               </div>
+              ) : null}
               <div className="mt-6 rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-2">

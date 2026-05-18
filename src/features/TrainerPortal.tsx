@@ -665,6 +665,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const [isEditingCustomerCard, setIsEditingCustomerCard] = useState(false);
   const [memberEditStatus, setMemberEditStatus] = useState<string | null>(null);
   const [restoreEmail, setRestoreEmail] = useState("");
+  const [restoringArchivedEmail, setRestoringArchivedEmail] = useState<string | null>(null);
   const [restoreStatus, setRestoreStatus] = useState<string | null>(null);
   const [isRestoringMember, setIsRestoringMember] = useState(false);
   const [memberDedupeStatus, setMemberDedupeStatus] = useState<string | null>(null);
@@ -889,6 +890,31 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     () => deduplicatedMembers.filter((member) => member.isActive !== false),
     [deduplicatedMembers]
   );
+  const archivedMembersForAdmin = useMemo(() => {
+    const trainerId = currentTrainerOwnerUserId.trim();
+    const byIdentity = new Map<string, Member>();
+    members.forEach((member) => {
+      if (member.isActive !== false) return;
+      const owner = (member.ownerUserId ?? "").trim();
+      if (trainerId) {
+        const visible =
+          isSharedMedlemCustomerType(member.customerType) || !owner || owner === trainerId;
+        if (!visible) return;
+      }
+      const identityKey = getMemberIdentityKey(member);
+      const existing = byIdentity.get(identityKey);
+      if (!existing) {
+        byIdentity.set(identityKey, member);
+        return;
+      }
+      const nextScore = scoreMemberProfileSource(member, trainerId);
+      const existingScore = scoreMemberProfileSource(existing, trainerId);
+      if (nextScore > existingScore) {
+        byIdentity.set(identityKey, member);
+      }
+    });
+    return Array.from(byIdentity.values()).sort((a, b) => a.name.localeCompare(b.name, "no"));
+  }, [members, currentTrainerOwnerUserId]);
   const visibleMembers = showInactiveMembers
     ? deduplicatedMembers
     : activeMembers;
@@ -2769,18 +2795,21 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       setRestoreStatus("Skriv inn e-post før gjenoppretting.");
       return;
     }
+    const normalizedEmail = email.toLowerCase();
     setIsRestoringMember(true);
+    setRestoringArchivedEmail(normalizedEmail);
     setRestoreStatus(null);
     const result = await restoreMemberByEmail(email);
     setRestoreStatus(result.message);
     if (result.ok) {
       setRestoreEmail("");
       setShowInactiveMembers(true);
-      const restoredMember = members.find((member) => member.email.trim().toLowerCase() === email.toLowerCase());
+      const restoredMember = members.find((member) => member.email.trim().toLowerCase() === normalizedEmail);
       if (restoredMember) {
         setSelectedMemberId(restoredMember.id);
       }
     }
+    setRestoringArchivedEmail(null);
     setIsRestoringMember(false);
   }
 
@@ -6160,10 +6189,14 @@ function programAuthorLabel(program: TrainingProgram): string | null {
           </div>
           <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <div className="text-sm font-semibold text-slate-700">Datakvalitet</div>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-xl border bg-white px-3 py-2 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-slate-500">Aktive kunder</div>
                 <div className="font-semibold text-slate-800">{activeMembers.length}</div>
+              </div>
+              <div className="rounded-xl border bg-white px-3 py-2 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-slate-500">Arkiverte</div>
+                <div className="font-semibold text-slate-800">{archivedMembersForAdmin.length}</div>
               </div>
               <div className="rounded-xl border bg-white px-3 py-2 text-xs" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                 <div className="text-slate-500">Mulige duplikater</div>
@@ -6212,6 +6245,50 @@ function programAuthorLabel(program: TrainingProgram): string | null {
             ) : null}
           </div>
           {renderNewMemberForm({ id: "admin-legg-til-medlem", title: "Legg til medlem" })}
+          <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="text-sm font-semibold text-slate-700">Arkiverte kunder</div>
+            <p className="text-xs leading-relaxed text-slate-600">
+              Kunder du har arkivert vises her. Gjenoppretting gjør dem aktive igjen under Klienter.
+            </p>
+            {archivedMembersForAdmin.length === 0 ? (
+              <p className="text-xs text-slate-500">Ingen arkiverte kunder.</p>
+            ) : (
+              <ul className="space-y-2 max-h-64 overflow-y-auto">
+                {archivedMembersForAdmin.map((member) => {
+                  const email = member.email.trim();
+                  const normalizedEmail = email.toLowerCase();
+                  const isRestoringThis =
+                    isRestoringMember && restoringArchivedEmail === normalizedEmail;
+                  return (
+                    <li
+                      key={member.id}
+                      className="flex flex-col gap-2 rounded-xl border bg-white px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                      style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-slate-800 truncate">{member.name}</div>
+                        <div className="text-xs text-slate-500 truncate">{email}</div>
+                      </div>
+                      <OutlineButton
+                        onClick={() => void handleRestoreMember(email)}
+                        disabled={isRestoringMember}
+                        className="shrink-0 w-full sm:w-auto"
+                      >
+                        {isRestoringThis ? "Gjenoppretter..." : "Gjenopprett"}
+                      </OutlineButton>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {restoreStatus ? (
+              <StatusMessage
+                message={restoreStatus}
+                tone={restoreStatus.toLowerCase().includes("feilet") ? "error" : "success"}
+                className="!rounded-xl !px-3 !py-2 !text-xs"
+              />
+            ) : null}
+          </div>
           <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <div className="text-sm font-semibold text-slate-700">Gjenopprett slettet klient</div>
             <TextInput value={restoreEmail} onChange={(e) => setRestoreEmail(e.target.value)} placeholder="E-post til slettet klient" />

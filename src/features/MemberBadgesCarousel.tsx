@@ -10,7 +10,6 @@ import {
   type BadgeLevelId,
   type MemberBadge,
   type MemberBadgeCategoryId,
-  SECRET_BADGE_COUNT,
   type MemberBadgeCollection,
   type MemberBadgeLevel,
 } from "../app/memberBadges";
@@ -245,11 +244,6 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
     return collection.categories.find((category) => category.id === activeCategoryId)?.badges ?? [];
   }, [activeCategoryId, collection.allBadges, collection.categories]);
 
-  const unlockedSecretBadgeCount = useMemo(
-    () => collection.allBadges.filter((badge) => badge.secret).length,
-    [collection.allBadges],
-  );
-
   if (!collection.totalCount) return null;
 
   const overallPct = collection.totalLevels > 0 ? Math.round((collection.totalUnlockedLevels / collection.totalLevels) * 100) : 0;
@@ -261,18 +255,7 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
           <Award className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">Badges</h2>
-              <p className="mt-0.5 text-xs text-slate-500">
-                {collection.totalUnlockedLevels} av {collection.totalLevels} nivåer låst opp
-              </p>
-            </div>
-            <span className="rounded-full bg-slate-950 px-2.5 py-1 text-[10px] font-bold text-white">{overallPct}%</span>
-          </div>
-          <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-            <div className="h-full rounded-full" style={{ width: `${overallPct}%`, background: MOTUS_GRADIENT }} />
-          </div>
+          <h2 className="text-sm font-semibold text-slate-900">Badges</h2>
         </div>
       </div>
 
@@ -312,12 +295,18 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
       </div>
 
       <p className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/90 px-3 py-2.5 text-xs leading-relaxed text-slate-600">
-        Det finnes {SECRET_BADGE_COUNT} skjulte badges som ikke vises her før du oppnår dem — da dukker de opp i listen med
-        fanen «Skjulte».
-        {unlockedSecretBadgeCount > 0
-          ? ` Du har funnet ${unlockedSecretBadgeCount} av ${SECRET_BADGE_COUNT}.`
-          : " Oppdag dem ved å trene jevnlig, på ulike tidspunkter og gjennom året."}
+        Det finnes flere skjulte badges som ikke vises før du oppnår de, oppdag de ved å bruke appen jevnlig.
       </p>
+
+      <div className="mt-3 flex items-start justify-between gap-3">
+        <p className="text-xs text-slate-500">
+          {collection.totalUnlockedLevels} av {collection.totalLevels} nivåer låst opp
+        </p>
+        <span className="rounded-full bg-slate-950 px-2.5 py-1 text-[10px] font-bold text-white">{overallPct}%</span>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full rounded-full" style={{ width: `${overallPct}%`, background: MOTUS_GRADIENT }} />
+      </div>
     </section>
   );
 }
