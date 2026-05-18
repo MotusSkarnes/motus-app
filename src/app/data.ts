@@ -254,6 +254,11 @@ const initialExercises: Exercise[] = [
   { id: "e193", name: "Standing side bend stretch", category: "Uttøyning", group: "Sidekjerne", equipment: "Kroppsvekt", level: "Nybegynner", description: "Len overkroppen sideveis og hold hoften stabil." },
   { id: "e194", name: "QL stretch på benk", category: "Uttøyning", group: "Korsrygg", equipment: "Benk", level: "Nybegynner", description: "Løft arm over hodet og strekk siden av korsryggen." },
   { id: "e195", name: "Pust + diafragma mobilitet", category: "Uttøyning", group: "Mobilitet", equipment: "Kroppsvekt", level: "Nybegynner", description: "Rolig nasal pust med fokus på ekspansjon i ribben." },
+  { id: "e196", name: "Leg curl i maskin", category: "Styrke", group: "Bakside lår", equipment: "Maskin", level: "Nybegynner", description: "Trekk hælene mot setet med hoften i puten gjennom hele bevegelsen." },
+  { id: "e197", name: "Leg extension i maskin", category: "Styrke", group: "Forside lår", equipment: "Maskin", level: "Nybegynner", description: "Spark ut kontrollert og hold et kort stopp i topposisjon uten å løfte hoften." },
+  { id: "e198", name: "Crunches på ball", category: "Styrke", group: "Kjerne", equipment: "Stabilitetsball", level: "Nybegynner", description: "Ligg med øvre rygg på ballen, spenn magen og curl overkroppen kontrollert opp." },
+  { id: "e199", name: "Sittende ro i maskin", category: "Styrke", group: "Rygg", equipment: "Maskin", level: "Nybegynner", description: "Trekk håndtaket mot magen med brystet oppe og skulderbladene sammen i slutten." },
+  { id: "e200", name: "Glute drive maskin", category: "Styrke", group: "Sete", equipment: "Maskin", level: "Nybegynner", description: "Press hoften frem i maskinen med kontrollert tempo og klem setet i topp." },
 ];
 
 const initialPrograms: TrainingProgram[] = [
