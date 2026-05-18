@@ -1,4 +1,5 @@
 import { STORAGE_KEY, getDefaultState, getSupabaseBootstrapState } from "./data";
+import { migrateCatalogSchemaVersion } from "./memberLocalCatalog";
 import { isSupabaseConfigured } from "../services/supabaseClient";
 import type { AppState } from "./types";
 
@@ -16,6 +17,9 @@ export function loadState(): AppState {
     return useSupabaseProductionBootstrap() ? getSupabaseBootstrapState() : getDefaultState();
   }
   try {
+    if (useSupabaseProductionBootstrap()) {
+      migrateCatalogSchemaVersion();
+    }
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       return useSupabaseProductionBootstrap() ? getSupabaseBootstrapState() : getDefaultState();

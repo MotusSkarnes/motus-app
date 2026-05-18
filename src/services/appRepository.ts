@@ -34,8 +34,10 @@ export type SaveProgramInput = {
   exercises: ProgramExercise[];
   programCreatedBy?: "member" | "trainer";
   programCreatedByName?: string;
-  onPersisted?: (result: { ok: boolean; message?: string }) => void;
+  onPersisted?: (result: { ok: boolean; message?: string; ids?: string[] }) => void;
 };
+
+export type PersistResult = { ok: boolean; message?: string; ids?: string[] };
 
 export type DeleteProgramContext = {
   memberIds?: string[];
@@ -51,6 +53,7 @@ export type UpdateWorkoutResultInput = {
 
 export type FinishWorkoutInput = {
   reflection?: WorkoutReflection;
+  onPersisted?: (result: PersistResult) => void;
 };
 
 export type StartWorkoutModeOptions = {

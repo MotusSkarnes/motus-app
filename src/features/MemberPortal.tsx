@@ -1657,19 +1657,16 @@ export function MemberPortal(props: MemberPortalProps) {
       onPersisted: (result) => {
         if (!result.ok) {
           deleteProgramById(optimisticProgramId);
-          setCustomProgramSaveStatus(`Kunne ikke lagre "${title}". ${result.message?.trim() || "Prøv igjen."}`);
+          setCustomProgramSaveStatus(`Kunne ikke lagre i skyen: ${result.message?.trim() || "Prøv igjen."}`);
+          return;
         }
+        setCustomProgramSaveStatus(`«${title}» er lagret og synkronisert.`);
+        void refreshRemoteHydration?.();
       },
     });
     setCustomWorkoutLines([]);
     setCustomWorkoutSearch("");
-    setCustomProgramSaveStatus(`«${title}» ble lagret under Mine programmer.`);
-    window.setTimeout(() => {
-      void refreshRemoteHydration?.();
-    }, 750);
-    window.setTimeout(() => {
-      void refreshRemoteHydration?.();
-    }, 2800);
+    setCustomProgramSaveStatus(`Lagrer «${title}» i skyen…`);
   }
 
   const syncProfileToPtBackend = useCallback(async (payload: {

@@ -18,9 +18,19 @@ import {
   type StartWorkoutModeOptions,
   type UpdateMemberInput,
 } from "../services/appRepository";
+import {
+  clearSessionOwnerEmail,
+  collectCanonicalMemberIds,
+  filterMembersForSessionEmail,
+  rememberSessionOwnerEmail,
+  resetCatalogForSessionOwnerChange,
+  sessionOwnerEmailChanged,
+  stripDemoSeedCatalog,
+} from "./memberLocalCatalog";
 import { pickBestPersonalGoals } from "./memberProfileGoals";
 import { notifyInspirationItemsChanged, saveInspirationItemsToStorage } from "./inspirationStorage";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
+import { syncMemberLocalCatalogToSupabase } from "../services/supabaseRepository";
 import {
   fetchExercisesFromSupabase,
   checkMemberAccessBlocked,
@@ -365,6 +375,18 @@ export function useAppState() {
     [],
   );
 
+  function applyMemberSessionBaseState(state: AppState, user: AuthUser): AppState {
+    let base = stripDemoSeedCatalog(state);
+    if (user.role === "member") {
+      const email = user.email.trim().toLowerCase();
+      if (sessionOwnerEmailChanged(email)) {
+        base = resetCatalogForSessionOwnerChange(base);
+      }
+      rememberSessionOwnerEmail(email);
+    }
+    return ensureMemberRecordForUser(base, user, user.memberId ?? base.memberViewId);
+  }
+
   function ensureMemberRecordForUser(state: AppState, user: AuthUser, preferredMemberId?: string): AppState {
     if (user.role !== "member") return state;
     const normalizedEmail = user.email.trim().toLowerCase();
@@ -670,8 +692,10 @@ export function useAppState() {
         }
       }
 
+      let stateAfterHydrate: AppState | null = null;
       setAppState((prev) => {
-        const next = { ...prev };
+        const prevStripped = stripDemoSeedCatalog(prev);
+        const next = { ...prevStripped };
         const shouldAdoptRemote = <T,>(remoteRows: T[] | null, localRows: T[]) => {
           if (!remoteRows) return false;
           if (remoteRows.length > 0) return true;
@@ -686,48 +710,22 @@ export function useAppState() {
 
         if (shouldAdoptNonEmptyRemoteOnly(remoteMembers)) {
           let mergedMembers = remoteMembers;
-          const currentUser = prev.currentUser;
+          const currentUser = prevStripped.currentUser;
           if (currentUser?.role === "member") {
             const normalizedUserEmail = currentUser.email.trim().toLowerCase();
-            const localMember =
-              prev.members.find((member) => member.id === prev.memberViewId) ??
-              prev.members.find((member) => member.id === prev.selectedMemberId) ??
-              prev.members.find((member) => member.email.trim().toLowerCase() === normalizedUserEmail) ??
-              null;
-            if (localMember) {
-              const remoteIndex = resolveMemberRowMergeIndex(mergedMembers, localMember);
-              const localGoalsCandidates = prev.members
+            const remoteForEmail = filterMembersForSessionEmail(mergedMembers, normalizedUserEmail);
+            mergedMembers = remoteForEmail.length > 0 ? remoteForEmail : mergedMembers;
+            const bestGoalsForEmail = pickBestPersonalGoals([
+              ...prevStripped.members
                 .filter((member) => member.email.trim().toLowerCase() === normalizedUserEmail)
-                .map((member) => member.personalGoals);
-              const bestLocalPersonalGoals = pickBestPersonalGoals(localGoalsCandidates);
-              const bestGoalsForEmail = pickBestPersonalGoals([
-                bestLocalPersonalGoals,
-                localMember.personalGoals,
-                ...mergedMembers
-                  .filter((member) => member.email.trim().toLowerCase() === normalizedUserEmail)
-                  .map((member) => member.personalGoals),
-              ]);
-              if (remoteIndex >= 0) {
-                // Remote must win over stale per-device localStorage (and demo seed rows with same id).
-                mergedMembers = mergedMembers.map((member, index) => {
-                  if (index !== remoteIndex) return member;
-                  const remoteInv = member.invitedAt?.trim();
-                  const localInv = localMember.invitedAt?.trim();
-                  return {
-                    ...member,
-                    invitedAt: remoteInv || localInv || "",
-                    personalGoals: bestGoalsForEmail || member.personalGoals,
-                  };
-                });
-              } else {
-                mergedMembers = [...mergedMembers, localMember];
-              }
-              if (bestGoalsForEmail) {
-                mergedMembers = mergedMembers.map((member) => {
-                  if (member.email.trim().toLowerCase() !== normalizedUserEmail) return member;
-                  return { ...member, personalGoals: bestGoalsForEmail };
-                });
-              }
+                .map((member) => member.personalGoals),
+              ...mergedMembers.map((member) => member.personalGoals),
+            ]);
+            if (bestGoalsForEmail) {
+              mergedMembers = mergedMembers.map((member) => ({
+                ...member,
+                personalGoals: bestGoalsForEmail,
+              }));
             }
           }
           if (currentUser?.role === "trainer") {
@@ -761,8 +759,9 @@ export function useAppState() {
 
         if (trustRemotePrograms) {
           const mergedProgs = remotePrograms ?? [];
-          if (isMemberLikeSession && hydratedMember !== null) {
-            next.programs = filterProgramsForMembers(mergedProgs, visibleMemberIds);
+          if (isMemberLikeSession && (hydratedMember !== null || mergedProgs.length > 0)) {
+            const memberIds = collectCanonicalMemberIds(next.members, mergedProgs, remoteLogs ?? []);
+            next.programs = filterProgramsForMembers(mergedProgs, memberIds);
           } else if (isTrainerSession && trainerHydrateOk) {
             next.programs = mergedProgs;
           } else if (mergedProgs.length > 0 || shouldAdoptRemote(mergedProgs, prev.programs)) {
@@ -774,9 +773,10 @@ export function useAppState() {
 
         if (trustRemoteLogs) {
           const mergedLogs = remoteLogs ?? [];
-          if (isMemberLikeSession && hydratedMember !== null) {
+          if (isMemberLikeSession && (hydratedMember !== null || mergedLogs.length > 0)) {
+            const memberIds = collectCanonicalMemberIds(next.members, next.programs, mergedLogs);
             next.logs = mergeRemoteWorkoutLogsWithLocalOptimistic(
-              filterLogsForMembers(mergedLogs, visibleMemberIds),
+              filterLogsForMembers(mergedLogs, memberIds),
               [],
               next.members,
             );
@@ -793,24 +793,55 @@ export function useAppState() {
           next.exercises = remoteExercises;
         }
 
-        if (prev.currentUser?.role === "member") {
-          const normalizedCurrentEmail = prev.currentUser.email.trim().toLowerCase();
+        if (isMemberLikeSession && sessionEmail) {
+          const allowedMemberIds = collectCanonicalMemberIds(next.members, next.programs, next.logs);
+          next.programs = next.programs.filter((program) => allowedMemberIds.has(program.memberId.trim()));
+          next.logs = next.logs.filter((log) => allowedMemberIds.has(log.memberId.trim()));
+          next.members = filterMembersForSessionEmail(next.members, sessionEmail);
+          if (next.members.length === 1) {
+            next.memberViewId = next.members[0]!.id;
+            next.selectedMemberId = next.members[0]!.id;
+          }
+        }
+
+        if (prevStripped.currentUser?.role === "member") {
+          const normalizedCurrentEmail = prevStripped.currentUser.email.trim().toLowerCase();
           const hydratedMember =
             next.members.find((member) => member.id === next.memberViewId) ??
             next.members.find((member) => member.id === next.selectedMemberId) ??
             next.members.find((member) => member.email.trim().toLowerCase() === normalizedCurrentEmail) ??
             null;
           const hydratedName = hydratedMember?.name.trim() ?? "";
-          if (hydratedName && hydratedName !== prev.currentUser.name) {
+          if (hydratedName && hydratedName !== prevStripped.currentUser.name) {
             next.currentUser = {
-              ...prev.currentUser,
+              ...prevStripped.currentUser,
               name: hydratedName,
             };
           }
         }
 
-        return syncExercisesWithPrograms(next);
+        const merged = syncExercisesWithPrograms(stripDemoSeedCatalog(next));
+        stateAfterHydrate = merged;
+        return merged;
       });
+
+      if (!cancelled && isMemberLikeSession && sessionEmail && stateAfterHydrate && typeof window !== "undefined") {
+        const pushKey = `motus.memberCatalogPush:${sessionUser?.id ?? sessionEmail}`;
+        if (!window.sessionStorage.getItem(pushKey)) {
+          window.sessionStorage.setItem(pushKey, "1");
+          void (async () => {
+            const pushResult = await syncMemberLocalCatalogToSupabase(stateAfterHydrate!);
+            if (pushResult.programsPushed > 0 || pushResult.logsPushed > 0) {
+              console.info(
+                `Sky-synk: lastet opp ${pushResult.programsPushed} program og ${pushResult.logsPushed} økter fra denne enheten.`,
+              );
+              if (!cancelled) await hydrateRemoteData();
+            } else if (pushResult.failures.length) {
+              console.warn("Sky-synk feilet for noe lokalt innhold:", pushResult.failures.slice(0, 3).join(" | "));
+            }
+          })();
+        }
+      }
     }
 
     remoteHydrateRef.current = async () => {
@@ -947,7 +978,7 @@ export function useAppState() {
       }
       setIsLocalDemoSession(false);
       setAppState((prev) => {
-        const baseState = ensureMemberRecordForUser(prev, user, user.memberId ?? prev.memberViewId);
+        const baseState = applyMemberSessionBaseState(prev, user);
         const resolvedSelectedMemberId =
           user.role === "member"
             ? resolveMemberViewIdForUser({
@@ -1006,7 +1037,7 @@ export function useAppState() {
             : undefined,
       } as AuthUser;
       setAppState((prev) => {
-        const baseState = ensureMemberRecordForUser(prev, user, user.memberId ?? prev.memberViewId);
+        const baseState = applyMemberSessionBaseState(prev, user);
         const resolvedSelectedMemberId =
           user.role === "member"
             ? resolveMemberViewIdForUser({
@@ -1125,7 +1156,7 @@ export function useAppState() {
           return;
         }
         setAppState((prev) => {
-          const baseState = ensureMemberRecordForUser(prev, supabaseUser, supabaseUser.memberId ?? prev.memberViewId);
+          const baseState = applyMemberSessionBaseState(prev, supabaseUser);
           const resolvedSelectedMemberId =
             supabaseUser.role === "member"
               ? resolveMemberViewIdForUser({
@@ -1283,7 +1314,7 @@ export function useAppState() {
         return;
       }
     }
-    const baseState = ensureMemberRecordForUser(appState, user, user.memberId ?? appState.memberViewId);
+    const baseState = applyMemberSessionBaseState(appState, user);
     const resolvedSelectedMemberId =
       user.role === "member"
         ? resolveMemberViewIdForUser({
@@ -1315,7 +1346,7 @@ export function useAppState() {
       }
     }
     setAppState((prev) => {
-      const nextBase = ensureMemberRecordForUser(prev, user, resolvedMemberViewId || resolvedSelectedMemberId);
+      const nextBase = applyMemberSessionBaseState(prev, user);
       return {
         ...nextBase,
         currentUser: user,
@@ -1355,6 +1386,15 @@ export function useAppState() {
   async function handleLogout() {
     if (isSupabaseConfigured) {
       await signOutSupabase();
+    }
+    clearSessionOwnerEmail();
+    if (typeof window !== "undefined") {
+      for (let i = window.sessionStorage.length - 1; i >= 0; i -= 1) {
+        const key = window.sessionStorage.key(i);
+        if (key?.startsWith("motus.memberCatalogPush:")) {
+          window.sessionStorage.removeItem(key);
+        }
+      }
     }
     setAppState((prev) => ({ ...prev, currentUser: null, role: "trainer" }));
     setLoginEmail("");
