@@ -289,10 +289,12 @@ function captureInitialSupabaseAuthUrl(): {
   const query = new URLSearchParams(window.location.search);
   const type = hash.get("type") ?? query.get("type");
   const recoveryFlag = hash.get("recovery") ?? query.get("recovery");
+  const inviteFlag = hash.get("invite") ?? query.get("invite");
   const tokenHash = hash.get("token_hash") ?? query.get("token_hash");
   const accessToken = hash.get("access_token") ?? query.get("access_token");
   const refreshToken = hash.get("refresh_token") ?? query.get("refresh_token");
   const hasSecrets = Boolean(tokenHash || accessToken || refreshToken);
+  const isInviteType = type === "invite" || type === "signup" || inviteFlag === "1";
   if (type === "recovery" || recoveryFlag === "1") {
     return {
       isRecoveryMode: true,
@@ -304,7 +306,7 @@ function captureInitialSupabaseAuthUrl(): {
       stripSensitiveAfterCapture: hasSecrets,
     };
   }
-  if (type === "invite") {
+  if (isInviteType) {
     return {
       isRecoveryMode: true,
       recoveryInviteFlow: true,
@@ -959,13 +961,16 @@ export function useAppState() {
         const query = new URLSearchParams(window.location.search);
         const type = hash.get("type") ?? query.get("type");
         const recoveryFlag = hash.get("recovery") ?? query.get("recovery");
+        const inviteFlag = hash.get("invite") ?? query.get("invite");
         const accessToken = hash.get("access_token") ?? query.get("access_token");
         const refreshToken = hash.get("refresh_token") ?? query.get("refresh_token");
         const implicitSession =
           Boolean(accessToken && refreshToken) &&
           type !== "recovery" &&
           type !== "invite" &&
-          recoveryFlag !== "1";
+          type !== "signup" &&
+          recoveryFlag !== "1" &&
+          inviteFlag !== "1";
         if (implicitSession) {
           const result = await establishRecoverySessionFromTokens({
             accessToken: accessToken as string,

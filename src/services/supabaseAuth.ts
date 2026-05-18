@@ -35,6 +35,12 @@ function emailRedirectBase(): string | undefined {
   return origin ? `${origin}/` : undefined;
 }
 
+/** Redirect for medlemsinvitasjon — må matche parsing i useAppState (passordskjerm). */
+function memberInviteRedirectTo(): string | undefined {
+  const origin = getCanonicalSiteOrigin();
+  return origin ? `${origin}/?type=invite&invite=1` : undefined;
+}
+
 function isTrainerStaffEmail(email: string): boolean {
   return email.trim().toLowerCase().endsWith(TRAINER_EMAIL_DOMAIN);
 }
@@ -376,9 +382,13 @@ async function sendMemberInviteByEmail(email: string, memberId: string): Promise
   if (!memberId.trim()) {
     return { ok: false, message: "Mangler member_id for medlemmet." };
   }
+  if (!memberInviteRedirectTo()) {
+    return {
+      ok: false,
+      message: "Invitasjon feilet: mangler VITE_SITE_URL (app-URL for e-postlenker).",
+    };
+  }
 
-  // Prefer edge-function invite flow first when available.
-  // This can send a proper onboarding flow instead of consuming OTP login quota.
   const {
     data: { session: initialSession },
   } = await supabaseClient.auth.getSession();
@@ -387,89 +397,11 @@ async function sendMemberInviteByEmail(email: string, memberId: string): Promise
     const { data: refreshedData } = await supabaseClient.auth.refreshSession();
     activeSession = refreshedData.session;
   }
-  if (activeSession?.access_token) {
-    const ownerUserId = activeSession.user?.id?.trim?.() ?? "";
-    const { data, error } = await supabaseClient.functions.invoke("invite-member", {
-      body: {
-        email: normalizedEmail,
-        memberId: memberId.trim(),
-        accessToken: activeSession.access_token,
-        ownerUserId,
-        inviteRedirectOrigin: getCanonicalSiteOrigin(),
-      },
-    });
-    if (!error) {
-      const stamp = inviteMemberIsoTimestamp(data);
-      if (data && typeof data === "object" && "message" in data && typeof data.message === "string") {
-        await syncMemberAuthLink(normalizedEmail, memberId.trim());
-        return stamp ? { ok: true, message: data.message, invitedAtIso: stamp } : { ok: true, message: data.message };
-      }
-      await syncMemberAuthLink(normalizedEmail, memberId.trim());
-      return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}`, ...(stamp ? { invitedAtIso: stamp } : {}) };
-    }
-    const functionErrorMessage = await extractFunctionErrorMessage(error);
-    if (functionErrorMessage && isRateLimitMessage(functionErrorMessage)) {
-      await syncMemberAuthLink(normalizedEmail, memberId.trim());
-      return {
-        ok: true,
-        message: "Invitasjon er nylig sendt. Vent litt for ny utsending.",
-      };
-    }
-  }
-
-  // Fallback to OTP invite flow if edge-function path is unavailable.
-  const redirectTo = emailRedirectBase();
-  const { error: otpError } = await supabaseClient.auth.signInWithOtp({
-    email: normalizedEmail,
-    options: {
-      shouldCreateUser: true,
-      emailRedirectTo: redirectTo,
-      data: { member_id: memberId.trim(), role: "member" },
-    },
-  });
-  if (!otpError) {
-    await syncMemberAuthLink(normalizedEmail, memberId.trim());
-    return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}` };
-  }
-  if (isRateLimitMessage(otpError.message || "")) {
-    await syncMemberAuthLink(normalizedEmail, memberId.trim());
-    return {
-      ok: true,
-      message: "Invitasjon er nylig sendt. Vent litt for ny utsending.",
-    };
-  }
-
-  // Fallback 1: retry without custom metadata.
-  const redirectToFallback = emailRedirectBase();
-  const { error: otpFallbackError } = await supabaseClient.auth.signInWithOtp({
-    email: normalizedEmail,
-    options: {
-      shouldCreateUser: true,
-      emailRedirectTo: redirectToFallback,
-    },
-  });
-  if (!otpFallbackError) {
-    await syncMemberAuthLink(normalizedEmail, memberId.trim());
-    return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}` };
-  }
-  if (isRateLimitMessage(otpFallbackError.message || "")) {
-    await syncMemberAuthLink(normalizedEmail, memberId.trim());
-    return {
-      ok: true,
-      message: "Invitasjon er nylig sendt. Vent litt for ny utsending.",
-    };
-  }
-
-  const { error: sessionError } = await supabaseClient.auth.getSession();
-  if (sessionError) {
-    return { ok: false, message: `Invitasjon feilet: ${otpError.message || "Ukjent feil."}` };
-  }
   if (!activeSession?.access_token) {
-    return { ok: false, message: `Invitasjon feilet: ${otpError.message || "Ingen gyldig innlogging funnet."}` };
+    return { ok: false, message: "Invitasjon feilet: logg inn som trener og prøv igjen." };
   }
-  const ownerUserId = activeSession.user?.id?.trim?.() ?? "";
 
-  // Fallback 2: edge function path for legacy projects.
+  const ownerUserId = activeSession.user?.id?.trim?.() ?? "";
   const { data, error } = await supabaseClient.functions.invoke("invite-member", {
     body: {
       email: normalizedEmail,
@@ -480,29 +412,26 @@ async function sendMemberInviteByEmail(email: string, memberId: string): Promise
     },
   });
 
-  if (error) {
-    const detailed = await extractFunctionErrorMessage(error);
-    const message = detailed ?? "Ukjent feil fra funksjonen.";
-    if (isRateLimitMessage(message)) {
-      return {
-        ok: true,
-        message: "Invitasjon er nylig sendt. Vent litt for ny utsending.",
-      };
-    }
-    if (message.toLowerCase().includes("unsupported jwt algorithm es256")) {
-      return { ok: false, message: `Invitasjon feilet: ${otpError.message || message}` };
-    }
-    return { ok: false, message: `Invitasjon feilet: ${message}` };
-  }
-
-  if (data && typeof data === "object" && "message" in data && typeof data.message === "string") {
-    await syncMemberAuthLink(normalizedEmail, memberId.trim());
+  if (!error) {
     const stamp = inviteMemberIsoTimestamp(data);
-    return stamp ? { ok: true, message: data.message, invitedAtIso: stamp } : { ok: true, message: data.message };
+    if (data && typeof data === "object" && "message" in data && typeof data.message === "string") {
+      await syncMemberAuthLink(normalizedEmail, memberId.trim());
+      return stamp ? { ok: true, message: data.message, invitedAtIso: stamp } : { ok: true, message: data.message };
+    }
+    await syncMemberAuthLink(normalizedEmail, memberId.trim());
+    return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}`, ...(stamp ? { invitedAtIso: stamp } : {}) };
   }
 
-  await syncMemberAuthLink(normalizedEmail, memberId.trim());
-  return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}` };
+  const detailed = await extractFunctionErrorMessage(error);
+  const message = detailed ?? "Ukjent feil fra invitasjonstjenesten.";
+  if (isRateLimitMessage(message)) {
+    await syncMemberAuthLink(normalizedEmail, memberId.trim());
+    return {
+      ok: true,
+      message: "Invitasjon er nylig sendt. Vent litt for ny utsending.",
+    };
+  }
+  return { ok: false, message: `Invitasjon feilet: ${message}` };
 }
 
 export async function inviteMemberByEmail(email: string, memberId: string): Promise<InviteMemberResult> {

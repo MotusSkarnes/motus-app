@@ -37,10 +37,13 @@ function isSafeRedirectOrigin(origin: string): boolean {
   return /^http:\/\/localhost(?::\d+)?$/i.test(o) || /^http:\/\/127\.0\.0\.1(?::\d+)?$/i.test(o);
 }
 
+/** Query som appen leser ved første render — viser passordskjerm (samme mønster som recovery). */
+const MEMBER_INVITE_AUTH_QUERY = "?type=invite&invite=1";
+
 function resolveInviteRedirectTo(payload: InvitePayload): { redirectTo: string } | { error: string } {
   const secret = trimSlash(Deno.env.get("PUBLIC_APP_URL") ?? "");
   if (secret && /^https:\/\//i.test(secret)) {
-    return { redirectTo: `${secret}/` };
+    return { redirectTo: `${secret}/${MEMBER_INVITE_AUTH_QUERY}` };
   }
   const fromClient = trimSlash(String(payload.inviteRedirectOrigin ?? ""));
   if (!fromClient || !isSafeRedirectOrigin(fromClient)) {
@@ -49,7 +52,7 @@ function resolveInviteRedirectTo(payload: InvitePayload): { redirectTo: string }
         "Mangler gyldig PUBLIC_APP_URL på funksjonen, eller inviteRedirectOrigin fra appen. Sett Supabase secret PUBLIC_APP_URL=https://motus-pt-app.vercel.app (samme som VITE_SITE_URL / Site URL).",
     };
   }
-  return { redirectTo: `${fromClient}/` };
+  return { redirectTo: `${fromClient}/${MEMBER_INVITE_AUTH_QUERY}` };
 }
 
 function isTrainerUser(user: {
@@ -150,7 +153,7 @@ Deno.serve(async (req) => {
   }
 
   const msg = inviteData?.user?.id
-    ? `Invitasjon sendt til ${email}. Lenken peker til ${trimSlash(redirect.redirectTo)}/`
+    ? `Invitasjon sendt til ${email}. Mottakeren setter passord ved første innlogging.`
     : `Invitasjon prosessert for ${email}`;
 
   const invitedAtIso = new Date().toISOString();
