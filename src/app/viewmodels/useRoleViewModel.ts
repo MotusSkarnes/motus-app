@@ -13,6 +13,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
   }
 
   const [openCustomerMessagesSignal, setOpenCustomerMessagesSignal] = useState(0);
+  const [openCustomerOverviewSignal, setOpenCustomerOverviewSignal] = useState(0);
   const { memberAvatarById, currentMemberAvatarUrl, setMemberAvatarUrlForMember, setCurrentMemberAvatarUrl } =
     useMemberAvatarStore({
       currentUser: state.appState.currentUser,
@@ -58,6 +59,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     onTrainerOpenMemberForm: (memberId) => {
       state.patchState({ selectedMemberId: memberId });
       state.setTrainerTab("customers");
+      setOpenCustomerOverviewSignal((prev) => prev + 1);
     },
   });
 
@@ -120,6 +122,8 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     deleteExercise: state.deleteExercise,
     openCustomerMessagesSignal,
     setOpenCustomerMessagesSignal,
+    openCustomerOverviewSignal,
+    setOpenCustomerOverviewSignal,
     memberAvatarById,
     setMemberAvatarUrlForMember,
     trainerNotificationsOpen,

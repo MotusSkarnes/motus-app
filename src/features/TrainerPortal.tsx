@@ -170,6 +170,7 @@ type TrainerPortalProps = {
   }) => void;
   deleteExercise: (exerciseId: string) => void;
   openCustomerMessagesSignal?: number;
+  openCustomerOverviewSignal?: number;
   memberAvatarById?: Record<string, string>;
   setMemberAvatarUrlForMember?: (memberId: string, avatarUrl: string) => void;
   isLocalDemoSession?: boolean;
@@ -537,6 +538,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     saveExercise,
     deleteExercise,
     openCustomerMessagesSignal = 0,
+    openCustomerOverviewSignal = 0,
     memberAvatarById = {},
     setMemberAvatarUrlForMember,
     isLocalDemoSession = false,
@@ -1496,6 +1498,11 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     if (!selectedMemberId || selectedMemberId === "__template__") return;
     setCustomerSubTab("messages");
   }, [openCustomerMessagesSignal, selectedMemberId]);
+
+  useEffect(() => {
+    if (!selectedMemberId || selectedMemberId === "__template__") return;
+    setCustomerSubTab("overview");
+  }, [openCustomerOverviewSignal, selectedMemberId]);
 
   useEffect(() => {
     if (!filteredWorkoutLogs.length) {

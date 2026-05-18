@@ -44,6 +44,8 @@ export function buildTrainerLayoutProps(input: {
   deleteExercise: TrainerLayoutProps["deleteExercise"];
   openCustomerMessagesSignal: number;
   setOpenCustomerMessagesSignal: Dispatch<SetStateAction<number>>;
+  openCustomerOverviewSignal: number;
+  setOpenCustomerOverviewSignal: Dispatch<SetStateAction<number>>;
   memberAvatarById: TrainerLayoutProps["memberAvatarById"];
   setMemberAvatarUrlForMember: TrainerLayoutProps["setMemberAvatarUrlForMember"];
   trainerNotificationsOpen: boolean;

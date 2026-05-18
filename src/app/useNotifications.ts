@@ -274,11 +274,8 @@ export function useNotifications({
       .filter((message) => message.sender === "member")
       .reduce((max, message, index) => Math.max(max, parseTimestamp(message.createdAt, index + 1)), 0);
 
-    const formAlertIds = buildMemberFormTrainerAlerts(members, new Set()).map((alert) => alert.id);
-
     window.localStorage.setItem(TRAINER_NOTIFICATIONS_BASELINE_KEY, String(Date.now()));
     setTrainerAlertsSeenAt((prev) => Math.max(prev, latestMemberMessageTime));
-    setSeenTrainerMemberFormKeys((prev) => Array.from(new Set([...prev, ...formAlertIds])));
     setSeenTrainerOperationalAlertKey(trainerOperationalAlertKey);
   }, [currentUserRole, members, messages, trainerOperationalAlertKey]);
 

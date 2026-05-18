@@ -36,6 +36,7 @@ import {
   type UpdateWorkoutResultInput,
 } from "./appRepository";
 import { isContaminatedDemoMemberProfile } from "../app/memberLocalCatalog";
+import { detectNewMemberFormSubmissions } from "../app/memberFormNotifications";
 import { ensureMemberAuthLink } from "./supabaseAuth";
 import { supabaseClient } from "./supabaseClient";
 import {
@@ -1002,7 +1003,14 @@ export async function persistOnboardingToSupabase(
     }
   }
 
-  return resolvedId || persistId || member.id;
+  const notifyMemberId = resolvedId || persistId || member.id;
+  void notifyTrainerMemberFormPush(
+    notifyMemberId,
+    "onboarding",
+    memberForSync.name.trim() || memberForSync.email.trim() || "Medlem",
+  );
+
+  return notifyMemberId;
 }
 
 function personalGoalsContainsProfileBlob(personalGoals: string | undefined): boolean {
@@ -1100,7 +1108,34 @@ async function syncMemberProfileViaEdgeFunction(
   return { updated, errorMessage };
 }
 
-async function persistMember(member: Member) {
+async function notifyTrainerMemberFormPush(
+  memberId: string,
+  kind: "onboarding" | "check-in",
+  memberName: string,
+): Promise<void> {
+  if (!supabaseClient) return;
+  const trimmedMemberId = memberId.trim();
+  if (!trimmedMemberId) return;
+  void supabaseClient.functions.invoke("send-member-form-push", {
+    body: {
+      memberId: trimmedMemberId,
+      kind,
+      memberName: memberName.trim() || "Medlem",
+    },
+  });
+}
+
+async function notifyTrainerForMemberFormChanges(member: Member, previousPersonalGoals?: string): Promise<void> {
+  const notices = detectNewMemberFormSubmissions(previousPersonalGoals, member.personalGoals);
+  const displayName = member.name.trim() || member.email.trim() || "Medlem";
+  const memberId = member.id.trim();
+  if (!memberId || !notices.length) return;
+  for (const notice of notices) {
+    void notifyTrainerMemberFormPush(memberId, notice.kind, displayName);
+  }
+}
+
+async function persistMember(member: Member, previousPersonalGoals?: string) {
   if (!supabaseClient) return;
   if (isContaminatedDemoMemberProfile(member)) {
     console.warn("persistMember skipped contaminated demo profile:", member.id, member.email, member.name);
@@ -2845,13 +2880,17 @@ export const supabaseAppRepository: AppRepository = {
     return nextState;
   },
   updateMember(state: AppState, input: UpdateMemberInput): AppState {
+    const previousMember = state.members.find((member) => member.id === input.memberId);
     const nextState = localAppRepository.updateMember(state, input);
     const updatedMember = nextState.members.find((member) => member.id === input.memberId);
     if (updatedMember) {
       const memberId = updatedMember.id.trim();
-      const persistPromise = persistMember(updatedMember).finally(() => {
-        pendingMemberPersists.delete(memberId);
-      });
+      const previousPersonalGoals = previousMember?.personalGoals;
+      const persistPromise = persistMember(updatedMember, previousPersonalGoals)
+        .then(() => notifyTrainerForMemberFormChanges(updatedMember, previousPersonalGoals))
+        .finally(() => {
+          pendingMemberPersists.delete(memberId);
+        });
       pendingMemberPersists.set(memberId, persistPromise);
     }
     return nextState;

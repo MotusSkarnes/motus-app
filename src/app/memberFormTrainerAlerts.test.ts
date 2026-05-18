@@ -80,7 +80,7 @@ describe("buildMemberFormTrainerAlerts", () => {
     expect(alerts).toHaveLength(2);
     expect(alerts.some((a) => a.kind === "onboarding")).toBe(true);
     expect(alerts.some((a) => a.kind === "check-in")).toBe(true);
-    const seen = new Set([memberFormAlertKey("m1", "onboarding")]);
+    const seen = new Set([memberFormAlertKey("m1", "onboarding", "2026-04-01T10-00-00-000Z")]);
     expect(buildMemberFormTrainerAlerts([member({ id: "m1", personalGoals: goals })], seen)).toHaveLength(1);
   });
 });

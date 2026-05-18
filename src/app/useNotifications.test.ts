@@ -266,6 +266,69 @@ describe("useNotifications workout comment alerts", () => {
     });
   });
 
+  it("shows unread onboarding form alert after trainer device baseline", async () => {
+    const goals = `MOTUS_PROFILE_V1:${JSON.stringify({
+      onboarding: {
+        version: 1,
+        completedAt: "2026-05-16T12:00:00.000Z",
+        skipped: false,
+        trainingGoals: ["Styrke"],
+        goalsNotes: "",
+        importanceNow: 7,
+        experienceLevel: "Nybegynner",
+        level: "Nybegynner",
+        currentWeeklySessions: "2",
+        sessionsPerWeekTarget: "3",
+        preferredSessionMinutes: "60",
+        trainingForms: [],
+        motivations: [],
+        energyInTraining: "",
+        consistencyHelpers: "",
+        injuries: "",
+        dropoutReasons: [],
+        dropoutNotes: "",
+        preferredTrainingTime: "",
+        wantsTrainerStructure: "",
+        coachNotesFromMember: "",
+      },
+    })}`;
+    const members = [
+      { id: "member-1", name: "Kari", email: "kari@example.com", invitedAt: "2026-01-01", isActive: true, personalGoals: goals } as never,
+    ];
+
+    const { result, rerender } = renderHook((props) => useNotifications(props), {
+      initialProps: {
+        messages: [],
+        programs: [],
+        logs: [],
+        members: [{ ...members[0], personalGoals: "" } as never],
+        memberViewId: "member-1",
+        currentUserRole: "trainer" as const,
+        setMemberTab: () => {},
+      },
+    });
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem("motus.notifications.trainerBaselineAt")).toBeTruthy();
+    });
+    expect(result.current.trainerUnreadCount).toBe(0);
+
+    rerender({
+      messages: [],
+      programs: [],
+      logs: [],
+      members,
+      memberViewId: "member-1",
+      currentUserRole: "trainer",
+      setMemberTab: () => {},
+    });
+
+    await waitFor(() => {
+      expect(result.current.trainerUnreadCount).toBe(1);
+    });
+    expect(result.current.trainerVisibleAlerts.some((a) => a.kind === "member-form" && a.title === "Nytt oppstartsskjema")).toBe(true);
+  });
+
   it("excludes deactivated members from operational trainer alerts", () => {
     const members = [
       { id: "member-1", name: "Ola", email: "ola@example.com", isActive: false, invitedAt: "" } as never,

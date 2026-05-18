@@ -64,6 +64,8 @@ type TrainerLayoutProps = {
   deleteExercise: ComponentProps<typeof TrainerPortal>["deleteExercise"];
   openCustomerMessagesSignal: number;
   setOpenCustomerMessagesSignal: Dispatch<SetStateAction<number>>;
+  openCustomerOverviewSignal: number;
+  setOpenCustomerOverviewSignal: Dispatch<SetStateAction<number>>;
   memberAvatarById: Record<string, string>;
   setMemberAvatarUrlForMember: ComponentProps<typeof TrainerPortal>["setMemberAvatarUrlForMember"];
   trainerNotificationsOpen: boolean;
@@ -123,6 +125,8 @@ export function TrainerLayout({
   deleteExercise,
   openCustomerMessagesSignal,
   setOpenCustomerMessagesSignal,
+  openCustomerOverviewSignal,
+  setOpenCustomerOverviewSignal,
   memberAvatarById,
   setMemberAvatarUrlForMember,
   trainerNotificationsOpen,
@@ -178,6 +182,7 @@ export function TrainerLayout({
     deleteExercise,
     inviteTrainer,
     openCustomerMessagesSignal,
+    openCustomerOverviewSignal,
     memberAvatarById,
     setMemberAvatarUrlForMember,
     isLocalDemoSession,
