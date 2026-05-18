@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
   const { data: members, error: membersError } = shouldScanAllMembersForTarget
     ? await membersQuery
     : sharedGlobal
-      ? await membersQuery.ilike("customer_type", "%medlem%")
+      ? await membersQuery.ilike("customer_type", "medlem")
       : await membersQuery.eq("owner_user_id", ownerUserId);
 
   if (membersError) {

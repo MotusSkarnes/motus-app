@@ -18,6 +18,11 @@ describe("memberAccessRules", () => {
     expect(isPrivatePtRosterCustomerType("PT-kunde")).toBe(true);
   });
 
+  it("does not treat PT-kunde as shared Medlem (substring trap)", () => {
+    expect(isSharedMedlemCustomerType("PT-kunde")).toBe(false);
+    expect(isSharedMedlemCustomerType("pt-kunde")).toBe(false);
+  });
+
   it("assigns private roster owner to inviting PT", () => {
     expect(
       resolveOwnerUserIdForPersist({

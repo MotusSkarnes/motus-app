@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
   const sharedMembersWithAvatar = await adminClient
     .from("members")
     .select(membersSelectWithAvatar)
-    .ilike("customer_type", "%medlem%")
+    .ilike("customer_type", "medlem")
     .neq("owner_user_id", ownerUserId)
     .order("created_at", { ascending: true });
   if (
@@ -210,7 +210,7 @@ Deno.serve(async (req) => {
     const sharedMembersWithoutAvatar = await adminClient
       .from("members")
       .select(membersSelectWithoutAvatar)
-      .ilike("customer_type", "%medlem%")
+      .ilike("customer_type", "medlem")
       .neq("owner_user_id", ownerUserId)
       .order("created_at", { ascending: true });
     members = uniqueById([...(ownedMembersWithoutAvatar.data ?? []), ...(sharedMembersWithoutAvatar.data ?? [])]) as Array<
