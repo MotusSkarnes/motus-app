@@ -256,6 +256,18 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-semibold text-slate-900">Badges</h2>
+          <p className="mt-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/90 px-3 py-2.5 text-xs leading-relaxed text-slate-600">
+            Det finnes flere skjulte badges som ikke vises før du oppnår de, oppdag de ved å bruke appen jevnlig.
+          </p>
+          <div className="mt-2 flex items-start justify-between gap-3">
+            <p className="text-xs text-slate-500">
+              {collection.totalUnlockedLevels} av {collection.totalLevels} nivåer låst opp
+            </p>
+            <span className="rounded-full bg-slate-950 px-2.5 py-1 text-[10px] font-bold text-white">{overallPct}%</span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full rounded-full" style={{ width: `${overallPct}%`, background: MOTUS_GRADIENT }} />
+          </div>
         </div>
       </div>
 
@@ -292,20 +304,6 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
             onShareStatus={setBadgeShareStatus}
           />
         ))}
-      </div>
-
-      <p className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/90 px-3 py-2.5 text-xs leading-relaxed text-slate-600">
-        Det finnes flere skjulte badges som ikke vises før du oppnår de, oppdag de ved å bruke appen jevnlig.
-      </p>
-
-      <div className="mt-3 flex items-start justify-between gap-3">
-        <p className="text-xs text-slate-500">
-          {collection.totalUnlockedLevels} av {collection.totalLevels} nivåer låst opp
-        </p>
-        <span className="rounded-full bg-slate-950 px-2.5 py-1 text-[10px] font-bold text-white">{overallPct}%</span>
-      </div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
-        <div className="h-full rounded-full" style={{ width: `${overallPct}%`, background: MOTUS_GRADIENT }} />
       </div>
     </section>
   );
