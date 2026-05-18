@@ -1411,6 +1411,11 @@ export function useAppState() {
     setAppState((prev) => repository.replaceWorkoutExerciseGroup(prev, input));
   }
 
+  function deferWorkoutExerciseGroup(programExerciseId: string) {
+    if (!programExerciseId.trim()) return;
+    setAppState((prev) => repository.deferWorkoutExerciseGroup(prev, programExerciseId));
+  }
+
   function removeWorkoutLogResult(input: RemoveWorkoutLogResultInput) {
     setAppState((prev) => repository.removeWorkoutLogResult(prev, input));
   }
@@ -1606,6 +1611,7 @@ export function useAppState() {
     updateWorkoutExerciseResult,
     replaceWorkoutExerciseGroup,
     appendWorkoutSetForProgramExercise,
+    deferWorkoutExerciseGroup,
     removeWorkoutLogResult,
     setWorkoutLogResults,
     updateWorkoutLogTrainerComment,

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Repeat2 } from "lucide-react";
+import { Plus, Repeat2, SkipForward } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { GradientButton, OutlineButton, TextArea, TextInput } from "../app/ui";
 import type { Exercise, TrainingProgram, WorkoutModeState, WorkoutReflection } from "../app/types";
@@ -30,6 +30,7 @@ export type LiveWorkoutSessionModalProps = {
   ) => void;
   replaceWorkoutExerciseGroup: (input: ReplaceWorkoutExerciseGroupInput) => void;
   appendWorkoutSetForProgramExercise: (programExerciseId: string) => void;
+  deferWorkoutExerciseGroup: (programExerciseId: string) => void;
   updateWorkoutModeNote: (note: string) => void;
   finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
   cancelWorkoutMode: () => void;
@@ -54,6 +55,7 @@ export function LiveWorkoutSessionModal({
   updateWorkoutExerciseResult,
   replaceWorkoutExerciseGroup,
   appendWorkoutSetForProgramExercise,
+  deferWorkoutExerciseGroup,
   updateWorkoutModeNote,
   finishWorkoutMode,
   cancelWorkoutMode,
@@ -124,6 +126,8 @@ export function LiveWorkoutSessionModal({
   }, [workoutResultGroups, workoutExerciseIndex]);
 
   const currentWorkoutGroup = workoutResultGroups[workoutExerciseIndex] ?? null;
+  const nextWorkoutGroup = workoutResultGroups[workoutExerciseIndex + 1] ?? null;
+  const canDeferCurrentExercise = Boolean(currentWorkoutGroup && nextWorkoutGroup);
 
   useEffect(() => {
     setShowReplacementOptions(false);
@@ -314,6 +318,24 @@ export function LiveWorkoutSessionModal({
                       </button>
                     ))}
                   </div>
+                </div>
+              ) : null}
+              {canDeferCurrentExercise ? (
+                <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <button
+                    type="button"
+                    onClick={() => deferWorkoutExerciseGroup(currentWorkoutGroup.groupId)}
+                    className="inline-flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-xs font-semibold text-slate-800 transition hover:bg-slate-50"
+                    style={{ borderColor: "rgba(148,163,184,0.45)" }}
+                  >
+                    <SkipForward className="h-4 w-4 shrink-0" style={{ color: MOTUS.turquoise }} aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className="block">Ta neste øvelse først</span>
+                      <span className="mt-0.5 block text-[10px] font-medium text-slate-500">
+                        «{currentWorkoutGroup.exerciseName}» blir neste øvelse etter «{nextWorkoutGroup?.exerciseName}»
+                      </span>
+                    </span>
+                  </button>
                 </div>
               ) : null}
               <div className={`mt-3 ${currentWorkoutGroup.rows.length <= 3 ? "space-y-1.5" : "space-y-2"}`}>

@@ -32,6 +32,7 @@ type TrainerWorkoutBridge = Pick<
   | "updateWorkoutExerciseResult"
   | "replaceWorkoutExerciseGroup"
   | "appendWorkoutSetForProgramExercise"
+  | "deferWorkoutExerciseGroup"
   | "updateWorkoutModeNote"
   | "finishWorkoutMode"
   | "cancelWorkoutMode"
@@ -135,6 +136,7 @@ export function TrainerLayout({
   updateWorkoutExerciseResult,
   replaceWorkoutExerciseGroup,
   appendWorkoutSetForProgramExercise,
+  deferWorkoutExerciseGroup,
   updateWorkoutModeNote,
   finishWorkoutMode,
   cancelWorkoutMode,
@@ -184,6 +186,7 @@ export function TrainerLayout({
     updateWorkoutExerciseResult,
     replaceWorkoutExerciseGroup,
     appendWorkoutSetForProgramExercise,
+    deferWorkoutExerciseGroup,
     updateWorkoutModeNote,
     finishWorkoutMode,
     cancelWorkoutMode,

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { AppState } from "../app/types";
 import {
   appendWorkoutSetForProgramExerciseInState,
+  deferWorkoutExerciseGroupInState,
   finishWorkoutModeInState,
   logCompletedPlanEntryInState,
   removeCompletedPlanEntryLogInState,
@@ -85,6 +86,63 @@ describe("appRepository workout log guards", () => {
     expect(appended?.setNumber).toBe(3);
     expect(appended?.exerciseId).toBe("pex-1-set-3");
     expect(appended?.completed).toBe(false);
+  });
+
+  it("defers current exercise to come right after the next one", () => {
+    const state = createBaseState();
+    state.workoutMode = {
+      programId: "program-1",
+      note: "",
+      results: [
+        {
+          exerciseId: "pex-a-set-1",
+          programExerciseId: "pex-a",
+          setNumber: 1,
+          exerciseName: "Benk",
+          plannedSets: "1",
+          plannedReps: "8",
+          plannedWeight: "50",
+          performedWeight: "50",
+          performedReps: "8",
+          completed: false,
+        },
+        {
+          exerciseId: "pex-b-set-1",
+          programExerciseId: "pex-b",
+          setNumber: 1,
+          exerciseName: "Roing",
+          plannedSets: "1",
+          plannedReps: "10",
+          plannedWeight: "0",
+          performedWeight: "0",
+          performedReps: "10",
+          completed: false,
+        },
+        {
+          exerciseId: "pex-c-set-1",
+          programExerciseId: "pex-c",
+          setNumber: 1,
+          exerciseName: "Squat",
+          plannedSets: "1",
+          plannedReps: "6",
+          plannedWeight: "80",
+          performedWeight: "80",
+          performedReps: "6",
+          completed: false,
+        },
+      ],
+    };
+
+    const next = deferWorkoutExerciseGroupInState(state, "pex-a");
+    const groupOrder: string[] = [];
+    const seen = new Set<string>();
+    (next.workoutMode?.results ?? []).forEach((row) => {
+      const id = row.programExerciseId ?? row.exerciseId;
+      if (seen.has(id)) return;
+      seen.add(id);
+      groupOrder.push(id);
+    });
+    expect(groupOrder).toEqual(["pex-b", "pex-a", "pex-c"]);
   });
 
   it("deduplicates duplicate set rows when finishing workout", () => {

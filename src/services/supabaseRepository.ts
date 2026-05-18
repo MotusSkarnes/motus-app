@@ -2462,6 +2462,9 @@ export const supabaseAppRepository: AppRepository = {
   appendWorkoutSetForProgramExercise(state: AppState, programExerciseId: string): AppState {
     return localAppRepository.appendWorkoutSetForProgramExercise(state, programExerciseId);
   },
+  deferWorkoutExerciseGroup(state: AppState, programExerciseId: string): AppState {
+    return localAppRepository.deferWorkoutExerciseGroup(state, programExerciseId);
+  },
   removeWorkoutLogResult(state: AppState, input: RemoveWorkoutLogResultInput): AppState {
     const nextState = localAppRepository.removeWorkoutLogResult(state, input);
     const updatedLog = nextState.logs.find((log) => log.id === input.logId);

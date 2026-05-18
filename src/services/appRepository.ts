@@ -161,6 +161,7 @@ export interface AppRepository {
   updateWorkoutResult(state: AppState, input: UpdateWorkoutResultInput): AppState;
   replaceWorkoutExerciseGroup(state: AppState, input: ReplaceWorkoutExerciseGroupInput): AppState;
   appendWorkoutSetForProgramExercise(state: AppState, programExerciseId: string): AppState;
+  deferWorkoutExerciseGroup(state: AppState, programExerciseId: string): AppState;
   removeWorkoutLogResult(state: AppState, input: RemoveWorkoutLogResultInput): AppState;
   removeGroupWorkoutLog(state: AppState, input: RemoveGroupWorkoutLogInput): AppState;
   setWorkoutLogResults(state: AppState, input: SetWorkoutLogResultsInput): AppState;
@@ -463,6 +464,59 @@ export function appendWorkoutSetForProgramExerciseInState(state: AppState, progr
     workoutMode: {
       ...state.workoutMode,
       results: newResults,
+    },
+  };
+}
+
+function workoutGroupId(result: WorkoutExerciseResult): string {
+  return result.programExerciseId ?? result.exerciseId;
+}
+
+function buildWorkoutGroupOrder(results: WorkoutExerciseResult[]): string[] {
+  const order: string[] = [];
+  const seen = new Set<string>();
+  results.forEach((result) => {
+    const groupId = workoutGroupId(result);
+    if (seen.has(groupId)) return;
+    seen.add(groupId);
+    order.push(groupId);
+  });
+  return order;
+}
+
+/** Flytt aktiv øvelse ett hakk bak – neste øvelse tas først, denne kommer rett etter. */
+export function deferWorkoutExerciseGroupInState(state: AppState, programExerciseId: string): AppState {
+  if (!state.workoutMode) return state;
+  const pid = programExerciseId.trim();
+  if (!pid) return state;
+
+  const results = state.workoutMode.results;
+  const groupOrder = buildWorkoutGroupOrder(results);
+  const currentIndex = groupOrder.indexOf(pid);
+  if (currentIndex < 0 || currentIndex >= groupOrder.length - 1) return state;
+
+  const nextOrder = [...groupOrder];
+  const [deferredGroupId] = nextOrder.splice(currentIndex, 1);
+  nextOrder.splice(currentIndex + 1, 0, deferredGroupId);
+
+  const rowsByGroup = new Map<string, WorkoutExerciseResult[]>();
+  results.forEach((result) => {
+    const groupId = workoutGroupId(result);
+    const existing = rowsByGroup.get(groupId);
+    if (existing) {
+      existing.push(result);
+      return;
+    }
+    rowsByGroup.set(groupId, [result]);
+  });
+
+  const reorderedResults = nextOrder.flatMap((groupId) => rowsByGroup.get(groupId) ?? []);
+
+  return {
+    ...state,
+    workoutMode: {
+      ...state.workoutMode,
+      results: reorderedResults,
     },
   };
 }
@@ -839,6 +893,7 @@ export const localAppRepository: AppRepository = {
   replaceWorkoutExerciseGroup: (state, input) => replaceWorkoutExerciseGroupInState(state, input),
   appendWorkoutSetForProgramExercise: (state, programExerciseId) =>
     appendWorkoutSetForProgramExerciseInState(state, programExerciseId),
+  deferWorkoutExerciseGroup: (state, programExerciseId) => deferWorkoutExerciseGroupInState(state, programExerciseId),
   removeWorkoutLogResult: (state, input) => removeWorkoutLogResultInState(state, input),
   removeGroupWorkoutLog: (state, input) => removeGroupWorkoutLogInState(state, input),
   setWorkoutLogResults: (state, input) => setWorkoutLogResultsInState(state, input),

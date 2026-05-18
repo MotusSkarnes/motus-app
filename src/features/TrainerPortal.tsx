@@ -187,6 +187,7 @@ type TrainerPortalProps = {
   ) => void;
   replaceWorkoutExerciseGroup?: (input: ReplaceWorkoutExerciseGroupInput) => void;
   appendWorkoutSetForProgramExercise?: (programExerciseId: string) => void;
+  deferWorkoutExerciseGroup?: (programExerciseId: string) => void;
   updateWorkoutModeNote?: (note: string) => void;
   finishWorkoutMode?: (input?: { reflection?: WorkoutReflection }) => void;
   cancelWorkoutMode?: () => void;
@@ -552,6 +553,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     updateWorkoutExerciseResult = () => {},
     replaceWorkoutExerciseGroup = () => {},
     appendWorkoutSetForProgramExercise = () => {},
+    deferWorkoutExerciseGroup = () => {},
     updateWorkoutModeNote = () => {},
     finishWorkoutMode = () => {},
     cancelWorkoutMode = () => {},
@@ -6178,6 +6180,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       updateWorkoutExerciseResult={updateWorkoutExerciseResult}
       replaceWorkoutExerciseGroup={replaceWorkoutExerciseGroup}
       appendWorkoutSetForProgramExercise={appendWorkoutSetForProgramExercise}
+      deferWorkoutExerciseGroup={deferWorkoutExerciseGroup}
       updateWorkoutModeNote={updateWorkoutModeNote}
       finishWorkoutMode={finishWorkoutMode}
       cancelWorkoutMode={cancelWorkoutMode}

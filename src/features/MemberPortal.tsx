@@ -192,6 +192,7 @@ type MemberPortalProps = {
   ) => void;
   replaceWorkoutExerciseGroup: (input: ReplaceWorkoutExerciseGroupInput) => void;
   appendWorkoutSetForProgramExercise: (programExerciseId: string) => void;
+  deferWorkoutExerciseGroup: (programExerciseId: string) => void;
   removeWorkoutLogResult: (input: { logId: string; exerciseId: string }) => void;
   setWorkoutLogResults: (input: { logId: string; results: WorkoutLog["results"] }) => void;
   updateWorkoutModeNote: (note: string) => void;
@@ -855,6 +856,7 @@ export function MemberPortal(props: MemberPortalProps) {
     updateWorkoutExerciseResult,
     replaceWorkoutExerciseGroup,
     appendWorkoutSetForProgramExercise,
+    deferWorkoutExerciseGroup,
     removeWorkoutLogResult,
     setWorkoutLogResults,
     updateWorkoutModeNote,
@@ -5717,6 +5719,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 updateWorkoutExerciseResult={updateWorkoutExerciseResult}
                 replaceWorkoutExerciseGroup={replaceWorkoutExerciseGroup}
                 appendWorkoutSetForProgramExercise={appendWorkoutSetForProgramExercise}
+                deferWorkoutExerciseGroup={deferWorkoutExerciseGroup}
                 updateWorkoutModeNote={updateWorkoutModeNote}
                 finishWorkoutMode={finishWorkoutMode}
                 cancelWorkoutMode={cancelWorkoutMode}
