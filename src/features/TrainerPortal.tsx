@@ -42,6 +42,7 @@ import {
 import { parseLogDateMs } from "../app/workoutLogDate";
 import {
   deleteMemberPeriodPlanByPlanId,
+  lookupMembersByEmailForTrainer,
   upsertMemberPeriodPlansForTrainer,
 } from "../services/supabaseRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
@@ -640,6 +641,10 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const [inviteTrainerStatus, setInviteTrainerStatus] = useState<string | null>(null);
   const [isInvitingTrainer, setIsInvitingTrainer] = useState(false);
   const [showInactiveMembers, setShowInactiveMembers] = useState(false);
+  const [databaseEmailLookup, setDatabaseEmailLookup] = useState<Awaited<ReturnType<typeof lookupMembersByEmailForTrainer>> | null>(
+    null,
+  );
+  const [isLookingUpEmail, setIsLookingUpEmail] = useState(false);
   const [memberSearch, setMemberSearch] = useState("");
   const [memberFilter, setMemberFilter] = useState<"all" | "followUp" | "invited" | "notInvited">("all");
   const [customerTypeFilter, setCustomerTypeFilter] = useState<"all" | "PT-kunde" | "Premium-kunde" | "Medlem">("all");
@@ -921,6 +926,26 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const primaryEmail = rawMatches.find((member) => member.email.trim())?.email.trim().toLowerCase() ?? "";
     return { rawMatches, hiddenMatches, inactiveMatches, primaryEmail };
   }, [memberSearch, members, visibleMembers]);
+
+  useEffect(() => {
+    const query = memberSearch.trim().toLowerCase();
+    if (!query.includes("@") || query.length < 5 || memberSearchRecovery) {
+      setDatabaseEmailLookup(null);
+      setIsLookingUpEmail(false);
+      return;
+    }
+    let cancelled = false;
+    setIsLookingUpEmail(true);
+    void lookupMembersByEmailForTrainer(query, currentTrainerOwnerUserId).then((result) => {
+      if (cancelled) return;
+      setDatabaseEmailLookup(result);
+      setIsLookingUpEmail(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [memberSearch, memberSearchRecovery, currentTrainerOwnerUserId]);
+
   const sortedMembers = useMemo(() => {
     return [...filteredMembers].sort((a, b) => {
       if (memberSort === "nameAsc") return a.name.localeCompare(b.name, "no");
@@ -4018,6 +4043,49 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         />
                       ) : null}
                     </div>
+                  ) : null}
+                  {!memberSearchRecovery && isLookingUpEmail ? (
+                    <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-xs text-slate-600">
+                      Søker i databasen etter e-post…
+                    </p>
+                  ) : null}
+                  {!memberSearchRecovery && databaseEmailLookup?.ok && databaseEmailLookup.members.length > 0 ? (
+                    <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950">
+                      <p className="font-semibold">Fant klient i databasen, men ikke i PT-listen</p>
+                      <p className="mt-1 text-xs text-sky-900">{databaseEmailLookup.message}</p>
+                      <ul className="mt-2 space-y-1 text-xs">
+                        {databaseEmailLookup.members.map((row) => (
+                          <li key={row.id}>
+                            {row.name || "Ukjent navn"} · {row.email}
+                            {row.isActive ? "" : " · inaktiv"}
+                            {row.ownerUserId && row.ownerUserId !== currentTrainerOwnerUserId ? " · annen eier" : ""}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <OutlineButton type="button" onClick={() => setShowInactiveMembers(true)} className="text-xs">
+                          Vis inaktive
+                        </OutlineButton>
+                        <GradientButton
+                          type="button"
+                          disabled={isRestoringMember}
+                          onClick={() => void handleRestoreMember(memberSearch.trim().toLowerCase())}
+                          className="text-xs"
+                        >
+                          {isRestoringMember ? "Gjenoppretter..." : "Gjenopprett og knytt til meg"}
+                        </GradientButton>
+                      </div>
+                    </div>
+                  ) : null}
+                  {!memberSearchRecovery &&
+                  !isLookingUpEmail &&
+                  databaseEmailLookup &&
+                  !databaseEmailLookup.members.length &&
+                  memberSearch.trim().includes("@") ? (
+                    <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-900">
+                      Ingen medlemsrad i databasen for denne e-posten. Hvis kunden har logget inn før, kan «Gjenopprett klient» nederst
+                      opprette raden på nytt fra Auth.
+                    </p>
                   ) : null}
                 </div>
               ) : null}

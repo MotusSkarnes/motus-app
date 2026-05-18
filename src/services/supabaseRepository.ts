@@ -2256,6 +2256,103 @@ export async function archiveMemberByEmailFromSupabase(
   return { ok: false, message: "Kunne ikke arkivere i databasen. Deploy archive-member og prøv igjen." };
 }
 
+export type TrainerMemberLookupRow = {
+  id: string;
+  email: string;
+  name: string;
+  isActive: boolean;
+  ownerUserId: string;
+  customerType: string;
+};
+
+async function invokeRestoreMemberFunction(body: Record<string, unknown>): Promise<{
+  ok: boolean;
+  data: Record<string, unknown> | null;
+  errorMessage: string | null;
+}> {
+  if (!supabaseClient) {
+    return { ok: false, data: null, errorMessage: "Tjenesten er ikke tilgjengelig akkurat nå." };
+  }
+
+  const { data, error } = await supabaseClient.functions.invoke("restore-member", { body });
+  if (!error && data && typeof data === "object") {
+    return { ok: true, data: data as Record<string, unknown>, errorMessage: null };
+  }
+
+  let errorMessage = error?.message ?? "restore-member feilet";
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession();
+      const response = await fetch(`${supabaseUrl}/functions/v1/restore-member`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+        },
+        body: JSON.stringify(body),
+      });
+      const raw = await response.text();
+      let parsed: Record<string, unknown> | null = null;
+      try {
+        parsed = raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
+      } catch {
+        parsed = null;
+      }
+      if (response.ok && parsed) {
+        return { ok: true, data: parsed, errorMessage: null };
+      }
+      const detail = String(parsed?.error ?? parsed?.message ?? raw ?? response.status);
+      errorMessage = `HTTP ${response.status}: ${detail}`;
+    } catch (fetchError) {
+      errorMessage = `${errorMessage} (${String(fetchError)})`;
+    }
+  }
+
+  return { ok: false, data: null, errorMessage };
+}
+
+export async function lookupMembersByEmailForTrainer(
+  email: string,
+  ownerUserId?: string | null,
+): Promise<{ ok: boolean; members: TrainerMemberLookupRow[]; message: string }> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail.includes("@")) {
+    return { ok: false, members: [], message: "Ugyldig e-post." };
+  }
+
+  const trainerOwnerId = String(ownerUserId ?? (await getOwnerUserId()) ?? "").trim();
+  const invoke = await invokeRestoreMemberFunction({
+    email: normalizedEmail,
+    ownerUserId: trainerOwnerId,
+    lookupOnly: true,
+  });
+  if (!invoke.ok || !invoke.data) {
+    return { ok: false, members: [], message: invoke.errorMessage ?? "Kunne ikke slå opp e-post i databasen." };
+  }
+
+  const members = Array.isArray(invoke.data.members)
+    ? (invoke.data.members as Array<Record<string, unknown>>).map((row) => ({
+        id: String(row.id ?? ""),
+        email: String(row.email ?? normalizedEmail).trim().toLowerCase(),
+        name: String(row.name ?? "").trim(),
+        isActive: row.isActive !== false,
+        ownerUserId: String(row.ownerUserId ?? "").trim(),
+        customerType: String(row.customerType ?? "").trim(),
+      }))
+    : [];
+
+  return {
+    ok: true,
+    members,
+    message: members.length
+      ? `Fant ${members.length} rad${members.length === 1 ? "" : "er"} i databasen.`
+      : "Ingen rader i databasen for denne e-posten.",
+  };
+}
+
 export async function restoreMemberByEmailFromSupabase(email: string): Promise<{ ok: boolean; message: string }> {
   if (!supabaseClient) {
     return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
@@ -2266,46 +2363,33 @@ export async function restoreMemberByEmailFromSupabase(email: string): Promise<{
     return { ok: false, message: "Skriv inn en gyldig e-post." };
   }
 
-  try {
-    const { data, error } = await supabaseClient.functions.invoke("restore-member", {
-      body: { email: normalizedEmail },
-    });
-    if (!error) {
-      const restoredCount = Number((data as { restoredCount?: number } | null)?.restoredCount ?? 0);
-      if (restoredCount <= 0) {
-        return { ok: false, message: "Fant ingen klient med denne e-posten i databasen." };
-      }
-      return { ok: true, message: "Klient gjenopprettet. Oppdaterer liste..." };
+  const ownerUserId = String((await getOwnerUserId()) ?? "").trim();
+  const invoke = await invokeRestoreMemberFunction({
+    email: normalizedEmail,
+    ownerUserId,
+  });
+  if (invoke.ok && invoke.data) {
+    const restoredCount = Number(invoke.data.restoredCount ?? 0);
+    if (restoredCount <= 0) {
+      return { ok: false, message: "Fant ingen klient med denne e-posten i databasen." };
     }
-    console.warn("restore-member invoke failed, trying direct update:", error.message);
-  } catch (error) {
-    console.warn("restore-member invoke threw, trying direct update:", error);
+    const recreated = invoke.data.recreated === true;
+    return {
+      ok: true,
+      message: recreated
+        ? "Klientrad opprettet på nytt og aktivert. Oppdaterer liste..."
+        : "Klient gjenopprettet. Oppdaterer liste...",
+    };
   }
 
-  const { data: matchingRows, error: fetchError } = await supabaseClient
-    .from("members")
-    .select("id, email, is_active")
-    .ilike("email", normalizedEmail);
-
-  if (fetchError) {
-    return { ok: false, message: `Gjenoppretting feilet: ${fetchError.message}` };
-  }
-
-  const ids = (matchingRows ?? [])
-    .filter((row) => String(row.email ?? "").trim().toLowerCase() === normalizedEmail)
-    .map((row) => String(row.id));
-
-  if (!ids.length) {
-    return { ok: false, message: "Fant ingen klient med denne e-posten." };
-  }
-
-  const { error } = await supabaseClient.from("members").update({ is_active: true }).in("id", ids);
-
-  if (error) {
-    return { ok: false, message: `Gjenoppretting feilet: ${error.message}` };
-  }
-
-  return { ok: true, message: "Klient gjenopprettet. Oppdaterer liste..." };
+  console.warn("restore-member failed:", invoke.errorMessage);
+  return {
+    ok: false,
+    message:
+      invoke.errorMessage?.includes("404") || invoke.errorMessage?.toLowerCase().includes("ingen klient")
+        ? "Fant ingen klient med denne e-posten i databasen. Sjekk staving, eller at kunden har logget inn minst én gang."
+        : `Gjenoppretting feilet: ${invoke.errorMessage ?? "Ukjent feil"}. Deploy restore-member i Supabase og prøv igjen.`,
+  };
 }
 
 export async function fetchExercisesFromSupabase(): Promise<Exercise[] | null> {

@@ -223,6 +223,38 @@ Deno.serve(async (req) => {
     >;
     membersError = ownedMembersWithAvatar.error ?? sharedMembersWithAvatar.error;
   }
+
+  const linkedMemberIds = new Set<string>();
+  const [{ data: programLinks }, { data: logLinks }, { data: messageLinks }] = await Promise.all([
+    adminClient.from("training_programs").select("member_id").eq("owner_user_id", ownerUserId),
+    adminClient.from("workout_logs").select("member_id").eq("owner_user_id", ownerUserId),
+    adminClient.from("chat_messages").select("member_id").eq("owner_user_id", ownerUserId),
+  ]);
+  for (const row of [...(programLinks ?? []), ...(logLinks ?? []), ...(messageLinks ?? [])]) {
+    const memberId = String((row as { member_id?: string }).member_id ?? "").trim();
+    if (memberId && memberId !== "__template__" && !memberId.startsWith("auth-")) {
+      linkedMemberIds.add(memberId);
+    }
+  }
+  if (linkedMemberIds.size > 0) {
+    const linkedMembersQuery = await adminClient
+      .from("members")
+      .select(membersSelectWithAvatar)
+      .in("id", Array.from(linkedMemberIds));
+    let linkedRows = (linkedMembersQuery.data ?? []) as Array<Record<string, unknown>>;
+    if (linkedMembersQuery.error && linkedMembersQuery.error.message.includes("avatar_url")) {
+      const linkedFallback = await adminClient
+        .from("members")
+        .select(membersSelectWithoutAvatar)
+        .in("id", Array.from(linkedMemberIds));
+      linkedRows = (linkedFallback.data ?? []) as Array<Record<string, unknown>>;
+      membersError = membersError ?? linkedFallback.error;
+    } else if (linkedMembersQuery.error) {
+      membersError = membersError ?? linkedMembersQuery.error;
+    }
+    members = uniqueById([...(members ?? []), ...linkedRows]) as Array<Record<string, unknown>>;
+  }
+
   if (!membersError && (members ?? []).length > 0) {
     const relatedEmailSet = new Set(
       (members ?? [])
