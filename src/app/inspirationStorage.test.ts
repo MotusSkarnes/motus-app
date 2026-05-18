@@ -1,9 +1,16 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { INSPIRATION_STORAGE_KEY, saveInspirationItemsToStorage } from "./inspirationStorage";
+import {
+  filterSuppressedInspirationItems,
+  INSPIRATION_STORAGE_KEY,
+  INSPIRATION_SUPPRESSED_IDS_KEY,
+  saveInspirationItemsToStorage,
+  suppressInspirationItemId,
+} from "./inspirationStorage";
 
 describe("saveInspirationItemsToStorage", () => {
   afterEach(() => {
     window.localStorage.removeItem(INSPIRATION_STORAGE_KEY);
+    window.localStorage.removeItem(INSPIRATION_SUPPRESSED_IDS_KEY);
   });
 
   it("persists items", () => {
@@ -20,5 +27,20 @@ describe("saveInspirationItemsToStorage", () => {
     if (!result.ok) {
       expect(result.error).toMatch(/for stort/i);
     }
+  });
+});
+
+describe("suppressed inspiration items", () => {
+  afterEach(() => {
+    window.localStorage.removeItem(INSPIRATION_SUPPRESSED_IDS_KEY);
+  });
+
+  it("filters suppressed ids from lists", () => {
+    suppressInspirationItemId("default-tip-1");
+    const filtered = filterSuppressedInspirationItems([
+      { id: "default-tip-1", title: "A" },
+      { id: "custom-1", title: "B" },
+    ]);
+    expect(filtered.map((item) => item.id)).toEqual(["custom-1"]);
   });
 });

@@ -4,10 +4,13 @@ import { MOTUS } from "../app/data";
 import { compressImageDataUrl, compressImageFile } from "../app/imageCompress";
 import {
   fetchInspirationItemsForHub,
+  filterSuppressedInspirationItems,
   INSPIRATION_CHANGED_EVENT,
   INSPIRATION_STORAGE_KEY,
+  loadInspirationItemsFromLocalStorage,
   notifyInspirationItemsChanged,
   persistInspirationItems,
+  suppressInspirationItemId,
   syncLocalInspirationToSupabaseIfNeeded,
 } from "../app/inspirationStorage";
 import { buildPeriodPlanProgramSelectOptions, WEEKDAY_PLAN_FIELDS } from "../app/periodPlanBuilder";
@@ -505,16 +508,32 @@ function mergeDefaultInspirationItems(items: InspirationItem[]): InspirationItem
   return [...items, ...missing];
 }
 
+function resolveInspirationHubItems(fetched: InspirationItem[] | null): InspirationItem[] {
+  const base =
+    fetched && fetched.length > 0
+      ? fetched
+      : typeof window !== "undefined"
+        ? (loadInspirationItemsFromLocalStorage<InspirationItem>() ?? [])
+        : [];
+  const withoutSuppressed = filterSuppressedInspirationItems(base);
+  if (!withoutSuppressed.length && typeof window === "undefined") return DEFAULT_ITEMS;
+  if (!withoutSuppressed.length) {
+    const defaults = filterSuppressedInspirationItems(DEFAULT_ITEMS);
+    return defaults.length ? defaults : DEFAULT_ITEMS;
+  }
+  return mergeDefaultInspirationItems(withoutSuppressed);
+}
+
 function loadInspirationItems(): InspirationItem[] {
   if (typeof window === "undefined") return DEFAULT_ITEMS;
   try {
     const raw = window.localStorage.getItem(INSPIRATION_STORAGE_KEY);
-    if (!raw) return DEFAULT_ITEMS;
+    if (!raw) return filterSuppressedInspirationItems(DEFAULT_ITEMS);
     const parsed = JSON.parse(raw) as InspirationItem[];
-    if (!Array.isArray(parsed) || !parsed.length) return DEFAULT_ITEMS;
-    return mergeDefaultInspirationItems(parsed);
+    if (!Array.isArray(parsed) || !parsed.length) return filterSuppressedInspirationItems(DEFAULT_ITEMS);
+    return resolveInspirationHubItems(parsed);
   } catch {
-    return DEFAULT_ITEMS;
+    return filterSuppressedInspirationItems(DEFAULT_ITEMS);
   }
 }
 
@@ -625,23 +644,18 @@ export function InspirationHub({
     });
   }, [periodPlanTemplateDraft]);
 
-  function resolveHubItems(fetched: InspirationItem[] | null): InspirationItem[] {
-    const base = fetched && fetched.length > 0 ? fetched : loadInspirationItems();
-    return mergeDefaultInspirationItems(base);
-  }
-
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       const fetched = await fetchInspirationItemsForHub<InspirationItem>();
       if (cancelled) return;
-      const resolved = resolveHubItems(fetched);
+      const resolved = resolveInspirationHubItems(fetched);
       setItems(resolved);
       if (canManage) {
         const synced = await syncLocalInspirationToSupabaseIfNeeded(resolved);
         if (synced && !cancelled) {
           const afterSync = await fetchInspirationItemsForHub<InspirationItem>();
-          if (!cancelled) setItems(resolveHubItems(afterSync));
+          if (!cancelled) setItems(resolveInspirationHubItems(afterSync));
         }
       }
     })();
@@ -653,13 +667,18 @@ export function InspirationHub({
   useEffect(() => {
     const syncFromRemote = () => {
       void (async () => {
+        if (canManage) {
+          const local = loadInspirationItemsFromLocalStorage<InspirationItem>();
+          setItems(resolveInspirationHubItems(local));
+          return;
+        }
         const fetched = await fetchInspirationItemsForHub<InspirationItem>();
-        setItems(resolveHubItems(fetched));
+        setItems(resolveInspirationHubItems(fetched));
       })();
     };
     window.addEventListener(INSPIRATION_CHANGED_EVENT, syncFromRemote);
     return () => window.removeEventListener(INSPIRATION_CHANGED_EVENT, syncFromRemote);
-  }, []);
+  }, [canManage]);
 
   useEffect(() => {
     if (!focusItemId?.trim()) return;
@@ -675,8 +694,7 @@ export function InspirationHub({
       setActionStatus(result.error);
       return { ok: false };
     }
-    const refreshed = await fetchInspirationItemsForHub<InspirationItem>();
-    setItems(resolveHubItems(refreshed));
+    setItems(resolveInspirationHubItems(next));
     notifyInspirationItemsChanged();
     const message = result.warning
       ? result.warning
@@ -1099,6 +1117,7 @@ export function InspirationHub({
     const item = items.find((entry) => entry.id === id);
     if (!item) return;
     if (!window.confirm(`Slette «${item.title}» fra inspirasjon?`)) return;
+    suppressInspirationItemId(id);
     const next = items.filter((entry) => entry.id !== id);
     void (async () => {
       const deleted = await commitItems(next);

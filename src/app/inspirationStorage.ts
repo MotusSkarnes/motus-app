@@ -4,6 +4,8 @@ import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient
 export const INSPIRATION_STORAGE_KEY = "motus.inspiration.items.v2";
 export const INSPIRATION_CHANGED_EVENT = "motus:inspiration-changed";
 export const INSPIRATION_FEED_ROW_ID = "shared";
+export const INSPIRATION_SUPPRESSED_IDS_KEY = "motus.inspiration.suppressedIds.v1";
+const INSPIRATION_LOCAL_WRITE_AT_KEY = "motus.inspiration.lastLocalWriteAt";
 
 const INSPIRATION_IMAGE_BUCKET = "exercise-images";
 const INSPIRATION_IMAGE_PREFIX = "inspiration";
@@ -39,7 +41,37 @@ export function loadInspirationItemsFromLocalStorage<T>(): T[] | null {
   }
 }
 
-export function saveInspirationItemsToStorage(items: unknown[]): InspirationSaveResult {
+export function loadSuppressedInspirationIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.localStorage.getItem(INSPIRATION_SUPPRESSED_IDS_KEY);
+    const parsed = JSON.parse(raw ?? "[]") as unknown;
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0));
+  } catch {
+    return new Set();
+  }
+}
+
+export function suppressInspirationItemId(id: string): void {
+  if (typeof window === "undefined") return;
+  const trimmed = id.trim();
+  if (!trimmed) return;
+  const next = loadSuppressedInspirationIds();
+  next.add(trimmed);
+  window.localStorage.setItem(INSPIRATION_SUPPRESSED_IDS_KEY, JSON.stringify(Array.from(next)));
+}
+
+export function filterSuppressedInspirationItems<T extends { id: string }>(items: T[]): T[] {
+  const suppressed = loadSuppressedInspirationIds();
+  if (!suppressed.size) return items;
+  return items.filter((item) => !suppressed.has(item.id));
+}
+
+export function saveInspirationItemsToStorage(
+  items: unknown[],
+  options?: { trackLocalWrite?: boolean },
+): InspirationSaveResult {
   if (typeof window === "undefined") return { ok: true, cloudSynced: false };
   try {
     const serialized = JSON.stringify(items);
@@ -50,6 +82,9 @@ export function saveInspirationItemsToStorage(items: unknown[]): InspirationSave
       };
     }
     window.localStorage.setItem(INSPIRATION_STORAGE_KEY, serialized);
+    if (options?.trackLocalWrite !== false) {
+      window.localStorage.setItem(INSPIRATION_LOCAL_WRITE_AT_KEY, String(Date.now()));
+    }
     return { ok: true, cloudSynced: false };
   } catch (error) {
     const isQuota =
@@ -110,16 +145,29 @@ export async function refreshInspirationNotificationItemsFromRemote(): Promise<I
   return mapRawToInspirationNotificationItems(remote);
 }
 
-export async function fetchInspirationItemsFromSupabase(): Promise<unknown[] | null> {
+export async function fetchInspirationFeedFromSupabase(): Promise<{ items: unknown[]; updatedAt: number } | null> {
   if (!supabaseClient) return null;
-  const { data, error } = await supabaseClient.from("inspiration_feed").select("items").eq("id", INSPIRATION_FEED_ROW_ID).maybeSingle();
+  const { data, error } = await supabaseClient
+    .from("inspiration_feed")
+    .select("items, updated_at")
+    .eq("id", INSPIRATION_FEED_ROW_ID)
+    .maybeSingle();
   if (error) {
     console.warn("inspiration_feed fetch failed:", error.message);
     return null;
   }
-  if (!data) return [];
+  if (!data) return { items: [], updatedAt: 0 };
   const items = data.items;
-  return Array.isArray(items) ? items : [];
+  const updatedAt = new Date(String(data.updated_at ?? "")).getTime();
+  return {
+    items: Array.isArray(items) ? items : [],
+    updatedAt: Number.isFinite(updatedAt) ? updatedAt : 0,
+  };
+}
+
+export async function fetchInspirationItemsFromSupabase(): Promise<unknown[] | null> {
+  const feed = await fetchInspirationFeedFromSupabase();
+  return feed?.items ?? null;
 }
 
 export async function saveInspirationItemsToSupabase(items: unknown[]): Promise<boolean> {
@@ -202,19 +250,26 @@ export async function persistInspirationItems<T extends { id: string; imageUrl?:
  */
 export async function fetchInspirationItemsForHub<T>(): Promise<T[] | null> {
   const local = loadInspirationItemsFromLocalStorage<T>();
+  const localWriteAt = Number(
+    typeof window !== "undefined" ? window.localStorage.getItem(INSPIRATION_LOCAL_WRITE_AT_KEY) ?? "0" : "0",
+  );
 
   if (!isSupabaseConfigured) {
     return local;
   }
 
-  const remote = await fetchInspirationItemsFromSupabase();
-  if (remote === null) {
+  const feed = await fetchInspirationFeedFromSupabase();
+  if (feed === null) {
     return local;
   }
 
-  if (remote.length > 0) {
-    saveInspirationItemsToStorage(remote);
-    return remote as T[];
+  if (local && localWriteAt > feed.updatedAt) {
+    return local;
+  }
+
+  if (feed.items.length > 0) {
+    saveInspirationItemsToStorage(feed.items, { trackLocalWrite: false });
+    return feed.items as T[];
   }
 
   return local;
