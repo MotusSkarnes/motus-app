@@ -2931,8 +2931,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         title: "Bekreft duplikatopprydding",
         message:
           `Fant ${duplicateGroups} duplikatgruppe${duplicateGroups === 1 ? "" : "r"} (samme e-post, flere medlemsrader). ` +
-          "Ekstra rader settes inaktive — de slettes ikke. Aktive kunder skal fortsatt vises; inaktive finnes under «Vis inaktive» eller kan gjenopprettes med «Gjenopprett klient». " +
-          "Ikke kjør dette på testbrukere med lignende navn men ulik e-post.",
+          "Ekstra rader settes inaktive — de slettes ikke. Kun helt identisk e-post slås sammen (ikke alle med «lene» i adressen). " +
+          "Aktive kunder skal fortsatt vises; inaktive finnes under «Vis inaktive» eller «Gjenopprett klient».",
         confirmLabel: "Kjør opprydding",
         cancelLabel: "Avbryt",
         tone: "danger",
@@ -6325,7 +6325,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
           <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <div className="text-sm font-semibold text-slate-700">Slå sammen duplikatkunder</div>
             <div className="text-xs text-slate-600">
-              Kun for flere medlemsrader med identisk e-post. Inaktive kunder forsvinner ikke — bruk «Vis inaktive» eller «Gjenopprett klient». Kjør ikke uten dry-run og bekreftelse.
+              Kun når flere medlemsrader har helt identisk e-postadresse. Ulike adresser som bare inneholder «lene»
+              (f.eks. leneruud@msn.com, lene.norex@gmail.com, ruudlene@gmail.com) slås ikke sammen. Inaktive rader kan
+              gjenopprettes under Admin. Kjør dry-run og bekreftelse først.
             </div>
             {memberDedupeStatus ? (
               <StatusMessage

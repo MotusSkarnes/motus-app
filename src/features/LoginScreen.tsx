@@ -12,6 +12,7 @@ type LoginScreenProps = {
   isRecoveryMode: boolean;
   /** Ekte invite-flow fra Supabase (samme passordskjerm som recovery, men annen tekst). */
   recoveryInviteFlow?: boolean;
+  recoverySessionReady?: boolean;
   recoveryPassword: string;
   setRecoveryPassword: (value: string) => void;
   recoveryPasswordConfirm: string;
@@ -43,6 +44,7 @@ export function LoginScreen(props: LoginScreenProps) {
     loginError,
     isRecoveryMode,
     recoveryInviteFlow = false,
+    recoverySessionReady = false,
     recoveryPassword,
     setRecoveryPassword,
     recoveryPasswordConfirm,
@@ -121,7 +123,12 @@ export function LoginScreen(props: LoginScreenProps) {
               <TextInput type="password" value={recoveryPassword} onChange={(e) => setRecoveryPassword(e.target.value)} placeholder="Nytt passord (minst 6 tegn)" />
               <TextInput type="password" value={recoveryPasswordConfirm} onChange={(e) => setRecoveryPasswordConfirm(e.target.value)} placeholder="Gjenta nytt passord" />
               {recoveryError ? <StatusMessage message={recoveryError} tone="error" /> : null}
-              <GradientButton onClick={onCompleteRecovery} className="w-full">Lagre nytt passord</GradientButton>
+              {!recoverySessionReady && !recoveryError ? (
+                <p className="text-xs text-slate-500">Verifiserer lenken — vent et øyeblikk før du lagrer passord.</p>
+              ) : null}
+              <GradientButton onClick={onCompleteRecovery} className="w-full" disabled={!recoverySessionReady}>
+                {recoverySessionReady ? "Lagre nytt passord" : "Venter på verifisering…"}
+              </GradientButton>
             </>
           ) : (
             <>

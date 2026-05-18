@@ -187,24 +187,97 @@ export async function signOutSupabase(): Promise<void> {
   await supabaseClient.auth.signOut();
 }
 
+async function persistSessionFromVerifyOtpResult(
+  data: { session: { access_token: string; refresh_token: string } | null } | null,
+  failureMessage: string,
+): Promise<{ ok: boolean; message?: string }> {
+  if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
+  if (data?.session?.access_token && data.session.refresh_token) {
+    const { error: setError } = await supabaseClient.auth.setSession({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+    });
+    if (setError) return { ok: false, message: setError.message || failureMessage };
+  }
+  const {
+    data: { session },
+  } = await supabaseClient.auth.getSession();
+  if (!session?.access_token) {
+    return { ok: false, message: failureMessage };
+  }
+  return { ok: true };
+}
+
 export async function verifyRecoveryToken(tokenHash: string): Promise<{ ok: boolean; message?: string }> {
   if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
-  const { error } = await supabaseClient.auth.verifyOtp({
+  const { data, error } = await supabaseClient.auth.verifyOtp({
     token_hash: tokenHash,
     type: "recovery",
   });
   if (error) return { ok: false, message: error.message || "Kunne ikke verifisere recovery-lenke." };
-  return { ok: true };
+  return persistSessionFromVerifyOtpResult(data, "Kunne ikke opprette recovery-session.");
 }
 
 export async function verifyInviteToken(tokenHash: string): Promise<{ ok: boolean; message?: string }> {
   if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
-  const { error } = await supabaseClient.auth.verifyOtp({
+  const { data, error } = await supabaseClient.auth.verifyOtp({
     token_hash: tokenHash,
     type: "invite",
   });
   if (error) return { ok: false, message: error.message || "Kunne ikke verifisere invitasjonslenke." };
-  return { ok: true };
+  return persistSessionFromVerifyOtpResult(data, "Kunne ikke opprette innloggingssesjon fra invitasjon.");
+}
+
+export async function exchangeAuthCodeForSession(code: string): Promise<{ ok: boolean; message?: string }> {
+  if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
+  const normalizedCode = code.trim();
+  if (!normalizedCode) return { ok: false, message: "Mangler auth-kode i lenken." };
+  const { data, error } = await supabaseClient.auth.exchangeCodeForSession(normalizedCode);
+  if (error) return { ok: false, message: error.message || "Kunne ikke verifisere lenken." };
+  return persistSessionFromVerifyOtpResult(data, "Kunne ikke opprette innloggingssesjon fra lenken.");
+}
+
+export type EnsureAuthSessionForPasswordInput = {
+  recoveryInviteFlow: boolean;
+  recoveryTokenHash: string | null;
+  recoveryAccessToken: string | null;
+  recoveryRefreshToken: string | null;
+  recoveryAuthCode: string | null;
+};
+
+export async function ensureAuthSessionForPasswordUpdate(
+  input: EnsureAuthSessionForPasswordInput,
+): Promise<{ ok: boolean; message?: string }> {
+  if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
+
+  const {
+    data: { session: existingSession },
+  } = await supabaseClient.auth.getSession();
+  if (existingSession?.access_token) return { ok: true };
+
+  const accessToken = input.recoveryAccessToken?.trim() ?? "";
+  const refreshToken = input.recoveryRefreshToken?.trim() ?? "";
+  if (accessToken && refreshToken) {
+    const fromTokens = await establishRecoverySessionFromTokens({ accessToken, refreshToken });
+    if (fromTokens.ok) return fromTokens;
+  }
+
+  const authCode = input.recoveryAuthCode?.trim() ?? "";
+  if (authCode) {
+    const fromCode = await exchangeAuthCodeForSession(authCode);
+    if (fromCode.ok) return fromCode;
+  }
+
+  const tokenHash = input.recoveryTokenHash?.trim() ?? "";
+  if (tokenHash) {
+    return input.recoveryInviteFlow ? verifyInviteToken(tokenHash) : verifyRecoveryToken(tokenHash);
+  }
+
+  return {
+    ok: false,
+    message:
+      "Auth session missing! Åpne invitasjonslenken direkte fra e-posten på nytt (ikke bare adresselinjen).",
+  };
 }
 
 export async function establishRecoverySessionFromTokens(input: {

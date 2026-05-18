@@ -1,32 +1,37 @@
--- Finn medlemsrader for en e-post (f.eks. savnet klient i PT-listen).
--- Kjør i Supabase SQL Editor. Bytt e-post i WHERE om nødvendig.
+-- Diagnose: finn medlem, auth og relatert data for én e-post
+-- Kjør: npx supabase db query --linked -f src/supabase/diagnose_member_by_email.sql
+-- Endre e-post under:
 
-select
-  id,
-  name,
-  lower(trim(email)) as email,
-  is_active,
-  invited_at,
-  customer_type,
-  membership_type,
-  owner_user_id,
-  created_at
-from public.members
-where lower(trim(email)) = lower(trim('emil.ringstad@icloud.com'))
-order by created_at desc;
+\set target_email 'lener2004@gmail.com'
 
--- Flere rader med samme e-post?
-select
-  lower(trim(email)) as email_key,
-  count(*) as row_count,
-  array_agg(id order by created_at desc) as member_ids,
-  array_agg(is_active order by created_at desc) as active_flags
-from public.members
-where lower(trim(email)) = lower(trim('emil.ringstad@icloud.com'))
-group by lower(trim(email));
+select 'auth.users' as source, u.id::text as id, u.email, u.created_at::text,
+  u.raw_app_meta_data->>'member_id' as auth_member_id,
+  u.raw_app_meta_data->>'role' as auth_role
+from auth.users u
+where lower(trim(u.email)) = lower(trim(:'target_email'));
 
--- Aktiver alle inaktive rader for e-posten (kun om diagnose viser is_active = false):
--- update public.members
--- set is_active = true
--- where lower(trim(email)) = lower(trim('emil.ringstad@icloud.com'))
---   and is_active = false;
+select 'members' as source, m.id, m.email, m.name, m.is_active::text, m.owner_user_id::text,
+  m.customer_type, left(coalesce(m.personal_goals, ''), 80) as personal_goals_preview
+from public.members m
+where lower(trim(m.email)) = lower(trim(:'target_email'))
+   or m.id in (
+     select coalesce(u.raw_app_meta_data->>'member_id', u.raw_user_meta_data->>'member_id')
+     from auth.users u
+     where lower(trim(u.email)) = lower(trim(:'target_email'))
+   );
+
+select 'programs' as source, count(*)::text as count
+from public.training_programs tp
+where lower(trim(tp.member_id)) in (
+  select lower(trim(m.id)) from public.members m where lower(trim(m.email)) = lower(trim(:'target_email'))
+)
+or lower(trim(tp.member_id)) = lower(trim(:'target_email'));
+
+select 'workout_logs' as source, count(*)::text as count
+from public.workout_logs wl
+where lower(trim(wl.member_id)) in (
+  select lower(trim(m.id)) from public.members m where lower(trim(m.email)) = lower(trim(:'target_email'))
+)
+or lower(trim(wl.member_id)) = lower(trim(:'target_email'));
+
+-- Ikke list «lignende» e-poster med LIKE — f.eks. leneruud, lener2004 og ruudlene er ulike kunder.

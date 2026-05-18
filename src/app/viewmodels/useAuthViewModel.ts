@@ -13,6 +13,7 @@ export function useAuthViewModel(state: AppStateHookResult): AuthViewModel {
     loginError: state.loginError,
     isRecoveryMode: state.isRecoveryMode,
     recoveryInviteFlow: state.recoveryInviteFlow,
+    recoverySessionReady: state.recoverySessionReady,
     recoveryPassword: state.recoveryPassword,
     setRecoveryPassword: state.setRecoveryPassword,
     recoveryPasswordConfirm: state.recoveryPasswordConfirm,

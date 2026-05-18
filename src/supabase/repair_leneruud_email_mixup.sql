@@ -38,9 +38,8 @@ left join public.workout_logs wl on wl.member_id = m.id
 left join public.chat_messages cm on cm.member_id = m.id
 where
   lower(trim(m.email)) in (lower('leneruud@msn.com'), lower('lene@motus-skarnes.no'))
+  or m.id in ('m1', 'member-nmn08uu')
   or m.owner_user_id = (select trainer_user_id from trainer)
-  or lower(trim(m.name)) like '%leneruud%'
-  or lower(trim(m.name)) like '%lene%'
 group by m.id, m.name, m.email, m.owner_user_id, m.customer_type, m.membership_type, m.is_active, m.created_at
 order by m.created_at desc;
 

@@ -1,5 +1,9 @@
--- Merge alle duplikat-rader for ruudlene@gmail.com inn i member-fcz9p8n (auth-kanonisk).
+-- Merge duplikat-rader med NØYAKTIG e-post ruudlene@gmail.com inn i member-fcz9p8n.
 -- Kjør: npx supabase db query --linked -f src/supabase/repair_ruudlene_duplicate_members.sql
+--
+-- VIKTIG: Ikke bruk dette skriptet for andre «lene»-e-poster (leneruud@msn.com, lene.norex@gmail.com,
+-- lener2004@gmail.com, lene@motus-skarnes.no osv.) — det er separate kunder.
+-- Appen og dedupe-members slår kun sammen rader med identisk full e-post, aldri delstreng.
 --
 -- Beholder én aktiv rad; flytter programmer, logger og chat; deaktiverer resten.
 
