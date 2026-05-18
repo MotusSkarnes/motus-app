@@ -20,6 +20,7 @@ import type { ChatMessage, Member, MemberTab, TrainingProgram, WorkoutLog } from
 import { readWorkoutLogIdFromLocation, stripWorkoutLogIdFromLocation, workoutLogIdFromMemberAlertId } from "./workoutLogDeepLink";
 
 const MEMBER_INSPIRATION_BASELINE_KEY = "motus.notifications.memberInspirationBaselineAt";
+const TRAINER_NOTIFICATIONS_BASELINE_KEY = "motus.notifications.trainerBaselineAt";
 
 const ALERT_HISTORY_LIMIT = 5;
 const TRAINER_OPERATIONAL_TIMESTAMP_BASE = 9_000_000_000_000;
@@ -249,6 +250,25 @@ export function useNotifications({
   const trainerOperationalAlertKey = `${missingInviteMemberIds.join(",")}|${inactiveMemberIds.join(",")}`;
   const hasTrainerOperationalAlerts = missingInviteMemberIds.length + inactiveMemberIds.length > 0;
   const trainerOperationalUnread = hasTrainerOperationalAlerts && trainerOperationalAlertKey !== seenTrainerOperationalAlertKey;
+
+  /** Ny PC/nettleser: marker eksisterende PT-varsler som sett uten å skjule fremtidige. */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (currentUserRole !== "trainer") return;
+    if (window.localStorage.getItem(TRAINER_NOTIFICATIONS_BASELINE_KEY)) return;
+    if (members.length === 0 && messages.length === 0) return;
+
+    const latestMemberMessageTime = messages
+      .filter((message) => message.sender === "member")
+      .reduce((max, message, index) => Math.max(max, parseTimestamp(message.createdAt, index + 1)), 0);
+
+    const formAlertIds = buildMemberFormTrainerAlerts(members, new Set()).map((alert) => alert.id);
+
+    window.localStorage.setItem(TRAINER_NOTIFICATIONS_BASELINE_KEY, String(Date.now()));
+    setTrainerAlertsSeenAt((prev) => Math.max(prev, latestMemberMessageTime));
+    setSeenTrainerMemberFormKeys((prev) => Array.from(new Set([...prev, ...formAlertIds])));
+    setSeenTrainerOperationalAlertKey(trainerOperationalAlertKey);
+  }, [currentUserRole, members, messages, trainerOperationalAlertKey]);
 
   const trainerMessageAlerts = useMemo(
     () =>

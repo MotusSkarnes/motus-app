@@ -24,6 +24,10 @@ describe("useNotifications workout comment alerts", () => {
     window.localStorage.removeItem(INSPIRATION_STORAGE_KEY);
     window.localStorage.removeItem("motus.notifications.memberInspirationBaselineAt");
     window.localStorage.removeItem("motus.notifications.memberSeenInspirationIds");
+    window.localStorage.removeItem("motus.notifications.trainerBaselineAt");
+    window.localStorage.removeItem("motus.notifications.trainerSeenAt");
+    window.localStorage.removeItem("motus.notifications.trainerSeenMemberFormKeys");
+    window.localStorage.removeItem("motus.notifications.trainerOperationalSeenKey");
   });
 
   it("counts unread workout comment alerts for completed logs", () => {
@@ -118,6 +122,7 @@ describe("useNotifications workout comment alerts", () => {
   });
 
   it("includes operational trainer alerts for missing invites", () => {
+    window.localStorage.setItem("motus.notifications.trainerBaselineAt", "1");
     const members = [{ id: "member-1", name: "Ola", email: "ola@example.com" } as never];
     const { result } = renderHook(() =>
       useNotifications({
@@ -126,6 +131,7 @@ describe("useNotifications workout comment alerts", () => {
         logs: [],
         members,
         memberViewId: "member-1",
+        currentUserRole: "trainer",
         setMemberTab: () => {},
       }),
     );
@@ -133,6 +139,91 @@ describe("useNotifications workout comment alerts", () => {
     const operational = result.current.trainerVisibleAlerts.find((alert) => alert.kind === "missing-invite");
     expect(operational).toBeDefined();
     expect(operational?.isUnread).toBe(true);
+  });
+
+  it("does not count historical trainer alerts as unread on a fresh device", async () => {
+    const members = [
+      { id: "member-1", name: "Kari", email: "kari@example.com", invitedAt: "2026-01-01", isActive: true } as never,
+    ];
+    const messages = [
+      {
+        id: "msg-old",
+        memberId: "member-1",
+        sender: "member" as const,
+        text: "Gammel melding",
+        createdAt: "2026-05-01T12:00:00.000Z",
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages,
+        programs: [],
+        logs: [],
+        members,
+        memberViewId: "member-1",
+        currentUserRole: "trainer",
+        setMemberTab: () => {},
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.trainerUnreadCount).toBe(0);
+    });
+  });
+
+  it("counts new member messages as unread after trainer device baseline", async () => {
+    const members = [
+      { id: "member-1", name: "Kari", email: "kari@example.com", invitedAt: "2026-01-01", isActive: true } as never,
+    ];
+    const initialMessages = [
+      {
+        id: "msg-old",
+        memberId: "member-1",
+        sender: "member" as const,
+        text: "Gammel melding",
+        createdAt: "2026-05-01T12:00:00.000Z",
+      },
+    ];
+
+    const { result, rerender } = renderHook((props) => useNotifications(props), {
+      initialProps: {
+        messages: initialMessages,
+        programs: [],
+        logs: [],
+        members,
+        memberViewId: "member-1",
+        currentUserRole: "trainer" as const,
+        setMemberTab: () => {},
+      },
+    });
+
+    await waitFor(() => {
+      expect(result.current.trainerUnreadCount).toBe(0);
+    });
+
+    rerender({
+      messages: [
+        ...initialMessages,
+        {
+          id: "msg-new",
+          memberId: "member-1",
+          sender: "member" as const,
+          text: "Ny melding",
+          createdAt: "2026-05-16T12:00:00.000Z",
+        },
+      ],
+      programs: [],
+      logs: [],
+      members,
+      memberViewId: "member-1",
+      currentUserRole: "trainer",
+      setMemberTab: () => {},
+    });
+
+    await waitFor(() => {
+      expect(result.current.trainerUnreadCount).toBe(1);
+    });
   });
 
   it("excludes deactivated members from operational trainer alerts", () => {
