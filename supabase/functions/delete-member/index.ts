@@ -10,11 +10,29 @@ type DeletePayload = {
   memberId?: string;
 };
 
+type AuthUser = {
+  id: string;
+  email?: string;
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+};
+
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function normalizeEmail(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function isTrainerUser(user: AuthUser): boolean {
+  const appRole = String(user.app_metadata?.role ?? "").trim().toLowerCase();
+  const userRole = String(user.user_metadata?.role ?? "").trim().toLowerCase();
+  if (appRole === "trainer" || userRole === "trainer") return true;
+  return normalizeEmail(user.email).endsWith("@motus-skarnes.no");
 }
 
 Deno.serve(async (req) => {
@@ -43,7 +61,42 @@ Deno.serve(async (req) => {
     return jsonResponse(400, { error: "memberId is required" });
   }
 
-  const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const accessToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!accessToken) {
+    return jsonResponse(401, { error: "Authorization bearer token is required" });
+  }
+
+  const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const {
+    data: { user: caller },
+    error: userError,
+  } = await adminClient.auth.getUser(accessToken);
+  if (userError || !caller?.id) {
+    return jsonResponse(401, { error: "Invalid trainer session" });
+  }
+  if (!isTrainerUser(caller as AuthUser)) {
+    return jsonResponse(403, { error: "Only trainers can delete members" });
+  }
+
+  const { data: memberRow, error: memberError } = await adminClient
+    .from("members")
+    .select("id, owner_user_id")
+    .eq("id", memberId)
+    .maybeSingle();
+  if (memberError) {
+    return jsonResponse(500, { error: `Could not load member: ${memberError.message}` });
+  }
+  if (!memberRow) {
+    return jsonResponse(404, { error: "Member not found" });
+  }
+  const ownerUserId = String((memberRow as { owner_user_id?: string | null }).owner_user_id ?? "").trim();
+  if (ownerUserId !== caller.id) {
+    return jsonResponse(403, { error: "You can only delete members owned by your trainer account" });
+  }
 
   const targetMemberIds = new Set<string>([memberId]);
 
