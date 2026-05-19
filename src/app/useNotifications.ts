@@ -193,6 +193,16 @@ export function useNotifications({
       return [];
     }
   });
+  const [dismissedMemberCheckInMonths, setDismissedMemberCheckInMonths] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem("motus.notifications.memberDismissedCheckInMonths");
+      const parsed = JSON.parse(raw ?? "[]");
+      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+    } catch {
+      return [];
+    }
+  });
 
   const syncInspirationItemsFromStorage = useCallback(() => {
     setInspirationItems(loadInspirationNotificationItems());
@@ -307,7 +317,7 @@ export function useNotifications({
             text: `${name} har sendt deg en ny melding`,
             detail: message.text.length > 72 ? `${message.text.slice(0, 72)}...` : message.text,
             timestamp,
-            unread: timestamp > trainerAlertsSeenAt,
+            unread: timestamp > trainerAlertsSeenAt && !openedTrainerAlertIds.includes(id),
           };
         })
         .filter((alert) => alert.timestamp > trainerNotificationsBaselineAt || openedTrainerAlertIds.includes(alert.id)),
@@ -454,9 +464,11 @@ export function useNotifications({
         detail: message.text.length > 72 ? `${message.text.slice(0, 72)}...` : message.text,
         timestamp: message._effectiveTimestamp,
         targetTab: "messages" as const,
-        unread: message._effectiveTimestamp > memberAlertsSeenAt,
+        unread:
+          message._effectiveTimestamp > memberAlertsSeenAt &&
+          !openedMemberAlertIds.includes(`member-msg-${message.id}`),
       })),
-    [memberTrainerMessages, memberAlertsSeenAt],
+    [memberTrainerMessages, memberAlertsSeenAt, openedMemberAlertIds],
   );
 
   const memberProgramAlerts = useMemo(
@@ -492,9 +504,9 @@ export function useNotifications({
       detail: copy.detail,
       timestamp: window.opensAt.getTime(),
       targetTab: "overview" as const,
-      unread: true,
+      unread: !dismissedMemberCheckInMonths.includes(window.monthKey),
     };
-  }, [activeMember, currentUserRole]);
+  }, [activeMember, currentUserRole, dismissedMemberCheckInMonths]);
 
   const memberInspirationAlerts = useMemo(
     () =>
@@ -668,6 +680,10 @@ export function useNotifications({
         setMemberFocusInspirationItemId(inspirationId);
       }
     } else if (alert.kind === "check-in") {
+      const monthKey = alert.id.replace(/^member-check-in-/, "");
+      if (monthKey) {
+        setDismissedMemberCheckInMonths((prev) => Array.from(new Set([...prev, monthKey])));
+      }
       setMemberCheckInOverlayOpen(true);
     }
 
@@ -722,6 +738,14 @@ export function useNotifications({
     if (typeof window === "undefined") return;
     window.localStorage.setItem("motus.notifications.trainerSeenMemberFormKeys", JSON.stringify(seenTrainerMemberFormKeys));
   }, [seenTrainerMemberFormKeys]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      "motus.notifications.memberDismissedCheckInMonths",
+      JSON.stringify(dismissedMemberCheckInMonths),
+    );
+  }, [dismissedMemberCheckInMonths]);
 
   return {
     trainerNotificationsOpen,

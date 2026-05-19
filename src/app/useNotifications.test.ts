@@ -29,6 +29,7 @@ describe("useNotifications workout comment alerts", () => {
     window.localStorage.removeItem("motus.notifications.trainerSeenMemberFormKeys");
     window.localStorage.removeItem("motus.notifications.trainerOperationalSeenKey");
     window.localStorage.removeItem("motus.notifications.trainerOpenedAlertIds");
+    window.localStorage.removeItem("motus.notifications.memberDismissedCheckInMonths");
   });
 
   it("counts unread workout comment alerts for completed logs", () => {
@@ -530,5 +531,38 @@ describe("useNotifications workout comment alerts", () => {
     );
 
     expect(result.current.memberUnreadCount).toBe(0);
+  });
+
+  it("does not count trainer messages that were opened but still in history", () => {
+    window.localStorage.setItem("motus.notifications.trainerBaselineAt", "1");
+    window.localStorage.setItem("motus.notifications.trainerSeenAt", "1");
+    window.localStorage.setItem(
+      "motus.notifications.trainerOpenedAlertIds",
+      JSON.stringify(["trainer-msg-msg-1"]),
+    );
+    const messages = [
+      {
+        id: "msg-1",
+        memberId: "member-1",
+        sender: "member" as const,
+        text: "Hei trener",
+        createdAt: "2026-05-15T12:00:00.000Z",
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages,
+        programs: [],
+        logs: [],
+        members: [{ id: "member-1", name: "Kari", email: "kari@example.com", invitedAt: "2026-01-01" } as never],
+        memberViewId: "member-1",
+        setMemberTab: () => {},
+        currentUserRole: "trainer",
+      }),
+    );
+
+    expect(result.current.trainerUnreadCount).toBe(0);
+    expect(result.current.trainerVisibleAlerts[0]?.isUnread).toBe(false);
   });
 });

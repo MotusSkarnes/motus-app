@@ -455,8 +455,8 @@ export function MemberLayout({
                         : alert.kind === "check-in"
                           ? ClipboardPenLine
                           : ClipboardList;
-                const isOpened = alert.isOpened;
-                const isUnread = alert.isUnread && !isOpened;
+                const isUnread = alert.isUnread;
+                const isOpened = alert.isOpened && !isUnread;
                 const isRead = !isUnread;
                 const receivedAt = formatNotificationTimestamp(alert.timestamp);
                 return (
