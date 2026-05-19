@@ -31,7 +31,6 @@ import motusLogo from "../assets/motus-logo-transparent.svg";
 import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
-import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { hasSubstantiveOnboardingAnswers, parsePersonalGoalsJson, readProfileExtensions } from "../app/memberOnboarding";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
@@ -458,11 +457,15 @@ function encodeNameForPath(name: string): string {
   return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
-function pickFirstName(value: string): string {
-  const trimmed = value.trim();
+function pickFirstName(value: unknown): string {
+  const trimmed = String(value ?? "").trim();
   if (!trimmed) return "";
   const firstToken = trimmed.split(/\s+/)[0] ?? "";
   return firstToken.trim();
+}
+
+function printField(value: unknown): string {
+  return String(value ?? "").trim();
 }
 
 function programAuthorCredit(program: TrainingProgram): string | null {
@@ -1544,7 +1547,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (fromHistory) return fromHistory;
     const meta = exercises.find((e) => e.id === programExercise.exerciseId);
     if (meta?.category && isHoldBasedExerciseCategory(meta.category)) {
-      return (programExercise.holdSeconds ?? "").trim() || programExercise.weight.trim() || "30";
+      return printField(programExercise.holdSeconds) || printField(programExercise.weight) || "30";
     }
     return programExercise.weight;
   }
@@ -3753,8 +3756,8 @@ export function MemberPortal(props: MemberPortalProps) {
     setLastDeletedLogResult(null);
   }
 
-  function escapeHtml(value: string): string {
-    return value
+  function escapeHtml(value: unknown): string {
+    return String(value ?? "")
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
@@ -3762,8 +3765,8 @@ export function MemberPortal(props: MemberPortalProps) {
       .replace(/'/g, "&#39;");
   }
 
-  function resolvePrintAssetUrl(assetUrl: string): string {
-    const trimmed = assetUrl.trim();
+  function resolvePrintAssetUrl(assetUrl: unknown): string {
+    const trimmed = printField(assetUrl);
     if (!trimmed || typeof window === "undefined") return trimmed;
     if (/^(https?:|data:|blob:)/i.test(trimmed)) return trimmed;
     try {
@@ -3777,40 +3780,54 @@ export function MemberPortal(props: MemberPortalProps) {
     if (typeof window === "undefined") return;
     try {
     const printLogoUrl = resolvePrintAssetUrl(motusLogo);
-    const recipientName = (viewedMember?.name || editableMember?.name || "Kunde").trim();
-    const trainerLabel = (pickFirstName(program.assignedTrainerName ?? "") || pickFirstName(MOTUS.name) || "Trener").trim();
+    const recipientName = printField(viewedMember?.name || editableMember?.name || "Kunde") || "Kunde";
+    const trainerLabel = pickFirstName(program.assignedTrainerName) || pickFirstName(MOTUS.name) || "Trener";
+    const safeExercises = Array.isArray(program.exercises) ? program.exercises : [];
     const exercisesHtml =
-      program.exercises.length > 0
-        ? program.exercises
+      safeExercises.length > 0
+        ? safeExercises
             .map((exercise, index) => {
+              const safeExercise =
+                exercise && typeof exercise === "object"
+                  ? (exercise as Partial<ProgramExercise>)
+                  : ({} as Partial<ProgramExercise>);
+              const exerciseName = printField(safeExercise.exerciseName) || "Øvelse";
+              const exerciseId = printField(safeExercise.exerciseId);
               const libraryMatch =
-                exercises.find((item) => item.id === exercise.exerciseId) ??
-                exercises.find((item) => item.name.trim().toLowerCase() === exercise.exerciseName.trim().toLowerCase()) ??
+                exercises.find((item) => item.id === exerciseId) ??
+                exercises.find((item) => printField(item.name).toLowerCase() === exerciseName.toLowerCase()) ??
                 null;
-              const prescription = exercise.durationMinutes
-                ? `${exercise.sets} runder × ${exercise.durationMinutes} min${
-                    exercise.speed ? ` · ${exercise.speed} km/t` : ""
-                  }${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s pause${cardioHrPrescriptionSuffixForMember(exercise)}`
-                : libraryMatch?.category && isHoldBasedExerciseCategory(libraryMatch.category)
-                  ? `${exercise.sets} sett × ${(exercise.holdSeconds ?? "").trim() || exercise.weight || "-"} sek · ${exercise.restSeconds}s pause`
-                  : `${exercise.sets} x ${exercise.reps} · ${exercise.weight || "-"} kg · ${exercise.restSeconds}s pause`;
-              const imageUrl = libraryMatch
-                ? resolvePrintAssetUrl(resolveExerciseImageSrc(libraryMatch))
-                : "";
-              const description = libraryMatch?.description?.trim() || "Ingen forklaring tilgjengelig for denne øvelsen.";
+              const setCount = printField(safeExercise.sets) || "-";
+              const reps = printField(safeExercise.reps) || "-";
+              const weight = printField(safeExercise.weight) || "-";
+              const durationMinutes = printField(safeExercise.durationMinutes);
+              const speed = printField(safeExercise.speed);
+              const incline = printField(safeExercise.incline);
+              const restSeconds = printField(safeExercise.restSeconds) || "0";
+              const notes = printField(safeExercise.notes);
+              const prescription = durationMinutes
+                ? `${setCount} runder × ${durationMinutes} min${
+                    speed ? ` · ${speed} km/t` : ""
+                  }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause${cardioHrPrescriptionSuffixForMember(safeExercise as ProgramExercise)}`
+                : libraryMatch && isHoldBasedExerciseCategory(libraryMatch.category)
+                  ? `${setCount} sett × ${printField(safeExercise.holdSeconds) || weight || "-"} sek · ${restSeconds}s pause`
+                  : `${setCount} x ${reps} · ${weight} kg · ${restSeconds}s pause`;
+              const rawImageUrl = printField(libraryMatch?.imageUrl);
+              const imageUrl = rawImageUrl ? resolvePrintAssetUrl(rawImageUrl) : "";
+              const description = printField(libraryMatch?.description) || "Ingen forklaring tilgjengelig for denne øvelsen.";
               return `<article class="exercise-card">
   <div class="exercise-image-wrap">
     ${
       imageUrl
-        ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(exercise.exerciseName)}" class="exercise-image" />`
+        ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(exerciseName)}" class="exercise-image" />`
         : `<div class="exercise-image-placeholder">Ingen bilde</div>`
     }
   </div>
   <div class="exercise-body">
-    <div class="exercise-title">${index + 1}. ${escapeHtml(exercise.exerciseName)}</div>
+    <div class="exercise-title">${index + 1}. ${escapeHtml(exerciseName)}</div>
     <div class="exercise-prescription">${escapeHtml(prescription)}</div>
     <div class="exercise-description">${escapeHtml(description)}</div>
-    ${exercise.notes ? `<div class="exercise-notes">Coach-notat: ${escapeHtml(exercise.notes)}</div>` : ""}
+    ${notes ? `<div class="exercise-notes">Coach-notat: ${escapeHtml(notes)}</div>` : ""}
   </div>
 </article>`;
             })
@@ -3927,9 +3944,10 @@ export function MemberPortal(props: MemberPortalProps) {
       }
     } catch (unexpectedError) {
       console.error("Member print failed before rendering.", unexpectedError);
+      const detail = unexpectedError instanceof Error ? unexpectedError.message : String(unexpectedError);
       setConfirmDialog({
         title: "Utskrift feilet",
-        message: "Kunne ikke generere utskrift. Prøv igjen.",
+        message: `Kunne ikke generere utskrift (${detail}). Prøv igjen.`,
         confirmLabel: "OK",
         showCancel: false,
         tone: "default",
@@ -4643,7 +4661,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                     {exercise.durationMinutes
                                       ? `${exercise.sets} runder × ${exercise.durationMinutes} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s${cardioHrPrescriptionSuffixForMember(exercise)}`
                                       : isStretch
-                                        ? `${exercise.sets} sett × ${(exercise.holdSeconds ?? "").trim() || exercise.weight || "-"} sek · ${exercise.restSeconds}s`
+                                        ? `${exercise.sets} sett × ${printField(exercise.holdSeconds) || exercise.weight || "-"} sek · ${exercise.restSeconds}s`
                                         : `${exercise.sets}×${exercise.reps} · ${exercise.weight}kg · ${exercise.restSeconds}s`}
                                   </div>
                                   {!exercise.durationMinutes && !isStretch ? (
