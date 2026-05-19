@@ -17,6 +17,12 @@ describe("readAuthParamsFromLocation", () => {
     expect(params?.authCode).toBe("abc123");
   });
 
+  it("detects PKCE code in hash with invite query flags", () => {
+    const params = readAuthParamsFromLocation("https://app.example/?type=invite&invite=1#code=abc123");
+    expect(params?.recoveryInviteFlow).toBe(true);
+    expect(params?.authCode).toBe("abc123");
+  });
+
   it("returns null for normal app open", () => {
     expect(readAuthParamsFromLocation("https://app.example/")).toBeNull();
   });

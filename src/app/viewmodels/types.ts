@@ -17,5 +17,6 @@ export type RoleViewModel = {
 
 export type AppViewModel = {
   appState: AppStateHookResult["appState"];
+  isAuthSessionLoading: AppStateHookResult["isAuthSessionLoading"];
 } & AuthViewModel &
   RoleViewModel;

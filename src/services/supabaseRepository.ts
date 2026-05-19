@@ -2831,7 +2831,7 @@ export const supabaseAppRepository: AppRepository = {
   finishWorkoutMode(state: AppState, input?: FinishWorkoutInput): AppState {
     const nextState = localAppRepository.finishWorkoutMode(state, input);
     const latestLog = nextState.logs[0];
-    if (latestLog) {
+    if (latestLog && latestLog.id !== state.logs[0]?.id) {
       void persistWorkoutLog(latestLog, buildMemberPersistenceHints(state, latestLog.memberId)).then((result) => {
         input?.onPersisted?.(result);
       });

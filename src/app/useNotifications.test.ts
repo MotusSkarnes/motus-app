@@ -28,6 +28,7 @@ describe("useNotifications workout comment alerts", () => {
     window.localStorage.removeItem("motus.notifications.trainerSeenAt");
     window.localStorage.removeItem("motus.notifications.trainerSeenMemberFormKeys");
     window.localStorage.removeItem("motus.notifications.trainerOperationalSeenKey");
+    window.localStorage.removeItem("motus.notifications.trainerOpenedAlertIds");
   });
 
   it("counts unread workout comment alerts for completed logs", () => {
@@ -210,6 +211,55 @@ describe("useNotifications workout comment alerts", () => {
     await waitFor(() => {
       expect(result.current.trainerUnreadCount).toBe(0);
     });
+    expect(result.current.trainerVisibleAlerts).toHaveLength(0);
+  });
+
+  it("does not show historical trainer form alerts on a fresh device", async () => {
+    const goals = `MOTUS_PROFILE_V1:${JSON.stringify({
+      onboarding: {
+        version: 1,
+        completedAt: "2026-05-01T12:00:00.000Z",
+        skipped: false,
+        trainingGoals: ["Styrke"],
+        goalsNotes: "",
+        importanceNow: 7,
+        experienceLevel: "Nybegynner",
+        level: "Nybegynner",
+        currentWeeklySessions: "2",
+        sessionsPerWeekTarget: "3",
+        preferredSessionMinutes: "60",
+        trainingForms: [],
+        motivations: [],
+        energyInTraining: "",
+        consistencyHelpers: "",
+        injuries: "",
+        dropoutReasons: [],
+        dropoutNotes: "",
+        preferredTrainingTime: "",
+        wantsTrainerStructure: "",
+        coachNotesFromMember: "",
+      },
+    })}`;
+    const members = [
+      { id: "member-1", name: "Kari", email: "kari@example.com", invitedAt: "2026-01-01", isActive: true, personalGoals: goals } as never,
+    ];
+
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [],
+        logs: [],
+        members,
+        memberViewId: "member-1",
+        currentUserRole: "trainer",
+        setMemberTab: () => {},
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.trainerUnreadCount).toBe(0);
+    });
+    expect(result.current.trainerVisibleAlerts.some((alert) => alert.kind === "member-form")).toBe(false);
   });
 
   it("counts new member messages as unread after trainer device baseline", async () => {

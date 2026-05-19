@@ -119,6 +119,12 @@ export function useNotifications({
     const parsed = Number(raw ?? "0");
     return Number.isFinite(parsed) ? parsed : 0;
   });
+  const [trainerNotificationsBaselineAt, setTrainerNotificationsBaselineAt] = useState(() => {
+    if (typeof window === "undefined") return 0;
+    const raw = window.localStorage.getItem(TRAINER_NOTIFICATIONS_BASELINE_KEY);
+    const parsed = Number(raw ?? "0");
+    return Number.isFinite(parsed) ? parsed : 0;
+  });
   const [seenMemberProgramIds, setSeenMemberProgramIds] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -274,8 +280,13 @@ export function useNotifications({
       .filter((message) => message.sender === "member")
       .reduce((max, message, index) => Math.max(max, parseTimestamp(message.createdAt, index + 1)), 0);
 
-    window.localStorage.setItem(TRAINER_NOTIFICATIONS_BASELINE_KEY, String(Date.now()));
+    const existingMemberFormAlertIds = buildMemberFormTrainerAlerts(members, new Set()).map((alert) => alert.id);
+    const baselineAt = latestMemberMessageTime;
+
+    window.localStorage.setItem(TRAINER_NOTIFICATIONS_BASELINE_KEY, String(baselineAt));
+    setTrainerNotificationsBaselineAt(baselineAt);
     setTrainerAlertsSeenAt((prev) => Math.max(prev, latestMemberMessageTime));
+    setSeenTrainerMemberFormKeys((prev) => Array.from(new Set([...prev, ...existingMemberFormAlertIds])));
     setSeenTrainerOperationalAlertKey(trainerOperationalAlertKey);
   }, [currentUserRole, members, messages, trainerOperationalAlertKey]);
 
@@ -298,8 +309,9 @@ export function useNotifications({
             timestamp,
             unread: timestamp > trainerAlertsSeenAt,
           };
-        }),
-    [messages, memberById, trainerAlertsSeenAt],
+        })
+        .filter((alert) => alert.timestamp > trainerNotificationsBaselineAt || openedTrainerAlertIds.includes(alert.id)),
+    [messages, memberById, trainerAlertsSeenAt, trainerNotificationsBaselineAt, openedTrainerAlertIds],
   );
 
   const trainerMemberFormAlerts = useMemo(
@@ -376,7 +388,7 @@ export function useNotifications({
       })),
       ...trainerOperationalAlerts,
     ];
-    return sortAlertsForDisplay(combined).slice(0, ALERT_HISTORY_LIMIT);
+    return sortAlertsForDisplay(combined).filter((alert) => alert.isUnread || alert.isOpened).slice(0, ALERT_HISTORY_LIMIT);
   }, [trainerMemberFormAlerts, trainerMessageAlerts, trainerOperationalAlerts, openedTrainerAlertIds]);
 
   const memberPrograms = useMemo(

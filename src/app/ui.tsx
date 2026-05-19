@@ -5,7 +5,7 @@ import { ToastProvider } from "./toast";
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
-      <div className="min-h-screen min-h-dvh p-3 sm:p-4 md:p-8 text-slate-900 bg-white">
+      <div className="min-h-screen min-h-svh overflow-x-hidden p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-slate-900 bg-white sm:p-4 sm:pb-[max(1rem,env(safe-area-inset-bottom))] md:p-8 md:pb-[max(2rem,env(safe-area-inset-bottom))]">
         <div className="mx-auto w-full max-w-[90rem] px-1 sm:px-0">{children}</div>
       </div>
     </ToastProvider>

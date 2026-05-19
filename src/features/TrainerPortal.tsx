@@ -1073,6 +1073,48 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const relatedMembers = selectedMemberProfileSourceMembers;
     return pickCanonicalMemberProfile(selectedMember, relatedMembers);
   }, [selectedMember, selectedMemberProfileSourceMembers]);
+  const selectedMemberEditSnapshot = useMemo(() => {
+    if (!selectedMemberProfile) return null;
+    return {
+      name: selectedMemberProfile.name.trim(),
+      email: selectedMemberProfile.email.trim().toLowerCase(),
+      phone: normalizePhone(selectedMemberProfile.phone),
+      birthDate: selectedMemberProfile.birthDate.trim() ? normalizeBirthDate(selectedMemberProfile.birthDate) : "",
+      goal: selectedMemberProfile.goal,
+      injuries: selectedMemberProfile.injuries,
+      isPtCustomer: selectedMemberProfile.customerType === "PT-kunde",
+      isPremiumCustomer: selectedMemberProfile.membershipType === "Premium",
+      isSharedMember: selectedMemberProfile.customerType === "Medlem",
+    };
+  }, [selectedMemberProfile]);
+  const currentMemberEditSnapshot = useMemo(
+    () => ({
+      name: memberEditName.trim(),
+      email: memberEditEmail.trim().toLowerCase(),
+      phone: normalizePhone(memberEditPhone),
+      birthDate: memberEditBirthDate.trim() ? normalizeBirthDate(memberEditBirthDate) : "",
+      goal: memberEditGoal,
+      injuries: memberEditInjuries,
+      isPtCustomer: memberEditIsPtCustomer,
+      isPremiumCustomer: memberEditIsPremiumCustomer,
+      isSharedMember: memberEditIsSharedMember,
+    }),
+    [
+      memberEditName,
+      memberEditEmail,
+      memberEditPhone,
+      memberEditBirthDate,
+      memberEditGoal,
+      memberEditInjuries,
+      memberEditIsPtCustomer,
+      memberEditIsPremiumCustomer,
+      memberEditIsSharedMember,
+    ],
+  );
+  const hasUnsavedCustomerCardChanges =
+    isEditingCustomerCard &&
+    Boolean(selectedMemberEditSnapshot) &&
+    JSON.stringify(currentMemberEditSnapshot) !== JSON.stringify(selectedMemberEditSnapshot);
   const selectedPrograms = useMemo(
     () => {
       const selected = members.find((member) => member.id === selectedMemberId) ?? null;
@@ -1612,30 +1654,40 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMemberId]);
 
-  useEffect(() => {
-    if (!isEditingCustomerCard) return;
-    const lockedId = String(editLockedMemberIdRef.current ?? "").trim();
-    if (!lockedId) return;
-    if (selectedMemberId === lockedId) return;
-    const lockedStillExists = members.some((member) => member.id === lockedId);
-    if (!lockedStillExists) {
-      const lockedEmail = editLockedIdentityRef.current?.email ?? "";
-      const replacement =
-        members.find((member) => lockedEmail && member.email.trim().toLowerCase() === lockedEmail) ??
-        null;
-      if (replacement?.id) {
-        editLockedMemberIdRef.current = replacement.id;
-        setSelectedMemberId(replacement.id);
-        return;
-      }
-      editLockedMemberIdRef.current = null;
-      editLockedIdentityRef.current = null;
-      setIsEditingCustomerCard(false);
-      setMemberEditStatus("Redigering ble avsluttet fordi valgt kunde ikke lenger er tilgjengelig.");
+  function closeCustomerCardEditMode() {
+    editLockedMemberIdRef.current = null;
+    editLockedIdentityRef.current = null;
+    setIsEditingCustomerCard(false);
+  }
+
+  function selectMemberWithUnsavedChangesGuard(nextMemberId: string, afterSelect?: () => void) {
+    if (!nextMemberId || nextMemberId === selectedMemberId) return;
+    const applySelection = () => {
+      setSelectedMemberId(nextMemberId);
+      afterSelect?.();
+    };
+    if (!isEditingCustomerCard) {
+      applySelection();
       return;
     }
-    setSelectedMemberId(lockedId);
-  }, [isEditingCustomerCard, selectedMemberId, members, setSelectedMemberId]);
+    if (!hasUnsavedCustomerCardChanges) {
+      closeCustomerCardEditMode();
+      applySelection();
+      return;
+    }
+    const nextMemberName = members.find((member) => member.id === nextMemberId)?.name.trim() || "annen kunde";
+    setConfirmDialog({
+      title: "Ulagrede endringer",
+      message: `Du har endringer i kundekortet som ikke er lagret.\n\nVil du gå videre til ${nextMemberName} uten å lagre?`,
+      confirmLabel: "Gå videre uten å lagre",
+      cancelLabel: "Bli her",
+      tone: "danger",
+      onConfirm: () => {
+        closeCustomerCardEditMode();
+        applySelection();
+      },
+    });
+  }
 
   function formatInvitedAt(iso: string): string {
     if (!iso.trim()) return "";
@@ -3384,10 +3436,11 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   }
 
   function handleQuickFollowUpMessage(member: Member) {
-    setSelectedMemberId(member.id);
-    setCustomerSubTab("messages");
-    setTrainerTab("customers");
-    setTrainerMessage(`Hei ${member.name}! Hvordan går treningen denne uka?`);
+    selectMemberWithUnsavedChangesGuard(member.id, () => {
+      setCustomerSubTab("messages");
+      setTrainerTab("customers");
+      setTrainerMessage(`Hei ${member.name}! Hvordan går treningen denne uka?`);
+    });
   }
 
   function markMemberFollowedUp(member: Member) {
@@ -3680,8 +3733,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                   type="button"
                   onClick={() => {
                     setTrainerTab("customers");
-                    setSelectedMemberId(member.id);
-                    setCustomerSubTab("overview");
+                    selectMemberWithUnsavedChangesGuard(member.id, () => setCustomerSubTab("overview"));
                   }}
                   className="flex w-full items-center justify-between gap-2 rounded-xl border bg-white p-3 text-left transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
                   style={{ borderColor: "rgba(15,23,42,0.08)" }}
@@ -3934,7 +3986,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
               </div>
               <SelectBox
                 value={selectedMemberId}
-                onChange={setSelectedMemberId}
+                onChange={selectMemberWithUnsavedChangesGuard}
                 options={
                   sortedMembers.length
                     ? sortedMembers.map((member) => ({
@@ -3955,7 +4007,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       <button
                         key={member.id}
                         type="button"
-                        onClick={() => setSelectedMemberId(member.id)}
+                        onClick={() => selectMemberWithUnsavedChangesGuard(member.id)}
                         className={`w-full rounded-xl border p-3 text-left transition ${
                           selected
                             ? "border-teal-300 bg-teal-50 shadow-sm ring-2 ring-teal-100"
@@ -4122,7 +4174,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                   <div className="text-xs font-medium text-slate-600">Bytt kunde raskt</div>
                   <SelectBox
                     value={selectedMemberId}
-                    onChange={setSelectedMemberId}
+                    onChange={selectMemberWithUnsavedChangesGuard}
                     options={visibleMembers.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
                   />
                 </div>

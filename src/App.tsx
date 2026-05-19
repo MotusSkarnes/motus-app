@@ -5,12 +5,16 @@ import { AppHeader, LoginScreen, MemberLayout, TrainerLayout } from "./features"
 import { isSupabaseConfigured } from "./services/supabaseClient";
 
 export default function App() {
-  const { appState, isRecoveryMode, loginScreenProps, appHeaderProps, trainerLayoutProps, memberLayoutProps } =
+  const { appState, isAuthSessionLoading, isRecoveryMode, loginScreenProps, appHeaderProps, trainerLayoutProps, memberLayoutProps } =
     useAppViewModel();
 
   return (
     <AppShell>
-      {!appState.currentUser || isRecoveryMode ? (
+      {isAuthSessionLoading && !isRecoveryMode ? (
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+          Sjekker innlogging...
+        </div>
+      ) : !appState.currentUser || isRecoveryMode ? (
         <LoginScreen {...loginScreenProps} />
       ) : (
         <div className="space-y-6 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] xl:pb-6">

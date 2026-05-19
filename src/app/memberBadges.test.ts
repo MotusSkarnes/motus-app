@@ -14,13 +14,14 @@ import {
 
 describe("memberBadges", () => {
   it("lists all hidden badges in the secret catalog", () => {
-    expect(SECRET_BADGE_COUNT).toBe(9);
+    expect(SECRET_BADGE_COUNT).toBe(10);
     expect(SECRET_BADGE_CATALOG.map((badge) => badge.id)).toEqual([
       "may-17-workout",
       "never-two-weeks-without",
       "back-again",
       "habit-sticks",
       "before-sunrise",
+      "evening-trainer",
       "summer-loyal",
       "new-start",
       "easter-pump",
@@ -275,6 +276,33 @@ describe("memberBadges", () => {
       completedLogDates: [new Date(2026, 4, 16)],
     });
     expect(dateOnlyMidnight.allBadges.some((badge) => badge.id === "before-sunrise")).toBe(false);
+  });
+
+  it("unlocks hidden kveldstrener badge for workouts registered 20:00-23:00", () => {
+    const atEightEvening = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-05-16T20:00:00")],
+    });
+    expect(atEightEvening.allBadges.find((badge) => badge.id === "evening-trainer")?.title).toBe("Kveldstrener");
+    expect(atEightEvening.allBadges.find((badge) => badge.id === "evening-trainer")?.unlocked).toBe(true);
+
+    const atElevenEvening = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-05-16T23:00:00")],
+    });
+    expect(atElevenEvening.allBadges.find((badge) => badge.id === "evening-trainer")?.unlocked).toBe(true);
+
+    const tooEarly = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-05-16T19:59:00")],
+    });
+    expect(tooEarly.allBadges.some((badge) => badge.id === "evening-trainer")).toBe(false);
+
+    const tooLate = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-05-16T23:01:00")],
+    });
+    expect(tooLate.allBadges.some((badge) => badge.id === "evening-trainer")).toBe(false);
   });
 
   it("unlocks hidden summer-loyal badge for workouts in July", () => {

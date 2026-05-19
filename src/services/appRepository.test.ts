@@ -8,6 +8,7 @@ import {
   removeCompletedPlanEntryLogInState,
   removeWorkoutLogResultInState,
   setWorkoutLogResultsInState,
+  startCustomWorkoutInState,
 } from "./appRepository";
 
 function createBaseState(): AppState {
@@ -181,6 +182,41 @@ describe("appRepository workout log guards", () => {
     const next = finishWorkoutModeInState(state);
     expect(next.logs).toHaveLength(1);
     expect(next.logs[0].results).toHaveLength(1);
+  });
+
+  it("logs a custom workout even if its temporary program is gone before finish", () => {
+    const state = createBaseState();
+    const started = startCustomWorkoutInState(state, {
+      memberId: "member-1",
+      exercises: [
+        {
+          id: "custom-ex-1",
+          exerciseId: "ex-1",
+          exerciseName: "Knebøy",
+          sets: "2",
+          reps: "8",
+          weight: "60",
+          restSeconds: "60",
+          notes: "",
+        },
+      ],
+    });
+    expect(started.workoutMode?.memberId).toBe("member-1");
+    expect(started.workoutMode?.programTitle).toBe("Egen økt");
+
+    const hydratedWithoutEphemeral = {
+      ...started,
+      programs: started.programs.filter((program) => !program.ephemeral),
+    };
+    const next = finishWorkoutModeInState(hydratedWithoutEphemeral);
+
+    expect(next.workoutMode).toBeNull();
+    expect(next.logs[0]).toMatchObject({
+      memberId: "member-1",
+      programTitle: "Egen økt",
+      status: "Fullført",
+    });
+    expect(next.logs[0].results).toHaveLength(2);
   });
 
   it("removes a single logged exercise from an existing log", () => {

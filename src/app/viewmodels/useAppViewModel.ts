@@ -10,6 +10,7 @@ export function useAppViewModel(): AppViewModel {
 
   return {
     appState: state.appState,
+    isAuthSessionLoading: state.isAuthSessionLoading,
     isRecoveryMode,
     loginScreenProps,
     appHeaderProps,

@@ -45,6 +45,8 @@ export type WorkoutExerciseResult = {
 
 export type WorkoutModeState = {
   programId: string;
+  memberId?: string;
+  programTitle?: string;
   results: WorkoutExerciseResult[];
   note: string;
 };

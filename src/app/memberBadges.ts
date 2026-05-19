@@ -436,6 +436,16 @@ function hasMorningBirdWorkout(completedLogDates: Date[] = []): boolean {
   return completedLogDates.some(isMorningBirdWorkoutTime);
 }
 
+/** Kveldstrener: økt registrert mellom 20:00 og 23:00 (lokal tid). */
+export function isEveningTrainerWorkoutTime(date: Date): boolean {
+  const totalMinutes = date.getHours() * 60 + date.getMinutes();
+  return totalMinutes >= 20 * 60 && totalMinutes <= 23 * 60;
+}
+
+function hasEveningTrainerWorkout(completedLogDates: Date[] = []): boolean {
+  return completedLogDates.some(isEveningTrainerWorkoutTime);
+}
+
 function hasJulyWorkout(completedLogDates: Date[] = []): boolean {
   return completedLogDates.some((date) => date.getMonth() === 6);
 }
@@ -489,6 +499,7 @@ export const SECRET_BADGE_CATALOG = [
   { id: "back-again", title: "Tilbake igjen", description: "Kom tilbake etter en lang treningspause.", levelName: "Comeback" },
   { id: "habit-sticks", title: "Vanen sitter", description: "100 dager siden første registrerte økt.", levelName: "100 dager" },
   { id: "before-sunrise", title: "Morgenfugl", description: "Registrerte trening mellom kl. 05:00 og 08:00.", levelName: "05–08" },
+  { id: "evening-trainer", title: "Kveldstrener", description: "Registrerte trening mellom kl. 20:00 og 23:00.", levelName: "20–23" },
   { id: "summer-loyal", title: "Sommertrofast", description: "Registrerte en treningsøkt i juli.", levelName: "Juli" },
   { id: "new-start", title: "Ny start", description: "Registrerte første økt i et nytt år.", levelName: "Nytt år" },
   { id: "easter-pump", title: "Påskepump", description: "Trente i påsken.", levelName: "Påske" },
@@ -510,6 +521,8 @@ function isSecretBadgeUnlocked(badgeId: (typeof SECRET_BADGE_CATALOG)[number]["i
       return hasBeenTrainingFor100Days(dates, input.nowDate);
     case "before-sunrise":
       return hasMorningBirdWorkout(dates);
+    case "evening-trainer":
+      return hasEveningTrainerWorkout(dates);
     case "summer-loyal":
       return hasJulyWorkout(dates);
     case "new-start":

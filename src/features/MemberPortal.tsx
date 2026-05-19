@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
   CalendarRange,
@@ -236,6 +236,7 @@ const HIDDEN_BADGE_IMAGES: Record<string, string> = {
   "back-again": "/badges/23-tilbake-igjen.svg",
   "habit-sticks": "/badges/24-vanen-sitter.svg",
   "before-sunrise": "/badges/25-for-sola.svg",
+  "evening-trainer": "/badges/04-kveldsskiftet.png",
   "summer-loyal": "/badges/26-sommertrofast.svg",
   "new-start": "/badges/27-ny-start.svg",
   "easter-pump": "/badges/28-paskepump.svg",
@@ -247,6 +248,7 @@ const HIDDEN_BADGE_POPUP_COPY: Record<string, string> = {
   "back-again": "Du kom tilbake etter en lang pause. Det teller.",
   "habit-sticks": "Det har gått 100 dager siden første økt. Vanen sitter.",
   "before-sunrise": "Du registrerte trening mellom kl. 05:00 og 08:00. Morgenfugl!",
+  "evening-trainer": "Du registrerte trening mellom kl. 20:00 og 23:00. Kveldstrener!",
   "summer-loyal": "Du trente i juli. Sommerformen holdes i gang.",
   "new-start": "Du registrerte årets første økt. Nytt år, ny start.",
   "easter-pump": "Du trente i påsken. Påskeegget fikk litt pump.",
@@ -2720,13 +2722,15 @@ export function MemberPortal(props: MemberPortalProps) {
 
   useEffect(() => {
     if (isMemberLimited || !activeMemberId || typeof window === "undefined") return;
-    const secretBadge = memberBadgeCollection.allBadges.find((badge) => badge.secret && badge.unlocked);
+    if (hiddenBadgeCelebration) return;
+    const storageKeyFor = (badgeId: string) => `${HIDDEN_BADGE_SEEN_STORAGE_PREFIX}${activeMemberId}:${badgeId}`;
+    const secretBadge = memberBadgeCollection.allBadges.find(
+      (badge) => badge.secret && badge.unlocked && window.localStorage.getItem(storageKeyFor(badge.id)) !== "seen",
+    );
     if (!secretBadge) return;
-    const storageKey = `${HIDDEN_BADGE_SEEN_STORAGE_PREFIX}${activeMemberId}:${secretBadge.id}`;
-    if (window.localStorage.getItem(storageKey) === "seen") return;
-    window.localStorage.setItem(storageKey, "seen");
+    window.localStorage.setItem(storageKeyFor(secretBadge.id), "seen");
     setHiddenBadgeCelebration(secretBadge);
-  }, [activeMemberId, isMemberLimited, memberBadgeCollection.allBadges]);
+  }, [activeMemberId, hiddenBadgeCelebration, isMemberLimited, memberBadgeCollection.allBadges]);
 
   function handleStartIntervalProgramTimer() {
     if (!activeIntervalProgram || !intervalProgramSteps.length) return;
@@ -4388,7 +4392,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   <img
                     src={HIDDEN_BADGE_IMAGES[hiddenBadgeCelebration.id] ?? "/badges/21-17-mai.svg"}
                     alt=""
-                    className="mx-auto mt-4 h-36 w-36 object-contain drop-shadow-sm"
+                    className="mx-auto mt-4 h-36 w-36 object-contain p-3 drop-shadow-sm"
                   />
                   <h2 id="hidden-badge-heading" className="mt-3 text-2xl font-black tracking-tight text-slate-900">
                     {hiddenBadgeCelebration.title}

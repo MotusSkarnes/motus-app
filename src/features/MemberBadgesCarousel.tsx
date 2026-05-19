@@ -31,6 +31,7 @@ const BADGE_IMAGES: Record<string, string> = {
   "back-again": "/badges/23-tilbake-igjen.svg",
   "habit-sticks": "/badges/24-vanen-sitter.svg",
   "before-sunrise": "/badges/25-for-sola.svg",
+  "evening-trainer": "/badges/04-kveldsskiftet.png",
   "summer-loyal": "/badges/26-sommertrofast.svg",
   "new-start": "/badges/27-ny-start.svg",
   "easter-pump": "/badges/28-paskepump.svg",
@@ -146,7 +147,7 @@ function BadgeCard({
           <img
             src={badgeImage}
             alt=""
-            className={`h-full w-full object-contain drop-shadow-sm ${badge.unlocked ? "" : "opacity-45 grayscale"}`}
+            className={`h-full w-full object-contain p-1.5 drop-shadow-sm ${badge.unlocked ? "" : "opacity-45 grayscale"}`}
             loading="lazy"
           />
           {!badge.unlocked ? (

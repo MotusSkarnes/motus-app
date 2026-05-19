@@ -345,6 +345,9 @@ export function useAppState() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isRecoveryMode, setIsRecoveryMode] = useState(() => INITIAL_SUPABASE_AUTH_FROM_URL?.isRecoveryMode ?? false);
+  const [isAuthSessionLoading, setIsAuthSessionLoading] = useState(
+    () => isSupabaseConfigured && !(INITIAL_SUPABASE_AUTH_FROM_URL?.isRecoveryMode ?? false),
+  );
   const [recoveryInviteFlow, setRecoveryInviteFlow] = useState(() => INITIAL_SUPABASE_AUTH_FROM_URL?.recoveryInviteFlow ?? false);
   const [recoveryTokenHash, setRecoveryTokenHash] = useState<string | null>(() => INITIAL_SUPABASE_AUTH_FROM_URL?.recoveryTokenHash ?? null);
   const [recoveryAccessToken, setRecoveryAccessToken] = useState<string | null>(
@@ -973,6 +976,7 @@ export function useAppState() {
       if (!user) {
         setIsLocalDemoSession(false);
         setAppState((prev) => ({ ...prev, currentUser: null, role: "trainer" }));
+        setIsAuthSessionLoading(false);
         return;
       }
       setIsLocalDemoSession(false);
@@ -1005,6 +1009,7 @@ export function useAppState() {
           memberViewId: resolvedMemberViewId,
         };
       });
+      setIsAuthSessionLoading(false);
     }
 
     void hydrateSession();
@@ -1015,6 +1020,7 @@ export function useAppState() {
       if (!session?.user) {
         setIsLocalDemoSession(false);
         setAppState((prev) => ({ ...prev, currentUser: null, role: "trainer" }));
+        setIsAuthSessionLoading(false);
         return;
       }
       const user = {
@@ -1064,6 +1070,7 @@ export function useAppState() {
           memberViewId: resolvedMemberViewId,
         };
       });
+      setIsAuthSessionLoading(false);
     });
     return () => {
       cancelled = true;
@@ -1269,6 +1276,7 @@ export function useAppState() {
       setRecoveryInfo("Passord oppdatert. Logg inn med nytt passord.");
     }
     setIsRecoveryMode(false);
+    setIsAuthSessionLoading(false);
     setRecoveryPassword("");
     setRecoveryPasswordConfirm("");
     setRecoveryTokenHash(null);
@@ -1413,6 +1421,7 @@ export function useAppState() {
       }
     }
     setAppState((prev) => ({ ...prev, currentUser: null, role: "trainer" }));
+    setIsAuthSessionLoading(false);
     setLoginEmail("");
     setLoginPassword("");
     setLoginError(null);
@@ -1733,6 +1742,7 @@ export function useAppState() {
 
   return {
     appState,
+    isAuthSessionLoading,
     loginEmail,
     setLoginEmail,
     loginPassword,

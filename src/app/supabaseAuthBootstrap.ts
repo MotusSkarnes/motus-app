@@ -24,7 +24,7 @@ export function readAuthParamsFromLocation(href: string): AuthBootstrapParams | 
   const tokenHash = hash.get("token_hash") ?? query.get("token_hash");
   const accessToken = hash.get("access_token") ?? query.get("access_token");
   const refreshToken = hash.get("refresh_token") ?? query.get("refresh_token");
-  const authCode = query.get("code");
+  const authCode = query.get("code") ?? hash.get("code");
   const isInviteType = type === "invite" || type === "signup" || inviteFlag === "1";
   const isRecoveryType = type === "recovery" || recoveryFlag === "1";
 

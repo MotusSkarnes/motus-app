@@ -382,6 +382,8 @@ export function startWorkoutModeInState(state: AppState, programId: string, opti
     ...state,
     workoutMode: {
       programId,
+      memberId: program.memberId,
+      programTitle: program.title,
       results: expandedResults,
       note: "",
     },
@@ -545,7 +547,9 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
   const current = state.workoutMode;
   if (!current) return state;
   const program = state.programs.find((p) => p.id === current.programId);
-  if (!program) return state;
+  const memberId = program?.memberId ?? current.memberId?.trim() ?? "";
+  if (!memberId) return state;
+  const programTitle = (program?.title ?? current.programTitle?.trim()) || "Egen økt";
 
   function estimate1RM(weight: number, reps: number): number {
     if (weight <= 0 || reps <= 0) return 0;
@@ -576,7 +580,7 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
     const reps = Number(result.performedReps) || 0;
     const newEstimated = estimate1RM(weight, reps);
     if (newEstimated <= 0) return;
-    const previousEstimated = getBestEstimated1RM(state.logs, result.exerciseName, program.memberId);
+    const previousEstimated = getBestEstimated1RM(state.logs, result.exerciseName, memberId);
     if (newEstimated <= previousEstimated) return;
     if (!bestCelebration || newEstimated - previousEstimated > bestCelebration.newEstimated1RM - bestCelebration.previousEstimated1RM) {
       bestCelebration = {
@@ -601,7 +605,7 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
   });
 
   const programsAfter =
-    program.ephemeral === true ? state.programs.filter((p) => p.id !== program.id) : state.programs;
+    program?.ephemeral === true ? state.programs.filter((p) => p.id !== program.id) : state.programs;
 
   return {
     ...state,
@@ -609,8 +613,8 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
     logs: [
       {
         id: uid("log"),
-        memberId: program.memberId,
-        programTitle: program.title,
+        memberId,
+        programTitle,
         date: formatDateTimeDdMmYyyy(new Date()),
         status: "Fullført",
         note: current.note,
