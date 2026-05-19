@@ -70,3 +70,20 @@ export function formatTrainerMemberActivitySubtitle(member: Member, allMembers: 
   if (d !== null) return `${d} dager siden siste økt`;
   return "Ingen registrerte økter";
 }
+
+export type MemberPriorityTone = "red" | "orange" | "green";
+
+/** Rød ≥10 dager inaktiv, oransje ≥5, ellers grønn. */
+export function memberPriorityTone(member: Member, allMembers: Member[], workoutLogs: WorkoutLog[]): MemberPriorityTone {
+  const inactiveDays = trainerInactiveDaysForFollowUp(member, allMembers, workoutLogs);
+  if (inactiveDays === null) return "green";
+  if (inactiveDays >= 10) return "red";
+  if (inactiveDays >= 5) return "orange";
+  return "green";
+}
+
+export function memberPriorityScore(tone: MemberPriorityTone): number {
+  if (tone === "red") return 3;
+  if (tone === "orange") return 2;
+  return 1;
+}

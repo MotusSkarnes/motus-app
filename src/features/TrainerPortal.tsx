@@ -58,8 +58,11 @@ import type {
 import {
   daysSinceLastCompletedWorkout,
   formatTrainerMemberActivitySubtitle,
+  memberPriorityScore,
+  memberPriorityTone,
   trainerActivitySortKey,
   trainerInactiveDaysForFollowUp,
+  type MemberPriorityTone,
 } from "../app/memberActivity";
 import { parseLogDateMs } from "../app/workoutLogDate";
 import {
@@ -698,7 +701,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   );
   const [isLookingUpEmail, setIsLookingUpEmail] = useState(false);
   const [memberSearch, setMemberSearch] = useState("");
-  const [memberFilter, setMemberFilter] = useState<"all" | "followUp" | "invited" | "notInvited">("all");
+  const [memberFilter, setMemberFilter] = useState<"all" | "followUp" | "invited" | "notInvited" | "noProgram">("all");
   const [customerTypeFilter, setCustomerTypeFilter] = useState<"all" | "PT-kunde" | "Premium-kunde" | "Medlem">("all");
   const [memberSort, setMemberSort] = useState<"activityRecent" | "nameAsc" | "nameDesc">("activityRecent");
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
@@ -835,9 +838,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   useToastStatus(memberLinkStatus, { title: "Medlemskobling", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   useToastStatus(exerciseFormStatus, { title: "Øvelse", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   useToastStatus(trainerWorkoutCommentStatus, { title: "Øktkommentar", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
-  useEffect(() => {
-    if (trainerTab === "statistics") setTrainerTab("dashboard");
-  }, [trainerTab, setTrainerTab]);
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
   const selectedMemberHasMessagingAccess = selectedMember
     ? selectedMember.customerType === "PT-kunde" || selectedMember.membershipType === "Premium"
@@ -999,9 +999,11 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         if (memberFilter === "followUp") return (trainerInactiveDaysForFollowUp(member, members, logs) ?? -1) >= 7;
         if (memberFilter === "invited") return Boolean(member.invitedAt?.trim());
         if (memberFilter === "notInvited") return !member.invitedAt?.trim();
+        if (memberFilter === "noProgram") return !programs.some((program) => program.memberId === member.id);
+        if (priorityFilter !== "all" && memberPriorityTone(member, members, logs) !== priorityFilter) return false;
         return true;
       });
-  }, [visibleMembers, memberSearch, memberFilter, customerTypeFilter, members, logs]);
+  }, [visibleMembers, memberSearch, memberFilter, customerTypeFilter, priorityFilter, members, logs, programs]);
   const memberSearchRecovery = useMemo(() => {
     const query = memberSearch.trim().toLowerCase();
     if (!query || query.length < 3) return null;
@@ -2790,6 +2792,46 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     setMemberSearch("");
     setMemberFilter("all");
     setCustomerTypeFilter("all");
+    setPriorityFilter("all");
+  }
+
+  function openCustomersWithListFilters(
+    options: {
+      memberFilter?: typeof memberFilter;
+      priorityFilter?: "all" | "red" | "orange" | "green";
+    } = {},
+  ) {
+    setTrainerTab("customers");
+    if (options.memberFilter) setMemberFilter(options.memberFilter);
+    if (options.priorityFilter) setPriorityFilter(options.priorityFilter);
+    setShowCustomerToolsMobile(true);
+  }
+
+  function openMemberWithNextAction(member: Member) {
+    const hasProgram = programs.some((program) => program.memberId === member.id);
+    const inactiveDays = trainerInactiveDaysForFollowUp(member, members, logs);
+    const needsMessage = inactiveDays !== null && inactiveDays >= 7;
+    const hasCompletedLogs = logs.some(
+      (log) => log.memberId === member.id && String(log.status ?? "").trim() === "Fullført",
+    );
+
+    selectMemberWithUnsavedChangesGuard(member.id, () => {
+      setTrainerTab("customers");
+      if (!hasProgram) {
+        setCustomerSubTab("programs");
+        return;
+      }
+      if (needsMessage) {
+        setCustomerSubTab("messages");
+        setTrainerMessage(`Hei ${member.name}! Hvordan går treningen denne uka?`);
+        return;
+      }
+      if (!hasCompletedLogs) {
+        setCustomerSubTab("workouts");
+        return;
+      }
+      setCustomerSubTab("workouts");
+    });
   }
 
   async function handleInviteTrainer() {
@@ -3610,12 +3652,10 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       };
     }
 
-    function getPriority(member: Member): { tone: "red" | "orange" | "green"; score: number; label: string } {
-      const inactiveDays = trainerInactiveDaysForFollowUp(member, members, logs);
-      if (inactiveDays === null) return { tone: "green", score: 1, label: "Grønn" };
-      if (inactiveDays >= 10) return { tone: "red", score: 3, label: "Rød" };
-      if (inactiveDays >= 5) return { tone: "orange", score: 2, label: "Oransje" };
-      return { tone: "green", score: 1, label: "Grønn" };
+    function getPriority(member: Member): { tone: MemberPriorityTone; score: number; label: string } {
+      const tone = memberPriorityTone(member, members, logs);
+      const label = tone === "red" ? "Rød" : tone === "orange" ? "Oransje" : "Grønn";
+      return { tone, score: memberPriorityScore(tone), label };
     }
 
     const mapped = activeMembers.map((member) => ({ member, priority: getPriority(member) }));
@@ -3871,11 +3911,30 @@ function programAuthorLabel(program: TrainingProgram): string | null {
           >
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dagens fokus</div>
             <div className="mt-1 text-base font-semibold text-slate-800">Drift og oppfølging</div>
-            <div className="mt-2">
-            {followUpCount > 0
-              ? `${followUpCount} kunder må følges opp i dag.`
-              : "Ingen kunder trenger oppfølging akkurat nå."}{" "}
-            {membersWithoutProgramCount > 0 ? `${membersWithoutProgramCount} kunder mangler program.` : "Alle aktive kunder har program."}
+            <div className="mt-2 flex flex-wrap items-center gap-x-1 gap-y-1">
+              {followUpCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => openCustomersWithListFilters({ memberFilter: "followUp" })}
+                  className="font-semibold text-rose-700 underline decoration-rose-300 underline-offset-2 hover:text-rose-800"
+                >
+                  {followUpCount} kunder må følges opp
+                </button>
+              ) : (
+                <span>Ingen kunder trenger oppfølging akkurat nå.</span>
+              )}
+              <span className="text-slate-500">·</span>
+              {membersWithoutProgramCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => openCustomersWithListFilters({ memberFilter: "noProgram" })}
+                  className="font-semibold text-amber-800 underline decoration-amber-300 underline-offset-2 hover:text-amber-900"
+                >
+                  {membersWithoutProgramCount} mangler program
+                </button>
+              ) : (
+                <span>Alle aktive kunder har program.</span>
+              )}
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -3994,6 +4053,13 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 >
                   Nullstill
                 </OutlineButton>
+                <OutlineButton
+                  onClick={() => openCustomersWithListFilters({ priorityFilter })}
+                  className="px-3 py-2 text-xs"
+                  disabled={priorityFilter === "all"}
+                >
+                  Vis i klientliste
+                </OutlineButton>
               </div>
             </div>
             <div className="space-y-2">
@@ -4065,6 +4131,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       <span className="rounded-full bg-rose-100 px-2 py-1 text-[11px] font-semibold text-rose-700">Prioritet {item.score}</span>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2">
+                      <GradientButton onClick={() => openMemberWithNextAction(item.member)} className="px-3 py-1.5 text-xs">
+                        Åpne kunde
+                      </GradientButton>
                       <OutlineButton onClick={() => handleQuickFollowUpMessage(item.member)} className="px-3 py-1.5 text-xs">
                         Send melding
                       </OutlineButton>
@@ -4076,55 +4145,6 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 ))}
               </div>
             )}
-          </div>
-        </Card>
-      ) : null}
-
-      {trainerTab === "statistics" ? (
-        <Card className="p-5 space-y-4">
-          <div className="font-semibold text-slate-800">Statistikk og prioritering</div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard
-              label="Kunder i listen"
-              value={String(visibleMembers.length)}
-              hint={showInactiveMembers ? "Aktive + inaktive" : "Kun aktive"}
-            />
-            <StatCard label="Må følges opp" value={String(followUpCount)} hint="7+ dager inaktiv" />
-            <StatCard label="Uten program" value={String(membersWithoutProgramCount)} hint="Mangler aktiv plan" />
-            <StatCard label="Filtrerte kunder" value={String(filteredMembers.length)} hint="Etter søk/filter" />
-          </div>
-          <div className="space-y-2">
-            {membersWithPriority.length === 0 ? (
-              <div className="rounded-xl border border-dashed bg-white p-4 text-sm text-slate-500">
-                Ingen kunder matcher valgt prioritet/type-sortering akkurat nå.
-              </div>
-            ) : null}
-            {membersWithPriority.map(({ member, priority }) => (
-              <div key={member.id} className="flex items-center justify-between gap-2 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="flex items-center gap-2">
-                  <div className="relative h-9 w-9 overflow-hidden rounded-full border bg-slate-100 text-slate-400" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
-                    <ClientAvatarFallback />
-                    {resolveMemberAvatarUrl(member) ? (
-                      <img
-                        src={resolveMemberAvatarUrl(member)}
-                        alt={member.name}
-                        className="relative z-10 h-full w-full object-cover"
-                        loading="lazy"
-                        decoding="async"
-                        onError={(event) => {
-                          event.currentTarget.style.display = "none";
-                        }}
-                      />
-                    ) : null}
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-slate-800">{member.name}</div>
-                    <div className="text-xs text-slate-500">{member.email} · {formatTrainerMemberActivitySubtitle(member, members, logs)}</div>
-                  </div>
-                </div>
-                {renderMemberPriorityMeta(member, priority)}
-              </div>
-            ))}
           </div>
         </Card>
       ) : null}
@@ -4185,9 +4205,15 @@ function programAuthorLabel(program: TrainingProgram): string | null {
             <div className="mt-4 space-y-2.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-xs text-slate-500">
-                  {sortedMembers.length} treff{memberFilter !== "all" || customerTypeFilter !== "all" ? " med aktivt filter" : ""}
+                  {sortedMembers.length} treff
+                  {memberFilter !== "all" || customerTypeFilter !== "all" || priorityFilter !== "all"
+                    ? " med aktivt filter"
+                    : ""}
                 </div>
-                {(memberSearch.trim() || memberFilter !== "all" || customerTypeFilter !== "all") ? (
+                {(memberSearch.trim() ||
+                  memberFilter !== "all" ||
+                  customerTypeFilter !== "all" ||
+                  priorityFilter !== "all") ? (
                   <OutlineButton onClick={resetMemberListControls} className="px-3 py-1.5 text-xs">
                     Nullstill sok/filter
                   </OutlineButton>
@@ -4201,12 +4227,25 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 />
                 <SelectBox
                   value={memberFilter}
-                  onChange={(value) => setMemberFilter(value as "all" | "followUp" | "invited" | "notInvited")}
+                  onChange={(value) =>
+                    setMemberFilter(value as "all" | "followUp" | "invited" | "notInvited" | "noProgram")
+                  }
                   options={[
                     { value: "all", label: "Alle kunder" },
                     { value: "followUp", label: "Må følges opp (7+ dager)" },
+                    { value: "noProgram", label: "Mangler program" },
                     { value: "invited", label: "Invitert" },
                     { value: "notInvited", label: "Ikke invitert" },
+                  ]}
+                />
+                <SelectBox
+                  value={priorityFilter}
+                  onChange={(value) => setPriorityFilter(value as "all" | "red" | "orange" | "green")}
+                  options={[
+                    { value: "all", label: "Alle prioriteter" },
+                    { value: "red", label: "Rød prioritet (10+ dager)" },
+                    { value: "orange", label: "Oransje (5+ dager)" },
+                    { value: "green", label: "Grønn" },
                   ]}
                 />
                 <SelectBox
@@ -4249,6 +4288,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                     const daysSinceWorkout = daysSinceLastCompletedWorkout(member, members, logs);
                     const needsFollowUp = daysSinceWorkout !== null && daysSinceWorkout >= 7;
                     const hasProgram = programs.some((program) => program.memberId === member.id);
+                    const priorityTone = memberPriorityTone(member, members, logs);
                     const activityLabel =
                       daysSinceWorkout !== null
                         ? daysSinceWorkout === 0
@@ -4284,6 +4324,13 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5">
+                              {priorityTone === "red" || priorityTone === "orange" ? (
+                                <span
+                                  className={`h-2 w-2 shrink-0 rounded-full ${priorityTone === "red" ? "bg-rose-500" : "bg-amber-500"}`}
+                                  title={priorityTone === "red" ? "Rød prioritet" : "Oransje prioritet"}
+                                  aria-hidden
+                                />
+                              ) : null}
                               <div className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-slate-900">
                                 {member.name}
                               </div>
