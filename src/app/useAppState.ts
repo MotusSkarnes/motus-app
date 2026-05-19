@@ -29,6 +29,14 @@ import {
   stripDemoSeedCatalog,
 } from "./memberLocalCatalog";
 import { pickBestPersonalGoals } from "./memberProfileGoals";
+import {
+  clearPausedWorkoutForProgram,
+  discardPausedWorkoutDraftForMember,
+  dismissWorkoutModeInState,
+  persistPausedWorkoutFromState,
+  resumePausedWorkoutInState,
+} from "./pausedWorkoutSession";
+import { getPausedWorkoutById, purgeExpiredPausedWorkouts } from "./pausedWorkoutStorage";
 import { notifyInspirationItemsChanged, saveInspirationItemsToStorage } from "./inspirationStorage";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { syncMemberLocalCatalogToSupabase } from "../services/supabaseRepository";
@@ -532,6 +540,19 @@ export function useAppState() {
   useEffect(() => {
     saveState(appState);
   }, [appState]);
+
+  useEffect(() => {
+    purgeExpiredPausedWorkouts();
+  }, []);
+
+  useEffect(() => {
+    if (appState.currentUser?.role !== "member") return;
+    if (!appState.workoutMode) return;
+    const timer = window.setTimeout(() => {
+      persistPausedWorkoutFromState(appState);
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [appState.workoutMode, appState.currentUser?.role, appState.programs]);
 
   useEffect(() => {
     if (passwordRecoveryCooldownSeconds <= 0) return;
@@ -1534,7 +1555,11 @@ export function useAppState() {
   }
 
   function startWorkoutMode(programId: string, options?: StartWorkoutModeOptions) {
-    setAppState((prev) => repository.startWorkoutMode(prev, programId, options));
+    setAppState((prev) => {
+      const memberId = prev.workoutMode?.memberId?.trim() || prev.memberViewId?.trim() || prev.currentUser?.memberId?.trim() || "";
+      if (memberId) clearPausedWorkoutForProgram(memberId, programId);
+      return repository.startWorkoutMode(prev, programId, options);
+    });
   }
 
   function startCustomWorkout(input: StartCustomWorkoutInput, options?: StartWorkoutModeOptions) {
@@ -1590,11 +1615,46 @@ export function useAppState() {
   }
 
   function cancelWorkoutMode() {
-    setAppState((prev) => repository.cancelWorkoutMode(prev));
+    setAppState((prev) => {
+      const memberId = prev.workoutMode?.memberId?.trim() || prev.memberViewId?.trim() || prev.currentUser?.memberId?.trim() || "";
+      const programId = prev.workoutMode?.programId ?? "";
+      if (memberId && programId) clearPausedWorkoutForProgram(memberId, programId);
+      return repository.cancelWorkoutMode(prev);
+    });
+  }
+
+  function dismissWorkoutMode() {
+    setAppState((prev) => dismissWorkoutModeInState(prev));
+  }
+
+  function resumePausedWorkout(draftId: string) {
+    if (!draftId.trim()) return;
+    setAppState((prev) => resumePausedWorkoutInState(prev, draftId));
+  }
+
+  function discardPausedWorkoutDraft(memberId: string, draftId: string) {
+    if (!memberId.trim() || !draftId.trim()) return;
+    const draft = getPausedWorkoutById(memberId, draftId);
+    discardPausedWorkoutDraftForMember(memberId, draftId);
+    if (!draft) return;
+    setAppState((prev) => {
+      if (prev.workoutMode?.programId === draft.programId) {
+        const program = prev.programs.find((item) => item.id === draft.programId);
+        const programs = program?.ephemeral ? prev.programs.filter((item) => item.id !== program.id) : prev.programs;
+        return { ...prev, programs, workoutMode: null };
+      }
+      return prev;
+    });
   }
 
   function finishWorkoutMode(input?: FinishWorkoutInput) {
-    setAppState((prev) => repository.finishWorkoutMode(prev, input));
+    setAppState((prev) => {
+      const memberId = prev.workoutMode?.memberId?.trim() || prev.memberViewId?.trim() || prev.currentUser?.memberId?.trim() || "";
+      const programId = prev.workoutMode?.programId ?? "";
+      const next = repository.finishWorkoutMode(prev, input);
+      if (memberId && programId) clearPausedWorkoutForProgram(memberId, programId);
+      return next;
+    });
     setMemberTab("progress");
   }
 
@@ -1842,6 +1902,9 @@ export function useAppState() {
     removeGroupWorkoutLog,
     removeCompletedPlanEntryLog,
     cancelWorkoutMode,
+    dismissWorkoutMode,
+    resumePausedWorkout,
+    discardPausedWorkoutDraft,
     dismissWorkoutCelebration,
     sendMemberMessage,
     inviteMember,

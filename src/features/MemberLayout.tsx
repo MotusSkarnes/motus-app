@@ -85,6 +85,9 @@ type MemberLayoutProps = {
   removeGroupWorkoutLog: ComponentProps<typeof MemberPortal>["removeGroupWorkoutLog"];
   removeCompletedPlanEntryLog: ComponentProps<typeof MemberPortal>["removeCompletedPlanEntryLog"];
   cancelWorkoutMode: ComponentProps<typeof MemberPortal>["cancelWorkoutMode"];
+  dismissWorkoutMode: ComponentProps<typeof MemberPortal>["dismissWorkoutMode"];
+  resumePausedWorkout: ComponentProps<typeof MemberPortal>["resumePausedWorkout"];
+  discardPausedWorkoutDraft: ComponentProps<typeof MemberPortal>["discardPausedWorkoutDraft"];
   dismissWorkoutCelebration: ComponentProps<typeof MemberPortal>["dismissWorkoutCelebration"];
   memberNotificationsOpen: boolean;
   memberUnreadCount: number;
@@ -132,6 +135,9 @@ export function MemberLayout({
   removeGroupWorkoutLog,
   removeCompletedPlanEntryLog,
   cancelWorkoutMode,
+  dismissWorkoutMode,
+  resumePausedWorkout,
+  discardPausedWorkoutDraft,
   dismissWorkoutCelebration,
   memberNotificationsOpen,
   memberUnreadCount,
@@ -345,6 +351,9 @@ export function MemberLayout({
     removeGroupWorkoutLog,
     removeCompletedPlanEntryLog,
     cancelWorkoutMode,
+    dismissWorkoutMode,
+    resumePausedWorkout,
+    discardPausedWorkoutDraft,
     workoutCelebration: appState.workoutCelebration,
     dismissWorkoutCelebration,
     memberFocusWorkoutLogId,

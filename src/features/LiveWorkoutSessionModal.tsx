@@ -40,6 +40,8 @@ export type LiveWorkoutSessionModalProps = {
   updateWorkoutExerciseNote: (programExerciseId: string, note: string) => void;
   finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
   cancelWorkoutMode: () => void;
+  /** Lagrer utkast og lukker økt (medlem). Fallback: cancelWorkoutMode. */
+  onDismissWorkout?: () => void;
   /** Vises som undertittel ved variant trainer */
   trainerSubtitle?: string;
 };
@@ -66,9 +68,11 @@ export function LiveWorkoutSessionModal({
   updateWorkoutExerciseNote,
   finishWorkoutMode,
   cancelWorkoutMode,
+  onDismissWorkout,
   trainerSubtitle,
   onWorkoutExerciseIndexChange,
 }: LiveWorkoutSessionModalProps) {
+  const leaveWorkout = onDismissWorkout ?? cancelWorkoutMode;
   const [showReplacementOptions, setShowReplacementOptions] = useState(false);
   const [showWorkoutReflection, setShowWorkoutReflection] = useState(false);
   const [isSavingWorkout, setIsSavingWorkout] = useState(false);
@@ -293,9 +297,9 @@ export function LiveWorkoutSessionModal({
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
-              onClick={cancelWorkoutMode}
+              onClick={leaveWorkout}
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100"
-              aria-label="Avslutt øktmodus"
+              aria-label="Pause økt"
             >
               <ArrowLeft className="h-5 w-5" aria-hidden />
             </button>
@@ -305,11 +309,11 @@ export function LiveWorkoutSessionModal({
             </div>
             <button
               type="button"
-              onClick={cancelWorkoutMode}
+              onClick={leaveWorkout}
               className="rounded-full px-3 py-1.5 text-xs font-semibold text-white shadow-sm"
               style={{ background: MOTUS.pink }}
             >
-              Avslutt
+              {onDismissWorkout ? "Pause" : "Avslutt"}
             </button>
           </div>
           <div className="mt-3 h-1 overflow-hidden rounded-full bg-slate-100">

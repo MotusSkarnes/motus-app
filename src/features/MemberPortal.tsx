@@ -35,6 +35,12 @@ import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { hasSubstantiveOnboardingAnswers, parsePersonalGoalsJson, readProfileExtensions } from "../app/memberOnboarding";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
 import { motusShareStatusMessage, sharePersonalRecordCard } from "../app/motusShareCard";
+import {
+  formatPausedWorkoutExpiry,
+  listPausedWorkouts,
+  pausedWorkoutProgress,
+  purgeExpiredPausedWorkouts,
+} from "../app/pausedWorkoutStorage";
 import { printHtmlDocument } from "../app/printHtmlDocument";
 import { buildWorkoutResultGroups } from "../app/programBlocks";
 import {
@@ -210,6 +216,9 @@ type MemberPortalProps = {
   removeGroupWorkoutLog: (input: { memberId: string; className: string; date?: string }) => void;
   removeCompletedPlanEntryLog: (input: { memberId: string; programTitle: string; date?: string }) => void;
   cancelWorkoutMode: () => void;
+  dismissWorkoutMode: () => void;
+  resumePausedWorkout: (draftId: string) => void;
+  discardPausedWorkoutDraft: (memberId: string, draftId: string) => void;
   workoutCelebration: WorkoutCelebration | null;
   dismissWorkoutCelebration: () => void;
   memberFocusWorkoutLogId?: string | null;
@@ -872,6 +881,9 @@ export function MemberPortal(props: MemberPortalProps) {
     removeGroupWorkoutLog,
     removeCompletedPlanEntryLog,
     cancelWorkoutMode,
+    dismissWorkoutMode,
+    resumePausedWorkout,
+    discardPausedWorkoutDraft,
     workoutCelebration,
     dismissWorkoutCelebration,
     memberFocusWorkoutLogId = null,
@@ -917,6 +929,7 @@ export function MemberPortal(props: MemberPortalProps) {
   >([]);
   const [memberSavedProgramTitle, setMemberSavedProgramTitle] = useState("Mitt treningsprogram");
   const [customProgramSaveStatus, setCustomProgramSaveStatus] = useState<string | null>(null);
+  const [pausedWorkoutsTick, setPausedWorkoutsTick] = useState(0);
   const [profileSaveInfo, setProfileSaveInfo] = useState<string | null>(null);
   const [memberNameDraft, setMemberNameDraft] = useState("");
   const [memberEmailDraft, setMemberEmailDraft] = useState("");
@@ -1308,6 +1321,26 @@ export function MemberPortal(props: MemberPortalProps) {
     return Array.from(bySignature.values()).sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
   }, [messages, relatedMemberIdSet, members, editableMember?.email, editableMember?.name, normalizedCurrentUserEmail, currentUserRole]);
   const activeWorkoutProgram = workoutMode ? memberPrograms.find((program) => program.id === workoutMode.programId) ?? null : null;
+
+  useEffect(() => {
+    purgeExpiredPausedWorkouts();
+    const timer = window.setInterval(() => {
+      purgeExpiredPausedWorkouts();
+      setPausedWorkoutsTick((value) => value + 1);
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const pausedWorkouts = useMemo(() => {
+    void pausedWorkoutsTick;
+    if (!activeMemberId) return [];
+    return listPausedWorkouts(activeMemberId).filter((draft) => {
+      if (!workoutMode) return true;
+      const sameProgram = workoutMode.programId === draft.programId;
+      const sameMember = printField(workoutMode.memberId) === activeMemberId || !printField(workoutMode.memberId);
+      return !(sameProgram && sameMember);
+    });
+  }, [activeMemberId, workoutMode, pausedWorkoutsTick]);
   const nextProgram = memberProgramsInActiveLibrary[0] ?? null;
   useEffect(() => {
     if (!isMemberLimited) return;
@@ -4475,6 +4508,67 @@ export function MemberPortal(props: MemberPortalProps) {
               <Card className="p-4 sm:p-5">
                 <h3 className="text-sm font-semibold text-slate-900">Mine treningsprogram</h3>
                 <p className="mt-0.5 text-xs text-slate-500">Enkel oversikt over programmene dine.</p>
+                {pausedWorkouts.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    <div className="rounded-lg border border-teal-200 bg-teal-50/80 px-3 py-2">
+                      <div className="text-xs font-semibold text-teal-900">Påbegynte økter</div>
+                      <p className="mt-0.5 text-[11px] text-teal-800/90">Lagres i 4 timer. Fortsett der du slapp, eller slett.</p>
+                    </div>
+                    {pausedWorkouts.map((draft) => {
+                      const progress = pausedWorkoutProgress(draft.workoutMode);
+                      return (
+                        <div
+                          key={draft.id}
+                          className="rounded-lg border bg-white p-2.5"
+                          style={{ borderColor: "rgba(20,184,166,0.35)" }}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-slate-900">{draft.programTitle}</div>
+                              <div className="mt-0.5 text-[11px] text-slate-600">
+                                {progress.completed} av {progress.total} sett fullført
+                              </div>
+                              <div className="mt-0.5 text-[10px] text-slate-400">{formatPausedWorkoutExpiry(draft.expiresAt)}</div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1">
+                              <GradientButton
+                                className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
+                                onClick={() => {
+                                  resumePausedWorkout(draft.id);
+                                  setPausedWorkoutsTick((value) => value + 1);
+                                }}
+                              >
+                                <span className="inline-flex items-center gap-1">
+                                  <Play className="h-3 w-3" />
+                                  Fortsett
+                                </span>
+                              </GradientButton>
+                              <OutlineButton
+                                className="!min-h-7 !px-1.5 !py-1"
+                                onClick={() => {
+                                  setConfirmDialog({
+                                    title: "Slette påbegynt økt?",
+                                    message: "Fremgangen i denne økten fjernes permanent.",
+                                    confirmLabel: "Slett",
+                                    tone: "danger",
+                                    onConfirm: () => {
+                                      discardPausedWorkoutDraft(activeMemberId, draft.id);
+                                      setPausedWorkoutsTick((value) => value + 1);
+                                    },
+                                  });
+                                }}
+                                aria-label="Slett påbegynt økt"
+                                title="Slett"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-slate-500" />
+                              </OutlineButton>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
                 <div className="mt-3 space-y-2">
                   {memberAssignedPrograms.length === 0 ? (
                     <EmptyState
@@ -5557,6 +5651,10 @@ export function MemberPortal(props: MemberPortalProps) {
                 updateWorkoutExerciseNote={updateWorkoutExerciseNote}
                 finishWorkoutMode={finishWorkoutMode}
                 cancelWorkoutMode={cancelWorkoutMode}
+                onDismissWorkout={() => {
+                  dismissWorkoutMode();
+                  setPausedWorkoutsTick((value) => value + 1);
+                }}
               />
             </>
           ) : null}
