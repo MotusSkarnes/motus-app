@@ -8,11 +8,14 @@ import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhon
 import { uid } from "../app/storage";
 import {
   categoryForSubTab,
+  defaultCategoryForExerciseBankTab,
   emptyExerciseBankMessage,
   emptyTemplatesMessage,
+  EXERCISE_BANK_TAB_OPTIONS,
   EXERCISE_CATEGORY_OPTIONS,
   exerciseBankDescription,
   exerciseBankTitle,
+  exerciseMatchesExerciseBankTab,
   exerciseMatchesSubTab,
   exerciseCategoryAccentColor,
   isHoldBasedExerciseCategory,
@@ -21,6 +24,7 @@ import {
   savedTemplatesTitle,
   subTabForExerciseCategory,
   TRAINING_SUB_TAB_OPTIONS,
+  type ExerciseBankSubTab,
   type TrainingSubTab,
 } from "../app/exerciseCategories";
 import {
@@ -632,7 +636,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const [trainerChatSendStatus, setTrainerChatSendStatus] = useState<string | null>(null);
   const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
   const [programsSubTab, setProgramsSubTab] = useState<TrainingSubTab>("strength");
-  const [exerciseBankSubTab, setExerciseBankSubTab] = useState<TrainingSubTab>("strength");
+  const [exerciseBankSubTab, setExerciseBankSubTab] = useState<ExerciseBankSubTab>("all");
   const [customerProgramBuilderFocus, setCustomerProgramBuilderFocus] = useState<"training" | "period">("training");
   const [selectedWorkoutLogId, setSelectedWorkoutLogId] = useState<string | null>(null);
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
@@ -1423,7 +1427,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const filtered = exercises.filter((exercise) => {
       const categoryOk =
         trainerTab === "exerciseBank"
-          ? exerciseMatchesSubTab(exercise.category, exerciseBankSubTab)
+          ? exerciseMatchesExerciseBankTab(exercise.category, exerciseBankSubTab)
           : exerciseCategoryFilter === "all" || exercise.category === exerciseCategoryFilter;
       if (!categoryOk) return false;
       if (!query) return true;
@@ -1598,6 +1602,10 @@ function programAuthorLabel(program: TrainingProgram): string | null {
 
   useEffect(() => {
     if (trainerTab !== "exerciseBank") return;
+    if (exerciseBankSubTab === "all") {
+      setExerciseCategoryFilter("all");
+      return;
+    }
     setExerciseCategoryFilter(categoryForSubTab(exerciseBankSubTab));
   }, [exerciseBankSubTab, trainerTab]);
 
@@ -3297,7 +3305,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   function resetExerciseForm() {
     setEditingExerciseId(null);
     setExerciseFormName("");
-    setExerciseFormCategory(categoryForSubTab(exerciseBankSubTab));
+    setExerciseFormCategory(defaultCategoryForExerciseBankTab(exerciseBankSubTab));
     setExerciseFormGroup("");
     setExerciseFormEquipment("");
     setExerciseFormLevel("Nybegynner");
@@ -6194,9 +6202,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       {trainerTab === "exerciseBank" ? (
         <div className="grid gap-4">
           <div className="flex flex-wrap gap-2">
-            {TRAINING_SUB_TAB_OPTIONS.map((tab) => (
+            {EXERCISE_BANK_TAB_OPTIONS.map((tab) => (
               <PillButton key={tab.id} active={exerciseBankSubTab === tab.id} onClick={() => setExerciseBankSubTab(tab.id)}>
-                {tab.exerciseBankLabel}
+                {tab.label}
               </PillButton>
             ))}
           </div>

@@ -1,6 +1,6 @@
 import type { Exercise, TrainingProgram } from "./types";
 import {
-  exerciseMatchesSubTab,
+  exerciseMatchesExerciseBankTab,
   subTabForExerciseCategory,
   type ExerciseBankSubTab,
   type ProgramsSubTab,
@@ -74,7 +74,7 @@ export function filterTemplateProgramsBySubTab(
   return programs.filter((program) => trainingProgramMatchesSubTab(program, subTab, exerciseCategoryById));
 }
 
-/** @deprecated Bruk exerciseMatchesSubTab */
+/** @deprecated Bruk exerciseMatchesExerciseBankTab */
 export function exerciseMatchesBankSubTab(category: Exercise["category"], subTab: ExerciseBankSubTab): boolean {
-  return exerciseMatchesSubTab(category, subTab);
+  return exerciseMatchesExerciseBankTab(category, subTab);
 }

@@ -3,13 +3,18 @@ import type { Exercise } from "./types";
 export type TrainingSubTab = "strength" | "conditioning" | "mobility" | "rehab";
 
 export type ProgramsSubTab = TrainingSubTab;
-export type ExerciseBankSubTab = TrainingSubTab;
+export type ExerciseBankSubTab = TrainingSubTab | "all";
 
 export const TRAINING_SUB_TAB_OPTIONS: Array<{ id: TrainingSubTab; programsLabel: string; exerciseBankLabel: string }> = [
   { id: "strength", programsLabel: "Styrkeøkter", exerciseBankLabel: "Styrkeøvelser" },
   { id: "conditioning", programsLabel: "Kondisjon", exerciseBankLabel: "Kondisjon" },
   { id: "mobility", programsLabel: "Mobilitet", exerciseBankLabel: "Mobilitet" },
   { id: "rehab", programsLabel: "Rehab", exerciseBankLabel: "Rehab" },
+];
+
+export const EXERCISE_BANK_TAB_OPTIONS: Array<{ id: ExerciseBankSubTab; label: string }> = [
+  { id: "all", label: "Alle" },
+  ...TRAINING_SUB_TAB_OPTIONS.map((tab) => ({ id: tab.id, label: tab.exerciseBankLabel })),
 ];
 
 export const EXERCISE_CATEGORY_OPTIONS: Exercise["category"][] = [
@@ -54,6 +59,16 @@ export function subTabForExerciseCategory(category: Exercise["category"]): Train
 
 export function exerciseMatchesSubTab(category: Exercise["category"], subTab: TrainingSubTab): boolean {
   return subTabForExerciseCategory(category) === subTab;
+}
+
+export function exerciseMatchesExerciseBankTab(category: Exercise["category"], subTab: ExerciseBankSubTab): boolean {
+  if (subTab === "all") return true;
+  return exerciseMatchesSubTab(category, subTab);
+}
+
+export function defaultCategoryForExerciseBankTab(subTab: ExerciseBankSubTab): Exercise["category"] {
+  if (subTab === "all") return "Styrke";
+  return categoryForSubTab(subTab);
 }
 
 /** Hold/sek-felt i programbygger (uttøyning, mobilitet, rehab). */
@@ -124,7 +139,8 @@ export function emptyTemplatesMessage(subTab: TrainingSubTab): string {
   }
 }
 
-export function exerciseBankTitle(subTab: TrainingSubTab): string {
+export function exerciseBankTitle(subTab: ExerciseBankSubTab): string {
+  if (subTab === "all") return "Alle øvelser";
   switch (subTab) {
     case "conditioning":
       return "Kondisjonsøvelser";
@@ -137,7 +153,8 @@ export function exerciseBankTitle(subTab: TrainingSubTab): string {
   }
 }
 
-export function exerciseBankDescription(subTab: TrainingSubTab): string {
+export function exerciseBankDescription(subTab: ExerciseBankSubTab): string {
+  if (subTab === "all") return "Søk og rediger hele øvelsesbanken på tvers av styrke, kondisjon, mobilitet og rehab.";
   switch (subTab) {
     case "conditioning":
       return "Opprett og rediger kondisjonsøvelser til intervall og utholdenhet.";
@@ -150,7 +167,8 @@ export function exerciseBankDescription(subTab: TrainingSubTab): string {
   }
 }
 
-export function emptyExerciseBankMessage(subTab: TrainingSubTab): string {
+export function emptyExerciseBankMessage(subTab: ExerciseBankSubTab): string {
+  if (subTab === "all") return "Ingen øvelser i banken ennå";
   switch (subTab) {
     case "conditioning":
       return "Ingen kondisjonsøvelser ennå";

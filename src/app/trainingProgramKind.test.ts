@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { exerciseMatchesSubTab } from "./exerciseCategories";
+import { exerciseMatchesExerciseBankTab, exerciseMatchesSubTab } from "./exerciseCategories";
 import {
   buildExerciseCategoryById,
   filterTemplateProgramsBySubTab,
@@ -68,5 +68,8 @@ describe("trainingProgramKind", () => {
     expect(exerciseMatchesSubTab("Mobilitet", "mobility")).toBe(true);
     expect(exerciseMatchesSubTab("Rehab", "rehab")).toBe(true);
     expect(exerciseMatchesSubTab("Uttøyning", "strength")).toBe(false);
+    expect(exerciseMatchesExerciseBankTab("Styrke", "all")).toBe(true);
+    expect(exerciseMatchesExerciseBankTab("Rehab", "all")).toBe(true);
+    expect(exerciseMatchesExerciseBankTab("Styrke", "conditioning")).toBe(false);
   });
 });

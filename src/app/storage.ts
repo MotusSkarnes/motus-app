@@ -7,22 +7,22 @@ export function uid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-function useSupabaseProductionBootstrap(): boolean {
+function shouldUseSupabaseProductionBootstrap(): boolean {
   if (!isSupabaseConfigured) return false;
   return !(import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_MODE === "true");
 }
 
 export function loadState(): AppState {
   if (typeof window === "undefined") {
-    return useSupabaseProductionBootstrap() ? getSupabaseBootstrapState() : getDefaultState();
+    return shouldUseSupabaseProductionBootstrap() ? getSupabaseBootstrapState() : getDefaultState();
   }
   try {
-    if (useSupabaseProductionBootstrap()) {
+    if (shouldUseSupabaseProductionBootstrap()) {
       migrateCatalogSchemaVersion();
     }
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      return useSupabaseProductionBootstrap() ? getSupabaseBootstrapState() : getDefaultState();
+      return shouldUseSupabaseProductionBootstrap() ? getSupabaseBootstrapState() : getDefaultState();
     }
     const parsed = JSON.parse(raw) as Partial<AppState>;
     const defaults = getDefaultState();
