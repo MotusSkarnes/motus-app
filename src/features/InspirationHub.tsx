@@ -1,5 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Bold, ChevronLeft, ChevronRight, ClipboardList, ImagePlus, Italic, Lightbulb, Newspaper, Pencil, Plus, Soup, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Bold,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  ImagePlus,
+  Italic,
+  Lightbulb,
+  Newspaper,
+  Pencil,
+  Plus,
+  Smartphone,
+  Soup,
+  Trash2,
+} from "lucide-react";
 import { MOTUS } from "../app/data";
 import { EXERCISE_CATEGORY_OPTIONS, exerciseCategoryAccentColor, isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { EXERCISE_IMAGE_THUMB_CLASS } from "../app/exerciseIllustrations/constants";
@@ -25,7 +40,8 @@ import { EmptyState, GradientButton, OutlineButton, SelectBox, TextArea, TextInp
 import type { Exercise, PeriodSchedulePlan, ProgramExercise, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "../app/types";
 import type { SaveProgramInput } from "../services/appRepository";
 
-type InspirationCategory = "recipes" | "programs" | "tips" | "news";
+type InspirationCategory = "recipes" | "programs" | "tips" | "news" | "appGuide";
+type InspoSubView = "overview" | "appGuide";
 type InspirationKind = "article" | "program" | "periodPlan";
 type InspirationBodyStyle = "normal" | "bold" | "italic";
 type ProgramTemplateInput = Omit<SaveProgramInput, "memberId">;
@@ -53,7 +69,28 @@ const CATEGORY_META: Record<InspirationCategory, { label: string; plural: string
   programs: { label: "Trening", plural: "Treningsprogram", icon: ClipboardList },
   tips: { label: "Tips", plural: "Råd og tips", icon: Lightbulb },
   news: { label: "Info", plural: "Info fra senteret", icon: Newspaper },
+  appGuide: { label: "App-guide", plural: "App-guide", icon: Smartphone },
 };
+
+const APP_GUIDE_TAG = "app-guide";
+
+function isAppGuideItem(item: Pick<InspirationItem, "category" | "tag">): boolean {
+  if (item.category === "appGuide") return true;
+  return item.tag.trim().toLowerCase() === APP_GUIDE_TAG;
+}
+
+function normalizeInspirationItem(item: InspirationItem): InspirationItem {
+  if (!isAppGuideItem(item)) return item;
+  return {
+    ...item,
+    category: "appGuide",
+    tag: item.tag.trim() || "App-guide",
+  };
+}
+
+function normalizeInspirationItems(items: InspirationItem[]): InspirationItem[] {
+  return items.map(normalizeInspirationItem);
+}
 
 /** Vertikal rekkefølge på inspo-feed (øverst → nederst). */
 /** Maks lengde for undertekst på inspo-kort (ca. 2 linjer i karusellen). */
@@ -67,11 +104,15 @@ const INSPO_FEED_CARD_DESCRIPTION_CLASS =
   "line-clamp-2 min-h-[2.25rem] max-h-[2.25rem] overflow-hidden text-xs leading-[1.125rem] text-slate-500";
 const INSPO_FEED_CARD_ACTION_CLASS = "!min-h-8 !px-2 !py-1.5 !text-[11px] !leading-tight";
 
-const INSPIRATION_FEED_SECTIONS: readonly { category: InspirationCategory; title: string }[] = [
+const INSPIRATION_OVERVIEW_SECTIONS: readonly { category: InspirationCategory; title: string }[] = [
   { category: "news", title: "Info fra senteret" },
   { category: "programs", title: "Treningsprogram" },
   { category: "recipes", title: "Oppskrifter" },
   { category: "tips", title: "Råd og tips" },
+];
+
+const INSPIRATION_APP_GUIDE_SECTION: readonly { category: InspirationCategory; title: string }[] = [
+  { category: "appGuide", title: "App-guide" },
 ];
 
 const BODY_STYLE_OPTIONS: Array<{ value: InspirationBodyStyle; label: string; className: string }> = [
@@ -333,7 +374,7 @@ const DEFAULT_ITEMS: InspirationItem[] = [
   },
   {
     id: "default-tip-2",
-    category: "tips",
+    category: "appGuide",
     kind: "article",
     title: "Slik bruker du øktmodus",
     description: "Start program, logg sett underveis og fullfør økten.",
@@ -344,7 +385,7 @@ const DEFAULT_ITEMS: InspirationItem[] = [
   },
   {
     id: "default-tip-3",
-    category: "tips",
+    category: "appGuide",
     kind: "article",
     title: "Lag egne treningsprogram",
     description: "Bygg en økt under Trening og lagre den i biblioteket.",
@@ -355,7 +396,7 @@ const DEFAULT_ITEMS: InspirationItem[] = [
   },
   {
     id: "default-tip-4",
-    category: "tips",
+    category: "appGuide",
     kind: "article",
     title: "Endre øvelser i program og under økt",
     description: "Bytt under trening, eller lag et nytt program med andre øvelser.",
@@ -366,7 +407,7 @@ const DEFAULT_ITEMS: InspirationItem[] = [
   },
   {
     id: "default-tip-5",
-    category: "tips",
+    category: "appGuide",
     kind: "article",
     title: "Intervalløkter med nedtelling",
     description: "Kondisjonsprogram med automatisk steg-for-steg-timer.",
@@ -377,7 +418,7 @@ const DEFAULT_ITEMS: InspirationItem[] = [
   },
   {
     id: "default-tip-6",
-    category: "tips",
+    category: "appGuide",
     kind: "article",
     title: "Legg Motus på hjemskjermen",
     description: "Raskere tilgang på iPhone, iPad og Android.",
@@ -388,7 +429,7 @@ const DEFAULT_ITEMS: InspirationItem[] = [
   },
   {
     id: "default-tip-7",
-    category: "tips",
+    category: "appGuide",
     kind: "article",
     title: "Organiser programbiblioteket",
     description: "Skjul, arkiver eller slett – hold oversikten ryddig.",
@@ -399,7 +440,7 @@ const DEFAULT_ITEMS: InspirationItem[] = [
   },
   {
     id: "default-tip-8",
-    category: "tips",
+    category: "appGuide",
     kind: "article",
     title: "Følg fremgang og personlige rekorder",
     description: "Historikk, streak og feiring når du slår rekorden din.",
@@ -410,11 +451,11 @@ const DEFAULT_ITEMS: InspirationItem[] = [
   },
   {
     id: "default-tip-9",
-    category: "tips",
+    category: "appGuide",
     kind: "article",
     title: "Inspirasjon, oppskrifter og meldinger",
     description: "Finn tips, nyheter og svar fra trener på ett sted.",
-    body: "**Inspirasjon-fanen** samler:\n- **Råd og tips** – blant annet guider om hvordan du bruker appen (som denne).\n- **Oppskrifter og artikler** fra senteret eller trener.\n- **Program og ukeplaner** du kan legge til biblioteket (hvis trener har publisert dem).\n\nTrykk på et kort for å lese hele teksten. Nye innlegg kan også dukke opp som **varsler** – da kan du hoppe rett til innlegget.\n\nHar du spørsmål om program eller skader? Bruk **melding** til trener i stedet for å gjette – da får du svar tilpasset deg.",
+    body: "**Inspirasjon-fanen** har to deler:\n- **Inspirasjon** – oppskrifter, info fra senteret, treningsprogram og råd og tips.\n- **App-guide** – steg-for-steg om hvordan du bruker Motus (øktmodus, egne programmer, hjemskjerm osv.).\n\nBytt mellom dem med knappene øverst under overskriften. Trykk på et kort for å lese hele teksten. Nye innlegg kan også dukke opp som **varsler** – da hopper du rett til innlegget.\n\nHar du spørsmål om program eller skader? Bruk **melding** til trener i stedet for å gjette – da får du svar tilpasset deg.",
     tag: "App-guide",
     author: "Motus",
     createdAt: "2026-05-16",
@@ -506,12 +547,11 @@ function resolveInspirationHubItems(fetched: InspirationItem[] | null): Inspirat
         ? (loadInspirationItemsFromLocalStorage<InspirationItem>() ?? [])
         : [];
   const withoutSuppressed = filterSuppressedInspirationItems(base);
-  if (!withoutSuppressed.length && typeof window === "undefined") return DEFAULT_ITEMS;
+  if (!withoutSuppressed.length && typeof window === "undefined") return normalizeInspirationItems(DEFAULT_ITEMS);
   if (!withoutSuppressed.length) {
-    const defaults = filterSuppressedInspirationItems(DEFAULT_ITEMS);
-    return defaults;
+    return normalizeInspirationItems(filterSuppressedInspirationItems(DEFAULT_ITEMS));
   }
-  return mergeDefaultInspirationItems(withoutSuppressed, DEFAULT_ITEMS);
+  return normalizeInspirationItems(mergeDefaultInspirationItems(withoutSuppressed, DEFAULT_ITEMS));
 }
 
 function loadInspirationItems(): InspirationItem[] {
@@ -555,6 +595,7 @@ export function InspirationHub({
   onFocusItemHandled,
 }: InspirationHubProps) {
   const [items, setItems] = useState<InspirationItem[]>(() => loadInspirationItems());
+  const [inspoSubView, setInspoSubView] = useState<InspoSubView>("overview");
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [actionStatus, setActionStatus] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -580,6 +621,7 @@ export function InspirationHub({
     programs: null,
     recipes: null,
     tips: null,
+    appGuide: null,
   });
   const usesExerciseBank = exerciseBank.length > 0;
   const exercisesById = useMemo(() => new Map(exerciseBank.map((exercise) => [exercise.id, exercise])), [exerciseBank]);
@@ -678,23 +720,25 @@ export function InspirationHub({
 
   useEffect(() => {
     if (!focusItemId?.trim()) return;
-    const match = items.some((item) => item.id === focusItemId);
+    const match = items.find((item) => item.id === focusItemId);
     if (!match) return;
+    if (isAppGuideItem(match)) setInspoSubView("appGuide");
     setExpandedItemId(focusItemId);
     onFocusItemHandled?.();
   }, [focusItemId, items, onFocusItemHandled]);
 
   async function commitItems(next: InspirationItem[]): Promise<{ ok: true; message: string } | { ok: false }> {
-    const result = await persistInspirationItems(next);
+    const normalized = normalizeInspirationItems(next);
+    const result = await persistInspirationItems(normalized);
     if (!result.ok) {
       setActionStatus(result.error);
       return { ok: false };
     }
     if (result.cloudSynced) {
       const snapshot = await pullInspirationFeedFromRemote();
-      setItems(resolveInspirationHubItems(snapshot?.items ?? next));
+      setItems(resolveInspirationHubItems(snapshot?.items ?? normalized));
     } else {
-      setItems(resolveInspirationHubItems(next));
+      setItems(resolveInspirationHubItems(normalized));
     }
     notifyInspirationItemsChanged();
     const message = result.warning
@@ -720,12 +764,17 @@ export function InspirationHub({
       programs: [],
       recipes: [],
       tips: [],
+      appGuide: [],
     };
     for (const item of sortedItems) {
-      grouped[item.category].push(item);
+      const normalized = normalizeInspirationItem(item);
+      grouped[normalized.category].push(normalized);
     }
     return grouped;
   }, [sortedItems]);
+
+  const activeFeedSections = inspoSubView === "appGuide" ? INSPIRATION_APP_GUIDE_SECTION : INSPIRATION_OVERVIEW_SECTIONS;
+  const appGuideCount = itemsByCategory.appGuide.length;
 
   const expandedItem = items.find((item) => item.id === expandedItemId) ?? null;
   const composerKind = resolveComposerKind(categoryDraft, kindDraft);
@@ -760,6 +809,11 @@ export function InspirationHub({
 
   function closeDetailView() {
     setExpandedItemId(null);
+  }
+
+  function openInspirationItem(item: InspirationItem) {
+    if (isAppGuideItem(item)) setInspoSubView("appGuide");
+    setExpandedItemId(item.id);
   }
 
   function scrollSectionCarousel(category: InspirationCategory, direction: "left" | "right") {
@@ -800,7 +854,7 @@ export function InspirationHub({
             </button>
           </div>
         ) : null}
-        <button type="button" onClick={() => setExpandedItemId(item.id)} className="flex min-h-0 flex-1 flex-col text-left">
+        <button type="button" onClick={() => openInspirationItem(item)} className="flex min-h-0 flex-1 flex-col text-left">
           <div
             className={`w-full shrink-0 overflow-hidden bg-slate-100 ${INSPO_FEED_CARD_IMAGE_CLASS}`}
             style={!item.imageUrl ? { background: MOTUS_GRADIENT } : undefined}
@@ -828,7 +882,7 @@ export function InspirationHub({
           </div>
         </button>
         <div className="shrink-0 border-t border-slate-100 px-2.5 py-2">
-          <OutlineButton onClick={() => setExpandedItemId(item.id)} className={`w-full ${INSPO_FEED_CARD_ACTION_CLASS}`}>
+          <OutlineButton onClick={() => openInspirationItem(item)} className={`w-full ${INSPO_FEED_CARD_ACTION_CLASS}`}>
             Les mer
           </OutlineButton>
         </div>
@@ -858,6 +912,10 @@ export function InspirationHub({
 
   function openCreateComposer() {
     resetComposerFields();
+    if (inspoSubView === "appGuide") {
+      setCategoryDraft("appGuide");
+      setTag("App-guide");
+    }
     setComposerOpen(true);
     setActionStatus(null);
   }
@@ -1342,7 +1400,9 @@ export function InspirationHub({
           <div className="min-w-0">
           <h2 className="text-2xl font-bold tracking-tight text-slate-950">Inspirasjon</h2>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">
-            Sveip horisontalt i hver kategori. Trykk les mer for detaljer — der kan du legge treningsprogram og ukesplaner til i treningen din.
+            {inspoSubView === "appGuide"
+              ? "Guider for hvordan du bruker Motus — øktmodus, egne programmer, hjemskjerm og mer."
+              : "Sveip horisontalt i hver kategori. Trykk les mer for detaljer — der kan du legge treningsprogram og ukesplaner til i treningen din."}
           </p>
           </div>
           {canManage ? (
@@ -1360,6 +1420,41 @@ export function InspirationHub({
         </div>
       </div>
 
+      <div
+        className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1"
+        role="tablist"
+        aria-label="Inspirasjon undermeny"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={inspoSubView === "overview"}
+          onClick={() => setInspoSubView("overview")}
+          className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+            inspoSubView === "overview" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          Inspirasjon
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={inspoSubView === "appGuide"}
+          onClick={() => setInspoSubView("appGuide")}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+            inspoSubView === "appGuide" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          <Smartphone className="h-4 w-4 shrink-0" aria-hidden />
+          App-guide
+          {appGuideCount > 0 ? (
+            <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold leading-none text-slate-700">
+              {appGuideCount}
+            </span>
+          ) : null}
+        </button>
+      </div>
+
       {actionStatus ? (
         <div
           className={`rounded-xl border px-3 py-2 text-sm font-medium ${
@@ -1373,7 +1468,12 @@ export function InspirationHub({
       ) : null}
 
       <div className="space-y-4">
-        {INSPIRATION_FEED_SECTIONS.map(({ category, title }) => {
+        {inspoSubView === "appGuide" && appGuideCount === 0 ? (
+          <p className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-600">
+            Ingen app-guider her ennå.
+          </p>
+        ) : null}
+        {activeFeedSections.map(({ category, title }) => {
           const sectionItems = itemsByCategory[category];
           if (!sectionItems.length) return null;
           const sectionMeta = CATEGORY_META[category];
@@ -1472,6 +1572,7 @@ export function InspirationHub({
                 { value: "recipes", label: "Oppskrift" },
                 { value: "programs", label: "Trening / program / ukesplan" },
                 { value: "tips", label: "Råd og tips" },
+                { value: "appGuide", label: "App-guide" },
                 { value: "news", label: "Info fra senteret" },
               ]}
             />
