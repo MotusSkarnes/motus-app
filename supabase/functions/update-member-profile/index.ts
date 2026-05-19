@@ -53,6 +53,34 @@ function isTrainerStaffEmail(email: string): boolean {
   return normalizeEmail(email).endsWith("@motus-skarnes.no");
 }
 
+function readAuthMemberId(user: {
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+}): string {
+  return normalizeString(
+    (user.app_metadata?.member_id as string | undefined) ??
+      (user.user_metadata?.member_id as string | undefined) ??
+      "",
+  );
+}
+
+/** Staff som PT-kunde (member_id i JWT) skal lagre som medlem, ikke trener. */
+function resolveEndpointUserRole(user: {
+  email?: string | null;
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+}): string {
+  const currentEmail = normalizeEmail(user.email);
+  const appRole = normalizeString(user.app_metadata?.role).toLowerCase();
+  const metaRole = normalizeString(user.user_metadata?.role).toLowerCase();
+  if (appRole === "member" || metaRole === "member") return "member";
+  const linkedMemberId = readAuthMemberId(user);
+  if (isTrainerStaffEmail(currentEmail) && linkedMemberId) return "member";
+  if (appRole === "trainer" || metaRole === "trainer") return "trainer";
+  if (isTrainerStaffEmail(currentEmail)) return "trainer";
+  return appRole || metaRole || "";
+}
+
 function withoutAvatarUrl(fields: Record<string, string>): Record<string, string> {
   const next = { ...fields };
   delete next.avatar_url;
@@ -123,14 +151,7 @@ Deno.serve(async (req) => {
   }
 
   const currentEmail = normalizeEmail(user.email);
-  const userRole = (() => {
-    if (isTrainerStaffEmail(currentEmail)) return "trainer";
-    const appRole = user.app_metadata?.role;
-    if (appRole === "member" || appRole === "trainer") return appRole;
-    const userRoleValue = user.user_metadata?.role;
-    if (userRoleValue === "member" || userRoleValue === "trainer") return userRoleValue;
-    return "";
-  })();
+  const userRole = resolveEndpointUserRole(user);
   // Some existing auth users may be missing explicit role metadata.
   // Authorization is still enforced by validating authenticated email below.
   if (userRole && userRole !== "member" && userRole !== "trainer") {
@@ -145,11 +166,7 @@ Deno.serve(async (req) => {
   const requestedMemberIds = Array.isArray(payload.memberIds)
     ? payload.memberIds.map((value) => normalizeString(value)).filter(Boolean)
     : [];
-  const authMemberId = normalizeString(
-    (user.app_metadata?.member_id as string | undefined) ??
-      (user.user_metadata?.member_id as string | undefined) ??
-      ""
-  );
+  const authMemberId = readAuthMemberId(user);
   if (!currentEmail || !currentEmail.includes("@")) {
     return jsonResponse(400, { error: "Logged-in user is missing a valid email" });
   }
@@ -229,6 +246,8 @@ Deno.serve(async (req) => {
   const visibleAnchors = (anchorRows ?? []).filter((row) => {
     if (userRole !== "trainer") {
       const rowEmail = normalizeEmail(row.email);
+      const rowId = normalizeString(row.id);
+      if (rowId && (rowId === authMemberId || rowId === user.id)) return true;
       return rowEmail === currentEmail || requestedEmails.includes(rowEmail);
     }
     return canTrainerEditAnchor(
@@ -279,7 +298,7 @@ Deno.serve(async (req) => {
     )
   );
   if (!targetIds.length && !targetEmails.length) {
-    if (isTrainerStaffEmail(currentEmail)) {
+    if (isTrainerStaffEmail(currentEmail) && userRole === "trainer" && !authMemberId) {
       return jsonResponse(403, {
         error: "Trainer accounts cannot bootstrap a member profile row from this endpoint.",
       });

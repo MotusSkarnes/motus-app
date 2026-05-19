@@ -170,11 +170,26 @@ async function resolveCanonicalMemberIdForPersistence(
 ): Promise<string> {
   const trimmed = String(memberId ?? "").trim();
   if (!trimmed || !supabaseClient) return trimmed;
-  if (!trimmed.startsWith("auth-")) return trimmed;
 
   const {
     data: { user },
   } = await supabaseClient.auth.getUser();
+  const authUserId = String(user?.id ?? "").trim();
+  const jwtMemberId = String(user?.app_metadata?.member_id ?? user?.user_metadata?.member_id ?? "").trim();
+  const isSyntheticId =
+    trimmed.startsWith("auth-") || (authUserId && (trimmed === authUserId || trimmed === `auth-${authUserId}`));
+
+  if (!isSyntheticId) return trimmed;
+
+  const directIds = Array.from(
+    new Set([jwtMemberId, authUserId, trimmed.replace(/^auth-/, "")].map((id) => id.trim()).filter(Boolean)),
+  );
+  for (const candidateId of directIds) {
+    const { data: byId } = await supabaseClient.from("members").select("id").eq("id", candidateId).maybeSingle();
+    const resolved = String(byId?.id ?? "").trim();
+    if (resolved && !resolved.startsWith("auth-")) return resolved;
+  }
+
   const role = String(user?.app_metadata?.role ?? user?.user_metadata?.role ?? "").trim();
   const fromHint = String(hints?.targetEmail ?? "").trim().toLowerCase();
   const authEmail = String(user?.email ?? "").trim().toLowerCase();
@@ -925,9 +940,13 @@ export async function persistOnboardingToSupabase(
     focus: changes.focus,
   };
 
+  const authMemberIdFromJwt = String(
+    user?.app_metadata?.member_id ?? user?.user_metadata?.member_id ?? "",
+  ).trim();
+  const authUserId = String(user?.id ?? "").trim();
   const dbMemberIds = Array.from(
     new Set(
-      [...relatedMemberIds, persistId, member.id]
+      [...relatedMemberIds, persistId, member.id, authMemberIdFromJwt, authUserId]
         .map((id) => String(id ?? "").trim())
         .filter((id) => id && !id.startsWith("auth-") && id !== "__template__"),
     ),
