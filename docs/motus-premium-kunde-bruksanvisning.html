@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="nb">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Motus - Bruksanvisning for premium-kunde</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 18mm 15mm;
+      }
+
+      :root {
+        --ink: #0f172a;
+        --muted: #475569;
+        --soft: #e2e8f0;
+        --panel: #f8fafc;
+        --teal: #13b8b4;
+        --pink: #ec4899;
+        --green: #16a34a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: white;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 11pt;
+        line-height: 1.5;
+      }
+
+      .cover {
+        min-height: 248mm;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        page-break-after: always;
+        padding: 8mm 0 4mm;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .brand img {
+        width: 64px;
+        height: auto;
+      }
+
+      .brand-name {
+        font-size: 15pt;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+      }
+
+      .eyebrow {
+        color: var(--teal);
+        font-size: 10pt;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 14mm 0 4mm;
+        max-width: 155mm;
+        font-size: 34pt;
+        line-height: 1.05;
+        letter-spacing: -0.02em;
+      }
+
+      .lead {
+        max-width: 150mm;
+        color: var(--muted);
+        font-size: 13pt;
+      }
+
+      .cover-card {
+        margin-top: 14mm;
+        border: 1px solid var(--soft);
+        border-left: 5px solid var(--teal);
+        border-radius: 10px;
+        background: var(--panel);
+        padding: 7mm;
+      }
+
+      .cover-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4mm;
+        margin-top: 9mm;
+      }
+
+      .mini {
+        border: 1px solid var(--soft);
+        border-radius: 9px;
+        padding: 4mm;
+        background: white;
+      }
+
+      .mini strong {
+        display: block;
+        margin-bottom: 1mm;
+      }
+
+      .version {
+        color: var(--muted);
+        font-size: 9.5pt;
+      }
+
+      h2 {
+        margin: 0 0 5mm;
+        padding-bottom: 2.5mm;
+        border-bottom: 2px solid var(--soft);
+        font-size: 21pt;
+        line-height: 1.15;
+        page-break-after: avoid;
+      }
+
+      h3 {
+        margin: 7mm 0 2mm;
+        font-size: 14pt;
+        page-break-after: avoid;
+      }
+
+      h4 {
+        margin: 4mm 0 1.5mm;
+        font-size: 11.5pt;
+      }
+
+      p {
+        margin: 0 0 3mm;
+      }
+
+      ul,
+      ol {
+        margin: 0 0 4mm 5mm;
+        padding: 0;
+      }
+
+      li {
+        margin: 0 0 1.5mm;
+      }
+
+      .section {
+        page-break-before: always;
+      }
+
+      .note,
+      .tip,
+      .warning {
+        margin: 4mm 0;
+        border-radius: 9px;
+        padding: 4mm 5mm;
+        page-break-inside: avoid;
+      }
+
+      .note {
+        border: 1px solid #bae6fd;
+        background: #f0f9ff;
+      }
+
+      .tip {
+        border: 1px solid #bbf7d0;
+        background: #f0fdf4;
+      }
+
+      .warning {
+        border: 1px solid #fecdd3;
+        background: #fff1f2;
+      }
+
+      .toc {
+        columns: 2;
+        column-gap: 10mm;
+        margin-top: 5mm;
+      }
+
+      .toc a {
+        display: block;
+        break-inside: avoid;
+        color: var(--ink);
+        text-decoration: none;
+        margin-bottom: 2.5mm;
+      }
+
+      .step-list {
+        counter-reset: step;
+        list-style: none;
+        margin-left: 0;
+      }
+
+      .step-list li {
+        counter-increment: step;
+        position: relative;
+        padding-left: 10mm;
+        margin-bottom: 3mm;
+      }
+
+      .step-list li::before {
+        content: counter(step);
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 6mm;
+        height: 6mm;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--teal), var(--pink));
+        color: white;
+        text-align: center;
+        font-size: 8pt;
+        font-weight: 800;
+        line-height: 6mm;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 5mm;
+      }
+
+      .feature {
+        border: 1px solid var(--soft);
+        border-radius: 9px;
+        padding: 4mm;
+        background: white;
+        page-break-inside: avoid;
+      }
+
+      .feature h4 {
+        margin-top: 0;
+      }
+
+      .tag {
+        display: inline-block;
+        margin: 0 1.5mm 1.5mm 0;
+        border-radius: 999px;
+        background: #ecfeff;
+        color: #0f766e;
+        padding: 1mm 2.5mm;
+        font-size: 8.5pt;
+        font-weight: 700;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 4mm 0;
+        page-break-inside: avoid;
+      }
+
+      th,
+      td {
+        border: 1px solid var(--soft);
+        padding: 2.5mm;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: var(--panel);
+        font-weight: 800;
+      }
+
+      .kbd {
+        display: inline-block;
+        border: 1px solid var(--soft);
+        border-radius: 4px;
+        background: white;
+        padding: 0.5mm 1.5mm;
+        font-size: 9pt;
+        font-weight: 700;
+      }
+
+      .footer-line {
+        margin-top: 8mm;
+        border-top: 1px solid var(--soft);
+        padding-top: 3mm;
+        color: var(--muted);
+        font-size: 9pt;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="cover">
+        <div>
+          <div class="brand">
+            <img src="../src/assets/motus-logo-transparent.svg" alt="Motus" />
+            <div>
+              <div class="brand-name">Motus</div>
+              <div class="version">Premium kunde</div>
+            </div>
+          </div>
+
+          <div class="eyebrow">Bruksanvisning</div>
+          <h1>Slik bruker du Motus som premium-kunde</h1>
+          <p class="lead">
+            Denne manualen viser hvordan du kommer i gang, følger programmer, logger trening, bruker periodeplan,
+            sender meldinger, følger fremgang og får mest mulig ut av appen.
+          </p>
+
+          <div class="cover-card">
+            <strong>For deg som har Premium-tilgang:</strong>
+            Du har full medlemsvisning med Hjem, Trening, Inspo, Fremgang, Meldinger og Profil. Du kan følge
+            programmer fra trener, lage egne økter, se historikk og badges, gjøre innsjekker og kommunisere med PT.
+          </div>
+
+          <div class="cover-grid">
+            <div class="mini"><strong>Trening</strong>Programmer, egne økter, periodeplan, intervaller og gruppetimer.</div>
+            <div class="mini"><strong>Fremgang</strong>Streak, kalender, volum, PR-er, badges og deling.</div>
+            <div class="mini"><strong>Kontakt</strong>Varsler, meldinger, innsjekker og profil som synkes til PT.</div>
+          </div>
+        </div>
+
+        <div class="version">Oppdatert: 19.05.2026</div>
+      </section>
+
+      <section>
+        <h2>Innhold</h2>
+        <nav class="toc">
+          <a href="#kom-i-gang">1. Kom i gang</a>
+          <a href="#navigasjon">2. Navigasjon</a>
+          <a href="#hjem">3. Hjem</a>
+          <a href="#trening">4. Trening</a>
+          <a href="#oktmodus">5. Øktmodus</a>
+          <a href="#periodeplan">6. Periodeplan</a>
+          <a href="#fremgang">7. Fremgang</a>
+          <a href="#badges">8. Badges</a>
+          <a href="#inspo">9. Inspo</a>
+          <a href="#meldinger">10. Meldinger</a>
+          <a href="#profil">11. Profil</a>
+          <a href="#varsler">12. Varsler</a>
+          <a href="#installasjon">13. Legg appen på hjemskjermen</a>
+          <a href="#tips">14. Gode rutiner</a>
+        </nav>
+      </section>
+
+      <section id="kom-i-gang" class="section">
+        <h2>1. Kom i gang</h2>
+        <h3>Første innlogging</h3>
+        <ol class="step-list">
+          <li>Åpne invitasjonslenken direkte fra e-posten du har fått fra Motus eller PT.</li>
+          <li>Sett passord når du blir bedt om det. Bruk en e-postadresse du faktisk har tilgang til.</li>
+          <li>Logg inn med e-post og passord.</li>
+          <li>Fyll ut oppstartsskjemaet når appen spør. Dette hjelper PT med å tilpasse treningen.</li>
+        </ol>
+
+        <div class="warning">
+          <strong>Viktig ved invitasjonslenke:</strong> Ikke kopier bare deler av adressen. Åpne lenken direkte fra e-posten,
+          spesielt hvis den inneholder en <span class="kbd">#</span>-del på slutten.
+        </div>
+
+        <h3>Oppstartsskjema</h3>
+        <p>Oppstartsskjemaet samler informasjon om mål, nivå, treningsvaner, ønsket treningsmengde, motivasjon,
+          energinivå, skader og hva slags oppfølging du ønsker fra PT.</p>
+        <p>Svarene lagres på profilen din og kan brukes av PT når program, periodeplan og oppfølging tilpasses.</p>
+      </section>
+
+      <section id="navigasjon" class="section">
+        <h2>2. Navigasjon</h2>
+        <p>Som premium-kunde har du seks hovedområder i appen:</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Fane</th>
+              <th>Brukes til</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Hjem</td><td>Rask oversikt, dagens plan, treningskalender, innsjekk og badges.</td></tr>
+            <tr><td>Trening</td><td>Programmer, egne økter, periodeplan, gruppetimer og treningslogg.</td></tr>
+            <tr><td>Inspo</td><td>Tips, oppskrifter, info fra senteret og programmer/ukeplaner som kan legges til.</td></tr>
+            <tr><td>Fremgang</td><td>Statistikk, streak, personlige rekorder, volum og deling.</td></tr>
+            <tr><td>Meldinger</td><td>Direkte dialog med PT.</td></tr>
+            <tr><td>Profil</td><td>Personinfo, mål, profilbilde, preferanser og oppstartsskjema.</td></tr>
+          </tbody>
+        </table>
+        <p>På mobil ligger hovednavigasjonen nederst. Profil åpnes fra appens profilområde.</p>
+      </section>
+
+      <section id="hjem" class="section">
+        <h2>3. Hjem</h2>
+        <p>Hjem-siden er laget for å gi deg rask status uten at du må lete.</p>
+
+        <div class="grid-2">
+          <div class="feature">
+            <h4>Dagens trening</h4>
+            <p>Hvis du har en periodeplan eller et aktivt program, kan appen vise dagens plan og knapp for å starte dagens økt.</p>
+          </div>
+          <div class="feature">
+            <h4>Treningskalender</h4>
+            <p>Kalenderen viser registrerte økter. Trykk på en dato for å se hva som ble trent den dagen.</p>
+          </div>
+          <div class="feature">
+            <h4>Månedlig sjekk-inn</h4>
+            <p>Når det er tid for innsjekk, kan du oppdatere PT på status, energi, mål og eventuelle behov for justering.</p>
+          </div>
+          <div class="feature">
+            <h4>Badges og vaner</h4>
+            <p>Du ser progresjon, streak og utvalgte badges direkte på hjem-siden.</p>
+          </div>
+        </div>
+
+        <div class="tip">
+          <strong>Tips:</strong> Bruk Hjem først når du åpner appen. Der ser du raskt om du bør starte dagens økt,
+          fylle ut sjekk-inn eller følge opp noe nytt.
+        </div>
+      </section>
+
+      <section id="trening" class="section">
+        <h2>4. Trening</h2>
+        <p>Trening-fanen samler alt som handler om å gjennomføre og planlegge økter.</p>
+
+        <h3>Programmer fra PT</h3>
+        <p>Programmer fra trener ligger som kort under Trening. Du kan se innholdet, starte programmet og logge resultater.
+          PT kan se gjennomføringen din etterpå.</p>
+
+        <h3>Egne treningsprogram</h3>
+        <p>Du kan lage egne programmer ved å velge øvelser fra øvelsesbanken, justere sett, reps, vekt, tid, pause og notater,
+          og deretter lagre programmet i biblioteket ditt.</p>
+        <ul>
+          <li><strong>Start egen økt:</strong> starter økten med en gang og logger den når du fullfører.</li>
+          <li><strong>Lagre som treningsprogram:</strong> legger økten i biblioteket slik at du kan bruke den igjen.</li>
+          <li><strong>Menyen på programkort:</strong> kan brukes til å skjule, arkivere eller slette egne programmer.</li>
+        </ul>
+
+        <h3>Øvelsesbank</h3>
+        <p>Øvelser kan være styrke, kondisjon, mobilitet, uttøyning eller rehab. Mange rehab-øvelser har illustrasjoner
+          og korte beskrivelser som gjør det enklere å utføre dem riktig.</p>
+
+        <h3>Intervalløkter</h3>
+        <p>Kondisjonsprogrammer kan åpnes i et eget intervallvindu med nedtelling, steg, fart, stigning, puls, pause,
+          fortsett, hopp over og nullstill.</p>
+
+        <h3>Gruppetimer</h3>
+        <p>Hvis du har deltatt på gruppetime, kan den logges slik at den teller med i kalender, fremgang og badges.</p>
+      </section>
+
+      <section id="oktmodus" class="section">
+        <h2>5. Øktmodus</h2>
+        <p>Øktmodus er den guidede treningsvisningen når du starter et program eller en egen økt.</p>
+
+        <ol class="step-list">
+          <li>Trykk <strong>Start</strong> på et program eller <strong>Start egen økt</strong>.</li>
+          <li>Fyll inn det du faktisk gjør: vekt, reps, tid, fart, stigning eller andre felt som vises.</li>
+          <li>Huk av settene eller øvelsene etter hvert som de er gjennomført.</li>
+          <li>Legg inn notat hvis noe bør huskes til neste gang.</li>
+          <li>Fullfør økten når du er ferdig. Da lagres den i historikken.</li>
+        </ol>
+
+        <h3>Nyttige valg under økten</h3>
+        <ul>
+          <li><strong>Info/bilde:</strong> viser øvelsesforklaring eller større øvelsesbilde.</li>
+          <li><strong>Bytt:</strong> lar deg velge en annen øvelse, typisk i samme muskelgruppe.</li>
+          <li><strong>Ta neste øvelse først:</strong> hopper midlertidig videre hvis utstyr er opptatt.</li>
+          <li><strong>Pause/fortsett:</strong> lar deg stoppe og gjenoppta økten.</li>
+          <li><strong>Utkast:</strong> pauser kan lagres i noen timer slik at du kan fortsette der du slapp.</li>
+        </ul>
+
+        <div class="note">
+          Når økten fullføres, teller den med i treningskalender, historikk, fremgang, streak og badges.
+        </div>
+      </section>
+
+      <section id="periodeplan" class="section">
+        <h2>6. Periodeplan</h2>
+        <p>En periodeplan er en uke- eller flerukersplan som viser hva du skal gjøre på bestemte dager.</p>
+
+        <h3>Hva du kan gjøre</h3>
+        <ul>
+          <li>Se ukeplanen med mandag til søndag.</li>
+          <li>Starte program direkte fra en dag i planen.</li>
+          <li>Markere planlagte aktiviteter som gjennomført.</li>
+          <li>Logge gruppetime fra planen.</li>
+          <li>Bytte om dager når hverdagen krever det.</li>
+          <li>Skjule, gjenopprette eller slette egne periodeplaner.</li>
+        </ul>
+
+        <p>Periodeplaner kan komme fra PT, fra Inspo eller være medlemseide planer du har lagt til selv.</p>
+      </section>
+
+      <section id="fremgang" class="section">
+        <h2>7. Fremgang</h2>
+        <p>Fremgang-fanen viser utviklingen din over tid. Den bruker økter du har fullført og det du har logget.</p>
+
+        <div class="grid-2">
+          <div class="feature">
+            <h4>Aktivitet og streak</h4>
+            <p>Se hvor ofte du trener, hvor mange dager du har vært aktiv og hvordan ukestreaken utvikler seg.</p>
+          </div>
+          <div class="feature">
+            <h4>Personlige rekorder</h4>
+            <p>Appen kan oppdage nye rekorder når du logger tyngre eller bedre resultater på øvelser.</p>
+          </div>
+          <div class="feature">
+            <h4>Volum og muskelgrupper</h4>
+            <p>Se treningsbelastning og fordeling mellom muskelgrupper over tid.</p>
+          </div>
+          <div class="feature">
+            <h4>Deling</h4>
+            <p>Du kan dele en enkel fremgangsgraf eller status uten å dele hele treningsloggen.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="badges" class="section">
+        <h2>8. Badges</h2>
+        <p>Badges låses opp når du når milepæler. Noen har flere nivåer: bronse, sølv, gull, diamant og legendarisk.</p>
+
+        <h3>Vanlige badges</h3>
+        <table>
+          <thead>
+            <tr><th>Badge</th><th>Hva som teller</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Øktjeger</td><td>Fullfør registrerte økter totalt.</td></tr>
+            <tr><td>100 klubben</td><td>Nå store øktmilepæler, fra 100 økter og videre.</td></tr>
+            <tr><td>Streak</td><td>Tren minst én gang per uke over tid.</td></tr>
+            <tr><td>Mandagshelt</td><td>Tren på mandager uke etter uke.</td></tr>
+            <tr><td>Helgekriger</td><td>Tren både lørdag og søndag.</td></tr>
+            <tr><td>Tungvekter</td><td>Registrer tyngste sett i styrketrening.</td></tr>
+            <tr><td>Månedsdriv</td><td>Fullfør økter i inneværende måned.</td></tr>
+            <tr><td>Treningsdager</td><td>Tren på ulike dager i måneden.</td></tr>
+            <tr><td>Målknuser</td><td>Nå prosentvis mål for månedens økter.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Skjulte badges</h3>
+        <p>Skjulte badges vises først når du låser dem opp. Eksempler:</p>
+        <span class="tag">Morgenfugl: 05:00-08:00</span>
+        <span class="tag">Kveldstrener: 20:00-23:00</span>
+        <span class="tag">17. mai-økt</span>
+        <span class="tag">Aldri to uker uten</span>
+        <span class="tag">Tilbake igjen</span>
+        <span class="tag">Vanen sitter</span>
+        <span class="tag">Sommertrofast</span>
+        <span class="tag">Ny start</span>
+        <span class="tag">Påskepump</span>
+        <span class="tag">Julepump</span>
+
+        <div class="tip">
+          Nye skjulte badges kan dukke opp som pop-up etter at en økt er logget.
+        </div>
+      </section>
+
+      <section id="inspo" class="section">
+        <h2>9. Inspo</h2>
+        <p>Inspo er appens innholdsområde. Her kan du finne:</p>
+        <ul>
+          <li>Råd og tips om trening og bruk av appen.</li>
+          <li>Oppskrifter og artikler.</li>
+          <li>Info fra senteret.</li>
+          <li>Treningsprogrammer som kan legges til i biblioteket.</li>
+          <li>Ukeplaner/periodeplaner som kan legges til under Trening.</li>
+        </ul>
+        <p>Når du legger til et program fra Inspo, havner det under Trening. Når du legger til en ukeplan, havner den under Periodeplan.</p>
+      </section>
+
+      <section id="meldinger" class="section">
+        <h2>10. Meldinger</h2>
+        <p>Meldinger brukes til dialog med PT. Skriv kort og konkret hva du lurer på, så blir det enklere for PT å hjelpe.</p>
+        <ul>
+          <li>Send spørsmål om program, øvelser, smerter, motivasjon eller justeringer.</li>
+          <li>Bruk meldinger når noe i planen ikke passer, i stedet for å gjette.</li>
+          <li>Nye meldinger kan gi varsel i appen.</li>
+        </ul>
+      </section>
+
+      <section id="profil" class="section">
+        <h2>11. Profil</h2>
+        <p>Profilen samler informasjonen PT trenger for å følge deg opp.</p>
+
+        <h3>Dette kan du oppdatere</h3>
+        <ul>
+          <li>Navn, e-post, telefon og fødselsdato.</li>
+          <li>Profilbilde.</li>
+          <li>Mål, treningsnivå, skader og notater.</li>
+          <li>Mål for økter per uke, steg, vekt og andre personlige mål.</li>
+          <li>Fremhevede personlige rekorder.</li>
+          <li>Oppstartsskjema hvis du vil sende inn eller oppdatere svarene dine.</li>
+        </ul>
+
+        <div class="note">
+          Profilen kan lagres automatisk, men bruk <strong>Lagre min profil</strong> når du har gjort viktige endringer.
+        </div>
+      </section>
+
+      <section id="varsler" class="section">
+        <h2>12. Varsler</h2>
+        <p>Varsler hjelper deg å få med deg ting som betyr noe.</p>
+        <ul>
+          <li>Ny melding fra PT.</li>
+          <li>Kommentar fra PT på treningslogg.</li>
+          <li>Nytt innhold i Inspo.</li>
+          <li>Oppfordring til månedlig sjekk-inn.</li>
+          <li>Badge eller milepæl du har låst opp.</li>
+        </ul>
+
+        <p>Trykk på bjellen for å åpne varslene. Noen varsler tar deg direkte til riktig fane, melding, inspo-innlegg eller treningslogg.</p>
+      </section>
+
+      <section id="installasjon" class="section">
+        <h2>13. Legg appen på hjemskjermen</h2>
+        <h3>iPhone og iPad</h3>
+        <ol class="step-list">
+          <li>Åpne Motus i Safari.</li>
+          <li>Trykk Del-ikonet.</li>
+          <li>Velg Legg til på Hjem-skjerm.</li>
+          <li>Bekreft navnet og trykk Legg til.</li>
+        </ol>
+
+        <h3>Android</h3>
+        <ol class="step-list">
+          <li>Åpne Motus i Chrome.</li>
+          <li>Trykk menyen med tre prikker.</li>
+          <li>Velg Legg til på startskjerm eller Installer app.</li>
+          <li>Bekreft. Motus-ikonet legges på hjemskjermen.</li>
+        </ol>
+
+        <div class="tip">
+          Appen fungerer best når den åpnes fra hjemskjermen. Da får du mer app-følelse og mindre nettleserrot.
+        </div>
+      </section>
+
+      <section id="tips" class="section">
+        <h2>14. Gode rutiner</h2>
+        <ul>
+          <li>Logg økter med én gang du er ferdig, så kalender, streak og badges blir riktige.</li>
+          <li>Skriv korte notater etter økten hvis noe var tungt, lett eller vondt.</li>
+          <li>Bruk månedlig sjekk-inn ærlig. Det gjør planen bedre.</li>
+          <li>Oppdater profil og mål når hverdagen endrer seg.</li>
+          <li>Send melding til PT hvis du er usikker på øvelse, smerte eller progresjon.</li>
+          <li>Installer appen på hjemskjermen for enklere tilgang.</li>
+        </ul>
+
+        <div class="footer-line">
+          Motus premium-kunde bruksanvisning. Laget for appversjonen i prosjektet per 19.05.2026.
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

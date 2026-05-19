@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="nb">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Motus - Testmal for premium-kunde</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 14mm;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: #0f172a;
+        background: #ffffff;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 10.5pt;
+        line-height: 1.35;
+      }
+
+      header {
+        border-bottom: 2px solid #0f172a;
+        margin-bottom: 8mm;
+        padding-bottom: 5mm;
+      }
+
+      h1 {
+        margin: 0 0 2mm;
+        font-size: 24pt;
+        line-height: 1.05;
+      }
+
+      h2 {
+        margin: 9mm 0 3mm;
+        padding-bottom: 1.5mm;
+        border-bottom: 1px solid #cbd5e1;
+        font-size: 15pt;
+        page-break-after: avoid;
+      }
+
+      h3 {
+        margin: 5mm 0 2mm;
+        font-size: 12pt;
+        page-break-after: avoid;
+      }
+
+      p {
+        margin: 0 0 3mm;
+      }
+
+      .meta {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 3mm;
+        margin: 5mm 0 0;
+      }
+
+      .field {
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        min-height: 11mm;
+        padding: 2mm 3mm;
+      }
+
+      .field strong {
+        display: block;
+        color: #475569;
+        font-size: 8.5pt;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .note {
+        border: 1px solid #bae6fd;
+        border-radius: 7px;
+        background: #f0f9ff;
+        padding: 3mm 4mm;
+        margin: 4mm 0;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 3mm 0 5mm;
+        page-break-inside: auto;
+      }
+
+      tr {
+        page-break-inside: avoid;
+      }
+
+      th,
+      td {
+        border: 1px solid #cbd5e1;
+        padding: 2mm;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: #f8fafc;
+        font-size: 9pt;
+      }
+
+      .check {
+        width: 9mm;
+        text-align: center;
+        font-weight: bold;
+      }
+
+      .result {
+        width: 23mm;
+      }
+
+      .notes {
+        width: 48mm;
+      }
+
+      .page-break {
+        page-break-before: always;
+      }
+
+      .status {
+        display: inline-block;
+        border: 1px solid #cbd5e1;
+        border-radius: 999px;
+        padding: 0.5mm 2mm;
+        color: #475569;
+        font-size: 8.5pt;
+      }
+
+      .footer {
+        margin-top: 8mm;
+        border-top: 1px solid #cbd5e1;
+        padding-top: 3mm;
+        color: #64748b;
+        font-size: 9pt;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Motus testmal</h1>
+      <p>Mal for å teste alle sentrale funksjoner for premium-kunde før lansering, etter større endringer eller ved support.</p>
+      <div class="meta">
+        <div class="field"><strong>Tester</strong></div>
+        <div class="field"><strong>Dato</strong></div>
+        <div class="field"><strong>Miljø / URL</strong></div>
+        <div class="field"><strong>Testbruker</strong></div>
+      </div>
+    </header>
+
+    <div class="note">
+      <strong>Slik brukes malen:</strong> Marker hvert punkt som OK, Feil eller Ikke relevant. Skriv kort hva som skjer ved feil,
+      hvilken bruker som ble brukt, og gjerne skjermbilde/lenke til feilen hvis mulig.
+    </div>
+
+    <h2>1. Innlogging og tilgang</h2>
+    <table>
+      <thead>
+        <tr><th class="check">✓</th><th>Testpunkt</th><th>Forventet resultat</th><th class="result">Resultat</th><th class="notes">Notat</th></tr>
+      </thead>
+      <tbody>
+        <tr><td></td><td>Åpne invitasjonslenke direkte fra e-post</td><td>Passordoppsett åpnes uten feilmelding.</td><td></td><td></td></tr>
+        <tr><td></td><td>Sett passord første gang</td><td>Brukeren får satt passord og kan logge inn.</td><td></td><td></td></tr>
+        <tr><td></td><td>Logg inn som premium-kunde</td><td>Brukeren havner i medlemsvisning, ikke PT-visning.</td><td></td><td></td></tr>
+        <tr><td></td><td>Logg ut og inn igjen</td><td>Riktig bruker, riktig rolle og riktig startside vises.</td><td></td><td></td></tr>
+        <tr><td></td><td>Test arkivert/blokkert medlem</td><td>Arkivert medlem får ikke vanlig app-tilgang.</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h2>2. Første gangs bruk</h2>
+    <table>
+      <thead>
+        <tr><th class="check">✓</th><th>Testpunkt</th><th>Forventet resultat</th><th class="result">Resultat</th><th class="notes">Notat</th></tr>
+      </thead>
+      <tbody>
+        <tr><td></td><td>Velkomstmodal vises første gang</td><td>Medlem får tydelig inngang til skjema eller inspirasjon.</td><td></td><td></td></tr>
+        <tr><td></td><td>Fyll ut oppstartsskjema</td><td>Svar lagres og PT kan se dem på kundekortet.</td><td></td><td></td></tr>
+        <tr><td></td><td>Lukk og åpne skjema senere fra Profil</td><td>Skjema kan åpnes igjen uten at appen låser seg.</td><td></td><td></td></tr>
+        <tr><td></td><td>Test scrolling på mobil / Google-app</td><td>Hele skjermen kan scrolles og alt innhold kan leses.</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h2>3. Hjem</h2>
+    <table>
+      <thead>
+        <tr><th class="check">✓</th><th>Testpunkt</th><th>Forventet resultat</th><th class="result">Resultat</th><th class="notes">Notat</th></tr>
+      </thead>
+      <tbody>
+        <tr><td></td><td>Hjem-siden åpnes</td><td>Oversikt, statuskort og relevante snarveier vises.</td><td></td><td></td></tr>
+        <tr><td></td><td>Treningskalender vises</td><td>Datoer med økter markeres og kan åpnes.</td><td></td><td></td></tr>
+        <tr><td></td><td>Trykk dato i kalender</td><td>Økter for valgt dato vises riktig.</td><td></td><td></td></tr>
+        <tr><td></td><td>Start dagens økt fra Hjem</td><td>Riktig program åpnes i øktmodus.</td><td></td><td></td></tr>
+        <tr><td></td><td>Månedlig sjekk-inn</td><td>Skjema åpnes, kan fylles ut og lagres.</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h2>4. Trening - programmer</h2>
+    <table>
+      <thead>
+        <tr><th class="check">✓</th><th>Testpunkt</th><th>Forventet resultat</th><th class="result">Resultat</th><th class="notes">Notat</th></tr>
+      </thead>
+      <tbody>
+        <tr><td></td><td>Åpne Trening-fanen</td><td>Programmer, egne økter, periodeplan og logg vises.</td><td></td><td></td></tr>
+        <tr><td></td><td>Vis program fra PT</td><td>Øvelser, sett, reps, notater og mål vises.</td><td></td><td></td></tr>
+        <tr><td></td><td>Start program fra PT</td><td>Øktmodus åpnes med riktig program.</td><td></td><td></td></tr>
+        <tr><td></td><td>Skjul program</td><td>Programmet forsvinner fra hovedlisten og kan gjenopprettes.</td><td></td><td></td></tr>
+        <tr><td></td><td>Arkiver program</td><td>Programmet flyttes til arkivert seksjon og kan gjenopprettes.</td><td></td><td></td></tr>
+        <tr><td></td><td>Slett eget program</td><td>Kun medlemseide programmer kan slettes.</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h2>5. Trening - lag egen økt</h2>
+    <table>
+      <thead>
+        <tr><th class="check">✓</th><th>Testpunkt</th><th>Forventet resultat</th><th class="result">Resultat</th><th class="notes">Notat</th></tr>
+      </thead>
+      <tbody>
+        <tr><td></td><td>Søk i øvelsesbank</td><td>Riktige øvelser filtreres frem.</td><td></td><td></td></tr>
+        <tr><td></td><td>Legg til styrkeøvelse</td><td>Øvelsen legges i egen økt med sett/reps/vekt.</td><td></td><td></td></tr>
+        <tr><td></td><td>Legg til kondisjon/rehaB/mobilitet</td><td>Riktige felt vises for type øvelse.</td><td></td><td></td></tr>
+        <tr><td></td><td>Start egen økt uten å lagre program</td><td>Økten kan fullføres og lagres som logg.</td><td></td><td></td></tr>
+        <tr><td></td><td>Lagre som treningsprogram</td><td>Programmet havner i biblioteket og kan startes senere.</td><td></td><td></td></tr>
+        <tr><td></td><td>Fullfør egen økt</td><td>Logg vises i kalender, historikk, fremgang og badge-telling.</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h2 class="page-break">6. Øktmodus</h2>
+    <table>
+      <thead>
+        <tr><th class="check">✓</th><th>Testpunkt</th><th>Forventet resultat</th><th class="result">Resultat</th><th class="notes">Notat</th></tr>
+      </thead>
+      <tbody>
+        <tr><td></td><td>Registrer vekt/reps/tid</td><td>Feltene lagres underveis i økten.</td><td></td><td></td></tr>
+        <tr><td></td><td>Huk av sett/øvelse</td><td>Fullføringsstatus oppdateres.</td><td></td><td></td></tr>
+        <tr><td></td><td>Åpne øvelsesinfo/bilde</td><td>Forklaring eller bilde vises uten å avslutte økt.</td><td></td><td></td></tr>
+        <tr><td></td><td>Bytt øvelse</td><td>Alternativ øvelse kan velges og brukes i økten.</td><td></td><td></td></tr>
+        <tr><td></td><td>Ta neste øvelse først</td><td>Økten hopper videre og kommer tilbake til utsatt øvelse.</td><td></td><td></td></tr>
+        <tr><td></td><td>Pause/dismiss økt</td><td>Utkast kan gjenopptas innen utløp.</td><td></td><td></td></tr>
+        <tr><td></td><td>Fullfør økt med refleksjon/notat</td><td>Logg lagres og synliggjøres for medlem/PT.</td><td></td><td></td></tr>
+        <tr><td></td><td>Ny personlig rekord</td><td>PR-feiring vises når rekord slås.</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h2>7. Intervall og gruppetime</h2>
+    <table>
+      <thead>
+        <tr><th class="check">✓</th><th>Testpunkt</th><th>Forventet resultat</th><th class="result">Resultat</th><th class="notes">Notat</th></tr>
+      </thead>
+      <tbody>
+        <tr><td></td><td>Start intervallprogram</td><td>Intervallvindu åpnes med nedtelling og steg.</td><td></td><td></td></tr>
+        <tr><td></td><td>Pause/fortsett intervall</td><td>Timer stopper og fortsetter riktig.</td><td></td><td></td></tr>
+        <tr><td></td><td>Hopp over/nullstill intervall</td><td>Kontrollene fungerer uten å krasje.</td><td></td><td></td></tr>
+        <tr><td></td><td>Fullfør intervalløkt</td><td>Økten logges og teller i fremgang/badges.</td><td></td><td></td></tr>
+        <tr><td></td><td>Logg gruppetime</td><td>Gruppetime legges i treningskalender og historikk.</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h2>8. Periodeplan</h2>
+    <table>
+      <thead>
+        <tr><th class="check">✓</th><th>Testpunkt</th><th>Forventet resultat</th><th class="result">Resultat</th><th class="notes">Notat</th></tr>
+      </thead>
+      <tbody>
+        <tr><td></td><td>Se aktiv periodeplan</td><td>Riktig uke og riktige dager vises.</td><td></td><td></td></tr>
+        <tr><td></td><td>Bytt uke i periodeplan</td><td>Uken endres uten at planen mister innhold.</td><td></td><td></td></tr>
+        <tr><td></td><td>Start program fra periodeplan</td><td>Riktig program åpnes i øktmodus.</td><td></td><td></td></tr>
+        <tr><td></td><td>Marker planlagt aktivitet fullført</td><td>Aktiviteten logges og vises i kalender.</td><td></td><td></td></tr>
+        <tr><td></td><td>Bytt to dager</td><td>Dagsbytte lagres og kan angres.</td><td></td><td></td></tr>
+        <tr><td></td><td>Skjul/gjenopprett periodeplan</td><td>Planen fjernes/kommer tilbake i oversikten.</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h2>9. Fremgang og badges</h2>
+    <table>
+      <thead>
+        <tr><th class="check">✓</th><th>Testpunkt</th><th>Forventet resultat</th><th class="result">Resultat</th><th class="notes">Notat</th></tr>
+      </thead>
+      <tbody>
+        <tr><td></td><td>Åpne Fremgang</td><td>Statistikk, streak, volum og PR-er vises.</td><td></td><td></td></tr>
+        <tr><td></td><td>Fullført økt påvirker streak</td><td>Streak/aktivitet oppdateres etter logg.</td><td></td><td></td></tr>
+        <tr><td></td><td>Badge låses opp</td><td>Badge vises som oppnådd.</td><td></td><td></td></tr>
+        <tr><td></td><td>Skjult Morgenfugl-badge</td><td>Økt mellom 05:00 og 08:00 gir badge/pop-up.</td><td></td><td></td></tr>
+        <tr><td></td><td>Skjult Kveldstrener-badge</td><td>Økt mellom 20:00 og 23:00 gir badge/pop-up.</td><td></td><td></td></tr>
+        <tr><td></td><td>Del fremgang</td><td>Deling/status fungerer eller gir tydelig melding hvis enheten ikke støtter det.</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h2 class="page-break">10. Inspo</h2>
+    <table>
+      <thead>
+        <tr><th class="check">✓</th><th>Testpunkt</th><th>Forventet resultat</th><th class="result">Resultat</th><th class="notes">Notat</th></tr>
+      </thead>
+      <tbody>
+        <tr><td></td><td>Åpne Inspo</td><td>Info, programmer, oppskrifter og tips vises.</td><td></td><td></td></tr>
+        <tr><td></td><td>Åpne et innlegg</td><td>Full tekst og bilde/innhold vises riktig.</td><td></td><td></td></tr>
+        <tr><td></td><td>Legg til treningsprogram fra Inspo</td><td>Programmet havner under Trening.</td><td></td><td></td></tr>
+        <tr><td></td><td>Legg til ukeplan fra Inspo</td><td>Planen havner under Periodeplan.</td><td></td><td></td></tr>
+        <tr><td></td><td>Nytt inspo-varsel</td><td>Varsel åpner riktig innlegg.</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h2>11. Meldinger</h2>
+    <table>
+      <thead>
+        <tr><th class="check">✓</th><th>Testpunkt</th><th>Forventet resultat</th><th class="result">Resultat</th><th class="notes">Notat</th></tr>
+      </thead>
+      <tbody>
+        <tr><td></td><td>Åpne Meldinger</td><td>Chat med PT vises.</td><td></td><td></td></tr>
+        <tr><td></td><td>Send melding som medlem</td><td>Meldingen vises i tråden og hos PT.</td><td></td><td></td></tr>
+        <tr><td></td><td>Send svar som PT</td><td>Medlem får meldingen og eventuelt varsel.</td><td></td><td></td></tr>
+        <tr><td></td><td>Refresh etter melding</td><td>Meldinger ligger fortsatt i riktig rekkefølge.</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h2>12. Profil</h2>
+    <table>
+      <thead>
+        <tr><th class="check">✓</th><th>Testpunkt</th><th>Forventet resultat</th><th class="result">Resultat</th><th class="notes">Notat</th></tr>
+      </thead>
+      <tbody>
+        <tr><td></td><td>Endre navn/telefon/fødselsdato</td><td>Data lagres og vises etter refresh.</td><td></td><td></td></tr>
+        <tr><td></td><td>Ugyldig fødselsdato</td><td>Appen viser tydelig feilmelding.</td><td></td><td></td></tr>
+        <tr><td></td><td>Last opp profilbilde</td><td>Bildet vises i profilen.</td><td></td><td></td></tr>
+        <tr><td></td><td>Endre mål og profilverdier</td><td>Mål lagres og synkes til PT.</td><td></td><td></td></tr>
+        <tr><td></td><td>Fremhev PR</td><td>Maks tre fremhevede PR-er kan velges.</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h2>13. Varsler og installasjon</h2>
+    <table>
+      <thead>
+        <tr><th class="check">✓</th><th>Testpunkt</th><th>Forventet resultat</th><th class="result">Resultat</th><th class="notes">Notat</th></tr>
+      </thead>
+      <tbody>
+        <tr><td></td><td>Åpne varselbjelle</td><td>Relevante varsler vises, gamle irrelevante varsler skjules.</td><td></td><td></td></tr>
+        <tr><td></td><td>Trykk på meldingsvarsel</td><td>Appen åpner Meldinger.</td><td></td><td></td></tr>
+        <tr><td></td><td>Trykk på treningslogg-varsel</td><td>Appen åpner riktig logg eller treningsside.</td><td></td><td></td></tr>
+        <tr><td></td><td>Installer på iPhone/Android hjemskjerm</td><td>Appen åpner i app-lignende visning.</td><td></td><td></td></tr>
+        <tr><td></td><td>Refresh/åpne på nytt</td><td>Innlogging og siste data beholdes.</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h2>14. Sluttsjekk</h2>
+    <table>
+      <thead>
+        <tr><th class="check">✓</th><th>Testpunkt</th><th>Forventet resultat</th><th class="result">Resultat</th><th class="notes">Notat</th></tr>
+      </thead>
+      <tbody>
+        <tr><td></td><td>Mobilvisning</td><td>Ingen overlapp, låst scrolling eller kuttet tekst.</td><td></td><td></td></tr>
+        <tr><td></td><td>Desktopvisning</td><td>Alle faner og kort er lesbare.</td><td></td><td></td></tr>
+        <tr><td></td><td>Refresh på alle hovedfaner</td><td>Appen krasjer ikke og mister ikke viktig data.</td><td></td><td></td></tr>
+        <tr><td></td><td>Logg ut</td><td>Bruker sendes til innlogging.</td><td></td><td></td></tr>
+        <tr><td></td><td>Logg inn igjen</td><td>Samme medlemsdata vises korrekt.</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h2>Feillogg</h2>
+    <table>
+      <thead>
+        <tr><th>Nr.</th><th>Feilbeskrivelse</th><th>Steg for å gjenskape</th><th>Alvorlighet</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td></td><td></td><td><span class="status">Lav / Medium / Høy</span></td><td></td></tr>
+        <tr><td>2</td><td></td><td></td><td><span class="status">Lav / Medium / Høy</span></td><td></td></tr>
+        <tr><td>3</td><td></td><td></td><td><span class="status">Lav / Medium / Høy</span></td><td></td></tr>
+        <tr><td>4</td><td></td><td></td><td><span class="status">Lav / Medium / Høy</span></td><td></td></tr>
+        <tr><td>5</td><td></td><td></td><td><span class="status">Lav / Medium / Høy</span></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <div class="footer">
+      Motus testmal for premium-kunde. Oppdatert 19.05.2026.
+    </div>
+  </body>
+</html>
