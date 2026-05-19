@@ -63,6 +63,8 @@ import {
   establishRecoverySessionFromTokens,
   establishSessionFromAuthBootstrap,
   getSupabaseSessionUser,
+  mapSupabaseUserToAuthUser,
+  resolveSessionAuthRole,
   inviteMemberByEmail,
   inviteTrainerByEmail,
   refreshSupabaseSessionUser,
@@ -594,15 +596,13 @@ export function useAppState() {
         data: { session },
       } = supabaseClient ? await supabaseClient.auth.getSession() : { data: { session: null } };
       const sessionUser = session?.user ?? null;
-      const sessionRole = (() => {
-        const sessionEmail = sessionUser?.email?.trim().toLowerCase() ?? "";
-        if (sessionEmail.endsWith("@motus-skarnes.no")) return "trainer";
-        const appRole = sessionUser?.app_metadata?.role;
-        if (appRole === "member" || appRole === "trainer") return appRole;
-        const userRole = sessionUser?.user_metadata?.role;
-        if (userRole === "member" || userRole === "trainer") return userRole;
-        return "";
-      })();
+      const sessionRole = sessionUser
+        ? resolveSessionAuthRole({
+            email: sessionUser.email,
+            app_metadata: sessionUser.app_metadata as Record<string, unknown> | undefined,
+            user_metadata: sessionUser.user_metadata as Record<string, unknown> | undefined,
+          })
+        : "";
       const ownerUserId = (() => {
         const token = session?.access_token;
         if (!token) return "";
@@ -1048,24 +1048,12 @@ export function useAppState() {
         setIsAuthSessionLoading(false);
         return;
       }
-      const user = {
+      const user = mapSupabaseUserToAuthUser({
         id: session.user.id,
-        role:
-          session.user.app_metadata?.role === "member" || session.user.user_metadata?.role === "member"
-            ? "member"
-            : "trainer",
-        name:
-          (typeof session.user.user_metadata?.full_name === "string" && session.user.user_metadata.full_name) ||
-          (typeof session.user.user_metadata?.name === "string" && session.user.user_metadata.name) ||
-          (session.user.email ?? "Bruker"),
-        email: session.user.email ?? "",
-        memberId:
-          typeof session.user.app_metadata?.member_id === "string"
-            ? session.user.app_metadata.member_id
-            : typeof session.user.user_metadata?.member_id === "string"
-            ? session.user.user_metadata.member_id
-            : undefined,
-      } as AuthUser;
+        email: session.user.email,
+        user_metadata: session.user.user_metadata as Record<string, unknown> | undefined,
+        app_metadata: session.user.app_metadata as Record<string, unknown> | undefined,
+      });
       setAppState((prev) => {
         const baseState = applyMemberSessionBaseState(prev, user);
         const resolvedSelectedMemberId =

@@ -47,22 +47,30 @@ function isTrainerStaffEmail(email: string): boolean {
   return email.trim().toLowerCase().endsWith(TRAINER_EMAIL_DOMAIN);
 }
 
+/** Eksplisitt metadata (f.eks. resepsjon@ som Premium-medlem) vinner over @motus-skarnes.no standard. */
+export function resolveSessionAuthRole(user: {
+  email?: string | null;
+  user_metadata?: Record<string, unknown>;
+  app_metadata?: Record<string, unknown>;
+}): Role {
+  const appRole = user.app_metadata?.role;
+  if (appRole === "trainer" || appRole === "member") return appRole;
+  const userRole = user.user_metadata?.role;
+  if (userRole === "trainer" || userRole === "member") return userRole;
+  const email = String(user.email ?? "").trim();
+  if (isTrainerStaffEmail(email)) return "trainer";
+  return "trainer";
+}
+
 function resolveAuthRole(user: {
   email?: string | null;
   user_metadata?: Record<string, unknown>;
   app_metadata?: Record<string, unknown>;
 }): Role {
-  const email = String(user.email ?? "").trim();
-  if (isTrainerStaffEmail(email)) return "trainer";
-
-  const appRole = user.app_metadata?.role;
-  if (appRole === "trainer" || appRole === "member") return appRole;
-  const userRole = user.user_metadata?.role;
-  if (userRole === "trainer" || userRole === "member") return userRole;
-  return "trainer";
+  return resolveSessionAuthRole(user);
 }
 
-function mapSupabaseUserToAuthUser(user: {
+export function mapSupabaseUserToAuthUser(user: {
   id: string;
   email?: string | null;
   user_metadata?: Record<string, unknown>;
@@ -424,8 +432,8 @@ export async function ensureMemberAuthLink(email: string, memberId?: string): Pr
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedMemberId = memberId?.trim();
   if (!normalizedEmail || !normalizedEmail.includes("@")) return;
-  if (isTrainerEmail(normalizedEmail)) {
-    console.warn("Skipping member auth link for trainer-domain email:", normalizedEmail);
+  if (isTrainerEmail(normalizedEmail) && !normalizedMemberId) {
+    console.warn("Skipping member auth link for trainer-domain email without memberId:", normalizedEmail);
     return;
   }
   await syncMemberAuthLink(normalizedEmail, normalizedMemberId);

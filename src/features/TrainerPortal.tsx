@@ -42,7 +42,7 @@ import {
   isSharedMedlemCustomerType,
   scoreMemberProfileSource,
 } from "../services/memberAccessRules";
-import type { InviteMemberResult, InviteTrainerResult } from "../services/supabaseAuth";
+import { ensureMemberAuthLink, type InviteMemberResult, type InviteTrainerResult } from "../services/supabaseAuth";
 import type {
   ChatMessage,
   CustomerSubTab,
@@ -2680,6 +2680,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
           setMemberEditStatus("Kundekort lagret, men ingen profiler ble synket. Prøv igjen.");
         }
         return;
+      }
+      if (nextEmail.includes("@")) {
+        await ensureMemberAuthLink(nextEmail, selectedMember.id);
       }
       const typeHint = isSharedMedlemCustomerType(nextCustomerType)
         ? "Delt medlem — synlig for alle PT-er."

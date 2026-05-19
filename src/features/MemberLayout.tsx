@@ -303,7 +303,9 @@ export function MemberLayout({
       return Boolean(normalizedEmail && member.email.trim().toLowerCase() === normalizedEmail);
     });
     if (currentUser.role === "member") {
-      return !candidates.some((member) => member.customerType === "PT-kunde" || member.membershipType === "Premium");
+      return !candidates.some(
+        (member) => member.customerType !== "Medlem" || member.membershipType === "Premium",
+      );
     }
     return candidates.some((member) => member.customerType === "Medlem" && member.membershipType !== "Premium");
   }, [appState.currentUser, appState.members, appState.memberViewId]);
