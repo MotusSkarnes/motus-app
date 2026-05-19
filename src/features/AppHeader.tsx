@@ -44,6 +44,20 @@ export function AppHeader({
     return options[(daySeed + nameSeed) % options.length];
   }, [memberFirstName]);
 
+  const isTrainerPortalView = role === "trainer";
+  const trainerDisplayName = useMemo(() => {
+    const name = currentUser.name.trim();
+    const email = currentUser.email.trim().toLowerCase();
+    if (name && name !== "Bruker" && !name.includes("@")) return name;
+    const localPart = (email.split("@")[0] ?? "").replace(/[._-]+/g, " ").trim();
+    if (!localPart) return "Trener";
+    return localPart
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  }, [currentUser.email, currentUser.name]);
+
   return (
     <Card className="overflow-hidden p-4 sm:p-5 md:p-6 bg-[linear-gradient(135deg,rgba(20,184,166,0.07)_0%,rgba(236,72,153,0.07)_100%)]">
       <div
@@ -84,6 +98,32 @@ export function AppHeader({
               <>
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Hei {memberFirstName}</h1>
                 <p className="mt-2 text-sm md:text-base text-slate-500 max-w-3xl">{memberMotivationText}</p>
+              </>
+            ) : isTrainerPortalView ? (
+              <>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Motus Coach</h1>
+                <div
+                  className="mt-3 inline-flex min-w-0 max-w-full items-center gap-3 rounded-2xl border border-emerald-200/90 bg-white/95 px-4 py-3 shadow-sm ring-1 ring-black/5"
+                  style={{ borderLeftWidth: 4, borderLeftColor: MOTUS.turquoise }}
+                >
+                  <span
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white shadow-sm"
+                    style={{ background: MOTUS.gradient }}
+                    aria-hidden
+                  >
+                    <UserCircle2 className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0 text-left">
+                    <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                      Innlogget som PT
+                    </span>
+                    <span className="block truncate text-base font-bold text-slate-900 sm:text-lg">{trainerDisplayName}</span>
+                    <span className="block truncate text-xs text-slate-500 sm:text-sm">{currentUser.email}</span>
+                  </span>
+                </div>
+                <p className="mt-3 text-sm md:text-base text-slate-500 max-w-3xl">
+                  Du ser dine kunder, programmer og oppfølging. Medlemmer og andre PT-er ser kun sin egen konto.
+                </p>
               </>
             ) : (
               <>
