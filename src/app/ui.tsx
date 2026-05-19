@@ -91,17 +91,20 @@ export function SelectBox({
   onChange,
   options,
   className = "",
+  disabled = false,
 }: {
   value: string;
   onChange: (value: string) => void;
   options: Array<string | SelectOption>;
   className?: string;
+  disabled?: boolean;
 }) {
   return (
     <select
       value={value}
+      disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
-      className={`h-10 w-full rounded-lg border px-3 text-sm text-slate-800 outline-none bg-white ${className}`}
+      className={`h-10 w-full rounded-lg border px-3 text-sm text-slate-800 outline-none bg-white disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 ${className}`}
       style={{ borderColor: "rgba(15,23,42,0.12)" }}
     >
       {options.map((option) => {

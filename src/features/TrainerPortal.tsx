@@ -6568,34 +6568,35 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                   <span className="text-xs font-medium text-slate-600">Kunde</span>
                   <SelectBox
                     value={reassignMemberId}
-                    onChange={(event) => setReassignMemberId(event.target.value)}
+                    onChange={setReassignMemberId}
                     className="w-full"
-                  >
-                    <option value="">Velg kunde…</option>
-                    {reassignableOwnedMembers.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {memberReassignLabel(member)}
-                      </option>
-                    ))}
-                  </SelectBox>
+                    options={[
+                      { value: "", label: "Velg kunde…" },
+                      ...reassignableOwnedMembers.map((member) => ({
+                        value: member.id,
+                        label: memberReassignLabel(member),
+                      })),
+                    ]}
+                  />
                 </label>
                 <label className="block space-y-1">
                   <span className="text-xs font-medium text-slate-600">Overfør til PT</span>
                   <SelectBox
                     value={reassignTargetTrainerId}
-                    onChange={(event) => setReassignTargetTrainerId(event.target.value)}
+                    onChange={setReassignTargetTrainerId}
                     className="w-full"
                     disabled={isLoadingTrainerOptions || trainerOptionsForReassign.length === 0}
-                  >
-                    <option value="">
-                      {isLoadingTrainerOptions ? "Laster PT-er…" : "Velg mottaker…"}
-                    </option>
-                    {trainerOptionsForReassign.map((trainer) => (
-                      <option key={trainer.id} value={trainer.id}>
-                        {trainer.name} · {trainer.email}
-                      </option>
-                    ))}
-                  </SelectBox>
+                    options={[
+                      {
+                        value: "",
+                        label: isLoadingTrainerOptions ? "Laster PT-er…" : "Velg mottaker…",
+                      },
+                      ...trainerOptionsForReassign.map((trainer) => ({
+                        value: trainer.id,
+                        label: `${trainer.name} · ${trainer.email}`,
+                      })),
+                    ]}
+                  />
                 </label>
                 <GradientButton
                   type="button"
