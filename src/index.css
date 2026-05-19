@@ -11,6 +11,10 @@ body,
   min-height: 100%;
 }
 
+html {
+  touch-action: manipulation;
+}
+
 body {
   min-width: 320px;
   min-height: 100%;
