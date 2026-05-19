@@ -42,6 +42,7 @@ import {
   fetchMessagesFromSupabase,
   fetchProgramsFromSupabase,
   registerMessagesPersistedListener,
+  reassignMemberOwnerFromSupabase,
   restoreMemberByEmailFromSupabase,
   type RestoreMemberOptions,
   supabaseAppRepository,
@@ -1642,6 +1643,30 @@ export function useAppState() {
     return inviteMemberByEmail(email, memberId);
   }
 
+  async function refreshTrainerSessionData(ownerUserId: string) {
+    const hydratedTrainer = ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
+    const directTrainerMembers = await fetchMembersFromSupabase();
+    const remoteMembers = hydratedTrainer
+      ? mergeMembersById(hydratedTrainer.members, directTrainerMembers)
+      : directTrainerMembers;
+    const remoteMessages = hydratedTrainer?.messages ?? (await fetchMessagesFromSupabase());
+    const remotePrograms = hydratedTrainer?.programs ?? (await fetchProgramsFromSupabase());
+    const remoteLogs = hydratedTrainer?.logs ?? (await fetchLogsFromSupabase());
+
+    if (remoteMembers) {
+      setAppState((prev) => ({
+        ...prev,
+        members: remoteMembers,
+        ...(remoteMessages ? { messages: remoteMessages } : {}),
+        ...(remotePrograms ? { programs: mergeRemoteProgramsWithLocal(remotePrograms, prev.programs) } : {}),
+        ...(remoteLogs ? { logs: remoteLogs } : {}),
+        ...(hydratedTrainer?.periodPlansByMemberId
+          ? { remoteTrainerPeriodPlansByMemberId: hydratedTrainer.periodPlansByMemberId }
+          : {}),
+      }));
+    }
+  }
+
   async function restoreMemberByEmail(
     email: string,
     options?: RestoreMemberOptions,
@@ -1660,22 +1685,29 @@ export function useAppState() {
     if (!result.ok) return result;
 
     const ownerUserId = String(options?.ownerUserId ?? sessionOwnerUserId).trim();
-    const hydratedTrainer = ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
-    const directTrainerMembers = await fetchMembersFromSupabase();
-    const remoteMembers = hydratedTrainer
-      ? mergeMembersById(hydratedTrainer.members, directTrainerMembers)
-      : directTrainerMembers;
-    const remoteMessages = hydratedTrainer?.messages ?? (await fetchMessagesFromSupabase());
-    const remotePrograms = hydratedTrainer?.programs ?? (await fetchProgramsFromSupabase());
-    const remoteLogs = hydratedTrainer?.logs ?? (await fetchLogsFromSupabase());
+    if (ownerUserId) await refreshTrainerSessionData(ownerUserId);
+    return result;
+  }
 
-    if (remoteMembers) {
+  async function reassignMemberOwner(input: {
+    memberId: string;
+    targetOwnerUserId: string;
+  }): Promise<{ ok: boolean; message: string }> {
+    if (!isSupabaseConfigured) {
+      return { ok: false, message: "Overføring er ikke tilgjengelig akkurat nå." };
+    }
+    const {
+      data: { session },
+    } = supabaseClient ? await supabaseClient.auth.getSession() : { data: { session: null } };
+    const sessionOwnerUserId = String(session?.user?.id ?? "").trim();
+    const result = await reassignMemberOwnerFromSupabase(input);
+    if (!result.ok) return result;
+    if (sessionOwnerUserId) {
+      await refreshTrainerSessionData(sessionOwnerUserId);
+      const transferredId = input.memberId.trim();
       setAppState((prev) => ({
         ...prev,
-        members: remoteMembers,
-        ...(remoteMessages ? { messages: remoteMessages } : {}),
-        ...(remotePrograms ? { programs: mergeRemoteProgramsWithLocal(remotePrograms, prev.programs) } : {}),
-        ...(remoteLogs ? { logs: remoteLogs } : {}),
+        selectedMemberId: prev.selectedMemberId === transferredId ? "" : prev.selectedMemberId,
       }));
     }
     return result;
@@ -1815,6 +1847,7 @@ export function useAppState() {
     inviteMember,
     inviteTrainer,
     restoreMemberByEmail,
+    reassignMemberOwner,
     restoreMissingTestData,
     restoreOriginalExerciseBank,
     remoteTrainerPeriodPlansByMemberId,

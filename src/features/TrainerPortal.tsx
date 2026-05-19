@@ -64,7 +64,9 @@ import {
 import { parseLogDateMs } from "../app/workoutLogDate";
 import {
   deleteMemberPeriodPlanByPlanId,
+  listTrainersForReassignFromSupabase,
   lookupMembersByEmailForTrainer,
+  type TrainerRosterOption,
   upsertMemberPeriodPlansForTrainer,
 } from "../services/supabaseRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
@@ -159,6 +161,10 @@ type TrainerPortalProps = {
     email: string,
     options?: { ownerUserId?: string; claimForTrainer?: boolean },
   ) => Promise<{ ok: boolean; message: string }>;
+  reassignMemberOwner: (input: {
+    memberId: string;
+    targetOwnerUserId: string;
+  }) => Promise<{ ok: boolean; message: string }>;
   restoreMissingTestData: () => Promise<{ ok: boolean; message: string }>;
   restoreOriginalExerciseBank: () => Promise<{ ok: boolean; message: string }>;
   saveProgramForMember: (input: {
@@ -222,6 +228,33 @@ type TrainerPortalProps = {
   updateWorkoutExerciseNote?: (programExerciseId: string, note: string) => void;
   finishWorkoutMode?: (input?: { reflection?: WorkoutReflection }) => void;
   cancelWorkoutMode?: () => void;
+};
+
+type MemberDedupePreviewMember = {
+  id: string;
+  ownerUserId?: string;
+  email?: string;
+  name?: string;
+  isActive?: boolean;
+  invitedAt?: string;
+  daysSinceActivity?: string;
+  customerType?: string;
+  membershipType?: string;
+  action?: "keep" | "deactivate" | string;
+};
+
+type MemberDedupePreviewGroup = {
+  email: string;
+  canonicalId: string;
+  duplicateIds: string[];
+  canonicalMember?: MemberDedupePreviewMember;
+  duplicateMembers?: MemberDedupePreviewMember[];
+  members?: MemberDedupePreviewMember[];
+};
+
+type MemberDedupeDryRunData = {
+  duplicateGroupCount?: number;
+  groups?: MemberDedupePreviewGroup[];
 };
 
 type FollowUpDetail = {
@@ -551,6 +584,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     inviteMember,
     inviteTrainer,
     restoreMemberByEmail,
+    reassignMemberOwner,
     restoreMissingTestData,
     restoreOriginalExerciseBank,
     saveProgramForMember,
@@ -688,6 +722,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const [isRestoringMember, setIsRestoringMember] = useState(false);
   const [memberDedupeStatus, setMemberDedupeStatus] = useState<string | null>(null);
   const [isRunningMemberDedupe, setIsRunningMemberDedupe] = useState(false);
+  const [memberDedupePreviewGroups, setMemberDedupePreviewGroups] = useState<MemberDedupePreviewGroup[]>([]);
+  const [memberDedupePreviewOwnerUserId, setMemberDedupePreviewOwnerUserId] = useState("");
   const [adminHealthStatus, setAdminHealthStatus] = useState<string | null>(null);
   const [adminCacheStatus, setAdminCacheStatus] = useState<string | null>(null);
   const [currentTrainerOwnerUserId, setCurrentTrainerOwnerUserId] = useState("");
@@ -697,6 +733,12 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     if (typeof window === "undefined") return "";
     return window.localStorage.getItem("motus.admin.lastMemberCleanupAt") ?? "";
   });
+  const [reassignMemberId, setReassignMemberId] = useState("");
+  const [reassignTargetTrainerId, setReassignTargetTrainerId] = useState("");
+  const [trainerOptionsForReassign, setTrainerOptionsForReassign] = useState<TrainerRosterOption[]>([]);
+  const [isLoadingTrainerOptions, setIsLoadingTrainerOptions] = useState(false);
+  const [reassignStatus, setReassignStatus] = useState<string | null>(null);
+  const [isReassigningMember, setIsReassigningMember] = useState(false);
   const [restoreDataStatus, setRestoreDataStatus] = useState<string | null>(null);
   const [isRestoringTestData, setIsRestoringTestData] = useState(false);
   const [restoreExerciseBankStatus, setRestoreExerciseBankStatus] = useState<string | null>(null);
@@ -909,16 +951,22 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   );
   const archivedMembersForAdmin = useMemo(() => {
     const trainerId = currentTrainerOwnerUserId.trim();
+    const activeIdentityKeys = new Set(
+      members
+        .filter((member) => member.isActive !== false)
+        .map((member) => getMemberIdentityKey(member)),
+    );
     const byIdentity = new Map<string, Member>();
     members.forEach((member) => {
       if (member.isActive !== false) return;
+      const identityKey = getMemberIdentityKey(member);
+      if (activeIdentityKeys.has(identityKey)) return;
       const owner = (member.ownerUserId ?? "").trim();
       if (trainerId) {
         const visible =
           isSharedMedlemCustomerType(member.customerType) || !owner || owner === trainerId;
         if (!visible) return;
       }
-      const identityKey = getMemberIdentityKey(member);
       const existing = byIdentity.get(identityKey);
       if (!existing) {
         byIdentity.set(identityKey, member);
@@ -2878,6 +2926,80 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       cancelled = true;
     };
   }, []);
+
+  const reassignableOwnedMembers = useMemo(() => {
+    const trainerId = currentTrainerOwnerUserId.trim();
+    if (!trainerId) return [] as Member[];
+    return members
+      .filter(
+        (member) =>
+          member.isActive !== false &&
+          isPrivatePtRosterCustomerType(member.customerType) &&
+          (member.ownerUserId ?? "").trim() === trainerId,
+      )
+      .sort((a, b) => a.name.localeCompare(b.name, "nb"));
+  }, [members, currentTrainerOwnerUserId]);
+
+  useEffect(() => {
+    if (trainerTab !== "admin" || !isSupabaseConfigured) return;
+    let cancelled = false;
+    setIsLoadingTrainerOptions(true);
+    void listTrainersForReassignFromSupabase().then((result) => {
+      if (cancelled) return;
+      if (result.ok) {
+        setTrainerOptionsForReassign(
+          result.trainers.filter((trainer) => trainer.id !== currentTrainerOwnerUserId.trim()),
+        );
+      } else if (!trainerOptionsForReassign.length) {
+        setReassignStatus(result.message);
+      }
+      setIsLoadingTrainerOptions(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [trainerTab, isSupabaseConfigured, currentTrainerOwnerUserId]);
+
+  function memberReassignLabel(member: Member): string {
+    const typeLabel =
+      member.membershipType === "Premium" && member.customerType === "PT-kunde"
+        ? "Premium-kunde"
+        : member.customerType;
+    return `${member.name} · ${typeLabel}`;
+  }
+
+  function handleConfirmReassignMember() {
+    const memberId = reassignMemberId.trim();
+    const targetOwnerUserId = reassignTargetTrainerId.trim();
+    if (!memberId || !targetOwnerUserId) {
+      setReassignStatus("Velg kunde og mottaker-PT.");
+      return;
+    }
+    const member = members.find((row) => row.id === memberId);
+    const targetTrainer = trainerOptionsForReassign.find((trainer) => trainer.id === targetOwnerUserId);
+    if (!member || !targetTrainer) {
+      setReassignStatus("Ugyldig valg. Oppdater siden og prøv igjen.");
+      return;
+    }
+    setConfirmDialog({
+      title: "Overfør kunde til annen PT?",
+      message: `${memberReassignLabel(member)} overføres til ${targetTrainer.name} (${targetTrainer.email}). Programmer, treningslogg og chat følger med.`,
+      confirmLabel: "Overfør",
+      onConfirm: () => {
+        void (async () => {
+          setIsReassigningMember(true);
+          setReassignStatus(null);
+          const result = await reassignMemberOwner({ memberId, targetOwnerUserId });
+          setReassignStatus(result.message);
+          if (result.ok) {
+            setReassignMemberId("");
+            setReassignTargetTrainerId("");
+          }
+          setIsReassigningMember(false);
+        })();
+      },
+    });
+  }
 
   async function handleRefreshAdminHealthCheck() {
     if (!isSupabaseConfigured || !supabaseClient) {
@@ -6278,6 +6400,67 @@ function programAuthorLabel(program: TrainingProgram): string | null {
             ) : null}
           </div>
           {renderNewMemberForm({ id: "admin-legg-til-medlem", title: "Legg til medlem" })}
+          <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="text-sm font-semibold text-slate-700">Overfør PT- eller Premium-kunde</div>
+            <p className="text-xs leading-relaxed text-slate-600">
+              Overfør en kunde du eier til en annen PT. Medlemsrader, programmer, treningslogg og chat flyttes til mottaker.
+              Felles «Medlem»-kunder kan ikke overføres her.
+            </p>
+            {reassignableOwnedMembers.length === 0 ? (
+              <p className="text-xs text-slate-500">Du har ingen aktive PT- eller Premium-kunder å overføre.</p>
+            ) : (
+              <>
+                <label className="block space-y-1">
+                  <span className="text-xs font-medium text-slate-600">Kunde</span>
+                  <SelectBox
+                    value={reassignMemberId}
+                    onChange={(event) => setReassignMemberId(event.target.value)}
+                    className="w-full"
+                  >
+                    <option value="">Velg kunde…</option>
+                    {reassignableOwnedMembers.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {memberReassignLabel(member)}
+                      </option>
+                    ))}
+                  </SelectBox>
+                </label>
+                <label className="block space-y-1">
+                  <span className="text-xs font-medium text-slate-600">Overfør til PT</span>
+                  <SelectBox
+                    value={reassignTargetTrainerId}
+                    onChange={(event) => setReassignTargetTrainerId(event.target.value)}
+                    className="w-full"
+                    disabled={isLoadingTrainerOptions || trainerOptionsForReassign.length === 0}
+                  >
+                    <option value="">
+                      {isLoadingTrainerOptions ? "Laster PT-er…" : "Velg mottaker…"}
+                    </option>
+                    {trainerOptionsForReassign.map((trainer) => (
+                      <option key={trainer.id} value={trainer.id}>
+                        {trainer.name} · {trainer.email}
+                      </option>
+                    ))}
+                  </SelectBox>
+                </label>
+                <GradientButton
+                  type="button"
+                  onClick={handleConfirmReassignMember}
+                  disabled={isReassigningMember || !reassignMemberId || !reassignTargetTrainerId}
+                  className="w-full md:w-auto"
+                >
+                  {isReassigningMember ? "Overfører..." : "Overfør til valgt PT"}
+                </GradientButton>
+              </>
+            )}
+            {reassignStatus ? (
+              <StatusMessage
+                message={reassignStatus}
+                tone={reassignStatus.toLowerCase().includes("feilet") || reassignStatus.toLowerCase().includes("ugyldig") ? "error" : "success"}
+                className="!rounded-xl !px-3 !py-2 !text-xs"
+              />
+            ) : null}
+          </div>
           <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <div className="text-sm font-semibold text-slate-700">Arkiverte kunder</div>
             <p className="text-xs leading-relaxed text-slate-600">

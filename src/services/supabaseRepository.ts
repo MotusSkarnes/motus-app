@@ -2575,6 +2575,71 @@ export type RestoreMemberOptions = {
   claimForTrainer?: boolean;
 };
 
+export type TrainerRosterOption = {
+  id: string;
+  email: string;
+  name: string;
+};
+
+export async function listTrainersForReassignFromSupabase(): Promise<{
+  ok: boolean;
+  trainers: TrainerRosterOption[];
+  message: string;
+}> {
+  if (!supabaseClient) {
+    return { ok: false, trainers: [], message: "Tjenesten er ikke tilgjengelig akkurat nå." };
+  }
+  const {
+    data: { session },
+  } = await supabaseClient.auth.getSession();
+  const accessToken = session?.access_token ?? "";
+  if (!accessToken) {
+    return { ok: false, trainers: [], message: "Du må være innlogget som trener." };
+  }
+  const { data, error } = await supabaseClient.functions.invoke("reassign-member-owner", {
+    body: { listTrainersOnly: true, accessToken },
+  });
+  if (error) {
+    return { ok: false, trainers: [], message: error.message || "Kunne ikke hente PT-liste." };
+  }
+  const trainers = Array.isArray((data as { trainers?: unknown })?.trainers)
+    ? ((data as { trainers: TrainerRosterOption[] }).trainers ?? [])
+    : [];
+  return { ok: true, trainers, message: "" };
+}
+
+export async function reassignMemberOwnerFromSupabase(input: {
+  memberId: string;
+  targetOwnerUserId: string;
+}): Promise<{ ok: boolean; message: string }> {
+  if (!supabaseClient) {
+    return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
+  }
+  const memberId = input.memberId.trim();
+  const targetOwnerUserId = input.targetOwnerUserId.trim();
+  if (!memberId || !targetOwnerUserId) {
+    return { ok: false, message: "Velg kunde og mottaker-PT." };
+  }
+  const {
+    data: { session },
+  } = await supabaseClient.auth.getSession();
+  const accessToken = session?.access_token ?? "";
+  if (!accessToken) {
+    return { ok: false, message: "Du må være innlogget som trener." };
+  }
+  const { data, error } = await supabaseClient.functions.invoke("reassign-member-owner", {
+    body: { memberId, targetOwnerUserId, accessToken },
+  });
+  if (error) {
+    return { ok: false, message: error.message || "Overføring feilet." };
+  }
+  const message = String((data as { message?: string })?.message ?? "").trim();
+  if (!message) {
+    return { ok: false, message: "Overføring feilet uten detaljer." };
+  }
+  return { ok: true, message };
+}
+
 export async function restoreMemberByEmailFromSupabase(
   email: string,
   options?: RestoreMemberOptions,

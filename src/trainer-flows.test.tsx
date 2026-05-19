@@ -166,6 +166,7 @@ describe("Trainer flows", () => {
         inviteMember={async () => ({ ok: true, message: "ok" })}
         inviteTrainer={async () => ({ ok: true, message: "ok" })}
         restoreMemberByEmail={async () => ({ ok: true, message: "ok" })}
+        reassignMemberOwner={async () => ({ ok: true, message: "ok" })}
         restoreMissingTestData={async () => ({ ok: true, message: "ok" })}
         restoreOriginalExerciseBank={async () => ({ ok: true, message: "ok" })}
         saveProgramForMember={() => {}}
@@ -262,6 +263,7 @@ describe("Trainer flows", () => {
         inviteMember={async () => ({ ok: true, message: "ok" })}
         inviteTrainer={async () => ({ ok: true, message: "ok" })}
         restoreMemberByEmail={async () => ({ ok: true, message: "ok" })}
+        reassignMemberOwner={async () => ({ ok: true, message: "ok" })}
         restoreMissingTestData={async () => ({ ok: true, message: "ok" })}
         restoreOriginalExerciseBank={async () => ({ ok: true, message: "ok" })}
         saveProgramForMember={() => {}}
@@ -343,6 +345,7 @@ describe("Trainer flows", () => {
         inviteMember={async () => ({ ok: true, message: "ok" })}
         inviteTrainer={async () => ({ ok: true, message: "ok" })}
         restoreMemberByEmail={async () => ({ ok: true, message: "ok" })}
+        reassignMemberOwner={async () => ({ ok: true, message: "ok" })}
         restoreMissingTestData={async () => ({ ok: true, message: "ok" })}
         restoreOriginalExerciseBank={async () => ({ ok: true, message: "ok" })}
         saveProgramForMember={() => {}}
@@ -428,6 +431,7 @@ describe("Trainer flows", () => {
         inviteMember={async () => ({ ok: true, message: "ok" })}
         inviteTrainer={async () => ({ ok: true, message: "ok" })}
         restoreMemberByEmail={async () => ({ ok: true, message: "ok" })}
+        reassignMemberOwner={async () => ({ ok: true, message: "ok" })}
         restoreMissingTestData={async () => ({ ok: true, message: "ok" })}
         restoreOriginalExerciseBank={async () => ({ ok: true, message: "ok" })}
         saveProgramForMember={() => {}}

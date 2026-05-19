@@ -111,6 +111,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     inviteMember: state.inviteMember,
     inviteTrainer: state.inviteTrainer,
     restoreMemberByEmail: state.restoreMemberByEmail,
+    reassignMemberOwner: state.reassignMemberOwner,
     restoreMissingTestData: state.restoreMissingTestData,
     restoreOriginalExerciseBank: state.restoreOriginalExerciseBank,
     saveProgramForMember: state.saveProgramForMember,

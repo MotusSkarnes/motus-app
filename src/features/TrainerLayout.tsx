@@ -53,6 +53,7 @@ type TrainerLayoutProps = {
   inviteMember: ComponentProps<typeof TrainerPortal>["inviteMember"];
   inviteTrainer: ComponentProps<typeof TrainerPortal>["inviteTrainer"];
   restoreMemberByEmail: ComponentProps<typeof TrainerPortal>["restoreMemberByEmail"];
+  reassignMemberOwner: ComponentProps<typeof TrainerPortal>["reassignMemberOwner"];
   restoreMissingTestData: ComponentProps<typeof TrainerPortal>["restoreMissingTestData"];
   restoreOriginalExerciseBank: ComponentProps<typeof TrainerPortal>["restoreOriginalExerciseBank"];
   saveProgramForMember: ComponentProps<typeof TrainerPortal>["saveProgramForMember"];
@@ -114,6 +115,7 @@ export function TrainerLayout({
   inviteMember,
   inviteTrainer,
   restoreMemberByEmail,
+  reassignMemberOwner,
   restoreMissingTestData,
   restoreOriginalExerciseBank,
   saveProgramForMember,
@@ -171,6 +173,7 @@ export function TrainerLayout({
     markMemberInvited,
     inviteMember,
     restoreMemberByEmail,
+    reassignMemberOwner,
     restoreMissingTestData,
     restoreOriginalExerciseBank,
     saveProgramForMember,

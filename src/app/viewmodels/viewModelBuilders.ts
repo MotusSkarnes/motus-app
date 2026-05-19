@@ -33,6 +33,7 @@ export function buildTrainerLayoutProps(input: {
   inviteMember: TrainerLayoutProps["inviteMember"];
   inviteTrainer: TrainerLayoutProps["inviteTrainer"];
   restoreMemberByEmail: TrainerLayoutProps["restoreMemberByEmail"];
+  reassignMemberOwner: TrainerLayoutProps["reassignMemberOwner"];
   restoreMissingTestData: TrainerLayoutProps["restoreMissingTestData"];
   restoreOriginalExerciseBank: TrainerLayoutProps["restoreOriginalExerciseBank"];
   saveProgramForMember: TrainerLayoutProps["saveProgramForMember"];
