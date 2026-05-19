@@ -899,6 +899,8 @@ export function MemberPortal(props: MemberPortalProps) {
   const [memberChatSendStatus, setMemberChatSendStatus] = useState<string | null>(null);
   const isSendingMemberMessageRef = useRef(false);
   const [isSendingMemberMessage, setIsSendingMemberMessage] = useState(false);
+  const [ptChangeReason, setPtChangeReason] = useState("");
+  const [ptChangeRequestStatus, setPtChangeRequestStatus] = useState<string | null>(null);
   const lastMemberSendKeyRef = useRef("");
   const lastMemberSendAtRef = useRef(0);
   useEffect(() => {
@@ -3139,15 +3141,15 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }
 
-  async function dispatchMemberMessageToRelatedMembers(text: string) {
-    if (isSendingMemberMessageRef.current) return;
+  async function dispatchMemberMessageToRelatedMembers(text: string): Promise<boolean> {
+    if (isSendingMemberMessageRef.current) return false;
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed) return false;
     const nowMs = Date.now();
     const duplicateKey = `${(editableMember?.email ?? normalizedCurrentUserEmail).trim().toLowerCase()}|${trimmed.toLowerCase()}`;
     if (lastMemberSendKeyRef.current === duplicateKey && nowMs - lastMemberSendAtRef.current < 10000) {
       setMemberChatSendStatus("Meldingen ble allerede sendt nylig.");
-      return;
+      return false;
     }
     isSendingMemberMessageRef.current = true;
     setIsSendingMemberMessage(true);
@@ -3185,21 +3187,39 @@ export function MemberPortal(props: MemberPortalProps) {
       }
       if (!validTargetMemberIds.length) {
         setMemberChatSendStatus("Kunne ikke sende melding: ingen gyldig mottaker.");
-        return;
+        return false;
       }
       const primaryTargetId = String(validTargetMemberIds[0] ?? "").trim();
       if (!primaryTargetId) {
         setMemberChatSendStatus("Kunne ikke sende melding: ingen gyldig mottaker.");
-        return;
+        return false;
       }
       sendMemberMessage(primaryTargetId, trimmed);
       lastMemberSendKeyRef.current = duplicateKey;
       lastMemberSendAtRef.current = nowMs;
       setMemberChatSendStatus("Melding sendt.");
+      return true;
     } finally {
       isSendingMemberMessageRef.current = false;
       setIsSendingMemberMessage(false);
     }
+  }
+
+  async function handleRequestPtChange() {
+    const reason = ptChangeReason.trim();
+    const message = [
+      "Hei! Jeg ønsker å bytte PT.",
+      reason ? `Kort forklaring: ${reason}` : "Kan dere hjelpe meg med å finne riktig løsning?",
+      "Kan dere ta kontakt med meg om veien videre?",
+    ].join("\n");
+    setPtChangeRequestStatus(null);
+    const sent = await dispatchMemberMessageToRelatedMembers(message);
+    if (!sent) {
+      setPtChangeRequestStatus("Kunne ikke sende forespørselen akkurat nå. Prøv igjen, eller send vanlig melding til PT.");
+      return;
+    }
+    setPtChangeReason("");
+    setPtChangeRequestStatus("Forespørselen er sendt til PT. Du finner den også under Meldinger.");
   }
 
   async function handleRegisterWebPush() {
@@ -6179,6 +6199,59 @@ export function MemberPortal(props: MemberPortalProps) {
                           {showOnboardingHomePrompt || !onboardingSubstantivelyComplete ? "Start skjema" : "Åpne skjema"}
                         </GradientButton>
                       </div>
+                    </div>
+                  ) : null}
+                  {!isMemberLimited ? (
+                    <div
+                      className="rounded-xl border p-4"
+                      style={{
+                        borderColor: "rgba(20,184,166,0.25)",
+                        background: "linear-gradient(135deg, rgba(20,184,166,0.06) 0%, rgba(248,250,252,0.92) 100%)",
+                      }}
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <div
+                            className="rounded-xl p-2 text-white shadow-sm"
+                            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                          >
+                            <MessageSquare className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-slate-900">Behov for å bytte PT?</div>
+                            <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                              Send en forespørsel til PT. Selve byttet bekreftes og gjennomføres av PT/admin, slik at program, logg og meldinger følger riktig med.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <label className="mt-3 block space-y-1">
+                        <span className="text-xs font-medium text-slate-600">Kort forklaring (valgfritt)</span>
+                        <TextArea
+                          value={ptChangeReason}
+                          onChange={(event) => {
+                            setPtChangeReason(event.target.value);
+                            if (ptChangeRequestStatus) setPtChangeRequestStatus(null);
+                          }}
+                          className="min-h-[76px]"
+                          placeholder="F.eks. ønsker annen oppfølging, byttet treningsmål eller praktiske årsaker."
+                        />
+                      </label>
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <GradientButton type="button" onClick={() => void handleRequestPtChange()} disabled={isSendingMemberMessage} className="w-full sm:w-auto">
+                          {isSendingMemberMessage ? "Sender..." : "Be om PT-bytte"}
+                        </GradientButton>
+                        <OutlineButton type="button" onClick={() => setMemberTab("messages")} className="w-full sm:w-auto">
+                          Åpne meldinger
+                        </OutlineButton>
+                      </div>
+                      {ptChangeRequestStatus ? (
+                        <StatusMessage
+                          message={ptChangeRequestStatus}
+                          tone={ptChangeRequestStatus.toLowerCase().includes("kunne ikke") ? "error" : "success"}
+                          className="mt-3 !rounded-xl !px-3 !py-2 !text-xs"
+                        />
+                      ) : null}
                     </div>
                   ) : null}
                   <div className="rounded-xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
