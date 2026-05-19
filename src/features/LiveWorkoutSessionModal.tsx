@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Plus, Repeat2, SkipForward, X } from "lucide-react";
+import { ArrowLeft, ChevronRight, Plus, Repeat2, SkipForward, X } from "lucide-react";
+import { WorkoutCompactSetTable } from "./LiveWorkoutCompactSets";
 import { MOTUS } from "../app/data";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { buildWorkoutResultGroups, EXERCISE_BLOCK_LABELS } from "../app/programBlocks";
@@ -164,9 +165,13 @@ export function LiveWorkoutSessionModal({
 
   const replacementCandidates = useMemo(() => {
     if (!activeProgram || !currentWorkoutGroup || currentWorkoutGroup.blockType) return [] as Exercise[];
-    const sourceProgramExercise = activeProgram.exercises.find((exercise) => exercise.id === currentWorkoutGroup.groupId);
-    if (!sourceProgramExercise) return [];
-    const sourceExercise = exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
+    const sourceExercise =
+      exerciseByName.get(currentWorkoutGroup.exerciseName.trim().toLowerCase()) ??
+      (() => {
+        const sourceProgramExercise = activeProgram.exercises.find((exercise) => exercise.id === currentWorkoutGroup.groupId);
+        if (!sourceProgramExercise) return null;
+        return exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
+      })();
     if (!sourceExercise) return [];
     const sameGroup = exercises.filter(
       (exercise) =>
@@ -176,21 +181,41 @@ export function LiveWorkoutSessionModal({
     );
     if (sameGroup.length > 0) return sameGroup;
     return exercises.filter((exercise) => exercise.id !== sourceExercise.id && exercise.category === sourceExercise.category);
-  }, [activeProgram, currentWorkoutGroup, exercises]);
+  }, [activeProgram, currentWorkoutGroup, exerciseByName, exercises]);
 
   const currentWorkoutExercise = useMemo(() => {
     if (!currentWorkoutGroup) return null;
-    if (activeProgram) {
-      const sourceProgramExercise = activeProgram.exercises.find((exercise) => exercise.id === currentWorkoutGroup.groupId);
-      if (sourceProgramExercise) {
-        const sourceExercise = exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
-        if (sourceExercise) return sourceExercise;
-      }
-    }
-    return exerciseByName.get(currentWorkoutGroup.exerciseName.trim().toLowerCase()) ?? null;
+    const byName = exerciseByName.get(currentWorkoutGroup.exerciseName.trim().toLowerCase());
+    if (byName) return byName;
+    if (!activeProgram) return null;
+    const sourceProgramExercise = activeProgram.exercises.find((exercise) => exercise.id === currentWorkoutGroup.groupId);
+    if (!sourceProgramExercise) return null;
+    return exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
   }, [activeProgram, currentWorkoutGroup, exerciseByName, exercises]);
 
   const currentWorkoutExerciseImageUrl = currentWorkoutExercise?.imageUrl?.trim() ?? "";
+
+  const nextWorkoutExercise = useMemo(() => {
+    if (!nextWorkoutGroup) return null;
+    const byName = exerciseByName.get(nextWorkoutGroup.exerciseName.trim().toLowerCase());
+    if (byName) return byName;
+    if (!activeProgram) return null;
+    const sourceProgramExercise = activeProgram.exercises.find((exercise) => exercise.id === nextWorkoutGroup.groupId);
+    if (!sourceProgramExercise) return null;
+    return exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
+  }, [activeProgram, nextWorkoutGroup, exerciseByName, exercises]);
+
+  const workoutProgressPct =
+    workoutResultGroups.length > 0 ? Math.round(((workoutExerciseIndex + 1) / workoutResultGroups.length) * 100) : 0;
+
+  const completedSetsCount = workoutMode?.results.filter((r) => r.completed).length ?? 0;
+  const totalSetsCount = workoutMode?.results.length ?? 0;
+
+  const activeSetProgressLabel = useMemo(() => {
+    if (!currentWorkoutGroup || currentWorkoutGroup.blockType) return "";
+    const completed = currentWorkoutGroup.rows.filter((r) => r.completed).length;
+    return `Sett ${Math.min(completed + 1, currentWorkoutGroup.rows.length)} av ${currentWorkoutGroup.rows.length}`;
+  }, [currentWorkoutGroup]);
 
   const currentWorkoutPlanLabel = useMemo(() => {
     if (!currentWorkoutGroup) return "";
@@ -210,6 +235,23 @@ export function LiveWorkoutSessionModal({
     }
     return `${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedReps} reps · ${currentWorkoutGroup.plannedWeight} kg`;
   }, [currentWorkoutGroup]);
+
+  const nextWorkoutPlanLabel = useMemo(() => {
+    if (!nextWorkoutGroup) return "";
+    if (nextWorkoutGroup.blockType) {
+      const blockLabel = EXERCISE_BLOCK_LABELS[nextWorkoutGroup.blockType];
+      const rounds = nextWorkoutGroup.blockRounds ?? nextWorkoutGroup.rounds.length;
+      return `${blockLabel} · ${rounds} runde${rounds === 1 ? "" : "r"}`;
+    }
+    const row = nextWorkoutGroup.rows[0];
+    if (row?.exerciseCategory === "Kondisjon") {
+      return `${nextWorkoutGroup.rows.length} runder × ${row.plannedDurationMinutes || "0"} min`;
+    }
+    if (row?.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory)) {
+      return `${nextWorkoutGroup.rows.length} sett × ${nextWorkoutGroup.plannedWeight} sek`;
+    }
+    return `${nextWorkoutGroup.rows.length} sett × ${nextWorkoutGroup.plannedReps} reps`;
+  }, [nextWorkoutGroup]);
 
   function handleReplaceCurrentWorkoutExercise(replacementExerciseId: string) {
     if (!currentWorkoutGroup || !replacementExerciseId) return;
@@ -236,158 +278,49 @@ export function LiveWorkoutSessionModal({
     setWorkoutExerciseIndex((prev) => prev + 1);
   }
 
-  function handleWorkoutResultInputChange(
-    row: WorkoutModeState["results"][number],
-    field: "performedWeight" | "performedReps" | "performedDurationMinutes" | "performedSpeed" | "performedIncline",
-    value: string,
-  ) {
-    updateWorkoutExerciseResult(row.exerciseId, field, value);
-    const isCardio = row.exerciseCategory === "Kondisjon";
-    const isStretch = Boolean(row.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory));
-    const isTreadmill = (row.exerciseEquipment ?? "").toLowerCase().includes("tredem");
-    const nextWeight = field === "performedWeight" ? value.trim() : row.performedWeight.trim();
-    const nextReps = field === "performedReps" ? value.trim() : row.performedReps.trim();
-    const nextDuration = field === "performedDurationMinutes" ? value.trim() : (row.performedDurationMinutes ?? "").trim();
-    const nextSpeed = field === "performedSpeed" ? value.trim() : (row.performedSpeed ?? "").trim();
-    const isCompleted = isCardio
-      ? Number(nextDuration) > 0 && (!isTreadmill || Number(nextSpeed) > 0)
-      : isStretch
-        ? Number(nextWeight) > 0
-        : Number(nextWeight) > 0 && Number(nextReps) > 0;
-    if (isCompleted && !row.completed) {
-      updateWorkoutExerciseResult(row.exerciseId, "completed", true);
-    }
-  }
-
-  function renderWorkoutSetRow(
-    row: WorkoutModeState["results"][number],
-    options?: { exerciseLabel?: string; compact?: boolean },
-  ) {
-    const resolvedExercise = exerciseByName.get(row.exerciseName.trim().toLowerCase());
-    const isCardio = (row.exerciseCategory ?? resolvedExercise?.category) === "Kondisjon";
-    const holdCategory = row.exerciseCategory ?? resolvedExercise?.category;
-    const isStretch = Boolean(holdCategory && isHoldBasedExerciseCategory(holdCategory));
-    const isTreadmill = (row.exerciseEquipment ?? resolvedExercise?.equipment ?? "").toLowerCase().includes("tredem");
-    const isCompactSetView = options?.compact ?? false;
-
-    return (
-      <div
-        key={row.exerciseId}
-        className={`rounded-xl border bg-white ${isCompactSetView ? "p-2.5" : "p-3"} ${row.completed ? "border-emerald-300" : "border-slate-200"}`}
-      >
-        <div className={`${isCompactSetView ? "mb-1.5" : "mb-2"} flex items-center justify-between gap-2`}>
-          <div className="min-w-0 text-xs font-semibold text-slate-600">
-            {options?.exerciseLabel ? <span className="block text-slate-800">{options.exerciseLabel}</span> : null}
-            <span>Sett {row.setNumber ?? row.blockRound ?? 1}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => updateWorkoutExerciseResult(row.exerciseId, "completed", !row.completed)}
-            className={`rounded-full ${isCompactSetView ? "px-2.5 py-0.5" : "px-3 py-1"} text-xs font-semibold ${row.completed ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-700"}`}
-          >
-            {row.completed ? "Fullført" : "Marker"}
-          </button>
-        </div>
-        {isCardio ? (
-          <div className={`grid ${isCompactSetView ? "gap-2" : "gap-3"} ${isTreadmill ? "grid-cols-3" : "grid-cols-1"}`}>
-            <div className="space-y-1">
-              <div className="text-[11px] font-medium text-slate-500">Tid utført (min)</div>
-              <TextInput
-                value={row.performedDurationMinutes ?? ""}
-                onChange={(e) => handleWorkoutResultInputChange(row, "performedDurationMinutes", e.target.value)}
-                placeholder="0"
-                className={isCompactSetView ? "h-9 text-xs" : ""}
-              />
-            </div>
-            {isTreadmill ? (
-              <>
-                <div className="space-y-1">
-                  <div className="text-[11px] font-medium text-slate-500">Fart (km/t)</div>
-                  <TextInput
-                    value={row.performedSpeed ?? ""}
-                    onChange={(e) => handleWorkoutResultInputChange(row, "performedSpeed", e.target.value)}
-                    placeholder="0"
-                    className={isCompactSetView ? "h-9 text-xs" : ""}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <div className="text-[11px] font-medium text-slate-500">Incline (%)</div>
-                  <TextInput
-                    value={row.performedIncline ?? ""}
-                    onChange={(e) => handleWorkoutResultInputChange(row, "performedIncline", e.target.value)}
-                    placeholder="0"
-                    className={isCompactSetView ? "h-9 text-xs" : ""}
-                  />
-                </div>
-              </>
-            ) : null}
-          </div>
-        ) : isStretch ? (
-          <div className="space-y-1">
-            <div className="text-[11px] font-medium text-slate-500">Sekunder (hold)</div>
-            <TextInput
-              value={row.performedWeight}
-              onChange={(e) => handleWorkoutResultInputChange(row, "performedWeight", e.target.value)}
-              onFocus={(event) => event.currentTarget.select()}
-              placeholder="0"
-              className={`${isCompactSetView ? "h-9 text-xs" : ""} ${row.performedWeight === row.plannedWeight ? "text-slate-400" : "text-slate-800"}`}
-            />
-          </div>
-        ) : (
-          <div className={`grid grid-cols-2 ${isCompactSetView ? "gap-2" : "gap-3"}`}>
-            <div className="space-y-1">
-              <div className="text-[11px] font-medium text-slate-500">Kg utført</div>
-              <TextInput
-                value={row.performedWeight}
-                onChange={(e) => handleWorkoutResultInputChange(row, "performedWeight", e.target.value)}
-                onFocus={(event) => event.currentTarget.select()}
-                placeholder="0"
-                className={`${isCompactSetView ? "h-9 text-xs" : ""} ${row.performedWeight === row.plannedWeight ? "text-slate-400" : "text-slate-800"}`}
-              />
-            </div>
-            <div className="space-y-1">
-              <div className="text-[11px] font-medium text-slate-500">Reps utført</div>
-              <TextInput
-                value={row.performedReps}
-                onChange={(e) => handleWorkoutResultInputChange(row, "performedReps", e.target.value)}
-                onFocus={(event) => event.currentTarget.select()}
-                placeholder="0"
-                className={`${isCompactSetView ? "h-9 text-xs" : ""} ${row.performedReps === row.plannedReps ? "text-slate-400" : "text-slate-800"}`}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
   if (!activeProgram || !workoutMode) return null;
 
-  const badgeLabel =
-    variant === "trainer" ? (
-      <>
-        <div className="text-xs uppercase tracking-wide text-slate-400">Live PT-økt</div>
-        {trainerSubtitle ? <div className="mt-0.5 text-sm text-slate-500">{trainerSubtitle}</div> : null}
-      </>
-    ) : (
-      <div className="text-xs uppercase tracking-wide text-slate-400">Økt-modus</div>
-    );
+  const headerTitle = variant === "trainer" ? "Live PT-økt" : "Øktmodus";
 
   return (
     <div className="motus-modal-insets fixed inset-0 z-[10010] overscroll-contain bg-slate-900/40">
       <div className="mx-auto flex h-full max-w-xl flex-col rounded-2xl bg-white shadow-lg">
-        <div className="border-b p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              {badgeLabel}
-              <div className="text-lg font-semibold">{activeProgram.title}</div>
-              <div className="mt-1 text-sm text-slate-500">
-                {workoutMode.results.filter((r) => r.completed).length}/{workoutMode.results.length} sett fullført
-              </div>
+        <div className="border-b px-4 pb-3 pt-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={cancelWorkoutMode}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100"
+              aria-label="Avslutt øktmodus"
+            >
+              <ArrowLeft className="h-5 w-5" aria-hidden />
+            </button>
+            <div className="min-w-0 flex-1 text-center">
+              <div className="text-base font-semibold text-slate-900">{headerTitle}</div>
+              {trainerSubtitle ? <div className="mt-0.5 truncate text-xs text-slate-500">{trainerSubtitle}</div> : null}
             </div>
-            <OutlineButton type="button" onClick={cancelWorkoutMode}>
-              Lukk
-            </OutlineButton>
+            <button
+              type="button"
+              onClick={cancelWorkoutMode}
+              className="rounded-full px-3 py-1.5 text-xs font-semibold text-white shadow-sm"
+              style={{ background: MOTUS.pink }}
+            >
+              Avslutt
+            </button>
+          </div>
+          <div className="mt-3 h-1 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{ width: `${workoutProgressPct}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise}, ${MOTUS.pink})` }}
+            />
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-2 text-xs text-slate-500">
+            <span>
+              {workoutExerciseIndex + 1} av {workoutResultGroups.length} øvelser
+            </span>
+            <span>
+              {completedSetsCount}/{totalSetsCount} sett
+            </span>
           </div>
         </div>
 
@@ -400,11 +333,18 @@ export function LiveWorkoutSessionModal({
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs text-slate-400">
-                    {currentWorkoutGroup.blockType ? "Blokk" : "Øvelse"} {workoutExerciseIndex + 1} av {workoutResultGroups.length}
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="font-medium">{currentWorkoutGroup.exerciseName}</div>
+                  {currentWorkoutGroup.blockType ? (
+                    <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">
+                      {EXERCISE_BLOCK_LABELS[currentWorkoutGroup.blockType]}
+                      {currentWorkoutGroup.blockRounds ? ` · ${currentWorkoutGroup.blockRounds} runder` : ""}
+                    </div>
+                  ) : null}
+                  <h2 className="mt-0.5 text-xl font-bold text-slate-900">{currentWorkoutGroup.exerciseName}</h2>
+                  {activeSetProgressLabel ? (
+                    <div className="mt-1 text-sm font-medium text-slate-600">{activeSetProgressLabel}</div>
+                  ) : null}
+                  <div className="mt-1 text-xs text-slate-500">Plan: {currentWorkoutPlanLabel}</div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
                     {replacementCandidates.length > 0 ? (
                       <button
                         type="button"
@@ -419,7 +359,6 @@ export function LiveWorkoutSessionModal({
                       </button>
                     ) : null}
                   </div>
-                  <div className="mt-1 text-sm text-slate-500">Plan: {currentWorkoutPlanLabel}</div>
                 </div>
                 {currentWorkoutExercise ? (
                   <button
@@ -431,6 +370,7 @@ export function LiveWorkoutSessionModal({
                   >
                     {currentWorkoutExerciseImageUrl ? (
                       <img
+                        key={currentWorkoutExercise.id}
                         src={currentWorkoutExerciseImageUrl}
                         alt=""
                         className="h-full w-full object-cover"
@@ -495,19 +435,26 @@ export function LiveWorkoutSessionModal({
                         </div>
                         <div className="space-y-2">
                           {round.segments.map((segment) =>
-                            segment.row
-                              ? renderWorkoutSetRow(segment.row, {
-                                  exerciseLabel: segment.exerciseName,
-                                  compact: true,
-                                })
-                              : null,
+                            segment.row ? (
+                              <WorkoutCompactSetTable
+                                key={segment.row.exerciseId}
+                                rows={[segment.row]}
+                                exerciseByName={exerciseByName}
+                                exerciseLabel={segment.exerciseName}
+                                onUpdate={updateWorkoutExerciseResult}
+                              />
+                            ) : null,
                           )}
                         </div>
                       </div>
                     ))
-                  : currentWorkoutGroup.rows.map((row) =>
-                      renderWorkoutSetRow(row, { compact: currentWorkoutGroup.rows.length <= 3 }),
-                    )}
+                  : (
+                    <WorkoutCompactSetTable
+                      rows={currentWorkoutGroup.rows}
+                      exerciseByName={exerciseByName}
+                      onUpdate={updateWorkoutExerciseResult}
+                    />
+                  )}
               </div>
               {!currentWorkoutGroup.blockType && currentWorkoutGroup.segments[0] ? (
                 <div className="mt-2 border-t pt-2" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
@@ -602,6 +549,35 @@ export function LiveWorkoutSessionModal({
         </div>
 
         <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          {nextWorkoutGroup && !isLastWorkoutGroup && !showWorkoutReflection ? (
+            <button
+              type="button"
+              onClick={handleGoToNextWorkoutExercise}
+              className="mb-3 w-full rounded-xl border bg-slate-50 p-3 text-left transition hover:bg-slate-100"
+              style={{ borderColor: "rgba(15,23,42,0.08)" }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-teal-700">
+                    Neste øvelse
+                    <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                  </div>
+                  <div className="mt-0.5 font-semibold text-slate-900">{nextWorkoutGroup.exerciseName}</div>
+                  <div className="mt-0.5 text-xs text-slate-500">{nextWorkoutPlanLabel}</div>
+                </div>
+                {nextWorkoutExercise?.imageUrl ? (
+                  <img
+                    key={nextWorkoutExercise.id}
+                    src={nextWorkoutExercise.imageUrl}
+                    alt=""
+                    className="h-14 w-14 shrink-0 rounded-lg object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : null}
+              </div>
+            </button>
+          ) : null}
           <div className="grid gap-2 sm:flex sm:gap-3">
             <OutlineButton type="button" className="w-full sm:flex-1" onClick={cancelWorkoutMode}>
               Avbryt
@@ -699,6 +675,7 @@ export function LiveWorkoutSessionModal({
                   style={{ borderColor: "rgba(15,23,42,0.08)" }}
                 >
                   <img
+                    key={currentWorkoutExercise.id}
                     src={currentWorkoutExerciseImageUrl}
                     alt={`Illustrasjon av ${currentWorkoutGroup.exerciseName}`}
                     className="max-h-[min(52vh,420px)] w-full object-contain"

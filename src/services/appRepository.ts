@@ -410,12 +410,23 @@ export function replaceWorkoutExerciseGroupInState(state: AppState, input: Repla
   if (!state.workoutMode) return state;
   const normalizedName = input.nextExerciseName.trim();
   if (!input.programExerciseId || !normalizedName) return state;
+  const replacementExercise = state.exercises.find(
+    (exercise) => exercise.name.trim().toLowerCase() === normalizedName.toLowerCase(),
+  );
   return {
     ...state,
     workoutMode: {
       ...state.workoutMode,
       results: state.workoutMode.results.map((result) =>
-        result.programExerciseId === input.programExerciseId ? { ...result, exerciseName: normalizedName } : result
+        result.programExerciseId === input.programExerciseId
+          ? {
+              ...result,
+              exerciseName: normalizedName,
+              ...(replacementExercise
+                ? { exerciseCategory: replacementExercise.category, exerciseEquipment: replacementExercise.equipment }
+                : {}),
+            }
+          : result,
       ),
     },
   };
