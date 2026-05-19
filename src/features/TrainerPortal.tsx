@@ -3021,7 +3021,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         setAdminHealthStatus(`Kunne ikke oppdatere status: ${dryRunResult.error.message}`);
         return;
       }
-      const dryRunData = (dryRunResult.data ?? {}) as { duplicateGroupCount?: number };
+      const dryRunData = (dryRunResult.data ?? {}) as MemberDedupeDryRunData;
       const duplicateGroups = Number(dryRunData.duplicateGroupCount ?? 0);
       setAdminDuplicateGroupCount(duplicateGroups);
       setAdminHealthStatus(`Status oppdatert. Fant ${duplicateGroups} mulig${duplicateGroups === 1 ? "" : "e"} duplikatgruppe${duplicateGroups === 1 ? "" : "r"}.`);
@@ -3039,6 +3039,66 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     }
     const removed = clearLocalChatCache();
     setAdminCacheStatus(`Lokale meldinger ryddet. Fjernet ${removed} melding${removed === 1 ? "" : "er"}.`);
+  }
+
+  function buildLocalMemberDedupePreviewGroups(ownerUserId: string): MemberDedupePreviewGroup[] {
+    const ownerId = ownerUserId.trim();
+    const byEmail = new Map<string, Member[]>();
+    members.forEach((member) => {
+      if (ownerId && (member.ownerUserId ?? "").trim() !== ownerId) return;
+      const email = member.email.trim().toLowerCase();
+      if (!email) return;
+      byEmail.set(email, [...(byEmail.get(email) ?? []), member]);
+    });
+
+    function localDedupeScore(member: Member): number {
+      let score = 0;
+      if (member.isActive !== false) score += 8;
+      if (member.invitedAt) score += 2;
+      if (member.customerType === "PT-kunde") score += 1;
+      if (member.membershipType === "Premium") score += 1;
+      const days = Number(member.daysSinceActivity || "9999");
+      score += Math.max(0, 100 - Math.min(100, Number.isFinite(days) ? days : 9999));
+      return score;
+    }
+
+    function toPreviewMember(member: Member, action: "keep" | "deactivate"): MemberDedupePreviewMember {
+      return {
+        id: member.id,
+        ownerUserId: member.ownerUserId,
+        email: member.email,
+        name: member.name,
+        isActive: member.isActive !== false,
+        invitedAt: member.invitedAt,
+        daysSinceActivity: member.daysSinceActivity,
+        customerType: member.customerType,
+        membershipType: member.membershipType,
+        action,
+      };
+    }
+
+    return Array.from(byEmail.entries())
+      .filter(([, rows]) => rows.length > 1)
+      .map(([email, rows]) => {
+        const sorted = [...rows].sort((a, b) => localDedupeScore(b) - localDedupeScore(a));
+        const canonical = sorted[0];
+        const duplicates = sorted.slice(1);
+        return {
+          email,
+          canonicalId: canonical.id,
+          duplicateIds: duplicates.map((member) => member.id),
+          canonicalMember: toPreviewMember(canonical, "keep"),
+          duplicateMembers: duplicates.map((member) => toPreviewMember(member, "deactivate")),
+          members: sorted.map((member, index) => toPreviewMember(member, index === 0 ? "keep" : "deactivate")),
+        };
+      });
+  }
+
+  function normalizeMemberDedupePreviewGroups(data: MemberDedupeDryRunData, ownerUserId: string): MemberDedupePreviewGroup[] {
+    if (Array.isArray(data.groups) && data.groups.length > 0) {
+      return data.groups;
+    }
+    return buildLocalMemberDedupePreviewGroups(ownerUserId);
   }
 
   async function applyMemberDedupeCleanup(ownerUserId: string, duplicateGroups: number) {
@@ -3062,6 +3122,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       const cleanedAt = new Date().toISOString();
       setLastMemberCleanupAt(cleanedAt);
       setAdminDuplicateGroupCount(0);
+      setMemberDedupePreviewGroups([]);
+      setMemberDedupePreviewOwnerUserId("");
       if (typeof window !== "undefined") {
         window.localStorage.setItem("motus.admin.lastMemberCleanupAt", cleanedAt);
       }
@@ -3079,6 +3141,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     }
     setIsRunningMemberDedupe(true);
     setMemberDedupeStatus(null);
+    setMemberDedupePreviewGroups([]);
+    setMemberDedupePreviewOwnerUserId("");
     try {
       const ownerUserId = await resolveOwnerUserIdFromSession();
       if (!ownerUserId) {
@@ -3094,12 +3158,20 @@ function programAuthorLabel(program: TrainingProgram): string | null {
         return;
       }
 
-      const dryRunData = (dryRunResult.data ?? {}) as { duplicateGroupCount?: number };
+      const dryRunData = (dryRunResult.data ?? {}) as MemberDedupeDryRunData;
       const duplicateGroups = Number(dryRunData.duplicateGroupCount ?? 0);
       if (duplicateGroups <= 0) {
         setMemberDedupeStatus("Ingen duplikater funnet. Alt ser ryddig ut.");
         return;
       }
+
+      const previewGroups = normalizeMemberDedupePreviewGroups(dryRunData, ownerUserId);
+      setMemberDedupePreviewGroups(previewGroups);
+      setMemberDedupePreviewOwnerUserId(ownerUserId);
+      setMemberDedupeStatus(
+        `Dry-run: ${duplicateGroups} duplikatgruppe${duplicateGroups === 1 ? "" : "r"}. Se oversikten under og trykk «Gjennomfør opprydding» når dette stemmer.`,
+      );
+      return;
 
       setConfirmDialog({
         title: "Bekreft duplikatopprydding",
@@ -3122,6 +3194,27 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     } finally {
       setIsRunningMemberDedupe(false);
     }
+  }
+
+  function handleApplyPreviewedMemberDedupeCleanup() {
+    const ownerUserId = memberDedupePreviewOwnerUserId.trim();
+    const duplicateGroups = memberDedupePreviewGroups.length;
+    if (!ownerUserId || duplicateGroups <= 0) {
+      setMemberDedupeStatus("Kjør dry-run først for å se hvilke kunder som slås sammen.");
+      return;
+    }
+    setConfirmDialog({
+      title: "Bekreft duplikatopprydding",
+      message:
+        `Du er i ferd med å rydde ${duplicateGroups} duplikatgruppe${duplicateGroups === 1 ? "" : "r"}. ` +
+        "Ekstra rader settes inaktive, og programmer, økter og meldinger flyttes til raden som beholdes. Ingenting slettes permanent.",
+      confirmLabel: "Gjennomfør",
+      cancelLabel: "Avbryt",
+      tone: "danger",
+      onConfirm: () => {
+        void applyMemberDedupeCleanup(ownerUserId, duplicateGroups);
+      },
+    });
   }
 
   function addTodoItem() {
@@ -3528,27 +3621,63 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     });
   }, [activeMembers, priorityFilter, prioritySort, priorityMemberTypeSort, members, logs]);
 
-  function memberTypeBadges(member: Member): Array<{ label: string; style: { backgroundColor: string; color: string } }> {
-    const badges: Array<{ label: string; style: { backgroundColor: string; color: string } }> = [];
-    if (member.customerType === "PT-kunde") {
-      badges.push({
-        label: "PT-kunde",
-        style: { backgroundColor: "rgba(0, 193, 212, 0.16)", color: "#0F5C66" },
-      });
+  function getMemberCustomerTypeDisplay(member: Member): { label: string; badgeClass: string } {
+    if (isSharedMedlemCustomerType(member.customerType)) {
+      return { label: "Medlem", badgeClass: "bg-slate-100 text-slate-700 ring-slate-200" };
     }
     if (member.membershipType === "Premium") {
-      badges.push({
-        label: "Premium",
-        style: { backgroundColor: "rgba(244, 114, 182, 0.16)", color: "#9D2F67" },
-      });
+      return { label: "Premium-kunde", badgeClass: "bg-pink-50 text-pink-800 ring-pink-200" };
     }
-    if (badges.length === 0) {
-      badges.push({
-        label: "Standard",
-        style: { backgroundColor: "rgba(148, 163, 184, 0.16)", color: "#475569" },
-      });
+    if (member.customerType === "PT-kunde") {
+      return { label: "PT-kunde", badgeClass: "bg-teal-50 text-teal-800 ring-teal-200" };
     }
-    return badges;
+    return { label: member.customerType, badgeClass: "bg-slate-100 text-slate-700 ring-slate-200" };
+  }
+
+  function getPriorityToneDisplay(tone: "red" | "orange" | "green"): {
+    label: string;
+    dotClass: string;
+    pillClass: string;
+  } {
+    if (tone === "red") {
+      return { label: "Rød", dotClass: "bg-rose-500", pillClass: "bg-rose-50 text-rose-800 ring-rose-200" };
+    }
+    if (tone === "orange") {
+      return { label: "Oransje", dotClass: "bg-amber-500", pillClass: "bg-amber-50 text-amber-800 ring-amber-200" };
+    }
+    return { label: "Grønn", dotClass: "bg-emerald-500", pillClass: "bg-emerald-50 text-emerald-800 ring-emerald-200" };
+  }
+
+  function renderMemberTypeBadge(member: Member, compact = false) {
+    const typeDisplay = getMemberCustomerTypeDisplay(member);
+    const sizeClass = compact ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-1 text-[11px]";
+    return (
+      <span className={`inline-flex rounded-full font-semibold ring-1 ring-inset ${sizeClass} ${typeDisplay.badgeClass}`}>
+        {typeDisplay.label}
+      </span>
+    );
+  }
+
+  function renderMemberPriorityMeta(member: Member, priority: { tone: "red" | "orange" | "green"; label: string }) {
+    const typeDisplay = getMemberCustomerTypeDisplay(member);
+    const priorityDisplay = getPriorityToneDisplay(priority.tone);
+    return (
+      <div className="grid shrink-0 grid-cols-[auto_auto] items-center gap-x-3 gap-y-1 text-right">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Type</span>
+        <span className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Prioritet</span>
+        <span
+          className={`inline-flex justify-end rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset ${typeDisplay.badgeClass}`}
+        >
+          {typeDisplay.label}
+        </span>
+        <span
+          className={`inline-flex items-center justify-end gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset ${priorityDisplay.pillClass}`}
+        >
+          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${priorityDisplay.dotClass}`} aria-hidden />
+          {priorityDisplay.label}
+        </span>
+      </div>
+    );
   }
 
   function followUpMethodLabel(method: FollowUpDetail["method"]): string {
@@ -3882,28 +4011,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       <div className="text-xs text-slate-500">{member.email} · {formatTrainerMemberActivitySubtitle(member, members, logs)}</div>
                     </div>
                   </div>
-                  <div className="min-w-[172px] space-y-1">
-                    <div className="flex items-center justify-end gap-1">
-                      {memberTypeBadges(member).map((badge) => (
-                        <span key={`${member.id}-${badge.label}`} className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={badge.style}>
-                          {badge.label}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex justify-end">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          priority.tone === "red"
-                            ? "bg-rose-100 text-rose-700"
-                            : priority.tone === "orange"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-emerald-100 text-emerald-700"
-                        }`}
-                      >
-                        {priority.label}
-                      </span>
-                    </div>
-                  </div>
+                  {renderMemberPriorityMeta(member, priority)}
                 </button>
               ))}
             </div>
@@ -3990,16 +4098,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                     <div className="text-xs text-slate-500">{member.email} · {formatTrainerMemberActivitySubtitle(member, members, logs)}</div>
                   </div>
                 </div>
-                <div className="min-w-[172px] space-y-1">
-                  <div className="flex items-center justify-end gap-1">
-                    {memberTypeBadges(member).map((badge) => (
-                      <span key={`${member.id}-${badge.label}`} className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={badge.style}>
-                        {badge.label}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="text-right text-xs font-semibold text-slate-600">{priority.label}</div>
-                </div>
+                {renderMemberPriorityMeta(member, priority)}
               </div>
             ))}
           </div>
@@ -4165,11 +4264,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                               ) : null}
                             </div>
                             <div className="mt-2 flex flex-wrap gap-1.5">
-                              {memberTypeBadges(member).map((badge) => (
-                                <span key={badge.label} className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={badge.style}>
-                                  {badge.label}
-                                </span>
-                              ))}
+                              {renderMemberTypeBadge(member, true)}
                               {!hasProgram ? (
                                 <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">Mangler program</span>
                               ) : null}
@@ -6571,9 +6666,55 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 className="!rounded-xl !px-3 !py-2 !text-xs"
               />
             ) : null}
+            {memberDedupePreviewGroups.length > 0 ? (
+              <div className="space-y-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-xs font-semibold text-slate-700">
+                  Forhåndsvisning ({memberDedupePreviewGroups.length} gruppe{memberDedupePreviewGroups.length === 1 ? "" : "r"})
+                </div>
+                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                  {memberDedupePreviewGroups.map((group) => {
+                    const rows =
+                      group.members && group.members.length
+                        ? group.members
+                        : [
+                            ...(group.canonicalMember ? [{ ...group.canonicalMember, action: "keep" }] : []),
+                            ...(group.duplicateMembers ?? []).map((member) => ({ ...member, action: "deactivate" })),
+                          ];
+                    return (
+                      <div key={`${group.email}:${group.canonicalId}`} className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                        <div className="text-xs font-semibold text-slate-800">{group.email || "Uten e-post"}</div>
+                        <div className="mt-2 space-y-2">
+                          {rows.map((row) => {
+                            const keep = row.action === "keep" || row.id === group.canonicalId;
+                            return (
+                              <div key={row.id} className="flex flex-col gap-1 rounded-lg border bg-white px-3 py-2 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                <div className="min-w-0">
+                                  <div className="truncate text-xs font-semibold text-slate-800">{row.name?.trim() || "Uten navn"}</div>
+                                  <div className="truncate text-[11px] text-slate-500">
+                                    ID: {row.id} · {row.customerType || "Ukjent type"} · {row.membershipType || "Ukjent medlemskap"} · {row.isActive === false ? "Inaktiv" : "Aktiv"}
+                                  </div>
+                                </div>
+                                <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${keep ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                                  {keep ? "Beholdes" : "Settes inaktiv"}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             <OutlineButton onClick={() => void handleRunSafeMemberCleanup()} className="w-full md:w-auto" disabled={isRunningMemberDedupe}>
-              {isRunningMemberDedupe ? "Rydder..." : "Start opprydding"}
+              {isRunningMemberDedupe ? "Sjekker..." : "Sjekk duplikater"}
             </OutlineButton>
+            {memberDedupePreviewGroups.length > 0 ? (
+              <DangerButton onClick={handleApplyPreviewedMemberDedupeCleanup} className="w-full md:w-auto" disabled={isRunningMemberDedupe}>
+                Gjennomfør opprydding
+              </DangerButton>
+            ) : null}
           </div>
         </Card>
       ) : null}
