@@ -899,6 +899,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [memberChatSendStatus, setMemberChatSendStatus] = useState<string | null>(null);
   const isSendingMemberMessageRef = useRef(false);
   const [isSendingMemberMessage, setIsSendingMemberMessage] = useState(false);
+  const [trainingSection, setTrainingSection] = useState<"today" | "programs" | "custom" | "period" | "history">("today");
   const [ptChangeReason, setPtChangeReason] = useState("");
   const [ptChangeRequestStatus, setPtChangeRequestStatus] = useState<string | null>(null);
   const lastMemberSendKeyRef = useRef("");
@@ -4520,20 +4521,30 @@ export function MemberPortal(props: MemberPortalProps) {
                 }
               />
               <Card className="p-3 sm:p-4">
-                <div className="flex gap-2 overflow-x-auto pb-1">
+                <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Trening-seksjoner">
                   {[
-                    { id: "member-training-today", label: "Dagens plan" },
-                    { id: "member-training-programs", label: "Mine programmer" },
-                    { id: "member-custom-workout-builder", label: "Lag egen økt" },
-                    { id: "member-training-period-plan", label: "Periodeplan" },
-                    { id: "member-training-history", label: "Historikk" },
+                    { id: "today" as const, label: "Dagens plan" },
+                    { id: "programs" as const, label: "Mine programmer" },
+                    { id: "custom" as const, label: "Lag egen økt" },
+                    { id: "period" as const, label: "Periodeplan" },
+                    { id: "history" as const, label: "Historikk" },
                   ].map((item) => (
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                      className="shrink-0 rounded-full border bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-900"
-                      style={{ borderColor: "rgba(15,23,42,0.12)" }}
+                      role="tab"
+                      aria-selected={trainingSection === item.id}
+                      onClick={() => setTrainingSection(item.id)}
+                      className={`shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                        trainingSection === item.id
+                          ? "border-transparent text-white shadow-sm"
+                          : "bg-white text-slate-700 hover:border-teal-200 hover:bg-teal-50 hover:text-teal-900"
+                      }`}
+                      style={
+                        trainingSection === item.id
+                          ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
+                          : { borderColor: "rgba(15,23,42,0.12)" }
+                      }
                     >
                       {item.label}
                     </button>
@@ -4590,7 +4601,8 @@ export function MemberPortal(props: MemberPortalProps) {
                   </Card>
                 );
               })() : null}
-              <Card id="member-training-today" className="scroll-mt-24 p-4 sm:p-5">
+              {trainingSection === "today" ? (
+              <Card className="p-4 sm:p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Dagens plan</div>
@@ -4630,18 +4642,14 @@ export function MemberPortal(props: MemberPortalProps) {
                       </GradientButton>
                     ) : null}
                     <OutlineButton
-                      onClick={() =>
-                        document
-                          .getElementById(todayPlanEntry ? "member-training-period-plan" : "member-training-programs")
-                          ?.scrollIntoView({ behavior: "smooth", block: "start" })
-                      }
+                      onClick={() => setTrainingSection(todayPlanEntry ? "period" : "programs")}
                       className="w-full"
                     >
                       {todayPlanEntry ? "Se periodeplan" : "Se programmer"}
                     </OutlineButton>
                     {!todayPlanEntry && !isMemberLimited ? (
                       <OutlineButton
-                        onClick={() => document.getElementById("member-custom-workout-builder")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                        onClick={() => setTrainingSection("custom")}
                         className="w-full"
                       >
                         Lag egen økt
@@ -4650,7 +4658,9 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 </div>
               </Card>
-              <Card id="member-training-programs" className="scroll-mt-24 p-4 sm:p-5">
+              ) : null}
+              {trainingSection === "programs" ? (
+              <Card className="p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Mine programmer</div>
@@ -4735,7 +4745,7 @@ export function MemberPortal(props: MemberPortalProps) {
                           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
                             <GradientButton
                               onClick={() => {
-                                document.getElementById("member-custom-workout-builder")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                setTrainingSection("custom");
                               }}
                               className="w-full sm:w-auto"
                             >
@@ -5043,8 +5053,10 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null}
                 </div>
               </Card>
+              ) : null}
               {!isMemberLimited ? (
-              <Card id="member-custom-workout-builder" className="order-last scroll-mt-24 p-5">
+              trainingSection === "custom" ? (
+              <Card className="p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex items-start gap-3">
                     <div className="rounded-xl p-2.5 text-white shrink-0" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
@@ -5234,10 +5246,12 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 </div>
               </Card>
+              ) : null
               ) : null}
 
-              {memberHasVisiblePeriodPlan ? (
-              <div id="member-training-period-plan" className="scroll-mt-24 rounded-xl border bg-white p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+              {trainingSection === "period" ? (
+              memberHasVisiblePeriodPlan ? (
+              <div className="rounded-xl border bg-white p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-2">
                     <div
@@ -5483,7 +5497,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 ) : null}
               </div>
               ) : (
-                <div id="member-training-period-plan" className="scroll-mt-24 rounded-xl border bg-white p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+                <div className="rounded-xl border bg-white p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                   <div className="flex min-w-0 items-start gap-2">
                     <div
                       className="shrink-0 rounded-xl p-2 text-white shadow-sm"
@@ -5498,7 +5512,10 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                   </div>
                 </div>
-              )}
+              )
+              ) : null}
+              {trainingSection === "history" ? (
+              <>
               <div className="mt-2 rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-2">
@@ -5592,7 +5609,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 ) : null}
               </div>
-              <div id="member-training-history" className="scroll-mt-24 rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+              <div className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex items-center gap-2">
                   <div
                     className="rounded-xl p-2 text-white shadow-sm"
@@ -5809,6 +5826,8 @@ export function MemberPortal(props: MemberPortalProps) {
                   })}
                 </div>
               </div>
+              </>
+              ) : null}
               </div>
               <IntervalWorkoutSessionModal
                 open={showIntervalTimerModal}
