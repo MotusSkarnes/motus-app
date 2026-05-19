@@ -4,6 +4,7 @@ import {
   filterMembersForSessionEmail,
   isContaminatedDemoMemberProfile,
   isDemoSeedMemberId,
+  memberIdsForSessionEmail,
   sessionOwnerEmailChanged,
   stripDemoSeedCatalog,
 } from "./memberLocalCatalog";
@@ -59,6 +60,22 @@ describe("memberLocalCatalog", () => {
     const ids = collectCanonicalMemberIds(state.members, state.programs, state.logs);
     expect(ids.has("member-nmn08uu")).toBe(true);
     expect(ids.has("m1")).toBe(true);
+  });
+
+  it("session email ids ignore other members programs", () => {
+    const state = baseState();
+    const resepsjonIds = memberIdsForSessionEmail(
+      [
+        { id: "resep-1", email: "resepsjon@motus-skarnes.no", name: "Resepsjon", isActive: true } as AppState["members"][number],
+        { id: "lene-1", email: "ruudlene@gmail.com", name: "Lene", isActive: true } as AppState["members"][number],
+      ],
+      "resepsjon@motus-skarnes.no",
+    );
+    expect(resepsjonIds.has("resep-1")).toBe(true);
+    expect(resepsjonIds.has("lene-1")).toBe(false);
+    expect(resepsjonIds.has("m1")).toBe(false);
+    const scopedPrograms = state.programs.filter((p) => resepsjonIds.has(p.memberId));
+    expect(scopedPrograms).toHaveLength(0);
   });
 
   it("reports session owner email change", () => {

@@ -88,6 +88,16 @@ export function filterMembersForSessionEmail(members: Member[], sessionEmail: st
   return members.filter((member) => member.email.trim().toLowerCase() === normalized);
 }
 
+/** Kun medlemsrader for innlogget e-post — aldri utvid med program/logg-member_id (datalekkasje). */
+export function memberIdsForSessionEmail(members: Member[], sessionEmail: string): Set<string> {
+  const ids = new Set<string>();
+  for (const member of filterMembersForSessionEmail(members, sessionEmail)) {
+    const id = member.id.trim();
+    if (id) ids.add(id);
+  }
+  return ids;
+}
+
 export function collectCanonicalMemberIds(
   members: Member[],
   programs: TrainingProgram[],

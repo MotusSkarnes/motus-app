@@ -21,8 +21,8 @@ import {
 } from "../services/appRepository";
 import {
   clearSessionOwnerEmail,
-  collectCanonicalMemberIds,
   filterMembersForSessionEmail,
+  memberIdsForSessionEmail,
   rememberSessionOwnerEmail,
   resetCatalogForSessionOwnerChange,
   sessionOwnerEmailChanged,
@@ -752,8 +752,7 @@ export function useAppState() {
           const currentUser = prevStripped.currentUser;
           if (currentUser?.role === "member") {
             const normalizedUserEmail = currentUser.email.trim().toLowerCase();
-            const remoteForEmail = filterMembersForSessionEmail(mergedMembers, normalizedUserEmail);
-            mergedMembers = remoteForEmail.length > 0 ? remoteForEmail : mergedMembers;
+            mergedMembers = filterMembersForSessionEmail(mergedMembers, normalizedUserEmail);
             const bestGoalsForEmail = pickBestPersonalGoals([
               ...prevStripped.members
                 .filter((member) => member.email.trim().toLowerCase() === normalizedUserEmail)
@@ -797,7 +796,7 @@ export function useAppState() {
         if (trustRemotePrograms) {
           const mergedProgs = remotePrograms ?? [];
           if (isMemberLikeSession && (hydratedMember !== null || mergedProgs.length > 0)) {
-            const memberIds = collectCanonicalMemberIds(next.members, mergedProgs, remoteLogs ?? []);
+            const memberIds = memberIdsForSessionEmail(next.members, sessionEmail);
             next.programs = filterProgramsForMembers(mergedProgs, memberIds);
           } else if (isTrainerSession && trainerHydrateOk) {
             next.programs = mergedProgs;
@@ -811,7 +810,7 @@ export function useAppState() {
         if (trustRemoteLogs) {
           const mergedLogs = remoteLogs ?? [];
           if (isMemberLikeSession && (hydratedMember !== null || mergedLogs.length > 0)) {
-            const memberIds = collectCanonicalMemberIds(next.members, next.programs, mergedLogs);
+            const memberIds = memberIdsForSessionEmail(next.members, sessionEmail);
             next.logs = mergeRemoteWorkoutLogsWithLocalOptimistic(
               filterLogsForMembers(mergedLogs, memberIds),
               [],
@@ -831,9 +830,13 @@ export function useAppState() {
         }
 
         if (isMemberLikeSession && sessionEmail) {
-          const allowedMemberIds = collectCanonicalMemberIds(next.members, next.programs, next.logs);
+          const allowedMemberIds = memberIdsForSessionEmail(next.members, sessionEmail);
+          allowedMemberIds.add(sessionEmail);
+          const linkedMemberId = prevStripped.currentUser?.memberId?.trim();
+          if (linkedMemberId) allowedMemberIds.add(linkedMemberId);
           next.programs = next.programs.filter((program) => allowedMemberIds.has(program.memberId.trim()));
           next.logs = next.logs.filter((log) => allowedMemberIds.has(log.memberId.trim()));
+          next.messages = next.messages.filter((message) => allowedMemberIds.has(message.memberId.trim()));
           next.members = filterMembersForSessionEmail(next.members, sessionEmail);
           if (next.members.length === 1) {
             next.memberViewId = next.members[0]!.id;

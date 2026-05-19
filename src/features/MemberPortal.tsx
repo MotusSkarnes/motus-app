@@ -1090,9 +1090,6 @@ export function MemberPortal(props: MemberPortalProps) {
       // resolving related member ids server-side.
       const memberRowById = new Map(members.map((member) => [member.id, member]));
       const primaryLower = normalizedCurrentUserEmail;
-      const duplicateEmailProfileCount = primaryLower
-        ? members.filter((member) => member.email.trim().toLowerCase() === primaryLower).length
-        : 0;
       const candidateIds = [
         ...programs.map((program) => program.memberId),
         ...logs.map((log) => log.memberId),
@@ -1104,10 +1101,7 @@ export function MemberPortal(props: MemberPortalProps) {
         const row = memberRowById.get(id);
         if (row) {
           if (primaryLower && row.email.trim().toLowerCase() === primaryLower) collectedIds.add(id);
-          continue;
         }
-        // Include orphan member_ids when at least one profile exists for this login email (legacy duplicate IDs).
-        if (duplicateEmailProfileCount >= 1) collectedIds.add(id);
       }
     }
     // Legacy: some program rows used email string as member_id.
@@ -1261,11 +1255,9 @@ export function MemberPortal(props: MemberPortalProps) {
         .filter((message) => {
           if (relatedMemberIdSet.has(message.memberId)) return true;
           const messageMember = members.find((member) => member.id === message.memberId);
-          if (!messageMember) return true;
+          if (!messageMember) return false;
           const messageEmail = messageMember.email.trim().toLowerCase();
-          const messageName = messageMember.name.trim().toLowerCase();
           if (anchorEmail && messageEmail === anchorEmail) return true;
-          if (anchorName && messageName === anchorName) return true;
           return false;
         })
         .sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
