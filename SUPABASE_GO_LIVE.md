@@ -145,14 +145,25 @@ Vanlig symptom og løsning:
 - årsak: select-policy tillater kun `owner_user_id = auth.uid()`
 - løsning: bruk select-policy som tillater enten trener-eier eller medlem med matching `auth.jwt()->app_metadata.member_id`
 
-## 9) Før produksjon
+## 9) Produksjonsstabilitet (etter første go-live)
+
+Hvis produksjon ble satt opp med eldre `production_bootstrap` (kun `owner_user_id` på programmer/meldinger):
+
+1. Kjør `src/supabase/production_stability_patch.sql` i SQL Editor
+2. Kjør `src/supabase/verification_checks_stability.sql` og les resultatene
+3. Lokalt: `npm run check:production-readiness`
+4. Deploy Edge Functions: `npm run supabase:deploy-core`
+
+Full guide: **`DRIFT_STABILITY.md`**
+
+## 10) Før produksjon
 
 - Innfør passordpolicy/e-postbekreftelse i Auth
 - Sett backup-policy i Supabase
 - Legg på feillogging i frontend (f.eks. Sentry)
 - Gå gjennom PII/GDPR-vurdering for medlemsdata
 
-## 10) Aktivér bildeopplasting i Øvelsesbank
+## 11) Aktivér bildeopplasting i Øvelsesbank
 
 For å bruke "Last opp bilde" i trenerens øvelsesbank, kjør:
 

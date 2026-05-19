@@ -115,6 +115,7 @@ drop policy if exists "members_update_own" on public.members;
 drop policy if exists "chat_messages_select_dev" on public.chat_messages;
 drop policy if exists "chat_messages_insert_dev" on public.chat_messages;
 drop policy if exists "chat_messages_select_own" on public.chat_messages;
+drop policy if exists "chat_messages_select_trainer_or_member" on public.chat_messages;
 drop policy if exists "chat_messages_insert_own" on public.chat_messages;
 
 drop policy if exists "training_programs_select_dev" on public.training_programs;
@@ -122,6 +123,7 @@ drop policy if exists "training_programs_insert_dev" on public.training_programs
 drop policy if exists "training_programs_update_dev" on public.training_programs;
 drop policy if exists "training_programs_delete_dev" on public.training_programs;
 drop policy if exists "training_programs_select_own" on public.training_programs;
+drop policy if exists "training_programs_select_trainer_or_member" on public.training_programs;
 drop policy if exists "training_programs_insert_own" on public.training_programs;
 drop policy if exists "training_programs_update_own" on public.training_programs;
 drop policy if exists "training_programs_delete_own" on public.training_programs;
@@ -131,6 +133,7 @@ drop policy if exists "workout_logs_insert_dev" on public.workout_logs;
 drop policy if exists "workout_logs_update_dev" on public.workout_logs;
 drop policy if exists "workout_logs_delete_dev" on public.workout_logs;
 drop policy if exists "workout_logs_select_own" on public.workout_logs;
+drop policy if exists "workout_logs_select_trainer_or_member" on public.workout_logs;
 drop policy if exists "workout_logs_insert_own" on public.workout_logs;
 drop policy if exists "workout_logs_update_own" on public.workout_logs;
 drop policy if exists "workout_logs_delete_own" on public.workout_logs;
@@ -172,20 +175,44 @@ create policy "members_update_own"
   using (owner_user_id = auth.uid())
   with check (owner_user_id = auth.uid());
 
-create policy "chat_messages_select_own"
+create policy "chat_messages_select_trainer_or_member"
   on public.chat_messages
   for select to authenticated
-  using (owner_user_id = auth.uid());
+  using (
+    owner_user_id = auth.uid()
+    or exists (
+      select 1
+      from public.members m
+      where m.id = chat_messages.member_id
+        and m.owner_user_id = auth.uid()
+    )
+    or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+    or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+  );
 
 create policy "chat_messages_insert_own"
   on public.chat_messages
   for insert to authenticated
   with check (owner_user_id = auth.uid());
 
-create policy "training_programs_select_own"
+create policy "training_programs_select_trainer_or_member"
   on public.training_programs
   for select to authenticated
-  using (owner_user_id = auth.uid());
+  using (
+    owner_user_id = auth.uid()
+    or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+    or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+    or exists (
+      select 1
+      from public.members m
+      where m.id = training_programs.member_id
+        and lower(trim(m.customer_type)) = 'medlem'
+        and (
+          auth.jwt() -> 'app_metadata' ->> 'role' = 'trainer'
+          or auth.jwt() -> 'user_metadata' ->> 'role' = 'trainer'
+        )
+    )
+  );
 
 create policy "training_programs_insert_own"
   on public.training_programs
@@ -203,10 +230,14 @@ create policy "training_programs_delete_own"
   for delete to authenticated
   using (owner_user_id = auth.uid());
 
-create policy "workout_logs_select_own"
+create policy "workout_logs_select_trainer_or_member"
   on public.workout_logs
   for select to authenticated
-  using (owner_user_id = auth.uid());
+  using (
+    owner_user_id = auth.uid()
+    or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+    or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+  );
 
 create policy "workout_logs_insert_own"
   on public.workout_logs
