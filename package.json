@@ -12,6 +12,7 @@
     "test": "vitest run",
     "check:supabase-env": "node ./scripts/check-supabase-env.mjs",
     "check:supabase-schema": "node ./scripts/check-supabase-schema.mjs",
+    "generate:rehab-sketches": "node ./scripts/generate-rehab-medical-sketches.mjs",
     "supabase:deploy-onboarding": "npx supabase functions deploy update-member-profile && npx supabase functions deploy hydrate-trainer-data && npx supabase functions deploy hydrate-member-data",
     "lint": "eslint .",
     "preview": "vite preview"

@@ -1,7 +1,7 @@
 create table if not exists public.exercise_bank (
   id text primary key,
   name text not null,
-  category text not null check (category in ('Styrke', 'Kondisjon', 'Uttøyning')),
+  category text not null check (category in ('Styrke', 'Kondisjon', 'Mobilitet', 'Rehab', 'Uttøyning')),
   muscle_group text not null default '',
   equipment text not null default '',
   level text not null check (level in ('Nybegynner', 'Litt øvet', 'Øvet')),

@@ -468,6 +468,70 @@ function isRateLimitMessage(message: string): boolean {
   );
 }
 
+function isExistingUserInviteError(message: string): boolean {
+  const normalized = message.trim().toLowerCase();
+  return (
+    normalized.includes("already been registered") ||
+    normalized.includes("already registered") ||
+    normalized.includes("user already registered") ||
+    normalized.includes("email address has already")
+  );
+}
+
+async function resendMemberInviteOtp(email: string, memberId: string): Promise<InviteMemberResult> {
+  if (!supabaseClient) {
+    return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
+  }
+  const redirectTo = memberInviteRedirectTo();
+  if (!redirectTo) {
+    return {
+      ok: false,
+      message: "Invitasjon feilet: mangler VITE_SITE_URL (app-URL for e-postlenker).",
+    };
+  }
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: {
+      shouldCreateUser: false,
+      emailRedirectTo: redirectTo,
+      data: { member_id: memberId, role: "member" },
+    },
+  });
+  if (!error) {
+    await syncMemberAuthLink(email, memberId);
+    return {
+      ok: true,
+      message: `Innloggingslenke sendt på nytt til ${email} (eksisterende konto).`,
+      invitedAtIso: new Date().toISOString(),
+    };
+  }
+  if (isRateLimitMessage(error.message || "")) {
+    return {
+      ok: true,
+      message: "Invitasjon er nylig sendt. Vent litt for ny utsending.",
+    };
+  }
+  const { error: fallbackError } = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: {
+      shouldCreateUser: false,
+      emailRedirectTo: redirectTo,
+    },
+  });
+  if (!fallbackError) {
+    await syncMemberAuthLink(email, memberId);
+    return {
+      ok: true,
+      message: `Innloggingslenke sendt på nytt til ${email} (eksisterende konto).`,
+      invitedAtIso: new Date().toISOString(),
+    };
+  }
+  return {
+    ok: false,
+    message: `Konto finnes allerede, men ny lenke feilet: ${fallbackError.message || error.message || "Ukjent feil."}`,
+  };
+}
+
 function isInvalidOtpMessage(message: string): boolean {
   const normalized = message.trim().toLowerCase();
   return (
@@ -538,6 +602,9 @@ async function sendMemberInviteByEmail(email: string, memberId: string): Promise
       ok: true,
       message: "Invitasjon er nylig sendt. Vent litt for ny utsending.",
     };
+  }
+  if (isExistingUserInviteError(message)) {
+    return resendMemberInviteOtp(normalizedEmail, memberId.trim());
   }
   return { ok: false, message: `Invitasjon feilet: ${message}` };
 }

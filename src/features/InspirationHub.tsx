@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Bold, ChevronLeft, ChevronRight, ClipboardList, ImagePlus, Italic, Lightbulb, Newspaper, Pencil, Plus, Soup, Trash2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { EXERCISE_CATEGORY_OPTIONS, exerciseCategoryAccentColor, isHoldBasedExerciseCategory } from "../app/exerciseCategories";
+import { EXERCISE_IMAGE_THUMB_CLASS } from "../app/exerciseIllustrations/constants";
+import { getMedicalSketchFallbackDataUri, resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { compressImageDataUrl, compressImageFile } from "../app/imageCompress";
 import {
   fetchInspirationItemsForHub,
@@ -122,19 +124,11 @@ function multiValueIncludes(value: string, candidate: string): boolean {
 }
 
 function getExerciseSketchDataUri(exercise: Exercise): string {
-  const accent = exerciseCategoryAccentColor(exercise.category);
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'>
-      <rect width='96' height='96' rx='16' fill='#ffffff'/>
-      <circle cx='48' cy='20' r='8' fill='${accent}'/>
-      <path d='M48 30 L48 50 M48 38 L30 45 M48 38 L66 45 M48 50 L35 72 M48 50 L61 72' stroke='#0f172a' stroke-width='4' stroke-linecap='round' fill='none'/>
-      <path d='M12 84 H84' stroke='${accent}' stroke-width='4' stroke-linecap='round'/>
-    </svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  return getMedicalSketchFallbackDataUri(exercise);
 }
 
 function getExercisePreviewSrc(exercise: Exercise): string {
-  const customImage = exercise.imageUrl?.trim();
-  return customImage ? customImage : getExerciseSketchDataUri(exercise);
+  return resolveExerciseImageSrc(exercise);
 }
 
 function programExerciseFromBank(exercise: Exercise): ProgramExercise {
@@ -1715,7 +1709,7 @@ export function InspirationHub({
                           <img
                             src={getExercisePreviewSrc(exercise)}
                             alt=""
-                            className="mt-0.5 h-10 w-10 shrink-0 rounded-lg border object-cover bg-white"
+                            className={EXERCISE_IMAGE_THUMB_CLASS}
                             style={{ borderColor: "rgba(15,23,42,0.08)" }}
                             loading="lazy"
                             onError={(event) => {

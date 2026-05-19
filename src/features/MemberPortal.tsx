@@ -31,6 +31,7 @@ import motusLogo from "../assets/motus-logo-transparent.svg";
 import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
+import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { hasSubstantiveOnboardingAnswers, parsePersonalGoalsJson, readProfileExtensions } from "../app/memberOnboarding";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
@@ -3793,7 +3794,9 @@ export function MemberPortal(props: MemberPortalProps) {
                 : libraryMatch?.category && isHoldBasedExerciseCategory(libraryMatch.category)
                   ? `${exercise.sets} sett × ${(exercise.holdSeconds ?? "").trim() || exercise.weight || "-"} sek · ${exercise.restSeconds}s pause`
                   : `${exercise.sets} x ${exercise.reps} · ${exercise.weight || "-"} kg · ${exercise.restSeconds}s pause`;
-              const imageUrl = resolvePrintAssetUrl(libraryMatch?.imageUrl?.trim() || "");
+              const imageUrl = libraryMatch
+                ? resolvePrintAssetUrl(resolveExerciseImageSrc(libraryMatch))
+                : "";
               const description = libraryMatch?.description?.trim() || "Ingen forklaring tilgjengelig for denne øvelsen.";
               return `<article class="exercise-card">
   <div class="exercise-image-wrap">

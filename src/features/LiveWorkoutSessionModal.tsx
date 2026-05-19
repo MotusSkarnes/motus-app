@@ -3,6 +3,8 @@ import { ArrowLeft, ChevronRight, Plus, Repeat2, SkipForward, X } from "lucide-r
 import { WorkoutCompactSetTable } from "./LiveWorkoutCompactSets";
 import { MOTUS } from "../app/data";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
+import { EXERCISE_IMAGE_INSET_CLASS, EXERCISE_IMAGE_SMALL_CLASS } from "../app/exerciseIllustrations/constants";
+import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { buildWorkoutResultGroups, EXERCISE_BLOCK_LABELS } from "../app/programBlocks";
 import { GradientButton, OutlineButton, TextArea, TextInput } from "../app/ui";
 import type { Exercise, TrainingProgram, WorkoutModeState, WorkoutReflection } from "../app/types";
@@ -193,7 +195,9 @@ export function LiveWorkoutSessionModal({
     return exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
   }, [activeProgram, currentWorkoutGroup, exerciseByName, exercises]);
 
-  const currentWorkoutExerciseImageUrl = currentWorkoutExercise?.imageUrl?.trim() ?? "";
+  const currentWorkoutExerciseImageUrl = currentWorkoutExercise
+    ? resolveExerciseImageSrc(currentWorkoutExercise)
+    : "";
 
   const nextWorkoutExercise = useMemo(() => {
     if (!nextWorkoutGroup) return null;
@@ -373,7 +377,7 @@ export function LiveWorkoutSessionModal({
                         key={currentWorkoutExercise.id}
                         src={currentWorkoutExerciseImageUrl}
                         alt=""
-                        className="h-full w-full object-cover"
+                        className={EXERCISE_IMAGE_INSET_CLASS}
                         loading="lazy"
                         decoding="async"
                       />
@@ -565,12 +569,13 @@ export function LiveWorkoutSessionModal({
                   <div className="mt-0.5 font-semibold text-slate-900">{nextWorkoutGroup.exerciseName}</div>
                   <div className="mt-0.5 text-xs text-slate-500">{nextWorkoutPlanLabel}</div>
                 </div>
-                {nextWorkoutExercise?.imageUrl ? (
+                {nextWorkoutExercise ? (
                   <img
                     key={nextWorkoutExercise.id}
-                    src={nextWorkoutExercise.imageUrl}
+                    src={resolveExerciseImageSrc(nextWorkoutExercise)}
                     alt=""
-                    className="h-14 w-14 shrink-0 rounded-lg object-cover"
+                    className={EXERCISE_IMAGE_SMALL_CLASS}
+                    style={{ borderColor: "rgba(15,23,42,0.08)" }}
                     loading="lazy"
                     decoding="async"
                   />

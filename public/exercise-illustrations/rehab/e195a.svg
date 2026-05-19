@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 200 200" fill="none" role="img" aria-hidden="true">
+  <rect width="200" height="200" fill="#ffffff"/>
+  
+  <line x1="20" y1="175" x2="180" y2="175" stroke="#e2e8f0" stroke-width="2"/>
+  <ellipse cx="100" cy="52" rx="14" ry="16" fill="#f5f2ed" stroke="#334155" stroke-width="1.6"/>
+  <path d="M88 68 Q100 78 112 68 L108 105 Q100 112 92 105 Z" fill="#f5f2ed" stroke="#334155" stroke-width="1.6"/>
+  <path d="M70 78 L45 82" stroke="#64748b" stroke-width="2.5" stroke-dasharray="4 3"/>
+  <path d="M130 78 L155 82" stroke="#64748b" stroke-width="2.5" stroke-dasharray="4 3"/>
+  <path d="M88 82 L55 80" stroke="#334155" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M112 82 L145 80" stroke="#334155" stroke-width="1.8" stroke-linecap="round"/>
+  <ellipse cx="72" cy="78" rx="10" ry="7" fill="#c4a0a0" stroke="#8b7070" stroke-width="1.2" opacity="0.9"/>
+  <ellipse cx="128" cy="78" rx="10" ry="7" fill="#c4a0a0" stroke="#8b7070" stroke-width="1.2" opacity="0.9"/>
+  <path d="M95 105 L88 145 M105 105 L112 145" stroke="#334155" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M88 145 L82 172 M112 145 L118 172" stroke="#334155" stroke-width="1.8" stroke-linecap="round"/>
+  
+</svg>

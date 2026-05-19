@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CalendarRange, ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, MessageSquare, Pencil, Play, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO } from "../app/dateFormat";
@@ -1316,6 +1316,18 @@ function programAuthorLabel(program: TrainingProgram): string | null {
           : selectedLogs.length === 0
             ? "Få kunden i gang med første økt"
             : "Følg med på neste økt";
+  const selectedNextActionCta = useMemo((): { tab: CustomerSubTab; label: string; presetMessage?: boolean } => {
+    if (selectedPrograms.length === 0) {
+      return { tab: "programs", label: "Gå til program & planer" };
+    }
+    if (selectedFollowUpTone === "critical" || selectedFollowUpTone === "watch") {
+      return { tab: "messages", label: "Send melding", presetMessage: true };
+    }
+    if (selectedLogs.length === 0) {
+      return { tab: "workouts", label: "Gå til økter" };
+    }
+    return { tab: "workouts", label: "Se økter" };
+  }, [selectedPrograms.length, selectedFollowUpTone, selectedLogs.length]);
   useEffect(() => {
     if (customerSubTab !== "messages") return;
     const container = trainerMessagesContainerRef.current;
@@ -3694,6 +3706,18 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     });
   }
 
+  function handleSelectedNextAction() {
+    if (!selectedMember) return;
+    if (selectedNextActionCta.presetMessage) {
+      setCustomerSubTab("messages");
+      if (!trainerMessage.trim()) {
+        setTrainerMessage(`Hei ${selectedMemberProfile?.name ?? selectedMember.name}! Hvordan går treningen denne uka?`);
+      }
+      return;
+    }
+    setCustomerSubTab(selectedNextActionCta.tab);
+  }
+
   function markMemberFollowedUp(member: Member) {
     const relatedIds = Array.from(memberRelatedIdSetByCanonicalId.get(member.id) ?? new Set([member.id]));
     const nowIso = new Date().toISOString();
@@ -4144,7 +4168,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       ) : null}
 
       {trainerTab === "customers" ? (
-        <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
+        <div className="grid gap-4 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)] lg:items-start">
           <div className="lg:hidden lg:col-span-2">
             <OutlineButton onClick={() => setShowCustomerToolsMobile((prev) => !prev)} className="w-full">
               {showCustomerToolsMobile ? "Skjul kundeliste" : "Vis kundeliste"}
@@ -4158,7 +4182,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 <p className="text-sm text-slate-500">Velg kunde eller filtrer listen.</p>
               </div>
             </div>
-            <div className="mt-5 space-y-3">
+            <div className="mt-4 space-y-2.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-xs text-slate-500">
                   {sortedMembers.length} treff{memberFilter !== "all" || customerTypeFilter !== "all" ? " med aktivt filter" : ""}
@@ -4206,38 +4230,45 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 />
               </div>
               <SelectBox
+                className="lg:hidden"
                 value={selectedMemberId}
                 onChange={selectMemberWithUnsavedChangesGuard}
                 options={
                   sortedMembers.length
                     ? sortedMembers.map((member) => ({
                         value: member.id,
-                        label: `${member.name} (${member.email}) · ${member.customerType}`,
+                        label: `${member.name} · ${member.customerType}`,
                       }))
                     : [{ value: "", label: "Ingen kunder matcher filteret" }]
                 }
               />
               {sortedMembers.length > 0 ? (
-                <div className="max-h-[520px] space-y-2 overflow-auto pr-1">
-                  {sortedMembers.slice(0, 40).map((member) => {
+                <div className="max-h-[min(72vh,680px)] space-y-1 overflow-auto pr-0.5">
+                  {sortedMembers.map((member) => {
                     const selected = member.id === selectedMemberId;
                     const daysSinceWorkout = daysSinceLastCompletedWorkout(member, members, logs);
                     const needsFollowUp = daysSinceWorkout !== null && daysSinceWorkout >= 7;
                     const hasProgram = programs.some((program) => program.memberId === member.id);
+                    const activityLabel =
+                      daysSinceWorkout !== null
+                        ? daysSinceWorkout === 0
+                          ? "Økt i dag"
+                          : `${daysSinceWorkout}d siden økt`
+                        : "Ingen økter";
                     return (
                       <button
                         key={member.id}
                         type="button"
                         onClick={() => selectMemberWithUnsavedChangesGuard(member.id)}
-                        className={`w-full rounded-xl border p-3 text-left transition ${
+                        className={`w-full rounded-lg border px-2.5 py-2 text-left transition ${
                           selected
-                            ? "border-teal-300 bg-teal-50 shadow-sm ring-2 ring-teal-100"
+                            ? "border-teal-300 bg-teal-50 shadow-sm ring-1 ring-teal-200"
                             : "border-slate-200 bg-white hover:border-teal-200 hover:bg-slate-50"
                         }`}
                       >
-                        <div className="flex items-start gap-3">
-                          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-slate-400">
-                            <ClientAvatarFallback iconClassName="h-6 w-6" />
+                        <div className="flex items-center gap-2">
+                          <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-slate-400">
+                            <ClientAvatarFallback iconClassName="h-4 w-4" />
                             {resolveMemberAvatarUrl(member) ? (
                               <img
                                 src={resolveMemberAvatarUrl(member)}
@@ -4252,25 +4283,29 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                             ) : null}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <div className="truncate text-sm font-semibold text-slate-900">{member.name}</div>
-                                <div className="truncate text-xs text-slate-500">{member.email || "Ingen e-post"}</div>
+                            <div className="flex items-center gap-1.5">
+                              <div className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-slate-900">
+                                {member.name}
                               </div>
                               {needsFollowUp ? (
-                                <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">
+                                <span
+                                  className="shrink-0 rounded-full bg-amber-100 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-amber-800"
+                                  title="7+ dager siden siste økt"
+                                >
                                   Følg opp
                                 </span>
                               ) : null}
                             </div>
-                            <div className="mt-2 flex flex-wrap gap-1.5">
+                            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
                               {renderMemberTypeBadge(member, true)}
                               {!hasProgram ? (
-                                <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">Mangler program</span>
+                                <span className="rounded-full bg-rose-50 px-1.5 py-px text-[9px] font-semibold text-rose-700">
+                                  Mangler program
+                                </span>
                               ) : null}
-                            </div>
-                            <div className="mt-2 text-[11px] text-slate-500">
-                              {daysSinceWorkout !== null ? `${daysSinceWorkout} dager siden siste økt` : "Ingen fullførte økter"}
+                              <span className="truncate text-[10px] text-slate-500" title={activityLabel}>
+                                {activityLabel}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -4689,49 +4724,15 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                               : "Ny kunde"}
                       </span>
                     </div>
-                    <div className="mt-4 grid grid-cols-2 gap-2">
-                      <button
+                    <div className="mt-4">
+                      <GradientButton
                         type="button"
-                        onClick={() => setCustomerSubTab("programs")}
-                        className="flex min-h-[58px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-tight text-slate-800 transition hover:border-teal-300 hover:bg-teal-50"
-                        aria-label="Program"
-                        title="Treningsprogram eller periodeplan"
+                        onClick={handleSelectedNextAction}
+                        disabled={selectedNextActionCta.tab === "messages" && selectedMemberMessagesLocked}
+                        className="w-full sm:w-auto"
                       >
-                        <ClipboardList className="h-4 w-4 shrink-0 text-teal-700" aria-hidden />
-                        <span className="max-w-full break-words">Program & plan</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCustomerSubTab("messages");
-                          if (!trainerMessage.trim()) setTrainerMessage(`Hei ${selectedMemberProfile?.name ?? selectedMember.name}! Hvordan går treningen denne uka?`);
-                        }}
-                        className="flex min-h-[58px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-tight text-slate-800 transition hover:border-teal-300 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-45"
-                        disabled={selectedMemberMessagesLocked}
-                        title="Send melding"
-                      >
-                        <MessageSquare className="h-4 w-4 shrink-0 text-pink-700" aria-hidden />
-                        <span className="max-w-full break-words">Melding</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCustomerSubTab("workouts")}
-                        className="flex min-h-[58px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-tight text-slate-800 transition hover:border-teal-300 hover:bg-teal-50"
-                        aria-label="Åpne økter"
-                        title="Se økter"
-                      >
-                        <Play className="h-4 w-4 shrink-0 text-slate-700" aria-hidden />
-                        <span className="max-w-full break-words">Økter</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCustomerSubTab("overview")}
-                        className="flex min-h-[58px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-tight text-slate-800 transition hover:border-teal-300 hover:bg-teal-50"
-                        title="Oppfølgingslogg"
-                      >
-                        <Pencil className="h-4 w-4 shrink-0 text-amber-700" aria-hidden />
-                        <span className="max-w-full break-words">Logg</span>
-                      </button>
+                        {selectedNextActionCta.label}
+                      </GradientButton>
                     </div>
                   </div>
                   <div className="rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>

@@ -53,6 +53,21 @@ function memberScore(row: MemberRow): number {
   return score;
 }
 
+function memberPreview(row: MemberRow): Record<string, unknown> {
+  return {
+    id: String(row.id ?? "").trim(),
+    ownerUserId: String(row.owner_user_id ?? "").trim(),
+    email: normalizeEmail(row.email),
+    name: String(row.name ?? "").trim(),
+    isActive: row.is_active !== false,
+    invitedAt: String(row.invited_at ?? "").trim(),
+    daysSinceActivity: String(row.days_since_activity ?? "").trim(),
+    customerType: String(row.customer_type ?? "").trim(),
+    membershipType: String(row.membership_type ?? "").trim(),
+    score: memberScore(row),
+  };
+}
+
 function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
 }
@@ -250,6 +265,12 @@ Deno.serve(async (req) => {
       email,
       canonicalId,
       duplicateIds: uniqueDuplicateIds,
+      canonicalMember: memberPreview(canonical),
+      duplicateMembers: sorted.slice(1).map(memberPreview),
+      members: sorted.map((row, index) => ({
+        ...memberPreview(row),
+        action: index === 0 ? "keep" : "deactivate",
+      })),
       movedPrograms,
       movedLogs,
       movedMessages,
