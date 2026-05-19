@@ -87,10 +87,12 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     state.appState.selectedMemberId,
   ]);
 
+  const layoutRole = state.appState.currentUser?.role ?? state.appState.role;
+
   const appHeaderProps: ComponentProps<typeof AppHeader> = buildAppHeaderProps({
     currentUser: state.appState.currentUser!,
     memberDisplayName: memberHeaderDisplayName,
-    role: state.appState.role,
+    role: layoutRole,
     showQuickLogin: state.showQuickLogin,
     onSwitchRole: (role) => state.patchState({ role }),
     onResetData: handleResetData,

@@ -47,17 +47,43 @@ function isTrainerStaffEmail(email: string): boolean {
   return email.trim().toLowerCase().endsWith(TRAINER_EMAIL_DOMAIN);
 }
 
-/** Eksplisitt metadata (f.eks. resepsjon@ som Premium-medlem) vinner over @motus-skarnes.no standard. */
+function readLinkedMemberId(user: {
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+}): string {
+  const raw =
+    (typeof user.app_metadata?.member_id === "string" && user.app_metadata.member_id) ||
+    (typeof user.user_metadata?.member_id === "string" && user.user_metadata.member_id) ||
+    "";
+  return raw.trim();
+}
+
+function hasLinkedCustomerMemberId(memberId: string): boolean {
+  if (!memberId || memberId === "__template__") return false;
+  return true;
+}
+
+/**
+ * Eksplisitt metadata (f.eks. resepsjon@ som PT-kunde) vinner over @motus-skarnes.no standard.
+ * Staff med koblet member_id behandles som medlem selv om JWT fortsatt sier role=trainer.
+ */
 export function resolveSessionAuthRole(user: {
   email?: string | null;
   user_metadata?: Record<string, unknown>;
   app_metadata?: Record<string, unknown>;
 }): Role {
-  const appRole = user.app_metadata?.role;
-  if (appRole === "trainer" || appRole === "member") return appRole;
-  const userRole = user.user_metadata?.role;
-  if (userRole === "trainer" || userRole === "member") return userRole;
   const email = String(user.email ?? "").trim();
+  const appRole = user.app_metadata?.role;
+  const userRole = user.user_metadata?.role;
+  const memberId = readLinkedMemberId(user);
+
+  if (appRole === "member" || userRole === "member") return "member";
+
+  if (isTrainerStaffEmail(email) && hasLinkedCustomerMemberId(memberId)) {
+    return "member";
+  }
+
+  if (appRole === "trainer" || userRole === "trainer") return "trainer";
   if (isTrainerStaffEmail(email)) return "trainer";
   return "trainer";
 }
@@ -81,13 +107,10 @@ export function mapSupabaseUserToAuthUser(user: {
     (typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name) ||
     (typeof user.user_metadata?.name === "string" && user.user_metadata.name) ||
     (user.email ?? "Bruker");
+  const linkedMemberId = readLinkedMemberId(user);
   const memberId =
     role === "member"
-      ? typeof user.app_metadata?.member_id === "string"
-        ? user.app_metadata.member_id
-        : typeof user.user_metadata?.member_id === "string"
-        ? user.user_metadata.member_id
-        : undefined
+      ? linkedMemberId || undefined
       : undefined;
 
   return {

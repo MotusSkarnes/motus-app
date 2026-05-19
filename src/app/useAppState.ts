@@ -540,7 +540,11 @@ export function useAppState() {
   }
 
   useEffect(() => {
-    saveState(appState);
+    const persisted =
+      appState.currentUser && appState.role !== appState.currentUser.role
+        ? { ...appState, role: appState.currentUser.role }
+        : appState;
+    saveState(persisted);
   }, [appState]);
 
   useEffect(() => {
@@ -752,7 +756,9 @@ export function useAppState() {
           const currentUser = prevStripped.currentUser;
           if (currentUser?.role === "member") {
             const normalizedUserEmail = currentUser.email.trim().toLowerCase();
-            mergedMembers = filterMembersForSessionEmail(mergedMembers, normalizedUserEmail);
+            const remoteForEmail = filterMembersForSessionEmail(mergedMembers, normalizedUserEmail);
+            const localForEmail = filterMembersForSessionEmail(prevStripped.members, normalizedUserEmail);
+            mergedMembers = remoteForEmail.length > 0 ? remoteForEmail : localForEmail;
             const bestGoalsForEmail = pickBestPersonalGoals([
               ...prevStripped.members
                 .filter((member) => member.email.trim().toLowerCase() === normalizedUserEmail)
@@ -838,9 +844,28 @@ export function useAppState() {
           next.logs = next.logs.filter((log) => allowedMemberIds.has(log.memberId.trim()));
           next.messages = next.messages.filter((message) => allowedMemberIds.has(message.memberId.trim()));
           next.members = filterMembersForSessionEmail(next.members, sessionEmail);
+          if (!next.members.length && prevStripped.currentUser?.role === "member") {
+            const withFallback = ensureMemberRecordForUser(
+              { ...next, members: prevStripped.members },
+              prevStripped.currentUser,
+              prevStripped.currentUser.memberId ?? prevStripped.memberViewId,
+            );
+            next.members = filterMembersForSessionEmail(withFallback.members, sessionEmail);
+          }
           if (next.members.length === 1) {
             next.memberViewId = next.members[0]!.id;
             next.selectedMemberId = next.members[0]!.id;
+          } else if (next.members.length > 1 && prevStripped.currentUser?.role === "member") {
+            const resolvedViewId = resolveMemberViewIdForUser({
+              role: "member",
+              memberId: prevStripped.currentUser.memberId,
+              email: sessionEmail,
+              members: next.members,
+              programs: next.programs,
+              fallbackId: prevStripped.memberViewId || prevStripped.currentUser.memberId || `auth-${prevStripped.currentUser.id}`,
+            });
+            next.memberViewId = resolvedViewId;
+            next.selectedMemberId = resolvedViewId;
           }
         }
 

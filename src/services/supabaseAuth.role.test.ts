@@ -31,4 +31,14 @@ describe("resolveSessionAuthRole", () => {
       }),
     ).toBe("trainer");
   });
+
+  it("treats staff email with linked member_id as member even when JWT says trainer", () => {
+    expect(
+      resolveSessionAuthRole({
+        email: "resepsjon@motus-skarnes.no",
+        app_metadata: { role: "trainer", member_id: "auth-uuid-resepsjon" },
+        user_metadata: {},
+      }),
+    ).toBe("member");
+  });
 });

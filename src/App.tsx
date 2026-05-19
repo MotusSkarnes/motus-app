@@ -7,6 +7,7 @@ import { isSupabaseConfigured } from "./services/supabaseClient";
 export default function App() {
   const { appState, isAuthSessionLoading, isRecoveryMode, loginScreenProps, appHeaderProps, trainerLayoutProps, memberLayoutProps } =
     useAppViewModel();
+  const layoutRole = appState.currentUser?.role ?? appState.role;
 
   return (
     <AppShell>
@@ -29,7 +30,7 @@ export default function App() {
           <OfflineBanner />
           <AppHeader {...appHeaderProps} />
 
-          {appState.role === "trainer" ? <TrainerLayout {...trainerLayoutProps} /> : <MemberLayout {...memberLayoutProps} />}
+          {layoutRole === "trainer" ? <TrainerLayout {...trainerLayoutProps} /> : <MemberLayout {...memberLayoutProps} />}
         </div>
       )}
     </AppShell>

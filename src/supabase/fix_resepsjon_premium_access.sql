@@ -3,7 +3,8 @@
 
 update public.members
 set
-  membership_type = 'Premium',
+  membership_type = coalesce(nullif(trim(membership_type), ''), 'Premium'),
+  customer_type = coalesce(nullif(trim(customer_type), ''), 'PT-kunde'),
   is_active = true
 where lower(trim(email)) = 'resepsjon@motus-skarnes.no';
 
