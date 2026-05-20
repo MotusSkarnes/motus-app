@@ -369,9 +369,13 @@ export function IntervalWorkoutSessionModal({
         setStatus(result.message?.trim() || "Kunne ikke lagre økten i skyen. Prøv igjen.");
         return;
       }
-      setStatus("Kondisjonsøkten er lagret. PT kan se den i loggen.");
-      onSaved?.();
-      window.setTimeout(() => onClose(), 400);
+      const successMessage = "Kondisjonsøkten er lagret. PT kan se den i loggen.";
+      setStatus(successMessage);
+      if (onSaved) {
+        onSaved();
+        return;
+      }
+      window.setTimeout(() => onClose(), 1800);
     };
 
     const timeoutId = window.setTimeout(() => {

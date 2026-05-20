@@ -5947,6 +5947,10 @@ export function MemberPortal(props: MemberPortalProps) {
                 memberId={activeMemberId}
                 memberEmail={editableMember?.email ?? currentUserEmail}
                 onClose={() => setShowIntervalTimerModal(false)}
+                onSaved={() => {
+                  setIntervalTimerStatus("Kondisjonsøkten er lagret. PT kan se den i loggen.");
+                  setShowIntervalTimerModal(false);
+                }}
                 logIntervalWorkout={logIntervalWorkout}
               />
             </>
