@@ -789,6 +789,8 @@ export function useAppState() {
             }));
           }
           if (currentUser?.role === "trainer") {
+            // Behold nylig opprettede kunder til sky-lagring er ferdig — ellers forsvinner de ved neste hydrate.
+            mergedMembers = mergeMembersById(mergedMembers, prevStripped.members) ?? mergedMembers;
             // Remote kan ha tom invitedAt på raden (RLS/direkte fetch vs hydrate) rett etter invitasjon — ikke overskriv optimistisk/lokal verdi.
             mergedMembers = mergedMembers.map((remote) => {
               const prevRow = prev.members.find((m) => m.id === remote.id);

@@ -16,6 +16,7 @@ import type {
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate } from "../app/dateFormat";
 import { normalizeStoredExerciseCategory } from "../app/exerciseCategories";
 import {
+  createMember,
   localAppRepository,
   type AppRepository,
   type CreateMemberInput,
@@ -2742,22 +2743,34 @@ export async function fetchExercisesFromSupabase(): Promise<Exercise[] | null> {
 
 export const supabaseAppRepository: AppRepository = {
   addMember(state: AppState, input: CreateMemberInput): AppState {
-    const nextState = localAppRepository.addMember(state, input);
-    const latestMember = nextState.members[nextState.members.length - 1];
-    if (latestMember) {
-      void (async () => {
-        const sessionOwnerId = (await getOwnerUserId()) ?? "";
-        const withOwner: Member = {
-          ...latestMember,
-          ownerUserId: resolveOwnerUserIdForPersist({
-            customerType: latestMember.customerType,
-            sessionOwnerId,
-            existingOwnerId: latestMember.ownerUserId,
-          }),
-        };
-        await persistMember(withOwner);
-      })();
-    }
+    const createdMember = createMember(state, input);
+    const sessionOwnerHint =
+      state.currentUser?.role === "trainer" ? String(state.currentUser.id ?? "").trim() : "";
+    const optimisticMember: Member = {
+      ...createdMember,
+      ownerUserId:
+        sessionOwnerHint &&
+        (createdMember.customerType === "PT-kunde" || createdMember.membershipType === "Premium")
+          ? sessionOwnerHint
+          : createdMember.ownerUserId,
+    };
+    const nextState: AppState = {
+      ...state,
+      members: [...state.members, optimisticMember],
+      selectedMemberId: optimisticMember.id,
+    };
+    void (async () => {
+      const sessionOwnerId = (await getOwnerUserId()) ?? sessionOwnerHint;
+      const withOwner: Member = {
+        ...optimisticMember,
+        ownerUserId: resolveOwnerUserIdForPersist({
+          customerType: optimisticMember.customerType,
+          sessionOwnerId,
+          existingOwnerId: optimisticMember.ownerUserId,
+        }),
+      };
+      await persistMember(withOwner);
+    })();
     return nextState;
   },
   deactivateMember(state: AppState, memberId: string): AppState {

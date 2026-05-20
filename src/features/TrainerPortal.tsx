@@ -693,6 +693,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const [newMemberFocus, setNewMemberFocus] = useState("");
   const [newMemberInviteType, setNewMemberInviteType] = useState<"PT-kunde" | "Premium-kunde" | "Medlem">("PT-kunde");
   const [newMemberError, setNewMemberError] = useState<string | null>(null);
+  const [newMemberSuccess, setNewMemberSuccess] = useState<string | null>(null);
   const [pendingProgramMemberEmail, setPendingProgramMemberEmail] = useState<string | null>(null);
   const [pendingInviteMemberEmail, setPendingInviteMemberEmail] = useState<string | null>(null);
   const [newTrainerEmail, setNewTrainerEmail] = useState("");
@@ -2231,14 +2232,17 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const email = newMemberEmail.trim().toLowerCase();
     if (!name || !email) {
       setNewMemberError("Navn og e-post er påkrevd.");
+      setNewMemberSuccess(null);
       return;
     }
     if (!isValidEmail(email)) {
       setNewMemberError("E-post må være gyldig.");
+      setNewMemberSuccess(null);
       return;
     }
     if (members.some((member) => member.email.toLowerCase() === email)) {
       setNewMemberError("E-post finnes allerede.");
+      setNewMemberSuccess(null);
       return;
     }
 
@@ -2264,6 +2268,11 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     setNewMemberGoal("");
     setNewMemberFocus("");
     setNewMemberError(null);
+    setNewMemberSuccess(
+      options?.inviteAfterCreate
+        ? `Kunde «${name}» opprettet — sender invitasjon…`
+        : `Kunde «${name}» er opprettet. Du finner vedkommende under Klienter.`,
+    );
     if (options?.openProgramAfterCreate) {
       setPendingProgramMemberEmail(email);
     }
@@ -3898,10 +3907,25 @@ function programAuthorLabel(program: TrainingProgram): string | null {
           ]}
         />
         {newMemberError ? <StatusMessage message={newMemberError} tone="error" className="!rounded-xl !px-3 !py-2 !text-xs" /> : null}
-        <GradientButton onClick={() => submitNewMember()} className="w-full md:w-auto">
+        {newMemberSuccess ? (
+          <StatusMessage message={newMemberSuccess} tone="success" className="!rounded-xl !px-3 !py-2 !text-xs" />
+        ) : null}
+        <GradientButton
+          onClick={() => {
+            setNewMemberSuccess(null);
+            submitNewMember();
+          }}
+          className="w-full md:w-auto"
+        >
           Opprett kunde
         </GradientButton>
-        <OutlineButton onClick={() => submitNewMember({ inviteAfterCreate: true })} className="w-full md:w-auto">
+        <OutlineButton
+          onClick={() => {
+            setNewMemberSuccess(null);
+            submitNewMember({ inviteAfterCreate: true });
+          }}
+          className="w-full md:w-auto"
+        >
           Opprett + send invitasjon
         </OutlineButton>
       </div>
