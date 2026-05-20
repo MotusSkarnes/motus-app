@@ -99,6 +99,8 @@ type MemberLayoutProps = {
   clearMemberFocusInspirationItemId: () => void;
   memberFocusWorkoutLogId: string | null;
   clearMemberFocusWorkoutLogId: () => void;
+  memberFocusProgramId: string | null;
+  clearMemberFocusProgramId: () => void;
   memberCheckInOverlayOpen: boolean;
   setMemberCheckInOverlayOpen: (open: boolean) => void;
   remoteMemberPeriodPlanRows: ComponentProps<typeof MemberPortal>["remoteMemberPeriodPlanRows"];
@@ -149,6 +151,8 @@ export function MemberLayout({
   clearMemberFocusInspirationItemId,
   memberFocusWorkoutLogId,
   clearMemberFocusWorkoutLogId,
+  memberFocusProgramId,
+  clearMemberFocusProgramId,
   memberCheckInOverlayOpen,
   setMemberCheckInOverlayOpen,
   remoteMemberPeriodPlanRows,
@@ -360,6 +364,8 @@ export function MemberLayout({
     dismissWorkoutCelebration,
     memberFocusWorkoutLogId,
     clearMemberFocusWorkoutLogId,
+    memberFocusProgramId,
+    clearMemberFocusProgramId,
     remoteMemberPeriodPlanRows,
     refreshRemoteHydration,
     onOpenMonthlyCheckIn: () => setMemberCheckInOverlayOpen(true),

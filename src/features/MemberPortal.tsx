@@ -233,6 +233,8 @@ type MemberPortalProps = {
   dismissWorkoutCelebration: () => void;
   memberFocusWorkoutLogId?: string | null;
   clearMemberFocusWorkoutLogId?: () => void;
+  memberFocusProgramId?: string | null;
+  clearMemberFocusProgramId?: () => void;
   /** Periodeplaner fra Supabase (hydrate-member-data). */
   remoteMemberPeriodPlanRows?: Array<{ memberId: string; plan: PeriodSchedulePlan }>;
   /** Etter lagring: kjør hydrate fra Supabase (persist er asynk) */
@@ -909,6 +911,8 @@ export function MemberPortal(props: MemberPortalProps) {
     dismissWorkoutCelebration,
     memberFocusWorkoutLogId = null,
     clearMemberFocusWorkoutLogId,
+    memberFocusProgramId = null,
+    clearMemberFocusProgramId,
     remoteMemberPeriodPlanRows = EMPTY_REMOTE_PERIOD_PLAN_ROWS,
     refreshRemoteHydration,
     onOpenMonthlyCheckIn,
@@ -2788,10 +2792,35 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [memberFocusWorkoutLogId, completedLogs, memberTab, setMemberTab]);
 
   useEffect(() => {
+    if (!memberFocusProgramId) return;
+    const program =
+      memberProgramsInActiveLibrary.find((item) => item.id === memberFocusProgramId) ??
+      memberPrograms.find((item) => item.id === memberFocusProgramId);
+    setTrainingSection("programs");
+    if (program) {
+      setExpandedProgramId(program.id);
+    }
+    if (memberTab !== "programs") {
+      setMemberTab("programs");
+    }
+    const scrollTargetId = `member-program-${memberFocusProgramId}`;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(scrollTargetId)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [memberFocusProgramId, memberPrograms, memberProgramsInActiveLibrary, memberTab, setMemberTab]);
+
+  useEffect(() => {
     if (memberTab !== "programs" && memberFocusWorkoutLogId) {
       clearMemberFocusWorkoutLogId?.();
     }
   }, [memberTab, memberFocusWorkoutLogId, clearMemberFocusWorkoutLogId]);
+
+  useEffect(() => {
+    if (memberTab !== "programs" && memberFocusProgramId) {
+      clearMemberFocusProgramId?.();
+    }
+  }, [memberTab, memberFocusProgramId, clearMemberFocusProgramId]);
 
   useEffect(() => {
     if (memberTab !== "programs" || typeof window === "undefined") return;
@@ -4891,7 +4920,12 @@ export function MemberPortal(props: MemberPortalProps) {
                     const isLibraryMenuOpen = programLibraryMenuId === program.id;
                     const programAuthorLine = programAuthorCredit(program);
                     return (
-                      <div key={program.id} className="rounded-lg border bg-white p-2.5 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div
+                        key={program.id}
+                        id={`member-program-${program.id}`}
+                        className="rounded-lg border bg-white p-2.5 space-y-2"
+                        style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
                             <div className="text-sm font-semibold leading-snug text-slate-900">{program.title}</div>

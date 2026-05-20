@@ -112,6 +112,8 @@ export function buildMemberLayoutProps(input: {
   clearMemberFocusInspirationItemId: MemberLayoutProps["clearMemberFocusInspirationItemId"];
   memberFocusWorkoutLogId: MemberLayoutProps["memberFocusWorkoutLogId"];
   clearMemberFocusWorkoutLogId: MemberLayoutProps["clearMemberFocusWorkoutLogId"];
+  memberFocusProgramId: MemberLayoutProps["memberFocusProgramId"];
+  clearMemberFocusProgramId: MemberLayoutProps["clearMemberFocusProgramId"];
   memberCheckInOverlayOpen: MemberLayoutProps["memberCheckInOverlayOpen"];
   setMemberCheckInOverlayOpen: MemberLayoutProps["setMemberCheckInOverlayOpen"];
   remoteMemberPeriodPlanRows: MemberLayoutProps["remoteMemberPeriodPlanRows"];

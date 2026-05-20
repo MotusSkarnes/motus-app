@@ -18,7 +18,7 @@ import {
 } from "./memberMonthlyCheckIn";
 import { formatNotificationTimestamp } from "./dateFormat";
 import { parseChatMessageCreatedAtMs } from "./messageHydrationMerge";
-import type { ChatMessage, Member, MemberTab, TrainingProgram, WorkoutLog } from "./types";
+import type { ChatMessage, Member, MemberTab, PeriodSchedulePlan, TrainingProgram, WorkoutLog } from "./types";
 import { readWorkoutLogIdFromLocation, stripWorkoutLogIdFromLocation, workoutLogIdFromMemberAlertId } from "./workoutLogDeepLink";
 import {
   MEMBER_NOTIFICATION_PREFS_VERSION,
@@ -41,7 +41,7 @@ const TRAINER_OPERATIONAL_TIMESTAMP_BASE = 1;
 
 export type MemberAlert = {
   id: string;
-  kind: "message" | "program" | "workout-comment" | "inspiration" | "check-in";
+  kind: "message" | "program" | "workout-comment" | "inspiration" | "check-in" | "period-plan";
   title: string;
   text: string;
   detail: string;
@@ -99,6 +99,38 @@ function readMemberInspirationBaselineAt(): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function memberPeriodPlanSeenKey(plan: PeriodSchedulePlan): string {
+  const version = plan.trainerSavedAtIso?.trim() || plan.createdAt?.trim() || plan.id;
+  return `${plan.id}:${version}`;
+}
+
+function periodPlanAlertTimestamp(plan: PeriodSchedulePlan, fallbackOrder: number): number {
+  const iso = plan.trainerSavedAtIso?.trim();
+  if (iso) {
+    const parsed = Date.parse(iso);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return parseTimestamp(plan.createdAt, fallbackOrder);
+}
+
+function readMemberTabFromLocation(): MemberTab | null {
+  if (typeof window === "undefined") return null;
+  const tab = new URLSearchParams(window.location.search).get("memberTab")?.trim();
+  if (tab === "overview" || tab === "programs" || tab === "progress" || tab === "messages" || tab === "profile" || tab === "inspiration") {
+    return tab;
+  }
+  return null;
+}
+
+function stripMemberTabFromLocation(): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has("memberTab")) return;
+  url.searchParams.delete("memberTab");
+  const next = `${url.pathname}${url.search}${url.hash}`;
+  window.history.replaceState(window.history.state, "", next);
+}
+
 function readTrainerBaselineAt(): number {
   if (typeof window === "undefined") return 0;
   const parsed = Number(window.localStorage.getItem(TRAINER_NOTIFICATIONS_BASELINE_KEY) ?? "0");
@@ -118,12 +150,14 @@ export function useNotifications({
   onTrainerOpenCustomers,
   onTrainerOpenMemberForm,
   onPersistMemberNotificationPreferences,
+  remoteMemberPeriodPlanRows = [],
 }: {
   messages: ChatMessage[];
   programs: TrainingProgram[];
   logs: WorkoutLog[];
   members: Member[];
   memberViewId: string;
+  remoteMemberPeriodPlanRows?: Array<{ memberId: string; plan: PeriodSchedulePlan }>;
   memberPersonalGoals?: string;
   currentUserRole?: "trainer" | "member";
   setMemberTab: (tab: MemberTab) => void;
@@ -213,6 +247,7 @@ export function useNotifications({
   const [inspirationItems, setInspirationItems] = useState<InspirationNotificationItem[]>(() => loadInspirationNotificationItems());
   const [memberFocusInspirationItemId, setMemberFocusInspirationItemId] = useState<string | null>(null);
   const [memberFocusWorkoutLogId, setMemberFocusWorkoutLogId] = useState<string | null>(() => readWorkoutLogIdFromLocation());
+  const [memberFocusProgramId, setMemberFocusProgramId] = useState<string | null>(null);
   const [memberCheckInOverlayOpen, setMemberCheckInOverlayOpen] = useState(false);
   const [seenTrainerMemberFormKeys, setSeenTrainerMemberFormKeys] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
@@ -234,6 +269,16 @@ export function useNotifications({
       return [];
     }
   });
+  const [seenMemberPeriodPlanKeys, setSeenMemberPeriodPlanKeys] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem("motus.notifications.memberSeenPeriodPlanKeys");
+      const parsed = JSON.parse(raw ?? "[]");
+      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+    } catch {
+      return [];
+    }
+  });
 
   const lastMergedMemberRemoteUpdatedAtRef = useRef(0);
   const lastMergedTrainerRemoteUpdatedAtRef = useRef(0);
@@ -246,6 +291,7 @@ export function useNotifications({
       seenMemberWorkoutCommentKeys,
       openedMemberAlertIds,
       seenMemberInspirationIds,
+      seenMemberPeriodPlanKeys,
       dismissedMemberCheckInMonths,
       memberInspirationBaselineAt: readMemberInspirationBaselineAt(),
       updatedAt: Date.now(),
@@ -256,6 +302,7 @@ export function useNotifications({
     seenMemberWorkoutCommentKeys,
     openedMemberAlertIds,
     seenMemberInspirationIds,
+    seenMemberPeriodPlanKeys,
     dismissedMemberCheckInMonths,
   ]);
 
@@ -266,6 +313,7 @@ export function useNotifications({
     setSeenMemberWorkoutCommentKeys(preferences.seenMemberWorkoutCommentKeys);
     setOpenedMemberAlertIds(preferences.openedMemberAlertIds);
     setSeenMemberInspirationIds(preferences.seenMemberInspirationIds);
+    setSeenMemberPeriodPlanKeys(preferences.seenMemberPeriodPlanKeys);
     setDismissedMemberCheckInMonths(preferences.dismissedMemberCheckInMonths);
     if (preferences.memberInspirationBaselineAt > 0 && typeof window !== "undefined") {
       window.localStorage.setItem(MEMBER_INSPIRATION_BASELINE_KEY, String(preferences.memberInspirationBaselineAt));
@@ -615,6 +663,37 @@ export function useNotifications({
     };
   }, [activeMember, currentUserRole, dismissedMemberCheckInMonths]);
 
+  const memberPeriodPlanAlerts = useMemo(
+    () => {
+      const seenPlanIds = new Set<string>();
+      return remoteMemberPeriodPlanRows
+        .filter((row) => row.memberId === memberViewId)
+        .map((row) => row.plan)
+        .filter((plan) => plan.periodPlanAddedBy !== "member")
+        .filter((plan) => plan.memberPeriodPlanStatus !== "hidden")
+        .filter((plan) => {
+          if (seenPlanIds.has(plan.id)) return false;
+          seenPlanIds.add(plan.id);
+          return true;
+        })
+        .map((plan, index) => {
+          const seenKey = memberPeriodPlanSeenKey(plan);
+          return {
+            id: `member-period-plan-${plan.id}`,
+            kind: "period-plan" as const,
+            title: "Ny periodeplan",
+            text: plan.title,
+            detail: plan.notes?.trim() || "Planen er klar under Oversikt.",
+            timestamp: periodPlanAlertTimestamp(plan, index + 1),
+            targetTab: "overview" as const,
+            unread: !seenMemberPeriodPlanKeys.includes(seenKey),
+            seenKey,
+          };
+        });
+    },
+    [remoteMemberPeriodPlanRows, memberViewId, seenMemberPeriodPlanKeys],
+  );
+
   const memberInspirationAlerts = useMemo(
     () =>
       inspirationItems.map((item, index) => {
@@ -640,6 +719,13 @@ export function useNotifications({
     setMemberFocusWorkoutLogId(logIdFromUrl);
     setMemberTab("programs");
     stripWorkoutLogIdFromLocation();
+  }, [setMemberTab]);
+
+  useEffect(() => {
+    const tabFromUrl = readMemberTabFromLocation();
+    if (!tabFromUrl) return;
+    setMemberTab(tabFromUrl);
+    stripMemberTabFromLocation();
   }, [setMemberTab]);
 
   const memberRecentAlerts = useMemo<MemberAlert[]>(() => {
@@ -703,6 +789,17 @@ export function useNotifications({
         isUnread: alert.unread,
         isOpened: openedMemberAlertIds.includes(alert.id),
       })),
+      ...memberPeriodPlanAlerts.map((alert) => ({
+        id: alert.id,
+        kind: alert.kind,
+        title: alert.title,
+        text: alert.text,
+        detail: alert.detail,
+        timestamp: alert.timestamp,
+        targetTab: alert.targetTab,
+        isUnread: alert.unread,
+        isOpened: openedMemberAlertIds.includes(alert.id),
+      })),
     ];
     return sortAlertsForDisplay(combined).slice(0, ALERT_HISTORY_LIMIT);
   }, [
@@ -710,6 +807,7 @@ export function useNotifications({
     memberProgramAlerts,
     memberWorkoutCommentAlerts,
     memberInspirationAlerts,
+    memberPeriodPlanAlerts,
     memberCheckInAlert,
     openedMemberAlertIds,
   ]);
@@ -770,6 +868,7 @@ export function useNotifications({
       const programId = alert.id.replace(/^member-program-/, "");
       if (programId) {
         setSeenMemberProgramIds((prev) => Array.from(new Set([...prev, programId])));
+        setMemberFocusProgramId(programId);
       }
     } else if (alert.kind === "workout-comment") {
       const workoutAlert = memberWorkoutCommentAlerts.find((item) => item.id === alert.id);
@@ -792,6 +891,11 @@ export function useNotifications({
         setDismissedMemberCheckInMonths((prev) => Array.from(new Set([...prev, monthKey])));
       }
       setMemberCheckInOverlayOpen(true);
+    } else if (alert.kind === "period-plan") {
+      const periodAlert = memberPeriodPlanAlerts.find((item) => item.id === alert.id);
+      if (periodAlert?.seenKey) {
+        setSeenMemberPeriodPlanKeys((prev) => Array.from(new Set([...prev, periodAlert.seenKey])));
+      }
     }
 
     setMemberTab(alert.targetTab);
@@ -843,6 +947,11 @@ export function useNotifications({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    window.localStorage.setItem("motus.notifications.memberSeenPeriodPlanKeys", JSON.stringify(seenMemberPeriodPlanKeys));
+  }, [seenMemberPeriodPlanKeys]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
     window.localStorage.setItem("motus.notifications.trainerSeenMemberFormKeys", JSON.stringify(seenTrainerMemberFormKeys));
   }, [seenTrainerMemberFormKeys]);
 
@@ -887,6 +996,7 @@ export function useNotifications({
     onPersistMemberNotificationPreferences,
     openedMemberAlertIds,
     seenMemberInspirationIds,
+    seenMemberPeriodPlanKeys,
     seenMemberProgramIds,
     seenMemberWorkoutCommentKeys,
   ]);
@@ -958,6 +1068,8 @@ export function useNotifications({
     clearMemberFocusInspirationItemId: () => setMemberFocusInspirationItemId(null),
     memberFocusWorkoutLogId,
     clearMemberFocusWorkoutLogId: () => setMemberFocusWorkoutLogId(null),
+    memberFocusProgramId,
+    clearMemberFocusProgramId: () => setMemberFocusProgramId(null),
     memberCheckInOverlayOpen,
     setMemberCheckInOverlayOpen,
   };

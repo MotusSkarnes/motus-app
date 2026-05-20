@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { INSPIRATION_CHANGED_EVENT, INSPIRATION_STORAGE_KEY } from "./inspirationStorage";
 import { useNotifications } from "./useNotifications";
-import type { MemberTab, WorkoutLog } from "./types";
+import type { MemberTab, PeriodSchedulePlan, TrainingProgram, WorkoutLog } from "./types";
 
 function makeLog(overrides: Partial<WorkoutLog> = {}): WorkoutLog {
   return {
@@ -518,6 +518,42 @@ describe("useNotifications workout comment alerts", () => {
     expect(result.current.memberFocusWorkoutLogId).toBe("log-1");
   });
 
+  it("opens programs tab and focuses program when new program alert is opened", () => {
+    let memberTab: MemberTab = "overview";
+    const trainerProgram: TrainingProgram = {
+      id: "program-1",
+      memberId: "member-1",
+      title: "4x4 intervall",
+      goal: "Kondis",
+      notes: "",
+      exercises: [],
+      createdAt: "20.05.2026",
+      programCreatedBy: "trainer",
+    };
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [trainerProgram],
+        logs: [],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+        memberViewId: "member-1",
+        setMemberTab: (tab) => {
+          memberTab = tab;
+        },
+      }),
+    );
+
+    const alert = result.current.memberVisibleAlerts.find((item) => item.kind === "program");
+    expect(alert).toBeDefined();
+
+    act(() => {
+      result.current.openAlert(alert!);
+    });
+
+    expect(memberTab).toBe("programs");
+    expect(result.current.memberFocusProgramId).toBe("program-1");
+  });
+
   it("ignores workout comments on non-completed logs", () => {
     const { result } = renderHook(() =>
       useNotifications({
@@ -564,5 +600,70 @@ describe("useNotifications workout comment alerts", () => {
 
     expect(result.current.trainerUnreadCount).toBe(0);
     expect(result.current.trainerVisibleAlerts[0]?.isUnread).toBe(false);
+  });
+});
+
+describe("useNotifications period plan alerts", () => {
+  afterEach(() => {
+    window.localStorage.removeItem("motus.notifications.memberSeenPeriodPlanKeys");
+    window.localStorage.removeItem("motus.notifications.memberOpenedAlertIds");
+  });
+
+  const trainerPlan: PeriodSchedulePlan = {
+    id: "plan-1",
+    title: "Mai–juni",
+    notes: "Fokus styrke",
+    startDate: "05.05.2026",
+    weeks: 4,
+    createdAt: "05.05.2026",
+    weeklyPlans: [],
+    periodPlanAddedBy: "trainer",
+    trainerSavedAtIso: "2026-05-20T08:00:00.000Z",
+  };
+
+  it("counts unread period plan alerts from remote rows", () => {
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [],
+        logs: [],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+        memberViewId: "member-1",
+        remoteMemberPeriodPlanRows: [{ memberId: "member-1", plan: trainerPlan }],
+        setMemberTab: () => {},
+      }),
+    );
+
+    const alert = result.current.memberVisibleAlerts.find((item) => item.kind === "period-plan");
+    expect(alert).toBeDefined();
+    expect(alert?.isUnread).toBe(true);
+    expect(result.current.memberUnreadCount).toBeGreaterThan(0);
+  });
+
+  it("opens overview and marks period plan alert as seen", () => {
+    let memberTab: MemberTab = "programs";
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [],
+        logs: [],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+        memberViewId: "member-1",
+        remoteMemberPeriodPlanRows: [{ memberId: "member-1", plan: trainerPlan }],
+        setMemberTab: (tab) => {
+          memberTab = tab;
+        },
+      }),
+    );
+
+    const alert = result.current.memberVisibleAlerts.find((item) => item.kind === "period-plan");
+    act(() => {
+      result.current.openAlert(alert!);
+    });
+
+    expect(memberTab).toBe("overview");
+    const updated = result.current.memberVisibleAlerts.find((item) => item.kind === "period-plan");
+    expect(updated?.isUnread).toBe(false);
+    expect(result.current.memberUnreadCount).toBe(0);
   });
 });
