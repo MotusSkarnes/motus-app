@@ -96,6 +96,7 @@ import {
   normalizeLegacyIntervalCooldownExerciseNames,
   normalizeProgramsLegacyCooldownNames,
   pickRestrictiveMemberLibraryStatus,
+  programIsInMemberArchive,
 } from "./programBlocks";
 import { mergeRemoteMessagesWithLocalOptimistic } from "./messageHydrationMerge";
 import type {
@@ -262,18 +263,25 @@ function mergeMemberProgramsWithLocalEphemeral(
   for (const local of prevPrograms) {
     if (!memberIds.has(local.memberId.trim())) continue;
     const remote = merged.get(local.id);
-    if (!remote) continue;
-    merged.set(local.id, {
-      ...remote,
-      memberLibraryStatus: pickRestrictiveMemberLibraryStatus(local.memberLibraryStatus, remote.memberLibraryStatus),
-    });
-  }
-  for (const local of prevPrograms) {
-    if (!memberIds.has(local.memberId.trim())) continue;
+    if (remote) {
+      merged.set(local.id, {
+        ...remote,
+        memberLibraryStatus: pickRestrictiveMemberLibraryStatus(
+          local.memberLibraryStatus,
+          remote.memberLibraryStatus,
+        ),
+      });
+      continue;
+    }
+    if (programIsInMemberArchive(local.memberLibraryStatus)) {
+      merged.set(local.id, local);
+      continue;
+    }
     const keepEphemeral = local.ephemeral === true;
     const keepActiveWorkout = Boolean(activeWorkoutProgramId && local.id === activeWorkoutProgramId);
-    if (!keepEphemeral && !keepActiveWorkout) continue;
-    if (!merged.has(local.id)) merged.set(local.id, local);
+    if (keepEphemeral || keepActiveWorkout) {
+      merged.set(local.id, local);
+    }
   }
   return Array.from(merged.values());
 }

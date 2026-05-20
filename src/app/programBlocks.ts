@@ -85,6 +85,28 @@ export function mergeTrainingProgramDuplicates(existing: TrainingProgram, incomi
   };
 }
 
+/** Én rad per programinnhold (nyeste vinner) — brukes i medlems-UI og varsler. */
+export function dedupeTrainingPrograms(programs: TrainingProgram[]): TrainingProgram[] {
+  const ephemeralPrograms: TrainingProgram[] = [];
+  const uniqueByFingerprint = new Map<string, TrainingProgram>();
+  programs.forEach((program) => {
+    if (program.ephemeral) {
+      ephemeralPrograms.push(program);
+      return;
+    }
+    const fingerprint = buildTrainingProgramDisplayKey(program);
+    const existing = uniqueByFingerprint.get(fingerprint);
+    if (!existing) {
+      uniqueByFingerprint.set(fingerprint, program);
+      return;
+    }
+    uniqueByFingerprint.set(fingerprint, mergeTrainingProgramDuplicates(existing, program));
+  });
+  return [...ephemeralPrograms, ...Array.from(uniqueByFingerprint.values())].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  );
+}
+
 export function parseProgramSetCount(value: string | undefined): number {
   const parsed = Number(String(value ?? "").trim());
   if (!Number.isFinite(parsed) || parsed < 1) return 1;

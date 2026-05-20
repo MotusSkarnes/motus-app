@@ -47,8 +47,8 @@ import { printHtmlDocument } from "../app/printHtmlDocument";
 import {
   buildTrainingProgramDisplayKey,
   buildWorkoutResultGroups,
+  dedupeTrainingPrograms,
   isLegacyIntervalCooldownDrag,
-  mergeTrainingProgramDuplicates,
   programIsInMemberArchive,
 } from "../app/programBlocks";
 import { memberMayDeleteProgram, programAuthorCreditForMember } from "../app/programAuthor";
@@ -285,27 +285,6 @@ const DEFAULT_HOME_VISIBILITY = {
   calendar: true,
 } as const;
 type HomeSectionKey = keyof typeof DEFAULT_HOME_VISIBILITY;
-
-function dedupeTrainingPrograms(programs: TrainingProgram[]): TrainingProgram[] {
-  const ephemeralPrograms: TrainingProgram[] = [];
-  const uniqueByFingerprint = new Map<string, TrainingProgram>();
-  programs.forEach((program) => {
-    if (program.ephemeral) {
-      ephemeralPrograms.push(program);
-      return;
-    }
-    const fingerprint = buildTrainingProgramDisplayKey(program);
-    const existing = uniqueByFingerprint.get(fingerprint);
-    if (!existing) {
-      uniqueByFingerprint.set(fingerprint, program);
-      return;
-    }
-    uniqueByFingerprint.set(fingerprint, mergeTrainingProgramDuplicates(existing, program));
-  });
-  return [...ephemeralPrograms, ...Array.from(uniqueByFingerprint.values())].sort((a, b) =>
-    b.createdAt.localeCompare(a.createdAt),
-  );
-}
 
 /** Stored in members.personal_goals so økt/skritt/mål synkes på tvers av enheter. */
 const PROFILE_METRICS_PREFIX = "MOTUS_PROFILE_V1:";
@@ -2790,19 +2769,28 @@ export function MemberPortal(props: MemberPortalProps) {
     const program =
       memberProgramsInActiveLibrary.find((item) => item.id === memberFocusProgramId) ??
       memberPrograms.find((item) => item.id === memberFocusProgramId);
-    setTrainingSection("programs");
-    if (program) {
-      setExpandedProgramId(program.id);
+    if (!program || programIsInMemberArchive(program.memberLibraryStatus)) {
+      clearMemberFocusProgramId?.();
+      return;
     }
+    setTrainingSection("programs");
+    setExpandedProgramId(program.id);
     if (memberTab !== "programs") {
       setMemberTab("programs");
     }
-    const scrollTargetId = `member-program-${memberFocusProgramId}`;
+    const scrollTargetId = `member-program-${program.id}`;
     const frame = window.requestAnimationFrame(() => {
       document.getElementById(scrollTargetId)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [memberFocusProgramId, memberPrograms, memberProgramsInActiveLibrary, memberTab, setMemberTab]);
+  }, [
+    memberFocusProgramId,
+    memberPrograms,
+    memberProgramsInActiveLibrary,
+    memberTab,
+    setMemberTab,
+    clearMemberFocusProgramId,
+  ]);
 
   useEffect(() => {
     if (memberTab !== "programs" && memberFocusWorkoutLogId) {
@@ -4988,6 +4976,18 @@ export function MemberPortal(props: MemberPortalProps) {
                                     className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
                                     onClick={() => {
                                       updateProgramMemberLibraryStatus(program.id, "archived");
+                                      const focusedProgram = memberFocusProgramId
+                                        ? memberPrograms.find((item) => item.id === memberFocusProgramId)
+                                        : null;
+                                      const archiveKey = buildTrainingProgramDisplayKey(program);
+                                      if (
+                                        memberFocusProgramId === program.id ||
+                                        (focusedProgram &&
+                                          buildTrainingProgramDisplayKey(focusedProgram) === archiveKey)
+                                      ) {
+                                        clearMemberFocusProgramId?.();
+                                      }
+                                      setExpandedProgramId((prev) => (prev === program.id ? null : prev));
                                       setLibraryActionStatus("Programmet er arkivert.");
                                       setProgramLibraryMenuId(null);
                                     }}
