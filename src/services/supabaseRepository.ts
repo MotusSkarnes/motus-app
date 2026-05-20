@@ -95,10 +95,12 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 
 const TRAINER_PROGRAM_SAVE_TIMEOUT_MS = 22_000;
 const PROGRAM_EDGE_INVOKE_TIMEOUT_MS = 24_000;
-const WORKOUT_LOG_EDGE_TIMEOUT_MS = 10_000;
+const WORKOUT_LOG_EDGE_TIMEOUT_MS = 12_000;
 const WORKOUT_LOG_DIRECT_TIMEOUT_MS = 8_000;
 const WORKOUT_LOG_RPC_TIMEOUT_MS = 8_000;
-const WORKOUT_LOG_MEMBER_RACE_TIMEOUT_MS = 14_000;
+const WORKOUT_LOG_MEMBER_RACE_TIMEOUT_MS = 12_000;
+const WORKOUT_LOG_AUTH_TIMEOUT_MS = 4_000;
+const WORKOUT_LOG_TOTAL_TIMEOUT_MS = 22_000;
 
 async function promiseWithTimeout<T>(
   promise: Promise<T>,
@@ -1881,18 +1883,105 @@ async function persistWorkoutLogViaMemberRpc(
 }
 
 function pickMemberWorkoutPersistFailureMessage(results: PersistResult[]): string {
+  const sqlHint = " Kjør member_workout_log_save_setup.sql i Supabase SQL Editor.";
   const rls = results.find((item) => /policy|permission|row-level security/i.test(item.message ?? ""));
-  if (rls?.message) {
-    return (
-      rls.message +
-      " Kjør workout_logs_member_insert_rls.sql og upsert_member_workout_log_rpc.sql i Supabase SQL Editor."
+  if (rls?.message) return rls.message + sqlHint;
+
+  const parts = results
+    .map((item) => item.message?.trim())
+    .filter(
+      (message) =>
+        message &&
+        !/^(__direct_timeout__|rpc ikke tilgjengelig)$/i.test(message) &&
+        !/lagring tok for lang tid/i.test(message),
     );
-  }
-  const notTimeout = results.find(
-    (item) => item.message?.trim() && !/lagring tok for lang tid|timeout|__direct_timeout__/i.test(item.message),
+  if (parts.length) return parts.join(" · ");
+
+  return `Lagring feilet.${sqlHint} Logg ut og inn igjen, deretter prøv på nytt.`;
+}
+
+type WorkoutLogAuthContext = {
+  sessionUser: {
+    id?: string;
+    email?: string | null;
+    app_metadata?: Record<string, unknown>;
+    user_metadata?: Record<string, unknown>;
+  } | null;
+  accessToken: string;
+  requesterUserId: string;
+  sessionEmail: string;
+  sessionRole: ReturnType<typeof resolveSessionAuthRole> | null;
+};
+
+async function getWorkoutLogAuthContext(): Promise<WorkoutLogAuthContext> {
+  const empty: WorkoutLogAuthContext = {
+    sessionUser: null,
+    accessToken: "",
+    requesterUserId: "",
+    sessionEmail: "",
+    sessionRole: null,
+  };
+  if (!supabaseClient) return empty;
+
+  const { data } = await promiseWithTimeout(
+    supabaseClient.auth.getSession(),
+    WORKOUT_LOG_AUTH_TIMEOUT_MS,
+    { data: { session: null } },
   );
-  if (notTimeout?.message) return notTimeout.message;
-  return "Lagring tok for lang tid. Sjekk nettverk og prøv igjen.";
+  const session = data.session;
+  const sessionUser = session?.user ?? null;
+  const accessToken = session?.access_token ?? "";
+  const requesterUserId = String(sessionUser?.id ?? "").trim();
+  const sessionEmail = String(sessionUser?.email ?? "").trim().toLowerCase();
+  const sessionRole = sessionUser
+    ? resolveSessionAuthRole({
+        email: sessionUser.email,
+        app_metadata: sessionUser.app_metadata as Record<string, unknown> | undefined,
+        user_metadata: sessionUser.user_metadata as Record<string, unknown> | undefined,
+      })
+    : null;
+
+  return { sessionUser, accessToken, requesterUserId, sessionEmail, sessionRole };
+}
+
+async function persistIntervalWorkoutLog(log: WorkoutLog, hints: PersistWorkoutLogHints): Promise<PersistResult> {
+  const ctx = await getWorkoutLogAuthContext();
+  if (!ctx.accessToken) {
+    return { ok: false, message: "Sesjonen utløp. Logg ut og inn igjen, og prøv å lagre på nytt." };
+  }
+
+  const memberId = log.memberId.trim();
+  const ownerUserId = String(hints.ownerUserId ?? "").trim();
+  if (!memberId || !ownerUserId) {
+    return { ok: false, message: "Mangler kobling til trener/program. Oppdater siden og prøv igjen." };
+  }
+  if (ownerUserId === ctx.requesterUserId) {
+    return { ok: false, message: "Fant ikke PT-eier for programmet. Oppdater siden og prøv igjen." };
+  }
+
+  const serializedNote = serializeWorkoutNote(log);
+  const edgeBody = {
+    id: log.id,
+    memberId,
+    programTitle: log.programTitle,
+    date: log.date,
+    status: log.status,
+    note: serializedNote,
+    results: log.results ?? [],
+    ownerUserId,
+  };
+
+  const edgeFirst = await invokePersistWorkoutLogEdge(edgeBody, ctx.accessToken);
+  if (edgeFirst.ok) return edgeFirst;
+
+  const raceResult = await raceMemberWorkoutLogPersist(log, memberId, ownerUserId, ctx.accessToken);
+  if (raceResult.ok) return raceResult;
+
+  const edgeMsg = edgeFirst.message?.trim();
+  if (edgeMsg && !/lagring tok for lang tid/i.test(edgeMsg)) {
+    return { ok: false, message: `${raceResult.message ?? "Lagring feilet."} (${edgeMsg})` };
+  }
+  return raceResult;
 }
 
 async function raceMemberWorkoutLogPersist(
@@ -2031,24 +2120,15 @@ async function invokePersistWorkoutLogEdge(
   return { ok: false, message: "Kunne ikke lagre økten i skyen (mangler nettverk eller tilgang)." };
 }
 
-async function persistWorkoutLog(log: WorkoutLog, hints?: PersistWorkoutLogHints): Promise<PersistResult> {
+async function persistWorkoutLogInner(log: WorkoutLog, hints?: PersistWorkoutLogHints): Promise<PersistResult> {
   if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
 
-  const {
-    data: { session },
-  } = await supabaseClient.auth.getSession();
-  const sessionUser = session?.user ?? null;
-  const sessionRole = sessionUser
-    ? resolveSessionAuthRole({
-        email: sessionUser.email,
-        app_metadata: sessionUser.app_metadata as Record<string, unknown> | undefined,
-        user_metadata: sessionUser.user_metadata as Record<string, unknown> | undefined,
-      })
-    : null;
-  const requesterUserId = String(sessionUser?.id ?? "").trim();
-  const accessToken = session?.access_token ?? "";
-  const sessionEmail =
-    hints?.targetEmail?.trim().toLowerCase() ?? String(sessionUser?.email ?? "").trim().toLowerCase();
+  const ctx = await getWorkoutLogAuthContext();
+  const sessionUser = ctx.sessionUser;
+  const sessionRole = ctx.sessionRole;
+  const requesterUserId = ctx.requesterUserId;
+  const accessToken = ctx.accessToken;
+  const sessionEmail = hints?.targetEmail?.trim().toLowerCase() || ctx.sessionEmail;
 
   const memberId = await resolveCanonicalMemberIdForPersistence(log.memberId, hints, sessionUser);
   if (memberId.startsWith("auth-") && sessionEmail.includes("@")) {
@@ -2098,6 +2178,14 @@ async function persistWorkoutLog(log: WorkoutLog, hints?: PersistWorkoutLogHints
   );
   if (edgeResult.ok) return edgeResult;
   return direct;
+}
+
+async function persistWorkoutLog(log: WorkoutLog, hints?: PersistWorkoutLogHints): Promise<PersistResult> {
+  return promiseWithTimeout(
+    persistWorkoutLogInner(log, hints),
+    WORKOUT_LOG_TOTAL_TIMEOUT_MS,
+    { ok: false, message: "Lagring tok for lang tid. Trekk ned for å oppdatere appen og prøv igjen." },
+  );
 }
 
 async function deleteLogsForProgram(memberId: string, programTitle: string) {
@@ -3513,7 +3601,7 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.logIntervalWorkout(state, input);
     const latestLog = nextState.logs[0];
     if (latestLog) {
-      void persistWorkoutLog(latestLog, persistHints)
+      void persistIntervalWorkoutLog(latestLog, persistHints)
         .then((result) => input.onPersisted?.(result))
         .catch((error) => {
           const message = error instanceof Error ? error.message : "Ukjent feil under lagring av økt.";
