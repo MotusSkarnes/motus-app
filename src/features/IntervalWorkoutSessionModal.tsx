@@ -264,7 +264,7 @@ export function IntervalWorkoutSessionModal({
       setStatus("Intervalløkten er fullført. Logg hvordan det gikk.");
     },
   });
-  const { stepIndex, remainingSeconds, resetToStep, start: startIntervalTimer, skipToNext } = intervalTimer;
+  const { stepIndex, remainingSeconds, resetToStep, start: startIntervalTimer, skipToNext, clearDeadline } = intervalTimer;
 
   const currentStep = intervalProgramSteps[stepIndex] ?? null;
   const totalSeconds = useMemo(
@@ -317,13 +317,21 @@ export function IntervalWorkoutSessionModal({
     });
   }, [open, stepIndex, currentStep]);
 
+  function openComplete() {
+    clearDeadline();
+    setIsRunning(false);
+    setIsPaused(false);
+    setShowComplete(true);
+    setStatus("Intervalløkten er fullført. Logg hvordan det gikk.");
+  }
+
   function handleStart() {
     if (!intervalProgramSteps.length) return;
     setStatus(null);
     setShowComplete(false);
     setIsPaused(false);
-    setIsRunning(true);
     startIntervalTimer();
+    setIsRunning(true);
   }
 
   function handleSkip() {
