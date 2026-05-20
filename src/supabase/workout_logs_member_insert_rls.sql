@@ -12,7 +12,7 @@ create policy "workout_logs_insert_member"
       from public.members m
       where m.id = member_id
         and (
-          lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+          lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', auth.email()::text, '')))
           or m.id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
           or m.id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
         )
@@ -30,7 +30,7 @@ create policy "workout_logs_update_member"
       from public.members m
       where m.id = member_id
         and (
-          lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+          lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', auth.email()::text, '')))
           or m.id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
           or m.id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
         )
@@ -42,7 +42,7 @@ create policy "workout_logs_update_member"
       from public.members m
       where m.id = member_id
         and (
-          lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+          lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', auth.email()::text, '')))
           or m.id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
           or m.id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
         )

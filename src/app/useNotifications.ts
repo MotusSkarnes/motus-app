@@ -18,6 +18,7 @@ import {
 } from "./memberMonthlyCheckIn";
 import { formatNotificationTimestamp } from "./dateFormat";
 import { parseChatMessageCreatedAtMs } from "./messageHydrationMerge";
+import { programIsInMemberArchive } from "./programBlocks";
 import type { ChatMessage, Member, MemberTab, PeriodSchedulePlan, TrainingProgram, WorkoutLog } from "./types";
 import { readWorkoutLogIdFromLocation, stripWorkoutLogIdFromLocation, workoutLogIdFromMemberAlertId } from "./workoutLogDeepLink";
 import {
@@ -630,7 +631,7 @@ export function useNotifications({
     () =>
       memberPrograms
         .filter((program) => program.programCreatedBy !== "member")
-        .filter((program) => !program.memberLibraryStatus)
+        .filter((program) => !programIsInMemberArchive(program.memberLibraryStatus))
         .map((program) => ({
           id: `member-program-${program.id}`,
           kind: "program" as const,

@@ -3,6 +3,7 @@ import {
   buildTrainingProgramDisplayKey,
   expandProgramExercisesToWorkoutResults,
   normalizeLegacyIntervalCooldownExerciseNames,
+  normalizeMemberLibraryStatus,
   workoutResultGroupId,
 } from "../app/programBlocks";
 import { uid } from "../app/storage";
@@ -364,9 +365,10 @@ export function updateProgramMemberLibraryStatusInState(
         program.id === programId ||
         (matchKey !== null && buildTrainingProgramDisplayKey(program) === matchKey);
       if (!isTarget) return program;
+      const normalizedStatus = normalizeMemberLibraryStatus(status);
       return {
         ...program,
-        ...(status ? { memberLibraryStatus: status } : { memberLibraryStatus: undefined }),
+        ...(normalizedStatus ? { memberLibraryStatus: normalizedStatus } : { memberLibraryStatus: undefined }),
       };
     }),
   };

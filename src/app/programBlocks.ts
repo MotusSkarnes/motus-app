@@ -52,13 +52,26 @@ export function buildTrainingProgramDisplayKey(program: Pick<TrainingProgram, "t
   return `${program.title.trim()}::${program.goal.trim()}::${program.notes.trim()}::${exerciseFingerprint}`;
 }
 
-/** Ved duplikat-rader / hydrering: behold skjul/arkiv hvis én kopi har det. */
+/** Legacy «hidden» behandles som arkivert (skjul fra oversikt er fjernet i UI). */
+export function normalizeMemberLibraryStatus(
+  status: MemberProgramLibraryStatus | undefined,
+): MemberProgramLibraryStatus | undefined {
+  if (status === "hidden") return "archived";
+  return status;
+}
+
+export function programIsInMemberArchive(status: MemberProgramLibraryStatus | undefined): boolean {
+  return normalizeMemberLibraryStatus(status) === "archived";
+}
+
+/** Ved duplikat-rader / hydrering: behold arkiv hvis én kopi har det. */
 export function pickRestrictiveMemberLibraryStatus(
   a: MemberProgramLibraryStatus | undefined,
   b: MemberProgramLibraryStatus | undefined,
 ): MemberProgramLibraryStatus | undefined {
-  if (a === "archived" || b === "archived") return "archived";
-  if (a === "hidden" || b === "hidden") return "hidden";
+  const left = normalizeMemberLibraryStatus(a);
+  const right = normalizeMemberLibraryStatus(b);
+  if (left === "archived" || right === "archived") return "archived";
   return undefined;
 }
 

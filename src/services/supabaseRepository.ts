@@ -95,7 +95,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 
 const TRAINER_PROGRAM_SAVE_TIMEOUT_MS = 22_000;
 const PROGRAM_EDGE_INVOKE_TIMEOUT_MS = 24_000;
-const WORKOUT_LOG_PERSIST_TIMEOUT_MS = 22_000;
+const WORKOUT_LOG_EDGE_TIMEOUT_MS = 12_000;
 
 async function promiseWithTimeout<T>(
   promise: Promise<T>,
@@ -1761,12 +1761,65 @@ type PersistWorkoutLogHints = {
   programTitle?: string;
 };
 
-function buildMemberPersistenceHints(state: AppState, memberId: string): PersistWorkoutLogHints {
+function buildMemberPersistenceHints(
+  state: AppState,
+  memberId: string,
+  extras?: Pick<PersistWorkoutLogHints, "ownerUserId" | "programTitle">,
+): PersistWorkoutLogHints {
   const member = state.members.find((item) => item.id === memberId);
   const sessionEmail = state.currentUser?.role === "member" ? state.currentUser.email.trim().toLowerCase() : "";
+  const ownerFromMember = String(member?.ownerUserId ?? extras?.ownerUserId ?? "").trim();
+  const programTitle = String(extras?.programTitle ?? "").trim();
   return {
     targetEmail: String(member?.email ?? sessionEmail).trim().toLowerCase() || undefined,
+    ...(ownerFromMember ? { ownerUserId: ownerFromMember } : {}),
+    ...(programTitle ? { programTitle } : {}),
   };
+}
+
+async function resolveWorkoutLogOwnerUserId(
+  memberId: string,
+  hints: PersistWorkoutLogHints,
+  requesterUserId: string,
+): Promise<string | null> {
+  if (!supabaseClient) return null;
+  const hint = String(hints.ownerUserId ?? "").trim();
+  if (hint && hint !== requesterUserId) return hint;
+
+  const { data: memberRow } = await supabaseClient
+    .from("members")
+    .select("owner_user_id")
+    .eq("id", memberId)
+    .maybeSingle();
+  const fromMember = String((memberRow as { owner_user_id?: string } | null)?.owner_user_id ?? "").trim();
+  if (fromMember && fromMember !== requesterUserId) return fromMember;
+
+  const title = String(hints.programTitle ?? "").trim();
+  if (title) {
+    const { data: programRow } = await supabaseClient
+      .from("training_programs")
+      .select("owner_user_id")
+      .eq("member_id", memberId)
+      .eq("title", title)
+      .not("owner_user_id", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const fromProgram = String((programRow as { owner_user_id?: string } | null)?.owner_user_id ?? "").trim();
+    if (fromProgram && fromProgram !== requesterUserId) return fromProgram;
+  }
+
+  const { data: anyProgramRow } = await supabaseClient
+    .from("training_programs")
+    .select("owner_user_id")
+    .eq("member_id", memberId)
+    .not("owner_user_id", "is", null)
+    .neq("owner_user_id", requesterUserId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const fromAnyProgram = String((anyProgramRow as { owner_user_id?: string } | null)?.owner_user_id ?? "").trim();
+  return fromAnyProgram && fromAnyProgram !== requesterUserId ? fromAnyProgram : null;
 }
 
 async function persistWorkoutLogDirectForMember(
@@ -1801,15 +1854,64 @@ async function persistWorkoutLogDirectForMember(
   return { ok: true };
 }
 
+async function invokePersistWorkoutLogEdge(
+  body: Record<string, unknown>,
+  accessToken: string,
+): Promise<PersistResult> {
+  if (supabaseUrl && supabaseAnonKey && accessToken) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), WORKOUT_LOG_EDGE_TIMEOUT_MS);
+      const response = await fetch(`${supabaseUrl}/functions/v1/persist-workout-log`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      window.clearTimeout(timeoutId);
+      const raw = await response.text();
+      if (response.ok) {
+        const parsed = raw ? (JSON.parse(raw) as { ok?: boolean; error?: string }) : null;
+        if (parsed?.ok === true) return { ok: true };
+        return { ok: false, message: parsed?.error ?? "persist-workout-log returnerte ikke ok." };
+      }
+      return { ok: false, message: raw.slice(0, 220) || `HTTP ${response.status} fra persist-workout-log` };
+    } catch (fetchErr) {
+      const aborted = fetchErr instanceof Error && fetchErr.name === "AbortError";
+      if (aborted) {
+        return { ok: false, message: "Lagring tok for lang tid. Sjekk nettverk og prøv igjen." };
+      }
+      console.warn("persist-workout-log HTTP failed:", fetchErr);
+    }
+  }
+
+  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  const invokeResult = await promiseWithTimeout(
+    supabaseClient.functions.invoke("persist-workout-log", { body }),
+    WORKOUT_LOG_EDGE_TIMEOUT_MS,
+    { data: null, error: { message: "persist-workout-log timeout" } },
+  );
+  if (invokeResult.error && String((invokeResult.error as { message?: string }).message ?? "").includes("timeout")) {
+    return { ok: false, message: "Lagring tok for lang tid. Sjekk nettverk og prøv igjen." };
+  }
+  if (!invokeResult.error) {
+    const payload = invokeResult.data as { ok?: boolean; error?: string } | null;
+    if (payload?.ok === true) return { ok: true };
+    if (payload?.error) return { ok: false, message: payload.error };
+  } else {
+    console.warn("persist-workout-log invoke failed:", invokeResult.error.message);
+    const details = await extractFunctionErrorDetails(invokeResult.error);
+    if (details) return { ok: false, message: details };
+  }
+  return { ok: false, message: "Kunne ikke lagre økten i skyen." };
+}
+
 async function persistWorkoutLog(log: WorkoutLog, hints?: PersistWorkoutLogHints): Promise<PersistResult> {
   if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
-
-  const sessionEmail = hints?.targetEmail?.trim().toLowerCase() ?? "";
-  const memberId = await resolveCanonicalMemberIdForPersistence(log.memberId, hints);
-  const needsAuthLink = sessionEmail.includes("@") && (!memberId || memberId.startsWith("auth-"));
-  if (needsAuthLink) {
-    await ensureMemberAuthLink(sessionEmail, memberId || log.memberId);
-  }
 
   const {
     data: { session },
@@ -1823,115 +1925,74 @@ async function persistWorkoutLog(log: WorkoutLog, hints?: PersistWorkoutLogHints
       })
     : null;
   const requesterUserId = String(sessionUser?.id ?? "").trim();
-  const hintedOwnerUserId = String(hints?.ownerUserId ?? "").trim();
-  let ownerUserId =
-    hintedOwnerUserId && hintedOwnerUserId !== requesterUserId
-      ? hintedOwnerUserId
-      : await resolveOwnerUserIdForMember(memberId, requesterUserId || (await getOwnerUserId()));
-  if (ownerUserId === requesterUserId && sessionRole === "member") {
-    ownerUserId = hintedOwnerUserId && hintedOwnerUserId !== requesterUserId ? hintedOwnerUserId : null;
+  const accessToken = session?.access_token ?? "";
+  const sessionEmail =
+    hints?.targetEmail?.trim().toLowerCase() ?? String(sessionUser?.email ?? "").trim().toLowerCase();
+
+  const memberId = await resolveCanonicalMemberIdForPersistence(log.memberId, hints);
+  if (memberId.startsWith("auth-") && sessionEmail.includes("@")) {
+    await ensureMemberAuthLink(sessionEmail, memberId || log.memberId);
   }
 
-  if (sessionRole === "member" && ownerUserId && ownerUserId !== requesterUserId) {
-    const direct = await persistWorkoutLogDirectForMember(log, memberId, ownerUserId);
-    if (direct.ok) return direct;
-    console.warn("member direct workout log upsert failed, trying edge:", direct.message);
-  }
-
-  const serializedNote = serializeWorkoutNote(log);
-  const body = {
-    id: log.id,
-    memberId,
-    programTitle: log.programTitle,
-    date: log.date,
-    status: log.status,
-    note: serializedNote,
-    results: log.results ?? [],
-    ownerUserId: ownerUserId ?? hintedOwnerUserId ?? "",
+  const persistenceHints: PersistWorkoutLogHints = {
+    ...hints,
+    programTitle: hints?.programTitle ?? log.programTitle,
   };
 
-  const invokeResult = await promiseWithTimeout(
-    supabaseClient.functions.invoke("persist-workout-log", { body }),
-    WORKOUT_LOG_PERSIST_TIMEOUT_MS,
-    { data: null, error: { message: "persist-workout-log timeout" } },
-  );
-  if (invokeResult.error && String((invokeResult.error as { message?: string }).message ?? "").includes("timeout")) {
-    return { ok: false, message: "Lagring tok for lang tid. Sjekk nettverk og prøv igjen." };
-  }
-  if (!invokeResult.error) {
-    const payload = invokeResult.data as { ok?: boolean; error?: string } | null;
-    if (payload?.ok === true) return { ok: true };
-    if (payload?.error) {
-      console.warn("persist-workout-log:", payload.error);
-      return { ok: false, message: payload.error };
+  if (sessionRole === "member") {
+    const ownerUserId = await resolveWorkoutLogOwnerUserId(memberId, persistenceHints, requesterUserId);
+    if (!ownerUserId) {
+      return { ok: false, message: "Kunne ikke finne trener for økten. Oppdater siden og prøv igjen." };
     }
-  } else {
-    console.warn("persist-workout-log invoke failed:", invokeResult.error.message);
-    const details = await extractFunctionErrorDetails(invokeResult.error);
-    if (details) return { ok: false, message: details };
+    const direct = await persistWorkoutLogDirectForMember(log, memberId, ownerUserId);
+    if (direct.ok) return direct;
+    const isRls = /policy|permission|row-level security/i.test(direct.message);
+    if (isRls) return direct;
+    console.warn("member direct workout log upsert failed, trying edge:", direct.message);
+    const serializedNote = serializeWorkoutNote(log);
+    const edgeResult = await invokePersistWorkoutLogEdge(
+      {
+        id: log.id,
+        memberId,
+        programTitle: log.programTitle,
+        date: log.date,
+        status: log.status,
+        note: serializedNote,
+        results: log.results ?? [],
+        ownerUserId,
+      },
+      accessToken,
+    );
+    if (edgeResult.ok) return edgeResult;
+    return { ok: false, message: edgeResult.message ?? direct.message };
   }
 
-  if (supabaseUrl && supabaseAnonKey) {
-    try {
-      const {
-        data: { session },
-      } = await supabaseClient.auth.getSession();
-      const accessToken = session?.access_token ?? "";
-      if (accessToken) {
-        const response = await fetch(`${supabaseUrl}/functions/v1/persist-workout-log`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: supabaseAnonKey,
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify(body),
-        });
-        const raw = await response.text();
-        if (response.ok) {
-          const parsed = raw ? (JSON.parse(raw) as { ok?: boolean; error?: string }) : null;
-          if (parsed?.ok === true) return { ok: true };
-          return { ok: false, message: parsed?.error ?? "persist-workout-log returnerte ikke ok." };
-        }
-        return { ok: false, message: raw.slice(0, 220) || `HTTP ${response.status} fra persist-workout-log` };
-      }
-    } catch (fetchErr) {
-      console.warn("persist-workout-log HTTP fallback failed:", fetchErr);
-    }
-  }
-
-  const fallbackOwnerUserId = await getOwnerUserId();
-  let resolvedOwnerForFallback = await resolveOwnerUserIdForMember(memberId, fallbackOwnerUserId);
-  if (resolvedOwnerForFallback === fallbackOwnerUserId && sessionEmail.includes("@")) {
-    resolvedOwnerForFallback = null;
-  }
-  if (!resolvedOwnerForFallback) {
+  const ownerUserId =
+    (await resolveWorkoutLogOwnerUserId(memberId, persistenceHints, requesterUserId)) ??
+    (await resolveOwnerUserIdForMember(memberId, requesterUserId || (await getOwnerUserId())));
+  if (!ownerUserId) {
     return { ok: false, message: "Kunne ikke finne PT-eier for økten. Kontakt treneren din." };
   }
 
-  const { error } = await supabaseClient.from("workout_logs").upsert(
+  const serializedNote = serializeWorkoutNote(log);
+  const direct = await persistWorkoutLogDirectForMember(log, memberId, ownerUserId);
+  if (direct.ok) return direct;
+
+  const edgeResult = await invokePersistWorkoutLogEdge(
     {
       id: log.id,
-      member_id: memberId,
-      owner_user_id: resolvedOwnerForFallback,
-      program_title: log.programTitle,
+      memberId,
+      programTitle: log.programTitle,
       date: log.date,
       status: log.status,
       note: serializedNote,
       results: log.results ?? [],
-      created_at: new Date().toISOString(),
+      ownerUserId,
     },
-    { onConflict: "id" },
+    accessToken,
   );
-
-  if (error) {
-    console.warn("Supabase log persist failed:", error.message);
-    const hint = /policy|permission|row-level security/i.test(error.message)
-      ? " Kjør workout_logs_member_insert_rls.sql i Supabase."
-      : "";
-    return { ok: false, message: error.message + hint };
-  }
-  return { ok: true };
+  if (edgeResult.ok) return edgeResult;
+  return direct;
 }
 
 async function deleteLogsForProgram(memberId: string, programTitle: string) {
@@ -2140,7 +2201,7 @@ function trainingProgramFromHydrateRow(program: Record<string, unknown>): Traini
   const ownerUserId = String(program.owner_user_id ?? "").trim();
   const rawLibrary = String(program.member_library_status ?? "").trim().toLowerCase();
   const memberLibraryStatus: MemberProgramLibraryStatus | undefined =
-    rawLibrary === "hidden" || rawLibrary === "archived" ? (rawLibrary as MemberProgramLibraryStatus) : undefined;
+    rawLibrary === "hidden" || rawLibrary === "archived" ? "archived" : undefined;
   return {
     id: String(program.id ?? ""),
     memberId: String(program.member_id ?? ""),
@@ -3187,7 +3248,7 @@ export const supabaseAppRepository: AppRepository = {
   },
   updateProgramMemberLibraryStatus(state: AppState, programId: string, status: MemberProgramLibraryStatus | undefined): AppState {
     const nextState = localAppRepository.updateProgramMemberLibraryStatus(state, programId, status);
-    const dbStatus = status === "hidden" || status === "archived" ? status : null;
+    const dbStatus = status === "hidden" || status === "archived" ? "archived" : null;
     const anchor = state.programs.find((program) => program.id === programId);
     const matchKey = anchor ? buildTrainingProgramDisplayKey(anchor) : null;
     const idsToPersist = matchKey
@@ -3247,7 +3308,10 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.removeWorkoutLogResult(state, input);
     const updatedLog = nextState.logs.find((log) => log.id === input.logId);
     if (updatedLog) {
-      void persistWorkoutLog(updatedLog, buildMemberPersistenceHints(state, updatedLog.memberId));
+      void persistWorkoutLog(
+        updatedLog,
+        buildMemberPersistenceHints(state, updatedLog.memberId, { programTitle: updatedLog.programTitle }),
+      );
     }
     return nextState;
   },
@@ -3260,7 +3324,10 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.setWorkoutLogResults(state, input);
     const updatedLog = nextState.logs.find((log) => log.id === input.logId);
     if (updatedLog) {
-      void persistWorkoutLog(updatedLog, buildMemberPersistenceHints(state, updatedLog.memberId));
+      void persistWorkoutLog(
+        updatedLog,
+        buildMemberPersistenceHints(state, updatedLog.memberId, { programTitle: updatedLog.programTitle }),
+      );
     }
     return nextState;
   },
@@ -3269,7 +3336,10 @@ export const supabaseAppRepository: AppRepository = {
     const updatedLog = nextState.logs.find((log) => log.id === input.logId);
     if (updatedLog) {
       void (async () => {
-        await persistWorkoutLog(updatedLog, buildMemberPersistenceHints(state, updatedLog.memberId));
+        await persistWorkoutLog(
+          updatedLog,
+          buildMemberPersistenceHints(state, updatedLog.memberId, { programTitle: updatedLog.programTitle }),
+        );
         if (input.trainerComment.trim()) {
           await notifyWorkoutCommentPush(updatedLog.id);
         }
@@ -3290,7 +3360,10 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.finishWorkoutMode(state, input);
     const latestLog = nextState.logs[0];
     if (latestLog && latestLog.id !== state.logs[0]?.id) {
-      void persistWorkoutLog(latestLog, buildMemberPersistenceHints(state, latestLog.memberId)).then((result) => {
+      void persistWorkoutLog(
+        latestLog,
+        buildMemberPersistenceHints(state, latestLog.memberId, { programTitle: latestLog.programTitle }),
+      ).then((result) => {
         input?.onPersisted?.(result);
       });
     }
@@ -3300,7 +3373,10 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.logGroupWorkout(state, input);
     const latestLog = nextState.logs[0];
     if (latestLog) {
-      void persistWorkoutLog(latestLog, buildMemberPersistenceHints(state, latestLog.memberId));
+      void persistWorkoutLog(
+        latestLog,
+        buildMemberPersistenceHints(state, latestLog.memberId, { programTitle: latestLog.programTitle }),
+      );
     }
     return nextState;
   },
@@ -3321,11 +3397,13 @@ export const supabaseAppRepository: AppRepository = {
       );
       return state;
     }
+    const memberOwnerUserId = state.members.find((item) => item.id === input.memberId.trim())?.ownerUserId;
     const persistHints: PersistWorkoutLogHints = {
-      ...buildMemberPersistenceHints(state, input.memberId),
+      ...buildMemberPersistenceHints(state, input.memberId, {
+        ownerUserId: String(input.ownerUserId ?? program.ownerUserId ?? memberOwnerUserId ?? "").trim() || undefined,
+        programTitle: program.title,
+      }),
       ...(input.targetEmail?.trim() ? { targetEmail: input.targetEmail.trim().toLowerCase() } : {}),
-      ownerUserId: String(input.ownerUserId ?? program.ownerUserId ?? "").trim() || undefined,
-      programTitle: program.title,
     };
     const nextState = localAppRepository.logIntervalWorkout(state, input);
     const latestLog = nextState.logs[0];
@@ -3347,7 +3425,10 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.logCompletedPlanEntry(state, input);
     const latestLog = nextState.logs[0];
     if (latestLog) {
-      void persistWorkoutLog(latestLog, buildMemberPersistenceHints(state, latestLog.memberId));
+      void persistWorkoutLog(
+        latestLog,
+        buildMemberPersistenceHints(state, latestLog.memberId, { programTitle: latestLog.programTitle }),
+      );
     }
     return nextState;
   },

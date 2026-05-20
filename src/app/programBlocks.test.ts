@@ -151,8 +151,8 @@ describe("programBlocks", () => {
       ...base,
     };
     const merged = mergeTrainingProgramDuplicates(hidden, visible);
-    expect(merged.memberLibraryStatus).toBe("hidden");
-    expect(pickRestrictiveMemberLibraryStatus(undefined, "hidden")).toBe("hidden");
+    expect(merged.memberLibraryStatus).toBe("archived");
+    expect(pickRestrictiveMemberLibraryStatus(undefined, "hidden")).toBe("archived");
   });
 
   it("does not treat last work drag as nedjogg when it still has rest after", () => {

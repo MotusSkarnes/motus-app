@@ -49,6 +49,7 @@ import {
   buildWorkoutResultGroups,
   isLegacyIntervalCooldownDrag,
   mergeTrainingProgramDuplicates,
+  programIsInMemberArchive,
 } from "../app/programBlocks";
 import { memberMayDeleteProgram, programAuthorCreditForMember } from "../app/programAuthor";
 import {
@@ -1038,7 +1039,6 @@ export function MemberPortal(props: MemberPortalProps) {
     };
   }, [programLibraryMenuId]);
   const [libraryActionStatus, setLibraryActionStatus] = useState<string | null>(null);
-  const [showLibraryHiddenSection, setShowLibraryHiddenSection] = useState(false);
   const [showLibraryArchivedSection, setShowLibraryArchivedSection] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const nowDate = new Date();
@@ -1256,17 +1256,13 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [programs, relatedMemberIdSet, currentUserRole]);
   const memberAssignedPrograms = useMemo(() => memberPrograms.filter((program) => !program.ephemeral), [memberPrograms]);
   const memberProgramsInActiveLibrary = useMemo(
-    () => memberAssignedPrograms.filter((program) => !program.memberLibraryStatus),
+    () => memberAssignedPrograms.filter((program) => !programIsInMemberArchive(program.memberLibraryStatus)),
     [memberAssignedPrograms],
   );
-  /** Alle tildelte program (inkl. skjult) — brukes til å koble periodeplan-tekst til Start økt. */
+  /** Alle tildelte program (inkl. arkiverte) — brukes til å koble periodeplan-tekst til Start økt. */
   const memberProgramsForPeriodPlan = memberAssignedPrograms;
-  const memberProgramsLibraryHidden = useMemo(
-    () => memberAssignedPrograms.filter((program) => program.memberLibraryStatus === "hidden"),
-    [memberAssignedPrograms],
-  );
   const memberProgramsLibraryArchived = useMemo(
-    () => memberAssignedPrograms.filter((program) => program.memberLibraryStatus === "archived"),
+    () => memberAssignedPrograms.filter((program) => programIsInMemberArchive(program.memberLibraryStatus)),
     [memberAssignedPrograms],
   );
   const memberLogs = useMemo(() => logs.filter((log) => relatedMemberIdSet.has(log.memberId)), [logs, relatedMemberIdSet]);
@@ -4991,19 +4987,6 @@ export function MemberPortal(props: MemberPortalProps) {
                                     role="menuitem"
                                     className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
                                     onClick={() => {
-                                      updateProgramMemberLibraryStatus(program.id, "hidden");
-                                      setLibraryActionStatus("Programmet er skjult fra oversikten.");
-                                      setProgramLibraryMenuId(null);
-                                    }}
-                                  >
-                                    <EyeOff className="h-4 w-4 shrink-0 text-slate-500" />
-                                    Skjul fra oversikt
-                                  </button>
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
-                                    onClick={() => {
                                       updateProgramMemberLibraryStatus(program.id, "archived");
                                       setLibraryActionStatus("Programmet er arkivert.");
                                       setProgramLibraryMenuId(null);
@@ -5126,47 +5109,6 @@ export function MemberPortal(props: MemberPortalProps) {
                       </div>
                     );
                   })}
-                  {memberProgramsLibraryHidden.length > 0 ? (
-                    <div className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
-                      <button
-                        type="button"
-                        onClick={() => setShowLibraryHiddenSection((open) => !open)}
-                        className="flex w-full items-center justify-between gap-2 text-left"
-                      >
-                        <span className="text-xs font-semibold text-slate-800">Skjulte program ({memberProgramsLibraryHidden.length})</span>
-                        <span className="text-xs font-medium text-slate-500">{showLibraryHiddenSection ? "Skjul liste" : "Vis liste"}</span>
-                      </button>
-                      {showLibraryHiddenSection ? (
-                        <div className="mt-3 space-y-2">
-                          {memberProgramsLibraryHidden.map((program) => (
-                            <div
-                              key={program.id}
-                              className="flex items-center justify-between gap-2 rounded-lg border bg-white px-2.5 py-2"
-                              style={{ borderColor: "rgba(15,23,42,0.08)" }}
-                            >
-                              <div className="min-w-0">
-                                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Skjult</div>
-                                <div className="font-medium text-sm text-slate-800">{program.title}</div>
-                                {program.goal?.trim() ? (
-                                  <div className="text-xs text-slate-500">{program.goal.trim()}</div>
-                                ) : null}
-                              </div>
-                              <OutlineButton
-                                type="button"
-                                className="shrink-0 !min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
-                                onClick={() => {
-                                  updateProgramMemberLibraryStatus(program.id, undefined);
-                                  setLibraryActionStatus("Programmet er tilbake i oversikten.");
-                                }}
-                              >
-                                Gjenopprett
-                              </OutlineButton>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
                   {memberProgramsLibraryArchived.length > 0 ? (
                     <div className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
                       <button
