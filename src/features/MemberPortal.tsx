@@ -1879,7 +1879,7 @@ export function MemberPortal(props: MemberPortalProps) {
     () =>
       [...completedLogs]
         .sort((a, b) => (parseLogDate(b.date)?.getTime() ?? 0) - (parseLogDate(a.date)?.getTime() ?? 0))
-        .slice(0, 3),
+        .slice(0, 5),
     [completedLogs],
   );
   const recentCompletedLogsForDisplay = useMemo(() => {
@@ -1887,7 +1887,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const focused = completedLogs.find((log) => log.id === memberFocusWorkoutLogId);
     if (!focused) return recentCompletedLogs;
     if (recentCompletedLogs.some((log) => log.id === focused.id)) return recentCompletedLogs;
-    return [focused, ...recentCompletedLogs.slice(0, 2)];
+    return [focused, ...recentCompletedLogs.slice(0, 4)];
   }, [completedLogs, memberFocusWorkoutLogId, recentCompletedLogs]);
   const latestCompletedLog = recentCompletedLogs[0] ?? null;
   function findSuggestedWeightForExercise(exerciseName: string): string {
@@ -5728,7 +5728,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Historikk</div>
-                    <div className="mt-1 text-lg font-bold text-slate-950">Siste 3 økter</div>
+                    <div className="mt-1 text-lg font-bold text-slate-950">Siste 5 økter</div>
                   </div>
                 </div>
                 <div className="mt-4 space-y-3">
