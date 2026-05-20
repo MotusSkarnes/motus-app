@@ -1945,6 +1945,14 @@ async function getWorkoutLogAuthContext(): Promise<WorkoutLogAuthContext> {
 }
 
 async function persistIntervalWorkoutLog(log: WorkoutLog, hints: PersistWorkoutLogHints): Promise<PersistResult> {
+  return promiseWithTimeout(
+    persistIntervalWorkoutLogInner(log, hints),
+    WORKOUT_LOG_TOTAL_TIMEOUT_MS,
+    { ok: false, message: "Lagring tok for lang tid. Trekk ned for å oppdatere appen og prøv igjen." },
+  );
+}
+
+async function persistIntervalWorkoutLogInner(log: WorkoutLog, hints: PersistWorkoutLogHints): Promise<PersistResult> {
   const ctx = await getWorkoutLogAuthContext();
   if (!ctx.accessToken) {
     return { ok: false, message: "Sesjonen utløp. Logg ut og inn igjen, og prøv å lagre på nytt." };
@@ -1959,29 +1967,7 @@ async function persistIntervalWorkoutLog(log: WorkoutLog, hints: PersistWorkoutL
     return { ok: false, message: "Fant ikke PT-eier for programmet. Oppdater siden og prøv igjen." };
   }
 
-  const serializedNote = serializeWorkoutNote(log);
-  const edgeBody = {
-    id: log.id,
-    memberId,
-    programTitle: log.programTitle,
-    date: log.date,
-    status: log.status,
-    note: serializedNote,
-    results: log.results ?? [],
-    ownerUserId,
-  };
-
-  const edgeFirst = await invokePersistWorkoutLogEdge(edgeBody, ctx.accessToken);
-  if (edgeFirst.ok) return edgeFirst;
-
-  const raceResult = await raceMemberWorkoutLogPersist(log, memberId, ownerUserId, ctx.accessToken);
-  if (raceResult.ok) return raceResult;
-
-  const edgeMsg = edgeFirst.message?.trim();
-  if (edgeMsg && !/lagring tok for lang tid/i.test(edgeMsg)) {
-    return { ok: false, message: `${raceResult.message ?? "Lagring feilet."} (${edgeMsg})` };
-  }
-  return raceResult;
+  return raceMemberWorkoutLogPersist(log, memberId, ownerUserId, ctx.accessToken);
 }
 
 async function raceMemberWorkoutLogPersist(
@@ -2086,38 +2072,51 @@ async function invokePersistWorkoutLogEdge(
   body: Record<string, unknown>,
   accessToken: string,
 ): Promise<PersistResult> {
-  if (supabaseUrl && supabaseAnonKey && accessToken) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), WORKOUT_LOG_EDGE_TIMEOUT_MS);
-      const response = await fetch(`${supabaseUrl}/functions/v1/persist-workout-log`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: supabaseAnonKey,
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-      window.clearTimeout(timeoutId);
-      const raw = await response.text();
-      if (response.ok) {
-        const parsed = raw ? (JSON.parse(raw) as { ok?: boolean; error?: string }) : null;
-        if (parsed?.ok === true) return { ok: true };
-        return { ok: false, message: parsed?.error ?? "persist-workout-log returnerte ikke ok." };
-      }
-      return { ok: false, message: raw.slice(0, 220) || `HTTP ${response.status} fra persist-workout-log` };
-    } catch (fetchErr) {
-      const aborted = fetchErr instanceof Error && fetchErr.name === "AbortError";
-      if (aborted) {
-        return { ok: false, message: "Lagring tok for lang tid. Sjekk nettverk og prøv igjen." };
-      }
-      console.warn("persist-workout-log HTTP failed:", fetchErr);
-    }
+  if (!supabaseUrl || !supabaseAnonKey || !accessToken) {
+    return { ok: false, message: "Kunne ikke lagre økten i skyen (mangler nettverk eller tilgang)." };
   }
 
-  return { ok: false, message: "Kunne ikke lagre økten i skyen (mangler nettverk eller tilgang)." };
+  return promiseWithTimeout(
+    invokePersistWorkoutLogEdgeRequest(body, accessToken),
+    WORKOUT_LOG_EDGE_TIMEOUT_MS,
+    { ok: false, message: "Lagring tok for lang tid. Sjekk nettverk og prøv igjen." },
+  );
+}
+
+async function invokePersistWorkoutLogEdgeRequest(
+  body: Record<string, unknown>,
+  accessToken: string,
+): Promise<PersistResult> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), WORKOUT_LOG_EDGE_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/persist-workout-log`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const raw = await response.text();
+    if (response.ok) {
+      const parsed = raw ? (JSON.parse(raw) as { ok?: boolean; error?: string }) : null;
+      if (parsed?.ok === true) return { ok: true };
+      return { ok: false, message: parsed?.error ?? "persist-workout-log returnerte ikke ok." };
+    }
+    return { ok: false, message: raw.slice(0, 220) || `HTTP ${response.status} fra persist-workout-log` };
+  } catch (fetchErr) {
+    const aborted = fetchErr instanceof Error && fetchErr.name === "AbortError";
+    if (aborted) {
+      return { ok: false, message: "Lagring tok for lang tid. Sjekk nettverk og prøv igjen." };
+    }
+    console.warn("persist-workout-log HTTP failed:", fetchErr);
+    return { ok: false, message: "Kunne ikke nå lagringstjenesten. Sjekk nettverk og prøv igjen." };
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 }
 
 async function persistWorkoutLogInner(log: WorkoutLog, hints?: PersistWorkoutLogHints): Promise<PersistResult> {

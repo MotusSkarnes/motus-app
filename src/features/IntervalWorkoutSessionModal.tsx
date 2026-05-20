@@ -357,6 +357,13 @@ export function IntervalWorkoutSessionModal({
     if (!program || !memberId.trim() || isSaving) return;
     setIsSaving(true);
     setStatus(null);
+    let settled = false;
+    const failsafeId = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      setIsSaving(false);
+      setStatus("Lagring tok for lang tid. Oppdater siden (Ctrl+F5) og prøv igjen.");
+    }, 26_000);
     logIntervalWorkout({
       memberId: memberId.trim(),
       programId: program.id,
@@ -367,6 +374,9 @@ export function IntervalWorkoutSessionModal({
       note: sessionNote.trim(),
       reflection: buildReflection(),
       onPersisted: (result) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(failsafeId);
         setIsSaving(false);
         if (!result.ok) {
           setStatus(result.message?.trim() || "Kunne ikke lagre økten i skyen. Prøv igjen.");
