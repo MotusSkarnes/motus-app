@@ -384,6 +384,10 @@ function countCardioDragRows(draft: ProgramExercise[]): number {
   return draft.filter((row) => /^drag\b/i.test(row.exerciseName.trim())).length;
 }
 
+function cardioSetLabel(exerciseName: string): string {
+  return /^drag\b/i.test(exerciseName.trim()) ? "Antall drag" : "Antall runder";
+}
+
 function cardioTargetHrPrescriptionSuffix(targetHrPercent: string | undefined): string {
   const raw = String(targetHrPercent ?? "").trim();
   if (!raw) return "";
@@ -1943,7 +1947,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       id: uid("draft-ex"),
       exerciseId: base.id,
       exerciseName: `Drag ${nextIndex}`,
-      sets: "1",
+      sets: "4",
       reps: "",
       weight: "",
       durationMinutes: "4",
@@ -2447,7 +2451,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
               const restSeconds = String(safeExercise.restSeconds ?? "").trim() || "0";
               const notes = String(safeExercise.notes ?? "").trim();
               const prescription = durationMinutes
-                ? `${setCount} runder × ${durationMinutes} min${
+                ? `${setCount} ${/^drag\b/i.test(safeExercise.exerciseName.trim()) ? "drag" : "runder"} × ${durationMinutes} min${
                     speed ? ` · ${speed} km/t` : ""
                   }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause${cardioTargetHrPrescriptionSuffix(safeExercise.targetHrPercent)}`
                 : libraryMatch && isHoldBasedExerciseCategory(libraryMatch.category)
@@ -5347,8 +5351,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                               return (
                             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                               <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">Antall sett</div>
-                                <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder="Sett" />
+                                <div className="text-[11px] font-medium text-slate-500">{isCardio ? cardioSetLabel(item.exerciseName) : "Antall sett"}</div>
+                                <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder={isCardio ? cardioSetLabel(item.exerciseName).replace("Antall ", "") : "Sett"} />
                               </div>
                               {isCardio ? (
                                 <div className="space-y-1">
@@ -5950,8 +5954,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         return (
                       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         <div className="space-y-1">
-                          <div className="text-[11px] font-medium text-slate-500">Antall sett</div>
-                          <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder="Sett" />
+                          <div className="text-[11px] font-medium text-slate-500">{isCardio ? cardioSetLabel(item.exerciseName) : "Antall sett"}</div>
+                          <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder={isCardio ? cardioSetLabel(item.exerciseName).replace("Antall ", "") : "Sett"} />
                         </div>
                         {isCardio ? (
                           <div className="space-y-1">
@@ -6030,7 +6034,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Steg for intervalløkt</div>
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    Skriv inn malnavn øverst først. Start med oppvarming, legg til drag én om gangen og til slutt nedjogg.
+                    Skriv inn malnavn øverst først. Start med oppvarming, legg inn ett drag med arbeidstid/pause og velg antall drag, og legg til nedjogg til slutt.
                     Når nedjogg er lagt inn kan du ikke legge til flere drag før du fjerner nedjogg-raden fra utkastet.
                     Øvelsesradene bruker automatisk valgt kondisjons-/mølleøvelse fra biblioteket; du kan endre tid, fart, stigning og målpuls på hvert steg.
                   </p>
@@ -6194,7 +6198,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                                   <div className="font-medium text-slate-800">{exercise.exerciseName}</div>
                                   <div className="mt-0.5 text-slate-500">
                                     {exercise.durationMinutes
-                                      ? `${exercise.sets || "-"} runder × ${exercise.durationMinutes || "-"} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}`
+                                      ? `${exercise.sets || "-"} ${/^drag\b/i.test(exercise.exerciseName.trim()) ? "drag" : "runder"} × ${exercise.durationMinutes || "-"} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}`
                                       : isHoldBasedExerciseCategory(
                                           exercises.find((e) => e.id === exercise.exerciseId)?.category ?? "Styrke",
                                         )

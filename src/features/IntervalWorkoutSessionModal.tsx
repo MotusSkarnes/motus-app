@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { MOTUS } from "../app/data";
-import { expandProgramExercisesToWorkoutResults } from "../app/programBlocks";
+import { expandProgramExercisesToWorkoutResults, parseProgramSetCount } from "../app/programBlocks";
 import { GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../app/ui";
 import type { Exercise, TrainingProgram, WorkoutExerciseResult, WorkoutReflection } from "../app/types";
 import type { LogIntervalWorkoutInput } from "../services/appRepository";
@@ -103,22 +103,27 @@ function buildIntervalProgramSteps(program: TrainingProgram): IntervalTimerStep[
     const normalizedRestSeconds =
       rawRestValue > 0 && rawRestValue <= 15 ? Math.round(rawRestValue * 60) : Math.round(rawRestValue);
 
+    const lowerName = exercise.exerciseName.toLowerCase();
+    let tone: IntervalTimerStep["tone"] =
+      lowerName.includes("oppvarm") ? "warmup" : lowerName.includes("nedjogg") ? "cooldown" : "work";
+    const nameImpliesExplicitWorkSegment =
+      /\bdrag\b/i.test(exercise.exerciseName) || lowerName.includes("tempo") || lowerName.includes("tabata");
+    if (index === 0 && tone === "work" && !nameImpliesExplicitWorkSegment) {
+      tone = "warmup";
+    }
+    const isDragSlot =
+      tone === "work" &&
+      !lowerName.includes("tempo") &&
+      !lowerName.includes("tabata") &&
+      (/\bdrag\b/i.test(exercise.exerciseName) ||
+        /\bintervall\b/i.test(exercise.exerciseName) ||
+        /4x4/i.test(programTitle));
+    const repeatCount = isDragSlot ? parseProgramSetCount(exercise.sets) : 1;
+
     if (workDurationSeconds > 0) {
-      const lowerName = exercise.exerciseName.toLowerCase();
-      let tone: IntervalTimerStep["tone"] =
-        lowerName.includes("oppvarm") ? "warmup" : lowerName.includes("nedjogg") ? "cooldown" : "work";
-      const nameImpliesExplicitWorkSegment =
-        /\bdrag\b/i.test(exercise.exerciseName) || lowerName.includes("tempo") || lowerName.includes("tabata");
-      if (index === 0 && tone === "work" && !nameImpliesExplicitWorkSegment) {
-        tone = "warmup";
-      }
-      const isDragSlot =
-        tone === "work" &&
-        !lowerName.includes("tempo") &&
-        !lowerName.includes("tabata") &&
-        (/\bdrag\b/i.test(exercise.exerciseName) ||
-          /\bintervall\b/i.test(exercise.exerciseName) ||
-          /4x4/i.test(programTitle));
+      const isClassic4x4Drag = /4x4/i.test(programTitle) && /drag/i.test(exercise.exerciseName);
+      const legacy4x4DragPauseSeconds = rawRestStr === "" && isClassic4x4Drag ? 180 : 0;
+      const restDurationSeconds = normalizedRestSeconds > 0 ? normalizedRestSeconds : legacy4x4DragPauseSeconds;
 
       let headline: string;
       if (tone === "warmup") headline = "Oppvarming";
@@ -127,35 +132,55 @@ function buildIntervalProgramSteps(program: TrainingProgram): IntervalTimerStep[
         workOrdinal += 1;
         if (lowerName.includes("tabata")) headline = `Tabata ${workOrdinal}`;
         else if (lowerName.includes("tempo")) headline = `Tempo ${workOrdinal}`;
-        else if (isDragSlot) {
-          dragOrdinal += 1;
-          headline = `Drag ${dragOrdinal}`;
-        } else headline = `Intervall ${workOrdinal}`;
+        else if (isDragSlot) headline = "Drag";
+        else headline = `Intervall ${workOrdinal}`;
       } else headline = exercise.exerciseName.trim() || `Intervall ${index + 1}`;
 
-      lastWorkHeadline = headline;
-      steps.push({
-        headline,
-        phaseBadge: computeIntervalPhaseBadge(tone, headline),
-        durationSeconds: workDurationSeconds,
-        speedHint: exercise.speed ? `${exercise.speed} km/t` : "-",
-        inclineHint: exercise.incline ? `${exercise.incline}%` : "-",
-        hrHint: formatIntervalTimerHrHint(exercise.targetHrPercent),
-        tone,
-        sourceExerciseIndex: index,
-      });
+      for (let repeatIndex = 1; repeatIndex <= repeatCount; repeatIndex += 1) {
+        const repeatedHeadline =
+          isDragSlot
+            ? `Drag ${++dragOrdinal}`
+            : repeatCount > 1 && tone === "work"
+              ? `${headline} ${repeatIndex}`
+              : headline;
+        lastWorkHeadline = repeatedHeadline;
+        steps.push({
+          headline: repeatedHeadline,
+          phaseBadge: computeIntervalPhaseBadge(tone, repeatedHeadline),
+          durationSeconds: workDurationSeconds,
+          speedHint: exercise.speed ? `${exercise.speed} km/t` : "-",
+          inclineHint: exercise.incline ? `${exercise.incline}%` : "-",
+          hrHint: formatIntervalTimerHrHint(exercise.targetHrPercent),
+          tone,
+          sourceExerciseIndex: index,
+        });
+
+        if (restDurationSeconds > 0 && repeatIndex < repeatCount) {
+          steps.push({
+            headline: "Pause",
+            phaseBadge: "Pause",
+            afterExerciseName: repeatedHeadline,
+            durationSeconds: restDurationSeconds,
+            speedHint: "Rolig",
+            inclineHint: "0-1%",
+            hrHint: "",
+            tone: "rest",
+          });
+        }
+      }
     }
 
-    const isClassic4x4Drag = /4x4/i.test(programTitle) && /drag/i.test(exercise.exerciseName);
-    const legacy4x4DragPauseSeconds = rawRestStr === "" && isClassic4x4Drag ? 180 : 0;
-    const restDurationSeconds = normalizedRestSeconds > 0 ? normalizedRestSeconds : legacy4x4DragPauseSeconds;
-    if (restDurationSeconds > 0 && index < program.exercises.length - 1) {
+    const hasNextStep = index < program.exercises.length - 1;
+    const nextExerciseName = program.exercises[index + 1]?.exerciseName.trim().toLowerCase() ?? "";
+    const nextIsCooldown = nextExerciseName.startsWith("nedjogg") || nextExerciseName.includes("nedtrapp");
+    const restAfterRow = normalizedRestSeconds > 0 && (!isDragSlot || repeatCount <= 1) && hasNextStep && !nextIsCooldown;
+    if (restAfterRow) {
       const afterLabel = lastWorkHeadline || exercise.exerciseName.trim() || `Steg ${index + 1}`;
       steps.push({
         headline: "Pause",
         phaseBadge: "Pause",
         afterExerciseName: afterLabel,
-        durationSeconds: restDurationSeconds,
+        durationSeconds: normalizedRestSeconds,
         speedHint: "Rolig",
         inclineHint: "0-1%",
         hrHint: "",
