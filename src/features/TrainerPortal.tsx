@@ -89,7 +89,7 @@ import { syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { buildDefaultStartWorkoutOptions } from "../app/buildStartWorkoutOptions";
 import { MemberMonthlyCheckInSummary } from "./MemberMonthlyCheckInSummary";
 import { MemberOnboardingSummary } from "./MemberOnboardingSummary";
-import { unlinkProgramExerciseBlock } from "../app/programBlocks";
+import { parseProgramSetCount, unlinkProgramExerciseBlock } from "../app/programBlocks";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
 import { ProgramExerciseBlockActions } from "./ProgramExerciseBlockActions";
 import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
@@ -378,6 +378,19 @@ function pickCardioIntervalExerciseForTemplate(allExercises: Exercise[]): Exerci
 
 function hasCardioNedjoggRow(draft: ProgramExercise[]): boolean {
   return draft.some((row) => row.exerciseName.trim().toLowerCase().startsWith("nedjogg"));
+}
+
+function isLegacyCardioCooldownRow(rows: ProgramExercise[], index: number): boolean {
+  const row = rows[index];
+  const previousRow = rows[index - 1];
+  if (!row || !previousRow || index !== rows.length - 1) return false;
+  if (!/^drag\b/i.test(row.exerciseName.trim()) || !/^drag\b/i.test(previousRow.exerciseName.trim())) return false;
+  const restSeconds = Number(String(row.restSeconds ?? "").trim() || "0");
+  return parseProgramSetCount(row.sets) <= 1 && (!Number.isFinite(restSeconds) || restSeconds <= 0);
+}
+
+function cardioProgramExerciseName(rows: ProgramExercise[], index: number): string {
+  return isLegacyCardioCooldownRow(rows, index) ? "Nedjogg" : rows[index]?.exerciseName ?? "";
 }
 
 function countCardioDragRows(draft: ProgramExercise[]): number {
@@ -6193,12 +6206,14 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                             </div>
                           ) : (
                             <div className="space-y-1.5">
-                              {program.exercises.map((exercise) => (
+                              {program.exercises.map((exercise, exerciseIndex) => {
+                                const exerciseName = cardioProgramExerciseName(program.exercises, exerciseIndex);
+                                return (
                                 <div key={exercise.id} className="rounded-lg border bg-slate-50 px-2.5 py-2 text-xs text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                  <div className="font-medium text-slate-800">{exercise.exerciseName}</div>
+                                  <div className="font-medium text-slate-800">{exerciseName}</div>
                                   <div className="mt-0.5 text-slate-500">
                                     {exercise.durationMinutes
-                                      ? `${exercise.sets || "-"} ${/^drag\b/i.test(exercise.exerciseName.trim()) ? "drag" : "runder"} × ${exercise.durationMinutes || "-"} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}`
+                                      ? `${exercise.sets || "-"} ${/^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder"} × ${exercise.durationMinutes || "-"} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}`
                                       : isHoldBasedExerciseCategory(
                                           exercises.find((e) => e.id === exercise.exerciseId)?.category ?? "Styrke",
                                         )
@@ -6206,7 +6221,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                                         : `${exercise.sets || "-"}×${exercise.reps || "-"} · ${exercise.weight || "0"}kg · ${exercise.restSeconds || "0"}s`}
                                   </div>
                                 </div>
-                              ))}
+                              )})}
                             </div>
                           )}
                         </div>
