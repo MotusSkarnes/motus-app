@@ -41,19 +41,61 @@ export function parseProgramSetCount(value: string | undefined): number {
   return Math.min(18, Math.round(parsed));
 }
 
+function isIntervalTimedProgram(exercises: ProgramExercise[]): boolean {
+  if (exercises.length < 2) return false;
+  return exercises.every((row) => {
+    const name = row.exerciseName.trim().toLowerCase();
+    return (
+      Number(row.durationMinutes) > 0 ||
+      /^oppvarming$/i.test(name) ||
+      /^drag\b/i.test(name) ||
+      /^nedjogg/i.test(name) ||
+      /cooldown/i.test(name)
+    );
+  });
+}
+
+/** Siste rad i intervallprogram som fortsatt heter «Drag …» men er nedjogg (eldre maler). */
 export function isLegacyIntervalCooldownDrag(exercises: ProgramExercise[], index: number): boolean {
   const exercise = exercises[index];
   const previousExercise = exercises[index - 1];
-  if (!exercise || !previousExercise || index !== exercises.length - 1) return false;
-  if (!/^drag\b/i.test(exercise.exerciseName.trim()) || !/^drag\b/i.test(previousExercise.exerciseName.trim())) return false;
+  if (!exercise || index !== exercises.length - 1 || !isIntervalTimedProgram(exercises)) return false;
+
+  const name = exercise.exerciseName.trim();
+  if (/^nedjogg/i.test(name) || /nedtrapp/i.test(name) || /cooldown/i.test(name)) return false;
+  if (!/^drag\b/i.test(name)) return false;
+
   const restSeconds = Number(String(exercise.restSeconds ?? "").trim() || "0");
+  const hasNoRestAfter = !Number.isFinite(restSeconds) || restSeconds <= 0;
+  if (!hasNoRestAfter) return false;
+
+  const previousName = previousExercise?.exerciseName.trim() ?? "";
+  const prevIsDrag = /^drag\b/i.test(previousName);
+  const prevIsWarmup = /^oppvarming$/i.test(previousName);
+
+  // Vanligste feil: siste rad «Drag 4/5» etter minst ett tidligere drag, uten hvile etterpå.
+  if (prevIsDrag) return true;
+
   const speed = Number(String(exercise.speed ?? "").replace(",", "."));
-  const previousSpeed = Number(String(previousExercise.speed ?? "").replace(",", "."));
+  const previousSpeed = Number(String(previousExercise?.speed ?? "").replace(",", "."));
   const targetHr = String(exercise.targetHrPercent ?? "").trim();
   const looksLikeEasyCooldown =
     (Number.isFinite(speed) && Number.isFinite(previousSpeed) && speed < previousSpeed) ||
+    (Number.isFinite(speed) && speed > 0 && speed <= 7.5) ||
     /55|60|65|rolig|lav/i.test(targetHr);
-  return (!Number.isFinite(restSeconds) || restSeconds <= 0) && looksLikeEasyCooldown;
+
+  return prevIsWarmup && looksLikeEasyCooldown;
+}
+
+export function normalizeProgramsLegacyCooldownNames(programs: TrainingProgram[]): TrainingProgram[] {
+  let changed = false;
+  const normalized = programs.map((program) => {
+    const exercises = normalizeLegacyIntervalCooldownExerciseNames(program.exercises);
+    if (exercises === program.exercises) return program;
+    changed = true;
+    return { ...program, exercises };
+  });
+  return changed ? normalized : programs;
 }
 
 export function normalizeLegacyIntervalCooldownExerciseNames(exercises: ProgramExercise[]): ProgramExercise[] {

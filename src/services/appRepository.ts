@@ -1,5 +1,9 @@
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
-import { expandProgramExercisesToWorkoutResults, workoutResultGroupId } from "../app/programBlocks";
+import {
+  expandProgramExercisesToWorkoutResults,
+  normalizeLegacyIntervalCooldownExerciseNames,
+  workoutResultGroupId,
+} from "../app/programBlocks";
 import { uid } from "../app/storage";
 import type {
   AppState,
@@ -273,10 +277,18 @@ export function deleteMemberInState(state: AppState, memberId: string): AppState
   };
 }
 
+function mapProgramExercisesForSave(exercises: ProgramExercise[]): ProgramExercise[] {
+  return normalizeLegacyIntervalCooldownExerciseNames(exercises).map((exercise) => ({
+    ...exercise,
+    id: exercise.id || uid("prog-ex"),
+  }));
+}
+
 export function saveProgramInState(
   state: AppState,
   input: SaveProgramInput
 ): AppState {
+  const exercises = mapProgramExercisesForSave(input.exercises);
   if (input.id) {
     const existingProgram = state.programs.find((program) => program.id === input.id);
     if (existingProgram) {
@@ -290,7 +302,7 @@ export function saveProgramInState(
               title: input.title.trim(),
               goal: input.goal.trim(),
               notes: input.notes.trim(),
-              exercises: input.exercises.map((exercise) => ({ ...exercise, id: exercise.id || uid("prog-ex") })),
+              exercises,
               ...(input.programCreatedBy
                 ? {
                     programCreatedBy: input.programCreatedBy,
@@ -311,7 +323,7 @@ export function saveProgramInState(
     goal: input.goal.trim(),
     notes: input.notes.trim(),
     createdAt: formatDateDdMmYyyy(new Date()),
-    exercises: input.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
+    exercises,
     ...(input.programCreatedBy
       ? {
           programCreatedBy: input.programCreatedBy,

@@ -392,6 +392,23 @@ function cardioSetLabel(): string {
   return "Antall drag";
 }
 
+function cardioSetPlaceholder(): string {
+  return "drag";
+}
+
+/** Kondisjonsmal / intervallrader — ikke bare når øvelsesbanken har category «Kondisjon». */
+function isCardioDraftRow(
+  item: ProgramExercise,
+  linkedExercise: Exercise | undefined,
+  options?: { conditioningBuilder?: boolean },
+): boolean {
+  if (options?.conditioningBuilder) return true;
+  if (linkedExercise?.category === "Kondisjon") return true;
+  const name = item.exerciseName.trim();
+  if (/^oppvarming$/i.test(name) || /^nedjogg/i.test(name) || /^drag\b/i.test(name)) return true;
+  return Boolean(String(item.durationMinutes ?? "").trim());
+}
+
 function cardioTargetHrPrescriptionSuffix(targetHrPercent: string | undefined): string {
   const raw = String(targetHrPercent ?? "").trim();
   if (!raw) return "";
@@ -5363,14 +5380,14 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                             </div>
                             {(() => {
                               const linkedExercise = exercisesById.get(item.exerciseId);
-                              const isCardio = linkedExercise?.category === "Kondisjon";
+                              const isCardio = isCardioDraftRow(item, linkedExercise);
                               const isStretch = linkedExercise ? isHoldBasedExerciseCategory(linkedExercise.category) : false;
                               const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
                               return (
                             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                               <div className="space-y-1">
                                 <div className="text-[11px] font-medium text-slate-500">{isCardio ? cardioSetLabel() : "Antall sett"}</div>
-                                <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder={isCardio ? cardioSetLabel().replace("Antall ", "") : "Sett"} />
+                                <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder={isCardio ? cardioSetPlaceholder() : "Sett"} />
                               </div>
                               {isCardio ? (
                                 <div className="space-y-1">
@@ -5965,14 +5982,16 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       </div>
                       {(() => {
                         const linkedExercise = exercisesById.get(item.exerciseId);
-                        const isCardio = linkedExercise?.category === "Kondisjon";
+                        const isCardio = isCardioDraftRow(item, linkedExercise, {
+                          conditioningBuilder: programsSubTab === "conditioning",
+                        });
                         const isStretch = linkedExercise ? isHoldBasedExerciseCategory(linkedExercise.category) : false;
                         const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
                         return (
                       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         <div className="space-y-1">
                           <div className="text-[11px] font-medium text-slate-500">{isCardio ? cardioSetLabel() : "Antall sett"}</div>
-                          <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder={isCardio ? cardioSetLabel().replace("Antall ", "") : "Sett"} />
+                          <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder={isCardio ? cardioSetPlaceholder() : "Sett"} />
                         </div>
                         {isCardio ? (
                           <div className="space-y-1">

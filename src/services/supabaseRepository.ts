@@ -39,6 +39,7 @@ import {
   type UpdateWorkoutLogTrainerCommentInput,
   type UpdateWorkoutResultInput,
 } from "./appRepository";
+import { normalizeLegacyIntervalCooldownExerciseNames } from "../app/programBlocks";
 import { isContaminatedDemoMemberProfile } from "../app/memberLocalCatalog";
 import { detectNewMemberFormSubmissions } from "../app/memberFormNotifications";
 import { ensureMemberAuthLink } from "./supabaseAuth";
@@ -610,7 +611,7 @@ async function persistMessage(
 }
 
 async function persistProgram(
-  input: SaveProgramInput,
+  rawInput: SaveProgramInput,
   hints?: {
     targetEmail?: string;
     targetName?: string;
@@ -620,6 +621,10 @@ async function persistProgram(
   },
 ) : Promise<PersistResult> {
   if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  const input: SaveProgramInput = {
+    ...rawInput,
+    exercises: normalizeLegacyIntervalCooldownExerciseNames(rawInput.exercises),
+  };
   const {
     data: { session },
   } = await supabaseClient.auth.getSession();

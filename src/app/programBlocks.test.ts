@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildWorkoutResultGroups,
   expandProgramExercisesToWorkoutResults,
+  isLegacyIntervalCooldownDrag,
   linkProgramExercisesAsBlock,
+  normalizeLegacyIntervalCooldownExerciseNames,
   splitProgramExercisesIntoSegments,
   workoutResultGroupId,
 } from "./programBlocks";
@@ -84,6 +86,81 @@ describe("programBlocks", () => {
     expect(groups[0]?.exerciseNames).toEqual(["Knebøy", "Utfall"]);
     expect(groups[0]?.rounds).toHaveLength(2);
     expect(groups[1]?.exerciseName).toBe("Planke");
+  });
+
+  it("treats last mislabeled drag row as nedjogg when previous row is drag", () => {
+    const exercises = [
+      {
+        id: "w",
+        exerciseId: "ex1",
+        exerciseName: "Oppvarming",
+        sets: "1",
+        reps: "",
+        weight: "",
+        durationMinutes: "10",
+        speed: "7",
+        restSeconds: "0",
+        notes: "",
+      },
+      {
+        id: "d1",
+        exerciseId: "ex1",
+        exerciseName: "Drag 1",
+        sets: "1",
+        reps: "",
+        weight: "",
+        durationMinutes: "4",
+        speed: "13",
+        restSeconds: "180",
+        notes: "",
+      },
+      {
+        id: "d4",
+        exerciseId: "ex1",
+        exerciseName: "Drag 4",
+        sets: "1",
+        reps: "",
+        weight: "",
+        durationMinutes: "5",
+        speed: "13",
+        restSeconds: "0",
+        notes: "",
+        targetHrPercent: "85–92",
+      },
+    ];
+    expect(isLegacyIntervalCooldownDrag(exercises, 2)).toBe(true);
+    const normalized = normalizeLegacyIntervalCooldownExerciseNames(exercises);
+    expect(normalized[2]?.exerciseName).toBe("Nedjogg");
+  });
+
+  it("does not treat last work drag as nedjogg when it still has rest after", () => {
+    const exercises = [
+      {
+        id: "d1",
+        exerciseId: "ex1",
+        exerciseName: "Drag 1",
+        sets: "1",
+        reps: "",
+        weight: "",
+        durationMinutes: "4",
+        speed: "13",
+        restSeconds: "180",
+        notes: "",
+      },
+      {
+        id: "d2",
+        exerciseId: "ex1",
+        exerciseName: "Drag 2",
+        sets: "1",
+        reps: "",
+        weight: "",
+        durationMinutes: "4",
+        speed: "13",
+        restSeconds: "120",
+        notes: "",
+      },
+    ];
+    expect(isLegacyIntervalCooldownDrag(exercises, 1)).toBe(false);
   });
 
   it("splits program into block and single segments", () => {

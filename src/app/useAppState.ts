@@ -88,7 +88,11 @@ import {
   readPersistedAuthBootstrapParams,
 } from "./supabaseAuthBootstrap";
 import { parseStoredLogDate } from "./dateFormat";
-import { isLegacyIntervalCooldownDrag, normalizeLegacyIntervalCooldownExerciseNames } from "./programBlocks";
+import {
+  isLegacyIntervalCooldownDrag,
+  normalizeLegacyIntervalCooldownExerciseNames,
+  normalizeProgramsLegacyCooldownNames,
+} from "./programBlocks";
 import { mergeRemoteMessagesWithLocalOptimistic } from "./messageHydrationMerge";
 import type {
   AppState,
@@ -1039,6 +1043,7 @@ export function useAppState() {
           }
         }
 
+        next.programs = normalizeProgramsLegacyCooldownNames(next.programs);
         const merged = syncExercisesWithPrograms(stripDemoSeedCatalog(next));
         stateAfterHydrate = merged;
         return merged;
