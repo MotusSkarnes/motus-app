@@ -358,11 +358,7 @@ export function IntervalWorkoutSessionModal({
     setIsSaving(true);
     setStatus(null);
 
-    const saveTimeoutMs = 30_000;
-    let finished = false;
     const finish = (result: { ok: boolean; message?: string }) => {
-      if (finished) return;
-      finished = true;
       window.clearTimeout(timeoutId);
       setIsSaving(false);
       if (!result.ok) {
@@ -375,12 +371,11 @@ export function IntervalWorkoutSessionModal({
     };
 
     const timeoutId = window.setTimeout(() => {
-      finish({
-        ok: false,
-        message:
-          "Lagring tok for lang tid. Kjør member_workout_log_save_setup.sql i Supabase, deretter Ctrl+F5 og prøv igjen.",
-      });
-    }, saveTimeoutMs);
+      setIsSaving(false);
+      setStatus(
+        "Skyen svarer ikke ennå. Vent litt og sjekk Fremgang — eller prøv lagre igjen. (Åpne utviklerverktøy F12 → Console for detaljer.)",
+      );
+    }, 42_000);
 
     logIntervalWorkout({
       memberId: memberId.trim(),

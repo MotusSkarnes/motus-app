@@ -101,7 +101,6 @@ const WORKOUT_LOG_RPC_TIMEOUT_MS = 8_000;
 const WORKOUT_LOG_MEMBER_RACE_TIMEOUT_MS = 12_000;
 const WORKOUT_LOG_AUTH_TIMEOUT_MS = 4_000;
 const WORKOUT_LOG_TOTAL_TIMEOUT_MS = 22_000;
-const WORKOUT_LOG_INTERVAL_TOTAL_TIMEOUT_MS = 45_000;
 
 async function promiseWithTimeout<T>(
   promise: Promise<T>,
@@ -1813,6 +1812,10 @@ function pickWorkoutLogOwnerCandidate(candidate: string, requesterUserId: string
   return trimmed;
 }
 
+function isUuidString(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.trim());
+}
+
 async function resolveWorkoutLogOwnerUserId(
   memberId: string,
   hints: PersistWorkoutLogHints,
@@ -1876,31 +1879,55 @@ function isMissingMemberWorkoutRpcError(message: string): boolean {
   );
 }
 
+async function persistWorkoutLogViaMemberRpcInner(
+  log: WorkoutLog,
+  memberId: string,
+  ownerUserId: string,
+): Promise<PersistResult | null> {
+  if (!supabaseClient || !isUuidString(ownerUserId)) return null;
+  const serializedNote = serializeWorkoutNote(log);
+  const controller = new AbortController();
+  const abortId = window.setTimeout(() => controller.abort(), WORKOUT_LOG_INTERVAL_RPC_TIMEOUT_MS);
+  try {
+    const { data, error } = await supabaseClient.rpc(
+      "upsert_member_workout_log",
+      {
+        p_id: log.id,
+        p_member_id: memberId,
+        p_owner_user_id: ownerUserId.trim(),
+        p_program_title: log.programTitle,
+        p_date: log.date,
+        p_status: log.status,
+        p_note: serializedNote,
+        p_results: log.results ?? [],
+      },
+      { signal: controller.signal },
+    );
+    if (error) {
+      if (isMissingMemberWorkoutRpcError(error.message)) return null;
+      const aborted = error.message?.toLowerCase().includes("abort");
+      if (aborted) return { ok: false, message: "RPC svarte ikke i tide." };
+      return { ok: false, message: error.message };
+    }
+    const payload = (data ?? null) as { ok?: boolean; error?: string } | null;
+    if (payload?.ok === true) return { ok: true };
+    if (payload?.error) return { ok: false, message: payload.error };
+    return { ok: false, message: "Kunne ikke lagre økten via RPC." };
+  } catch (fetchErr) {
+    const aborted = fetchErr instanceof Error && fetchErr.name === "AbortError";
+    if (aborted) return { ok: false, message: "RPC svarte ikke i tide." };
+    return { ok: false, message: fetchErr instanceof Error ? fetchErr.message : "RPC feilet." };
+  } finally {
+    window.clearTimeout(abortId);
+  }
+}
+
 async function persistWorkoutLogViaMemberRpc(
   log: WorkoutLog,
   memberId: string,
   ownerUserId: string,
 ): Promise<PersistResult | null> {
-  if (!supabaseClient) return null;
-  const serializedNote = serializeWorkoutNote(log);
-  const { data, error } = await supabaseClient.rpc("upsert_member_workout_log", {
-    p_id: log.id,
-    p_member_id: memberId,
-    p_owner_user_id: ownerUserId.trim(),
-    p_program_title: log.programTitle,
-    p_date: log.date,
-    p_status: log.status,
-    p_note: serializedNote,
-    p_results: log.results ?? [],
-  });
-  if (error) {
-    if (isMissingMemberWorkoutRpcError(error.message)) return null;
-    return { ok: false, message: error.message };
-  }
-  const payload = (data ?? null) as { ok?: boolean; error?: string } | null;
-  if (payload?.ok === true) return { ok: true };
-  if (payload?.error) return { ok: false, message: payload.error };
-  return { ok: false, message: "Kunne ikke lagre økten via RPC." };
+  return persistWorkoutLogViaMemberRpcInner(log, memberId, ownerUserId);
 }
 
 function pickMemberWorkoutPersistFailureMessage(results: PersistResult[]): string {
@@ -1921,12 +1948,18 @@ function pickMemberWorkoutPersistFailureMessage(results: PersistResult[]): strin
     );
   if (parts.length) return parts.join(" · ");
 
-  const timedOut = results.some((item) => /lagring tok for lang tid|__direct_timeout__/i.test(item.message ?? ""));
+  const timedOut = results.some((item) =>
+    /lagring tok for lang tid|__direct_timeout__|__edge_fetch_timeout__|svarte ikke i tide/i.test(item.message ?? ""),
+  );
   if (timedOut) {
-    return `Skyen svarer ikke i tide.${sqlHint} Sjekk nettverk, oppdater siden (Ctrl+F5) og prøv igjen.`;
+    const detail = results
+      .map((item) => item.message?.trim())
+      .filter((message) => message && !/^(__direct_timeout__|__edge_fetch_timeout__)$/i.test(message))
+      .join(" · ");
+    return `Skyen svarer ikke i tide. Sjekk nettverk og prøv igjen.${detail ? ` (${detail})` : ""}`;
   }
 
-  return `Lagring feilet.${sqlHint} Logg ut og inn igjen, deretter prøv på nytt.`;
+  return `Lagring feilet.${parts.length ? ` ${parts.join(" · ")}` : ""} Logg ut og inn igjen, eller kontakt PT.`;
 }
 
 type WorkoutLogAuthContext = {
@@ -2002,20 +2035,9 @@ async function persistIntervalWorkoutLogInner(log: WorkoutLog, hints: PersistWor
     return { ok: false, message: "Sesjonen utløp. Logg ut og inn igjen, og prøv å lagre på nytt." };
   }
 
-  const rawMemberId = log.memberId.trim();
-  let memberId = rawMemberId;
-  if (rawMemberId.startsWith("auth-")) {
-    memberId = await promiseWithTimeout(
-      resolveCanonicalMemberIdForPersistence(rawMemberId, hints, ctx.sessionUser),
-      4_000,
-      rawMemberId,
-    );
-  }
-  if (!memberId || memberId.startsWith("auth-")) {
-    return {
-      ok: false,
-      message: "Fant ikke medlemsprofil i skyen. Logg ut og inn igjen, eller kontakt PT.",
-    };
+  const memberId = log.memberId.trim();
+  if (!memberId) {
+    return { ok: false, message: "Mangler medlems-ID for økten." };
   }
 
   const persistenceHints: PersistWorkoutLogHints = {
@@ -2026,29 +2048,35 @@ async function persistIntervalWorkoutLogInner(log: WorkoutLog, hints: PersistWor
   if (!ownerUserId) {
     ownerUserId = await promiseWithTimeout(
       resolveWorkoutLogOwnerUserId(memberId, persistenceHints, ctx.requesterUserId),
-      4_000,
+      3_000,
       null,
     );
   }
-  if (!ownerUserId) {
-    return { ok: false, message: "Fant ikke PT-eier for programmet. Oppdater siden og prøv igjen." };
-  }
   if (ownerUserId === ctx.requesterUserId) {
-    return { ok: false, message: "Fant ikke PT-eier for programmet. Oppdater siden og prøv igjen." };
+    ownerUserId = null;
   }
 
-  return persistIntervalWorkoutLogFast({ ...log, memberId }, memberId, ownerUserId, ctx.accessToken);
+  return persistIntervalWorkoutLogFast(
+    { ...log, memberId },
+    memberId,
+    ownerUserId ?? "",
+    ctx.accessToken,
+    persistenceHints,
+    ctx.sessionUser,
+  );
 }
 
-/** Intervalløkt: RPC først (rask med SQL), deretter edge fetch — uten dobbel invoke som ga falsk timeout. */
+/** Intervalløkt: én edge-kall først (tjenesterolle), deretter RPC — unngår hengende parallelle kall. */
 async function persistIntervalWorkoutLogFast(
   log: WorkoutLog,
   memberId: string,
   ownerUserId: string,
   accessToken: string,
+  hints: PersistWorkoutLogHints,
+  sessionUser: WorkoutLogAuthContext["sessionUser"],
 ): Promise<PersistResult> {
   const serializedNote = serializeWorkoutNote(log);
-  const edgeBody = {
+  const edgeBody: Record<string, unknown> = {
     id: log.id,
     memberId,
     programTitle: log.programTitle,
@@ -2056,17 +2084,11 @@ async function persistIntervalWorkoutLogFast(
     status: log.status,
     note: serializedNote,
     results: log.results ?? [],
-    ownerUserId,
   };
+  if (ownerUserId && isUuidString(ownerUserId)) {
+    edgeBody.ownerUserId = ownerUserId;
+  }
   const failures: PersistResult[] = [];
-
-  const rpc = await promiseWithTimeout(
-    persistWorkoutLogViaMemberRpc(log, memberId, ownerUserId),
-    WORKOUT_LOG_INTERVAL_RPC_TIMEOUT_MS,
-    null,
-  );
-  if (rpc?.ok) return rpc;
-  if (rpc) failures.push(rpc);
 
   if (supabaseUrl && supabaseAnonKey) {
     const edge = await promiseWithTimeout(
@@ -2076,21 +2098,45 @@ async function persistIntervalWorkoutLogFast(
     );
     if (edge.ok) return edge;
     if (edge.message && !edge.message.includes("__edge_fetch_timeout__")) {
+      console.warn("persist-interval edge failed:", edge.message);
       failures.push(edge);
-      return { ok: false, message: pickMemberWorkoutPersistFailureMessage(failures) };
+    } else {
+      failures.push(edge);
     }
-    failures.push(edge);
   }
 
-  const direct = await promiseWithTimeout(
-    persistWorkoutLogDirectForMember(log, memberId, ownerUserId),
-    WORKOUT_LOG_INTERVAL_DIRECT_TIMEOUT_MS,
-    { ok: false, message: "__direct_timeout__" },
-  );
-  if (direct.ok) return direct;
-  failures.push(direct);
+  let rpcMemberId = memberId;
+  if (memberId.startsWith("auth-")) {
+    rpcMemberId = await promiseWithTimeout(
+      resolveCanonicalMemberIdForPersistence(memberId, hints, sessionUser),
+      3_000,
+      memberId,
+    );
+  }
+  const rpcOwner =
+    ownerUserId && isUuidString(ownerUserId)
+      ? ownerUserId
+      : await promiseWithTimeout(
+          resolveWorkoutLogOwnerUserId(rpcMemberId, { programTitle: log.programTitle, ownerUserId }, ""),
+          3_000,
+          null,
+        );
+  if (rpcMemberId && !rpcMemberId.startsWith("auth-") && rpcOwner && isUuidString(rpcOwner)) {
+    const rpc = await persistWorkoutLogViaMemberRpc(log, rpcMemberId, rpcOwner);
+    if (rpc?.ok) return rpc;
+    if (rpc) failures.push(rpc);
+  } else if (!failures.length) {
+    failures.push({
+      ok: false,
+      message: rpcMemberId.startsWith("auth-")
+        ? "Fant ikke medlemsprofil i skyen. Logg ut og inn igjen."
+        : "Fant ikke PT-eier for programmet. Oppdater siden og prøv igjen.",
+    });
+  }
 
-  return { ok: false, message: pickMemberWorkoutPersistFailureMessage(failures) };
+  const message = pickMemberWorkoutPersistFailureMessage(failures);
+  console.warn("persist-interval all paths failed:", message, { memberId, ownerUserId, failures });
+  return { ok: false, message };
 }
 
 async function raceMemberWorkoutLogPersist(
