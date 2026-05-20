@@ -82,6 +82,7 @@ import {
   readPeriodPlansByMemberId,
   removeMemberOwnedPeriodPlanFromStorage,
   findPeriodPlanEntryForCalendarDate,
+  findPeriodPlanEntryForCalendarDateInPlans,
   parsePeriodPlanStartDate,
   resolvePeriodPlanWeek,
   writeHiddenPeriodPlanIdsForMember,
@@ -1969,7 +1970,7 @@ export function MemberPortal(props: MemberPortalProps) {
     };
     const byDay = new Map<number, string[]>();
     visiblePeriodPlans.forEach((plan) => {
-      const startDate = parseDateOnly(plan.startDate);
+      const startDate = parsePeriodPlanStartDate(plan);
       if (!startDate) return;
       (plan.weeklyPlans ?? []).forEach((week) => {
         const weekIndex = Math.max(0, (week.weekNumber || 1) - 1);
@@ -2018,6 +2019,24 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!selectedCalendarDay) return [];
     return calendarPlannedEntriesByDay.get(selectedCalendarDay) ?? [];
   }, [calendarPlannedEntriesByDay, selectedCalendarDay]);
+  const selectedCalendarPeriodMatch = useMemo(() => {
+    if (!selectedCalendarDay) return null;
+    const date = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), selectedCalendarDay);
+    return findPeriodPlanEntryForCalendarDateInPlans(
+      visiblePeriodPlans,
+      date,
+      periodPlanSwapsByPlan,
+      activePeriodPlanId,
+    );
+  }, [selectedCalendarDay, calendarMonth, visiblePeriodPlans, periodPlanSwapsByPlan, activePeriodPlanId]);
+  const selectedCalendarPlanEntry = selectedCalendarPeriodMatch?.entry?.trim() ?? selectedCalendarPlannedEntries[0]?.trim() ?? "";
+  const selectedCalendarPlanAction = useMemo(
+    () =>
+      selectedCalendarPlanEntry
+        ? resolvePeriodPlanEntryAction(selectedCalendarPlanEntry, memberProgramsInActiveLibrary)
+        : { kind: "none" as const },
+    [selectedCalendarPlanEntry, memberProgramsInActiveLibrary],
+  );
   const selectedCalendarLog = useMemo(() => {
     if (!selectedCalendarLogs.length) return null;
     if (!selectedCalendarLogId) return selectedCalendarLogs[0];
@@ -4274,7 +4293,7 @@ export function MemberPortal(props: MemberPortalProps) {
                             onClick={() => handlePeriodPlanStartProgram(todayPlanAction.program.id)}
                             className="w-full sm:w-auto"
                           >
-                            Start dagens økt
+                            Start økt
                           </GradientButton>
                         ) : null}
                         {todayPlanAction.kind === "log-group" && activePeriodPlan && todayPeriodPlanMatch ? (
@@ -4319,6 +4338,36 @@ export function MemberPortal(props: MemberPortalProps) {
                                 {entry}
                               </div>
                             ))}
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {selectedCalendarPlanAction.kind === "start-program" ? (
+                                <GradientButton
+                                  onClick={() => handlePeriodPlanStartProgram(selectedCalendarPlanAction.program.id)}
+                                  className="w-full sm:w-auto"
+                                >
+                                  Start økt
+                                </GradientButton>
+                              ) : null}
+                              {selectedCalendarPlanAction.kind === "log-group" && selectedCalendarPeriodMatch ? (
+                                <GradientButton
+                                  onClick={() =>
+                                    handlePeriodPlanLogGroup({
+                                      entry: selectedCalendarPlanEntry,
+                                      plannedDate: resolvePeriodPlanEntryDate(
+                                        selectedCalendarPeriodMatch.plan,
+                                        selectedCalendarPeriodMatch.weekNumber,
+                                        selectedCalendarPeriodMatch.day,
+                                      ),
+                                      planId: selectedCalendarPeriodMatch.plan.id,
+                                      weekNumber: selectedCalendarPeriodMatch.weekNumber,
+                                      day: selectedCalendarPeriodMatch.day,
+                                    })
+                                  }
+                                  className="w-full sm:w-auto"
+                                >
+                                  Logg gruppetime
+                                </GradientButton>
+                              ) : null}
+                            </div>
                           </div>
                         ) : null}
                         {selectedCalendarLogs.length === 0 ? (

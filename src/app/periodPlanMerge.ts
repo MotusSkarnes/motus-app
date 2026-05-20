@@ -27,6 +27,10 @@ export type PeriodPlanDayEntryMatch = {
   day: WeekdayPlanKey;
 };
 
+export type PeriodPlanDayEntryMatchWithPlan = PeriodPlanDayEntryMatch & {
+  plan: PeriodSchedulePlan;
+};
+
 const WEEKDAY_INDEX: Record<WeekdayPlanKey, number> = {
   monday: 0,
   tuesday: 1,
@@ -72,6 +76,25 @@ export function findPeriodPlanEntryForCalendarDate(
         weekNumber: week.weekNumber,
         day,
       };
+    }
+  }
+  return null;
+}
+
+/** Første planlagte økt på en dato; foretrekker aktiv plan om angitt. */
+export function findPeriodPlanEntryForCalendarDateInPlans(
+  plans: PeriodSchedulePlan[],
+  targetDate: Date,
+  swapsByPlan: PeriodPlanSwapsByPlan = {},
+  preferredPlanId?: string | null,
+): PeriodPlanDayEntryMatchWithPlan | null {
+  const ordered = preferredPlanId
+    ? [...plans.filter((plan) => plan.id === preferredPlanId), ...plans.filter((plan) => plan.id !== preferredPlanId)]
+    : plans;
+  for (const plan of ordered) {
+    const match = findPeriodPlanEntryForCalendarDate(plan, targetDate, swapsByPlan);
+    if (match?.entry.trim()) {
+      return { plan, ...match };
     }
   }
   return null;
