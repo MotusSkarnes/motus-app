@@ -42,6 +42,7 @@ import {
 import { getPausedWorkoutById, purgeExpiredPausedWorkouts } from "./pausedWorkoutStorage";
 import { notifyInspirationItemsChanged, saveInspirationItemsToStorage } from "./inspirationStorage";
 import { filterDeletedPrograms, registerDeletedProgram, unregisterDeletedProgram } from "./deletedProgramTombstones";
+import { enrichMemberWithBestProfile } from "./memberOnboarding";
 import { mergeProgramAuthorFields } from "./programAuthor";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import {
@@ -142,6 +143,11 @@ function mergeTwoMemberSnapshots(primary: Member, secondary: Member): Member {
   merged.invitedAt = sInv || pInv || "";
   merged.personalGoals =
     pickBestPersonalGoals([primary.personalGoals, secondary.personalGoals, merged.personalGoals]) || merged.personalGoals;
+  merged.phone = secondary.phone.trim() || primary.phone.trim() || merged.phone;
+  merged.birthDate = secondary.birthDate.trim() || primary.birthDate.trim() || merged.birthDate;
+  merged.goal = secondary.goal.trim() || primary.goal.trim() || merged.goal;
+  merged.focus = secondary.focus.trim() || primary.focus.trim() || merged.focus;
+  merged.injuries = secondary.injuries.trim() || primary.injuries.trim() || merged.injuries;
   // Aktiv i sky skal ikke overskrives av inaktiv lokal klient-tilstand etter gjenoppretting.
   merged.isActive = primary.isActive !== false || secondary.isActive !== false;
   return merged;
@@ -944,10 +950,13 @@ export function useAppState() {
                 .map((member) => member.personalGoals),
               ...mergedMembers.map((member) => member.personalGoals),
             ]);
-            mergedMembers = mergedMembers.map((member) => ({
-              ...member,
-              personalGoals: bestGoalsForEmail || member.personalGoals,
-            }));
+            mergedMembers = mergedMembers.map((member) => {
+              const enriched = enrichMemberWithBestProfile(member, mergedMembers);
+              return {
+                ...enriched,
+                personalGoals: bestGoalsForEmail || enriched.personalGoals,
+              };
+            });
           }
           if (currentUser?.role === "trainer") {
             // Behold nylig opprettede kunder til sky-lagring er ferdig — ellers forsvinner de ved neste hydrate.

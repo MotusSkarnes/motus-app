@@ -92,6 +92,38 @@ describe("memberOnboarding", () => {
     expect(isOnboardingCompleted(enrichMemberWithBestProfile(base, [base, other]).personalGoals)).toBe(true);
   });
 
+  it("enrichMemberWithBestProfile merges phone and birthDate from duplicate email rows", () => {
+    const authRow: Member = {
+      id: "auth-abc",
+      name: "Lene",
+      email: "lene@test.no",
+      personalGoals: "",
+      goal: "",
+      focus: "",
+      injuries: "",
+      level: "Nybegynner",
+      membershipType: "Premium",
+      customerType: "PT-kunde",
+      daysSinceActivity: "0",
+      phone: "",
+      birthDate: "",
+      coachNotes: "",
+      avatarUrl: "",
+      invitedAt: "",
+      isActive: true,
+    };
+    const dbRow: Member = {
+      ...authRow,
+      id: "m-lene",
+      phone: "99 88 77 66",
+      birthDate: "14.06.1991",
+    };
+    const enriched = enrichMemberWithBestProfile(authRow, [authRow, dbRow]);
+    expect(enriched.id).toBe("m-lene");
+    expect(enriched.phone).toBe("99 88 77 66");
+    expect(enriched.birthDate).toBe("14.06.1991");
+  });
+
   it("resolveMemberOnboarding finds skjema when another row has only månedlig innsjekk-blob", () => {
     const onboardingBlob = mergeOnboardingIntoPersonalGoals("", {
       ...createEmptyOnboardingDraft(),

@@ -363,12 +363,37 @@ export function findMembersByEmail(member: Member, allMembers: Member[]): Member
   return allMembers.filter((row) => row.email.trim().toLowerCase() === email);
 }
 
+function pickPreferredNonEmptyProfileField(values: string[]): string {
+  const sorted = [...values].sort((a, b) => b.trim().length - a.trim().length);
+  for (const value of sorted) {
+    const trimmed = value.trim();
+    if (trimmed) return trimmed;
+  }
+  return "";
+}
+
 /** Slå sammen profil fra duplikat-rader slik at lagret skjema ikke «forsvinner». */
 export function enrichMemberWithBestProfile(member: Member, allMembers: Member[]): Member {
   const candidates = allMembers.length ? findMembersByEmail(member, allMembers) : [member];
+  if (!candidates.length) return member;
+  const canonical = pickCanonicalMemberRowForProfile(member, allMembers);
   const personalGoals = pickBestPersonalGoals(candidates.map((row) => row.personalGoals));
-  if (!personalGoals || personalGoals === member.personalGoals) return member;
-  return { ...member, personalGoals };
+  const phone = pickPreferredNonEmptyProfileField(candidates.map((row) => row.phone));
+  const birthDate = pickPreferredNonEmptyProfileField(candidates.map((row) => row.birthDate));
+  const goal = pickPreferredNonEmptyProfileField(candidates.map((row) => row.goal));
+  const focus = pickPreferredNonEmptyProfileField(candidates.map((row) => row.focus));
+  const injuries = pickPreferredNonEmptyProfileField(candidates.map((row) => row.injuries));
+  const name = pickPreferredNonEmptyProfileField(candidates.map((row) => row.name));
+  return {
+    ...canonical,
+    ...(personalGoals ? { personalGoals } : {}),
+    ...(phone ? { phone } : {}),
+    ...(birthDate ? { birthDate } : {}),
+    ...(goal ? { goal } : {}),
+    ...(focus ? { focus } : {}),
+    ...(injuries ? { injuries } : {}),
+    ...(name ? { name } : {}),
+  };
 }
 
 export function mergeOnboardingIntoPersonalGoals(

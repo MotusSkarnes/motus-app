@@ -32,7 +32,13 @@ import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
-import { hasSubstantiveOnboardingAnswers, parsePersonalGoalsJson, readProfileExtensions } from "../app/memberOnboarding";
+import {
+  enrichMemberWithBestProfile,
+  hasSubstantiveOnboardingAnswers,
+  parsePersonalGoalsJson,
+  pickCanonicalMemberRowForProfile,
+  readProfileExtensions,
+} from "../app/memberOnboarding";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
 import { motusShareStatusMessage, sharePersonalRecordCard } from "../app/motusShareCard";
 import { buildTrainingProgramFromWorkoutMode } from "../app/pausedWorkoutSession";
@@ -1028,7 +1034,10 @@ export function MemberPortal(props: MemberPortalProps) {
   const motusShareLogoSrc = `${motusSkrytekortLogo}${motusSkrytekortLogo.includes("?") ? "&" : "?"}motus_skrytekort=2026-02`;
   const currentMemberByEmail =
     currentUserRole === "member" && normalizedCurrentUserEmail
-      ? pickCanonicalMemberRow(normalizedCurrentUserEmail, members, programs, currentUserMemberId)
+      ? (() => {
+          const row = pickCanonicalMemberRow(normalizedCurrentUserEmail, members, programs, currentUserMemberId);
+          return row ? enrichMemberWithBestProfile(row, members) : null;
+        })()
       : null;
   useAutoClearStatus(memberChatSendStatus, () => setMemberChatSendStatus(null), getStatusClearDelayMs(memberChatSendStatus));
   useAutoClearStatus(pushRegisterStatus, () => setPushRegisterStatus(null), getStatusClearDelayMs(pushRegisterStatus));
@@ -2213,12 +2222,14 @@ export function MemberPortal(props: MemberPortalProps) {
       },
       resolveBestPersonalGoalsForRelatedMembers(editableMember, members, relatedMemberIdSet),
     );
-    window.localStorage.setItem(getProfileStorageKey(editableMember.id), JSON.stringify(next));
+    const profileAnchor = pickCanonicalMemberRowForProfile(editableMember, members);
+    window.localStorage.setItem(getProfileStorageKey(profileAnchor.id), JSON.stringify(next));
     const targetMemberIds = Array.from(
       new Set(
         members
           .filter((member) => {
             const normalizedMemberEmail = member.email.trim().toLowerCase();
+            if (member.id === profileAnchor.id) return true;
             if (member.id === editableMember.id) return true;
             if (relatedMemberIds.includes(member.id)) return true;
             if (normalizedMemberEmail && normalizedMemberEmail === fallbackEmail) return true;
@@ -2228,7 +2239,7 @@ export function MemberPortal(props: MemberPortalProps) {
           .map((member) => member.id)
       )
     );
-    const safeTargetIds = targetMemberIds.length ? targetMemberIds : [editableMember.id];
+    const safeTargetIds = targetMemberIds.length ? targetMemberIds : [profileAnchor.id];
     safeTargetIds.forEach((memberId) => {
       updateMember({
         memberId,
@@ -2254,7 +2265,7 @@ export function MemberPortal(props: MemberPortalProps) {
               .filter((value) => value && value.includes("@"))
           )
         ),
-        memberId: editableMember.id,
+        memberId: profileAnchor.id,
         memberIds: safeTargetIds,
         targetName: memberNameDraft,
         // Treat sync as healthy when at least one canonical row is updated.
@@ -2262,7 +2273,7 @@ export function MemberPortal(props: MemberPortalProps) {
         expectedMinUpdated: 1,
         changes: {
           name: memberNameDraft,
-          phone: memberPhoneDraft,
+          phone: normalizePhone(memberPhoneDraft),
           birthDate: normalizeBirthDateToDdMmYyyy(memberBirthDateDraft),
           goal: memberGoalDraft,
           focus: memberFocusDraft,
