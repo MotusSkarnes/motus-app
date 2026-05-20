@@ -90,7 +90,13 @@ function isLegacyIntervalCooldownDrag(program: TrainingProgram, index: number): 
   if (!exercise || !previousExercise || index !== program.exercises.length - 1) return false;
   if (!/^drag\b/i.test(exercise.exerciseName.trim()) || !/^drag\b/i.test(previousExercise.exerciseName.trim())) return false;
   const restSeconds = Number(String(exercise.restSeconds ?? "").trim() || "0");
-  return parseProgramSetCount(exercise.sets) <= 1 && (!Number.isFinite(restSeconds) || restSeconds <= 0);
+  const speed = Number(String(exercise.speed ?? "").replace(",", "."));
+  const previousSpeed = Number(String(previousExercise.speed ?? "").replace(",", "."));
+  const targetHr = String(exercise.targetHrPercent ?? "").trim();
+  const looksLikeEasyCooldown =
+    (Number.isFinite(speed) && Number.isFinite(previousSpeed) && speed < previousSpeed) ||
+    /55|60|65|rolig|lav/i.test(targetHr);
+  return (!Number.isFinite(restSeconds) || restSeconds <= 0) && (parseProgramSetCount(exercise.sets) <= 1 || looksLikeEasyCooldown);
 }
 
 function getReflectionEmoji(level: 1 | 2 | 3 | 4 | 5): string {

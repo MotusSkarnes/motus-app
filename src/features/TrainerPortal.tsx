@@ -386,7 +386,13 @@ function isLegacyCardioCooldownRow(rows: ProgramExercise[], index: number): bool
   if (!row || !previousRow || index !== rows.length - 1) return false;
   if (!/^drag\b/i.test(row.exerciseName.trim()) || !/^drag\b/i.test(previousRow.exerciseName.trim())) return false;
   const restSeconds = Number(String(row.restSeconds ?? "").trim() || "0");
-  return parseProgramSetCount(row.sets) <= 1 && (!Number.isFinite(restSeconds) || restSeconds <= 0);
+  const speed = Number(String(row.speed ?? "").replace(",", "."));
+  const previousSpeed = Number(String(previousRow.speed ?? "").replace(",", "."));
+  const targetHr = String(row.targetHrPercent ?? "").trim();
+  const looksLikeEasyCooldown =
+    (Number.isFinite(speed) && Number.isFinite(previousSpeed) && speed < previousSpeed) ||
+    /55|60|65|rolig|lav/i.test(targetHr);
+  return (!Number.isFinite(restSeconds) || restSeconds <= 0) && (parseProgramSetCount(row.sets) <= 1 || looksLikeEasyCooldown);
 }
 
 function cardioProgramExerciseName(rows: ProgramExercise[], index: number): string {
@@ -2449,7 +2455,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                 exercise && typeof exercise === "object"
                   ? (exercise as Partial<ProgramExercise>)
                   : ({} as Partial<ProgramExercise>);
-              const exerciseName = String(safeExercise.exerciseName ?? "Øvelse").trim() || "Øvelse";
+              const exerciseName = cardioProgramExerciseName(safeExercises, index) || String(safeExercise.exerciseName ?? "Øvelse").trim() || "Øvelse";
               const exerciseId = String(safeExercise.exerciseId ?? "").trim();
               const libraryMatch =
                 exercises.find((item) => item.id === exerciseId) ??
@@ -2464,7 +2470,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
               const restSeconds = String(safeExercise.restSeconds ?? "").trim() || "0";
               const notes = String(safeExercise.notes ?? "").trim();
               const prescription = durationMinutes
-                ? `${setCount} ${/^drag\b/i.test(safeExercise.exerciseName.trim()) ? "drag" : "runder"} × ${durationMinutes} min${
+                ? `${setCount} ${/^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder"} × ${durationMinutes} min${
                     speed ? ` · ${speed} km/t` : ""
                   }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause${cardioTargetHrPrescriptionSuffix(safeExercise.targetHrPercent)}`
                 : libraryMatch && isHoldBasedExerciseCategory(libraryMatch.category)
@@ -5305,7 +5311,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                             className="!px-3 !py-3 bg-white"
                           />
                         ) : null}
-                        {programExercisesDraft.map((item, index) => (
+                        {programExercisesDraft.map((item, index) => {
+                          const itemExerciseName = cardioProgramExerciseName(programExercisesDraft, index);
+                          return (
                           <div
                             key={item.id}
                             draggable
@@ -5333,7 +5341,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                           >
                             <ProgramExerciseBlockActions exercises={programExercisesDraft} index={index} onChange={setProgramExercisesDraft} />
                             <div className="flex items-center justify-between gap-3">
-                              <div className="font-medium">{item.exerciseName}</div>
+                              <div className="font-medium">{itemExerciseName}</div>
                               <div className="flex items-center gap-2">
                                 <OutlineButton
                                   onClick={() => moveDraftExerciseByOffset(item.id, -1)}
@@ -5427,7 +5435,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                               );
                             })()}
                           </div>
-                        ))}
+                        )})}
                       </div>
 
                       <GradientButton
@@ -5912,7 +5920,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       className="bg-white"
                     />
                   ) : null}
-                  {programExercisesDraft.map((item, index) => (
+                  {programExercisesDraft.map((item, index) => {
+                    const itemExerciseName = cardioProgramExerciseName(programExercisesDraft, index);
+                    return (
                     <div
                       key={item.id}
                       draggable
@@ -5940,7 +5950,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                     >
                       <ProgramExerciseBlockActions exercises={programExercisesDraft} index={index} onChange={setProgramExercisesDraft} />
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="font-medium">{item.exerciseName}</div>
+                        <div className="font-medium">{itemExerciseName}</div>
                         <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center">
                           <OutlineButton
                             onClick={() => moveDraftExerciseByOffset(item.id, -1)}
@@ -6030,7 +6040,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         );
                       })()}
                     </div>
-                  ))}
+                  )})}
                 </div>
                 <GradientButton
                   onClick={saveTemplateFromProgramsTab}

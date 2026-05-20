@@ -44,7 +44,7 @@ import {
   purgeExpiredPausedWorkouts,
 } from "../app/pausedWorkoutStorage";
 import { printHtmlDocument } from "../app/printHtmlDocument";
-import { buildWorkoutResultGroups } from "../app/programBlocks";
+import { buildWorkoutResultGroups, parseProgramSetCount } from "../app/programBlocks";
 import {
   buildCheckInNotificationCopy,
   resolveCheckInWindow,
@@ -808,6 +808,30 @@ function formatIntervalTimerHrHint(targetHrPercent: string | undefined): string 
   return `${raw} % av makspuls`;
 }
 
+function isMemberIntervalCooldownName(name: string): boolean {
+  const lower = name.trim().toLowerCase();
+  return lower.includes("nedjogg") || lower.includes("nedtrapp") || lower.includes("cooldown");
+}
+
+function isLegacyMemberIntervalCooldownDrag(program: TrainingProgram, index: number): boolean {
+  const exercise = program.exercises[index];
+  const previousExercise = program.exercises[index - 1];
+  if (!exercise || !previousExercise || index !== program.exercises.length - 1) return false;
+  if (!/^drag\b/i.test(exercise.exerciseName.trim()) || !/^drag\b/i.test(previousExercise.exerciseName.trim())) return false;
+  const restSeconds = Number(String(exercise.restSeconds ?? "").trim() || "0");
+  const speed = Number(String(exercise.speed ?? "").replace(",", "."));
+  const previousSpeed = Number(String(previousExercise.speed ?? "").replace(",", "."));
+  const targetHr = String(exercise.targetHrPercent ?? "").trim();
+  const looksLikeEasyCooldown =
+    (Number.isFinite(speed) && Number.isFinite(previousSpeed) && speed < previousSpeed) ||
+    /55|60|65|rolig|lav/i.test(targetHr);
+  return (!Number.isFinite(restSeconds) || restSeconds <= 0) && (parseProgramSetCount(exercise.sets) <= 1 || looksLikeEasyCooldown);
+}
+
+function memberProgramExerciseName(program: TrainingProgram, index: number): string {
+  return isLegacyMemberIntervalCooldownDrag(program, index) ? "Nedjogg" : program.exercises[index]?.exerciseName ?? "";
+}
+
 type IntervalTimerStep = {
   headline: string;
   phaseBadge: string;
@@ -1443,8 +1467,11 @@ export function MemberPortal(props: MemberPortalProps) {
 
       if (workDurationSeconds > 0) {
         const lowerName = exercise.exerciseName.toLowerCase();
+        const isCooldown =
+          isMemberIntervalCooldownName(exercise.exerciseName) ||
+          isLegacyMemberIntervalCooldownDrag(activeIntervalProgram, index);
         let tone: IntervalTimerStep["tone"] =
-          lowerName.includes("oppvarm") ? "warmup" : lowerName.includes("nedjogg") ? "cooldown" : "work";
+          lowerName.includes("oppvarm") ? "warmup" : isCooldown ? "cooldown" : "work";
         const nameImpliesExplicitWorkSegment =
           /\bdrag\b/i.test(exercise.exerciseName) ||
           lowerName.includes("tempo") ||
@@ -1491,7 +1518,10 @@ export function MemberPortal(props: MemberPortalProps) {
       // Eksplisitt "0" = ingen pause (trengs etter siste drag før nedjogg). Tom streng = eldre programmer uten hvilefelt → behold 4×4-fallback.
       const legacy4x4DragPauseSeconds = rawRestStr === "" && isClassic4x4Drag ? 180 : 0;
       const restDurationSeconds = normalizedRestSeconds > 0 ? normalizedRestSeconds : legacy4x4DragPauseSeconds;
-      if (restDurationSeconds > 0 && index < activeIntervalProgram.exercises.length - 1) {
+      const nextIsCooldown =
+        isMemberIntervalCooldownName(activeIntervalProgram.exercises[index + 1]?.exerciseName ?? "") ||
+        isLegacyMemberIntervalCooldownDrag(activeIntervalProgram, index + 1);
+      if (restDurationSeconds > 0 && index < activeIntervalProgram.exercises.length - 1 && !nextIsCooldown) {
         const afterLabel = lastWorkHeadline || exercise.exerciseName.trim() || `Steg ${index + 1}`;
         steps.push({
           headline: "Pause",
@@ -5008,7 +5038,8 @@ export function MemberPortal(props: MemberPortalProps) {
                                   className="bg-slate-50 py-4"
                                 />
                               ) : null}
-                              {program.exercises.map((exercise) => {
+                              {program.exercises.map((exercise, exerciseIndex) => {
+                                const exerciseName = memberProgramExerciseName(program, exerciseIndex);
                                 const lib = exercises.find((e) => e.id === exercise.exerciseId);
                                 const isStretch = Boolean(lib?.category && isHoldBasedExerciseCategory(lib.category));
                                 const blockPeers = exercise.blockId
@@ -5029,7 +5060,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                       {blockPeers.map((peer) => peer.exerciseName).join(" → ")}
                                     </div>
                                   ) : null}
-                                  <div className="text-xs font-medium text-slate-800">{exercise.exerciseName}</div>
+                                  <div className="text-xs font-medium text-slate-800">{exerciseName}</div>
                                   <div className="mt-0.5 text-[11px] text-slate-500">
                                     {exercise.durationMinutes
                                       ? `${exercise.sets} runder × ${exercise.durationMinutes} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s${cardioHrPrescriptionSuffixForMember(exercise)}`
