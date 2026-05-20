@@ -1974,10 +1974,10 @@ async function persistIntervalWorkoutLogInner(log: WorkoutLog, hints: PersistWor
     log.memberId.trim(),
   );
   if (memberId.startsWith("auth-") && sessionEmail.includes("@")) {
-    await promiseWithTimeout(ensureMemberAuthLink(sessionEmail, memberId), 5_000, undefined);
+    await promiseWithTimeout(ensureMemberAuthLink(sessionEmail, memberId), 3_000, undefined);
     memberId = await promiseWithTimeout(
       resolveCanonicalMemberIdForPersistence(log.memberId, hints, ctx.sessionUser),
-      8_000,
+      5_000,
       memberId,
     );
   }
@@ -2051,25 +2051,42 @@ async function raceMemberWorkoutLogPersist(
       if (pending <= 0) finishFailure();
     };
 
-    void invokePersistWorkoutLogEdge(edgeBody, accessToken).then((result) =>
-      result.ok ? onSuccess(result) : onFailure(result),
-    );
+    void invokePersistWorkoutLogEdge(edgeBody, accessToken)
+      .then((result) => (result.ok ? onSuccess(result) : onFailure(result)))
+      .catch((error) =>
+        onFailure({
+          ok: false,
+          message: error instanceof Error ? error.message : "Edge-lagring feilet.",
+        }),
+      );
 
     void promiseWithTimeout(
       persistWorkoutLogDirectForMember(log, memberId, ownerUserId),
       WORKOUT_LOG_DIRECT_TIMEOUT_MS,
       { ok: false, message: "__direct_timeout__" },
-    ).then((result) => (result.ok ? onSuccess(result) : onFailure(result)));
+    )
+      .then((result) => (result.ok ? onSuccess(result) : onFailure(result)))
+      .catch((error) =>
+        onFailure({
+          ok: false,
+          message: error instanceof Error ? error.message : "Direkte lagring feilet.",
+        }),
+      );
 
-    void promiseWithTimeout(persistWorkoutLogViaMemberRpc(log, memberId, ownerUserId), WORKOUT_LOG_RPC_TIMEOUT_MS, null).then(
-      (result) => {
+    void promiseWithTimeout(persistWorkoutLogViaMemberRpc(log, memberId, ownerUserId), WORKOUT_LOG_RPC_TIMEOUT_MS, null)
+      .then((result) => {
         if (result?.ok) {
           onSuccess(result);
           return;
         }
         onFailure(result ?? { ok: false, message: "RPC ikke tilgjengelig." });
-      },
-    );
+      })
+      .catch((error) =>
+        onFailure({
+          ok: false,
+          message: error instanceof Error ? error.message : "RPC-lagring feilet.",
+        }),
+      );
   });
 }
 
@@ -3441,6 +3458,64 @@ export async function createTrainerMemberViaEdgeFunction(
   return { ok: true, member: mapped };
 }
 
+export type IntervalWorkoutPersistJob = {
+  log: WorkoutLog;
+  hints: PersistWorkoutLogHints;
+};
+
+export function prepareIntervalWorkoutLogState(
+  state: AppState,
+  input: LogIntervalWorkoutInput,
+): { nextState: AppState; job: IntervalWorkoutPersistJob | null; errorMessage?: string } {
+  const programId = input.programId.trim();
+  const programTitleHint = String(input.programTitle ?? "").trim();
+  const program =
+    state.programs.find((item) => item.id === programId) ??
+    (programTitleHint
+      ? state.programs.find((item) => item.title.trim() === programTitleHint)
+      : undefined);
+  if (!input.memberId.trim() || !program) {
+    return {
+      nextState: state,
+      job: null,
+      errorMessage: "Fant ikke programmet. Oppdater siden og prøv igjen.",
+    };
+  }
+
+  const memberOwnerUserId = state.members.find((item) => item.id === input.memberId.trim())?.ownerUserId;
+  const persistHints: PersistWorkoutLogHints = {
+    ...buildMemberPersistenceHints(state, input.memberId, {
+      ownerUserId: String(input.ownerUserId ?? program.ownerUserId ?? memberOwnerUserId ?? "").trim() || undefined,
+      programTitle: program.title,
+    }),
+    ...(input.targetEmail?.trim() ? { targetEmail: input.targetEmail.trim().toLowerCase() } : {}),
+  };
+
+  const nextState = localAppRepository.logIntervalWorkout(state, {
+    ...input,
+    programId: program.id,
+    programTitle: program.title,
+  });
+  const latestLog = nextState.logs[0];
+  const createdNewLog = Boolean(latestLog && latestLog.id !== state.logs[0]?.id);
+  if (!createdNewLog || !latestLog) {
+    return {
+      nextState,
+      job: null,
+      errorMessage: "Kunne ikke opprette øktloggen lokalt.",
+    };
+  }
+
+  return { nextState, job: { log: latestLog, hints: persistHints } };
+}
+
+export async function persistIntervalWorkoutLogToCloud(
+  log: WorkoutLog,
+  hints: PersistWorkoutLogHints,
+): Promise<PersistResult> {
+  return persistIntervalWorkoutLog(log, hints);
+}
+
 export const supabaseAppRepository: AppRepository = {
   addMember(state: AppState, input: CreateMemberInput): AppState {
     return localAppRepository.addMember(state, input);
@@ -3637,45 +3712,7 @@ export const supabaseAppRepository: AppRepository = {
     return nextState;
   },
   logIntervalWorkout(state: AppState, input: LogIntervalWorkoutInput): AppState {
-    const programId = input.programId.trim();
-    const programTitleHint = String(input.programTitle ?? "").trim();
-    const program =
-      state.programs.find((item) => item.id === programId) ??
-      (programTitleHint
-        ? state.programs.find((item) => item.title.trim() === programTitleHint)
-        : undefined);
-    if (!input.memberId.trim() || !program) {
-      void Promise.resolve().then(() =>
-        input.onPersisted?.({
-          ok: false,
-          message: "Fant ikke programmet. Oppdater siden og prøv igjen.",
-        }),
-      );
-      return state;
-    }
-    const memberOwnerUserId = state.members.find((item) => item.id === input.memberId.trim())?.ownerUserId;
-    const persistHints: PersistWorkoutLogHints = {
-      ...buildMemberPersistenceHints(state, input.memberId, {
-        ownerUserId: String(input.ownerUserId ?? program.ownerUserId ?? memberOwnerUserId ?? "").trim() || undefined,
-        programTitle: program.title,
-      }),
-      ...(input.targetEmail?.trim() ? { targetEmail: input.targetEmail.trim().toLowerCase() } : {}),
-    };
-    const nextState = localAppRepository.logIntervalWorkout(state, input);
-    const latestLog = nextState.logs[0];
-    if (latestLog) {
-      void persistIntervalWorkoutLog(latestLog, persistHints)
-        .then((result) => input.onPersisted?.(result))
-        .catch((error) => {
-          const message = error instanceof Error ? error.message : "Ukjent feil under lagring av økt.";
-          input.onPersisted?.({ ok: false, message });
-        });
-    } else {
-      void Promise.resolve().then(() =>
-        input.onPersisted?.({ ok: false, message: "Kunne ikke opprette øktloggen lokalt." }),
-      );
-    }
-    return nextState;
+    return prepareIntervalWorkoutLogState(state, input).nextState;
   },
   logCompletedPlanEntry(state: AppState, input: LogCompletedPlanEntryInput): AppState {
     const nextState = localAppRepository.logCompletedPlanEntry(state, input);

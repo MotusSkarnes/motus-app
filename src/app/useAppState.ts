@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
 import {
@@ -43,24 +44,26 @@ import { notifyInspirationItemsChanged, saveInspirationItemsToStorage } from "./
 import { filterDeletedPrograms, registerDeletedProgram, unregisterDeletedProgram } from "./deletedProgramTombstones";
 import { mergeProgramAuthorFields } from "./programAuthor";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
-import { syncMemberLocalCatalogToSupabase } from "../services/supabaseRepository";
 import {
-  fetchExercisesFromSupabase,
   checkMemberAccessBlocked,
+  createTrainerMemberViaEdgeFunction,
+  deleteProgramRemote,
+  fetchExercisesFromSupabase,
   fetchHydratedMemberData,
   fetchHydratedTrainerData,
   fetchLogsFromSupabase,
   fetchMembersFromSupabase,
   fetchMessagesFromSupabase,
   fetchProgramsFromSupabase,
+  persistIntervalWorkoutLogToCloud,
+  prepareIntervalWorkoutLogState,
   registerMessagesPersistedListener,
   reassignMemberOwnerFromSupabase,
-  createTrainerMemberViaEdgeFunction,
   restoreMemberByEmailFromSupabase,
-  type RestoreMemberOptions,
   supabaseAppRepository,
-  deleteProgramRemote,
+  syncMemberLocalCatalogToSupabase,
   type HydratedMemberData,
+  type RestoreMemberOptions,
 } from "../services/supabaseRepository";
 import { isMemberAppAccessBlocked, MEMBER_ARCHIVED_APP_MESSAGE } from "../services/memberAccessRules";
 import {
@@ -1959,7 +1962,47 @@ export function useAppState() {
   }
 
   function logIntervalWorkout(input: LogIntervalWorkoutInput) {
-    setAppState((prev) => repository.logIntervalWorkout(prev, input));
+    const onPersisted = input.onPersisted;
+    let persistJob: ReturnType<typeof prepareIntervalWorkoutLogState>["job"] = null;
+    let prepareError: string | undefined;
+
+    flushSync(() => {
+      setAppState((prev) => {
+        const prepared = isSupabaseConfigured
+          ? prepareIntervalWorkoutLogState(prev, input)
+          : { nextState: repository.logIntervalWorkout(prev, input), job: null as null };
+        persistJob = prepared.job;
+        prepareError = prepared.errorMessage;
+        return prepared.nextState;
+      });
+    });
+
+    const finishPersist = (result: { ok: boolean; message?: string }) => {
+      onPersisted?.(result);
+    };
+
+    if (!isSupabaseConfigured) {
+      finishPersist({ ok: true });
+      if (input.keepCurrentTab !== true) setMemberTab("progress");
+      return;
+    }
+
+    if (!persistJob) {
+      finishPersist({
+        ok: false,
+        message: prepareError ?? "Kunne ikke opprette øktloggen lokalt.",
+      });
+      if (input.keepCurrentTab !== true) setMemberTab("progress");
+      return;
+    }
+
+    void persistIntervalWorkoutLogToCloud(persistJob.log, persistJob.hints)
+      .then((result) => finishPersist(result))
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : "Ukjent feil under lagring av økt.";
+        finishPersist({ ok: false, message });
+      });
+
     if (input.keepCurrentTab !== true) {
       setMemberTab("progress");
     }

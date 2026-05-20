@@ -357,35 +357,41 @@ export function IntervalWorkoutSessionModal({
     if (!program || !memberId.trim() || isSaving) return;
     setIsSaving(true);
     setStatus(null);
-    let settled = false;
-    const failsafeId = window.setTimeout(() => {
-      if (settled) return;
-      settled = true;
+
+    const saveTimeoutMs = 32_000;
+    let finished = false;
+    const finish = (result: { ok: boolean; message?: string }) => {
+      if (finished) return;
+      finished = true;
+      window.clearTimeout(timeoutId);
       setIsSaving(false);
-      setStatus("Lagring tok for lang tid. Oppdater siden (Ctrl+F5) og prøv igjen.");
-    }, 30_000);
+      if (!result.ok) {
+        setStatus(result.message?.trim() || "Kunne ikke lagre økten i skyen. Prøv igjen.");
+        return;
+      }
+      setStatus("Kondisjonsøkten er lagret. PT kan se den i loggen.");
+      onSaved?.();
+      window.setTimeout(() => onClose(), 400);
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      finish({
+        ok: false,
+        message: "Lagring tok for lang tid. Oppdater siden (Ctrl+F5) og prøv igjen.",
+      });
+    }, saveTimeoutMs);
+
     logIntervalWorkout({
       memberId: memberId.trim(),
       programId: program.id,
       programTitle: program.title,
       ownerUserId: program.ownerUserId,
       targetEmail: memberEmail?.trim().toLowerCase(),
+      keepCurrentTab: true,
       results: buildIntervalSessionResults(program, exercises, intervalProgramSteps, stepOverrides),
       note: sessionNote.trim(),
       reflection: buildReflection(),
-      onPersisted: (result) => {
-        if (settled) return;
-        settled = true;
-        window.clearTimeout(failsafeId);
-        setIsSaving(false);
-        if (!result.ok) {
-          setStatus(result.message?.trim() || "Kunne ikke lagre økten i skyen. Prøv igjen.");
-          return;
-        }
-        setStatus("Kondisjonsøkten er lagret. PT kan se den i loggen.");
-        onSaved?.();
-        window.setTimeout(() => onClose(), 400);
-      },
+      onPersisted: finish,
     });
   }
 

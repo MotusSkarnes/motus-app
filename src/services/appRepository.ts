@@ -742,7 +742,13 @@ export function removeGroupWorkoutLogInState(state: AppState, input: RemoveGroup
 
 export function logIntervalWorkoutInState(state: AppState, input: LogIntervalWorkoutInput): AppState {
   const memberId = input.memberId.trim();
-  const program = state.programs.find((item) => item.id === input.programId.trim());
+  const programId = input.programId.trim();
+  const programTitleHint = String(input.programTitle ?? "").trim();
+  const program =
+    state.programs.find((item) => item.id === programId) ??
+    (programTitleHint
+      ? state.programs.find((item) => item.title.trim() === programTitleHint)
+      : undefined);
   if (!memberId || !program) return state;
   const date = formatDateTimeDdMmYyyy(new Date());
   const deduplicatedResults = (input.results ?? []).filter((result, index, list) => {
