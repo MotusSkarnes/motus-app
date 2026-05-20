@@ -39,7 +39,7 @@ import {
   type UpdateWorkoutLogTrainerCommentInput,
   type UpdateWorkoutResultInput,
 } from "./appRepository";
-import { normalizeLegacyIntervalCooldownExerciseNames } from "../app/programBlocks";
+import { buildTrainingProgramDisplayKey, normalizeLegacyIntervalCooldownExerciseNames } from "../app/programBlocks";
 import { isContaminatedDemoMemberProfile } from "../app/memberLocalCatalog";
 import { detectNewMemberFormSubmissions } from "../app/memberFormNotifications";
 import { ensureMemberAuthLink } from "./supabaseAuth";
@@ -1489,11 +1489,11 @@ async function deleteProgram(
   }
 }
 
-async function persistMemberProgramLibraryStatus(programId: string, status: "hidden" | "archived" | null) {
+async function persistMemberProgramLibraryStatus(programIds: string[], status: "hidden" | "archived" | null) {
   if (!supabaseClient) return;
-  const id = programId.trim();
-  if (!id) return;
-  const { error } = await supabaseClient.from("training_programs").update({ member_library_status: status }).eq("id", id);
+  const ids = Array.from(new Set(programIds.map((id) => id.trim()).filter(Boolean)));
+  if (!ids.length) return;
+  const { error } = await supabaseClient.from("training_programs").update({ member_library_status: status }).in("id", ids);
   if (error && isMemberLibraryStatusColumnDbError(error.message)) {
     console.warn("member_library_status column missing; run training_programs_member_library_status.sql:", error.message);
     return;
@@ -2945,7 +2945,14 @@ export const supabaseAppRepository: AppRepository = {
   updateProgramMemberLibraryStatus(state: AppState, programId: string, status: MemberProgramLibraryStatus | undefined): AppState {
     const nextState = localAppRepository.updateProgramMemberLibraryStatus(state, programId, status);
     const dbStatus = status === "hidden" || status === "archived" ? status : null;
-    void persistMemberProgramLibraryStatus(programId, dbStatus);
+    const anchor = state.programs.find((program) => program.id === programId);
+    const matchKey = anchor ? buildTrainingProgramDisplayKey(anchor) : null;
+    const idsToPersist = matchKey
+      ? nextState.programs
+          .filter((program) => buildTrainingProgramDisplayKey(program) === matchKey)
+          .map((program) => program.id)
+      : [programId];
+    void persistMemberProgramLibraryStatus(idsToPersist, dbStatus);
     return nextState;
   },
   deleteProgram(

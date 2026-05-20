@@ -92,6 +92,7 @@ import {
   isLegacyIntervalCooldownDrag,
   normalizeLegacyIntervalCooldownExerciseNames,
   normalizeProgramsLegacyCooldownNames,
+  pickRestrictiveMemberLibraryStatus,
 } from "./programBlocks";
 import { mergeRemoteMessagesWithLocalOptimistic } from "./messageHydrationMerge";
 import type {
@@ -198,7 +199,7 @@ function mergeMemberLibraryStatus(
   remote: MemberProgramLibraryStatus | undefined,
   local: MemberProgramLibraryStatus | undefined,
 ): MemberProgramLibraryStatus | undefined {
-  return remote ?? local;
+  return pickRestrictiveMemberLibraryStatus(local, remote);
 }
 
 function mergeTrainingProgramSnapshots(primary: TrainingProgram, secondary: TrainingProgram): TrainingProgram {
@@ -254,6 +255,15 @@ function mergeMemberProgramsWithLocalEphemeral(
   activeWorkoutProgramId?: string,
 ): TrainingProgram[] {
   const merged = new Map(filterProgramsForMembers(remotePrograms, memberIds).map((program) => [program.id, program]));
+  for (const local of prevPrograms) {
+    if (!memberIds.has(local.memberId.trim())) continue;
+    const remote = merged.get(local.id);
+    if (!remote) continue;
+    merged.set(local.id, {
+      ...remote,
+      memberLibraryStatus: pickRestrictiveMemberLibraryStatus(local.memberLibraryStatus, remote.memberLibraryStatus),
+    });
+  }
   for (const local of prevPrograms) {
     if (!memberIds.has(local.memberId.trim())) continue;
     const keepEphemeral = local.ephemeral === true;

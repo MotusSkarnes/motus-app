@@ -44,7 +44,12 @@ import {
   purgeExpiredPausedWorkouts,
 } from "../app/pausedWorkoutStorage";
 import { printHtmlDocument } from "../app/printHtmlDocument";
-import { buildWorkoutResultGroups, isLegacyIntervalCooldownDrag } from "../app/programBlocks";
+import {
+  buildTrainingProgramDisplayKey,
+  buildWorkoutResultGroups,
+  isLegacyIntervalCooldownDrag,
+  mergeTrainingProgramDuplicates,
+} from "../app/programBlocks";
 import {
   buildCheckInNotificationCopy,
   resolveCheckInWindow,
@@ -277,16 +282,6 @@ const DEFAULT_HOME_VISIBILITY = {
 } as const;
 type HomeSectionKey = keyof typeof DEFAULT_HOME_VISIBILITY;
 
-function buildTrainingProgramDisplayKey(program: TrainingProgram): string {
-  const exerciseFingerprint = program.exercises
-    .map(
-      (item: ProgramExercise) =>
-        `${item.exerciseName}|${item.sets}|${item.reps}|${item.weight}|${item.holdSeconds ?? ""}|${item.durationMinutes ?? ""}|${item.speed ?? ""}|${item.incline ?? ""}|${item.restSeconds}|${item.targetHrPercent ?? ""}|${item.notes}`,
-    )
-    .join("||");
-  return `${program.title.trim()}::${program.goal.trim()}::${program.notes.trim()}::${exerciseFingerprint}`;
-}
-
 function dedupeTrainingPrograms(programs: TrainingProgram[]): TrainingProgram[] {
   const ephemeralPrograms: TrainingProgram[] = [];
   const uniqueByFingerprint = new Map<string, TrainingProgram>();
@@ -297,9 +292,11 @@ function dedupeTrainingPrograms(programs: TrainingProgram[]): TrainingProgram[] 
     }
     const fingerprint = buildTrainingProgramDisplayKey(program);
     const existing = uniqueByFingerprint.get(fingerprint);
-    if (!existing || program.createdAt.localeCompare(existing.createdAt) > 0) {
+    if (!existing) {
       uniqueByFingerprint.set(fingerprint, program);
+      return;
     }
+    uniqueByFingerprint.set(fingerprint, mergeTrainingProgramDuplicates(existing, program));
   });
   return [...ephemeralPrograms, ...Array.from(uniqueByFingerprint.values())].sort((a, b) =>
     b.createdAt.localeCompare(a.createdAt),

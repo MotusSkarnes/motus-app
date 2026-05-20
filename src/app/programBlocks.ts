@@ -1,5 +1,11 @@
 import { isHoldBasedExerciseCategory } from "./exerciseCategories";
-import type { Exercise, ProgramExercise, TrainingProgram, WorkoutExerciseResult } from "./types";
+import type {
+  Exercise,
+  MemberProgramLibraryStatus,
+  ProgramExercise,
+  TrainingProgram,
+  WorkoutExerciseResult,
+} from "./types";
 
 export type ExerciseBlockType = "superset" | "triset" | "circuit";
 
@@ -34,6 +40,35 @@ export type WorkoutResultGroup = {
     }>;
   }>;
 };
+
+export function buildTrainingProgramDisplayKey(program: Pick<TrainingProgram, "title" | "goal" | "notes" | "exercises">): string {
+  const exerciseFingerprint = program.exercises
+    .map(
+      (item) =>
+        `${item.exerciseName}|${item.sets}|${item.reps}|${item.weight}|${item.holdSeconds ?? ""}|${item.durationMinutes ?? ""}|${item.speed ?? ""}|${item.incline ?? ""}|${item.restSeconds}|${item.targetHrPercent ?? ""}|${item.notes}`,
+    )
+    .join("||");
+  return `${program.title.trim()}::${program.goal.trim()}::${program.notes.trim()}::${exerciseFingerprint}`;
+}
+
+/** Ved duplikat-rader / hydrering: behold skjul/arkiv hvis én kopi har det. */
+export function pickRestrictiveMemberLibraryStatus(
+  a: MemberProgramLibraryStatus | undefined,
+  b: MemberProgramLibraryStatus | undefined,
+): MemberProgramLibraryStatus | undefined {
+  if (a === "archived" || b === "archived") return "archived";
+  if (a === "hidden" || b === "hidden") return "hidden";
+  return undefined;
+}
+
+export function mergeTrainingProgramDuplicates(existing: TrainingProgram, incoming: TrainingProgram): TrainingProgram {
+  const newer = existing.createdAt.localeCompare(incoming.createdAt) >= 0 ? existing : incoming;
+  const older = newer === existing ? incoming : existing;
+  return {
+    ...newer,
+    memberLibraryStatus: pickRestrictiveMemberLibraryStatus(newer.memberLibraryStatus, older.memberLibraryStatus),
+  };
+}
 
 export function parseProgramSetCount(value: string | undefined): number {
   const parsed = Number(String(value ?? "").trim());

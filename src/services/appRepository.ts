@@ -1,5 +1,6 @@
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import {
+  buildTrainingProgramDisplayKey,
   expandProgramExercisesToWorkoutResults,
   normalizeLegacyIntervalCooldownExerciseNames,
   workoutResultGroupId,
@@ -349,16 +350,20 @@ export function updateProgramMemberLibraryStatusInState(
   programId: string,
   status: MemberProgramLibraryStatus | undefined,
 ): AppState {
+  const anchor = state.programs.find((program) => program.id === programId);
+  const matchKey = anchor ? buildTrainingProgramDisplayKey(anchor) : null;
   return {
     ...state,
-    programs: state.programs.map((program) =>
-      program.id === programId
-        ? {
-            ...program,
-            ...(status ? { memberLibraryStatus: status } : { memberLibraryStatus: undefined }),
-          }
-        : program,
-    ),
+    programs: state.programs.map((program) => {
+      const isTarget =
+        program.id === programId ||
+        (matchKey !== null && buildTrainingProgramDisplayKey(program) === matchKey);
+      if (!isTarget) return program;
+      return {
+        ...program,
+        ...(status ? { memberLibraryStatus: status } : { memberLibraryStatus: undefined }),
+      };
+    }),
   };
 }
 

@@ -4,11 +4,13 @@ import {
   expandProgramExercisesToWorkoutResults,
   isLegacyIntervalCooldownDrag,
   linkProgramExercisesAsBlock,
+  mergeTrainingProgramDuplicates,
   normalizeLegacyIntervalCooldownExerciseNames,
+  pickRestrictiveMemberLibraryStatus,
   splitProgramExercisesIntoSegments,
   workoutResultGroupId,
 } from "./programBlocks";
-import type { Exercise, ProgramExercise } from "./types";
+import type { Exercise, ProgramExercise, TrainingProgram } from "./types";
 
 const bank: Exercise[] = [
   {
@@ -131,6 +133,26 @@ describe("programBlocks", () => {
     expect(isLegacyIntervalCooldownDrag(exercises, 2)).toBe(true);
     const normalized = normalizeLegacyIntervalCooldownExerciseNames(exercises);
     expect(normalized[2]?.exerciseName).toBe("Nedjogg");
+  });
+
+  it("keeps hidden status when deduping duplicate program rows", () => {
+    const base = {
+      title: "Intervall",
+      goal: "",
+      notes: "",
+      exercises: [line("a", "Drag 1", "1")],
+    };
+    const visible: TrainingProgram = { id: "p-new", memberId: "m1", createdAt: "02.01.2026", ...base };
+    const hidden: TrainingProgram = {
+      id: "p-old",
+      memberId: "m1",
+      createdAt: "01.01.2026",
+      memberLibraryStatus: "hidden",
+      ...base,
+    };
+    const merged = mergeTrainingProgramDuplicates(hidden, visible);
+    expect(merged.memberLibraryStatus).toBe("hidden");
+    expect(pickRestrictiveMemberLibraryStatus(undefined, "hidden")).toBe("hidden");
   });
 
   it("does not treat last work drag as nedjogg when it still has rest after", () => {
