@@ -355,6 +355,10 @@ export function IntervalWorkoutSessionModal({
 
   function handleSave() {
     if (!program || !memberId.trim() || isSaving) return;
+    if (typeof logIntervalWorkout !== "function") {
+      setStatus("Lagring er ikke tilkoblet. Oppdater siden (Ctrl+F5) og prøv igjen.");
+      return;
+    }
     setIsSaving(true);
     setStatus(null);
 

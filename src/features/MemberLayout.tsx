@@ -353,6 +353,7 @@ export function MemberLayout({
     updateWorkoutExerciseNote,
     finishWorkoutMode,
     logGroupWorkout,
+    logIntervalWorkout,
     logCompletedPlanEntry,
     removeGroupWorkoutLog,
     removeCompletedPlanEntryLog,
