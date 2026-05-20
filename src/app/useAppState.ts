@@ -128,6 +128,8 @@ function mergeTwoMemberSnapshots(primary: Member, secondary: Member): Member {
   merged.invitedAt = sInv || pInv || "";
   merged.personalGoals =
     pickBestPersonalGoals([primary.personalGoals, secondary.personalGoals, merged.personalGoals]) || merged.personalGoals;
+  // Aktiv i sky skal ikke overskrives av inaktiv lokal klient-tilstand etter gjenoppretting.
+  merged.isActive = primary.isActive !== false || secondary.isActive !== false;
   return merged;
 }
 
@@ -1914,11 +1916,33 @@ export function useAppState() {
       data: { session },
     } = supabaseClient ? await supabaseClient.auth.getSession() : { data: { session: null } };
     const sessionOwnerUserId = String(session?.user?.id ?? "").trim();
+    const normalizedEmail = email.trim().toLowerCase();
     const result = await restoreMemberByEmailFromSupabase(email, {
       ownerUserId: options?.ownerUserId ?? sessionOwnerUserId,
       claimForTrainer: options?.claimForTrainer ?? true,
     });
     if (!result.ok) return result;
+
+    setAppState((prev) => {
+      const members = prev.members.map((member) => {
+        const sameEmail = member.email.trim().toLowerCase() === normalizedEmail;
+        if (!sameEmail) return member;
+        return { ...member, isActive: true };
+      });
+      const restored =
+        members.find(
+          (member) => member.email.trim().toLowerCase() === normalizedEmail && member.isActive !== false,
+        ) ?? null;
+      return {
+        ...prev,
+        members,
+        ...(restored
+          ? {
+              selectedMemberId: restored.id,
+            }
+          : {}),
+      };
+    });
 
     const ownerUserId = String(options?.ownerUserId ?? sessionOwnerUserId).trim();
     if (ownerUserId) await refreshTrainerSessionData(ownerUserId);

@@ -80,6 +80,26 @@ Deno.serve(async (req) => {
     return jsonResponse(404, { error: "Ingen klient funnet med denne e-posten eller id" });
   }
 
+  if (email && email.includes("@")) {
+    const { data: listData, error: listError } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (!listError) {
+      const authUser = (listData?.users ?? []).find((user) => normalizeEmail(user.email) === email);
+      const linkedMemberId = String(
+        authUser?.app_metadata?.member_id ?? authUser?.user_metadata?.member_id ?? "",
+      ).trim();
+      if (linkedMemberId && !matchingRows.some((row) => row.id === linkedMemberId)) {
+        const { data: linkedRow, error: linkedError } = await adminClient
+          .from("members")
+          .select("id, email, is_active")
+          .eq("id", linkedMemberId)
+          .maybeSingle();
+        if (!linkedError && linkedRow) {
+          matchingRows.push(linkedRow as { id: string; email: string | null; is_active: boolean | null });
+        }
+      }
+    }
+  }
+
   const ids = Array.from(new Set(matchingRows.map((row) => String(row.id)).filter(Boolean)));
   const { error } = await adminClient
     .from("members")

@@ -1281,30 +1281,13 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
     existingOwnerId: member.ownerUserId,
   });
 
-  // Guard against accidental reactivation from stale clients:
-  // if this member (or same email) was previously deactivated, keep it inactive.
-  let shouldStayInactive = !member.isActive;
-  if (!shouldStayInactive) {
-    const { data: existingById } = await supabaseClient
-      .from("members")
-      .select("is_active")
-      .eq("id", member.id)
-      .maybeSingle();
-    if (existingById?.is_active === false) {
-      shouldStayInactive = true;
-    }
-  }
-  // Keep explicit inactive status for the same row, but do not
-  // deactivate a different active member row just because an older
-  // row with the same email was previously deactivated.
-
   const { error } = await supabaseClient.from("members").upsert(
     {
       id: member.id,
       owner_user_id: ownerForUpsert,
       name: member.name,
       email: normalizedEmail,
-      is_active: shouldStayInactive ? false : member.isActive,
+      is_active: member.isActive !== false,
       invited_at: member.invitedAt || null,
       phone: member.phone,
       birth_date: member.birthDate,

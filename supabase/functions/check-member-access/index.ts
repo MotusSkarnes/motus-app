@@ -74,7 +74,26 @@ Deno.serve(async (req) => {
   }
 
   const matchingRows = (rows ?? []).filter((row) => normalizeEmail((row as { email?: string }).email) === requesterEmail);
-  if (matchingRows.length > 0 && !matchingRows.some((row) => (row as { is_active?: boolean }).is_active !== false)) {
+
+  const memberIdFromJwt = String(
+    userData.user.app_metadata?.member_id ?? userData.user.user_metadata?.member_id ?? "",
+  ).trim();
+  const rosterRows: Array<{ id?: string; email?: string; is_active?: boolean | null }> = [...matchingRows];
+  if (memberIdFromJwt) {
+    const { data: byIdRow, error: byIdError } = await adminClient
+      .from("members")
+      .select("id, email, is_active")
+      .eq("id", memberIdFromJwt)
+      .maybeSingle();
+    if (byIdError) {
+      return jsonResponse(500, { error: byIdError.message });
+    }
+    if (byIdRow && !rosterRows.some((row) => String(row.id ?? "") === memberIdFromJwt)) {
+      rosterRows.push(byIdRow as { id?: string; email?: string; is_active?: boolean | null });
+    }
+  }
+
+  if (rosterRows.length > 0 && !rosterRows.some((row) => row.is_active !== false)) {
     return jsonResponse(403, {
       status: "archived",
       error: "member_archived",
@@ -83,7 +102,7 @@ Deno.serve(async (req) => {
   }
 
   return jsonResponse(200, {
-    status: matchingRows.some((row) => (row as { is_active?: boolean }).is_active !== false) ? "active" : "no_roster",
-    rosterCount: matchingRows.length,
+    status: rosterRows.some((row) => row.is_active !== false) ? "active" : "no_roster",
+    rosterCount: rosterRows.length,
   });
 });
