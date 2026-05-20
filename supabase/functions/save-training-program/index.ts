@@ -402,85 +402,76 @@ Deno.serve(async (req) => {
     if (primaryError) return jsonResponse(500, { error: primaryError.message });
     writtenIds.push(programId);
 
-    const siblingMemberIds = targetMemberIds.filter(
-      (targetMemberId) => targetMemberId && targetMemberId !== canonicalTargetMemberId,
-    );
-    try {
-    const siblingIds = await Promise.all(
-      siblingMemberIds.map(async (targetMemberId) => {
-        const { data: existingRows, error: lookupError } = await adminClient
-          .from("training_programs")
-          .select("id")
-          .eq("owner_user_id", programOwnerUserId)
-          .eq("member_id", targetMemberId)
-          .eq("title", title)
-          .order("created_at", { ascending: false })
-          .limit(1);
-        if (lookupError) throw new Error(lookupError.message);
+    if (role !== "trainer") {
+      const siblingMemberIds = targetMemberIds.filter(
+        (targetMemberId) => targetMemberId && targetMemberId !== canonicalTargetMemberId,
+      );
+      try {
+        const siblingIds = await Promise.all(
+          siblingMemberIds.map(async (targetMemberId) => {
+            const { data: existingRows, error: lookupError } = await adminClient
+              .from("training_programs")
+              .select("id")
+              .eq("owner_user_id", programOwnerUserId)
+              .eq("member_id", targetMemberId)
+              .eq("title", title)
+              .order("created_at", { ascending: false })
+              .limit(1);
+            if (lookupError) throw new Error(lookupError.message);
 
-        const existingId = String((existingRows?.[0] as { id?: string } | undefined)?.id ?? "").trim();
-        const rowId = existingId || crypto.randomUUID();
-        const { error: writeError } = existingId
-          ? await upsertTrainingProgramWithAuthorFallback(adminClient, {
-              id: rowId,
-              member_id: targetMemberId,
-              owner_user_id: programOwnerUserId,
-              title,
-              goal,
-              notes,
-              exercises,
-              created_at: timestamp,
-              program_created_by: authorColumns.program_created_by,
-              program_created_by_name: authorColumns.program_created_by_name,
-            })
-          : await insertTrainingProgramWithAuthorFallback(adminClient, {
-              id: rowId,
-              member_id: targetMemberId,
-              owner_user_id: programOwnerUserId,
-              title,
-              goal,
-              notes,
-              exercises,
-              created_at: timestamp,
-              program_created_by: authorColumns.program_created_by,
-              program_created_by_name: authorColumns.program_created_by_name,
-            });
-        if (writeError) throw new Error(writeError.message);
-        return rowId;
-      }),
-    );
-    writtenIds.push(...siblingIds);
-    } catch (siblingError) {
-      const message = siblingError instanceof Error ? siblingError.message : "Could not sync program to related profiles";
-      return jsonResponse(500, { error: message });
+            const existingId = String((existingRows?.[0] as { id?: string } | undefined)?.id ?? "").trim();
+            const rowId = existingId || crypto.randomUUID();
+            const { error: writeError } = existingId
+              ? await upsertTrainingProgramWithAuthorFallback(adminClient, {
+                  id: rowId,
+                  member_id: targetMemberId,
+                  owner_user_id: programOwnerUserId,
+                  title,
+                  goal,
+                  notes,
+                  exercises,
+                  created_at: timestamp,
+                  program_created_by: authorColumns.program_created_by,
+                  program_created_by_name: authorColumns.program_created_by_name,
+                })
+              : await insertTrainingProgramWithAuthorFallback(adminClient, {
+                  id: rowId,
+                  member_id: targetMemberId,
+                  owner_user_id: programOwnerUserId,
+                  title,
+                  goal,
+                  notes,
+                  exercises,
+                  created_at: timestamp,
+                  program_created_by: authorColumns.program_created_by,
+                  program_created_by_name: authorColumns.program_created_by_name,
+                });
+            if (writeError) throw new Error(writeError.message);
+            return rowId;
+          }),
+        );
+        writtenIds.push(...siblingIds);
+      } catch (siblingError) {
+        const message = siblingError instanceof Error ? siblingError.message : "Could not sync program to related profiles";
+        return jsonResponse(500, { error: message });
+      }
     }
   } else if (role === "trainer") {
-    try {
-    const insertedIds = await Promise.all(
-      targetMemberIds.map(async (targetMemberId) => {
-        if (!targetMemberId) return "";
-        const nextId = crypto.randomUUID();
-        const { error } = await insertTrainingProgramWithAuthorFallback(adminClient, {
-          id: nextId,
-          member_id: targetMemberId,
-          owner_user_id: programOwnerUserId,
-          title,
-          goal,
-          notes,
-          exercises,
-          created_at: timestamp,
-          program_created_by: authorColumns.program_created_by,
-          program_created_by_name: authorColumns.program_created_by_name,
-        });
-        if (error) throw new Error(error.message);
-        return nextId;
-      }),
-    );
-    writtenIds.push(...insertedIds.filter(Boolean));
-    } catch (insertError) {
-      const message = insertError instanceof Error ? insertError.message : "Could not save program";
-      return jsonResponse(500, { error: message });
-    }
+    const nextId = crypto.randomUUID();
+    const { error } = await insertTrainingProgramWithAuthorFallback(adminClient, {
+      id: nextId,
+      member_id: canonicalTargetMemberId,
+      owner_user_id: programOwnerUserId,
+      title,
+      goal,
+      notes,
+      exercises,
+      created_at: timestamp,
+      program_created_by: authorColumns.program_created_by,
+      program_created_by_name: authorColumns.program_created_by_name,
+    });
+    if (error) return jsonResponse(500, { error: error.message });
+    writtenIds.push(nextId);
   } else {
     const inputFingerprint = buildProgramFingerprint({ title, goal, notes, exercises });
     for (const targetMemberId of targetMemberIds) {

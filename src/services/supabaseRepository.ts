@@ -610,6 +610,49 @@ async function persistMessage(
   return persisted;
 }
 
+async function persistProgramDirectTrainer(
+  input: SaveProgramInput,
+  memberId: string,
+  ownerUserId: string,
+  normalizedProgramId: string,
+): Promise<PersistResult> {
+  if (!supabaseClient || !ownerUserId) {
+    return { ok: false, message: "Kunne ikke bekrefte innlogget trener." };
+  }
+  const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  const programId = isUuid(normalizedProgramId) ? normalizedProgramId : crypto.randomUUID();
+  const timestamp = new Date().toISOString();
+  const authorDb =
+    input.programCreatedBy === "member" || input.programCreatedBy === "trainer"
+      ? {
+          program_created_by: input.programCreatedBy,
+          program_created_by_name: String(input.programCreatedByName ?? "").trim(),
+        }
+      : {
+          program_created_by: "trainer" as const,
+          program_created_by_name: String(input.programCreatedByName ?? "").trim() || "Trener",
+        };
+  const rowBase = {
+    id: programId,
+    member_id: memberId,
+    owner_user_id: ownerUserId,
+    title: input.title,
+    goal: input.goal,
+    notes: input.notes,
+    exercises: input.exercises,
+    created_at: timestamp,
+  };
+  let { error } = await supabaseClient.from("training_programs").upsert({ ...rowBase, ...authorDb }, { onConflict: "id" });
+  if (error && isTrainingProgramAuthorColumnDbError(error.message)) {
+    ({ error } = await supabaseClient.from("training_programs").upsert(rowBase, { onConflict: "id" }));
+  }
+  if (error) {
+    console.warn("trainer direct program upsert failed:", error.message);
+    return { ok: false, message: error.message };
+  }
+  return { ok: true, ids: [programId] };
+}
+
 async function persistProgram(
   rawInput: SaveProgramInput,
   hints?: {
@@ -618,6 +661,8 @@ async function persistProgram(
     customerType?: string;
     membershipType?: string;
     fallbackOwnerUserId?: string;
+    /** PT-lagring: én rad direkte i Postgres (raskere enn edge function + søsken-synk). */
+    trainerSave?: boolean;
   },
 ) : Promise<PersistResult> {
   if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
@@ -640,6 +685,13 @@ async function persistProgram(
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raw);
     return isUuid ? raw : "";
   })();
+
+  if (hints?.trainerSave && memberId) {
+    const direct = await persistProgramDirectTrainer(input, memberId, sessionUserId ?? "", normalizedProgramId);
+    if (direct.ok) return direct;
+    console.warn("trainer direct program save failed, falling back to edge function:", direct.message);
+  }
+
   const functionResult = await supabaseClient.functions.invoke("save-training-program", {
     body: {
       id: normalizedProgramId,
@@ -2928,6 +2980,7 @@ export const supabaseAppRepository: AppRepository = {
       customerType: String(anchorMember?.customerType ?? "").trim(),
       membershipType: String(anchorMember?.membershipType ?? "").trim(),
       fallbackOwnerUserId: String(state.currentUser?.id ?? "").trim(),
+      trainerSave: state.currentUser?.role === "trainer",
     };
     const nextState = localAppRepository.saveProgram(state, input);
     void (async () => {
