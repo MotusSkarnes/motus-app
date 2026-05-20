@@ -1,3 +1,4 @@
+import { Check } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MOTUS } from "../app/data";
 import { useDeadlineIntervalTimer } from "../app/useDeadlineIntervalTimer";
@@ -362,7 +363,7 @@ export function IntervalWorkoutSessionModal({
       saveSettled = true;
       setIsSaving(false);
       setStatus("Lagring tok for lang tid. Sjekk nettverk og prøv igjen.");
-    }, 32_000);
+    }, 18_000);
     logIntervalWorkout({
       memberId: memberId.trim(),
       programId: program.id,
@@ -402,6 +403,12 @@ export function IntervalWorkoutSessionModal({
               <div className="text-xs uppercase tracking-wide text-slate-400">Intervallvindu</div>
               <div className="text-xl font-semibold text-slate-900">{program.title}</div>
               <div className="mt-1 text-xs text-slate-500">{program.goal || "Nedtelling per intervallsteg"}</div>
+              {isRunning ? (
+                <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
+                  <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  {isPaused ? "Økt startet · pause" : "Økt startet · nedtelling pågår"}
+                </div>
+              ) : null}
             </div>
             <OutlineButton onClick={() => { resetTimer(); onClose(); }}>Lukk</OutlineButton>
           </div>
@@ -602,9 +609,24 @@ export function IntervalWorkoutSessionModal({
             </div>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-              <GradientButton onClick={handleStart} disabled={!intervalProgramSteps.length} className="w-full">
-                Start økt
-              </GradientButton>
+              {isRunning ? (
+                <OutlineButton
+                  type="button"
+                  disabled
+                  aria-pressed="true"
+                  aria-label="Økten er startet"
+                  className="w-full !cursor-default !border-emerald-400 !bg-emerald-50 !text-emerald-900 !opacity-100"
+                >
+                  <span className="inline-flex items-center justify-center gap-1.5">
+                    <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
+                    <span>Økt startet</span>
+                  </span>
+                </OutlineButton>
+              ) : (
+                <GradientButton onClick={handleStart} disabled={!intervalProgramSteps.length} className="w-full">
+                  Start økt
+                </GradientButton>
+              )}
               <OutlineButton onClick={() => setIsPaused((previous) => !previous)} disabled={!isRunning} className="w-full">
                 {isPaused ? "Fortsett" : "Pause"}
               </OutlineButton>

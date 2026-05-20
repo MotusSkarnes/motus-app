@@ -255,6 +255,47 @@ create policy "workout_logs_delete_own"
   for delete to authenticated
   using (owner_user_id = auth.uid());
 
+-- Medlem kan lagre øktlogg (intervalløkt) med PT som owner_user_id — se også workout_logs_member_insert_rls.sql
+drop policy if exists "workout_logs_insert_member" on public.workout_logs;
+create policy "workout_logs_insert_member"
+  on public.workout_logs for insert to authenticated
+  with check (
+    exists (
+      select 1 from public.members m
+      where m.id = member_id
+        and (
+          lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+          or m.id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+          or m.id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+        )
+    )
+  );
+drop policy if exists "workout_logs_update_member" on public.workout_logs;
+create policy "workout_logs_update_member"
+  on public.workout_logs for update to authenticated
+  using (
+    exists (
+      select 1 from public.members m
+      where m.id = member_id
+        and (
+          lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+          or m.id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+          or m.id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+        )
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.members m
+      where m.id = member_id
+        and (
+          lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+          or m.id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+          or m.id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+        )
+    )
+  );
+
 -- Periodeplaner (medlem leser via RLS + hydrate-member-data)
 create table if not exists public.member_period_plans (
   member_id text not null,
