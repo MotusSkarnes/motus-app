@@ -174,9 +174,16 @@ async function resolveCanonicalMemberIdForPersistence(
   if (!trimmed || !supabaseClient) return trimmed;
 
   const {
-    data: { user },
-  } = await supabaseClient.auth.getUser();
+    data: { session },
+  } = await supabaseClient.auth.getSession();
+  const user = session?.user;
   const authUserId = String(user?.id ?? "").trim();
+  if (
+    !trimmed.startsWith("auth-") &&
+    (!authUserId || (trimmed !== authUserId && trimmed !== `auth-${authUserId}`))
+  ) {
+    return trimmed;
+  }
   const jwtMemberId = String(user?.app_metadata?.member_id ?? user?.user_metadata?.member_id ?? "").trim();
   const isSyntheticId =
     trimmed.startsWith("auth-") || (authUserId && (trimmed === authUserId || trimmed === `auth-${authUserId}`));
@@ -298,6 +305,7 @@ export function parsePeriodSchedulePlan(value: unknown): PeriodSchedulePlan | nu
     weeklyPlans,
     periodPlanAddedBy,
     memberPeriodPlanStatus,
+    trainerSavedAtIso: String(o.trainerSavedAtIso ?? "").trim() || undefined,
   };
 }
 
@@ -338,6 +346,18 @@ export async function upsertMemberPeriodPlansForTrainer(memberIds: string[], pla
   const { error } = await supabaseClient.from("member_period_plans").upsert(rows, { onConflict: "member_id,plan_id" });
   if (error) {
     console.warn("Supabase member_period_plans upsert failed:", error.message);
+    return;
+  }
+  void notifyMemberPeriodPlanPush(trimmedIds, plan);
+}
+
+async function notifyMemberPeriodPlanPush(memberIds: string[], plan: PeriodSchedulePlan): Promise<void> {
+  if (!supabaseClient) return;
+  const title = plan.title.trim() || "Periodeplan";
+  for (const memberId of memberIds) {
+    void supabaseClient.functions.invoke("send-period-plan-push", {
+      body: { memberId, planTitle: title },
+    });
   }
 }
 
@@ -603,11 +623,8 @@ async function persistProgram(
   const {
     data: { session },
   } = await supabaseClient.auth.getSession();
-  const sessionEmail = session?.user?.email?.trim().toLowerCase() ?? "";
-  if (sessionEmail.includes("@")) {
-    await ensureMemberAuthLink(sessionEmail, input.memberId);
-  }
-  const sessionUserId = await getOwnerUserId(hints?.fallbackOwnerUserId);
+  const sessionUserId =
+    String(session?.user?.id ?? "").trim() || (await getOwnerUserId(hints?.fallbackOwnerUserId));
   const memberId = await resolveCanonicalMemberIdForPersistence(input.memberId.trim(), {
     targetEmail: hints?.targetEmail,
   });
@@ -766,7 +783,8 @@ async function persistProgram(
       .eq("owner_user_id", ownerUserId)
       .eq("member_id", targetMemberId)
       .eq("title", input.title)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(8);
     if (lookupError) {
       console.warn("save-training-program fallback lookup failed:", lookupError.message);
       return { ok: false, message: lookupError.message };

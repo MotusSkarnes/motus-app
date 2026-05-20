@@ -259,42 +259,6 @@ async function resolveProgramOwnerUserId(
   return requesterUserId;
 }
 
-async function syncAuthMemberLink(
-  adminClient: ReturnType<typeof createClient>,
-  email: string,
-  memberId: string,
-) {
-  if (!email || !email.includes("@") || !memberId) return;
-  const { data: listData, error: listError } = await adminClient.auth.admin.listUsers({
-    page: 1,
-    perPage: 1000,
-  });
-  if (listError) {
-    console.warn("save-training-program: auth user lookup failed:", listError.message);
-    return;
-  }
-
-  const users = listData?.users ?? [];
-  const targetUsers = users.filter((user) => normalizeEmail(user.email) === email);
-  for (const user of targetUsers) {
-    const appMetadata =
-      user.app_metadata && typeof user.app_metadata === "object"
-        ? (user.app_metadata as Record<string, unknown>)
-        : {};
-    const userMetadata =
-      user.user_metadata && typeof user.user_metadata === "object"
-        ? (user.user_metadata as Record<string, unknown>)
-        : {};
-    const { error } = await adminClient.auth.admin.updateUserById(user.id, {
-      app_metadata: { ...appMetadata, role: "member", member_id: memberId },
-      user_metadata: { ...userMetadata, role: "member", member_id: memberId },
-    });
-    if (error) {
-      console.warn("save-training-program: auth member link update failed:", error.message);
-    }
-  }
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -385,7 +349,7 @@ Deno.serve(async (req) => {
     return jsonResponse(200, { ok: true, ids: [id], targetMemberIds: [memberId] });
   }
 
-  const { ids: targetMemberIds, email } = await resolveRelatedMemberIds(adminClient, memberId, {
+  const { ids: targetMemberIds } = await resolveRelatedMemberIds(adminClient, memberId, {
     targetEmail,
     targetName,
     customerType,
@@ -494,7 +458,8 @@ Deno.serve(async (req) => {
         .eq("owner_user_id", programOwnerUserId)
         .eq("member_id", targetMemberId)
         .eq("title", title)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(8);
       if (lookupError) return jsonResponse(500, { error: lookupError.message });
 
       const matchingExisting = (existingRows ?? []).find((row) => buildProgramFingerprint(row as Record<string, unknown>) === inputFingerprint);
@@ -535,8 +500,6 @@ Deno.serve(async (req) => {
       writtenIds.push(nextId);
     }
   }
-
-  await syncAuthMemberLink(adminClient, email, canonicalTargetMemberId);
 
   return jsonResponse(200, {
     ok: true,

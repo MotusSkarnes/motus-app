@@ -700,6 +700,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   });
   const [editingProgramId, setEditingProgramId] = useState<string | null>(null);
   const [programSaveStatus, setProgramSaveStatus] = useState<string | null>(null);
+  const [isSavingProgram, setIsSavingProgram] = useState(false);
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [newMemberPhone, setNewMemberPhone] = useState("");
@@ -2226,7 +2227,11 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       return false;
     }
     if (!selectedMemberId || selectedMemberId === "__template__") return false;
+    if (isSavingProgram) return false;
     const trainerAuthor = pickFirstName(trainerAccountName) || pickFirstName(MOTUS.name) || "Trener";
+    const selectedMemberName = members.find((member) => member.id === selectedMemberId)?.name ?? "kunden";
+    setIsSavingProgram(true);
+    setProgramSaveStatus("Lagrer program …");
     saveProgramForMember({
       id: input.id,
       title: input.title,
@@ -2236,9 +2241,16 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       exercises: input.id ? input.exercises : input.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
       programCreatedBy: "trainer",
       programCreatedByName: trainerAuthor,
+      onPersisted: (result) => {
+        setIsSavingProgram(false);
+        if (result.ok) {
+          setProgramSaveStatus(`Program lagret på ${selectedMemberName}.`);
+          resetProgramBuilder();
+          return;
+        }
+        setProgramSaveStatus(result.message?.trim() || "Kunne ikke lagre program til sky. Prøv igjen.");
+      },
     });
-    const selectedMemberName = members.find((member) => member.id === selectedMemberId)?.name ?? "kunden";
-    setProgramSaveStatus(`Program lagret på ${selectedMemberName}.`);
     return true;
   }
 
@@ -5425,21 +5437,18 @@ function programAuthorLabel(program: TrainingProgram): string | null {
 
                       <GradientButton
                         onClick={() => {
-                          const didSave = saveProgramToSelectedMemberProfiles({
+                          saveProgramToSelectedMemberProfiles({
                             id: editingProgramId ?? undefined,
                             title: programTitle,
                             goal: programGoal,
                             notes: programNotes,
                             exercises: programExercisesDraft,
                           });
-                          if (didSave) {
-                            resetProgramBuilder();
-                          }
                         }}
                         className="w-full"
-                        disabled={isLocalDemoSession}
+                        disabled={isLocalDemoSession || isSavingProgram}
                       >
-                        {editingProgramId ? "Oppdater program" : "Lagre program på kunde"}
+                        {isSavingProgram ? "Lagrer …" : editingProgramId ? "Oppdater program" : "Lagre program på kunde"}
                       </GradientButton>
                       {programSaveStatus ? (
                         <StatusMessage
