@@ -363,7 +363,7 @@ export function IntervalWorkoutSessionModal({
       settled = true;
       setIsSaving(false);
       setStatus("Lagring tok for lang tid. Oppdater siden (Ctrl+F5) og prøv igjen.");
-    }, 26_000);
+    }, 30_000);
     logIntervalWorkout({
       memberId: memberId.trim(),
       programId: program.id,

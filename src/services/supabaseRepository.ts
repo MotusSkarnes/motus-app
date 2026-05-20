@@ -101,6 +101,7 @@ const WORKOUT_LOG_RPC_TIMEOUT_MS = 8_000;
 const WORKOUT_LOG_MEMBER_RACE_TIMEOUT_MS = 12_000;
 const WORKOUT_LOG_AUTH_TIMEOUT_MS = 4_000;
 const WORKOUT_LOG_TOTAL_TIMEOUT_MS = 22_000;
+const WORKOUT_LOG_INTERVAL_TOTAL_TIMEOUT_MS = 28_000;
 
 async function promiseWithTimeout<T>(
   promise: Promise<T>,
@@ -1887,6 +1888,9 @@ function pickMemberWorkoutPersistFailureMessage(results: PersistResult[]): strin
   const rls = results.find((item) => /policy|permission|row-level security/i.test(item.message ?? ""));
   if (rls?.message) return rls.message + sqlHint;
 
+  const access = results.find((item) => /ikke tilgang|not authorized|403|404|fant ikke medlem/i.test(item.message ?? ""));
+  if (access?.message) return access.message + sqlHint;
+
   const parts = results
     .map((item) => item.message?.trim())
     .filter(
@@ -1896,6 +1900,11 @@ function pickMemberWorkoutPersistFailureMessage(results: PersistResult[]): strin
         !/lagring tok for lang tid/i.test(message),
     );
   if (parts.length) return parts.join(" · ");
+
+  const timedOut = results.some((item) => /lagring tok for lang tid|__direct_timeout__/i.test(item.message ?? ""));
+  if (timedOut) {
+    return `Skyen svarer ikke i tide.${sqlHint} Sjekk nettverk, oppdater siden (Ctrl+F5) og prøv igjen.`;
+  }
 
   return `Lagring feilet.${sqlHint} Logg ut og inn igjen, deretter prøv på nytt.`;
 }
@@ -1947,7 +1956,7 @@ async function getWorkoutLogAuthContext(): Promise<WorkoutLogAuthContext> {
 async function persistIntervalWorkoutLog(log: WorkoutLog, hints: PersistWorkoutLogHints): Promise<PersistResult> {
   return promiseWithTimeout(
     persistIntervalWorkoutLogInner(log, hints),
-    WORKOUT_LOG_TOTAL_TIMEOUT_MS,
+    WORKOUT_LOG_INTERVAL_TOTAL_TIMEOUT_MS,
     { ok: false, message: "Lagring tok for lang tid. Trekk ned for å oppdatere appen og prøv igjen." },
   );
 }
@@ -1958,16 +1967,44 @@ async function persistIntervalWorkoutLogInner(log: WorkoutLog, hints: PersistWor
     return { ok: false, message: "Sesjonen utløp. Logg ut og inn igjen, og prøv å lagre på nytt." };
   }
 
-  const memberId = log.memberId.trim();
-  const ownerUserId = String(hints.ownerUserId ?? "").trim();
-  if (!memberId || !ownerUserId) {
-    return { ok: false, message: "Mangler kobling til trener/program. Oppdater siden og prøv igjen." };
+  const sessionEmail = hints?.targetEmail?.trim().toLowerCase() || ctx.sessionEmail;
+  let memberId = await promiseWithTimeout(
+    resolveCanonicalMemberIdForPersistence(log.memberId, hints, ctx.sessionUser),
+    8_000,
+    log.memberId.trim(),
+  );
+  if (memberId.startsWith("auth-") && sessionEmail.includes("@")) {
+    await promiseWithTimeout(ensureMemberAuthLink(sessionEmail, memberId), 5_000, undefined);
+    memberId = await promiseWithTimeout(
+      resolveCanonicalMemberIdForPersistence(log.memberId, hints, ctx.sessionUser),
+      8_000,
+      memberId,
+    );
+  }
+  if (!memberId || memberId.startsWith("auth-")) {
+    return {
+      ok: false,
+      message: "Fant ikke medlemsprofil i skyen. Logg ut og inn igjen, eller kontakt PT.",
+    };
+  }
+
+  const persistenceHints: PersistWorkoutLogHints = {
+    ...hints,
+    programTitle: hints.programTitle ?? log.programTitle,
+  };
+  const ownerUserId = await promiseWithTimeout(
+    resolveWorkoutLogOwnerUserId(memberId, persistenceHints, ctx.requesterUserId),
+    8_000,
+    null,
+  );
+  if (!ownerUserId) {
+    return { ok: false, message: "Fant ikke PT-eier for programmet. Oppdater siden og prøv igjen." };
   }
   if (ownerUserId === ctx.requesterUserId) {
     return { ok: false, message: "Fant ikke PT-eier for programmet. Oppdater siden og prøv igjen." };
   }
 
-  return raceMemberWorkoutLogPersist(log, memberId, ownerUserId, ctx.accessToken);
+  return raceMemberWorkoutLogPersist({ ...log, memberId }, memberId, ownerUserId, ctx.accessToken);
 }
 
 async function raceMemberWorkoutLogPersist(
@@ -2068,22 +2105,49 @@ async function persistWorkoutLogDirectForMember(
   return { ok: true };
 }
 
+function parsePersistWorkoutLogEdgePayload(payload: unknown): PersistResult {
+  const parsed = (payload ?? null) as { ok?: boolean; error?: string } | null;
+  if (parsed?.ok === true) return { ok: true };
+  const message = String(parsed?.error ?? "").trim();
+  if (message) return { ok: false, message };
+  return { ok: false, message: "persist-workout-log returnerte ikke ok." };
+}
+
 async function invokePersistWorkoutLogEdge(
   body: Record<string, unknown>,
   accessToken: string,
 ): Promise<PersistResult> {
-  if (!supabaseUrl || !supabaseAnonKey || !accessToken) {
+  if (!accessToken) {
+    return { ok: false, message: "Sesjonen utløp. Logg ut og inn igjen." };
+  }
+
+  if (supabaseClient) {
+    const invoked = await promiseWithTimeout(
+      supabaseClient.functions.invoke("persist-workout-log", { body }),
+      WORKOUT_LOG_EDGE_TIMEOUT_MS,
+      { data: null, error: { message: "__edge_invoke_timeout__" } },
+    );
+    if (!invoked.error && invoked.data != null) {
+      return parsePersistWorkoutLogEdgePayload(invoked.data);
+    }
+    const invokeMessage = String((invoked.error as { message?: string } | null)?.message ?? "").trim();
+    if (invokeMessage && !invokeMessage.includes("__edge_invoke_timeout__")) {
+      return { ok: false, message: invokeMessage };
+    }
+  }
+
+  if (!supabaseUrl || !supabaseAnonKey) {
     return { ok: false, message: "Kunne ikke lagre økten i skyen (mangler nettverk eller tilgang)." };
   }
 
   return promiseWithTimeout(
-    invokePersistWorkoutLogEdgeRequest(body, accessToken),
+    invokePersistWorkoutLogEdgeFetch(body, accessToken),
     WORKOUT_LOG_EDGE_TIMEOUT_MS,
     { ok: false, message: "Lagring tok for lang tid. Sjekk nettverk og prøv igjen." },
   );
 }
 
-async function invokePersistWorkoutLogEdgeRequest(
+async function invokePersistWorkoutLogEdgeFetch(
   body: Record<string, unknown>,
   accessToken: string,
 ): Promise<PersistResult> {
@@ -2094,7 +2158,7 @@ async function invokePersistWorkoutLogEdgeRequest(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: supabaseAnonKey,
+        apikey: supabaseAnonKey!,
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify(body),
