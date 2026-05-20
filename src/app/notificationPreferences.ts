@@ -15,8 +15,29 @@ export type MemberNotificationPreferences = {
   seenMemberPeriodPlanKeys: string[];
   dismissedMemberCheckInMonths: string[];
   memberInspirationBaselineAt: number;
+  /** Skjulte badges som er «sett» (ingen popup på nytt på annen enhet). */
+  seenHiddenBadgeIds: string[];
+  /** Siste nivå som allerede er feiret med popup (unngår gjentatt feiring). */
+  lastCelebratedAchievedLevel: number;
   updatedAt: number;
 };
+
+export function emptyMemberNotificationPreferences(): MemberNotificationPreferences {
+  return {
+    version: MEMBER_NOTIFICATION_PREFS_VERSION,
+    memberAlertsSeenAt: 0,
+    seenMemberProgramIds: [],
+    seenMemberWorkoutCommentKeys: [],
+    openedMemberAlertIds: [],
+    seenMemberInspirationIds: [],
+    seenMemberPeriodPlanKeys: [],
+    dismissedMemberCheckInMonths: [],
+    memberInspirationBaselineAt: 0,
+    seenHiddenBadgeIds: [],
+    lastCelebratedAchievedLevel: 0,
+    updatedAt: 0,
+  };
+}
 
 export type TrainerNotificationPreferences = {
   version: typeof MEMBER_NOTIFICATION_PREFS_VERSION;
@@ -70,6 +91,12 @@ function normalizeMemberNotificationPreferences(raw: unknown): MemberNotificatio
         : [],
     ),
     memberInspirationBaselineAt: Number(record.memberInspirationBaselineAt) || 0,
+    seenHiddenBadgeIds: uniqueStrings(
+      Array.isArray(record.seenHiddenBadgeIds)
+        ? record.seenHiddenBadgeIds.filter((item): item is string => typeof item === "string")
+        : [],
+    ),
+    lastCelebratedAchievedLevel: Number(record.lastCelebratedAchievedLevel) || 0,
     updatedAt: Number(record.updatedAt) || 0,
   };
 }
@@ -103,6 +130,20 @@ export function readMemberNotificationPreferencesFromPersonalGoals(
   const payload = parsePersonalGoalsJson(personalGoals);
   if (!payload) return null;
   return normalizeMemberNotificationPreferences(payload.notificationPreferences);
+}
+
+export function patchMemberNotificationPreferencesInPersonalGoals(
+  existingPersonalGoals: string | undefined,
+  patch: Partial<MemberNotificationPreferences>,
+): string {
+  const current =
+    readMemberNotificationPreferencesFromPersonalGoals(existingPersonalGoals) ??
+    emptyMemberNotificationPreferences();
+  return mergeMemberNotificationPreferencesIntoPersonalGoals(existingPersonalGoals, {
+    ...current,
+    ...patch,
+    updatedAt: Date.now(),
+  });
 }
 
 export function readTrainerNotificationPreferencesFromUserMetadata(
@@ -163,6 +204,14 @@ export function mergeMemberNotificationPreferences(
       ...(base.dismissedMemberCheckInMonths ?? []),
       ...(other.dismissedMemberCheckInMonths ?? []),
     ]),
+    seenHiddenBadgeIds: uniqueStrings([
+      ...(base.seenHiddenBadgeIds ?? []),
+      ...(other.seenHiddenBadgeIds ?? []),
+    ]),
+    lastCelebratedAchievedLevel: Math.max(
+      base.lastCelebratedAchievedLevel ?? 0,
+      other.lastCelebratedAchievedLevel ?? 0,
+    ),
     updatedAt: Math.max(base.updatedAt, other.updatedAt, Date.now()),
   };
 }

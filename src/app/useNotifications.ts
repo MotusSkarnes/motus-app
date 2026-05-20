@@ -171,6 +171,9 @@ export function useNotifications({
   const skipTrainerPersistRef = useRef(false);
   const lastPersistedMemberPrefsRef = useRef("");
   const lastPersistedTrainerPrefsRef = useRef("");
+  const memberPrefsHydratedRef = useRef(false);
+  const trainerPrefsHydratedRef = useRef(false);
+  const lastMergedMemberPersonalGoalsRef = useRef<string | undefined>(undefined);
   const [trainerNotificationsOpen, setTrainerNotificationsOpen] = useState(false);
   const [memberNotificationsOpen, setMemberNotificationsOpen] = useState(false);
   const [trainerAlertsSeenAt, setTrainerAlertsSeenAt] = useState(() => {
@@ -281,7 +284,6 @@ export function useNotifications({
     }
   });
 
-  const lastMergedMemberRemoteUpdatedAtRef = useRef(0);
   const lastMergedTrainerRemoteUpdatedAtRef = useRef(0);
 
   const buildMemberNotificationSnapshot = useCallback((): MemberNotificationPreferences => {
@@ -965,12 +967,18 @@ export function useNotifications({
   }, [dismissedMemberCheckInMonths]);
 
   useEffect(() => {
-    if (currentUserRole !== "member" || !memberPersonalGoals?.trim()) return;
+    if (currentUserRole !== "member") {
+      memberPrefsHydratedRef.current = false;
+      lastMergedMemberPersonalGoalsRef.current = undefined;
+      return;
+    }
+    if (lastMergedMemberPersonalGoalsRef.current === memberPersonalGoals) return;
+    lastMergedMemberPersonalGoalsRef.current = memberPersonalGoals;
     const remote = readMemberNotificationPreferencesFromPersonalGoals(memberPersonalGoals);
-    if (!remote || remote.updatedAt <= lastMergedMemberRemoteUpdatedAtRef.current) return;
-    lastMergedMemberRemoteUpdatedAtRef.current = remote.updatedAt;
     const merged = mergeMemberNotificationPreferences(buildMemberNotificationSnapshot(), remote);
     applyMemberNotificationSnapshot(merged);
+    lastPersistedMemberPrefsRef.current = JSON.stringify(merged);
+    memberPrefsHydratedRef.current = true;
   }, [
     applyMemberNotificationSnapshot,
     buildMemberNotificationSnapshot,
@@ -980,6 +988,7 @@ export function useNotifications({
 
   useEffect(() => {
     if (currentUserRole !== "member" || !onPersistMemberNotificationPreferences) return;
+    if (!memberPrefsHydratedRef.current) return;
     if (skipMemberPersistRef.current) return;
     const timer = window.setTimeout(() => {
       const snapshot = buildMemberNotificationSnapshot();
@@ -1003,16 +1012,29 @@ export function useNotifications({
   ]);
 
   const pullTrainerNotificationPreferences = useCallback(async () => {
-    if (!isSupabaseConfigured || !supabaseClient || currentUserRole !== "trainer") return;
+    if (!isSupabaseConfigured || !supabaseClient || currentUserRole !== "trainer") {
+      trainerPrefsHydratedRef.current = currentUserRole !== "trainer";
+      return;
+    }
     const { data, error } = await supabaseClient.auth.getSession();
-    if (error || !data.session?.user) return;
+    if (error || !data.session?.user) {
+      trainerPrefsHydratedRef.current = true;
+      return;
+    }
     const remote = readTrainerNotificationPreferencesFromUserMetadata(
       data.session.user.user_metadata as Record<string, unknown> | undefined,
     );
-    if (!remote || remote.updatedAt <= lastMergedTrainerRemoteUpdatedAtRef.current) return;
-    lastMergedTrainerRemoteUpdatedAtRef.current = remote.updatedAt;
+    if (remote && remote.updatedAt <= lastMergedTrainerRemoteUpdatedAtRef.current) {
+      trainerPrefsHydratedRef.current = true;
+      return;
+    }
+    if (remote) {
+      lastMergedTrainerRemoteUpdatedAtRef.current = remote.updatedAt;
+    }
     const merged = mergeTrainerNotificationPreferences(buildTrainerNotificationSnapshot(), remote);
     applyTrainerNotificationSnapshot(merged);
+    lastPersistedTrainerPrefsRef.current = JSON.stringify(merged);
+    trainerPrefsHydratedRef.current = true;
   }, [applyTrainerNotificationSnapshot, buildTrainerNotificationSnapshot, currentUserRole]);
 
   useEffect(() => {
@@ -1031,6 +1053,7 @@ export function useNotifications({
 
   useEffect(() => {
     if (currentUserRole !== "trainer" || !isSupabaseConfigured || !supabaseClient) return;
+    if (!trainerPrefsHydratedRef.current) return;
     if (skipTrainerPersistRef.current) return;
     const timer = window.setTimeout(() => {
       const snapshot = buildTrainerNotificationSnapshot();

@@ -17,6 +17,8 @@ describe("notificationPreferences", () => {
       seenMemberPeriodPlanKeys: [],
       dismissedMemberCheckInMonths: ["2026-05"],
       memberInspirationBaselineAt: 50,
+      seenHiddenBadgeIds: ["may-17-workout"],
+      lastCelebratedAchievedLevel: 3,
       updatedAt: 200,
     });
     const parsed = readMemberNotificationPreferencesFromPersonalGoals(encoded);
@@ -36,6 +38,8 @@ describe("notificationPreferences", () => {
         seenMemberPeriodPlanKeys: [],
         dismissedMemberCheckInMonths: [],
         memberInspirationBaselineAt: 0,
+        seenHiddenBadgeIds: [],
+        lastCelebratedAchievedLevel: 2,
         updatedAt: 100,
       },
       {
@@ -45,8 +49,11 @@ describe("notificationPreferences", () => {
         seenMemberWorkoutCommentKeys: [],
         openedMemberAlertIds: ["member-program-p2"],
         seenMemberInspirationIds: [],
+        seenMemberPeriodPlanKeys: [],
         dismissedMemberCheckInMonths: [],
         memberInspirationBaselineAt: 0,
+        seenHiddenBadgeIds: [],
+        lastCelebratedAchievedLevel: 4,
         updatedAt: 300,
       },
     );
@@ -67,6 +74,8 @@ describe("notificationPreferences", () => {
         seenMemberPeriodPlanKeys: ["plan-a"],
         dismissedMemberCheckInMonths: [],
         memberInspirationBaselineAt: 0,
+        seenHiddenBadgeIds: [],
+        lastCelebratedAchievedLevel: 0,
         updatedAt: 100,
       },
       {
@@ -76,11 +85,50 @@ describe("notificationPreferences", () => {
         seenMemberWorkoutCommentKeys: [],
         openedMemberAlertIds: [],
         seenMemberInspirationIds: [],
+        seenMemberPeriodPlanKeys: [],
         dismissedMemberCheckInMonths: [],
         memberInspirationBaselineAt: 0,
+        seenHiddenBadgeIds: [],
+        lastCelebratedAchievedLevel: 0,
         updatedAt: 200,
       } as Parameters<typeof mergeMemberNotificationPreferences>[1],
     );
     expect(merged.seenMemberPeriodPlanKeys).toEqual(["plan-a"]);
+  });
+
+  it("merges badge and celebration state across devices", () => {
+    const merged = mergeMemberNotificationPreferences(
+      {
+        version: 1,
+        memberAlertsSeenAt: 0,
+        seenMemberProgramIds: [],
+        seenMemberWorkoutCommentKeys: [],
+        openedMemberAlertIds: [],
+        seenMemberInspirationIds: [],
+        seenMemberPeriodPlanKeys: [],
+        dismissedMemberCheckInMonths: [],
+        memberInspirationBaselineAt: 0,
+        seenHiddenBadgeIds: ["secret-a"],
+        lastCelebratedAchievedLevel: 2,
+        updatedAt: 100,
+      },
+      {
+        version: 1,
+        memberAlertsSeenAt: 0,
+        seenMemberProgramIds: [],
+        seenMemberWorkoutCommentKeys: [],
+        openedMemberAlertIds: ["member-msg-1"],
+        seenMemberInspirationIds: [],
+        seenMemberPeriodPlanKeys: [],
+        dismissedMemberCheckInMonths: [],
+        memberInspirationBaselineAt: 0,
+        seenHiddenBadgeIds: ["secret-b"],
+        lastCelebratedAchievedLevel: 5,
+        updatedAt: 300,
+      },
+    );
+    expect(merged.openedMemberAlertIds).toEqual(["member-msg-1"]);
+    expect(merged.seenHiddenBadgeIds).toEqual(expect.arrayContaining(["secret-a", "secret-b"]));
+    expect(merged.lastCelebratedAchievedLevel).toBe(5);
   });
 });

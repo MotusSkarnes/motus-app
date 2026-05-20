@@ -40,6 +40,10 @@ import {
   readProfileExtensions,
 } from "../app/memberOnboarding";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
+import {
+  patchMemberNotificationPreferencesInPersonalGoals,
+  readMemberNotificationPreferencesFromPersonalGoals,
+} from "../app/notificationPreferences";
 import { motusShareStatusMessage, sharePersonalRecordCard } from "../app/motusShareCard";
 import { buildTrainingProgramFromWorkoutMode } from "../app/pausedWorkoutSession";
 import {
@@ -978,6 +982,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [liveWorkoutCelebration, setLiveWorkoutCelebration] = useState<WorkoutCelebration | null>(null);
   /** Unngår popup ved første lasting; feirer kun når `achievedLevel` faktisk øker. */
   const achievementCelebrationBaselineRef = useRef<number | null>(null);
+  const hiddenBadgeMigrationDoneRef = useRef(false);
   const [periodPlans, setPeriodPlans] = useState<PeriodSchedulePlan[]>([]);
   const [showPeriodPlanPanel, setShowPeriodPlanPanel] = useState(true);
   const [activeMemberPeriodPlanId, setActiveMemberPeriodPlanId] = useState<string | null>(null);
@@ -1061,6 +1066,23 @@ export function MemberPortal(props: MemberPortalProps) {
     currentUserRole === "member"
       ? currentMemberByEmail ?? viewedMember ?? null
       : viewedMember ?? members[0] ?? null;
+  const memberNotificationPrefs = useMemo(
+    () => readMemberNotificationPreferencesFromPersonalGoals(editableMember?.personalGoals),
+    [editableMember?.personalGoals],
+  );
+  const seenHiddenBadgeIds = useMemo(
+    () => new Set(memberNotificationPrefs?.seenHiddenBadgeIds ?? []),
+    [memberNotificationPrefs?.seenHiddenBadgeIds],
+  );
+  const persistMemberUiPrefs = useCallback(
+    (patch: Parameters<typeof patchMemberNotificationPreferencesInPersonalGoals>[1]) => {
+      if (!editableMember) return;
+      const anchor = pickCanonicalMemberRowForProfile(editableMember, members);
+      const personalGoals = patchMemberNotificationPreferencesInPersonalGoals(anchor.personalGoals, patch);
+      updateMember({ memberId: anchor.id, changes: { personalGoals } });
+    },
+    [editableMember, members, updateMember],
+  );
   const monthlyCheckInPrompt = useMemo(() => {
     if (!editableMember || currentUserRole !== "member") return null;
     if (!shouldPromptMonthlyCheckIn(editableMember, currentUserRole)) return null;
@@ -2856,8 +2878,10 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [isIntervalTimerRunning, isIntervalTimerPaused, intervalProgramSteps, intervalTimerStepIndex]);
 
   useEffect(() => {
+    if (isMemberLimited) return;
+    const storedBaseline = memberNotificationPrefs?.lastCelebratedAchievedLevel ?? 0;
     if (achievementCelebrationBaselineRef.current === null) {
-      achievementCelebrationBaselineRef.current = achievedLevel;
+      achievementCelebrationBaselineRef.current = Math.max(storedBaseline, achievedLevel);
       return;
     }
     if (achievedLevel < achievementCelebrationBaselineRef.current) {
@@ -2867,19 +2891,58 @@ export function MemberPortal(props: MemberPortalProps) {
     if (achievedLevel === achievementCelebrationBaselineRef.current) return;
     achievementCelebrationBaselineRef.current = achievedLevel;
     setAchievementCelebration({ achievedLevel });
-  }, [achievedLevel]);
+    persistMemberUiPrefs({ lastCelebratedAchievedLevel: achievedLevel });
+  }, [
+    achievedLevel,
+    isMemberLimited,
+    memberNotificationPrefs?.lastCelebratedAchievedLevel,
+    persistMemberUiPrefs,
+  ]);
 
   useEffect(() => {
-    if (isMemberLimited || !activeMemberId || typeof window === "undefined") return;
-    if (hiddenBadgeCelebration) return;
-    const storageKeyFor = (badgeId: string) => `${HIDDEN_BADGE_SEEN_STORAGE_PREFIX}${activeMemberId}:${badgeId}`;
+    if (hiddenBadgeMigrationDoneRef.current || !activeMemberId || !editableMember || typeof window === "undefined") {
+      return;
+    }
+    hiddenBadgeMigrationDoneRef.current = true;
+    const fromLocal: string[] = [];
+    for (const badge of memberBadgeCollection.allBadges) {
+      if (!badge.secret) continue;
+      const key = `${HIDDEN_BADGE_SEEN_STORAGE_PREFIX}${activeMemberId}:${badge.id}`;
+      if (window.localStorage.getItem(key) === "seen") {
+        fromLocal.push(badge.id);
+      }
+    }
+    if (!fromLocal.length) return;
+    const merged = Array.from(new Set([...(memberNotificationPrefs?.seenHiddenBadgeIds ?? []), ...fromLocal]));
+    if (merged.length > (memberNotificationPrefs?.seenHiddenBadgeIds?.length ?? 0)) {
+      persistMemberUiPrefs({ seenHiddenBadgeIds: merged });
+    }
+  }, [
+    activeMemberId,
+    editableMember,
+    memberBadgeCollection.allBadges,
+    memberNotificationPrefs?.seenHiddenBadgeIds,
+    persistMemberUiPrefs,
+  ]);
+
+  useEffect(() => {
+    if (isMemberLimited || !activeMemberId || hiddenBadgeCelebration) return;
     const secretBadge = memberBadgeCollection.allBadges.find(
-      (badge) => badge.secret && badge.unlocked && window.localStorage.getItem(storageKeyFor(badge.id)) !== "seen",
+      (badge) => badge.secret && badge.unlocked && !seenHiddenBadgeIds.has(badge.id),
     );
     if (!secretBadge) return;
-    window.localStorage.setItem(storageKeyFor(secretBadge.id), "seen");
+    persistMemberUiPrefs({
+      seenHiddenBadgeIds: Array.from(new Set([...seenHiddenBadgeIds, secretBadge.id])),
+    });
     setHiddenBadgeCelebration(secretBadge);
-  }, [activeMemberId, hiddenBadgeCelebration, isMemberLimited, memberBadgeCollection.allBadges]);
+  }, [
+    activeMemberId,
+    hiddenBadgeCelebration,
+    isMemberLimited,
+    memberBadgeCollection.allBadges,
+    persistMemberUiPrefs,
+    seenHiddenBadgeIds,
+  ]);
 
   function handleStartIntervalProgramTimer() {
     if (!activeIntervalProgram || !intervalProgramSteps.length) return;

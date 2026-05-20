@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, type ComponentProps } from "react";
+import { enrichMemberWithBestProfile } from "../memberOnboarding";
 import {
   mergeMemberNotificationPreferencesIntoPersonalGoals,
   type MemberNotificationPreferences,
@@ -28,9 +29,18 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
   const memberForNotificationSync = useMemo(() => {
     if (state.appState.currentUser?.role !== "member") return null;
     const viewId = state.appState.memberViewId.trim();
-    if (!viewId) return null;
-    return state.appState.members.find((member) => member.id === viewId) ?? null;
-  }, [state.appState.currentUser?.role, state.appState.memberViewId, state.appState.members]);
+    const email = state.appState.currentUser?.email?.trim().toLowerCase() ?? "";
+    const match =
+      (viewId ? state.appState.members.find((member) => member.id === viewId) : null) ??
+      (email ? state.appState.members.find((member) => member.email.trim().toLowerCase() === email) : null);
+    if (!match) return null;
+    return enrichMemberWithBestProfile(match, state.appState.members);
+  }, [
+    state.appState.currentUser?.role,
+    state.appState.currentUser?.email,
+    state.appState.memberViewId,
+    state.appState.members,
+  ]);
 
   const onPersistMemberNotificationPreferences = useCallback(
     (preferences: MemberNotificationPreferences) => {
