@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ChevronRight, Plus, Repeat2, SkipForward, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, ChevronRight, Plus, Repeat2, SkipForward, TimerReset, X } from "lucide-react";
 import { WorkoutCompactSetTable } from "./LiveWorkoutCompactSets";
 import { MOTUS } from "../app/data";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
@@ -45,7 +45,46 @@ export type LiveWorkoutSessionModalProps = {
   onDismissWorkout?: () => void;
   /** Vises som undertittel ved variant trainer */
   trainerSubtitle?: string;
+  restCountdownEnabled?: boolean;
 };
+
+type RestCountdownState = {
+  groupId: string;
+  remainingSeconds: number;
+  totalSeconds: number;
+};
+
+function parseRestSeconds(value: string | undefined): number {
+  const parsed = Number(String(value ?? "").trim().replace(",", "."));
+  if (!Number.isFinite(parsed) || parsed <= 0) return 60;
+  return Math.min(600, Math.round(parsed));
+}
+
+function playWorkoutRestTone(kind: "tick" | "start") {
+  if (typeof window === "undefined") return;
+  const AudioCtx = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioCtx) return;
+  const context = new AudioCtx();
+  const nowTime = context.currentTime;
+  const tones = kind === "start" ? [659.25, 880] : [523.25];
+  tones.forEach((frequency, index) => {
+    const start = nowTime + index * 0.07;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = kind === "start" ? "triangle" : "sine";
+    oscillator.frequency.setValueAtTime(frequency, start);
+    gain.gain.setValueAtTime(0.0001, start);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    gain.gain.exponentialRampToValueAtTime(kind === "start" ? 0.09 : 0.06, start + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.13);
+    oscillator.start(start);
+    oscillator.stop(start + 0.16);
+  });
+  window.setTimeout(() => {
+    void context.close();
+  }, kind === "start" ? 360 : 220);
+}
 
 function getReflectionEmoji(level: 1 | 2 | 3 | 4 | 5): string {
   if (level <= 1) return "🥳";
@@ -72,6 +111,7 @@ export function LiveWorkoutSessionModal({
   onDismissWorkout,
   trainerSubtitle,
   onWorkoutExerciseIndexChange,
+  restCountdownEnabled = true,
 }: LiveWorkoutSessionModalProps) {
   const leaveWorkout = onDismissWorkout ?? cancelWorkoutMode;
   const [showReplacementOptions, setShowReplacementOptions] = useState(false);
@@ -83,6 +123,9 @@ export function LiveWorkoutSessionModal({
   const [reflectionMotivationLevel, setReflectionMotivationLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [reflectionNote, setReflectionNote] = useState("");
   const [showExerciseDetail, setShowExerciseDetail] = useState(false);
+  const [restCountdown, setRestCountdown] = useState<RestCountdownState | null>(null);
+  const completedCountByGroupRef = useRef<Record<string, number>>({});
+  const lastRestBeepSecondRef = useRef<number | null>(null);
 
   const resolvedProgram = useMemo(
     () => activeProgram ?? (workoutMode ? buildTrainingProgramFromWorkoutMode(workoutMode) : null),
@@ -126,6 +169,21 @@ export function LiveWorkoutSessionModal({
   const nextWorkoutGroup = workoutResultGroups[workoutExerciseIndex + 1] ?? null;
   const canDeferCurrentExercise = Boolean(currentWorkoutGroup && nextWorkoutGroup);
   const isLastWorkoutGroup = workoutExerciseIndex >= workoutResultGroups.length - 1;
+  const currentWorkoutGroupId = currentWorkoutGroup?.groupId ?? "";
+  const currentGroupCompletedSets = currentWorkoutGroup?.rows.filter((row) => row.completed).length ?? 0;
+  const currentGroupTotalSets = currentWorkoutGroup?.rows.length ?? 0;
+  const currentGroupIsComplete = currentGroupTotalSets > 0 && currentGroupCompletedSets >= currentGroupTotalSets;
+  const activeRestSeconds = useMemo(() => {
+    if (!currentWorkoutGroup || !resolvedProgram) return 60;
+    const programExerciseIds = new Set(currentWorkoutGroup.segments.map((segment) => segment.programExerciseId));
+    const matchingExercises = resolvedProgram.exercises.filter(
+      (exercise) =>
+        programExerciseIds.has(exercise.id) ||
+        Boolean(currentWorkoutGroup.blockType && exercise.blockId?.trim() === currentWorkoutGroup.groupId),
+    );
+    const rawRest = matchingExercises.map((exercise) => exercise.restSeconds).find((value) => String(value ?? "").trim());
+    return parseRestSeconds(rawRest);
+  }, [currentWorkoutGroup, resolvedProgram]);
 
   function getExerciseNote(programExerciseId: string): string {
     if (!workoutMode) return "";
@@ -159,7 +217,56 @@ export function LiveWorkoutSessionModal({
   useEffect(() => {
     setShowReplacementOptions(false);
     setShowExerciseDetail(false);
-  }, [currentWorkoutGroup?.groupId]);
+    setRestCountdown(null);
+    lastRestBeepSecondRef.current = null;
+    if (currentWorkoutGroupId) {
+      completedCountByGroupRef.current[currentWorkoutGroupId] = currentGroupCompletedSets;
+    }
+    // Baseline skal bare nullstilles ved ny øvelse/blokk, ikke ved hvert sett som hukes av.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentWorkoutGroupId]);
+
+  useEffect(() => {
+    if (!currentWorkoutGroup) return;
+    const completed = currentWorkoutGroup.rows.filter((row) => row.completed).length;
+    const previous = completedCountByGroupRef.current[currentWorkoutGroup.groupId] ?? completed;
+    completedCountByGroupRef.current[currentWorkoutGroup.groupId] = completed;
+    if (!restCountdownEnabled || showWorkoutReflection) return;
+    if (completed <= previous) return;
+    if (completed >= (workoutMode?.results.length ?? 0) && isLastWorkoutGroup) return;
+    lastRestBeepSecondRef.current = null;
+    setRestCountdown({
+      groupId: currentWorkoutGroup.groupId,
+      remainingSeconds: activeRestSeconds,
+      totalSeconds: activeRestSeconds,
+    });
+  }, [activeRestSeconds, currentWorkoutGroup, isLastWorkoutGroup, restCountdownEnabled, showWorkoutReflection, workoutMode?.results.length]);
+
+  useEffect(() => {
+    if (!restCountdown) return;
+    if (restCountdown.remainingSeconds <= 0) {
+      setRestCountdown(null);
+      playWorkoutRestTone("start");
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      setRestCountdown((current) =>
+        current ? { ...current, remainingSeconds: Math.max(0, current.remainingSeconds - 1) } : current,
+      );
+    }, 1000);
+    return () => window.clearTimeout(timeout);
+  }, [restCountdown]);
+
+  useEffect(() => {
+    if (!restCountdown || restCountdown.remainingSeconds < 1 || restCountdown.remainingSeconds > 3) return;
+    if (lastRestBeepSecondRef.current === restCountdown.remainingSeconds) return;
+    lastRestBeepSecondRef.current = restCountdown.remainingSeconds;
+    playWorkoutRestTone("tick");
+  }, [restCountdown]);
+
+  useEffect(() => {
+    if (!restCountdownEnabled) setRestCountdown(null);
+  }, [restCountdownEnabled]);
 
   useEffect(() => {
     if (!showExerciseDetail) return;
@@ -288,6 +395,7 @@ export function LiveWorkoutSessionModal({
   }
 
   function handleGoToNextWorkoutExercise() {
+    setRestCountdown(null);
     onBeforeNextExercise?.();
     setWorkoutExerciseIndex((prev) => prev + 1);
   }
@@ -592,6 +700,45 @@ export function LiveWorkoutSessionModal({
                 ) : null}
               </div>
             </button>
+          ) : null}
+          {restCountdown ? (
+            <div className="mb-3 rounded-xl border bg-teal-50 p-3" style={{ borderColor: "rgba(20,184,166,0.25)" }}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-teal-700 shadow-sm">
+                    <TimerReset className="h-5 w-5" aria-hidden />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">
+                      Pause
+                    </div>
+                    <div className="text-sm font-semibold text-slate-900">
+                      {restCountdown.remainingSeconds}s til {currentGroupIsComplete && nextWorkoutGroup ? "neste øvelse" : "neste sett"}
+                    </div>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white">
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{
+                          width: `${Math.max(0, Math.min(100, (restCountdown.remainingSeconds / restCountdown.totalSeconds) * 100))}%`,
+                          background: MOTUS.turquoise,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRestCountdown(null);
+                    playWorkoutRestTone("start");
+                  }}
+                  className="shrink-0 rounded-lg border bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                  style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                >
+                  Hopp over
+                </button>
+              </div>
+            </div>
           ) : null}
           <div className="grid gap-2 sm:flex sm:gap-3">
             <OutlineButton type="button" className="w-full sm:flex-1" onClick={cancelWorkoutMode}>
