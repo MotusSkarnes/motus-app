@@ -1790,9 +1790,10 @@ export function useAppState() {
 
   function cancelWorkoutMode() {
     setAppState((prev) => {
-      const memberId = prev.workoutMode?.memberId?.trim() || prev.memberViewId?.trim() || prev.currentUser?.memberId?.trim() || "";
       const programId = prev.workoutMode?.programId ?? "";
-      if (memberId && programId) clearPausedWorkoutForProgram(memberId, programId);
+      const memberId =
+        prev.workoutMode?.memberId?.trim() || prev.memberViewId?.trim() || prev.currentUser?.memberId?.trim() || "";
+      if (programId) clearPausedWorkoutForProgram(memberId, programId);
       return repository.cancelWorkoutMode(prev);
     });
   }
@@ -1830,10 +1831,16 @@ export function useAppState() {
 
   function finishWorkoutMode(input?: FinishWorkoutInput) {
     setAppState((prev) => {
-      const memberId = prev.workoutMode?.memberId?.trim() || prev.memberViewId?.trim() || prev.currentUser?.memberId?.trim() || "";
       const programId = prev.workoutMode?.programId ?? "";
+      const memberIds = [
+        prev.workoutMode?.memberId,
+        prev.memberViewId,
+        prev.currentUser?.memberId,
+      ]
+        .map((id) => id?.trim() ?? "")
+        .filter(Boolean);
       const next = repository.finishWorkoutMode(prev, input);
-      if (memberId && programId) clearPausedWorkoutForProgram(memberId, programId);
+      if (programId) clearPausedWorkoutForProgram(memberIds[0] ?? "", programId);
       return next;
     });
     setMemberTab("progress");

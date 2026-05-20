@@ -126,6 +126,34 @@ export function removePausedWorkoutByProgramId(memberId: string, programId: stri
   removePausedWorkout(memberId, draft.id);
 }
 
+/** Fjerner alle utkast for programId (uavhengig av hvilken member-nøkkel de ble lagret under). */
+export function removePausedWorkoutByProgramIdEverywhere(
+  programId: string,
+  preferredMemberIds: string[] = [],
+): void {
+  const trimmedProgramId = programId.trim();
+  if (!trimmedProgramId) return;
+
+  for (const memberId of [...new Set(preferredMemberIds.map((id) => id.trim()).filter(Boolean))]) {
+    removePausedWorkoutByProgramId(memberId, trimmedProgramId);
+  }
+
+  const store = readStore();
+  let changed = false;
+  for (const memberId of Object.keys(store)) {
+    const previous = store[memberId] ?? [];
+    const next = previous.filter((draft) => draft.programId !== trimmedProgramId);
+    if (next.length === previous.length) continue;
+    changed = true;
+    if (next.length === 0) {
+      delete store[memberId];
+    } else {
+      store[memberId] = next;
+    }
+  }
+  if (changed) writeStore(store);
+}
+
 export function pausedWorkoutProgress(workoutMode: WorkoutModeState): { completed: number; total: number } {
   const total = workoutMode.results.length;
   const completed = workoutMode.results.filter((result) => result.completed).length;

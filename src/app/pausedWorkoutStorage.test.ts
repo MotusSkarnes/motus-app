@@ -7,6 +7,7 @@ import {
   pausedWorkoutProgress,
   purgeExpiredPausedWorkouts,
   removePausedWorkout,
+  removePausedWorkoutByProgramIdEverywhere,
   upsertPausedWorkout,
 } from "./pausedWorkoutStorage";
 import type { WorkoutModeState } from "./types";
@@ -79,6 +80,18 @@ describe("pausedWorkoutStorage", () => {
 
     purgeExpiredPausedWorkouts(now);
     expect(listPausedWorkouts("m1", now)).toHaveLength(0);
+  });
+
+  it("removes draft by program id even when stored under a different member key", () => {
+    upsertPausedWorkout({
+      memberId: "member-a",
+      programId: "p1",
+      programTitle: "Styrke A",
+      workoutMode,
+    });
+    removePausedWorkoutByProgramIdEverywhere("p1", ["member-b"]);
+    expect(listPausedWorkouts("member-a")).toHaveLength(0);
+    expect(listPausedWorkouts("member-b")).toHaveLength(0);
   });
 
   it("removes a draft by id", () => {

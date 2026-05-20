@@ -930,6 +930,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [profileCurrentDailySteps, setProfileCurrentDailySteps] = useState("");
   const [microCelebrationsEnabled, setMicroCelebrationsEnabled] = useState(true);
   const [celebrationSoundEnabled, setCelebrationSoundEnabled] = useState(false);
+  const [restCountdownEnabled, setRestCountdownEnabled] = useState(true);
   const [homeVisibility, setHomeVisibility] = useState<Record<HomeSectionKey, boolean>>({ ...DEFAULT_HOME_VISIBILITY });
   const [pushRegisterBusy, setPushRegisterBusy] = useState(false);
   const [pushRegisterStatus, setPushRegisterStatus] = useState<string | null>(null);
@@ -1358,6 +1359,15 @@ export function MemberPortal(props: MemberPortalProps) {
     }, 60_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  const prevActiveWorkoutProgramIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const currentProgramId = workoutMode?.programId ?? null;
+    if (prevActiveWorkoutProgramIdRef.current && !currentProgramId) {
+      setPausedWorkoutsTick((value) => value + 1);
+    }
+    prevActiveWorkoutProgramIdRef.current = currentProgramId;
+  }, [workoutMode?.programId]);
 
   const pausedWorkouts = useMemo(() => {
     void pausedWorkoutsTick;
@@ -2541,6 +2551,7 @@ export function MemberPortal(props: MemberPortalProps) {
       if (!raw) {
         setMicroCelebrationsEnabled(true);
         setCelebrationSoundEnabled(false);
+        setRestCountdownEnabled(true);
         setHomeVisibility({
           ...DEFAULT_HOME_VISIBILITY,
           ...(normalizeHomeVisibilityForStorage(dbHomeVisibility ?? undefined) ?? {}),
@@ -2553,11 +2564,13 @@ export function MemberPortal(props: MemberPortalProps) {
       const parsed = JSON.parse(raw) as {
         microCelebrationsEnabled?: boolean;
         celebrationSoundEnabled?: boolean;
+        restCountdownEnabled?: boolean;
         homeVisibility?: Partial<Record<HomeSectionKey, boolean>>;
         favoritePersonalRecords?: string[];
       };
       setMicroCelebrationsEnabled(parsed.microCelebrationsEnabled !== false);
       setCelebrationSoundEnabled(parsed.celebrationSoundEnabled === true);
+      setRestCountdownEnabled(parsed.restCountdownEnabled !== false);
       const resolvedPatch =
         normalizeHomeVisibilityForStorage(dbHomeVisibility ?? parsed.homeVisibility ?? undefined) ?? {};
       const resolvedFavorites =
@@ -2571,6 +2584,7 @@ export function MemberPortal(props: MemberPortalProps) {
     } catch {
       setMicroCelebrationsEnabled(true);
       setCelebrationSoundEnabled(false);
+      setRestCountdownEnabled(true);
       setHomeVisibility({
         ...DEFAULT_HOME_VISIBILITY,
         ...(normalizeHomeVisibilityForStorage(dbHomeVisibility ?? undefined) ?? {}),
@@ -2586,11 +2600,12 @@ export function MemberPortal(props: MemberPortalProps) {
     const payload = JSON.stringify({
       microCelebrationsEnabled,
       celebrationSoundEnabled,
+      restCountdownEnabled,
       homeVisibility,
       favoritePersonalRecords: favoritePersonalRecordNames,
     });
     window.localStorage.setItem(getUiPreferencesStorageKey(editableMember.id), payload);
-  }, [editableMember, microCelebrationsEnabled, celebrationSoundEnabled, homeVisibility, favoritePersonalRecordNames, favoritePersonalRecordPreferencesHydrated]);
+  }, [editableMember, microCelebrationsEnabled, celebrationSoundEnabled, restCountdownEnabled, homeVisibility, favoritePersonalRecordNames, favoritePersonalRecordPreferencesHydrated]);
   useEffect(() => {
     if (!editableMember) return;
     const normalizedHomeVisibility = normalizeHomeVisibilityForStorage(homeVisibility);
@@ -6377,10 +6392,18 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                   {!isMemberLimited ? (
                   <div className="rounded-xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="text-sm font-semibold text-slate-700">Feiring og varsler</div>
+                    <div className="text-sm font-semibold text-slate-700">Øktmodus, feiring og varsler</div>
                     <p className="text-xs leading-snug text-slate-600">
                       Ny PR etter økt vises alltid. Du kan slå av den ekstra meldingen som kommer når du går opp et nivå i fremdriftssystemet på oversikten.
                     </p>
+                    <label className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <span>Pausenedtelling etter sett</span>
+                      <input
+                        type="checkbox"
+                        checked={restCountdownEnabled}
+                        onChange={(e) => setRestCountdownEnabled(e.target.checked)}
+                      />
+                    </label>
                     <label className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <span>Melding ved nytt fremdriftsnivå</span>
                       <input
@@ -6459,6 +6482,7 @@ export function MemberPortal(props: MemberPortalProps) {
       updateWorkoutExerciseNote={updateWorkoutExerciseNote}
       finishWorkoutMode={finishWorkoutMode}
       cancelWorkoutMode={cancelWorkoutMode}
+      restCountdownEnabled={restCountdownEnabled}
       onDismissWorkout={() => {
         dismissWorkoutMode();
         setPausedWorkoutsTick((value) => value + 1);

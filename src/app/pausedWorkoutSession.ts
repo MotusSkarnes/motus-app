@@ -2,6 +2,7 @@ import {
   getPausedWorkoutById,
   removePausedWorkout,
   removePausedWorkoutByProgramId,
+  removePausedWorkoutByProgramIdEverywhere,
   upsertPausedWorkout,
 } from "./pausedWorkoutStorage";
 import type { AppState, ProgramExercise, TrainingProgram, WorkoutModeState } from "./types";
@@ -119,5 +120,5 @@ export function discardPausedWorkoutDraftForMember(memberId: string, draftId: st
 }
 
 export function clearPausedWorkoutForProgram(memberId: string, programId: string): void {
-  removePausedWorkoutByProgramId(memberId, programId);
+  removePausedWorkoutByProgramIdEverywhere(programId, memberId ? [memberId] : []);
 }
