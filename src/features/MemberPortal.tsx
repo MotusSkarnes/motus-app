@@ -81,8 +81,8 @@ import {
   readHiddenPeriodPlanIdsForMembers,
   readPeriodPlansByMemberId,
   removeMemberOwnedPeriodPlanFromStorage,
-  findPeriodPlanEntryForCalendarDate,
   findPeriodPlanEntryForCalendarDateInPlans,
+  findTodayPeriodPlanEntryInPlans,
   parsePeriodPlanStartDate,
   resolvePeriodPlanWeek,
   writeHiddenPeriodPlanIdsForMember,
@@ -1530,9 +1530,24 @@ export function MemberPortal(props: MemberPortalProps) {
     return resolvePeriodPlanWeek(activePeriodPlan, activePeriodWeekIndex + 1);
   }, [activePeriodPlan, activePeriodWeekIndex]);
   const todayPeriodPlanMatch = useMemo(() => {
-    if (!activePeriodPlan) return null;
-    return findPeriodPlanEntryForCalendarDate(activePeriodPlan, new Date(nowTimestamp), periodPlanSwapsByPlan);
-  }, [activePeriodPlan, nowTimestamp, periodPlanSwapsByPlan]);
+    if (!visiblePeriodPlans.length) return null;
+    return findTodayPeriodPlanEntryInPlans(
+      visiblePeriodPlans,
+      getStartOfDay(new Date(nowTimestamp)),
+      periodPlanSwapsByPlan,
+      activePeriodPlanId,
+      activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : null,
+      currentWeekdayKey,
+    );
+  }, [
+    visiblePeriodPlans,
+    nowTimestamp,
+    periodPlanSwapsByPlan,
+    activePeriodPlanId,
+    activePeriodWeekIndex,
+    currentWeekdayKey,
+  ]);
+  const todayPlanPeriodPlan = todayPeriodPlanMatch?.plan ?? activePeriodPlan;
   const todayPlanDayKey = todayPeriodPlanMatch?.day ?? null;
   const displayedPeriodWeek = useMemo(() => {
     if (!activePeriodPlan) return null;
@@ -4296,17 +4311,17 @@ export function MemberPortal(props: MemberPortalProps) {
                             Start økt
                           </GradientButton>
                         ) : null}
-                        {todayPlanAction.kind === "log-group" && activePeriodPlan && todayPeriodPlanMatch ? (
+                        {todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch ? (
                           <OutlineButton
                             onClick={() =>
                               handlePeriodPlanLogGroup({
                                 entry: todayPlanEntry,
                                 plannedDate: resolvePeriodPlanEntryDate(
-                                  activePeriodPlan,
+                                  todayPlanPeriodPlan,
                                   todayPeriodPlanMatch.weekNumber,
                                   todayPeriodPlanMatch.day,
                                 ),
-                                planId: activePeriodPlan.id,
+                                planId: todayPlanPeriodPlan.id,
                                 weekNumber: todayPeriodPlanMatch.weekNumber,
                                 day: todayPeriodPlanMatch.day,
                               })
@@ -4688,17 +4703,17 @@ export function MemberPortal(props: MemberPortalProps) {
                         Start dagens økt
                       </GradientButton>
                     ) : null}
-                    {todayPlanAction.kind === "log-group" && activePeriodPlan && todayPeriodPlanMatch ? (
+                    {todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch ? (
                       <GradientButton
                         onClick={() =>
                           handlePeriodPlanLogGroup({
                             entry: todayPlanEntry,
                             plannedDate: resolvePeriodPlanEntryDate(
-                              activePeriodPlan,
+                              todayPlanPeriodPlan,
                               todayPeriodPlanMatch.weekNumber,
                               todayPeriodPlanMatch.day,
                             ),
-                            planId: activePeriodPlan.id,
+                            planId: todayPlanPeriodPlan.id,
                             weekNumber: todayPeriodPlanMatch.weekNumber,
                             day: todayPeriodPlanMatch.day,
                           })

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildPeriodPlanWeekNavItemsFromPlan,
   findPeriodPlanEntryForCalendarDate,
+  findTodayPeriodPlanEntryInPlans,
   isMemberOwnedPeriodPlan,
   normalizePeriodSchedulePlan,
   periodPlanWeekdayKeyForDate,
@@ -37,6 +38,34 @@ describe("periodPlanWeekdayKeyForDate", () => {
     const start = new Date(2026, 4, 20);
     const before = new Date(2026, 4, 19);
     expect(periodPlanWeekdayKeyForDate(start, before)).toBeNull();
+  });
+});
+
+describe("findTodayPeriodPlanEntryInPlans", () => {
+  it("prefers plan with entry on today when active plan id points to empty plan", () => {
+    const active = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "" } }]);
+    active.id = "active-empty";
+    active.startDate = "2026-05-19";
+    const withEntry = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "Styrke A", tuesday: "Styrke B" } }]);
+    withEntry.id = "has-entry";
+    withEntry.startDate = "2026-05-19";
+    const match = findTodayPeriodPlanEntryInPlans(
+      [active, withEntry],
+      new Date(2026, 4, 20),
+      {},
+      "active-empty",
+      1,
+      "tuesday",
+    );
+    expect(match?.plan.id).toBe("has-entry");
+    expect(match?.entry).toBe("Styrke B");
+  });
+
+  it("falls back to active week column when start date is missing", () => {
+    const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, wednesday: "Kondisjon" } }]);
+    plan.startDate = "";
+    const match = findTodayPeriodPlanEntryInPlans([plan], new Date(2026, 4, 20), {}, plan.id, 1, "wednesday");
+    expect(match?.entry).toBe("Kondisjon");
   });
 });
 

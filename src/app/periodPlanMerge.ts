@@ -1,3 +1,4 @@
+import { getDefaultPeriodPlanStartMondayISO, parseStoredLogDate } from "./dateFormat";
 import { applyPeriodPlanSwaps, getSwapsForWeek, WEEKDAY_PLAN_ORDER, type PeriodPlanSwapsByPlan } from "./periodPlanSwaps";
 import type { PeriodSchedulePlan, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "./types";
 
@@ -100,6 +101,46 @@ export function findPeriodPlanEntryForCalendarDateInPlans(
   return null;
 }
 
+/**
+ * Dagens økt fra periodeplan: matcher planlagt kalenderdato på tvers av synlige planer,
+ * med fallback til aktiv planuke når startdato mangler.
+ */
+export function findTodayPeriodPlanEntryInPlans(
+  plans: PeriodSchedulePlan[],
+  targetDate: Date,
+  swapsByPlan: PeriodPlanSwapsByPlan = {},
+  preferredPlanId?: string | null,
+  activeWeekNumber?: number | null,
+  calendarWeekdayKey?: WeekdayPlanKey,
+): PeriodPlanDayEntryMatchWithPlan | null {
+  const byDate = findPeriodPlanEntryForCalendarDateInPlans(plans, targetDate, swapsByPlan, preferredPlanId);
+  if (byDate?.entry.trim()) return byDate;
+
+  if (activeWeekNumber == null || !calendarWeekdayKey) return null;
+
+  const ordered = preferredPlanId
+    ? [...plans.filter((plan) => plan.id === preferredPlanId), ...plans.filter((plan) => plan.id !== preferredPlanId)]
+    : plans;
+
+  for (const plan of ordered) {
+    const week = resolvePeriodPlanWeek(plan, activeWeekNumber);
+    if (!week) continue;
+    const start = parsePeriodPlanStartDate(plan);
+    const swaps = getSwapsForWeek(swapsByPlan, plan.id, week.weekNumber);
+    const effective = applyPeriodPlanSwaps(week.days, swaps);
+    const dayFromStart = start ? periodPlanWeekdayKeyForDate(start, targetDate) : null;
+    if (dayFromStart) {
+      const entryFromStart = effective[dayFromStart]?.trim() ?? "";
+      if (entryFromStart) return { plan, entry: entryFromStart, weekNumber: week.weekNumber, day: dayFromStart };
+    } else {
+      const entry = effective[calendarWeekdayKey]?.trim() ?? "";
+      if (entry) return { plan, entry, weekNumber: week.weekNumber, day: calendarWeekdayKey };
+    }
+  }
+
+  return null;
+}
+
 export type PeriodPlanWeekNavItem = {
   id: string;
   weekNumber: number;
@@ -110,21 +151,15 @@ export type PeriodPlanWeekNavItem = {
 function planStartTimeMs(plan: PeriodSchedulePlan): number {
   const value = plan.startDate?.trim() ?? "";
   if (!value) return 0;
-  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (iso) {
     const parsed = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
-    return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+    return Number.isNaN(parsed.getTime()) ? 0 : startOfLocalDay(parsed).getTime();
   }
-  const parts = value.split(".");
-  if (parts.length >= 3) {
-    const day = Number(parts[0]);
-    const month = Number(parts[1]) - 1;
-    const year = Number(parts[2]);
-    const parsed = new Date(year, month, day);
-    return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
-  }
+  const stored = parseStoredLogDate(value);
+  if (stored) return startOfLocalDay(stored).getTime();
   const fallback = new Date(value);
-  return Number.isNaN(fallback.getTime()) ? 0 : fallback.getTime();
+  return Number.isNaN(fallback.getTime()) ? 0 : startOfLocalDay(fallback).getTime();
 }
 
 function createEmptyWeeklyDayPlan(): WeeklyDayPlan {
@@ -201,7 +236,8 @@ export function normalizePeriodSchedulePlan(plan: PeriodSchedulePlan): PeriodSch
     return base;
   });
   const synced = syncGradientMarkedWeekDays(weeklyPlansRaw);
-  return { ...plan, weeks, weeklyPlans: synced };
+  const startDate = plan.startDate?.trim() || getDefaultPeriodPlanStartMondayISO();
+  return { ...plan, startDate, weeks, weeklyPlans: synced };
 }
 
 export function resolvePeriodPlanWeek(plan: PeriodSchedulePlan, weekNumber: number): WeeklySchedulePlan | null {
