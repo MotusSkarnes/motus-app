@@ -660,13 +660,15 @@ async function persistProgram(
       return { ok: true, ids };
     }
     console.warn("save-training-program returned without saving program:", functionResult.data);
+    return {
+      ok: false,
+      message: "Server svarte uten lagret program. Prøv igjen.",
+    };
   }
-  if (functionResult.error) {
-    console.warn("save-training-program invoke failed:", functionResult.error.message);
-    const invokeDetails = await extractFunctionErrorDetails(functionResult.error);
-    if (invokeDetails) {
-      console.warn("save-training-program invoke details:", invokeDetails);
-    }
+  console.warn("save-training-program invoke failed:", functionResult.error.message);
+  const invokeDetails = await extractFunctionErrorDetails(functionResult.error);
+  if (invokeDetails) {
+    console.warn("save-training-program invoke details:", invokeDetails);
   }
 
   if (supabaseUrl && supabaseAnonKey) {

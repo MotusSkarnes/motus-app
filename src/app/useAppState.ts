@@ -99,6 +99,7 @@ import type {
   MemberTab,
   PeriodSchedulePlan,
   TrainerTab,
+  ProgramExercise,
   TrainingProgram,
   WorkoutLog,
 } from "./types";
@@ -313,48 +314,100 @@ function mergeRemoteWorkoutLogsWithLocalOptimistic(
   return Array.from(byId.values()).sort((a, b) => workoutLogDateMs(b) - workoutLogDateMs(a));
 }
 
+function appendExercisesFromProgramRows(
+  exercisesById: Map<string, Exercise>,
+  exercisesByName: Map<string, Exercise>,
+  rows: ProgramExercise[],
+): Exercise[] {
+  const appendedExercises: Exercise[] = [];
+  rows.forEach((programExercise) => {
+    const exerciseId = programExercise.exerciseId.trim();
+    const exerciseName = programExercise.exerciseName.trim();
+    if (!exerciseId && !exerciseName) return;
+    if (exerciseId && exercisesById.has(exerciseId)) return;
+    if (exerciseName && exercisesByName.has(exerciseName.toLowerCase())) return;
+
+    const nextExercise: Exercise = {
+      id: exerciseId || `ex_${exerciseName.toLowerCase().replace(/\s+/g, "_")}`,
+      name: exerciseName || "Ny øvelse",
+      category: "Styrke",
+      group: "Fra program",
+      equipment: "Uspesifisert",
+      level: "Nybegynner",
+      description: "Lagt til automatisk fra program.",
+    };
+    appendedExercises.push(nextExercise);
+    exercisesById.set(nextExercise.id, nextExercise);
+    exercisesByName.set(nextExercise.name.trim().toLowerCase(), nextExercise);
+  });
+  return appendedExercises;
+}
+
+function normalizeProgramExerciseNames(
+  program: TrainingProgram,
+  exercisesById: Map<string, Exercise>,
+): TrainingProgram {
+  const legacyNormalizedExercises = normalizeLegacyIntervalCooldownExerciseNames(program.exercises);
+  let programChanged = legacyNormalizedExercises !== program.exercises;
+  const normalizedExercises = legacyNormalizedExercises.map((programExercise, index) => {
+    if (programExercise.exerciseName === "Nedjogg" || isLegacyIntervalCooldownDrag(legacyNormalizedExercises, index)) {
+      if (programExercise.exerciseName === "Nedjogg") return programExercise;
+      programChanged = true;
+      return { ...programExercise, exerciseName: "Nedjogg" };
+    }
+    const source = exercisesById.get(programExercise.exerciseId.trim());
+    if (!source || source.name === programExercise.exerciseName) return programExercise;
+    programChanged = true;
+    return { ...programExercise, exerciseName: source.name };
+  });
+  if (!programChanged) return program;
+  return { ...program, exercises: normalizedExercises };
+}
+
+/** Full catalog sync after hydrate — can be expensive with many programs. */
 function syncExercisesWithPrograms(state: AppState): AppState {
   const exercisesById = new Map(state.exercises.map((exercise) => [exercise.id, exercise]));
   const exercisesByName = new Map(state.exercises.map((exercise) => [exercise.name.trim().toLowerCase(), exercise]));
   const appendedExercises: Exercise[] = [];
-
   state.programs.forEach((program) => {
-    program.exercises.forEach((programExercise) => {
-      const exerciseId = programExercise.exerciseId.trim();
-      const exerciseName = programExercise.exerciseName.trim();
-      if (!exerciseId && !exerciseName) return;
-      if (exerciseId && exercisesById.has(exerciseId)) return;
-      if (exerciseName && exercisesByName.has(exerciseName.toLowerCase())) return;
-
-      const nextExercise: Exercise = {
-        id: exerciseId || `ex_${exerciseName.toLowerCase().replace(/\s+/g, "_")}`,
-        name: exerciseName || "Ny øvelse",
-        category: "Styrke",
-        group: "Fra program",
-        equipment: "Uspesifisert",
-        level: "Nybegynner",
-        description: "Lagt til automatisk fra program.",
-      };
-      appendedExercises.push(nextExercise);
-      exercisesById.set(nextExercise.id, nextExercise);
-      exercisesByName.set(nextExercise.name.trim().toLowerCase(), nextExercise);
-    });
+    appendedExercises.push(...appendExercisesFromProgramRows(exercisesById, exercisesByName, program.exercises));
   });
 
   let hasProgramNameFix = false;
-  const normalizedPrograms = state.programs.map((program) => ({
-    ...program,
-    exercises: normalizeLegacyIntervalCooldownExerciseNames(program.exercises).map((programExercise, index, normalizedExercises) => {
-      if (programExercise.exerciseName === "Nedjogg" || isLegacyIntervalCooldownDrag(normalizedExercises, index)) {
-        if (programExercise !== program.exercises[index]) hasProgramNameFix = true;
-        return programExercise.exerciseName === "Nedjogg" ? programExercise : { ...programExercise, exerciseName: "Nedjogg" };
-      }
-      const source = exercisesById.get(programExercise.exerciseId.trim());
-      if (!source || source.name === programExercise.exerciseName) return programExercise;
-      hasProgramNameFix = true;
-      return { ...programExercise, exerciseName: source.name };
-    }),
-  }));
+  const normalizedPrograms = state.programs.map((program) => {
+    const normalized = normalizeProgramExerciseNames(program, exercisesById);
+    if (normalized !== program) hasProgramNameFix = true;
+    return normalized;
+  });
+
+  if (!appendedExercises.length && !hasProgramNameFix) return state;
+  return {
+    ...state,
+    exercises: [...state.exercises, ...appendedExercises],
+    programs: normalizedPrograms,
+  };
+}
+
+/** Fast path when saving one program — avoids scanning the entire trainer catalog. */
+function syncExercisesWithProgramsAfterSave(state: AppState, input: SaveProgramInput): AppState {
+  const exercisesById = new Map(state.exercises.map((exercise) => [exercise.id, exercise]));
+  const exercisesByName = new Map(state.exercises.map((exercise) => [exercise.name.trim().toLowerCase(), exercise]));
+  const appendedExercises = appendExercisesFromProgramRows(exercisesById, exercisesByName, input.exercises);
+
+  const trimmedProgramId = String(input.id ?? "").trim();
+  const trimmedTitle = input.title.trim();
+  const shouldNormalizeProgram = (program: TrainingProgram) => {
+    if (trimmedProgramId) return program.id === trimmedProgramId;
+    return program.memberId === input.memberId && program.title.trim() === trimmedTitle;
+  };
+
+  let hasProgramNameFix = false;
+  const normalizedPrograms = state.programs.map((program) => {
+    if (!shouldNormalizeProgram(program)) return program;
+    const normalized = normalizeProgramExerciseNames(program, exercisesById);
+    if (normalized !== program) hasProgramNameFix = true;
+    return normalized;
+  });
 
   if (!appendedExercises.length && !hasProgramNameFix) return state;
   return {
@@ -1707,7 +1760,7 @@ export function useAppState() {
   function saveProgramForMember(input: SaveProgramInput) {
     if (!input.title.trim() || !input.memberId) return;
 
-    setAppState((prev) => syncExercisesWithPrograms(repository.saveProgram(prev, input)));
+    setAppState((prev) => syncExercisesWithProgramsAfterSave(repository.saveProgram(prev, input), input));
   }
 
   function deleteProgramById(programId: string, context?: { memberIds?: string[]; targetEmail?: string; targetName?: string }) {
