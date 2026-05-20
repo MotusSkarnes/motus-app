@@ -81,7 +81,8 @@ import {
   readHiddenPeriodPlanIdsForMembers,
   readPeriodPlansByMemberId,
   removeMemberOwnedPeriodPlanFromStorage,
-  periodPlanWeekdayKeyForDate,
+  findPeriodPlanEntryForCalendarDate,
+  parsePeriodPlanStartDate,
   resolvePeriodPlanWeek,
   writeHiddenPeriodPlanIdsForMember,
 } from "../app/periodPlanMerge";
@@ -1513,23 +1514,25 @@ export function MemberPortal(props: MemberPortalProps) {
     visiblePeriodPlans.find((plan) => plan.id === activeMemberPeriodPlanId) ?? visiblePeriodPlans[0] ?? null;
   const activePeriodPlanId = activePeriodPlan?.id ?? null;
   const activePeriodSelectableWeekCount = activePeriodPlan ? periodPlanSelectableWeekCount(activePeriodPlan) : 0;
-  const activePeriodPlanStartDate = activePeriodPlan ? parseDateOnly(activePeriodPlan.startDate) : null;
+  const activePeriodPlanStartDate = activePeriodPlan ? parsePeriodPlanStartDate(activePeriodPlan) : null;
   const activePeriodWeekIndex = useMemo(() => {
     if (!activePeriodPlan || !activePeriodPlanStartDate) return null;
     const daysSinceStart = Math.floor((getStartOfDay(new Date(nowTimestamp)).getTime() - getStartOfDay(activePeriodPlanStartDate).getTime()) / (24 * 60 * 60 * 1000));
     if (daysSinceStart < 0) return 0;
     const weekIndex = Math.floor(daysSinceStart / 7);
-    if (weekIndex >= activePeriodPlan.weeks) return null;
+    const planWeekCount = periodPlanSelectableWeekCount(activePeriodPlan);
+    if (weekIndex >= planWeekCount) return null;
     return weekIndex;
   }, [activePeriodPlan, activePeriodPlanStartDate, nowTimestamp]);
   const activeWeeklyPlan = useMemo(() => {
     if (!activePeriodPlan || activePeriodWeekIndex === null) return null;
     return resolvePeriodPlanWeek(activePeriodPlan, activePeriodWeekIndex + 1);
   }, [activePeriodPlan, activePeriodWeekIndex]);
-  const todayPlanDayKey = useMemo((): WeekdayPlanKey | null => {
-    if (!activePeriodPlanStartDate || activePeriodWeekIndex === null) return null;
-    return periodPlanWeekdayKeyForDate(activePeriodPlanStartDate, new Date(nowTimestamp));
-  }, [activePeriodPlanStartDate, activePeriodWeekIndex, nowTimestamp]);
+  const todayPeriodPlanMatch = useMemo(() => {
+    if (!activePeriodPlan) return null;
+    return findPeriodPlanEntryForCalendarDate(activePeriodPlan, new Date(nowTimestamp), periodPlanSwapsByPlan);
+  }, [activePeriodPlan, nowTimestamp, periodPlanSwapsByPlan]);
+  const todayPlanDayKey = todayPeriodPlanMatch?.day ?? null;
   const displayedPeriodWeek = useMemo(() => {
     if (!activePeriodPlan) return null;
     const fallbackWeekNumber = activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : 1;
@@ -1545,10 +1548,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const swaps = getSwapsForWeek(periodPlanSwapsByPlan, activePeriodPlan.id, activeWeeklyPlan.weekNumber);
     return applyPeriodPlanSwaps(activeWeeklyPlan.days, swaps);
   }, [activeWeeklyPlan, activePeriodPlan, periodPlanSwapsByPlan]);
-  const todayPlanEntry =
-    activeWeeklyPlan && activeWeeklyPlanEffectiveDays && todayPlanDayKey
-      ? activeWeeklyPlanEffectiveDays[todayPlanDayKey]?.trim() ?? ""
-      : "";
+  const todayPlanEntry = todayPeriodPlanMatch?.entry?.trim() ?? "";
   const todayPlanAction = useMemo(
     () => (todayPlanEntry ? resolvePeriodPlanEntryAction(todayPlanEntry, memberProgramsInActiveLibrary) : { kind: "none" as const }),
     [todayPlanEntry, memberProgramsInActiveLibrary],
@@ -3511,7 +3511,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   function resolvePeriodPlanEntryDate(plan: PeriodSchedulePlan, weekNumber: number, day: WeekdayPlanKey): string | null {
-    const startDate = parseDateOnly(plan.startDate);
+    const startDate = parsePeriodPlanStartDate(plan);
     if (!startDate) return null;
     const weekdayIndexByKey: Record<WeekdayPlanKey, number> = {
       monday: 0,
@@ -4277,19 +4277,19 @@ export function MemberPortal(props: MemberPortalProps) {
                             Start dagens økt
                           </GradientButton>
                         ) : null}
-                        {todayPlanAction.kind === "log-group" && activePeriodPlan && activePeriodWeekIndex !== null ? (
+                        {todayPlanAction.kind === "log-group" && activePeriodPlan && todayPeriodPlanMatch ? (
                           <OutlineButton
                             onClick={() =>
                               handlePeriodPlanLogGroup({
                                 entry: todayPlanEntry,
                                 plannedDate: resolvePeriodPlanEntryDate(
                                   activePeriodPlan,
-                                  activeWeeklyPlan?.weekNumber ?? activePeriodWeekIndex + 1,
-                                  todayPlanDayKey ?? currentWeekdayKey,
+                                  todayPeriodPlanMatch.weekNumber,
+                                  todayPeriodPlanMatch.day,
                                 ),
                                 planId: activePeriodPlan.id,
-                                weekNumber: activeWeeklyPlan?.weekNumber ?? activePeriodWeekIndex + 1,
-                                day: todayPlanDayKey ?? currentWeekdayKey,
+                                weekNumber: todayPeriodPlanMatch.weekNumber,
+                                day: todayPeriodPlanMatch.day,
                               })
                             }
                             className="w-full sm:w-auto"
@@ -4639,19 +4639,19 @@ export function MemberPortal(props: MemberPortalProps) {
                         Start dagens økt
                       </GradientButton>
                     ) : null}
-                    {todayPlanAction.kind === "log-group" && activePeriodPlan && activePeriodWeekIndex !== null ? (
+                    {todayPlanAction.kind === "log-group" && activePeriodPlan && todayPeriodPlanMatch ? (
                       <GradientButton
                         onClick={() =>
                           handlePeriodPlanLogGroup({
                             entry: todayPlanEntry,
                             plannedDate: resolvePeriodPlanEntryDate(
                               activePeriodPlan,
-                              activeWeeklyPlan?.weekNumber ?? activePeriodWeekIndex + 1,
-                              todayPlanDayKey ?? currentWeekdayKey,
+                              todayPeriodPlanMatch.weekNumber,
+                              todayPeriodPlanMatch.day,
                             ),
                             planId: activePeriodPlan.id,
-                            weekNumber: activeWeeklyPlan?.weekNumber ?? activePeriodWeekIndex + 1,
-                            day: todayPlanDayKey ?? currentWeekdayKey,
+                            weekNumber: todayPeriodPlanMatch.weekNumber,
+                            day: todayPeriodPlanMatch.day,
                           })
                         }
                         className="w-full"

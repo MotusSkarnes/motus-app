@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPeriodPlanWeekNavItemsFromPlan,
+  findPeriodPlanEntryForCalendarDate,
   isMemberOwnedPeriodPlan,
   normalizePeriodSchedulePlan,
   periodPlanWeekdayKeyForDate,
@@ -36,6 +37,33 @@ describe("periodPlanWeekdayKeyForDate", () => {
     const start = new Date(2026, 4, 20);
     const before = new Date(2026, 4, 19);
     expect(periodPlanWeekdayKeyForDate(start, before)).toBeNull();
+  });
+});
+
+describe("findPeriodPlanEntryForCalendarDate", () => {
+  it("finds entry by planned calendar date across week columns", () => {
+    const plan = makePlan([
+      {
+        id: "w1",
+        weekNumber: 1,
+        days: { ...empty, monday: "Startdag", wednesday: "Onsdag i uke 1" },
+      },
+      { id: "w2", weekNumber: 2, days: { ...empty, monday: "Uke 2 mandag" } },
+    ]);
+    plan.startDate = "14.05.2026";
+    const match = findPeriodPlanEntryForCalendarDate(plan, new Date(2026, 4, 16));
+    expect(match?.entry).toBe("Onsdag i uke 1");
+    expect(match?.weekNumber).toBe(1);
+    expect(match?.day).toBe("wednesday");
+  });
+
+  it("applies day swaps before returning entry", () => {
+    const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "A", tuesday: "B" } }]);
+    plan.startDate = "2026-05-19";
+    const swaps = { [plan.id]: { "1": [{ dayA: "monday", dayB: "tuesday" }] } };
+    const match = findPeriodPlanEntryForCalendarDate(plan, new Date(2026, 4, 20), swaps);
+    expect(match?.entry).toBe("A");
+    expect(match?.day).toBe("tuesday");
   });
 });
 

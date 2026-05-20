@@ -1,4 +1,4 @@
-import { WEEKDAY_PLAN_ORDER } from "./periodPlanSwaps";
+import { applyPeriodPlanSwaps, getSwapsForWeek, WEEKDAY_PLAN_ORDER, type PeriodPlanSwapsByPlan } from "./periodPlanSwaps";
 import type { PeriodSchedulePlan, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "./types";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -19,6 +19,62 @@ export function periodPlanWeekdayKeyForDate(startDate: Date, targetDate: Date): 
   const daysSinceStart = periodPlanDaysSinceStart(startDate, targetDate);
   if (daysSinceStart < 0) return null;
   return WEEKDAY_PLAN_ORDER[daysSinceStart % 7];
+}
+
+export type PeriodPlanDayEntryMatch = {
+  entry: string;
+  weekNumber: number;
+  day: WeekdayPlanKey;
+};
+
+const WEEKDAY_INDEX: Record<WeekdayPlanKey, number> = {
+  monday: 0,
+  tuesday: 1,
+  wednesday: 2,
+  thursday: 3,
+  friday: 4,
+  saturday: 5,
+  sunday: 6,
+};
+
+/** Parser planstart på samme måte som kalender og lagring (ISO + dd.mm.yyyy). */
+export function parsePeriodPlanStartDate(plan: PeriodSchedulePlan): Date | null {
+  const ms = planStartTimeMs(plan);
+  if (!ms) return null;
+  return new Date(ms);
+}
+
+export function resolvePeriodPlanPlannedDate(plan: PeriodSchedulePlan, weekNumber: number, day: WeekdayPlanKey): Date | null {
+  const start = parsePeriodPlanStartDate(plan);
+  if (!start) return null;
+  const weekIndex = Math.max(0, Math.floor(Number(weekNumber) || 1) - 1);
+  const dayOffset = weekIndex * 7 + WEEKDAY_INDEX[day];
+  return new Date(start.getFullYear(), start.getMonth(), start.getDate() + dayOffset);
+}
+
+/** Finn økt for en kalenderdag — samme dato-beregning som vises i periodeplan-radene. */
+export function findPeriodPlanEntryForCalendarDate(
+  plan: PeriodSchedulePlan,
+  targetDate: Date,
+  swapsByPlan: PeriodPlanSwapsByPlan = {},
+): PeriodPlanDayEntryMatch | null {
+  const normalized = normalizePeriodSchedulePlan(plan);
+  const targetMs = startOfLocalDay(targetDate).getTime();
+
+  for (const week of normalized.weeklyPlans) {
+    const swaps = getSwapsForWeek(swapsByPlan, plan.id, week.weekNumber);
+    const effectiveDays = applyPeriodPlanSwaps(week.days, swaps);
+    for (const day of WEEKDAY_PLAN_ORDER) {
+      const plannedDate = resolvePeriodPlanPlannedDate(plan, week.weekNumber, day);
+      if (!plannedDate || startOfLocalDay(plannedDate).getTime() !== targetMs) continue;
+      return {
+        entry: effectiveDays[day]?.trim() ?? "",
+        weekNumber: week.weekNumber,
+        day,
+      };
+    }
+  }
+  return null;
 }
 
 export type PeriodPlanWeekNavItem = {
