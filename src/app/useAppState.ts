@@ -143,6 +143,49 @@ function mergeMembersById(primary: AppState["members"] | null, secondary: AppSta
   return Array.from(merged.values());
 }
 
+/** Nylig opprettede kunder kan mangle i sky-listen i noen sekunder etter create. */
+const TRAINER_MEMBER_PIN_MS = 120_000;
+
+function mergeTrainerMembersWithLocalAndPinned(
+  remoteMembers: AppState["members"],
+  localMembers: AppState["members"],
+  pinnedMembers: Member[],
+): AppState["members"] {
+  let merged = mergeMembersById(remoteMembers, localMembers) ?? remoteMembers;
+  merged = mergeMembersById(merged, pinnedMembers) ?? merged;
+
+  const remoteIds = new Set(merged.map((member) => member.id.trim()).filter(Boolean));
+  const remoteEmails = new Set(
+    merged.map((member) => member.email.trim().toLowerCase()).filter((email) => email.includes("@")),
+  );
+  const keepLocal: Member[] = [];
+  for (const local of [...localMembers, ...pinnedMembers]) {
+    if (local.isActive === false) continue;
+    const email = local.email.trim().toLowerCase();
+    const inRemote = remoteIds.has(local.id.trim()) || (email.includes("@") && remoteEmails.has(email));
+    if (!inRemote) keepLocal.push(local);
+  }
+  if (keepLocal.length) {
+    merged = mergeMembersById(merged, keepLocal) ?? merged;
+  }
+  return merged;
+}
+
+function preserveTrainerInvitedAtFromLocal(
+  mergedMembers: AppState["members"],
+  prevMembers: AppState["members"],
+): AppState["members"] {
+  return mergedMembers.map((remote) => {
+    const prevRow = prevMembers.find((member) => member.id === remote.id);
+    const prevInv = prevRow?.invitedAt?.trim();
+    const remoteInv = remote.invitedAt?.trim();
+    if (prevInv && !remoteInv) {
+      return { ...remote, invitedAt: prevInv };
+    }
+    return remote;
+  });
+}
+
 function mergeMemberLibraryStatus(
   remote: MemberProgramLibraryStatus | undefined,
   local: MemberProgramLibraryStatus | undefined,
@@ -370,6 +413,29 @@ const INITIAL_SUPABASE_AUTH_FROM_URL = captureInitialSupabaseAuthUrl();
 
 export function useAppState() {
   const remoteHydrateRef = useRef<(() => Promise<void>) | null>(null);
+  const pinnedTrainerMembersRef = useRef(new Map<string, { member: Member; expiresAt: number }>());
+
+  function pinTrainerMember(member: Member) {
+    const expiresAt = Date.now() + TRAINER_MEMBER_PIN_MS;
+    pinnedTrainerMembersRef.current.set(`id:${member.id.trim()}`, { member, expiresAt });
+    const email = member.email.trim().toLowerCase();
+    if (email.includes("@")) {
+      pinnedTrainerMembersRef.current.set(`email:${email}`, { member, expiresAt });
+    }
+  }
+
+  function readPinnedTrainerMembers(): Member[] {
+    const now = Date.now();
+    const byId = new Map<string, Member>();
+    for (const [key, entry] of pinnedTrainerMembersRef.current.entries()) {
+      if (entry.expiresAt <= now) {
+        pinnedTrainerMembersRef.current.delete(key);
+        continue;
+      }
+      byId.set(entry.member.id, entry.member);
+    }
+    return Array.from(byId.values());
+  }
   const isDemoMode = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_MODE === "true";
   const repository = isSupabaseConfigured ? supabaseAppRepository : localAppRepository;
   const [appState, setAppState] = useState<AppState>(() => loadState());
@@ -1578,6 +1644,8 @@ export function useAppState() {
       return result;
     }
 
+    pinTrainerMember(result.member);
+
     setAppState((prev) => ({
       ...prev,
       members:
@@ -1587,13 +1655,6 @@ export function useAppState() {
         ) ?? prev.members,
       selectedMemberId: result.member.id,
     }));
-
-    const ownerUserId =
-      String(result.member.ownerUserId ?? "").trim() ||
-      (appState.currentUser?.role === "trainer" ? String(appState.currentUser.id ?? "").trim() : "");
-    if (ownerUserId) {
-      await refreshTrainerSessionData(ownerUserId);
-    }
 
     return result;
   }
@@ -1827,7 +1888,11 @@ export function useAppState() {
     if (remoteMembers) {
       setAppState((prev) => ({
         ...prev,
-        members: mergeMembersById(remoteMembers, prev.members) ?? remoteMembers,
+        members: mergeTrainerMembersWithLocalAndPinned(
+          remoteMembers,
+          prev.members,
+          readPinnedTrainerMembers(),
+        ),
         ...(remoteMessages ? { messages: remoteMessages } : {}),
         ...(remotePrograms ? { programs: mergeRemoteProgramsWithLocal(remotePrograms, prev.programs) } : {}),
         ...(remoteLogs ? { logs: remoteLogs } : {}),
