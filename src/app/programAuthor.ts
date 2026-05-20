@@ -9,13 +9,28 @@ function pickFirstName(value: string): string {
   return firstToken.trim();
 }
 
-/** Behold trener-opphav ved duplikat-merge (nyere rad kan mangle felt etter delvis fetch). */
+/** Behold eksplisitt opphav ved duplikat-merge; ikke overskriv member med trainer pga. owner_user_id. */
 export function mergeProgramAuthorFields(
   primary: TrainingProgram,
   secondary: TrainingProgram,
 ): Pick<TrainingProgram, "programCreatedBy" | "programCreatedByName" | "ownerUserId" | "assignedTrainerName"> {
-  const candidates = [primary, secondary];
-  const trainer = candidates.find((p) => p.programCreatedBy === "trainer");
+  if (primary.programCreatedBy === "member" || primary.programCreatedBy === "trainer") {
+    return {
+      programCreatedBy: primary.programCreatedBy,
+      programCreatedByName: primary.programCreatedByName ?? secondary.programCreatedByName,
+      ownerUserId: primary.ownerUserId ?? secondary.ownerUserId,
+      assignedTrainerName: primary.assignedTrainerName ?? secondary.assignedTrainerName,
+    };
+  }
+  if (secondary.programCreatedBy === "member" || secondary.programCreatedBy === "trainer") {
+    return {
+      programCreatedBy: secondary.programCreatedBy,
+      programCreatedByName: secondary.programCreatedByName ?? primary.programCreatedByName,
+      ownerUserId: secondary.ownerUserId ?? primary.ownerUserId,
+      assignedTrainerName: secondary.assignedTrainerName ?? primary.assignedTrainerName,
+    };
+  }
+  const trainer = [primary, secondary].find((p) => p.programCreatedBy === "trainer");
   if (trainer) {
     return {
       programCreatedBy: "trainer",
@@ -24,34 +39,25 @@ export function mergeProgramAuthorFields(
       assignedTrainerName: trainer.assignedTrainerName ?? secondary.assignedTrainerName ?? primary.assignedTrainerName,
     };
   }
-  const withOwner = candidates.find((p) => p.ownerUserId?.trim());
-  const withAuthor = candidates.find((p) => p.programCreatedBy);
-  const pick = withAuthor ?? withOwner ?? primary;
   return {
-    programCreatedBy: pick.programCreatedBy,
-    programCreatedByName: pick.programCreatedByName,
-    ownerUserId: pick.ownerUserId ?? secondary.ownerUserId ?? primary.ownerUserId,
-    assignedTrainerName: pick.assignedTrainerName ?? secondary.assignedTrainerName ?? primary.assignedTrainerName,
+    programCreatedBy: primary.programCreatedBy ?? secondary.programCreatedBy,
+    programCreatedByName: primary.programCreatedByName ?? secondary.programCreatedByName,
+    ownerUserId: primary.ownerUserId ?? secondary.ownerUserId,
+    assignedTrainerName: primary.assignedTrainerName ?? secondary.assignedTrainerName,
   };
 }
 
 /**
- * PT-programmer kan ha program_created_by=member i DB (feil JWT-rolle ved lagring).
- * owner_user_id ≠ medlemmets auth-id tyder på trener-eid rad.
+ * Viser hvem som opprettet programmet. owner_user_id er PT for alle kundeer (RLS) og brukes ikke her.
+ * Uten program_created_by: eldre rader kan vises som trener hvis assigned_trainer_name finnes.
  */
 export function resolveProgramAuthorKind(
   program: TrainingProgram,
-  options?: { viewerAuthUserId?: string },
+  _options?: { viewerAuthUserId?: string },
 ): ResolvedProgramAuthor {
-  const viewerAuthUserId = options?.viewerAuthUserId?.trim() ?? "";
-  const ownerUserId = program.ownerUserId?.trim() ?? "";
   if (program.programCreatedBy === "trainer") return "trainer";
-  if (program.programCreatedBy === "member") {
-    if (viewerAuthUserId && ownerUserId && ownerUserId !== viewerAuthUserId) return "trainer";
-    return "member";
-  }
+  if (program.programCreatedBy === "member") return "member";
   if (program.assignedTrainerName?.trim()) return "trainer";
-  if (viewerAuthUserId && ownerUserId && ownerUserId !== viewerAuthUserId) return "trainer";
   return "unknown";
 }
 
@@ -65,8 +71,6 @@ export function programAuthorCreditForMember(
     const n = program.programCreatedByName?.trim() || program.assignedTrainerName?.trim();
     return n ? `Fra trener ${pickFirstName(n)}` : "Fra trener";
   }
-  const legacy = program.assignedTrainerName?.trim();
-  if (legacy) return `Fra trener ${pickFirstName(legacy)}`;
   return null;
 }
 
