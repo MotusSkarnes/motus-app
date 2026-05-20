@@ -35,8 +35,10 @@ import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { hasSubstantiveOnboardingAnswers, parsePersonalGoalsJson, readProfileExtensions } from "../app/memberOnboarding";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
 import { motusShareStatusMessage, sharePersonalRecordCard } from "../app/motusShareCard";
+import { buildTrainingProgramFromWorkoutMode } from "../app/pausedWorkoutSession";
 import {
   formatPausedWorkoutExpiry,
+  getPausedWorkoutByProgramId,
   listPausedWorkouts,
   pausedWorkoutProgress,
   purgeExpiredPausedWorkouts,
@@ -220,7 +222,7 @@ type MemberPortalProps = {
   removeCompletedPlanEntryLog: (input: { memberId: string; programTitle: string; date?: string }) => void;
   cancelWorkoutMode: () => void;
   dismissWorkoutMode: () => void;
-  resumePausedWorkout: (draftId: string) => void;
+  resumePausedWorkout: (draftId: string, memberIdHint?: string) => void;
   discardPausedWorkoutDraft: (memberId: string, draftId: string) => void;
   workoutCelebration: WorkoutCelebration | null;
   dismissWorkoutCelebration: () => void;
@@ -1330,12 +1332,23 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [messages, relatedMemberIdSet, members, editableMember?.email, editableMember?.name, normalizedCurrentUserEmail, currentUserRole]);
   const activeWorkoutProgram = useMemo(() => {
     if (!workoutMode?.programId) return null;
-    return (
-      programs.find((program) => program.id === workoutMode.programId) ??
-      memberPrograms.find((program) => program.id === workoutMode.programId) ??
-      null
-    );
-  }, [workoutMode?.programId, programs, memberPrograms]);
+    const programId = workoutMode.programId;
+    const fromState =
+      programs.find((program) => program.id === programId) ??
+      memberPrograms.find((program) => program.id === programId);
+    if (fromState) return fromState;
+
+    const memberIdsToTry = [...new Set([activeMemberId, workoutMode.memberId, memberViewId].map((id) => id?.trim()).filter(Boolean))];
+    for (const memberId of memberIdsToTry) {
+      const snapshot = getPausedWorkoutByProgramId(memberId, programId)?.programSnapshot;
+      if (snapshot) return snapshot;
+    }
+
+    if (workoutMode.results.length > 0) {
+      return buildTrainingProgramFromWorkoutMode(workoutMode);
+    }
+    return null;
+  }, [workoutMode, programs, memberPrograms, activeMemberId, memberViewId]);
 
   useEffect(() => {
     purgeExpiredPausedWorkouts();
@@ -4652,8 +4665,7 @@ export function MemberPortal(props: MemberPortalProps) {
                         <GradientButton
                           className="w-full !min-h-12 !px-5 !py-3 text-sm font-bold"
                           onClick={() => {
-                            resumePausedWorkout(primaryPausedWorkout.id);
-                            setPausedWorkoutsTick((value) => value + 1);
+                            resumePausedWorkout(primaryPausedWorkout.id, primaryPausedWorkout.memberId);
                           }}
                         >
                           <span className="inline-flex items-center justify-center gap-2">
@@ -4776,8 +4788,7 @@ export function MemberPortal(props: MemberPortalProps) {
                               <GradientButton
                                 className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
                                 onClick={() => {
-                                  resumePausedWorkout(draft.id);
-                                  setPausedWorkoutsTick((value) => value + 1);
+                                  resumePausedWorkout(draft.id, draft.memberId);
                                 }}
                               >
                                 <span className="inline-flex items-center gap-1">

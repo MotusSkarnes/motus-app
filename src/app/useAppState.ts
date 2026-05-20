@@ -1801,9 +1801,16 @@ export function useAppState() {
     setAppState((prev) => dismissWorkoutModeInState(prev));
   }
 
-  function resumePausedWorkout(draftId: string) {
+  function resumePausedWorkout(draftId: string, memberIdHint?: string) {
     if (!draftId.trim()) return;
-    setAppState((prev) => resumePausedWorkoutInState(prev, draftId));
+    setAppState((prev) => {
+      const memberId =
+        memberIdHint?.trim() ||
+        prev.memberViewId?.trim() ||
+        prev.currentUser?.memberId?.trim() ||
+        "";
+      return resumePausedWorkoutInState(prev, draftId, memberId);
+    });
   }
 
   function discardPausedWorkoutDraft(memberId: string, draftId: string) {

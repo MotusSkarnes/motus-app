@@ -72,4 +72,20 @@ describe("pausedWorkoutSession", () => {
     expect(next.workoutMode?.programId).toBe("p1");
     expect(next.workoutMode?.results[0]?.completed).toBe(true);
   });
+
+  it("resume restores program into state when trainer program was removed after pause", () => {
+    window.localStorage.removeItem(PAUSED_WORKOUTS_STORAGE_KEY);
+    const programSnapshot = baseState().programs[0];
+    const draft = upsertPausedWorkout({
+      memberId: "m1",
+      programId: "p1",
+      programTitle: "Styrke A",
+      workoutMode,
+      programSnapshot,
+    });
+    const emptyPrograms = { ...baseState(), programs: [] };
+    const next = resumePausedWorkoutInState(emptyPrograms, draft.id, "m1");
+    expect(next.workoutMode?.programId).toBe("p1");
+    expect(next.programs.some((program) => program.id === "p1")).toBe(true);
+  });
 });

@@ -4,7 +4,7 @@ import {
   removePausedWorkoutByProgramId,
   upsertPausedWorkout,
 } from "./pausedWorkoutStorage";
-import type { AppState } from "./types";
+import type { AppState, ProgramExercise, TrainingProgram, WorkoutModeState } from "./types";
 
 function resolvePausedWorkoutMemberId(state: AppState, memberIdHint?: string): string {
   const fromHint = memberIdHint?.trim() ?? "";
@@ -39,8 +39,44 @@ export function persistPausedWorkoutFromState(state: AppState, memberIdHint?: st
     programId: workoutMode.programId,
     programTitle: workoutMode.programTitle ?? program?.title ?? "Økt",
     workoutMode,
-    programSnapshot: program?.ephemeral ? program : undefined,
+    programSnapshot: program ?? undefined,
   });
+}
+
+/** Gjenoppretter program fra økt-rader når programmet ikke finnes i state (f.eks. etter pause). */
+export function buildTrainingProgramFromWorkoutMode(workoutMode: WorkoutModeState): TrainingProgram {
+  const seen = new Set<string>();
+  const exercises: ProgramExercise[] = [];
+  for (const result of workoutMode.results) {
+    const programExerciseId = result.programExerciseId?.trim() || result.exerciseId;
+    if (!programExerciseId || seen.has(programExerciseId)) continue;
+    seen.add(programExerciseId);
+    exercises.push({
+      id: programExerciseId,
+      exerciseId: result.exerciseId,
+      exerciseName: result.exerciseName,
+      sets: result.plannedSets || "1",
+      reps: result.plannedReps || "",
+      weight: result.plannedWeight || "",
+      durationMinutes: result.plannedDurationMinutes,
+      speed: result.plannedSpeed,
+      incline: result.plannedIncline,
+      restSeconds: "",
+      notes: "",
+      blockId: result.blockId,
+      blockType: result.blockType,
+    });
+  }
+  return {
+    id: workoutMode.programId,
+    memberId: workoutMode.memberId?.trim() || "",
+    title: workoutMode.programTitle?.trim() || "Økt",
+    goal: "",
+    notes: "",
+    createdAt: "",
+    exercises,
+    ephemeral: true,
+  };
 }
 
 export function dismissWorkoutModeInState(state: AppState): AppState {
@@ -58,9 +94,17 @@ export function resumePausedWorkoutInState(state: AppState, draftId: string, mem
   if (!draft) return state;
 
   let nextPrograms = state.programs;
-  const programExists = nextPrograms.some((program) => program.id === draft.programId);
-  if (!programExists && draft.programSnapshot) {
-    nextPrograms = [draft.programSnapshot, ...nextPrograms];
+  const existingIndex = nextPrograms.findIndex((program) => program.id === draft.programId);
+  if (draft.programSnapshot) {
+    if (existingIndex >= 0) {
+      nextPrograms = nextPrograms.map((program, index) =>
+        index === existingIndex ? draft.programSnapshot! : program,
+      );
+    } else {
+      nextPrograms = [draft.programSnapshot, ...nextPrograms];
+    }
+  } else if (existingIndex < 0 && draft.workoutMode.results.length > 0) {
+    nextPrograms = [buildTrainingProgramFromWorkoutMode(draft.workoutMode), ...nextPrograms];
   }
 
   return {

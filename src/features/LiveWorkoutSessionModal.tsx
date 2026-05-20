@@ -9,6 +9,7 @@ import { buildWorkoutResultGroups, EXERCISE_BLOCK_LABELS } from "../app/programB
 import { GradientButton, OutlineButton, TextArea, TextInput } from "../app/ui";
 import type { Exercise, TrainingProgram, WorkoutModeState, WorkoutReflection } from "../app/types";
 import type { ReplaceWorkoutExerciseGroupInput } from "../services/appRepository";
+import { buildTrainingProgramFromWorkoutMode } from "../app/pausedWorkoutSession";
 import { MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE } from "../services/appRepository";
 
 export type LiveWorkoutSessionVariant = "member" | "trainer";
@@ -83,9 +84,14 @@ export function LiveWorkoutSessionModal({
   const [reflectionNote, setReflectionNote] = useState("");
   const [showExerciseDetail, setShowExerciseDetail] = useState(false);
 
+  const resolvedProgram = useMemo(
+    () => activeProgram ?? (workoutMode ? buildTrainingProgramFromWorkoutMode(workoutMode) : null),
+    [activeProgram, workoutMode],
+  );
+
   const workoutResultGroups = useMemo(
-    () => (workoutMode ? buildWorkoutResultGroups(workoutMode.results, activeProgram) : []),
-    [workoutMode, activeProgram],
+    () => (workoutMode ? buildWorkoutResultGroups(workoutMode.results, resolvedProgram) : []),
+    [workoutMode, resolvedProgram],
   );
 
   const activeWorkoutModeProgramId = workoutMode?.programId ?? "";
@@ -170,11 +176,11 @@ export function LiveWorkoutSessionModal({
   );
 
   const replacementCandidates = useMemo(() => {
-    if (!activeProgram || !currentWorkoutGroup || currentWorkoutGroup.blockType) return [] as Exercise[];
+    if (!resolvedProgram || !currentWorkoutGroup || currentWorkoutGroup.blockType) return [] as Exercise[];
     const sourceExercise =
       exerciseByName.get(currentWorkoutGroup.exerciseName.trim().toLowerCase()) ??
       (() => {
-        const sourceProgramExercise = activeProgram.exercises.find((exercise) => exercise.id === currentWorkoutGroup.groupId);
+        const sourceProgramExercise = resolvedProgram.exercises.find((exercise) => exercise.id === currentWorkoutGroup.groupId);
         if (!sourceProgramExercise) return null;
         return exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
       })();
@@ -187,14 +193,14 @@ export function LiveWorkoutSessionModal({
     );
     if (sameGroup.length > 0) return sameGroup;
     return exercises.filter((exercise) => exercise.id !== sourceExercise.id && exercise.category === sourceExercise.category);
-  }, [activeProgram, currentWorkoutGroup, exerciseByName, exercises]);
+  }, [resolvedProgram, currentWorkoutGroup, exerciseByName, exercises]);
 
   const currentWorkoutExercise = useMemo(() => {
     if (!currentWorkoutGroup) return null;
     const byName = exerciseByName.get(currentWorkoutGroup.exerciseName.trim().toLowerCase());
     if (byName) return byName;
-    if (!activeProgram) return null;
-    const sourceProgramExercise = activeProgram.exercises.find((exercise) => exercise.id === currentWorkoutGroup.groupId);
+    if (!resolvedProgram) return null;
+    const sourceProgramExercise = resolvedProgram.exercises.find((exercise) => exercise.id === currentWorkoutGroup.groupId);
     if (!sourceProgramExercise) return null;
     return exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
   }, [activeProgram, currentWorkoutGroup, exerciseByName, exercises]);
@@ -207,11 +213,11 @@ export function LiveWorkoutSessionModal({
     if (!nextWorkoutGroup) return null;
     const byName = exerciseByName.get(nextWorkoutGroup.exerciseName.trim().toLowerCase());
     if (byName) return byName;
-    if (!activeProgram) return null;
-    const sourceProgramExercise = activeProgram.exercises.find((exercise) => exercise.id === nextWorkoutGroup.groupId);
+    if (!resolvedProgram) return null;
+    const sourceProgramExercise = resolvedProgram.exercises.find((exercise) => exercise.id === nextWorkoutGroup.groupId);
     if (!sourceProgramExercise) return null;
     return exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
-  }, [activeProgram, nextWorkoutGroup, exerciseByName, exercises]);
+  }, [resolvedProgram, nextWorkoutGroup, exerciseByName, exercises]);
 
   const workoutProgressPct =
     workoutResultGroups.length > 0 ? Math.round(((workoutExerciseIndex + 1) / workoutResultGroups.length) * 100) : 0;
@@ -286,7 +292,7 @@ export function LiveWorkoutSessionModal({
     setWorkoutExerciseIndex((prev) => prev + 1);
   }
 
-  if (!activeProgram || !workoutMode) return null;
+  if (!workoutMode || !resolvedProgram) return null;
 
   const headerTitle = variant === "trainer" ? "Live PT-økt" : "Øktmodus";
 

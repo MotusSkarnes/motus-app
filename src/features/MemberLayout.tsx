@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentProps } from "react";
-import { Bell, CheckCircle2, ChevronRight, ClipboardList, ClipboardPenLine, MessageSquare, Sparkles, TrendingUp } from "lucide-react";
+import { Bell, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, ClipboardPenLine, MessageSquare, Sparkles, TrendingUp } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatNotificationTimestamp } from "../app/dateFormat";
 import {
@@ -86,7 +86,7 @@ type MemberLayoutProps = {
   removeCompletedPlanEntryLog: ComponentProps<typeof MemberPortal>["removeCompletedPlanEntryLog"];
   cancelWorkoutMode: ComponentProps<typeof MemberPortal>["cancelWorkoutMode"];
   dismissWorkoutMode: ComponentProps<typeof MemberPortal>["dismissWorkoutMode"];
-  resumePausedWorkout: ComponentProps<typeof MemberPortal>["resumePausedWorkout"];
+  resumePausedWorkout: (draftId: string, memberIdHint?: string) => void;
   discardPausedWorkoutDraft: ComponentProps<typeof MemberPortal>["discardPausedWorkoutDraft"];
   dismissWorkoutCelebration: ComponentProps<typeof MemberPortal>["dismissWorkoutCelebration"];
   memberNotificationsOpen: boolean;
@@ -465,7 +465,9 @@ export function MemberLayout({
                         ? Sparkles
                         : alert.kind === "check-in"
                           ? ClipboardPenLine
-                          : ClipboardList;
+                          : alert.kind === "period-plan"
+                            ? CalendarDays
+                            : ClipboardList;
                 const isUnread = alert.isUnread;
                 const isOpened = alert.isOpened && !isUnread;
                 const isRead = !isUnread;
