@@ -309,6 +309,9 @@ export function useNotifications({
     dismissedMemberCheckInMonths,
   ]);
 
+  const buildMemberNotificationSnapshotRef = useRef(buildMemberNotificationSnapshot);
+  buildMemberNotificationSnapshotRef.current = buildMemberNotificationSnapshot;
+
   const applyMemberNotificationSnapshot = useCallback((preferences: MemberNotificationPreferences) => {
     skipMemberPersistRef.current = true;
     setMemberAlertsSeenAt(preferences.memberAlertsSeenAt);
@@ -403,13 +406,13 @@ export function useNotifications({
     };
   }, [memberViewId, pullInspirationItemsFromRemote, syncInspirationItemsFromStorage]);
 
+  /** Første besøk: sett baseline-tidspunkt uten å markere eksisterende inspo som sett (de skal ikke bli «lest» ved å åpne varslingspanelet). */
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (window.localStorage.getItem(MEMBER_INSPIRATION_BASELINE_KEY)) return;
     if (inspirationItems.length === 0) return;
     const baselineAt = Date.now();
     window.localStorage.setItem(MEMBER_INSPIRATION_BASELINE_KEY, String(baselineAt));
-    setSeenMemberInspirationIds((prev) => Array.from(new Set([...prev, ...inspirationItems.map((item) => item.id)])));
   }, [inspirationItems]);
 
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
@@ -622,11 +625,9 @@ export function useNotifications({
         detail: message.text.length > 72 ? `${message.text.slice(0, 72)}...` : message.text,
         timestamp: message._effectiveTimestamp,
         targetTab: "messages" as const,
-        unread:
-          message._effectiveTimestamp > memberAlertsSeenAt &&
-          !openedMemberAlertIds.includes(`member-msg-${message.id}`),
+        unread: message._effectiveTimestamp > memberAlertsSeenAt,
       })),
-    [memberTrainerMessages, memberAlertsSeenAt, openedMemberAlertIds],
+    [memberTrainerMessages, memberAlertsSeenAt],
   );
 
   const memberProgramAlerts = useMemo(
@@ -697,23 +698,26 @@ export function useNotifications({
     [remoteMemberPeriodPlanRows, memberViewId, seenMemberPeriodPlanKeys],
   );
 
+  const memberInspirationBaselineAt = readMemberInspirationBaselineAt();
   const memberInspirationAlerts = useMemo(
     () =>
       inspirationItems.map((item, index) => {
         const copy = buildInspirationNotificationAlertCopy(item);
+        const timestamp = parseInspirationNotificationTimestamp(item) || parseTimestamp(item.createdAt, index + 1);
         return {
           id: `member-inspiration-${item.id}`,
           kind: "inspiration" as const,
           title: copy.title,
           text: copy.text,
           detail: copy.detail,
-          timestamp: parseInspirationNotificationTimestamp(item) || parseTimestamp(item.createdAt, index + 1),
+          timestamp,
           targetTab: "inspiration" as const,
-          unread: !seenMemberInspirationIds.includes(item.id),
+          unread:
+            timestamp > memberInspirationBaselineAt && !seenMemberInspirationIds.includes(item.id),
           inspirationItemId: item.id,
         };
       }),
-    [inspirationItems, seenMemberInspirationIds],
+    [inspirationItems, seenMemberInspirationIds, memberInspirationBaselineAt],
   );
 
   useEffect(() => {
@@ -804,7 +808,7 @@ export function useNotifications({
         isOpened: openedMemberAlertIds.includes(alert.id),
       })),
     ];
-    return sortAlertsForDisplay(combined).slice(0, ALERT_HISTORY_LIMIT);
+    return sortAlertsForDisplay(combined.filter((alert) => alert.isUnread)).slice(0, ALERT_HISTORY_LIMIT);
   }, [
     memberMessageAlerts,
     memberProgramAlerts,
@@ -863,14 +867,14 @@ export function useNotifications({
   }
 
   function openAlert(alert: MemberAlert) {
-    setOpenedMemberAlertIds((prev) => Array.from(new Set([...prev, alert.id])));
-
     if (alert.kind === "message") {
       setMemberAlertsSeenAt((prev) => Math.max(prev, alert.timestamp));
+      setOpenedMemberAlertIds((prev) => Array.from(new Set([...prev, alert.id])));
     } else if (alert.kind === "program") {
       const programId = alert.id.replace(/^member-program-/, "");
       if (programId) {
         setSeenMemberProgramIds((prev) => Array.from(new Set([...prev, programId])));
+        setOpenedMemberAlertIds((prev) => Array.from(new Set([...prev, alert.id])));
         setMemberFocusProgramId(programId);
       }
     } else if (alert.kind === "workout-comment") {
@@ -878,6 +882,7 @@ export function useNotifications({
       if (workoutAlert?.seenKey) {
         setSeenMemberWorkoutCommentKeys((prev) => Array.from(new Set([...prev, workoutAlert.seenKey])));
       }
+      setOpenedMemberAlertIds((prev) => Array.from(new Set([...prev, alert.id])));
       const logId = workoutAlert?.workoutLogId ?? workoutLogIdFromMemberAlertId(alert.id);
       if (logId) {
         setMemberFocusWorkoutLogId(logId);
@@ -886,6 +891,7 @@ export function useNotifications({
       const inspirationId = alert.inspirationItemId ?? alert.id.replace(/^member-inspiration-/, "");
       if (inspirationId) {
         setSeenMemberInspirationIds((prev) => Array.from(new Set([...prev, inspirationId])));
+        setOpenedMemberAlertIds((prev) => Array.from(new Set([...prev, alert.id])));
         setMemberFocusInspirationItemId(inspirationId);
       }
     } else if (alert.kind === "check-in") {
@@ -893,12 +899,14 @@ export function useNotifications({
       if (monthKey) {
         setDismissedMemberCheckInMonths((prev) => Array.from(new Set([...prev, monthKey])));
       }
+      setOpenedMemberAlertIds((prev) => Array.from(new Set([...prev, alert.id])));
       setMemberCheckInOverlayOpen(true);
     } else if (alert.kind === "period-plan") {
       const periodAlert = memberPeriodPlanAlerts.find((item) => item.id === alert.id);
       if (periodAlert?.seenKey) {
         setSeenMemberPeriodPlanKeys((prev) => Array.from(new Set([...prev, periodAlert.seenKey])));
       }
+      setOpenedMemberAlertIds((prev) => Array.from(new Set([...prev, alert.id])));
     }
 
     setMemberTab(alert.targetTab);
@@ -975,16 +983,11 @@ export function useNotifications({
     if (lastMergedMemberPersonalGoalsRef.current === memberPersonalGoals) return;
     lastMergedMemberPersonalGoalsRef.current = memberPersonalGoals;
     const remote = readMemberNotificationPreferencesFromPersonalGoals(memberPersonalGoals);
-    const merged = mergeMemberNotificationPreferences(buildMemberNotificationSnapshot(), remote);
+    const merged = mergeMemberNotificationPreferences(buildMemberNotificationSnapshotRef.current(), remote);
     applyMemberNotificationSnapshot(merged);
     lastPersistedMemberPrefsRef.current = JSON.stringify(merged);
     memberPrefsHydratedRef.current = true;
-  }, [
-    applyMemberNotificationSnapshot,
-    buildMemberNotificationSnapshot,
-    currentUserRole,
-    memberPersonalGoals,
-  ]);
+  }, [applyMemberNotificationSnapshot, currentUserRole, memberPersonalGoals]);
 
   useEffect(() => {
     if (currentUserRole !== "member" || !onPersistMemberNotificationPreferences) return;

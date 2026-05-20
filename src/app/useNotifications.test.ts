@@ -72,12 +72,12 @@ describe("useNotifications workout comment alerts", () => {
     expect(result.current.memberUnreadCount).toBe(1);
     expect(result.current.memberVisibleAlerts[0]?.isUnread).toBe(true);
 
+    const unreadBeforeClick = result.current.memberVisibleAlerts[0]!;
     act(() => {
-      result.current.openAlert(result.current.memberVisibleAlerts[0]!);
+      result.current.openAlert(unreadBeforeClick);
     });
     expect(result.current.memberUnreadCount).toBe(0);
-    expect(result.current.memberVisibleAlerts.length).toBe(1);
-    expect(result.current.memberVisibleAlerts[0]?.isUnread).toBe(false);
+    expect(result.current.memberVisibleAlerts.length).toBe(0);
   });
 
   it("sorts newest trainer message alerts first among unread", () => {
