@@ -23,6 +23,7 @@ export type IntervalWorkoutSessionModalProps = {
   program: TrainingProgram | null;
   exercises: Exercise[];
   memberId: string;
+  memberEmail?: string;
   onClose: () => void;
   onSaved?: () => void;
   logIntervalWorkout: (input: LogIntervalWorkoutInput) => void;
@@ -235,6 +236,7 @@ export function IntervalWorkoutSessionModal({
   program,
   exercises,
   memberId,
+  memberEmail,
   onClose,
   onSaved,
   logIntervalWorkout,
@@ -364,6 +366,9 @@ export function IntervalWorkoutSessionModal({
     logIntervalWorkout({
       memberId: memberId.trim(),
       programId: program.id,
+      programTitle: program.title,
+      ownerUserId: program.ownerUserId,
+      targetEmail: memberEmail?.trim().toLowerCase(),
       results: buildIntervalSessionResults(program, exercises, intervalProgramSteps, stepOverrides),
       note: sessionNote.trim(),
       reflection: buildReflection(),

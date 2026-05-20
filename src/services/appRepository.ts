@@ -128,6 +128,10 @@ export type LogCompletedPlanEntryInput = {
 export type LogIntervalWorkoutInput = {
   memberId: string;
   programId: string;
+  programTitle?: string;
+  /** PT auth.users.id fra programmet — nødvendig for sky-lagring under medlem-RLS. */
+  ownerUserId?: string;
+  targetEmail?: string;
   results: WorkoutExerciseResult[];
   note?: string;
   reflection: WorkoutReflection;

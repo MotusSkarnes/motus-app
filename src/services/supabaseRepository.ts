@@ -42,7 +42,7 @@ import {
 import { buildTrainingProgramDisplayKey, normalizeLegacyIntervalCooldownExerciseNames } from "../app/programBlocks";
 import { isContaminatedDemoMemberProfile } from "../app/memberLocalCatalog";
 import { detectNewMemberFormSubmissions } from "../app/memberFormNotifications";
-import { ensureMemberAuthLink } from "./supabaseAuth";
+import { ensureMemberAuthLink, resolveSessionAuthRole } from "./supabaseAuth";
 import { supabaseClient } from "./supabaseClient";
 import {
   isSharedMedlemCustomerType,
@@ -1755,12 +1755,53 @@ async function notifyWorkoutCommentPush(logId: string) {
   void supabaseClient.functions.invoke("send-workout-comment-push", { body: { logId: trimmedLogId } });
 }
 
-function buildMemberPersistenceHints(state: AppState, memberId: string): { targetEmail?: string } {
+type PersistWorkoutLogHints = {
+  targetEmail?: string;
+  ownerUserId?: string;
+  programTitle?: string;
+};
+
+function buildMemberPersistenceHints(state: AppState, memberId: string): PersistWorkoutLogHints {
   const member = state.members.find((item) => item.id === memberId);
-  return { targetEmail: String(member?.email ?? "").trim().toLowerCase() };
+  const sessionEmail = state.currentUser?.role === "member" ? state.currentUser.email.trim().toLowerCase() : "";
+  return {
+    targetEmail: String(member?.email ?? sessionEmail).trim().toLowerCase() || undefined,
+  };
 }
 
-async function persistWorkoutLog(log: WorkoutLog, hints?: { targetEmail?: string }): Promise<PersistResult> {
+async function persistWorkoutLogDirectForMember(
+  log: WorkoutLog,
+  memberId: string,
+  ownerUserId: string,
+): Promise<PersistResult> {
+  if (!supabaseClient || !ownerUserId.trim() || !memberId.trim()) {
+    return { ok: false, message: "Mangler data for direkte lagring." };
+  }
+  const serializedNote = serializeWorkoutNote(log);
+  const { error } = await supabaseClient.from("workout_logs").upsert(
+    {
+      id: log.id,
+      member_id: memberId,
+      owner_user_id: ownerUserId.trim(),
+      program_title: log.programTitle,
+      date: log.date,
+      status: log.status,
+      note: serializedNote,
+      results: log.results ?? [],
+      created_at: new Date().toISOString(),
+    },
+    { onConflict: "id" },
+  );
+  if (error) {
+    const hint = /policy|permission|row-level security/i.test(error.message)
+      ? " Kjør workout_logs_member_insert_rls.sql i Supabase."
+      : "";
+    return { ok: false, message: error.message + hint };
+  }
+  return { ok: true };
+}
+
+async function persistWorkoutLog(log: WorkoutLog, hints?: PersistWorkoutLogHints): Promise<PersistResult> {
   if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
 
   const sessionEmail = hints?.targetEmail?.trim().toLowerCase() ?? "";
@@ -1768,6 +1809,33 @@ async function persistWorkoutLog(log: WorkoutLog, hints?: { targetEmail?: string
   const needsAuthLink = sessionEmail.includes("@") && (!memberId || memberId.startsWith("auth-"));
   if (needsAuthLink) {
     await ensureMemberAuthLink(sessionEmail, memberId || log.memberId);
+  }
+
+  const {
+    data: { session },
+  } = await supabaseClient.auth.getSession();
+  const sessionUser = session?.user ?? null;
+  const sessionRole = sessionUser
+    ? resolveSessionAuthRole({
+        email: sessionUser.email,
+        app_metadata: sessionUser.app_metadata as Record<string, unknown> | undefined,
+        user_metadata: sessionUser.user_metadata as Record<string, unknown> | undefined,
+      })
+    : null;
+  const requesterUserId = String(sessionUser?.id ?? "").trim();
+  const hintedOwnerUserId = String(hints?.ownerUserId ?? "").trim();
+  let ownerUserId =
+    hintedOwnerUserId && hintedOwnerUserId !== requesterUserId
+      ? hintedOwnerUserId
+      : await resolveOwnerUserIdForMember(memberId, requesterUserId || (await getOwnerUserId()));
+  if (ownerUserId === requesterUserId && sessionRole === "member") {
+    ownerUserId = hintedOwnerUserId && hintedOwnerUserId !== requesterUserId ? hintedOwnerUserId : null;
+  }
+
+  if (sessionRole === "member" && ownerUserId && ownerUserId !== requesterUserId) {
+    const direct = await persistWorkoutLogDirectForMember(log, memberId, ownerUserId);
+    if (direct.ok) return direct;
+    console.warn("member direct workout log upsert failed, trying edge:", direct.message);
   }
 
   const serializedNote = serializeWorkoutNote(log);
@@ -1779,6 +1847,7 @@ async function persistWorkoutLog(log: WorkoutLog, hints?: { targetEmail?: string
     status: log.status,
     note: serializedNote,
     results: log.results ?? [],
+    ownerUserId: ownerUserId ?? hintedOwnerUserId ?? "",
   };
 
   const invokeResult = await promiseWithTimeout(
@@ -1832,11 +1901,11 @@ async function persistWorkoutLog(log: WorkoutLog, hints?: { targetEmail?: string
   }
 
   const fallbackOwnerUserId = await getOwnerUserId();
-  let ownerUserId = await resolveOwnerUserIdForMember(memberId, fallbackOwnerUserId);
-  if (ownerUserId === fallbackOwnerUserId && sessionEmail.includes("@")) {
-    ownerUserId = null;
+  let resolvedOwnerForFallback = await resolveOwnerUserIdForMember(memberId, fallbackOwnerUserId);
+  if (resolvedOwnerForFallback === fallbackOwnerUserId && sessionEmail.includes("@")) {
+    resolvedOwnerForFallback = null;
   }
-  if (!ownerUserId) {
+  if (!resolvedOwnerForFallback) {
     return { ok: false, message: "Kunne ikke finne PT-eier for økten. Kontakt treneren din." };
   }
 
@@ -1844,7 +1913,7 @@ async function persistWorkoutLog(log: WorkoutLog, hints?: { targetEmail?: string
     {
       id: log.id,
       member_id: memberId,
-      owner_user_id: ownerUserId,
+      owner_user_id: resolvedOwnerForFallback,
       program_title: log.programTitle,
       date: log.date,
       status: log.status,
@@ -1857,7 +1926,10 @@ async function persistWorkoutLog(log: WorkoutLog, hints?: { targetEmail?: string
 
   if (error) {
     console.warn("Supabase log persist failed:", error.message);
-    return { ok: false, message: error.message };
+    const hint = /policy|permission|row-level security/i.test(error.message)
+      ? " Kjør workout_logs_member_insert_rls.sql i Supabase."
+      : "";
+    return { ok: false, message: error.message + hint };
   }
   return { ok: true };
 }
@@ -3233,8 +3305,14 @@ export const supabaseAppRepository: AppRepository = {
     return nextState;
   },
   logIntervalWorkout(state: AppState, input: LogIntervalWorkoutInput): AppState {
-    const programExists = state.programs.some((item) => item.id === input.programId.trim());
-    if (!input.memberId.trim() || !programExists) {
+    const programId = input.programId.trim();
+    const programTitleHint = String(input.programTitle ?? "").trim();
+    const program =
+      state.programs.find((item) => item.id === programId) ??
+      (programTitleHint
+        ? state.programs.find((item) => item.title.trim() === programTitleHint)
+        : undefined);
+    if (!input.memberId.trim() || !program) {
       void Promise.resolve().then(() =>
         input.onPersisted?.({
           ok: false,
@@ -3243,10 +3321,16 @@ export const supabaseAppRepository: AppRepository = {
       );
       return state;
     }
+    const persistHints: PersistWorkoutLogHints = {
+      ...buildMemberPersistenceHints(state, input.memberId),
+      ...(input.targetEmail?.trim() ? { targetEmail: input.targetEmail.trim().toLowerCase() } : {}),
+      ownerUserId: String(input.ownerUserId ?? program.ownerUserId ?? "").trim() || undefined,
+      programTitle: program.title,
+    };
     const nextState = localAppRepository.logIntervalWorkout(state, input);
     const latestLog = nextState.logs[0];
     if (latestLog) {
-      void persistWorkoutLog(latestLog, buildMemberPersistenceHints(state, latestLog.memberId))
+      void persistWorkoutLog(latestLog, persistHints)
         .then((result) => input.onPersisted?.(result))
         .catch((error) => {
           const message = error instanceof Error ? error.message : "Ukjent feil under lagring av økt.";

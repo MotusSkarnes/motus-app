@@ -5992,6 +5992,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 program={activeIntervalProgram}
                 exercises={exercises}
                 memberId={activeMemberId}
+                memberEmail={editableMember?.email ?? currentUserEmail}
                 onClose={() => setShowIntervalTimerModal(false)}
                 logIntervalWorkout={logIntervalWorkout}
               />

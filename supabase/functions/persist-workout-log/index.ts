@@ -14,6 +14,7 @@ type PersistWorkoutLogPayload = {
   status?: string;
   note?: string;
   results?: unknown;
+  ownerUserId?: string;
 };
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -25,6 +26,17 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
 
 function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
+}
+
+function readJwtMemberId(user: {
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+}): string {
+  const raw =
+    (typeof user.app_metadata?.member_id === "string" && user.app_metadata.member_id) ||
+    (typeof user.user_metadata?.member_id === "string" && user.user_metadata.member_id) ||
+    "";
+  return raw.trim();
 }
 
 Deno.serve(async (req) => {
@@ -67,6 +79,7 @@ Deno.serve(async (req) => {
   const status = payload.status === "Planlagt" ? "Planlagt" : "Fullført";
   const note = String(payload.note ?? "");
   const results = Array.isArray(payload.results) ? payload.results : [];
+  const ownerUserIdHint = String(payload.ownerUserId ?? "").trim();
   if (!id || !memberId || !programTitle) {
     return jsonResponse(400, { error: "id, memberId and programTitle are required" });
   }
@@ -74,11 +87,12 @@ Deno.serve(async (req) => {
   const user = userData.user;
   const requesterEmail = normalizeEmail(user.email);
   const requesterId = String(user.id ?? "").trim();
+  const jwtMemberId = readJwtMemberId(user as { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> });
   const requesterRole = (() => {
     const appRole = user.app_metadata?.role;
-    if (appRole === "trainer" || appRole === "member") return appRole;
+    if (appRole === "member" || appRole === "trainer") return app;
     const userRole = user.user_metadata?.role;
-    if (userRole === "trainer" || userRole === "member") return userRole;
+    if (userRole === "member" || userRole === "trainer") return userRole;
     return "";
   })();
 
@@ -88,7 +102,7 @@ Deno.serve(async (req) => {
     .eq("id", memberId)
     .maybeSingle();
 
-  if ((memberError || !memberRow) && requesterRole === "member" && requesterEmail) {
+  if ((memberError || !memberRow) && requesterEmail) {
     const { data: byEmail, error: emailLookupError } = await adminClient
       .from("members")
       .select("id, email, owner_user_id")
@@ -111,13 +125,35 @@ Deno.serve(async (req) => {
   const memberOwner = String((memberRow as { owner_user_id?: string }).owner_user_id ?? "").trim();
   const isMemberOwner = requesterRole === "trainer" && memberOwner === requesterId;
   const isSameMemberEmail = Boolean(requesterEmail && memberEmail && requesterEmail === memberEmail);
-  if (!isMemberOwner && !isSameMemberEmail) {
+  const isLinkedMemberProfile = Boolean(
+    jwtMemberId &&
+      (jwtMemberId === memberId || jwtMemberId === canonicalMemberId || jwtMemberId === `auth-${requesterId}`),
+  );
+  if (!isMemberOwner && !isSameMemberEmail && !isLinkedMemberProfile) {
     return jsonResponse(403, { error: "Not authorized to persist workout log for this member" });
   }
 
   let ownerUserId = memberOwner;
+  if (ownerUserIdHint && ownerUserIdHint !== requesterId) {
+    ownerUserId = ownerUserIdHint;
+  }
   if (requesterRole === "member" && ownerUserId === requesterId) {
     ownerUserId = "";
+  }
+  if (!ownerUserId && programTitle) {
+    const { data: programRow } = await adminClient
+      .from("training_programs")
+      .select("owner_user_id")
+      .eq("member_id", canonicalMemberId)
+      .eq("title", programTitle)
+      .not("owner_user_id", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const fromProgram = String((programRow as { owner_user_id?: string } | null)?.owner_user_id ?? "").trim();
+    if (fromProgram && fromProgram !== requesterId) {
+      ownerUserId = fromProgram;
+    }
   }
   if (!ownerUserId) {
     const { data: programOwnerRows } = await adminClient
