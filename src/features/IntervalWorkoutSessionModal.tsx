@@ -373,9 +373,9 @@ export function IntervalWorkoutSessionModal({
     const timeoutId = window.setTimeout(() => {
       setIsSaving(false);
       setStatus(
-        "Skyen svarer ikke ennå. Vent litt og sjekk Fremgang — eller prøv lagre igjen. (Åpne utviklerverktøy F12 → Console for detaljer.)",
+        "Økten er lagret lokalt under Fremgang. Sky-synk tar lengre tid — prøv lagre igjen, eller sjekk F12 → Console for feilmelding.",
       );
-    }, 42_000);
+    }, 28_000);
 
     logIntervalWorkout({
       memberId: memberId.trim(),

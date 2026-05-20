@@ -912,7 +912,11 @@ export function useAppState() {
       }
       if (hydratedMember) {
         setRemoteMemberPeriodPlanRows(hydratedMember.periodPlanRows ?? []);
-        if (!cancelled && hydratedMember.inspirationItems.length > 0) {
+        if (
+          !cancelled &&
+          Array.isArray(hydratedMember.inspirationItems) &&
+          hydratedMember.inspirationItems.length > 0
+        ) {
           const inspirationSaved = saveInspirationItemsToStorage(hydratedMember.inspirationItems);
           if (inspirationSaved.ok) {
             notifyInspirationItemsChanged();

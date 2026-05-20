@@ -139,20 +139,29 @@ export function mergeMemberNotificationPreferences(
     version: MEMBER_NOTIFICATION_PREFS_VERSION,
     memberAlertsSeenAt: Math.max(base.memberAlertsSeenAt, other.memberAlertsSeenAt),
     memberInspirationBaselineAt: Math.max(base.memberInspirationBaselineAt, other.memberInspirationBaselineAt),
-    seenMemberProgramIds: uniqueStrings([...base.seenMemberProgramIds, ...other.seenMemberProgramIds]),
-    seenMemberWorkoutCommentKeys: uniqueStrings([
-      ...base.seenMemberWorkoutCommentKeys,
-      ...other.seenMemberWorkoutCommentKeys,
+    seenMemberProgramIds: uniqueStrings([
+      ...(base.seenMemberProgramIds ?? []),
+      ...(other.seenMemberProgramIds ?? []),
     ]),
-    openedMemberAlertIds: uniqueStrings([...base.openedMemberAlertIds, ...other.openedMemberAlertIds]),
-    seenMemberInspirationIds: uniqueStrings([...base.seenMemberInspirationIds, ...other.seenMemberInspirationIds]),
+    seenMemberWorkoutCommentKeys: uniqueStrings([
+      ...(base.seenMemberWorkoutCommentKeys ?? []),
+      ...(other.seenMemberWorkoutCommentKeys ?? []),
+    ]),
+    openedMemberAlertIds: uniqueStrings([
+      ...(base.openedMemberAlertIds ?? []),
+      ...(other.openedMemberAlertIds ?? []),
+    ]),
+    seenMemberInspirationIds: uniqueStrings([
+      ...(base.seenMemberInspirationIds ?? []),
+      ...(other.seenMemberInspirationIds ?? []),
+    ]),
     seenMemberPeriodPlanKeys: uniqueStrings([
       ...(base.seenMemberPeriodPlanKeys ?? []),
       ...(other.seenMemberPeriodPlanKeys ?? []),
     ]),
     dismissedMemberCheckInMonths: uniqueStrings([
-      ...base.dismissedMemberCheckInMonths,
-      ...other.dismissedMemberCheckInMonths,
+      ...(base.dismissedMemberCheckInMonths ?? []),
+      ...(other.dismissedMemberCheckInMonths ?? []),
     ]),
     updatedAt: Math.max(base.updatedAt, other.updatedAt, Date.now()),
   };
@@ -170,11 +179,14 @@ export function mergeTrainerNotificationPreferences(
     version: MEMBER_NOTIFICATION_PREFS_VERSION,
     trainerAlertsSeenAt: Math.max(base.trainerAlertsSeenAt, other.trainerAlertsSeenAt),
     trainerNotificationsBaselineAt: Math.max(base.trainerNotificationsBaselineAt, other.trainerNotificationsBaselineAt),
-    openedTrainerAlertIds: uniqueStrings([...base.openedTrainerAlertIds, ...other.openedTrainerAlertIds]),
+    openedTrainerAlertIds: uniqueStrings([
+      ...(base.openedTrainerAlertIds ?? []),
+      ...(other.openedTrainerAlertIds ?? []),
+    ]),
     seenTrainerOperationalAlertKey: base.seenTrainerOperationalAlertKey || other.seenTrainerOperationalAlertKey,
     seenTrainerMemberFormKeys: uniqueStrings([
-      ...base.seenTrainerMemberFormKeys,
-      ...other.seenTrainerMemberFormKeys,
+      ...(base.seenTrainerMemberFormKeys ?? []),
+      ...(other.seenTrainerMemberFormKeys ?? []),
     ]),
     updatedAt: Math.max(base.updatedAt, other.updatedAt, Date.now()),
   };

@@ -79,6 +79,49 @@ function mapCustomerType(value: unknown): Member["customerType"] {
   return "Oppfølging";
 }
 
+const MEMBERS_SELECT_BASE =
+  "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
+const MEMBERS_SELECT_WITH_AVATAR = `${MEMBERS_SELECT_BASE}, avatar_url`;
+
+function isMissingDbColumnError(message: string, column: string): boolean {
+  const lower = message.toLowerCase();
+  const col = column.toLowerCase();
+  return (
+    lower.includes(col) &&
+    (lower.includes("does not exist") || lower.includes("schema cache") || lower.includes("could not find"))
+  );
+}
+
+function mapMemberRowFromSupabase(row: Record<string, unknown>): Member {
+  return {
+    id: String(row.id ?? ""),
+    ownerUserId: String(row.owner_user_id ?? ""),
+    name: String(row.name ?? ""),
+    email: String(row.email ?? ""),
+    isActive: row.is_active !== false,
+    invitedAt: String(row.invited_at ?? ""),
+    phone: String(row.phone ?? ""),
+    birthDate: String(row.birth_date ?? ""),
+    weight: String(row.weight ?? ""),
+    height: String(row.height ?? ""),
+    level: row.level === "Litt øvet" || row.level === "Øvet" ? row.level : "Nybegynner",
+    membershipType: mapMembershipType(row.membership_type),
+    customerType: mapCustomerType(row.customer_type),
+    daysSinceActivity: String(row.days_since_activity ?? "0"),
+    goal: String(row.goal ?? ""),
+    focus: String(row.focus ?? ""),
+    personalGoals: String(row.personal_goals ?? ""),
+    injuries: String(row.injuries ?? ""),
+    coachNotes: String(row.coach_notes ?? ""),
+    avatarUrl: String(row.avatar_url ?? ""),
+  };
+}
+
+function stripAvatarUrlField<T extends Record<string, unknown>>(fields: T): Omit<T, "avatar_url"> {
+  const { avatar_url: _removed, ...rest } = fields;
+  return rest;
+}
+
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split(".");
   if (parts.length < 2) return null;
@@ -1425,35 +1468,47 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
     let updated = syncResult.updated;
 
     if (updated === 0) {
+      const profileUpdateFields = {
+        name: memberForPersist.name,
+        phone: memberForPersist.phone,
+        birth_date: memberForPersist.birthDate,
+        goal: memberForPersist.goal,
+        focus: memberForPersist.focus,
+        injuries: memberForPersist.injuries,
+        personal_goals: memberForPersist.personalGoals,
+        avatar_url: memberForPersist.avatarUrl ?? "",
+      };
       let directUpdate = await supabaseClient
         .from("members")
-        .update({
-          name: memberForPersist.name,
-          phone: memberForPersist.phone,
-          birth_date: memberForPersist.birthDate,
-          goal: memberForPersist.goal,
-          focus: memberForPersist.focus,
-          injuries: memberForPersist.injuries,
-          personal_goals: memberForPersist.personalGoals,
-          avatar_url: memberForPersist.avatarUrl ?? "",
-        })
+        .update(profileUpdateFields)
         .eq("id", memberForPersist.id.trim())
         .select("id");
+      if (
+        directUpdate.error &&
+        isMissingDbColumnError(directUpdate.error.message, "avatar_url")
+      ) {
+        directUpdate = await supabaseClient
+          .from("members")
+          .update(stripAvatarUrlField(profileUpdateFields))
+          .eq("id", memberForPersist.id.trim())
+          .select("id");
+      }
       if ((directUpdate.data?.length ?? 0) === 0) {
         directUpdate = await supabaseClient
           .from("members")
-          .update({
-            name: memberForPersist.name,
-            phone: memberForPersist.phone,
-            birth_date: memberForPersist.birthDate,
-            goal: memberForPersist.goal,
-            focus: memberForPersist.focus,
-            injuries: memberForPersist.injuries,
-            personal_goals: memberForPersist.personalGoals,
-            avatar_url: memberForPersist.avatarUrl ?? "",
-          })
+          .update(profileUpdateFields)
           .ilike("email", normalizedEmail)
           .select("id");
+        if (
+          directUpdate.error &&
+          isMissingDbColumnError(directUpdate.error.message, "avatar_url")
+        ) {
+          directUpdate = await supabaseClient
+            .from("members")
+            .update(stripAvatarUrlField(profileUpdateFields))
+            .ilike("email", normalizedEmail)
+            .select("id");
+        }
       }
       if (!directUpdate.error && (directUpdate.data?.length ?? 0) > 0) {
         updated = directUpdate.data?.length ?? 0;
@@ -1481,32 +1536,35 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
     existingOwnerId: member.ownerUserId,
   });
 
-  const { error } = await supabaseClient.from("members").upsert(
-    {
-      id: member.id,
-      owner_user_id: ownerForUpsert,
-      name: member.name,
-      email: normalizedEmail,
-      is_active: member.isActive !== false,
-      invited_at: member.invitedAt || null,
-      phone: member.phone,
-      birth_date: member.birthDate,
-      weight: member.weight,
-      height: member.height,
-      level: member.level,
-      membership_type: member.membershipType,
-      customer_type: member.customerType,
-      days_since_activity: member.daysSinceActivity,
-      goal: member.goal,
-      focus: member.focus,
-      personal_goals: member.personalGoals,
-      injuries: member.injuries,
-      coach_notes: member.coachNotes,
-      avatar_url: member.avatarUrl ?? "",
-      created_at: new Date().toISOString(),
-    },
-    { onConflict: "id" }
-  );
+  const memberUpsertPayload = {
+    id: member.id,
+    owner_user_id: ownerForUpsert,
+    name: member.name,
+    email: normalizedEmail,
+    is_active: member.isActive !== false,
+    invited_at: member.invitedAt || null,
+    phone: member.phone,
+    birth_date: member.birthDate,
+    weight: member.weight,
+    height: member.height,
+    level: member.level,
+    membership_type: member.membershipType,
+    customer_type: member.customerType,
+    days_since_activity: member.daysSinceActivity,
+    goal: member.goal,
+    focus: member.focus,
+    personal_goals: member.personalGoals,
+    injuries: member.injuries,
+    coach_notes: member.coachNotes,
+    avatar_url: member.avatarUrl ?? "",
+    created_at: new Date().toISOString(),
+  };
+  let { error } = await supabaseClient.from("members").upsert(memberUpsertPayload, { onConflict: "id" });
+  if (error && isMissingDbColumnError(error.message, "avatar_url")) {
+    ({ error } = await supabaseClient
+      .from("members")
+      .upsert(stripAvatarUrlField(memberUpsertPayload), { onConflict: "id" }));
+  }
 
   if (error) {
     console.warn("Supabase member persist failed:", error.message);
@@ -2090,21 +2148,6 @@ async function persistIntervalWorkoutLogFast(
   }
   const failures: PersistResult[] = [];
 
-  if (supabaseUrl && supabaseAnonKey) {
-    const edge = await promiseWithTimeout(
-      invokePersistWorkoutLogEdgeFetch(edgeBody, accessToken),
-      WORKOUT_LOG_INTERVAL_EDGE_TIMEOUT_MS,
-      { ok: false, message: "__edge_fetch_timeout__" },
-    );
-    if (edge.ok) return edge;
-    if (edge.message && !edge.message.includes("__edge_fetch_timeout__")) {
-      console.warn("persist-interval edge failed:", edge.message);
-      failures.push(edge);
-    } else {
-      failures.push(edge);
-    }
-  }
-
   let rpcMemberId = memberId;
   if (memberId.startsWith("auth-")) {
     rpcMemberId = await promiseWithTimeout(
@@ -2121,11 +2164,37 @@ async function persistIntervalWorkoutLogFast(
           3_000,
           null,
         );
+
   if (rpcMemberId && !rpcMemberId.startsWith("auth-") && rpcOwner && isUuidString(rpcOwner)) {
     const rpc = await persistWorkoutLogViaMemberRpc(log, rpcMemberId, rpcOwner);
     if (rpc?.ok) return rpc;
     if (rpc) failures.push(rpc);
-  } else if (!failures.length) {
+
+    const direct = await promiseWithTimeout(
+      persistWorkoutLogDirectForMember(log, rpcMemberId, rpcOwner),
+      WORKOUT_LOG_INTERVAL_DIRECT_TIMEOUT_MS,
+      { ok: false, message: "__direct_timeout__" },
+    );
+    if (direct.ok) return direct;
+    if (direct.message && !direct.message.includes("__direct_timeout__")) {
+      failures.push(direct);
+    }
+  }
+
+  if (supabaseUrl && supabaseAnonKey) {
+    const edge = await promiseWithTimeout(
+      invokePersistWorkoutLogEdgeFetch(edgeBody, accessToken),
+      WORKOUT_LOG_INTERVAL_EDGE_TIMEOUT_MS,
+      { ok: false, message: "__edge_fetch_timeout__" },
+    );
+    if (edge.ok) return edge;
+    if (edge.message && !edge.message.includes("__edge_fetch_timeout__")) {
+      console.warn("persist-interval edge failed:", edge.message);
+    }
+    failures.push(edge);
+  }
+
+  if (!failures.length) {
     failures.push({
       ok: false,
       message: rpcMemberId.startsWith("auth-")
@@ -3073,40 +3142,32 @@ export async function fetchLogsFromSupabase(): Promise<WorkoutLog[] | null> {
 export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
   if (!supabaseClient) return null;
 
-  const { data, error } = await supabaseClient
-    .from("members")
-    .select(
-      "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url"
-    )
-    .order("created_at", { ascending: true });
+  const runQuery = async (selectFields: string, orderByCreatedAt: boolean) => {
+    let query = supabaseClient.from("members").select(selectFields);
+    if (orderByCreatedAt) {
+      query = query.order("created_at", { ascending: true });
+    }
+    return query;
+  };
 
-  if (error) {
-    console.warn("Supabase members fetch failed:", error.message);
+  let selectFields = MEMBERS_SELECT_WITH_AVATAR;
+  let orderByCreatedAt = true;
+  let result = await runQuery(selectFields, orderByCreatedAt);
+  if (result.error && isMissingDbColumnError(result.error.message, "avatar_url")) {
+    selectFields = MEMBERS_SELECT_BASE;
+    result = await runQuery(selectFields, orderByCreatedAt);
+  }
+  if (result.error && isMissingDbColumnError(result.error.message, "created_at")) {
+    orderByCreatedAt = false;
+    result = await runQuery(selectFields, orderByCreatedAt);
+  }
+
+  if (result.error) {
+    console.warn("Supabase members fetch failed:", result.error.message);
     return null;
   }
 
-  return (data ?? []).map((row) => ({
-    id: String(row.id),
-    ownerUserId: String(row.owner_user_id ?? ""),
-    name: String(row.name ?? ""),
-    email: String(row.email ?? ""),
-    isActive: row.is_active !== false,
-    invitedAt: String(row.invited_at ?? ""),
-    phone: String(row.phone ?? ""),
-    birthDate: String(row.birth_date ?? ""),
-    weight: String(row.weight ?? ""),
-    height: String(row.height ?? ""),
-    level: row.level === "Litt øvet" || row.level === "Øvet" ? row.level : "Nybegynner",
-    membershipType: mapMembershipType(row.membership_type),
-    customerType: mapCustomerType(row.customer_type),
-    daysSinceActivity: String(row.days_since_activity ?? "0"),
-    goal: String(row.goal ?? ""),
-    focus: String(row.focus ?? ""),
-    personalGoals: String(row.personal_goals ?? ""),
-    injuries: String(row.injuries ?? ""),
-    coachNotes: String(row.coach_notes ?? ""),
-    avatarUrl: String(row.avatar_url ?? ""),
-  }));
+  return (result.data ?? []).map((row) => mapMemberRowFromSupabase(row as Record<string, unknown>));
 }
 
 export async function checkMemberAccessBlocked(email: string): Promise<boolean> {
@@ -3649,7 +3710,15 @@ export async function persistIntervalWorkoutLogToCloud(
   log: WorkoutLog,
   hints: PersistWorkoutLogHints,
 ): Promise<PersistResult> {
-  return persistIntervalWorkoutLog(log, hints);
+  return promiseWithTimeout(
+    persistIntervalWorkoutLog(log, hints),
+    WORKOUT_LOG_TOTAL_TIMEOUT_MS,
+    {
+      ok: false,
+      message:
+        "Skyen svarer ikke i tide. Økten ligger under Fremgang lokalt — prøv lagre igjen om litt.",
+    },
+  );
 }
 
 export const supabaseAppRepository: AppRepository = {
