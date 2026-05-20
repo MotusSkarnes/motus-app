@@ -93,6 +93,25 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
+const TRAINER_PROGRAM_SAVE_TIMEOUT_MS = 22_000;
+const PROGRAM_EDGE_INVOKE_TIMEOUT_MS = 24_000;
+
+async function promiseWithTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutValue: T,
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timeoutId = setTimeout(() => resolve(timeoutValue), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 async function extractFunctionErrorDetails(error: unknown): Promise<string> {
   if (!error || typeof error !== "object") return "";
   const candidate = error as { message?: unknown; context?: { json?: () => Promise<unknown> } };
@@ -653,6 +672,102 @@ async function persistProgramDirectTrainer(
   return { ok: true, ids: [programId] };
 }
 
+function parsePersistedProgramInvokePayload(
+  payload: { ok?: boolean; ids?: unknown[] } | null,
+): PersistResult {
+  const ids = Array.isArray(payload?.ids)
+    ? payload.ids.map((id) => String(id ?? "").trim()).filter(Boolean)
+    : [];
+  if (payload?.ok === true || ids.length > 0) {
+    return { ok: true, ids };
+  }
+  return {
+    ok: false,
+    message: "Server svarte uten lagret program. Prøv igjen.",
+  };
+}
+
+async function invokeSaveTrainingProgram(
+  body: Record<string, unknown>,
+): Promise<{ functionResult: { data: unknown; error: unknown | null }; timedOut: boolean }> {
+  if (!supabaseClient) {
+    return { functionResult: { data: null, error: { message: "Supabase er ikke konfigurert." } }, timedOut: false };
+  }
+  let timedOut = false;
+  const functionResult = await promiseWithTimeout(
+    supabaseClient.functions.invoke("save-training-program", { body }),
+    PROGRAM_EDGE_INVOKE_TIMEOUT_MS,
+    { data: null, error: { message: "save-training-program timeout" } },
+  );
+  if (functionResult.error && String((functionResult.error as { message?: string }).message ?? "").includes("timeout")) {
+    timedOut = true;
+  }
+  return { functionResult, timedOut };
+}
+
+/** PT-lagring: én rad, tidsbegrenset — unngår trege søsken-synk og hengende «Lagrer …». */
+async function persistProgramTrainer(
+  input: SaveProgramInput,
+  memberId: string,
+  sessionUserId: string,
+  normalizedProgramId: string,
+  hints?: {
+    targetEmail?: string;
+    targetName?: string;
+    customerType?: string;
+    membershipType?: string;
+    fallbackOwnerUserId?: string;
+  },
+): Promise<PersistResult> {
+  const ownerUserId =
+    sessionUserId ||
+    String(hints?.fallbackOwnerUserId ?? "").trim() ||
+    (await promiseWithTimeout(getOwnerUserId(hints?.fallbackOwnerUserId), 8_000, null)) ||
+    "";
+  if (!ownerUserId) {
+    return { ok: false, message: "Kunne ikke bekrefte innlogget trener." };
+  }
+
+  const direct = await promiseWithTimeout(
+    persistProgramDirectTrainer(input, memberId, ownerUserId, normalizedProgramId),
+    TRAINER_PROGRAM_SAVE_TIMEOUT_MS,
+    { ok: false, message: "Lagring tok for lang tid. Prøv igjen." } satisfies PersistResult,
+  );
+  if (direct.ok) return direct;
+  if (direct.message && !direct.message.includes("tok for lang tid")) {
+    console.warn("trainer direct program save failed, trying edge:", direct.message);
+  }
+
+  const { functionResult, timedOut } = await invokeSaveTrainingProgram({
+    id: normalizedProgramId,
+    memberId,
+    title: input.title,
+    goal: input.goal,
+    notes: input.notes,
+    exercises: input.exercises,
+    targetEmail: hints?.targetEmail ?? "",
+    targetName: hints?.targetName ?? "",
+    customerType: hints?.customerType ?? "",
+    membershipType: hints?.membershipType ?? "",
+    programCreatedBy: input.programCreatedBy,
+    programCreatedByName: input.programCreatedByName,
+  });
+
+  if (timedOut) {
+    return { ok: false, message: "Lagring tok for lang tid. Sjekk nettverk og prøv igjen." };
+  }
+
+  if (!functionResult.error) {
+    return parsePersistedProgramInvokePayload(functionResult.data as { ok?: boolean; ids?: unknown[] } | null);
+  }
+
+  const invokeDetails = await extractFunctionErrorDetails(functionResult.error);
+  return {
+    ok: false,
+    message: invokeDetails || "Kunne ikke lagre program til sky. Prøv igjen.",
+  };
+}
+
 async function persistProgram(
   rawInput: SaveProgramInput,
   hints?: {
@@ -674,10 +789,17 @@ async function persistProgram(
     data: { session },
   } = await supabaseClient.auth.getSession();
   const sessionUserId =
-    String(session?.user?.id ?? "").trim() || (await getOwnerUserId(hints?.fallbackOwnerUserId));
-  const memberId = await resolveCanonicalMemberIdForPersistence(input.memberId.trim(), {
-    targetEmail: hints?.targetEmail,
-  });
+    String(session?.user?.id ?? "").trim() ||
+    String(hints?.fallbackOwnerUserId ?? "").trim() ||
+    (await promiseWithTimeout(getOwnerUserId(hints?.fallbackOwnerUserId), 8_000, null)) ||
+    "";
+  const memberId = await promiseWithTimeout(
+    resolveCanonicalMemberIdForPersistence(input.memberId.trim(), {
+      targetEmail: hints?.targetEmail,
+    }),
+    8_000,
+    input.memberId.trim(),
+  );
   const normalizedProgramId = (() => {
     const raw = String(input.id ?? "").trim();
     if (!raw) return "";
@@ -687,42 +809,33 @@ async function persistProgram(
   })();
 
   if (hints?.trainerSave && memberId) {
-    const direct = await persistProgramDirectTrainer(input, memberId, sessionUserId ?? "", normalizedProgramId);
-    if (direct.ok) return direct;
-    console.warn("trainer direct program save failed, falling back to edge function:", direct.message);
+    return persistProgramTrainer(input, memberId, sessionUserId, normalizedProgramId, hints);
   }
 
-  const functionResult = await supabaseClient.functions.invoke("save-training-program", {
-    body: {
-      id: normalizedProgramId,
-      memberId,
-      title: input.title,
-      goal: input.goal,
-      notes: input.notes,
-      exercises: input.exercises,
-      targetEmail: hints?.targetEmail ?? "",
-      targetName: hints?.targetName ?? "",
-      customerType: hints?.customerType ?? "",
-      membershipType: hints?.membershipType ?? "",
-      programCreatedBy: input.programCreatedBy,
-      programCreatedByName: input.programCreatedByName,
-    },
+  const { functionResult, timedOut } = await invokeSaveTrainingProgram({
+    id: normalizedProgramId,
+    memberId,
+    title: input.title,
+    goal: input.goal,
+    notes: input.notes,
+    exercises: input.exercises,
+    targetEmail: hints?.targetEmail ?? "",
+    targetName: hints?.targetName ?? "",
+    customerType: hints?.customerType ?? "",
+    membershipType: hints?.membershipType ?? "",
+    programCreatedBy: input.programCreatedBy,
+    programCreatedByName: input.programCreatedByName,
   });
-  if (!functionResult.error) {
-    const payload = functionResult.data as { ok?: boolean; ids?: unknown[] } | null;
-    const ids = Array.isArray(payload?.ids)
-      ? payload.ids.map((id) => String(id ?? "").trim()).filter(Boolean)
-      : [];
-    if (payload?.ok === true || ids.length > 0) {
-      return { ok: true, ids };
-    }
-    console.warn("save-training-program returned without saving program:", functionResult.data);
-    return {
-      ok: false,
-      message: "Server svarte uten lagret program. Prøv igjen.",
-    };
+  if (timedOut) {
+    return { ok: false, message: "Lagring tok for lang tid. Sjekk nettverk og prøv igjen." };
   }
-  console.warn("save-training-program invoke failed:", functionResult.error.message);
+  if (!functionResult.error) {
+    const parsed = parsePersistedProgramInvokePayload(functionResult.data as { ok?: boolean; ids?: unknown[] } | null);
+    if (parsed.ok) return parsed;
+    console.warn("save-training-program returned without saving program:", functionResult.data);
+    return parsed;
+  }
+  console.warn("save-training-program invoke failed:", (functionResult.error as { message?: string }).message);
   const invokeDetails = await extractFunctionErrorDetails(functionResult.error);
   if (invokeDetails) {
     console.warn("save-training-program invoke details:", invokeDetails);

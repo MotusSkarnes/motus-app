@@ -2249,6 +2249,13 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     const selectedMemberName = members.find((member) => member.id === selectedMemberId)?.name ?? "kunden";
     setIsSavingProgram(true);
     setProgramSaveStatus("Lagrer program …");
+    let saveSettled = false;
+    const saveTimeoutId = window.setTimeout(() => {
+      if (saveSettled) return;
+      saveSettled = true;
+      setIsSavingProgram(false);
+      setProgramSaveStatus("Lagring tok for lang tid. Sjekk nettverk og prøv igjen.");
+    }, 35_000);
     saveProgramForMember({
       id: input.id,
       title: input.title,
@@ -2259,6 +2266,9 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       programCreatedBy: "trainer",
       programCreatedByName: trainerAuthor,
       onPersisted: (result) => {
+        if (saveSettled) return;
+        saveSettled = true;
+        window.clearTimeout(saveTimeoutId);
         setIsSavingProgram(false);
         if (result.ok) {
           setProgramSaveStatus(`Program lagret på ${selectedMemberName}.`);
