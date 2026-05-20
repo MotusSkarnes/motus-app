@@ -419,9 +419,14 @@ function isTrainerEmail(email: string): boolean {
   return isTrainerStaffEmail(email);
 }
 
-async function syncMemberAuthLink(email: string, memberId?: string): Promise<void> {
+async function syncMemberAuthLink(email: string, memberId?: string, trainerOwnerUserId?: string): Promise<void> {
   if (!supabaseClient) return;
-  const payload = memberId ? { email, memberId } : { email };
+  const trainerId = String(trainerOwnerUserId ?? "").trim();
+  const payload = {
+    email,
+    ...(memberId ? { memberId } : {}),
+    ...(trainerId ? { trainerOwnerUserId: trainerId, sourceOwnerUserId: trainerId } : {}),
+  };
   const { error } = await supabaseClient.functions.invoke("link-member-auth", {
     body: payload,
   });
@@ -520,6 +525,23 @@ async function resendMemberInviteOtp(email: string, memberId: string): Promise<I
       message: "Invitasjon feilet: mangler VITE_SITE_URL (app-URL for e-postlenker).",
     };
   }
+  const { error: resendSignupError } = await supabaseClient.auth.resend({
+    type: "signup",
+    email,
+    options: { emailRedirectTo: redirectTo },
+  });
+  if (!resendSignupError) {
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession();
+    const trainerId = String(session?.user?.id ?? "").trim();
+    await syncMemberAuthLink(email, memberId, trainerId);
+    return {
+      ok: true,
+      message: `Invitasjonslenke sendt på nytt til ${email}. Sjekk innboks og søppelpost.`,
+      invitedAtIso: new Date().toISOString(),
+    };
+  }
   const { error } = await supabaseClient.auth.signInWithOtp({
     email,
     options: {
@@ -529,17 +551,21 @@ async function resendMemberInviteOtp(email: string, memberId: string): Promise<I
     },
   });
   if (!error) {
-    await syncMemberAuthLink(email, memberId);
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession();
+    const trainerId = String(session?.user?.id ?? "").trim();
+    await syncMemberAuthLink(email, memberId, trainerId);
     return {
       ok: true,
-      message: `Innloggingslenke sendt på nytt til ${email} (eksisterende konto).`,
+      message: `Innloggingslenke sendt på nytt til ${email} (eksisterende konto). Sjekk søppelpost.`,
       invitedAtIso: new Date().toISOString(),
     };
   }
   if (isRateLimitMessage(error.message || "")) {
     return {
-      ok: true,
-      message: "Invitasjon er nylig sendt. Vent litt for ny utsending.",
+      ok: false,
+      message: "For mange e-poster akkurat nå. Vent 1–2 minutter og prøv igjen.",
     };
   }
   const { error: fallbackError } = await supabaseClient.auth.signInWithOtp({
@@ -550,10 +576,14 @@ async function resendMemberInviteOtp(email: string, memberId: string): Promise<I
     },
   });
   if (!fallbackError) {
-    await syncMemberAuthLink(email, memberId);
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession();
+    const trainerId = String(session?.user?.id ?? "").trim();
+    await syncMemberAuthLink(email, memberId, trainerId);
     return {
       ok: true,
-      message: `Innloggingslenke sendt på nytt til ${email} (eksisterende konto).`,
+      message: `Innloggingslenke sendt på nytt til ${email} (eksisterende konto). Sjekk søppelpost.`,
       invitedAtIso: new Date().toISOString(),
     };
   }
@@ -605,6 +635,7 @@ async function sendMemberInviteByEmail(email: string, memberId: string): Promise
   }
 
   const ownerUserId = activeSession.user?.id?.trim?.() ?? "";
+  const trainerOwnerUserId = ownerUserId;
   const { data, error } = await supabaseClient.functions.invoke("invite-member", {
     body: {
       email: normalizedEmail,
@@ -647,7 +678,10 @@ export async function inviteMemberByEmail(email: string, memberId: string): Prom
   const now = Date.now();
   const lastSentAt = memberInviteLastSentAtByKey.get(inviteKey) ?? 0;
   if (lastSentAt && now - lastSentAt < MEMBER_INVITE_COOLDOWN_MS) {
-    return { ok: true, message: "Invitasjon er nylig sendt. Vent litt for ny utsending." };
+    return {
+      ok: false,
+      message: "Invitasjon er nylig sendt fra denne enheten. Vent ca. 1 minutt før ny utsending.",
+    };
   }
 
   const inFlight = memberInviteInFlightByKey.get(inviteKey);

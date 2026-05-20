@@ -11,6 +11,8 @@ type LinkPayload = {
   memberId?: string;
   sourceMemberId?: string;
   sourceOwnerUserId?: string;
+  /** PT som inviterer — brukes ved bootstrap, aldri medlemmets egen auth-id som owner. */
+  trainerOwnerUserId?: string;
 };
 
 type MemberCandidate = {
@@ -70,6 +72,7 @@ Deno.serve(async (req) => {
   let memberId = String(payload.memberId ?? "").trim();
   const sourceMemberId = String(payload.sourceMemberId ?? "").trim();
   const sourceOwnerUserId = String(payload.sourceOwnerUserId ?? "").trim();
+  const trainerOwnerUserId = String(payload.trainerOwnerUserId ?? sourceOwnerUserId ?? "").trim();
   if (!email || !email.includes("@")) {
     return jsonResponse(400, { error: "Valid email is required" });
   }
@@ -184,7 +187,7 @@ Deno.serve(async (req) => {
     }
     upsertCandidate({
       id: fallbackId,
-      owner_user_id: matchedUser.id,
+      owner_user_id: bootstrapOwnerUserId ?? "",
       is_active: true,
       created_at: null,
       email,

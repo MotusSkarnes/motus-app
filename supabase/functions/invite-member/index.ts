@@ -153,16 +153,61 @@ async function resendInviteToExistingUser(
   email: string,
   redirectTo: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
-  const { error } = await adminClient.auth.signInWithOtp({
+  const { error: resendSignupError } = await adminClient.auth.resend({
+    type: "signup",
+    email,
+    options: { emailRedirectTo: redirectTo },
+  });
+  if (!resendSignupError) return { ok: true };
+
+  const { error: otpError } = await adminClient.auth.signInWithOtp({
     email,
     options: {
       shouldCreateUser: false,
       emailRedirectTo: redirectTo,
     },
   });
-  if (!error) return { ok: true };
-  const message = error.message?.trim() || "Kunne ikke sende innloggingslenke.";
+  if (!otpError) return { ok: true };
+
+  const message =
+    otpError.message?.trim() ||
+    resendSignupError.message?.trim() ||
+    "Kunne ikke sende innloggingslenke.";
   return { ok: false, message };
+}
+
+async function repairMemberOwnerAfterInvite(
+  adminClient: ReturnType<typeof createClient>,
+  memberId: string,
+  email: string,
+  trainerUserId: string,
+): Promise<void> {
+  const { data: memberRow, error } = await adminClient
+    .from("members")
+    .select("owner_user_id, customer_type")
+    .eq("id", memberId)
+    .maybeSingle();
+  if (error || !memberRow) return;
+
+  const trainerId = trainerUserId.trim();
+  if (!trainerId) return;
+
+  const currentOwner = String((memberRow as { owner_user_id?: string | null }).owner_user_id ?? "").trim();
+  const customerType = String((memberRow as { customer_type?: string | null }).customer_type ?? "").trim().toLowerCase();
+  const memberAuthUserId = await findAuthUserIdByEmail(adminClient, email);
+  const ownerLooksLikeMemberAuth = Boolean(memberAuthUserId && currentOwner === memberAuthUserId);
+  const ownerMissing = !currentOwner;
+
+  if (!ownerLooksLikeMemberAuth && !ownerMissing) return;
+  if (customerType === "medlem" && !ownerLooksLikeMemberAuth && !ownerMissing) return;
+
+  const { error: updateError } = await adminClient
+    .from("members")
+    .update({ owner_user_id: trainerId })
+    .eq("id", memberId);
+  if (updateError) {
+    console.warn("invite-member: kunne ikke rette owner_user_id:", updateError.message);
+  }
 }
 
 Deno.serve(async (req) => {
@@ -260,6 +305,7 @@ Deno.serve(async (req) => {
       : `Invitasjon prosessert for ${email}`;
 
   const invitedAtIso = new Date().toISOString();
+  await repairMemberOwnerAfterInvite(adminClient, memberId, email, user.id);
   const { error: stampErr } = await adminClient.from("members").update({ invited_at: invitedAtIso }).eq("id", memberId);
   if (stampErr) {
     console.warn("invite-member: kunne ikke sette invited_at på members-rad:", stampErr.message);
