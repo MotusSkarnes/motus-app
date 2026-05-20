@@ -101,7 +101,7 @@ const WORKOUT_LOG_RPC_TIMEOUT_MS = 8_000;
 const WORKOUT_LOG_MEMBER_RACE_TIMEOUT_MS = 12_000;
 const WORKOUT_LOG_AUTH_TIMEOUT_MS = 4_000;
 const WORKOUT_LOG_TOTAL_TIMEOUT_MS = 22_000;
-const WORKOUT_LOG_INTERVAL_TOTAL_TIMEOUT_MS = 28_000;
+const WORKOUT_LOG_INTERVAL_TOTAL_TIMEOUT_MS = 45_000;
 
 async function promiseWithTimeout<T>(
   promise: Promise<T>,
@@ -1954,11 +1954,24 @@ async function getWorkoutLogAuthContext(): Promise<WorkoutLogAuthContext> {
 }
 
 async function persistIntervalWorkoutLog(log: WorkoutLog, hints: PersistWorkoutLogHints): Promise<PersistResult> {
-  return promiseWithTimeout(
+  const result = await promiseWithTimeout(
     persistIntervalWorkoutLogInner(log, hints),
     WORKOUT_LOG_INTERVAL_TOTAL_TIMEOUT_MS,
-    { ok: false, message: "Lagring tok for lang tid. Trekk ned for å oppdatere appen og prøv igjen." },
+    null,
   );
+  if (result) return result;
+  return {
+    ok: false,
+    message:
+      "Lagring tok for lang tid. Sjekk nettverk, oppdater siden (Ctrl+F5), og kjør member_workout_log_save_setup.sql i Supabase hvis problemet vedvarer.",
+  };
+}
+
+function pickWorkoutLogOwnerFromHints(
+  hints: PersistWorkoutLogHints,
+  requesterUserId: string,
+): string | null {
+  return pickWorkoutLogOwnerCandidate(String(hints.ownerUserId ?? ""), requesterUserId);
 }
 
 async function persistIntervalWorkoutLogInner(log: WorkoutLog, hints: PersistWorkoutLogHints): Promise<PersistResult> {
@@ -1967,18 +1980,13 @@ async function persistIntervalWorkoutLogInner(log: WorkoutLog, hints: PersistWor
     return { ok: false, message: "Sesjonen utløp. Logg ut og inn igjen, og prøv å lagre på nytt." };
   }
 
-  const sessionEmail = hints?.targetEmail?.trim().toLowerCase() || ctx.sessionEmail;
-  let memberId = await promiseWithTimeout(
-    resolveCanonicalMemberIdForPersistence(log.memberId, hints, ctx.sessionUser),
-    8_000,
-    log.memberId.trim(),
-  );
-  if (memberId.startsWith("auth-") && sessionEmail.includes("@")) {
-    await promiseWithTimeout(ensureMemberAuthLink(sessionEmail, memberId), 3_000, undefined);
+  const rawMemberId = log.memberId.trim();
+  let memberId = rawMemberId;
+  if (rawMemberId.startsWith("auth-")) {
     memberId = await promiseWithTimeout(
-      resolveCanonicalMemberIdForPersistence(log.memberId, hints, ctx.sessionUser),
-      5_000,
-      memberId,
+      resolveCanonicalMemberIdForPersistence(rawMemberId, hints, ctx.sessionUser),
+      6_000,
+      rawMemberId,
     );
   }
   if (!memberId || memberId.startsWith("auth-")) {
@@ -1992,11 +2000,14 @@ async function persistIntervalWorkoutLogInner(log: WorkoutLog, hints: PersistWor
     ...hints,
     programTitle: hints.programTitle ?? log.programTitle,
   };
-  const ownerUserId = await promiseWithTimeout(
-    resolveWorkoutLogOwnerUserId(memberId, persistenceHints, ctx.requesterUserId),
-    8_000,
-    null,
-  );
+  let ownerUserId = pickWorkoutLogOwnerFromHints(persistenceHints, ctx.requesterUserId);
+  if (!ownerUserId) {
+    ownerUserId = await promiseWithTimeout(
+      resolveWorkoutLogOwnerUserId(memberId, persistenceHints, ctx.requesterUserId),
+      6_000,
+      null,
+    );
+  }
   if (!ownerUserId) {
     return { ok: false, message: "Fant ikke PT-eier for programmet. Oppdater siden og prøv igjen." };
   }
@@ -2004,7 +2015,50 @@ async function persistIntervalWorkoutLogInner(log: WorkoutLog, hints: PersistWor
     return { ok: false, message: "Fant ikke PT-eier for programmet. Oppdater siden og prøv igjen." };
   }
 
-  return raceMemberWorkoutLogPersist({ ...log, memberId }, memberId, ownerUserId, ctx.accessToken);
+  return persistMemberWorkoutLogSequential({ ...log, memberId }, memberId, ownerUserId, ctx.accessToken);
+}
+
+/** Én kanal om gangen — raskere og mer pålitelig enn tre parallelle kall som kan blokkere hverandre. */
+async function persistMemberWorkoutLogSequential(
+  log: WorkoutLog,
+  memberId: string,
+  ownerUserId: string,
+  accessToken: string,
+): Promise<PersistResult> {
+  const serializedNote = serializeWorkoutNote(log);
+  const edgeBody = {
+    id: log.id,
+    memberId,
+    programTitle: log.programTitle,
+    date: log.date,
+    status: log.status,
+    note: serializedNote,
+    results: log.results ?? [],
+    ownerUserId,
+  };
+  const failures: PersistResult[] = [];
+
+  const edge = await invokePersistWorkoutLogEdge(edgeBody, accessToken);
+  if (edge.ok) return edge;
+  failures.push(edge);
+
+  const rpc = await promiseWithTimeout(
+    persistWorkoutLogViaMemberRpc(log, memberId, ownerUserId),
+    WORKOUT_LOG_RPC_TIMEOUT_MS,
+    null,
+  );
+  if (rpc?.ok) return rpc;
+  if (rpc) failures.push(rpc);
+
+  const direct = await promiseWithTimeout(
+    persistWorkoutLogDirectForMember(log, memberId, ownerUserId),
+    WORKOUT_LOG_DIRECT_TIMEOUT_MS,
+    { ok: false, message: "__direct_timeout__" },
+  );
+  if (direct.ok) return direct;
+  failures.push(direct);
+
+  return { ok: false, message: pickMemberWorkoutPersistFailureMessage(failures) };
 }
 
 async function raceMemberWorkoutLogPersist(
@@ -2138,6 +2192,18 @@ async function invokePersistWorkoutLogEdge(
     return { ok: false, message: "Sesjonen utløp. Logg ut og inn igjen." };
   }
 
+  if (supabaseUrl && supabaseAnonKey) {
+    const fetched = await promiseWithTimeout(
+      invokePersistWorkoutLogEdgeFetch(body, accessToken),
+      WORKOUT_LOG_EDGE_TIMEOUT_MS,
+      { ok: false, message: "__edge_fetch_timeout__" },
+    );
+    if (fetched.ok) return fetched;
+    if (fetched.message && !fetched.message.includes("__edge_fetch_timeout__")) {
+      return fetched;
+    }
+  }
+
   if (supabaseClient) {
     const invoked = await promiseWithTimeout(
       supabaseClient.functions.invoke("persist-workout-log", { body }),
@@ -2153,15 +2219,7 @@ async function invokePersistWorkoutLogEdge(
     }
   }
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return { ok: false, message: "Kunne ikke lagre økten i skyen (mangler nettverk eller tilgang)." };
-  }
-
-  return promiseWithTimeout(
-    invokePersistWorkoutLogEdgeFetch(body, accessToken),
-    WORKOUT_LOG_EDGE_TIMEOUT_MS,
-    { ok: false, message: "Lagring tok for lang tid. Sjekk nettverk og prøv igjen." },
-  );
+  return { ok: false, message: "Kunne ikke lagre økten i skyen (mangler nettverk eller tilgang)." };
 }
 
 async function invokePersistWorkoutLogEdgeFetch(

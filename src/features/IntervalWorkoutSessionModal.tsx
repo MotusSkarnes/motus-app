@@ -358,7 +358,7 @@ export function IntervalWorkoutSessionModal({
     setIsSaving(true);
     setStatus(null);
 
-    const saveTimeoutMs = 32_000;
+    const saveTimeoutMs = 48_000;
     let finished = false;
     const finish = (result: { ok: boolean; message?: string }) => {
       if (finished) return;
