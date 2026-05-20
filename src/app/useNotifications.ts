@@ -314,7 +314,7 @@ export function useNotifications({
     setSeenMemberWorkoutCommentKeys(preferences.seenMemberWorkoutCommentKeys);
     setOpenedMemberAlertIds(preferences.openedMemberAlertIds);
     setSeenMemberInspirationIds(preferences.seenMemberInspirationIds);
-    setSeenMemberPeriodPlanKeys(preferences.seenMemberPeriodPlanKeys);
+    setSeenMemberPeriodPlanKeys(preferences.seenMemberPeriodPlanKeys ?? []);
     setDismissedMemberCheckInMonths(preferences.dismissedMemberCheckInMonths);
     if (preferences.memberInspirationBaselineAt > 0 && typeof window !== "undefined") {
       window.localStorage.setItem(MEMBER_INSPIRATION_BASELINE_KEY, String(preferences.memberInspirationBaselineAt));

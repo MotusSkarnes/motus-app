@@ -14,6 +14,7 @@ describe("notificationPreferences", () => {
       seenMemberWorkoutCommentKeys: ["log:comment"],
       openedMemberAlertIds: ["member-msg-1"],
       seenMemberInspirationIds: ["inspiration-1"],
+      seenMemberPeriodPlanKeys: [],
       dismissedMemberCheckInMonths: ["2026-05"],
       memberInspirationBaselineAt: 50,
       updatedAt: 200,
@@ -32,6 +33,7 @@ describe("notificationPreferences", () => {
         seenMemberWorkoutCommentKeys: [],
         openedMemberAlertIds: ["member-msg-1"],
         seenMemberInspirationIds: [],
+        seenMemberPeriodPlanKeys: [],
         dismissedMemberCheckInMonths: [],
         memberInspirationBaselineAt: 0,
         updatedAt: 100,
@@ -51,5 +53,34 @@ describe("notificationPreferences", () => {
     expect(merged.openedMemberAlertIds).toEqual(expect.arrayContaining(["member-msg-1", "member-program-p2"]));
     expect(merged.seenMemberProgramIds).toEqual(["p2"]);
     expect(merged.memberAlertsSeenAt).toBe(20);
+  });
+
+  it("merges when remote snapshot lacks seenMemberPeriodPlanKeys", () => {
+    const merged = mergeMemberNotificationPreferences(
+      {
+        version: 1,
+        memberAlertsSeenAt: 0,
+        seenMemberProgramIds: [],
+        seenMemberWorkoutCommentKeys: [],
+        openedMemberAlertIds: [],
+        seenMemberInspirationIds: [],
+        seenMemberPeriodPlanKeys: ["plan-a"],
+        dismissedMemberCheckInMonths: [],
+        memberInspirationBaselineAt: 0,
+        updatedAt: 100,
+      },
+      {
+        version: 1,
+        memberAlertsSeenAt: 0,
+        seenMemberProgramIds: [],
+        seenMemberWorkoutCommentKeys: [],
+        openedMemberAlertIds: [],
+        seenMemberInspirationIds: [],
+        dismissedMemberCheckInMonths: [],
+        memberInspirationBaselineAt: 0,
+        updatedAt: 200,
+      } as Parameters<typeof mergeMemberNotificationPreferences>[1],
+    );
+    expect(merged.seenMemberPeriodPlanKeys).toEqual(["plan-a"]);
   });
 });

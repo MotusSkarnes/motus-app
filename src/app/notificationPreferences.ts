@@ -12,6 +12,7 @@ export type MemberNotificationPreferences = {
   seenMemberWorkoutCommentKeys: string[];
   openedMemberAlertIds: string[];
   seenMemberInspirationIds: string[];
+  seenMemberPeriodPlanKeys: string[];
   dismissedMemberCheckInMonths: string[];
   memberInspirationBaselineAt: number;
   updatedAt: number;
@@ -56,6 +57,11 @@ function normalizeMemberNotificationPreferences(raw: unknown): MemberNotificatio
     seenMemberInspirationIds: uniqueStrings(
       Array.isArray(record.seenMemberInspirationIds)
         ? record.seenMemberInspirationIds.filter((item): item is string => typeof item === "string")
+        : [],
+    ),
+    seenMemberPeriodPlanKeys: uniqueStrings(
+      Array.isArray(record.seenMemberPeriodPlanKeys)
+        ? record.seenMemberPeriodPlanKeys.filter((item): item is string => typeof item === "string")
         : [],
     ),
     dismissedMemberCheckInMonths: uniqueStrings(
@@ -140,6 +146,10 @@ export function mergeMemberNotificationPreferences(
     ]),
     openedMemberAlertIds: uniqueStrings([...base.openedMemberAlertIds, ...other.openedMemberAlertIds]),
     seenMemberInspirationIds: uniqueStrings([...base.seenMemberInspirationIds, ...other.seenMemberInspirationIds]),
+    seenMemberPeriodPlanKeys: uniqueStrings([
+      ...(base.seenMemberPeriodPlanKeys ?? []),
+      ...(other.seenMemberPeriodPlanKeys ?? []),
+    ]),
     dismissedMemberCheckInMonths: uniqueStrings([
       ...base.dismissedMemberCheckInMonths,
       ...other.dismissedMemberCheckInMonths,
