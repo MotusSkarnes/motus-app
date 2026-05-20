@@ -41,6 +41,31 @@ export function parseProgramSetCount(value: string | undefined): number {
   return Math.min(18, Math.round(parsed));
 }
 
+export function isLegacyIntervalCooldownDrag(exercises: ProgramExercise[], index: number): boolean {
+  const exercise = exercises[index];
+  const previousExercise = exercises[index - 1];
+  if (!exercise || !previousExercise || index !== exercises.length - 1) return false;
+  if (!/^drag\b/i.test(exercise.exerciseName.trim()) || !/^drag\b/i.test(previousExercise.exerciseName.trim())) return false;
+  const restSeconds = Number(String(exercise.restSeconds ?? "").trim() || "0");
+  const speed = Number(String(exercise.speed ?? "").replace(",", "."));
+  const previousSpeed = Number(String(previousExercise.speed ?? "").replace(",", "."));
+  const targetHr = String(exercise.targetHrPercent ?? "").trim();
+  const looksLikeEasyCooldown =
+    (Number.isFinite(speed) && Number.isFinite(previousSpeed) && speed < previousSpeed) ||
+    /55|60|65|rolig|lav/i.test(targetHr);
+  return (!Number.isFinite(restSeconds) || restSeconds <= 0) && (parseProgramSetCount(exercise.sets) <= 1 || looksLikeEasyCooldown);
+}
+
+export function normalizeLegacyIntervalCooldownExerciseNames(exercises: ProgramExercise[]): ProgramExercise[] {
+  let changed = false;
+  const normalized = exercises.map((exercise, index) => {
+    if (!isLegacyIntervalCooldownDrag(exercises, index) || exercise.exerciseName.trim() === "Nedjogg") return exercise;
+    changed = true;
+    return { ...exercise, exerciseName: "Nedjogg" };
+  });
+  return changed ? normalized : exercises;
+}
+
 export function workoutResultGroupId(result: WorkoutExerciseResult): string {
   if (result.blockId?.trim()) return result.blockId.trim();
   return result.programExerciseId ?? result.exerciseId;
@@ -193,7 +218,8 @@ export function expandProgramExercisesToWorkoutResults(
   options?: { suggestedWeightByProgramExerciseId?: Record<string, string> },
 ): WorkoutExerciseResult[] {
   const opts = options ?? {};
-  return splitProgramExercisesIntoSegments(programExercises).flatMap((segment) => {
+  const normalizedProgramExercises = normalizeLegacyIntervalCooldownExerciseNames(programExercises);
+  return splitProgramExercisesIntoSegments(normalizedProgramExercises).flatMap((segment) => {
     if (segment.length === 1 && !isBlockExercise(segment[0])) {
       return expandSingleProgramExercise(segment[0], exerciseBank, opts);
     }

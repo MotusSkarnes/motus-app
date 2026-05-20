@@ -88,6 +88,7 @@ import {
   readPersistedAuthBootstrapParams,
 } from "./supabaseAuthBootstrap";
 import { parseStoredLogDate } from "./dateFormat";
+import { isLegacyIntervalCooldownDrag, normalizeLegacyIntervalCooldownExerciseNames } from "./programBlocks";
 import { mergeRemoteMessagesWithLocalOptimistic } from "./messageHydrationMerge";
 import type {
   AppState,
@@ -343,7 +344,11 @@ function syncExercisesWithPrograms(state: AppState): AppState {
   let hasProgramNameFix = false;
   const normalizedPrograms = state.programs.map((program) => ({
     ...program,
-    exercises: program.exercises.map((programExercise) => {
+    exercises: normalizeLegacyIntervalCooldownExerciseNames(program.exercises).map((programExercise, index, normalizedExercises) => {
+      if (programExercise.exerciseName === "Nedjogg" || isLegacyIntervalCooldownDrag(normalizedExercises, index)) {
+        if (programExercise !== program.exercises[index]) hasProgramNameFix = true;
+        return programExercise.exerciseName === "Nedjogg" ? programExercise : { ...programExercise, exerciseName: "Nedjogg" };
+      }
       const source = exercisesById.get(programExercise.exerciseId.trim());
       if (!source || source.name === programExercise.exerciseName) return programExercise;
       hasProgramNameFix = true;
