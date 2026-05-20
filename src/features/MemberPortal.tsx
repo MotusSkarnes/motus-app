@@ -1267,6 +1267,8 @@ export function MemberPortal(props: MemberPortalProps) {
     () => memberAssignedPrograms.filter((program) => !program.memberLibraryStatus),
     [memberAssignedPrograms],
   );
+  /** Alle tildelte program (inkl. skjult) — brukes til å koble periodeplan-tekst til Start økt. */
+  const memberProgramsForPeriodPlan = memberAssignedPrograms;
   const memberProgramsLibraryHidden = useMemo(
     () => memberAssignedPrograms.filter((program) => program.memberLibraryStatus === "hidden"),
     [memberAssignedPrograms],
@@ -1604,10 +1606,14 @@ export function MemberPortal(props: MemberPortalProps) {
     return applyPeriodPlanSwaps(activeWeeklyPlan.days, swaps);
   }, [activeWeeklyPlan, activePeriodPlan, periodPlanSwapsByPlan]);
   const todayPlanEntry = todayPeriodPlanMatch?.entry?.trim() ?? "";
-  const todayPlanAction = useMemo(
-    () => (todayPlanEntry ? resolvePeriodPlanEntryAction(todayPlanEntry, memberProgramsInActiveLibrary) : { kind: "none" as const }),
-    [todayPlanEntry, memberProgramsInActiveLibrary],
-  );
+  const todayPlanAction = useMemo(() => {
+    if (!todayPlanEntry) return { kind: "none" as const };
+    const resolved = resolvePeriodPlanEntryAction(todayPlanEntry, memberProgramsForPeriodPlan);
+    if (resolved.kind !== "log-generic") return resolved;
+    const rescuedProgram = findProgramForPeriodPlanEntry(todayPlanEntry, memberPrograms);
+    if (rescuedProgram) return { kind: "start-program" as const, program: rescuedProgram };
+    return resolved;
+  }, [todayPlanEntry, memberProgramsForPeriodPlan, memberPrograms]);
   const profileMetricsFromDb = decodeMemberProfileMetrics(editableMember?.personalGoals);
   const profileHasUnsavedChanges = useMemo(() => {
     if (!editableMember) return false;
@@ -2087,9 +2093,9 @@ export function MemberPortal(props: MemberPortalProps) {
   const selectedCalendarPlanAction = useMemo(
     () =>
       selectedCalendarPlanEntry
-        ? resolvePeriodPlanEntryAction(selectedCalendarPlanEntry, memberProgramsInActiveLibrary)
+        ? resolvePeriodPlanEntryAction(selectedCalendarPlanEntry, memberProgramsForPeriodPlan)
         : { kind: "none" as const },
-    [selectedCalendarPlanEntry, memberProgramsInActiveLibrary],
+    [selectedCalendarPlanEntry, memberProgramsForPeriodPlan],
   );
   const selectedCalendarLog = useMemo(() => {
     if (!selectedCalendarLogs.length) return null;
@@ -3711,7 +3717,9 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   function handlePeriodPlanStartProgram(programId: string) {
-    const program = memberProgramsInActiveLibrary.find((item) => item.id === programId);
+    const program =
+      memberProgramsForPeriodPlan.find((item) => item.id === programId) ??
+      memberProgramsInActiveLibrary.find((item) => item.id === programId);
     if (!program) return;
     setMemberTab("programs");
     if (intervalProgramIdSet.has(program.id)) {
@@ -3748,7 +3756,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (isGroupPeriodPlanEntry(trimmed)) {
       return groupWorkoutLogTitle(resolveGroupClassNameFromPeriodEntry(trimmed));
     }
-    const program = findProgramForPeriodPlanEntry(trimmed, memberProgramsInActiveLibrary);
+    const program = findProgramForPeriodPlanEntry(trimmed, memberProgramsForPeriodPlan);
     return program?.title ?? trimmed;
   }
 
@@ -5612,7 +5620,7 @@ export function MemberPortal(props: MemberPortalProps) {
                               plan={activePeriodPlan}
                               week={resolvePeriodPlanWeek(activePeriodPlan, selectedPeriodPlanWeekForView)!}
                               swapsByPlan={periodPlanSwapsByPlan}
-                              memberPrograms={memberProgramsInActiveLibrary}
+                              memberPrograms={memberProgramsForPeriodPlan}
                               actionStatus={periodPlanActionStatus}
                               isEntryCompleted={isPeriodPlanEntryCompleted}
                               onToggleCompleted={togglePeriodPlanEntryCompleted}

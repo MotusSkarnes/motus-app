@@ -34,7 +34,33 @@ describe("periodPlanEntryActions", () => {
 
   it("matches program by title", () => {
     expect(findProgramForPeriodPlanEntry("Styrke A", programs)?.id).toBe("p1");
+    expect(findProgramForPeriodPlanEntry("  styrke a ", programs)?.id).toBe("p1");
     expect(findProgramForPeriodPlanEntry("Gruppetime: Yoga", programs)).toBeNull();
+  });
+
+  it("matches program when period plan label differs slightly from title", () => {
+    const intervalPrograms: TrainingProgram[] = [
+      {
+        id: "p-interval",
+        memberId: "m1",
+        title: "4x4 intervall",
+        goal: "",
+        notes: "",
+        createdAt: "01.01.2026",
+        exercises: [],
+      },
+    ];
+    expect(findProgramForPeriodPlanEntry("Intervall 4x4", intervalPrograms)?.id).toBe("p-interval");
+    expect(findProgramForPeriodPlanEntry("4x4 Intervall.", intervalPrograms)?.id).toBe("p-interval");
+  });
+
+  it("matches hidden library programs for dagens plan start", () => {
+    const hiddenProgram: TrainingProgram = {
+      ...programs[0],
+      id: "p-hidden",
+      memberLibraryStatus: "hidden",
+    };
+    expect(findProgramForPeriodPlanEntry("Styrke A", [hiddenProgram])?.id).toBe("p-hidden");
   });
 
   it("resolves start vs log actions", () => {

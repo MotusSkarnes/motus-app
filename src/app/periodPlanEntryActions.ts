@@ -46,13 +46,64 @@ export function groupWorkoutLogTitle(className: string): string {
   return `Gruppetime: ${trimmed}`;
 }
 
+function normalizePlanEntryLabel(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/[.:;,-]+$/g, "")
+    .trim();
+}
+
+function planEntryTokenKey(value: string): string {
+  return normalizePlanEntryLabel(value)
+    .split(" ")
+    .filter(Boolean)
+    .sort()
+    .join(" ");
+}
+
+function scoreProgramTitleMatch(entryNorm: string, titleNorm: string): number {
+  if (!entryNorm || !titleNorm) return 0;
+  if (entryNorm === titleNorm) return 100;
+  if (planEntryTokenKey(entryNorm) === planEntryTokenKey(titleNorm)) return 95;
+  if (entryNorm.startsWith(titleNorm) || titleNorm.startsWith(entryNorm)) {
+    const minLen = Math.min(entryNorm.length, titleNorm.length);
+    return minLen >= 3 ? 80 + minLen : 0;
+  }
+  if (entryNorm.includes(titleNorm) || titleNorm.includes(entryNorm)) {
+    const minLen = Math.min(entryNorm.length, titleNorm.length);
+    return minLen >= 4 ? 60 + minLen : 0;
+  }
+  return 0;
+}
+
 export function findProgramForPeriodPlanEntry(
   entry: string,
   programs: TrainingProgram[],
 ): TrainingProgram | null {
-  const normalized = entry.trim().toLowerCase();
-  if (!normalized || isGroupPeriodPlanEntry(entry) || isPassivePeriodPlanEntry(entry)) return null;
-  return programs.find((program) => program.title.trim().toLowerCase() === normalized) ?? null;
+  const trimmed = entry.trim();
+  if (!trimmed || isGroupPeriodPlanEntry(entry) || isPassivePeriodPlanEntry(entry)) return null;
+
+  const entryNorm = normalizePlanEntryLabel(trimmed);
+  let best: { program: TrainingProgram; score: number } | null = null;
+
+  for (const program of programs) {
+    const titleNorm = normalizePlanEntryLabel(program.title);
+    const score = scoreProgramTitleMatch(entryNorm, titleNorm);
+    if (score <= 0) continue;
+    if (
+      !best ||
+      score > best.score ||
+      (score === best.score && program.title.trim().length > best.program.title.trim().length)
+    ) {
+      best = { program, score };
+    }
+  }
+
+  return best?.program ?? null;
 }
 
 export type PeriodPlanEntryAction =
