@@ -2764,6 +2764,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const log = completedLogs.find((item) => item.id === memberFocusWorkoutLogId);
     if (!log) return;
     setExpandedRecentLogId(memberFocusWorkoutLogId);
+    setTrainingSection("history");
     if (memberTab !== "programs") {
       setMemberTab("programs");
     }
