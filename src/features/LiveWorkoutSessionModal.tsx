@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ChevronRight, Plus, Repeat2, SkipForward, TimerReset, X } from "lucide-react";
+import { remainingSecondsUntilDeadline } from "../app/intervalTimerDeadline";
 import { WorkoutCompactSetTable } from "./LiveWorkoutCompactSets";
 import { MOTUS } from "../app/data";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
@@ -50,7 +51,7 @@ export type LiveWorkoutSessionModalProps = {
 
 type RestCountdownState = {
   groupId: string;
-  remainingSeconds: number;
+  endsAtMs: number;
   totalSeconds: number;
 };
 
@@ -237,32 +238,47 @@ export function LiveWorkoutSessionModal({
     lastRestBeepSecondRef.current = null;
     setRestCountdown({
       groupId: currentWorkoutGroup.groupId,
-      remainingSeconds: activeRestSeconds,
+      endsAtMs: Date.now() + activeRestSeconds * 1000,
       totalSeconds: activeRestSeconds,
     });
   }, [activeRestSeconds, currentWorkoutGroup, isLastWorkoutGroup, restCountdownEnabled, showWorkoutReflection, workoutMode?.results.length]);
 
+  const [restCountdownTick, setRestCountdownTick] = useState(0);
+  const restCountdownRemainingSeconds = restCountdown
+    ? remainingSecondsUntilDeadline(restCountdown.endsAtMs, Date.now())
+    : 0;
+
   useEffect(() => {
     if (!restCountdown) return;
-    if (restCountdown.remainingSeconds <= 0) {
-      setRestCountdown(null);
-      playWorkoutRestTone("start");
-      return;
-    }
-    const timeout = window.setTimeout(() => {
-      setRestCountdown((current) =>
-        current ? { ...current, remainingSeconds: Math.max(0, current.remainingSeconds - 1) } : current,
-      );
-    }, 1000);
-    return () => window.clearTimeout(timeout);
+    const sync = () => {
+      const remaining = remainingSecondsUntilDeadline(restCountdown.endsAtMs, Date.now());
+      if (remaining <= 0) {
+        setRestCountdown(null);
+        playWorkoutRestTone("start");
+        return;
+      }
+      setRestCountdownTick((tick) => tick + 1);
+    };
+    sync();
+    const intervalId = window.setInterval(sync, 250);
+    const onVisibilityOrFocus = () => sync();
+    document.addEventListener("visibilitychange", onVisibilityOrFocus);
+    window.addEventListener("focus", onVisibilityOrFocus);
+    window.addEventListener("pageshow", onVisibilityOrFocus);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibilityOrFocus);
+      window.removeEventListener("focus", onVisibilityOrFocus);
+      window.removeEventListener("pageshow", onVisibilityOrFocus);
+    };
   }, [restCountdown]);
 
   useEffect(() => {
-    if (!restCountdown || restCountdown.remainingSeconds < 1 || restCountdown.remainingSeconds > 3) return;
-    if (lastRestBeepSecondRef.current === restCountdown.remainingSeconds) return;
-    lastRestBeepSecondRef.current = restCountdown.remainingSeconds;
+    if (!restCountdown || restCountdownRemainingSeconds < 1 || restCountdownRemainingSeconds > 3) return;
+    if (lastRestBeepSecondRef.current === restCountdownRemainingSeconds) return;
+    lastRestBeepSecondRef.current = restCountdownRemainingSeconds;
     playWorkoutRestTone("tick");
-  }, [restCountdown]);
+  }, [restCountdown, restCountdownRemainingSeconds, restCountdownTick]);
 
   useEffect(() => {
     if (!restCountdownEnabled) setRestCountdown(null);
@@ -713,13 +729,13 @@ export function LiveWorkoutSessionModal({
                       Pause
                     </div>
                     <div className="text-sm font-semibold text-slate-900">
-                      {restCountdown.remainingSeconds}s til {currentGroupIsComplete && nextWorkoutGroup ? "neste øvelse" : "neste sett"}
+                      {restCountdownRemainingSeconds}s til {currentGroupIsComplete && nextWorkoutGroup ? "neste øvelse" : "neste sett"}
                     </div>
                     <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white">
                       <div
                         className="h-full rounded-full transition-all duration-300"
                         style={{
-                          width: `${Math.max(0, Math.min(100, (restCountdown.remainingSeconds / restCountdown.totalSeconds) * 100))}%`,
+                          width: `${Math.max(0, Math.min(100, (restCountdownRemainingSeconds / restCountdown.totalSeconds) * 100))}%`,
                           background: MOTUS.turquoise,
                         }}
                       />

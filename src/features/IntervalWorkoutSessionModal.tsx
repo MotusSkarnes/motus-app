@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { MOTUS } from "../app/data";
+import { useDeadlineIntervalTimer } from "../app/useDeadlineIntervalTimer";
 import { expandProgramExercisesToWorkoutResults, isLegacyIntervalCooldownDrag, parseProgramSetCount } from "../app/programBlocks";
 import { GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../app/ui";
 import type { Exercise, TrainingProgram, WorkoutExerciseResult, WorkoutReflection } from "../app/types";
@@ -242,8 +243,6 @@ export function IntervalWorkoutSessionModal({
 
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [stepIndex, setStepIndex] = useState(0);
-  const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [status, setStatus] = useState<string | null>(null);
   const [stepOverrides, setStepOverrides] = useState<Record<number, { speed: string; incline: string }>>({});
   const [showComplete, setShowComplete] = useState(false);
@@ -253,6 +252,19 @@ export function IntervalWorkoutSessionModal({
   const [motivationLevel, setMotivationLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [reflectionNote, setReflectionNote] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  const intervalTimer = useDeadlineIntervalTimer({
+    steps: intervalProgramSteps,
+    isRunning,
+    isPaused,
+    onAllStepsComplete: () => {
+      setIsRunning(false);
+      setIsPaused(false);
+      setShowComplete(true);
+      setStatus("Intervalløkten er fullført. Logg hvordan det gikk.");
+    },
+  });
+  const { stepIndex, remainingSeconds, resetToStep, start: startIntervalTimer, skipToNext } = intervalTimer;
 
   const currentStep = intervalProgramSteps[stepIndex] ?? null;
   const totalSeconds = useMemo(
@@ -282,8 +294,7 @@ export function IntervalWorkoutSessionModal({
   function resetTimer() {
     setIsRunning(false);
     setIsPaused(false);
-    setStepIndex(0);
-    setRemainingSeconds(intervalProgramSteps[0]?.durationSeconds ?? 0);
+    resetToStep(0);
     resetDraft();
   }
 
@@ -306,52 +317,19 @@ export function IntervalWorkoutSessionModal({
     });
   }, [open, stepIndex, currentStep]);
 
-  function openComplete() {
-    setIsRunning(false);
-    setIsPaused(false);
-    setShowComplete(true);
-    setStatus("Intervalløkten er fullført. Logg hvordan det gikk.");
-  }
-
-  useEffect(() => {
-    if (!isRunning || isPaused || !intervalProgramSteps.length) return;
-    const timer = window.setInterval(() => {
-      setRemainingSeconds((previous) => {
-        if (previous > 1) return previous - 1;
-        const nextIndex = stepIndex + 1;
-        const nextStep = intervalProgramSteps[nextIndex];
-        if (!nextStep) {
-          openComplete();
-          return 0;
-        }
-        setStepIndex(nextIndex);
-        return nextStep.durationSeconds;
-      });
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [isRunning, isPaused, intervalProgramSteps, stepIndex]);
-
   function handleStart() {
     if (!intervalProgramSteps.length) return;
     setStatus(null);
     setShowComplete(false);
     setIsPaused(false);
-    setStepIndex(0);
-    setRemainingSeconds(intervalProgramSteps[0]?.durationSeconds ?? 0);
     setIsRunning(true);
+    startIntervalTimer();
   }
 
   function handleSkip() {
     if (!intervalProgramSteps.length) return;
-    const nextIndex = stepIndex + 1;
-    const nextStep = intervalProgramSteps[nextIndex];
-    if (!nextStep) {
-      setRemainingSeconds(0);
-      openComplete();
-      return;
-    }
-    setStepIndex(nextIndex);
-    setRemainingSeconds(nextStep.durationSeconds);
+    const nextStep = skipToNext() as IntervalTimerStep | null;
+    if (!nextStep) return;
     setStatus(`Hoppet til: ${nextStep.headline}`);
   }
 
