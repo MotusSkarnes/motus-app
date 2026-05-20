@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { MOTUS } from "../app/data";
-import { expandProgramExercisesToWorkoutResults, parseProgramSetCount } from "../app/programBlocks";
+import { expandProgramExercisesToWorkoutResults, isLegacyIntervalCooldownDrag, parseProgramSetCount } from "../app/programBlocks";
 import { GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../app/ui";
 import type { Exercise, TrainingProgram, WorkoutExerciseResult, WorkoutReflection } from "../app/types";
 import type { LogIntervalWorkoutInput } from "../services/appRepository";
@@ -84,21 +84,6 @@ function isIntervalCooldownName(name: string): boolean {
   return lower.includes("nedjogg") || lower.includes("nedtrapp") || lower.includes("cooldown");
 }
 
-function isLegacyIntervalCooldownDrag(program: TrainingProgram, index: number): boolean {
-  const exercise = program.exercises[index];
-  const previousExercise = program.exercises[index - 1];
-  if (!exercise || !previousExercise || index !== program.exercises.length - 1) return false;
-  if (!/^drag\b/i.test(exercise.exerciseName.trim()) || !/^drag\b/i.test(previousExercise.exerciseName.trim())) return false;
-  const restSeconds = Number(String(exercise.restSeconds ?? "").trim() || "0");
-  const speed = Number(String(exercise.speed ?? "").replace(",", "."));
-  const previousSpeed = Number(String(previousExercise.speed ?? "").replace(",", "."));
-  const targetHr = String(exercise.targetHrPercent ?? "").trim();
-  const looksLikeEasyCooldown =
-    (Number.isFinite(speed) && Number.isFinite(previousSpeed) && speed < previousSpeed) ||
-    /55|60|65|rolig|lav/i.test(targetHr);
-  return (!Number.isFinite(restSeconds) || restSeconds <= 0) && (parseProgramSetCount(exercise.sets) <= 1 || looksLikeEasyCooldown);
-}
-
 function getReflectionEmoji(level: 1 | 2 | 3 | 4 | 5): string {
   if (level <= 1) return "🥳";
   if (level === 2) return "🙂";
@@ -124,7 +109,7 @@ function buildIntervalProgramSteps(program: TrainingProgram): IntervalTimerStep[
       rawRestValue > 0 && rawRestValue <= 15 ? Math.round(rawRestValue * 60) : Math.round(rawRestValue);
 
     const lowerName = exercise.exerciseName.toLowerCase();
-    const isCooldown = isIntervalCooldownName(exercise.exerciseName) || isLegacyIntervalCooldownDrag(program, index);
+    const isCooldown = isIntervalCooldownName(exercise.exerciseName) || isLegacyIntervalCooldownDrag(program.exercises, index);
     let tone: IntervalTimerStep["tone"] =
       lowerName.includes("oppvarm") ? "warmup" : isCooldown ? "cooldown" : "work";
     const nameImpliesExplicitWorkSegment =
@@ -193,7 +178,7 @@ function buildIntervalProgramSteps(program: TrainingProgram): IntervalTimerStep[
 
     const hasNextStep = index < program.exercises.length - 1;
     const nextExerciseName = program.exercises[index + 1]?.exerciseName ?? "";
-    const nextIsCooldown = isIntervalCooldownName(nextExerciseName) || isLegacyIntervalCooldownDrag(program, index + 1);
+    const nextIsCooldown = isIntervalCooldownName(nextExerciseName) || isLegacyIntervalCooldownDrag(program.exercises, index + 1);
     const restAfterRow = normalizedRestSeconds > 0 && (!isDragSlot || repeatCount <= 1) && hasNextStep && !nextIsCooldown;
     if (restAfterRow) {
       const afterLabel = lastWorkHeadline || exercise.exerciseName.trim() || `Steg ${index + 1}`;

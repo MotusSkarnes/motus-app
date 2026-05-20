@@ -44,7 +44,7 @@ import {
   purgeExpiredPausedWorkouts,
 } from "../app/pausedWorkoutStorage";
 import { printHtmlDocument } from "../app/printHtmlDocument";
-import { buildWorkoutResultGroups, parseProgramSetCount } from "../app/programBlocks";
+import { buildWorkoutResultGroups, isLegacyIntervalCooldownDrag } from "../app/programBlocks";
 import {
   buildCheckInNotificationCopy,
   resolveCheckInWindow,
@@ -813,23 +813,8 @@ function isMemberIntervalCooldownName(name: string): boolean {
   return lower.includes("nedjogg") || lower.includes("nedtrapp") || lower.includes("cooldown");
 }
 
-function isLegacyMemberIntervalCooldownDrag(program: TrainingProgram, index: number): boolean {
-  const exercise = program.exercises[index];
-  const previousExercise = program.exercises[index - 1];
-  if (!exercise || !previousExercise || index !== program.exercises.length - 1) return false;
-  if (!/^drag\b/i.test(exercise.exerciseName.trim()) || !/^drag\b/i.test(previousExercise.exerciseName.trim())) return false;
-  const restSeconds = Number(String(exercise.restSeconds ?? "").trim() || "0");
-  const speed = Number(String(exercise.speed ?? "").replace(",", "."));
-  const previousSpeed = Number(String(previousExercise.speed ?? "").replace(",", "."));
-  const targetHr = String(exercise.targetHrPercent ?? "").trim();
-  const looksLikeEasyCooldown =
-    (Number.isFinite(speed) && Number.isFinite(previousSpeed) && speed < previousSpeed) ||
-    /55|60|65|rolig|lav/i.test(targetHr);
-  return (!Number.isFinite(restSeconds) || restSeconds <= 0) && (parseProgramSetCount(exercise.sets) <= 1 || looksLikeEasyCooldown);
-}
-
 function memberProgramExerciseName(program: TrainingProgram, index: number): string {
-  return isLegacyMemberIntervalCooldownDrag(program, index) ? "Nedjogg" : program.exercises[index]?.exerciseName ?? "";
+  return isLegacyIntervalCooldownDrag(program.exercises, index) ? "Nedjogg" : program.exercises[index]?.exerciseName ?? "";
 }
 
 type IntervalTimerStep = {
@@ -1469,7 +1454,7 @@ export function MemberPortal(props: MemberPortalProps) {
         const lowerName = exercise.exerciseName.toLowerCase();
         const isCooldown =
           isMemberIntervalCooldownName(exercise.exerciseName) ||
-          isLegacyMemberIntervalCooldownDrag(activeIntervalProgram, index);
+          isLegacyIntervalCooldownDrag(activeIntervalProgram.exercises, index);
         let tone: IntervalTimerStep["tone"] =
           lowerName.includes("oppvarm") ? "warmup" : isCooldown ? "cooldown" : "work";
         const nameImpliesExplicitWorkSegment =
@@ -1520,7 +1505,7 @@ export function MemberPortal(props: MemberPortalProps) {
       const restDurationSeconds = normalizedRestSeconds > 0 ? normalizedRestSeconds : legacy4x4DragPauseSeconds;
       const nextIsCooldown =
         isMemberIntervalCooldownName(activeIntervalProgram.exercises[index + 1]?.exerciseName ?? "") ||
-        isLegacyMemberIntervalCooldownDrag(activeIntervalProgram, index + 1);
+        isLegacyIntervalCooldownDrag(activeIntervalProgram.exercises, index + 1);
       if (restDurationSeconds > 0 && index < activeIntervalProgram.exercises.length - 1 && !nextIsCooldown) {
         const afterLabel = lastWorkHeadline || exercise.exerciseName.trim() || `Steg ${index + 1}`;
         steps.push({

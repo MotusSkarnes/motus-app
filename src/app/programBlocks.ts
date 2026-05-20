@@ -53,7 +53,7 @@ export function isLegacyIntervalCooldownDrag(exercises: ProgramExercise[], index
   const looksLikeEasyCooldown =
     (Number.isFinite(speed) && Number.isFinite(previousSpeed) && speed < previousSpeed) ||
     /55|60|65|rolig|lav/i.test(targetHr);
-  return (!Number.isFinite(restSeconds) || restSeconds <= 0) && (parseProgramSetCount(exercise.sets) <= 1 || looksLikeEasyCooldown);
+  return (!Number.isFinite(restSeconds) || restSeconds <= 0) && looksLikeEasyCooldown;
 }
 
 export function normalizeLegacyIntervalCooldownExerciseNames(exercises: ProgramExercise[]): ProgramExercise[] {

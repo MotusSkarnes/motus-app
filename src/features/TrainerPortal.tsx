@@ -89,7 +89,7 @@ import { syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { buildDefaultStartWorkoutOptions } from "../app/buildStartWorkoutOptions";
 import { MemberMonthlyCheckInSummary } from "./MemberMonthlyCheckInSummary";
 import { MemberOnboardingSummary } from "./MemberOnboardingSummary";
-import { parseProgramSetCount, unlinkProgramExerciseBlock } from "../app/programBlocks";
+import { isLegacyIntervalCooldownDrag, unlinkProgramExerciseBlock } from "../app/programBlocks";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
 import { ProgramExerciseBlockActions } from "./ProgramExerciseBlockActions";
 import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
@@ -380,23 +380,8 @@ function hasCardioNedjoggRow(draft: ProgramExercise[]): boolean {
   return draft.some((row) => row.exerciseName.trim().toLowerCase().startsWith("nedjogg"));
 }
 
-function isLegacyCardioCooldownRow(rows: ProgramExercise[], index: number): boolean {
-  const row = rows[index];
-  const previousRow = rows[index - 1];
-  if (!row || !previousRow || index !== rows.length - 1) return false;
-  if (!/^drag\b/i.test(row.exerciseName.trim()) || !/^drag\b/i.test(previousRow.exerciseName.trim())) return false;
-  const restSeconds = Number(String(row.restSeconds ?? "").trim() || "0");
-  const speed = Number(String(row.speed ?? "").replace(",", "."));
-  const previousSpeed = Number(String(previousRow.speed ?? "").replace(",", "."));
-  const targetHr = String(row.targetHrPercent ?? "").trim();
-  const looksLikeEasyCooldown =
-    (Number.isFinite(speed) && Number.isFinite(previousSpeed) && speed < previousSpeed) ||
-    /55|60|65|rolig|lav/i.test(targetHr);
-  return (!Number.isFinite(restSeconds) || restSeconds <= 0) && (parseProgramSetCount(row.sets) <= 1 || looksLikeEasyCooldown);
-}
-
 function cardioProgramExerciseName(rows: ProgramExercise[], index: number): string {
-  return isLegacyCardioCooldownRow(rows, index) ? "Nedjogg" : rows[index]?.exerciseName ?? "";
+  return isLegacyIntervalCooldownDrag(rows, index) ? "Nedjogg" : rows[index]?.exerciseName ?? "";
 }
 
 function countCardioDragRows(draft: ProgramExercise[]): number {
