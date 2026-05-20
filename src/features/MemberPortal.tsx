@@ -81,6 +81,7 @@ import {
   readHiddenPeriodPlanIdsForMembers,
   readPeriodPlansByMemberId,
   removeMemberOwnedPeriodPlanFromStorage,
+  periodPlanWeekdayKeyForDate,
   resolvePeriodPlanWeek,
   writeHiddenPeriodPlanIdsForMember,
 } from "../app/periodPlanMerge";
@@ -1523,12 +1524,12 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [activePeriodPlan, activePeriodPlanStartDate, nowTimestamp]);
   const activeWeeklyPlan = useMemo(() => {
     if (!activePeriodPlan || activePeriodWeekIndex === null) return null;
-    return (
-      activePeriodPlan.weeklyPlans.find((week) => week.weekNumber === activePeriodWeekIndex + 1) ??
-      activePeriodPlan.weeklyPlans[activePeriodWeekIndex] ??
-      null
-    );
+    return resolvePeriodPlanWeek(activePeriodPlan, activePeriodWeekIndex + 1);
   }, [activePeriodPlan, activePeriodWeekIndex]);
+  const todayPlanDayKey = useMemo((): WeekdayPlanKey | null => {
+    if (!activePeriodPlanStartDate || activePeriodWeekIndex === null) return null;
+    return periodPlanWeekdayKeyForDate(activePeriodPlanStartDate, new Date(nowTimestamp));
+  }, [activePeriodPlanStartDate, activePeriodWeekIndex, nowTimestamp]);
   const displayedPeriodWeek = useMemo(() => {
     if (!activePeriodPlan) return null;
     const fallbackWeekNumber = activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : 1;
@@ -1545,8 +1546,8 @@ export function MemberPortal(props: MemberPortalProps) {
     return applyPeriodPlanSwaps(activeWeeklyPlan.days, swaps);
   }, [activeWeeklyPlan, activePeriodPlan, periodPlanSwapsByPlan]);
   const todayPlanEntry =
-    activeWeeklyPlan && activeWeeklyPlanEffectiveDays
-      ? activeWeeklyPlanEffectiveDays[currentWeekdayKey]?.trim() ?? ""
+    activeWeeklyPlan && activeWeeklyPlanEffectiveDays && todayPlanDayKey
+      ? activeWeeklyPlanEffectiveDays[todayPlanDayKey]?.trim() ?? ""
       : "";
   const todayPlanAction = useMemo(
     () => (todayPlanEntry ? resolvePeriodPlanEntryAction(todayPlanEntry, memberProgramsInActiveLibrary) : { kind: "none" as const }),
@@ -3436,8 +3437,8 @@ export function MemberPortal(props: MemberPortalProps) {
     return { completedThisWeek, plannedThisWeek, completionRate };
   }, [nowTimestamp, completedLogDates, activeWeeklyPlanEffectiveDays]);
   let nextPlannedWorkout: { dayLabel: string; entry: string } | null = null;
-  if (activeWeeklyPlanEffectiveDays) {
-    const todayIndex = WEEKDAY_PLAN_ORDER.indexOf(currentWeekdayKey);
+  if (activeWeeklyPlanEffectiveDays && todayPlanDayKey) {
+    const todayIndex = WEEKDAY_PLAN_ORDER.indexOf(todayPlanDayKey);
     for (let step = 1; step <= 7; step += 1) {
       const index = (todayIndex + step) % 7;
       const dayKey = WEEKDAY_PLAN_ORDER[index];
@@ -4284,11 +4285,11 @@ export function MemberPortal(props: MemberPortalProps) {
                                 plannedDate: resolvePeriodPlanEntryDate(
                                   activePeriodPlan,
                                   activeWeeklyPlan?.weekNumber ?? activePeriodWeekIndex + 1,
-                                  currentWeekdayKey,
+                                  todayPlanDayKey ?? currentWeekdayKey,
                                 ),
                                 planId: activePeriodPlan.id,
                                 weekNumber: activeWeeklyPlan?.weekNumber ?? activePeriodWeekIndex + 1,
-                                day: currentWeekdayKey,
+                                day: todayPlanDayKey ?? currentWeekdayKey,
                               })
                             }
                             className="w-full sm:w-auto"
@@ -4646,11 +4647,11 @@ export function MemberPortal(props: MemberPortalProps) {
                             plannedDate: resolvePeriodPlanEntryDate(
                               activePeriodPlan,
                               activeWeeklyPlan?.weekNumber ?? activePeriodWeekIndex + 1,
-                              currentWeekdayKey,
+                              todayPlanDayKey ?? currentWeekdayKey,
                             ),
                             planId: activePeriodPlan.id,
                             weekNumber: activeWeeklyPlan?.weekNumber ?? activePeriodWeekIndex + 1,
-                            day: currentWeekdayKey,
+                            day: todayPlanDayKey ?? currentWeekdayKey,
                           })
                         }
                         className="w-full"

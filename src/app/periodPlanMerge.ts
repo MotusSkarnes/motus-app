@@ -1,4 +1,25 @@
-import type { PeriodSchedulePlan, WeeklyDayPlan, WeeklySchedulePlan } from "./types";
+import { WEEKDAY_PLAN_ORDER } from "./periodPlanSwaps";
+import type { PeriodSchedulePlan, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "./types";
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+/** Hele dager fra planstart (dag 0 = startdato = «mandag»-kolonnen i ukevisningen). */
+export function periodPlanDaysSinceStart(startDate: Date, targetDate: Date): number {
+  const startMs = startOfLocalDay(startDate).getTime();
+  const targetMs = startOfLocalDay(targetDate).getTime();
+  return Math.floor((targetMs - startMs) / MS_PER_DAY);
+}
+
+/** Kolonnenøkkel for en kalenderdag — samme logikk som `resolvePeriodPlanEntryDate` i portalen. */
+export function periodPlanWeekdayKeyForDate(startDate: Date, targetDate: Date): WeekdayPlanKey | null {
+  const daysSinceStart = periodPlanDaysSinceStart(startDate, targetDate);
+  if (daysSinceStart < 0) return null;
+  return WEEKDAY_PLAN_ORDER[daysSinceStart % 7];
+}
 
 export type PeriodPlanWeekNavItem = {
   id: string;

@@ -3,6 +3,7 @@ import {
   buildPeriodPlanWeekNavItemsFromPlan,
   isMemberOwnedPeriodPlan,
   normalizePeriodSchedulePlan,
+  periodPlanWeekdayKeyForDate,
   resolvePeriodPlanWeek,
   syncGradientMarkedWeekDays,
 } from "./periodPlanMerge";
@@ -21,6 +22,22 @@ function makePlan(weeklyPlans: PeriodSchedulePlan["weeklyPlans"]): PeriodSchedul
     weeklyPlans,
   };
 }
+
+describe("periodPlanWeekdayKeyForDate", () => {
+  it("maps calendar day to plan column from start date (not calendar weekday label)", () => {
+    const start = new Date(2026, 4, 14);
+    const wednesday = new Date(2026, 4, 14);
+    const tuesday = new Date(2026, 4, 19);
+    expect(periodPlanWeekdayKeyForDate(start, wednesday)).toBe("monday");
+    expect(periodPlanWeekdayKeyForDate(start, tuesday)).toBe("saturday");
+  });
+
+  it("returns null before plan start", () => {
+    const start = new Date(2026, 4, 20);
+    const before = new Date(2026, 4, 19);
+    expect(periodPlanWeekdayKeyForDate(start, before)).toBeNull();
+  });
+});
 
 describe("resolvePeriodPlanWeek", () => {
   it("finds week by weekNumber", () => {
