@@ -5,6 +5,7 @@ import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO } from "../app/d
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClear";
 import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
+import { programAuthorLabelForTrainer } from "../app/programAuthor";
 import { uid } from "../app/storage";
 import {
   categoryForSubTab,
@@ -591,18 +592,6 @@ function pickFirstName(value: unknown): string {
   return firstToken.trim();
 }
 
-function programAuthorLabel(program: TrainingProgram): string | null {
-  if (program.programCreatedBy === "member") {
-    const memberName = pickFirstName(program.programCreatedByName ?? "");
-    return memberName ? `Lagret av medlem ${memberName}` : "Lagret av medlem";
-  }
-  if (program.programCreatedBy === "trainer") {
-    const trainerName = pickFirstName(program.programCreatedByName ?? "");
-    return trainerName ? `Lagret av trener ${trainerName}` : "Lagret av trener";
-  }
-  const legacyTrainer = pickFirstName(program.assignedTrainerName ?? "");
-  return legacyTrainer ? `Lagret av trener ${legacyTrainer}` : null;
-}
   const ALLOWED_EXERCISE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
   const {
     members,
@@ -6207,8 +6196,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-slate-800">{program.title}</div>
-                          {programAuthorLabel(program) ? (
-                            <div className="mt-1 text-[11px] font-medium text-slate-600">{programAuthorLabel(program)}</div>
+                          {programAuthorLabelForTrainer(program) ? (
+                            <div className="mt-1 text-[11px] font-medium text-slate-600">{programAuthorLabelForTrainer(program)}</div>
                           ) : null}
                           <div className="mt-0.5 text-xs text-slate-500">
                             {program.exercises.length} øvelse(r){program.createdAt ? ` · ${program.createdAt}` : ""}

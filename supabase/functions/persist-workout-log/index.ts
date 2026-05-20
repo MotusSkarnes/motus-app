@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
   const memberEmail = normalizeEmail((memberRow as { email?: string }).email);
   const memberOwner = String((memberRow as { owner_user_id?: string }).owner_user_id ?? "").trim();
   const isMemberOwner = requesterRole === "trainer" && memberOwner === requesterId;
-  const isSameMemberEmail = requesterRole === "member" && requesterEmail && requesterEmail === memberEmail;
+  const isSameMemberEmail = Boolean(requesterEmail && memberEmail && requesterEmail === memberEmail);
   if (!isMemberOwner && !isSameMemberEmail) {
     return jsonResponse(403, { error: "Not authorized to persist workout log for this member" });
   }

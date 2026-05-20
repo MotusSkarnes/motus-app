@@ -95,6 +95,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 
 const TRAINER_PROGRAM_SAVE_TIMEOUT_MS = 22_000;
 const PROGRAM_EDGE_INVOKE_TIMEOUT_MS = 24_000;
+const WORKOUT_LOG_PERSIST_TIMEOUT_MS = 22_000;
 
 async function promiseWithTimeout<T>(
   promise: Promise<T>,
@@ -808,7 +809,7 @@ async function persistProgram(
     return isUuid ? raw : "";
   })();
 
-  if (hints?.trainerSave && memberId) {
+  if ((hints?.trainerSave || input.programCreatedBy === "trainer") && memberId) {
     return persistProgramTrainer(input, memberId, sessionUserId, normalizedProgramId, hints);
   }
 
@@ -1569,11 +1570,11 @@ function buildTrainingProgramPersistenceFingerprint(input: {
   return `${String(input.title ?? "").trim()}::${String(input.goal ?? "").trim()}::${String(input.notes ?? "").trim()}::${exerciseFingerprint}`;
 }
 
-async function deleteProgram(
+export async function deleteProgramRemote(
   programId: string,
   context?: { memberIds?: string[]; targetEmail?: string; targetName?: string },
-) {
-  if (!supabaseClient) return;
+): Promise<boolean> {
+  if (!supabaseClient) return false;
   const { data: programRow, error: lookupError } = await supabaseClient
     .from("training_programs")
     .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id")
@@ -1584,11 +1585,12 @@ async function deleteProgram(
   }
 
   if (!programRow) {
-  const { error } = await supabaseClient.from("training_programs").delete().eq("id", programId);
-  if (error) {
-    console.warn("Supabase program delete failed:", error.message);
+    const { error } = await supabaseClient.from("training_programs").delete().eq("id", programId);
+    if (error) {
+      console.warn("Supabase program delete failed:", error.message);
+      return false;
     }
-    return;
+    return true;
   }
 
   const memberId = String(programRow.member_id ?? "").trim();
@@ -1607,7 +1609,7 @@ async function deleteProgram(
   const deletionKeys = Array.from(
     new Set([memberId, targetEmail, ...relatedMemberIds].map((value) => String(value ?? "").trim()).filter(Boolean)),
   );
-  if (!deletionKeys.length && !targetOwnerUserId) return;
+  if (!deletionKeys.length && !targetOwnerUserId) return false;
 
   let candidateQuery = supabaseClient
     .from("training_programs")
@@ -1647,11 +1649,13 @@ async function deleteProgram(
     .in("id", programIdsToDelete);
   if (error) {
     console.warn("Supabase linked program delete failed:", error.message);
+    return false;
   }
 
   for (const relatedMemberId of deletionKeys) {
     await deleteLogsForProgram(relatedMemberId, title);
   }
+  return true;
 }
 
 async function persistMemberProgramLibraryStatus(programIds: string[], status: "hidden" | "archived" | null) {
@@ -1760,11 +1764,12 @@ async function persistWorkoutLog(log: WorkoutLog, hints?: { targetEmail?: string
   if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
 
   const sessionEmail = hints?.targetEmail?.trim().toLowerCase() ?? "";
-  if (sessionEmail.includes("@")) {
-    await ensureMemberAuthLink(sessionEmail, log.memberId);
+  const memberId = await resolveCanonicalMemberIdForPersistence(log.memberId, hints);
+  const needsAuthLink = sessionEmail.includes("@") && (!memberId || memberId.startsWith("auth-"));
+  if (needsAuthLink) {
+    await ensureMemberAuthLink(sessionEmail, memberId || log.memberId);
   }
 
-  const memberId = await resolveCanonicalMemberIdForPersistence(log.memberId, hints);
   const serializedNote = serializeWorkoutNote(log);
   const body = {
     id: log.id,
@@ -1776,15 +1781,25 @@ async function persistWorkoutLog(log: WorkoutLog, hints?: { targetEmail?: string
     results: log.results ?? [],
   };
 
-  const invokeResult = await supabaseClient.functions.invoke("persist-workout-log", { body });
+  const invokeResult = await promiseWithTimeout(
+    supabaseClient.functions.invoke("persist-workout-log", { body }),
+    WORKOUT_LOG_PERSIST_TIMEOUT_MS,
+    { data: null, error: { message: "persist-workout-log timeout" } },
+  );
+  if (invokeResult.error && String((invokeResult.error as { message?: string }).message ?? "").includes("timeout")) {
+    return { ok: false, message: "Lagring tok for lang tid. Sjekk nettverk og prøv igjen." };
+  }
   if (!invokeResult.error) {
     const payload = invokeResult.data as { ok?: boolean; error?: string } | null;
     if (payload?.ok === true) return { ok: true };
     if (payload?.error) {
       console.warn("persist-workout-log:", payload.error);
+      return { ok: false, message: payload.error };
     }
   } else {
     console.warn("persist-workout-log invoke failed:", invokeResult.error.message);
+    const details = await extractFunctionErrorDetails(invokeResult.error);
+    if (details) return { ok: false, message: details };
   }
 
   if (supabaseUrl && supabaseAnonKey) {
@@ -2050,6 +2065,7 @@ function trainingProgramFromHydrateRow(program: Record<string, unknown>): Traini
   const rawBy = String(program.program_created_by ?? "").trim();
   const programCreatedBy = rawBy === "member" || rawBy === "trainer" ? (rawBy as "member" | "trainer") : undefined;
   const programCreatedByName = String(program.program_created_by_name ?? "").trim();
+  const ownerUserId = String(program.owner_user_id ?? "").trim();
   const rawLibrary = String(program.member_library_status ?? "").trim().toLowerCase();
   const memberLibraryStatus: MemberProgramLibraryStatus | undefined =
     rawLibrary === "hidden" || rawLibrary === "archived" ? (rawLibrary as MemberProgramLibraryStatus) : undefined;
@@ -2062,6 +2078,7 @@ function trainingProgramFromHydrateRow(program: Record<string, unknown>): Traini
     createdAt: mapIsoToProgramDate(String(program.created_at ?? "")),
     exercises: Array.isArray(program.exercises) ? (program.exercises as ProgramExercise[]) : [],
     assignedTrainerName: String(program.assigned_trainer_name ?? "").trim(),
+    ...(ownerUserId ? { ownerUserId } : {}),
     ...(programCreatedBy
       ? { programCreatedBy, programCreatedByName: programCreatedByName || undefined }
       : {}),
@@ -2467,7 +2484,9 @@ export async function fetchProgramsFromSupabase(): Promise<TrainingProgram[] | n
 
   const { data, error } = await supabaseClient
     .from("training_programs")
-    .select("id, member_id, title, goal, notes, exercises, created_at, member_library_status")
+    .select(
+      "id, member_id, title, goal, notes, exercises, created_at, member_library_status, owner_user_id, program_created_by, program_created_by_name",
+    )
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -2475,21 +2494,7 @@ export async function fetchProgramsFromSupabase(): Promise<TrainingProgram[] | n
     return null;
   }
 
-  return (data ?? []).map((row) => {
-    const rawLibrary = String(row.member_library_status ?? "").trim().toLowerCase();
-    const memberLibraryStatus: MemberProgramLibraryStatus | undefined =
-      rawLibrary === "hidden" || rawLibrary === "archived" ? (rawLibrary as MemberProgramLibraryStatus) : undefined;
-    return {
-    id: String(row.id),
-    memberId: String(row.member_id),
-    title: String(row.title ?? ""),
-    goal: String(row.goal ?? ""),
-    notes: String(row.notes ?? ""),
-    createdAt: mapIsoToProgramDate(String(row.created_at ?? "")),
-    exercises: Array.isArray(row.exercises) ? (row.exercises as ProgramExercise[]) : [],
-      ...(memberLibraryStatus ? { memberLibraryStatus } : {}),
-    };
-  });
+  return (data ?? []).map((row) => trainingProgramFromHydrateRow(row as Record<string, unknown>));
 }
 
 export async function fetchLogsFromSupabase(): Promise<WorkoutLog[] | null> {
@@ -3093,7 +3098,7 @@ export const supabaseAppRepository: AppRepository = {
       customerType: String(anchorMember?.customerType ?? "").trim(),
       membershipType: String(anchorMember?.membershipType ?? "").trim(),
       fallbackOwnerUserId: String(state.currentUser?.id ?? "").trim(),
-      trainerSave: state.currentUser?.role === "trainer",
+      trainerSave: state.currentUser?.role === "trainer" || input.programCreatedBy === "trainer",
     };
     const nextState = localAppRepository.saveProgram(state, input);
     void (async () => {
@@ -3124,11 +3129,9 @@ export const supabaseAppRepository: AppRepository = {
   deleteProgram(
     state: AppState,
     programId: string,
-    context?: { memberIds?: string[]; targetEmail?: string; targetName?: string },
+    _context?: { memberIds?: string[]; targetEmail?: string; targetName?: string },
   ): AppState {
-    const nextState = localAppRepository.deleteProgram(state, programId);
-    void deleteProgram(programId, context);
-    return nextState;
+    return localAppRepository.deleteProgram(state, programId);
   },
   appendTrainerMessage(state: AppState, memberId: string, text: string): AppState {
     const anchorMember = state.members.find((member) => member.id === memberId);
@@ -3230,10 +3233,29 @@ export const supabaseAppRepository: AppRepository = {
     return nextState;
   },
   logIntervalWorkout(state: AppState, input: LogIntervalWorkoutInput): AppState {
+    const programExists = state.programs.some((item) => item.id === input.programId.trim());
+    if (!input.memberId.trim() || !programExists) {
+      void Promise.resolve().then(() =>
+        input.onPersisted?.({
+          ok: false,
+          message: "Fant ikke programmet. Oppdater siden og prøv igjen.",
+        }),
+      );
+      return state;
+    }
     const nextState = localAppRepository.logIntervalWorkout(state, input);
     const latestLog = nextState.logs[0];
     if (latestLog) {
-      void persistWorkoutLog(latestLog, buildMemberPersistenceHints(state, latestLog.memberId));
+      void persistWorkoutLog(latestLog, buildMemberPersistenceHints(state, latestLog.memberId))
+        .then((result) => input.onPersisted?.(result))
+        .catch((error) => {
+          const message = error instanceof Error ? error.message : "Ukjent feil under lagring av økt.";
+          input.onPersisted?.({ ok: false, message });
+        });
+    } else {
+      void Promise.resolve().then(() =>
+        input.onPersisted?.({ ok: false, message: "Kunne ikke opprette øktloggen lokalt." }),
+      );
     }
     return nextState;
   },

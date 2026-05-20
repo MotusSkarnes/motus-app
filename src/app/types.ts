@@ -145,6 +145,8 @@ export type TrainingProgram = {
   createdAt: string;
   exercises: ProgramExercise[];
   assignedTrainerName?: string;
+  /** auth.users.id for programmets eier (PT ved tildeling, medlem ved eget program). */
+  ownerUserId?: string;
   /** Hvem som satte programmet inn i appen (synlig for medlem under Mine programmer). */
   programCreatedBy?: "member" | "trainer";
   programCreatedByName?: string;
@@ -203,6 +205,8 @@ export type PeriodSchedulePlan = {
   periodPlanAddedBy?: "trainer" | "member";
   /** Medlem kan skjule trenerplaner lokalt uten å slette dem hos trener. */
   memberPeriodPlanStatus?: "hidden";
+  /** Sist lagret av trener (ISO) – brukes til varsler ved oppdatering. */
+  trainerSavedAtIso?: string;
 };
 
 export type AppState = {

@@ -50,6 +50,7 @@ import {
   isLegacyIntervalCooldownDrag,
   mergeTrainingProgramDuplicates,
 } from "../app/programBlocks";
+import { memberMayDeleteProgram, programAuthorCreditForMember } from "../app/programAuthor";
 import {
   buildCheckInNotificationCopy,
   resolveCheckInWindow,
@@ -489,19 +490,6 @@ function pickFirstName(value: unknown): string {
 
 function printField(value: unknown): string {
   return String(value ?? "").trim();
-}
-
-function programAuthorCredit(program: TrainingProgram): string | null {
-  if (program.programCreatedBy === "member") {
-    return "Lagret av deg";
-  }
-  if (program.programCreatedBy === "trainer") {
-    const n = program.programCreatedByName?.trim();
-    return n ? `Fra trener ${pickFirstName(n)}` : "Fra trener";
-  }
-  const legacy = program.assignedTrainerName?.trim();
-  if (legacy) return `Fra trener ${pickFirstName(legacy)}`;
-  return null;
 }
 
 function dataUrlToBlob(dataUrl: string): Blob | null {
@@ -1093,6 +1081,10 @@ export function MemberPortal(props: MemberPortalProps) {
     return { window, copy: buildCheckInNotificationCopy(window) };
   }, [editableMember, currentUserRole]);
   const activeMemberId = editableMember?.id ?? memberViewId;
+  const memberProgramAuthorOptions = useMemo(
+    () => ({ viewerAuthUserId: currentUserSupabaseId?.trim() || undefined }),
+    [currentUserSupabaseId],
+  );
   const relatedMemberIds = useMemo(() => {
     const collectedIds = new Set<string>();
     // Member view should follow the authenticated member email first, not only the current memberViewId.
@@ -4926,7 +4918,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   {memberProgramsInActiveLibrary.map((program) => {
                     const isExpanded = expandedProgramId === program.id;
                     const isLibraryMenuOpen = programLibraryMenuId === program.id;
-                    const programAuthorLine = programAuthorCredit(program);
+                    const programAuthorLine = programAuthorCreditForMember(program, memberProgramAuthorOptions);
                     return (
                       <div
                         key={program.id}
@@ -5020,7 +5012,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                     <Archive className="h-4 w-4 shrink-0 text-slate-500" />
                                     Arkiver
                                   </button>
-                                  {program.programCreatedBy === "member" ? (
+                                  {memberMayDeleteProgram(program, memberProgramAuthorOptions) ? (
                                     <button
                                       type="button"
                                       role="menuitem"

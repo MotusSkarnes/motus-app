@@ -132,6 +132,7 @@ export type LogIntervalWorkoutInput = {
   note?: string;
   reflection: WorkoutReflection;
   keepCurrentTab?: boolean;
+  onPersisted?: (result: PersistResult) => void;
 };
 
 export type RemoveCompletedPlanEntryLogInput = {

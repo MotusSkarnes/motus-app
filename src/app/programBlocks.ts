@@ -1,4 +1,5 @@
 import { isHoldBasedExerciseCategory } from "./exerciseCategories";
+import { mergeProgramAuthorFields } from "./programAuthor";
 import type {
   Exercise,
   MemberProgramLibraryStatus,
@@ -66,6 +67,7 @@ export function mergeTrainingProgramDuplicates(existing: TrainingProgram, incomi
   const older = newer === existing ? incoming : existing;
   return {
     ...newer,
+    ...mergeProgramAuthorFields(newer, older),
     memberLibraryStatus: pickRestrictiveMemberLibraryStatus(newer.memberLibraryStatus, older.memberLibraryStatus),
   };
 }

@@ -122,6 +122,21 @@ function resolveProgramAuthorColumns(
   hintTargetName: string,
 ): ProgramAuthorColumns {
   const clamp = (s: string) => s.trim().slice(0, 160);
+  const hintedBy = String(payload.programCreatedBy ?? "").trim();
+  if (hintedBy === "trainer") {
+    const name =
+      trainerDisplayFirstName(user) ||
+      clamp(String(payload.programCreatedByName ?? "")) ||
+      "Trener";
+    return { program_created_by: "trainer", program_created_by_name: name };
+  }
+  if (hintedBy === "member") {
+    const name =
+      clamp(String(payload.programCreatedByName ?? "")) ||
+      clamp(hintTargetName) ||
+      nameFromEmail(String(user.email ?? ""));
+    return { program_created_by: "member", program_created_by_name: name || "Medlem" };
+  }
   if (role === "member") {
     const name =
       clamp(String(payload.programCreatedByName ?? "")) ||

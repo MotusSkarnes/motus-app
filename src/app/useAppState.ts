@@ -40,6 +40,8 @@ import {
 } from "./pausedWorkoutSession";
 import { getPausedWorkoutById, purgeExpiredPausedWorkouts } from "./pausedWorkoutStorage";
 import { notifyInspirationItemsChanged, saveInspirationItemsToStorage } from "./inspirationStorage";
+import { filterDeletedPrograms, registerDeletedProgram, unregisterDeletedProgram } from "./deletedProgramTombstones";
+import { mergeProgramAuthorFields } from "./programAuthor";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { syncMemberLocalCatalogToSupabase } from "../services/supabaseRepository";
 import {
@@ -57,6 +59,7 @@ import {
   restoreMemberByEmailFromSupabase,
   type RestoreMemberOptions,
   supabaseAppRepository,
+  deleteProgramRemote,
   type HydratedMemberData,
 } from "../services/supabaseRepository";
 import { isMemberAppAccessBlocked, MEMBER_ARCHIVED_APP_MESSAGE } from "../services/memberAccessRules";
@@ -206,6 +209,7 @@ function mergeTrainingProgramSnapshots(primary: TrainingProgram, secondary: Trai
   return {
     ...primary,
     ...secondary,
+    ...mergeProgramAuthorFields(primary, secondary),
     memberLibraryStatus: mergeMemberLibraryStatus(secondary.memberLibraryStatus, primary.memberLibraryStatus),
   };
 }
@@ -806,9 +810,12 @@ export function useAppState() {
       const remoteMessages = hydratedTrainer?.messages ?? hydratedMember?.messages ?? (await fetchMessagesFromSupabase());
       // Edge hydrate and RLS-backed selects can disagree; merge by id so new devices still see programs/logs
       // the member can read directly from Postgres even when hydrate returns a partial list.
-      let remotePrograms =
+      let remotePrograms: TrainingProgram[] | null =
         hydratedTrainer?.programs ??
         (isMemberLikeSession ? mergeTrainingProgramsById(hydratedMember?.programs, directMemberPrograms) : null);
+      if (remotePrograms) {
+        remotePrograms = filterDeletedPrograms(remotePrograms);
+      }
       let remoteLogs =
         hydratedTrainer?.logs ??
         (isMemberLikeSession ? mergeWorkoutLogsById(hydratedMember?.logs, directMemberLogs) : null);
@@ -846,7 +853,7 @@ export function useAppState() {
             const retryPrograms = await fetchProgramsFromSupabase();
             const retryLogs = await fetchLogsFromSupabase();
             if (retryPrograms?.length) {
-              remotePrograms = retryPrograms;
+              remotePrograms = filterDeletedPrograms(retryPrograms);
             }
             if (retryLogs?.length) {
               remoteLogs = retryLogs;
@@ -1779,7 +1786,24 @@ export function useAppState() {
   }
 
   function deleteProgramById(programId: string, context?: { memberIds?: string[]; targetEmail?: string; targetName?: string }) {
-    setAppState((prev) => repository.deleteProgram(prev, programId, context));
+    let deletedSnapshot: TrainingProgram | undefined;
+    setAppState((prev) => {
+      deletedSnapshot = prev.programs.find((row) => row.id === programId);
+      if (deletedSnapshot) registerDeletedProgram(deletedSnapshot);
+      return repository.deleteProgram(prev, programId, context);
+    });
+    void (async () => {
+      const ok = await deleteProgramRemote(programId, context);
+      if (!ok) {
+        unregisterDeletedProgram(programId);
+        const program = deletedSnapshot;
+        if (!program) return;
+        setAppState((prev) => {
+          if (prev.programs.some((row) => row.id === program.id)) return prev;
+          return { ...prev, programs: [program, ...prev.programs] };
+        });
+      }
+    })();
   }
 
   function updateProgramMemberLibraryStatus(programId: string, status: MemberProgramLibraryStatus | undefined) {
@@ -1971,7 +1995,8 @@ export function useAppState() {
       ? mergeMembersById(hydratedTrainer.members, directTrainerMembers)
       : directTrainerMembers;
     const remoteMessages = hydratedTrainer?.messages ?? (await fetchMessagesFromSupabase());
-    const remotePrograms = hydratedTrainer?.programs ?? (await fetchProgramsFromSupabase());
+    const remoteProgramsRaw = hydratedTrainer?.programs ?? (await fetchProgramsFromSupabase());
+    const remotePrograms = remoteProgramsRaw ? filterDeletedPrograms(remoteProgramsRaw) : null;
     const remoteLogs = hydratedTrainer?.logs ?? (await fetchLogsFromSupabase());
 
     if (remoteMembers) {

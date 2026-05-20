@@ -353,19 +353,34 @@ export function IntervalWorkoutSessionModal({
   function handleSave() {
     if (!program || !memberId.trim() || isSaving) return;
     setIsSaving(true);
+    setStatus(null);
+    let saveSettled = false;
+    const saveTimeoutId = window.setTimeout(() => {
+      if (saveSettled) return;
+      saveSettled = true;
+      setIsSaving(false);
+      setStatus("Lagring tok for lang tid. Sjekk nettverk og prøv igjen.");
+    }, 28_000);
     logIntervalWorkout({
       memberId: memberId.trim(),
       programId: program.id,
       results: buildIntervalSessionResults(program, exercises, intervalProgramSteps, stepOverrides),
       note: sessionNote.trim(),
       reflection: buildReflection(),
+      onPersisted: (result) => {
+        if (saveSettled) return;
+        saveSettled = true;
+        window.clearTimeout(saveTimeoutId);
+        setIsSaving(false);
+        if (!result.ok) {
+          setStatus(result.message?.trim() || "Kunne ikke lagre økten i skyen. Prøv igjen.");
+          return;
+        }
+        setStatus("Kondisjonsøkten er lagret. PT kan se den i loggen.");
+        onSaved?.();
+        window.setTimeout(() => onClose(), 400);
+      },
     });
-    setStatus("Kondisjonsøkten er lagret. PT kan se den i loggen.");
-    onSaved?.();
-    window.setTimeout(() => {
-      setIsSaving(false);
-      onClose();
-    }, 300);
   }
 
   if (!open || !program) return null;
