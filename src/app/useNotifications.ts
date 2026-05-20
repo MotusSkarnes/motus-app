@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   buildInspirationNotificationAlertCopy,
   parseInspirationNotificationTimestamp,
@@ -20,6 +20,17 @@ import { formatNotificationTimestamp } from "./dateFormat";
 import { parseChatMessageCreatedAtMs } from "./messageHydrationMerge";
 import type { ChatMessage, Member, MemberTab, TrainingProgram, WorkoutLog } from "./types";
 import { readWorkoutLogIdFromLocation, stripWorkoutLogIdFromLocation, workoutLogIdFromMemberAlertId } from "./workoutLogDeepLink";
+import {
+  MEMBER_NOTIFICATION_PREFS_VERSION,
+  mergeMemberNotificationPreferences,
+  mergeTrainerNotificationPreferences,
+  readMemberNotificationPreferencesFromPersonalGoals,
+  readTrainerNotificationPreferencesFromUserMetadata,
+  TRAINER_NOTIFICATION_PREFS_METADATA_KEY,
+  type MemberNotificationPreferences,
+  type TrainerNotificationPreferences,
+} from "./notificationPreferences";
+import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
 const MEMBER_INSPIRATION_BASELINE_KEY = "motus.notifications.memberInspirationBaselineAt";
 const TRAINER_NOTIFICATIONS_BASELINE_KEY = "motus.notifications.trainerBaselineAt";
@@ -82,29 +93,49 @@ function isCompletedWorkoutLog(log: WorkoutLog): boolean {
   return status.toLowerCase().replace(/ø/g, "o") === "fullfort";
 }
 
+function readMemberInspirationBaselineAt(): number {
+  if (typeof window === "undefined") return 0;
+  const parsed = Number(window.localStorage.getItem(MEMBER_INSPIRATION_BASELINE_KEY) ?? "0");
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function readTrainerBaselineAt(): number {
+  if (typeof window === "undefined") return 0;
+  const parsed = Number(window.localStorage.getItem(TRAINER_NOTIFICATIONS_BASELINE_KEY) ?? "0");
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export function useNotifications({
   messages,
   programs,
   logs,
   members,
   memberViewId,
+  memberPersonalGoals,
   currentUserRole,
   setMemberTab,
   onTrainerOpenMessage,
   onTrainerOpenCustomers,
   onTrainerOpenMemberForm,
+  onPersistMemberNotificationPreferences,
 }: {
   messages: ChatMessage[];
   programs: TrainingProgram[];
   logs: WorkoutLog[];
   members: Member[];
   memberViewId: string;
+  memberPersonalGoals?: string;
   currentUserRole?: "trainer" | "member";
   setMemberTab: (tab: MemberTab) => void;
   onTrainerOpenMessage?: (memberId: string) => void;
   onTrainerOpenCustomers?: () => void;
   onTrainerOpenMemberForm?: (memberId: string) => void;
+  onPersistMemberNotificationPreferences?: (preferences: MemberNotificationPreferences) => void;
 }) {
+  const skipMemberPersistRef = useRef(false);
+  const skipTrainerPersistRef = useRef(false);
+  const lastPersistedMemberPrefsRef = useRef("");
+  const lastPersistedTrainerPrefsRef = useRef("");
   const [trainerNotificationsOpen, setTrainerNotificationsOpen] = useState(false);
   const [memberNotificationsOpen, setMemberNotificationsOpen] = useState(false);
   const [trainerAlertsSeenAt, setTrainerAlertsSeenAt] = useState(() => {
@@ -203,6 +234,82 @@ export function useNotifications({
       return [];
     }
   });
+
+  const lastMergedMemberRemoteUpdatedAtRef = useRef(0);
+  const lastMergedTrainerRemoteUpdatedAtRef = useRef(0);
+
+  const buildMemberNotificationSnapshot = useCallback((): MemberNotificationPreferences => {
+    return {
+      version: MEMBER_NOTIFICATION_PREFS_VERSION,
+      memberAlertsSeenAt,
+      seenMemberProgramIds,
+      seenMemberWorkoutCommentKeys,
+      openedMemberAlertIds,
+      seenMemberInspirationIds,
+      dismissedMemberCheckInMonths,
+      memberInspirationBaselineAt: readMemberInspirationBaselineAt(),
+      updatedAt: Date.now(),
+    };
+  }, [
+    memberAlertsSeenAt,
+    seenMemberProgramIds,
+    seenMemberWorkoutCommentKeys,
+    openedMemberAlertIds,
+    seenMemberInspirationIds,
+    dismissedMemberCheckInMonths,
+  ]);
+
+  const applyMemberNotificationSnapshot = useCallback((preferences: MemberNotificationPreferences) => {
+    skipMemberPersistRef.current = true;
+    setMemberAlertsSeenAt(preferences.memberAlertsSeenAt);
+    setSeenMemberProgramIds(preferences.seenMemberProgramIds);
+    setSeenMemberWorkoutCommentKeys(preferences.seenMemberWorkoutCommentKeys);
+    setOpenedMemberAlertIds(preferences.openedMemberAlertIds);
+    setSeenMemberInspirationIds(preferences.seenMemberInspirationIds);
+    setDismissedMemberCheckInMonths(preferences.dismissedMemberCheckInMonths);
+    if (preferences.memberInspirationBaselineAt > 0 && typeof window !== "undefined") {
+      window.localStorage.setItem(MEMBER_INSPIRATION_BASELINE_KEY, String(preferences.memberInspirationBaselineAt));
+    }
+    window.setTimeout(() => {
+      skipMemberPersistRef.current = false;
+    }, 0);
+  }, []);
+
+  const buildTrainerNotificationSnapshot = useCallback((): TrainerNotificationPreferences => {
+    return {
+      version: MEMBER_NOTIFICATION_PREFS_VERSION,
+      trainerAlertsSeenAt,
+      trainerNotificationsBaselineAt,
+      openedTrainerAlertIds,
+      seenTrainerOperationalAlertKey,
+      seenTrainerMemberFormKeys,
+      updatedAt: Date.now(),
+    };
+  }, [
+    trainerAlertsSeenAt,
+    trainerNotificationsBaselineAt,
+    openedTrainerAlertIds,
+    seenTrainerOperationalAlertKey,
+    seenTrainerMemberFormKeys,
+  ]);
+
+  const applyTrainerNotificationSnapshot = useCallback((preferences: TrainerNotificationPreferences) => {
+    skipTrainerPersistRef.current = true;
+    setTrainerAlertsSeenAt(preferences.trainerAlertsSeenAt);
+    setTrainerNotificationsBaselineAt(preferences.trainerNotificationsBaselineAt);
+    setOpenedTrainerAlertIds(preferences.openedTrainerAlertIds);
+    setSeenTrainerOperationalAlertKey(preferences.seenTrainerOperationalAlertKey);
+    setSeenTrainerMemberFormKeys(preferences.seenTrainerMemberFormKeys);
+    if (preferences.trainerNotificationsBaselineAt > 0 && typeof window !== "undefined") {
+      window.localStorage.setItem(
+        TRAINER_NOTIFICATIONS_BASELINE_KEY,
+        String(preferences.trainerNotificationsBaselineAt),
+      );
+    }
+    window.setTimeout(() => {
+      skipTrainerPersistRef.current = false;
+    }, 0);
+  }, []);
 
   const syncInspirationItemsFromStorage = useCallback(() => {
     setInspirationItems(loadInspirationNotificationItems());
@@ -746,6 +853,93 @@ export function useNotifications({
       JSON.stringify(dismissedMemberCheckInMonths),
     );
   }, [dismissedMemberCheckInMonths]);
+
+  useEffect(() => {
+    if (currentUserRole !== "member" || !memberPersonalGoals?.trim()) return;
+    const remote = readMemberNotificationPreferencesFromPersonalGoals(memberPersonalGoals);
+    if (!remote || remote.updatedAt <= lastMergedMemberRemoteUpdatedAtRef.current) return;
+    lastMergedMemberRemoteUpdatedAtRef.current = remote.updatedAt;
+    const merged = mergeMemberNotificationPreferences(buildMemberNotificationSnapshot(), remote);
+    applyMemberNotificationSnapshot(merged);
+  }, [
+    applyMemberNotificationSnapshot,
+    buildMemberNotificationSnapshot,
+    currentUserRole,
+    memberPersonalGoals,
+  ]);
+
+  useEffect(() => {
+    if (currentUserRole !== "member" || !onPersistMemberNotificationPreferences) return;
+    if (skipMemberPersistRef.current) return;
+    const timer = window.setTimeout(() => {
+      const snapshot = buildMemberNotificationSnapshot();
+      const serialized = JSON.stringify(snapshot);
+      if (serialized === lastPersistedMemberPrefsRef.current) return;
+      lastPersistedMemberPrefsRef.current = serialized;
+      onPersistMemberNotificationPreferences(snapshot);
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [
+    buildMemberNotificationSnapshot,
+    currentUserRole,
+    dismissedMemberCheckInMonths,
+    memberAlertsSeenAt,
+    onPersistMemberNotificationPreferences,
+    openedMemberAlertIds,
+    seenMemberInspirationIds,
+    seenMemberProgramIds,
+    seenMemberWorkoutCommentKeys,
+  ]);
+
+  const pullTrainerNotificationPreferences = useCallback(async () => {
+    if (!isSupabaseConfigured || !supabaseClient || currentUserRole !== "trainer") return;
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session?.user) return;
+    const remote = readTrainerNotificationPreferencesFromUserMetadata(
+      data.session.user.user_metadata as Record<string, unknown> | undefined,
+    );
+    if (!remote || remote.updatedAt <= lastMergedTrainerRemoteUpdatedAtRef.current) return;
+    lastMergedTrainerRemoteUpdatedAtRef.current = remote.updatedAt;
+    const merged = mergeTrainerNotificationPreferences(buildTrainerNotificationSnapshot(), remote);
+    applyTrainerNotificationSnapshot(merged);
+  }, [applyTrainerNotificationSnapshot, buildTrainerNotificationSnapshot, currentUserRole]);
+
+  useEffect(() => {
+    if (currentUserRole !== "trainer") return;
+    void pullTrainerNotificationPreferences();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void pullTrainerNotificationPreferences();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", pullTrainerNotificationPreferences);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", pullTrainerNotificationPreferences);
+    };
+  }, [currentUserRole, pullTrainerNotificationPreferences]);
+
+  useEffect(() => {
+    if (currentUserRole !== "trainer" || !isSupabaseConfigured || !supabaseClient) return;
+    if (skipTrainerPersistRef.current) return;
+    const timer = window.setTimeout(() => {
+      const snapshot = buildTrainerNotificationSnapshot();
+      const serialized = JSON.stringify(snapshot);
+      if (serialized === lastPersistedTrainerPrefsRef.current) return;
+      lastPersistedTrainerPrefsRef.current = serialized;
+      void supabaseClient.auth.updateUser({
+        data: { [TRAINER_NOTIFICATION_PREFS_METADATA_KEY]: snapshot },
+      });
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [
+    buildTrainerNotificationSnapshot,
+    currentUserRole,
+    openedTrainerAlertIds,
+    seenTrainerMemberFormKeys,
+    seenTrainerOperationalAlertKey,
+    trainerAlertsSeenAt,
+    trainerNotificationsBaselineAt,
+  ]);
 
   return {
     trainerNotificationsOpen,

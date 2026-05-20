@@ -192,6 +192,24 @@ function filterProgramsForMembers(programs: TrainingProgram[], memberIds: Set<st
   return programs.filter((program) => memberIds.has(program.memberId.trim()));
 }
 
+/** Behold midlertidige økter og aktivt program under sky-synk — ellers lukkes øktmodus for «Start egen økt». */
+function mergeMemberProgramsWithLocalEphemeral(
+  remotePrograms: TrainingProgram[],
+  prevPrograms: TrainingProgram[],
+  memberIds: Set<string>,
+  activeWorkoutProgramId?: string,
+): TrainingProgram[] {
+  const merged = new Map(filterProgramsForMembers(remotePrograms, memberIds).map((program) => [program.id, program]));
+  for (const local of prevPrograms) {
+    if (!memberIds.has(local.memberId.trim())) continue;
+    const keepEphemeral = local.ephemeral === true;
+    const keepActiveWorkout = Boolean(activeWorkoutProgramId && local.id === activeWorkoutProgramId);
+    if (!keepEphemeral && !keepActiveWorkout) continue;
+    if (!merged.has(local.id)) merged.set(local.id, local);
+  }
+  return Array.from(merged.values());
+}
+
 function filterLogsForMembers(logs: WorkoutLog[], memberIds: Set<string>): WorkoutLog[] {
   if (!memberIds.size) return logs;
   return logs.filter((log) => memberIds.has(log.memberId.trim()));
@@ -803,7 +821,12 @@ export function useAppState() {
           const mergedProgs = remotePrograms ?? [];
           if (isMemberLikeSession && (hydratedMember !== null || mergedProgs.length > 0)) {
             const memberIds = memberIdsForSessionEmail(next.members, sessionEmail);
-            next.programs = filterProgramsForMembers(mergedProgs, memberIds);
+            next.programs = mergeMemberProgramsWithLocalEphemeral(
+              mergedProgs,
+              prevStripped.programs,
+              memberIds,
+              prevStripped.workoutMode?.programId,
+            );
           } else if (isTrainerSession && trainerHydrateOk) {
             next.programs = mergedProgs;
           } else if (mergedProgs.length > 0 || shouldAdoptRemote(mergedProgs, prev.programs)) {

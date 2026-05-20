@@ -1,4 +1,8 @@
-import { useMemo, useState, type ComponentProps } from "react";
+import { useCallback, useMemo, useState, type ComponentProps } from "react";
+import {
+  mergeMemberNotificationPreferencesIntoPersonalGoals,
+  type MemberNotificationPreferences,
+} from "../notificationPreferences";
 import { AppHeader, MemberLayout, TrainerLayout } from "../../features";
 import { buildAppHeaderProps, buildMemberLayoutProps, buildTrainerLayoutProps } from "./viewModelBuilders";
 import type { AppStateHookResult, RoleViewModel } from "./types";
@@ -20,6 +24,26 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
       members: state.appState.members,
       memberViewId: state.appState.memberViewId,
     });
+
+  const memberForNotificationSync = useMemo(() => {
+    if (state.appState.currentUser?.role !== "member") return null;
+    const viewId = state.appState.memberViewId.trim();
+    if (!viewId) return null;
+    return state.appState.members.find((member) => member.id === viewId) ?? null;
+  }, [state.appState.currentUser?.role, state.appState.memberViewId, state.appState.members]);
+
+  const onPersistMemberNotificationPreferences = useCallback(
+    (preferences: MemberNotificationPreferences) => {
+      const member = memberForNotificationSync;
+      if (!member) return;
+      const encoded = mergeMemberNotificationPreferencesIntoPersonalGoals(member.personalGoals, preferences);
+      state.updateMember({
+        memberId: member.id,
+        changes: { personalGoals: encoded },
+      });
+    },
+    [memberForNotificationSync, state.updateMember],
+  );
 
   const {
     trainerNotificationsOpen,
@@ -46,8 +70,10 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     logs: state.appState.logs,
     members: state.appState.members,
     memberViewId: state.appState.memberViewId,
+    memberPersonalGoals: memberForNotificationSync?.personalGoals,
     currentUserRole: state.appState.currentUser?.role,
     setMemberTab: state.setMemberTab,
+    onPersistMemberNotificationPreferences,
     onTrainerOpenMessage: (memberId) => {
       state.patchState({ selectedMemberId: memberId });
       state.setTrainerTab("customers");

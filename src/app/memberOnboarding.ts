@@ -212,6 +212,9 @@ export function readProfileExtensions(personalGoals: string | undefined): Record
   if (Array.isArray(payload.favoritePersonalRecords)) {
     extensions.favoritePersonalRecords = payload.favoritePersonalRecords;
   }
+  if (payload.notificationPreferences && typeof payload.notificationPreferences === "object") {
+    extensions.notificationPreferences = payload.notificationPreferences;
+  }
   return extensions;
 }
 

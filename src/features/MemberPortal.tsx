@@ -283,15 +283,22 @@ function buildTrainingProgramDisplayKey(program: TrainingProgram): string {
 }
 
 function dedupeTrainingPrograms(programs: TrainingProgram[]): TrainingProgram[] {
+  const ephemeralPrograms: TrainingProgram[] = [];
   const uniqueByFingerprint = new Map<string, TrainingProgram>();
   programs.forEach((program) => {
+    if (program.ephemeral) {
+      ephemeralPrograms.push(program);
+      return;
+    }
     const fingerprint = buildTrainingProgramDisplayKey(program);
     const existing = uniqueByFingerprint.get(fingerprint);
     if (!existing || program.createdAt.localeCompare(existing.createdAt) > 0) {
       uniqueByFingerprint.set(fingerprint, program);
     }
   });
-  return Array.from(uniqueByFingerprint.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return [...ephemeralPrograms, ...Array.from(uniqueByFingerprint.values())].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  );
 }
 
 /** Stored in members.personal_goals so økt/skritt/mål synkes på tvers av enheter. */
@@ -367,6 +374,9 @@ function encodeMemberProfileMetrics(
         : {}),
     ...(Array.isArray(profileExtensions.monthlyCheckIns)
       ? { monthlyCheckIns: profileExtensions.monthlyCheckIns }
+      : {}),
+    ...(profileExtensions.notificationPreferences && typeof profileExtensions.notificationPreferences === "object"
+      ? { notificationPreferences: profileExtensions.notificationPreferences }
       : {}),
   };
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;
@@ -1315,7 +1325,14 @@ export function MemberPortal(props: MemberPortalProps) {
     });
     return Array.from(bySignature.values()).sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
   }, [messages, relatedMemberIdSet, members, editableMember?.email, editableMember?.name, normalizedCurrentUserEmail, currentUserRole]);
-  const activeWorkoutProgram = workoutMode ? memberPrograms.find((program) => program.id === workoutMode.programId) ?? null : null;
+  const activeWorkoutProgram = useMemo(() => {
+    if (!workoutMode?.programId) return null;
+    return (
+      programs.find((program) => program.id === workoutMode.programId) ??
+      memberPrograms.find((program) => program.id === workoutMode.programId) ??
+      null
+    );
+  }, [workoutMode?.programId, programs, memberPrograms]);
 
   useEffect(() => {
     purgeExpiredPausedWorkouts();
@@ -5837,26 +5854,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 onClose={() => setShowIntervalTimerModal(false)}
                 logIntervalWorkout={logIntervalWorkout}
               />
-              <LiveWorkoutSessionModal
-                variant="member"
-                workoutMode={workoutMode}
-                activeProgram={activeWorkoutProgram}
-                exercises={exercises}
-                onBeforeNextExercise={maybeCelebrateCurrentWorkoutGroup}
-                onWorkoutExerciseIndexChange={setSyncedWorkoutExerciseIndex}
-                updateWorkoutExerciseResult={updateWorkoutExerciseResult}
-                replaceWorkoutExerciseGroup={replaceWorkoutExerciseGroup}
-                appendWorkoutSetForProgramExercise={appendWorkoutSetForProgramExercise}
-                deferWorkoutExerciseGroup={deferWorkoutExerciseGroup}
-                updateWorkoutModeNote={updateWorkoutModeNote}
-                updateWorkoutExerciseNote={updateWorkoutExerciseNote}
-                finishWorkoutMode={finishWorkoutMode}
-                cancelWorkoutMode={cancelWorkoutMode}
-                onDismissWorkout={() => {
-                  dismissWorkoutMode();
-                  setPausedWorkoutsTick((value) => value + 1);
-                }}
-              />
             </>
           ) : null}
 
@@ -6371,6 +6368,26 @@ export function MemberPortal(props: MemberPortalProps) {
         </div>
       </div>
     </div>
+    <LiveWorkoutSessionModal
+      variant="member"
+      workoutMode={workoutMode}
+      activeProgram={activeWorkoutProgram}
+      exercises={exercises}
+      onBeforeNextExercise={maybeCelebrateCurrentWorkoutGroup}
+      onWorkoutExerciseIndexChange={setSyncedWorkoutExerciseIndex}
+      updateWorkoutExerciseResult={updateWorkoutExerciseResult}
+      replaceWorkoutExerciseGroup={replaceWorkoutExerciseGroup}
+      appendWorkoutSetForProgramExercise={appendWorkoutSetForProgramExercise}
+      deferWorkoutExerciseGroup={deferWorkoutExerciseGroup}
+      updateWorkoutModeNote={updateWorkoutModeNote}
+      updateWorkoutExerciseNote={updateWorkoutExerciseNote}
+      finishWorkoutMode={finishWorkoutMode}
+      cancelWorkoutMode={cancelWorkoutMode}
+      onDismissWorkout={() => {
+        dismissWorkoutMode();
+        setPausedWorkoutsTick((value) => value + 1);
+      }}
+    />
     {prProgressExerciseName ? (
       <PersonalRecordProgressModal
         exerciseName={prProgressExerciseName}
