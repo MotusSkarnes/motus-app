@@ -92,7 +92,7 @@ function getReflectionEmoji(level: 1 | 2 | 3 | 4 | 5): string {
   return "🥵";
 }
 
-function buildIntervalProgramSteps(program: TrainingProgram): IntervalTimerStep[] {
+export function buildIntervalProgramSteps(program: TrainingProgram): IntervalTimerStep[] {
   const programTitle = program.title;
   const steps: IntervalTimerStep[] = [];
   let workOrdinal = 0;
@@ -125,12 +125,11 @@ function buildIntervalProgramSteps(program: TrainingProgram): IntervalTimerStep[
         /\bintervall\b/i.test(exercise.exerciseName) ||
         /4x4/i.test(programTitle));
     const repeatCount = isDragSlot ? parseProgramSetCount(exercise.sets) : 1;
+    const isClassic4x4Drag = /4x4/i.test(programTitle) && /drag/i.test(exercise.exerciseName);
+    const legacy4x4DragPauseSeconds = rawRestStr === "" && isClassic4x4Drag ? 180 : 0;
+    const restDurationSeconds = normalizedRestSeconds > 0 ? normalizedRestSeconds : legacy4x4DragPauseSeconds;
 
     if (workDurationSeconds > 0) {
-      const isClassic4x4Drag = /4x4/i.test(programTitle) && /drag/i.test(exercise.exerciseName);
-      const legacy4x4DragPauseSeconds = rawRestStr === "" && isClassic4x4Drag ? 180 : 0;
-      const restDurationSeconds = normalizedRestSeconds > 0 ? normalizedRestSeconds : legacy4x4DragPauseSeconds;
-
       let headline: string;
       if (tone === "warmup") headline = "Oppvarming";
       else if (tone === "cooldown") headline = "Nedjogg";
@@ -179,14 +178,14 @@ function buildIntervalProgramSteps(program: TrainingProgram): IntervalTimerStep[
     const hasNextStep = index < program.exercises.length - 1;
     const nextExerciseName = program.exercises[index + 1]?.exerciseName ?? "";
     const nextIsCooldown = isIntervalCooldownName(nextExerciseName) || isLegacyIntervalCooldownDrag(program.exercises, index + 1);
-    const restAfterRow = normalizedRestSeconds > 0 && (!isDragSlot || repeatCount <= 1) && hasNextStep && !nextIsCooldown;
+    const restAfterRow = restDurationSeconds > 0 && hasNextStep && !nextIsCooldown;
     if (restAfterRow) {
       const afterLabel = lastWorkHeadline || exercise.exerciseName.trim() || `Steg ${index + 1}`;
       steps.push({
         headline: "Pause",
         phaseBadge: "Pause",
         afterExerciseName: afterLabel,
-        durationSeconds: normalizedRestSeconds,
+        durationSeconds: restDurationSeconds,
         speedHint: "Rolig",
         inclineHint: "0-1%",
         hrHint: "",
