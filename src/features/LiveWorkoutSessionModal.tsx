@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ChevronRight, Plus, Repeat2, SkipForward, TimerReset, X } from "lucide-react";
 import { remainingSecondsUntilDeadline } from "../app/intervalTimerDeadline";
+import { playWorkoutRestTone, primeWorkoutRestAudio } from "../app/workoutRestAudio";
 import { WorkoutCompactSetTable } from "./LiveWorkoutCompactSets";
 import { MOTUS } from "../app/data";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
@@ -61,32 +62,6 @@ function parseRestSeconds(value: string | undefined): number {
   return Math.min(600, Math.round(parsed));
 }
 
-function playWorkoutRestTone(kind: "tick" | "start") {
-  if (typeof window === "undefined") return;
-  const AudioCtx = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioCtx) return;
-  const context = new AudioCtx();
-  const nowTime = context.currentTime;
-  const tones = kind === "start" ? [659.25, 880] : [523.25];
-  tones.forEach((frequency, index) => {
-    const start = nowTime + index * 0.07;
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = kind === "start" ? "triangle" : "sine";
-    oscillator.frequency.setValueAtTime(frequency, start);
-    gain.gain.setValueAtTime(0.0001, start);
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    gain.gain.exponentialRampToValueAtTime(kind === "start" ? 0.09 : 0.06, start + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.13);
-    oscillator.start(start);
-    oscillator.stop(start + 0.16);
-  });
-  window.setTimeout(() => {
-    void context.close();
-  }, kind === "start" ? 360 : 220);
-}
-
 function getReflectionEmoji(level: 1 | 2 | 3 | 4 | 5): string {
   if (level <= 1) return "🥳";
   if (level === 2) return "🙂";
@@ -127,6 +102,11 @@ export function LiveWorkoutSessionModal({
   const [restCountdown, setRestCountdown] = useState<RestCountdownState | null>(null);
   const completedCountByGroupRef = useRef<Record<string, number>>({});
   const lastRestBeepSecondRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!workoutMode || !restCountdownEnabled) return;
+    void primeWorkoutRestAudio();
+  }, [workoutMode, restCountdownEnabled]);
 
   const resolvedProgram = useMemo(
     () => activeProgram ?? (workoutMode ? buildTrainingProgramFromWorkoutMode(workoutMode) : null),
@@ -254,7 +234,7 @@ export function LiveWorkoutSessionModal({
       const remaining = remainingSecondsUntilDeadline(restCountdown.endsAtMs, Date.now());
       if (remaining <= 0) {
         setRestCountdown(null);
-        playWorkoutRestTone("start");
+        void playWorkoutRestTone("start");
         return;
       }
       setRestCountdownTick((tick) => tick + 1);
@@ -277,7 +257,7 @@ export function LiveWorkoutSessionModal({
     if (!restCountdown || restCountdownRemainingSeconds < 1 || restCountdownRemainingSeconds > 3) return;
     if (lastRestBeepSecondRef.current === restCountdownRemainingSeconds) return;
     lastRestBeepSecondRef.current = restCountdownRemainingSeconds;
-    playWorkoutRestTone("tick");
+    void playWorkoutRestTone("tick");
   }, [restCountdown, restCountdownRemainingSeconds, restCountdownTick]);
 
   useEffect(() => {
@@ -746,7 +726,7 @@ export function LiveWorkoutSessionModal({
                   type="button"
                   onClick={() => {
                     setRestCountdown(null);
-                    playWorkoutRestTone("start");
+                    void playWorkoutRestTone("start");
                   }}
                   className="shrink-0 rounded-lg border bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                   style={{ borderColor: "rgba(15,23,42,0.08)" }}
