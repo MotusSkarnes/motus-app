@@ -1769,7 +1769,27 @@ type PersistWorkoutLogHints = {
   targetEmail?: string;
   ownerUserId?: string;
   programTitle?: string;
+  /** Unngår ekstra getSession() under intervallagring (kan henge i nettleseren). */
+  accessToken?: string;
 };
+
+const WORKOUT_LOG_INTERVAL_RPC_TIMEOUT_MS = 7_000;
+const WORKOUT_LOG_INTERVAL_EDGE_TIMEOUT_MS = 12_000;
+const WORKOUT_LOG_INTERVAL_DIRECT_TIMEOUT_MS = 7_000;
+
+function decodeAccessTokenClaims(accessToken: string): { sub: string; email: string } {
+  try {
+    const payload = JSON.parse(
+      atob(accessToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")),
+    ) as { sub?: string; email?: string };
+    return {
+      sub: String(payload.sub ?? "").trim(),
+      email: String(payload.email ?? "").trim().toLowerCase(),
+    };
+  } catch {
+    return { sub: "", email: "" };
+  }
+}
 
 function buildMemberPersistenceHints(
   state: AppState,
@@ -1922,7 +1942,7 @@ type WorkoutLogAuthContext = {
   sessionRole: ReturnType<typeof resolveSessionAuthRole> | null;
 };
 
-async function getWorkoutLogAuthContext(): Promise<WorkoutLogAuthContext> {
+async function getWorkoutLogAuthContext(hints?: PersistWorkoutLogHints): Promise<WorkoutLogAuthContext> {
   const empty: WorkoutLogAuthContext = {
     sessionUser: null,
     accessToken: "",
@@ -1931,6 +1951,18 @@ async function getWorkoutLogAuthContext(): Promise<WorkoutLogAuthContext> {
     sessionRole: null,
   };
   if (!supabaseClient) return empty;
+
+  const prefetched = String(hints?.accessToken ?? "").trim();
+  if (prefetched) {
+    const claims = decodeAccessTokenClaims(prefetched);
+    return {
+      sessionUser: claims.sub ? { id: claims.sub, email: claims.email || hints?.targetEmail } : null,
+      accessToken: prefetched,
+      requesterUserId: claims.sub,
+      sessionEmail: claims.email || String(hints?.targetEmail ?? "").trim().toLowerCase(),
+      sessionRole: null,
+    };
+  }
 
   const { data } = await promiseWithTimeout(
     supabaseClient.auth.getSession(),
@@ -1954,17 +1986,7 @@ async function getWorkoutLogAuthContext(): Promise<WorkoutLogAuthContext> {
 }
 
 async function persistIntervalWorkoutLog(log: WorkoutLog, hints: PersistWorkoutLogHints): Promise<PersistResult> {
-  const result = await promiseWithTimeout(
-    persistIntervalWorkoutLogInner(log, hints),
-    WORKOUT_LOG_INTERVAL_TOTAL_TIMEOUT_MS,
-    null,
-  );
-  if (result) return result;
-  return {
-    ok: false,
-    message:
-      "Lagring tok for lang tid. Sjekk nettverk, oppdater siden (Ctrl+F5), og kjør member_workout_log_save_setup.sql i Supabase hvis problemet vedvarer.",
-  };
+  return persistIntervalWorkoutLogInner(log, hints);
 }
 
 function pickWorkoutLogOwnerFromHints(
@@ -1975,7 +1997,7 @@ function pickWorkoutLogOwnerFromHints(
 }
 
 async function persistIntervalWorkoutLogInner(log: WorkoutLog, hints: PersistWorkoutLogHints): Promise<PersistResult> {
-  const ctx = await getWorkoutLogAuthContext();
+  const ctx = await getWorkoutLogAuthContext(hints);
   if (!ctx.accessToken) {
     return { ok: false, message: "Sesjonen utløp. Logg ut og inn igjen, og prøv å lagre på nytt." };
   }
@@ -1985,7 +2007,7 @@ async function persistIntervalWorkoutLogInner(log: WorkoutLog, hints: PersistWor
   if (rawMemberId.startsWith("auth-")) {
     memberId = await promiseWithTimeout(
       resolveCanonicalMemberIdForPersistence(rawMemberId, hints, ctx.sessionUser),
-      6_000,
+      4_000,
       rawMemberId,
     );
   }
@@ -2004,7 +2026,7 @@ async function persistIntervalWorkoutLogInner(log: WorkoutLog, hints: PersistWor
   if (!ownerUserId) {
     ownerUserId = await promiseWithTimeout(
       resolveWorkoutLogOwnerUserId(memberId, persistenceHints, ctx.requesterUserId),
-      6_000,
+      4_000,
       null,
     );
   }
@@ -2015,11 +2037,11 @@ async function persistIntervalWorkoutLogInner(log: WorkoutLog, hints: PersistWor
     return { ok: false, message: "Fant ikke PT-eier for programmet. Oppdater siden og prøv igjen." };
   }
 
-  return persistMemberWorkoutLogSequential({ ...log, memberId }, memberId, ownerUserId, ctx.accessToken);
+  return persistIntervalWorkoutLogFast({ ...log, memberId }, memberId, ownerUserId, ctx.accessToken);
 }
 
-/** Én kanal om gangen — raskere og mer pålitelig enn tre parallelle kall som kan blokkere hverandre. */
-async function persistMemberWorkoutLogSequential(
+/** Intervalløkt: RPC først (rask med SQL), deretter edge fetch — uten dobbel invoke som ga falsk timeout. */
+async function persistIntervalWorkoutLogFast(
   log: WorkoutLog,
   memberId: string,
   ownerUserId: string,
@@ -2038,21 +2060,31 @@ async function persistMemberWorkoutLogSequential(
   };
   const failures: PersistResult[] = [];
 
-  const edge = await invokePersistWorkoutLogEdge(edgeBody, accessToken);
-  if (edge.ok) return edge;
-  failures.push(edge);
-
   const rpc = await promiseWithTimeout(
     persistWorkoutLogViaMemberRpc(log, memberId, ownerUserId),
-    WORKOUT_LOG_RPC_TIMEOUT_MS,
+    WORKOUT_LOG_INTERVAL_RPC_TIMEOUT_MS,
     null,
   );
   if (rpc?.ok) return rpc;
   if (rpc) failures.push(rpc);
 
+  if (supabaseUrl && supabaseAnonKey) {
+    const edge = await promiseWithTimeout(
+      invokePersistWorkoutLogEdgeFetch(edgeBody, accessToken),
+      WORKOUT_LOG_INTERVAL_EDGE_TIMEOUT_MS,
+      { ok: false, message: "__edge_fetch_timeout__" },
+    );
+    if (edge.ok) return edge;
+    if (edge.message && !edge.message.includes("__edge_fetch_timeout__")) {
+      failures.push(edge);
+      return { ok: false, message: pickMemberWorkoutPersistFailureMessage(failures) };
+    }
+    failures.push(edge);
+  }
+
   const direct = await promiseWithTimeout(
     persistWorkoutLogDirectForMember(log, memberId, ownerUserId),
-    WORKOUT_LOG_DIRECT_TIMEOUT_MS,
+    WORKOUT_LOG_INTERVAL_DIRECT_TIMEOUT_MS,
     { ok: false, message: "__direct_timeout__" },
   );
   if (direct.ok) return direct;

@@ -2005,12 +2005,28 @@ export function useAppState() {
       return;
     }
 
-    void persistIntervalWorkoutLogToCloud(persistJob.log, persistJob.hints)
-      .then((result) => finishPersist(result))
-      .catch((error) => {
+    void (async () => {
+      let accessToken = "";
+      if (supabaseClient) {
+        const sessionResult = await Promise.race([
+          supabaseClient.auth.getSession(),
+          new Promise<Awaited<ReturnType<typeof supabaseClient.auth.getSession>>>((resolve) => {
+            window.setTimeout(() => resolve({ data: { session: null }, error: null }), 5_000);
+          }),
+        ]);
+        accessToken = sessionResult.data.session?.access_token ?? "";
+      }
+      try {
+        const result = await persistIntervalWorkoutLogToCloud(persistJob.log, {
+          ...persistJob.hints,
+          ...(accessToken ? { accessToken } : {}),
+        });
+        finishPersist(result);
+      } catch (error) {
         const message = error instanceof Error ? error.message : "Ukjent feil under lagring av økt.";
         finishPersist({ ok: false, message });
-      });
+      }
+    })();
 
     if (input.keepCurrentTab !== true) {
       setMemberTab("progress");
