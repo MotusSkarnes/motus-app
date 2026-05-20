@@ -384,8 +384,8 @@ function countCardioDragRows(draft: ProgramExercise[]): number {
   return draft.filter((row) => /^drag\b/i.test(row.exerciseName.trim())).length;
 }
 
-function cardioSetLabel(exerciseName: string): string {
-  return /^drag\b/i.test(exerciseName.trim()) ? "Antall drag" : "Antall runder";
+function cardioSetLabel(): string {
+  return "Antall drag";
 }
 
 function cardioTargetHrPrescriptionSuffix(targetHrPercent: string | undefined): string {
@@ -5351,8 +5351,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                               return (
                             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                               <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">{isCardio ? cardioSetLabel(item.exerciseName) : "Antall sett"}</div>
-                                <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder={isCardio ? cardioSetLabel(item.exerciseName).replace("Antall ", "") : "Sett"} />
+                                <div className="text-[11px] font-medium text-slate-500">{isCardio ? cardioSetLabel() : "Antall sett"}</div>
+                                <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder={isCardio ? cardioSetLabel().replace("Antall ", "") : "Sett"} />
                               </div>
                               {isCardio ? (
                                 <div className="space-y-1">
@@ -5954,8 +5954,8 @@ function programAuthorLabel(program: TrainingProgram): string | null {
                         return (
                       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         <div className="space-y-1">
-                          <div className="text-[11px] font-medium text-slate-500">{isCardio ? cardioSetLabel(item.exerciseName) : "Antall sett"}</div>
-                          <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder={isCardio ? cardioSetLabel(item.exerciseName).replace("Antall ", "") : "Sett"} />
+                          <div className="text-[11px] font-medium text-slate-500">{isCardio ? cardioSetLabel() : "Antall sett"}</div>
+                          <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder={isCardio ? cardioSetLabel().replace("Antall ", "") : "Sett"} />
                         </div>
                         {isCardio ? (
                           <div className="space-y-1">

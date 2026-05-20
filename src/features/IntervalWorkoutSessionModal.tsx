@@ -79,6 +79,11 @@ function intervalStepAllowsSpeedInclineEdit(step: IntervalTimerStep | null): boo
   return step.speedHint !== "-" || step.inclineHint !== "-";
 }
 
+function isIntervalCooldownName(name: string): boolean {
+  const lower = name.trim().toLowerCase();
+  return lower.includes("nedjogg") || lower.includes("nedtrapp") || lower.includes("cooldown");
+}
+
 function getReflectionEmoji(level: 1 | 2 | 3 | 4 | 5): string {
   if (level <= 1) return "🥳";
   if (level === 2) return "🙂";
@@ -105,7 +110,7 @@ function buildIntervalProgramSteps(program: TrainingProgram): IntervalTimerStep[
 
     const lowerName = exercise.exerciseName.toLowerCase();
     let tone: IntervalTimerStep["tone"] =
-      lowerName.includes("oppvarm") ? "warmup" : lowerName.includes("nedjogg") ? "cooldown" : "work";
+      lowerName.includes("oppvarm") ? "warmup" : isIntervalCooldownName(exercise.exerciseName) ? "cooldown" : "work";
     const nameImpliesExplicitWorkSegment =
       /\bdrag\b/i.test(exercise.exerciseName) || lowerName.includes("tempo") || lowerName.includes("tabata");
     if (index === 0 && tone === "work" && !nameImpliesExplicitWorkSegment) {
@@ -172,7 +177,7 @@ function buildIntervalProgramSteps(program: TrainingProgram): IntervalTimerStep[
 
     const hasNextStep = index < program.exercises.length - 1;
     const nextExerciseName = program.exercises[index + 1]?.exerciseName.trim().toLowerCase() ?? "";
-    const nextIsCooldown = nextExerciseName.startsWith("nedjogg") || nextExerciseName.includes("nedtrapp");
+    const nextIsCooldown = isIntervalCooldownName(nextExerciseName);
     const restAfterRow = normalizedRestSeconds > 0 && (!isDragSlot || repeatCount <= 1) && hasNextStep && !nextIsCooldown;
     if (restAfterRow) {
       const afterLabel = lastWorkHeadline || exercise.exerciseName.trim() || `Steg ${index + 1}`;
