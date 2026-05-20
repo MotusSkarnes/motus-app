@@ -20,6 +20,7 @@ import {
   localAppRepository,
   type AppRepository,
   type CreateMemberInput,
+  type CreateMemberResult,
   type FinishWorkoutInput,
   type LogGroupWorkoutInput,
   type LogIntervalWorkoutInput,
@@ -2741,37 +2742,141 @@ export async function fetchExercisesFromSupabase(): Promise<Exercise[] | null> {
   }));
 }
 
+function mapEdgeMemberPayload(value: unknown): Member | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  const id = String(row.id ?? "").trim();
+  const email = String(row.email ?? "").trim().toLowerCase();
+  const name = String(row.name ?? "").trim();
+  if (!id || !email || !name) return null;
+  return {
+    id,
+    ownerUserId: String(row.ownerUserId ?? "").trim(),
+    name,
+    email,
+    isActive: row.isActive !== false,
+    invitedAt: String(row.invitedAt ?? ""),
+    phone: String(row.phone ?? ""),
+    birthDate: String(row.birthDate ?? ""),
+    weight: String(row.weight ?? ""),
+    height: String(row.height ?? ""),
+    level: row.level === "Litt øvet" || row.level === "Øvet" ? row.level : "Nybegynner",
+    membershipType: mapMembershipType(row.membershipType),
+    customerType: mapCustomerType(row.customerType),
+    daysSinceActivity: String(row.daysSinceActivity ?? "0"),
+    goal: String(row.goal ?? ""),
+    focus: String(row.focus ?? ""),
+    personalGoals: String(row.personalGoals ?? ""),
+    injuries: String(row.injuries ?? ""),
+    coachNotes: String(row.coachNotes ?? ""),
+    avatarUrl: String(row.avatarUrl ?? ""),
+  };
+}
+
+async function invokeCreateTrainerMemberFunction(body: Record<string, unknown>): Promise<{
+  ok: boolean;
+  data: Record<string, unknown> | null;
+  errorMessage: string | null;
+}> {
+  if (!supabaseClient) {
+    return { ok: false, data: null, errorMessage: "Tjenesten er ikke tilgjengelig akkurat nå." };
+  }
+
+  const { data, error } = await supabaseClient.functions.invoke("create-trainer-member", { body });
+  if (!error && data && typeof data === "object") {
+    return { ok: true, data: data as Record<string, unknown>, errorMessage: null };
+  }
+
+  let errorMessage = (await extractFunctionErrorDetails(error)) || error?.message || "create-trainer-member feilet";
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession();
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-trainer-member`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+        },
+        body: JSON.stringify(body),
+      });
+      const raw = await response.text();
+      let parsed: Record<string, unknown> | null = null;
+      try {
+        parsed = raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
+      } catch {
+        parsed = null;
+      }
+      if (response.ok && parsed) {
+        return { ok: true, data: parsed, errorMessage: null };
+      }
+      const detail = String(parsed?.error ?? parsed?.message ?? raw ?? response.status);
+      errorMessage = `HTTP ${response.status}: ${detail}`;
+    } catch (fetchError) {
+      errorMessage = `${errorMessage} (${String(fetchError)})`;
+    }
+  }
+
+  return { ok: false, data: null, errorMessage };
+}
+
+export type { CreateMemberResult };
+
+export async function createTrainerMemberViaEdgeFunction(
+  member: Member,
+  input: CreateMemberInput,
+): Promise<CreateMemberResult> {
+  if (!supabaseClient) {
+    return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
+  }
+
+  const {
+    data: { session: initialSession },
+  } = await supabaseClient.auth.getSession();
+  let activeSession = initialSession;
+  if (!activeSession?.access_token) {
+    const { data: refreshedData } = await supabaseClient.auth.refreshSession();
+    activeSession = refreshedData.session;
+  }
+  if (!activeSession?.access_token) {
+    return { ok: false, message: "Logg inn som trener og prøv igjen." };
+  }
+
+  const ownerUserId = String((await getOwnerUserId()) ?? activeSession.user?.id ?? "").trim();
+  const invoke = await invokeCreateTrainerMemberFunction({
+    accessToken: activeSession.access_token,
+    memberId: member.id,
+    name: input.name.trim(),
+    email: input.email.trim().toLowerCase(),
+    phone: input.phone?.trim() || member.phone,
+    goal: input.goal?.trim() || member.goal,
+    focus: input.focus?.trim() || member.focus,
+    membershipType: input.membershipType ?? member.membershipType,
+    customerType: input.customerType ?? member.customerType,
+    ownerUserId,
+  });
+
+  if (!invoke.ok || !invoke.data) {
+    const message = invoke.errorMessage ?? "Kunne ikke opprette kunde.";
+    if (message.includes("email_exists") || message.includes("E-post finnes")) {
+      return { ok: false, message: "E-post finnes allerede som aktiv kunde." };
+    }
+    return { ok: false, message: `Opprettelse feilet: ${message}` };
+  }
+
+  const mapped = mapEdgeMemberPayload(invoke.data.member);
+  if (!mapped) {
+    return { ok: false, message: "Kunde ble opprettet, men svaret fra serveren var ugyldig." };
+  }
+
+  return { ok: true, member: mapped };
+}
+
 export const supabaseAppRepository: AppRepository = {
   addMember(state: AppState, input: CreateMemberInput): AppState {
-    const createdMember = createMember(state, input);
-    const sessionOwnerHint =
-      state.currentUser?.role === "trainer" ? String(state.currentUser.id ?? "").trim() : "";
-    const optimisticMember: Member = {
-      ...createdMember,
-      ownerUserId:
-        sessionOwnerHint &&
-        (createdMember.customerType === "PT-kunde" || createdMember.membershipType === "Premium")
-          ? sessionOwnerHint
-          : createdMember.ownerUserId,
-    };
-    const nextState: AppState = {
-      ...state,
-      members: [...state.members, optimisticMember],
-      selectedMemberId: optimisticMember.id,
-    };
-    void (async () => {
-      const sessionOwnerId = (await getOwnerUserId()) ?? sessionOwnerHint;
-      const withOwner: Member = {
-        ...optimisticMember,
-        ownerUserId: resolveOwnerUserIdForPersist({
-          customerType: optimisticMember.customerType,
-          sessionOwnerId,
-          existingOwnerId: optimisticMember.ownerUserId,
-        }),
-      };
-      await persistMember(withOwner);
-    })();
-    return nextState;
+    return localAppRepository.addMember(state, input);
   },
   deactivateMember(state: AppState, memberId: string): AppState {
     const targetMember = state.members.find((member) => member.id === memberId);

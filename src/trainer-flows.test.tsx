@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
 import { TrainerPortal } from "./features/TrainerPortal";
@@ -26,8 +26,10 @@ describe("Trainer flows", () => {
     await user.type(screen.getByPlaceholderText("E-post"), "ny.kunde@example.com");
     await user.click(screen.getByRole("button", { name: "Opprett kunde" }));
 
-    expect(screen.getByPlaceholderText("Navn")).toHaveValue("");
-    expect(screen.getByPlaceholderText("E-post")).toHaveValue("");
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Navn")).toHaveValue("");
+      expect(screen.getByPlaceholderText("E-post")).toHaveValue("");
+    });
   });
 
   it("shows dedupe helper message when Supabase is unavailable", async () => {

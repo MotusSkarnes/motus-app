@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
 import {
+  createMember,
   localAppRepository,
   type CreateMemberInput,
+  type CreateMemberResult,
   type FinishWorkoutInput,
   type LogCompletedPlanEntryInput,
   type LogGroupWorkoutInput,
@@ -51,6 +53,7 @@ import {
   fetchProgramsFromSupabase,
   registerMessagesPersistedListener,
   reassignMemberOwnerFromSupabase,
+  createTrainerMemberViaEdgeFunction,
   restoreMemberByEmailFromSupabase,
   type RestoreMemberOptions,
   supabaseAppRepository,
@@ -1524,8 +1527,75 @@ export function useAppState() {
     return cleared;
   }
 
-  function addMember(input: CreateMemberInput) {
-    setAppState((prev) => repository.addMember(prev, input));
+  async function addMember(input: CreateMemberInput): Promise<CreateMemberResult> {
+    if (!isSupabaseConfigured) {
+      let createdMember: Member | undefined;
+      setAppState((prev) => {
+        const next = localAppRepository.addMember(prev, input);
+        createdMember = next.members[next.members.length - 1];
+        return next;
+      });
+      return createdMember
+        ? { ok: true, member: createdMember }
+        : { ok: false, message: "Kunne ikke opprette kunde lokalt." };
+    }
+
+    let optimisticMember: Member | null = null;
+    let previousSelectedMemberId = "";
+    setAppState((prev) => {
+      const created = createMember(prev, input);
+      const sessionOwnerHint =
+        prev.currentUser?.role === "trainer" ? String(prev.currentUser.id ?? "").trim() : "";
+      optimisticMember = {
+        ...created,
+        ownerUserId:
+          sessionOwnerHint &&
+          (created.customerType === "PT-kunde" || created.membershipType === "Premium")
+            ? sessionOwnerHint
+            : created.ownerUserId,
+      };
+      previousSelectedMemberId = prev.selectedMemberId;
+      return {
+        ...prev,
+        members: [...prev.members, optimisticMember],
+        selectedMemberId: optimisticMember.id,
+      };
+    });
+
+    if (!optimisticMember) {
+      return { ok: false, message: "Kunne ikke opprette kunde." };
+    }
+
+    const pendingMember = optimisticMember;
+    const result = await createTrainerMemberViaEdgeFunction(pendingMember, input);
+    if (!result.ok) {
+      setAppState((prev) => ({
+        ...prev,
+        members: prev.members.filter((member) => member.id !== pendingMember.id),
+        selectedMemberId:
+          prev.selectedMemberId === pendingMember.id ? previousSelectedMemberId : prev.selectedMemberId,
+      }));
+      return result;
+    }
+
+    setAppState((prev) => ({
+      ...prev,
+      members:
+        mergeMembersById(
+          prev.members.map((member) => (member.id === pendingMember.id ? result.member : member)),
+          [result.member],
+        ) ?? prev.members,
+      selectedMemberId: result.member.id,
+    }));
+
+    const ownerUserId =
+      String(result.member.ownerUserId ?? "").trim() ||
+      (appState.currentUser?.role === "trainer" ? String(appState.currentUser.id ?? "").trim() : "");
+    if (ownerUserId) {
+      await refreshTrainerSessionData(ownerUserId);
+    }
+
+    return result;
   }
 
   function deactivateMember(memberId: string) {
@@ -1757,7 +1827,7 @@ export function useAppState() {
     if (remoteMembers) {
       setAppState((prev) => ({
         ...prev,
-        members: remoteMembers,
+        members: mergeMembersById(remoteMembers, prev.members) ?? remoteMembers,
         ...(remoteMessages ? { messages: remoteMessages } : {}),
         ...(remotePrograms ? { programs: mergeRemoteProgramsWithLocal(remotePrograms, prev.programs) } : {}),
         ...(remoteLogs ? { logs: remoteLogs } : {}),

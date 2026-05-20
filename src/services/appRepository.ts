@@ -22,6 +22,8 @@ import {
   storedLogDatesMatch,
 } from "../app/dateFormat";
 
+export type CreateMemberResult = { ok: true; member: Member } | { ok: false; message: string };
+
 export type CreateMemberInput = {
   name: string;
   email: string;

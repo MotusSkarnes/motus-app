@@ -35,7 +35,13 @@ import {
 import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { useToastStatus } from "../app/toast";
 import motusLogo from "../assets/motus-logo-transparent.svg";
-import type { CreateMemberInput, ReplaceWorkoutExerciseGroupInput, StartWorkoutModeOptions, UpdateMemberInput } from "../services/appRepository";
+import type {
+  CreateMemberInput,
+  CreateMemberResult,
+  ReplaceWorkoutExerciseGroupInput,
+  StartWorkoutModeOptions,
+  UpdateMemberInput,
+} from "../services/appRepository";
 import {
   filterMemberIdsForRosterSave,
   isPrivatePtRosterCustomerType,
@@ -157,7 +163,7 @@ type TrainerPortalProps = {
   setSelectedMemberId: (id: string) => void;
   trainerTab: TrainerTab;
   setTrainerTab: (tab: TrainerTab) => void;
-  addMember: (input: CreateMemberInput) => void;
+  addMember: (input: CreateMemberInput) => Promise<CreateMemberResult>;
   deactivateMember: (memberId: string) => void;
   deleteMember: (memberId: string) => void;
   updateMember: (input: UpdateMemberInput) => void;
@@ -694,6 +700,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
   const [newMemberInviteType, setNewMemberInviteType] = useState<"PT-kunde" | "Premium-kunde" | "Medlem">("PT-kunde");
   const [newMemberError, setNewMemberError] = useState<string | null>(null);
   const [newMemberSuccess, setNewMemberSuccess] = useState<string | null>(null);
+  const [isCreatingMember, setIsCreatingMember] = useState(false);
   const [pendingProgramMemberEmail, setPendingProgramMemberEmail] = useState<string | null>(null);
   const [pendingInviteMemberEmail, setPendingInviteMemberEmail] = useState<string | null>(null);
   const [newTrainerEmail, setNewTrainerEmail] = useState("");
@@ -2227,7 +2234,7 @@ function programAuthorLabel(program: TrainingProgram): string | null {
     return true;
   }
 
-  function submitNewMember(options?: { openProgramAfterCreate?: boolean; inviteAfterCreate?: boolean }) {
+  async function submitNewMember(options?: { openProgramAfterCreate?: boolean; inviteAfterCreate?: boolean }) {
     const name = newMemberName.trim();
     const email = newMemberEmail.trim().toLowerCase();
     if (!name || !email) {
@@ -2240,19 +2247,28 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       setNewMemberSuccess(null);
       return;
     }
-    if (members.some((member) => member.email.toLowerCase() === email)) {
-      setNewMemberError("E-post finnes allerede.");
+    const existingByEmail = members.filter((member) => member.email.trim().toLowerCase() === email);
+    if (existingByEmail.some((member) => member.isActive !== false)) {
+      setNewMemberError("E-post finnes allerede som aktiv kunde.");
+      setNewMemberSuccess(null);
+      return;
+    }
+    if (existingByEmail.some((member) => member.isActive === false)) {
+      setNewMemberError("E-post finnes som inaktiv kunde. Bruk «Gjenopprett klient» nedenfor.");
       setNewMemberSuccess(null);
       return;
     }
 
-    // Kundetype/medlemskap følger alltid nedtrekksvalget — ikke bare ved «Opprett + invitasjon».
     const tier = newMemberInviteType;
     const nextMembershipType: Member["membershipType"] = tier === "Premium-kunde" ? "Premium" : "Standard";
     const nextCustomerType: Member["customerType"] =
       tier === "Medlem" ? "Medlem" : tier === "PT-kunde" || tier === "Premium-kunde" ? "PT-kunde" : "Oppfølging";
 
-    addMember({
+    setIsCreatingMember(true);
+    setNewMemberError(null);
+    setNewMemberSuccess(null);
+
+    const result = await addMember({
       name,
       email,
       phone: normalizePhone(newMemberPhone),
@@ -2262,12 +2278,18 @@ function programAuthorLabel(program: TrainingProgram): string | null {
       customerType: nextCustomerType,
     });
 
+    setIsCreatingMember(false);
+
+    if (!result.ok) {
+      setNewMemberError(result.message);
+      return;
+    }
+
     setNewMemberName("");
     setNewMemberEmail("");
     setNewMemberPhone("");
     setNewMemberGoal("");
     setNewMemberFocus("");
-    setNewMemberError(null);
     setNewMemberSuccess(
       options?.inviteAfterCreate
         ? `Kunde «${name}» opprettet — sender invitasjon…`
@@ -3911,22 +3933,22 @@ function programAuthorLabel(program: TrainingProgram): string | null {
           <StatusMessage message={newMemberSuccess} tone="success" className="!rounded-xl !px-3 !py-2 !text-xs" />
         ) : null}
         <GradientButton
+          disabled={isCreatingMember}
           onClick={() => {
-            setNewMemberSuccess(null);
-            submitNewMember();
+            void submitNewMember();
           }}
           className="w-full md:w-auto"
         >
-          Opprett kunde
+          {isCreatingMember ? "Oppretter…" : "Opprett kunde"}
         </GradientButton>
         <OutlineButton
+          disabled={isCreatingMember}
           onClick={() => {
-            setNewMemberSuccess(null);
-            submitNewMember({ inviteAfterCreate: true });
+            void submitNewMember({ inviteAfterCreate: true });
           }}
           className="w-full md:w-auto"
         >
-          Opprett + send invitasjon
+          {isCreatingMember ? "Oppretter…" : "Opprett + send invitasjon"}
         </OutlineButton>
       </div>
     );
