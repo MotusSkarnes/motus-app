@@ -362,7 +362,7 @@ export function IntervalWorkoutSessionModal({
       saveSettled = true;
       setIsSaving(false);
       setStatus("Lagring tok for lang tid. Sjekk nettverk og prøv igjen.");
-    }, 16_000);
+    }, 32_000);
     logIntervalWorkout({
       memberId: memberId.trim(),
       programId: program.id,

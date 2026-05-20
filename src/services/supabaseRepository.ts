@@ -95,7 +95,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 
 const TRAINER_PROGRAM_SAVE_TIMEOUT_MS = 22_000;
 const PROGRAM_EDGE_INVOKE_TIMEOUT_MS = 24_000;
-const WORKOUT_LOG_EDGE_TIMEOUT_MS = 12_000;
+const WORKOUT_LOG_EDGE_TIMEOUT_MS = 20_000;
 
 async function promiseWithTimeout<T>(
   promise: Promise<T>,
@@ -1777,6 +1777,12 @@ function buildMemberPersistenceHints(
   };
 }
 
+function pickWorkoutLogOwnerCandidate(candidate: string, requesterUserId: string): string | null {
+  const trimmed = candidate.trim();
+  if (!trimmed || trimmed === requesterUserId) return null;
+  return trimmed;
+}
+
 async function resolveWorkoutLogOwnerUserId(
   memberId: string,
   hints: PersistWorkoutLogHints,
@@ -1784,42 +1790,87 @@ async function resolveWorkoutLogOwnerUserId(
 ): Promise<string | null> {
   if (!supabaseClient) return null;
   const hint = String(hints.ownerUserId ?? "").trim();
-  if (hint && hint !== requesterUserId) return hint;
-
-  const { data: memberRow } = await supabaseClient
-    .from("members")
-    .select("owner_user_id")
-    .eq("id", memberId)
-    .maybeSingle();
-  const fromMember = String((memberRow as { owner_user_id?: string } | null)?.owner_user_id ?? "").trim();
-  if (fromMember && fromMember !== requesterUserId) return fromMember;
+  const fromHint = pickWorkoutLogOwnerCandidate(hint, requesterUserId);
+  if (fromHint) return fromHint;
 
   const title = String(hints.programTitle ?? "").trim();
-  if (title) {
-    const { data: programRow } = await supabaseClient
+  const [memberResult, programResult, anyProgramResult] = await Promise.all([
+    supabaseClient.from("members").select("owner_user_id").eq("id", memberId).maybeSingle(),
+    title
+      ? supabaseClient
+          .from("training_programs")
+          .select("owner_user_id")
+          .eq("member_id", memberId)
+          .eq("title", title)
+          .not("owner_user_id", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    supabaseClient
       .from("training_programs")
       .select("owner_user_id")
       .eq("member_id", memberId)
-      .eq("title", title)
       .not("owner_user_id", "is", null)
+      .neq("owner_user_id", requesterUserId)
       .order("created_at", { ascending: false })
       .limit(1)
-      .maybeSingle();
-    const fromProgram = String((programRow as { owner_user_id?: string } | null)?.owner_user_id ?? "").trim();
-    if (fromProgram && fromProgram !== requesterUserId) return fromProgram;
-  }
+      .maybeSingle(),
+  ]);
 
-  const { data: anyProgramRow } = await supabaseClient
-    .from("training_programs")
-    .select("owner_user_id")
-    .eq("member_id", memberId)
-    .not("owner_user_id", "is", null)
-    .neq("owner_user_id", requesterUserId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const fromAnyProgram = String((anyProgramRow as { owner_user_id?: string } | null)?.owner_user_id ?? "").trim();
-  return fromAnyProgram && fromAnyProgram !== requesterUserId ? fromAnyProgram : null;
+  const fromMember = pickWorkoutLogOwnerCandidate(
+    String((memberResult.data as { owner_user_id?: string } | null)?.owner_user_id ?? ""),
+    requesterUserId,
+  );
+  if (fromMember) return fromMember;
+
+  const fromProgram = pickWorkoutLogOwnerCandidate(
+    String((programResult.data as { owner_user_id?: string } | null)?.owner_user_id ?? ""),
+    requesterUserId,
+  );
+  if (fromProgram) return fromProgram;
+
+  return pickWorkoutLogOwnerCandidate(
+    String((anyProgramResult.data as { owner_user_id?: string } | null)?.owner_user_id ?? ""),
+    requesterUserId,
+  );
+}
+
+function isMissingMemberWorkoutRpcError(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("upsert_member_workout_log") ||
+    normalized.includes("member_can_write_workout_log") ||
+    normalized.includes("could not find the function") ||
+    normalized.includes("schema cache")
+  );
+}
+
+async function persistWorkoutLogViaMemberRpc(
+  log: WorkoutLog,
+  memberId: string,
+  ownerUserId: string,
+): Promise<PersistResult | null> {
+  if (!supabaseClient) return null;
+  const serializedNote = serializeWorkoutNote(log);
+  const { data, error } = await supabaseClient.rpc("upsert_member_workout_log", {
+    p_id: log.id,
+    p_member_id: memberId,
+    p_owner_user_id: ownerUserId.trim(),
+    p_program_title: log.programTitle,
+    p_date: log.date,
+    p_status: log.status,
+    p_note: serializedNote,
+    p_results: log.results ?? [],
+  });
+  if (error) {
+    if (isMissingMemberWorkoutRpcError(error.message)) return null;
+    return { ok: false, message: error.message };
+  }
+  const payload = (data ?? null) as { ok?: boolean; error?: string } | null;
+  if (payload?.ok === true) return { ok: true };
+  if (payload?.error) return { ok: false, message: payload.error };
+  return { ok: false, message: "Kunne ikke lagre økten via RPC." };
 }
 
 async function persistWorkoutLogDirectForMember(
@@ -1847,7 +1898,7 @@ async function persistWorkoutLogDirectForMember(
   );
   if (error) {
     const hint = /policy|permission|row-level security/i.test(error.message)
-      ? " Kjør workout_logs_member_insert_rls.sql i Supabase."
+      ? " Kjør workout_logs_member_insert_rls.sql og upsert_member_workout_log_rpc.sql i Supabase."
       : "";
     return { ok: false, message: error.message + hint };
   }
@@ -1889,25 +1940,7 @@ async function invokePersistWorkoutLogEdge(
     }
   }
 
-  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
-  const invokeResult = await promiseWithTimeout(
-    supabaseClient.functions.invoke("persist-workout-log", { body }),
-    WORKOUT_LOG_EDGE_TIMEOUT_MS,
-    { data: null, error: { message: "persist-workout-log timeout" } },
-  );
-  if (invokeResult.error && String((invokeResult.error as { message?: string }).message ?? "").includes("timeout")) {
-    return { ok: false, message: "Lagring tok for lang tid. Sjekk nettverk og prøv igjen." };
-  }
-  if (!invokeResult.error) {
-    const payload = invokeResult.data as { ok?: boolean; error?: string } | null;
-    if (payload?.ok === true) return { ok: true };
-    if (payload?.error) return { ok: false, message: payload.error };
-  } else {
-    console.warn("persist-workout-log invoke failed:", invokeResult.error.message);
-    const details = await extractFunctionErrorDetails(invokeResult.error);
-    if (details) return { ok: false, message: details };
-  }
-  return { ok: false, message: "Kunne ikke lagre økten i skyen." };
+  return { ok: false, message: "Kunne ikke lagre økten i skyen (mangler nettverk eller tilgang)." };
 }
 
 async function persistWorkoutLog(log: WorkoutLog, hints?: PersistWorkoutLogHints): Promise<PersistResult> {
@@ -1944,11 +1977,25 @@ async function persistWorkoutLog(log: WorkoutLog, hints?: PersistWorkoutLogHints
     if (!ownerUserId) {
       return { ok: false, message: "Kunne ikke finne trener for økten. Oppdater siden og prøv igjen." };
     }
+
+    const rpc = await persistWorkoutLogViaMemberRpc(log, memberId, ownerUserId);
+    if (rpc?.ok) return rpc;
+    if (rpc && !rpc.ok && !isMissingMemberWorkoutRpcError(rpc.message ?? "")) return rpc;
+
     const direct = await persistWorkoutLogDirectForMember(log, memberId, ownerUserId);
     if (direct.ok) return direct;
-    const isRls = /policy|permission|row-level security/i.test(direct.message);
-    if (isRls) return direct;
-    console.warn("member direct workout log upsert failed, trying edge:", direct.message);
+
+    const isRls = /policy|permission|row-level security/i.test(direct.message ?? "");
+    if (isRls) {
+      return {
+        ok: false,
+        message:
+          (direct.message ?? "Ingen tilgang.") +
+          " Kjør workout_logs_member_insert_rls.sql og upsert_member_workout_log_rpc.sql i Supabase SQL Editor.",
+      };
+    }
+
+    console.warn("member workout log save failed, trying edge:", direct.message, rpc?.message);
     const serializedNote = serializeWorkoutNote(log);
     const edgeResult = await invokePersistWorkoutLogEdge(
       {
@@ -1964,7 +2011,15 @@ async function persistWorkoutLog(log: WorkoutLog, hints?: PersistWorkoutLogHints
       accessToken,
     );
     if (edgeResult.ok) return edgeResult;
-    return { ok: false, message: edgeResult.message ?? direct.message };
+    const edgeMessage = edgeResult.message ?? "";
+    if (/lagring tok for lang tid/i.test(edgeMessage)) {
+      return {
+        ok: false,
+        message:
+          "Lagring tok for lang tid. Be trener kjøre upsert_member_workout_log_rpc.sql i Supabase, eller sjekk nettverk og prøv igjen.",
+      };
+    }
+    return { ok: false, message: edgeMessage || rpc?.message || direct.message };
   }
 
   const ownerUserId =
