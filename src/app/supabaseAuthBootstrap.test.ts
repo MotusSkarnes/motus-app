@@ -41,8 +41,8 @@ describe("readAuthParamsFromLocation", () => {
 });
 
 describe("member invite redirect helpers", () => {
-  it("builds short /aktiver redirect url", () => {
-    expect(buildMemberInviteRedirectUrl("https://motuspt.no")).toBe("https://motuspt.no/aktiver");
+  it("builds invite redirect url with query flags", () => {
+    expect(buildMemberInviteRedirectUrl("https://motuspt.no")).toBe("https://motuspt.no/?type=invite&invite=1");
   });
 
   it("recognizes activate path", () => {

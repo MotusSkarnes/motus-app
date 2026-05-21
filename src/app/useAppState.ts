@@ -2120,11 +2120,15 @@ export function useAppState() {
     setAppState((prev) => ({ ...prev, workoutCelebration: null }));
   }
 
-  async function inviteMember(email: string, memberId: string): Promise<InviteMemberResult> {
+  async function inviteMember(
+    email: string,
+    memberId: string,
+    options?: import("../services/supabaseAuth").InviteMemberOptions,
+  ): Promise<InviteMemberResult> {
     if (!isSupabaseConfigured) {
       return { ok: false, message: "Invitasjon er ikke tilgjengelig akkurat nå." };
     }
-    return inviteMemberByEmail(email, memberId);
+    return inviteMemberByEmail(email, memberId, options);
   }
 
   async function refreshTrainerSessionData(ownerUserId: string) {

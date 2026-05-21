@@ -170,7 +170,11 @@ type TrainerPortalProps = {
   deleteMember: (memberId: string) => void;
   updateMember: (input: UpdateMemberInput) => void;
   markMemberInvited: (memberId: string, invitedAtIso?: string) => void;
-  inviteMember: (email: string, memberId: string) => Promise<InviteMemberResult>;
+  inviteMember: (
+    email: string,
+    memberId: string,
+    options?: { forceResend?: boolean },
+  ) => Promise<InviteMemberResult>;
   inviteTrainer: (email: string) => Promise<InviteTrainerResult>;
   restoreMemberByEmail: (
     email: string,
@@ -649,7 +653,6 @@ function pickFirstName(value: unknown): string {
   const [isSendingTrainerMessage, setIsSendingTrainerMessage] = useState(false);
   const isSendingTrainerMessageRef = useRef(false);
   const pendingInviteSendKeyRef = useRef("");
-  const manualInviteSendKeyRef = useRef("");
   const lastTrainerSendKeyRef = useRef<string>("");
   const lastTrainerSendAtRef = useRef<number>(0);
   const trainerMessagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -2966,20 +2969,16 @@ function pickFirstName(value: unknown): string {
       setInviteStatus("Kan ikke sende invitasjon: ugyldig e-post på kunden.");
       return;
     }
-    const inviteKey = `${email}|${selectedMember.id}`;
-    if (manualInviteSendKeyRef.current === inviteKey) return;
-    manualInviteSendKeyRef.current = inviteKey;
     setIsInvitingMember(true);
     setInviteStatus(null);
     try {
-      const result = await inviteMember(email, selectedMember.id);
+      const result = await inviteMember(email, selectedMember.id, { forceResend: true });
       if (result.ok) {
         markMemberInvited(selectedMember.id, result.invitedAtIso ?? new Date().toISOString());
       }
       setInviteStatus(result.message);
     } finally {
       setIsInvitingMember(false);
-      manualInviteSendKeyRef.current = "";
     }
   }
 

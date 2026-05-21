@@ -20,10 +20,11 @@ export function isMemberInviteActivatePath(pathname: string): boolean {
   return normalized === MEMBER_INVITE_ACTIVATE_PATH || normalized.endsWith(MEMBER_INVITE_ACTIVATE_PATH);
 }
 
+/** Redirect som Supabase Auth typisk allerede har i allow-list (Site URL + query). */
 export function buildMemberInviteRedirectUrl(origin: string): string {
   const base = origin.replace(/\/+$/, "").trim();
-  if (!base) return MEMBER_INVITE_ACTIVATE_PATH;
-  return `${base}${MEMBER_INVITE_ACTIVATE_PATH}`;
+  if (!base) return "/?type=invite&invite=1";
+  return `${base}/?type=invite&invite=1`;
 }
 
 export function readAuthParamsFromLocation(href: string): AuthBootstrapParams | null {

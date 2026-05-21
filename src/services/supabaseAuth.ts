@@ -1,8 +1,6 @@
 import type { AuthBootstrapParams } from "../app/supabaseAuthBootstrap";
-import {
-  buildMemberInviteRedirectUrl,
-  readPersistedAuthBootstrapParams,
-} from "../app/supabaseAuthBootstrap";
+import { buildMemberInviteRedirectUrl, readPersistedAuthBootstrapParams } from "../app/supabaseAuthBootstrap";
+import { configuredSupabaseAnonKey, configuredSupabaseUrl } from "./supabaseClient";
 import type { AuthUser, Role } from "../app/types";
 import { supabaseClient } from "./supabaseClient";
 
@@ -40,7 +38,7 @@ function emailRedirectBase(): string | undefined {
   return origin ? `${origin}/` : undefined;
 }
 
-/** Redirect for medlemsinvitasjon — kort /aktiver-sti (passordskjerm i useAppState). */
+/** Redirect for medlemsinvitasjon — query-flagg appen leser ved innlogging (støtter også /aktiver). */
 function memberInviteRedirectTo(): string | undefined {
   const origin = getCanonicalSiteOrigin();
   return origin ? buildMemberInviteRedirectUrl(origin) : undefined;
@@ -414,6 +412,90 @@ function inviteMemberIsoTimestamp(data: unknown): string | undefined {
   return raw.trim();
 }
 
+function parseInviteMemberInvokePayload(raw: unknown): Record<string, unknown> | null {
+  if (!raw || typeof raw !== "object") return null;
+  const record = raw as Record<string, unknown>;
+  if (record.error) return null;
+  if (typeof record.message === "string" && record.message.trim()) return record;
+  return null;
+}
+
+async function parseInviteMemberSuccessFromInvoke(
+  data: unknown,
+  error: unknown,
+): Promise<Record<string, unknown> | null> {
+  const fromData = parseInviteMemberInvokePayload(data);
+  if (fromData) return fromData;
+
+  if (error && typeof error === "object" && "context" in error) {
+    const context = (error as { context?: Response }).context;
+    if (context && typeof context.json === "function") {
+      try {
+        const response = typeof context.clone === "function" ? context.clone() : context;
+        const body = await response.json();
+        const fromBody = parseInviteMemberInvokePayload(body);
+        if (fromBody) return fromBody;
+      } catch {
+        // Fall through.
+      }
+    }
+  }
+  return null;
+}
+
+async function invokeInviteMemberFunction(body: Record<string, unknown>): Promise<{
+  ok: boolean;
+  data: Record<string, unknown> | null;
+  errorMessage: string | null;
+}> {
+  if (!supabaseClient) {
+    return { ok: false, data: null, errorMessage: "Tjenesten er ikke tilgjengelig akkurat nå." };
+  }
+
+  const { data, error } = await supabaseClient.functions.invoke("invite-member", { body });
+  const successPayload = await parseInviteMemberSuccessFromInvoke(data, error);
+  if (successPayload) {
+    return { ok: true, data: successPayload, errorMessage: null };
+  }
+
+  let errorMessage =
+    (await extractFunctionErrorMessage(error)) || error?.message || "invite-member feilet";
+
+  if (configuredSupabaseUrl && configuredSupabaseAnonKey) {
+    try {
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession();
+      const response = await fetch(`${configuredSupabaseUrl}/functions/v1/invite-member`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: configuredSupabaseAnonKey,
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+        },
+        body: JSON.stringify(body),
+      });
+      const raw = await response.text();
+      let parsed: Record<string, unknown> | null = null;
+      try {
+        parsed = raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
+      } catch {
+        parsed = null;
+      }
+      const successFromFetch = parseInviteMemberInvokePayload(parsed);
+      if (response.ok && successFromFetch) {
+        return { ok: true, data: successFromFetch, errorMessage: null };
+      }
+      const detail = String(parsed?.error ?? parsed?.message ?? raw ?? response.status);
+      errorMessage = `HTTP ${response.status}: ${detail}`;
+    } catch (fetchError) {
+      errorMessage = `${errorMessage} (${String(fetchError)})`;
+    }
+  }
+
+  return { ok: false, data: null, errorMessage };
+}
+
 const MEMBER_INVITE_COOLDOWN_MS = 60_000;
 const memberInviteInFlightByKey = new Map<string, Promise<InviteMemberResult>>();
 const memberInviteLastSentAtByKey = new Map<string, number>();
@@ -664,34 +746,26 @@ async function sendMemberInviteByEmail(email: string, memberId: string): Promise
   }
 
   const ownerUserId = activeSession.user?.id?.trim?.() ?? "";
-  const trainerOwnerUserId = ownerUserId;
-  const { data, error } = await supabaseClient.functions.invoke("invite-member", {
-    body: {
-      email: normalizedEmail,
-      memberId: memberId.trim(),
-      accessToken: activeSession.access_token,
-      ownerUserId,
-      inviteRedirectOrigin: getCanonicalSiteOrigin(),
-    },
+  const invoke = await invokeInviteMemberFunction({
+    email: normalizedEmail,
+    memberId: memberId.trim(),
+    accessToken: activeSession.access_token,
+    ownerUserId,
+    inviteRedirectOrigin: getCanonicalSiteOrigin(),
   });
 
-  if (!error) {
-    const stamp = inviteMemberIsoTimestamp(data);
-    if (data && typeof data === "object" && "message" in data && typeof data.message === "string") {
-      await syncMemberAuthLink(normalizedEmail, memberId.trim());
-      return stamp ? { ok: true, message: data.message, invitedAtIso: stamp } : { ok: true, message: data.message };
-    }
-    await syncMemberAuthLink(normalizedEmail, memberId.trim());
-    return { ok: true, message: `Invitasjon sendt til ${normalizedEmail}`, ...(stamp ? { invitedAtIso: stamp } : {}) };
+  if (invoke.ok && invoke.data) {
+    const stamp = inviteMemberIsoTimestamp(invoke.data);
+    const message = String(invoke.data.message ?? `Invitasjon sendt til ${normalizedEmail}`).trim();
+    await syncMemberAuthLink(normalizedEmail, memberId.trim(), ownerUserId);
+    return stamp ? { ok: true, message, invitedAtIso: stamp } : { ok: true, message };
   }
 
-  const detailed = await extractFunctionErrorMessage(error);
-  const message = detailed ?? "Ukjent feil fra invitasjonstjenesten.";
+  const message = invoke.errorMessage ?? "Ukjent feil fra invitasjonstjenesten.";
   if (isRateLimitMessage(message)) {
-    await syncMemberAuthLink(normalizedEmail, memberId.trim());
     return {
-      ok: true,
-      message: "Invitasjon er nylig sendt. Vent litt for ny utsending.",
+      ok: false,
+      message: "For mange e-poster akkurat nå. Vent 1–2 minutter og prøv «Inviter på nytt» igjen.",
     };
   }
   if (isExistingUserInviteError(message)) {
@@ -700,16 +774,29 @@ async function sendMemberInviteByEmail(email: string, memberId: string): Promise
   return { ok: false, message: `Invitasjon feilet: ${message}` };
 }
 
-export async function inviteMemberByEmail(email: string, memberId: string): Promise<InviteMemberResult> {
+export type InviteMemberOptions = {
+  /** Hopp over 1-min lokalt cooldown (f.eks. «Inviter på nytt»). */
+  forceResend?: boolean;
+};
+
+export async function inviteMemberByEmail(
+  email: string,
+  memberId: string,
+  options?: InviteMemberOptions,
+): Promise<InviteMemberResult> {
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedMemberId = memberId.trim();
   const inviteKey = `${normalizedEmail}|${normalizedMemberId}`;
   const now = Date.now();
   const lastSentAt = memberInviteLastSentAtByKey.get(inviteKey) ?? 0;
-  if (lastSentAt && now - lastSentAt < MEMBER_INVITE_COOLDOWN_MS) {
+  if (
+    !options?.forceResend &&
+    lastSentAt &&
+    now - lastSentAt < MEMBER_INVITE_COOLDOWN_MS
+  ) {
     return {
       ok: false,
-      message: "Invitasjon er nylig sendt fra denne enheten. Vent ca. 1 minutt før ny utsending.",
+      message: "Invitasjon er nylig sendt fra denne enheten. Vent ca. 1 minutt, eller bruk «Inviter på nytt».",
     };
   }
 

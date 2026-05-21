@@ -37,11 +37,11 @@ function isSafeRedirectOrigin(origin: string): boolean {
   return /^http:\/\/localhost(?::\d+)?$/i.test(o) || /^http:\/\/127\.0\.0\.1(?::\d+)?$/i.test(o);
 }
 
-/** Kort landing i appen — passordskjerm (/aktiver), ikke lang query-lenke. */
-const MEMBER_INVITE_ACTIVATE_PATH = "/aktiver";
+/** Må matche Supabase Redirect URLs (ofte Site URL + query). Appen støtter også /aktiver. */
+const MEMBER_INVITE_AUTH_QUERY = "/?type=invite&invite=1";
 
 function buildInviteRedirectUrl(origin: string): string {
-  return `${trimSlash(origin)}${MEMBER_INVITE_ACTIVATE_PATH}`;
+  return `${trimSlash(origin)}${MEMBER_INVITE_AUTH_QUERY}`;
 }
 
 function resolveInviteRedirectTo(payload: InvitePayload): { redirectTo: string } | { error: string } {
