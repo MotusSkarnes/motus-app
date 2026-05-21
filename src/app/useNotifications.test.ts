@@ -5,6 +5,7 @@ vi.mock("../services/supabaseClient", () => ({
   isSupabaseConfigured: false,
   supabaseClient: null,
 }));
+import { formatNotificationTimestamp } from "./dateFormat";
 import { INSPIRATION_CHANGED_EVENT, INSPIRATION_STORAGE_KEY } from "./inspirationStorage";
 import { useNotifications } from "./useNotifications";
 import type { MemberTab, PeriodSchedulePlan, TrainingProgram, WorkoutLog } from "./types";
@@ -203,6 +204,70 @@ describe("useNotifications workout comment alerts", () => {
     });
     expect(result.current.trainerUnreadCount).toBe(0);
     expect(result.current.trainerVisibleAlerts[0]?.isUnread).toBe(false);
+  });
+
+  it("keeps operational alerts read after opening even when roster changes", () => {
+    window.localStorage.setItem("motus.notifications.trainerBaselineAt", "1");
+    const members = [
+      { id: "member-1", name: "Ola", email: "ola@example.com", isActive: true } as never,
+      { id: "member-2", name: "Kari", email: "kari@example.com", isActive: true, daysSinceActivity: "14" } as never,
+    ];
+    const { result, rerender } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [],
+        logs: [],
+        members,
+        memberViewId: "member-1",
+        currentUserRole: "trainer",
+        setMemberTab: () => {},
+      }),
+    );
+
+    const inviteAlert = result.current.trainerVisibleAlerts.find((alert) => alert.kind === "missing-invite");
+    expect(inviteAlert?.isUnread).toBe(true);
+
+    act(() => {
+      result.current.openTrainerAlert(inviteAlert!);
+    });
+    expect(result.current.trainerUnreadCount).toBeGreaterThan(0);
+
+    rerender({
+      messages: [],
+      programs: [],
+      logs: [],
+      members: [
+        ...members,
+        { id: "member-3", name: "Per", email: "per@example.com", isActive: true, daysSinceActivity: "21" } as never,
+      ],
+      memberViewId: "member-1",
+      currentUserRole: "trainer",
+      setMemberTab: () => {},
+    });
+
+    const inviteAfter = result.current.trainerVisibleAlerts.find((alert) => alert.kind === "missing-invite");
+    expect(inviteAfter?.isUnread).toBe(false);
+    expect(inviteAfter?.isOpened).toBe(true);
+  });
+
+  it("does not show epoch date on operational trainer alerts", () => {
+    window.localStorage.setItem("motus.notifications.trainerBaselineAt", "1");
+    const members = [{ id: "member-1", name: "Ola", email: "ola@example.com", isActive: true } as never];
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [],
+        logs: [],
+        members,
+        memberViewId: "member-1",
+        currentUserRole: "trainer",
+        setMemberTab: () => {},
+      }),
+    );
+
+    const operational = result.current.trainerVisibleAlerts.find((alert) => alert.kind === "missing-invite");
+    expect(operational?.timestamp).toBe(0);
+    expect(formatNotificationTimestamp(operational?.timestamp ?? 0)).toBe("");
   });
 
   it("includes operational trainer alerts for missing invites", () => {

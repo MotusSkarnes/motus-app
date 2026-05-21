@@ -40,8 +40,12 @@ const MEMBER_INSPIRATION_BASELINE_KEY = "motus.notifications.memberInspirationBa
 const TRAINER_NOTIFICATIONS_BASELINE_KEY = "motus.notifications.trainerBaselineAt";
 
 const ALERT_HISTORY_LIMIT = 5;
-/** Operational varsler sorteres etter ekte hendelser når begge er uleste. */
-const TRAINER_OPERATIONAL_TIMESTAMP_BASE = 1;
+/** Operational varsler har ikke reell mottatt-tid — 0 skjuler dato i UI. */
+const TRAINER_OPERATIONAL_TIMESTAMP = 0;
+const TRAINER_OPERATIONAL_ALERT_IDS = {
+  missingInvite: "trainer-op-missing-invites",
+  inactiveMember: "trainer-op-inactive-members",
+} as const;
 
 export type MemberAlert = {
   id: string;
@@ -457,8 +461,6 @@ export function useNotifications({
     [rosterMembers, members, logs],
   );
   const trainerOperationalAlertKey = `${missingInviteMemberIds.join(",")}|${inactiveMemberIds.join(",")}`;
-  const hasTrainerOperationalAlerts = missingInviteMemberIds.length + inactiveMemberIds.length > 0;
-  const trainerOperationalUnread = hasTrainerOperationalAlerts && trainerOperationalAlertKey !== seenTrainerOperationalAlertKey;
 
   const seedTrainerNotificationsBaseline = useCallback(() => {
     if (typeof window === "undefined" || trainerBaselineSeedAppliedRef.current) return;
@@ -523,15 +525,16 @@ export function useNotifications({
         text: alert.text,
         detail: alert.detail,
         timestamp: alert.timestamp,
-        unread: true,
+        unread: !openedTrainerAlertIds.includes(alert.id),
       })),
-    [members, seenTrainerMemberFormKeys],
+    [members, seenTrainerMemberFormKeys, openedTrainerAlertIds],
   );
 
   const trainerOperationalAlerts = useMemo<TrainerAlert[]>(() => {
     const alerts: TrainerAlert[] = [];
     if (missingInviteMemberIds.length > 0) {
-      const id = "trainer-op-missing-invites";
+      const id = TRAINER_OPERATIONAL_ALERT_IDS.missingInvite;
+      const isOpened = openedTrainerAlertIds.includes(id);
       alerts.push({
         id,
         kind: "missing-invite",
@@ -539,13 +542,14 @@ export function useNotifications({
         title: "Invitasjoner",
         text: `${missingInviteMemberIds.length} kunder mangler invitasjon`,
         detail: "Gå til klienter og send invitasjon.",
-        timestamp: TRAINER_OPERATIONAL_TIMESTAMP_BASE,
-        isUnread: trainerOperationalUnread,
-        isOpened: openedTrainerAlertIds.includes(id),
+        timestamp: TRAINER_OPERATIONAL_TIMESTAMP,
+        isUnread: !isOpened,
+        isOpened,
       });
     }
     if (inactiveMemberIds.length > 0) {
-      const id = "trainer-op-inactive-members";
+      const id = TRAINER_OPERATIONAL_ALERT_IDS.inactiveMember;
+      const isOpened = openedTrainerAlertIds.includes(id);
       alerts.push({
         id,
         kind: "inactive-member",
@@ -553,13 +557,13 @@ export function useNotifications({
         title: "Oppfølging",
         text: `${inactiveMemberIds.length} kunder bør følges opp`,
         detail: "Åpne klientlisten og prioriter oppfølging.",
-        timestamp: TRAINER_OPERATIONAL_TIMESTAMP_BASE - 1,
-        isUnread: trainerOperationalUnread,
-        isOpened: openedTrainerAlertIds.includes(id),
+        timestamp: TRAINER_OPERATIONAL_TIMESTAMP,
+        isUnread: !isOpened,
+        isOpened,
       });
     }
     return alerts;
-  }, [missingInviteMemberIds.length, inactiveMemberIds.length, trainerOperationalUnread, openedTrainerAlertIds]);
+  }, [missingInviteMemberIds.length, inactiveMemberIds.length, openedTrainerAlertIds]);
 
   const trainerRecentAlerts = useMemo<TrainerAlert[]>(() => {
     const combined: TrainerAlert[] = [

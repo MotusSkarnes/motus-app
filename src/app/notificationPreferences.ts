@@ -244,7 +244,10 @@ export function mergeTrainerNotificationPreferences(
       ...(base.openedTrainerAlertIds ?? []),
       ...(other.openedTrainerAlertIds ?? []),
     ]),
-    seenTrainerOperationalAlertKey: base.seenTrainerOperationalAlertKey || other.seenTrainerOperationalAlertKey,
+    seenTrainerOperationalAlertKey:
+      base.seenTrainerOperationalAlertKey.length >= other.seenTrainerOperationalAlertKey.length
+        ? base.seenTrainerOperationalAlertKey
+        : other.seenTrainerOperationalAlertKey,
     seenTrainerMemberFormKeys: uniqueStrings([
       ...(base.seenTrainerMemberFormKeys ?? []),
       ...(other.seenTrainerMemberFormKeys ?? []),
