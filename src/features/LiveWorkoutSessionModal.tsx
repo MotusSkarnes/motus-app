@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ChevronRight, Plus, Repeat2, SkipForward, TimerReset, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, Plus, Repeat2, SkipForward, TimerReset, X } from "lucide-react";
 import { remainingSecondsUntilDeadline } from "../app/intervalTimerDeadline";
 import { playWorkoutRestTone, primeWorkoutRestAudio } from "../app/workoutRestAudio";
 import { WorkoutCompactSetTable } from "./LiveWorkoutCompactSets";
@@ -410,6 +410,27 @@ export function LiveWorkoutSessionModal({
     setWorkoutExerciseIndex((prev) => prev + 1);
   }
 
+  function handleSaveTrainerWorkout() {
+    if (isSavingWorkout) return;
+    setIsSavingWorkout(true);
+    finishWorkoutMode({
+      onPersisted: () => setIsSavingWorkout(false),
+    });
+  }
+
+  function handleSaveMemberWorkout() {
+    if (!showWorkoutReflection) {
+      setShowWorkoutReflection(true);
+      return;
+    }
+    if (isSavingWorkout) return;
+    setIsSavingWorkout(true);
+    finishWorkoutMode({
+      reflection: buildWorkoutReflection(),
+      onPersisted: () => setIsSavingWorkout(false),
+    });
+  }
+
   if (!workoutMode || !resolvedProgram) return null;
 
   const headerTitle = variant === "trainer" ? "Live PT-økt" : "Øktmodus";
@@ -750,64 +771,55 @@ export function LiveWorkoutSessionModal({
               </div>
             </div>
           ) : null}
-          <div className="grid gap-2 sm:flex sm:gap-3">
-            <OutlineButton type="button" className="w-full sm:flex-1" onClick={cancelWorkoutMode}>
+          {variant === "trainer" ? (
+            <GradientButton
+              type="button"
+              className="mb-3 w-full !min-h-[3.25rem] !py-3.5 !text-base !font-bold shadow-md"
+              disabled={isSavingWorkout}
+              onClick={handleSaveTrainerWorkout}
+            >
+              <span className="inline-flex items-center justify-center gap-2">
+                <Check className="h-5 w-5 shrink-0" strokeWidth={2.5} aria-hidden />
+                {isSavingWorkout ? "Lagrer økt på kunden..." : "Lagre økt på kunden"}
+              </span>
+            </GradientButton>
+          ) : (
+            <GradientButton
+              type="button"
+              className="mb-3 w-full !min-h-[3.25rem] !py-3.5 !text-base !font-bold shadow-md"
+              disabled={isSavingWorkout}
+              onClick={handleSaveMemberWorkout}
+            >
+              <span className="inline-flex items-center justify-center gap-2">
+                <Check className="h-5 w-5 shrink-0" strokeWidth={2.5} aria-hidden />
+                {showWorkoutReflection
+                  ? isSavingWorkout
+                    ? "Lagrer økt..."
+                    : "Lagre økt"
+                  : "Avslutt og lagre økt"}
+              </span>
+            </GradientButton>
+          )}
+          <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
+            <OutlineButton type="button" className="w-full" onClick={cancelWorkoutMode}>
               Avbryt
             </OutlineButton>
             <OutlineButton
               type="button"
-              className="w-full sm:flex-1"
+              className="w-full"
               onClick={() => setWorkoutExerciseIndex((prev) => Math.max(0, prev - 1))}
               disabled={workoutExerciseIndex === 0}
             >
               Forrige øvelse
             </OutlineButton>
-            {variant === "trainer" ? (
-              workoutExerciseIndex < workoutResultGroups.length - 1 ? (
-                <GradientButton type="button" className="w-full sm:flex-1" onClick={handleGoToNextWorkoutExercise}>
-                  Neste øvelse
-                </GradientButton>
-              ) : (
-                <GradientButton
-                  type="button"
-                  className="w-full sm:flex-1"
-                  disabled={isSavingWorkout}
-                  onClick={() => {
-                    if (isSavingWorkout) return;
-                    setIsSavingWorkout(true);
-                    finishWorkoutMode({
-                      onPersisted: () => setIsSavingWorkout(false),
-                    });
-                  }}
-                >
-                  {isSavingWorkout ? "Lagrer..." : "Lagre økt på kunden"}
-                </GradientButton>
-              )
-            ) : workoutExerciseIndex < workoutResultGroups.length - 1 ? (
-              <GradientButton type="button" className="w-full sm:flex-1" onClick={handleGoToNextWorkoutExercise}>
-                Neste øvelse
-              </GradientButton>
-            ) : (
-              <GradientButton
-                type="button"
-                className="w-full sm:flex-1"
-                disabled={isSavingWorkout}
-                onClick={() => {
-                  if (!showWorkoutReflection) {
-                    setShowWorkoutReflection(true);
-                    return;
-                  }
-                  if (isSavingWorkout) return;
-                  setIsSavingWorkout(true);
-                  finishWorkoutMode({
-                    reflection: buildWorkoutReflection(),
-                    onPersisted: () => setIsSavingWorkout(false),
-                  });
-                }}
-              >
-                {showWorkoutReflection ? (isSavingWorkout ? "Lagrer..." : "Lagre økt") : "Avslutt økt"}
-              </GradientButton>
-            )}
+            <GradientButton
+              type="button"
+              className="w-full"
+              onClick={handleGoToNextWorkoutExercise}
+              disabled={workoutExerciseIndex >= workoutResultGroups.length - 1}
+            >
+              Neste øvelse
+            </GradientButton>
           </div>
         </div>
       </div>
