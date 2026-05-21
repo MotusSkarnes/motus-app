@@ -3582,6 +3582,60 @@ async function fetchMemberByIdFromSupabase(memberId: string): Promise<Member | n
   return mapMemberRowFromSupabase(result.data as Record<string, unknown>);
 }
 
+async function fetchActiveMemberByEmailFromSupabase(email: string): Promise<Member | null> {
+  if (!supabaseClient) return null;
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail.includes("@")) return null;
+
+  let result = await supabaseClient.from("members").select(MEMBERS_SELECT_WITH_AVATAR).ilike("email", normalizedEmail);
+  if (result.error && isMissingDbColumnError(result.error.message, "avatar_url")) {
+    result = await supabaseClient.from("members").select(MEMBERS_SELECT_BASE).ilike("email", normalizedEmail);
+  }
+  if (result.error || !result.data?.length) {
+    return null;
+  }
+
+  const rows = result.data as Record<string, unknown>[];
+  const activeMatches = rows
+    .map((row) => mapMemberRowFromSupabase(row))
+    .filter((member) => member.email.trim().toLowerCase() === normalizedEmail && member.isActive !== false);
+  return activeMatches[0] ?? null;
+}
+
+async function parseCreateTrainerMemberSuccessFromInvoke(
+  data: unknown,
+  error: unknown,
+): Promise<Record<string, unknown> | null> {
+  const fromData = parseCreateTrainerMemberInvokePayload(data);
+  if (fromData) return fromData;
+
+  if (error && typeof error === "object" && "context" in error) {
+    const context = (error as { context?: Response }).context;
+    if (context && typeof context.json === "function") {
+      try {
+        const response = typeof context.clone === "function" ? context.clone() : context;
+        const body = await response.json();
+        const fromBody = parseCreateTrainerMemberInvokePayload(body);
+        if (fromBody) return fromBody;
+      } catch {
+        // Fall through to string parsing below.
+      }
+    }
+  }
+
+  if (!error) return null;
+  const details = await extractFunctionErrorDetails(error);
+  const trimmedDetails = details.trim();
+  if (!trimmedDetails.startsWith("{") || !trimmedDetails.endsWith("}")) {
+    return null;
+  }
+  try {
+    return parseCreateTrainerMemberInvokePayload(JSON.parse(trimmedDetails) as unknown);
+  } catch {
+    return null;
+  }
+}
+
 async function invokeCreateTrainerMemberFunction(body: Record<string, unknown>): Promise<{
   ok: boolean;
   data: Record<string, unknown> | null;
@@ -3592,25 +3646,9 @@ async function invokeCreateTrainerMemberFunction(body: Record<string, unknown>):
   }
 
   const { data, error } = await supabaseClient.functions.invoke("create-trainer-member", { body });
-  const successFromInvoke = parseCreateTrainerMemberInvokePayload(data);
+  const successFromInvoke = await parseCreateTrainerMemberSuccessFromInvoke(data, error);
   if (successFromInvoke) {
     return { ok: true, data: successFromInvoke, errorMessage: null };
-  }
-
-  if (error) {
-    const details = await extractFunctionErrorDetails(error);
-    const trimmedDetails = details.trim();
-    if (trimmedDetails.startsWith("{") && trimmedDetails.endsWith("}")) {
-      try {
-        const parsedDetails = JSON.parse(trimmedDetails) as unknown;
-        const successFromDetails = parseCreateTrainerMemberInvokePayload(parsedDetails);
-        if (successFromDetails) {
-          return { ok: true, data: successFromDetails, errorMessage: null };
-        }
-      } catch {
-        // Fall through to fetch fallback.
-      }
-    }
   }
 
   let errorMessage = (await extractFunctionErrorDetails(error)) || error?.message || "create-trainer-member feilet";
@@ -3638,6 +3676,13 @@ async function invokeCreateTrainerMemberFunction(body: Record<string, unknown>):
       const successFromFetch = parseCreateTrainerMemberInvokePayload(parsed);
       if (response.ok && successFromFetch) {
         return { ok: true, data: successFromFetch, errorMessage: null };
+      }
+      if (response.status === 409) {
+        const email = String(body.email ?? "").trim().toLowerCase();
+        const recovered = email ? await fetchActiveMemberByEmailFromSupabase(email) : null;
+        if (recovered) {
+          return { ok: true, data: { ok: true, member: recovered }, errorMessage: null };
+        }
       }
       const detail = String(parsed?.error ?? parsed?.message ?? raw ?? response.status);
       errorMessage = `HTTP ${response.status}: ${detail}`;
@@ -3685,9 +3730,13 @@ export async function createTrainerMemberViaEdgeFunction(
     ownerUserId,
   });
 
+  const normalizedEmail = input.email.trim().toLowerCase();
   let mapped = invoke.ok && invoke.data ? mapEdgeMemberPayload(invoke.data.member) : null;
   if (!mapped) {
     mapped = await fetchMemberByIdFromSupabase(member.id);
+  }
+  if (!mapped) {
+    mapped = await fetchActiveMemberByEmailFromSupabase(normalizedEmail);
   }
 
   if (mapped) {
@@ -3696,6 +3745,10 @@ export async function createTrainerMemberViaEdgeFunction(
 
   const message = invoke.errorMessage ?? "Kunne ikke opprette kunde.";
   if (message.includes("email_exists") || message.includes("E-post finnes")) {
+    const existing = await fetchActiveMemberByEmailFromSupabase(normalizedEmail);
+    if (existing) {
+      return { ok: true, member: existing };
+    }
     return { ok: false, message: "E-post finnes allerede som aktiv kunde." };
   }
   return { ok: false, message: `Opprettelse feilet: ${message}` };
