@@ -979,9 +979,11 @@ export function MemberPortal(props: MemberPortalProps) {
   const [isSharingCelebrationPr, setIsSharingCelebrationPr] = useState(false);
   const [achievementCelebration, setAchievementCelebration] = useState<{ achievedLevel: number } | null>(null);
   const [hiddenBadgeCelebration, setHiddenBadgeCelebration] = useState<MemberBadge | null>(null);
+  const [locallySeenHiddenBadgeIds, setLocallySeenHiddenBadgeIds] = useState<string[]>([]);
   const [liveWorkoutCelebration, setLiveWorkoutCelebration] = useState<WorkoutCelebration | null>(null);
   /** Unngår popup ved første lasting; feirer kun når `achievedLevel` faktisk øker. */
   const achievementCelebrationBaselineRef = useRef<number | null>(null);
+  const hiddenBadgeUnlockedBaselineRef = useRef<{ memberId: string; badgeIds: Set<string> } | null>(null);
   const hiddenBadgeMigrationDoneRef = useRef(false);
   const [periodPlans, setPeriodPlans] = useState<PeriodSchedulePlan[]>([]);
   const [showPeriodPlanPanel, setShowPeriodPlanPanel] = useState(true);
@@ -1071,8 +1073,8 @@ export function MemberPortal(props: MemberPortalProps) {
     [editableMember?.personalGoals],
   );
   const seenHiddenBadgeIds = useMemo(
-    () => new Set(memberNotificationPrefs?.seenHiddenBadgeIds ?? []),
-    [memberNotificationPrefs?.seenHiddenBadgeIds],
+    () => new Set([...(memberNotificationPrefs?.seenHiddenBadgeIds ?? []), ...locallySeenHiddenBadgeIds]),
+    [locallySeenHiddenBadgeIds, memberNotificationPrefs?.seenHiddenBadgeIds],
   );
   const persistMemberUiPrefs = useCallback(
     (patch: Parameters<typeof patchMemberNotificationPreferencesInPersonalGoals>[1]) => {
@@ -1091,6 +1093,27 @@ export function MemberPortal(props: MemberPortalProps) {
     return { window, copy: buildCheckInNotificationCopy(window) };
   }, [editableMember, currentUserRole]);
   const activeMemberId = editableMember?.id ?? memberViewId;
+  useEffect(() => {
+    setLocallySeenHiddenBadgeIds([]);
+    setHiddenBadgeCelebration(null);
+    hiddenBadgeUnlockedBaselineRef.current = null;
+  }, [activeMemberId]);
+  const markHiddenBadgeSeen = useCallback(
+    (badgeId: string) => {
+      const nextSeen = Array.from(new Set([...(memberNotificationPrefs?.seenHiddenBadgeIds ?? []), ...locallySeenHiddenBadgeIds, badgeId]));
+      setLocallySeenHiddenBadgeIds((previous) => (previous.includes(badgeId) ? previous : [...previous, badgeId]));
+      if (typeof window !== "undefined" && activeMemberId) {
+        window.localStorage.setItem(`${HIDDEN_BADGE_SEEN_STORAGE_PREFIX}${activeMemberId}:${badgeId}`, "seen");
+      }
+      persistMemberUiPrefs({ seenHiddenBadgeIds: nextSeen });
+    },
+    [
+      activeMemberId,
+      locallySeenHiddenBadgeIds,
+      memberNotificationPrefs?.seenHiddenBadgeIds,
+      persistMemberUiPrefs,
+    ],
+  );
   const memberProgramAuthorOptions = useMemo(
     () => ({ viewerAuthUserId: currentUserSupabaseId?.trim() || undefined }),
     [currentUserSupabaseId],
@@ -2926,21 +2949,46 @@ export function MemberPortal(props: MemberPortalProps) {
   ]);
 
   useEffect(() => {
+    if (isMemberLimited || !activeMemberId) return;
+    const unlockedSecretBadgeIds = memberBadgeCollection.allBadges
+      .filter((badge) => badge.secret && badge.unlocked)
+      .map((badge) => badge.id);
+    const baseline = hiddenBadgeUnlockedBaselineRef.current;
+    if (baseline?.memberId === activeMemberId) return;
+    hiddenBadgeUnlockedBaselineRef.current = {
+      memberId: activeMemberId,
+      badgeIds: new Set(unlockedSecretBadgeIds),
+    };
+    const previouslyUnlockedAndUnseen = unlockedSecretBadgeIds.filter((badgeId) => !seenHiddenBadgeIds.has(badgeId));
+    if (!previouslyUnlockedAndUnseen.length) return;
+    const nextSeen = Array.from(new Set([...seenHiddenBadgeIds, ...previouslyUnlockedAndUnseen]));
+    setLocallySeenHiddenBadgeIds((previous) => Array.from(new Set([...previous, ...previouslyUnlockedAndUnseen])));
+    persistMemberUiPrefs({ seenHiddenBadgeIds: nextSeen });
+  }, [
+    activeMemberId,
+    isMemberLimited,
+    memberBadgeCollection.allBadges,
+    persistMemberUiPrefs,
+    seenHiddenBadgeIds,
+  ]);
+
+  useEffect(() => {
     if (isMemberLimited || !activeMemberId || hiddenBadgeCelebration) return;
+    const baseline = hiddenBadgeUnlockedBaselineRef.current;
+    if (!baseline || baseline.memberId !== activeMemberId) return;
     const secretBadge = memberBadgeCollection.allBadges.find(
-      (badge) => badge.secret && badge.unlocked && !seenHiddenBadgeIds.has(badge.id),
+      (badge) => badge.secret && badge.unlocked && !seenHiddenBadgeIds.has(badge.id) && !baseline.badgeIds.has(badge.id),
     );
     if (!secretBadge) return;
-    persistMemberUiPrefs({
-      seenHiddenBadgeIds: Array.from(new Set([...seenHiddenBadgeIds, secretBadge.id])),
-    });
+    baseline.badgeIds.add(secretBadge.id);
+    markHiddenBadgeSeen(secretBadge.id);
     setHiddenBadgeCelebration(secretBadge);
   }, [
     activeMemberId,
     hiddenBadgeCelebration,
     isMemberLimited,
+    markHiddenBadgeSeen,
     memberBadgeCollection.allBadges,
-    persistMemberUiPrefs,
     seenHiddenBadgeIds,
   ]);
 
@@ -4683,7 +4731,13 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Hemmelig samling</div>
                     <div className="mt-1 text-sm font-semibold text-slate-900">Denne badgen vises nå i oversikten din.</div>
                   </div>
-                  <GradientButton onClick={() => setHiddenBadgeCelebration(null)} className="mt-6 w-full min-h-11 font-semibold">
+                  <GradientButton
+                    onClick={() => {
+                      markHiddenBadgeSeen(hiddenBadgeCelebration.id);
+                      setHiddenBadgeCelebration(null);
+                    }}
+                    className="mt-6 w-full min-h-11 font-semibold"
+                  >
                     Hurra — videre
                   </GradientButton>
                 </div>
