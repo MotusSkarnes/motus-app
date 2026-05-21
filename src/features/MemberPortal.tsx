@@ -125,6 +125,10 @@ import {
   type MemberBadge,
 } from "../app/memberBadges";
 import {
+  buildSeenHiddenBadgeBaselineIds,
+  findNextHiddenBadgeCelebration,
+} from "../app/hiddenBadgeCelebrations";
+import {
   ACHIEVEMENT_MAX_LEVEL,
   buildCelebrationCopy,
   computeMemberProgressState,
@@ -2968,7 +2972,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (baseline?.memberId === activeMemberId) return;
     hiddenBadgeUnlockedBaselineRef.current = {
       memberId: activeMemberId,
-      badgeIds: new Set(unlockedSecretBadgeIds.filter((badgeId) => seenHiddenBadgeIds.has(badgeId))),
+      badgeIds: buildSeenHiddenBadgeBaselineIds(unlockedSecretBadgeIds, seenHiddenBadgeIds),
     };
   }, [
     activeMemberId,
@@ -2981,8 +2985,10 @@ export function MemberPortal(props: MemberPortalProps) {
     if (isMemberLimited || !activeMemberId || hiddenBadgeCelebration) return;
     const baseline = hiddenBadgeUnlockedBaselineRef.current;
     if (!baseline || baseline.memberId !== activeMemberId) return;
-    const secretBadge = memberBadgeCollection.allBadges.find(
-      (badge) => badge.secret && badge.unlocked && !seenHiddenBadgeIds.has(badge.id) && !baseline.badgeIds.has(badge.id),
+    const secretBadge = findNextHiddenBadgeCelebration(
+      memberBadgeCollection.allBadges,
+      seenHiddenBadgeIds,
+      baseline.badgeIds,
     );
     if (!secretBadge) return;
     baseline.badgeIds.add(secretBadge.id);
