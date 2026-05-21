@@ -17,6 +17,10 @@ function getBrowserAudioContextConstructor():
   );
 }
 
+function isSuspendedAudioContext(state: AudioContextState): boolean {
+  return state === "suspended" || state === "interrupted";
+}
+
 function getSharedAudioContext(): AudioContext | null {
   const AudioCtx = getBrowserAudioContextConstructor();
   if (!AudioCtx) return null;
@@ -24,6 +28,34 @@ function getSharedAudioContext(): AudioContext | null {
     sharedContext = new AudioCtx();
   }
   return sharedContext;
+}
+
+async function ensureRunningAudioContext(): Promise<AudioContext | null> {
+  let context = getSharedAudioContext();
+  if (!context) return null;
+  configureWorkoutRestAudioSession();
+  if (context.state === "closed") {
+    resetWorkoutRestAudioForTests();
+    context = getSharedAudioContext();
+    if (!context) return null;
+  }
+  if (!isSuspendedAudioContext(context.state)) {
+    return context.state === "running" ? context : null;
+  }
+  try {
+    await context.resume();
+  } catch {
+    void sharedContext?.close();
+    sharedContext = null;
+    context = getSharedAudioContext();
+    if (!context) return null;
+    try {
+      await context.resume();
+    } catch {
+      return null;
+    }
+  }
+  return context.state === "running" ? context : null;
 }
 
 /** Prefer short alert session so other apps (e.g. Spotify) duck on supporting platforms. */
@@ -38,30 +70,12 @@ export function configureWorkoutRestAudioSession(): void {
 }
 
 export async function primeWorkoutRestAudio(): Promise<void> {
-  const context = getSharedAudioContext();
-  if (!context) return;
-  configureWorkoutRestAudioSession();
-  if (context.state === "suspended") {
-    try {
-      await context.resume();
-    } catch {
-      // Autoplay policies may block until a user gesture; playWorkoutRestTone retries.
-    }
-  }
+  await ensureRunningAudioContext();
 }
 
 export async function playWorkoutRestTone(kind: WorkoutRestToneKind): Promise<void> {
-  const context = getSharedAudioContext();
+  const context = await ensureRunningAudioContext();
   if (!context) return;
-
-  configureWorkoutRestAudioSession();
-  if (context.state === "suspended") {
-    try {
-      await context.resume();
-    } catch {
-      return;
-    }
-  }
 
   const master = context.createGain();
   master.gain.setValueAtTime(kind === "start" ? 1 : 0.85, context.currentTime);

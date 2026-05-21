@@ -58,4 +58,43 @@ describe("workoutRestAudio", () => {
     await expect(playWorkoutRestTone("tick")).resolves.toBeUndefined();
     await expect(playWorkoutRestTone("start")).resolves.toBeUndefined();
   });
+
+  it("resumes suspended AudioContext before playing", async () => {
+    class FakeAudioContext {
+      state: AudioContextState = "suspended";
+      currentTime = 0;
+      destination = {};
+      createGain() {
+        return {
+          gain: {
+            setValueAtTime: vi.fn(),
+            exponentialRampToValueAtTime: vi.fn(),
+          },
+          connect: vi.fn(),
+        };
+      }
+      createOscillator() {
+        return {
+          type: "sine",
+          frequency: { setValueAtTime: vi.fn() },
+          connect: vi.fn(),
+          start: vi.fn(),
+          stop: vi.fn(),
+        };
+      }
+      resume = vi.fn(async () => {
+        this.state = "running";
+      });
+      close = vi.fn().mockResolvedValue(undefined);
+    }
+
+    vi.stubGlobal(
+      "AudioContext",
+      FakeAudioContext as unknown as typeof AudioContext,
+    );
+
+    await playWorkoutRestTone("tick");
+    const ctx = new FakeAudioContext();
+    expect(ctx.resume).toBeDefined();
+  });
 });

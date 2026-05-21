@@ -217,14 +217,22 @@ export function LiveWorkoutSessionModal({
     completedCountByGroupRef.current[currentWorkoutGroup.groupId] = completed;
     if (!restCountdownEnabled || showWorkoutReflection) return;
     if (completed <= previous) return;
-    if (completed >= (workoutMode?.results.length ?? 0) && isLastWorkoutGroup) return;
+    if (currentGroupIsComplete && isLastWorkoutGroup) return;
     lastRestBeepSecondRef.current = null;
+    void primeWorkoutRestAudio();
     setRestCountdown({
       groupId: currentWorkoutGroup.groupId,
       endsAtMs: Date.now() + activeRestSeconds * 1000,
       totalSeconds: activeRestSeconds,
     });
-  }, [activeRestSeconds, currentWorkoutGroup, isLastWorkoutGroup, restCountdownEnabled, showWorkoutReflection, workoutMode?.results.length]);
+  }, [
+    activeRestSeconds,
+    currentGroupIsComplete,
+    currentWorkoutGroup,
+    isLastWorkoutGroup,
+    restCountdownEnabled,
+    showWorkoutReflection,
+  ]);
 
   const [restCountdownTick, setRestCountdownTick] = useState(0);
   const restCountdownRemainingSeconds = restCountdown
@@ -233,6 +241,7 @@ export function LiveWorkoutSessionModal({
 
   useEffect(() => {
     if (!restCountdown) return;
+    const beepedSeconds = new Set<number>();
     const sync = () => {
       const remaining = remainingSecondsUntilDeadline(restCountdown.endsAtMs, Date.now());
       if (remaining <= 0) {
@@ -240,11 +249,20 @@ export function LiveWorkoutSessionModal({
         void playWorkoutRestTone("start");
         return;
       }
+      if (remaining >= 1 && remaining <= 3) {
+        if (!beepedSeconds.has(remaining)) {
+          beepedSeconds.add(remaining);
+          lastRestBeepSecondRef.current = remaining;
+          void playWorkoutRestTone("tick");
+        }
+      }
       setRestCountdownTick((tick) => tick + 1);
     };
     sync();
-    const intervalId = window.setInterval(sync, 250);
-    const onVisibilityOrFocus = () => sync();
+    const intervalId = window.setInterval(sync, 200);
+    const onVisibilityOrFocus = () => {
+      void primeWorkoutRestAudio().then(sync);
+    };
     document.addEventListener("visibilitychange", onVisibilityOrFocus);
     window.addEventListener("focus", onVisibilityOrFocus);
     window.addEventListener("pageshow", onVisibilityOrFocus);
@@ -255,13 +273,6 @@ export function LiveWorkoutSessionModal({
       window.removeEventListener("pageshow", onVisibilityOrFocus);
     };
   }, [restCountdown]);
-
-  useEffect(() => {
-    if (!restCountdown || restCountdownRemainingSeconds < 1 || restCountdownRemainingSeconds > 3) return;
-    if (lastRestBeepSecondRef.current === restCountdownRemainingSeconds) return;
-    lastRestBeepSecondRef.current = restCountdownRemainingSeconds;
-    void playWorkoutRestTone("tick");
-  }, [restCountdown, restCountdownRemainingSeconds, restCountdownTick]);
 
   useEffect(() => {
     if (!restCountdownEnabled) setRestCountdown(null);
@@ -729,7 +740,7 @@ export function LiveWorkoutSessionModal({
                   type="button"
                   onClick={() => {
                     setRestCountdown(null);
-                    void playWorkoutRestTone("start");
+                    void primeWorkoutRestAudio().then(() => playWorkoutRestTone("start"));
                   }}
                   className="shrink-0 rounded-lg border bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                   style={{ borderColor: "rgba(15,23,42,0.08)" }}
