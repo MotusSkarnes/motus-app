@@ -790,7 +790,7 @@ describe("useNotifications workout comment alerts", () => {
       expect(onPersistMemberNotificationPreferences).toHaveBeenCalled();
       expect(onPersistMemberNotificationPreferences).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          openedMemberAlertIds: ["member-msg-1"],
+          openedMemberAlertIds: ["member-msg-msg-1"],
           seenHiddenBadgeIds: ["secret-a"],
           lastCelebratedAchievedLevel: 4,
         }),
