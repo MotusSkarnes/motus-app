@@ -477,9 +477,42 @@ Deno.serve(async (req) => {
     }
   }
 
+  let invitedRowsStamped = 0;
+  let invitedAt: string | null = null;
+  if (targetUsers.length > 0 && candidates.length > 0) {
+    const invitedAtIso = new Date().toISOString();
+    const idsToStamp = Array.from(new Set(candidates.map((candidate) => candidate.id).filter(Boolean)));
+    const { data: inviteRows, error: inviteLookupError } = await adminClient
+      .from("members")
+      .select("id, invited_at")
+      .in("id", idsToStamp);
+    if (inviteLookupError) {
+      console.warn("link-member-auth: invited_at lookup failed:", inviteLookupError.message);
+    } else {
+      const needsStamp = (inviteRows ?? [])
+        .filter((row) => !String((row as { invited_at?: string | null }).invited_at ?? "").trim())
+        .map((row) => String((row as { id?: string }).id ?? "").trim())
+        .filter(Boolean);
+      if (needsStamp.length > 0) {
+        const { error: inviteStampError } = await adminClient
+          .from("members")
+          .update({ invited_at: invitedAtIso })
+          .in("id", needsStamp);
+        if (inviteStampError) {
+          console.warn("link-member-auth: invited_at stamp failed:", inviteStampError.message);
+        } else {
+          invitedRowsStamped = needsStamp.length;
+          invitedAt = invitedAtIso;
+        }
+      }
+    }
+  }
+
   return jsonResponse(200, {
     message: "Auth member link synced",
     updated,
+    invitedRowsStamped,
+    invitedAt,
     canonicalMemberId: memberId,
     migratedPrograms,
     migratedLogs,

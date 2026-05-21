@@ -49,6 +49,18 @@ export type TrainerNotificationPreferences = {
   updatedAt: number;
 };
 
+export function emptyTrainerNotificationPreferences(): TrainerNotificationPreferences {
+  return {
+    version: MEMBER_NOTIFICATION_PREFS_VERSION,
+    trainerAlertsSeenAt: 0,
+    trainerNotificationsBaselineAt: 0,
+    openedTrainerAlertIds: [],
+    seenTrainerOperationalAlertKey: "",
+    seenTrainerMemberFormKeys: [],
+    updatedAt: 0,
+  };
+}
+
 function uniqueStrings(values: string[]): string[] {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }

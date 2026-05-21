@@ -85,6 +85,7 @@ import {
 } from "../services/supabaseRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
+import { memberEffectivelyInvited } from "../app/memberInviteStatus";
 import { printHtmlDocument } from "../app/printHtmlDocument";
 import { syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { buildDefaultStartWorkoutOptions } from "../app/buildStartWorkoutOptions";
@@ -806,6 +807,7 @@ function pickFirstName(value: unknown): string {
   /** Unngå å laste notatutkast på nytt når `selectedMemberId` byttes mellom duplikat-rader (samme kunde). */
   const followUpDraftHydratedIdentityRef = useRef<string | null>(null);
   const followUpLastSyncedFromLogRef = useRef(false);
+  const customerSavedProgramsRef = useRef<HTMLDivElement | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<"all" | "red" | "orange" | "green">("all");
   const [prioritySort, setPrioritySort] = useState<"highFirst" | "lowFirst">("highFirst");
   const [priorityMemberTypeSort, setPriorityMemberTypeSort] = useState<"none" | "ptFirst" | "premiumFirst" | "standardFirst">("none");
@@ -1024,13 +1026,13 @@ function pickFirstName(value: unknown): string {
         if (customerTypeFilter === "Premium-kunde" && member.membershipType !== "Premium") return false;
         if (customerTypeFilter === "Medlem" && member.customerType !== "Medlem") return false;
         if (memberFilter === "followUp") return (trainerInactiveDaysForFollowUp(member, members, logs) ?? -1) >= 7;
-        if (memberFilter === "invited") return Boolean(member.invitedAt?.trim());
-        if (memberFilter === "notInvited") return !member.invitedAt?.trim();
+        if (memberFilter === "invited") return memberEffectivelyInvited(member, members, { messages, logs });
+        if (memberFilter === "notInvited") return !memberEffectivelyInvited(member, members, { messages, logs });
         if (memberFilter === "noProgram") return !programs.some((program) => program.memberId === member.id);
         if (priorityFilter !== "all" && memberPriorityTone(member, members, logs) !== priorityFilter) return false;
         return true;
       });
-  }, [visibleMembers, memberSearch, memberFilter, customerTypeFilter, priorityFilter, members, logs, programs]);
+  }, [visibleMembers, memberSearch, memberFilter, customerTypeFilter, priorityFilter, members, messages, logs, programs]);
   const memberSearchRecovery = useMemo(() => {
     const query = memberSearch.trim().toLowerCase();
     if (!query || query.length < 3) return null;
@@ -1622,6 +1624,16 @@ function pickFirstName(value: unknown): string {
     if (trainerTab !== "programs") return;
     setProgramExerciseCategoryFilter(categoryForSubTab(programsSubTab));
   }, [programsSubTab, trainerTab]);
+
+  useEffect(() => {
+    if (trainerTab !== "customers" || customerSubTab !== "programs" || customerProgramBuilderFocus !== "training") {
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      customerSavedProgramsRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [trainerTab, customerSubTab, customerProgramBuilderFocus, selectedMemberId]);
 
   useEffect(() => {
     if (trainerTab !== "exerciseBank") return;
@@ -4918,11 +4930,62 @@ function pickFirstName(value: unknown): string {
                 <div className="rounded-xl border bg-slate-50/80 p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <PillButton active={customerSubTab === "overview"} onClick={() => setCustomerSubTab("overview")}>Oversikt og logg</PillButton>
-                    <PillButton active={customerSubTab === "programs"} onClick={() => setCustomerSubTab("programs")}>Program & planer</PillButton>
+                    <PillButton
+                      active={customerSubTab === "programs"}
+                      onClick={() => {
+                        setCustomerSubTab("programs");
+                        setCustomerProgramBuilderFocus("training");
+                      }}
+                    >
+                      Program & planer
+                    </PillButton>
                     <PillButton active={customerSubTab === "workouts"} onClick={() => setCustomerSubTab("workouts")}>Økter</PillButton>
                     <PillButton active={customerSubTab === "messages"} onClick={() => setCustomerSubTab("messages")}>Meldinger</PillButton>
                   </div>
                 </div>
+
+                {customerSubTab === "programs" && customerProgramBuilderFocus === "training" ? (
+                  <div
+                    ref={customerSavedProgramsRef}
+                    className="scroll-mt-4 rounded-xl border-2 border-teal-300/70 bg-gradient-to-br from-teal-50/90 to-white p-3 sm:p-4 space-y-2 shadow-sm ring-1 ring-teal-100"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-base font-bold text-slate-900">Lagrede programmer</div>
+                      <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-900">
+                        {visibleSelectedPrograms.length}
+                      </span>
+                    </div>
+                    {visibleSelectedPrograms.length === 0 ? (
+                      <p className="text-sm text-slate-600">Ingen lagret ennå — opprett lenger ned under «Lag treningsprogram».</p>
+                    ) : (
+                      <div className="max-h-[min(360px,45vh)] space-y-2 overflow-auto pr-1">
+                        {visibleSelectedPrograms.map((program) => (
+                          <div key={program.id} className="rounded-xl border bg-white p-2.5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-slate-800 truncate">{program.title}</div>
+                              <div className="text-[11px] text-slate-500">{program.exercises.length} øvelser · {program.createdAt}</div>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              <OutlineButton
+                                type="button"
+                                onClick={() => handleTrainerStartLiveWorkout(program)}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[11px]"
+                                aria-label={`Start live økt med ${program.title}`}
+                                title="Start live økt (loggføres på kunden)"
+                              >
+                                <Play className="h-3 w-3 shrink-0" />
+                                Live økt
+                              </OutlineButton>
+                              <OutlineButton onClick={() => startEditProgram(program)} className="px-2 py-1 text-[11px]">Rediger</OutlineButton>
+                              <OutlineButton onClick={() => handlePrintProgram(program)} className="px-2 py-1 text-[11px]">PDF</OutlineButton>
+                              <OutlineButton onClick={() => handleDeleteProgram(program.id)} className="px-2 py-1 text-[11px]">Slett</OutlineButton>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
 
                 {customerSubTab === "overview" ? (
                   <div className="space-y-4">
@@ -5275,8 +5338,8 @@ function pickFirstName(value: unknown): string {
                       </div>
                     </div>
                     ) : (
-                    <div className="grid gap-4">
-                    <div className="min-w-0 rounded-xl border-2 border-slate-200 bg-white p-3 sm:p-4 space-y-3 shadow-sm">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+                    <div className="min-w-0 flex-1 rounded-xl border-2 border-slate-200 bg-white p-3 sm:p-4 space-y-3 shadow-sm lg:max-w-[58%]">
                       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-3">
                         <div className="flex items-start gap-3">
                           <span
@@ -5475,8 +5538,8 @@ function pickFirstName(value: unknown): string {
                       ) : null}
                     </div>
 
-                    <div className="min-w-0 space-y-3">
-                    <div className="rounded-xl border bg-slate-50 p-3 space-y-2.5">
+                    <div className="min-w-0 flex-1 space-y-3 lg:sticky lg:top-4 lg:max-h-[min(78vh,920px)] lg:self-start">
+                    <div className="rounded-xl border bg-slate-50 p-3 space-y-2.5 lg:max-h-full lg:overflow-hidden lg:flex lg:flex-col">
                       <div className="text-sm font-semibold text-slate-800">Øvelser</div>
                       <TextInput
                         value={programExerciseSearch}
@@ -5554,41 +5617,6 @@ function pickFirstName(value: unknown): string {
                           );
                         })}
                       </div>
-                    </div>
-                    <div className="rounded-xl border bg-white p-3 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-sm font-semibold text-slate-800">Lagrede programmer</div>
-                        <span className="text-xs text-slate-500">{visibleSelectedPrograms.length}</span>
-                      </div>
-                      {visibleSelectedPrograms.length === 0 ? (
-                        <p className="text-xs text-slate-500">Ingen ennå — fyll ut skjemaet til venstre og lagre.</p>
-                      ) : (
-                        <div className="max-h-[min(280px,35vh)] space-y-2 overflow-auto pr-1">
-                          {visibleSelectedPrograms.map((program) => (
-                            <div key={program.id} className="rounded-xl border bg-slate-50/80 p-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                              <div className="min-w-0">
-                                <div className="text-sm font-medium text-slate-800 truncate">{program.title}</div>
-                                <div className="text-[11px] text-slate-500">{program.exercises.length} øvelser · {program.createdAt}</div>
-                              </div>
-                              <div className="mt-2 flex flex-wrap gap-1.5">
-                                <OutlineButton
-                                  type="button"
-                                  onClick={() => handleTrainerStartLiveWorkout(program)}
-                                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px]"
-                                  aria-label={`Start live økt med ${program.title}`}
-                                  title="Start live økt (loggføres på kunden)"
-                                >
-                                  <Play className="h-3 w-3 shrink-0" />
-                                  Live økt
-                                </OutlineButton>
-                                <OutlineButton onClick={() => startEditProgram(program)} className="px-2 py-1 text-[11px]">Rediger</OutlineButton>
-                                <OutlineButton onClick={() => handlePrintProgram(program)} className="px-2 py-1 text-[11px]">PDF</OutlineButton>
-                                <OutlineButton onClick={() => handleDeleteProgram(program.id)} className="px-2 py-1 text-[11px]">Slett</OutlineButton>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                     </div>
                     </div>
@@ -5894,14 +5922,91 @@ function pickFirstName(value: unknown): string {
             ))}
           </div>
           <Card className="p-4 sm:p-5">
-            <div className="flex items-start gap-3">
+            <div className="rounded-xl border-2 border-slate-200 bg-slate-50/50 p-3 sm:p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold text-slate-900">{savedTemplatesTitle(programsSubTab)}</h2>
+                <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                  {activeTemplatePrograms.length} maler
+                </span>
+              </div>
+              {activeTemplatePrograms.length === 0 ? (
+                <div className="rounded-xl border border-dashed bg-white p-4 text-sm text-slate-500">
+                  {emptyTemplatesMessage(programsSubTab)}
+                </div>
+              ) : (
+                <div className="max-h-[min(400px,50vh)] space-y-2 overflow-auto pr-1">
+                  {activeTemplatePrograms.map((program) => {
+                    const isExpanded = expandedTemplateProgramId === program.id;
+                    return (
+                    <div key={program.id} className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-slate-800">{program.title}</div>
+                          {programAuthorLabelForTrainer(program) ? (
+                            <div className="mt-1 text-[11px] font-medium text-slate-600">{programAuthorLabelForTrainer(program)}</div>
+                          ) : null}
+                          <div className="mt-0.5 text-xs text-slate-500">
+                            {program.exercises.length} øvelse(r){program.createdAt ? ` · ${program.createdAt}` : ""}
+                          </div>
+                        </div>
+                        <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end">
+                          <OutlineButton onClick={() => setExpandedTemplateProgramId((prev) => (prev === program.id ? null : program.id))} className="w-full px-2 py-1.5 text-xs sm:w-auto sm:px-3">
+                            {isExpanded ? "Skjul" : "Vis"}
+                          </OutlineButton>
+                          <OutlineButton onClick={() => startEditTemplateProgram(program)} className="w-full px-2 py-1.5 text-xs sm:w-auto sm:px-3">
+                            Rediger
+                          </OutlineButton>
+                          <OutlineButton onClick={() => deleteTemplateProgram(program)} className="w-full px-2 py-1.5 text-xs text-rose-700 sm:w-auto sm:px-3">
+                            Slett
+                          </OutlineButton>
+                        </div>
+                      </div>
+                      {isExpanded ? (
+                        <div className="mt-3 space-y-2">
+                          {program.notes ? (
+                            <div className="rounded-lg border bg-slate-50 px-2.5 py-2 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                              {program.notes}
+                            </div>
+                          ) : null}
+                          {program.exercises.length === 0 ? (
+                            <div className="rounded-lg border border-dashed bg-slate-50 px-2.5 py-2 text-xs text-slate-500">
+                              Ingen øvelser i malen ennå.
+                            </div>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {program.exercises.map((exercise, exerciseIndex) => {
+                                const exerciseName = cardioProgramExerciseName(program.exercises, exerciseIndex);
+                                return (
+                                <div key={exercise.id} className="rounded-lg border bg-slate-50 px-2.5 py-2 text-xs text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                                  <div className="font-medium text-slate-800">{exerciseName}</div>
+                                  <div className="mt-0.5 text-slate-500">
+                                    {exercise.durationMinutes
+                                      ? `${exercise.sets || "-"} ${/^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder"} × ${exercise.durationMinutes || "-"} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}`
+                                      : isHoldBasedExerciseCategory(
+                                          exercises.find((e) => e.id === exercise.exerciseId)?.category ?? "Styrke",
+                                        )
+                                        ? `${exercise.sets || "-"} sett × ${(exercise.holdSeconds ?? "").trim() || exercise.weight || "-"} sek · ${exercise.restSeconds || "0"}s`
+                                        : `${exercise.sets || "-"}×${exercise.reps || "-"} · ${exercise.weight || "0"}kg · ${exercise.restSeconds || "0"}s`}
+                                  </div>
+                                </div>
+                              )})}
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  )})}
+                </div>
+              )}
+            </div>
+            <div className="mt-5 flex items-start gap-3 border-t border-slate-100 pt-5">
               <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><ClipboardList className="h-5 w-5" /></div>
               <div>
                 <h2 className="text-xl font-semibold tracking-tight">{programsBuilderTitle(programsSubTab)}</h2>
                 <p className="text-sm text-slate-500">{programsBuilderDescription(programsSubTab)}</p>
               </div>
             </div>
-            <div className="mt-5 grid gap-4">
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
               <div className="min-w-0 space-y-3">
                 <TextInput value={templateProgramTitle} onChange={(e) => setTemplateProgramTitle(e.target.value)} placeholder="Navn på treningsmal" />
                 <div
@@ -6176,80 +6281,6 @@ function pickFirstName(value: unknown): string {
                       </div>
                     );
                   })}
-                </div>
-              </div>
-              <div className="rounded-xl border bg-slate-50 p-3 sm:p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="font-semibold">{savedTemplatesTitle(programsSubTab)}</div>
-                  <div className="text-xs text-slate-500">{activeTemplatePrograms.length} maler</div>
-                </div>
-                {activeTemplatePrograms.length === 0 ? (
-                  <div className="rounded-xl border border-dashed bg-white p-4 text-sm text-slate-500">
-                    {emptyTemplatesMessage(programsSubTab)}
-                  </div>
-                ) : null}
-                <div className="max-h-[360px] space-y-2 overflow-auto pr-1">
-                  {activeTemplatePrograms.map((program) => {
-                    const isExpanded = expandedTemplateProgramId === program.id;
-                    return (
-                    <div key={program.id} className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-slate-800">{program.title}</div>
-                          {programAuthorLabelForTrainer(program) ? (
-                            <div className="mt-1 text-[11px] font-medium text-slate-600">{programAuthorLabelForTrainer(program)}</div>
-                          ) : null}
-                          <div className="mt-0.5 text-xs text-slate-500">
-                            {program.exercises.length} øvelse(r){program.createdAt ? ` · ${program.createdAt}` : ""}
-                          </div>
-                        </div>
-                        <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end">
-                          <OutlineButton onClick={() => setExpandedTemplateProgramId((prev) => (prev === program.id ? null : program.id))} className="w-full px-2 py-1.5 text-xs sm:w-auto sm:px-3">
-                            {isExpanded ? "Skjul" : "Vis"}
-                          </OutlineButton>
-                          <OutlineButton onClick={() => startEditTemplateProgram(program)} className="w-full px-2 py-1.5 text-xs sm:w-auto sm:px-3">
-                            Rediger
-                          </OutlineButton>
-                          <OutlineButton onClick={() => deleteTemplateProgram(program)} className="w-full px-2 py-1.5 text-xs text-rose-700 sm:w-auto sm:px-3">
-                            Slett
-                          </OutlineButton>
-                        </div>
-                      </div>
-                      {isExpanded ? (
-                        <div className="mt-3 space-y-2">
-                          {program.notes ? (
-                            <div className="rounded-lg border bg-slate-50 px-2.5 py-2 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                              {program.notes}
-                            </div>
-                          ) : null}
-                          {program.exercises.length === 0 ? (
-                            <div className="rounded-lg border border-dashed bg-slate-50 px-2.5 py-2 text-xs text-slate-500">
-                              Ingen øvelser i malen ennå.
-                            </div>
-                          ) : (
-                            <div className="space-y-1.5">
-                              {program.exercises.map((exercise, exerciseIndex) => {
-                                const exerciseName = cardioProgramExerciseName(program.exercises, exerciseIndex);
-                                return (
-                                <div key={exercise.id} className="rounded-lg border bg-slate-50 px-2.5 py-2 text-xs text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                  <div className="font-medium text-slate-800">{exerciseName}</div>
-                                  <div className="mt-0.5 text-slate-500">
-                                    {exercise.durationMinutes
-                                      ? `${exercise.sets || "-"} ${/^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder"} × ${exercise.durationMinutes || "-"} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}`
-                                      : isHoldBasedExerciseCategory(
-                                          exercises.find((e) => e.id === exercise.exerciseId)?.category ?? "Styrke",
-                                        )
-                                        ? `${exercise.sets || "-"} sett × ${(exercise.holdSeconds ?? "").trim() || exercise.weight || "-"} sek · ${exercise.restSeconds || "0"}s`
-                                        : `${exercise.sets || "-"}×${exercise.reps || "-"} · ${exercise.weight || "0"}kg · ${exercise.restSeconds || "0"}s`}
-                                  </div>
-                                </div>
-                              )})}
-                            </div>
-                          )}
-                        </div>
-                      ) : null}
-                    </div>
-                  )})}
                 </div>
               </div>
             </div>

@@ -170,13 +170,12 @@ Deno.serve(async (req) => {
         personal_goals: "",
         injuries: "Ingen info ennå",
         coach_notes: "",
-        avatar_url: "",
         created_at: new Date().toISOString(),
       },
       { onConflict: "id" },
     )
     .select(
-      "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url",
+      "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes",
     )
     .single();
 
@@ -206,7 +205,7 @@ Deno.serve(async (req) => {
       personalGoals: String(inserted.personal_goals ?? ""),
       injuries: String(inserted.injuries ?? ""),
       coachNotes: String(inserted.coach_notes ?? ""),
-      avatarUrl: String(inserted.avatar_url ?? ""),
+      avatarUrl: "",
     },
   });
 });

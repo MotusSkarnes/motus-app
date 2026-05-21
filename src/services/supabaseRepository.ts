@@ -3530,28 +3530,56 @@ function mapEdgeMemberPayload(value: unknown): Member | null {
   const email = String(row.email ?? "").trim().toLowerCase();
   const name = String(row.name ?? "").trim();
   if (!id || !email || !name) return null;
+  if ("owner_user_id" in row || "membership_type" in row || "customer_type" in row) {
+    return mapMemberRowFromSupabase(row);
+  }
   return {
     id,
-    ownerUserId: String(row.ownerUserId ?? "").trim(),
+    ownerUserId: String(row.ownerUserId ?? row.owner_user_id ?? "").trim(),
     name,
     email,
-    isActive: row.isActive !== false,
-    invitedAt: String(row.invitedAt ?? ""),
+    isActive: (row.isActive ?? row.is_active) !== false,
+    invitedAt: String(row.invitedAt ?? row.invited_at ?? ""),
     phone: String(row.phone ?? ""),
-    birthDate: String(row.birthDate ?? ""),
+    birthDate: String(row.birthDate ?? row.birth_date ?? ""),
     weight: String(row.weight ?? ""),
     height: String(row.height ?? ""),
     level: row.level === "Litt øvet" || row.level === "Øvet" ? row.level : "Nybegynner",
-    membershipType: mapMembershipType(row.membershipType),
-    customerType: mapCustomerType(row.customerType),
-    daysSinceActivity: String(row.daysSinceActivity ?? "0"),
+    membershipType: mapMembershipType(row.membershipType ?? row.membership_type),
+    customerType: mapCustomerType(row.customerType ?? row.customer_type),
+    daysSinceActivity: String(row.daysSinceActivity ?? row.days_since_activity ?? "0"),
     goal: String(row.goal ?? ""),
     focus: String(row.focus ?? ""),
-    personalGoals: String(row.personalGoals ?? ""),
+    personalGoals: String(row.personalGoals ?? row.personal_goals ?? ""),
     injuries: String(row.injuries ?? ""),
-    coachNotes: String(row.coachNotes ?? ""),
-    avatarUrl: String(row.avatarUrl ?? ""),
+    coachNotes: String(row.coachNotes ?? row.coach_notes ?? ""),
+    avatarUrl: String(row.avatarUrl ?? row.avatar_url ?? ""),
   };
+}
+
+function parseCreateTrainerMemberInvokePayload(raw: unknown): Record<string, unknown> | null {
+  if (!raw || typeof raw !== "object") return null;
+  const record = raw as Record<string, unknown>;
+  if (record.ok === true && record.member) return record;
+  if (record.member && typeof record.member === "object") {
+    return { ok: true, member: record.member };
+  }
+  return null;
+}
+
+async function fetchMemberByIdFromSupabase(memberId: string): Promise<Member | null> {
+  if (!supabaseClient) return null;
+  const trimmedId = memberId.trim();
+  if (!trimmedId) return null;
+
+  let result = await supabaseClient.from("members").select(MEMBERS_SELECT_WITH_AVATAR).eq("id", trimmedId).maybeSingle();
+  if (result.error && isMissingDbColumnError(result.error.message, "avatar_url")) {
+    result = await supabaseClient.from("members").select(MEMBERS_SELECT_BASE).eq("id", trimmedId).maybeSingle();
+  }
+  if (result.error || !result.data) {
+    return null;
+  }
+  return mapMemberRowFromSupabase(result.data as Record<string, unknown>);
 }
 
 async function invokeCreateTrainerMemberFunction(body: Record<string, unknown>): Promise<{
@@ -3564,8 +3592,25 @@ async function invokeCreateTrainerMemberFunction(body: Record<string, unknown>):
   }
 
   const { data, error } = await supabaseClient.functions.invoke("create-trainer-member", { body });
-  if (!error && data && typeof data === "object") {
-    return { ok: true, data: data as Record<string, unknown>, errorMessage: null };
+  const successFromInvoke = parseCreateTrainerMemberInvokePayload(data);
+  if (successFromInvoke) {
+    return { ok: true, data: successFromInvoke, errorMessage: null };
+  }
+
+  if (error) {
+    const details = await extractFunctionErrorDetails(error);
+    const trimmedDetails = details.trim();
+    if (trimmedDetails.startsWith("{") && trimmedDetails.endsWith("}")) {
+      try {
+        const parsedDetails = JSON.parse(trimmedDetails) as unknown;
+        const successFromDetails = parseCreateTrainerMemberInvokePayload(parsedDetails);
+        if (successFromDetails) {
+          return { ok: true, data: successFromDetails, errorMessage: null };
+        }
+      } catch {
+        // Fall through to fetch fallback.
+      }
+    }
   }
 
   let errorMessage = (await extractFunctionErrorDetails(error)) || error?.message || "create-trainer-member feilet";
@@ -3590,8 +3635,9 @@ async function invokeCreateTrainerMemberFunction(body: Record<string, unknown>):
       } catch {
         parsed = null;
       }
-      if (response.ok && parsed) {
-        return { ok: true, data: parsed, errorMessage: null };
+      const successFromFetch = parseCreateTrainerMemberInvokePayload(parsed);
+      if (response.ok && successFromFetch) {
+        return { ok: true, data: successFromFetch, errorMessage: null };
       }
       const detail = String(parsed?.error ?? parsed?.message ?? raw ?? response.status);
       errorMessage = `HTTP ${response.status}: ${detail}`;
@@ -3639,20 +3685,20 @@ export async function createTrainerMemberViaEdgeFunction(
     ownerUserId,
   });
 
-  if (!invoke.ok || !invoke.data) {
-    const message = invoke.errorMessage ?? "Kunne ikke opprette kunde.";
-    if (message.includes("email_exists") || message.includes("E-post finnes")) {
-      return { ok: false, message: "E-post finnes allerede som aktiv kunde." };
-    }
-    return { ok: false, message: `Opprettelse feilet: ${message}` };
-  }
-
-  const mapped = mapEdgeMemberPayload(invoke.data.member);
+  let mapped = invoke.ok && invoke.data ? mapEdgeMemberPayload(invoke.data.member) : null;
   if (!mapped) {
-    return { ok: false, message: "Kunde ble opprettet, men svaret fra serveren var ugyldig." };
+    mapped = await fetchMemberByIdFromSupabase(member.id);
   }
 
-  return { ok: true, member: mapped };
+  if (mapped) {
+    return { ok: true, member: mapped };
+  }
+
+  const message = invoke.errorMessage ?? "Kunne ikke opprette kunde.";
+  if (message.includes("email_exists") || message.includes("E-post finnes")) {
+    return { ok: false, message: "E-post finnes allerede som aktiv kunde." };
+  }
+  return { ok: false, message: `Opprettelse feilet: ${message}` };
 }
 
 export type IntervalWorkoutPersistJob = {
@@ -3752,6 +3798,21 @@ export const supabaseAppRepository: AppRepository = {
     if (targetMember && updatedMember) {
       void persistMember(updatedMember);
     }
+    return nextState;
+  },
+  markMembersInvitedByEmail(state: AppState, email: string, invitedAtIso?: string): AppState {
+    const emailKey = email.trim().toLowerCase();
+    const stamp = (invitedAtIso ?? new Date().toISOString()).trim();
+    const beforeById = new Map(state.members.map((member) => [member.id, member]));
+    const nextState = localAppRepository.markMembersInvitedByEmail(state, email, stamp);
+    if (!emailKey.includes("@")) return nextState;
+    nextState.members.forEach((member) => {
+      if (member.email.trim().toLowerCase() !== emailKey) return;
+      const before = beforeById.get(member.id);
+      if (before?.invitedAt?.trim()) return;
+      if (!member.invitedAt?.trim()) return;
+      void persistMember(member);
+    });
     return nextState;
   },
   saveProgram(state: AppState, input: SaveProgramInput): AppState {

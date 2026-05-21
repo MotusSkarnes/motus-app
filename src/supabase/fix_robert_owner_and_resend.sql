@@ -9,9 +9,9 @@ left join auth.users u on lower(trim(u.email)) = lower(trim(m.email))
 where lower(trim(m.email)) = 'robertarniharaldsson@gmail.com';
 
 -- 2) Sett owner til riktig PT (owner_user_id er NOT NULL i DB)
--- Bytt UUID under om en annen trener opprettet kunden (lene@motus-skarnes.no):
+-- Robert ble opprettet av PT Iben (iben@motus-skarnes.no):
 update public.members
-set owner_user_id = '5a8aa65c-f6fb-47ee-9f76-617e52db83aa'
+set owner_user_id = '0d262fbb-0404-4add-af8c-9a162e700a77'
 where lower(trim(email)) = 'robertarniharaldsson@gmail.com'
   and owner_user_id::text = (
     select id::text from auth.users where lower(trim(email)) = 'robertarniharaldsson@gmail.com' limit 1

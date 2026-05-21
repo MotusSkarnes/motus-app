@@ -931,6 +931,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [muscleSplitMetric, setMuscleSplitMetric] = useState<MuscleSplitMetric>("sets");
   const [favoritePersonalRecordNames, setFavoritePersonalRecordNames] = useState<string[]>([]);
   const [favoritePersonalRecordPreferencesHydrated, setFavoritePersonalRecordPreferencesHydrated] = useState(false);
+  const [profileMetricsHydrated, setProfileMetricsHydrated] = useState(false);
   const [customWorkoutLines, setCustomWorkoutLines] = useState<
     Array<{ key: string; exerciseId: string; sets: string; reps: string; weight: string; holdSeconds?: string }>
   >([]);
@@ -2265,7 +2266,8 @@ export function MemberPortal(props: MemberPortalProps) {
         homeVisibility,
         favoritePersonalRecords: cleanedFavoritePersonalRecordNames,
       },
-      resolveBestPersonalGoalsForRelatedMembers(editableMember, members, relatedMemberIdSet),
+      pickCanonicalMemberRowForProfile(editableMember, members).personalGoals ||
+        editableMember.personalGoals,
     );
     const profileAnchor = pickCanonicalMemberRowForProfile(editableMember, members);
     window.localStorage.setItem(getProfileStorageKey(profileAnchor.id), JSON.stringify(next));
@@ -2404,6 +2406,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
   useEffect(() => {
     if (!editableMember) return;
+    setProfileMetricsHydrated(false);
 
     const fallback: ProfileMetricsDraft = {
       sessionsPerWeekTarget: "",
@@ -2431,6 +2434,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
     if (typeof window === "undefined") {
       applyMetricDrafts(fromDb ?? fallback);
+      setProfileMetricsHydrated(true);
       return;
     }
 
@@ -2441,6 +2445,7 @@ export function MemberPortal(props: MemberPortalProps) {
       } catch {
         /* ignore quota / private mode quirks */
       }
+      setProfileMetricsHydrated(true);
       return;
     }
 
@@ -2448,6 +2453,7 @@ export function MemberPortal(props: MemberPortalProps) {
       const raw = window.localStorage.getItem(getProfileStorageKey(editableMember.id));
       if (!raw) {
         applyMetricDrafts(fallback);
+        setProfileMetricsHydrated(true);
         return;
       }
       const parsed = JSON.parse(raw) as Partial<ProfileMetricsDraft>;
@@ -2486,6 +2492,7 @@ export function MemberPortal(props: MemberPortalProps) {
     } catch {
       applyMetricDrafts(fallback);
     }
+    setProfileMetricsHydrated(true);
     // Avhengigheter bevisst snevre: «members» leses kun når signaturen sier at personalGoals faktisk endret seg.
   }, [editableMember?.id, relatedProfileGoalsSignature, relatedMemberIds, updateMember]);
 
@@ -2653,6 +2660,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [editableMember, microCelebrationsEnabled, celebrationSoundEnabled, restCountdownEnabled, homeVisibility, favoritePersonalRecordNames, favoritePersonalRecordPreferencesHydrated]);
   useEffect(() => {
     if (!editableMember) return;
+    if (!profileMetricsHydrated) return;
     const normalizedHomeVisibility = normalizeHomeVisibilityForStorage(homeVisibility);
     const dbHomeVisibilityNormalized = normalizeHomeVisibilityForStorage(dbHomeVisibility ?? undefined);
     const nextVisibilitySignature = JSON.stringify(normalizedHomeVisibility ?? {});
@@ -2712,10 +2720,12 @@ export function MemberPortal(props: MemberPortalProps) {
     relatedMemberIds,
     updateMember,
     normalizedCurrentUserEmail,
+    profileMetricsHydrated,
   ]);
   useEffect(() => {
     if (!editableMember) return;
     if (!favoritePersonalRecordPreferencesHydrated) return;
+    if (!profileMetricsHydrated) return;
     const normalizedFavorites = normalizeFavoritePersonalRecordNames(favoritePersonalRecordNames) ?? [];
     const dbFavoritesRaw = normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? undefined) ?? [];
     const cleanedLocal = normalizedFavorites.filter((name) => personalRecordExerciseNameSet.has(name));
@@ -2779,6 +2789,7 @@ export function MemberPortal(props: MemberPortalProps) {
     updateMember,
     favoritePersonalRecordPreferencesHydrated,
     personalRecordExerciseNameSet,
+    profileMetricsHydrated,
   ]);
   useEffect(() => {
     if (!shouldShowPrCelebration) return;

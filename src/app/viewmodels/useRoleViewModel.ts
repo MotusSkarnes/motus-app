@@ -84,6 +84,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     memberViewId: state.appState.memberViewId,
     remoteMemberPeriodPlanRows: state.remoteMemberPeriodPlanRows,
     memberPersonalGoals: memberForNotificationSync?.personalGoals,
+    memberNotificationProfileReady: Boolean(memberForNotificationSync),
     currentUserRole: state.appState.currentUser?.role,
     setMemberTab: state.setMemberTab,
     onPersistMemberNotificationPreferences,

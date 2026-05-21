@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="no">
+  <head>
+    <meta charset="utf-8" />
+    <title>Motus test-sjekkliste</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 14mm;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: #111827;
+        background: #ffffff;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 10.5pt;
+        line-height: 1.35;
+      }
+
+      header {
+        border-bottom: 2px solid #111827;
+        margin-bottom: 10mm;
+        padding-bottom: 5mm;
+      }
+
+      h1 {
+        margin: 0 0 2mm;
+        font-size: 22pt;
+      }
+
+      .meta {
+        color: #4b5563;
+        font-size: 9pt;
+      }
+
+      .intro {
+        border: 1px solid #d1d5db;
+        margin-bottom: 7mm;
+        padding: 4mm;
+        background: #f9fafb;
+      }
+
+      .fields {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 4mm;
+        margin-top: 4mm;
+      }
+
+      .field {
+        border-bottom: 1px solid #6b7280;
+        min-height: 8mm;
+        padding-top: 3mm;
+        color: #374151;
+        font-size: 9pt;
+      }
+
+      section {
+        break-inside: avoid;
+        margin: 0 0 6mm;
+      }
+
+      h2 {
+        margin: 0;
+        padding: 2.5mm 3mm;
+        background: #e5e7eb;
+        border: 1px solid #9ca3af;
+        font-size: 12pt;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+
+      td {
+        border: 1px solid #d1d5db;
+        padding: 2mm;
+        vertical-align: top;
+      }
+
+      .check {
+        width: 13mm;
+        text-align: center;
+        font-size: 8pt;
+        color: #374151;
+      }
+
+      .box {
+        display: block;
+        width: 4.5mm;
+        height: 4.5mm;
+        border: 1.4px solid #111827;
+        margin: 0 auto 1mm;
+      }
+
+      .item {
+        width: auto;
+      }
+
+      .notes {
+        width: 42mm;
+        color: #6b7280;
+      }
+
+      .page-break {
+        break-before: page;
+      }
+
+      .note-lines div {
+        border-bottom: 1px solid #9ca3af;
+        height: 10mm;
+      }
+
+      @media print {
+        body {
+          print-color-adjust: exact;
+          -webkit-print-color-adjust: exact;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Motus test-sjekkliste</h1>
+      <div class="meta">Generert 18.05.2026 - bruk ved manuell QA før release</div>
+    </header>
+
+    <div class="intro">
+      Kryss av OK/FEIL, skriv kort kommentar, og test spesielt mobil, øktlagring og eierskap mellom PT-er.
+      <div class="fields">
+        <div class="field">Tester:</div>
+        <div class="field">Miljø/URL:</div>
+        <div class="field">Commit/appversjon:</div>
+      </div>
+    </div>
+
+    <main id="checklist"></main>
+
+    <section class="page-break">
+      <h2>Feilnotater</h2>
+      <div class="note-lines">
+        <div>1.</div>
+        <div>2.</div>
+        <div>3.</div>
+        <div>4.</div>
+        <div>5.</div>
+        <div>6.</div>
+      </div>
+    </section>
+
+    <script>
+      const sections = [
+        ["1. Forberedelse", [
+          "Noter app-versjon/commit og miljø: lokal, preview eller produksjon.",
+          "Test med minst én PT-bruker, én medlem-bruker, én PT-kunde og én Premium-kunde.",
+          "Test på desktop, iPhone/Safari og Android/Chrome.",
+          "Test både privat vindu/tom cache og vanlig innlogging med eksisterende cache.",
+          "Bekreft at relevante Supabase Edge Functions er deployet før produksjonstest."
+        ]],
+        ["2. Innlogging, session og roller", [
+          "Logg inn som PT og bekreft at appen åpner PT-side.",
+          "Logg inn som medlem og bekreft at appen åpner medlemsside.",
+          "Logg ut og inn igjen. Bruker/rolle skal ikke lekke mellom kontoer.",
+          "Test invitasjonslenke eller OTP-lenke for nytt medlem.",
+          "Test passord/recovery-flow hvis tilgjengelig.",
+          "Bekreft at PT-domain e-post ikke blir linket som medlem ved en feil."
+        ]],
+        ["3. PT dashboard og navigasjon", [
+          "Åpne Dashboard og bekreft at nøkkeltall, oppfølging og varsler laster.",
+          "Bytt mellom hovedfaner: Dashboard, Kunder, Inspirasjon/innhold og Admin hvis tilgjengelig.",
+          "Test mobilmeny/navigasjon på smal skjerm.",
+          "Bekreft at Offline-banner vises/skjules riktig ved nettverksendring.",
+          "Sjekk at knapper og tekst ikke overlapper på mobil."
+        ]],
+        ["4. Kundeadministrasjon og eierskap", [
+          "Opprett ny PT-kunde med unik e-post. Kunden skal kun vises hos innlogget PT.",
+          "Opprett ny Premium-kunde. Kunden skal kun vises hos riktig PT med riktig type.",
+          "Opprett vanlig Medlem. Bekreft synlighet etter gjeldende delt-medlem-regler.",
+          "Endre navn på kunde. Toppkortet på medlemssiden skal vise nytt navn med en gang appen åpnes.",
+          "Endre telefon, fødselsdato, mål, skader og fokus. Lagre og last siden på nytt.",
+          "Endre kundetype mellom PT-kunde, Premium og Medlem. Bekreft synlighet og tilgang.",
+          "Arkiver/deaktiver kunde og bekreft at kunden forsvinner fra aktiv liste.",
+          "Aktiver arkivert kunde igjen og bekreft at data fortsatt er koblet til samme kunde.",
+          "Søk etter kunde på navn og e-post. Søk skal ikke slå sammen profiler.",
+          "Test to kunder med like fornavn eller delvis lik e-post. De skal aldri flettes.",
+          "Bekreft at en kunde ikke får annen owner/PT etter refresh, invitasjon, melding eller øktlogging."
+        ]],
+        ["5. Medlemsvisning og tilgang", [
+          "Åpne medlemskort fra PT-siden og kontroller profil, programmer, økter og meldinger.",
+          "Bekreft at PT-kunde/Premium ikke vises for andre PT-er.",
+          "Bekreft at kunde med samme navn hos annen PT ikke dukker opp i listen.",
+          "Bekreft at kunde med delvis samme e-post ikke dukker opp som samme person.",
+          "Sjekk at oppfølgingsteller stemmer med faktisk kundeliste.",
+          "Marker oppfølging som utført og bekreft at tellere oppdateres."
+        ]],
+        ["6. Programmer og øvelsesbank", [
+          "Lag nytt program på kunde med tittel, mål, notater og flere øvelser.",
+          "Legg til styrkeøvelse med sett, reps, kg, pause og notat.",
+          "Legg til kondisjonsøvelse med varighet, fart, stigning og puls hvis relevant.",
+          "Legg til uttøyning/tidsbasert øvelse med sekunder/minutter.",
+          "Test supersett/blokk hvis funksjonen er synlig.",
+          "Lagre program og bekreft at det vises hos riktig kunde etter refresh.",
+          "Rediger program og bekreft at endringer lagres.",
+          "Slett program og bekreft at kun valgt kundes program slettes.",
+          "Skriv ut program / printvisning hvis tilgjengelig.",
+          "Legg til/rediger/slett øvelse i øvelsesbank hvis admin/øvelsesverktøy er tilgjengelig."
+        ]],
+        ["7. Live økt og treningslogging", [
+          "Start programøkt fra PT-side og fullfør med vekt/reps på flere sett.",
+          "Start programøkt fra medlemsside og fullfør.",
+          "Start egen økt fra medlemsside, legg til øvelser og fullfør.",
+          "Legg til ekstra sett under økt.",
+          "Bytt/erstatt øvelse under økt hvis funksjonen er tilgjengelig.",
+          "Utsett/hopp over øvelse hvis funksjonen er tilgjengelig.",
+          "Skriv øktnotat/refleksjon og fullfør.",
+          "Avbryt økt og bekreft at den ikke lagres som fullført.",
+          "Bekreft at fullført økt vises under Siste 3 økter umiddelbart.",
+          "Bekreft at Siste 3 økter fortsatt vises etter refresh.",
+          "Gjenta øktlogging på Android/Chrome og iPhone/Safari. Android skal ikke miste siste økt.",
+          "Slett/rediger øktresultat hvis funksjonen er tilgjengelig og bekreft riktig historikk."
+        ]],
+        ["8. Meldinger og varsler", [
+          "Send melding fra PT til kunde. Bekreft at meldingen vises hos kunden etter refresh.",
+          "Send melding fra medlem til PT. Bekreft at meldingen vises hos riktig PT.",
+          "Send flere meldinger raskt og bekreft at duplikater ikke oppstår.",
+          "Bekreft at melding ikke havner på kunde med samme navn eller delvis samme e-post.",
+          "Test meldingsvarsler/bjelle på PT-side.",
+          "Test meldingsvarsler/bjelle på medlemsside.",
+          "Test at meldingsfelt tømmes/ikke dobbeltsender ved tregt nett.",
+          "Bekreft at push-varsel fungerer hvis web push er konfigurert."
+        ]],
+        ["9. Medlemsapp - Hjem, Trening, Fremgang", [
+          "Åpne Hjem og bekreft at Hei-navnet viser riktig oppdatert fornavn.",
+          "Sjekk ukestatus, streak, neste steg og kalender/planvisning.",
+          "Åpne Trening og bekreft at PT-programmer vises.",
+          "Skjul/arkiver program fra medlemsbibliotek hvis funksjonen er synlig.",
+          "Lag eget program fra medlemssiden og start det.",
+          "Åpne Fremgang og bekreft grafer/statistikk/PR-er.",
+          "Bekreft badges og eventuelle feiringer etter fullført økt.",
+          "Test deling av fremgangskort hvis funksjonen er tilgjengelig."
+        ]],
+        ["10. Onboarding, check-in og mål", [
+          "Åpne onboarding for nytt medlem og fyll ut alle relevante felt.",
+          "Lagre onboarding og bekreft at data vises i profil/personlige mål.",
+          "Last siden på nytt og bekreft at onboarding-data ikke forsvinner.",
+          "Åpne månedlig check-in og fyll ut svar.",
+          "Bekreft at check-in oppdaterer mål/status og vises riktig for PT.",
+          "Test validering av fødselsdato, tomme felt og ugyldig input."
+        ]],
+        ["11. Inspirasjon, innhold og periodeplaner", [
+          "Åpne Inspirasjon og les et innlegg.",
+          "Legg til program fra inspirasjonskort hvis tilgjengelig.",
+          "Opprett/rediger inspirasjonsinnlegg som PT/admin hvis tilgjengelig.",
+          "Opprett periodeplan/ukeplan og tildel til kunde.",
+          "Bekreft at periodeplan vises på medlemssiden.",
+          "Test bytte av dag/uke og markering av planlagte økter."
+        ]],
+        ["12. PWA, mobil og offline", [
+          "Installer app på iPhone via Safari: Del -> Legg til på Hjem-skjerm.",
+          "Installer app på Android via Chrome: Installer app / Legg til på startskjerm.",
+          "Åpne installert PWA og bekreft at innlogging/session fungerer.",
+          "Test refresh etter ny deploy slik at gammel cache ikke holder igjen feil versjon.",
+          "Test svakt nett/offline: appen skal ikke miste lokalt registrert økt før synk.",
+          "Kontroller at layout fungerer på liten Android-skjerm og iPhone."
+        ]],
+        ["13. Data-integritet og regresjonstester", [
+          "To ulike brukere med lene i e-post skal forbli to separate profiler.",
+          "leneruud@msn.com skal ikke bli lene@motus-skarnes.no.",
+          "iben@motus-skarnes.no som PT skal ikke bli medlem.",
+          "ibenkrogseter@gmail.com som medlem skal ikke overskrive PT-kontoen.",
+          "Samme navn hos to kunder skal ikke dele avatar, programmer, logger eller meldinger.",
+          "Samme e-post hos historiske duplikatrader skal kun kobles når e-post er eksakt lik og innen riktig eier-scope.",
+          "Privat PT-kunde/Premium skal ikke flyttes til annen PT ved hydrate, invitasjon, melding eller økt.",
+          "Dedupe/opprydding skal aldri gruppere på navn.",
+          "Sletting av program/logg/melding skal ikke påvirke annen PT sin kunde."
+        ]],
+        ["14. Admin, deploy og teknisk sjekk", [
+          "Kjør relevante automatiske tester før deploy.",
+          "Kjør build eller dokumenter hvorfor build feiler, f.eks. OneDrive Ingen tilgang.",
+          "Deploy frontend og bekreft at riktig commit er live.",
+          "Deploy Edge Functions: hydrate-trainer-data, hydrate-member-data, update-member-profile, link-member-auth, send-chat-message, persist-workout-log.",
+          "Sjekk Supabase logs for 4xx/5xx etter manuell test.",
+          "Sjekk at RLS/owner_user_id-regler ikke gir lekkasje mellom PT-er.",
+          "Ta screenshot/notat av feil med bruker, tidspunkt, enhet, nettleser og nøyaktig steg."
+        ]]
+      ];
+
+      const root = document.getElementById("checklist");
+      for (const [title, items] of sections) {
+        const section = document.createElement("section");
+        const heading = document.createElement("h2");
+        heading.textContent = title;
+        const table = document.createElement("table");
+        for (const item of items) {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td class="check"><span class="box"></span>OK</td>
+            <td class="check"><span class="box"></span>FEIL</td>
+            <td class="item"></td>
+            <td class="notes">Kommentar</td>
+          `;
+          row.querySelector(".item").textContent = item;
+          table.appendChild(row);
+        }
+        section.appendChild(heading);
+        section.appendChild(table);
+        root.appendChild(section);
+      }
+    </script>
+  </body>
+</html>

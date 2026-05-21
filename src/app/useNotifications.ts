@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   buildInspirationNotificationAlertCopy,
   parseInspirationNotificationTimestamp,
@@ -10,6 +10,7 @@ import {
   type InspirationNotificationItem,
 } from "./inspirationStorage";
 import { trainerInactiveDaysForFollowUp } from "./memberActivity";
+import { memberIdentityKey, rosterMembersMissingInvite } from "./memberInviteStatus";
 import { buildMemberFormTrainerAlerts } from "./memberFormTrainerAlerts";
 import {
   buildCheckInNotificationCopy,
@@ -23,6 +24,8 @@ import type { ChatMessage, Member, MemberTab, PeriodSchedulePlan, TrainingProgra
 import { readWorkoutLogIdFromLocation, stripWorkoutLogIdFromLocation, workoutLogIdFromMemberAlertId } from "./workoutLogDeepLink";
 import {
   MEMBER_NOTIFICATION_PREFS_VERSION,
+  emptyMemberNotificationPreferences,
+  emptyTrainerNotificationPreferences,
   mergeMemberNotificationPreferences,
   mergeTrainerNotificationPreferences,
   readMemberNotificationPreferencesFromPersonalGoals,
@@ -145,6 +148,7 @@ export function useNotifications({
   members,
   memberViewId,
   memberPersonalGoals,
+  memberNotificationProfileReady,
   currentUserRole,
   setMemberTab,
   onTrainerOpenMessage,
@@ -160,6 +164,8 @@ export function useNotifications({
   memberViewId: string;
   remoteMemberPeriodPlanRows?: Array<{ memberId: string; plan: PeriodSchedulePlan }>;
   memberPersonalGoals?: string;
+  /** True når medlemsrad (personal_goals) er lastet — unngår tom lokal tilstand på ny enhet før sky-synk. */
+  memberNotificationProfileReady?: boolean;
   currentUserRole?: "trainer" | "member";
   setMemberTab: (tab: MemberTab) => void;
   onTrainerOpenMessage?: (memberId: string) => void;
@@ -172,8 +178,14 @@ export function useNotifications({
   const lastPersistedMemberPrefsRef = useRef("");
   const lastPersistedTrainerPrefsRef = useRef("");
   const memberPrefsHydratedRef = useRef(false);
+  const memberCloudPrefsSyncedRef = useRef(false);
   const trainerPrefsHydratedRef = useRef(false);
+  const trainerBaselineSeedAppliedRef = useRef(false);
   const lastMergedMemberPersonalGoalsRef = useRef<string | undefined>(undefined);
+  const isMemberSession = currentUserRole === "member";
+  const memberProfileReady =
+    memberNotificationProfileReady ??
+    (isMemberSession && Boolean(memberViewId && members.some((member) => member.id === memberViewId)));
   const [trainerNotificationsOpen, setTrainerNotificationsOpen] = useState(false);
   const [memberNotificationsOpen, setMemberNotificationsOpen] = useState(false);
   const [trainerAlertsSeenAt, setTrainerAlertsSeenAt] = useState(() => {
@@ -406,14 +418,19 @@ export function useNotifications({
     };
   }, [memberViewId, pullInspirationItemsFromRemote, syncInspirationItemsFromStorage]);
 
-  /** Første besøk: sett baseline-tidspunkt uten å markere eksisterende inspo som sett (de skal ikke bli «lest» ved å åpne varslingspanelet). */
+  /** Første besøk på enhet: bruk sky-baseline hvis den finnes, ellers «nå» (kun nye inspo etterpå). */
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !isMemberSession || !memberProfileReady) return;
+    if (!memberPrefsHydratedRef.current) return;
     if (window.localStorage.getItem(MEMBER_INSPIRATION_BASELINE_KEY)) return;
     if (inspirationItems.length === 0) return;
-    const baselineAt = Date.now();
+    const remote = readMemberNotificationPreferencesFromPersonalGoals(memberPersonalGoals);
+    const baselineAt =
+      remote?.memberInspirationBaselineAt && remote.memberInspirationBaselineAt > 0
+        ? remote.memberInspirationBaselineAt
+        : Date.now();
     window.localStorage.setItem(MEMBER_INSPIRATION_BASELINE_KEY, String(baselineAt));
-  }, [inspirationItems]);
+  }, [inspirationItems, isMemberSession, memberPersonalGoals, memberProfileReady]);
 
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
 
@@ -425,8 +442,11 @@ export function useNotifications({
   const rosterMembers = useMemo(() => members.filter((member) => member.isActive !== false), [members]);
 
   const missingInviteMemberIds = useMemo(
-    () => rosterMembers.filter((member) => !member.invitedAt?.trim()).map((member) => member.id).sort(),
-    [rosterMembers],
+    () =>
+      rosterMembersMissingInvite(rosterMembers, members, { messages, logs })
+        .map((member) => memberIdentityKey(member))
+        .sort(),
+    [rosterMembers, members, messages, logs],
   );
   const inactiveMemberIds = useMemo(
     () =>
@@ -440,16 +460,23 @@ export function useNotifications({
   const hasTrainerOperationalAlerts = missingInviteMemberIds.length + inactiveMemberIds.length > 0;
   const trainerOperationalUnread = hasTrainerOperationalAlerts && trainerOperationalAlertKey !== seenTrainerOperationalAlertKey;
 
-  /** Ny PC/nettleser: marker eksisterende PT-varsler som sett uten å skjule fremtidige. */
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (currentUserRole !== "trainer") return;
-    if (window.localStorage.getItem(TRAINER_NOTIFICATIONS_BASELINE_KEY)) return;
+  const seedTrainerNotificationsBaseline = useCallback(() => {
+    if (typeof window === "undefined" || trainerBaselineSeedAppliedRef.current) return;
     if (members.length === 0 && messages.length === 0) return;
 
     const latestMemberMessageTime = messages
       .filter((message) => message.sender === "member")
       .reduce((max, message, index) => Math.max(max, parseTimestamp(message.createdAt, index + 1)), 0);
+
+    const existingBaseline = Number(window.localStorage.getItem(TRAINER_NOTIFICATIONS_BASELINE_KEY) ?? "0");
+    if (
+      Number.isFinite(existingBaseline) &&
+      existingBaseline > 0 &&
+      (latestMemberMessageTime === 0 || existingBaseline >= latestMemberMessageTime)
+    ) {
+      trainerBaselineSeedAppliedRef.current = true;
+      return;
+    }
 
     const existingMemberFormAlertIds = buildMemberFormTrainerAlerts(members, new Set()).map((alert) => alert.id);
     const baselineAt = latestMemberMessageTime;
@@ -459,7 +486,8 @@ export function useNotifications({
     setTrainerAlertsSeenAt((prev) => Math.max(prev, latestMemberMessageTime));
     setSeenTrainerMemberFormKeys((prev) => Array.from(new Set([...prev, ...existingMemberFormAlertIds])));
     setSeenTrainerOperationalAlertKey(trainerOperationalAlertKey);
-  }, [currentUserRole, members, messages, trainerOperationalAlertKey]);
+    trainerBaselineSeedAppliedRef.current = true;
+  }, [members, messages, trainerOperationalAlertKey]);
 
   const trainerMessageAlerts = useMemo(
     () =>
@@ -974,24 +1002,37 @@ export function useNotifications({
     );
   }, [dismissedMemberCheckInMonths]);
 
-  useEffect(() => {
-    if (currentUserRole !== "member") {
+  useLayoutEffect(() => {
+    if (!isMemberSession) {
       memberPrefsHydratedRef.current = false;
+      memberCloudPrefsSyncedRef.current = false;
       lastMergedMemberPersonalGoalsRef.current = undefined;
       return;
     }
-    if (lastMergedMemberPersonalGoalsRef.current === memberPersonalGoals) return;
+    if (!memberProfileReady) {
+      memberPrefsHydratedRef.current = false;
+      memberCloudPrefsSyncedRef.current = false;
+      return;
+    }
+    if (lastMergedMemberPersonalGoalsRef.current === memberPersonalGoals) {
+      memberPrefsHydratedRef.current = true;
+      return;
+    }
     lastMergedMemberPersonalGoalsRef.current = memberPersonalGoals;
     const remote = readMemberNotificationPreferencesFromPersonalGoals(memberPersonalGoals);
-    const merged = mergeMemberNotificationPreferences(buildMemberNotificationSnapshotRef.current(), remote);
+    const localBase = memberCloudPrefsSyncedRef.current
+      ? buildMemberNotificationSnapshotRef.current()
+      : emptyMemberNotificationPreferences();
+    const merged = mergeMemberNotificationPreferences(localBase, remote);
     applyMemberNotificationSnapshot(merged);
     lastPersistedMemberPrefsRef.current = JSON.stringify(merged);
     memberPrefsHydratedRef.current = true;
-  }, [applyMemberNotificationSnapshot, currentUserRole, memberPersonalGoals]);
+    memberCloudPrefsSyncedRef.current = true;
+  }, [applyMemberNotificationSnapshot, isMemberSession, memberPersonalGoals, memberProfileReady]);
 
   useEffect(() => {
-    if (currentUserRole !== "member" || !onPersistMemberNotificationPreferences) return;
-    if (!memberPrefsHydratedRef.current) return;
+    if (!isMemberSession || !onPersistMemberNotificationPreferences) return;
+    if (!memberProfileReady || !memberPrefsHydratedRef.current) return;
     if (skipMemberPersistRef.current) return;
     const timer = window.setTimeout(() => {
       const snapshot = buildMemberNotificationSnapshot();
@@ -1014,14 +1055,21 @@ export function useNotifications({
     seenMemberWorkoutCommentKeys,
   ]);
 
-  const pullTrainerNotificationPreferences = useCallback(async () => {
-    if (!isSupabaseConfigured || !supabaseClient || currentUserRole !== "trainer") {
-      trainerPrefsHydratedRef.current = currentUserRole !== "trainer";
+  const pullTrainerNotificationPreferences = useCallback(async (options?: { isCancelled?: () => boolean }) => {
+    const isCancelled = () => options?.isCancelled?.() ?? false;
+    if (currentUserRole !== "trainer") {
+      trainerPrefsHydratedRef.current = false;
+      return;
+    }
+    if (!isSupabaseConfigured || !supabaseClient) {
+      trainerPrefsHydratedRef.current = true;
       return;
     }
     const { data, error } = await supabaseClient.auth.getSession();
+    if (isCancelled()) return;
     if (error || !data.session?.user) {
       trainerPrefsHydratedRef.current = true;
+      seedTrainerNotificationsBaseline();
       return;
     }
     const remote = readTrainerNotificationPreferencesFromUserMetadata(
@@ -1034,23 +1082,53 @@ export function useNotifications({
     if (remote) {
       lastMergedTrainerRemoteUpdatedAtRef.current = remote.updatedAt;
     }
-    const merged = mergeTrainerNotificationPreferences(buildTrainerNotificationSnapshot(), remote);
+    const localBase = trainerPrefsHydratedRef.current
+      ? buildTrainerNotificationSnapshot()
+      : emptyTrainerNotificationPreferences();
+    const merged = mergeTrainerNotificationPreferences(localBase, remote);
+    if (isCancelled()) return;
     applyTrainerNotificationSnapshot(merged);
     lastPersistedTrainerPrefsRef.current = JSON.stringify(merged);
     trainerPrefsHydratedRef.current = true;
-  }, [applyTrainerNotificationSnapshot, buildTrainerNotificationSnapshot, currentUserRole]);
+    if (!remote) {
+      seedTrainerNotificationsBaseline();
+    }
+  }, [
+    applyTrainerNotificationSnapshot,
+    buildTrainerNotificationSnapshot,
+    currentUserRole,
+    members,
+    messages,
+    seedTrainerNotificationsBaseline,
+    trainerOperationalAlertKey,
+  ]);
+
+  useLayoutEffect(() => {
+    if (currentUserRole !== "trainer") {
+      trainerPrefsHydratedRef.current = false;
+      trainerBaselineSeedAppliedRef.current = false;
+      return;
+    }
+    if (!isSupabaseConfigured || !supabaseClient) {
+      trainerPrefsHydratedRef.current = true;
+      seedTrainerNotificationsBaseline();
+    }
+  }, [currentUserRole, members, messages, seedTrainerNotificationsBaseline]);
 
   useEffect(() => {
-    if (currentUserRole !== "trainer") return;
-    void pullTrainerNotificationPreferences();
+    if (currentUserRole !== "trainer" || !isSupabaseConfigured || !supabaseClient) return;
+    let cancelled = false;
+    const runPull = () => pullTrainerNotificationPreferences({ isCancelled: () => cancelled });
+    void runPull();
     const onVisible = () => {
-      if (document.visibilityState === "visible") void pullTrainerNotificationPreferences();
+      if (document.visibilityState === "visible") void runPull();
     };
     document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", pullTrainerNotificationPreferences);
+    window.addEventListener("focus", runPull);
     return () => {
+      cancelled = true;
       document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", pullTrainerNotificationPreferences);
+      window.removeEventListener("focus", runPull);
     };
   }, [currentUserRole, pullTrainerNotificationPreferences]);
 

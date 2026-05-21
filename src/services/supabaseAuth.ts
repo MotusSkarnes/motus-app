@@ -419,21 +419,43 @@ function isTrainerEmail(email: string): boolean {
   return isTrainerStaffEmail(email);
 }
 
-async function syncMemberAuthLink(email: string, memberId?: string, trainerOwnerUserId?: string): Promise<void> {
-  if (!supabaseClient) return;
+export type MemberAuthLinkResult = {
+  invitedAt?: string;
+  invitedRowsStamped?: number;
+};
+
+function parseLinkMemberAuthResponse(data: unknown): MemberAuthLinkResult {
+  if (!data || typeof data !== "object") return {};
+  const record = data as Record<string, unknown>;
+  const invitedAt = typeof record.invitedAt === "string" ? record.invitedAt.trim() : "";
+  const stamped = Number(record.invitedRowsStamped);
+  return {
+    ...(invitedAt ? { invitedAt } : {}),
+    ...(Number.isFinite(stamped) && stamped > 0 ? { invitedRowsStamped: stamped } : {}),
+  };
+}
+
+async function syncMemberAuthLink(
+  email: string,
+  memberId?: string,
+  trainerOwnerUserId?: string,
+): Promise<MemberAuthLinkResult> {
+  if (!supabaseClient) return {};
   const trainerId = String(trainerOwnerUserId ?? "").trim();
   const payload = {
     email,
     ...(memberId ? { memberId } : {}),
     ...(trainerId ? { trainerOwnerUserId: trainerId, sourceOwnerUserId: trainerId } : {}),
   };
-  const { error } = await supabaseClient.functions.invoke("link-member-auth", {
+  const { data, error } = await supabaseClient.functions.invoke("link-member-auth", {
     body: payload,
   });
-  if (!error) return;
+  if (!error) {
+    return parseLinkMemberAuthResponse(data);
+  }
   console.warn("link-member-auth invoke failed during invite:", error.message);
 
-  if (!supabaseUrl || !supabaseAnonKey) return;
+  if (!supabaseUrl || !supabaseAnonKey) return {};
   try {
     const {
       data: { session },
@@ -450,21 +472,25 @@ async function syncMemberAuthLink(email: string, memberId?: string, trainerOwner
     if (!response.ok) {
       const detail = await response.text();
       console.warn("link-member-auth fetch fallback failed:", response.status, detail.slice(0, 400));
+      return {};
     }
+    const json = (await response.json()) as unknown;
+    return parseLinkMemberAuthResponse(json);
   } catch (fetchError) {
     console.warn("link-member-auth fetch fallback threw:", fetchError);
+    return {};
   }
 }
 
-export async function ensureMemberAuthLink(email: string, memberId?: string): Promise<void> {
+export async function ensureMemberAuthLink(email: string, memberId?: string): Promise<MemberAuthLinkResult> {
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedMemberId = memberId?.trim();
-  if (!normalizedEmail || !normalizedEmail.includes("@")) return;
+  if (!normalizedEmail || !normalizedEmail.includes("@")) return {};
   if (isTrainerEmail(normalizedEmail) && !normalizedMemberId) {
     console.warn("Skipping member auth link for trainer-domain email without memberId:", normalizedEmail);
-    return;
+    return {};
   }
-  await syncMemberAuthLink(normalizedEmail, normalizedMemberId);
+  return syncMemberAuthLink(normalizedEmail, normalizedMemberId);
 }
 
 async function extractFunctionErrorMessage(error: unknown): Promise<string | null> {

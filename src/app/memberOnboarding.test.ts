@@ -124,6 +124,38 @@ describe("memberOnboarding", () => {
     expect(enriched.birthDate).toBe("14.06.1991");
   });
 
+  it("enrichMemberWithBestProfile prefers canonical row phone over longer stale duplicate", () => {
+    const canonical: Member = {
+      id: "m-lene",
+      name: "Lene",
+      email: "lene@test.no",
+      personalGoals: "",
+      goal: "",
+      focus: "",
+      injuries: "",
+      level: "Nybegynner",
+      membershipType: "Premium",
+      customerType: "PT-kunde",
+      daysSinceActivity: "0",
+      phone: "12345678",
+      birthDate: "01.01.2000",
+      coachNotes: "",
+      avatarUrl: "",
+      invitedAt: "",
+      isActive: true,
+    };
+    const stale: Member = {
+      ...canonical,
+      id: "auth-abc",
+      phone: "99 88 77 66 55 44",
+      birthDate: "14.06.1991",
+    };
+    const enriched = enrichMemberWithBestProfile(canonical, [canonical, stale]);
+    expect(enriched.id).toBe("m-lene");
+    expect(enriched.phone).toBe("12345678");
+    expect(enriched.birthDate).toBe("01.01.2000");
+  });
+
   it("resolveMemberOnboarding finds skjema when another row has only månedlig innsjekk-blob", () => {
     const onboardingBlob = mergeOnboardingIntoPersonalGoals("", {
       ...createEmptyOnboardingDraft(),

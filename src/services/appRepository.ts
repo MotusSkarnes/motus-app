@@ -1,4 +1,5 @@
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
+import { applyInviteStampToMembersByEmail } from "../app/memberInviteStatus";
 import {
   buildTrainingProgramDisplayKey,
   expandProgramExercisesToWorkoutResults,
@@ -184,6 +185,7 @@ export interface AppRepository {
   deactivateMember(state: AppState, memberId: string): AppState;
   deleteMember(state: AppState, memberId: string): AppState;
   markMemberInvited(state: AppState, memberId: string, invitedAtIso?: string): AppState;
+  markMembersInvitedByEmail(state: AppState, email: string, invitedAtIso?: string): AppState;
   saveProgram(state: AppState, input: SaveProgramInput): AppState;
   deleteProgram(state: AppState, programId: string, context?: DeleteProgramContext): AppState;
   updateProgramMemberLibraryStatus(state: AppState, programId: string, status: MemberProgramLibraryStatus | undefined): AppState;
@@ -268,6 +270,14 @@ export function markMemberInvitedInState(state: AppState, memberId: string, invi
       member.id === memberId ? { ...member, invitedAt: timestamp } : member
     ),
   };
+}
+
+export function markMembersInvitedByEmailInState(
+  state: AppState,
+  email: string,
+  invitedAtIso?: string,
+): AppState {
+  return applyInviteStampToMembersByEmail(state, email, invitedAtIso ?? new Date().toISOString());
 }
 
 export function deleteMemberInState(state: AppState, memberId: string): AppState {
@@ -965,6 +975,7 @@ export const localAppRepository: AppRepository = {
   deactivateMember: deactivateMemberInState,
   deleteMember: deleteMemberInState,
   markMemberInvited: markMemberInvitedInState,
+  markMembersInvitedByEmail: markMembersInvitedByEmailInState,
   saveProgram: saveProgramInState,
   deleteProgram: deleteProgramInState,
   updateProgramMemberLibraryStatus: updateProgramMemberLibraryStatusInState,

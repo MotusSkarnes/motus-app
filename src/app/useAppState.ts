@@ -70,6 +70,7 @@ import { isMemberAppAccessBlocked, MEMBER_ARCHIVED_APP_MESSAGE } from "../servic
 import {
   ensureAuthSessionForPasswordUpdate,
   ensureMemberAuthLink,
+  type MemberAuthLinkResult,
   establishRecoverySessionFromTokens,
   establishSessionFromAuthBootstrap,
   getSupabaseSessionUser,
@@ -865,7 +866,8 @@ export function useAppState() {
           }
           if (email.includes("@") && memberId) {
             window.sessionStorage.setItem(retryKey, "1");
-            await ensureMemberAuthLink(email, memberId);
+            const linkResult = await ensureMemberAuthLink(email, memberId);
+            applyMemberInviteStampFromAuthLink(email, linkResult);
             await supabaseClient.auth.refreshSession();
             const retryPrograms = await fetchProgramsFromSupabase();
             const retryLogs = await fetchLogsFromSupabase();
@@ -948,19 +950,9 @@ export function useAppState() {
             const remoteForEmail = filterMembersForSessionEmail(mergedMembers, normalizedUserEmail);
             const localForEmail = filterMembersForSessionEmail(prevStripped.members, normalizedUserEmail);
             mergedMembers = remoteForEmail.length > 0 ? remoteForEmail : localForEmail;
-            const bestGoalsForEmail = pickBestPersonalGoals([
-              ...prevStripped.members
-                .filter((member) => member.email.trim().toLowerCase() === normalizedUserEmail)
-                .map((member) => member.personalGoals),
-              ...mergedMembers.map((member) => member.personalGoals),
-            ]);
-            mergedMembers = mergedMembers.map((member) => {
-              const enriched = enrichMemberWithBestProfile(member, mergedMembers);
-              return {
-                ...enriched,
-                personalGoals: bestGoalsForEmail || enriched.personalGoals,
-              };
-            });
+            mergedMembers = mergedMembers.map((member) =>
+              enrichMemberWithBestProfile(member, mergedMembers),
+            );
           }
           if (currentUser?.role === "trainer") {
             // Behold nylig opprettede kunder til sky-lagring er ferdig — ellers forsvinner de ved neste hydrate.
@@ -1260,6 +1252,9 @@ export function useAppState() {
         };
       });
       setIsAuthSessionLoading(false);
+      if (user.role === "member") {
+        void linkActiveMemberSession(user);
+      }
     }
 
     void hydrateSession();
@@ -1309,6 +1304,9 @@ export function useAppState() {
         };
       });
       setIsAuthSessionLoading(false);
+      if (user.role === "member") {
+        void linkActiveMemberSession(user);
+      }
     });
     return () => {
       cancelled = true;
@@ -1433,7 +1431,8 @@ export function useAppState() {
             toLinkableMemberId(supabaseUser.memberId) ??
             toLinkableMemberId(resolvedMemberViewId) ??
             toLinkableMemberId(resolvedSelectedMemberId);
-          await ensureMemberAuthLink(supabaseUser.email, candidateMemberId);
+          const linkResult = await ensureMemberAuthLink(supabaseUser.email, candidateMemberId);
+          applyMemberInviteStampFromAuthLink(supabaseUser.email, linkResult);
           const refreshedUser = await refreshSupabaseSessionUser();
           if (refreshedUser) {
             setAppState((prev) => ({
@@ -1601,7 +1600,8 @@ export function useAppState() {
         toLinkableMemberId(user.memberId) ??
         toLinkableMemberId(resolvedMemberViewId) ??
         toLinkableMemberId(resolvedSelectedMemberId);
-      await ensureMemberAuthLink(user.email, candidateMemberId);
+      const linkResult = await ensureMemberAuthLink(user.email, candidateMemberId);
+      applyMemberInviteStampFromAuthLink(user.email, linkResult);
       const refreshedUser = await refreshSupabaseSessionUser();
       if (refreshedUser) {
         user.memberId = refreshedUser.memberId;
@@ -1801,6 +1801,24 @@ export function useAppState() {
 
   function markMemberInvited(memberId: string, invitedAtIso?: string) {
     setAppState((prev) => repository.markMemberInvited(prev, memberId, invitedAtIso));
+  }
+
+  function applyMemberInviteStampFromAuthLink(email: string, linkResult: MemberAuthLinkResult) {
+    if (!linkResult.invitedAt && !linkResult.invitedRowsStamped) return;
+    const invitedAtIso = linkResult.invitedAt ?? new Date().toISOString();
+    setAppState((prev) => repository.markMembersInvitedByEmail(prev, email, invitedAtIso));
+  }
+
+  async function linkActiveMemberSession(user: {
+    role: string;
+    email: string;
+    memberId?: string;
+    id: string;
+  }) {
+    if (user.role !== "member" || !isSupabaseConfigured) return;
+    const candidateMemberId = toLinkableMemberId(user.memberId) ?? undefined;
+    const linkResult = await ensureMemberAuthLink(user.email, candidateMemberId);
+    applyMemberInviteStampFromAuthLink(user.email, linkResult);
   }
 
   function saveProgramForMember(input: SaveProgramInput) {

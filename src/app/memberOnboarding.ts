@@ -363,13 +363,25 @@ export function findMembersByEmail(member: Member, allMembers: Member[]): Member
   return allMembers.filter((row) => row.email.trim().toLowerCase() === email);
 }
 
-function pickPreferredNonEmptyProfileField(values: string[]): string {
-  const sorted = [...values].sort((a, b) => b.trim().length - a.trim().length);
+function pickPreferredNonEmptyProfileField(values: Array<string | undefined | null>): string {
+  const sorted = values
+    .filter((value): value is string => typeof value === "string")
+    .sort((a, b) => b.trim().length - a.trim().length);
   for (const value of sorted) {
     const trimmed = value.trim();
     if (trimmed) return trimmed;
   }
   return "";
+}
+
+/** Kanonisk rad først (siste lagring); fall tilbake til andre duplikat-rader kun om feltet er tomt der. */
+function pickProfileScalarField(
+  canonicalValue: string | undefined,
+  candidates: Array<string | undefined | null>,
+): string {
+  const fromCanonical = String(canonicalValue ?? "").trim();
+  if (fromCanonical) return fromCanonical;
+  return pickPreferredNonEmptyProfileField(candidates);
 }
 
 /** Slå sammen profil fra duplikat-rader slik at lagret skjema ikke «forsvinner». */
@@ -378,12 +390,12 @@ export function enrichMemberWithBestProfile(member: Member, allMembers: Member[]
   if (!candidates.length) return member;
   const canonical = pickCanonicalMemberRowForProfile(member, allMembers);
   const personalGoals = pickBestPersonalGoals(candidates.map((row) => row.personalGoals));
-  const phone = pickPreferredNonEmptyProfileField(candidates.map((row) => row.phone));
-  const birthDate = pickPreferredNonEmptyProfileField(candidates.map((row) => row.birthDate));
-  const goal = pickPreferredNonEmptyProfileField(candidates.map((row) => row.goal));
-  const focus = pickPreferredNonEmptyProfileField(candidates.map((row) => row.focus));
-  const injuries = pickPreferredNonEmptyProfileField(candidates.map((row) => row.injuries));
-  const name = pickPreferredNonEmptyProfileField(candidates.map((row) => row.name));
+  const phone = pickProfileScalarField(canonical.phone, candidates.map((row) => row.phone));
+  const birthDate = pickProfileScalarField(canonical.birthDate, candidates.map((row) => row.birthDate));
+  const goal = pickProfileScalarField(canonical.goal, candidates.map((row) => row.goal));
+  const focus = pickProfileScalarField(canonical.focus, candidates.map((row) => row.focus));
+  const injuries = pickProfileScalarField(canonical.injuries, candidates.map((row) => row.injuries));
+  const name = pickProfileScalarField(canonical.name, candidates.map((row) => row.name));
   return {
     ...canonical,
     ...(personalGoals ? { personalGoals } : {}),

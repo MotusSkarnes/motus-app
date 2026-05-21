@@ -1,5 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("../services/supabaseClient", () => ({
+  isSupabaseConfigured: false,
+  supabaseClient: null,
+}));
 import { INSPIRATION_CHANGED_EVENT, INSPIRATION_STORAGE_KEY } from "./inspirationStorage";
 import { useNotifications } from "./useNotifications";
 import type { MemberTab, PeriodSchedulePlan, TrainingProgram, WorkoutLog } from "./types";
@@ -20,6 +25,10 @@ function makeLog(overrides: Partial<WorkoutLog> = {}): WorkoutLog {
 }
 
 describe("useNotifications workout comment alerts", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
   afterEach(() => {
     window.localStorage.removeItem(INSPIRATION_STORAGE_KEY);
     window.localStorage.removeItem("motus.notifications.memberInspirationBaselineAt");
@@ -30,6 +39,11 @@ describe("useNotifications workout comment alerts", () => {
     window.localStorage.removeItem("motus.notifications.trainerOperationalSeenKey");
     window.localStorage.removeItem("motus.notifications.trainerOpenedAlertIds");
     window.localStorage.removeItem("motus.notifications.memberDismissedCheckInMonths");
+    window.localStorage.removeItem("motus.notifications.memberSeenAt");
+    window.localStorage.removeItem("motus.notifications.memberSeenProgramIds");
+    window.localStorage.removeItem("motus.notifications.memberSeenWorkoutCommentKeys");
+    window.localStorage.removeItem("motus.notifications.memberOpenedAlertIds");
+    window.localStorage.removeItem("motus.notifications.memberSeenPeriodPlanKeys");
   });
 
   it("counts unread workout comment alerts for completed logs", () => {
@@ -80,13 +94,12 @@ describe("useNotifications workout comment alerts", () => {
     expect(result.current.memberVisibleAlerts.length).toBe(0);
   });
 
-  it("sorts newest trainer message alerts first among unread", () => {
-    window.localStorage.setItem("motus.notifications.trainerBaselineAt", "1");
+  it("sorts newest trainer message alerts first among unread", async () => {
     const members = [
       { id: "member-1", name: "Kari", email: "kari@example.com", invitedAt: "2026-01-01" } as never,
       { id: "member-2", name: "Ola", email: "ola@example.com", invitedAt: "2026-01-01" } as never,
     ];
-    const messages = [
+    const initialMessages = [
       {
         id: "msg-old",
         memberId: "member-1",
@@ -94,37 +107,50 @@ describe("useNotifications workout comment alerts", () => {
         text: "Gammel",
         createdAt: "10.05.2026 kl 09:00",
       },
-      {
-        id: "msg-new",
-        memberId: "member-2",
-        sender: "member" as const,
-        text: "Nyeste",
-        createdAt: "15.05.2026 kl 14:30",
-      },
     ];
 
-    const { result } = renderHook(() =>
-      useNotifications({
-        messages,
+    const { result, rerender } = renderHook((props) => useNotifications(props), {
+      initialProps: {
+        messages: initialMessages,
         programs: [],
         logs: [],
         members,
         memberViewId: "member-1",
         setMemberTab: () => {},
-        currentUserRole: "trainer",
-      }),
-    );
+        currentUserRole: "trainer" as const,
+      },
+    });
 
-    expect(result.current.trainerVisibleAlerts[0]?.id).toBe("trainer-msg-msg-new");
-    expect(result.current.trainerVisibleAlerts[0]?.isUnread).toBe(true);
+    await waitFor(() => {
+      expect(result.current.trainerUnreadCount).toBe(0);
+    });
+
+    rerender({
+      messages: [
+        ...initialMessages,
+        {
+          id: "msg-new",
+          memberId: "member-2",
+          sender: "member" as const,
+          text: "Nyeste",
+          createdAt: "15.05.2026 kl 14:30",
+        },
+      ],
+      programs: [],
+      logs: [],
+      members,
+      memberViewId: "member-1",
+      currentUserRole: "trainer",
+      setMemberTab: () => {},
+    });
+
+    await waitFor(() => {
+      expect(result.current.trainerVisibleAlerts[0]?.id).toBe("trainer-msg-msg-new");
+      expect(result.current.trainerVisibleAlerts[0]?.isUnread).toBe(true);
+    });
   });
 
-  it("keeps trainer alerts unread until opened", () => {
-    window.localStorage.setItem("motus.notifications.trainerBaselineAt", "1");
-    window.localStorage.setItem(
-      "motus.notifications.trainerSeenAt",
-      String(new Date("2026-05-15T10:00:00.000Z").getTime()),
-    );
+  it("keeps trainer alerts unread until opened", async () => {
     const members = [
       { id: "member-1", name: "Kari", email: "kari@example.com", invitedAt: "2026-01-01" } as never,
     ];
@@ -138,19 +164,35 @@ describe("useNotifications workout comment alerts", () => {
       },
     ];
 
-    const { result } = renderHook(() =>
-      useNotifications({
-        messages,
+    const { result, rerender } = renderHook((props) => useNotifications(props), {
+      initialProps: {
+        messages: [],
         programs: [],
         logs: [],
         members,
         memberViewId: "member-1",
         setMemberTab: () => {},
-        currentUserRole: "trainer",
-      }),
-    );
+        currentUserRole: "trainer" as const,
+      },
+    });
 
-    expect(result.current.trainerUnreadCount).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(window.localStorage.getItem("motus.notifications.trainerBaselineAt")).toBeTruthy();
+    });
+
+    rerender({
+      messages,
+      programs: [],
+      logs: [],
+      members,
+      memberViewId: "member-1",
+      currentUserRole: "trainer",
+      setMemberTab: () => {},
+    });
+
+    await waitFor(() => {
+      expect(result.current.trainerUnreadCount).toBeGreaterThan(0);
+    });
     act(() => {
       result.current.handleTrainerBellToggle();
     });
@@ -380,6 +422,33 @@ describe("useNotifications workout comment alerts", () => {
     expect(result.current.trainerVisibleAlerts.some((a) => a.kind === "member-form" && a.title === "Nytt oppstartsskjema")).toBe(true);
   });
 
+  it("does not flag activated members without invited_at as missing invite", async () => {
+    const goals = `MOTUS_PROFILE_V1:${JSON.stringify({
+      onboarding: { completedAt: "2026-05-01T12:00:00.000Z", skipped: false },
+      onboardingCompletedAt: "2026-05-01T12:00:00.000Z",
+    })}`;
+    const members = [
+      { id: "m-kari", name: "Kari", email: "kari@test.no", invitedAt: "", isActive: true, personalGoals: goals } as never,
+      { id: "auth-kari", name: "Kari", email: "kari@test.no", invitedAt: "", isActive: true, personalGoals: "" } as never,
+    ];
+
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [],
+        logs: [],
+        members,
+        memberViewId: "member-1",
+        currentUserRole: "trainer",
+        setMemberTab: () => {},
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.trainerVisibleAlerts.filter((a) => a.kind === "missing-invite")).toHaveLength(0);
+    });
+  });
+
   it("excludes deactivated members from operational trainer alerts", () => {
     const members = [
       { id: "member-1", name: "Ola", email: "ola@example.com", isActive: false, invitedAt: "" } as never,
@@ -401,7 +470,7 @@ describe("useNotifications workout comment alerts", () => {
   });
 
   it("counts unread inspiration alerts when a new inspo item is published", async () => {
-    window.localStorage.setItem("motus.notifications.memberInspirationBaselineAt", String(Date.now()));
+    window.localStorage.setItem("motus.notifications.memberInspirationBaselineAt", "1");
     window.localStorage.setItem("motus.notifications.memberSeenInspirationIds", JSON.stringify(["default-recipe-1"]));
 
     const { result } = renderHook(() =>
@@ -446,7 +515,7 @@ describe("useNotifications workout comment alerts", () => {
   });
 
   it("keeps unread inspiration visible after opening the bell", async () => {
-    window.localStorage.setItem("motus.notifications.memberInspirationBaselineAt", String(Date.now()));
+    window.localStorage.setItem("motus.notifications.memberInspirationBaselineAt", "1");
     window.localStorage.setItem("motus.notifications.memberSeenInspirationIds", JSON.stringify([]));
 
     window.localStorage.setItem(
@@ -662,8 +731,7 @@ describe("useNotifications period plan alerts", () => {
     });
 
     expect(memberTab).toBe("overview");
-    const updated = result.current.memberVisibleAlerts.find((item) => item.kind === "period-plan");
-    expect(updated?.isUnread).toBe(false);
+    expect(result.current.memberVisibleAlerts.find((item) => item.kind === "period-plan")).toBeUndefined();
     expect(result.current.memberUnreadCount).toBe(0);
   });
 });
