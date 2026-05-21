@@ -74,6 +74,8 @@ export type FinishWorkoutInput = {
 
 export type StartWorkoutModeOptions = {
   suggestedWeightByProgramExerciseId?: Record<string, string>;
+  /** PT live-økt: logg alltid på valgt kunde (overstyrer program.memberId ved avvik). */
+  memberId?: string;
 };
 
 export type StartCustomWorkoutInput = {
@@ -414,11 +416,12 @@ export function startWorkoutModeInState(state: AppState, programId: string, opti
     suggestedWeightByProgramExerciseId: options?.suggestedWeightByProgramExerciseId,
   });
 
+  const memberId = options?.memberId?.trim() || program.memberId;
   return {
     ...state,
     workoutMode: {
       programId,
-      memberId: program.memberId,
+      memberId,
       programTitle: program.title,
       results: expandedResults,
       note: "",

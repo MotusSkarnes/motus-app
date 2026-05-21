@@ -1969,7 +1969,9 @@ export function useAppState() {
   }
 
   function finishWorkoutMode(input?: FinishWorkoutInput) {
+    let finishAsTrainer = false;
     setAppState((prev) => {
+      finishAsTrainer = prev.currentUser?.role === "trainer";
       const programId = prev.workoutMode?.programId ?? "";
       const memberIds = [
         prev.workoutMode?.memberId,
@@ -1982,7 +1984,9 @@ export function useAppState() {
       if (programId) clearPausedWorkoutForProgram(memberIds[0] ?? "", programId);
       return next;
     });
-    setMemberTab("progress");
+    if (!finishAsTrainer) {
+      setMemberTab("progress");
+    }
   }
 
   function logGroupWorkout(input: LogGroupWorkoutInput) {

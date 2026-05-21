@@ -3954,15 +3954,21 @@ export const supabaseAppRepository: AppRepository = {
     return localAppRepository.cancelWorkoutMode(state);
   },
   finishWorkoutMode(state: AppState, input?: FinishWorkoutInput): AppState {
+    const hadWorkout = Boolean(state.workoutMode);
+    const priorLogIds = new Set(state.logs.map((log) => log.id));
     const nextState = localAppRepository.finishWorkoutMode(state, input);
-    const latestLog = nextState.logs[0];
-    if (latestLog && latestLog.id !== state.logs[0]?.id) {
+    const finishedLog = hadWorkout
+      ? nextState.logs.find((log) => !priorLogIds.has(log.id)) ?? null
+      : null;
+    if (finishedLog?.memberId?.trim()) {
       void persistWorkoutLog(
-        latestLog,
-        buildMemberPersistenceHints(state, latestLog.memberId, { programTitle: latestLog.programTitle }),
+        finishedLog,
+        buildMemberPersistenceHints(state, finishedLog.memberId, { programTitle: finishedLog.programTitle }),
       ).then((result) => {
         input?.onPersisted?.(result);
       });
+    } else if (hadWorkout && !finishedLog?.memberId?.trim()) {
+      input?.onPersisted?.({ ok: false, message: "Mangler kunde for økten. Velg kunden på nytt og prøv igjen." });
     }
     return nextState;
   },

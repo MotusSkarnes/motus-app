@@ -41,7 +41,10 @@ export type LiveWorkoutSessionModalProps = {
   deferWorkoutExerciseGroup: (programExerciseId: string) => void;
   updateWorkoutModeNote: (note: string) => void;
   updateWorkoutExerciseNote: (programExerciseId: string, note: string) => void;
-  finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
+  finishWorkoutMode: (input?: {
+    reflection?: WorkoutReflection;
+    onPersisted?: (result: { ok: boolean; message?: string }) => void;
+  }) => void;
   cancelWorkoutMode: () => void;
   /** Lagrer utkast og lukker økt (medlem). Fallback: cancelWorkoutMode. */
   onDismissWorkout?: () => void;
@@ -761,8 +764,9 @@ export function LiveWorkoutSessionModal({
                   onClick={() => {
                     if (isSavingWorkout) return;
                     setIsSavingWorkout(true);
-                    finishWorkoutMode();
-                    window.setTimeout(() => setIsSavingWorkout(false), 600);
+                    finishWorkoutMode({
+                      onPersisted: () => setIsSavingWorkout(false),
+                    });
                   }}
                 >
                   {isSavingWorkout ? "Lagrer..." : "Lagre økt på kunden"}
@@ -784,8 +788,10 @@ export function LiveWorkoutSessionModal({
                   }
                   if (isSavingWorkout) return;
                   setIsSavingWorkout(true);
-                  finishWorkoutMode({ reflection: buildWorkoutReflection() });
-                  window.setTimeout(() => setIsSavingWorkout(false), 600);
+                  finishWorkoutMode({
+                    reflection: buildWorkoutReflection(),
+                    onPersisted: () => setIsSavingWorkout(false),
+                  });
                 }}
               >
                 {showWorkoutReflection ? (isSavingWorkout ? "Lagrer..." : "Lagre økt") : "Avslutt økt"}

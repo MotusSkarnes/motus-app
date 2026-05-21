@@ -807,7 +807,6 @@ function pickFirstName(value: unknown): string {
   /** Unngå å laste notatutkast på nytt når `selectedMemberId` byttes mellom duplikat-rader (samme kunde). */
   const followUpDraftHydratedIdentityRef = useRef<string | null>(null);
   const followUpLastSyncedFromLogRef = useRef(false);
-  const customerSavedProgramsRef = useRef<HTMLDivElement | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<"all" | "red" | "orange" | "green">("all");
   const [prioritySort, setPrioritySort] = useState<"highFirst" | "lowFirst">("highFirst");
   const [priorityMemberTypeSort, setPriorityMemberTypeSort] = useState<"none" | "ptFirst" | "premiumFirst" | "standardFirst">("none");
@@ -842,6 +841,7 @@ function pickFirstName(value: unknown): string {
   const [workoutSortOrder, setWorkoutSortOrder] = useState<"newest" | "oldest">("newest");
   const [trainerWorkoutCommentDraft, setTrainerWorkoutCommentDraft] = useState("");
   const [trainerWorkoutCommentStatus, setTrainerWorkoutCommentStatus] = useState<string | null>(null);
+  const [trainerLiveWorkoutSaveStatus, setTrainerLiveWorkoutSaveStatus] = useState<string | null>(null);
   useAutoClearStatus(trainerChatSendStatus, () => setTrainerChatSendStatus(null), getStatusClearDelayMs(trainerChatSendStatus));
   useAutoClearStatus(templateAssignStatus, () => setTemplateAssignStatus(null), getStatusClearDelayMs(templateAssignStatus));
   useAutoClearStatus(periodPlanStatus, () => setPeriodPlanStatus(null), getStatusClearDelayMs(periodPlanStatus));
@@ -859,6 +859,7 @@ function pickFirstName(value: unknown): string {
   useAutoClearStatus(followUpSaveStatus, () => setFollowUpSaveStatus(null), getStatusClearDelayMs(followUpSaveStatus));
   useAutoClearStatus(exerciseFormStatus, () => setExerciseFormStatus(null), getStatusClearDelayMs(exerciseFormStatus));
   useAutoClearStatus(trainerWorkoutCommentStatus, () => setTrainerWorkoutCommentStatus(null), getStatusClearDelayMs(trainerWorkoutCommentStatus));
+  useAutoClearStatus(trainerLiveWorkoutSaveStatus, () => setTrainerLiveWorkoutSaveStatus(null), getStatusClearDelayMs(trainerLiveWorkoutSaveStatus));
   useToastStatus(trainerChatSendStatus, { title: "Meldinger", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   useToastStatus(programSaveStatus, { title: "Treningsprogram", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   useToastStatus(inviteTrainerStatus, { title: "PT-invitasjon", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
@@ -867,6 +868,7 @@ function pickFirstName(value: unknown): string {
   useToastStatus(memberLinkStatus, { title: "Medlemskobling", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   useToastStatus(exerciseFormStatus, { title: "Øvelse", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   useToastStatus(trainerWorkoutCommentStatus, { title: "Øktkommentar", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
+  useToastStatus(trainerLiveWorkoutSaveStatus, { title: "Live økt", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
   const selectedMemberHasMessagingAccess = selectedMember
     ? selectedMember.customerType === "PT-kunde" || selectedMember.membershipType === "Premium"
@@ -1239,11 +1241,36 @@ function pickFirstName(value: unknown): string {
       window.alert("Programmet har ingen øvelser.");
       return;
     }
+    if (!selectedMemberId) {
+      window.alert("Velg en kunde før du starter live økt.");
+      return;
+    }
     if (workoutMode) {
       if (!window.confirm("Det pågår allerede en økt. Vil du avbryte den uten å lagre og starte denne?")) return;
       cancelWorkoutMode();
     }
-    startWorkoutMode(program.id, buildDefaultStartWorkoutOptions(program, exercises));
+    startWorkoutMode(program.id, {
+      ...buildDefaultStartWorkoutOptions(program, exercises),
+      memberId: selectedMemberId,
+    });
+  }
+
+  function handleFinishTrainerLiveWorkout(input?: {
+    reflection?: WorkoutReflection;
+    onPersisted?: (result: { ok: boolean; message?: string }) => void;
+  }) {
+    const customerName = selectedMemberProfile?.name ?? selectedMember?.name ?? "kunden";
+    finishWorkoutMode({
+      ...input,
+      onPersisted: (result) => {
+        if (result.ok) {
+          setTrainerLiveWorkoutSaveStatus(`Økten er lagret på ${customerName}.`);
+        } else {
+          setTrainerLiveWorkoutSaveStatus(result.message?.trim() || "Kunne ikke lagre økten i sky. Prøv igjen.");
+        }
+        input?.onPersisted?.(result);
+      },
+    });
   }
 
   const selectedPeriodPlans = useMemo(() => {
@@ -1624,16 +1651,6 @@ function pickFirstName(value: unknown): string {
     if (trainerTab !== "programs") return;
     setProgramExerciseCategoryFilter(categoryForSubTab(programsSubTab));
   }, [programsSubTab, trainerTab]);
-
-  useEffect(() => {
-    if (trainerTab !== "customers" || customerSubTab !== "programs" || customerProgramBuilderFocus !== "training") {
-      return;
-    }
-    const frame = window.requestAnimationFrame(() => {
-      customerSavedProgramsRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [trainerTab, customerSubTab, customerProgramBuilderFocus, selectedMemberId]);
 
   useEffect(() => {
     if (trainerTab !== "exerciseBank") return;
@@ -4944,49 +4961,6 @@ function pickFirstName(value: unknown): string {
                   </div>
                 </div>
 
-                {customerSubTab === "programs" && customerProgramBuilderFocus === "training" ? (
-                  <div
-                    ref={customerSavedProgramsRef}
-                    className="scroll-mt-4 rounded-xl border-2 border-teal-300/70 bg-gradient-to-br from-teal-50/90 to-white p-3 sm:p-4 space-y-2 shadow-sm ring-1 ring-teal-100"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-base font-bold text-slate-900">Lagrede programmer</div>
-                      <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-900">
-                        {visibleSelectedPrograms.length}
-                      </span>
-                    </div>
-                    {visibleSelectedPrograms.length === 0 ? (
-                      <p className="text-sm text-slate-600">Ingen lagret ennå — opprett lenger ned under «Lag treningsprogram».</p>
-                    ) : (
-                      <div className="max-h-[min(360px,45vh)] space-y-2 overflow-auto pr-1">
-                        {visibleSelectedPrograms.map((program) => (
-                          <div key={program.id} className="rounded-xl border bg-white p-2.5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium text-slate-800 truncate">{program.title}</div>
-                              <div className="text-[11px] text-slate-500">{program.exercises.length} øvelser · {program.createdAt}</div>
-                            </div>
-                            <div className="mt-2 flex flex-wrap gap-1.5">
-                              <OutlineButton
-                                type="button"
-                                onClick={() => handleTrainerStartLiveWorkout(program)}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-[11px]"
-                                aria-label={`Start live økt med ${program.title}`}
-                                title="Start live økt (loggføres på kunden)"
-                              >
-                                <Play className="h-3 w-3 shrink-0" />
-                                Live økt
-                              </OutlineButton>
-                              <OutlineButton onClick={() => startEditProgram(program)} className="px-2 py-1 text-[11px]">Rediger</OutlineButton>
-                              <OutlineButton onClick={() => handlePrintProgram(program)} className="px-2 py-1 text-[11px]">PDF</OutlineButton>
-                              <OutlineButton onClick={() => handleDeleteProgram(program.id)} className="px-2 py-1 text-[11px]">Slett</OutlineButton>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : null}
-
                 {customerSubTab === "overview" ? (
                   <div className="space-y-4">
                     <div className="grid gap-4 xl:grid-cols-2">
@@ -5156,6 +5130,46 @@ function pickFirstName(value: unknown): string {
                         </button>
                       </div>
                     </div>
+
+                    {customerProgramBuilderFocus === "training" ? (
+                    <div className="rounded-xl border-2 border-slate-200 bg-white p-3 sm:p-4 space-y-2 shadow-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-base font-semibold text-slate-900">Lagrede programmer</div>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                          {visibleSelectedPrograms.length}
+                        </span>
+                      </div>
+                      {visibleSelectedPrograms.length === 0 ? (
+                        <p className="text-sm text-slate-500">Ingen lagret ennå — opprett under «Lag treningsprogram» lenger ned.</p>
+                      ) : (
+                        <div className="max-h-[min(360px,45vh)] space-y-2 overflow-auto pr-1">
+                          {visibleSelectedPrograms.map((program) => (
+                            <div key={program.id} className="rounded-xl border bg-slate-50/80 p-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium text-slate-800 truncate">{program.title}</div>
+                                <div className="text-[11px] text-slate-500">{program.exercises.length} øvelser · {program.createdAt}</div>
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                <OutlineButton
+                                  type="button"
+                                  onClick={() => handleTrainerStartLiveWorkout(program)}
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px]"
+                                  aria-label={`Start live økt med ${program.title}`}
+                                  title="Start live økt (loggføres på kunden)"
+                                >
+                                  <Play className="h-3 w-3 shrink-0" />
+                                  Live økt
+                                </OutlineButton>
+                                <OutlineButton onClick={() => startEditProgram(program)} className="px-2 py-1 text-[11px]">Rediger</OutlineButton>
+                                <OutlineButton onClick={() => handlePrintProgram(program)} className="px-2 py-1 text-[11px]">PDF</OutlineButton>
+                                <OutlineButton onClick={() => handleDeleteProgram(program.id)} className="px-2 py-1 text-[11px]">Slett</OutlineButton>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    ) : null}
 
                     {customerProgramBuilderFocus === "period" ? (
                     <div className="rounded-xl border-2 border-teal-200/80 bg-white p-3 sm:p-5 space-y-4 shadow-sm">
@@ -6909,7 +6923,7 @@ function pickFirstName(value: unknown): string {
       deferWorkoutExerciseGroup={deferWorkoutExerciseGroup}
       updateWorkoutModeNote={updateWorkoutModeNote}
       updateWorkoutExerciseNote={updateWorkoutExerciseNote}
-      finishWorkoutMode={finishWorkoutMode}
+      finishWorkoutMode={handleFinishTrainerLiveWorkout}
       cancelWorkoutMode={cancelWorkoutMode}
     />
     <ConfirmDialog

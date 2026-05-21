@@ -9,6 +9,7 @@ import {
   removeWorkoutLogResultInState,
   setWorkoutLogResultsInState,
   startCustomWorkoutInState,
+  startWorkoutModeInState,
 } from "./appRepository";
 
 function createBaseState(): AppState {
@@ -182,6 +183,12 @@ describe("appRepository workout log guards", () => {
     const next = finishWorkoutModeInState(state);
     expect(next.logs).toHaveLength(1);
     expect(next.logs[0].results).toHaveLength(1);
+  });
+
+  it("uses memberId override when PT starts live workout for selected customer", () => {
+    const state = createBaseState();
+    const started = startWorkoutModeInState(state, "program-1", { memberId: "member-canonical" });
+    expect(started.workoutMode?.memberId).toBe("member-canonical");
   });
 
   it("logs a custom workout even if its temporary program is gone before finish", () => {
