@@ -2,6 +2,7 @@ import { Check } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MOTUS } from "../app/data";
 import { useDeadlineIntervalTimer } from "../app/useDeadlineIntervalTimer";
+import { useScreenWakeLock } from "../app/useScreenWakeLock";
 import { expandProgramExercisesToWorkoutResults, isLegacyIntervalCooldownDrag, parseProgramSetCount } from "../app/programBlocks";
 import { GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../app/ui";
 import type { Exercise, TrainingProgram, WorkoutExerciseResult, WorkoutReflection } from "../app/types";
@@ -242,6 +243,7 @@ export function IntervalWorkoutSessionModal({
   onSaved,
   logIntervalWorkout,
 }: IntervalWorkoutSessionModalProps) {
+  useScreenWakeLock(open);
   const intervalProgramSteps = useMemo(() => (program ? buildIntervalProgramSteps(program) : []), [program]);
 
   const [isRunning, setIsRunning] = useState(false);

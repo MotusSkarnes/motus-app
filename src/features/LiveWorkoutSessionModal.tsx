@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, ChevronRight, Plus, Repeat2, SkipForward, TimerReset, X } from "lucide-react";
 import { remainingSecondsUntilDeadline } from "../app/intervalTimerDeadline";
+import { useScreenWakeLock } from "../app/useScreenWakeLock";
 import { playWorkoutRestTone, primeWorkoutRestAudio } from "../app/workoutRestAudio";
 import { WorkoutCompactSetTable } from "./LiveWorkoutCompactSets";
 import { MOTUS } from "../app/data";
@@ -105,6 +106,8 @@ export function LiveWorkoutSessionModal({
   const [restCountdown, setRestCountdown] = useState<RestCountdownState | null>(null);
   const completedCountByGroupRef = useRef<Record<string, number>>({});
   const lastRestBeepSecondRef = useRef<number | null>(null);
+
+  useScreenWakeLock(Boolean(workoutMode));
 
   useEffect(() => {
     if (!workoutMode || !restCountdownEnabled) return;
