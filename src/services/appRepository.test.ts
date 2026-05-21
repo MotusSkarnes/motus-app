@@ -191,6 +191,38 @@ describe("appRepository workout log guards", () => {
     expect(started.workoutMode?.memberId).toBe("member-canonical");
   });
 
+  it("saves finished live workout on selected customer, not program template memberId", () => {
+    const state = createBaseState();
+    state.programs[0] = {
+      ...state.programs[0],
+      memberId: "member-program-owner",
+      exercises: [{ id: "pex-1", exerciseId: "ex-1", exerciseName: "Benk", sets: "1", reps: "8", weight: "50", restSeconds: "90", notes: "" }],
+    };
+    const started = startWorkoutModeInState(state, "program-1", { memberId: "member-canonical" });
+    const withResult = {
+      ...started,
+      workoutMode: {
+        ...started.workoutMode!,
+        results: [
+          {
+            exerciseId: "pex-1-set-1",
+            programExerciseId: "pex-1",
+            setNumber: 1,
+            exerciseName: "Benk",
+            plannedSets: "1",
+            plannedReps: "8",
+            plannedWeight: "50",
+            performedWeight: "50",
+            performedReps: "8",
+            completed: true,
+          },
+        ],
+      },
+    };
+    const next = finishWorkoutModeInState(withResult);
+    expect(next.logs[0]?.memberId).toBe("member-canonical");
+  });
+
   it("logs a custom workout even if its temporary program is gone before finish", () => {
     const state = createBaseState();
     const started = startCustomWorkoutInState(state, {

@@ -3967,8 +3967,13 @@ export const supabaseAppRepository: AppRepository = {
       ).then((result) => {
         input?.onPersisted?.(result);
       });
-    } else if (hadWorkout && !finishedLog?.memberId?.trim()) {
-      input?.onPersisted?.({ ok: false, message: "Mangler kunde for økten. Velg kunden på nytt og prøv igjen." });
+    } else if (hadWorkout) {
+      input?.onPersisted?.({
+        ok: false,
+        message: finishedLog
+          ? "Mangler kunde for økten. Velg kunden på nytt og prøv igjen."
+          : "Kunne ikke opprette øktloggen. Velg kunden på nytt og prøv igjen.",
+      });
     }
     return nextState;
   },

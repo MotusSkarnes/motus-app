@@ -597,7 +597,7 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
   const current = state.workoutMode;
   if (!current) return state;
   const program = state.programs.find((p) => p.id === current.programId);
-  const memberId = program?.memberId ?? current.memberId?.trim() ?? "";
+  const memberId = current.memberId?.trim() || program?.memberId?.trim() || "";
   if (!memberId) return state;
   const programTitle = (program?.title ?? current.programTitle?.trim()) || "Egen økt";
 
@@ -634,7 +634,7 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
     if (newEstimated <= previousEstimated) return;
     if (!bestCelebration || newEstimated - previousEstimated > bestCelebration.newEstimated1RM - bestCelebration.previousEstimated1RM) {
       bestCelebration = {
-        memberId: program.memberId,
+        memberId,
         exerciseName: result.exerciseName,
         previousEstimated1RM: previousEstimated,
         newEstimated1RM: newEstimated,
