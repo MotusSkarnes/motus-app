@@ -1,9 +1,9 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemberPortal } from "./MemberPortal";
 import { TrainerPortal } from "./TrainerPortal";
-import type { Exercise, Member, ProgramExercise, TrainingProgram } from "../app/types";
+import type { Exercise, Member, ProgramExercise, TrainingProgram, WorkoutLog } from "../app/types";
 
 function createMember(input: Partial<Member>): Member {
   return {
@@ -59,6 +59,18 @@ function createProgram(input: Partial<TrainingProgram>): TrainingProgram {
     notes: "",
     createdAt: "23.04.2026",
     exercises: [baseProgramExercise],
+    ...input,
+  };
+}
+
+function createWorkoutLog(input: Partial<WorkoutLog>): WorkoutLog {
+  return {
+    id: "log-1",
+    memberId: "m1",
+    programTitle: "17. mai",
+    date: "17.05.2026",
+    status: "Fullført",
+    results: [],
     ...input,
   };
 }
@@ -121,6 +133,53 @@ describe("Stability regressions", () => {
 
     expect(screen.getByText("Relatert program")).toBeInTheDocument();
     expect(screen.queryByText("Skal ikke vises")).not.toBeInTheDocument();
+  });
+
+  it("shows a hidden badge celebration for unlocked badges that are not seen yet", async () => {
+    render(
+      <MemberPortal
+        members={[createMember({ id: "m1", email: "member@example.com" })]}
+        currentUserRole="member"
+        currentUserEmail="member@example.com"
+        currentUserMemberId="m1"
+        programs={[]}
+        logs={[createWorkoutLog({})]}
+        messages={[]}
+        memberViewId="m1"
+        memberTab="overview"
+        setMemberTab={vi.fn()}
+        updateMember={vi.fn()}
+        memberAvatarUrl=""
+        setMemberAvatarUrl={vi.fn()}
+        exercises={[baseExercise]}
+        sendMemberMessage={vi.fn()}
+        workoutMode={null}
+        startWorkoutMode={vi.fn()}
+        startCustomWorkout={vi.fn()}
+        saveProgramForMember={vi.fn()}
+        deleteProgramById={vi.fn()}
+        updateProgramMemberLibraryStatus={vi.fn()}
+        updateWorkoutExerciseResult={vi.fn()}
+        replaceWorkoutExerciseGroup={vi.fn()}
+        removeWorkoutLogResult={vi.fn()}
+        setWorkoutLogResults={vi.fn()}
+        updateWorkoutModeNote={vi.fn()}
+        finishWorkoutMode={vi.fn()}
+        logGroupWorkout={vi.fn()}
+        logIntervalWorkout={vi.fn()}
+        logCompletedPlanEntry={vi.fn()}
+        removeGroupWorkoutLog={vi.fn()}
+        removeCompletedPlanEntryLog={vi.fn()}
+        cancelWorkoutMode={vi.fn()}
+        workoutCelebration={null}
+        dismissWorkoutCelebration={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Skjult badge låst opp")).toBeInTheDocument();
+    });
+    expect(screen.getByText("17. mai-økt")).toBeInTheDocument();
   });
 
   it("blocks saving programs while trainer is in local demo session", async () => {

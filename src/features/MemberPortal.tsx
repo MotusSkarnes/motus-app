@@ -2968,18 +2968,12 @@ export function MemberPortal(props: MemberPortalProps) {
     if (baseline?.memberId === activeMemberId) return;
     hiddenBadgeUnlockedBaselineRef.current = {
       memberId: activeMemberId,
-      badgeIds: new Set(unlockedSecretBadgeIds),
+      badgeIds: new Set(unlockedSecretBadgeIds.filter((badgeId) => seenHiddenBadgeIds.has(badgeId))),
     };
-    const previouslyUnlockedAndUnseen = unlockedSecretBadgeIds.filter((badgeId) => !seenHiddenBadgeIds.has(badgeId));
-    if (!previouslyUnlockedAndUnseen.length) return;
-    const nextSeen = Array.from(new Set([...seenHiddenBadgeIds, ...previouslyUnlockedAndUnseen]));
-    setLocallySeenHiddenBadgeIds((previous) => Array.from(new Set([...previous, ...previouslyUnlockedAndUnseen])));
-    persistMemberUiPrefs({ seenHiddenBadgeIds: nextSeen });
   }, [
     activeMemberId,
     isMemberLimited,
     memberBadgeCollection.allBadges,
-    persistMemberUiPrefs,
     seenHiddenBadgeIds,
   ]);
 

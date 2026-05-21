@@ -303,6 +303,7 @@ export function useNotifications({
   const lastMergedTrainerRemoteUpdatedAtRef = useRef(0);
 
   const buildMemberNotificationSnapshot = useCallback((): MemberNotificationPreferences => {
+    const existingPreferences = readMemberNotificationPreferencesFromPersonalGoals(memberPersonalGoals);
     return {
       version: MEMBER_NOTIFICATION_PREFS_VERSION,
       memberAlertsSeenAt,
@@ -313,9 +314,12 @@ export function useNotifications({
       seenMemberPeriodPlanKeys,
       dismissedMemberCheckInMonths,
       memberInspirationBaselineAt: readMemberInspirationBaselineAt(),
+      seenHiddenBadgeIds: existingPreferences?.seenHiddenBadgeIds ?? [],
+      lastCelebratedAchievedLevel: existingPreferences?.lastCelebratedAchievedLevel ?? 0,
       updatedAt: Date.now(),
     };
   }, [
+    memberPersonalGoals,
     memberAlertsSeenAt,
     seenMemberProgramIds,
     seenMemberWorkoutCommentKeys,

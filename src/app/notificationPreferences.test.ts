@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   mergeMemberNotificationPreferences,
   mergeMemberNotificationPreferencesIntoPersonalGoals,
+  patchMemberNotificationPreferencesInPersonalGoals,
   readMemberNotificationPreferencesFromPersonalGoals,
 } from "./notificationPreferences";
 
@@ -130,5 +131,31 @@ describe("notificationPreferences", () => {
     expect(merged.openedMemberAlertIds).toEqual(["member-msg-1"]);
     expect(merged.seenHiddenBadgeIds).toEqual(expect.arrayContaining(["secret-a", "secret-b"]));
     expect(merged.lastCelebratedAchievedLevel).toBe(5);
+  });
+
+  it("preserves badge and celebration state when patching member notification preferences", () => {
+    const existing = mergeMemberNotificationPreferencesIntoPersonalGoals("", {
+      version: 1,
+      memberAlertsSeenAt: 100,
+      seenMemberProgramIds: [],
+      seenMemberWorkoutCommentKeys: [],
+      openedMemberAlertIds: [],
+      seenMemberInspirationIds: [],
+      seenMemberPeriodPlanKeys: [],
+      dismissedMemberCheckInMonths: [],
+      memberInspirationBaselineAt: 0,
+      seenHiddenBadgeIds: ["secret-a"],
+      lastCelebratedAchievedLevel: 4,
+      updatedAt: 200,
+    });
+
+    const patched = patchMemberNotificationPreferencesInPersonalGoals(existing, {
+      openedMemberAlertIds: ["member-msg-1"],
+    });
+    const parsed = readMemberNotificationPreferencesFromPersonalGoals(patched);
+
+    expect(parsed?.openedMemberAlertIds).toEqual(["member-msg-1"]);
+    expect(parsed?.seenHiddenBadgeIds).toEqual(["secret-a"]);
+    expect(parsed?.lastCelebratedAchievedLevel).toBe(4);
   });
 });
