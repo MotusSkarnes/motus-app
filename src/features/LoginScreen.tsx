@@ -112,7 +112,7 @@ export function LoginScreen(props: LoginScreenProps) {
             <p className="text-sm text-slate-500">
               {isRecoveryMode
                 ? recoveryInviteFlow
-                  ? "Du har åpnet invitasjonslenken. Opprett et passord som du logger inn med senere."
+                  ? "Trykk «Aktiver konto» i e-posten og opprett passord her. Du kommer ikke inn i appen før passordet er lagret."
                   : "Recovery-lenken er aktiv. Velg et nytt passord."
                 : "Logg inn med e-post og passord."}
             </p>
@@ -127,7 +127,11 @@ export function LoginScreen(props: LoginScreenProps) {
                 <p className="text-xs text-slate-500">Verifiserer lenken — vent et øyeblikk før du lagrer passord.</p>
               ) : null}
               <GradientButton onClick={onCompleteRecovery} className="w-full" disabled={!recoverySessionReady}>
-                {recoverySessionReady ? "Lagre nytt passord" : "Venter på verifisering…"}
+                {recoverySessionReady
+                  ? recoveryInviteFlow
+                    ? "Lagre passord og aktiver konto"
+                    : "Lagre nytt passord"
+                  : "Venter på verifisering…"}
               </GradientButton>
             </>
           ) : (

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { hasAuthBootstrapSecrets, readAuthParamsFromLocation } from "./supabaseAuthBootstrap";
+import {
+  buildMemberInviteRedirectUrl,
+  hasAuthBootstrapSecrets,
+  isMemberInviteActivatePath,
+  readAuthParamsFromLocation,
+} from "./supabaseAuthBootstrap";
 
 describe("readAuthParamsFromLocation", () => {
   it("detects invite flow with hash tokens", () => {
@@ -11,20 +16,38 @@ describe("readAuthParamsFromLocation", () => {
     expect(params?.refreshToken).toBe("rt");
   });
 
-  it("detects PKCE code with invite query flags", () => {
-    const params = readAuthParamsFromLocation("https://app.example/?type=invite&invite=1&code=abc123");
+  it("detects invite flow on /aktiver with PKCE code only", () => {
+    const params = readAuthParamsFromLocation("https://app.example/aktiver?code=abc123");
     expect(params?.recoveryInviteFlow).toBe(true);
     expect(params?.authCode).toBe("abc123");
   });
 
-  it("detects PKCE code in hash with invite query flags", () => {
-    const params = readAuthParamsFromLocation("https://app.example/?type=invite&invite=1#code=abc123");
+  it("detects invite flow on /aktiver with implicit tokens", () => {
+    const params = readAuthParamsFromLocation("https://app.example/aktiver#access_token=at&refresh_token=rt");
+    expect(params?.recoveryInviteFlow).toBe(true);
+    expect(params?.accessToken).toBe("at");
+    expect(params?.refreshToken).toBe("rt");
+  });
+
+  it("detects PKCE code with legacy invite query flags", () => {
+    const params = readAuthParamsFromLocation("https://app.example/?type=invite&invite=1&code=abc123");
     expect(params?.recoveryInviteFlow).toBe(true);
     expect(params?.authCode).toBe("abc123");
   });
 
   it("returns null for normal app open", () => {
     expect(readAuthParamsFromLocation("https://app.example/")).toBeNull();
+  });
+});
+
+describe("member invite redirect helpers", () => {
+  it("builds short /aktiver redirect url", () => {
+    expect(buildMemberInviteRedirectUrl("https://motuspt.no")).toBe("https://motuspt.no/aktiver");
+  });
+
+  it("recognizes activate path", () => {
+    expect(isMemberInviteActivatePath("/aktiver")).toBe(true);
+    expect(isMemberInviteActivatePath("/")).toBe(false);
   });
 });
 

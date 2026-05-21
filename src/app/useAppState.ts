@@ -89,8 +89,11 @@ import {
   type InviteTrainerResult,
 } from "../services/supabaseAuth";
 import {
+  clearPendingInvitePasswordRequired,
   clearPersistedAuthBootstrapParams,
   hasAuthBootstrapSecrets,
+  isPendingInvitePasswordRequired,
+  markPendingInvitePasswordRequired,
   persistAuthBootstrapParams,
   readAuthParamsFromLocation,
   readPersistedAuthBootstrapParams,
@@ -470,6 +473,9 @@ function captureInitialSupabaseAuthUrl(): {
   persistAuthBootstrapParams(params);
   const hasSecrets = hasAuthBootstrapSecrets(params);
   const invite = params.recoveryInviteFlow;
+  if (invite && hasSecrets) {
+    markPendingInvitePasswordRequired();
+  }
   return {
     isRecoveryMode: true,
     recoveryInviteFlow: invite,
@@ -481,7 +487,7 @@ function captureInitialSupabaseAuthUrl(): {
     initialRecoveryError: hasSecrets
       ? null
       : invite
-        ? "Invitasjonslenken mangler sikkerhetstoken. Åpne lenken direkte fra e-posten på nytt (ikke bare adresselinjen)."
+        ? "Invitasjonslenken mangler sikkerhetstoken. Trykk «Aktiver konto» i e-posten på nytt (ikke kopier adressen manuelt)."
         : "Recovery-lenken mangler sikkerhetstoken. Åpne lenken direkte fra e-posten på nytt.",
   };
 }
@@ -1168,9 +1174,12 @@ export function useAppState() {
       }
       setRecoveryError(null);
       setRecoverySessionReady(true);
+      if (recoveryInviteFlow) {
+        markPendingInvitePasswordRequired();
+      }
       setRecoveryInfo(
         recoveryInviteFlow
-          ? "Invitasjon verifisert. Velg et passord for kontoen din."
+          ? "Invitasjon verifisert. Velg et passord for kontoen din før du bruker appen."
           : "Recovery-lenke verifisert. Du kan sette nytt passord.",
       );
     }
@@ -1180,6 +1189,13 @@ export function useAppState() {
       cancelled = true;
     };
   }, [isRecoveryMode, recoveryInviteFlow, recoveryTokenHash, recoveryAccessToken, recoveryRefreshToken, recoveryAuthCode]);
+
+  useEffect(() => {
+    if (!isPendingInvitePasswordRequired()) return;
+    setIsRecoveryMode(true);
+    setRecoveryInviteFlow(true);
+    setAppState((prev) => (prev.currentUser ? { ...prev, currentUser: null } : prev));
+  }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured || isRecoveryMode) return;
@@ -1216,6 +1232,16 @@ export function useAppState() {
       const user = await getSupabaseSessionUser();
       if (cancelled) return;
       if (!user) {
+        setIsLocalDemoSession(false);
+        setAppState((prev) => ({ ...prev, currentUser: null, role: "trainer" }));
+        setIsAuthSessionLoading(false);
+        return;
+      }
+      if (isPendingInvitePasswordRequired()) {
+        setIsRecoveryMode(true);
+        setRecoveryInviteFlow(true);
+        setRecoverySessionReady(true);
+        setRecoveryInfo("Velg et passord for kontoen din før du bruker appen.");
         setIsLocalDemoSession(false);
         setAppState((prev) => ({ ...prev, currentUser: null, role: "trainer" }));
         setIsAuthSessionLoading(false);
@@ -1263,6 +1289,16 @@ export function useAppState() {
     } = supabaseClient.auth.onAuthStateChange((_event, session) => {
       if (cancelled) return;
       if (!session?.user) {
+        setIsLocalDemoSession(false);
+        setAppState((prev) => ({ ...prev, currentUser: null, role: "trainer" }));
+        setIsAuthSessionLoading(false);
+        return;
+      }
+      if (isPendingInvitePasswordRequired()) {
+        setIsRecoveryMode(true);
+        setRecoveryInviteFlow(true);
+        setRecoverySessionReady(true);
+        setRecoveryInfo("Velg et passord for kontoen din før du bruker appen.");
         setIsLocalDemoSession(false);
         setAppState((prev) => ({ ...prev, currentUser: null, role: "trainer" }));
         setIsAuthSessionLoading(false);
@@ -1504,6 +1540,7 @@ export function useAppState() {
 
     setRecoveryError(null);
     const wasInviteFlow = recoveryInviteFlow;
+    clearPendingInvitePasswordRequired();
     if (wasInviteFlow) {
       await signOutSupabase();
       setAppState((prev) => ({ ...prev, currentUser: null, role: "trainer" }));

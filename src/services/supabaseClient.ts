@@ -1,4 +1,7 @@
+import { captureAuthParamsBeforeSupabaseInit } from "../app/supabaseAuthBootstrap";
 import { createClient } from "@supabase/supabase-js";
+
+captureAuthParamsBeforeSupabaseInit();
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -18,8 +21,8 @@ export const configuredSupabaseProjectRef = (() => {
 export const supabaseClient = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
-        // PKCE + auto-detection som fallback; passordskjerm styres fortsatt i useAppState.
-        detectSessionInUrl: true,
+        // URL-tokens håndteres manuelt (invite/aktiver) så bruker ikke hopper inn i app før passord er satt.
+        detectSessionInUrl: false,
         flowType: "pkce",
         persistSession: true,
       },

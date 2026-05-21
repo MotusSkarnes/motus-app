@@ -1,5 +1,8 @@
 import type { AuthBootstrapParams } from "../app/supabaseAuthBootstrap";
-import { readPersistedAuthBootstrapParams } from "../app/supabaseAuthBootstrap";
+import {
+  buildMemberInviteRedirectUrl,
+  readPersistedAuthBootstrapParams,
+} from "../app/supabaseAuthBootstrap";
 import type { AuthUser, Role } from "../app/types";
 import { supabaseClient } from "./supabaseClient";
 
@@ -37,10 +40,10 @@ function emailRedirectBase(): string | undefined {
   return origin ? `${origin}/` : undefined;
 }
 
-/** Redirect for medlemsinvitasjon — må matche parsing i useAppState (passordskjerm). */
+/** Redirect for medlemsinvitasjon — kort /aktiver-sti (passordskjerm i useAppState). */
 function memberInviteRedirectTo(): string | undefined {
   const origin = getCanonicalSiteOrigin();
-  return origin ? `${origin}/?type=invite&invite=1` : undefined;
+  return origin ? buildMemberInviteRedirectUrl(origin) : undefined;
 }
 
 function isTrainerStaffEmail(email: string): boolean {
