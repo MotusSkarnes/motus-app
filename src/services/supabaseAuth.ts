@@ -625,82 +625,76 @@ function isExistingUserInviteError(message: string): boolean {
   );
 }
 
+function buildRecoveryRedirectForReinvite(): string | undefined {
+  const inviteRedirect = memberInviteRedirectTo();
+  if (!inviteRedirect) return undefined;
+  try {
+    const url = new URL(inviteRedirect);
+    url.searchParams.set("type", "recovery");
+    url.searchParams.set("recovery", "1");
+    url.searchParams.delete("invite");
+    return url.toString();
+  } catch {
+    const base = inviteRedirect.split("?")[0]?.replace(/\/+$/, "") || inviteRedirect;
+    return `${base}/?type=recovery&recovery=1`;
+  }
+}
+
 async function resendMemberInviteOtp(email: string, memberId: string): Promise<InviteMemberResult> {
   if (!supabaseClient) {
     return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
   }
-  const redirectTo = memberInviteRedirectTo();
-  if (!redirectTo) {
+  const inviteRedirect = memberInviteRedirectTo();
+  const recoveryRedirect = buildRecoveryRedirectForReinvite();
+  if (!inviteRedirect || !recoveryRedirect) {
     return {
       ok: false,
       message: "Invitasjon feilet: mangler VITE_SITE_URL (app-URL for e-postlenker).",
     };
   }
-  const { error: resendSignupError } = await supabaseClient.auth.resend({
-    type: "signup",
-    email,
-    options: { emailRedirectTo: redirectTo },
+
+  const {
+    data: { session },
+  } = await supabaseClient.auth.getSession();
+  const trainerId = String(session?.user?.id ?? "").trim();
+
+  const { error: resetError } = await supabaseClient.auth.resetPasswordForEmail(email, {
+    redirectTo: recoveryRedirect,
   });
-  if (!resendSignupError) {
-    const {
-      data: { session },
-    } = await supabaseClient.auth.getSession();
-    const trainerId = String(session?.user?.id ?? "").trim();
+  if (!resetError) {
     await syncMemberAuthLink(email, memberId, trainerId);
     return {
       ok: true,
-      message: `Invitasjonslenke sendt på nytt til ${email}. Sjekk innboks og søppelpost.`,
+      message: `E-post med lenke for å sette passord er sendt til ${email}. Sjekk innboks og søppelpost.`,
       invitedAtIso: new Date().toISOString(),
     };
   }
-  const { error } = await supabaseClient.auth.signInWithOtp({
+
+  const { error: otpError } = await supabaseClient.auth.signInWithOtp({
     email,
     options: {
       shouldCreateUser: false,
-      emailRedirectTo: redirectTo,
+      emailRedirectTo: inviteRedirect,
       data: { member_id: memberId, role: "member" },
     },
   });
-  if (!error) {
-    const {
-      data: { session },
-    } = await supabaseClient.auth.getSession();
-    const trainerId = String(session?.user?.id ?? "").trim();
+  if (!otpError) {
     await syncMemberAuthLink(email, memberId, trainerId);
     return {
       ok: true,
-      message: `Innloggingslenke sendt på nytt til ${email} (eksisterende konto). Sjekk søppelpost.`,
+      message: `Innloggingslenke sendt på nytt til ${email}. Sjekk innboks og søppelpost.`,
       invitedAtIso: new Date().toISOString(),
     };
   }
-  if (isRateLimitMessage(error.message || "")) {
+  if (isRateLimitMessage(otpError.message || resetError.message || "")) {
     return {
       ok: false,
       message: "For mange e-poster akkurat nå. Vent 1–2 minutter og prøv igjen.",
     };
   }
-  const { error: fallbackError } = await supabaseClient.auth.signInWithOtp({
-    email,
-    options: {
-      shouldCreateUser: false,
-      emailRedirectTo: redirectTo,
-    },
-  });
-  if (!fallbackError) {
-    const {
-      data: { session },
-    } = await supabaseClient.auth.getSession();
-    const trainerId = String(session?.user?.id ?? "").trim();
-    await syncMemberAuthLink(email, memberId, trainerId);
-    return {
-      ok: true,
-      message: `Innloggingslenke sendt på nytt til ${email} (eksisterende konto). Sjekk søppelpost.`,
-      invitedAtIso: new Date().toISOString(),
-    };
-  }
   return {
     ok: false,
-    message: `Konto finnes allerede, men ny lenke feilet: ${fallbackError.message || error.message || "Ukjent feil."}`,
+    message: `Kunne ikke sende invitasjon: ${resetError.message || otpError.message || "Ukjent feil."}`,
   };
 }
 
@@ -715,7 +709,11 @@ function isInvalidOtpMessage(message: string): boolean {
   );
 }
 
-async function sendMemberInviteByEmail(email: string, memberId: string): Promise<InviteMemberResult> {
+async function sendMemberInviteByEmail(
+  email: string,
+  memberId: string,
+  options?: InviteMemberOptions,
+): Promise<InviteMemberResult> {
   if (!supabaseClient) {
     return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
   }
@@ -752,6 +750,7 @@ async function sendMemberInviteByEmail(email: string, memberId: string): Promise
     accessToken: activeSession.access_token,
     ownerUserId,
     inviteRedirectOrigin: getCanonicalSiteOrigin(),
+    forceResend: Boolean(options?.forceResend),
   });
 
   if (invoke.ok && invoke.data) {
@@ -768,8 +767,16 @@ async function sendMemberInviteByEmail(email: string, memberId: string): Promise
       message: "For mange e-poster akkurat nå. Vent 1–2 minutter og prøv «Inviter på nytt» igjen.",
     };
   }
-  if (isExistingUserInviteError(message)) {
-    return resendMemberInviteOtp(normalizedEmail, memberId.trim());
+  if (options?.forceResend || isExistingUserInviteError(message)) {
+    const resent = await resendMemberInviteOtp(normalizedEmail, memberId.trim());
+    if (resent.ok) return resent;
+    if (options?.forceResend) {
+      return {
+        ok: false,
+        message: `${resent.message} (Edge: ${message})`,
+      };
+    }
+    return resent;
   }
   return { ok: false, message: `Invitasjon feilet: ${message}` };
 }
@@ -803,7 +810,7 @@ export async function inviteMemberByEmail(
   const inFlight = memberInviteInFlightByKey.get(inviteKey);
   if (inFlight) return inFlight;
 
-  const request = sendMemberInviteByEmail(normalizedEmail, normalizedMemberId)
+  const request = sendMemberInviteByEmail(normalizedEmail, normalizedMemberId, options)
     .then((result) => {
       if (result.ok) memberInviteLastSentAtByKey.set(inviteKey, Date.now());
       return result;

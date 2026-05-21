@@ -2970,7 +2970,7 @@ function pickFirstName(value: unknown): string {
       return;
     }
     setIsInvitingMember(true);
-    setInviteStatus(null);
+    setInviteStatus("Sender invitasjon...");
     try {
       const result = await inviteMember(email, selectedMember.id, { forceResend: true });
       if (result.ok) {
@@ -4841,7 +4841,13 @@ function pickFirstName(value: unknown): string {
                 {inviteStatus ? (
                   <StatusMessage
                     message={inviteStatus}
-                    tone={inviteStatus.toLowerCase().includes("sendt") || inviteStatus.toLowerCase().includes("invitasjon sendt") ? "success" : "error"}
+                    tone={
+                      inviteStatus.toLowerCase().includes("sendt") ||
+                      inviteStatus.toLowerCase().includes("invitasjon") ||
+                      inviteStatus.toLowerCase().includes("e-post")
+                        ? "success"
+                        : "error"
+                    }
                     className="!rounded-xl !px-3 !py-2"
                   />
                 ) : null}

@@ -13,6 +13,8 @@ type InvitePayload = {
   ownerUserId?: string;
   /** HTTPS (or localhost) origin uten trailing slash — brukes når PUBLIC_APP_URL ikke er satt */
   inviteRedirectOrigin?: string;
+  /** «Inviter på nytt» — hopp over inviteUserByEmail og send recovery/OTP til eksisterende konto */
+  forceResend?: boolean;
 };
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -152,17 +154,31 @@ async function syncAuthUserMemberMetadata(
   }
 }
 
+function buildRecoveryRedirectFromInviteRedirect(inviteRedirect: string): string {
+  try {
+    const url = new URL(inviteRedirect);
+    url.searchParams.set("type", "recovery");
+    url.searchParams.set("recovery", "1");
+    url.searchParams.delete("invite");
+    return url.toString();
+  } catch {
+    const base = inviteRedirect.split("?")[0]?.replace(/\/+$/, "") || inviteRedirect;
+    return `${base}/?type=recovery&recovery=1`;
+  }
+}
+
+/** auth.resend() fungerer ikke med service role — bruk reset/OTP som faktisk sender e-post via Supabase SMTP. */
 async function resendInviteToExistingUser(
   adminClient: ReturnType<typeof createClient>,
   email: string,
   redirectTo: string,
-): Promise<{ ok: true } | { ok: false; message: string }> {
-  const { error: resendSignupError } = await adminClient.auth.resend({
-    type: "signup",
-    email,
-    options: { emailRedirectTo: redirectTo },
+): Promise<{ ok: true; channel: string } | { ok: false; message: string }> {
+  const recoveryRedirect = buildRecoveryRedirectFromInviteRedirect(redirectTo);
+
+  const { error: resetError } = await adminClient.auth.resetPasswordForEmail(email, {
+    redirectTo: recoveryRedirect,
   });
-  if (!resendSignupError) return { ok: true };
+  if (!resetError) return { ok: true, channel: "recovery" };
 
   const { error: otpError } = await adminClient.auth.signInWithOtp({
     email,
@@ -171,13 +187,22 @@ async function resendInviteToExistingUser(
       emailRedirectTo: redirectTo,
     },
   });
-  if (!otpError) return { ok: true };
+  if (!otpError) return { ok: true, channel: "magiclink" };
 
   const message =
-    otpError.message?.trim() ||
-    resendSignupError.message?.trim() ||
+    [resetError?.message, otpError?.message].filter(Boolean).join(" / ") ||
     "Kunne ikke sende innloggingslenke.";
   return { ok: false, message };
+}
+
+function isRedirectConfigError(message: string): boolean {
+  const normalized = message.trim().toLowerCase();
+  return (
+    normalized.includes("redirect") ||
+    normalized.includes("redirect_to") ||
+    normalized.includes("not allowed") ||
+    normalized.includes("invalid url")
+  );
 }
 
 async function repairMemberOwnerAfterInvite(
@@ -273,37 +298,97 @@ Deno.serve(async (req) => {
     return jsonResponse(400, { error: redirect.error });
   }
 
-  const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-    redirectTo: redirect.redirectTo,
+  const forceResend = Boolean(payload.forceResend);
+  if (forceResend) {
+    const existingUserId = await findAuthUserIdByEmail(adminClient, email);
+    if (existingUserId) {
+      await syncAuthUserMemberMetadata(adminClient, email, memberId);
+      const resend = await resendInviteToExistingUser(adminClient, email, redirect.redirectTo);
+      if (!resend.ok) {
+        return jsonResponse(500, {
+          error: `Kunne ikke sende ny lenke: ${resend.message}`,
+          redirectTo: redirect.redirectTo,
+        });
+      }
+      const invitedAtIso = new Date().toISOString();
+      await repairMemberOwnerAfterInvite(adminClient, memberId, email, user.id);
+      const { error: stampErr } = await adminClient
+        .from("members")
+        .update({ invited_at: invitedAtIso })
+        .eq("id", memberId);
+      if (stampErr) {
+        console.warn("invite-member: kunne ikke sette invited_at på members-rad:", stampErr.message);
+      }
+      const msg =
+        resend.channel === "recovery"
+          ? `E-post med lenke for å sette passord er sendt til ${email}. Sjekk innboks og søppelpost.`
+          : `Innloggingslenke sendt på nytt til ${email}. Sjekk innboks og søppelpost.`;
+      return jsonResponse(200, {
+        message: msg,
+        redirectTo: redirect.redirectTo,
+        invitedAt: invitedAtIso,
+        resentExistingUser: true,
+        resendChannel: resend.channel,
+      });
+    }
+  }
+
+  let inviteData: { user?: { id?: string } } | null = null;
+  let inviteError: { message?: string; name?: string } | null = null;
+  let redirectToUsed = redirect.redirectTo;
+
+  const inviteAttempt = await adminClient.auth.admin.inviteUserByEmail(email, {
+    redirectTo: redirectToUsed,
     data: {
       member_id: memberId,
       role: "member",
     },
   });
+  inviteData = inviteAttempt.data;
+  inviteError = inviteAttempt.error;
+
+  if (inviteError && isRedirectConfigError(inviteError.message ?? "")) {
+    const siteOnlyRedirect = redirectToUsed.split("?")[0] || redirectToUsed;
+    const retry = await adminClient.auth.admin.inviteUserByEmail(email, {
+      redirectTo: siteOnlyRedirect,
+      data: { member_id: memberId, role: "member" },
+    });
+    if (!retry.error) {
+      inviteData = retry.data;
+      inviteError = null;
+      redirectToUsed = siteOnlyRedirect;
+    }
+  }
 
   let resentExistingUser = false;
+  let resendChannel = "";
 
   if (inviteError) {
     if (!isExistingUserInviteError(inviteError.message ?? "")) {
       return jsonResponse(500, {
         error: `inviteUserByEmail failed: ${inviteError.message}`,
         code: inviteError.name,
+        redirectTo: redirectToUsed,
       });
     }
 
     await syncAuthUserMemberMetadata(adminClient, email, memberId);
-    const resend = await resendInviteToExistingUser(adminClient, email, redirect.redirectTo);
+    const resend = await resendInviteToExistingUser(adminClient, email, redirectToUsed);
     if (!resend.ok) {
       return jsonResponse(500, {
         error: `Konto finnes allerede, men ny lenke feilet: ${resend.message}`,
         code: inviteError.name,
+        redirectTo: redirectToUsed,
       });
     }
     resentExistingUser = true;
+    resendChannel = resend.channel;
   }
 
   const msg = resentExistingUser
-    ? `Innloggingslenke sendt på nytt til ${email}. Kunden har allerede konto — de setter/oppdaterer passord via lenken i e-posten.`
+    ? resendChannel === "recovery"
+      ? `E-post med lenke for å sette passord er sendt til ${email}. (Eksisterende konto — sjekk innboks og søppelpost.)`
+      : `Innloggingslenke sendt på nytt til ${email}. Kunden har allerede konto — sjekk innboks og søppelpost.`
     : inviteData?.user?.id
       ? `Invitasjon sendt til ${email}. Mottakeren setter passord ved første innlogging.`
       : `Invitasjon prosessert for ${email}`;
@@ -317,8 +402,9 @@ Deno.serve(async (req) => {
 
   return jsonResponse(200, {
     message: msg,
-    redirectTo: redirect.redirectTo,
+    redirectTo: redirectToUsed,
     invitedAt: invitedAtIso,
     resentExistingUser,
+    resendChannel: resendChannel || (resentExistingUser ? "invite" : "invite_new"),
   });
 });
