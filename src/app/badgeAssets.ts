@@ -3,6 +3,8 @@ export const WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET: Record<number, string> = {
   100: "/badges/32-100-klubben.png",
   200: "/badges/34-200-klubben.png",
   300: "/badges/35-300-klubben.png",
+  400: "/badges/36-400-klubben.png",
+  500: "/badges/37-500-klubben.png",
 };
 
 const WORKOUT_CLUB_IMAGE_MILESTONES = [500, 400, 300, 200, 100] as const;

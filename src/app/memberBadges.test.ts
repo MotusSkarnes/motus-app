@@ -129,6 +129,22 @@ describe("memberBadges", () => {
     }).allBadges.find((badge) => badge.id === "workout-club");
     expect(thirdClub?.title).toBe("300 klubben");
     expect(thirdClub && memberBadgeImageSrc(thirdClub)).toContain("35-300-klubben");
+
+    const fourthClub = computeMemberBadges({
+      ...baseInput,
+      completedSessionCount: 450,
+    }).allBadges.find((badge) => badge.id === "workout-club");
+    expect(fourthClub?.title).toBe("400 klubben");
+    expect(fourthClub?.level).toBe("diamond");
+    expect(fourthClub && memberBadgeImageSrc(fourthClub)).toContain("36-400-klubben");
+
+    const fifthClub = computeMemberBadges({
+      ...baseInput,
+      completedSessionCount: 520,
+    }).allBadges.find((badge) => badge.id === "workout-club");
+    expect(fifthClub?.title).toBe("500 klubben");
+    expect(fifthClub?.level).toBe("legendary");
+    expect(fifthClub && memberBadgeImageSrc(fifthClub)).toContain("37-500-klubben");
   });
 
   it("unlocks and upgrades Monday hero from consecutive Monday workouts", () => {
