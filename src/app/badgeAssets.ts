@@ -24,7 +24,7 @@ export const MEMBER_BADGE_IMAGE_BY_ID: Record<string, string> = {
   "never-two-weeks-without": "/badges/22-aldri-to-uker-uten.png",
   "back-again": "/badges/23-tilbake-igjen.png",
   "habit-sticks": "/badges/24-vanen-sitter.png",
-  "before-sunrise": "/badges/25-for-sola.png",
+  "before-sunrise": "/badges/40-morgenfugl.png",
   "evening-trainer": "/badges/04-kveldsskiftet.png",
   "summer-loyal": "/badges/26-sommertrofast.png",
   "new-start": "/badges/27-ny-start.png",
