@@ -54,7 +54,7 @@ export function TrainerBadgeCatalog() {
             {group.tracks.map((track) => (
               <Card
                 key={track.id}
-                className="overflow-hidden p-3 sm:p-4"
+                className="overflow-visible p-3 sm:p-4"
                 style={{ borderColor: "rgba(15,23,42,0.08)" }}
               >
                 <div className="flex items-start gap-4">
@@ -117,7 +117,7 @@ export function TrainerBadgeCatalog() {
           {secrets.map((secret) => (
             <Card
               key={secret.id}
-              className="overflow-hidden p-3"
+              className="overflow-visible p-3"
               style={{ borderColor: "rgba(15,23,42,0.08)", backgroundColor: "#fafafa" }}
             >
               <div className="flex items-start gap-3">
