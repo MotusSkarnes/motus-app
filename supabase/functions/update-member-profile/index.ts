@@ -45,6 +45,34 @@ function normalizeString(value: unknown): string {
   return String(value ?? "").trim();
 }
 
+function isValidCalendarDate(day: number, month: number, year: number): boolean {
+  if (!Number.isInteger(day) || !Number.isInteger(month) || !Number.isInteger(year)) return false;
+  if (year < 1000 || year > 9999 || month < 1 || month > 12 || day < 1) return false;
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+function normalizeBirthDate(value: unknown): string | null {
+  const trimmed = normalizeString(value);
+  if (!trimmed) return "";
+  const dotted = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (dotted) {
+    const day = Number(dotted[1]);
+    const month = Number(dotted[2]);
+    const year = Number(dotted[3]);
+    return isValidCalendarDate(day, month, year) ? trimmed : null;
+  }
+  const isoDate = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoDate) {
+    const year = Number(isoDate[1]);
+    const month = Number(isoDate[2]);
+    const day = Number(isoDate[3]);
+    if (!isValidCalendarDate(day, month, year)) return null;
+    return `${String(day).padStart(2, "0")}.${String(month).padStart(2, "0")}.${year}`;
+  }
+  return null;
+}
+
 function isSharedMedlem(customerType: unknown): boolean {
   return normalizeString(customerType).toLowerCase() === "medlem";
 }
@@ -178,13 +206,18 @@ Deno.serve(async (req) => {
 
   const changes = payload.changes ?? {};
   const targetEmailForUpdate = requestedEmail || currentEmail;
+  const normalizedBirthDate =
+    changes.birthDate !== undefined ? normalizeBirthDate(changes.birthDate) : undefined;
+  if (normalizedBirthDate === null) {
+    return jsonResponse(400, { error: "Fødselsdato må være en gyldig dato på formatet dd.mm.yyyy." });
+  }
   // Email is an identity/routing key here, not a profile field. Never rewrite an
   // existing member row's email from this endpoint; stale auth member_id metadata
   // can otherwise overwrite an unrelated member with the logged-in user's email.
   const updateFields: Record<string, string> = {};
   if (changes.name !== undefined) updateFields.name = normalizeString(changes.name);
   if (changes.phone !== undefined) updateFields.phone = normalizeString(changes.phone);
-  if (changes.birthDate !== undefined) updateFields.birth_date = normalizeString(changes.birthDate);
+  if (normalizedBirthDate !== undefined) updateFields.birth_date = normalizedBirthDate;
   if (changes.goal !== undefined) updateFields.goal = normalizeString(changes.goal);
   if (changes.focus !== undefined) updateFields.focus = normalizeString(changes.focus);
   if (changes.injuries !== undefined) updateFields.injuries = normalizeString(changes.injuries);
@@ -315,7 +348,7 @@ Deno.serve(async (req) => {
       days_since_activity: "0",
       name: normalizeString(changes.name) || normalizeString((user.user_metadata?.full_name as string | undefined) ?? user.email),
       phone: normalizeString(changes.phone),
-      birth_date: normalizeString(changes.birthDate),
+      birth_date: normalizedBirthDate ?? "",
       goal: normalizeString(changes.goal),
       focus: normalizeString(changes.focus),
       injuries: normalizeString(changes.injuries),

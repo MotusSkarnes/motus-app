@@ -2246,7 +2246,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const trimmedBirthDateDraft = memberBirthDateDraft.trim();
     if (trimmedBirthDateDraft && !isLikelyValidBirthDate(trimmedBirthDateDraft)) {
       if (!silent) {
-        setProfileSaveInfo("Fødselsdato må være på formatet dd.mm.yyyy.");
+        setProfileSaveInfo("Fødselsdato må være en gyldig dato på formatet dd.mm.yyyy.");
       }
       return;
     }

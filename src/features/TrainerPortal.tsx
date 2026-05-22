@@ -2692,7 +2692,7 @@ function pickFirstName(value: unknown): string {
     }
     const trimmedBirthDateDraft = memberEditBirthDate.trim();
     if (trimmedBirthDateDraft && !isLikelyValidBirthDate(trimmedBirthDateDraft)) {
-      setMemberEditStatus("Fødselsdato må være på formatet dd.mm.yyyy.");
+      setMemberEditStatus("Fødselsdato må være en gyldig dato på formatet dd.mm.yyyy.");
       return;
     }
     const previousEmail = selectedMember.email.trim().toLowerCase();
