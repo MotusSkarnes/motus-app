@@ -2215,21 +2215,23 @@ export function MemberPortal(props: MemberPortalProps) {
   function toggleFavoritePersonalRecord(recordName: string) {
     const normalizedName = recordName.trim();
     if (!normalizedName) return;
-    setFavoritePersonalRecordNames((prev) => {
-      const base = favoritePersonalRecordPreferencesHydrated ? prev : effectiveFavoritePersonalRecordNames;
-      const pruned = base.filter((name) => personalRecordExerciseNameSet.has(name));
-      if (pruned.includes(normalizedName)) {
-        setProfileSaveInfo(`Fjernet "${normalizedName}" fra fremhevede PR-er.`);
-        return pruned.filter((name) => name !== normalizedName);
-      }
-      if (pruned.length >= 3) {
-        setProfileSaveInfo("Du kan ha maks tre fremhevede personlige rekorder.");
-        return pruned;
-      }
-      setProfileSaveInfo(`La til "${normalizedName}" som fremhevet PR.`);
-      return [...pruned, normalizedName];
-    });
+    const base = favoritePersonalRecordPreferencesHydrated ? favoritePersonalRecordNames : effectiveFavoritePersonalRecordNames;
+    const pruned = base.filter((name) => personalRecordExerciseNameSet.has(name));
+    let next: string[];
+    let feedback: string;
+    if (pruned.includes(normalizedName)) {
+      next = pruned.filter((name) => name !== normalizedName);
+      feedback = `Fjernet «${normalizedName}» fra fremhevede PR-er.`;
+    } else if (pruned.length >= 3) {
+      next = pruned;
+      feedback = "Du kan ha maks tre fremhevede personlige rekorder.";
+    } else {
+      next = [...pruned, normalizedName];
+      feedback = `La til «${normalizedName}» som fremhevet PR.`;
+    }
+    setFavoritePersonalRecordNames(next);
     setFavoritePersonalRecordPreferencesHydrated(true);
+    setProfileSaveInfo(feedback);
   }
 
   const saveProfile = useCallback(async (options?: { silent?: boolean }) => {
@@ -2588,6 +2590,19 @@ export function MemberPortal(props: MemberPortalProps) {
     achievementCelebrationBaselineRef.current = null;
     setAchievementCelebration(null);
   }, [editableMember?.id]);
+
+  function resolveFavoritePersonalRecordsForHydration(
+    dbFavorites: string[] | undefined,
+    localFavorites: string[] | undefined,
+    preferLocal: boolean,
+  ): string[] {
+    const fromDb = normalizeFavoritePersonalRecordNames(dbFavorites) ?? [];
+    const fromLocal = normalizeFavoritePersonalRecordNames(localFavorites) ?? [];
+    if (preferLocal && fromLocal.length > 0) return fromLocal;
+    if (fromDb.length > 0) return fromDb;
+    return fromLocal;
+  }
+
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     try {
@@ -2600,7 +2615,7 @@ export function MemberPortal(props: MemberPortalProps) {
           ...DEFAULT_HOME_VISIBILITY,
           ...(normalizeHomeVisibilityForStorage(dbHomeVisibility ?? undefined) ?? {}),
         });
-        const seeded = normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? undefined) ?? [];
+        const seeded = resolveFavoritePersonalRecordsForHydration(dbFavoritePersonalRecordNames ?? undefined, undefined, false);
         setFavoritePersonalRecordNames((prev) => (JSON.stringify(prev) === JSON.stringify(seeded) ? prev : seeded));
         setFavoritePersonalRecordPreferencesHydrated(true);
         return;
@@ -2617,8 +2632,11 @@ export function MemberPortal(props: MemberPortalProps) {
       setRestCountdownEnabled(parsed.restCountdownEnabled !== false);
       const resolvedPatch =
         normalizeHomeVisibilityForStorage(dbHomeVisibility ?? parsed.homeVisibility ?? undefined) ?? {};
-      const resolvedFavorites =
-        normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? parsed.favoritePersonalRecords) ?? [];
+      const resolvedFavorites = resolveFavoritePersonalRecordsForHydration(
+        dbFavoritePersonalRecordNames ?? undefined,
+        parsed.favoritePersonalRecords,
+        favoritePersonalRecordPreferencesHydrated,
+      );
       setHomeVisibility({
         ...DEFAULT_HOME_VISIBILITY,
         ...resolvedPatch,
@@ -2633,11 +2651,22 @@ export function MemberPortal(props: MemberPortalProps) {
         ...DEFAULT_HOME_VISIBILITY,
         ...(normalizeHomeVisibilityForStorage(dbHomeVisibility ?? undefined) ?? {}),
       });
-      const fallback = normalizeFavoritePersonalRecordNames(dbFavoritePersonalRecordNames ?? undefined) ?? [];
+      const fallback = resolveFavoritePersonalRecordsForHydration(dbFavoritePersonalRecordNames ?? undefined, undefined, false);
       setFavoritePersonalRecordNames((prev) => (JSON.stringify(prev) === JSON.stringify(fallback) ? prev : fallback));
       setFavoritePersonalRecordPreferencesHydrated(true);
     }
-  }, [editableMember?.id, relatedProfileGoalsSignature]);
+  }, [editableMember?.id, dbFavoritePersonalRecordNames, dbHomeVisibility, favoritePersonalRecordPreferencesHydrated]);
+
+  useEffect(() => {
+    if (!editableMember) return;
+    const patch = normalizeHomeVisibilityForStorage(dbHomeVisibility ?? undefined);
+    if (!patch || Object.keys(patch).length === 0) return;
+    setHomeVisibility((prev) => ({
+      ...DEFAULT_HOME_VISIBILITY,
+      ...prev,
+      ...patch,
+    }));
+  }, [editableMember?.id, dbHomeVisibility]);
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     if (!favoritePersonalRecordPreferencesHydrated) return;
@@ -6210,6 +6239,17 @@ export function MemberPortal(props: MemberPortalProps) {
               <Card className="p-4 sm:p-5">
                 <h3 className="text-sm font-semibold text-slate-900">Personlige rekorder</h3>
                 <p className="mt-0.5 text-xs text-slate-500">Trykk på en øvelse for styrkeutvikling over tid. Stjernemerk opptil tre rekorder du vil fremheve først.</p>
+                {profileSaveInfo && memberTab === "progress" ? (
+                  <StatusMessage
+                    message={profileSaveInfo}
+                    tone={
+                      profileSaveInfo.toLowerCase().includes("maks tre") || profileSaveInfo.toLowerCase().includes("feilet")
+                        ? "error"
+                        : "success"
+                    }
+                    className="mt-3 !rounded-xl !px-3 !py-2 !text-sm"
+                  />
+                ) : null}
                 <div className="mt-4 space-y-3">
                   {personalRecords.length === 0 ? (
                     <EmptyState
