@@ -6,7 +6,7 @@ import {
   computeMaxLiftKgFromLogs,
   computeMemberBadges,
   computeMonthUniqueDays,
-  computeWeekendWorkoutPairs,
+  computeWeekendWorkoutDays,
   formatBadgeMetricValue,
   getBadgeProgressLabel,
   getBadgeUnlockHint,
@@ -185,7 +185,21 @@ describe("memberBadges", () => {
     expect(computeConsecutiveMondayWorkouts(dates)).toBe(2);
   });
 
-  it("unlocks and upgrades weekend warrior from Saturday and Sunday pairs", () => {
+  it("unlocks weekend warrior from either Saturday or Sunday", () => {
+    const saturdayOnly = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-01-03T12:00:00")],
+    });
+    expect(saturdayOnly.allBadges.find((item) => item.id === "weekend-warrior")?.unlocked).toBe(true);
+
+    const sundayOnly = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [new Date("2026-01-04T12:00:00")],
+    });
+    expect(sundayOnly.allBadges.find((item) => item.id === "weekend-warrior")?.unlocked).toBe(true);
+  });
+
+  it("counts unique weekend workout days for helgekriger", () => {
     const dates = [
       new Date("2026-01-03T12:00:00"),
       new Date("2026-01-04T12:00:00"),
@@ -193,7 +207,7 @@ describe("memberBadges", () => {
       new Date("2026-01-11T12:00:00"),
     ];
 
-    expect(computeWeekendWorkoutPairs(dates)).toBe(2);
+    expect(computeWeekendWorkoutDays(dates)).toBe(4);
     const collection = computeMemberBadges({
       ...baseInput,
       completedLogDates: dates,
@@ -205,14 +219,14 @@ describe("memberBadges", () => {
     expect(badge?.levels.filter((level) => level.unlocked)).toHaveLength(1);
   });
 
-  it("counts only complete Saturday and Sunday pairs for weekend warrior", () => {
+  it("counts Saturday and Sunday on separate weekends for weekend warrior", () => {
     const dates = [
       new Date("2026-01-03T12:00:00"),
       new Date("2026-01-04T12:00:00"),
       new Date("2026-01-10T12:00:00"),
       new Date("2026-01-18T12:00:00"),
     ];
-    expect(computeWeekendWorkoutPairs(dates)).toBe(1);
+    expect(computeWeekendWorkoutDays(dates)).toBe(4);
   });
 
   it("tracks lift progress toward the next strength level", () => {

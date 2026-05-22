@@ -79,7 +79,7 @@ type BadgeMetric =
   | "monthUniqueDays"
   | "monthGoalPercent"
   | "mondayStreak"
-  | "weekendPairs"
+  | "weekendDays"
   | "activeCardioMinutes";
 
 type BadgeTrack = {
@@ -179,9 +179,9 @@ const BADGE_TRACKS: BadgeTrack[] = [
     category: "consistency",
     categoryTitle: "Streaks",
     title: "Helgekriger",
-    description: "Tren både lørdag og søndag",
+    description: "Tren lørdag eller søndag",
     icon: "week-streak",
-    metric: "weekendPairs",
+    metric: "weekendDays",
     levels: [
       { level: "bronze", target: 1 },
       { level: "silver", target: 8 },
@@ -286,8 +286,8 @@ function readMetric(metric: BadgeMetric, input: MemberBadgeInput): number {
       return input.monthUniqueDays;
     case "mondayStreak":
       return computeConsecutiveMondayWorkouts(input.completedLogDates ?? []);
-    case "weekendPairs":
-      return computeWeekendWorkoutPairs(input.completedLogDates ?? []);
+    case "weekendDays":
+      return computeWeekendWorkoutDays(input.completedLogDates ?? []);
     case "activeCardioMinutes":
       return Math.max(0, Math.round(input.activeCardioMinutes ?? 0));
     case "monthGoalPercent": {
@@ -414,22 +414,16 @@ export function computeConsecutiveMondayWorkouts(completedLogDates: Date[] = [])
   return bestStreak;
 }
 
-export function computeWeekendWorkoutPairs(completedLogDates: Date[] = []): number {
-  const completedDays = new Set(completedLogDates.map(startOfDay).map(localDateKey));
-  const saturdayKeys = Array.from(
+/** Antall unike kalenderdager med økt på lørdag (6) eller søndag (0). */
+export function computeWeekendWorkoutDays(completedLogDates: Date[] = []): number {
+  return Array.from(
     new Set(
       completedLogDates
-        .filter((date) => date.getDay() === 6)
+        .filter((date) => date.getDay() === 6 || date.getDay() === 0)
         .map(startOfDay)
         .map(localDateKey),
     ),
-  );
-
-  return saturdayKeys.filter((key) => {
-    const saturday = new Date(`${key}T00:00:00`);
-    const sunday = addCalendarDays(saturday, 1);
-    return completedDays.has(localDateKey(sunday));
-  }).length;
+  ).length;
 }
 
 function hasNoTrainingGapOver14DaysForSixMonths(completedLogDates: Date[] = [], nowDate: Date): boolean {
@@ -805,7 +799,7 @@ export function getBadgeUnlockHint(badge: MemberBadge): string {
     case "monday-hero":
       return `Tren ${target} på rad for å nå ${next.levelName}.`;
     case "weekend-warrior":
-      return `Tren både lørdag og søndag i ${target} for å nå ${next.levelName}.`;
+      return `Tren på ${target} (lørdag eller søndag) for å nå ${next.levelName}.`;
     case "lift":
       return `Registrer ditt tyngste sett på minst ${target} for å nå ${next.levelName}.`;
     case "month-sessions":
