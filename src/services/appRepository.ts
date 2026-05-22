@@ -528,7 +528,7 @@ function buildWorkoutGroupOrder(results: WorkoutExerciseResult[]): string[] {
   return order;
 }
 
-/** Flytt aktiv øvelse/blokk ett hakk bak – neste tas først, denne kommer rett etter. */
+/** Flytt aktiv øvelse/blokk bakover – neste tas først, denne kommer rett etter den neste. */
 export function deferWorkoutExerciseGroupInState(state: AppState, groupId: string): AppState {
   if (!state.workoutMode) return state;
   const gid = groupId.trim();
@@ -539,9 +539,11 @@ export function deferWorkoutExerciseGroupInState(state: AppState, groupId: strin
   const currentIndex = groupOrder.indexOf(gid);
   if (currentIndex < 0 || currentIndex >= groupOrder.length - 1) return state;
 
-  const nextOrder = [...groupOrder];
-  const [deferredGroupId] = nextOrder.splice(currentIndex, 1);
-  nextOrder.splice(currentIndex + 1, 0, deferredGroupId);
+  const nextGroupId = groupOrder[currentIndex + 1];
+  const nextOrder = groupOrder.filter((id) => id !== gid);
+  const insertAfterIndex = nextOrder.indexOf(nextGroupId);
+  if (insertAfterIndex < 0) return state;
+  nextOrder.splice(insertAfterIndex + 1, 0, gid);
 
   const rowsByGroup = new Map<string, WorkoutExerciseResult[]>();
   results.forEach((result) => {

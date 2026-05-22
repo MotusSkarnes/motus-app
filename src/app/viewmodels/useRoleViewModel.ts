@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, type ComponentProps } from "react";
 import { enrichMemberWithBestProfile } from "../memberOnboarding";
-import { pickFirstName } from "../programAuthor";
+import { resolveMemberTrainerDisplayName } from "../trainerProfile";
 import {
   mergeMemberNotificationPreferencesIntoPersonalGoals,
   type MemberNotificationPreferences,
@@ -135,13 +135,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
   const memberTrainerDisplayName = useMemo(() => {
     const member = activeMemberForHeader;
     if (!member) return undefined;
-    const fromMember = pickFirstName(member.assignedTrainerName ?? "");
-    if (fromMember) return fromMember;
-    const fromProgram = state.appState.programs
-      .filter((program) => program.memberId === member.id)
-      .map((program) => pickFirstName(program.assignedTrainerName ?? ""))
-      .find(Boolean);
-    return fromProgram || undefined;
+    return resolveMemberTrainerDisplayName(member, state.appState.programs);
   }, [activeMemberForHeader, state.appState.programs]);
 
   const layoutRole = state.appState.currentUser?.role ?? state.appState.role;
@@ -195,6 +189,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     handleTrainerBellToggle,
     isLocalDemoSession: state.isLocalDemoSession,
     remoteTrainerPeriodPlansByMemberId: state.remoteTrainerPeriodPlansByMemberId,
+    applyTrainerProfileSaved: state.applyTrainerProfileSaved,
     workoutMode: state.appState.workoutMode,
     startWorkoutMode: state.startWorkoutMode,
     updateWorkoutExerciseResult: state.updateWorkoutExerciseResult,

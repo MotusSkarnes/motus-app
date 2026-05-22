@@ -450,14 +450,14 @@ Deno.serve(async (req) => {
     try {
       const { data: trainerData, error: trainerError } = await adminClient.auth.admin.getUserById(ownerUserId);
       if (trainerError || !trainerData?.user) continue;
-      const fullName = String(
-        (trainerData.user.user_metadata?.full_name as string | undefined) ??
-          (trainerData.user.user_metadata?.name as string | undefined) ??
-          ""
-      ).trim();
+      const metadata = (trainerData.user.user_metadata ?? {}) as Record<string, unknown>;
+      const fullName = String(metadata.full_name ?? metadata.name ?? "").trim();
       const email = String(trainerData.user.email ?? "").trim();
-      const trainerFirstName = toFirstName(fullName) || nameFromEmail(email) || "";
-      trainerNameByOwnerId.set(ownerUserId, trainerFirstName);
+      const trainerDisplayName =
+        fullName && fullName !== "Bruker" && !fullName.includes("@")
+          ? fullName
+          : nameFromEmail(email) || toFirstName(fullName);
+      trainerNameByOwnerId.set(ownerUserId, trainerDisplayName);
     } catch {
       // Ignore lookup failures; frontend will use fallback label.
     }

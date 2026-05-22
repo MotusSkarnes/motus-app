@@ -57,6 +57,7 @@ export function buildTrainerLayoutProps(input: {
   handleTrainerBellToggle: () => void;
   isLocalDemoSession: boolean;
   remoteTrainerPeriodPlansByMemberId: TrainerLayoutProps["remoteTrainerPeriodPlansByMemberId"];
+  applyTrainerProfileSaved: TrainerLayoutProps["applyTrainerProfileSaved"];
   workoutMode: TrainerLayoutProps["workoutMode"];
   startWorkoutMode: TrainerLayoutProps["startWorkoutMode"];
   updateWorkoutExerciseResult: TrainerLayoutProps["updateWorkoutExerciseResult"];

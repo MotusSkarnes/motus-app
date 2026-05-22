@@ -115,7 +115,7 @@ export function AppHeader({
                 >
                   <span
                     className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white shadow-sm"
-                    style={{ background: MOTUS.gradient }}
+                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
                     aria-hidden
                   >
                     <UserCircle2 className="h-5 w-5" />

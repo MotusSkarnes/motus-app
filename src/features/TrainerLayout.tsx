@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatNotificationTimestamp } from "../app/dateFormat";
-import type { AppState, TrainerTab } from "../app/types";
+import type { AppState, AuthUser, TrainerTab } from "../app/types";
 import { Card } from "../app/ui";
 import type { TrainerAlert } from "../app/useNotifications";
 import { TrainerPortal } from "./TrainerPortal";
@@ -77,6 +77,7 @@ type TrainerLayoutProps = {
   handleTrainerBellToggle: () => void;
   isLocalDemoSession: boolean;
   remoteTrainerPeriodPlansByMemberId: ComponentProps<typeof TrainerPortal>["remoteTrainerPeriodPlansByMemberId"];
+  applyTrainerProfileSaved: (user: AuthUser) => void;
 } & TrainerWorkoutBridge;
 
 const trainerMenuItems: Array<{ key: TrainerTab; label: string; icon: LucideIcon }> = [
@@ -139,6 +140,7 @@ export function TrainerLayout({
   handleTrainerBellToggle,
   isLocalDemoSession,
   remoteTrainerPeriodPlansByMemberId,
+  applyTrainerProfileSaved,
   workoutMode,
   startWorkoutMode,
   updateWorkoutExerciseResult,
@@ -192,7 +194,7 @@ export function TrainerLayout({
     canAccessAdminTools,
     remoteTrainerPeriodPlansByMemberId,
     trainerAccountName: appState.currentUser?.name?.trim() ?? "",
-    onTrainerProfileSaved: (user) => patchState({ currentUser: user }),
+    onTrainerProfileSaved: applyTrainerProfileSaved,
     workoutMode,
     startWorkoutMode,
     updateWorkoutExerciseResult,

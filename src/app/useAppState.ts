@@ -2299,6 +2299,26 @@ export function useAppState() {
     await remoteHydrateRef.current?.();
   }
 
+  function applyTrainerProfileSaved(user: AuthUser) {
+    const displayName = user.name.trim();
+    if (!displayName) return;
+    setAppState((prev) => ({
+      ...prev,
+      currentUser: prev.currentUser?.id === user.id ? user : prev.currentUser,
+      members: prev.members.map((member) =>
+        member.ownerUserId === user.id ? { ...member, assignedTrainerName: displayName } : member,
+      ),
+      programs: prev.programs.map((program) => {
+        if (program.ownerUserId !== user.id) return program;
+        const next = { ...program, assignedTrainerName: displayName };
+        if (program.programCreatedBy === "trainer") {
+          return { ...next, programCreatedByName: displayName };
+        }
+        return next;
+      }),
+    }));
+  }
+
   return {
     appState,
     isAuthSessionLoading,
@@ -2340,6 +2360,7 @@ export function useAppState() {
     resetAllData,
     clearLocalChatCache,
     refreshRemoteHydration,
+    applyTrainerProfileSaved,
     addMember,
     deactivateMember,
     deleteMember,

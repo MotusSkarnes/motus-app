@@ -685,7 +685,7 @@ export function getBadgeUnlockHint(badge: MemberBadge): string {
     case "sessions":
       return `Fullfør ${target} registrerte økter totalt for å nå ${next.levelName}.`;
     case "workout-club":
-      return `Fullfør ${target} totalt for å oppgradere klubben.`;
+      return `Fullfør ${target} for å oppnå neste nivå.`;
     case "streak":
       return `Hold streak med minst én økt per uke i ${target} på rad for å nå ${next.levelName}.`;
     case "monday-hero":

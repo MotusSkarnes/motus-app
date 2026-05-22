@@ -33,6 +33,7 @@ import {
   suppressInspirationItemId,
   syncLocalInspirationToSupabaseIfNeeded,
 } from "../app/inspirationStorage";
+import { RUNNING_INSPIRATION_ITEMS } from "../app/inspirationRunningPlans";
 import { buildPeriodPlanProgramSelectOptions, WEEKDAY_PLAN_FIELDS } from "../app/periodPlanBuilder";
 import { normalizePeriodSchedulePlan, syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { uid } from "../app/storage";
@@ -60,6 +61,8 @@ type InspirationItem = {
   imageUrl?: string;
   programTemplate?: ProgramTemplateInput;
   periodPlanTemplate?: PeriodSchedulePlan;
+  /** Medfølgende programmer når medlem legger til periodeplan (f.eks. løpeplaner). */
+  bundledProgramTemplates?: ProgramTemplateInput[];
 };
 
 const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
@@ -471,6 +474,7 @@ const DEFAULT_ITEMS: InspirationItem[] = [
     author: "Motus",
     createdAt: "2026-05-01",
   },
+  ...RUNNING_INSPIRATION_ITEMS,
 ];
 
 type InspirationPublishValidation = { ok: true } | { ok: false; message: string };
@@ -1201,8 +1205,19 @@ export function InspirationHub({
 
   function handleAddPeriodPlan(item: InspirationItem) {
     const template = item.periodPlanTemplate ?? createDefaultPeriodPlan(item.title, item.body);
+    const bundled = item.bundledProgramTemplates ?? [];
+    for (const programTemplate of bundled) {
+      onAddProgram?.({
+        ...programTemplate,
+        title: programTemplate.title.trim() || item.title,
+        exercises: linkProgramExercisesToBank(programTemplate.exercises, exerciseBank),
+        programCreatedByName: memberName,
+      });
+    }
     onAddPeriodPlan?.({ ...template, title: template.title || item.title });
-    setActionStatus(`${item.title} er lagt til under Trening → Periodeplan.`);
+    const programNote =
+      bundled.length > 0 ? ` ${bundled.length} treningsprogram er også lagt til under Mine programmer.` : "";
+    setActionStatus(`${item.title} er lagt til under Trening → Periodeplan.${programNote}`);
   }
 
   async function handleImageFile(file: File | null) {
@@ -1345,17 +1360,22 @@ export function InspirationHub({
             ) : null}
 
             {expandedItem.periodPlanTemplate ? (
-              <div className="mt-6 grid gap-2 sm:grid-cols-2">
-                {WEEKDAY_PLAN_FIELDS.map((field) => {
-                  const entry = expandedItem.periodPlanTemplate?.weeklyPlans[0]?.days[field.key]?.trim() ?? "";
-            return (
-                  <div key={field.key} className="rounded-xl bg-slate-50 px-3 py-2.5 text-sm ring-1 ring-slate-100">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{field.label}</div>
-                    <div className="mt-1 font-medium text-slate-800">{entry || "Ingen plan"}</div>
+              <div className="mt-6 space-y-3">
+                <p className="text-xs font-medium text-slate-600">
+                  {expandedItem.periodPlanTemplate.weeks} uker · eksempel fra uke 1 (full plan legges til ved «Legg til periodeplan»)
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {WEEKDAY_PLAN_FIELDS.map((field) => {
+                    const entry = expandedItem.periodPlanTemplate?.weeklyPlans[0]?.days[field.key]?.trim() ?? "";
+                    return (
+                      <div key={field.key} className="rounded-xl bg-slate-50 px-3 py-2.5 text-sm ring-1 ring-slate-100">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{field.label}</div>
+                        <div className="mt-1 font-medium text-slate-800">{entry || "Ingen plan"}</div>
                       </div>
-                  );
-                })}
-                  </div>
+                    );
+                  })}
+                </div>
+              </div>
             ) : null}
 
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -1366,8 +1386,10 @@ export function InspirationHub({
               ) : null}
               {expandedItem.kind === "periodPlan" && onAddPeriodPlan ? (
                 <GradientButton onClick={() => handleAddPeriodPlan(expandedItem)} className="w-full sm:w-auto">
-                      Legg til periodeplan
-                    </GradientButton>
+                  {expandedItem.bundledProgramTemplates?.length
+                    ? `Legg til plan + ${expandedItem.bundledProgramTemplates.length} programmer`
+                    : "Legg til periodeplan"}
+                </GradientButton>
               ) : null}
               {canManage ? (
                 <>
