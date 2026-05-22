@@ -60,6 +60,8 @@ type RestCountdownState = {
   totalSeconds: number;
 };
 
+type FinishWorkoutAction = "trainer-save" | "member-reflection" | "member-save";
+
 function parseRestSeconds(value: string | undefined): number {
   const parsed = Number(String(value ?? "").trim().replace(",", "."));
   if (!Number.isFinite(parsed) || parsed <= 0) return 60;
@@ -104,7 +106,9 @@ export function LiveWorkoutSessionModal({
   const [reflectionNote, setReflectionNote] = useState("");
   const [showExerciseDetail, setShowExerciseDetail] = useState(false);
   const [restCountdown, setRestCountdown] = useState<RestCountdownState | null>(null);
+  const [pendingIncompleteFinishAction, setPendingIncompleteFinishAction] = useState<FinishWorkoutAction | null>(null);
   const deferredJumpTargetGroupIdRef = useRef<string | null>(null);
+  const incompleteWarningSeenRef = useRef(false);
   const completedCountByGroupRef = useRef<Record<string, number>>({});
   const lastRestBeepSecondRef = useRef<number | null>(null);
 
@@ -132,11 +136,15 @@ export function LiveWorkoutSessionModal({
       setWorkoutExerciseIndex(0);
       setShowWorkoutReflection(false);
       setIsSavingWorkout(false);
+      setPendingIncompleteFinishAction(null);
+      incompleteWarningSeenRef.current = false;
       return;
     }
     setWorkoutExerciseIndex(0);
     setShowWorkoutReflection(false);
     setIsSavingWorkout(false);
+    setPendingIncompleteFinishAction(null);
+    incompleteWarningSeenRef.current = false;
     setReflectionEnergyLevel(3);
     setReflectionDifficultyLevel(3);
     setReflectionMotivationLevel(3);
@@ -354,6 +362,14 @@ export function LiveWorkoutSessionModal({
 
   const completedSetsCount = workoutMode?.results.filter((r) => r.completed).length ?? 0;
   const totalSetsCount = workoutMode?.results.length ?? 0;
+  const incompleteSetsCount = Math.max(0, totalSetsCount - completedSetsCount);
+  const incompleteWorkoutGroups = useMemo(
+    () => workoutResultGroups.filter((group) => group.rows.some((row) => !row.completed)),
+    [workoutResultGroups],
+  );
+  const incompleteExerciseNames = incompleteWorkoutGroups.map((group) => group.exerciseName).filter(Boolean);
+  const incompleteExerciseCount = incompleteWorkoutGroups.length;
+  const shouldWarnAboutIncompleteWorkout = incompleteSetsCount > 0 && !incompleteWarningSeenRef.current;
 
   const activeSetProgressLabel = useMemo(() => {
     if (!currentWorkoutGroup || currentWorkoutGroup.blockType) return "";
@@ -430,7 +446,7 @@ export function LiveWorkoutSessionModal({
     deferWorkoutExerciseGroup(currentWorkoutGroup.groupId);
   }
 
-  function handleSaveTrainerWorkout() {
+  function finishTrainerWorkout() {
     if (isSavingWorkout) return;
     setIsSavingWorkout(true);
     finishWorkoutMode({
@@ -438,7 +454,7 @@ export function LiveWorkoutSessionModal({
     });
   }
 
-  function handleSaveMemberWorkout() {
+  function continueMemberFinishFlow() {
     if (!showWorkoutReflection) {
       setShowWorkoutReflection(true);
       return;
@@ -449,6 +465,39 @@ export function LiveWorkoutSessionModal({
       reflection: buildWorkoutReflection(),
       onPersisted: () => setIsSavingWorkout(false),
     });
+  }
+
+  function requestFinishWorkout(action: FinishWorkoutAction) {
+    if (shouldWarnAboutIncompleteWorkout) {
+      setPendingIncompleteFinishAction(action);
+      return;
+    }
+    if (action === "trainer-save") {
+      finishTrainerWorkout();
+      return;
+    }
+    continueMemberFinishFlow();
+  }
+
+  function confirmIncompleteFinish() {
+    const action = pendingIncompleteFinishAction;
+    setPendingIncompleteFinishAction(null);
+    incompleteWarningSeenRef.current = true;
+    if (action === "trainer-save") {
+      finishTrainerWorkout();
+      return;
+    }
+    if (action === "member-reflection" || action === "member-save") {
+      continueMemberFinishFlow();
+    }
+  }
+
+  function handleSaveTrainerWorkout() {
+    requestFinishWorkout("trainer-save");
+  }
+
+  function handleSaveMemberWorkout() {
+    requestFinishWorkout(showWorkoutReflection ? "member-save" : "member-reflection");
   }
 
   if (!workoutMode || !resolvedProgram) return null;
@@ -925,6 +974,57 @@ export function LiveWorkoutSessionModal({
             <div className="shrink-0 border-t p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
               <GradientButton type="button" className="w-full" onClick={() => setShowExerciseDetail(false)}>
                 Tilbake til øktmodus
+              </GradientButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {pendingIncompleteFinishAction ? (
+        <div
+          className="motus-modal-insets fixed inset-0 z-[10020] flex items-center justify-center bg-slate-900/55 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="incomplete-workout-title"
+        >
+          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 id="incomplete-workout-title" className="text-base font-bold text-slate-950">
+                  Du har ikke fullført alt
+                </h3>
+                <p className="mt-1 text-sm text-slate-600">
+                  {incompleteSetsCount === 1
+                    ? "1 sett står fortsatt uferdig."
+                    : `${incompleteSetsCount} sett står fortsatt uferdige.`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPendingIncompleteFinishAction(null)}
+                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Lukk"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+            {incompleteExerciseNames.length > 0 ? (
+              <div className="mt-3 rounded-xl border bg-slate-50 p-3 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="font-semibold text-slate-800">
+                  {incompleteExerciseCount === 1 ? "Uferdig øvelse" : "Uferdige øvelser"}
+                </div>
+                <div className="mt-1">
+                  {incompleteExerciseNames.slice(0, 3).join(", ")}
+                  {incompleteExerciseNames.length > 3 ? ` + ${incompleteExerciseNames.length - 3} til` : ""}
+                </div>
+              </div>
+            ) : null}
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <OutlineButton type="button" className="w-full" onClick={() => setPendingIncompleteFinishAction(null)}>
+                Gå tilbake
+              </OutlineButton>
+              <GradientButton type="button" className="w-full" onClick={confirmIncompleteFinish}>
+                Lagre likevel
               </GradientButton>
             </div>
           </div>
