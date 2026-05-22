@@ -1,5 +1,5 @@
 /** Felles badge-bilder (PNG 1024×1024, normalisert visuell størrelse). */
-export const BADGE_ASSET_VERSION = "39";
+export const BADGE_ASSET_VERSION = "40";
 
 export function badgeAssetUrl(path: string): string {
   const base = path.split("?")[0] || path;
