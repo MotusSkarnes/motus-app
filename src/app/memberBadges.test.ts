@@ -122,6 +122,13 @@ describe("memberBadges", () => {
     expect(secondClub?.target).toBe(300);
     expect(firstClub && memberBadgeImageSrc(firstClub)).toContain("32-100-klubben");
     expect(secondClub && memberBadgeImageSrc(secondClub)).toContain("34-200-klubben");
+
+    const thirdClub = computeMemberBadges({
+      ...baseInput,
+      completedSessionCount: 350,
+    }).allBadges.find((badge) => badge.id === "workout-club");
+    expect(thirdClub?.title).toBe("300 klubben");
+    expect(thirdClub && memberBadgeImageSrc(thirdClub)).toContain("35-300-klubben");
   });
 
   it("unlocks and upgrades Monday hero from consecutive Monday workouts", () => {

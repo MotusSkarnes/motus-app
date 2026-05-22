@@ -2,7 +2,10 @@
 export const WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET: Record<number, string> = {
   100: "/badges/32-100-klubben.png",
   200: "/badges/34-200-klubben.png",
+  300: "/badges/35-300-klubben.png",
 };
+
+const WORKOUT_CLUB_IMAGE_MILESTONES = [500, 400, 300, 200, 100] as const;
 
 export const MEMBER_BADGE_IMAGE_BY_ID: Record<string, string> = {
   sessions: "/badges/02-oktjeger.png",
@@ -53,7 +56,11 @@ function workoutClubDisplayTarget(badge: MemberBadgeImageInput): number {
 }
 
 function workoutClubBadgeImageSrc(target: number): string {
-  if (target >= 200) return WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET[200];
+  for (const milestone of WORKOUT_CLUB_IMAGE_MILESTONES) {
+    if (target >= milestone && WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET[milestone]) {
+      return WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET[milestone];
+    }
+  }
   return WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET[100];
 }
 

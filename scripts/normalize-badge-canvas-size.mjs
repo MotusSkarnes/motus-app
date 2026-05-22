@@ -27,6 +27,7 @@ const DEFAULT_FILES = [
   "33-pulsmaskin.png",
   "32-100-klubben.svg",
   "34-200-klubben.png",
+  "35-300-klubben.png",
   "31-helgekriger.svg",
   "21-17-mai.svg",
   "22-aldri-to-uker-uten.svg",
