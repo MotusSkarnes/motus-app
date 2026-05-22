@@ -1,4 +1,4 @@
-import { isHoldBasedExerciseCategory } from "./exerciseCategories";
+import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "./exerciseCategories";
 import type { Exercise, TrainingProgram } from "./types";
 import type { StartWorkoutModeOptions } from "../services/appRepository";
 
@@ -11,9 +11,7 @@ export function buildDefaultStartWorkoutOptions(program: TrainingProgram, exerci
     if (Number(exercise.durationMinutes) > 0) return;
     const meta = exerciseBank.find((e) => e.id === exercise.exerciseId);
     const isStretch = meta ? isHoldBasedExerciseCategory(meta.category) : false;
-    const suggested = isStretch
-      ? (exercise.holdSeconds ?? "").trim() || exercise.weight.trim() || "30"
-      : exercise.weight.trim();
+    const suggested = isStretch ? programExerciseHoldSeconds(exercise, meta?.category) || "30" : exercise.weight.trim();
     if (!suggested) return;
     suggestedWeightByProgramExerciseId[exercise.id] = suggested;
   });

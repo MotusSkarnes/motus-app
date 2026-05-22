@@ -1,4 +1,4 @@
-import { isHoldBasedExerciseCategory } from "./exerciseCategories";
+import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "./exerciseCategories";
 import { mergeProgramAuthorFields } from "./programAuthor";
 import type {
   Exercise,
@@ -218,7 +218,7 @@ function buildWorkoutRow(
   const isStretch = meta ? isHoldBasedExerciseCategory(meta.category) : false;
   const suggestedWeightRaw = options.suggestedWeightByProgramExerciseId?.[ex.id];
   const suggestedWeight = suggestedWeightRaw !== undefined ? suggestedWeightRaw.trim() : "";
-  const holdPlan = (ex.holdSeconds ?? "").trim() || (isStretch ? ex.weight.trim() : "");
+  const holdPlan = programExerciseHoldSeconds(ex, meta?.category);
   const initialWeight = isStretch ? suggestedWeight || holdPlan || "30" : suggestedWeight || ex.weight;
   const plannedRepsForRow = isStretch ? (ex.reps.trim() || "1") : ex.reps;
 

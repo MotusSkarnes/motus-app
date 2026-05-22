@@ -22,7 +22,7 @@ const BADGE_IMAGES: Record<string, string> = {
   streak: "/badges/08-streak.png",
   "monday-hero": "/badges/30-mandagshelt.svg",
   "weekend-warrior": "/badges/31-helgekriger.svg",
-  lift: "/badges/11-tungt-arbeid.png",
+  lift: "/badges/11-tungvekter.png",
   "month-sessions": "/badges/07-vanebygger.png",
   "training-days": "/badges/13-konsistent.png",
   "goal-percent": "/badges/01-forste-steg.png",
@@ -39,14 +39,8 @@ const BADGE_IMAGES: Record<string, string> = {
   "christmas-pump": "/badges/29-julepump.svg",
 };
 
-/** Litt større grafikk og mindre padding — samme kortlayout som øvrige badges. */
-const BADGE_IMAGE_BOX_CLASS: Record<string, string> = {
-  pulsmaskin: "h-[6.5rem] w-[6.5rem]",
-};
-
-const BADGE_IMAGE_CLASS: Record<string, string> = {
-  pulsmaskin: "h-full w-full object-contain p-0 drop-shadow-sm",
-};
+const BADGE_IMAGE_BOX_CLASS = "h-[5.4rem] w-[5.4rem]";
+const BADGE_IMAGE_CLASS = "h-full w-full object-contain p-1.5 drop-shadow-sm";
 
 const LEVEL_ROMAN: Record<BadgeLevelId, string> = {
   bronze: "I",
@@ -118,10 +112,6 @@ function BadgeCard({
   const nextLevel = getBadgeNextLevel(badge);
   const isMaxed = !nextLevel;
   const badgeImage = BADGE_IMAGES[badge.id] ?? "/badges/01-forste-steg.png";
-  const imageBoxClass = BADGE_IMAGE_BOX_CLASS[badge.id] ?? "h-[5.4rem] w-[5.4rem]";
-  const imageClass =
-    BADGE_IMAGE_CLASS[badge.id] ?? "h-full w-full object-contain p-1.5 drop-shadow-sm";
-
   async function shareBadge() {
     if (!badge.unlocked || isSharing) return;
     setIsSharing(true);
@@ -156,11 +146,11 @@ function BadgeCard({
       ) : null}
 
       <div className="relative flex gap-3">
-        <div className={`relative flex shrink-0 items-center justify-center ${imageBoxClass}`}>
+        <div className={`relative flex shrink-0 items-center justify-center ${BADGE_IMAGE_BOX_CLASS}`}>
           <img
             src={badgeImage}
             alt=""
-            className={`${imageClass} ${badge.unlocked ? "" : "opacity-45 grayscale"}`}
+            className={`${BADGE_IMAGE_CLASS} ${badge.unlocked ? "" : "opacity-45 grayscale"}`}
             loading="lazy"
           />
           {!badge.unlocked ? (

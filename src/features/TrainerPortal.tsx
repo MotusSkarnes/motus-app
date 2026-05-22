@@ -21,6 +21,9 @@ import {
   exerciseMatchesSubTab,
   exerciseCategoryAccentColor,
   isHoldBasedExerciseCategory,
+  normalizeProgramExerciseForCategory,
+  programDraftUsesHoldFields,
+  programExerciseHoldSeconds,
   programsBuilderDescription,
   programsBuilderTitle,
   savedTemplatesTitle,
@@ -2364,7 +2367,9 @@ function pickFirstName(value: unknown): string {
       goal: input.goal,
       notes: input.notes,
       memberId: selectedMemberId,
-      exercises: input.id ? input.exercises : input.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
+      exercises: (input.id ? input.exercises : input.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") }))).map(
+        (exercise) => normalizeProgramExerciseForCategory(exercise, exercisesById.get(exercise.exerciseId)?.category),
+      ),
       programCreatedBy: "trainer",
       programCreatedByName: trainerAuthor,
       onPersisted: (result) => {
@@ -2600,7 +2605,7 @@ function pickFirstName(value: unknown): string {
                     speed ? ` · ${speed} km/t` : ""
                   }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause${cardioTargetHrPrescriptionSuffix(safeExercise.targetHrPercent)}`
                 : libraryMatch && isHoldBasedExerciseCategory(libraryMatch.category)
-                  ? `${setCount} sett × ${String(safeExercise.holdSeconds ?? "").trim() || weight || "-"} sek hold · ${restSeconds}s pause`
+                  ? `${setCount} sett × ${programExerciseHoldSeconds(safeExercise, libraryMatch.category) || "-"} sek hold · ${restSeconds}s pause`
                   : `${setCount} x ${reps} · ${weight} kg · ${restSeconds}s pause`;
               const imageUrl = libraryMatch?.imageUrl?.trim() || "";
               const description = libraryMatch?.description?.trim() || "Ingen forklaring tilgjengelig for denne øvelsen.";
@@ -5565,7 +5570,7 @@ function pickFirstName(value: unknown): string {
                             {(() => {
                               const linkedExercise = exercisesById.get(item.exerciseId);
                               const isCardio = isCardioDraftRow(item, linkedExercise);
-                              const isStretch = linkedExercise ? isHoldBasedExerciseCategory(linkedExercise.category) : false;
+                              const isStretch = programDraftUsesHoldFields(linkedExercise?.category, programsSubTab);
                               const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
                               return (
                             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -6104,11 +6109,12 @@ function pickFirstName(value: unknown): string {
                                   <div className="mt-0.5 text-slate-500">
                                     {exercise.durationMinutes
                                       ? `${exercise.sets || "-"} ${/^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder"} × ${exercise.durationMinutes || "-"} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}`
-                                      : isHoldBasedExerciseCategory(
-                                          exercises.find((e) => e.id === exercise.exerciseId)?.category ?? "Styrke",
-                                        )
-                                        ? `${exercise.sets || "-"} sett × ${(exercise.holdSeconds ?? "").trim() || exercise.weight || "-"} sek · ${exercise.restSeconds || "0"}s`
-                                        : `${exercise.sets || "-"}×${exercise.reps || "-"} · ${exercise.weight || "0"}kg · ${exercise.restSeconds || "0"}s`}
+                                      : (() => {
+                                          const category = exercises.find((e) => e.id === exercise.exerciseId)?.category;
+                                          return category && isHoldBasedExerciseCategory(category)
+                                            ? `${exercise.sets || "-"} sett × ${programExerciseHoldSeconds(exercise, category) || "-"} sek · ${exercise.restSeconds || "0"}s`
+                                            : `${exercise.sets || "-"}×${exercise.reps || "-"} · ${exercise.weight || "0"}kg · ${exercise.restSeconds || "0"}s`;
+                                        })()}
                                   </div>
                                 </div>
                               )})}
@@ -6211,7 +6217,7 @@ function pickFirstName(value: unknown): string {
                         const isCardio = isCardioDraftRow(item, linkedExercise, {
                           conditioningBuilder: programsSubTab === "conditioning",
                         });
-                        const isStretch = linkedExercise ? isHoldBasedExerciseCategory(linkedExercise.category) : false;
+                        const isStretch = programDraftUsesHoldFields(linkedExercise?.category, programsSubTab);
                         const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
                         return (
                       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

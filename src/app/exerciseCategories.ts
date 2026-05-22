@@ -1,4 +1,4 @@
-import type { Exercise } from "./types";
+import type { Exercise, ProgramExercise } from "./types";
 
 export type TrainingSubTab = "strength" | "conditioning" | "mobility" | "rehab";
 
@@ -74,6 +74,45 @@ export function defaultCategoryForExerciseBankTab(subTab: ExerciseBankSubTab): E
 /** Hold/sek-felt i programbygger (uttøyning, mobilitet, rehab). */
 export function isHoldBasedExerciseCategory(category: Exercise["category"]): boolean {
   return category === "Uttøyning" || category === "Mobilitet" || category === "Rehab";
+}
+
+export function isMobilityExerciseCategory(category: Exercise["category"]): boolean {
+  return category === "Mobilitet";
+}
+
+/** Hold/sek for programrad — mobilitet bruker aldri vekt-felt som fallback. */
+export function programExerciseHoldSeconds(
+  exercise: Pick<ProgramExercise, "holdSeconds" | "weight">,
+  category?: Exercise["category"],
+): string {
+  const hold = String(exercise.holdSeconds ?? "").trim();
+  if (hold) return hold;
+  if (category && isMobilityExerciseCategory(category)) return "";
+  if (category && isHoldBasedExerciseCategory(category)) return String(exercise.weight ?? "").trim();
+  return "";
+}
+
+/** Programbygger: hold/sek-felt når øvelsen er mobilitet/rehab/uttøyning eller mal under Mobilitet. */
+export function programDraftUsesHoldFields(
+  category: Exercise["category"] | undefined,
+  builderSubTab?: TrainingSubTab,
+): boolean {
+  if (category && isHoldBasedExerciseCategory(category)) return true;
+  return builderSubTab === "mobility";
+}
+
+export function normalizeProgramExerciseForCategory(
+  exercise: ProgramExercise,
+  category: Exercise["category"] | undefined,
+): ProgramExercise {
+  if (!category || !isHoldBasedExerciseCategory(category)) return exercise;
+  const holdSeconds = programExerciseHoldSeconds(exercise, category) || "30";
+  return {
+    ...exercise,
+    reps: exercise.reps.trim() || "1",
+    holdSeconds,
+    weight: isMobilityExerciseCategory(category) ? "" : exercise.weight,
+  };
 }
 
 export function countsTowardStrengthVolume(category?: Exercise["category"]): boolean {

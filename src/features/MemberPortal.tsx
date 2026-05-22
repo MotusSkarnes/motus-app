@@ -30,7 +30,7 @@ import { MOTUS } from "../app/data";
 import motusLogo from "../assets/motus-logo-transparent.svg";
 import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
-import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
+import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "../app/exerciseCategories";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import {
   enrichMemberWithBestProfile,
@@ -1682,7 +1682,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (fromHistory) return fromHistory;
     const meta = exercises.find((e) => e.id === programExercise.exerciseId);
     if (meta?.category && isHoldBasedExerciseCategory(meta.category)) {
-      return printField(programExercise.holdSeconds) || printField(programExercise.weight) || "30";
+      return programExerciseHoldSeconds(programExercise, meta.category) || "30";
     }
     return programExercise.weight;
   }
@@ -4184,7 +4184,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     speed ? ` · ${speed} km/t` : ""
                   }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause${cardioHrPrescriptionSuffixForMember(safeExercise as ProgramExercise)}`
                 : libraryMatch && isHoldBasedExerciseCategory(libraryMatch.category)
-                  ? `${setCount} sett × ${printField(safeExercise.holdSeconds) || weight || "-"} sek · ${restSeconds}s pause`
+                  ? `${setCount} sett × ${programExerciseHoldSeconds(safeExercise, libraryMatch.category) || "-"} sek · ${restSeconds}s pause`
                   : `${setCount} x ${reps} · ${weight} kg · ${restSeconds}s pause`;
               const rawImageUrl = printField(libraryMatch?.imageUrl);
               const imageUrl = rawImageUrl ? resolvePrintAssetUrl(rawImageUrl) : "";
@@ -5291,7 +5291,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                     {exercise.durationMinutes
                                       ? `${exercise.sets} runder × ${exercise.durationMinutes} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s${cardioHrPrescriptionSuffixForMember(exercise)}`
                                       : isStretch
-                                        ? `${exercise.sets} sett × ${printField(exercise.holdSeconds) || exercise.weight || "-"} sek · ${exercise.restSeconds}s`
+                                        ? `${exercise.sets} sett × ${programExerciseHoldSeconds(exercise, lib?.category) || "-"} sek · ${exercise.restSeconds}s`
                                         : `${exercise.sets}×${exercise.reps} · ${exercise.weight}kg · ${exercise.restSeconds}s`}
                                   </div>
                                   {!exercise.durationMinutes && !isStretch ? (
