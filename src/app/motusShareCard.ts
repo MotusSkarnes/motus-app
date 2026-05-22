@@ -31,7 +31,7 @@ function fillWrappedCanvasText(
   if (line) ctx.fillText(line, x, cy);
 }
 
-/** Tegn badge uten synlig svart «bakgrunn» fra PNG-eksport. */
+/** Tegn badge på hvit flate (PNG har transparent bakgrunn). */
 function drawBadgeImageOnCanvas(
   ctx: CanvasRenderingContext2D,
   image: CanvasImageSource,
@@ -43,7 +43,6 @@ function drawBadgeImageOnCanvas(
   ctx.save();
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(x, y, w, h);
-  ctx.globalCompositeOperation = "screen";
   ctx.drawImage(image, x, y, w, h);
   ctx.restore();
 }
