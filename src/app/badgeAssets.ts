@@ -1,5 +1,5 @@
 /** Felles badge-bilder (PNG 1024×1024, normalisert visuell størrelse). */
-export const BADGE_ASSET_VERSION = "40";
+export const BADGE_ASSET_VERSION = "41";
 
 export function badgeAssetUrl(path: string): string {
   const base = path.split("?")[0] || path;
@@ -36,6 +36,7 @@ const MEMBER_BADGE_IMAGE_PATH_BY_ID: Record<string, string> = {
   "summer-loyal": "/badges/41-sommertrofast.png",
   "new-start": "/badges/27-ny-start.png",
   "easter-pump": "/badges/28-paskepump.png",
+  "pinse-trener": "/badges/44-pinsetrener.png",
   "christmas-pump": "/badges/43-julepump.png",
 };
 
@@ -53,6 +54,7 @@ export const HIDDEN_MEMBER_BADGE_IMAGE_BY_ID: Record<string, string> = {
   "summer-loyal": MEMBER_BADGE_IMAGE_BY_ID["summer-loyal"],
   "new-start": MEMBER_BADGE_IMAGE_BY_ID["new-start"],
   "easter-pump": MEMBER_BADGE_IMAGE_BY_ID["easter-pump"],
+  "pinse-trener": MEMBER_BADGE_IMAGE_BY_ID["pinse-trener"],
   "christmas-pump": MEMBER_BADGE_IMAGE_BY_ID["christmas-pump"],
 };
 

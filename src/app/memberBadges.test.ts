@@ -10,13 +10,14 @@ import {
   formatBadgeMetricValue,
   getBadgeProgressLabel,
   getBadgeUnlockHint,
+  getPentecostHolidayDates,
   SECRET_BADGE_CATALOG,
   SECRET_BADGE_COUNT,
 } from "./memberBadges";
 
 describe("memberBadges", () => {
   it("lists all hidden badges in the secret catalog", () => {
-    expect(SECRET_BADGE_COUNT).toBe(10);
+    expect(SECRET_BADGE_COUNT).toBe(11);
     expect(SECRET_BADGE_CATALOG.map((badge) => badge.id)).toEqual([
       "may-17-workout",
       "never-two-weeks-without",
@@ -27,6 +28,7 @@ describe("memberBadges", () => {
       "summer-loyal",
       "new-start",
       "easter-pump",
+      "pinse-trener",
       "christmas-pump",
     ]);
   });
@@ -419,6 +421,36 @@ describe("memberBadges", () => {
       completedLogDates: [new Date("2026-04-07T12:00:00")],
     });
     expect(outsideEaster.allBadges.some((badge) => badge.id === "easter-pump")).toBe(false);
+  });
+
+  it("unlocks hidden pinse-trener badge on pinseaften, 1. or 2. pinsedag", () => {
+    const [pinseaften, firstPentecost, secondPentecost] = getPentecostHolidayDates(2026);
+
+    const onPinseaften = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [pinseaften],
+    });
+    expect(onPinseaften.allBadges.find((badge) => badge.id === "pinse-trener")?.unlocked).toBe(true);
+
+    const onFirstPentecost = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [firstPentecost],
+    });
+    expect(onFirstPentecost.allBadges.find((badge) => badge.id === "pinse-trener")?.unlocked).toBe(true);
+
+    const onSecondPentecost = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [secondPentecost],
+    });
+    expect(onSecondPentecost.allBadges.find((badge) => badge.id === "pinse-trener")?.unlocked).toBe(true);
+
+    const dayAfterPentecost = new Date(secondPentecost);
+    dayAfterPentecost.setDate(dayAfterPentecost.getDate() + 1);
+    const outsidePentecost = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [dayAfterPentecost],
+    });
+    expect(outsidePentecost.allBadges.some((badge) => badge.id === "pinse-trener")).toBe(false);
   });
 
   it("unlocks hidden christmas-pump badge for workouts between December 24 and 26", () => {

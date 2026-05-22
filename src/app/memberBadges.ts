@@ -509,6 +509,29 @@ function hasEasterWorkout(completedLogDates: Date[] = []): boolean {
   });
 }
 
+/** 1. pinsedag (pinse søndag) = 49 dager etter påskedag (vestlig computus). */
+export function getPentecostSunday(year: number): Date {
+  return addCalendarDays(getEasterSunday(year), 49);
+}
+
+/** Pinseaften (lørdag), 1. og 2. pinsedag for et kalenderår. */
+export function getPentecostHolidayDates(year: number): Date[] {
+  const firstPentecost = getPentecostSunday(year);
+  return [
+    addCalendarDays(firstPentecost, -1),
+    firstPentecost,
+    addCalendarDays(firstPentecost, 1),
+  ];
+}
+
+function hasPentecostWorkout(completedLogDates: Date[] = []): boolean {
+  return completedLogDates.some((date) => {
+    const workoutDate = startOfDay(date);
+    const holidayKeys = getPentecostHolidayDates(workoutDate.getFullYear()).map(localDateKey);
+    return holidayKeys.includes(localDateKey(workoutDate));
+  });
+}
+
 function hasChristmasWorkout(completedLogDates: Date[] = []): boolean {
   return completedLogDates.some((date) => date.getMonth() === 11 && date.getDate() >= 24 && date.getDate() <= 26);
 }
@@ -524,6 +547,7 @@ export const SECRET_BADGE_CATALOG = [
   { id: "summer-loyal", title: "Sommertrofast", description: "Registrerte en treningsøkt i juli.", levelName: "Juli" },
   { id: "new-start", title: "Ny start", description: "Registrerte første økt i et nytt år.", levelName: "Nytt år" },
   { id: "easter-pump", title: "Påskepump", description: "Trente i påsken.", levelName: "Påske" },
+  { id: "pinse-trener", title: "Pinsetrener", description: "Trente pinseaften, 1. eller 2. pinsedag.", levelName: "Pinse" },
   { id: "christmas-pump", title: "Julepump", description: "Trente mellom 24. og 26. desember.", levelName: "Jul" },
 ] as const;
 
@@ -550,6 +574,8 @@ function isSecretBadgeUnlocked(badgeId: (typeof SECRET_BADGE_CATALOG)[number]["i
       return hasJanuaryWorkout(dates);
     case "easter-pump":
       return hasEasterWorkout(dates);
+    case "pinse-trener":
+      return hasPentecostWorkout(dates);
     case "christmas-pump":
       return hasChristmasWorkout(dates);
     default:
