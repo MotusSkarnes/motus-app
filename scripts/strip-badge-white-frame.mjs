@@ -331,6 +331,22 @@ function cropToSubject(data, width, height, channels) {
   return { data: out, width: outW, height: outH, cropped: true };
 }
 
+/** Kun svart AI-bakgrunn fra kant — bevarer hvit hex og skyer (f.eks. Morgenfugl). */
+export async function stripBadgeBlackEdgeOnly(filePath) {
+  const { data, info } = await sharp(filePath).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width, height, channels } = info;
+  const edgeChanged = floodStripEdgePadding(data, width, height, channels);
+  if (edgeChanged === 0) {
+    console.log("unchanged", path.basename(filePath));
+    return false;
+  }
+  const tmpPath = `${filePath}.tmp`;
+  await sharp(data, { raw: { width, height, channels } }).png().toFile(tmpPath);
+  await fs.promises.rename(tmpPath, filePath);
+  console.log("stripped-black-edge", path.basename(filePath), `(edge ${edgeChanged})`);
+  return true;
+}
+
 export async function stripBadgeWhiteFrame(filePath) {
   const { data, info } = await sharp(filePath).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const { width, height, channels } = info;
@@ -361,13 +377,19 @@ export async function stripBadgeWhiteFrame(filePath) {
 }
 
 const args = process.argv.slice(2);
+const blackEdgeOnly = args.includes("--black-edge-only");
+const fileArgs = args.filter((arg) => !arg.startsWith("--"));
 const files =
-  args.length > 0
-    ? args.map((name) => path.join(badgesDir, name))
+  fileArgs.length > 0
+    ? fileArgs.map((name) => path.join(badgesDir, name))
     : fs.readdirSync(badgesDir).filter((name) => name.toLowerCase().endsWith(".png") && !name.startsWith("_"));
 
 for (const filePath of files) {
-  await stripBadgeWhiteFrame(filePath);
+  if (blackEdgeOnly) {
+    await stripBadgeBlackEdgeOnly(filePath);
+  } else {
+    await stripBadgeWhiteFrame(filePath);
+  }
 }
 
 console.log(`Processed ${files.length} badge PNG(s).`);
