@@ -39,8 +39,14 @@ const BADGE_IMAGES: Record<string, string> = {
   "christmas-pump": "/badges/29-julepump.svg",
 };
 
-/** Større badge-grafikk uten innramming/padding (f.eks. Pulsmaskin). */
-const LARGE_BADGE_IDS = new Set<string>(["pulsmaskin"]);
+/** Litt større grafikk og mindre padding — samme kortlayout som øvrige badges. */
+const BADGE_IMAGE_BOX_CLASS: Record<string, string> = {
+  pulsmaskin: "h-[6.5rem] w-[6.5rem]",
+};
+
+const BADGE_IMAGE_CLASS: Record<string, string> = {
+  pulsmaskin: "h-full w-full object-contain p-0 drop-shadow-sm",
+};
 
 const LEVEL_ROMAN: Record<BadgeLevelId, string> = {
   bronze: "I",
@@ -112,7 +118,9 @@ function BadgeCard({
   const nextLevel = getBadgeNextLevel(badge);
   const isMaxed = !nextLevel;
   const badgeImage = BADGE_IMAGES[badge.id] ?? "/badges/01-forste-steg.png";
-  const isLargeBadge = LARGE_BADGE_IDS.has(badge.id);
+  const imageBoxClass = BADGE_IMAGE_BOX_CLASS[badge.id] ?? "h-[5.4rem] w-[5.4rem]";
+  const imageClass =
+    BADGE_IMAGE_CLASS[badge.id] ?? "h-full w-full object-contain p-1.5 drop-shadow-sm";
 
   async function shareBadge() {
     if (!badge.unlocked || isSharing) return;
@@ -137,49 +145,31 @@ function BadgeCard({
 
   return (
     <article
-      className={`relative shrink-0 snap-start overflow-hidden rounded-2xl p-3 shadow-sm ${
-        isLargeBadge ? "w-[19.5rem] sm:w-[21rem]" : "w-[17rem] sm:w-[18.5rem]"
-      } ${isLargeBadge ? "border-0 bg-white" : `border ${badge.unlocked ? "bg-white" : "bg-slate-50/90"}`}`}
-      style={
-        isLargeBadge
-          ? { boxShadow: badge.unlocked ? `0 10px 28px ${level.fill}` : "0 4px 16px rgba(15,23,42,0.06)" }
-          : {
-              borderColor: badge.unlocked ? `${level.border}66` : "rgba(15,23,42,0.08)",
-              boxShadow: badge.unlocked ? `0 8px 24px ${level.fill}` : undefined,
-            }
-      }
+      className={`relative w-[17rem] shrink-0 snap-start overflow-hidden rounded-2xl border p-3 shadow-sm sm:w-[18.5rem] ${badge.unlocked ? "bg-white" : "bg-slate-50/90"}`}
+      style={{
+        borderColor: badge.unlocked ? `${level.border}66` : "rgba(15,23,42,0.08)",
+        boxShadow: badge.unlocked ? `0 8px 24px ${level.fill}` : undefined,
+      }}
     >
       {badge.unlocked ? (
         <span className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl" style={{ background: level.fill }} aria-hidden />
       ) : null}
 
-      <div className={`relative flex gap-3 ${isLargeBadge ? "flex-col items-center text-center" : ""}`}>
-        <div
-          className={`relative flex shrink-0 items-center justify-center ${
-            isLargeBadge ? "h-[10.5rem] w-full max-w-[11.5rem]" : "h-[5.4rem] w-[5.4rem]"
-          }`}
-        >
+      <div className="relative flex gap-3">
+        <div className={`relative flex shrink-0 items-center justify-center ${imageBoxClass}`}>
           <img
             src={badgeImage}
             alt=""
-            className={`h-full w-full object-contain drop-shadow-md ${isLargeBadge ? "p-0" : "p-1.5 drop-shadow-sm"} ${
-              badge.unlocked ? "" : "opacity-45 grayscale"
-            }`}
+            className={`${imageClass} ${badge.unlocked ? "" : "opacity-45 grayscale"}`}
             loading="lazy"
           />
           {!badge.unlocked ? (
-            <span
-              className={`absolute flex items-center justify-center rounded-full border border-white bg-slate-100 text-slate-400 shadow-md ${
-                isLargeBadge ? "-bottom-2 -right-2 h-9 w-9" : "-bottom-1 -right-1 h-7 w-7"
-              }`}
-            >
-              <Lock className={isLargeBadge ? "h-4 w-4" : "h-3.5 w-3.5"} strokeWidth={2.4} />
+            <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-slate-100 text-slate-400 shadow-md">
+              <Lock className="h-3.5 w-3.5" strokeWidth={2.4} />
             </span>
           ) : (
             <span
-              className={`absolute inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase text-white shadow ${
-                isLargeBadge ? "right-0 top-2" : "-left-1 top-1"
-              }`}
+              className="absolute -left-1 top-1 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase text-white shadow"
               style={{ background: MOTUS_GRADIENT }}
             >
               <Sparkles className="h-2.5 w-2.5" />
@@ -188,8 +178,8 @@ function BadgeCard({
           )}
         </div>
 
-        <div className={`min-w-0 ${isLargeBadge ? "w-full" : "flex-1"}`}>
-          <div className={`flex flex-wrap items-center gap-2 ${isLargeBadge ? "justify-center" : ""}`}>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{badge.categoryTitle}</span>
             {badge.unlocked ? (
               <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase" style={{ background: level.fill, color: level.accent }}>
