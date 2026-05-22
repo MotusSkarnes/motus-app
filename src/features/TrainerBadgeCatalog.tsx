@@ -12,9 +12,11 @@ const CLUB_MILESTONES = [100, 200, 300, 400, 500] as const;
 
 function CatalogBadgeImage({ src, alt, compact = false }: { src: string; alt: string; compact?: boolean }) {
   const wrapperClass = compact
-    ? "relative flex h-14 w-14 shrink-0 items-center justify-center overflow-visible rounded-lg bg-transparent"
+    ? "relative flex h-16 w-16 shrink-0 items-center justify-center overflow-visible rounded-lg bg-transparent p-2"
     : `relative shrink-0 ${BADGE_IMAGE_WRAPPER_CLASS}`;
-  const imageClass = compact ? "max-h-[88%] max-w-[88%] object-contain drop-shadow-sm" : BADGE_IMAGE_CLASS;
+  const imageClass = compact
+    ? "h-full w-full object-contain object-center drop-shadow-sm scale-[0.9]"
+    : BADGE_IMAGE_CLASS;
 
   return (
     <div className={wrapperClass}>

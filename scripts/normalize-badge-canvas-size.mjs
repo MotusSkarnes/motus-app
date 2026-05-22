@@ -13,7 +13,9 @@ const badgesDir = path.join(root, "public", "badges");
 
 const CANVAS = 1024;
 /** Maks innholdsstørrelse på canvas — lavere = mer luft rundt motivet i UI. */
-const CONTENT_MAX = 580;
+const CONTENT_MAX = 520;
+/** Ekstra innrykk etter trim så sparkles/hjørner ikke klippes i nettleseren. */
+const CONTENT_SAFE_SCALE = 0.88;
 
 const DEFAULT_FILES = [
   "01-forste-steg.png",
@@ -52,7 +54,7 @@ async function normalizeBadgeAsset(filePath) {
   const meta = await sharp(trimmed).metadata();
   const width = meta.width ?? CANVAS;
   const height = meta.height ?? CANVAS;
-  const scale = CONTENT_MAX / Math.max(width, height, 1);
+  const scale = (CONTENT_MAX * CONTENT_SAFE_SCALE) / Math.max(width, height, 1);
   const targetW = Math.max(1, Math.round(width * scale));
   const targetH = Math.max(1, Math.round(height * scale));
 

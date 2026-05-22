@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Award, Lock, Share2, Sparkles, Target } from "lucide-react";
 import { memberBadgeImageSrc } from "../app/badgeAssets";
-import { BADGE_IMAGE_CLASS, BADGE_IMAGE_WRAPPER_CLASS } from "../app/badgeImagePresentation";
+import { BADGE_CAROUSEL_SCROLL_CLASS, BADGE_IMAGE_CLASS, BADGE_IMAGE_WRAPPER_CLASS } from "../app/badgeImagePresentation";
 import { MOTUS } from "../app/data";
 import { motusShareStatusMessage, shareBadgeCard } from "../app/motusShareCard";
 import {
@@ -251,7 +251,7 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
         </div>
       </div>
 
-      <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
+      <div className={`-mx-1 mt-3 flex gap-2 px-1 pb-1 ${BADGE_CAROUSEL_SCROLL_CLASS}`}>
         {menuItems.map((item) => {
           const active = item.id === activeCategoryId;
           return (
@@ -274,7 +274,7 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
         <p className="mt-3 rounded-xl border border-teal-200/80 bg-teal-50 px-3 py-2 text-xs font-medium text-teal-950">{badgeShareStatus}</p>
       ) : null}
 
-      <div className="-mx-1 mt-3 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-1 pb-2">
+      <div className={`-mx-1 mt-3 flex snap-x snap-mandatory gap-2.5 px-1 pb-3 pt-1 ${BADGE_CAROUSEL_SCROLL_CLASS}`}>
         {visibleBadges.map((badge) => (
           <BadgeCard
             key={badge.id}
