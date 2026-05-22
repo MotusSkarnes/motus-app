@@ -8,6 +8,7 @@ import {
   periodPlanWeekdayKeyForDate,
   resolvePeriodPlanPlannedDate,
   resolvePeriodPlanWeek,
+  resolvePeriodPlanWeekDateRange,
   syncGradientMarkedWeekDays,
 } from "./periodPlanMerge";
 import type { PeriodSchedulePlan, WeeklySchedulePlan } from "./types";
@@ -50,6 +51,14 @@ describe("resolvePeriodPlanPlannedDate", () => {
     expect(resolvePeriodPlanPlannedDate(plan, 1, "sunday")?.toLocaleDateString("sv-SE")).toBe("2026-05-24");
     expect(resolvePeriodPlanPlannedDate(plan, 1, "monday")?.toLocaleDateString("sv-SE")).toBe("2026-05-25");
     expect(resolvePeriodPlanPlannedDate(plan, 2, "monday")?.toLocaleDateString("sv-SE")).toBe("2026-06-01");
+  });
+
+  it("reports the displayed week range from the actual plan start day", () => {
+    const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty } }]);
+    plan.startDate = "2026-05-22";
+    const range = resolvePeriodPlanWeekDateRange(plan, 1);
+    expect(range?.start.toLocaleDateString("sv-SE")).toBe("2026-05-22");
+    expect(range?.end.toLocaleDateString("sv-SE")).toBe("2026-05-28");
   });
 });
 

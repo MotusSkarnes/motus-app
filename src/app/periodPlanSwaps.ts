@@ -46,6 +46,31 @@ export function parsePeriodPlanSwapsState(raw: string | null): PeriodPlanSwapsBy
   }
 }
 
+export function mergePeriodPlanSwapsStates(...states: PeriodPlanSwapsByPlan[]): PeriodPlanSwapsByPlan {
+  const next: PeriodPlanSwapsByPlan = {};
+  for (const state of states) {
+    if (!state || typeof state !== "object") continue;
+    for (const [planId, weeks] of Object.entries(state)) {
+      if (!planId.trim() || !weeks || typeof weeks !== "object") continue;
+      const nextWeeks = { ...(next[planId] ?? {}) };
+      for (const [weekNumber, swaps] of Object.entries(weeks)) {
+        if (!weekNumber.trim() || !Array.isArray(swaps)) continue;
+        if (swaps.length === 0) {
+          delete nextWeeks[weekNumber];
+        } else {
+          nextWeeks[weekNumber] = swaps;
+        }
+      }
+      if (Object.keys(nextWeeks).length > 0) {
+        next[planId] = nextWeeks;
+      } else {
+        delete next[planId];
+      }
+    }
+  }
+  return next;
+}
+
 export function getSwapsForWeek(
   swapsByPlan: PeriodPlanSwapsByPlan,
   planId: string,

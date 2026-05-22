@@ -62,6 +62,18 @@ export function resolvePeriodPlanPlannedDate(plan: PeriodSchedulePlan, weekNumbe
   return new Date(start.getFullYear(), start.getMonth(), start.getDate() + dayOffset);
 }
 
+export function resolvePeriodPlanWeekDateRange(
+  plan: PeriodSchedulePlan,
+  weekNumber: number,
+): { start: Date; end: Date } | null {
+  const start = parsePeriodPlanStartDate(plan);
+  if (!start) return null;
+  const weekIndex = Math.max(0, Math.floor(Number(weekNumber) || 1) - 1);
+  const weekStart = new Date(start.getFullYear(), start.getMonth(), start.getDate() + weekIndex * 7);
+  const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6);
+  return { start: weekStart, end: weekEnd };
+}
+
 /** Finn økt for en kalenderdag — samme dato-beregning som vises i periodeplan-radene. */
 export function findPeriodPlanEntryForCalendarDate(
   plan: PeriodSchedulePlan,

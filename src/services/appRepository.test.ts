@@ -3,6 +3,7 @@ import type { AppState } from "../app/types";
 import {
   appendWorkoutSetForProgramExerciseInState,
   deferWorkoutExerciseGroupInState,
+  deleteProgramInState,
   finishWorkoutModeInState,
   logCompletedPlanEntryInState,
   removeCompletedPlanEntryLogInState,
@@ -39,6 +40,26 @@ function createBaseState(): AppState {
 }
 
 describe("appRepository workout log guards", () => {
+  it("keeps historical workout logs when deleting a program", () => {
+    const state = createBaseState();
+    state.logs = [
+      {
+        id: "log-1",
+        memberId: "member-1",
+        programTitle: "Styrke A",
+        date: "24.04.2026",
+        status: "Fullført",
+        note: "",
+        results: [],
+      },
+    ];
+
+    const next = deleteProgramInState(state, "program-1");
+
+    expect(next.programs).toHaveLength(0);
+    expect(next.logs).toEqual(state.logs);
+  });
+
   it("appends an extra set with incremented setNumber for a program exercise", () => {
     const state = createBaseState();
     state.programs = [

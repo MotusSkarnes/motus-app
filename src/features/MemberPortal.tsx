@@ -105,6 +105,7 @@ import {
   findTodayPeriodPlanEntryInPlans,
   parsePeriodPlanStartDate,
   resolvePeriodPlanPlannedDate,
+  resolvePeriodPlanWeekDateRange,
   resolvePeriodPlanWeek,
   writeHiddenPeriodPlanIdsForMember,
 } from "../app/periodPlanMerge";
@@ -113,6 +114,7 @@ import {
   buildPeriodPlanWeekOverride,
   getPeriodPlanSwapsStorageKey,
   getSwapsForWeek,
+  mergePeriodPlanSwapsStates,
   parsePeriodPlanSwapsState,
   setSwapsForWeek,
   togglePeriodPlanMove,
@@ -1015,6 +1017,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const lastMemberCoreHydrationIdRef = useRef<string | null>(null);
   const periodPlanCompletedDirtyRef = useRef(false);
   const periodPlanSwapsDirtyRef = useRef(false);
+  const latestPeriodPlanSwapsRef = useRef<PeriodPlanSwapsByPlan>({});
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [programLibraryMenuId, setProgramLibraryMenuId] = useState<string | null>(null);
 
@@ -1191,6 +1194,16 @@ export function MemberPortal(props: MemberPortalProps) {
     currentUserSupabaseId,
   ]);
   const relatedMemberIdSet = useMemo(() => new Set(relatedMemberIds), [relatedMemberIds]);
+  const periodPlanSwapStorageMemberIds = useMemo(() => {
+    const ids = new Set<string>();
+    relatedMemberIds.forEach((id) => {
+      const trimmed = id.trim();
+      if (trimmed) ids.add(trimmed);
+    });
+    const editableId = editableMember?.id.trim() ?? "";
+    if (editableId) ids.add(editableId);
+    return Array.from(ids);
+  }, [editableMember?.id, relatedMemberIds]);
   const trainerPeriodPlanIds = useMemo(
     () => buildTrainerPeriodPlanIdSet(relatedMemberIds, remoteMemberPeriodPlanRows),
     [relatedMemberIds, remoteMemberPeriodPlanRows],
@@ -2564,13 +2577,34 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }, [editableMember, completedPeriodPlanEntryKeys]);
   useEffect(() => {
-    periodPlanSwapsDirtyRef.current = false;
+    latestPeriodPlanSwapsRef.current = periodPlanSwapsByPlan;
+  }, [periodPlanSwapsByPlan]);
+  useEffect(() => {
     if (!editableMember || typeof window === "undefined") {
+      periodPlanSwapsDirtyRef.current = false;
       setPeriodPlanSwapsByPlan({});
       return;
     }
-    setPeriodPlanSwapsByPlan(parsePeriodPlanSwapsState(window.localStorage.getItem(getPeriodPlanSwapsStorageKey(editableMember.id))));
-  }, [editableMember?.id]);
+    const wasDirty = periodPlanSwapsDirtyRef.current;
+    const nextSwaps = wasDirty
+      ? latestPeriodPlanSwapsRef.current
+      : mergePeriodPlanSwapsStates(
+          ...periodPlanSwapStorageMemberIds.map((memberId) =>
+            parsePeriodPlanSwapsState(window.localStorage.getItem(getPeriodPlanSwapsStorageKey(memberId))),
+          ),
+        );
+    periodPlanSwapsDirtyRef.current = false;
+    setPeriodPlanSwapsByPlan(nextSwaps);
+    if (!wasDirty && Object.keys(nextSwaps).length === 0) return;
+    try {
+      const serialized = JSON.stringify(nextSwaps);
+      periodPlanSwapStorageMemberIds.forEach((memberId) => {
+        window.localStorage.setItem(getPeriodPlanSwapsStorageKey(memberId), serialized);
+      });
+    } catch {
+      // ignore storage write errors (quota/private mode)
+    }
+  }, [editableMember?.id, periodPlanSwapStorageMemberIds]);
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     if (!periodPlanSwapsDirtyRef.current) return;
@@ -5698,10 +5732,9 @@ export function MemberPortal(props: MemberPortalProps) {
                             onWeekSelectByNumber={setSelectedPeriodPlanWeekNumber}
                             currentWeekNumber={activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : null}
                             formatWeekRange={(weekNumber) => {
-                              const monday = resolvePeriodPlanEntryDate(activePeriodPlan, weekNumber, "monday");
-                              const sunday = resolvePeriodPlanEntryDate(activePeriodPlan, weekNumber, "sunday");
-                              if (!monday || !sunday) return null;
-                              return `${monday} – ${sunday}`;
+                              const range = resolvePeriodPlanWeekDateRange(activePeriodPlan, weekNumber);
+                              if (!range) return null;
+                              return `${formatDateDdMmYyyy(range.start)} – ${formatDateDdMmYyyy(range.end)}`;
                             }}
                           />
                         ) : null}
