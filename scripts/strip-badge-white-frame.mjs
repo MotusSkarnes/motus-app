@@ -14,9 +14,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const badgesDir = path.join(__dirname, "..", "public", "badges");
 
 const EDGE_WHITE_THRESHOLD = 238;
+const EDGE_BLACK_THRESHOLD = 32;
 /** Hvit plate inni hex — lavere terskel + metningskrav. */
 const PLATE_MAX_SATURATION = 0.14;
 const PLATE_MIN_LIGHTNESS = 0.82;
+/** Sort hex-bakgrunn fra AI-eksport (beholdes nær motiv / hvit tekst). */
+const PLATE_BLACK_MAX_SATURATION = 0.14;
+const PLATE_BLACK_MAX_LIGHTNESS = 0.22;
 /** Motiv = mettet nok til å telle som «innhold». */
 const SUBJECT_MIN_SATURATION = 0.17;
 const SUBJECT_MAX_LIGHTNESS = 0.42;
@@ -44,13 +48,20 @@ function rgbToHsl(r, g, b) {
 
 function isEdgeRemovable(r, g, b, a) {
   if (a < 15) return true;
-  return r >= EDGE_WHITE_THRESHOLD && g >= EDGE_WHITE_THRESHOLD && b >= EDGE_WHITE_THRESHOLD;
+  if (r >= EDGE_WHITE_THRESHOLD && g >= EDGE_WHITE_THRESHOLD && b >= EDGE_WHITE_THRESHOLD) return true;
+  return r <= EDGE_BLACK_THRESHOLD && g <= EDGE_BLACK_THRESHOLD && b <= EDGE_BLACK_THRESHOLD;
 }
 
 function isPlateWhite(r, g, b, a) {
   if (a < 15) return false;
   const { s, l } = rgbToHsl(r, g, b);
   return s <= PLATE_MAX_SATURATION && l >= PLATE_MIN_LIGHTNESS;
+}
+
+function isPlateBlack(r, g, b, a) {
+  if (a < 15) return false;
+  const { s, l } = rgbToHsl(r, g, b);
+  return s <= PLATE_BLACK_MAX_SATURATION && l <= PLATE_BLACK_MAX_LIGHTNESS;
 }
 
 function floodStripEdgePadding(data, width, height, channels) {
@@ -136,6 +147,49 @@ function stripInteriorWhitePlate(data, width, height, channels) {
   return changed;
 }
 
+function buildSubjectProtectMask(data, width, height, channels) {
+  const size = width * height;
+  const protect = new Uint8Array(size);
+
+  for (let idx = 0; idx < size; idx += 1) {
+    const o = idx * channels;
+    if (data[o + 3] < 15) continue;
+    const { s, l } = rgbToHsl(data[o], data[o + 1], data[o + 2]);
+    const isColorful = s >= SUBJECT_MIN_SATURATION;
+    const isBrightText = l >= 0.72 && s <= 0.2;
+    if (!isColorful && !isBrightText) continue;
+    const x = idx % width;
+    const y = Math.floor(idx / width);
+    for (let dy = -SUBJECT_PROTECT_RADIUS; dy <= SUBJECT_PROTECT_RADIUS; dy += 1) {
+      for (let dx = -SUBJECT_PROTECT_RADIUS; dx <= SUBJECT_PROTECT_RADIUS; dx += 1) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+        protect[ny * width + nx] = 1;
+      }
+    }
+  }
+
+  return protect;
+}
+
+function stripInteriorBlackPlate(data, width, height, channels) {
+  const size = width * height;
+  const protect = buildSubjectProtectMask(data, width, height, channels);
+  let changed = 0;
+
+  for (let idx = 0; idx < size; idx += 1) {
+    const o = idx * channels;
+    if (data[o + 3] < 15) continue;
+    if (protect[idx]) continue;
+    if (!isPlateBlack(data[o], data[o + 1], data[o + 2], data[o + 3])) continue;
+    data[o + 3] = 0;
+    changed += 1;
+  }
+
+  return changed;
+}
+
 /** Fjerner hvite rester som ikke ligger inntil mørk/mettet motiv. */
 function cleanupStrayWhite(data, width, height, channels) {
   const size = width * height;
@@ -164,6 +218,41 @@ function cleanupStrayWhite(data, width, height, channels) {
     }
 
     if (nearSubject) continue;
+    data[o + 3] = 0;
+    changed += 1;
+  }
+
+  return changed;
+}
+
+/** Fjerner sorte rester som ikke ligger inntil motiv eller hvit tekst. */
+function cleanupStrayBlack(data, width, height, channels) {
+  const size = width * height;
+  let changed = 0;
+
+  for (let idx = 0; idx < size; idx += 1) {
+    const o = idx * channels;
+    if (!isPlateBlack(data[o], data[o + 1], data[o + 2], data[o + 3])) continue;
+    const x = idx % width;
+    const y = Math.floor(idx / width);
+    let nearProtected = false;
+
+    for (let dy = -3; dy <= 3 && !nearProtected; dy += 1) {
+      for (let dx = -3; dx <= 3; dx += 1) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+        const ni = (ny * width + nx) * channels;
+        if (data[ni + 3] < 20) continue;
+        const { s, l } = rgbToHsl(data[ni], data[ni + 1], data[ni + 2]);
+        if (s >= SUBJECT_MIN_SATURATION || l >= 0.72) {
+          nearProtected = true;
+          break;
+        }
+      }
+    }
+
+    if (nearProtected) continue;
     data[o + 3] = 0;
     changed += 1;
   }
@@ -247,10 +336,13 @@ export async function stripBadgeWhiteFrame(filePath) {
   const { width, height, channels } = info;
   const edgeChanged = floodStripEdgePadding(data, width, height, channels);
   const plateChanged = stripInteriorWhitePlate(data, width, height, channels);
+  const blackPlateChanged = stripInteriorBlackPlate(data, width, height, channels);
   const strayChanged = cleanupStrayWhite(data, width, height, channels);
+  const strayBlackChanged = cleanupStrayBlack(data, width, height, channels);
   const cropped = cropToSubject(data, width, height, channels);
   const out = cropped.cropped ? cropped : { data, width, height };
-  const changed = edgeChanged + plateChanged + strayChanged + (cropped.cropped ? 1 : 0);
+  const changed =
+    edgeChanged + plateChanged + blackPlateChanged + strayChanged + strayBlackChanged + (cropped.cropped ? 1 : 0);
 
   if (changed === 0) {
     console.log("unchanged", path.basename(filePath));
@@ -263,7 +355,7 @@ export async function stripBadgeWhiteFrame(filePath) {
   console.log(
     "stripped",
     path.basename(filePath),
-    `(edge ${edgeChanged}, plate ${plateChanged}, stray ${strayChanged}${cropped.cropped ? ", cropped" : ""})`,
+    `(edge ${edgeChanged}, plate ${plateChanged}, black ${blackPlateChanged}, stray ${strayChanged}, strayBlack ${strayBlackChanged}${cropped.cropped ? ", cropped" : ""})`,
   );
   return true;
 }
