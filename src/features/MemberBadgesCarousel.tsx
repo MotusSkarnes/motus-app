@@ -119,7 +119,7 @@ function BadgeCard({
         boxShadow: badge.unlocked ? `0 8px 24px ${level.fill}` : undefined,
       }}
     >
-      <div className="motus-badge-card-art flex flex-col items-center gap-2 overflow-visible border-b border-slate-100 px-1 pb-3 pt-1">
+      <div className="motus-badge-card-art flex flex-col items-center gap-2 overflow-visible border-b border-slate-100 px-2 pb-4 pt-2">
         <div className="relative overflow-visible">
           <BadgeImage src={badgeImage} size="card" dimmed={!badge.unlocked} alt={badge.title} />
           {!badge.unlocked ? (

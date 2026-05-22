@@ -25,7 +25,7 @@ const PLATE_BLACK_MAX_LIGHTNESS = 0.22;
 const SUBJECT_MIN_SATURATION = 0.17;
 const SUBJECT_MAX_LIGHTNESS = 0.42;
 const SUBJECT_PROTECT_RADIUS = 6;
-const CROP_PADDING_RATIO = 0.14;
+const CROP_PADDING_RATIO = 0.18;
 /** Ytre sone der hex-ramme ligger — ekskluderes fra utsnitt. */
 const FRAME_EXCLUDE_MARGIN_RATIO = 0.2;
 

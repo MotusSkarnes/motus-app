@@ -55,7 +55,9 @@ async function normalizeBadgeAsset(filePath) {
   const width = meta.width ?? CANVAS;
   const height = meta.height ?? CANVAS;
   const innerMax = Math.max(400, CONTENT_MAX - CANVAS_INSET * 2);
-  const scale = innerMax / Math.max(width, height, 1);
+  /** Motiv fyller ikke hele innerMax — transparent kant så hex-hjørner/sparkles ikke klippes i appen. */
+  const SAFE_FILL = 0.8;
+  const scale = (innerMax * SAFE_FILL) / Math.max(width, height, 1);
   const targetW = Math.max(1, Math.round(width * scale));
   const targetH = Math.max(1, Math.round(height * scale));
 
