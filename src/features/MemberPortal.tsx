@@ -2808,6 +2808,14 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [relatedMemberIds, remoteMemberPeriodPlanRows, periodPlanStorageRevision]);
 
   useEffect(() => {
+    if (memberTab !== "programs" || trainingSection !== "period") return;
+    if (periodPlans.length > 0 && !memberHasVisiblePeriodPlan) {
+      setShowPeriodPlanManageSection(true);
+      setShowPeriodPlanHiddenSection(true);
+    }
+  }, [memberTab, trainingSection, periodPlans.length, memberHasVisiblePeriodPlan]);
+
+  useEffect(() => {
     if (!memberFocusWorkoutLogId) return;
     const log = completedLogs.find((item) => item.id === memberFocusWorkoutLogId);
     if (!log) return;
@@ -3731,23 +3739,28 @@ export function MemberPortal(props: MemberPortalProps) {
     return `${planId}:${weekNumber}:${day}`;
   }
 
+  function resolvePeriodPlanTargetMemberIds(): string[] {
+    return relatedMemberIds.length > 0 ? relatedMemberIds : [primaryMemberIdForPeriodPlans].filter(Boolean);
+  }
+
   function hideTrainerPeriodPlan(planId: string) {
-    const targetMemberIds = relatedMemberIds.length > 0 ? relatedMemberIds : [primaryMemberIdForPeriodPlans].filter(Boolean);
+    const targetMemberIds = resolvePeriodPlanTargetMemberIds();
     if (targetMemberIds.length === 0) return;
     const nextHidden = Array.from(new Set([...hiddenPeriodPlanIds, planId]));
     writeHiddenPeriodPlanIdsForMembers(targetMemberIds, nextHidden);
     setHiddenPeriodPlanIds(nextHidden);
     setShowPeriodPlanManageSection(true);
     setShowPeriodPlanHiddenSection(true);
+    setShowPeriodPlanPanel(true);
     if (activeMemberPeriodPlanId === planId) {
       const nextActive = visiblePeriodPlans.find((plan) => plan.id !== planId)?.id ?? null;
       setActiveMemberPeriodPlanId(nextActive);
     }
-    setPeriodPlanActionStatus("Periodeplanen er skjult. Du kan hente den tilbake under Skjulte planer.");
+    setPeriodPlanActionStatus("Planen er skjult fra oversikten. Den er ikke slettet — hent den tilbake under «Skjulte planer» nedenfor.");
   }
 
   function unhideTrainerPeriodPlan(planId: string) {
-    const targetMemberIds = relatedMemberIds.length > 0 ? relatedMemberIds : [primaryMemberIdForPeriodPlans].filter(Boolean);
+    const targetMemberIds = resolvePeriodPlanTargetMemberIds();
     if (targetMemberIds.length === 0) return;
     const nextHidden = hiddenPeriodPlanIds.filter((id) => id !== planId);
     writeHiddenPeriodPlanIdsForMembers(targetMemberIds, nextHidden);
@@ -3757,6 +3770,22 @@ export function MemberPortal(props: MemberPortalProps) {
     setShowPeriodPlanPanel(true);
     setShowPeriodPlanManageSection(true);
     setPeriodPlanActionStatus("Periodeplanen er tilbake i oversikten.");
+  }
+
+  function unhideAllTrainerPeriodPlans() {
+    const targetMemberIds = resolvePeriodPlanTargetMemberIds();
+    if (targetMemberIds.length === 0) return;
+    writeHiddenPeriodPlanIdsForMembers(targetMemberIds, []);
+    setHiddenPeriodPlanIds([]);
+    const firstPlan = periodPlans[0];
+    if (firstPlan) {
+      setActiveMemberPeriodPlanId(firstPlan.id);
+      setSelectedPeriodPlanWeekNumber(1);
+    }
+    setShowPeriodPlanPanel(true);
+    setShowPeriodPlanManageSection(true);
+    setShowPeriodPlanHiddenSection(false);
+    setPeriodPlanActionStatus("Alle periodeplaner er synlige igjen.");
   }
 
   function deleteMemberOwnedPeriodPlan(plan: PeriodSchedulePlan) {
@@ -5609,7 +5638,7 @@ export function MemberPortal(props: MemberPortalProps) {
               ) : null}
 
               {trainingSection === "period" ? (
-              memberHasVisiblePeriodPlan ? (
+              periodPlans.length > 0 ? (
               <div className="rounded-xl border bg-white p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-2">
@@ -5625,11 +5654,48 @@ export function MemberPortal(props: MemberPortalProps) {
                       <div className="mt-1 text-sm text-slate-600">Start økter, logg aktivitet og bytt dager når hverdagen krever det.</div>
                     </div>
                   </div>
-                  <OutlineButton onClick={() => setShowPeriodPlanPanel((prev) => !prev)} className="w-full sm:w-auto">
-                    {showPeriodPlanPanel ? "Skjul periodeplan" : "Vis periodeplan"}
-                  </OutlineButton>
+                  {memberHasVisiblePeriodPlan ? (
+                    <OutlineButton onClick={() => setShowPeriodPlanPanel((prev) => !prev)} className="w-full sm:w-auto">
+                      {showPeriodPlanPanel ? "Minimer ukeplan" : "Vis ukeplan"}
+                    </OutlineButton>
+                  ) : null}
                 </div>
-                {showPeriodPlanPanel ? (
+                {!memberHasVisiblePeriodPlan ? (
+                  <div
+                    className="mt-4 rounded-xl border border-amber-200/80 bg-amber-50/90 p-4 text-sm text-amber-950"
+                    role="status"
+                  >
+                    <p className="font-semibold">Alle periodeplaner er skjult fra oversikten</p>
+                    <p className="mt-1 leading-relaxed text-amber-900/90">
+                      Planene er ikke slettet. Trykk <strong>Vis igjen</strong> for å ta dem tilbake, eller legg til en ny plan fra Inspirasjon.
+                    </p>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                      {hiddenPeriodPlans.length > 1 ? (
+                        <GradientButton type="button" onClick={unhideAllTrainerPeriodPlans} className="w-full sm:w-auto">
+                          Vis alle planer
+                        </GradientButton>
+                      ) : null}
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {hiddenPeriodPlans.map((plan) => (
+                        <div
+                          key={plan.id}
+                          className="flex flex-col gap-2 rounded-xl border border-amber-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="min-w-0 font-medium text-slate-900">{plan.title}</div>
+                          <OutlineButton
+                            type="button"
+                            className="w-full shrink-0 px-3 py-2 text-xs sm:w-auto"
+                            onClick={() => unhideTrainerPeriodPlan(plan.id)}
+                          >
+                            Vis igjen
+                          </OutlineButton>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {memberHasVisiblePeriodPlan && showPeriodPlanPanel ? (
                   <div className="mt-4 space-y-3">
                     {visiblePeriodPlans.length > 1 ? (
                       <div className="flex flex-wrap gap-2">
@@ -5659,30 +5725,7 @@ export function MemberPortal(props: MemberPortalProps) {
                         })}
                       </div>
                     ) : null}
-                    {visiblePeriodPlans.length === 0 ? (
-                      periodPlans.length > 0 ? (
-                        <div className="rounded-xl border border-dashed bg-slate-50 px-3 py-4 text-sm text-slate-600">
-                          <div>Alle periodeplaner er skjult.</div>
-                          <OutlineButton
-                            type="button"
-                            className="mt-3 w-full px-3 py-2 text-xs sm:w-auto"
-                            onClick={() => {
-                              setShowPeriodPlanManageSection(true);
-                              setShowPeriodPlanHiddenSection(true);
-                            }}
-                          >
-                            Vis skjulte planer
-                          </OutlineButton>
-                        </div>
-                      ) : (
-                        <EmptyState
-                          icon="🗓️"
-                          title="Ingen periodeplan ennå"
-                          description="Legg til en plan fra Inspirasjon, eller be treneren din om en periodeplan."
-                          className="bg-slate-50 py-4"
-                        />
-                      )
-                    ) : activePeriodPlan ? (
+                    {activePeriodPlan ? (
                       <div
                         className="overflow-hidden rounded-2xl border-0 p-0 shadow-md ring-1 ring-teal-500/15"
                         style={{
@@ -5745,21 +5788,27 @@ export function MemberPortal(props: MemberPortalProps) {
                         ) : null}
                       </div>
                     ) : null}
-                    {periodPlans.length > 0 ? (
-                      <div className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
-                        <button
-                          type="button"
-                          onClick={() => setShowPeriodPlanManageSection((open) => !open)}
-                          className="flex w-full items-center justify-between gap-2 text-left"
-                        >
-                          <span className="text-sm font-semibold text-slate-800">Administrer planer</span>
-                          <span className="text-xs font-medium text-slate-500">
-                            {showPeriodPlanManageSection ? "Skjul" : "Vis"}
-                          </span>
-                        </button>
-                        {showPeriodPlanManageSection ? (
-                          <div className="mt-3 space-y-2">
-                            {visiblePeriodPlans.map((plan) => {
+                  </div>
+                ) : memberHasVisiblePeriodPlan ? (
+                  <p className="mt-4 text-sm text-slate-600">Ukeplanen er minimert. Trykk «Vis ukeplan» for å se dagene.</p>
+                ) : null}
+                <div className="mt-4 rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowPeriodPlanManageSection((open) => !open)}
+                    className="flex w-full items-center justify-between gap-2 text-left"
+                  >
+                    <span className="text-sm font-semibold text-slate-800">Administrer planer</span>
+                    <span className="text-xs font-medium text-slate-500">
+                      {showPeriodPlanManageSection ? "Skjul" : "Vis"}
+                    </span>
+                  </button>
+                  {showPeriodPlanManageSection ? (
+                    <div className="mt-3 space-y-2">
+                      {visiblePeriodPlans.length === 0 ? (
+                        <p className="text-sm text-slate-600">Ingen synlige planer akkurat nå. Bruk «Skjulte planer» nedenfor.</p>
+                      ) : null}
+                      {visiblePeriodPlans.map((plan) => {
                               const active = activePeriodPlan?.id === plan.id;
                               const memberOwned = isMemberOwnedPeriodPlan(plan, trainerPeriodPlanIds);
                               return (
@@ -5859,12 +5908,9 @@ export function MemberPortal(props: MemberPortalProps) {
                                 ) : null}
                               </div>
                             ) : null}
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
+                    </div>
+                  ) : null}
+                </div>
               </div>
               ) : (
                 <div className="rounded-xl border bg-white p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
