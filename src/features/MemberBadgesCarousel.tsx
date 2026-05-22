@@ -17,7 +17,7 @@ import {
 const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
 
 const BADGE_IMAGES: Record<string, string> = {
-  sessions: "/badges/02-motte-opp.png",
+  sessions: "/badges/02-oktjeger.png",
   "workout-club": "/badges/32-100-klubben.svg",
   streak: "/badges/08-streak-start.png",
   "monday-hero": "/badges/30-mandagshelt.svg",
@@ -26,6 +26,7 @@ const BADGE_IMAGES: Record<string, string> = {
   "month-sessions": "/badges/07-vanebygger.png",
   "training-days": "/badges/13-konsistent.png",
   "goal-percent": "/badges/01-forste-steg.png",
+  pulsmaskin: "/badges/33-pulsmaskin.png",
   "may-17-workout": "/badges/21-17-mai.svg",
   "never-two-weeks-without": "/badges/22-aldri-to-uker-uten.svg",
   "back-again": "/badges/23-tilbake-igjen.svg",

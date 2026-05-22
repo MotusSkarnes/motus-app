@@ -122,6 +122,7 @@ import {
   type PeriodPlanSwapsByPlan,
 } from "../app/periodPlanSwaps";
 import {
+  computeActiveCardioMinutesFromLogs,
   computeMaxLiftKgFromLogs,
   computeMemberBadges,
   computeMonthUniqueDays,
@@ -2006,6 +2007,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const recentStreakWeeks = memberProgress.recentStreakWeeks;
   const currentStreakMilestoneTarget = memberProgress.streakMilestoneTarget;
   const maxLiftKg = useMemo(() => computeMaxLiftKgFromLogs(completedLogs), [completedLogs]);
+  const activeCardioMinutes = useMemo(() => computeActiveCardioMinutesFromLogs(completedLogs), [completedLogs]);
   const memberBadgeCollection = useMemo(
     () =>
       computeMemberBadges({
@@ -2016,10 +2018,11 @@ export function MemberPortal(props: MemberPortalProps) {
         monthUniqueDays: computeMonthUniqueDays(completedLogDates, nowDate),
         monthWeeksWithSession: computeMonthWeeksWithSession(completedLogDates, nowDate),
         monthGoalTarget: memberProgress.monthGoal.target,
+        activeCardioMinutes,
         nowDate,
         completedLogDates,
       }),
-    [completedLogDates, completedLogs.length, estimatedSessionsThisMonth, maxLiftKg, memberProgress.monthGoal.target, memberProgress.streakWeeks, nowDate],
+    [activeCardioMinutes, completedLogDates, completedLogs.length, estimatedSessionsThisMonth, maxLiftKg, memberProgress.monthGoal.target, memberProgress.streakWeeks, nowDate],
   );
 
   const calendarDayLoad = useMemo(() => {

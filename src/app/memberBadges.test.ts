@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  computeActiveCardioMinutesFromLogs,
   computeConsecutiveMondayWorkouts,
   computeMaxLiftKgFromLogs,
   computeMemberBadges,
@@ -43,7 +44,7 @@ describe("memberBadges", () => {
   it("builds categories with one badge per achievement track", () => {
     const collection = computeMemberBadges(baseInput);
     expect(collection.categories.length).toBeGreaterThan(3);
-    expect(collection.allBadges.length).toBe(9);
+    expect(collection.allBadges.length).toBe(10);
     expect(collection.allBadges.every((badge) => badge.levels.length === 5)).toBe(true);
     expect(collection.allBadges.every((badge) => !badge.id.includes("-bronze"))).toBe(true);
   });
@@ -59,6 +60,47 @@ describe("memberBadges", () => {
     expect(sessions?.category).toBe("training");
     expect(sessions?.target).toBe(10);
     expect(sessions?.levels.filter((level) => level.unlocked)).toHaveLength(1);
+  });
+
+  it("counts active cardio minutes without warmup or cooldown rows", () => {
+    const minutes = computeActiveCardioMinutesFromLogs([
+      {
+        status: "Fullført",
+        results: [
+          { completed: true, exerciseCategory: "Kondisjon", exerciseName: "Oppvarming", performedDurationMinutes: "10" },
+          { completed: true, exerciseCategory: "Kondisjon", exerciseName: "Drag 1", performedDurationMinutes: "4" },
+          { completed: true, exerciseCategory: "Kondisjon", exerciseName: "Nedjogg", performedDurationMinutes: "8" },
+          { completed: true, exerciseCategory: "Styrke", exerciseName: "Knebøy", performedDurationMinutes: "5" },
+        ],
+      },
+    ]);
+    expect(minutes).toBe(4);
+  });
+
+  it("unlocks and upgrades pulsmaskin from active cardio minutes", () => {
+    const locked = computeMemberBadges({
+      ...baseInput,
+      activeCardioMinutes: 120,
+    }).allBadges.find((badge) => badge.id === "pulsmaskin");
+    expect(locked?.unlocked).toBe(false);
+    expect(locked?.progressPct).toBeGreaterThan(0);
+
+    const bronze = computeMemberBadges({
+      ...baseInput,
+      activeCardioMinutes: 500,
+    }).allBadges.find((badge) => badge.id === "pulsmaskin");
+    expect(bronze?.unlocked).toBe(true);
+    expect(bronze?.level).toBe("bronze");
+    expect(bronze?.target).toBe(750);
+    expect(getBadgeUnlockHint(bronze!)).toContain("750 min");
+
+    const silver = computeMemberBadges({
+      ...baseInput,
+      activeCardioMinutes: 800,
+    }).allBadges.find((badge) => badge.id === "pulsmaskin");
+    expect(silver?.level).toBe("silver");
+    expect(silver?.target).toBe(1000);
+    expect(formatBadgeMetricValue("pulsmaskin", 800)).toBe("800 min");
   });
 
   it("upgrades the workout club badge title by hundred milestones", () => {

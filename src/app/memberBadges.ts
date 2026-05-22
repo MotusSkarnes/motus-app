@@ -7,7 +7,8 @@ export type BadgeIconId =
   | "lift"
   | "lift-heavy"
   | "month-goal"
-  | "monthly";
+  | "monthly"
+  | "cardio";
 
 export type BadgeLevelId = "bronze" | "silver" | "gold" | "diamond" | "legendary";
 
@@ -49,6 +50,7 @@ export type MemberBadgeInput = {
   monthUniqueDays: number;
   monthWeeksWithSession: number;
   monthGoalTarget: number;
+  activeCardioMinutes?: number;
   nowDate: Date;
   completedLogDates?: Date[];
 };
@@ -77,7 +79,8 @@ type BadgeMetric =
   | "monthUniqueDays"
   | "monthGoalPercent"
   | "mondayStreak"
-  | "weekendPairs";
+  | "weekendPairs"
+  | "activeCardioMinutes";
 
 type BadgeTrack = {
   id: string;
@@ -236,6 +239,22 @@ const BADGE_TRACKS: BadgeTrack[] = [
     ],
   },
   {
+    id: "pulsmaskin",
+    category: "activity",
+    categoryTitle: "Aktivitet",
+    title: "Pulsmaskin",
+    description: "Aktive kondisjonsminutter registrert i fullførte økter",
+    icon: "cardio",
+    metric: "activeCardioMinutes",
+    levels: [
+      { level: "bronze", target: 500 },
+      { level: "silver", target: 750 },
+      { level: "gold", target: 1000 },
+      { level: "diamond", target: 1250 },
+      { level: "legendary", target: 1500 },
+    ],
+  },
+  {
     id: "goal-percent",
     category: "challenge",
     categoryTitle: "Utfordringer",
@@ -269,6 +288,8 @@ function readMetric(metric: BadgeMetric, input: MemberBadgeInput): number {
       return computeConsecutiveMondayWorkouts(input.completedLogDates ?? []);
     case "weekendPairs":
       return computeWeekendWorkoutPairs(input.completedLogDates ?? []);
+    case "activeCardioMinutes":
+      return Math.max(0, Math.round(input.activeCardioMinutes ?? 0));
     case "monthGoalPercent": {
       const target = Math.max(1, input.monthGoalTarget || 10);
       return Math.round((input.monthSessions / target) * 100);
@@ -572,6 +593,31 @@ function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
   );
 }
 
+const PASSIVE_CARDIO_NAME_PATTERN = /^(oppvarming|nedjogg)\b/i;
+
+function parseBadgeMetricNumber(raw: string | undefined): number {
+  const n = Number(String(raw ?? "").replace(",", ".").trim());
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/** Kumulativt aktive kondisjonsminutter fra fullførte øvelsesrader (uten oppvarming/nedjogg). */
+export function computeActiveCardioMinutesFromLogs(
+  logs: Array<{ status: string; results?: Array<{ completed?: boolean; exerciseCategory?: string; exerciseName?: string; performedDurationMinutes?: string }> }>,
+): number {
+  let total = 0;
+  logs.forEach((log) => {
+    if (log.status !== "Fullført") return;
+    (log.results ?? []).forEach((result) => {
+      if (!result.completed) return;
+      if (result.exerciseCategory !== "Kondisjon") return;
+      const name = String(result.exerciseName ?? "").trim();
+      if (name && PASSIVE_CARDIO_NAME_PATTERN.test(name)) return;
+      total += parseBadgeMetricNumber(result.performedDurationMinutes);
+    });
+  });
+  return Math.round(total);
+}
+
 export function computeMaxLiftKgFromLogs(
   logs: Array<{ status: string; results?: Array<{ completed?: boolean; performedWeight?: number | string }> }>,
 ): number {
@@ -659,6 +705,8 @@ export function formatBadgeMetricValue(badgeId: string, value: number): string {
       return value === 1 ? "1 økt" : `${value} økter`;
     case "training-days":
       return value === 1 ? "1 dag" : `${value} dager`;
+    case "pulsmaskin":
+      return value === 1 ? "1 min" : `${value} min`;
     default:
       return String(value);
   }
@@ -700,6 +748,8 @@ export function getBadgeUnlockHint(badge: MemberBadge): string {
       return `Tren på ${target} ulike dager denne måneden for å nå ${next.levelName}.`;
     case "goal-percent":
       return `Nå ${target} av månedens øktmål for å nå ${next.levelName}.`;
+    case "pulsmaskin":
+      return `Logg ${target} aktive kondisjonsminutter totalt for å nå ${next.levelName}.`;
     default:
       return badge.description;
   }
