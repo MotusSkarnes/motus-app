@@ -29,7 +29,7 @@ export const MEMBER_BADGE_IMAGE_BY_ID: Record<string, string> = {
   "summer-loyal": "/badges/41-sommertrofast.png",
   "new-start": "/badges/27-ny-start.png",
   "easter-pump": "/badges/28-paskepump.png",
-  "christmas-pump": "/badges/29-julepump.png",
+  "christmas-pump": "/badges/43-julepump.png",
 };
 
 export const HIDDEN_MEMBER_BADGE_IMAGE_BY_ID: Record<string, string> = {
