@@ -3736,11 +3736,13 @@ export function MemberPortal(props: MemberPortalProps) {
     const nextHidden = Array.from(new Set([...hiddenPeriodPlanIds, planId]));
     writeHiddenPeriodPlanIdsForMember(primaryMemberIdForPeriodPlans, nextHidden);
     setHiddenPeriodPlanIds(nextHidden);
+    setShowPeriodPlanManageSection(true);
+    setShowPeriodPlanHiddenSection(true);
     if (activeMemberPeriodPlanId === planId) {
       const nextActive = visiblePeriodPlans.find((plan) => plan.id !== planId)?.id ?? null;
       setActiveMemberPeriodPlanId(nextActive);
     }
-    setPeriodPlanActionStatus("Periodeplanen er skjult fra oversikten.");
+    setPeriodPlanActionStatus("Periodeplanen er skjult. Du kan hente den tilbake under Skjulte planer.");
   }
 
   function unhideTrainerPeriodPlan(planId: string) {
@@ -3748,6 +3750,10 @@ export function MemberPortal(props: MemberPortalProps) {
     const nextHidden = hiddenPeriodPlanIds.filter((id) => id !== planId);
     writeHiddenPeriodPlanIdsForMember(primaryMemberIdForPeriodPlans, nextHidden);
     setHiddenPeriodPlanIds(nextHidden);
+    setActiveMemberPeriodPlanId(planId);
+    setSelectedPeriodPlanWeekNumber(1);
+    setShowPeriodPlanPanel(true);
+    setShowPeriodPlanManageSection(true);
     setPeriodPlanActionStatus("Periodeplanen er tilbake i oversikten.");
   }
 
@@ -5654,7 +5660,17 @@ export function MemberPortal(props: MemberPortalProps) {
                     {visiblePeriodPlans.length === 0 ? (
                       periodPlans.length > 0 ? (
                         <div className="rounded-xl border border-dashed bg-slate-50 px-3 py-4 text-sm text-slate-600">
-                          Alle periodeplaner er skjult. Åpne «Administrer planer» for å vise dem igjen.
+                          <div>Alle periodeplaner er skjult.</div>
+                          <OutlineButton
+                            type="button"
+                            className="mt-3 w-full px-3 py-2 text-xs sm:w-auto"
+                            onClick={() => {
+                              setShowPeriodPlanManageSection(true);
+                              setShowPeriodPlanHiddenSection(true);
+                            }}
+                          >
+                            Vis skjulte planer
+                          </OutlineButton>
                         </div>
                       ) : (
                         <EmptyState
