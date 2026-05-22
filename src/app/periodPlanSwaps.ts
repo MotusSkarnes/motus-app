@@ -24,7 +24,8 @@ export type PeriodPlanDaySwap = {
   dayA: WeekdayPlanKey;
   dayB: WeekdayPlanKey;
   /** Uten mode = eldre lagret bytte. */
-  mode?: "swap" | "move";
+  mode?: "swap" | "move" | "set";
+  values?: Partial<WeeklyDayPlan>;
 };
 
 /** planId -> weekNumber -> swaps */
@@ -56,7 +57,9 @@ export function getSwapsForWeek(
 export function applyPeriodPlanSwaps(days: WeeklyDayPlan, swaps: PeriodPlanDaySwap[]): WeeklyDayPlan {
   const next: WeeklyDayPlan = { ...days };
   for (const swap of swaps) {
-    if (swap.mode === "move") {
+    if (swap.mode === "set") {
+      Object.assign(next, swap.values ?? {});
+    } else if (swap.mode === "move") {
       next[swap.dayB] = next[swap.dayA];
       next[swap.dayA] = "";
     } else {
@@ -67,6 +70,21 @@ export function applyPeriodPlanSwaps(days: WeeklyDayPlan, swaps: PeriodPlanDaySw
     }
   }
   return next;
+}
+
+export function buildPeriodPlanWeekOverride(
+  originalDays: WeeklyDayPlan,
+  nextDays: WeeklyDayPlan,
+  dayA: WeekdayPlanKey,
+  dayB: WeekdayPlanKey,
+): PeriodPlanDaySwap[] {
+  const values: Partial<WeeklyDayPlan> = {};
+  for (const key of WEEKDAY_PLAN_ORDER) {
+    if ((originalDays[key] ?? "") !== (nextDays[key] ?? "")) {
+      values[key] = nextDays[key] ?? "";
+    }
+  }
+  return Object.keys(values).length > 0 ? [{ dayA, dayB, mode: "set", values }] : [];
 }
 
 function changeTouchesDay(change: PeriodPlanDaySwap, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey): boolean {

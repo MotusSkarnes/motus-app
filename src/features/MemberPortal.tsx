@@ -110,6 +110,7 @@ import {
 } from "../app/periodPlanMerge";
 import {
   applyPeriodPlanSwaps,
+  buildPeriodPlanWeekOverride,
   getPeriodPlanSwapsStorageKey,
   getSwapsForWeek,
   parsePeriodPlanSwapsState,
@@ -3769,9 +3770,20 @@ export function MemberPortal(props: MemberPortalProps) {
     if (dayA === dayB) return;
     periodPlanSwapsDirtyRef.current = true;
     setPeriodPlanSwapsByPlan((prev) => {
+      const plan = visiblePeriodPlans.find((item) => item.id === planId);
+      const week = plan ? resolvePeriodPlanWeek(plan, weekNumber) : null;
       const current = getSwapsForWeek(prev, planId, weekNumber);
-      const nextSwaps = togglePeriodPlanSwap(current, dayA, dayB);
-      const reverted = nextSwaps.length < current.length;
+      const currentDays = week ? applyPeriodPlanSwaps(week.days, current) : null;
+      const nextDays = currentDays ? { ...currentDays } : null;
+      if (nextDays) {
+        const valueA = nextDays[dayA];
+        nextDays[dayA] = nextDays[dayB];
+        nextDays[dayB] = valueA;
+      }
+      const nextSwaps = week && nextDays
+        ? buildPeriodPlanWeekOverride(week.days, nextDays, dayA, dayB)
+        : togglePeriodPlanSwap(current, dayA, dayB);
+      const reverted = nextSwaps.length === 0;
       setPeriodPlanActionStatus(
         reverted
           ? `Bytte mellom ${WEEKDAY_PLAN_LABELS[dayA]} og ${WEEKDAY_PLAN_LABELS[dayB]} er angret.`
@@ -3785,11 +3797,17 @@ export function MemberPortal(props: MemberPortalProps) {
     if (dayA === dayB) return;
     periodPlanSwapsDirtyRef.current = true;
     setPeriodPlanSwapsByPlan((prev) => {
+      const plan = visiblePeriodPlans.find((item) => item.id === planId);
+      const week = plan ? resolvePeriodPlanWeek(plan, weekNumber) : null;
       const current = getSwapsForWeek(prev, planId, weekNumber);
-      const existingMove = current.some((swap) => swap.mode === "move" && swap.dayA === dayA && swap.dayB === dayB);
-      const nextSwaps = togglePeriodPlanMove(current, dayA, dayB);
+      const currentDays = week ? applyPeriodPlanSwaps(week.days, current) : null;
+      const nextDays = currentDays ? { ...currentDays, [dayB]: currentDays[dayA] ?? "", [dayA]: "" } : null;
+      const nextSwaps = week && nextDays
+        ? buildPeriodPlanWeekOverride(week.days, nextDays, dayA, dayB)
+        : togglePeriodPlanMove(current, dayA, dayB);
+      const reverted = nextSwaps.length === 0;
       setPeriodPlanActionStatus(
-        existingMove
+        reverted
           ? `Flytting fra ${WEEKDAY_PLAN_LABELS[dayA]} til ${WEEKDAY_PLAN_LABELS[dayB]} er angret.`
           : `Flyttet plan fra ${WEEKDAY_PLAN_LABELS[dayA]} til ${WEEKDAY_PLAN_LABELS[dayB]}.`,
       );

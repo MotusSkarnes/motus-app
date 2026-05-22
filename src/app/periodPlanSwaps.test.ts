@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applyPeriodPlanSwaps,
+  buildPeriodPlanWeekOverride,
   getSwapsForWeek,
   periodPlanSourceDay,
   setSwapsForWeek,
@@ -45,6 +46,12 @@ describe("periodPlanSwaps", () => {
     const effective = applyPeriodPlanSwaps(baseDays, swaps);
     expect(effective.monday).toBe("");
     expect(effective.friday).toBe("Program A");
+  });
+
+  it("stores concrete week override so the visible result is deterministic", () => {
+    const nextDays: WeeklyDayPlan = { ...baseDays, monday: "", saturday: "Program A" };
+    const overrides = buildPeriodPlanWeekOverride(baseDays, nextDays, "monday", "saturday");
+    expect(applyPeriodPlanSwaps(baseDays, overrides)).toEqual(nextDays);
   });
 
   it("reports source day for moved content", () => {
