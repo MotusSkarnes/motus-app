@@ -54,12 +54,12 @@ export function TrainerBadgeCatalog() {
             {group.tracks.map((track) => (
               <Card
                 key={track.id}
-                className="overflow-visible p-3 sm:p-4"
+                className="overflow-hidden p-3 sm:p-4"
                 style={{ borderColor: "rgba(15,23,42,0.08)" }}
               >
                 <div className="flex items-start gap-4">
                   {track.id === "workout-club" ? (
-                    <div className="flex w-[9.25rem] shrink-0 flex-col items-center gap-1.5">
+                    <div className="flex w-[8.5rem] shrink-0 flex-col items-center gap-1.5">
                       {CLUB_MILESTONES.map((target) => (
                         <div key={target} className="flex flex-col items-center gap-0.5">
                           <BadgeImage src={WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET[target]} alt={`${target} klubben`} size="catalog" />
@@ -68,16 +68,16 @@ export function TrainerBadgeCatalog() {
                       ))}
                     </div>
                   ) : (
-                    <div className="flex w-[9.25rem] shrink-0 justify-center">
+                    <div className="flex w-[8.5rem] shrink-0 justify-center">
                       <BadgeImage src={memberBadgeImageSrc(track.id)} alt={track.title} size="catalog" />
                     </div>
                   )}
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-bold text-slate-900">{track.title}</h3>
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <h3 className="break-words text-sm font-bold text-slate-900">{track.title}</h3>
                     {track.titleNote ? (
-                      <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{track.titleNote}</p>
+                      <p className="mt-0.5 break-words text-[11px] leading-snug text-slate-500">{track.titleNote}</p>
                     ) : null}
-                    <p className="mt-1 text-xs leading-relaxed text-slate-600">{track.description}</p>
+                    <p className="mt-1 break-words text-xs leading-relaxed text-slate-600">{track.description}</p>
                     <div className="mt-3 overflow-hidden rounded-xl border" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
                       <table className="w-full text-left text-[11px]">
                         <thead className="bg-slate-50 text-slate-500">
@@ -117,16 +117,16 @@ export function TrainerBadgeCatalog() {
           {secrets.map((secret) => (
             <Card
               key={secret.id}
-              className="overflow-visible p-3"
+              className="overflow-hidden p-3"
               style={{ borderColor: "rgba(15,23,42,0.08)", backgroundColor: "#fafafa" }}
             >
               <div className="flex items-start gap-3">
-                <div className="flex w-[9.25rem] shrink-0 justify-center">
+                <div className="flex w-[8.5rem] shrink-0 justify-center">
                   <BadgeImage src={memberBadgeImageSrc(secret.id)} alt={secret.title} size="catalog" />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1 overflow-hidden">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <h3 className="text-xs font-bold text-slate-900">{secret.title}</h3>
+                    <h3 className="break-words text-xs font-bold text-slate-900">{secret.title}</h3>
                     <span
                       className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase text-white"
                       style={{ background: MOTUS_GRADIENT }}
@@ -135,7 +135,7 @@ export function TrainerBadgeCatalog() {
                       Skjult
                     </span>
                   </div>
-                  <p className="mt-1 text-[11px] leading-snug text-slate-600">{secret.description}</p>
+                  <p className="mt-1 break-words text-[11px] leading-snug text-slate-600">{secret.description}</p>
                   <p className="mt-1.5 text-[10px] font-semibold text-teal-800">Krav: {secret.unlockLabel}</p>
                 </div>
               </div>

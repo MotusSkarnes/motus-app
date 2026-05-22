@@ -113,47 +113,45 @@ function BadgeCard({
 
   return (
     <article
-      className={`relative w-[17.5rem] shrink-0 snap-start overflow-visible rounded-2xl border p-3 shadow-sm sm:w-[19rem] ${badge.unlocked ? "bg-white" : "bg-slate-50/90"}`}
+      className={`motus-badge-card relative z-10 w-[16.25rem] shrink-0 snap-start overflow-hidden rounded-2xl border p-3 shadow-sm sm:w-[17.5rem] ${badge.unlocked ? "bg-white" : "bg-slate-50/90"}`}
       style={{
         borderColor: badge.unlocked ? `${level.border}66` : "rgba(15,23,42,0.08)",
         boxShadow: badge.unlocked ? `0 8px 24px ${level.fill}` : undefined,
       }}
     >
-      <div className="relative flex gap-3">
-        <div className="flex w-[10.5rem] shrink-0 flex-col items-center gap-1.5">
-          <div className="relative">
-            <BadgeImage src={badgeImage} size="card" dimmed={!badge.unlocked} />
-            {!badge.unlocked ? (
-              <span className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-slate-100 text-slate-400 shadow-md">
-                <Lock className="h-3.5 w-3.5" strokeWidth={2.4} />
-              </span>
-            ) : null}
-          </div>
-          {badge.unlocked ? (
-            <span
-              className="inline-flex max-w-full items-center justify-center gap-0.5 rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase text-white shadow"
-              style={{ background: MOTUS_GRADIENT }}
-            >
-              <Sparkles className="h-2.5 w-2.5 shrink-0" />
-              <span className="truncate">{badge.levelLabel}</span>
+      <div className="flex flex-col items-center gap-2 border-b border-slate-100 pb-3">
+        <div className="relative">
+          <BadgeImage src={badgeImage} size="card" dimmed={!badge.unlocked} alt={badge.title} />
+          {!badge.unlocked ? (
+            <span className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-slate-100 text-slate-400 shadow-md">
+              <Lock className="h-3.5 w-3.5" strokeWidth={2.4} />
             </span>
           ) : null}
         </div>
+        {badge.unlocked ? (
+          <span
+            className="inline-flex max-w-full items-center justify-center gap-0.5 rounded-full px-2 py-0.5 text-[8px] font-black uppercase text-white shadow"
+            style={{ background: MOTUS_GRADIENT }}
+          >
+            <Sparkles className="h-2.5 w-2.5 shrink-0" />
+            <span className="truncate">{badge.levelLabel}</span>
+          </span>
+        ) : (
+          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-500">Låst</span>
+        )}
+      </div>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{badge.categoryTitle}</span>
-            {badge.unlocked ? (
-              <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase" style={{ background: level.fill, color: level.accent }}>
-                {badge.levelName}
-              </span>
-            ) : (
-              <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-500">Låst</span>
-            )}
-          </div>
-          <h3 className="mt-1.5 text-sm font-black uppercase leading-tight tracking-wide text-slate-900">{badge.title}</h3>
-          <p className="mt-1 text-xs leading-snug text-slate-600">{badge.description}</p>
+      <div className="mt-3 min-w-0 w-full overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{badge.categoryTitle}</span>
+          {badge.unlocked ? (
+            <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase" style={{ background: level.fill, color: level.accent }}>
+              {badge.levelName}
+            </span>
+          ) : null}
         </div>
+        <h3 className="mt-1.5 break-words text-sm font-black uppercase leading-tight tracking-wide text-slate-900">{badge.title}</h3>
+        <p className="mt-1 break-words text-xs leading-snug text-slate-600">{badge.description}</p>
       </div>
 
       <div className="mt-3 rounded-xl border bg-slate-50/90 p-2.5" style={{ borderColor: "rgba(15,23,42,0.06)" }}>

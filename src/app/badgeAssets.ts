@@ -1,19 +1,9 @@
 /** Felles badge-bilder (PNG 1024×1024, normalisert visuell størrelse). */
-export const BADGE_ASSET_VERSION = "6";
+export const BADGE_ASSET_VERSION = "8";
 
 export function badgeAssetUrl(path: string): string {
   const base = path.split("?")[0] || path;
   return `${base}?v=${BADGE_ASSET_VERSION}`;
-}
-
-/** Smale normaliserte badges trenger litt større visning i UI for å matche de andre. */
-export const BADGE_UI_SCALE_BY_PATH: Record<string, number> = {
-  "/badges/31-helgekriger.png": 1.14,
-};
-
-export function badgeUiScaleForSrc(src: string): number {
-  const base = src.split("?")[0] || src;
-  return BADGE_UI_SCALE_BY_PATH[base] ?? 1;
 }
 
 export const WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET: Record<number, string> = {

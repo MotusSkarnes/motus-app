@@ -1,16 +1,16 @@
-import { badgeAssetUrl, badgeUiScaleForSrc } from "../app/badgeAssets";
+import { badgeAssetUrl } from "../app/badgeAssets";
 
 type BadgeImageSize = "card" | "catalog" | "hero" | "popup";
 
 const SIZE_PX: Record<BadgeImageSize, number> = {
-  card: 160,
-  catalog: 140,
-  hero: 208,
-  popup: 248,
+  card: 144,
+  catalog: 128,
+  hero: 200,
+  popup: 232,
 };
 
-/** Luft rundt motivet i UI — smalere filer (f.eks. helgekriger) og brede får samme «pusterom». */
-const FRAME_INSET_RATIO = 0.07;
+/** Transparent luft — motivet skal ikke treffe kanten (unngår «kuttet» look). */
+const FRAME_INSET_RATIO = 0.1;
 
 type BadgeImageProps = {
   src: string;
@@ -23,11 +23,9 @@ type BadgeImageProps = {
 
 export function BadgeImage({ src, alt = "", size = "card", dimmed = false, className = "", loading = "lazy" }: BadgeImageProps) {
   const px = SIZE_PX[size];
-  const pad = Math.max(4, Math.round(px * FRAME_INSET_RATIO));
+  const pad = Math.max(6, Math.round(px * FRAME_INSET_RATIO));
+  const inner = px - pad * 2;
   const resolvedSrc = src.includes("?v=") ? src : badgeAssetUrl(src);
-  const uiScale = badgeUiScaleForSrc(resolvedSrc);
-  const innerMax = px - pad * 2;
-  const inner = Math.min(innerMax, Math.round(innerMax * uiScale));
 
   return (
     <span
@@ -41,7 +39,8 @@ export function BadgeImage({ src, alt = "", size = "card", dimmed = false, class
         height={inner}
         loading={loading}
         decoding="async"
-        className={`motus-badge-img h-full w-full object-contain ${dimmed ? "opacity-45 grayscale" : ""}`}
+        className={`motus-badge-img block object-contain ${dimmed ? "opacity-45 grayscale" : ""}`}
+        style={{ width: inner, height: inner, maxWidth: inner, maxHeight: inner }}
       />
     </span>
   );
