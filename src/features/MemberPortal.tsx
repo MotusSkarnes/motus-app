@@ -31,10 +31,6 @@ import motusLogo from "../assets/motus-logo-transparent.svg";
 import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
 import { HIDDEN_MEMBER_BADGE_IMAGE_BY_ID } from "../app/badgeAssets";
-import {
-  BADGE_IMAGE_POPUP_CLASS,
-  BADGE_IMAGE_POPUP_WRAPPER_CLASS,
-} from "../app/badgeImagePresentation";
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "../app/exerciseCategories";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import {
@@ -139,6 +135,7 @@ import {
   buildCelebrationCopy,
   computeMemberProgressState,
 } from "../app/memberProgressGamification";
+import { BadgeImage } from "./BadgeImage";
 import { MemberBadgesCarousel } from "./MemberBadgesCarousel";
 import { MemberHabitSummaryCard } from "./MemberHabitSummaryCard";
 import { MemberTrainingFlowCard } from "./MemberTrainingFlowCard";
@@ -4365,7 +4362,7 @@ export function MemberPortal(props: MemberPortalProps) {
           </div>
         </Card>
 
-        <div className="min-w-0 w-full space-y-4 sm:space-y-6">
+        <div className="min-w-0 w-full space-y-4 overflow-visible sm:space-y-6">
           {memberTab === "overview" ? (
             <div className="space-y-4">
               <MemberTabHero
@@ -4807,11 +4804,11 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="h-2" style={{ background: `linear-gradient(90deg, #BA0C2F 0%, #FFFFFF 24%, #00205B 50%, #FFFFFF 76%, #BA0C2F 100%)` }} />
                 <div className="p-6">
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Skjult badge låst opp</p>
-                  <div className={BADGE_IMAGE_POPUP_WRAPPER_CLASS}>
-                    <img
+                  <div className="mx-auto mt-4 flex justify-center overflow-visible">
+                    <BadgeImage
                       src={HIDDEN_MEMBER_BADGE_IMAGE_BY_ID[hiddenBadgeCelebration.id] ?? "/badges/21-17-mai.png"}
-                      alt=""
-                      className={BADGE_IMAGE_POPUP_CLASS}
+                      size="popup"
+                      loading="eager"
                     />
                   </div>
                   <h2 id="hidden-badge-heading" className="mt-3 text-2xl font-black tracking-tight text-slate-900">

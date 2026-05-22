@@ -94,6 +94,19 @@ body {
   overscroll-behavior: contain;
 }
 
+/* Badge-karusell: horisontal scroll uten å kutte hjørner på bildene. */
+.motus-badge-carousel-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.motus-badge-art {
+  pointer-events: none;
+  user-select: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .motus-fade-in-up,
   .motus-pop-in {

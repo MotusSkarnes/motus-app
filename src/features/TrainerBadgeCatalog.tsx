@@ -1,27 +1,14 @@
 import { useMemo } from "react";
 import { Award, EyeOff, Sparkles } from "lucide-react";
 import { memberBadgeImageSrc, WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET } from "../app/badgeAssets";
-import { BADGE_IMAGE_CLASS, BADGE_IMAGE_WRAPPER_CLASS } from "../app/badgeImagePresentation";
 import { MOTUS } from "../app/data";
 import { getMemberBadgeCatalog } from "../app/memberBadges";
 import { Card } from "../app/ui";
+import { BadgeImage } from "./BadgeImage";
 
 const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
 
 const CLUB_MILESTONES = [100, 200, 300, 400, 500] as const;
-
-function CatalogBadgeImage({ src, alt, compact = false }: { src: string; alt: string; compact?: boolean }) {
-  const wrapperClass = compact
-    ? `relative shrink-0 ${BADGE_IMAGE_WRAPPER_CLASS}`
-    : `relative shrink-0 ${BADGE_IMAGE_WRAPPER_CLASS}`;
-  const imageClass = BADGE_IMAGE_CLASS;
-
-  return (
-    <div className={wrapperClass}>
-      <img src={src} alt={alt} className={imageClass} loading="lazy" decoding="async" />
-    </div>
-  );
-}
 
 export function TrainerBadgeCatalog() {
   const { tracks, secrets } = useMemo(() => getMemberBadgeCatalog(), []);
@@ -75,17 +62,13 @@ export function TrainerBadgeCatalog() {
                     <div className="flex shrink-0 flex-col gap-1.5">
                       {CLUB_MILESTONES.map((target) => (
                         <div key={target} className="flex flex-col items-center gap-0.5">
-                          <CatalogBadgeImage
-                            compact
-                            src={WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET[target]}
-                            alt={`${target} klubben`}
-                          />
+                          <BadgeImage src={WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET[target]} alt={`${target} klubben`} size="catalog" />
                           <span className="text-[9px] font-bold text-slate-500">{target}</span>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <CatalogBadgeImage src={memberBadgeImageSrc(track.id)} alt={track.title} />
+                    <BadgeImage src={memberBadgeImageSrc(track.id)} alt={track.title} size="catalog" />
                   )}
                   <div className="min-w-0 flex-1">
                     <h3 className="text-sm font-bold text-slate-900">{track.title}</h3>
@@ -136,7 +119,7 @@ export function TrainerBadgeCatalog() {
               style={{ borderColor: "rgba(15,23,42,0.08)", backgroundColor: "#fafafa" }}
             >
               <div className="flex gap-2.5">
-                <CatalogBadgeImage src={memberBadgeImageSrc(secret.id)} alt={secret.title} />
+                <BadgeImage src={memberBadgeImageSrc(secret.id)} alt={secret.title} size="catalog" />
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <h3 className="text-xs font-bold text-slate-900">{secret.title}</h3>

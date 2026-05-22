@@ -1,15 +1,9 @@
-/** Felles visning av badge-PNG (transparent bakgrunn etter normalisering). */
-export const BADGE_IMAGE_BOX_CLASS = "h-[6.25rem] w-[6.25rem]";
+/** Horisontal badge-karusell — se .motus-badge-carousel-scroll i index.css */
+export const BADGE_CAROUSEL_OUTER_CLASS = "relative -mx-1 mt-3 min-w-0 overflow-visible";
 
-export const BADGE_IMAGE_WRAPPER_CLASS =
-  `${BADGE_IMAGE_BOX_CLASS} relative flex shrink-0 items-center justify-center overflow-visible rounded-xl bg-transparent`;
+export const BADGE_CAROUSEL_SCROLL_CLASS = "motus-badge-carousel-scroll";
 
-export const BADGE_IMAGE_CLASS = "h-full w-full object-contain object-center drop-shadow-sm";
+export const BADGE_CAROUSEL_TRACK_CLASS =
+  "flex w-max min-w-full snap-x snap-mandatory items-stretch gap-2.5 px-2 py-4 pr-3";
 
-export const BADGE_IMAGE_POPUP_WRAPPER_CLASS =
-  "mx-auto mt-4 flex h-44 w-44 items-center justify-center overflow-visible rounded-xl bg-transparent p-2";
-
-export const BADGE_IMAGE_POPUP_CLASS = "h-full w-full object-contain object-center drop-shadow-sm";
-
-/** Horisontal scroll uten å klippe badge-høyde (overflow-x-auto setter ellers overflow-y til auto). */
-export const BADGE_CAROUSEL_SCROLL_CLASS = "overflow-x-auto overflow-y-visible";
+export const BADGE_CATEGORY_SCROLL_CLASS = "motus-badge-carousel-scroll flex gap-2 px-1 pb-1";

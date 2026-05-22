@@ -1,7 +1,13 @@
 ﻿import { useMemo, useState } from "react";
 import { Award, Lock, Share2, Sparkles, Target } from "lucide-react";
 import { memberBadgeImageSrc } from "../app/badgeAssets";
-import { BADGE_CAROUSEL_SCROLL_CLASS, BADGE_IMAGE_CLASS, BADGE_IMAGE_WRAPPER_CLASS } from "../app/badgeImagePresentation";
+import {
+  BADGE_CAROUSEL_OUTER_CLASS,
+  BADGE_CAROUSEL_SCROLL_CLASS,
+  BADGE_CAROUSEL_TRACK_CLASS,
+  BADGE_CATEGORY_SCROLL_CLASS,
+} from "../app/badgeImagePresentation";
+import { BadgeImage } from "./BadgeImage";
 import { MOTUS } from "../app/data";
 import { motusShareStatusMessage, shareBadgeCard } from "../app/motusShareCard";
 import {
@@ -35,7 +41,7 @@ type LevelStyle = {
 
 const LEVEL_STYLES: Record<BadgeLevelId, LevelStyle> = {
   bronze: { label: "Bronse", accent: "#B8734D", border: "#C98A5E", fill: "rgba(184,115,77,0.14)" },
-  silver: { label: "S├©lv", accent: "#8B9AAB", border: "#A8B4C2", fill: "rgba(139,154,171,0.14)" },
+  silver: { label: "Sølv", accent: "#8B9AAB", border: "#A8B4C2", fill: "rgba(139,154,171,0.14)" },
   gold: { label: "Gull", accent: "#D89A17", border: "#E8B23A", fill: "rgba(216,154,23,0.16)" },
   diamond: { label: "Diamant", accent: MOTUS.turquoise, border: MOTUS.turquoise, fill: "rgba(48,227,190,0.14)" },
   legendary: { label: "Legendarisk", accent: MOTUS.pink, border: MOTUS.pink, fill: "rgba(217,18,120,0.14)" },
@@ -122,23 +128,18 @@ function BadgeCard({
       ) : null}
 
       <div className="relative flex gap-3">
-        <div className={`relative flex shrink-0 items-center justify-center ${BADGE_IMAGE_WRAPPER_CLASS}`}>
-          <img
-            src={badgeImage}
-            alt=""
-            className={`${BADGE_IMAGE_CLASS} ${badge.unlocked ? "" : "opacity-45 grayscale"}`}
-            loading="lazy"
-          />
+        <div className="relative shrink-0">
+          <BadgeImage src={badgeImage} size="card" dimmed={!badge.unlocked} />
           {!badge.unlocked ? (
-            <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-slate-100 text-slate-400 shadow-md">
+            <span className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-slate-100 text-slate-400 shadow-md">
               <Lock className="h-3.5 w-3.5" strokeWidth={2.4} />
             </span>
           ) : (
             <span
-              className="absolute -left-1 top-1 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase text-white shadow"
+              className="absolute left-0 top-0 inline-flex max-w-[calc(100%+0.25rem)] items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase text-white shadow"
               style={{ background: MOTUS_GRADIENT }}
             >
-              <Sparkles className="h-2.5 w-2.5" />
+              <Sparkles className="h-2.5 w-2.5 shrink-0" />
               {badge.levelLabel}
             </span>
           )}
@@ -152,7 +153,7 @@ function BadgeCard({
                 {badge.levelName}
               </span>
             ) : (
-              <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-500">L├Ñst</span>
+              <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-500">Låst</span>
             )}
           </div>
           <h3 className="mt-1.5 text-sm font-black uppercase leading-tight tracking-wide text-slate-900">{badge.title}</h3>
@@ -164,7 +165,7 @@ function BadgeCard({
         <div className="flex items-start gap-2">
           <Target className="mt-0.5 h-4 w-4 shrink-0" style={{ color: badge.unlocked ? level.accent : "#64748B" }} />
           <div className="min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-wide text-slate-700">{isMaxed ? "Fullf├©rt" : "Neste m├Ñl"}</p>
+            <p className="text-[9px] font-black uppercase tracking-wide text-slate-700">{isMaxed ? "Fullført" : "Neste mål"}</p>
             <p className="mt-0.5 text-xs font-medium leading-snug text-slate-700">{getBadgeUnlockHint(badge)}</p>
           </div>
         </div>
@@ -181,7 +182,7 @@ function BadgeCard({
           </div>
         ) : (
           <p className="mt-2 text-xs font-semibold" style={{ color: level.accent }}>
-            Alle fem niv├Ñer er l├Ñst opp.
+            Alle fem nivåer er låst opp.
           </p>
         )}
 
@@ -196,10 +197,10 @@ function BadgeCard({
             onClick={() => void shareBadge()}
             disabled={isSharing}
             className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 transition hover:border-teal-200 hover:bg-teal-50/80 disabled:opacity-60"
-            title="Del p├Ñ Facebook eller andre apper"
+            title="Del på Facebook eller andre apper"
           >
             <Share2 className="h-3.5 w-3.5 shrink-0 text-teal-700" aria-hidden />
-            {isSharing ? "Lager skrytekortÔÇª" : "Del badgen"}
+            {isSharing ? "Lager skrytekort…" : "Del badgen"}
           </button>
         ) : null}
       </div>
@@ -229,7 +230,7 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
   const overallPct = collection.totalLevels > 0 ? Math.round((collection.totalUnlockedLevels / collection.totalLevels) * 100) : 0;
 
   return (
-    <section className="min-w-0 rounded-2xl border bg-white p-3 shadow-sm sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+    <section className="min-w-0 overflow-visible rounded-2xl border bg-white p-3 shadow-sm sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
       <div className="flex items-start gap-3">
         <span className="inline-flex shrink-0 rounded-xl p-2 text-white shadow-sm" style={{ background: MOTUS_GRADIENT }}>
           <Award className="h-4 w-4" />
@@ -237,11 +238,11 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-semibold text-slate-900">Badges</h2>
           <p className="mt-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/90 px-3 py-2.5 text-xs leading-relaxed text-slate-600">
-            Det finnes flere skjulte badges som ikke vises f├©r du oppn├Ñr de, oppdag de ved ├Ñ bruke appen jevnlig.
+            Det finnes flere skjulte badges som ikke vises før du oppnår de, oppdag de ved å bruke appen jevnlig.
           </p>
           <div className="mt-2 flex items-start justify-between gap-3">
             <p className="text-xs text-slate-500">
-              {collection.totalUnlockedLevels} av {collection.totalLevels} niv├Ñer l├Ñst opp
+              {collection.totalUnlockedLevels} av {collection.totalLevels} nivåer låst opp
             </p>
             <span className="rounded-full bg-slate-950 px-2.5 py-1 text-[10px] font-bold text-white">{overallPct}%</span>
           </div>
@@ -251,7 +252,7 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
         </div>
       </div>
 
-      <div className={`-mx-1 mt-3 flex gap-2 px-1 pb-1 ${BADGE_CAROUSEL_SCROLL_CLASS}`}>
+      <div className={`-mx-1 mt-3 ${BADGE_CATEGORY_SCROLL_CLASS}`}>
         {menuItems.map((item) => {
           const active = item.id === activeCategoryId;
           return (
@@ -274,16 +275,20 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
         <p className="mt-3 rounded-xl border border-teal-200/80 bg-teal-50 px-3 py-2 text-xs font-medium text-teal-950">{badgeShareStatus}</p>
       ) : null}
 
-      <div className={`-mx-1 mt-3 flex snap-x snap-mandatory gap-2.5 px-1 pb-3 pt-1 ${BADGE_CAROUSEL_SCROLL_CLASS}`}>
-        {visibleBadges.map((badge) => (
-          <BadgeCard
-            key={badge.id}
-            badge={badge}
-            memberDisplayName={memberDisplayName}
-            shareLogoSrc={shareLogoSrc}
-            onShareStatus={setBadgeShareStatus}
-          />
-        ))}
+      <div className={BADGE_CAROUSEL_OUTER_CLASS}>
+        <div className={BADGE_CAROUSEL_SCROLL_CLASS}>
+          <div className={BADGE_CAROUSEL_TRACK_CLASS}>
+            {visibleBadges.map((badge) => (
+              <BadgeCard
+                key={badge.id}
+                badge={badge}
+                memberDisplayName={memberDisplayName}
+                shareLogoSrc={shareLogoSrc}
+                onShareStatus={setBadgeShareStatus}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );
