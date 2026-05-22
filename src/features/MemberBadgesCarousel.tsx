@@ -113,14 +113,14 @@ function BadgeCard({
 
   return (
     <article
-      className={`motus-badge-card relative z-10 flex w-[14.25rem] shrink-0 snap-start gap-2 overflow-visible rounded-2xl border p-2 shadow-sm sm:w-[15rem] ${badge.unlocked ? "bg-white" : "bg-slate-50/90"}`}
+      className={`motus-badge-card relative z-10 flex w-[15.5rem] shrink-0 snap-start flex-col overflow-visible rounded-2xl border p-2.5 shadow-sm sm:w-[16.5rem] ${badge.unlocked ? "bg-white" : "bg-slate-50/90"}`}
       style={{
         borderColor: badge.unlocked ? `${level.border}66` : "rgba(15,23,42,0.08)",
         boxShadow: badge.unlocked ? `0 6px 18px ${level.fill}` : undefined,
       }}
     >
-      <div className="motus-badge-card-art flex w-[6.75rem] shrink-0 flex-col items-center gap-1.5 overflow-visible">
-        <div className="relative overflow-visible">
+      <div className="flex items-start gap-2.5">
+        <div className="motus-badge-card-art relative shrink-0 overflow-visible">
           <BadgeImage src={badgeImage} size="cardCompact" dimmed={!badge.unlocked} alt={badge.title} />
           {!badge.unlocked ? (
             <span className="absolute bottom-0.5 right-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-white bg-slate-100 text-slate-400 shadow-md">
@@ -129,29 +129,42 @@ function BadgeCard({
           ) : null}
         </div>
 
-        <h3 className="w-full break-words text-center text-[10px] font-black uppercase leading-tight tracking-wide text-slate-900">
-          {badge.title}
-        </h3>
+        <div className="min-w-0 flex flex-1 flex-col justify-center gap-1 py-0.5">
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600">{badge.categoryTitle}</span>
+            {badge.unlocked ? (
+              <span
+                className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[7px] font-black uppercase text-white shadow"
+                style={{ background: MOTUS_GRADIENT }}
+              >
+                <Sparkles className="h-2 w-2 shrink-0" />
+                <span className="truncate">{badge.levelLabel}</span>
+              </span>
+            ) : (
+              <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[8px] font-bold uppercase text-slate-500">Låst</span>
+            )}
+          </div>
+          <h3 className="break-words text-xs font-black uppercase leading-tight tracking-wide text-slate-900">{badge.title}</h3>
+          <p className="line-clamp-3 text-[10px] leading-snug text-slate-600">{badge.description}</p>
+        </div>
+      </div>
 
-        {badge.unlocked ? (
-          <span
-            className="inline-flex max-w-full items-center justify-center gap-0.5 rounded-full px-1.5 py-0.5 text-[7px] font-black uppercase text-white shadow"
-            style={{ background: MOTUS_GRADIENT }}
-          >
-            <Sparkles className="h-2 w-2 shrink-0" />
-            <span className="truncate">{badge.levelLabel}</span>
-          </span>
-        ) : (
-          <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[8px] font-bold uppercase text-slate-500">Låst</span>
-        )}
+      <div className="mt-2.5 w-full rounded-lg border bg-slate-50/90 p-2" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
+        <div className="flex items-start gap-1.5">
+          <Target className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: badge.unlocked ? level.accent : "#64748B" }} />
+          <div className="min-w-0">
+            <p className="text-[8px] font-black uppercase tracking-wide text-slate-700">{isMaxed ? "Fullført" : "Neste mål"}</p>
+            <p className="mt-0.5 text-[10px] font-medium leading-snug text-slate-700">{getBadgeUnlockHint(badge)}</p>
+          </div>
+        </div>
 
         {!isMaxed ? (
-          <div className="w-full">
+          <div className="mt-2">
             <div className="mb-0.5 flex items-center justify-between gap-1 text-[8px] font-bold text-slate-600">
               <span>Fremdrift</span>
               <span style={{ color: level.accent }}>{getBadgeProgressLabel(badge)}</span>
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200/80">
+            <div className="h-1.5 overflow-hidden rounded-full bg-white ring-1 ring-slate-200/80">
               <div
                 className="h-full rounded-full transition-all"
                 style={{ width: `${badge.progressPct}%`, background: badge.unlocked ? MOTUS_GRADIENT : "rgba(148,163,184,0.5)" }}
@@ -159,51 +172,29 @@ function BadgeCard({
             </div>
           </div>
         ) : (
-          <p className="w-full text-center text-[9px] font-semibold leading-snug" style={{ color: level.accent }}>
-            Alle nivåer
+          <p className="mt-2 text-[10px] font-semibold" style={{ color: level.accent }}>
+            Alle fem nivåer er låst opp.
           </p>
         )}
+
+        <div className="mt-2 flex gap-0.5">
+          {badge.levels.map((lvl) => (
+            <LevelStep key={lvl.level} level={lvl} badge={badge} active={lvl.level === badge.level} />
+          ))}
+        </div>
 
         {badge.unlocked ? (
           <button
             type="button"
             onClick={() => void shareBadge()}
             disabled={isSharing}
-            className="flex w-full items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-semibold text-slate-700 transition hover:border-teal-200 hover:bg-teal-50/80 disabled:opacity-60"
+            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-semibold text-slate-700 transition hover:border-teal-200 hover:bg-teal-50/80 disabled:opacity-60"
             title="Del på Facebook eller andre apper"
           >
             <Share2 className="h-3 w-3 shrink-0 text-teal-700" aria-hidden />
-            {isSharing ? "…" : "Del"}
+            {isSharing ? "Lager skrytekort…" : "Del badgen"}
           </button>
         ) : null}
-      </div>
-
-      <div className="min-w-0 flex flex-1 flex-col overflow-hidden pt-0.5">
-        <div className="flex flex-wrap items-center gap-1">
-          <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600">{badge.categoryTitle}</span>
-          {badge.unlocked ? (
-            <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase" style={{ background: level.fill, color: level.accent }}>
-              {badge.levelName}
-            </span>
-          ) : null}
-        </div>
-        <p className="mt-1 line-clamp-3 text-[10px] leading-snug text-slate-600">{badge.description}</p>
-
-        <div className="mt-2 rounded-lg border bg-slate-50/90 p-2" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
-          <div className="flex items-start gap-1.5">
-            <Target className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: badge.unlocked ? level.accent : "#64748B" }} />
-            <div className="min-w-0">
-              <p className="text-[8px] font-black uppercase tracking-wide text-slate-700">{isMaxed ? "Fullført" : "Neste mål"}</p>
-              <p className="mt-0.5 text-[10px] font-medium leading-snug text-slate-700">{getBadgeUnlockHint(badge)}</p>
-            </div>
-          </div>
-
-          <div className="mt-2 flex gap-0.5">
-            {badge.levels.map((lvl) => (
-              <LevelStep key={lvl.level} level={lvl} badge={badge} active={lvl.level === badge.level} />
-            ))}
-          </div>
-        </div>
       </div>
     </article>
   );
