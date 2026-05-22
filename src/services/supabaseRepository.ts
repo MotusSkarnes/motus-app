@@ -405,24 +405,72 @@ function periodPlanRowsToByMemberId(rows: Array<{ member_id: string; plan: unkno
   return out;
 }
 
-export async function upsertMemberPeriodPlansForTrainer(memberIds: string[], plan: PeriodSchedulePlan): Promise<void> {
-  if (!supabaseClient) return;
-  const ownerUserId = await getOwnerUserId();
-  if (!ownerUserId) return;
+export type UpsertMemberPeriodPlanResult = { ok: boolean; message: string };
+
+export async function upsertMemberPeriodPlansForTrainer(
+  memberIds: string[],
+  plan: PeriodSchedulePlan,
+  hints?: { targetEmail?: string },
+): Promise<UpsertMemberPeriodPlanResult> {
+  if (!supabaseClient) {
+    return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
+  }
+  const sessionOwnerUserId = await getOwnerUserId();
+  if (!sessionOwnerUserId) {
+    return { ok: false, message: "Kunne ikke lagre periodeplan: logg inn på nytt som trener." };
+  }
+  const {
+    data: { session },
+  } = await supabaseClient.auth.getSession();
+  const sessionUser = session?.user ?? null;
   const trimmedIds = Array.from(new Set(memberIds.map((id) => id.trim()).filter(Boolean)));
-  if (!trimmedIds.length) return;
-  const rows = trimmedIds.map((memberId) => ({
-    member_id: memberId,
-    plan_id: plan.id,
-    owner_user_id: ownerUserId,
-    plan: plan as unknown as Record<string, unknown>,
-  }));
+  if (!trimmedIds.length) {
+    return { ok: false, message: "Mangler kunde-ID for periodeplan." };
+  }
+
+  const rows: Array<{
+    member_id: string;
+    plan_id: string;
+    owner_user_id: string;
+    plan: Record<string, unknown>;
+  }> = [];
+
+  for (const rawMemberId of trimmedIds) {
+    const memberId = await resolveCanonicalMemberIdForPersistence(rawMemberId, hints, sessionUser);
+    const ownerUserId =
+      (await resolveOwnerUserIdForMember(memberId, sessionOwnerUserId)) ?? sessionOwnerUserId;
+    rows.push({
+      member_id: memberId,
+      plan_id: plan.id,
+      owner_user_id: ownerUserId,
+      plan: plan as unknown as Record<string, unknown>,
+    });
+  }
+
   const { error } = await supabaseClient.from("member_period_plans").upsert(rows, { onConflict: "member_id,plan_id" });
   if (error) {
     console.warn("Supabase member_period_plans upsert failed:", error.message);
-    return;
+    const detail = error.message.trim();
+    if (/row-level security|policy/i.test(detail)) {
+      return {
+        ok: false,
+        message:
+          "Kunne ikke lagre periodeplan (tilgang). Kjør member_period_plans_schema.sql i Supabase, eller sjekk at kunden tilhører deg som trener.",
+      };
+    }
+    if (/does not exist|relation/i.test(detail)) {
+      return {
+        ok: false,
+        message: "Kunne ikke lagre periodeplan: tabellen member_period_plans mangler i Supabase. Kjør src/supabase/member_period_plans_schema.sql.",
+      };
+    }
+    return { ok: false, message: `Kunne ikke lagre periodeplan: ${detail || "Ukjent feil."}` };
   }
-  void notifyMemberPeriodPlanPush(trimmedIds, plan);
+  void notifyMemberPeriodPlanPush(
+    rows.map((row) => row.member_id),
+    plan,
+  );
+  return { ok: true, message: "Periodeplan lagret." };
 }
 
 async function notifyMemberPeriodPlanPush(memberIds: string[], plan: PeriodSchedulePlan): Promise<void> {

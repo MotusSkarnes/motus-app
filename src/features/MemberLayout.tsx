@@ -401,7 +401,11 @@ export function MemberLayout({
       ...existing,
     ];
     writePeriodPlansByMemberId(byMember);
-    void upsertMemberPeriodPlansForTrainer([inspirationMemberId], memberPlan).then(() => refreshRemoteHydration?.());
+    void upsertMemberPeriodPlansForTrainer([inspirationMemberId], memberPlan, {
+      targetEmail: appState.currentUser?.email,
+    }).then((result) => {
+      if (result.ok) refreshRemoteHydration?.();
+    });
     if (typeof window !== "undefined") {
       window.sessionStorage.setItem("motus.member.openPeriodPlanOnPrograms", "1");
     }

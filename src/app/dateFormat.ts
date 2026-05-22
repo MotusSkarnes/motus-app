@@ -108,3 +108,15 @@ export function getDefaultPeriodPlanStartMondayISO(now = new Date()): string {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
+/** Normaliserer lagret startdato (dd.mm.yyyy eller ISO) til `type="date"`-input. */
+export function periodPlanStartDateForDateInput(value: string): string {
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const parsed = parseStoredLogDate(trimmed);
+  if (!parsed) return getDefaultPeriodPlanStartMondayISO();
+  const y = parsed.getFullYear();
+  const m = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}

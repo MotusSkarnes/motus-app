@@ -1,7 +1,7 @@
 ﻿import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CalendarRange, ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, MessageSquare, Pencil, Play, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
-import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO } from "../app/dateFormat";
+import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, periodPlanStartDateForDateInput } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClear";
 import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
@@ -692,6 +692,8 @@ function pickFirstName(value: unknown): string {
   const [periodPlanNotesDraft, setPeriodPlanNotesDraft] = useState("");
   const [periodPlanStartDateDraft, setPeriodPlanStartDateDraft] = useState(() => getDefaultPeriodPlanStartMondayISO());
   const [periodPlanWeeksDraft, setPeriodPlanWeeksDraft] = useState("1");
+  const [periodPlanDraftId, setPeriodPlanDraftId] = useState<string | null>(null);
+  const [periodPlanCreatingNew, setPeriodPlanCreatingNew] = useState(false);
   const [periodWeeklyPlansDraft, setPeriodWeeklyPlansDraft] = useState<WeeklySchedulePlan[]>([
     { id: uid("period-week"), weekNumber: 1, days: createEmptyWeeklyDayPlan() },
   ]);
@@ -1614,7 +1616,9 @@ function pickFirstName(value: unknown): string {
     setPeriodPlansByMemberId((prev) => {
       const next = { ...prev };
       keys.forEach((memberId) => {
-        next[memberId] = remoteTrainerPeriodPlansByMemberId[memberId] ?? [];
+        const remotePlans = remoteTrainerPeriodPlansByMemberId[memberId] ?? [];
+        const localPlans = next[memberId] ?? [];
+        next[memberId] = remotePlans.length > 0 ? remotePlans : localPlans;
       });
       return next;
     });
@@ -1731,6 +1735,46 @@ function pickFirstName(value: unknown): string {
     }
   }, [filteredWorkoutLogs, selectedWorkoutLogId]);
 
+  function resetPeriodPlanDraftForNewPlan() {
+    setPeriodPlanCreatingNew(true);
+    setPeriodPlanDraftId(null);
+    setPeriodPlanTitleDraft("Periodeplan");
+    setPeriodPlanNotesDraft("");
+    setPeriodPlanStartDateDraft(getDefaultPeriodPlanStartMondayISO());
+    setPeriodPlanWeeksDraft("1");
+    const firstWeek = { id: uid("period-week"), weekNumber: 1, days: createEmptyWeeklyDayPlan() };
+    setPeriodWeeklyPlansDraft([firstWeek]);
+    setActivePeriodWeekId(firstWeek.id);
+  }
+
+  function loadPeriodPlanIntoDraft(plan: PeriodSchedulePlan) {
+    const weeks = Math.max(1, Math.min(12, plan.weeks || plan.weeklyPlans.length || 1));
+    const sortedWeeks = [...plan.weeklyPlans]
+      .sort((a, b) => a.weekNumber - b.weekNumber)
+      .slice(0, weeks)
+      .map((week, index) => ({
+        ...week,
+        weekNumber: index + 1,
+        id: week.id || uid("period-week"),
+      }));
+    while (sortedWeeks.length < weeks) {
+      sortedWeeks.push({
+        id: uid("period-week"),
+        weekNumber: sortedWeeks.length + 1,
+        days: createEmptyWeeklyDayPlan(),
+      });
+    }
+    setPeriodPlanCreatingNew(false);
+    setPeriodPlanDraftId(plan.id);
+    setPeriodPlanTitleDraft(plan.title.trim() || "Periodeplan");
+    setPeriodPlanNotesDraft(plan.notes.trim());
+    setPeriodPlanStartDateDraft(periodPlanStartDateForDateInput(plan.startDate));
+    setPeriodPlanWeeksDraft(String(weeks));
+    const synced = syncGradientMarkedWeekDays(sortedWeeks);
+    setPeriodWeeklyPlansDraft(synced);
+    setActivePeriodWeekId(synced[0]?.id ?? "");
+  }
+
   useEffect(() => {
     // Reset workout list controls when changing customer so prior filters/search do not hide fresh logs.
     setWorkoutDateRangeFilter("7d");
@@ -1739,14 +1783,21 @@ function pickFirstName(value: unknown): string {
     setWorkoutSortOrder("newest");
     setCustomerProgramBuilderFocus("training");
     setPeriodPlanStatus(null);
-    setPeriodPlanTitleDraft("Periodeplan");
-    setPeriodPlanNotesDraft("");
-    setPeriodPlanStartDateDraft(getDefaultPeriodPlanStartMondayISO());
-    setPeriodPlanWeeksDraft("1");
-    const firstWeek = { id: uid("period-week"), weekNumber: 1, days: createEmptyWeeklyDayPlan() };
-    setPeriodWeeklyPlansDraft([firstWeek]);
-    setActivePeriodWeekId(firstWeek.id);
+    setPeriodPlanCreatingNew(false);
+    const existingPlan = selectedPeriodPlans[0] ?? null;
+    if (existingPlan) {
+      loadPeriodPlanIntoDraft(existingPlan);
+    } else {
+      resetPeriodPlanDraftForNewPlan();
+    }
   }, [selectedMemberId]);
+
+  useEffect(() => {
+    if (!selectedMemberId || selectedMemberId === "__template__") return;
+    if (periodPlanCreatingNew || periodPlanDraftId) return;
+    const existingPlan = selectedPeriodPlans[0] ?? null;
+    if (existingPlan) loadPeriodPlanIntoDraft(existingPlan);
+  }, [selectedPeriodPlans, selectedMemberId, periodPlanDraftId, periodPlanCreatingNew]);
 
   function resetMemberEditDraftFromSelected(member: Member | null) {
     if (!member) {
@@ -2063,7 +2114,7 @@ function pickFirstName(value: unknown): string {
     });
   }
 
-  function savePeriodPlanForSelectedMember() {
+  async function savePeriodPlanForSelectedMember() {
     if (!selectedMemberId || selectedMemberId === "__template__" || selectedMemberRelatedIds.length === 0) {
       setPeriodPlanStatus("Velg en kunde før du lagrer periodeplan.");
       return;
@@ -2080,11 +2131,13 @@ function pickFirstName(value: unknown): string {
         weekNumber: index + 1,
       })),
     );
-    const existingPeriodPlan = selectedPeriodPlans[0] ?? null;
-    const periodPlanId = existingPeriodPlan?.id ?? uid("period-plan");
-    const obsoletePeriodPlanIds = selectedPeriodPlans
-      .map((plan) => plan.id)
-      .filter((planId) => planId && planId !== periodPlanId);
+    const existingPeriodPlan =
+      selectedPeriodPlans.find((plan) => plan.id === periodPlanDraftId) ?? selectedPeriodPlans[0] ?? null;
+    const periodPlanId = periodPlanDraftId ?? existingPeriodPlan?.id ?? uid("period-plan");
+    const isNewPlan = !selectedPeriodPlans.some((plan) => plan.id === periodPlanId);
+    const obsoletePeriodPlanIds = isNewPlan
+      ? []
+      : selectedPeriodPlans.map((plan) => plan.id).filter((planId) => planId && planId !== periodPlanId);
     const newPeriodPlan: PeriodSchedulePlan = {
       id: periodPlanId,
       title,
@@ -2095,10 +2148,18 @@ function pickFirstName(value: unknown): string {
       weeklyPlans,
       periodPlanAddedBy: "trainer",
     };
+    setPeriodPlanStatus("Lagrer periodeplan...");
     setPeriodPlansByMemberId((prev) => {
       const next = { ...prev };
       selectedMemberRelatedIds.forEach((memberId) => {
-        next[memberId] = [newPeriodPlan];
+        const previous = next[memberId] ?? [];
+        if (isNewPlan) {
+          next[memberId] = [...previous.filter((plan) => plan.id !== periodPlanId), newPeriodPlan];
+        } else {
+          next[memberId] = previous.some((plan) => plan.id === periodPlanId)
+            ? previous.map((plan) => (plan.id === periodPlanId ? newPeriodPlan : plan))
+            : [newPeriodPlan];
+        }
       });
       return next;
     });
@@ -2106,9 +2167,17 @@ function pickFirstName(value: unknown): string {
       obsoletePeriodPlanIds.forEach((planId) => {
         void deleteMemberPeriodPlanByPlanId(planId);
       });
-      void upsertMemberPeriodPlansForTrainer(selectedMemberRelatedIds, newPeriodPlan);
+      const persist = await upsertMemberPeriodPlansForTrainer(selectedMemberRelatedIds, newPeriodPlan, {
+        targetEmail: selectedMember?.email,
+      });
+      if (!persist.ok) {
+        setPeriodPlanStatus(persist.message);
+        return;
+      }
     }
-    setPeriodPlanStatus(existingPeriodPlan ? "Periodeplan oppdatert." : "Periodeplan lagret.");
+    setPeriodPlanCreatingNew(false);
+    setPeriodPlanDraftId(periodPlanId);
+    setPeriodPlanStatus(isNewPlan ? "Periodeplan lagret." : "Periodeplan oppdatert.");
   }
 
   function toggleGradientPeriodWeek(weekId: string) {
@@ -5291,14 +5360,34 @@ function pickFirstName(value: unknown): string {
                             </div>
                           </div>
                         ) : null}
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                          <GradientButton onClick={savePeriodPlanForSelectedMember} className="w-full sm:w-auto">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                          <GradientButton onClick={() => void savePeriodPlanForSelectedMember()} className="w-full sm:w-auto">
                             Lagre periodeplan
                           </GradientButton>
+                          {selectedPeriodPlans.length > 0 ? (
+                            <OutlineButton
+                              type="button"
+                              onClick={() => {
+                                resetPeriodPlanDraftForNewPlan();
+                                setPeriodPlanStatus(null);
+                              }}
+                              className="w-full sm:w-auto"
+                            >
+                              Legg til ny periodeplan
+                            </OutlineButton>
+                          ) : null}
                           {periodPlanStatus ? (
                             <StatusMessage
                               message={periodPlanStatus}
-                              tone={periodPlanStatus.toLowerCase().includes("lagret") || periodPlanStatus.toLowerCase().includes("slettet") ? "success" : "error"}
+                              tone={
+                                periodPlanStatus.toLowerCase().includes("lagrer")
+                                  ? "info"
+                                  : periodPlanStatus.toLowerCase().includes("lagret") ||
+                                      periodPlanStatus.toLowerCase().includes("oppdatert") ||
+                                      periodPlanStatus.toLowerCase().includes("slettet")
+                                    ? "success"
+                                    : "error"
+                              }
                               className="w-full !rounded-xl !px-3 !py-2 !text-sm"
                             />
                           ) : null}
