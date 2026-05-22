@@ -367,6 +367,9 @@ export function LiveWorkoutSessionModal({
     () => workoutResultGroups.filter((group) => group.rows.some((row) => !row.completed)),
     [workoutResultGroups],
   );
+  const firstIncompleteWorkoutGroupIndex = workoutResultGroups.findIndex((group) =>
+    group.rows.some((row) => !row.completed),
+  );
   const incompleteExerciseNames = incompleteWorkoutGroups.map((group) => group.exerciseName).filter(Boolean);
   const incompleteExerciseCount = incompleteWorkoutGroups.length;
   const shouldWarnAboutIncompleteWorkout = incompleteSetsCount > 0 && !incompleteWarningSeenRef.current;
@@ -489,6 +492,15 @@ export function LiveWorkoutSessionModal({
     }
     if (action === "member-reflection" || action === "member-save") {
       continueMemberFinishFlow();
+    }
+  }
+
+  function handleGoToFirstIncompleteExercise() {
+    setPendingIncompleteFinishAction(null);
+    setShowWorkoutReflection(false);
+    setRestCountdown(null);
+    if (firstIncompleteWorkoutGroupIndex >= 0) {
+      setWorkoutExerciseIndex(firstIncompleteWorkoutGroupIndex);
     }
   }
 
@@ -1019,13 +1031,16 @@ export function LiveWorkoutSessionModal({
                 </div>
               </div>
             ) : null}
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <div className="mt-4 grid gap-2">
+              <GradientButton type="button" className="w-full" onClick={handleGoToFirstIncompleteExercise}>
+                Gå til øvelse
+              </GradientButton>
               <OutlineButton type="button" className="w-full" onClick={() => setPendingIncompleteFinishAction(null)}>
                 Gå tilbake
               </OutlineButton>
-              <GradientButton type="button" className="w-full" onClick={confirmIncompleteFinish}>
+              <OutlineButton type="button" className="w-full" onClick={confirmIncompleteFinish}>
                 Lagre likevel
-              </GradientButton>
+              </OutlineButton>
             </div>
           </div>
         </div>
