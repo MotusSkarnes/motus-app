@@ -9,6 +9,7 @@ export type TrainerTab =
   | "exerciseBank"
   | "admin"
   | "inspiration"
+  | "badges"
   | "statistics"
   | "settings";
 export type CustomerSubTab = "overview" | "profile" | "programs" | "workouts" | "messages";

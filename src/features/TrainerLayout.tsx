@@ -7,6 +7,7 @@ import {
   ClipboardPenLine,
   Clock3,
   Dumbbell,
+  Award,
   LayoutDashboard,
   MessageSquare,
   MoreHorizontal,
@@ -25,6 +26,7 @@ import type { TrainerAlert } from "../app/useNotifications";
 import { TrainerPortal } from "./TrainerPortal";
 import type { MemberPortal } from "./MemberPortal";
 import { InspirationHub } from "./InspirationHub";
+import { TrainerBadgeCatalog } from "./TrainerBadgeCatalog";
 
 type TrainerWorkoutBridge = Pick<
   ComponentProps<typeof MemberPortal>,
@@ -86,6 +88,7 @@ const trainerMenuItems: Array<{ key: TrainerTab; label: string; icon: LucideIcon
   { key: "exerciseBank", label: "Øvelsesbank", icon: Dumbbell },
   { key: "programs", label: "Programmer", icon: ClipboardList },
   { key: "inspiration", label: "Inspirasjon", icon: Sparkles },
+  { key: "badges", label: "Badges", icon: Award },
   { key: "settings", label: "Innstillinger", icon: Settings },
   { key: "admin", label: "Admin", icon: ShieldCheck },
 ];
@@ -99,6 +102,7 @@ const mobileTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
 ];
 
 const mobileMoreTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
+  { id: "badges", label: "Badges", icon: Award },
   { id: "settings", label: "Innstillinger", icon: Settings },
   { id: "admin", label: "Admin", icon: ShieldCheck },
 ];
@@ -399,6 +403,8 @@ export function TrainerLayout({
                 .filter((program) => program.memberId === "__template__")
                 .map((program) => ({ id: program.id, title: program.title }))}
             />
+          ) : trainerTab === "badges" ? (
+            <TrainerBadgeCatalog />
           ) : (
             <TrainerPortal {...trainerPortalProps} />
           )}

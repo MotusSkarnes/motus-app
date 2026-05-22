@@ -754,3 +754,53 @@ export function getBadgeUnlockHint(badge: MemberBadge): string {
       return badge.description;
   }
 }
+
+export type MemberBadgeCatalogLevel = {
+  levelName: string;
+  targetLabel: string;
+};
+
+export type MemberBadgeCatalogTrack = {
+  id: string;
+  categoryTitle: string;
+  title: string;
+  description: string;
+  titleNote?: string;
+  levels: MemberBadgeCatalogLevel[];
+};
+
+export type MemberBadgeCatalogSecret = {
+  id: string;
+  title: string;
+  description: string;
+  unlockLabel: string;
+};
+
+export function getMemberBadgeCatalog(): {
+  tracks: MemberBadgeCatalogTrack[];
+  secrets: MemberBadgeCatalogSecret[];
+} {
+  const tracks: MemberBadgeCatalogTrack[] = BADGE_TRACKS.map((track) => ({
+    id: track.id,
+    categoryTitle: track.categoryTitle,
+    title: track.id === "workout-club" ? "Klubben" : track.title,
+    description: track.description,
+    titleNote:
+      track.id === "workout-club"
+        ? "Tittelen i appen endres per nivå (100 / 200 / 300 / 400 / 500 klubben)."
+        : undefined,
+    levels: track.levels.map(({ level, target }) => ({
+      levelName: BADGE_LEVEL_NAMES[level],
+      targetLabel: formatBadgeMetricValue(track.id, target),
+    })),
+  }));
+
+  const secrets: MemberBadgeCatalogSecret[] = SECRET_BADGE_CATALOG.map((entry) => ({
+    id: entry.id,
+    title: entry.title,
+    description: entry.description,
+    unlockLabel: entry.levelName,
+  }));
+
+  return { tracks, secrets };
+}
