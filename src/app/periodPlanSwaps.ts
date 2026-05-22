@@ -23,6 +23,8 @@ export const WEEKDAY_PLAN_LABELS: Record<WeekdayPlanKey, string> = {
 export type PeriodPlanDaySwap = {
   dayA: WeekdayPlanKey;
   dayB: WeekdayPlanKey;
+  /** Uten mode = eldre lagret bytte. */
+  mode?: "swap" | "move";
 };
 
 /** planId -> weekNumber -> swaps */
@@ -54,12 +56,21 @@ export function getSwapsForWeek(
 export function applyPeriodPlanSwaps(days: WeeklyDayPlan, swaps: PeriodPlanDaySwap[]): WeeklyDayPlan {
   const next: WeeklyDayPlan = { ...days };
   for (const swap of swaps) {
-    const valueA = next[swap.dayA];
-    const valueB = next[swap.dayB];
-    next[swap.dayA] = valueB;
-    next[swap.dayB] = valueA;
+    if (swap.mode === "move") {
+      next[swap.dayB] = next[swap.dayA];
+      next[swap.dayA] = "";
+    } else {
+      const valueA = next[swap.dayA];
+      const valueB = next[swap.dayB];
+      next[swap.dayA] = valueB;
+      next[swap.dayB] = valueA;
+    }
   }
   return next;
+}
+
+function changeTouchesDay(change: PeriodPlanDaySwap, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey): boolean {
+  return change.dayA === dayA || change.dayA === dayB || change.dayB === dayA || change.dayB === dayB;
 }
 
 export function togglePeriodPlanSwap(
@@ -76,7 +87,20 @@ export function togglePeriodPlanSwap(
   if (existingIndex >= 0) {
     return swaps.filter((_, index) => index !== existingIndex);
   }
-  return [...swaps, { dayA, dayB }];
+  return [...swaps.filter((swap) => !changeTouchesDay(swap, dayA, dayB)), { dayA, dayB, mode: "swap" }];
+}
+
+export function togglePeriodPlanMove(
+  swaps: PeriodPlanDaySwap[],
+  dayA: WeekdayPlanKey,
+  dayB: WeekdayPlanKey,
+): PeriodPlanDaySwap[] {
+  if (dayA === dayB) return swaps;
+  const existingIndex = swaps.findIndex((swap) => swap.mode === "move" && swap.dayA === dayA && swap.dayB === dayB);
+  if (existingIndex >= 0) {
+    return swaps.filter((_, index) => index !== existingIndex);
+  }
+  return [...swaps.filter((swap) => !changeTouchesDay(swap, dayA, dayB)), { dayA, dayB, mode: "move" }];
 }
 
 export function setSwapsForWeek(

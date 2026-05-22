@@ -31,6 +31,7 @@ type PeriodPlanWeekViewProps = {
     plannedDate: string | null;
   }) => void;
   onSwapDays: (planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) => void;
+  onMoveDay: (planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) => void;
   onResetSwaps: (planId: string, weekNumber: number) => void;
   onStartProgram: (programId: string) => void;
   onLogGroup: (input: {
@@ -52,6 +53,7 @@ export function PeriodPlanWeekView({
   isEntryCompleted,
   onToggleCompleted,
   onSwapDays,
+  onMoveDay,
   onResetSwaps,
   onStartProgram,
   onLogGroup,
@@ -64,6 +66,15 @@ export function PeriodPlanWeekView({
   useEffect(() => {
     setSwapFromDay(null);
   }, [plan.id, week.weekNumber]);
+
+  function handleSwapButtonClick(dayKey: WeekdayPlanKey) {
+    if (swapFromDay && swapFromDay !== dayKey) {
+      onSwapDays(plan.id, week.weekNumber, swapFromDay, dayKey);
+      setSwapFromDay(null);
+      return;
+    }
+    setSwapFromDay((prev) => (prev === dayKey ? null : dayKey));
+  }
 
   return (
     <div
@@ -190,15 +201,7 @@ export function PeriodPlanWeekView({
                   ) : null}
                   <button
                     type="button"
-                    onClick={() =>
-                      setSwapFromDay((prev) => {
-                        if (prev && prev !== dayKey) {
-                          onSwapDays(plan.id, week.weekNumber, prev, dayKey);
-                          return null;
-                        }
-                        return prev === dayKey ? null : dayKey;
-                      })
-                    }
+                    onClick={() => handleSwapButtonClick(dayKey)}
                     className={`rounded-lg border p-1.5 transition ${
                       isSwapSource
                         ? "border-transparent text-white shadow-sm"
@@ -222,20 +225,32 @@ export function PeriodPlanWeekView({
 
               {isSwapSource ? (
                 <div className="mx-3 mb-3 rounded-lg border border-teal-200 bg-teal-50/70 p-2">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-teal-900">Bytt med</div>
-                  <div className="mt-1.5 flex flex-wrap gap-1">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-teal-900">Velg dag</div>
+                  <div className="mt-1.5 grid gap-1.5">
                     {WEEKDAY_PLAN_ORDER.filter((key) => key !== dayKey).map((key) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => {
-                          onSwapDays(plan.id, week.weekNumber, dayKey, key);
-                          setSwapFromDay(null);
-                        }}
-                        className="rounded-md border border-teal-100 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-teal-400 hover:text-teal-950"
-                      >
-                        {WEEKDAY_PLAN_LABELS[key]}
-                      </button>
+                      <div key={key} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1.5 rounded-md bg-white px-2 py-1.5">
+                        <span className="min-w-0 text-[11px] font-semibold text-slate-700">{WEEKDAY_PLAN_LABELS[key]}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSwapDays(plan.id, week.weekNumber, dayKey, key);
+                            setSwapFromDay(null);
+                          }}
+                          className="rounded-md border border-teal-100 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-teal-400 hover:text-teal-950"
+                        >
+                          Bytt
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onMoveDay(plan.id, week.weekNumber, dayKey, key);
+                            setSwapFromDay(null);
+                          }}
+                          className="rounded-md border border-pink-100 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-pink-400 hover:text-pink-800"
+                        >
+                          Flytt hit
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>

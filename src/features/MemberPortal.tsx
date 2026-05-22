@@ -114,6 +114,7 @@ import {
   getSwapsForWeek,
   parsePeriodPlanSwapsState,
   setSwapsForWeek,
+  togglePeriodPlanMove,
   togglePeriodPlanSwap,
   WEEKDAY_PLAN_LABELS,
   WEEKDAY_PLAN_ORDER,
@@ -3780,6 +3781,22 @@ export function MemberPortal(props: MemberPortalProps) {
     });
   }
 
+  function movePeriodPlanDay(planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) {
+    if (dayA === dayB) return;
+    periodPlanSwapsDirtyRef.current = true;
+    setPeriodPlanSwapsByPlan((prev) => {
+      const current = getSwapsForWeek(prev, planId, weekNumber);
+      const existingMove = current.some((swap) => swap.mode === "move" && swap.dayA === dayA && swap.dayB === dayB);
+      const nextSwaps = togglePeriodPlanMove(current, dayA, dayB);
+      setPeriodPlanActionStatus(
+        existingMove
+          ? `Flytting fra ${WEEKDAY_PLAN_LABELS[dayA]} til ${WEEKDAY_PLAN_LABELS[dayB]} er angret.`
+          : `Flyttet plan fra ${WEEKDAY_PLAN_LABELS[dayA]} til ${WEEKDAY_PLAN_LABELS[dayB]}.`,
+      );
+      return setSwapsForWeek(prev, planId, weekNumber, nextSwaps);
+    });
+  }
+
   function resetPeriodPlanSwapsForWeek(planId: string, weekNumber: number) {
     periodPlanSwapsDirtyRef.current = true;
     setPeriodPlanSwapsByPlan((prev) => setSwapsForWeek(prev, planId, weekNumber, []));
@@ -5682,6 +5699,7 @@ export function MemberPortal(props: MemberPortalProps) {
                               isEntryCompleted={isPeriodPlanEntryCompleted}
                               onToggleCompleted={togglePeriodPlanEntryCompleted}
                               onSwapDays={swapPeriodPlanDays}
+                              onMoveDay={movePeriodPlanDay}
                               onResetSwaps={resetPeriodPlanSwapsForWeek}
                               onStartProgram={handlePeriodPlanStartProgram}
                               onLogGroup={handlePeriodPlanLogGroup}

@@ -4,6 +4,7 @@ import {
   getSwapsForWeek,
   periodPlanSourceDay,
   setSwapsForWeek,
+  togglePeriodPlanMove,
   togglePeriodPlanSwap,
 } from "./periodPlanSwaps";
 import type { WeeklyDayPlan } from "./types";
@@ -30,6 +31,20 @@ describe("periodPlanSwaps", () => {
     const once = togglePeriodPlanSwap([], "monday", "tuesday");
     const twice = togglePeriodPlanSwap(once, "monday", "tuesday");
     expect(applyPeriodPlanSwaps(baseDays, twice)).toEqual(baseDays);
+  });
+
+  it("moves content to another day without swapping target back", () => {
+    const swaps = togglePeriodPlanMove([], "monday", "saturday");
+    const effective = applyPeriodPlanSwaps(baseDays, swaps);
+    expect(effective.monday).toBe("");
+    expect(effective.saturday).toBe("Program A");
+  });
+
+  it("move replaces existing target content intentionally", () => {
+    const swaps = togglePeriodPlanMove([], "monday", "friday");
+    const effective = applyPeriodPlanSwaps(baseDays, swaps);
+    expect(effective.monday).toBe("");
+    expect(effective.friday).toBe("Program A");
   });
 
   it("reports source day for moved content", () => {
