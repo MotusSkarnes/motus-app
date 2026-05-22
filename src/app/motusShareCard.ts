@@ -271,10 +271,6 @@ export async function buildBadgeShareCardBlob(input: BadgeShareCardInput): Promi
     34,
   );
 
-  ctx.fillStyle = "#94a3b8";
-  ctx.font = "22px system-ui, -apple-system, Segoe UI, sans-serif";
-  ctx.fillText("motus · del styrken din #Motus", cardX + pad, cardY + cardH - pad);
-
   return canvasToPngBlob(canvas);
 }
 
