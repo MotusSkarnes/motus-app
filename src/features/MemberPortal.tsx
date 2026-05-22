@@ -3766,16 +3766,18 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function swapPeriodPlanDays(planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) {
     if (dayA === dayB) return;
-    const current = getSwapsForWeek(periodPlanSwapsByPlan, planId, weekNumber);
-    const nextSwaps = togglePeriodPlanSwap(current, dayA, dayB);
     periodPlanSwapsDirtyRef.current = true;
-    setPeriodPlanSwapsByPlan((prev) => setSwapsForWeek(prev, planId, weekNumber, nextSwaps));
-    const reverted = nextSwaps.length < current.length;
-    setPeriodPlanActionStatus(
-      reverted
-        ? `Bytte mellom ${WEEKDAY_PLAN_LABELS[dayA]} og ${WEEKDAY_PLAN_LABELS[dayB]} er angret.`
-        : `Byttet plan for ${WEEKDAY_PLAN_LABELS[dayA]} og ${WEEKDAY_PLAN_LABELS[dayB]}.`,
-    );
+    setPeriodPlanSwapsByPlan((prev) => {
+      const current = getSwapsForWeek(prev, planId, weekNumber);
+      const nextSwaps = togglePeriodPlanSwap(current, dayA, dayB);
+      const reverted = nextSwaps.length < current.length;
+      setPeriodPlanActionStatus(
+        reverted
+          ? `Bytte mellom ${WEEKDAY_PLAN_LABELS[dayA]} og ${WEEKDAY_PLAN_LABELS[dayB]} er angret.`
+          : `Byttet plan for ${WEEKDAY_PLAN_LABELS[dayA]} og ${WEEKDAY_PLAN_LABELS[dayB]}.`,
+      );
+      return setSwapsForWeek(prev, planId, weekNumber, nextSwaps);
+    });
   }
 
   function resetPeriodPlanSwapsForWeek(planId: string, weekNumber: number) {

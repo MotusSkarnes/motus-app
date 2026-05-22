@@ -190,16 +190,30 @@ export function PeriodPlanWeekView({
                   ) : null}
                   <button
                     type="button"
-                    onClick={() => setSwapFromDay((prev) => (prev === dayKey ? null : dayKey))}
+                    onClick={() =>
+                      setSwapFromDay((prev) => {
+                        if (prev && prev !== dayKey) {
+                          onSwapDays(plan.id, week.weekNumber, prev, dayKey);
+                          return null;
+                        }
+                        return prev === dayKey ? null : dayKey;
+                      })
+                    }
                     className={`rounded-lg border p-1.5 transition ${
                       isSwapSource
                         ? "border-transparent text-white shadow-sm"
                         : "border-slate-200 bg-white text-slate-500 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-900"
                     }`}
                     style={isSwapSource ? { background: MOTUS_GRADIENT } : undefined}
-                    aria-label={isSwapSource ? `Avbryt bytte for ${dayLabel}` : `Bytt ${dayLabel} med annen dag`}
+                    aria-label={
+                      isSwapSource
+                        ? `Avbryt bytte for ${dayLabel}`
+                        : swapFromDay
+                          ? `Bytt ${WEEKDAY_PLAN_LABELS[swapFromDay]} med ${dayLabel}`
+                          : `Bytt ${dayLabel} med annen dag`
+                    }
                     aria-expanded={isSwapSource}
-                    title={isSwapSource ? "Avbryt" : "Bytt dag"}
+                    title={isSwapSource ? "Avbryt" : swapFromDay ? "Fullfør bytte" : "Bytt dag"}
                   >
                     <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden />
                   </button>
