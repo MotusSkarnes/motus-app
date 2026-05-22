@@ -215,11 +215,11 @@ const BADGE_TRACKS: BadgeTrack[] = [
     icon: "month-goal",
     metric: "monthSessions",
     levels: [
-      { level: "bronze", target: 4 },
-      { level: "silver", target: 6 },
-      { level: "gold", target: 8 },
-      { level: "diamond", target: 12 },
-      { level: "legendary", target: 16 },
+      { level: "bronze", target: 8 },
+      { level: "silver", target: 12 },
+      { level: "gold", target: 14 },
+      { level: "diamond", target: 18 },
+      { level: "legendary", target: 20 },
     ],
   },
   {
