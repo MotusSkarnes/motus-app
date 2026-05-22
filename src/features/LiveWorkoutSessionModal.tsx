@@ -104,6 +104,7 @@ export function LiveWorkoutSessionModal({
   const [reflectionNote, setReflectionNote] = useState("");
   const [showExerciseDetail, setShowExerciseDetail] = useState(false);
   const [restCountdown, setRestCountdown] = useState<RestCountdownState | null>(null);
+  const deferredJumpTargetGroupIdRef = useRef<string | null>(null);
   const completedCountByGroupRef = useRef<Record<string, number>>({});
   const lastRestBeepSecondRef = useRef<number | null>(null);
 
@@ -148,6 +149,15 @@ export function LiveWorkoutSessionModal({
 
   useEffect(() => {
     if (!workoutResultGroups.length) return;
+    const deferredJumpTargetGroupId = deferredJumpTargetGroupIdRef.current;
+    if (deferredJumpTargetGroupId) {
+      const nextIndex = workoutResultGroups.findIndex((group) => group.groupId === deferredJumpTargetGroupId);
+      if (nextIndex >= 0) {
+        deferredJumpTargetGroupIdRef.current = null;
+        setWorkoutExerciseIndex(nextIndex);
+        return;
+      }
+    }
     if (workoutExerciseIndex <= workoutResultGroups.length - 1) return;
     setWorkoutExerciseIndex(workoutResultGroups.length - 1);
   }, [workoutResultGroups, workoutExerciseIndex]);
@@ -413,6 +423,13 @@ export function LiveWorkoutSessionModal({
     setWorkoutExerciseIndex((prev) => prev + 1);
   }
 
+  function handleDeferCurrentWorkoutExercise() {
+    if (!currentWorkoutGroup || !nextWorkoutGroup) return;
+    setRestCountdown(null);
+    deferredJumpTargetGroupIdRef.current = nextWorkoutGroup.groupId;
+    deferWorkoutExerciseGroup(currentWorkoutGroup.groupId);
+  }
+
   function handleSaveTrainerWorkout() {
     if (isSavingWorkout) return;
     setIsSavingWorkout(true);
@@ -567,7 +584,7 @@ export function LiveWorkoutSessionModal({
                 <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <button
                     type="button"
-                    onClick={() => deferWorkoutExerciseGroup(currentWorkoutGroup.groupId)}
+                    onClick={handleDeferCurrentWorkoutExercise}
                     className="inline-flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-xs font-semibold text-slate-800 transition hover:bg-slate-50"
                     style={{ borderColor: "rgba(148,163,184,0.45)" }}
                   >
