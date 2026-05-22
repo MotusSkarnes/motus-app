@@ -2570,7 +2570,7 @@ export function MemberPortal(props: MemberPortalProps) {
       return;
     }
     setPeriodPlanSwapsByPlan(parsePeriodPlanSwapsState(window.localStorage.getItem(getPeriodPlanSwapsStorageKey(editableMember.id))));
-  }, [editableMember]);
+  }, [editableMember?.id]);
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     if (!periodPlanSwapsDirtyRef.current) return;
@@ -2582,7 +2582,7 @@ export function MemberPortal(props: MemberPortalProps) {
     } catch {
       // ignore storage write errors (quota/private mode)
     }
-  }, [editableMember, periodPlanSwapsByPlan]);
+  }, [editableMember?.id, periodPlanSwapsByPlan]);
   useEffect(() => {
     setFavoritePersonalRecordPreferencesHydrated(false);
     achievementCelebrationBaselineRef.current = null;
