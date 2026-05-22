@@ -356,11 +356,9 @@ export function saveProgramInState(
 }
 
 export function deleteProgramInState(state: AppState, programId: string): AppState {
-  const programToDelete = state.programs.find((program) => program.id === programId);
   return {
     ...state,
     programs: state.programs.filter((program) => program.id !== programId),
-    logs: programToDelete ? state.logs.filter((log) => !(log.memberId === programToDelete.memberId && log.programTitle === programToDelete.title)) : state.logs,
   };
 }
 

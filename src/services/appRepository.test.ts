@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AppState } from "../app/types";
 import {
   appendWorkoutSetForProgramExerciseInState,
   deferWorkoutExerciseGroupInState,
+  deleteProgramInState,
   finishWorkoutModeInState,
   logCompletedPlanEntryInState,
   removeCompletedPlanEntryLogInState,
@@ -39,6 +40,26 @@ function createBaseState(): AppState {
 }
 
 describe("appRepository workout log guards", () => {
+  it("keeps historical workout logs when deleting a program", () => {
+    const state = createBaseState();
+    state.logs = [
+      {
+        id: "log-1",
+        memberId: "member-1",
+        programTitle: "Styrke A",
+        date: "24.04.2026",
+        status: "Fullført",
+        note: "",
+        results: [],
+      },
+    ];
+
+    const next = deleteProgramInState(state, "program-1");
+
+    expect(next.programs).toHaveLength(0);
+    expect(next.logs).toEqual(state.logs);
+  });
+
   it("appends an extra set with incremented setNumber for a program exercise", () => {
     const state = createBaseState();
     state.programs = [
@@ -364,14 +385,20 @@ describe("appRepository workout log guards", () => {
     expect(next.logs).toHaveLength(0);
   });
 
-  it("stores completed plan entry dates in dd.mm.yyyy", () => {
+  it("stores completed plan entry dates with the current clock", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 4, 15, 14, 35, 0));
     const state = createBaseState();
-    const next = logCompletedPlanEntryInState(state, {
-      memberId: "member-1",
-      programTitle: "Styrke A",
-      date: "2026-05-10",
-      note: "Test",
-    });
-    expect(next.logs[0]?.date).toBe("10.05.2026");
+    try {
+      const next = logCompletedPlanEntryInState(state, {
+        memberId: "member-1",
+        programTitle: "Styrke A",
+        date: "2026-05-10",
+        note: "Test",
+      });
+      expect(next.logs[0]?.date).toBe("10.05.2026 kl 14:35");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

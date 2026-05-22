@@ -3,6 +3,7 @@ import {
   applyPeriodPlanSwaps,
   buildPeriodPlanWeekOverride,
   getSwapsForWeek,
+  mergePeriodPlanSwapsStates,
   periodPlanSourceDay,
   setSwapsForWeek,
   togglePeriodPlanMove,
@@ -66,5 +67,13 @@ describe("periodPlanSwaps", () => {
     expect(getSwapsForWeek(state, "plan-1", 1)).toHaveLength(0);
     state = setSwapsForWeek(state, "plan-1", 2, []);
     expect(getSwapsForWeek(state, "plan-1", 2)).toHaveLength(0);
+  });
+
+  it("merges stored swaps from related member ids", () => {
+    const authState = setSwapsForWeek({}, "plan-1", 1, [{ dayA: "monday", dayB: "friday", mode: "swap" }]);
+    const canonicalState = setSwapsForWeek({}, "plan-2", 2, [{ dayA: "tuesday", dayB: "saturday", mode: "move" }]);
+    const merged = mergePeriodPlanSwapsStates(authState, canonicalState);
+    expect(getSwapsForWeek(merged, "plan-1", 1)).toEqual([{ dayA: "monday", dayB: "friday", mode: "swap" }]);
+    expect(getSwapsForWeek(merged, "plan-2", 2)).toEqual([{ dayA: "tuesday", dayB: "saturday", mode: "move" }]);
   });
 });
