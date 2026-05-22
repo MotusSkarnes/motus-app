@@ -11,7 +11,7 @@ const SIZE_PX: Record<BadgeImageSize, number> = {
 };
 
 /** Ekstra luft inni boksen — PNG har også kant etter normalisering (SAFE_FILL). */
-const FRAME_INSET_RATIO = 0.06;
+const FRAME_INSET_RATIO = 0.1;
 
 type BadgeImageProps = {
   src: string;
