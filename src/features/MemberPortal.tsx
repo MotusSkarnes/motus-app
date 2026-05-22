@@ -102,6 +102,7 @@ import {
   readHiddenPeriodPlanIdsForMembers,
   readPeriodPlansByMemberId,
   removeMemberOwnedPeriodPlanFromStorage,
+  findPeriodPlanAutoCompleteTargets,
   findPeriodPlanEntryForCalendarDateInPlans,
   findTodayPeriodPlanEntryInPlans,
   parsePeriodPlanStartDate,
@@ -1005,6 +1006,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const lastMemberCoreHydrationIdRef = useRef<string | null>(null);
   const periodPlanCompletedDirtyRef = useRef(false);
   const periodPlanSwapsDirtyRef = useRef(false);
+  const prevWorkoutModeRef = useRef(workoutMode);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [programLibraryMenuId, setProgramLibraryMenuId] = useState<string | null>(null);
 
@@ -2525,12 +2527,13 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [memberTab, editableMember, profileHasUnsavedChanges, saveProfile]);
   useEffect(() => {
     periodPlanCompletedDirtyRef.current = false;
-    if (!editableMember || typeof window === "undefined") {
+    const memberId = editableMember?.id;
+    if (!memberId || typeof window === "undefined") {
       setCompletedPeriodPlanEntryKeys([]);
       return;
     }
     try {
-      const raw = window.localStorage.getItem(getPeriodPlanCompletedStorageKey(editableMember.id));
+      const raw = window.localStorage.getItem(getPeriodPlanCompletedStorageKey(memberId));
       if (!raw) {
         setCompletedPeriodPlanEntryKeys([]);
         return;
@@ -2544,19 +2547,20 @@ export function MemberPortal(props: MemberPortalProps) {
     } catch {
       setCompletedPeriodPlanEntryKeys([]);
     }
-  }, [editableMember]);
+  }, [editableMember?.id]);
   useEffect(() => {
-    if (!editableMember || typeof window === "undefined") return;
+    const memberId = editableMember?.id;
+    if (!memberId || typeof window === "undefined") return;
     if (!periodPlanCompletedDirtyRef.current) return;
     try {
       window.localStorage.setItem(
-        getPeriodPlanCompletedStorageKey(editableMember.id),
+        getPeriodPlanCompletedStorageKey(memberId),
         JSON.stringify(completedPeriodPlanEntryKeys),
       );
     } catch {
       // ignore storage write errors (quota/private mode)
     }
-  }, [editableMember, completedPeriodPlanEntryKeys]);
+  }, [editableMember?.id, completedPeriodPlanEntryKeys]);
   useEffect(() => {
     periodPlanSwapsDirtyRef.current = false;
     if (!editableMember || typeof window === "undefined") {
@@ -3891,6 +3895,51 @@ export function MemberPortal(props: MemberPortalProps) {
     periodPlanCompletedDirtyRef.current = true;
     setCompletedPeriodPlanEntryKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
   }
+
+  useEffect(() => {
+    const previous = prevWorkoutModeRef.current;
+    prevWorkoutModeRef.current = workoutMode;
+    if (!previous || workoutMode || !activeMemberId) return;
+
+    const programTitle =
+      previous.programTitle?.trim() ||
+      memberProgramsForPeriodPlan.find((item) => item.id === previous.programId)?.title ||
+      memberProgramsInActiveLibrary.find((item) => item.id === previous.programId)?.title ||
+      programs.find((item) => item.id === previous.programId)?.title ||
+      "";
+    if (!programTitle.trim()) return;
+
+    const targets = findPeriodPlanAutoCompleteTargets({
+      plans: visiblePeriodPlans,
+      swapsByPlan: periodPlanSwapsByPlan,
+      programTitle,
+      programs: memberProgramsForPeriodPlan,
+      completedAt: new Date(),
+    });
+    if (!targets.length) return;
+
+    periodPlanCompletedDirtyRef.current = true;
+    setCompletedPeriodPlanEntryKeys((prev) => {
+      const next = [...prev];
+      let changed = false;
+      for (const target of targets) {
+        const key = buildPeriodPlanEntryKey(target.planId, target.weekNumber, target.day);
+        if (!next.includes(key)) {
+          next.push(key);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [
+    workoutMode,
+    activeMemberId,
+    visiblePeriodPlans,
+    periodPlanSwapsByPlan,
+    memberProgramsForPeriodPlan,
+    memberProgramsInActiveLibrary,
+    programs,
+  ]);
 
   function unmarkPeriodPlanDayCompleted(planId: string, weekNumber: number, day: WeekdayPlanKey) {
     const key = buildPeriodPlanEntryKey(planId, weekNumber, day);

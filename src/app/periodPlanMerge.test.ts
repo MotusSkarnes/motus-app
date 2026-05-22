@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   buildPeriodPlanWeekNavItemsFromPlan,
   HIDDEN_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY,
+  findPeriodPlanAutoCompleteTargets,
   findPeriodPlanEntryForCalendarDate,
   findTodayPeriodPlanEntryInPlans,
   isMemberOwnedPeriodPlan,
   normalizePeriodSchedulePlan,
+  periodPlanEntryMatchesCompletedProgram,
   readHiddenPeriodPlanIdsForMembers,
   periodPlanWeekdayKeyForDate,
   resolvePeriodPlanPlannedDate,
@@ -13,7 +15,7 @@ import {
   syncGradientMarkedWeekDays,
   writeHiddenPeriodPlanIdsForMembers,
 } from "./periodPlanMerge";
-import type { PeriodSchedulePlan, WeeklySchedulePlan } from "./types";
+import type { PeriodSchedulePlan, TrainingProgram, WeeklySchedulePlan } from "./types";
 
 const empty = { monday: "", tuesday: "", wednesday: "", thursday: "", friday: "", saturday: "", sunday: "" };
 
@@ -231,5 +233,38 @@ describe("hidden period plans", () => {
     writeHiddenPeriodPlanIdsForMembers(["memberA", "memberB"], []);
 
     expect(readHiddenPeriodPlanIdsForMembers(["memberA", "memberB"])).toEqual([]);
+  });
+});
+
+describe("period plan auto-complete", () => {
+  const programs: TrainingProgram[] = [
+    {
+      id: "p1",
+      memberId: "m1",
+      title: "Styrke A",
+      goal: "",
+      notes: "",
+      createdAt: "01.01.2026",
+      exercises: [],
+    },
+  ];
+
+  it("matches completed program title to plan entry", () => {
+    expect(periodPlanEntryMatchesCompletedProgram("Styrke A", "Styrke A", programs)).toBe(true);
+    expect(periodPlanEntryMatchesCompletedProgram("  styrke a ", "Styrke A", programs)).toBe(true);
+    expect(periodPlanEntryMatchesCompletedProgram("Kondisjon", "Styrke A", programs)).toBe(false);
+  });
+
+  it("finds plan row for today when program is completed", () => {
+    const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, friday: "Styrke A" } }]);
+    plan.startDate = "2026-05-22";
+    const targets = findPeriodPlanAutoCompleteTargets({
+      plans: [plan],
+      swapsByPlan: {},
+      programTitle: "Styrke A",
+      programs,
+      completedAt: new Date(2026, 4, 22),
+    });
+    expect(targets).toEqual([{ planId: "plan-1", weekNumber: 1, day: "friday" }]);
   });
 });

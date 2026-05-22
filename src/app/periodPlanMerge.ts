@@ -1,6 +1,7 @@
 import { getDefaultPeriodPlanStartMondayISO, parseStoredLogDate } from "./dateFormat";
+import { findProgramForPeriodPlanEntry, isPassivePeriodPlanEntry } from "./periodPlanEntryActions";
 import { applyPeriodPlanSwaps, getSwapsForWeek, WEEKDAY_PLAN_ORDER, type PeriodPlanSwapsByPlan } from "./periodPlanSwaps";
-import type { PeriodSchedulePlan, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "./types";
+import type { PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "./types";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -144,6 +145,61 @@ export function findTodayPeriodPlanEntryInPlans(
   }
 
   return null;
+}
+
+export type PeriodPlanAutoCompleteTarget = {
+  planId: string;
+  weekNumber: number;
+  day: WeekdayPlanKey;
+};
+
+/** Om planlagt periodeplan-rad svarer til et fullført program (tittel / fuzzy match). */
+export function periodPlanEntryMatchesCompletedProgram(
+  entry: string,
+  programTitle: string,
+  programs: TrainingProgram[],
+): boolean {
+  const trimmedEntry = entry.trim();
+  const trimmedTitle = programTitle.trim();
+  if (!trimmedEntry || !trimmedTitle || isPassivePeriodPlanEntry(trimmedEntry)) return false;
+
+  const entryProgram = findProgramForPeriodPlanEntry(trimmedEntry, programs);
+  const titleProgram = findProgramForPeriodPlanEntry(trimmedTitle, programs);
+  if (entryProgram && titleProgram) {
+    return entryProgram.id === titleProgram.id;
+  }
+  if (entryProgram) {
+    return entryProgram.title.trim().toLowerCase() === trimmedTitle.toLowerCase();
+  }
+  if (titleProgram) {
+    return trimmedEntry.toLowerCase() === titleProgram.title.trim().toLowerCase();
+  }
+  return trimmedEntry.toLowerCase() === trimmedTitle.toLowerCase();
+}
+
+/** Finn periodeplan-rader som skal hakkes av når et program er fullført på en kalenderdag. */
+export function findPeriodPlanAutoCompleteTargets(input: {
+  plans: PeriodSchedulePlan[];
+  swapsByPlan: PeriodPlanSwapsByPlan;
+  programTitle: string;
+  programs: TrainingProgram[];
+  completedAt?: Date;
+}): PeriodPlanAutoCompleteTarget[] {
+  const completedAt = input.completedAt ?? new Date();
+  const targets: PeriodPlanAutoCompleteTarget[] = [];
+  const seen = new Set<string>();
+
+  for (const plan of input.plans) {
+    const match = findPeriodPlanEntryForCalendarDate(plan, completedAt, input.swapsByPlan);
+    if (!match?.entry.trim()) continue;
+    if (!periodPlanEntryMatchesCompletedProgram(match.entry, input.programTitle, input.programs)) continue;
+    const key = `${plan.id}:${match.weekNumber}:${match.day}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    targets.push({ planId: plan.id, weekNumber: match.weekNumber, day: match.day });
+  }
+
+  return targets;
 }
 
 export type PeriodPlanWeekNavItem = {
