@@ -10,6 +10,7 @@ import {
   formatBadgeMetricValue,
   getBadgeProgressLabel,
   getBadgeUnlockHint,
+  getFootballJerseyFriday,
   getPentecostHolidayDates,
   SECRET_BADGE_CATALOG,
   SECRET_BADGE_COUNT,
@@ -17,7 +18,7 @@ import {
 
 describe("memberBadges", () => {
   it("lists all hidden badges in the secret catalog", () => {
-    expect(SECRET_BADGE_COUNT).toBe(11);
+    expect(SECRET_BADGE_COUNT).toBe(12);
     expect(SECRET_BADGE_CATALOG.map((badge) => badge.id)).toEqual([
       "may-17-workout",
       "never-two-weeks-without",
@@ -29,6 +30,7 @@ describe("memberBadges", () => {
       "new-start",
       "easter-pump",
       "pinse-trener",
+      "football-jersey-friday",
       "christmas-pump",
     ]);
   });
@@ -451,6 +453,35 @@ describe("memberBadges", () => {
       completedLogDates: [dayAfterPentecost],
     });
     expect(outsidePentecost.allBadges.some((badge) => badge.id === "pinse-trener")).toBe(false);
+  });
+
+  it("resolves fotballtrøyefredag per year", () => {
+    expect(getFootballJerseyFriday(2026).getMonth()).toBe(4);
+    expect(getFootballJerseyFriday(2026).getDate()).toBe(29);
+    expect(getFootballJerseyFriday(2025).getMonth()).toBe(4);
+    expect(getFootballJerseyFriday(2025).getDate()).toBe(9);
+  });
+
+  it("unlocks hidden football-jersey-friday badge on the campaign date", () => {
+    const onJerseyFriday2026 = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [getFootballJerseyFriday(2026)],
+    });
+    expect(onJerseyFriday2026.allBadges.find((badge) => badge.id === "football-jersey-friday")?.unlocked).toBe(true);
+
+    const onJerseyFriday2025 = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [getFootballJerseyFriday(2025)],
+    });
+    expect(onJerseyFriday2025.allBadges.find((badge) => badge.id === "football-jersey-friday")?.unlocked).toBe(true);
+
+    const dayBefore = new Date(getFootballJerseyFriday(2026));
+    dayBefore.setDate(dayBefore.getDate() - 1);
+    const outsideJerseyFriday = computeMemberBadges({
+      ...baseInput,
+      completedLogDates: [dayBefore],
+    });
+    expect(outsideJerseyFriday.allBadges.some((badge) => badge.id === "football-jersey-friday")).toBe(false);
   });
 
   it("unlocks hidden christmas-pump badge for workouts between December 24 and 26", () => {

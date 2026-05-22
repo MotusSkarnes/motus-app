@@ -281,6 +281,7 @@ const HIDDEN_BADGE_POPUP_COPY: Record<string, string> = {
   "new-start": "Du registrerte årets første økt. Nytt år, ny start.",
   "easter-pump": "Du trente i påsken. Påskeegget fikk litt pump.",
   "pinse-trener": "Du trente pinseaften eller på pinse. Pinsetrener!",
+  "football-jersey-friday": "Du trente på fotballtrøyefredag.",
   "christmas-pump": "Du trente i jula. Sterk innsats mellom ribbe og ro.",
 };
 const DEFAULT_HOME_VISIBILITY = {

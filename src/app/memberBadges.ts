@@ -347,6 +347,38 @@ function hasMay17Workout(completedLogDates: Date[] = []): boolean {
   return completedLogDates.some((date) => date.getMonth() === 4 && date.getDate() === 17);
 }
 
+/** Offisiell kampanjedato per år (Barnekreftforeningen). */
+const FOOTBALL_JERSEY_FRIDAY_BY_YEAR: Record<number, { month: number; date: number }> = {
+  2024: { month: 4, date: 9 },
+  2025: { month: 4, date: 9 },
+  2026: { month: 4, date: 29 },
+};
+
+function getLastFridayInMay(year: number): Date {
+  const date = new Date(year, 4, 31);
+  while (date.getDay() !== 5) {
+    date.setDate(date.getDate() - 1);
+  }
+  return startOfDay(date);
+}
+
+/** Fotballtrøyefredag – offisiell fredag i mai (varierer per år). */
+export function getFootballJerseyFriday(year: number): Date {
+  const known = FOOTBALL_JERSEY_FRIDAY_BY_YEAR[year];
+  if (known) {
+    return startOfDay(new Date(year, known.month, known.date));
+  }
+  return getLastFridayInMay(year);
+}
+
+function hasFootballJerseyFridayWorkout(completedLogDates: Date[] = []): boolean {
+  return completedLogDates.some((date) => {
+    const workoutDate = startOfDay(date);
+    const jerseyFriday = getFootballJerseyFriday(workoutDate.getFullYear());
+    return localDateKey(workoutDate) === localDateKey(jerseyFriday);
+  });
+}
+
 function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
@@ -548,6 +580,12 @@ export const SECRET_BADGE_CATALOG = [
   { id: "new-start", title: "Ny start", description: "Registrerte første økt i et nytt år.", levelName: "Nytt år" },
   { id: "easter-pump", title: "Påskepump", description: "Trente i påsken.", levelName: "Påske" },
   { id: "pinse-trener", title: "Pinsetrener", description: "Trente pinseaften, 1. eller 2. pinsedag.", levelName: "Pinse" },
+  {
+    id: "football-jersey-friday",
+    title: "Fotballtrøyefredag",
+    description: "Registrerte trening på fotballtrøyefredag.",
+    levelName: "Trøyefredag",
+  },
   { id: "christmas-pump", title: "Julepump", description: "Trente mellom 24. og 26. desember.", levelName: "Jul" },
 ] as const;
 
@@ -576,6 +614,8 @@ function isSecretBadgeUnlocked(badgeId: (typeof SECRET_BADGE_CATALOG)[number]["i
       return hasEasterWorkout(dates);
     case "pinse-trener":
       return hasPentecostWorkout(dates);
+    case "football-jersey-friday":
+      return hasFootballJerseyFridayWorkout(dates);
     case "christmas-pump":
       return hasChristmasWorkout(dates);
     default:
