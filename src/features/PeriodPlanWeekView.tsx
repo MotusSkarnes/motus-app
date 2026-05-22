@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, CalendarOff, Check, Play, Users, X } from "lucide-react";
+import { ArrowLeftRight, CalendarOff, Check, Eye, Play, Users, X } from "lucide-react";
 import { MOTUS } from "../app/data";
-import { isPeriodPlanEntryDateInFuture, resolvePeriodPlanEntryAction } from "../app/periodPlanEntryActions";
+import {
+  findProgramForPeriodPlanEntry,
+  isPeriodPlanEntryDateInFuture,
+  resolvePeriodPlanEntryAction,
+} from "../app/periodPlanEntryActions";
 import {
   applyPeriodPlanSwaps,
   getSwapsForWeek,
@@ -11,7 +15,8 @@ import {
   type PeriodPlanSwapsByPlan,
 } from "../app/periodPlanSwaps";
 import { GradientButton, OutlineButton } from "../app/ui";
-import type { PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklySchedulePlan } from "../app/types";
+import type { Exercise, PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklySchedulePlan } from "../app/types";
+import { TrainingProgramPreviewModal } from "./TrainingProgramPreviewModal";
 
 const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
 const MOTUS_SOFT_BACKGROUND = `linear-gradient(160deg, ${MOTUS.paleMint} 0%, #ffffff 42%, rgba(217,18,120,0.045) 100%)`;
@@ -42,6 +47,7 @@ type PeriodPlanWeekViewProps = {
     day: WeekdayPlanKey;
   }) => void;
   resolveEntryDate: (plan: PeriodSchedulePlan, weekNumber: number, day: WeekdayPlanKey) => string | null;
+  exerciseLibrary?: Exercise[];
 };
 
 export function PeriodPlanWeekView({
@@ -58,10 +64,12 @@ export function PeriodPlanWeekView({
   onStartProgram,
   onLogGroup,
   resolveEntryDate,
+  exerciseLibrary = [],
 }: PeriodPlanWeekViewProps) {
   const weekSwaps = getSwapsForWeek(swapsByPlan, plan.id, week.weekNumber);
   const effectiveDays = applyPeriodPlanSwaps(week.days, weekSwaps);
   const [swapFromDay, setSwapFromDay] = useState<WeekdayPlanKey | null>(null);
+  const [previewProgram, setPreviewProgram] = useState<TrainingProgram | null>(null);
   const [pendingOverwriteMove, setPendingOverwriteMove] = useState<{
     dayA: WeekdayPlanKey;
     dayB: WeekdayPlanKey;
@@ -71,6 +79,7 @@ export function PeriodPlanWeekView({
   useEffect(() => {
     setSwapFromDay(null);
     setPendingOverwriteMove(null);
+    setPreviewProgram(null);
   }, [plan.id, week.weekNumber]);
 
   function handleSwapButtonClick(dayKey: WeekdayPlanKey) {
@@ -137,6 +146,7 @@ export function PeriodPlanWeekView({
           const sourceDay = periodPlanSourceDay(dayKey, week.days, effectiveDays);
           const plannedDate = resolveEntryDate(plan, week.weekNumber, dayKey);
           const entryAction = entry ? resolvePeriodPlanEntryAction(entry, memberPrograms) : { kind: "none" as const };
+          const previewProgramForEntry = entry ? findProgramForPeriodPlanEntry(entry, memberPrograms) : null;
           const completed = isEntryCompleted(plan.id, week.weekNumber, dayKey);
           const isFutureDate = isPeriodPlanEntryDateInFuture(plannedDate);
           const canMarkCompleted = completed || !isFutureDate;
@@ -186,6 +196,17 @@ export function PeriodPlanWeekView({
                   ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
+                  {previewProgramForEntry ? (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewProgram(previewProgramForEntry)}
+                      className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-500 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-800"
+                      aria-label={`Se økt for ${dayLabel}`}
+                      title="Se økt"
+                    >
+                      <Eye className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  ) : null}
                   {entry ? (
                     <button
                       type="button"
@@ -312,6 +333,13 @@ export function PeriodPlanWeekView({
           );
         })}
       </div>
+
+      <TrainingProgramPreviewModal
+        program={previewProgram}
+        open={previewProgram !== null}
+        onClose={() => setPreviewProgram(null)}
+        exerciseLibrary={exerciseLibrary}
+      />
 
       {pendingOverwriteMove ? (
         <div

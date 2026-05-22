@@ -100,6 +100,7 @@ import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
 import { memberEffectivelyInvited } from "../app/memberInviteStatus";
 import { printHtmlDocument } from "../app/printHtmlDocument";
+import { findProgramForPeriodPlanEntry } from "../app/periodPlanEntryActions";
 import { syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { buildDefaultStartWorkoutOptions } from "../app/buildStartWorkoutOptions";
 import { MemberMonthlyCheckInSummary } from "./MemberMonthlyCheckInSummary";
@@ -108,6 +109,7 @@ import { isLegacyIntervalCooldownDrag, unlinkProgramExerciseBlock } from "../app
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
 import { ProgramExerciseBlockActions } from "./ProgramExerciseBlockActions";
 import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
+import { TrainingProgramPreviewModal } from "./TrainingProgramPreviewModal";
 
 const CUSTOMER_CARD_ACTION_BTN = "!min-h-8 !px-2.5 !py-1.5 !text-xs !rounded-md";
 
@@ -714,6 +716,7 @@ function pickFirstName(value: unknown): string {
   const [activePeriodWeekId, setActivePeriodWeekId] = useState<string>(periodWeeklyPlansDraft[0]?.id ?? "");
   const [savedPeriodPlanWeekByPlanId, setSavedPeriodPlanWeekByPlanId] = useState<Record<string, number>>({});
   const [periodPlanStatus, setPeriodPlanStatus] = useState<string | null>(null);
+  const [periodPlanPreviewProgram, setPeriodPlanPreviewProgram] = useState<TrainingProgram | null>(null);
   const [favoriteExerciseIds, setFavoriteExerciseIds] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -5364,9 +5367,24 @@ function pickFirstName(value: unknown): string {
                               const options = hasCurrentValueInOptions
                                 ? periodPlanProgramOptions
                                 : [...periodPlanProgramOptions, { value: currentValue, label: `${currentValue} (tilpasset)` }];
+                              const previewProgram = findProgramForPeriodPlanEntry(currentValue, selectedPrograms);
                               return (
                                 <label key={field.key} className="grid gap-2">
-                                  <span className="text-sm font-semibold text-slate-900">{field.label}</span>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-sm font-semibold text-slate-900">{field.label}</span>
+                                    {previewProgram ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => setPeriodPlanPreviewProgram(previewProgram)}
+                                        className="inline-flex items-center gap-1 rounded-lg border border-teal-200 bg-teal-50/80 px-2 py-1 text-[11px] font-semibold text-teal-900 transition hover:border-teal-300 hover:bg-teal-100"
+                                        aria-label={`Se økt for ${field.label}`}
+                                        title="Se økt"
+                                      >
+                                        <Eye className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                        Se økt
+                                      </button>
+                                    ) : null}
+                                  </div>
                                   <SelectBox
                                     value={currentValue}
                                     onChange={(value) => updateActivePeriodWeekDay(field.key, value)}
@@ -5447,9 +5465,25 @@ function pickFirstName(value: unknown): string {
                                       <div className="mt-2 grid gap-2 sm:grid-cols-2">
                                         {WEEKDAY_PLAN_FIELDS.map((field) => {
                                           const entry = selectedWeek.days[field.key]?.trim();
+                                          const previewProgram = entry
+                                            ? findProgramForPeriodPlanEntry(entry, selectedPrograms)
+                                            : null;
                                           return (
                                             <div key={field.key} className="rounded-lg bg-slate-50 px-3 py-2">
-                                              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{field.label}</div>
+                                              <div className="flex items-start justify-between gap-2">
+                                                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{field.label}</div>
+                                                {previewProgram ? (
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => setPeriodPlanPreviewProgram(previewProgram)}
+                                                    className="rounded-md border border-teal-200 bg-white p-1 text-teal-800 transition hover:border-teal-300 hover:bg-teal-50"
+                                                    aria-label={`Se økt for ${field.label}`}
+                                                    title="Se økt"
+                                                  >
+                                                    <Eye className="h-3.5 w-3.5" aria-hidden />
+                                                  </button>
+                                                ) : null}
+                                              </div>
                                               <div className="mt-1 text-sm text-slate-800">{entry || "Ingen plan"}</div>
                                             </div>
                                           );
@@ -5462,6 +5496,12 @@ function pickFirstName(value: unknown): string {
                             })
                           )}
                         </div>
+                        <TrainingProgramPreviewModal
+                          program={periodPlanPreviewProgram}
+                          open={periodPlanPreviewProgram !== null}
+                          onClose={() => setPeriodPlanPreviewProgram(null)}
+                          exerciseLibrary={exercises}
+                        />
                       </div>
                     </div>
                     ) : (

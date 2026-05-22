@@ -5809,6 +5809,7 @@ export function MemberPortal(props: MemberPortalProps) {
                               onStartProgram={handlePeriodPlanStartProgram}
                               onLogGroup={handlePeriodPlanLogGroup}
                               resolveEntryDate={resolvePeriodPlanEntryDate}
+                              exerciseLibrary={exercises}
                             />
                           </div>
                         ) : null}
