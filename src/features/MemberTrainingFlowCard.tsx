@@ -1,5 +1,9 @@
 import { Route } from "lucide-react";
+import { MOTUS } from "../app/data";
 import { PROGRESS_STEP_LABELS } from "../app/memberProgressGamification";
+
+const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
+const MOTUS_GRADIENT_90 = `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
 import type { ProgressGoal, RecentStreakWeek } from "../app/memberProgressGamification";
 import { MemberProgressGoals } from "./MemberProgressGoals";
 import { MemberWeeklyStreakCard } from "./MemberWeeklyStreakCard";
@@ -38,10 +42,12 @@ export function MemberTrainingFlowCard({
       className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/80 shadow-sm"
       aria-labelledby="member-training-flow-heading"
     >
+      <div className="h-1" style={{ background: MOTUS_GRADIENT_90 }} aria-hidden />
       <div className="border-b border-slate-200/90 bg-white px-4 py-4 sm:px-5">
         <div className="flex flex-wrap items-start gap-3">
           <span
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-teal-200 bg-teal-50 text-teal-800"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm"
+            style={{ background: MOTUS_GRADIENT }}
             aria-hidden
           >
             <Route className="h-5 w-5" strokeWidth={2.25} />
@@ -83,17 +89,24 @@ export function MemberTrainingFlowCard({
                       title={`Steg ${step}: ${label}`}
                       className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[10px] font-bold tabular-nums transition ${
                         completed
-                          ? "border-teal-600 bg-teal-600 text-white"
+                          ? "border-transparent text-white"
                           : current
-                            ? "border-teal-600 bg-white text-teal-800 ring-2 ring-teal-200"
+                            ? "border-transparent bg-white text-slate-800 ring-2 ring-pink-200/80 ring-offset-1"
                             : "border-slate-200 bg-white text-slate-400"
                       }`}
+                      style={
+                        completed
+                          ? { background: MOTUS_GRADIENT }
+                          : current
+                            ? { boxShadow: `inset 0 0 0 2px ${MOTUS.turquoise}` }
+                            : undefined
+                      }
                     >
                       {completed ? "✓" : step}
                     </span>
                     <span
                       className={`max-w-[4.5rem] truncate text-center text-[9px] font-medium leading-tight ${
-                        current ? "text-teal-800" : completed ? "text-slate-600" : upcoming ? "text-slate-400" : "text-slate-500"
+                        current ? "font-semibold text-slate-800" : completed ? "text-slate-600" : upcoming ? "text-slate-400" : "text-slate-500"
                       }`}
                     >
                       {label}
@@ -101,9 +114,14 @@ export function MemberTrainingFlowCard({
                   </div>
                   {step < achievementMaxLevel ? (
                     <span
-                      className={`mx-0.5 h-0.5 min-w-[0.35rem] flex-1 rounded-full ${
-                        step < achievedLevel ? "bg-teal-500/70" : step === achievedLevel && current ? "bg-teal-300" : "bg-slate-200"
-                      }`}
+                      className={`mx-0.5 h-0.5 min-w-[0.35rem] flex-1 rounded-full ${step < achievedLevel || (step === achievedLevel && current) ? "" : "bg-slate-200"}`}
+                      style={
+                        step < achievedLevel
+                          ? { background: MOTUS_GRADIENT_90, opacity: 0.85 }
+                          : step === achievedLevel && current
+                            ? { background: `linear-gradient(90deg, ${MOTUS.turquoise}55 0%, ${MOTUS.pink}55 100%)` }
+                            : undefined
+                      }
                       aria-hidden
                     />
                   ) : null}

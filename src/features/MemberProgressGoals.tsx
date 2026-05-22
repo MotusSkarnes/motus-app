@@ -49,10 +49,9 @@ export function MemberProgressGoals({
                 {!isLast ? <span className="absolute left-[0.95rem] top-8 bottom-0 w-px bg-slate-200" aria-hidden /> : null}
                 <span
                   className={`relative z-[1] flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold ${
-                    goal.unlocked
-                      ? "border-teal-600 bg-teal-600 text-white"
-                      : "border-slate-200 bg-white text-slate-500"
+                    goal.unlocked ? "border-transparent text-white" : "border-slate-200 bg-white text-slate-500"
                   }`}
+                  style={goal.unlocked ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : undefined}
                   aria-hidden
                 >
                   {goal.unlocked ? <Check className="h-4 w-4" strokeWidth={3} /> : index + 1}
@@ -69,8 +68,13 @@ export function MemberProgressGoals({
                   </div>
                   <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
                     <div
-                      className={`h-1.5 rounded-full transition-all ${goal.unlocked ? "bg-teal-600" : "bg-teal-400/80"}`}
-                      style={{ width: `${progressPct}%` }}
+                      className="h-1.5 rounded-full transition-all"
+                      style={{
+                        width: `${progressPct}%`,
+                        background: goal.unlocked
+                          ? "rgb(16 185 129)"
+                          : `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
+                      }}
                     />
                   </div>
                   <p className="mt-1.5 text-[11px] font-medium text-slate-500">
