@@ -1,17 +1,34 @@
 /** Felles badge-bilder (PNG 1024×1024, normalisert visuell størrelse). */
+export const BADGE_ASSET_VERSION = "6";
+
+export function badgeAssetUrl(path: string): string {
+  const base = path.split("?")[0] || path;
+  return `${base}?v=${BADGE_ASSET_VERSION}`;
+}
+
+/** Smale normaliserte badges trenger litt større visning i UI for å matche de andre. */
+export const BADGE_UI_SCALE_BY_PATH: Record<string, number> = {
+  "/badges/31-helgekriger.png": 1.14,
+};
+
+export function badgeUiScaleForSrc(src: string): number {
+  const base = src.split("?")[0] || src;
+  return BADGE_UI_SCALE_BY_PATH[base] ?? 1;
+}
+
 export const WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET: Record<number, string> = {
-  100: "/badges/32-100-klubben.png",
-  200: "/badges/34-200-klubben.png",
-  300: "/badges/35-300-klubben.png",
-  400: "/badges/36-400-klubben.png",
-  500: "/badges/37-500-klubben.png",
+  100: badgeAssetUrl("/badges/32-100-klubben.png"),
+  200: badgeAssetUrl("/badges/34-200-klubben.png"),
+  300: badgeAssetUrl("/badges/35-300-klubben.png"),
+  400: badgeAssetUrl("/badges/36-400-klubben.png"),
+  500: badgeAssetUrl("/badges/37-500-klubben.png"),
 };
 
 const WORKOUT_CLUB_IMAGE_MILESTONES = [500, 400, 300, 200, 100] as const;
 
-export const MEMBER_BADGE_IMAGE_BY_ID: Record<string, string> = {
+const MEMBER_BADGE_IMAGE_PATH_BY_ID: Record<string, string> = {
   sessions: "/badges/02-oktjeger.png",
-  "workout-club": WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET[100],
+  "workout-club": "/badges/32-100-klubben.png",
   streak: "/badges/08-streak.png",
   "monday-hero": "/badges/30-mandagshelt.png",
   "weekend-warrior": "/badges/31-helgekriger.png",
@@ -31,6 +48,10 @@ export const MEMBER_BADGE_IMAGE_BY_ID: Record<string, string> = {
   "easter-pump": "/badges/28-paskepump.png",
   "christmas-pump": "/badges/43-julepump.png",
 };
+
+export const MEMBER_BADGE_IMAGE_BY_ID: Record<string, string> = Object.fromEntries(
+  Object.entries(MEMBER_BADGE_IMAGE_PATH_BY_ID).map(([id, path]) => [id, badgeAssetUrl(path)]),
+);
 
 export const HIDDEN_MEMBER_BADGE_IMAGE_BY_ID: Record<string, string> = {
   "may-17-workout": MEMBER_BADGE_IMAGE_BY_ID["may-17-workout"],
@@ -70,10 +91,12 @@ export function memberBadgeImageSrc(badgeId: string): string;
 export function memberBadgeImageSrc(badge: MemberBadgeImageInput): string;
 export function memberBadgeImageSrc(badgeOrId: string | MemberBadgeImageInput): string {
   if (typeof badgeOrId === "string") {
-    return MEMBER_BADGE_IMAGE_BY_ID[badgeOrId] ?? "/badges/01-forste-steg.png";
+    const path = MEMBER_BADGE_IMAGE_PATH_BY_ID[badgeOrId] ?? "/badges/01-forste-steg.png";
+    return badgeAssetUrl(path);
   }
   if (badgeOrId.id === "workout-club") {
     return workoutClubBadgeImageSrc(workoutClubDisplayTarget(badgeOrId));
   }
-  return MEMBER_BADGE_IMAGE_BY_ID[badgeOrId.id] ?? "/badges/01-forste-steg.png";
+  const path = MEMBER_BADGE_IMAGE_PATH_BY_ID[badgeOrId.id] ?? "/badges/01-forste-steg.png";
+  return badgeAssetUrl(path);
 }

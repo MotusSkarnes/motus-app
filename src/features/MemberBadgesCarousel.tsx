@@ -119,30 +119,25 @@ function BadgeCard({
         boxShadow: badge.unlocked ? `0 8px 24px ${level.fill}` : undefined,
       }}
     >
-      {badge.unlocked ? (
-        <span
-          className="pointer-events-none absolute right-0 top-0 h-20 w-20 rounded-full opacity-70 blur-2xl"
-          style={{ background: level.fill }}
-          aria-hidden
-        />
-      ) : null}
-
       <div className="relative flex gap-3">
-        <div className="relative shrink-0 overflow-visible">
-          <BadgeImage src={badgeImage} size="card" dimmed={!badge.unlocked} />
-          {!badge.unlocked ? (
-            <span className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-slate-100 text-slate-400 shadow-md">
-              <Lock className="h-3.5 w-3.5" strokeWidth={2.4} />
-            </span>
-          ) : (
+        <div className="flex w-[10.5rem] shrink-0 flex-col items-center gap-1.5">
+          <div className="relative">
+            <BadgeImage src={badgeImage} size="card" dimmed={!badge.unlocked} />
+            {!badge.unlocked ? (
+              <span className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-slate-100 text-slate-400 shadow-md">
+                <Lock className="h-3.5 w-3.5" strokeWidth={2.4} />
+              </span>
+            ) : null}
+          </div>
+          {badge.unlocked ? (
             <span
-              className="absolute bottom-0 left-1/2 z-10 inline-flex max-w-[9.5rem] -translate-x-1/2 items-center justify-center gap-0.5 rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase text-white shadow"
+              className="inline-flex max-w-full items-center justify-center gap-0.5 rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase text-white shadow"
               style={{ background: MOTUS_GRADIENT }}
             >
               <Sparkles className="h-2.5 w-2.5 shrink-0" />
               <span className="truncate">{badge.levelLabel}</span>
             </span>
-          )}
+          ) : null}
         </div>
 
         <div className="min-w-0 flex-1">
@@ -230,7 +225,7 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
   const overallPct = collection.totalLevels > 0 ? Math.round((collection.totalUnlockedLevels / collection.totalLevels) * 100) : 0;
 
   return (
-    <section className="min-w-0 overflow-visible rounded-2xl border bg-white p-3 shadow-sm sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+    <section className="motus-badges-section min-w-0 overflow-visible rounded-2xl border bg-white p-3 shadow-sm sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
       <div className="flex items-start gap-3">
         <span className="inline-flex shrink-0 rounded-xl p-2 text-white shadow-sm" style={{ background: MOTUS_GRADIENT }}>
           <Award className="h-4 w-4" />

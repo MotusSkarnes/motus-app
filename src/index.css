@@ -94,7 +94,11 @@ body {
   overscroll-behavior: contain;
 }
 
-/* Badge-karusell: horisontal scroll med vertikal padding inni klippeboksen. */
+/* Badge-visning: unngå vertikal klipping i horisontal scroll. */
+.motus-badges-section {
+  overflow: visible;
+}
+
 .motus-badge-carousel-outer {
   position: relative;
   width: 100%;
@@ -104,10 +108,8 @@ body {
 .motus-badge-carousel-scroll {
   width: 100%;
   overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
+  overflow-y: visible;
   overscroll-behavior-x: contain;
-  padding-block: 1.25rem;
 }
 
 .motus-badge-carousel-track {
@@ -116,16 +118,21 @@ body {
   min-width: 100%;
   align-items: flex-start;
   gap: 0.625rem;
-  padding-inline: 0.5rem 0.75rem;
+  padding: 0.5rem 0.75rem 0.5rem 0.5rem;
 }
 
 .motus-badge-category-scroll {
   overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
+  overflow-y: visible;
 }
 
-.motus-badge-art {
+.motus-badge-img {
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
+  object-position: center;
+  max-width: none;
+  max-height: none;
   pointer-events: none;
   user-select: none;
 }

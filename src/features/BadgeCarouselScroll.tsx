@@ -6,13 +6,11 @@ type BadgeCarouselScrollProps = {
   trackClassName?: string;
 };
 
-/**
- * Horisontal badge-scroll: padding inni scrollboks slik at merker/glow ikke klippes vertikalt.
- */
+/** Horisontal scroll — ingen overflow-y:hidden (klipper badge-hjørner). */
 export function BadgeCarouselScroll({ children, className = "", trackClassName = "" }: BadgeCarouselScrollProps) {
   return (
     <div className={`motus-badge-carousel-outer ${className}`.trim()}>
-      <div className="motus-badge-carousel-scroll">
+      <div className="motus-badge-carousel-scroll motus-scroll-touch">
         <div className={`motus-badge-carousel-track ${trackClassName}`.trim()}>{children}</div>
       </div>
     </div>

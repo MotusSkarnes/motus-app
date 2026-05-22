@@ -1,17 +1,16 @@
-import type { CSSProperties } from "react";
+import { badgeAssetUrl, badgeUiScaleForSrc } from "../app/badgeAssets";
 
 type BadgeImageSize = "card" | "catalog" | "hero" | "popup";
 
-/** Layout-boks — PNG har allerede transparent kant etter normalisering. */
 const SIZE_PX: Record<BadgeImageSize, number> = {
-  card: 136,
-  catalog: 120,
-  hero: 192,
-  popup: 224,
+  card: 160,
+  catalog: 140,
+  hero: 208,
+  popup: 248,
 };
 
-/** Liten innvendig luft så hex-hjørner ikke treffer bokskanten i UI. */
-const SAFE_INSET = 0.04;
+/** Luft rundt motivet i UI — smalere filer (f.eks. helgekriger) og brede får samme «pusterom». */
+const FRAME_INSET_RATIO = 0.07;
 
 type BadgeImageProps = {
   src: string;
@@ -24,35 +23,26 @@ type BadgeImageProps = {
 
 export function BadgeImage({ src, alt = "", size = "card", dimmed = false, className = "", loading = "lazy" }: BadgeImageProps) {
   const px = SIZE_PX[size];
-  const pad = Math.max(4, Math.round(px * SAFE_INSET));
-  const frameStyle: CSSProperties = {
-    width: px,
-    height: px,
-    minWidth: px,
-    minHeight: px,
-    boxSizing: "border-box",
-    padding: pad,
-    overflow: "visible",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  };
-  const imageStyle: CSSProperties = {
-    display: "block",
-    width: "100%",
-    height: "100%",
-    maxWidth: "100%",
-    maxHeight: "100%",
-    objectFit: "contain",
-    objectPosition: "center",
-    filter: dimmed ? "grayscale(1)" : undefined,
-    opacity: dimmed ? 0.45 : 1,
-  };
+  const pad = Math.max(4, Math.round(px * FRAME_INSET_RATIO));
+  const resolvedSrc = src.includes("?v=") ? src : badgeAssetUrl(src);
+  const uiScale = badgeUiScaleForSrc(resolvedSrc);
+  const innerMax = px - pad * 2;
+  const inner = Math.min(innerMax, Math.round(innerMax * uiScale));
 
   return (
-    <div className={`relative ${className}`.trim()} style={frameStyle}>
-      <img src={src} alt={alt} className="motus-badge-art" style={imageStyle} loading={loading} decoding="async" />
-    </div>
+    <span
+      className={`relative inline-flex shrink-0 items-center justify-center ${className}`.trim()}
+      style={{ width: px, height: px, boxSizing: "border-box", padding: pad }}
+    >
+      <img
+        src={resolvedSrc}
+        alt={alt}
+        width={inner}
+        height={inner}
+        loading={loading}
+        decoding="async"
+        className={`motus-badge-img h-full w-full object-contain ${dimmed ? "opacity-45 grayscale" : ""}`}
+      />
+    </span>
   );
 }

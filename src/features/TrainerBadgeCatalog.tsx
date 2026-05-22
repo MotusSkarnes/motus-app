@@ -27,7 +27,7 @@ export function TrainerBadgeCatalog() {
   }, [tracks]);
 
   return (
-    <div className="space-y-4 overflow-visible sm:space-y-5">
+    <div className="motus-badges-section space-y-4 overflow-visible sm:space-y-5">
       <Card className="p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
         <div className="flex items-start gap-3">
           <span className="inline-flex shrink-0 rounded-xl p-2.5 text-white shadow-sm" style={{ background: MOTUS_GRADIENT }}>
@@ -57,9 +57,9 @@ export function TrainerBadgeCatalog() {
                 className="overflow-visible p-3 sm:p-4"
                 style={{ borderColor: "rgba(15,23,42,0.08)" }}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-4">
                   {track.id === "workout-club" ? (
-                    <div className="flex shrink-0 flex-col items-center gap-1.5 overflow-visible">
+                    <div className="flex w-[9.25rem] shrink-0 flex-col items-center gap-1.5">
                       {CLUB_MILESTONES.map((target) => (
                         <div key={target} className="flex flex-col items-center gap-0.5">
                           <BadgeImage src={WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET[target]} alt={`${target} klubben`} size="catalog" />
@@ -68,7 +68,9 @@ export function TrainerBadgeCatalog() {
                       ))}
                     </div>
                   ) : (
-                    <BadgeImage src={memberBadgeImageSrc(track.id)} alt={track.title} size="catalog" />
+                    <div className="flex w-[9.25rem] shrink-0 justify-center">
+                      <BadgeImage src={memberBadgeImageSrc(track.id)} alt={track.title} size="catalog" />
+                    </div>
                   )}
                   <div className="min-w-0 flex-1">
                     <h3 className="text-sm font-bold text-slate-900">{track.title}</h3>
@@ -118,8 +120,10 @@ export function TrainerBadgeCatalog() {
               className="overflow-visible p-3"
               style={{ borderColor: "rgba(15,23,42,0.08)", backgroundColor: "#fafafa" }}
             >
-              <div className="flex gap-2.5">
-                <BadgeImage src={memberBadgeImageSrc(secret.id)} alt={secret.title} size="catalog" />
+              <div className="flex items-start gap-3">
+                <div className="flex w-[9.25rem] shrink-0 justify-center">
+                  <BadgeImage src={memberBadgeImageSrc(secret.id)} alt={secret.title} size="catalog" />
+                </div>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <h3 className="text-xs font-bold text-slate-900">{secret.title}</h3>
