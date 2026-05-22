@@ -27,7 +27,7 @@ export function TrainerBadgeCatalog() {
   }, [tracks]);
 
   return (
-    <div className="space-y-4 sm:space-y-5">
+    <div className="space-y-4 overflow-visible sm:space-y-5">
       <Card className="p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
         <div className="flex items-start gap-3">
           <span className="inline-flex shrink-0 rounded-xl p-2.5 text-white shadow-sm" style={{ background: MOTUS_GRADIENT }}>
@@ -57,9 +57,9 @@ export function TrainerBadgeCatalog() {
                 className="overflow-visible p-3 sm:p-4"
                 style={{ borderColor: "rgba(15,23,42,0.08)" }}
               >
-                <div className="flex gap-3">
+                <div className="flex items-start gap-3">
                   {track.id === "workout-club" ? (
-                    <div className="flex shrink-0 flex-col gap-1.5">
+                    <div className="flex shrink-0 flex-col items-center gap-1.5 overflow-visible">
                       {CLUB_MILESTONES.map((target) => (
                         <div key={target} className="flex flex-col items-center gap-0.5">
                           <BadgeImage src={WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET[target]} alt={`${target} klubben`} size="catalog" />
@@ -115,7 +115,7 @@ export function TrainerBadgeCatalog() {
           {secrets.map((secret) => (
             <Card
               key={secret.id}
-              className="p-3"
+              className="overflow-visible p-3"
               style={{ borderColor: "rgba(15,23,42,0.08)", backgroundColor: "#fafafa" }}
             >
               <div className="flex gap-2.5">

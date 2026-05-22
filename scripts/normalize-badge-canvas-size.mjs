@@ -13,9 +13,10 @@ const badgesDir = path.join(root, "public", "badges");
 
 const CANVAS = 1024;
 /** Maks innholdsbredde/høyde på canvas (lavere = mer transparent kant i filen). */
-const CONTENT_MAX = 700;
+/** Maks innhold på 1024-canvas (~508px motiv + ~258px kant per side). */
+const CONTENT_MAX = 720;
 /** Ekstra luft rundt motivet så hjørner/sparkles ikke klippes i appen. */
-const CANVAS_INSET = 96;
+const CANVAS_INSET = 106;
 
 const DEFAULT_FILES = [
   "01-forste-steg.png",

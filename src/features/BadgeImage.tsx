@@ -2,12 +2,16 @@ import type { CSSProperties } from "react";
 
 type BadgeImageSize = "card" | "catalog" | "hero" | "popup";
 
+/** Layout-boks — PNG har allerede transparent kant etter normalisering. */
 const SIZE_PX: Record<BadgeImageSize, number> = {
-  card: 112,
-  catalog: 96,
-  hero: 176,
-  popup: 192,
+  card: 136,
+  catalog: 120,
+  hero: 192,
+  popup: 224,
 };
+
+/** Liten innvendig luft så hex-hjørner ikke treffer bokskanten i UI. */
+const SAFE_INSET = 0.04;
 
 type BadgeImageProps = {
   src: string;
@@ -18,17 +22,16 @@ type BadgeImageProps = {
   loading?: "lazy" | "eager";
 };
 
-/**
- * Badge-bilder rendres i fast kvadrat med overflow: visible slik at hjørner/sparkles
- * ikke klippes av scroll-containere (i motsetning til Tailwind overflow-x-auto + h/w-full).
- */
 export function BadgeImage({ src, alt = "", size = "card", dimmed = false, className = "", loading = "lazy" }: BadgeImageProps) {
   const px = SIZE_PX[size];
+  const pad = Math.max(4, Math.round(px * SAFE_INSET));
   const frameStyle: CSSProperties = {
     width: px,
     height: px,
     minWidth: px,
     minHeight: px,
+    boxSizing: "border-box",
+    padding: pad,
     overflow: "visible",
     display: "flex",
     alignItems: "center",

@@ -246,7 +246,7 @@ export function TrainerLayout({
             })}
           </nav>
         </Card>
-        <div className="min-w-0 space-y-4 overflow-x-clip sm:space-y-5">
+        <div className="min-w-0 space-y-4 sm:space-y-5">
           {isLocalDemoSession ? (
             <Card className="border-amber-200 bg-amber-50 p-2.5 sm:p-3">
               <div className="text-xs sm:text-sm font-semibold text-amber-900">Demo-innlogging aktiv</div>

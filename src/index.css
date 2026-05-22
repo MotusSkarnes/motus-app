@@ -94,12 +94,35 @@ body {
   overscroll-behavior: contain;
 }
 
-/* Badge-karusell: horisontal scroll uten å kutte hjørner på bildene. */
+/* Badge-karusell: horisontal scroll med vertikal padding inni klippeboksen. */
+.motus-badge-carousel-outer {
+  position: relative;
+  width: 100%;
+  overflow: visible;
+}
+
 .motus-badge-carousel-scroll {
+  width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
+  padding-block: 1.25rem;
+}
+
+.motus-badge-carousel-track {
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding-inline: 0.5rem 0.75rem;
+}
+
+.motus-badge-category-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .motus-badge-art {

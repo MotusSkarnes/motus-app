@@ -1,12 +1,8 @@
 ﻿import { useMemo, useState } from "react";
 import { Award, Lock, Share2, Sparkles, Target } from "lucide-react";
 import { memberBadgeImageSrc } from "../app/badgeAssets";
-import {
-  BADGE_CAROUSEL_OUTER_CLASS,
-  BADGE_CAROUSEL_SCROLL_CLASS,
-  BADGE_CAROUSEL_TRACK_CLASS,
-  BADGE_CATEGORY_SCROLL_CLASS,
-} from "../app/badgeImagePresentation";
+import { BADGE_CAROUSEL_TRACK_SNAP_CLASS, BADGE_CAROUSEL_WRAPPER_CLASS, BADGE_CATEGORY_SCROLL_CLASS } from "../app/badgeImagePresentation";
+import { BadgeCarouselScroll } from "./BadgeCarouselScroll";
 import { BadgeImage } from "./BadgeImage";
 import { MOTUS } from "../app/data";
 import { motusShareStatusMessage, shareBadgeCard } from "../app/motusShareCard";
@@ -124,23 +120,27 @@ function BadgeCard({
       }}
     >
       {badge.unlocked ? (
-        <span className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl" style={{ background: level.fill }} aria-hidden />
+        <span
+          className="pointer-events-none absolute right-0 top-0 h-20 w-20 rounded-full opacity-70 blur-2xl"
+          style={{ background: level.fill }}
+          aria-hidden
+        />
       ) : null}
 
       <div className="relative flex gap-3">
-        <div className="relative shrink-0">
+        <div className="relative shrink-0 overflow-visible">
           <BadgeImage src={badgeImage} size="card" dimmed={!badge.unlocked} />
           {!badge.unlocked ? (
-            <span className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-slate-100 text-slate-400 shadow-md">
+            <span className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-slate-100 text-slate-400 shadow-md">
               <Lock className="h-3.5 w-3.5" strokeWidth={2.4} />
             </span>
           ) : (
             <span
-              className="absolute left-0 top-0 inline-flex max-w-[calc(100%+0.25rem)] items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase text-white shadow"
+              className="absolute bottom-0 left-1/2 z-10 inline-flex max-w-[9.5rem] -translate-x-1/2 items-center justify-center gap-0.5 rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase text-white shadow"
               style={{ background: MOTUS_GRADIENT }}
             >
               <Sparkles className="h-2.5 w-2.5 shrink-0" />
-              {badge.levelLabel}
+              <span className="truncate">{badge.levelLabel}</span>
             </span>
           )}
         </div>
@@ -275,21 +275,17 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
         <p className="mt-3 rounded-xl border border-teal-200/80 bg-teal-50 px-3 py-2 text-xs font-medium text-teal-950">{badgeShareStatus}</p>
       ) : null}
 
-      <div className={BADGE_CAROUSEL_OUTER_CLASS}>
-        <div className={BADGE_CAROUSEL_SCROLL_CLASS}>
-          <div className={BADGE_CAROUSEL_TRACK_CLASS}>
-            {visibleBadges.map((badge) => (
-              <BadgeCard
-                key={badge.id}
-                badge={badge}
-                memberDisplayName={memberDisplayName}
-                shareLogoSrc={shareLogoSrc}
-                onShareStatus={setBadgeShareStatus}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
+      <BadgeCarouselScroll className={BADGE_CAROUSEL_WRAPPER_CLASS} trackClassName={BADGE_CAROUSEL_TRACK_SNAP_CLASS}>
+        {visibleBadges.map((badge) => (
+          <BadgeCard
+            key={badge.id}
+            badge={badge}
+            memberDisplayName={memberDisplayName}
+            shareLogoSrc={shareLogoSrc}
+            onShareStatus={setBadgeShareStatus}
+          />
+        ))}
+      </BadgeCarouselScroll>
     </section>
   );
 }

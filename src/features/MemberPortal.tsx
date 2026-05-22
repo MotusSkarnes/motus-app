@@ -4795,7 +4795,7 @@ export function MemberPortal(props: MemberPortalProps) {
           {!isMemberLimited && hiddenBadgeCelebration && !shouldShowPrCelebration ? (
             <div className="motus-modal-insets fixed inset-0 z-[10019] flex justify-center overflow-y-auto overscroll-contain bg-slate-900/45 px-4 py-12 pt-[max(2.5rem,env(safe-area-inset-top))]">
               <div
-                className="motus-pop-in h-fit w-full max-w-sm overflow-hidden rounded-2xl border bg-white text-center shadow-xl"
+                className="motus-pop-in h-fit w-full max-w-sm overflow-visible rounded-2xl border bg-white text-center shadow-xl"
                 style={{ borderColor: "rgba(15,23,42,0.1)" }}
                 role="dialog"
                 aria-modal="true"
