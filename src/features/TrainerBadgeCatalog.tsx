@@ -59,7 +59,7 @@ export function TrainerBadgeCatalog() {
               >
                 <div className="flex items-start gap-4">
                   {track.id === "workout-club" ? (
-                    <div className="flex w-[8.5rem] shrink-0 flex-col items-center gap-1.5">
+                    <div className="flex w-[11.5rem] shrink-0 flex-col items-center gap-1.5 overflow-visible">
                       {CLUB_MILESTONES.map((target) => (
                         <div key={target} className="flex flex-col items-center gap-0.5">
                           <BadgeImage src={WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET[target]} alt={`${target} klubben`} size="catalog" />
@@ -68,7 +68,7 @@ export function TrainerBadgeCatalog() {
                       ))}
                     </div>
                   ) : (
-                    <div className="flex w-[8.5rem] shrink-0 justify-center">
+                    <div className="flex w-[11.5rem] shrink-0 justify-center overflow-visible">
                       <BadgeImage src={memberBadgeImageSrc(track.id)} alt={track.title} size="catalog" />
                     </div>
                   )}
@@ -121,7 +121,7 @@ export function TrainerBadgeCatalog() {
               style={{ borderColor: "rgba(15,23,42,0.08)", backgroundColor: "#fafafa" }}
             >
               <div className="flex items-start gap-3">
-                <div className="flex w-[8.5rem] shrink-0 justify-center">
+                <div className="flex w-[11.5rem] shrink-0 justify-center overflow-visible">
                   <BadgeImage src={memberBadgeImageSrc(secret.id)} alt={secret.title} size="catalog" />
                 </div>
                 <div className="min-w-0 flex-1 overflow-hidden">

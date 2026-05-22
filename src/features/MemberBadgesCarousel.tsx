@@ -113,14 +113,14 @@ function BadgeCard({
 
   return (
     <article
-      className={`motus-badge-card relative z-10 w-[16.25rem] shrink-0 snap-start overflow-hidden rounded-2xl border p-3 shadow-sm sm:w-[17.5rem] ${badge.unlocked ? "bg-white" : "bg-slate-50/90"}`}
+      className={`motus-badge-card relative z-10 w-[18.5rem] shrink-0 snap-start overflow-visible rounded-2xl border p-3 shadow-sm sm:w-[20rem] ${badge.unlocked ? "bg-white" : "bg-slate-50/90"}`}
       style={{
         borderColor: badge.unlocked ? `${level.border}66` : "rgba(15,23,42,0.08)",
         boxShadow: badge.unlocked ? `0 8px 24px ${level.fill}` : undefined,
       }}
     >
-      <div className="flex flex-col items-center gap-2 border-b border-slate-100 pb-3">
-        <div className="relative">
+      <div className="motus-badge-card-art flex flex-col items-center gap-2 overflow-visible border-b border-slate-100 px-1 pb-3 pt-1">
+        <div className="relative overflow-visible">
           <BadgeImage src={badgeImage} size="card" dimmed={!badge.unlocked} alt={badge.title} />
           {!badge.unlocked ? (
             <span className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-slate-100 text-slate-400 shadow-md">

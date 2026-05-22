@@ -125,6 +125,10 @@ body {
   isolation: isolate;
 }
 
+.motus-badge-card-art {
+  overflow: visible;
+}
+
 .motus-badge-category-scroll {
   overflow-x: auto;
   overflow-y: visible;
