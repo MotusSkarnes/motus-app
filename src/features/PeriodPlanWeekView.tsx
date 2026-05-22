@@ -76,6 +76,18 @@ export function PeriodPlanWeekView({
     setSwapFromDay((prev) => (prev === dayKey ? null : dayKey));
   }
 
+  function handleMoveDayClick(dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) {
+    const targetEntry = effectiveDays[dayB]?.trim() ?? "";
+    if (targetEntry) {
+      const confirmed = window.confirm(
+        `${WEEKDAY_PLAN_LABELS[dayB]} har allerede en planlagt time: "${targetEntry}". Hvis du flytter hit blir denne timen slettet. Vil du fortsette?`,
+      );
+      if (!confirmed) return;
+    }
+    onMoveDay(plan.id, week.weekNumber, dayA, dayB);
+    setSwapFromDay(null);
+  }
+
   return (
     <div
       className="mt-3 overflow-hidden rounded-xl border shadow-sm"
@@ -242,10 +254,7 @@ export function PeriodPlanWeekView({
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            onMoveDay(plan.id, week.weekNumber, dayKey, key);
-                            setSwapFromDay(null);
-                          }}
+                          onClick={() => handleMoveDayClick(dayKey, key)}
                           className="rounded-md border border-pink-100 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-pink-400 hover:text-pink-800"
                         >
                           Flytt hit
