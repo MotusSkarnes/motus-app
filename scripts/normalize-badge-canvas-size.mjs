@@ -12,8 +12,8 @@ const root = path.join(__dirname, "..");
 const badgesDir = path.join(root, "public", "badges");
 
 const CANVAS = 1024;
-/** Maks innholdsstørrelse på canvas — matcher visuell vekt for tungvekter. */
-const CONTENT_MAX = 880;
+/** Maks innholdsstørrelse på canvas — lavere = mer luft rundt motivet i UI. */
+const CONTENT_MAX = 720;
 
 const DEFAULT_FILES = [
   "01-forste-steg.png",
