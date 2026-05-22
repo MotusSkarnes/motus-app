@@ -78,6 +78,8 @@ export type AuthUser = {
 export type Member = {
   id: string;
   ownerUserId?: string;
+  /** Fornavn på PT (fra owner_user_id), satt ved hydrate-member-data. */
+  assignedTrainerName?: string;
   name: string;
   email: string;
   avatarUrl?: string;

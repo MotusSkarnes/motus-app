@@ -2,7 +2,7 @@ import type { TrainingProgram } from "./types";
 
 export type ResolvedProgramAuthor = "member" | "trainer" | "unknown";
 
-function pickFirstName(value: string): string {
+export function pickFirstName(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return "";
   const firstToken = trimmed.split(/\s+/)[0] ?? "";

@@ -15,6 +15,11 @@ describe("splitMuscleGroupLabel", () => {
   it("keeps single groups intact", () => {
     expect(splitMuscleGroupLabel("Rygg")).toEqual(["Rygg"]);
   });
+
+  it("returns empty for unknown or blank labels", () => {
+    expect(splitMuscleGroupLabel("")).toEqual([]);
+    expect(splitMuscleGroupLabel("Ukjent")).toEqual([]);
+  });
 });
 
 describe("normalizeMuscleSplitGroup", () => {
@@ -134,5 +139,35 @@ describe("computeMuscleGroupStats", () => {
     const bein = stats.find((row) => row.group === "Bein");
     expect(bein?.sets).toBe(3);
     expect(bein?.volumeKg).toBe(300 + 400 + 350);
+  });
+
+  it("excludes exercises not in the exercise bank", () => {
+    const stats = computeMuscleGroupStats(logs, byName, { periodDays: "all", nowTimestamp: Date.UTC(2026, 4, 15) });
+    expect(stats.find((row) => row.group === "Ukjent")).toBeUndefined();
+
+    const customLogs: WorkoutLog[] = [
+      {
+        ...logs[0],
+        results: [
+          {
+            exerciseId: "x1",
+            exerciseName: "Egendefinert øvelse",
+            exerciseCategory: "Styrke",
+            plannedSets: "1",
+            plannedReps: "10",
+            plannedWeight: "50",
+            performedWeight: "50",
+            performedReps: "10",
+            completed: true,
+          },
+        ],
+      },
+    ];
+    const customStats = computeMuscleGroupStats(customLogs, byName, {
+      periodDays: "all",
+      nowTimestamp: Date.UTC(2026, 4, 15),
+    });
+    expect(customStats.find((row) => row.group === "Ukjent")).toBeUndefined();
+    expect(customStats).toHaveLength(0);
   });
 });

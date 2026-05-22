@@ -8,6 +8,7 @@ import motusLogo from "../assets/motus-logo-transparent.svg";
 export function AppHeader({
   currentUser,
   memberDisplayName,
+  memberTrainerDisplayName,
   role,
   showQuickLogin,
   onSwitchRole,
@@ -17,6 +18,7 @@ export function AppHeader({
 }: {
   currentUser: AuthUser;
   memberDisplayName?: string;
+  memberTrainerDisplayName?: string;
   role: Role;
   showQuickLogin: boolean;
   onSwitchRole: (role: Role) => void;
@@ -97,6 +99,25 @@ export function AppHeader({
             {currentUser.role === "member" ? (
               <>
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Hei {memberFirstName}</h1>
+                {memberTrainerDisplayName ? (
+                  <div
+                    className="mt-3 inline-flex min-w-0 max-w-full items-center gap-3 rounded-2xl border border-emerald-200/90 bg-white/95 px-4 py-3 shadow-sm ring-1 ring-black/5"
+                    style={{ borderLeftWidth: 4, borderLeftColor: MOTUS.turquoise }}
+                  >
+                    <span
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white shadow-sm"
+                      style={{ background: MOTUS.gradient }}
+                      aria-hidden
+                    >
+                      <UserCircle2 className="h-5 w-5" />
+                    </span>
+                    <span className="min-w-0 text-left">
+                      <span className="block truncate text-base font-bold text-slate-900 sm:text-lg">
+                        Din PT er {memberTrainerDisplayName}
+                      </span>
+                    </span>
+                  </div>
+                ) : null}
                 <p className="mt-2 text-sm md:text-base text-slate-500 max-w-3xl">{memberMotivationText}</p>
               </>
             ) : isTrainerPortalView ? (

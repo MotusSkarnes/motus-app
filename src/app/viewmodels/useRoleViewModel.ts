@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, type ComponentProps } from "react";
 import { enrichMemberWithBestProfile } from "../memberOnboarding";
+import { pickFirstName } from "../programAuthor";
 import {
   mergeMemberNotificationPreferencesIntoPersonalGoals,
   type MemberNotificationPreferences,
@@ -103,23 +104,22 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     },
   });
 
-  const memberHeaderDisplayName = useMemo(() => {
+  const activeMemberForHeader = useMemo(() => {
     const currentUser = state.appState.currentUser;
-    if (!currentUser || currentUser.role !== "member") return undefined;
+    if (!currentUser || currentUser.role !== "member") return null;
     const normalizedEmail = currentUser.email.trim().toLowerCase();
     const currentMemberId = currentUser.memberId?.trim() ?? "";
     const viewMemberId = state.appState.memberViewId.trim();
     const selectedMemberId = state.appState.selectedMemberId.trim();
-    const match =
+    return (
       (currentMemberId ? state.appState.members.find((member) => member.id === currentMemberId) : null) ??
       (viewMemberId ? state.appState.members.find((member) => member.id === viewMemberId) : null) ??
       (selectedMemberId ? state.appState.members.find((member) => member.id === selectedMemberId) : null) ??
       (normalizedEmail
         ? state.appState.members.find((member) => member.email.trim().toLowerCase() === normalizedEmail)
         : null) ??
-      null;
-    const name = match?.name.trim() ?? "";
-    return name || undefined;
+      null
+    );
   }, [
     state.appState.currentUser,
     state.appState.memberViewId,
@@ -127,11 +127,29 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     state.appState.selectedMemberId,
   ]);
 
+  const memberHeaderDisplayName = useMemo(() => {
+    const name = activeMemberForHeader?.name.trim() ?? "";
+    return name || undefined;
+  }, [activeMemberForHeader]);
+
+  const memberTrainerDisplayName = useMemo(() => {
+    const member = activeMemberForHeader;
+    if (!member) return undefined;
+    const fromMember = pickFirstName(member.assignedTrainerName ?? "");
+    if (fromMember) return fromMember;
+    const fromProgram = state.appState.programs
+      .filter((program) => program.memberId === member.id)
+      .map((program) => pickFirstName(program.assignedTrainerName ?? ""))
+      .find(Boolean);
+    return fromProgram || undefined;
+  }, [activeMemberForHeader, state.appState.programs]);
+
   const layoutRole = state.appState.currentUser?.role ?? state.appState.role;
 
   const appHeaderProps: ComponentProps<typeof AppHeader> = buildAppHeaderProps({
     currentUser: state.appState.currentUser!,
     memberDisplayName: memberHeaderDisplayName,
+    memberTrainerDisplayName,
     role: layoutRole,
     showQuickLogin: state.showQuickLogin,
     onSwitchRole: (role) => state.patchState({ role }),

@@ -39,9 +39,14 @@ function parseNum(raw: string | undefined): number {
 /** Lår-detaljer vises som «Bein» i muskelsplitt (unngår Bein + forside + bakside samtidig). */
 const LEG_SPLIT_SUBGROUPS = new Set(["forside lår", "bakside lår", "innside lår"]);
 
+function isExcludedMuscleSplitGroup(group: string): boolean {
+  const key = group.trim().toLowerCase();
+  return !key || key === "ukjent";
+}
+
 export function normalizeMuscleSplitGroup(group: string): string {
   const trimmed = group.trim();
-  if (!trimmed) return "Ukjent";
+  if (isExcludedMuscleSplitGroup(trimmed)) return "";
   if (LEG_SPLIT_SUBGROUPS.has(trimmed.toLowerCase())) return "Bein";
   return trimmed;
 }
@@ -49,21 +54,22 @@ export function normalizeMuscleSplitGroup(group: string): string {
 /** Deler sammensatte muskelgrupper (f.eks. «Bryst/Triceps») for fordeling av sett og volum. */
 export function splitMuscleGroupLabel(group: string): string[] {
   const trimmed = group.trim();
-  if (!trimmed) return ["Ukjent"];
+  if (!trimmed || isExcludedMuscleSplitGroup(trimmed)) return [];
   const parts = trimmed
     .split(/\s*[/,]\s*|\s+og\s+/i)
     .map((part) => part.trim())
-    .filter(Boolean);
-  return parts.length ? parts : ["Ukjent"];
+    .filter((part) => part && !isExcludedMuscleSplitGroup(part));
+  return parts;
 }
 
 export function buildExerciseGroupByName(exercises: Exercise[]): Map<string, string> {
-  return new Map(
-    exercises.map((exercise) => [
-      exercise.name.trim().toLowerCase(),
-      exercise.group.trim() || "Ukjent",
-    ]),
-  );
+  const map = new Map<string, string>();
+  for (const exercise of exercises) {
+    const group = exercise.group.trim();
+    if (!group || isExcludedMuscleSplitGroup(group)) continue;
+    map.set(exercise.name.trim().toLowerCase(), group);
+  }
+  return map;
 }
 
 export function computeMuscleGroupStats(
@@ -86,8 +92,10 @@ export function computeMuscleGroupStats(
       if (!result.completed) continue;
       if (result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)) continue;
 
-      const groupRaw = exerciseGroupByName.get(result.exerciseName.trim().toLowerCase()) ?? "Ukjent";
+      const groupRaw = exerciseGroupByName.get(result.exerciseName.trim().toLowerCase())?.trim() ?? "";
+      if (!groupRaw) continue;
       const parts = splitMuscleGroupLabel(groupRaw);
+      if (!parts.length) continue;
       const share = 1 / parts.length;
 
       const durationMin = parseNum(result.performedDurationMinutes);
@@ -102,6 +110,7 @@ export function computeMuscleGroupStats(
 
       for (const part of parts) {
         const bucket = normalizeMuscleSplitGroup(part);
+        if (!bucket) continue;
         const current = agg.get(bucket) ?? { sets: 0, volumeKg: 0 };
         current.sets += share;
         current.volumeKg += volumeKg * share;

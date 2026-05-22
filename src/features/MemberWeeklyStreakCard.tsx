@@ -8,6 +8,8 @@ type MemberWeeklyStreakCardProps = {
   recentStreakWeeks: RecentStreakWeek[];
   currentStreakMilestoneTarget: number;
   compact?: boolean;
+  /** Dashboard-stil på Fremgang — skiller seg fra badges på Hjem. */
+  variant?: "default" | "flow";
 };
 
 export function MemberWeeklyStreakCard({
@@ -16,19 +18,27 @@ export function MemberWeeklyStreakCard({
   recentStreakWeeks,
   currentStreakMilestoneTarget,
   compact = false,
+  variant = "default",
 }: MemberWeeklyStreakCardProps) {
   const showMilestoneProgress = streakWeeks > 0 && streakWeeks < currentStreakMilestoneTarget;
+  const isFlow = variant === "flow";
 
   return (
     <div
-      className={`overflow-hidden rounded-xl border ${compact ? "mt-0" : "mt-3"}`}
-      style={{
-        borderColor: "rgba(48,227,190,0.22)",
-        background: `linear-gradient(135deg, ${MOTUS.paleMint} 0%, #ffffff 52%, rgba(217,18,120,0.06) 100%)`,
-      }}
+      className={`overflow-hidden rounded-xl border ${compact ? "mt-0" : isFlow ? "mt-0" : "mt-3"} ${
+        isFlow ? "border-slate-200 bg-white" : ""
+      }`}
+      style={
+        isFlow
+          ? undefined
+          : {
+              borderColor: "rgba(48,227,190,0.22)",
+              background: `linear-gradient(135deg, ${MOTUS.paleMint} 0%, #ffffff 52%, rgba(217,18,120,0.06) 100%)`,
+            }
+      }
     >
-      <div className="h-1" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
-      <div className={compact ? "p-3" : "p-4"}>
+      {!isFlow ? <div className="h-1" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} /> : null}
+      <div className={compact ? "p-3" : isFlow ? "p-4" : "p-4"}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Streak</div>
@@ -48,8 +58,10 @@ export function MemberWeeklyStreakCard({
             <p className={`leading-relaxed text-slate-600 ${compact ? "mt-1.5 text-xs" : "mt-2 text-sm"}`}>{streakSubline}</p>
           </div>
           <div
-            className="shrink-0 rounded-xl p-2.5 text-white shadow-sm"
-            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+            className={`shrink-0 rounded-xl p-2.5 shadow-sm ${
+              isFlow ? "border border-orange-200 bg-orange-50 text-orange-700" : "text-white"
+            }`}
+            style={isFlow ? undefined : { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
           >
             <Flame className={compact ? "h-4 w-4" : "h-5 w-5"} />
           </div>
@@ -69,8 +81,8 @@ export function MemberWeeklyStreakCard({
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <span
-                    className="inline-block h-2 w-2 rounded-sm"
-                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                    className={`inline-block h-2 w-2 rounded-sm ${isFlow ? "bg-teal-600" : ""}`}
+                    style={isFlow ? undefined : { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
                   />
                   I streak
                 </span>
@@ -84,10 +96,12 @@ export function MemberWeeklyStreakCard({
                     className={`h-9 w-full rounded-lg border transition ${week.inActiveStreak ? "ring-2 ring-teal-400/80 ring-offset-1" : ""}`}
                     style={
                       week.inActiveStreak
-                        ? {
-                            background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
-                            borderColor: "transparent",
-                          }
+                        ? isFlow
+                          ? { backgroundColor: MOTUS.turquoise, borderColor: "transparent" }
+                          : {
+                              background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
+                              borderColor: "transparent",
+                            }
                         : week.trained
                           ? { backgroundColor: "rgba(52,211,153,0.35)", borderColor: "rgba(16,185,129,0.45)" }
                           : { backgroundColor: "rgba(248,250,252,0.9)", borderColor: "rgba(148,163,184,0.35)" }
@@ -107,13 +121,17 @@ export function MemberWeeklyStreakCard({
                 {streakWeeks}/{currentStreakMilestoneTarget} uker
               </span>
             </div>
-            <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/80">
+            <div className={`mt-1.5 h-2 overflow-hidden rounded-full ${isFlow ? "bg-slate-100" : "bg-white/80"}`}>
               <div
-                className="h-2 rounded-full"
-                style={{
-                  width: `${Math.min(100, Math.round((streakWeeks / currentStreakMilestoneTarget) * 100))}%`,
-                  background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
-                }}
+                className={`h-2 rounded-full ${isFlow ? "bg-teal-600" : ""}`}
+                style={
+                  isFlow
+                    ? { width: `${Math.min(100, Math.round((streakWeeks / currentStreakMilestoneTarget) * 100))}%` }
+                    : {
+                        width: `${Math.min(100, Math.round((streakWeeks / currentStreakMilestoneTarget) * 100))}%`,
+                        background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
+                      }
+                }
               />
             </div>
           </div>

@@ -135,8 +135,7 @@ import {
 } from "../app/memberProgressGamification";
 import { MemberBadgesCarousel } from "./MemberBadgesCarousel";
 import { MemberHabitSummaryCard } from "./MemberHabitSummaryCard";
-import { MemberProgressGoals } from "./MemberProgressGoals";
-import { MemberWeeklyStreakCard } from "./MemberWeeklyStreakCard";
+import { MemberTrainingFlowCard } from "./MemberTrainingFlowCard";
 import { MuscleSplitCard } from "./MuscleSplitCard";
 import { IntervalWorkoutSessionModal } from "./IntervalWorkoutSessionModal";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
@@ -6203,38 +6202,19 @@ export function MemberPortal(props: MemberPortalProps) {
                 title="Fremgang"
                 description="Streak, treningsmål, personlige rekorder og muskelfordeling."
               />
-              <Card className="p-4 sm:p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-900">Din treningsflyt</h3>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      {hasCompletedAllAchievementLevels
-                        ? `Du har fullført alle ${achievementMaxLevel} steg — fantastisk kontinuitet.`
-                        : memberProgress.nextStepLabel
-                          ? `Steg ${achievementLevel} av ${achievementMaxLevel}: «${memberProgress.stepLabel}». Neste blir «${memberProgress.nextStepLabel}».`
-                          : `Steg ${achievementLevel} av ${achievementMaxLevel}: «${memberProgress.stepLabel}».`}
-                    </p>
-                  </div>
-                  <span
-                    className="rounded-full px-3 py-1 text-xs font-bold text-white"
-                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                  >
-                    {hasCompletedAllAchievementLevels ? "Maksnivå" : `Steg ${achievementLevel}`}
-                  </span>
-                </div>
-                <MemberWeeklyStreakCard
-                  streakWeeks={streakWeeks}
-                  streakSubline={streakSubline}
-                  recentStreakWeeks={recentStreakWeeks}
-                  currentStreakMilestoneTarget={currentStreakMilestoneTarget}
-                />
-                <MemberProgressGoals
-                  goals={achievements}
-                  workingLevel={achievementLevel}
-                  stepLabel={memberProgress.stepLabel}
-                  hasCompletedAllLevels={hasCompletedAllAchievementLevels}
-                />
-              </Card>
+              <MemberTrainingFlowCard
+                achievementLevel={achievementLevel}
+                achievementMaxLevel={achievementMaxLevel}
+                achievedLevel={achievedLevel}
+                hasCompletedAllLevels={hasCompletedAllAchievementLevels}
+                stepLabel={memberProgress.stepLabel}
+                nextStepLabel={memberProgress.nextStepLabel}
+                goals={achievements}
+                streakWeeks={streakWeeks}
+                streakSubline={streakSubline}
+                recentStreakWeeks={recentStreakWeeks}
+                currentStreakMilestoneTarget={currentStreakMilestoneTarget}
+              />
 
               <Card className="p-4 sm:p-5">
                 <h3 className="text-sm font-semibold text-slate-900">Personlige rekorder</h3>

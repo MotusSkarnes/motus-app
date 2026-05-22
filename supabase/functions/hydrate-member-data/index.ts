@@ -440,9 +440,10 @@ Deno.serve(async (req) => {
   const trainerNameByOwnerId = new Map<string, string>();
   const ownerUserIds = Array.from(
     new Set(
-      mergedPrograms
-        .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
-        .filter(Boolean),
+      [
+        ...mergedPrograms.map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim()),
+        ...(scopedMembers ?? []).map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim()),
+      ].filter(Boolean),
     ),
   );
   for (const ownerUserId of ownerUserIds) {
@@ -484,7 +485,13 @@ Deno.serve(async (req) => {
     inspirationItems = inspirationFeed.data.items;
   }
 
-  const harmonizedMembers = harmonizeMemberProfilesByEmail([...(scopedMembers ?? [])]);
+  const harmonizedMembers = harmonizeMemberProfilesByEmail([...(scopedMembers ?? [])]).map((row) => {
+    const ownerUserId = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
+    return {
+      ...row,
+      assigned_trainer_name: trainerNameByOwnerId.get(ownerUserId) ?? "",
+    };
+  });
 
   return jsonResponse(200, {
     members: harmonizedMembers,

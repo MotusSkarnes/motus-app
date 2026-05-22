@@ -97,6 +97,7 @@ function mapMemberRowFromSupabase(row: Record<string, unknown>): Member {
   return {
     id: String(row.id ?? ""),
     ownerUserId: String(row.owner_user_id ?? ""),
+    assignedTrainerName: String(row.assigned_trainer_name ?? "").trim(),
     name: String(row.name ?? ""),
     email: String(row.email ?? ""),
     isActive: row.is_active !== false,
@@ -2780,6 +2781,7 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
       return {
         id: String(member.id ?? ""),
         ownerUserId: String(member.owner_user_id ?? ""),
+        assignedTrainerName: String(member.assigned_trainer_name ?? "").trim(),
         name: String(member.name ?? ""),
         email: String(member.email ?? ""),
         isActive: member.is_active !== false,
@@ -2985,6 +2987,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
       return {
         id: String(member.id ?? ""),
         ownerUserId: String(member.owner_user_id ?? ""),
+        assignedTrainerName: String(member.assigned_trainer_name ?? "").trim(),
         name: String(member.name ?? ""),
         email: String(member.email ?? ""),
         isActive: member.is_active !== false,
@@ -3593,6 +3596,7 @@ function mapEdgeMemberPayload(value: unknown): Member | null {
   return {
     id,
     ownerUserId: String(row.ownerUserId ?? row.owner_user_id ?? "").trim(),
+    assignedTrainerName: String(row.assignedTrainerName ?? row.assigned_trainer_name ?? "").trim(),
     name,
     email,
     isActive: (row.isActive ?? row.is_active) !== false,
