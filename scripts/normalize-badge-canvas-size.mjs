@@ -13,10 +13,11 @@ const badgesDir = path.join(root, "public", "badges");
 
 const CANVAS = 1024;
 /** Maks innholdsbredde/høyde på canvas (lavere = mer transparent kant i filen). */
-/** Maks innhold på 1024-canvas — høy verdi = større badge, liten kant (~72px per side). */
-const CONTENT_MAX = 920;
-const CANVAS_INSET = 48;
-const SAFE_FILL = 0.9;
+/** Maks innhold på 1024-canvas — høy verdi = større badge, mindre transparent kant. */
+const CONTENT_MAX = 1000;
+const CANVAS_INSET = 24;
+/** Fyller nesten hele canvas — unngår «liten badge i mye hvitt». */
+const SAFE_FILL = 0.98;
 
 const DEFAULT_FILES = [
   "01-forste-steg.png",

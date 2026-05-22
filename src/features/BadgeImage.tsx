@@ -10,8 +10,8 @@ const SIZE_PX: Record<BadgeImageSize, number> = {
   popup: 320,
 };
 
-/** Ekstra luft inni boksen — PNG har også kant etter normalisering (SAFE_FILL). */
-const FRAME_INSET_RATIO = 0.08;
+/** Minimal luft — motivet fyller PNG-canvas tett etter normalisering. */
+const FRAME_INSET_RATIO = 0;
 
 type BadgeImageProps = {
   src: string;
