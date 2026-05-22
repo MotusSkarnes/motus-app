@@ -334,6 +334,24 @@ export function writeHiddenPeriodPlanIdsForMember(memberId: string, planIds: str
   window.localStorage.setItem(HIDDEN_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY, JSON.stringify(byMember));
 }
 
+export function writeHiddenPeriodPlanIdsForMembers(memberIds: string[], planIds: string[]) {
+  if (typeof window === "undefined") return;
+  const cleanMemberIds = Array.from(new Set(memberIds.map((id) => id.trim()).filter(Boolean)));
+  if (cleanMemberIds.length === 0) return;
+  let byMember: Record<string, string[]> = {};
+  try {
+    const raw = window.localStorage.getItem(HIDDEN_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY);
+    byMember = raw ? (JSON.parse(raw) as Record<string, string[]>) : {};
+    if (!byMember || typeof byMember !== "object") byMember = {};
+  } catch {
+    byMember = {};
+  }
+  for (const memberId of cleanMemberIds) {
+    byMember[memberId] = planIds;
+  }
+  window.localStorage.setItem(HIDDEN_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY, JSON.stringify(byMember));
+}
+
 export function removeMemberOwnedPeriodPlanFromStorage(memberIds: string[], planId: string): boolean {
   const byMember = readPeriodPlansByMemberId();
   let changed = false;

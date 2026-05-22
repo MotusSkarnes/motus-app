@@ -106,7 +106,7 @@ import {
   parsePeriodPlanStartDate,
   resolvePeriodPlanPlannedDate,
   resolvePeriodPlanWeek,
-  writeHiddenPeriodPlanIdsForMember,
+  writeHiddenPeriodPlanIdsForMembers,
 } from "../app/periodPlanMerge";
 import {
   applyPeriodPlanSwaps,
@@ -3732,9 +3732,10 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   function hideTrainerPeriodPlan(planId: string) {
-    if (!primaryMemberIdForPeriodPlans) return;
+    const targetMemberIds = relatedMemberIds.length > 0 ? relatedMemberIds : [primaryMemberIdForPeriodPlans].filter(Boolean);
+    if (targetMemberIds.length === 0) return;
     const nextHidden = Array.from(new Set([...hiddenPeriodPlanIds, planId]));
-    writeHiddenPeriodPlanIdsForMember(primaryMemberIdForPeriodPlans, nextHidden);
+    writeHiddenPeriodPlanIdsForMembers(targetMemberIds, nextHidden);
     setHiddenPeriodPlanIds(nextHidden);
     setShowPeriodPlanManageSection(true);
     setShowPeriodPlanHiddenSection(true);
@@ -3746,9 +3747,10 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   function unhideTrainerPeriodPlan(planId: string) {
-    if (!primaryMemberIdForPeriodPlans) return;
+    const targetMemberIds = relatedMemberIds.length > 0 ? relatedMemberIds : [primaryMemberIdForPeriodPlans].filter(Boolean);
+    if (targetMemberIds.length === 0) return;
     const nextHidden = hiddenPeriodPlanIds.filter((id) => id !== planId);
-    writeHiddenPeriodPlanIdsForMember(primaryMemberIdForPeriodPlans, nextHidden);
+    writeHiddenPeriodPlanIdsForMembers(targetMemberIds, nextHidden);
     setHiddenPeriodPlanIds(nextHidden);
     setActiveMemberPeriodPlanId(planId);
     setSelectedPeriodPlanWeekNumber(1);

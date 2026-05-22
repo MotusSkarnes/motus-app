@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPeriodPlanWeekNavItemsFromPlan,
+  HIDDEN_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY,
   findPeriodPlanEntryForCalendarDate,
   findTodayPeriodPlanEntryInPlans,
   isMemberOwnedPeriodPlan,
   normalizePeriodSchedulePlan,
+  readHiddenPeriodPlanIdsForMembers,
   periodPlanWeekdayKeyForDate,
   resolvePeriodPlanPlannedDate,
   resolvePeriodPlanWeek,
   syncGradientMarkedWeekDays,
+  writeHiddenPeriodPlanIdsForMembers,
 } from "./periodPlanMerge";
 import type { PeriodSchedulePlan, WeeklySchedulePlan } from "./types";
 
@@ -215,5 +218,18 @@ describe("isMemberOwnedPeriodPlan", () => {
 
   it("detects inspiration suffix ids as member-owned", () => {
     expect(isMemberOwnedPeriodPlan({ ...makePlan([]), id: "inspo-period-abc-1715789012345" }, trainerIds)).toBe(true);
+  });
+});
+
+describe("hidden period plans", () => {
+  it("updates hidden plan ids for every related member id", () => {
+    window.localStorage.setItem(
+      HIDDEN_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY,
+      JSON.stringify({ memberA: ["plan-1"], memberB: ["plan-1"] }),
+    );
+
+    writeHiddenPeriodPlanIdsForMembers(["memberA", "memberB"], []);
+
+    expect(readHiddenPeriodPlanIdsForMembers(["memberA", "memberB"])).toEqual([]);
   });
 });
