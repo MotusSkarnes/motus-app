@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Award, Lock, Share2, Sparkles, Target } from "lucide-react";
+import { memberBadgeImageSrc } from "../app/badgeAssets";
 import { BADGE_IMAGE_CLASS, BADGE_IMAGE_WRAPPER_CLASS } from "../app/badgeImagePresentation";
 import { MOTUS } from "../app/data";
 import { motusShareStatusMessage, shareBadgeCard } from "../app/motusShareCard";
@@ -16,29 +17,6 @@ import {
 } from "../app/memberBadges";
 
 const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
-
-const BADGE_IMAGES: Record<string, string> = {
-  sessions: "/badges/02-oktjeger.png",
-  "workout-club": "/badges/32-100-klubben.svg",
-  streak: "/badges/08-streak.png",
-  "monday-hero": "/badges/30-mandagshelt.png",
-  "weekend-warrior": "/badges/31-helgekriger.svg",
-  lift: "/badges/11-tungvekter.png",
-  "month-sessions": "/badges/07-vanebygger.png",
-  "training-days": "/badges/13-konsistent.png",
-  "goal-percent": "/badges/01-forste-steg.png",
-  pulsmaskin: "/badges/33-pulsmaskin.png",
-  "may-17-workout": "/badges/21-17-mai.svg",
-  "never-two-weeks-without": "/badges/22-aldri-to-uker-uten.svg",
-  "back-again": "/badges/23-tilbake-igjen.svg",
-  "habit-sticks": "/badges/24-vanen-sitter.svg",
-  "before-sunrise": "/badges/25-for-sola.svg",
-  "evening-trainer": "/badges/04-kveldsskiftet.png",
-  "summer-loyal": "/badges/26-sommertrofast.svg",
-  "new-start": "/badges/27-ny-start.svg",
-  "easter-pump": "/badges/28-paskepump.svg",
-  "christmas-pump": "/badges/29-julepump.svg",
-};
 
 const LEVEL_ROMAN: Record<BadgeLevelId, string> = {
   bronze: "I",
@@ -109,7 +87,7 @@ function BadgeCard({
   const level = LEVEL_STYLES[badge.level];
   const nextLevel = getBadgeNextLevel(badge);
   const isMaxed = !nextLevel;
-  const badgeImage = BADGE_IMAGES[badge.id] ?? "/badges/01-forste-steg.png";
+  const badgeImage = memberBadgeImageSrc(badge.id);
   async function shareBadge() {
     if (!badge.unlocked || isSharing) return;
     setIsSharing(true);

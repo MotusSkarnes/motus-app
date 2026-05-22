@@ -30,6 +30,7 @@ import { MOTUS } from "../app/data";
 import motusLogo from "../assets/motus-logo-transparent.svg";
 import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
+import { HIDDEN_MEMBER_BADGE_IMAGE_BY_ID } from "../app/badgeAssets";
 import {
   BADGE_IMAGE_POPUP_CLASS,
   BADGE_IMAGE_POPUP_WRAPPER_CLASS,
@@ -271,18 +272,6 @@ const MEMBER_AVATAR_PREFIX = "member-avatars";
 const EMPTY_REMOTE_PERIOD_PLAN_ROWS: Array<{ memberId: string; plan: PeriodSchedulePlan }> = [];
 const PERIOD_PLAN_COMPLETED_STORAGE_PREFIX = "MOTUS_PERIOD_PLAN_COMPLETED_V1:";
 const HIDDEN_BADGE_SEEN_STORAGE_PREFIX = "MOTUS_HIDDEN_BADGE_SEEN_V1:";
-const HIDDEN_BADGE_IMAGES: Record<string, string> = {
-  "may-17-workout": "/badges/21-17-mai.svg",
-  "never-two-weeks-without": "/badges/22-aldri-to-uker-uten.svg",
-  "back-again": "/badges/23-tilbake-igjen.svg",
-  "habit-sticks": "/badges/24-vanen-sitter.svg",
-  "before-sunrise": "/badges/25-for-sola.svg",
-  "evening-trainer": "/badges/04-kveldsskiftet.png",
-  "summer-loyal": "/badges/26-sommertrofast.svg",
-  "new-start": "/badges/27-ny-start.svg",
-  "easter-pump": "/badges/28-paskepump.svg",
-  "christmas-pump": "/badges/29-julepump.svg",
-};
 const HIDDEN_BADGE_POPUP_COPY: Record<string, string> = {
   "may-17-workout": "Du registrerte en økt på 17. mai. Sterk nasjonaldagsinnsats.",
   "never-two-weeks-without": "Du har holdt treningen i gang i 6 måneder uten pause over 14 dager.",
@@ -4820,7 +4809,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Skjult badge låst opp</p>
                   <div className={BADGE_IMAGE_POPUP_WRAPPER_CLASS}>
                     <img
-                      src={HIDDEN_BADGE_IMAGES[hiddenBadgeCelebration.id] ?? "/badges/21-17-mai.svg"}
+                      src={HIDDEN_MEMBER_BADGE_IMAGE_BY_ID[hiddenBadgeCelebration.id] ?? "/badges/21-17-mai.png"}
                       alt=""
                       className={BADGE_IMAGE_POPUP_CLASS}
                     />
