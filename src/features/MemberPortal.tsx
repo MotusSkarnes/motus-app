@@ -81,6 +81,7 @@ import type {
   SaveProgramInput,
   StartCustomWorkoutInput,
   StartWorkoutModeOptions,
+  DeleteProgramContext,
   UpdateMemberInput,
 } from "../services/appRepository";
 import {
@@ -217,7 +218,7 @@ type MemberPortalProps = {
   startWorkoutMode: (programId: string, options?: StartWorkoutModeOptions) => void;
   startCustomWorkout: (input: StartCustomWorkoutInput, options?: StartWorkoutModeOptions) => void;
   saveProgramForMember: (input: SaveProgramInput) => void;
-  deleteProgramById: (programId: string) => void;
+  deleteProgramById: (programId: string, context?: DeleteProgramContext) => void;
   updateProgramMemberLibraryStatus: (programId: string, status: MemberProgramLibraryStatus | undefined) => void;
   updateWorkoutExerciseResult: (
     exerciseId: string,
@@ -5147,7 +5148,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                           confirmLabel: "Slett",
                                           tone: "danger",
                                           onConfirm: () => {
-                                            deleteProgramById(program.id);
+                                            deleteProgramById(program.id, { requestedBy: "member" });
                                             setLibraryActionStatus("Programmet er slettet.");
                                           },
                                         });

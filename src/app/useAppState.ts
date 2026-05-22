@@ -7,6 +7,7 @@ import {
   localAppRepository,
   type CreateMemberInput,
   type CreateMemberResult,
+  type DeleteProgramContext,
   type FinishWorkoutInput,
   type LogCompletedPlanEntryInput,
   type LogGroupWorkoutInput,
@@ -43,7 +44,7 @@ import { getPausedWorkoutById, purgeExpiredPausedWorkouts } from "./pausedWorkou
 import { notifyInspirationItemsChanged, saveInspirationItemsToStorage } from "./inspirationStorage";
 import { filterDeletedPrograms, registerDeletedProgram, unregisterDeletedProgram } from "./deletedProgramTombstones";
 import { enrichMemberWithBestProfile } from "./memberOnboarding";
-import { mergeProgramAuthorFields } from "./programAuthor";
+import { memberMayDeleteProgram, mergeProgramAuthorFields } from "./programAuthor";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import {
   checkMemberAccessBlocked,
@@ -1864,13 +1865,24 @@ export function useAppState() {
     setAppState((prev) => syncExercisesWithProgramsAfterSave(repository.saveProgram(prev, input), input));
   }
 
-  function deleteProgramById(programId: string, context?: { memberIds?: string[]; targetEmail?: string; targetName?: string }) {
+  function deleteProgramById(programId: string, context?: DeleteProgramContext) {
     let deletedSnapshot: TrainingProgram | undefined;
+    let shouldDelete = false;
     setAppState((prev) => {
       deletedSnapshot = prev.programs.find((row) => row.id === programId);
+      const memberInitiated = context?.requestedBy === "member" || prev.role === "member";
+      if (!deletedSnapshot) return prev;
+      if (
+        memberInitiated &&
+        !memberMayDeleteProgram(deletedSnapshot, { viewerAuthUserId: prev.currentUser?.id })
+      ) {
+        return prev;
+      }
+      shouldDelete = true;
       if (deletedSnapshot) registerDeletedProgram(deletedSnapshot);
       return repository.deleteProgram(prev, programId, context);
     });
+    if (!shouldDelete) return;
     void (async () => {
       const ok = await deleteProgramRemote(programId, context);
       if (!ok) {

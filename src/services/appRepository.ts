@@ -59,6 +59,7 @@ export type DeleteProgramContext = {
   memberIds?: string[];
   targetEmail?: string;
   targetName?: string;
+  requestedBy?: "member" | "trainer";
 };
 
 export type UpdateWorkoutResultInput = {

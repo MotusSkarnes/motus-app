@@ -39,6 +39,7 @@ import motusLogo from "../assets/motus-logo-transparent.svg";
 import type {
   CreateMemberInput,
   CreateMemberResult,
+  DeleteProgramContext,
   ReplaceWorkoutExerciseGroupInput,
   StartWorkoutModeOptions,
   UpdateMemberInput,
@@ -196,7 +197,7 @@ type TrainerPortalProps = {
     programCreatedBy?: "member" | "trainer";
     programCreatedByName?: string;
   }) => void;
-  deleteProgramById: (programId: string, context?: { memberIds?: string[]; targetEmail?: string; targetName?: string }) => void;
+  deleteProgramById: (programId: string, context?: DeleteProgramContext) => void;
   sendTrainerMessage: (memberId: string, text: string) => void;
   updateWorkoutLogTrainerComment?: (input: {
     logId: string;

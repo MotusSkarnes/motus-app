@@ -21,6 +21,7 @@ import {
   type AppRepository,
   type CreateMemberInput,
   type CreateMemberResult,
+  type DeleteProgramContext,
   type FinishWorkoutInput,
   type LogGroupWorkoutInput,
   type LogIntervalWorkoutInput,
@@ -1639,12 +1640,13 @@ function buildTrainingProgramPersistenceFingerprint(input: {
 
 export async function deleteProgramRemote(
   programId: string,
-  context?: { memberIds?: string[]; targetEmail?: string; targetName?: string },
+  context?: DeleteProgramContext,
 ): Promise<boolean> {
   if (!supabaseClient) return false;
+  const memberInitiated = context?.requestedBy === "member";
   const { data: programRow, error: lookupError } = await supabaseClient
     .from("training_programs")
-    .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id")
+    .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by")
     .eq("id", programId)
     .maybeSingle();
   if (lookupError) {
@@ -1652,12 +1654,16 @@ export async function deleteProgramRemote(
   }
 
   if (!programRow) {
+    if (memberInitiated) return false;
     const { error } = await supabaseClient.from("training_programs").delete().eq("id", programId);
     if (error) {
       console.warn("Supabase program delete failed:", error.message);
       return false;
     }
     return true;
+  }
+  if (memberInitiated && String(programRow.program_created_by ?? "").trim() !== "member") {
+    return false;
   }
 
   const memberId = String(programRow.member_id ?? "").trim();
@@ -1680,7 +1686,7 @@ export async function deleteProgramRemote(
 
   let candidateQuery = supabaseClient
     .from("training_programs")
-    .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id")
+    .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by")
     .eq("title", title);
   if (targetOwnerUserId) {
     candidateQuery = candidateQuery.eq("owner_user_id", targetOwnerUserId);
@@ -1696,6 +1702,9 @@ export async function deleteProgramRemote(
     new Set(
       (candidateRows ?? [])
         .filter((row) => {
+          if (memberInitiated && String((row as { program_created_by?: string }).program_created_by ?? "").trim() !== "member") {
+            return false;
+          }
           const fingerprintMatches = buildTrainingProgramPersistenceFingerprint(row as Record<string, unknown>) === targetFingerprint;
           if (!fingerprintMatches) return false;
           if (targetOwnerUserId) return String((row as { owner_user_id?: string }).owner_user_id ?? "").trim() === targetOwnerUserId;
@@ -3912,7 +3921,7 @@ export const supabaseAppRepository: AppRepository = {
   deleteProgram(
     state: AppState,
     programId: string,
-    _context?: { memberIds?: string[]; targetEmail?: string; targetName?: string },
+    _context?: DeleteProgramContext,
   ): AppState {
     return localAppRepository.deleteProgram(state, programId);
   },
