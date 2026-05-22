@@ -1,7 +1,12 @@
 /** Felles badge-bilder (PNG 1024×1024, normalisert visuell størrelse). */
+export const WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET: Record<number, string> = {
+  100: "/badges/32-100-klubben.png",
+  200: "/badges/34-200-klubben.png",
+};
+
 export const MEMBER_BADGE_IMAGE_BY_ID: Record<string, string> = {
   sessions: "/badges/02-oktjeger.png",
-  "workout-club": "/badges/32-100-klubben.png",
+  "workout-club": WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET[100],
   streak: "/badges/08-streak.png",
   "monday-hero": "/badges/30-mandagshelt.png",
   "weekend-warrior": "/badges/31-helgekriger.png",
@@ -35,6 +40,31 @@ export const HIDDEN_MEMBER_BADGE_IMAGE_BY_ID: Record<string, string> = {
   "christmas-pump": MEMBER_BADGE_IMAGE_BY_ID["christmas-pump"],
 };
 
-export function memberBadgeImageSrc(badgeId: string): string {
-  return MEMBER_BADGE_IMAGE_BY_ID[badgeId] ?? "/badges/01-forste-steg.png";
+type MemberBadgeImageInput = {
+  id: string;
+  unlocked: boolean;
+  achievedLevelIndex: number;
+  levels: Array<{ target: number }>;
+};
+
+function workoutClubDisplayTarget(badge: MemberBadgeImageInput): number {
+  const index = badge.unlocked ? Math.max(0, badge.achievedLevelIndex) : 0;
+  return badge.levels[index]?.target ?? 100;
+}
+
+function workoutClubBadgeImageSrc(target: number): string {
+  if (target >= 200) return WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET[200];
+  return WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET[100];
+}
+
+export function memberBadgeImageSrc(badgeId: string): string;
+export function memberBadgeImageSrc(badge: MemberBadgeImageInput): string;
+export function memberBadgeImageSrc(badgeOrId: string | MemberBadgeImageInput): string {
+  if (typeof badgeOrId === "string") {
+    return MEMBER_BADGE_IMAGE_BY_ID[badgeOrId] ?? "/badges/01-forste-steg.png";
+  }
+  if (badgeOrId.id === "workout-club") {
+    return workoutClubBadgeImageSrc(workoutClubDisplayTarget(badgeOrId));
+  }
+  return MEMBER_BADGE_IMAGE_BY_ID[badgeOrId.id] ?? "/badges/01-forste-steg.png";
 }

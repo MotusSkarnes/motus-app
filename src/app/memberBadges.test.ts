@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { memberBadgeImageSrc } from "./badgeAssets";
 import {
   computeActiveCardioMinutesFromLogs,
   computeConsecutiveMondayWorkouts,
@@ -119,6 +120,8 @@ describe("memberBadges", () => {
     expect(secondClub?.title).toBe("200 klubben");
     expect(secondClub?.level).toBe("silver");
     expect(secondClub?.target).toBe(300);
+    expect(firstClub && memberBadgeImageSrc(firstClub)).toContain("32-100-klubben");
+    expect(secondClub && memberBadgeImageSrc(secondClub)).toContain("34-200-klubben");
   });
 
   it("unlocks and upgrades Monday hero from consecutive Monday workouts", () => {

@@ -87,7 +87,7 @@ function BadgeCard({
   const level = LEVEL_STYLES[badge.level];
   const nextLevel = getBadgeNextLevel(badge);
   const isMaxed = !nextLevel;
-  const badgeImage = memberBadgeImageSrc(badge.id);
+  const badgeImage = memberBadgeImageSrc(badge);
   async function shareBadge() {
     if (!badge.unlocked || isSharing) return;
     setIsSharing(true);
