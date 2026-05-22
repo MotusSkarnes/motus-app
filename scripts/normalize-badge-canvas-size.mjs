@@ -16,6 +16,7 @@ const CANVAS = 1024;
 /** Maks innhold på 1024-canvas — høy verdi = større badge, liten kant (~72px per side). */
 const CONTENT_MAX = 920;
 const CANVAS_INSET = 48;
+const SAFE_FILL = 0.68;
 
 const DEFAULT_FILES = [
   "01-forste-steg.png",
@@ -55,9 +56,11 @@ async function normalizeBadgeAsset(filePath) {
   const width = meta.width ?? CANVAS;
   const height = meta.height ?? CANVAS;
   const innerMax = Math.max(400, CONTENT_MAX - CANVAS_INSET * 2);
-  /** Motiv fyller ikke hele innerMax — transparent kant så hex-hjørner/sparkles ikke klippes i appen. */
-  const SAFE_FILL = 0.8;
-  const scale = (innerMax * SAFE_FILL) / Math.max(width, height, 1);
+  const targetContentHeight = innerMax * SAFE_FILL;
+  const targetContentWidth = innerMax;
+  const scaleByHeight = targetContentHeight / Math.max(height, 1);
+  const scaleByWidthCap = targetContentWidth / Math.max(width, 1);
+  const scale = Math.min(scaleByHeight, scaleByWidthCap);
   const targetW = Math.max(1, Math.round(width * scale));
   const targetH = Math.max(1, Math.round(height * scale));
 
@@ -97,4 +100,4 @@ for (const filePath of files) {
   await normalizeBadgeAsset(filePath);
 }
 
-console.log(`Done. Canvas ${CANVAS}px, inner max ${CONTENT_MAX - CANVAS_INSET * 2}px (inset ${CANVAS_INSET}px).`);
+console.log(`Done. Canvas ${CANVAS}px, inner max ${CONTENT_MAX - CANVAS_INSET * 2}px, safe fill ${SAFE_FILL}.`);
