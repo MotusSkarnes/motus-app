@@ -1076,6 +1076,7 @@ export function MemberPortal(props: MemberPortalProps) {
     currentUserRole === "member"
       ? currentMemberByEmail ?? viewedMember ?? null
       : viewedMember ?? members[0] ?? null;
+  const editableMemberId = editableMember?.id ?? "";
   const memberNotificationPrefs = useMemo(
     () => readMemberNotificationPreferencesFromPersonalGoals(editableMember?.personalGoals),
     [editableMember?.personalGoals],
@@ -1200,10 +1201,10 @@ export function MemberPortal(props: MemberPortalProps) {
       const trimmed = id.trim();
       if (trimmed) ids.add(trimmed);
     });
-    const editableId = editableMember?.id.trim() ?? "";
+    const editableId = editableMemberId.trim();
     if (editableId) ids.add(editableId);
     return Array.from(ids);
-  }, [editableMember?.id, relatedMemberIds]);
+  }, [editableMemberId, relatedMemberIds]);
   const trainerPeriodPlanIds = useMemo(
     () => buildTrainerPeriodPlanIdSet(relatedMemberIds, remoteMemberPeriodPlanRows),
     [relatedMemberIds, remoteMemberPeriodPlanRows],
@@ -2580,7 +2581,7 @@ export function MemberPortal(props: MemberPortalProps) {
     latestPeriodPlanSwapsRef.current = periodPlanSwapsByPlan;
   }, [periodPlanSwapsByPlan]);
   useEffect(() => {
-    if (!editableMember || typeof window === "undefined") {
+    if (!editableMemberId || typeof window === "undefined") {
       periodPlanSwapsDirtyRef.current = false;
       setPeriodPlanSwapsByPlan({});
       return;
@@ -2604,19 +2605,19 @@ export function MemberPortal(props: MemberPortalProps) {
     } catch {
       // ignore storage write errors (quota/private mode)
     }
-  }, [editableMember?.id, periodPlanSwapStorageMemberIds]);
+  }, [editableMemberId, periodPlanSwapStorageMemberIds]);
   useEffect(() => {
-    if (!editableMember || typeof window === "undefined") return;
+    if (!editableMemberId || typeof window === "undefined") return;
     if (!periodPlanSwapsDirtyRef.current) return;
     try {
       window.localStorage.setItem(
-        getPeriodPlanSwapsStorageKey(editableMember.id),
+        getPeriodPlanSwapsStorageKey(editableMemberId),
         JSON.stringify(periodPlanSwapsByPlan),
       );
     } catch {
       // ignore storage write errors (quota/private mode)
     }
-  }, [editableMember?.id, periodPlanSwapsByPlan]);
+  }, [editableMemberId, periodPlanSwapsByPlan]);
   useEffect(() => {
     setFavoritePersonalRecordPreferencesHydrated(false);
     achievementCelebrationBaselineRef.current = null;
