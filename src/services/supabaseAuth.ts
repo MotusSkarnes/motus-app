@@ -1,8 +1,17 @@
 import type { AuthBootstrapParams } from "../app/supabaseAuthBootstrap";
 import { buildMemberInviteRedirectUrl, readPersistedAuthBootstrapParams } from "../app/supabaseAuthBootstrap";
 import { configuredSupabaseAnonKey, configuredSupabaseUrl } from "./supabaseClient";
+import {
+  emptyTrainerProfile,
+  serializeTrainerProfile,
+  trainerProfileFromUserMetadata,
+  TRAINER_PROFILE_METADATA_KEY,
+  type TrainerProfile,
+} from "../app/trainerProfile";
 import type { AuthUser, Role } from "../app/types";
 import { supabaseClient } from "./supabaseClient";
+
+const DEMO_TRAINER_PROFILE_STORAGE_KEY = "motus.demo.trainerProfile.v1";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -365,6 +374,92 @@ export async function updateSupabasePassword(password: string): Promise<{ ok: bo
   const { error } = await supabaseClient.auth.updateUser({ password });
   if (error) return { ok: false, message: error.message || "Kunne ikke oppdatere passord." };
   return { ok: true };
+}
+
+export type SaveTrainerProfileInput = {
+  name: string;
+  profile: TrainerProfile;
+};
+
+export type SaveTrainerProfileResult =
+  | { ok: true; user: AuthUser; message: string }
+  | { ok: false; message: string };
+
+export async function saveTrainerProfile(input: SaveTrainerProfileInput): Promise<SaveTrainerProfileResult> {
+  const name = input.name.trim();
+  if (!name) {
+    return { ok: false, message: "Navn må fylles ut." };
+  }
+  const profile = serializeTrainerProfile(input.profile);
+
+  if (!supabaseClient) {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(DEMO_TRAINER_PROFILE_STORAGE_KEY, JSON.stringify({ name, profile }));
+    }
+    return {
+      ok: true,
+      user: {
+        id: "demo-trainer",
+        role: "trainer",
+        name,
+        email: "trainer@motus.no",
+      },
+      message: "PT-kort lagret lokalt (demo).",
+    };
+  }
+
+  const { data, error } = await supabaseClient.auth.updateUser({
+    data: {
+      full_name: name,
+      name,
+      [TRAINER_PROFILE_METADATA_KEY]: profile,
+    },
+  });
+  if (error || !data.user) {
+    return { ok: false, message: error?.message?.trim() || "Kunne ikke lagre PT-kortet." };
+  }
+  return {
+    ok: true,
+    user: mapSupabaseUserToAuthUser(data.user),
+    message: "PT-kort lagret.",
+  };
+}
+
+export async function loadTrainerProfileForCurrentSession(): Promise<{
+  name: string;
+  email: string;
+  profile: TrainerProfile;
+}> {
+  if (!supabaseClient) {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = window.localStorage.getItem(DEMO_TRAINER_PROFILE_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw) as { name?: string; profile?: TrainerProfile };
+          return {
+            name: String(parsed.name ?? "Motus PT").trim(),
+            email: "trainer@motus.no",
+            profile: parsed.profile ? serializeTrainerProfile(parsed.profile) : emptyTrainerProfile(),
+          };
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return { name: "Motus PT", email: "trainer@motus.no", profile: emptyTrainerProfile() };
+  }
+
+  const { data, error } = await supabaseClient.auth.getUser();
+  if (error || !data.user) {
+    return { name: "", email: "", profile: emptyTrainerProfile() };
+  }
+  const metadata = (data.user.user_metadata ?? {}) as Record<string, unknown>;
+  const mapped = mapSupabaseUserToAuthUser(data.user);
+  return {
+    name: mapped.name.trim(),
+    email: mapped.email.trim(),
+    profile: trainerProfileFromUserMetadata(metadata),
+  };
 }
 
 export async function requestPasswordRecovery(email: string): Promise<{ ok: boolean; message: string }> {

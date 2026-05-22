@@ -192,6 +192,7 @@ export function TrainerLayout({
     canAccessAdminTools,
     remoteTrainerPeriodPlansByMemberId,
     trainerAccountName: appState.currentUser?.name?.trim() ?? "",
+    onTrainerProfileSaved: (user) => patchState({ currentUser: user }),
     workoutMode,
     startWorkoutMode,
     updateWorkoutExerciseResult,

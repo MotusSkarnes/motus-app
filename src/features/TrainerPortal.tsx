@@ -5,6 +5,7 @@ import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, periodPlanStart
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClear";
 import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
+import { buildDeleteExerciseFromBankDialogCopy, findProgramsUsingBankExercise } from "../app/exerciseBankUsage";
 import { programAuthorLabelForTrainer } from "../app/programAuthor";
 import { uid } from "../app/storage";
 import {
@@ -50,8 +51,16 @@ import {
   isSharedMedlemCustomerType,
   scoreMemberProfileSource,
 } from "../services/memberAccessRules";
-import { ensureMemberAuthLink, type InviteMemberResult, type InviteTrainerResult } from "../services/supabaseAuth";
+import {
+  ensureMemberAuthLink,
+  loadTrainerProfileForCurrentSession,
+  saveTrainerProfile,
+  type InviteMemberResult,
+  type InviteTrainerResult,
+} from "../services/supabaseAuth";
+import { TrainerProfileCard } from "./TrainerProfileCard";
 import type {
+  AuthUser,
   ChatMessage,
   CustomerSubTab,
   Exercise,
@@ -225,6 +234,7 @@ type TrainerPortalProps = {
   canAccessAdminTools?: boolean;
   /** Innlogget treners visningsnavn — brukes når program lagres på kunde. */
   trainerAccountName?: string;
+  onTrainerProfileSaved?: (user: AuthUser) => void;
   /** Synket fra Supabase ved hydrering (per medlem, inkl. tom liste). */
   remoteTrainerPeriodPlansByMemberId?: Record<string, PeriodSchedulePlan[]>;
   /** Live PT-økt på kundens program — samme tilstand som medlemssiden. */
@@ -635,6 +645,7 @@ function pickFirstName(value: unknown): string {
     canAccessAdminTools = true,
     remoteTrainerPeriodPlansByMemberId = {},
     trainerAccountName = "",
+    onTrainerProfileSaved,
     workoutMode = null,
     startWorkoutMode = () => {},
     updateWorkoutExerciseResult = () => {},
@@ -3520,14 +3531,12 @@ function pickFirstName(value: unknown): string {
     resetExerciseForm();
   }
   function handleDeleteExercise(exercise: Exercise) {
-    const isUsedInPrograms = programs.some((program) => program.exercises.some((item) => item.exerciseId === exercise.id));
-    const confirmMessage = isUsedInPrograms
-      ? `Fjern "${exercise.name}" fra øvelsesbank?\n\nØvelsen skjules også i programmer der den er brukt.`
-      : `Fjern "${exercise.name}" fra øvelsesbank?`;
+    const usages = findProgramsUsingBankExercise(programs, members, exercise);
+    const dialogCopy = buildDeleteExerciseFromBankDialogCopy(exercise.name, usages);
     setConfirmDialog({
-      title: "Fjerne øvelse",
-      message: confirmMessage,
-      confirmLabel: "Fjern øvelse",
+      title: dialogCopy.title,
+      message: dialogCopy.message,
+      confirmLabel: dialogCopy.confirmLabel,
       tone: "danger",
       onConfirm: () => {
         deleteExercise(exercise.id);
@@ -4343,9 +4352,13 @@ function pickFirstName(value: unknown): string {
       {trainerTab === "settings" ? (
         <Card className="p-5 space-y-4">
           <div className="font-semibold text-slate-800">Innstillinger</div>
+          <TrainerProfileCard
+            loadProfile={loadTrainerProfileForCurrentSession}
+            saveProfile={saveTrainerProfile}
+            onProfileSaved={onTrainerProfileSaved}
+          />
           <div className="rounded-xl border bg-slate-50 p-3 text-sm text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-            Her samles PT-innstillinger. Foreløpig kan du styre medlemsvisning via:
-            søk/filter i klientlisten, vis/skjul inaktive kunder, og prioritetssortering i oversikten.
+            Under Klienter finner du søk, filter og vis/skjul inaktive kunder. PT-kortet over styrer navnet kundene ser i appen.
           </div>
           <div className="rounded-xl border bg-slate-50 p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <div className="text-sm font-medium text-slate-700">Gjenopprett testmedlemmer</div>

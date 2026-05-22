@@ -832,7 +832,7 @@ export function LiveWorkoutSessionModal({
                         className="h-full rounded-full transition-all duration-300"
                         style={{
                           width: `${Math.max(0, Math.min(100, (restCountdownRemainingSeconds / restCountdown.totalSeconds) * 100))}%`,
-                          background: MOTUS.turquoise,
+                          background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
                         }}
                       />
                     </div>

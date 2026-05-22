@@ -1,3 +1,4 @@
+import { filterProgramExercisesAfterBankDelete } from "../app/exerciseBankUsage";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { applyInviteStampToMembersByEmail } from "../app/memberInviteStatus";
 import {
@@ -932,12 +933,19 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
 export function deleteExerciseInState(state: AppState, exerciseId: string): AppState {
   const normalizedExerciseId = exerciseId.trim();
   if (!normalizedExerciseId) return state;
+  const deletedExercise = state.exercises.find((exercise) => exercise.id === normalizedExerciseId);
+  if (!deletedExercise) {
+    return {
+      ...state,
+      exercises: state.exercises.filter((exercise) => exercise.id !== normalizedExerciseId),
+    };
+  }
   return {
     ...state,
     exercises: state.exercises.filter((exercise) => exercise.id !== normalizedExerciseId),
     programs: state.programs.map((program) => ({
       ...program,
-      exercises: program.exercises.filter((exercise) => exercise.exerciseId !== normalizedExerciseId),
+      exercises: filterProgramExercisesAfterBankDelete(program.exercises, deletedExercise),
     })),
   };
 }

@@ -14,6 +14,7 @@ import type {
   WorkoutLog,
 } from "../app/types";
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate } from "../app/dateFormat";
+import { programExerciseUsesBankExercise } from "../app/exerciseBankUsage";
 import { normalizeStoredExerciseCategory } from "../app/exerciseCategories";
 import {
   createMember,
@@ -4133,9 +4134,14 @@ export const supabaseAppRepository: AppRepository = {
   deleteExercise(state: AppState, exerciseId: string): AppState {
     const normalizedExerciseId = exerciseId.trim();
     if (!normalizedExerciseId) return state;
+    const deletedExercise = state.exercises.find((exercise) => exercise.id === normalizedExerciseId);
     const affectedProgramIds = new Set(
       state.programs
-        .filter((program) => program.exercises.some((exercise) => exercise.exerciseId === normalizedExerciseId))
+        .filter((program) =>
+          deletedExercise
+            ? program.exercises.some((item) => programExerciseUsesBankExercise(item, deletedExercise))
+            : program.exercises.some((exercise) => exercise.exerciseId === normalizedExerciseId),
+        )
         .map((program) => program.id),
     );
     const nextState = localAppRepository.deleteExercise(state, normalizedExerciseId);

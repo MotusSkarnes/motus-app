@@ -2,6 +2,8 @@ import { Check, Circle } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { ProgressGoal } from "../app/memberProgressGamification";
 
+const MOTUS_GRADIENT_90 = `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
+
 type MemberProgressGoalsProps = {
   goals: ProgressGoal[];
   workingLevel: number;
@@ -71,9 +73,7 @@ export function MemberProgressGoals({
                       className="h-1.5 rounded-full transition-all"
                       style={{
                         width: `${progressPct}%`,
-                        background: goal.unlocked
-                          ? "rgb(16 185 129)"
-                          : `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
+                        background: MOTUS_GRADIENT_90,
                       }}
                     />
                   </div>
@@ -137,9 +137,7 @@ export function MemberProgressGoals({
                   className="h-1.5 rounded-full transition-all"
                   style={{
                     width: `${progressPct}%`,
-                    background: goal.unlocked
-                      ? "rgb(16 185 129)"
-                      : `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
+                    background: MOTUS_GRADIENT_90,
                   }}
                 />
               </div>
