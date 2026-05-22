@@ -26,7 +26,7 @@ export const MEMBER_BADGE_IMAGE_BY_ID: Record<string, string> = {
   "habit-sticks": "/badges/24-vanen-sitter.png",
   "before-sunrise": "/badges/40-morgenfugl.png",
   "evening-trainer": "/badges/04-kveldsskiftet.png",
-  "summer-loyal": "/badges/26-sommertrofast.png",
+  "summer-loyal": "/badges/41-sommertrofast.png",
   "new-start": "/badges/27-ny-start.png",
   "easter-pump": "/badges/28-paskepump.png",
   "christmas-pump": "/badges/29-julepump.png",
