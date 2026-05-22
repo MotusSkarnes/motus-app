@@ -197,9 +197,17 @@ async function normalizeBadgeAlpha(filePath) {
   console.log("fixed", path.basename(filePath), `(edge ${edgeChanged} px, holes ${holeChanged} px)`);
 }
 
-const files = fs.readdirSync(badgesDir).filter((name) => name.toLowerCase().endsWith(".png"));
-for (const name of files) {
-  await normalizeBadgeAlpha(path.join(badgesDir, name));
+const args = process.argv.slice(2);
+const files =
+  args.length > 0
+    ? args.map((name) => path.join(badgesDir, name))
+    : fs.readdirSync(badgesDir).filter((name) => name.toLowerCase().endsWith(".png"));
+for (const filePath of files) {
+  if (!fs.existsSync(filePath)) {
+    console.warn("skip missing", path.basename(filePath));
+    continue;
+  }
+  await normalizeBadgeAlpha(filePath);
 }
 
 console.log(`Processed ${files.length} badge PNG(s) in public/badges`);
