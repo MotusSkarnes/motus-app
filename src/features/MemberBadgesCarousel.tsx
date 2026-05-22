@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Award, Lock, Share2, Sparkles, Target } from "lucide-react";
+import { BADGE_IMAGE_CLASS, BADGE_IMAGE_WRAPPER_CLASS } from "../app/badgeImagePresentation";
 import { MOTUS } from "../app/data";
 import { motusShareStatusMessage, shareBadgeCard } from "../app/motusShareCard";
 import {
@@ -20,7 +21,7 @@ const BADGE_IMAGES: Record<string, string> = {
   sessions: "/badges/02-oktjeger.png",
   "workout-club": "/badges/32-100-klubben.svg",
   streak: "/badges/08-streak.png",
-  "monday-hero": "/badges/30-mandagshelt.svg",
+  "monday-hero": "/badges/30-mandagshelt.png",
   "weekend-warrior": "/badges/31-helgekriger.svg",
   lift: "/badges/11-tungvekter.png",
   "month-sessions": "/badges/07-vanebygger.png",
@@ -38,9 +39,6 @@ const BADGE_IMAGES: Record<string, string> = {
   "easter-pump": "/badges/28-paskepump.svg",
   "christmas-pump": "/badges/29-julepump.svg",
 };
-
-const BADGE_IMAGE_BOX_CLASS = "h-[5.4rem] w-[5.4rem]";
-const BADGE_IMAGE_CLASS = "h-full w-full object-contain p-1.5 drop-shadow-sm";
 
 const LEVEL_ROMAN: Record<BadgeLevelId, string> = {
   bronze: "I",
@@ -146,7 +144,7 @@ function BadgeCard({
       ) : null}
 
       <div className="relative flex gap-3">
-        <div className={`relative flex shrink-0 items-center justify-center ${BADGE_IMAGE_BOX_CLASS}`}>
+        <div className={`relative flex shrink-0 items-center justify-center ${BADGE_IMAGE_WRAPPER_CLASS}`}>
           <img
             src={badgeImage}
             alt=""

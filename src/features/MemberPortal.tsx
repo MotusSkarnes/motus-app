@@ -30,6 +30,10 @@ import { MOTUS } from "../app/data";
 import motusLogo from "../assets/motus-logo-transparent.svg";
 import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
+import {
+  BADGE_IMAGE_POPUP_CLASS,
+  BADGE_IMAGE_POPUP_WRAPPER_CLASS,
+} from "../app/badgeImagePresentation";
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "../app/exerciseCategories";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import {
@@ -4814,11 +4818,13 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="h-2" style={{ background: `linear-gradient(90deg, #BA0C2F 0%, #FFFFFF 24%, #00205B 50%, #FFFFFF 76%, #BA0C2F 100%)` }} />
                 <div className="p-6">
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Skjult badge låst opp</p>
-                  <img
-                    src={HIDDEN_BADGE_IMAGES[hiddenBadgeCelebration.id] ?? "/badges/21-17-mai.svg"}
-                    alt=""
-                    className="mx-auto mt-4 h-36 w-36 object-contain p-3 drop-shadow-sm"
-                  />
+                  <div className={BADGE_IMAGE_POPUP_WRAPPER_CLASS}>
+                    <img
+                      src={HIDDEN_BADGE_IMAGES[hiddenBadgeCelebration.id] ?? "/badges/21-17-mai.svg"}
+                      alt=""
+                      className={BADGE_IMAGE_POPUP_CLASS}
+                    />
+                  </div>
                   <h2 id="hidden-badge-heading" className="mt-3 text-2xl font-black tracking-tight text-slate-900">
                     {hiddenBadgeCelebration.title}
                   </h2>

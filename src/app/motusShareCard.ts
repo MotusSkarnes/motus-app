@@ -31,6 +31,23 @@ function fillWrappedCanvasText(
   if (line) ctx.fillText(line, x, cy);
 }
 
+/** Tegn badge uten synlig svart «bakgrunn» fra PNG-eksport. */
+function drawBadgeImageOnCanvas(
+  ctx: CanvasRenderingContext2D,
+  image: CanvasImageSource,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
+  ctx.save();
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(x, y, w, h);
+  ctx.globalCompositeOperation = "screen";
+  ctx.drawImage(image, x, y, w, h);
+  ctx.restore();
+}
+
 function fillRoundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   if (typeof ctx.roundRect === "function") {
     ctx.beginPath();
@@ -220,7 +237,9 @@ export async function buildBadgeShareCardBlob(input: BadgeShareCardInput): Promi
   if (badgeImage && badgeImage.naturalWidth > 0) {
     const inset = 72;
     const drawSize = imageBox - inset * 2;
-    ctx.drawImage(badgeImage, cardX + pad + inset, imageY + inset, drawSize, drawSize);
+    const drawX = cardX + pad + inset;
+    const drawY = imageY + inset;
+    drawBadgeImageOnCanvas(ctx, badgeImage, drawX, drawY, drawSize, drawSize);
   }
 
   let y = imageY + imageBox + 48;
