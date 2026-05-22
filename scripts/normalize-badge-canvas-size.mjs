@@ -13,7 +13,7 @@ const badgesDir = path.join(root, "public", "badges");
 
 const CANVAS = 1024;
 /** Maks innholdsstørrelse på canvas — lavere = mer luft rundt motivet i UI. */
-const CONTENT_MAX = 720;
+const CONTENT_MAX = 580;
 
 const DEFAULT_FILES = [
   "01-forste-steg.png",
@@ -79,7 +79,10 @@ const args = process.argv.slice(2);
 const files =
   args.length > 0
     ? args.map((name) => path.join(badgesDir, name))
-    : DEFAULT_FILES.map((name) => path.join(badgesDir, name));
+    : fs
+        .readdirSync(badgesDir)
+        .filter((name) => name.toLowerCase().endsWith(".png"))
+        .map((name) => path.join(badgesDir, name));
 
 for (const filePath of files) {
   if (!fs.existsSync(filePath)) {

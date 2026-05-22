@@ -111,7 +111,7 @@ function BadgeCard({
 
   return (
     <article
-      className={`relative w-[17rem] shrink-0 snap-start overflow-hidden rounded-2xl border p-3 shadow-sm sm:w-[18.5rem] ${badge.unlocked ? "bg-white" : "bg-slate-50/90"}`}
+      className={`relative w-[17.5rem] shrink-0 snap-start overflow-visible rounded-2xl border p-3 shadow-sm sm:w-[19rem] ${badge.unlocked ? "bg-white" : "bg-slate-50/90"}`}
       style={{
         borderColor: badge.unlocked ? `${level.border}66` : "rgba(15,23,42,0.08)",
         boxShadow: badge.unlocked ? `0 8px 24px ${level.fill}` : undefined,
@@ -229,7 +229,7 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
   const overallPct = collection.totalLevels > 0 ? Math.round((collection.totalUnlockedLevels / collection.totalLevels) * 100) : 0;
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-2xl border bg-white p-3 shadow-sm sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+    <section className="min-w-0 rounded-2xl border bg-white p-3 shadow-sm sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
       <div className="flex items-start gap-3">
         <span className="inline-flex shrink-0 rounded-xl p-2 text-white shadow-sm" style={{ background: MOTUS_GRADIENT }}>
           <Award className="h-4 w-4" />
