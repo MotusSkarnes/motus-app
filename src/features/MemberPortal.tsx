@@ -3849,6 +3849,10 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!activeMemberId) return;
     const trimmed = input.entry.trim();
     if (!trimmed) return;
+    if (isPeriodPlanEntryDateInFuture(input.plannedDate)) {
+      setPeriodPlanActionStatus("Du kan ikke logge gruppetimer fra periodeplanen før selve dagen.");
+      return;
+    }
     logGroupWorkout({
       memberId: activeMemberId,
       className: resolveGroupClassNameFromPeriodEntry(trimmed),
