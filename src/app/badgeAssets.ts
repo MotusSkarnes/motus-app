@@ -17,7 +17,7 @@ export const MEMBER_BADGE_IMAGE_BY_ID: Record<string, string> = {
   "weekend-warrior": "/badges/31-helgekriger.png",
   lift: "/badges/11-tungvekter.png",
   "month-sessions": "/badges/07-vanebygger.png",
-  "training-days": "/badges/13-konsistent.png",
+  "training-days": "/badges/39-treningsdager.png",
   "goal-percent": "/badges/38-malknuser.png",
   pulsmaskin: "/badges/33-pulsmaskin.png",
   "may-17-workout": "/badges/21-17-mai.png",
