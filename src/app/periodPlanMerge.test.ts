@@ -6,6 +6,7 @@ import {
   isMemberOwnedPeriodPlan,
   normalizePeriodSchedulePlan,
   periodPlanWeekdayKeyForDate,
+  resolvePeriodPlanPlannedDate,
   resolvePeriodPlanWeek,
   syncGradientMarkedWeekDays,
 } from "./periodPlanMerge";
@@ -26,18 +27,29 @@ function makePlan(weeklyPlans: PeriodSchedulePlan["weeklyPlans"]): PeriodSchedul
 }
 
 describe("periodPlanWeekdayKeyForDate", () => {
-  it("maps calendar day to plan column from start date (not calendar weekday label)", () => {
+  it("maps calendar day to its actual weekday after plan start", () => {
     const start = new Date(2026, 4, 14);
-    const wednesday = new Date(2026, 4, 14);
+    const thursday = new Date(2026, 4, 14);
     const tuesday = new Date(2026, 4, 19);
-    expect(periodPlanWeekdayKeyForDate(start, wednesday)).toBe("monday");
-    expect(periodPlanWeekdayKeyForDate(start, tuesday)).toBe("saturday");
+    expect(periodPlanWeekdayKeyForDate(start, thursday)).toBe("thursday");
+    expect(periodPlanWeekdayKeyForDate(start, tuesday)).toBe("tuesday");
   });
 
   it("returns null before plan start", () => {
     const start = new Date(2026, 4, 20);
     const before = new Date(2026, 4, 19);
     expect(periodPlanWeekdayKeyForDate(start, before)).toBeNull();
+  });
+});
+
+describe("resolvePeriodPlanPlannedDate", () => {
+  it("anchors start date on its real weekday", () => {
+    const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty } }]);
+    plan.startDate = "2026-05-22";
+    expect(resolvePeriodPlanPlannedDate(plan, 1, "friday")?.toLocaleDateString("sv-SE")).toBe("2026-05-22");
+    expect(resolvePeriodPlanPlannedDate(plan, 1, "sunday")?.toLocaleDateString("sv-SE")).toBe("2026-05-24");
+    expect(resolvePeriodPlanPlannedDate(plan, 1, "monday")?.toLocaleDateString("sv-SE")).toBe("2026-05-25");
+    expect(resolvePeriodPlanPlannedDate(plan, 2, "monday")?.toLocaleDateString("sv-SE")).toBe("2026-06-01");
   });
 });
 
@@ -51,7 +63,7 @@ describe("findTodayPeriodPlanEntryInPlans", () => {
     withEntry.startDate = "2026-05-19";
     const match = findTodayPeriodPlanEntryInPlans(
       [active, withEntry],
-      new Date(2026, 4, 20),
+      new Date(2026, 4, 19),
       {},
       "active-empty",
       1,
@@ -80,7 +92,7 @@ describe("findPeriodPlanEntryForCalendarDate", () => {
       { id: "w2", weekNumber: 2, days: { ...empty, monday: "Uke 2 mandag" } },
     ]);
     plan.startDate = "14.05.2026";
-    const match = findPeriodPlanEntryForCalendarDate(plan, new Date(2026, 4, 16));
+    const match = findPeriodPlanEntryForCalendarDate(plan, new Date(2026, 4, 20));
     expect(match?.entry).toBe("Onsdag i uke 1");
     expect(match?.weekNumber).toBe(1);
     expect(match?.day).toBe("wednesday");
@@ -90,7 +102,7 @@ describe("findPeriodPlanEntryForCalendarDate", () => {
     const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "A", tuesday: "B" } }]);
     plan.startDate = "2026-05-19";
     const swaps = { [plan.id]: { "1": [{ dayA: "monday", dayB: "tuesday" }] } };
-    const match = findPeriodPlanEntryForCalendarDate(plan, new Date(2026, 4, 20), swaps);
+    const match = findPeriodPlanEntryForCalendarDate(plan, new Date(2026, 4, 19), swaps);
     expect(match?.entry).toBe("A");
     expect(match?.day).toBe("tuesday");
   });

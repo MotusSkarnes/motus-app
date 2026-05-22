@@ -8,18 +8,22 @@ function startOfLocalDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
-/** Hele dager fra planstart (dag 0 = startdato = «mandag»-kolonnen i ukevisningen). */
+function localMondayBasedWeekdayIndex(date: Date): number {
+  return (date.getDay() + 6) % 7;
+}
+
+/** Hele dager fra planstart. */
 export function periodPlanDaysSinceStart(startDate: Date, targetDate: Date): number {
   const startMs = startOfLocalDay(startDate).getTime();
   const targetMs = startOfLocalDay(targetDate).getTime();
   return Math.floor((targetMs - startMs) / MS_PER_DAY);
 }
 
-/** Kolonnenøkkel for en kalenderdag — samme logikk som `resolvePeriodPlanEntryDate` i portalen. */
+/** Kolonnenøkkel for en kalenderdag — følger faktisk kalenderukedag, ikke alltid mandag som start. */
 export function periodPlanWeekdayKeyForDate(startDate: Date, targetDate: Date): WeekdayPlanKey | null {
   const daysSinceStart = periodPlanDaysSinceStart(startDate, targetDate);
   if (daysSinceStart < 0) return null;
-  return WEEKDAY_PLAN_ORDER[daysSinceStart % 7];
+  return WEEKDAY_PLAN_ORDER[localMondayBasedWeekdayIndex(targetDate)];
 }
 
 export type PeriodPlanDayEntryMatch = {
@@ -53,7 +57,8 @@ export function resolvePeriodPlanPlannedDate(plan: PeriodSchedulePlan, weekNumbe
   const start = parsePeriodPlanStartDate(plan);
   if (!start) return null;
   const weekIndex = Math.max(0, Math.floor(Number(weekNumber) || 1) - 1);
-  const dayOffset = weekIndex * 7 + WEEKDAY_INDEX[day];
+  const startWeekdayIndex = localMondayBasedWeekdayIndex(start);
+  const dayOffset = weekIndex * 7 + ((WEEKDAY_INDEX[day] - startWeekdayIndex + 7) % 7);
   return new Date(start.getFullYear(), start.getMonth(), start.getDate() + dayOffset);
 }
 

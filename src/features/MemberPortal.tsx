@@ -104,6 +104,7 @@ import {
   findPeriodPlanEntryForCalendarDateInPlans,
   findTodayPeriodPlanEntryInPlans,
   parsePeriodPlanStartDate,
+  resolvePeriodPlanPlannedDate,
   resolvePeriodPlanWeek,
   writeHiddenPeriodPlanIdsForMember,
 } from "../app/periodPlanMerge";
@@ -2042,28 +2043,16 @@ export function MemberPortal(props: MemberPortalProps) {
     return byDay;
   }, [completedLogs, calendarMonth]);
   const calendarPlannedEntriesByDay = useMemo(() => {
-    const weekdayIndexByKey: Record<WeekdayPlanKey, number> = {
-      monday: 0,
-      tuesday: 1,
-      wednesday: 2,
-      thursday: 3,
-      friday: 4,
-      saturday: 5,
-      sunday: 6,
-    };
     const byDay = new Map<number, string[]>();
     visiblePeriodPlans.forEach((plan) => {
-      const startDate = parsePeriodPlanStartDate(plan);
-      if (!startDate) return;
       (plan.weeklyPlans ?? []).forEach((week) => {
-        const weekIndex = Math.max(0, (week.weekNumber || 1) - 1);
-        (Object.keys(weekdayIndexByKey) as WeekdayPlanKey[]).forEach((weekdayKey) => {
+        WEEKDAY_PLAN_ORDER.forEach((weekdayKey) => {
           const swaps = getSwapsForWeek(periodPlanSwapsByPlan, plan.id, week.weekNumber);
           const effectiveDays = applyPeriodPlanSwaps(week.days, swaps);
           const plannedEntry = effectiveDays[weekdayKey]?.trim() ?? "";
           if (!plannedEntry) return;
-          const dayOffset = weekIndex * 7 + weekdayIndexByKey[weekdayKey];
-          const plannedDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + dayOffset);
+          const plannedDate = resolvePeriodPlanPlannedDate(plan, week.weekNumber, weekdayKey);
+          if (!plannedDate) return;
           if (plannedDate.getMonth() !== calendarMonth.getMonth() || plannedDate.getFullYear() !== calendarMonth.getFullYear()) return;
           const day = plannedDate.getDate();
           const previous = byDay.get(day) ?? [];
@@ -3731,20 +3720,8 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   function resolvePeriodPlanEntryDate(plan: PeriodSchedulePlan, weekNumber: number, day: WeekdayPlanKey): string | null {
-    const startDate = parsePeriodPlanStartDate(plan);
-    if (!startDate) return null;
-    const weekdayIndexByKey: Record<WeekdayPlanKey, number> = {
-      monday: 0,
-      tuesday: 1,
-      wednesday: 2,
-      thursday: 3,
-      friday: 4,
-      saturday: 5,
-      sunday: 6,
-    };
-    const weekIndex = Math.max(0, weekNumber - 1);
-    const dayOffset = weekIndex * 7 + weekdayIndexByKey[day];
-    const plannedDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + dayOffset);
+    const plannedDate = resolvePeriodPlanPlannedDate(plan, weekNumber, day);
+    if (!plannedDate) return null;
     return formatDateDdMmYyyy(plannedDate);
   }
 
