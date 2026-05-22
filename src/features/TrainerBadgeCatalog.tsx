@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Award, EyeOff, Sparkles } from "lucide-react";
 import { memberBadgeImageSrc, WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET } from "../app/badgeAssets";
-import { BADGE_IMAGE_CLASS, BADGE_IMAGE_WRAPPER_CLASS } from "../app/badgeImagePresentation";
+import { BADGE_IMAGE_CLASS, BADGE_IMAGE_THUMB_CLASS, BADGE_IMAGE_THUMB_WRAPPER_CLASS, BADGE_IMAGE_WRAPPER_CLASS } from "../app/badgeImagePresentation";
 import { MOTUS } from "../app/data";
 import { getMemberBadgeCatalog } from "../app/memberBadges";
 import { Card } from "../app/ui";
@@ -12,11 +12,9 @@ const CLUB_MILESTONES = [100, 200, 300, 400, 500] as const;
 
 function CatalogBadgeImage({ src, alt, compact = false }: { src: string; alt: string; compact?: boolean }) {
   const wrapperClass = compact
-    ? "relative flex h-16 w-16 shrink-0 items-center justify-center overflow-visible rounded-lg bg-transparent p-2"
+    ? `relative shrink-0 ${BADGE_IMAGE_THUMB_WRAPPER_CLASS}`
     : `relative shrink-0 ${BADGE_IMAGE_WRAPPER_CLASS}`;
-  const imageClass = compact
-    ? "h-full w-full object-contain object-center drop-shadow-sm scale-[0.9]"
-    : BADGE_IMAGE_CLASS;
+  const imageClass = compact ? BADGE_IMAGE_THUMB_CLASS : BADGE_IMAGE_CLASS;
 
   return (
     <div className={wrapperClass}>
