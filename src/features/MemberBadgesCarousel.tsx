@@ -166,7 +166,7 @@ function BadgeCard({
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-white ring-1 ring-slate-200/80">
               <div
-                className="h-full rounded-full transition-all"
+                className="motus-progress-fill h-full rounded-full transition-all"
                 style={{ width: `${badge.progressPct}%`, background: badge.unlocked ? MOTUS_GRADIENT : "rgba(148,163,184,0.5)" }}
               />
             </div>
@@ -239,7 +239,7 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
             <span className="rounded-full bg-slate-950 px-2.5 py-1 text-[10px] font-bold text-white">{overallPct}%</span>
           </div>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
-            <div className="h-full rounded-full" style={{ width: `${overallPct}%`, background: MOTUS_GRADIENT }} />
+            <div className="motus-progress-fill h-full rounded-full" style={{ width: `${overallPct}%`, background: MOTUS_GRADIENT }} />
           </div>
         </div>
       </div>

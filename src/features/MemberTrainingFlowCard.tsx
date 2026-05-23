@@ -42,7 +42,7 @@ export function MemberTrainingFlowCard({
       className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/80 shadow-sm"
       aria-labelledby="member-training-flow-heading"
     >
-      <div className="h-1" style={{ background: MOTUS_GRADIENT_90 }} aria-hidden />
+      <div className="motus-gradient-motion h-1" style={{ background: MOTUS_GRADIENT_90 }} aria-hidden />
       <div className="border-b border-slate-200/90 bg-white px-4 py-4 sm:px-5">
         <div className="flex flex-wrap items-start gap-3">
           <span
@@ -91,7 +91,7 @@ export function MemberTrainingFlowCard({
                         completed
                           ? "border-transparent text-white"
                           : current
-                            ? "border-transparent bg-white text-slate-800 ring-2 ring-pink-200/80 ring-offset-1"
+                            ? "motus-soft-pulse border-transparent bg-white text-slate-800 ring-2 ring-pink-200/80 ring-offset-1"
                             : "border-slate-200 bg-white text-slate-400"
                       }`}
                       style={

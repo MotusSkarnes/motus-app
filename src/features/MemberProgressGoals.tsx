@@ -70,7 +70,7 @@ export function MemberProgressGoals({
                   </div>
                   <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
                     <div
-                      className="h-1.5 rounded-full transition-all"
+                      className="motus-progress-fill h-1.5 rounded-full transition-all"
                       style={{
                         width: `${progressPct}%`,
                         background: MOTUS_GRADIENT_90,
@@ -134,7 +134,7 @@ export function MemberProgressGoals({
               </div>
               <div className="mt-2.5 h-1.5 rounded-full bg-slate-200/80">
                 <div
-                  className="h-1.5 rounded-full transition-all"
+                  className="motus-progress-fill h-1.5 rounded-full transition-all"
                   style={{
                     width: `${progressPct}%`,
                     background: MOTUS_GRADIENT_90,

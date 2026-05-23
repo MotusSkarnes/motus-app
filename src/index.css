@@ -64,12 +64,67 @@ body {
   }
 }
 
+@keyframes motusGradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes motusProgressFill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes motusSoftPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 rgba(217, 18, 120, 0));
+  }
+  50% {
+    transform: scale(1.06);
+    filter: drop-shadow(0 8px 18px rgba(217, 18, 120, 0.22));
+  }
+}
+
 .motus-fade-in-up {
   animation: motusFadeInUp 220ms ease-out;
 }
 
 .motus-pop-in {
   animation: motusPopIn 240ms ease-out;
+}
+
+.motus-gradient-motion {
+  background-size: 180% 180% !important;
+  animation: motusGradientShift 7s ease-in-out infinite;
+}
+
+.motus-pressable {
+  will-change: transform;
+}
+
+.motus-pressable:active {
+  transform: translateY(1px) scale(0.985);
+}
+
+.motus-progress-fill {
+  transform-origin: left center;
+  animation: motusProgressFill 780ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.motus-soft-pulse {
+  animation: motusSoftPulse 2.4s ease-in-out infinite;
 }
 
 /* Full-screen overlays: respect notch + home indicator (iOS / iPadOS). */
@@ -128,6 +183,13 @@ body {
 
 .motus-badge-card {
   isolation: isolate;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.motus-badge-card:hover {
+  transform: translateY(-2px);
 }
 
 .motus-badge-card-art {
@@ -152,8 +214,18 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .motus-fade-in-up,
-  .motus-pop-in {
+  .motus-pop-in,
+  .motus-gradient-motion,
+  .motus-progress-fill,
+  .motus-soft-pulse {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  .motus-badge-card,
+  .motus-pressable,
+  .motus-badge-card:hover {
+    transform: none !important;
+    transition-duration: 1ms !important;
   }
 }

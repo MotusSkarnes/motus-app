@@ -122,6 +122,11 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTML
 
 type SelectOption = { value: string; label: string };
 
+function triggerLightHaptic() {
+  if (typeof window === "undefined" || typeof navigator === "undefined" || !("vibrate" in navigator)) return;
+  navigator.vibrate?.(8);
+}
+
 export function SelectBox({
   value,
   onChange,
@@ -167,7 +172,11 @@ export function GradientButton({ children, className = "", type = "button", ...p
     <button
       type={type}
       {...props}
-      className={`inline-flex min-h-10 items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-pink-500/15 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-pink-500/20 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      onPointerDown={(event) => {
+        props.onPointerDown?.(event);
+        if (!props.disabled) triggerLightHaptic();
+      }}
+      className={`motus-gradient-motion motus-pressable inline-flex min-h-10 items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-pink-500/15 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-pink-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
       style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, ...props.style }}
     >
       {children}
@@ -180,7 +189,7 @@ export function OutlineButton({ children, className = "", type = "button", ...pr
     <button
       type={type}
       {...props}
-      className={`inline-flex min-h-10 items-center justify-center rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      className={`motus-pressable inline-flex min-h-10 items-center justify-center rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
       style={{ borderColor: "rgba(15,23,42,0.12)" }}
     >
       {children}
@@ -193,7 +202,7 @@ export function DangerButton({ children, className = "", type = "button", ...pro
     <button
       type={type}
       {...props}
-      className={`inline-flex min-h-10 items-center justify-center rounded-lg border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      className={`motus-pressable inline-flex min-h-10 items-center justify-center rounded-lg border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
     >
       {children}
     </button>

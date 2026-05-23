@@ -587,7 +587,7 @@ export function IntervalWorkoutSessionModal({
                 </div>
                 <div className="mt-2 h-3 rounded-full bg-slate-200">
                   <div
-                    className="h-3 rounded-full"
+                    className="motus-progress-fill h-3 rounded-full"
                     style={{
                       width: `${progressPercent}%`,
                       background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,

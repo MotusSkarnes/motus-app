@@ -53,7 +53,7 @@ export function MemberHabitSummaryCard({ progress, onOpenProgress }: MemberHabit
         </div>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
           <div
-            className="h-2 rounded-full"
+            className="motus-progress-fill h-2 rounded-full"
             style={{
               width: `${monthPct}%`,
               background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,

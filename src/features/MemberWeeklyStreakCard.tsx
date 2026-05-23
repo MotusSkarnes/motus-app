@@ -52,7 +52,7 @@ export function MemberWeeklyStreakCard({
             <p className={`leading-relaxed text-slate-600 ${compact ? "mt-1.5 text-xs" : "mt-2 text-sm"}`}>{streakSubline}</p>
           </div>
           <div
-            className="shrink-0 rounded-xl p-2.5 text-white shadow-sm"
+            className={`shrink-0 rounded-xl p-2.5 text-white shadow-sm ${streakWeeks > 0 ? "motus-soft-pulse" : ""}`}
             style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
           >
             <Flame className={compact ? "h-4 w-4" : "h-5 w-5"} />
@@ -119,7 +119,7 @@ export function MemberWeeklyStreakCard({
             </div>
             <div className={`mt-1.5 h-2 overflow-hidden rounded-full ${isFlow ? "bg-slate-100" : "bg-white/80"}`}>
               <div
-                className="h-2 rounded-full"
+                className="motus-progress-fill h-2 rounded-full"
                 style={{
                   width: `${Math.min(100, Math.round((streakWeeks / currentStreakMilestoneTarget) * 100))}%`,
                   background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
