@@ -140,7 +140,12 @@ import {
 import { BadgeImage } from "./BadgeImage";
 import { MemberBadgesCarousel } from "./MemberBadgesCarousel";
 import { CustomWorkoutBuilder } from "./CustomWorkoutBuilder";
-import { MemberHabitSummaryCard } from "./MemberHabitSummaryCard";
+import {
+  MemberHomeCompactPrompt,
+  MemberHomeOverview,
+  MemberHomeSecondaryLink,
+  MemberHomeStartWorkoutButton,
+} from "./MemberHomeOverview";
 import { MemberTrainingFlowCard } from "./MemberTrainingFlowCard";
 import { MuscleSplitCard } from "./MuscleSplitCard";
 import { IntervalWorkoutSessionModal } from "./IntervalWorkoutSessionModal";
@@ -3568,17 +3573,26 @@ export function MemberPortal(props: MemberPortalProps) {
   const homeMomentumPct = homeWeeklySummary.plannedThisWeek > 0 ? homeWeeklySummary.completionRate : homeMonthGoalPct;
   const homeRemainingMonthSessions = Math.max(0, memberProgress.monthGoal.target - memberProgress.monthGoal.current);
   const homePrimaryFocus = todayPlanEntry || nextProgram?.title || "Bygg en økt som passer dagen";
-  const homeHeroTitle = streakWeeks > 0 ? `${streakWeeks} ukers streak` : "Klar for dagens økt";
-  const homeHeroSubtitle =
-    homeWeeklySummary.completedThisWeek > 0
-      ? `Du har ${homeWeeklySummary.completedThisWeek} økt${homeWeeklySummary.completedThisWeek === 1 ? "" : "er"} inne denne uken. Fortsett flyten.`
-      : "Start rolig, få en seier i dag og bygg momentum for resten av uka.";
-  const homeInsightText =
-    homeRemainingMonthSessions === 0
-      ? "Du er foran planen. En lett bonusøkt eller mobilitet kan holde kroppen fresh."
-      : homeRemainingMonthSessions <= 2
-        ? `${homeRemainingMonthSessions} økt${homeRemainingMonthSessions === 1 ? "" : "er"} unna månedens mål. Du er nær.`
-        : nextBestAction.description;
+  const homeTopStatusText =
+    streakWeeks > 0
+      ? `🔥 ${streakWeeks} ukes streak · Du holder flyten`
+      : homeWeeklySummary.completedThisWeek > 0
+        ? `🔥 ${homeWeeklySummary.completedThisWeek} økt${homeWeeklySummary.completedThisWeek === 1 ? "" : "er"} denne uka · Du er nærmere målet`
+        : "🔥 Klar for dagens økt";
+  const homeEmotionalChip =
+    homeWeeklySummary.plannedThisWeek > 0 && homeWeeklySummary.completedThisWeek >= homeWeeklySummary.plannedThisWeek
+      ? "Sterk uke 🔥"
+      : homeRemainingMonthSessions === 0
+        ? "Du er foran planen"
+        : homeMomentumPct >= 85
+          ? "Bra flyt"
+          : null;
+  const homeWorkoutHint =
+    nextProgram?.title && homePrimaryFocus !== nextProgram.title && homePrimaryFocus === todayPlanEntry
+      ? nextProgram.title
+      : homeWeeklySummary.plannedThisWeek > 0
+        ? `${homeWeeklySummary.completedThisWeek}/${homeWeeklySummary.plannedThisWeek} planlagt denne uka`
+        : null;
   let nextPlannedWorkout: { dayLabel: string; entry: string } | null = null;
   if (activeWeeklyPlanEffectiveDays && todayPlanDayKey) {
     const todayIndex = WEEKDAY_PLAN_ORDER.indexOf(todayPlanDayKey);
@@ -4312,230 +4326,97 @@ export function MemberPortal(props: MemberPortalProps) {
 
         <div className="min-w-0 w-full space-y-4 overflow-visible sm:space-y-6">
           {memberTab === "overview" ? (
-            <div className="space-y-4">
-              <Card
-                variant="hero"
-                className="motus-gradient-motion relative overflow-hidden p-0"
-                style={{
-                  borderColor: "rgba(48,227,190,0.24)",
-                  background:
-                    "linear-gradient(135deg, rgba(48,227,190,0.20) 0%, rgba(255,255,255,0.96) 42%, rgba(217,18,120,0.14) 100%)",
-                }}
-              >
-                <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-white/60 blur-3xl" aria-hidden />
-                <div
-                  className="pointer-events-none absolute -bottom-20 left-6 h-48 w-48 rounded-full blur-3xl"
-                  style={{ backgroundColor: "rgba(48,227,190,0.22)" }}
-                  aria-hidden
-                />
-                <div className="relative grid gap-5 p-5 sm:p-6 lg:grid-cols-[1.25fr_0.75fr] lg:items-center">
-                  <div className="min-w-0">
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-black uppercase tracking-wide text-teal-800 shadow-sm ring-1 ring-white/80">
-                      <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                      Dagens fokus
-                    </div>
-                    <h2 className="mt-4 max-w-2xl text-4xl font-black leading-[1.02] tracking-tight text-slate-950 sm:text-5xl">
-                      {homeHeroTitle}
-                    </h2>
-                    <p className="mt-3 max-w-2xl text-base font-semibold leading-relaxed text-slate-700">
-                      {homeHeroSubtitle}
-                    </p>
-                    <div className="mt-5 rounded-2xl border bg-white/72 p-4 shadow-sm backdrop-blur-md" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="text-xs font-black uppercase tracking-wide text-teal-700">Neste beste steg</div>
-                      <div className="mt-1 text-xl font-black tracking-tight text-slate-950">{homePrimaryFocus}</div>
-                      <p className="mt-1 text-sm font-medium leading-relaxed text-slate-600">{homeInsightText}</p>
-                    </div>
-                    <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-                      {todayPlanAction.kind === "start-program" ? (
-                        <GradientButton
-                          type="button"
-                          onClick={() => handlePeriodPlanStartProgram(todayPlanAction.program.id)}
-                          className="min-h-12 w-full rounded-xl text-base sm:w-auto"
-                        >
-                          <Play className="mr-2 h-4 w-4 fill-white/80" aria-hidden />
-                          Start dagens økt
-                        </GradientButton>
-                      ) : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch ? (
-                        <GradientButton
-                          type="button"
-                          onClick={() =>
-                            handlePeriodPlanLogGroup({
-                              entry: todayPlanEntry,
-                              plannedDate: resolvePeriodPlanEntryDate(
-                                todayPlanPeriodPlan,
-                                todayPeriodPlanMatch.weekNumber,
-                                todayPeriodPlanMatch.day,
-                              ),
-                              planId: todayPlanPeriodPlan.id,
-                              weekNumber: todayPeriodPlanMatch.weekNumber,
-                              day: todayPeriodPlanMatch.day,
-                            })
-                          }
-                          className="min-h-12 w-full rounded-xl text-base sm:w-auto"
-                        >
-                          Logg dagens økt
-                        </GradientButton>
-                      ) : nextProgram ? (
-                        <GradientButton
-                          type="button"
-                          onClick={() => startWorkoutMode(nextProgram.id, buildStartWorkoutOptions(nextProgram))}
-                          className="min-h-12 w-full rounded-xl text-base sm:w-auto"
-                        >
-                          <Play className="mr-2 h-4 w-4 fill-white/80" aria-hidden />
-                          Start neste økt
-                        </GradientButton>
-                      ) : (
-                        <GradientButton
-                          type="button"
-                          onClick={() => setMemberTab(nextBestAction.action === "progress" ? "progress" : "programs")}
-                          className="min-h-12 w-full rounded-xl text-base sm:w-auto"
-                        >
-                          {nextBestAction.cta}
-                        </GradientButton>
-                      )}
-                      <OutlineButton type="button" onClick={() => setMemberTab("programs")} className="min-h-12 w-full rounded-xl bg-white/75 font-semibold sm:w-auto">
-                        Se planen
-                      </OutlineButton>
-                    </div>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                    <div className="rounded-2xl border bg-white/74 p-4 shadow-sm backdrop-blur-md" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs font-black uppercase tracking-wide text-slate-500">Ukesmomentum</span>
-                        <TrendingUp className="h-4 w-4 text-teal-700" aria-hidden />
-                      </div>
-                      <div className="mt-2 text-3xl font-black tabular-nums text-slate-950">{homeMomentumPct}%</div>
-                      <div className="motus-progress-track mt-2 h-2 rounded-full">
-                        <div
-                          className="motus-progress-fill h-2 rounded-full"
-                          style={{ width: `${homeMomentumPct}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                        />
-                      </div>
-                    </div>
-                    <div className="rounded-2xl border bg-white/74 p-4 shadow-sm backdrop-blur-md" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs font-black uppercase tracking-wide text-slate-500">Neste mål</span>
-                        <Target className="h-4 w-4 text-pink-600" aria-hidden />
-                      </div>
-                      <div className="mt-2 text-2xl font-black text-slate-950">
-                        {homeRemainingMonthSessions === 0 ? "Mål nådd" : `${homeRemainingMonthSessions} igjen`}
-                      </div>
-                      <p className="mt-1 text-xs font-semibold text-slate-600">
-                        {memberProgress.monthGoal.current}/{memberProgress.monthGoal.target} økter denne måneden
+            <div className="space-y-6">
+              <MemberHomeOverview
+                topStatusText={homeTopStatusText}
+                emotionalChip={homeEmotionalChip}
+                workoutTitle={homePrimaryFocus}
+                workoutHint={homeWorkoutHint}
+                momentumPct={homeMomentumPct}
+                monthGoalCurrent={memberProgress.monthGoal.current}
+                monthGoalTarget={memberProgress.monthGoal.target}
+                streakWeeks={streakWeeks}
+                streakSubline={streakSubline}
+                primaryCta={
+                  todayPlanAction.kind === "start-program" ? (
+                    <MemberHomeStartWorkoutButton
+                      label="Start økt"
+                      onClick={() => handlePeriodPlanStartProgram(todayPlanAction.program.id)}
+                    />
+                  ) : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch ? (
+                    <GradientButton
+                      type="button"
+                      onClick={() =>
+                        handlePeriodPlanLogGroup({
+                          entry: todayPlanEntry,
+                          plannedDate: resolvePeriodPlanEntryDate(
+                            todayPlanPeriodPlan,
+                            todayPeriodPlanMatch.weekNumber,
+                            todayPeriodPlanMatch.day,
+                          ),
+                          planId: todayPlanPeriodPlan.id,
+                          weekNumber: todayPeriodPlanMatch.weekNumber,
+                          day: todayPeriodPlanMatch.day,
+                        })
+                      }
+                      className="min-h-11 rounded-xl px-5 text-sm font-semibold sm:min-h-12 sm:text-base"
+                    >
+                      Logg dagens økt
+                    </GradientButton>
+                  ) : nextProgram ? (
+                    <MemberHomeStartWorkoutButton
+                      label="Start økt"
+                      onClick={() => startWorkoutMode(nextProgram.id, buildStartWorkoutOptions(nextProgram))}
+                    />
+                  ) : (
+                    <GradientButton
+                      type="button"
+                      onClick={() => setMemberTab(nextBestAction.action === "progress" ? "progress" : "programs")}
+                      className="min-h-11 rounded-xl px-5 text-sm font-semibold sm:min-h-12 sm:text-base"
+                    >
+                      {nextBestAction.cta}
+                    </GradientButton>
+                  )
+                }
+                secondaryCta={<MemberHomeSecondaryLink label="Se planen" onClick={() => setMemberTab("programs")} />}
+                onboardingPrompt={
+                  onOpenOnboarding && showOnboardingHomePrompt ? (
+                    <MemberHomeCompactPrompt
+                      title="Fortell oss litt om deg"
+                      detail="Ca. 3–5 min · én gang"
+                      ctaLabel="Start skjema"
+                      onCta={onOpenOnboarding}
+                    />
+                  ) : undefined
+                }
+                monthlyCheckInPrompt={
+                  monthlyCheckInPrompt && onOpenMonthlyCheckIn ? (
+                    <MemberHomeCompactPrompt
+                      title={monthlyCheckInPrompt.copy.text}
+                      detail={`${monthlyCheckInPrompt.copy.detail} · ${monthlyCheckInPrompt.window.daysRemaining} dager igjen`}
+                      ctaLabel="Start sjekk-inn"
+                      onCta={onOpenMonthlyCheckIn}
+                    />
+                  ) : undefined
+                }
+              />
+              <section className="space-y-5 border-t border-slate-200/70 pt-6">
+                {memberHasVisiblePeriodPlan && nextPlannedWorkout ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 pb-1">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-500">Neste på planen</p>
+                      <p className="text-sm font-medium text-slate-800">
+                        {nextPlannedWorkout.dayLabel} · {nextPlannedWorkout.entry}
                       </p>
                     </div>
-                    <div className="rounded-2xl border bg-white/74 p-4 shadow-sm backdrop-blur-md" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs font-black uppercase tracking-wide text-slate-500">Streak</span>
-                        <Trophy className="h-4 w-4 text-teal-700" aria-hidden />
-                      </div>
-                      <div className="mt-2 text-2xl font-black text-slate-950">
-                        {streakWeeks > 0 ? `${streakWeeks} uker` : "Start nå"}
-                      </div>
-                      <p className="mt-1 text-xs font-semibold text-slate-600">{streakSubline}</p>
-                    </div>
+                    <MemberHomeSecondaryLink label="Se periodeplan" onClick={openProgramsWithPeriodPlan} />
                   </div>
-                </div>
-              </Card>
-              {onOpenOnboarding && showOnboardingHomePrompt ? (
-                <Card
-                  className="border p-4 sm:p-5"
-                  style={{ borderColor: "rgba(20,184,166,0.35)", background: "linear-gradient(135deg, rgba(20,184,166,0.08) 0%, rgba(236,72,153,0.06) 100%)" }}
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-start gap-3">
-                      <div
-                        className="rounded-xl p-2 text-white shadow-sm"
-                        style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                      >
-                        <UserCircle2 className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Oppstartsskjema</div>
-                        <div className="mt-0.5 text-base font-semibold text-slate-900">Fortell oss litt om deg</div>
-                        <p className="mt-1 text-sm text-slate-600">
-                          Fyll ut én gang — tar ca. 3–5 minutter. PT bruker svarene dine til å lage et treningsprogram tilpasset deg.
-                        </p>
-                      </div>
-                    </div>
-                    <GradientButton type="button" onClick={onOpenOnboarding} className="w-full shrink-0 sm:w-auto">
-                      Start skjema
-                    </GradientButton>
-                  </div>
-                </Card>
-              ) : null}
-              {monthlyCheckInPrompt && onOpenMonthlyCheckIn ? (
-                <Card
-                  className="border p-4 sm:p-5"
-                  style={{ borderColor: "rgba(20,184,166,0.35)", background: "linear-gradient(135deg, rgba(20,184,166,0.08) 0%, rgba(236,72,153,0.06) 100%)" }}
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-start gap-3">
-                      <div
-                        className="rounded-xl p-2 text-white shadow-sm"
-                        style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                      >
-                        <ClipboardPenLine className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Månedlig sjekk-inn</div>
-                        <div className="mt-0.5 text-base font-semibold text-slate-900">{monthlyCheckInPrompt.copy.text}</div>
-                        <p className="mt-1 text-sm text-slate-600">{monthlyCheckInPrompt.copy.detail}</p>
-                        <p className="mt-1 text-xs font-medium text-slate-500">
-                          {monthlyCheckInPrompt.window.daysRemaining} dager igjen · ca. 2 min
-                        </p>
-                      </div>
-                    </div>
-                    <GradientButton type="button" onClick={onOpenMonthlyCheckIn} className="w-full shrink-0 sm:w-auto">
-                      Start sjekk-inn
-                    </GradientButton>
-                  </div>
-                </Card>
-              ) : null}
-            <Card className="min-w-0 w-full p-4 sm:p-6 flex flex-col gap-5 sm:gap-6">
-              {memberHasVisiblePeriodPlan ? (
-              <div className="order-2 w-full">
-                  <div className="flex h-full min-w-0 flex-col rounded-2xl border bg-white p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="rounded-xl p-2 text-white shadow-sm"
-                        style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                      >
-                        <ClipboardList className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold text-slate-800">Neste på planen</div>
-                        <div className="text-xs text-slate-500">Plan</div>
-                      </div>
-                    </div>
-                  </div>
-                  {nextPlannedWorkout ? (
-                    <>
-                      <div className="mt-1 text-sm font-medium text-slate-800">{nextPlannedWorkout.dayLabel}</div>
-                      <div className="mt-1 text-sm text-slate-600">{nextPlannedWorkout.entry}</div>
-                      <OutlineButton onClick={openProgramsWithPeriodPlan} className="mt-3 w-full sm:w-auto">
-                        Se periodeplan
-                      </OutlineButton>
-                    </>
-                  ) : (
-                    <div className="mt-2 space-y-2">
-                      <div className="text-sm text-slate-500">Ingen flere planlagte økter denne uken.</div>
-                      <OutlineButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">
-                        Åpne program
-                      </OutlineButton>
-                    </div>
-                  )}
-                </div>
-                
-              </div>
-              ) : null}
-              <div className="order-1 grid gap-4">
-                <div className="min-w-0 w-full overflow-hidden rounded-2xl border bg-slate-50 p-5 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                ) : null}
+              <div className="min-w-0 w-full space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Plan og økter</div>
-                      <div className="mt-1 text-base font-semibold text-slate-800">Treningskalender</div>
+                      <h3 className="mt-1 text-sm font-semibold text-slate-800">Treningskalender</h3>
                     </div>
                     <div className="text-sm font-semibold text-slate-600 capitalize">{calendarMonthLabel}</div>
                   </div>
@@ -4630,47 +4511,6 @@ export function MemberPortal(props: MemberPortalProps) {
                       <span>Misset</span>
                     </div>
                   </div>
-                  {todayPlanEntry ? (
-                    <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dagens økt</div>
-                      <div className="mt-1 text-sm text-slate-700">{todayPlanEntry}</div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {todayPlanAction.kind === "start-program" ? (
-                          <GradientButton
-                            onClick={() => handlePeriodPlanStartProgram(todayPlanAction.program.id)}
-                            className="w-full sm:w-auto"
-                          >
-                            Start økt
-                          </GradientButton>
-                        ) : null}
-                        {todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch ? (
-                          <OutlineButton
-                            onClick={() =>
-                              handlePeriodPlanLogGroup({
-                                entry: todayPlanEntry,
-                                plannedDate: resolvePeriodPlanEntryDate(
-                                  todayPlanPeriodPlan,
-                                  todayPeriodPlanMatch.weekNumber,
-                                  todayPeriodPlanMatch.day,
-                                ),
-                                planId: todayPlanPeriodPlan.id,
-                                weekNumber: todayPeriodPlanMatch.weekNumber,
-                                day: todayPeriodPlanMatch.day,
-                              })
-                            }
-                            className="w-full sm:w-auto"
-                          >
-                            Logg gruppetime
-                          </OutlineButton>
-                        ) : null}
-                        {todayPlanAction.kind === "none" ? (
-                          <OutlineButton onClick={() => setMemberTab("programs")} className="w-full sm:w-auto">
-                            Se dagens plan
-                          </OutlineButton>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : null}
                   {selectedCalendarDay ? (
                     <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -4780,13 +4620,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                   ) : null}
                 </div>
-              </div>
-              {!isMemberLimited ? (
-              <div className="order-3">
-                  <MemberHabitSummaryCard progress={memberProgress} onOpenProgress={() => setMemberTab("progress")} />
-                </div>
-              ) : null}
-            </Card>
+              </section>
               {!isMemberLimited ? (
                 <MemberBadgesCarousel
                   collection={memberBadgeCollection}

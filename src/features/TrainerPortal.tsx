@@ -6659,6 +6659,7 @@ function pickFirstName(value: unknown): string {
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <div className="truncate text-sm font-semibold leading-tight text-slate-900">{exercise.name}</div>
+                          </div>
                           <div className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
                             <span className="rounded-full border bg-white px-2 py-0.5 text-slate-600" style={{ borderColor: "rgba(15,23,42,0.1)" }}>{exercise.category}</span>
                             <span className="rounded-full border bg-white px-2 py-0.5 text-slate-600" style={{ borderColor: "rgba(15,23,42,0.1)" }}>{exercise.group}</span>
