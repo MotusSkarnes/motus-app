@@ -13,7 +13,7 @@ export function AppHeader({
   memberDisplayName: _memberDisplayName,
   memberTrainerDisplayName: _memberTrainerDisplayName,
   role,
-  memberTab = "overview",
+  memberTab: _memberTab = "overview",
   showQuickLogin,
   onSwitchRole,
   onResetData,
@@ -59,36 +59,14 @@ export function AppHeader({
   }, [currentUser.email, currentUser.name]);
 
   if (currentUser.role === "member") {
-    if (memberTab === "overview") {
-      return (
-        <Card className="overflow-hidden bg-[linear-gradient(135deg,rgba(48,227,190,0.07)_0%,rgba(236,72,153,0.07)_100%)] p-3 sm:p-4 md:p-5">
-          <div
-            className="-mx-3 -mt-3 mb-3 h-1 sm:-mx-4 sm:-mt-4 sm:mb-4 md:-mx-5 md:-mt-5"
-            style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 70%, ${MOTUS.acid} 100%)` }}
-          />
-          <div className="flex items-center justify-between gap-3">
-            <img src={motusLogo} alt="Motus logo" className="h-10 w-auto object-contain sm:h-11" />
-            <MemberHomeHeaderActions
-              showNotifications={showMemberNotifications}
-              memberUnreadCount={memberUnreadCount}
-              memberNotificationsOpen={memberNotificationsOpen}
-              onMemberBellToggle={onMemberBellToggle}
-              onOpenMemberProfile={onOpenMemberProfile}
-              onLogout={onLogout}
-            />
-          </div>
-          {showMemberNotifications && memberNotificationsOpen && onOpenMemberAlert ? (
-            <div className="mt-3">
-              <MemberNotificationsPanel alerts={memberVisibleAlerts} onOpenAlert={onOpenMemberAlert} />
-            </div>
-          ) : null}
-        </Card>
-      );
-    }
-
     return (
-      <div className="space-y-2">
-        <div className="flex items-center justify-end">
+      <Card className="overflow-hidden bg-[linear-gradient(135deg,rgba(48,227,190,0.07)_0%,rgba(236,72,153,0.07)_100%)] p-3 sm:p-4 md:p-5">
+        <div
+          className="-mx-3 -mt-3 mb-3 h-1 sm:-mx-4 sm:-mt-4 sm:mb-4 md:-mx-5 md:-mt-5"
+          style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 70%, ${MOTUS.acid} 100%)` }}
+        />
+        <div className="flex items-center justify-between gap-3">
+          <img src={motusLogo} alt="Motus logo" className="h-10 w-auto object-contain sm:h-11" />
           <MemberHomeHeaderActions
             showNotifications={showMemberNotifications}
             memberUnreadCount={memberUnreadCount}
@@ -99,9 +77,11 @@ export function AppHeader({
           />
         </div>
         {showMemberNotifications && memberNotificationsOpen && onOpenMemberAlert ? (
-          <MemberNotificationsPanel alerts={memberVisibleAlerts} onOpenAlert={onOpenMemberAlert} />
+          <div className="mt-3">
+            <MemberNotificationsPanel alerts={memberVisibleAlerts} onOpenAlert={onOpenMemberAlert} />
+          </div>
         ) : null}
-      </div>
+      </Card>
     );
   }
 
