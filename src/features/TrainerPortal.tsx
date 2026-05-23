@@ -9,6 +9,7 @@ import { buildDeleteExerciseFromBankDialogCopy, findProgramsUsingBankExercise } 
 import { computeExercisePopularityScores, isPopularExercise, isRecommendedExercise } from "../app/exerciseBankStats";
 import { muscleGroupChipClass } from "../app/customWorkoutBuilder";
 import { splitMuscleGroupLabel } from "./muscleSplitStats";
+import { ExerciseBankBadges, ExerciseBankListCard } from "./ExerciseBankListCard";
 import { programAuthorLabelForTrainer } from "../app/programAuthor";
 import { uid } from "../app/storage";
 import {
@@ -1570,9 +1571,12 @@ function pickFirstName(value: unknown): string {
       const aFavorite = favoriteExerciseIds.includes(a.id) ? 1 : 0;
       const bFavorite = favoriteExerciseIds.includes(b.id) ? 1 : 0;
       if (aFavorite !== bFavorite) return bFavorite - aFavorite;
+      const aScore = exercisePopularityScores.get(a.id) ?? 0;
+      const bScore = exercisePopularityScores.get(b.id) ?? 0;
+      if (aScore !== bScore) return bScore - aScore;
       return a.name.localeCompare(b.name, "no");
     });
-  }, [exercises, programExerciseSearch, programExerciseCategoryFilter, programExerciseGroupFilter, favoriteExerciseIds, programsSubTab, trainerTab]);
+  }, [exercises, programExerciseSearch, programExerciseCategoryFilter, programExerciseGroupFilter, favoriteExerciseIds, programsSubTab, trainerTab, exercisePopularityScores]);
   const exercisesById = useMemo(() => new Map(exercises.map((exercise) => [exercise.id, exercise])), [exercises]);
   const activePeriodWeek = useMemo(
     () => periodWeeklyPlansDraft.find((week) => week.id === activePeriodWeekId) ?? periodWeeklyPlansDraft[0] ?? null,
@@ -5770,6 +5774,7 @@ function pickFirstName(value: unknown): string {
                         ) : null}
                         {visibleProgramExercises.map((exercise) => {
                           const isFavorite = favoriteExerciseIds.includes(exercise.id);
+                          const popularity = exercisePopularityScores.get(exercise.id) ?? 0;
                           return (
                             <div
                               key={exercise.id}
@@ -5783,7 +5788,7 @@ function pickFirstName(value: unknown): string {
                                   <img
                                     src={getExercisePreviewSrc(exercise)}
                                     alt={exercise.name}
-                                    className="mt-0.5 h-10 w-10 shrink-0 rounded-lg border object-cover bg-white"
+                                    className="mt-0.5 h-20 w-20 shrink-0 rounded-xl border object-cover bg-white"
                                     style={{ borderColor: "rgba(15,23,42,0.08)" }}
                                     loading="lazy"
                                     decoding="async"
@@ -5792,7 +5797,10 @@ function pickFirstName(value: unknown): string {
                                     }}
                                   />
                                   <div className="min-w-0">
-                                    <div className="font-medium text-sm">{exercise.name}</div>
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <div className="font-medium text-sm">{exercise.name}</div>
+                                      <ExerciseBankBadges popularity={popularity} isFavorite={isFavorite} variant="trainer" />
+                                    </div>
                                     <div className="text-xs text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
                                   </div>
                                 </button>
@@ -6425,7 +6433,7 @@ function pickFirstName(value: unknown): string {
                     ]}
                   />
                 </div>
-                <div className="text-xs text-slate-500">Favoritter vises alltid øverst, resten sorteres alfabetisk.</div>
+                <div className="text-xs text-slate-500">Favoritter og ofte brukte øvelser vises øverst.</div>
                 <div className="max-h-[560px] space-y-2 overflow-auto pr-1">
                   {visibleProgramExercises.length === 0 ? (
                     <EmptyState
@@ -6437,6 +6445,7 @@ function pickFirstName(value: unknown): string {
                   ) : null}
                   {visibleProgramExercises.map((exercise) => {
                     const isFavorite = favoriteExerciseIds.includes(exercise.id);
+                    const popularity = exercisePopularityScores.get(exercise.id) ?? 0;
                     return (
                       <div
                         key={exercise.id}
@@ -6450,7 +6459,7 @@ function pickFirstName(value: unknown): string {
                             <img
                               src={getExercisePreviewSrc(exercise)}
                               alt={exercise.name}
-                              className="mt-0.5 h-10 w-10 shrink-0 rounded-lg border object-cover bg-white"
+                              className="mt-0.5 h-20 w-20 shrink-0 rounded-xl border object-cover bg-white"
                               style={{ borderColor: "rgba(15,23,42,0.08)" }}
                               loading="lazy"
                               decoding="async"
@@ -6459,7 +6468,10 @@ function pickFirstName(value: unknown): string {
                               }}
                             />
                             <div className="min-w-0">
-                              <div className="font-medium text-sm">{exercise.name}</div>
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <div className="font-medium text-sm">{exercise.name}</div>
+                                <ExerciseBankBadges popularity={popularity} isFavorite={isFavorite} variant="trainer" />
+                              </div>
                               <div className="text-xs leading-5 text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
                             </div>
                           </button>
@@ -6665,7 +6677,7 @@ function pickFirstName(value: unknown): string {
                         <img
                           src={getExercisePreviewSrc(exercise)}
                           alt={exercise.name}
-                          className="mt-0.5 h-16 w-16 shrink-0 rounded-xl border object-cover bg-white shadow-sm"
+                          className="mt-0.5 h-20 w-20 shrink-0 rounded-xl border object-cover bg-white shadow-sm"
                           style={{ borderColor: `${categoryAccent}55` }}
                           loading="lazy"
                           decoding="async"
@@ -6676,15 +6688,8 @@ function pickFirstName(value: unknown): string {
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <div className="truncate text-sm font-semibold leading-tight text-slate-900">{exercise.name}</div>
-                            {isRecommendedExercise(popularity, isFavorite) ? (
-                              <span className="rounded-full bg-teal-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                                Anbefalt
-                              </span>
-                            ) : null}
-                            {isPopularExercise(popularity) ? (
-                              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-900">
-                                Ofte brukt
-                              </span>
+                            {isRecommendedExercise(popularity, isFavorite) || isPopularExercise(popularity) ? (
+                              <ExerciseBankBadges popularity={popularity} isFavorite={isFavorite} variant="trainer" />
                             ) : null}
                           </div>
                           <div className="mt-1 flex flex-wrap gap-1.5 text-[11px]">

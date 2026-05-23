@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { EXERCISE_CATEGORY_OPTIONS, exerciseCategoryAccentColor, isHoldBasedExerciseCategory } from "../app/exerciseCategories";
-import { EXERCISE_IMAGE_THUMB_CLASS } from "../app/exerciseIllustrations/constants";
+import { EXERCISE_IMAGE_SMALL_CLASS } from "../app/exerciseIllustrations/constants";
 import { getMedicalSketchFallbackDataUri, resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { compressImageDataUrl, compressImageFile } from "../app/imageCompress";
 import { uploadProgramCoverImageToSupabase } from "../app/programImageUpload";
@@ -1858,7 +1858,7 @@ export function InspirationHub({
                           <img
                             src={getExercisePreviewSrc(exercise)}
                             alt=""
-                            className={EXERCISE_IMAGE_THUMB_CLASS}
+                            className={EXERCISE_IMAGE_SMALL_CLASS}
                             style={{ borderColor: "rgba(15,23,42,0.08)" }}
                             loading="lazy"
                             onError={(event) => {

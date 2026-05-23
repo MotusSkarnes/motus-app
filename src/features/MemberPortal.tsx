@@ -5521,6 +5521,7 @@ export function MemberPortal(props: MemberPortalProps) {
               <CustomWorkoutBuilder
                 exercises={exercises}
                 completedLogs={completedLogs}
+                memberPrograms={memberAssignedPrograms}
                 activeMemberId={activeMemberId}
                 memberDisplayName={viewedMember?.name?.trim() || editableMember?.name?.trim() || ""}
                 currentUserEmail={currentUserEmail}

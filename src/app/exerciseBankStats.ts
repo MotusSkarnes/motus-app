@@ -34,10 +34,30 @@ export function computeExercisePopularityScores(
   return scores;
 }
 
+export function isRecommendedExercise(score: number, isFavorite: boolean): boolean {
+  return isFavorite || score >= 8;
+}
+
 export function isPopularExercise(score: number): boolean {
   return score >= 4;
 }
 
-export function isRecommendedExercise(score: number, isFavorite: boolean): boolean {
-  return isFavorite || score >= 8;
+/** Øvelser som finnes i trener-tildelte programmer for medlemmet. */
+export function computeTrainerProgramExerciseIds(programs: TrainingProgram[], memberId: string): Set<string> {
+  const ids = new Set<string>();
+  const scopedMemberId = memberId.trim();
+  if (!scopedMemberId) return ids;
+
+  for (const program of programs) {
+    if (program.memberId !== scopedMemberId) continue;
+    const fromTrainer =
+      program.programCreatedBy === "trainer" || Boolean(program.assignedTrainerName?.trim());
+    if (!fromTrainer) continue;
+    for (const row of program.exercises) {
+      const exerciseId = row.exerciseId.trim();
+      if (exerciseId) ids.add(exerciseId);
+    }
+  }
+
+  return ids;
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { GripVertical, Lightbulb, Plus, Search, Sparkles, Star, Trash2 } from "lucide-react";
+import { GripVertical, Lightbulb, Plus, Search, Sparkles, Trash2 } from "lucide-react";
 import {
   buildCustomWorkoutInsights,
   buildCustomWorkoutPreview,
@@ -15,6 +15,7 @@ import {
 import { MOTUS } from "../app/data";
 import { exerciseCategoryAccentColor, isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
+import { computeExercisePopularityScores, computeTrainerProgramExerciseIds } from "../app/exerciseBankStats";
 import { uploadProgramCoverImageToSupabase } from "../app/programImageUpload";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { EXERCISE_IMAGE_MEDIUM_CLASS } from "../app/exerciseIllustrations/constants";
@@ -22,6 +23,7 @@ import type { Exercise, ProgramExercise, TrainingProgram, WorkoutLog } from "../
 import { uid } from "../app/storage";
 import { Card, EmptyState, GradientButton, MotusSectionIcon, OutlineButton, PillButton, StatusMessage, TextInput } from "../app/ui";
 import { ProgramCoverImageField } from "./ProgramCoverImageField";
+import { ExerciseBankListCard } from "./ExerciseBankListCard";
 import { splitMuscleGroupLabel } from "./muscleSplitStats";
 
 const BANK_PREVIEW = 40;
@@ -33,6 +35,7 @@ type StartWorkoutModeOptions = {
 type CustomWorkoutBuilderProps = {
   exercises: Exercise[];
   completedLogs: WorkoutLog[];
+  memberPrograms?: TrainingProgram[];
   activeMemberId: string;
   memberDisplayName: string;
   currentUserEmail: string;
@@ -75,6 +78,7 @@ function MuscleGroupChips({ group }: { group: string }) {
 export function CustomWorkoutBuilder({
   exercises,
   completedLogs,
+  memberPrograms = [],
   activeMemberId,
   memberDisplayName,
   currentUserEmail,
@@ -146,6 +150,16 @@ export function CustomWorkoutBuilder({
 
   const draftExerciseIds = useMemo(() => new Set(lines.map((line) => line.exerciseId)), [lines]);
 
+  const exercisePopularityScores = useMemo(
+    () => computeExercisePopularityScores(exercises, memberPrograms, completedLogs),
+    [completedLogs, exercises, memberPrograms],
+  );
+
+  const trainerProgramExerciseIds = useMemo(
+    () => computeTrainerProgramExerciseIds(memberPrograms, activeMemberId),
+    [activeMemberId, memberPrograms],
+  );
+
   const draftExercises = useMemo(
     () =>
       lines
@@ -198,9 +212,15 @@ export function CustomWorkoutBuilder({
       const aFavorite = favoriteExerciseIds.includes(a.id) ? 1 : 0;
       const bFavorite = favoriteExerciseIds.includes(b.id) ? 1 : 0;
       if (aFavorite !== bFavorite) return bFavorite - aFavorite;
+      const aTrainer = trainerProgramExerciseIds.has(a.id) ? 1 : 0;
+      const bTrainer = trainerProgramExerciseIds.has(b.id) ? 1 : 0;
+      if (aTrainer !== bTrainer) return bTrainer - aTrainer;
+      const aScore = exercisePopularityScores.get(a.id) ?? 0;
+      const bScore = exercisePopularityScores.get(b.id) ?? 0;
+      if (aScore !== bScore) return bScore - aScore;
       return a.name.localeCompare(b.name, "nb");
     });
-  }, [bankFiltered, favoriteExerciseIds]);
+  }, [bankFiltered, exercisePopularityScores, favoriteExerciseIds, trainerProgramExerciseIds]);
 
   const bankVisible = useMemo(() => {
     if (showAllBank || search.trim()) return bankSorted;
@@ -553,14 +573,15 @@ export function CustomWorkoutBuilder({
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Anbefalt for deg</div>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 {recommendedExercises.slice(0, 4).map((exercise) => (
-                  <ExerciseBankCard
+                  <ExerciseBankListCard
                     key={`rec-${exercise.id}`}
                     exercise={exercise}
+                    compact
                     added={draftExerciseIds.has(exercise.id)}
-                    favorite={favoriteExerciseIds.includes(exercise.id)}
+                    popularity={exercisePopularityScores.get(exercise.id) ?? 0}
+                    isTrainerProgram={trainerProgramExerciseIds.has(exercise.id)}
                     onToggleFavorite={() => toggleFavorite(exercise.id)}
                     onAdd={() => addLine(exercise.id)}
-                    compact
                   />
                 ))}
               </div>
@@ -639,11 +660,13 @@ export function CustomWorkoutBuilder({
             ) : (
               <div className="mt-3 max-h-[min(52vh,420px)] space-y-2 overflow-y-auto pr-1">
                 {bankVisible.map((exercise) => (
-                  <ExerciseBankCard
+                  <ExerciseBankListCard
                     key={exercise.id}
                     exercise={exercise}
                     added={draftExerciseIds.has(exercise.id)}
-                    favorite={favoriteExerciseIds.includes(exercise.id)}
+                    popularity={exercisePopularityScores.get(exercise.id) ?? 0}
+                    isFavorite={favoriteExerciseIds.includes(exercise.id)}
+                    isTrainerProgram={trainerProgramExerciseIds.has(exercise.id)}
                     onToggleFavorite={() => toggleFavorite(exercise.id)}
                     onAdd={() => addLine(exercise.id)}
                     draggable
@@ -662,78 +685,5 @@ export function CustomWorkoutBuilder({
         </div>
       </div>
     </Card>
-  );
-}
-
-function ExerciseBankCard({
-  exercise,
-  added,
-  favorite,
-  onToggleFavorite,
-  onAdd,
-  compact = false,
-  draggable = false,
-  onDragStart,
-}: {
-  exercise: Exercise;
-  added: boolean;
-  favorite: boolean;
-  onToggleFavorite: () => void;
-  onAdd: () => void;
-  compact?: boolean;
-  draggable?: boolean;
-  onDragStart?: () => void;
-}) {
-  const accent = exerciseCategoryAccentColor(exercise.category);
-  return (
-    <div
-      draggable={draggable}
-      onDragStart={(event) => {
-        event.dataTransfer.setData("text/plain", exercise.id);
-        onDragStart?.();
-      }}
-      className={`flex items-center gap-3 rounded-2xl border bg-white p-3 transition hover:shadow-md ${
-        compact ? "p-2.5" : ""
-      } ${draggable ? "cursor-grab active:cursor-grabbing" : ""}`}
-      style={{ borderColor: "rgba(15,23,42,0.1)" }}
-    >
-      <img
-        src={resolveExerciseImageSrc(exercise)}
-        alt=""
-        className={`${compact ? "h-12 w-12" : "h-16 w-16"} shrink-0 rounded-xl border object-cover bg-white`}
-        style={{ borderColor: accent }}
-      />
-      <div className="min-w-0 flex-1">
-        <div className="font-semibold text-sm text-slate-900">{exercise.name}</div>
-        <div className="mt-0.5 text-[11px] text-slate-500">{exercise.category}</div>
-        <MuscleGroupChips group={exercise.group} />
-      </div>
-      <div className="flex shrink-0 flex-col items-end gap-1.5">
-        <button
-          type="button"
-          onClick={onToggleFavorite}
-          className={`rounded-lg p-1.5 transition ${favorite ? "text-amber-500" : "text-slate-300 hover:text-amber-400"}`}
-          aria-label={favorite ? "Fjern favoritt" : "Legg til favoritt"}
-        >
-          <Star className={`h-4 w-4 ${favorite ? "fill-current" : ""}`} />
-        </button>
-        <button
-          type="button"
-          disabled={added}
-          onClick={onAdd}
-          className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
-            added
-              ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-              : "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
-          }`}
-        >
-          {added ? "Lagt til" : (
-            <span className="inline-flex items-center gap-1">
-              <Plus className="h-3.5 w-3.5" /> Legg til
-            </span>
-          )}
-        </button>
-      </div>
-    </div>
   );
 }
