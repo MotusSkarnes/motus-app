@@ -527,13 +527,7 @@ export function LiveWorkoutSessionModal({
   return (
     <div className="motus-workout-focus fixed inset-0 z-[10010] overscroll-contain bg-black">
       <div className="motus-workout-focus-panel mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden bg-slate-950 text-white shadow-2xl sm:rounded-3xl">
-        <div
-          className="relative overflow-hidden border-b border-white/10 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-5 sm:pb-4 sm:pt-5"
-          style={{
-            background:
-              "radial-gradient(circle at 86% 0%, rgba(217,18,120,0.24), rgba(217,18,120,0) 34%), radial-gradient(circle at 12% 12%, rgba(48,227,190,0.28), rgba(48,227,190,0) 38%), linear-gradient(135deg, #020617 0%, #0f172a 100%)",
-          }}
-        >
+        <div className="relative overflow-hidden border-b border-white/10 bg-slate-900 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-5 sm:pb-4 sm:pt-5">
           <div className="flex items-center justify-between gap-2 sm:gap-3">
             <button
               type="button"
@@ -681,12 +675,7 @@ export function LiveWorkoutSessionModal({
                         key={exercise.id}
                         type="button"
                         onClick={() => handleReplaceCurrentWorkoutExercise(exercise.id)}
-                        className="w-full rounded-lg border px-3 py-2 text-left text-xs font-medium transition hover:opacity-90"
-                        style={{
-                          borderColor: "rgba(20,184,166,0.35)",
-                          color: MOTUS.ink,
-                          background: "linear-gradient(135deg, rgba(20,184,166,0.10) 0%, rgba(236,72,153,0.10) 100%)",
-                        }}
+                        className="w-full rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-left text-xs font-medium text-slate-800 transition hover:bg-teal-100"
                       >
                         {exercise.name} · {exercise.group}
                       </button>
@@ -835,7 +824,7 @@ export function LiveWorkoutSessionModal({
           ) : null}
         </div>
 
-        <div className="sticky bottom-0 border-t border-white/10 bg-slate-950/92 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-slate-900 shadow-2xl backdrop-blur-xl sm:p-4">
+        <div className="sticky bottom-0 border-t border-white/10 bg-slate-950 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-slate-900 shadow-lg sm:p-4">
           {nextWorkoutGroup && !isLastWorkoutGroup && !showWorkoutReflection ? (
             <button
               type="button"

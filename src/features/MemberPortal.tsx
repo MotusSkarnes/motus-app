@@ -4540,7 +4540,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
                     <div className="inline-flex items-center gap-1.5">
-                      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
+                      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: MOTUS.turquoise }} />
                       <span>Fullført</span>
                     </div>
                     <div className="inline-flex items-center gap-1.5">
@@ -4685,11 +4685,8 @@ export function MemberPortal(props: MemberPortalProps) {
                 aria-labelledby="pr-celebration-heading"
               >
                 <div className="flex flex-col items-center text-center">
-                  <div
-                    className="rounded-2xl p-4 shadow-lg"
-                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, #059669 52%, ${MOTUS.pink} 100%)` }}
-                  >
-                    <Trophy className="h-11 w-11 text-white drop-shadow-sm" aria-hidden />
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                    <Trophy className="h-11 w-11" aria-hidden />
                   </div>
                   <p className="mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Ny personlig rekord</p>
                   <h2 id="pr-celebration-heading" className="mt-2 text-2xl font-bold tracking-tight text-slate-900">

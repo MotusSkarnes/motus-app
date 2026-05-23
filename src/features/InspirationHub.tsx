@@ -860,22 +860,18 @@ export function InspirationHub({
         ) : null}
         <button type="button" onClick={() => openInspirationItem(item)} className="flex min-h-0 flex-1 flex-col text-left">
           <div
-            className={`w-full shrink-0 overflow-hidden bg-slate-100 ${INSPO_FEED_CARD_IMAGE_CLASS}`}
-            style={!item.imageUrl ? { background: MOTUS_GRADIENT } : undefined}
+            className={`w-full shrink-0 overflow-hidden ${INSPO_FEED_CARD_IMAGE_CLASS} ${item.imageUrl ? "bg-slate-100" : "bg-[#F3F5F7]"}`}
           >
             {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
             {!item.imageUrl ? (
-              <div className="flex h-full w-full items-center justify-center text-white/90">
-                <Icon className="h-9 w-9 drop-shadow-sm" />
+              <div className="flex h-full w-full items-center justify-center text-teal-600/80">
+                <Icon className="h-9 w-9" />
               </div>
             ) : null}
           </div>
           <div className="flex min-h-0 flex-1 flex-col px-2 pb-2 pt-1.5">
             <div className="flex min-h-[1.125rem] items-center justify-between gap-1.5">
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm"
-                style={{ background: MOTUS_GRADIENT }}
-              >
+              <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-1.5 py-0.5 text-[9px] font-bold text-teal-800 ring-1 ring-teal-100">
                 <Icon className="h-2.5 w-2.5" />
                 {item.kind === "periodPlan" ? "Ukesplan" : item.kind === "program" ? "Program" : meta.label}
               </span>
@@ -1272,16 +1268,13 @@ export function InspirationHub({
               <img src={expandedItem.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
           </div>
           ) : (
-            <div className="flex aspect-[4/3] w-full items-center justify-center sm:aspect-[16/10]" style={{ background: MOTUS_GRADIENT }}>
-              <DetailIcon className="h-16 w-16 text-white/90 drop-shadow-sm" />
+            <div className="flex aspect-[4/3] w-full items-center justify-center bg-[#F3F5F7] sm:aspect-[16/10]">
+              <DetailIcon className="h-16 w-16 text-teal-600/70" />
           </div>
           )}
           <div className="p-4 sm:p-6">
             <div className="flex flex-wrap items-center gap-2">
-              <span
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold text-white shadow-sm"
-                style={{ background: MOTUS_GRADIENT }}
-              >
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-bold text-teal-800 ring-1 ring-teal-100">
                 <DetailIcon className="h-3.5 w-3.5" />
                 {expandedItem.kind === "periodPlan" ? "Ukesplan" : expandedItem.kind === "program" ? "Program" : detailMeta.label}
               </span>
@@ -1547,9 +1540,9 @@ export function InspirationHub({
           <div className="mx-auto min-w-0 max-w-5xl rounded-2xl border bg-white p-4 shadow-xl" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
-            <span className="rounded-lg p-2 text-white" style={{ background: MOTUS_GRADIENT }}>
+            <MotusSectionIcon className="!p-2">
               {editingItemId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            </span>
+            </MotusSectionIcon>
             <div className="min-w-0">
               <div className="font-semibold text-slate-900">{editingItemId ? "Rediger inspirasjon" : "Legg ut inspirasjon"}</div>
               <div className="text-xs text-slate-500">
