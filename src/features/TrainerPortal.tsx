@@ -2661,7 +2661,7 @@ function pickFirstName(value: unknown): string {
   <style>
     body { font-family: Arial, sans-serif; margin: 0; color: #0f172a; background: #f8fafc; }
     .page { padding: 10px; max-width: 940px; margin: 0 auto; }
-    .header-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; border-radius: 10px; padding: 8px 10px; background: linear-gradient(135deg, #14b8a6 0%, #ec4899 100%); color: #fff; }
+    .header-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; border-radius: 10px; padding: 8px 10px; background: #0d9488; color: #fff; }
     .header-main { min-width: 0; padding-top: 1px; }
     .brand-logo-frame { display: inline-flex; align-items: center; flex-shrink: 0; padding: 0; background: transparent; box-shadow: none; }
     .brand-logo { height: 56px; width: auto; max-width: 208px; object-fit: contain; display: block; }
@@ -4241,13 +4241,13 @@ function pickFirstName(value: unknown): string {
                       key={dateIso}
                       type="button"
                       onClick={() => setSelectedTodoDate(dateIso)}
-                      className={`rounded-lg px-1 py-2 text-center text-xs ${isSelected ? "text-white font-semibold" : "text-slate-600 bg-white"}`}
+                      className={`rounded-lg px-1 py-2 text-center text-xs ${isSelected ? "bg-teal-600 font-semibold text-white" : "text-slate-600 bg-white"}`}
                       style={
-                        isSelected
-                          ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
-                          : hasTodo
+                        !isSelected && hasTodo
                           ? { border: `1px solid ${MOTUS.turquoise}` }
-                          : { border: "1px solid rgba(15,23,42,0.06)" }
+                          : !isSelected
+                            ? { border: "1px solid rgba(15,23,42,0.06)" }
+                            : undefined
                       }
                     >
                       {day}
@@ -5371,13 +5371,9 @@ function pickFirstName(value: unknown): string {
                                     type="button"
                                     onClick={() => toggleGradientPeriodWeek(week.id)}
                                     className={`rounded-md border px-1 py-1.5 text-center text-xs font-semibold leading-tight transition ${
-                                      marked ? "text-white shadow-sm" : "bg-white text-slate-700 hover:bg-slate-50"
+                                      marked ? "border-transparent bg-teal-600 text-white shadow-sm" : "bg-white text-slate-700 hover:bg-slate-50"
                                     } ${isActive ? "ring-2 ring-teal-200" : ""}`}
-                                    style={
-                                      marked
-                                        ? { borderColor: "transparent", background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
-                                        : { borderColor: "rgba(15,23,42,0.08)" }
-                                    }
+                                    style={marked ? undefined : { borderColor: "rgba(15,23,42,0.08)" }}
                                     aria-pressed={marked}
                                   >
                                     Uke {week.weekNumber}
@@ -5803,12 +5799,7 @@ function pickFirstName(value: unknown): string {
                                 <button
                                   type="button"
                                   onClick={() => toggleFavoriteExercise(exercise.id)}
-                                  className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent text-white" : "border-slate-200 text-slate-400"}`}
-                                  style={
-                                    isFavorite
-                                      ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
-                                      : { borderColor: "rgba(148,163,184,0.45)" }
-                                  }
+                                  className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent bg-teal-500 text-white" : "border-slate-200 text-slate-400"}`}
                                   aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                                   title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                                 >
@@ -6052,7 +6043,7 @@ function pickFirstName(value: unknown): string {
                             {showDateDivider ? (
                               <div className="my-2 text-center text-[11px] font-medium text-slate-400">{dateKey}</div>
                             ) : null}
-                            <div className={`max-w-[88%] rounded-xl p-3 text-sm ${message.id === selectedMessages[selectedMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "trainer" ? "ml-auto border border-transparent text-white" : "border bg-slate-50 text-slate-700"}`} style={message.sender === "trainer" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
+                            <div className={`max-w-[88%] rounded-xl p-3 text-sm ${message.id === selectedMessages[selectedMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "trainer" ? "ml-auto border border-transparent bg-teal-600 text-white" : "border bg-slate-50 text-slate-700"}`} style={message.sender === "trainer" ? undefined : { borderColor: "rgba(15,23,42,0.08)" }}>
                               <div>{message.text}</div>
                               <div className={`mt-1 text-[11px] ${message.sender === "trainer" ? "text-slate-500" : "text-slate-500"}`}>{message.createdAt}</div>
                             </div>
@@ -6475,12 +6466,7 @@ function pickFirstName(value: unknown): string {
                           <button
                             type="button"
                             onClick={() => toggleFavoriteExercise(exercise.id)}
-                            className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent text-white" : "border-slate-200 text-slate-400"}`}
-                            style={
-                              isFavorite
-                                ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
-                                : { borderColor: "rgba(148,163,184,0.45)" }
-                            }
+                            className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent bg-teal-500 text-white" : "border-slate-200 text-slate-400"}`}
                             aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                             title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                           >
@@ -6691,10 +6677,7 @@ function pickFirstName(value: unknown): string {
                           <div className="flex flex-wrap items-center gap-1.5">
                             <div className="truncate text-sm font-semibold leading-tight text-slate-900">{exercise.name}</div>
                             {isRecommendedExercise(popularity, isFavorite) ? (
-                              <span
-                                className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-                                style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                              >
+                              <span className="rounded-full bg-teal-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                                 Anbefalt
                               </span>
                             ) : null}
@@ -6723,12 +6706,7 @@ function pickFirstName(value: unknown): string {
                         <button
                           type="button"
                           onClick={() => toggleFavoriteExercise(exercise.id)}
-                          className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent text-white" : "border-slate-200 text-slate-400"}`}
-                          style={
-                            isFavorite
-                              ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
-                              : { borderColor: "rgba(148,163,184,0.45)" }
-                          }
+                          className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent bg-teal-500 text-white" : "border-slate-200 text-slate-400"}`}
                           aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                           title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                         >

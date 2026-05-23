@@ -4226,7 +4226,7 @@ export function MemberPortal(props: MemberPortalProps) {
   <style>
     body { font-family: Arial, sans-serif; margin: 0; color: #0f172a; background: #f8fafc; }
     .page { padding: 10px; max-width: 940px; margin: 0 auto; }
-    .header-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; border-radius: 10px; padding: 8px 10px; background: linear-gradient(135deg, #14b8a6 0%, #ec4899 100%); color: #fff; }
+    .header-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; border-radius: 10px; padding: 8px 10px; background: #0d9488; color: #fff; }
     .header-main { min-width: 0; padding-top: 1px; }
     .brand-logo-frame { display: inline-flex; align-items: center; flex-shrink: 0; padding: 0; background: transparent; box-shadow: none; }
     .brand-logo { height: 56px; width: auto; max-width: 208px; object-fit: contain; display: block; }
@@ -4511,22 +4511,13 @@ export function MemberPortal(props: MemberPortalProps) {
                             selectedCalendarDay === day ? "ring-2 ring-slate-900/10" : ""
                           } ${
                             calendarDayStatusByDay.get(day) === "completed"
-                              ? "font-semibold text-white"
+                              ? "bg-teal-600 font-semibold text-white"
                               : calendarDayStatusByDay.get(day) === "missed"
                                 ? "bg-rose-50/80 text-rose-700"
                                 : calendarDayStatusByDay.get(day) === "planned"
                                   ? "bg-emerald-50/70 text-emerald-800"
                                   : "bg-slate-50/90 text-slate-600"
                           }`}
-                          style={(() => {
-                            const status = calendarDayStatusByDay.get(day);
-                            if (status === "completed") {
-                              return {
-                                background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
-                              };
-                            }
-                            return undefined;
-                          })()}
                           title={
                             calendarDayStatusByDay.get(day) === "completed"
                               ? `${calendarDayLoad.get(day)} økt${calendarDayLoad.get(day) === 1 ? "" : "er"} fullført`
@@ -5638,10 +5629,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     ) : null}
                     {activePeriodPlan ? (
                       <div
-                        className="overflow-hidden rounded-2xl border-0 p-0 shadow-md ring-1 ring-teal-500/15"
-                        style={{
-                          background: `linear-gradient(145deg, ${MOTUS.paleMint} 0%, #ffffff 55%, #f1f5f9 100%)`,
-                        }}
+                        className="overflow-hidden rounded-2xl border bg-white p-0 shadow-md ring-1 ring-teal-500/15"
                       >
                         <div className="border-b border-teal-900/10 px-4 py-3 sm:px-5 sm:py-4" style={{ background: "rgba(255,255,255,0.55)" }}>
                           <div className="text-base font-bold leading-snug text-slate-900 sm:text-lg">{activePeriodPlan.title}</div>
@@ -6282,7 +6270,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     />
                   ) : null}
                   {memberMessages.map((message) => (
-                    <div key={message.id} className={`max-w-[85%] rounded-xl p-3 text-sm ${message.id === memberMessages[memberMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "member" ? "text-white ml-auto" : "bg-white border"}`} style={message.sender === "member" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div key={message.id} className={`max-w-[85%] rounded-xl p-3 text-sm ${message.id === memberMessages[memberMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "member" ? "ml-auto bg-teal-600 text-white" : "border bg-white"}`} style={message.sender === "member" ? undefined : { borderColor: "rgba(15,23,42,0.08)" }}>
                       <div>{message.text}</div>
                       <div className={`mt-1 text-[11px] ${message.sender === "member" ? "text-white/80" : "text-slate-500"}`}>{message.createdAt}</div>
                     </div>
