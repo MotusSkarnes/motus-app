@@ -155,6 +155,8 @@ export type TrainingProgram = {
   programCreatedByName?: string;
   /** Medlem: arkiver fra hovedlisten (ikke sletting). */
   memberLibraryStatus?: MemberProgramLibraryStatus;
+  /** Valgfritt forsidebilde på programkort (URL). */
+  imageUrl?: string;
   /** Not persisted; removed after økt fullføres eller avbrytes. */
   ephemeral?: boolean;
 };

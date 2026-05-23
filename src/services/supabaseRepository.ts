@@ -307,6 +307,24 @@ function isTrainingProgramAuthorColumnDbError(message: string): boolean {
   );
 }
 
+function isTrainingProgramImageColumnDbError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes("image_url") &&
+    (m.includes("does not exist") || m.includes("schema cache") || m.includes("pgrst204") || m.includes("could not find"))
+  );
+}
+
+function isTrainingProgramOptionalColumnDbError(message: string): boolean {
+  return isTrainingProgramAuthorColumnDbError(message) || isTrainingProgramImageColumnDbError(message);
+}
+
+function programImageDbField(imageUrl?: string): { image_url: string | null } | Record<string, never> {
+  if (imageUrl === undefined) return {};
+  const trimmed = imageUrl.trim();
+  return { image_url: trimmed || null };
+}
+
 function isMemberLibraryStatusColumnDbError(message: string): boolean {
   const m = message.toLowerCase();
   return (
@@ -764,9 +782,10 @@ async function persistProgramDirectTrainer(
     notes: input.notes,
     exercises: input.exercises,
     created_at: timestamp,
+    ...programImageDbField(input.imageUrl),
   };
   let { error } = await supabaseClient.from("training_programs").upsert({ ...rowBase, ...authorDb }, { onConflict: "id" });
-  if (error && isTrainingProgramAuthorColumnDbError(error.message)) {
+  if (error && isTrainingProgramOptionalColumnDbError(error.message)) {
     ({ error } = await supabaseClient.from("training_programs").upsert(rowBase, { onConflict: "id" }));
   }
   if (error) {
@@ -855,6 +874,7 @@ async function persistProgramTrainer(
     membershipType: hints?.membershipType ?? "",
     programCreatedBy: input.programCreatedBy,
     programCreatedByName: input.programCreatedByName,
+    imageUrl: input.imageUrl,
   });
 
   if (timedOut) {
@@ -929,6 +949,7 @@ async function persistProgram(
     membershipType: hints?.membershipType ?? "",
     programCreatedBy: input.programCreatedBy,
     programCreatedByName: input.programCreatedByName,
+    imageUrl: input.imageUrl,
   });
   if (timedOut) {
     return { ok: false, message: "Lagring tok for lang tid. Sjekk nettverk og prøv igjen." };
@@ -1036,12 +1057,13 @@ async function persistProgram(
       notes: input.notes,
       exercises: input.exercises,
       created_at: timestamp,
+      ...programImageDbField(input.imageUrl),
     };
     let { error: primaryError } = await supabaseClient.from("training_programs").upsert(
       { ...rowBase, ...authorDb },
       { onConflict: "id" },
     );
-    if (primaryError && isTrainingProgramAuthorColumnDbError(primaryError.message)) {
+    if (primaryError && isTrainingProgramOptionalColumnDbError(primaryError.message)) {
       ({ error: primaryError } = await supabaseClient.from("training_programs").upsert(rowBase, { onConflict: "id" }));
     }
     if (primaryError) {
@@ -1073,10 +1095,11 @@ async function persistProgram(
         notes: input.notes,
         exercises: input.exercises,
         created_at: timestamp,
+        ...programImageDbField(input.imageUrl),
         ...authorDb,
       };
       let { error: updateError } = await supabaseClient.from("training_programs").update(updatePayload).eq("id", existingId);
-      if (updateError && isTrainingProgramAuthorColumnDbError(updateError.message)) {
+      if (updateError && isTrainingProgramOptionalColumnDbError(updateError.message)) {
         ({ error: updateError } = await supabaseClient
           .from("training_programs")
           .update({
@@ -1084,6 +1107,7 @@ async function persistProgram(
             notes: input.notes,
             exercises: input.exercises,
             created_at: timestamp,
+            ...programImageDbField(input.imageUrl),
           })
           .eq("id", existingId));
       }
@@ -1102,9 +1126,10 @@ async function persistProgram(
       notes: input.notes,
       exercises: input.exercises,
       created_at: timestamp,
+      ...programImageDbField(input.imageUrl),
     };
     let { error: insertError } = await supabaseClient.from("training_programs").insert({ ...insertBase, ...authorDb });
-    if (insertError && isTrainingProgramAuthorColumnDbError(insertError.message)) {
+    if (insertError && isTrainingProgramOptionalColumnDbError(insertError.message)) {
       ({ error: insertError } = await supabaseClient.from("training_programs").insert(insertBase));
     }
     if (insertError) {
@@ -2739,6 +2764,7 @@ function trainingProgramFromHydrateRow(program: Record<string, unknown>): Traini
   const rawLibrary = String(program.member_library_status ?? "").trim().toLowerCase();
   const memberLibraryStatus: MemberProgramLibraryStatus | undefined =
     rawLibrary === "hidden" || rawLibrary === "archived" ? "archived" : undefined;
+  const imageUrl = String(program.image_url ?? "").trim();
   return {
     id: String(program.id ?? ""),
     memberId: String(program.member_id ?? ""),
@@ -2753,6 +2779,7 @@ function trainingProgramFromHydrateRow(program: Record<string, unknown>): Traini
       ? { programCreatedBy, programCreatedByName: programCreatedByName || undefined }
       : {}),
     ...(memberLibraryStatus ? { memberLibraryStatus } : {}),
+    ...(imageUrl ? { imageUrl } : {}),
   };
 }
 
@@ -3157,7 +3184,7 @@ export async function fetchProgramsFromSupabase(): Promise<TrainingProgram[] | n
   const { data, error } = await supabaseClient
     .from("training_programs")
     .select(
-      "id, member_id, title, goal, notes, exercises, created_at, member_library_status, owner_user_id, program_created_by, program_created_by_name",
+      "id, member_id, title, goal, notes, exercises, created_at, member_library_status, owner_user_id, program_created_by, program_created_by_name, image_url",
     )
     .order("created_at", { ascending: false });
 

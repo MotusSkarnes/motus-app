@@ -113,6 +113,8 @@ import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
 import { ProgramExerciseBlockActions } from "./ProgramExerciseBlockActions";
 import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
 import { TrainingProgramPreviewModal } from "./TrainingProgramPreviewModal";
+import { ProgramCoverImageField } from "./ProgramCoverImageField";
+import { uploadProgramCoverImageToSupabase } from "../app/programImageUpload";
 
 const CUSTOMER_CARD_ACTION_BTN = "!min-h-8 !px-2.5 !py-1.5 !text-xs !rounded-md";
 
@@ -211,6 +213,7 @@ type TrainerPortalProps = {
     notes: string;
     memberId: string;
     exercises: ProgramExercise[];
+    imageUrl?: string;
     programCreatedBy?: "member" | "trainer";
     programCreatedByName?: string;
   }) => void;
@@ -669,6 +672,8 @@ function pickFirstName(value: unknown): string {
   const [programTitle, setProgramTitle] = useState("Nytt treningsprogram");
   const [programGoal, setProgramGoal] = useState("");
   const [programNotes, setProgramNotes] = useState("");
+  const [programFormImageUrl, setProgramFormImageUrl] = useState("");
+  const [isUploadingProgramImage, setIsUploadingProgramImage] = useState(false);
   const [trainerMessage, setTrainerMessage] = useState("");
   const [isSendingTrainerMessage, setIsSendingTrainerMessage] = useState(false);
   const isSendingTrainerMessageRef = useRef(false);
@@ -2014,6 +2019,7 @@ function pickFirstName(value: unknown): string {
     setProgramTitle(program.title);
     setProgramGoal(program.goal);
     setProgramNotes(program.notes);
+    setProgramFormImageUrl(program.imageUrl ?? "");
     setProgramExercisesDraft(program.exercises.map((exercise) => ({ ...exercise })));
     setCustomerProgramBuilderFocus("training");
     setCustomerSubTab("programs");
@@ -2025,6 +2031,7 @@ function pickFirstName(value: unknown): string {
     setProgramTitle("Nytt treningsprogram");
     setProgramGoal("");
     setProgramNotes("");
+    setProgramFormImageUrl("");
     setProgramExercisesDraft([]);
   }
 
@@ -2260,6 +2267,7 @@ function pickFirstName(value: unknown): string {
       exercises: editingTemplateProgramId
         ? programExercisesDraft.map((exercise) => ({ ...exercise }))
         : programExercisesDraft.map((exercise) => ({ ...exercise, id: uid("template-ex") })),
+      imageUrl: programFormImageUrl,
     });
     if (editingTemplateProgramId) {
       setTemplateAssignStatus("Treningsmal oppdatert.");
@@ -2276,6 +2284,7 @@ function pickFirstName(value: unknown): string {
     setEditingTemplateProgramId(program.id);
     setExpandedTemplateProgramId(program.id);
     setTemplateProgramTitle(program.title);
+    setProgramFormImageUrl(program.imageUrl ?? "");
     setProgramExercisesDraft(program.exercises.map((exercise) => ({ ...exercise })));
     setTemplateAssignStatus(`Redigerer mal: ${program.title}`);
   }
@@ -2283,6 +2292,7 @@ function pickFirstName(value: unknown): string {
   function resetTemplateProgramBuilder() {
     setEditingTemplateProgramId(null);
     setTemplateProgramTitle("Ny treningsmal");
+    setProgramFormImageUrl("");
     setProgramExercisesDraft([]);
     setTemplateAssignStatus(null);
   }
@@ -2337,6 +2347,7 @@ function pickFirstName(value: unknown): string {
         notes: template.notes,
         memberId,
         exercises: template.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
+        imageUrl: template.imageUrl,
         programCreatedBy: "trainer",
         programCreatedByName: trainerAuthor,
       });
@@ -2356,6 +2367,7 @@ function pickFirstName(value: unknown): string {
     goal: string;
     notes: string;
     exercises: ProgramExercise[];
+    imageUrl?: string;
   }): boolean {
     if (isLocalDemoSession) {
       setProgramSaveStatus("Demo-innlogging: program lagres ikke til medlem. Logg inn med ekte konto.");
@@ -2380,6 +2392,7 @@ function pickFirstName(value: unknown): string {
       goal: input.goal,
       notes: input.notes,
       memberId: selectedMemberId,
+      imageUrl: input.imageUrl,
       exercises: (input.id ? input.exercises : input.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") }))).map(
         (exercise) => normalizeProgramExerciseForCategory(exercise, exercisesById.get(exercise.exerciseId)?.category),
       ),
@@ -3564,6 +3577,29 @@ function pickFirstName(value: unknown): string {
         setExerciseFormStatus(`Øvelsen "${exercise.name}" er skjult fra øvelsesbank.`);
       },
     });
+  }
+
+  async function handleProgramImageUpload(file: File | null) {
+    if (!file) return;
+    if (!supabaseClient) {
+      setProgramSaveStatus("Bildefunksjonen er ikke tilgjengelig akkurat nå.");
+      return;
+    }
+    setIsUploadingProgramImage(true);
+    setProgramSaveStatus("Laster opp programbilde…");
+    try {
+      const result = await uploadProgramCoverImageToSupabase(file, supabaseClient);
+      if (!result.ok) {
+        setProgramSaveStatus(result.message);
+        return;
+      }
+      setProgramFormImageUrl(result.publicUrl);
+      setProgramSaveStatus("Programbilde lastet opp. Husk å lagre programmet.");
+    } catch {
+      setProgramSaveStatus("Kunne ikke laste opp bilde akkurat nå. Prøv igjen senere.");
+    } finally {
+      setIsUploadingProgramImage(false);
+    }
   }
 
   async function handleExerciseImageUpload(file: File | null) {
@@ -5537,6 +5573,13 @@ function pickFirstName(value: unknown): string {
                       <TextInput value={programGoal} onChange={(e) => setProgramGoal(e.target.value)} placeholder="Mål" />
                       </div>
                       <TextArea value={programNotes} onChange={(e) => setProgramNotes(e.target.value)} className="min-h-[72px]" placeholder="Notater" />
+                      <ProgramCoverImageField
+                        imageUrl={programFormImageUrl}
+                        onImageUrlChange={setProgramFormImageUrl}
+                        onUploadFile={(file) => handleProgramImageUpload(file)}
+                        isUploading={isUploadingProgramImage}
+                        disabled={isSavingProgram}
+                      />
 
                       <div
                         className={`space-y-3 rounded-2xl p-1 transition ${
@@ -5699,6 +5742,7 @@ function pickFirstName(value: unknown): string {
                             goal: programGoal,
                             notes: programNotes,
                             exercises: programExercisesDraft,
+                            imageUrl: programFormImageUrl,
                           });
                         }}
                         className="w-full"
@@ -6187,6 +6231,12 @@ function pickFirstName(value: unknown): string {
             <div className="mt-5 grid gap-4 lg:grid-cols-2">
               <div className="min-w-0 space-y-3">
                 <TextInput value={templateProgramTitle} onChange={(e) => setTemplateProgramTitle(e.target.value)} placeholder="Navn på treningsmal" />
+                <ProgramCoverImageField
+                  imageUrl={programFormImageUrl}
+                  onImageUrlChange={setProgramFormImageUrl}
+                  onUploadFile={(file) => handleProgramImageUpload(file)}
+                  isUploading={isUploadingProgramImage}
+                />
                 <div
                   className={`space-y-3 rounded-2xl p-1 transition ${
                     isDraftDropZoneActive ? "bg-emerald-50 ring-2 ring-emerald-300" : ""

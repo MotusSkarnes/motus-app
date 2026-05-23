@@ -22,6 +22,7 @@ type SaveProgramPayload = {
   /** Hint only; overskrives server-side ut fra JWT-rolle. */
   programCreatedBy?: string;
   programCreatedByName?: string;
+  imageUrl?: string;
 };
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -88,9 +89,34 @@ function isMissingProgramAuthorColumnError(err: DbErr | null): boolean {
   );
 }
 
+function isMissingProgramImageColumnError(err: DbErr | null): boolean {
+  if (!err?.message) return false;
+  if (String(err.code ?? "") === "42703") return true;
+  const m = err.message.toLowerCase();
+  return m.includes("image_url") && (m.includes("does not exist") || m.includes("unknown") || m.includes("schema cache"));
+}
+
+function isMissingProgramOptionalColumnError(err: DbErr | null): boolean {
+  return isMissingProgramAuthorColumnError(err) || isMissingProgramImageColumnError(err);
+}
+
 function omitProgramAuthorColumns<T extends Record<string, unknown>>(row: T): Record<string, unknown> {
   const { program_created_by: _a, program_created_by_name: _b, ...rest } = row;
   return rest;
+}
+
+function omitProgramImageColumn<T extends Record<string, unknown>>(row: T): Record<string, unknown> {
+  const { image_url: _image, ...rest } = row;
+  return rest;
+}
+
+function omitProgramOptionalColumns<T extends Record<string, unknown>>(row: T): Record<string, unknown> {
+  return omitProgramImageColumn(omitProgramAuthorColumns(row));
+}
+
+function programImageDbField(imageUrl: unknown): { image_url: string | null } | Record<string, never> {
+  const trimmed = String(imageUrl ?? "").trim();
+  return trimmed ? { image_url: trimmed } : { image_url: null };
 }
 
 async function upsertTrainingProgramWithAuthorFallback(
@@ -98,8 +124,8 @@ async function upsertTrainingProgramWithAuthorFallback(
   row: Record<string, unknown>,
 ): Promise<{ error: DbErr | null }> {
   let { error } = await adminClient.from("training_programs").upsert(row, { onConflict: "id" });
-  if (error && isMissingProgramAuthorColumnError(error)) {
-    ({ error } = await adminClient.from("training_programs").upsert(omitProgramAuthorColumns(row), { onConflict: "id" }));
+  if (error && isMissingProgramOptionalColumnError(error)) {
+    ({ error } = await adminClient.from("training_programs").upsert(omitProgramOptionalColumns(row), { onConflict: "id" }));
   }
   return { error };
 }
@@ -109,8 +135,8 @@ async function insertTrainingProgramWithAuthorFallback(
   row: Record<string, unknown>,
 ): Promise<{ error: DbErr | null }> {
   let { error } = await adminClient.from("training_programs").insert(row);
-  if (error && isMissingProgramAuthorColumnError(error)) {
-    ({ error } = await adminClient.from("training_programs").insert(omitProgramAuthorColumns(row)));
+  if (error && isMissingProgramOptionalColumnError(error)) {
+    ({ error } = await adminClient.from("training_programs").insert(omitProgramOptionalColumns(row)));
   }
   return { error };
 }
@@ -319,6 +345,7 @@ Deno.serve(async (req) => {
   const customerType = String(payload.customerType ?? "").trim();
   const membershipType = String(payload.membershipType ?? "").trim();
   const role = roleFromUser(userData.user);
+  const imageFields = programImageDbField(payload.imageUrl);
 
   if (!requesterUserId) return jsonResponse(401, { error: "Missing authenticated user id" });
   if (!title) return jsonResponse(400, { error: "Title is required" });
@@ -356,6 +383,7 @@ Deno.serve(async (req) => {
       goal,
       notes,
       exercises,
+      ...imageFields,
       created_at: new Date().toISOString(),
       program_created_by: "trainer",
       program_created_by_name: authorColumns.program_created_by_name,
@@ -410,6 +438,7 @@ Deno.serve(async (req) => {
       goal,
       notes,
       exercises,
+      ...imageFields,
       created_at: timestamp,
       program_created_by: authorColumns.program_created_by,
       program_created_by_name: authorColumns.program_created_by_name,
@@ -445,6 +474,7 @@ Deno.serve(async (req) => {
                   goal,
                   notes,
                   exercises,
+                  ...imageFields,
                   created_at: timestamp,
                   program_created_by: authorColumns.program_created_by,
                   program_created_by_name: authorColumns.program_created_by_name,
@@ -457,6 +487,7 @@ Deno.serve(async (req) => {
                   goal,
                   notes,
                   exercises,
+                  ...imageFields,
                   created_at: timestamp,
                   program_created_by: authorColumns.program_created_by,
                   program_created_by_name: authorColumns.program_created_by_name,
@@ -481,6 +512,7 @@ Deno.serve(async (req) => {
       goal,
       notes,
       exercises,
+      ...imageFields,
       created_at: timestamp,
       program_created_by: authorColumns.program_created_by,
       program_created_by_name: authorColumns.program_created_by_name,
@@ -513,6 +545,7 @@ Deno.serve(async (req) => {
           goal,
           notes,
           exercises,
+          ...imageFields,
           created_at: timestamp,
           program_created_by: authorColumns.program_created_by,
           program_created_by_name: authorColumns.program_created_by_name,
@@ -531,6 +564,7 @@ Deno.serve(async (req) => {
         goal,
         notes,
         exercises,
+        ...imageFields,
         created_at: timestamp,
         program_created_by: authorColumns.program_created_by,
         program_created_by_name: authorColumns.program_created_by_name,

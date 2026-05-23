@@ -32,6 +32,7 @@ import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
 import { memberBadgeImageSrc } from "../app/badgeAssets";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
+import { programHasCustomCoverImage, resolveProgramImageSrc } from "../app/programImage";
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "../app/exerciseCategories";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import {
@@ -3629,7 +3630,6 @@ export function MemberPortal(props: MemberPortalProps) {
       ).length,
     [memberAssignedPrograms, memberNotificationPrefs?.seenMemberProgramIds],
   );
-  const homeStreakLine = streakWeeks > 0 ? `🔥 ${streakWeeks} ukes streak` : null;
   const homeMotivationLine =
     homeWeeklySummary.completedThisWeek > 0
       ? "Du er nærmere målet enn i går."
@@ -4395,7 +4395,7 @@ export function MemberPortal(props: MemberPortalProps) {
             <div className="space-y-4">
               <MemberHomeOverview
                 memberFirstName={homeFirstName}
-                streakLine={homeStreakLine}
+                streakWeeks={streakWeeks}
                 motivationLine={homeMotivationLine}
                 statusCard={homeStatusCard}
                 workoutTitle={homePrimaryFocus}
@@ -4822,66 +4822,56 @@ export function MemberPortal(props: MemberPortalProps) {
           {memberTab === "programs" ? (
             <>
               <div className="flex flex-col gap-4">
-              <Card
-                variant="hero"
-                className="relative overflow-hidden p-0"
-                style={{
-                  borderColor: "rgba(48,227,190,0.24)",
-                  background: "linear-gradient(135deg, rgba(48,227,190,0.18) 0%, rgba(255,255,255,0.96) 45%, rgba(217,18,120,0.12) 100%)",
-                }}
-              >
-                <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-white/70 blur-3xl" aria-hidden />
-                <div className="relative grid gap-4 p-5 sm:p-6 md:grid-cols-[1fr_15rem] md:items-center">
+              <Card className="relative overflow-hidden p-4 sm:p-5">
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-teal-400/70 via-teal-300/30 to-pink-400/70"
+                />
+                <div className="grid gap-4 md:grid-cols-[1fr_11.5rem] md:items-start">
                   <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-3 py-1 text-xs font-black uppercase tracking-wide text-teal-800 shadow-sm ring-1 ring-white/80">
-                      <Dumbbell className="h-3.5 w-3.5" aria-hidden />
-                      Trening
-                    </div>
-                    <h2 className="mt-4 text-4xl font-black leading-[1.02] tracking-tight text-slate-950 sm:text-5xl">
-                      Klar for å knuse dagens økt
-                    </h2>
-                    <p className="mt-3 max-w-2xl text-base font-semibold leading-relaxed text-slate-700">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">Trening</p>
+                    <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
                       {todayPlanEntry
                         ? "Dagens plan ligger klar. Start direkte, eller sjekk programmene dine først."
                         : memberHasVisiblePeriodPlan
-                          ? "Programmer, periodeplan og egen økt samlet i én mer visuell treningsflate."
-                          : "Programmer og egen økt samlet i én mer visuell treningsflate."}
+                          ? "Programmer, periodeplan og egen økt samlet på ett sted."
+                          : "Programmer og egen økt samlet på ett sted."}
                     </p>
-                    <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                    <div className="mt-3 flex flex-wrap gap-2">
                       {todayPlanAction.kind === "start-program" ? (
-                        <GradientButton type="button" onClick={() => handlePeriodPlanStartProgram(todayPlanAction.program.id)} className="min-h-12 rounded-xl text-base sm:w-auto">
-                          <Play className="mr-2 h-4 w-4 fill-white/80" aria-hidden />
+                        <GradientButton type="button" onClick={() => handlePeriodPlanStartProgram(todayPlanAction.program.id)} className="min-h-10 rounded-xl text-sm sm:w-auto">
+                          <Play className="mr-2 h-3.5 w-3.5 fill-white/80" aria-hidden />
                           Start dagens økt
                         </GradientButton>
                       ) : nextProgram ? (
-                        <GradientButton type="button" onClick={() => startWorkoutMode(nextProgram.id, buildStartWorkoutOptions(nextProgram))} className="min-h-12 rounded-xl text-base sm:w-auto">
-                          <Play className="mr-2 h-4 w-4 fill-white/80" aria-hidden />
+                        <GradientButton type="button" onClick={() => startWorkoutMode(nextProgram.id, buildStartWorkoutOptions(nextProgram))} className="min-h-10 rounded-xl text-sm sm:w-auto">
+                          <Play className="mr-2 h-3.5 w-3.5 fill-white/80" aria-hidden />
                           Start neste økt
                         </GradientButton>
                       ) : (
-                        <GradientButton type="button" onClick={() => setTrainingSection("custom")} className="min-h-12 rounded-xl text-base sm:w-auto">
+                        <GradientButton type="button" onClick={() => setTrainingSection("custom")} className="min-h-10 rounded-xl text-sm sm:w-auto">
                           Lag egen økt
                         </GradientButton>
                       )}
-                      <OutlineButton type="button" onClick={() => setTrainingSection("programs")} className="min-h-12 rounded-xl bg-white/75 font-semibold sm:w-auto">
+                      <OutlineButton type="button" onClick={() => setTrainingSection("programs")} className="min-h-10 rounded-xl text-sm font-medium sm:w-auto">
                         Se programmer
                       </OutlineButton>
                     </div>
                   </div>
-                  <div className="rounded-3xl border bg-white/72 p-4 shadow-lg shadow-slate-900/10 backdrop-blur-md" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="text-xs font-black uppercase tracking-wide text-slate-500">Denne uka</div>
-                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                      <div className="rounded-2xl bg-teal-50 px-2 py-3">
-                        <div className="text-2xl font-black text-slate-950">{homeWeeklySummary.completedThisWeek}</div>
-                        <div className="mt-0.5 text-[10px] font-bold uppercase text-slate-500">Økter</div>
+                  <div className="rounded-xl border bg-slate-50/80 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">Denne uka</div>
+                    <div className="mt-2 grid grid-cols-3 gap-1.5 text-center">
+                      <div className="rounded-lg bg-white px-1.5 py-2">
+                        <div className="text-base font-semibold tabular-nums text-slate-950">{homeWeeklySummary.completedThisWeek}</div>
+                        <div className="mt-0.5 text-[9px] font-medium uppercase text-slate-400">Økter</div>
                       </div>
-                      <div className="rounded-2xl bg-pink-50 px-2 py-3">
-                        <div className="text-2xl font-black text-slate-950">{homeMomentumPct}%</div>
-                        <div className="mt-0.5 text-[10px] font-bold uppercase text-slate-500">Flyt</div>
+                      <div className="rounded-lg bg-white px-1.5 py-2">
+                        <div className="text-base font-semibold tabular-nums text-slate-950">{homeMomentumPct}%</div>
+                        <div className="mt-0.5 text-[9px] font-medium uppercase text-slate-400">Flyt</div>
                       </div>
-                      <div className="rounded-2xl bg-slate-50 px-2 py-3">
-                        <div className="text-2xl font-black text-slate-950">{streakWeeks}</div>
-                        <div className="mt-0.5 text-[10px] font-bold uppercase text-slate-500">Streak</div>
+                      <div className="rounded-lg bg-white px-1.5 py-2">
+                        <div className="text-base font-semibold tabular-nums text-slate-950">{streakWeeks}</div>
+                        <div className="mt-0.5 text-[9px] font-medium uppercase text-slate-400">Streak</div>
                       </div>
                     </div>
                   </div>
@@ -5148,6 +5138,8 @@ export function MemberPortal(props: MemberPortalProps) {
 	                    const programMinutes = Math.max(20, Math.round(estimateProgramMinutes(program) / 5) * 5);
 	                    const programCategory = trainingProgramCategoryLabel(program, exerciseCategoryById, exercises);
 	                    const programLevel = coverExercise?.level ?? "Nivå tilpasses";
+	                    const programCoverSrc = resolveProgramImageSrc(program, coverExercise);
+	                    const programUsesCustomCover = programHasCustomCoverImage(program);
 	                    const completedProgramLogs = completedLogs.filter((log) => log.programTitle.trim().toLowerCase() === program.title.trim().toLowerCase()).length;
 	                    const programProgressPct = Math.min(100, Math.round((completedProgramLogs / Math.max(1, memberProgress.monthGoal.target)) * 100));
 	                    return (
@@ -5159,11 +5151,11 @@ export function MemberPortal(props: MemberPortalProps) {
 	                      >
 	                        <div className="grid gap-0 sm:grid-cols-[12rem_1fr]">
 	                        <div className="relative min-h-40 overflow-hidden bg-gradient-to-br from-teal-50 via-white to-pink-50">
-	                          {coverExercise ? (
+	                          {programCoverSrc ? (
 	                            <img
-	                              src={resolveExerciseImageSrc(coverExercise)}
+	                              src={programCoverSrc}
 	                              alt=""
-	                              className="absolute inset-0 h-full w-full object-contain p-3"
+	                              className={`absolute inset-0 h-full w-full ${programUsesCustomCover ? "object-cover" : "object-contain p-3"}`}
 	                              loading="lazy"
 	                              decoding="async"
 	                            />

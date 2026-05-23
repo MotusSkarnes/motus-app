@@ -1,4 +1,4 @@
-import { Flame } from "lucide-react";
+import { MotusFlameIcon } from "./MotusFlameIcon";
 import { MOTUS } from "../app/data";
 import type { RecentStreakWeek } from "../app/memberProgressGamification";
 
@@ -55,7 +55,7 @@ export function MemberWeeklyStreakCard({
             className={`shrink-0 rounded-xl p-2.5 text-white shadow-sm ${streakWeeks > 0 ? "motus-soft-pulse" : ""}`}
             style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
           >
-            <Flame className={compact ? "h-4 w-4" : "h-5 w-5"} />
+            <MotusFlameIcon tone="solid" className={compact ? "h-4 w-4" : "h-5 w-5"} />
           </div>
         </div>
         {!compact ? (

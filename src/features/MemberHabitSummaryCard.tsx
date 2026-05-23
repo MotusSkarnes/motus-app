@@ -1,7 +1,8 @@
-import { CalendarDays, Flame } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { MemberProgressState } from "../app/memberProgressGamification";
 import { MemberWeeklyStreakCard } from "./MemberWeeklyStreakCard";
+import { MotusFlameIcon } from "./MotusFlameIcon";
 
 type MemberHabitSummaryCardProps = {
   progress: MemberProgressState;
@@ -19,7 +20,7 @@ export function MemberHabitSummaryCard({ progress, onOpenProgress }: MemberHabit
             className="rounded-xl p-2 text-white shadow-sm"
             style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
           >
-            <Flame className="h-4 w-4" />
+            <MotusFlameIcon tone="solid" className="h-4 w-4" />
           </div>
           <div>
             <div className="text-sm font-semibold text-slate-800">Treningsvanen din</div>

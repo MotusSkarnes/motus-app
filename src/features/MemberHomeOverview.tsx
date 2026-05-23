@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ChevronRight, Play } from "lucide-react";
 import { GradientButton, OutlineButton } from "../app/ui";
+import { MotusFlameIcon } from "./MotusFlameIcon";
 
 export type MemberHomeStatusCard = {
   title: string;
@@ -10,7 +11,7 @@ export type MemberHomeStatusCard = {
 
 export type MemberHomeOverviewProps = {
   memberFirstName: string;
-  streakLine: string | null;
+  streakWeeks: number;
   motivationLine: string | null;
   statusCard: MemberHomeStatusCard | null;
   workoutTitle: string;
@@ -25,7 +26,7 @@ export type MemberHomeOverviewProps = {
 
 export function MemberHomeOverview({
   memberFirstName,
-  streakLine,
+  streakWeeks,
   motivationLine,
   statusCard,
   workoutTitle,
@@ -43,7 +44,12 @@ export function MemberHomeOverview({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-[1.65rem]">Hei {memberFirstName}</h1>
-            {streakLine ? <p className="text-sm font-medium text-slate-700">{streakLine}</p> : null}
+            {streakWeeks > 0 ? (
+              <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
+                <MotusFlameIcon className="h-4 w-4 shrink-0" title="Streak" />
+                <span>{streakWeeks} ukers streak</span>
+              </p>
+            ) : null}
             {motivationLine ? <p className="text-sm leading-relaxed text-slate-500">{motivationLine}</p> : null}
           </div>
           {headerActions}

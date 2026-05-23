@@ -14,10 +14,13 @@ import {
 import { MOTUS } from "../app/data";
 import { exerciseCategoryAccentColor, isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
+import { uploadProgramCoverImageToSupabase } from "../app/programImageUpload";
+import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { EXERCISE_IMAGE_MEDIUM_CLASS } from "../app/exerciseIllustrations/constants";
 import type { Exercise, ProgramExercise, TrainingProgram, WorkoutLog } from "../app/types";
 import { uid } from "../app/storage";
 import { Card, EmptyState, GradientButton, OutlineButton, PillButton, StatusMessage, TextInput } from "../app/ui";
+import { ProgramCoverImageField } from "./ProgramCoverImageField";
 import { splitMuscleGroupLabel } from "./muscleSplitStats";
 
 const BANK_PREVIEW = 40;
@@ -41,6 +44,7 @@ type CustomWorkoutBuilderProps = {
     notes: string;
     memberId: string;
     exercises: ProgramExercise[];
+    imageUrl?: string;
     programCreatedBy: "member";
     programCreatedByName: string;
     onPersisted?: (result: { ok: boolean; message?: string }) => void;
@@ -84,6 +88,8 @@ export function CustomWorkoutBuilder({
   const [showAllBank, setShowAllBank] = useState(false);
   const [lines, setLines] = useState<CustomWorkoutLine[]>([]);
   const [programTitle, setProgramTitle] = useState("Mitt treningsprogram");
+  const [programFormImageUrl, setProgramFormImageUrl] = useState("");
+  const [isUploadingProgramImage, setIsUploadingProgramImage] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [favoriteExerciseIds, setFavoriteExerciseIds] = useState<string[]>([]);
   const [draggedLineKey, setDraggedLineKey] = useState<string | null>(null);
@@ -265,6 +271,7 @@ export function CustomWorkoutBuilder({
       notes: "",
       memberId: activeMemberId,
       exercises: built.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
+      imageUrl: programFormImageUrl,
       programCreatedBy: "member",
       programCreatedByName: authorFull,
       onPersisted: (result) => {
@@ -279,7 +286,30 @@ export function CustomWorkoutBuilder({
     });
     setLines([]);
     setSearch("");
+    setProgramFormImageUrl("");
     setSaveStatus(`Lagrer «${title}» i skyen…`);
+  }
+
+  async function handleProgramImageUpload(file: File) {
+    if (!isSupabaseConfigured || !supabaseClient) {
+      setSaveStatus("Bildefunksjonen er ikke tilgjengelig akkurat nå.");
+      return;
+    }
+    setIsUploadingProgramImage(true);
+    setSaveStatus("Laster opp programbilde…");
+    try {
+      const result = await uploadProgramCoverImageToSupabase(file, supabaseClient);
+      if (!result.ok) {
+        setSaveStatus(result.message);
+        return;
+      }
+      setProgramFormImageUrl(result.publicUrl);
+      setSaveStatus("Programbilde lastet opp. Husk å lagre programmet.");
+    } catch {
+      setSaveStatus("Kunne ikke laste opp bilde akkurat nå.");
+    } finally {
+      setIsUploadingProgramImage(false);
+    }
   }
 
   return (
@@ -446,6 +476,14 @@ export function CustomWorkoutBuilder({
               <span className="text-[11px] font-semibold text-slate-600">Programnavn (ved lagring)</span>
               <TextInput value={programTitle} onChange={(event) => setProgramTitle(event.target.value)} placeholder="Mitt treningsprogram" />
             </label>
+            <div className="mt-3 max-w-md">
+              <ProgramCoverImageField
+                imageUrl={programFormImageUrl}
+                onImageUrlChange={setProgramFormImageUrl}
+                onUploadFile={handleProgramImageUpload}
+                isUploading={isUploadingProgramImage}
+              />
+            </div>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <GradientButton onClick={handleStart} disabled={!lines.length || !activeMemberId.trim()} className="w-full sm:w-auto">
                 {lines.length ? `Start egen økt (${lines.length})` : "Legg til øvelser for å starte"}

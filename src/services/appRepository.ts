@@ -49,6 +49,7 @@ export type SaveProgramInput = {
   notes: string;
   memberId: string;
   exercises: ProgramExercise[];
+  imageUrl?: string;
   programCreatedBy?: "member" | "trainer";
   programCreatedByName?: string;
   onPersisted?: (result: { ok: boolean; message?: string; ids?: string[] }) => void;
@@ -324,6 +325,7 @@ export function saveProgramInState(
               goal: input.goal.trim(),
               notes: input.notes.trim(),
               exercises,
+              imageUrl: input.imageUrl?.trim() || undefined,
               ...(input.programCreatedBy
                 ? {
                     programCreatedBy: input.programCreatedBy,
@@ -345,6 +347,7 @@ export function saveProgramInState(
     notes: input.notes.trim(),
     createdAt: formatDateDdMmYyyy(new Date()),
     exercises,
+    imageUrl: input.imageUrl?.trim() || undefined,
     ...(input.programCreatedBy
       ? {
           programCreatedBy: input.programCreatedBy,
