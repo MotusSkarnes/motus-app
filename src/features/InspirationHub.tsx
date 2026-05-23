@@ -20,6 +20,7 @@ import { EXERCISE_CATEGORY_OPTIONS, exerciseCategoryAccentColor, isHoldBasedExer
 import { EXERCISE_IMAGE_THUMB_CLASS } from "../app/exerciseIllustrations/constants";
 import { getMedicalSketchFallbackDataUri, resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { compressImageDataUrl, compressImageFile } from "../app/imageCompress";
+import { uploadProgramCoverImageToSupabase } from "../app/programImageUpload";
 import {
   fetchInspirationItemsForHub,
   filterSuppressedInspirationItems,
@@ -38,6 +39,8 @@ import { buildPeriodPlanProgramSelectOptions, WEEKDAY_PLAN_FIELDS } from "../app
 import { normalizePeriodSchedulePlan, syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { uid } from "../app/storage";
 import { EmptyState, GradientButton, MotusSectionIcon, OutlineButton, SelectBox, TextArea, TextInput } from "../app/ui";
+import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
+import { ProgramCoverImageField } from "./ProgramCoverImageField";
 import type { Exercise, PeriodSchedulePlan, ProgramExercise, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "../app/types";
 import type { SaveProgramInput } from "../services/appRepository";
 
@@ -215,6 +218,7 @@ function resolveProgramTemplateForItem(item: InspirationItem, exerciseBank: Exer
     title: base.title?.trim() || item.title,
     goal: base.goal?.trim() || item.description,
     notes: base.notes?.trim() || item.body,
+    imageUrl: base.imageUrl?.trim() || item.programTemplate?.imageUrl?.trim() || item.imageUrl?.trim() || undefined,
     exercises: linkProgramExercisesToBank(base.exercises ?? [], exerciseBank),
   };
 }
@@ -616,6 +620,8 @@ export function InspirationHub({
   const [periodPlanTemplateDraft, setPeriodPlanTemplateDraft] = useState<PeriodSchedulePlan | null>(null);
   const [activePeriodWeekId, setActivePeriodWeekId] = useState("");
   const [isImageProcessing, setIsImageProcessing] = useState(false);
+  const [programCoverImageUrl, setProgramCoverImageUrl] = useState("");
+  const [isUploadingProgramCoverImage, setIsUploadingProgramCoverImage] = useState(false);
   const [programExerciseSearch, setProgramExerciseSearch] = useState("");
   const [programExerciseCategoryFilter, setProgramExerciseCategoryFilter] = useState<"all" | Exercise["category"]>("all");
   const [programExerciseGroupFilter, setProgramExerciseGroupFilter] = useState("all");
@@ -903,6 +909,7 @@ export function InspirationHub({
     setProgramTemplateDraft(null);
     setPeriodPlanTemplateDraft(null);
     setActivePeriodWeekId("");
+    setProgramCoverImageUrl("");
   }
 
   function resetComposer() {
@@ -938,6 +945,7 @@ export function InspirationHub({
           }
         : null,
     );
+    setProgramCoverImageUrl(item.programTemplate?.imageUrl?.trim() || item.imageUrl?.trim() || "");
     const clonedPlan = item.periodPlanTemplate ? normalizePeriodSchedulePlan(structuredClone(item.periodPlanTemplate)) : null;
     setPeriodPlanTemplateDraft(clonedPlan);
     setActivePeriodWeekId(clonedPlan?.weeklyPlans[0]?.id ?? "");
@@ -1109,6 +1117,7 @@ export function InspirationHub({
         title: nextTitle,
         goal: nextDescription,
         notes: nextBody,
+        imageUrl: programCoverImageUrl.trim() || storedImageUrl,
         exercises: linkedExercises.length
           ? linkedExercises
           : usesExerciseBank
@@ -1192,6 +1201,7 @@ export function InspirationHub({
     const template = {
       ...base,
       title: base.title || item.title,
+      imageUrl: base.imageUrl?.trim() || item.programTemplate?.imageUrl?.trim() || item.imageUrl?.trim() || undefined,
       exercises: linkProgramExercisesToBank(base.exercises, exerciseBank),
       programCreatedByName: memberName,
     };
@@ -1206,6 +1216,7 @@ export function InspirationHub({
       onAddProgram?.({
         ...programTemplate,
         title: programTemplate.title.trim() || item.title,
+        imageUrl: programTemplate.imageUrl?.trim() || item.imageUrl?.trim() || undefined,
         exercises: linkProgramExercisesToBank(programTemplate.exercises, exerciseBank),
         programCreatedByName: memberName,
       });
@@ -1231,6 +1242,28 @@ export function InspirationHub({
       setActionStatus("Kunne ikke lese bildefilen. Prøv et mindre bilde.");
     } finally {
       setIsImageProcessing(false);
+    }
+  }
+
+  async function handleProgramCoverImageUpload(file: File) {
+    if (!isSupabaseConfigured || !supabaseClient) {
+      setActionStatus("Bildefunksjonen er ikke tilgjengelig akkurat nå.");
+      return;
+    }
+    setIsUploadingProgramCoverImage(true);
+    setActionStatus("Laster opp programbilde…");
+    try {
+      const result = await uploadProgramCoverImageToSupabase(file, supabaseClient);
+      if (!result.ok) {
+        setActionStatus(result.message);
+        return;
+      }
+      setProgramCoverImageUrl(result.publicUrl);
+      setActionStatus("Programbilde lastet opp. Husk å lagre innlegget.");
+    } catch {
+      setActionStatus("Kunne ikke laste opp bilde akkurat nå.");
+    } finally {
+      setIsUploadingProgramCoverImage(false);
     }
   }
 
@@ -1699,6 +1732,12 @@ export function InspirationHub({
                     : "Øvelsesbanken er ikke lastet. Last PT-appen på nytt."}
                 </p>
               </div>
+              <ProgramCoverImageField
+                imageUrl={programCoverImageUrl}
+                onImageUrlChange={setProgramCoverImageUrl}
+                onUploadFile={handleProgramCoverImageUpload}
+                isUploading={isUploadingProgramCoverImage}
+              />
               <div className={`grid gap-4 ${usesExerciseBank ? "xl:grid-cols-[1.05fr_0.95fr]" : ""}`}>
                 <div className="space-y-3">
                   {(programTemplateDraft?.exercises ?? []).length === 0 ? (

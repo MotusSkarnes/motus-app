@@ -4,6 +4,7 @@ import {
   buildCustomWorkoutInsights,
   buildCustomWorkoutPreview,
   buildProgramExercisesFromCustomLines,
+  programExercisesToCustomLines,
   type CustomWorkoutLine,
   muscleGroupChipClass,
   readMemberFavoriteExerciseIds,
@@ -38,20 +39,23 @@ type CustomWorkoutBuilderProps = {
   nowDate: Date;
   startCustomWorkout: (input: { memberId: string; exercises: ProgramExercise[] }, options: StartWorkoutModeOptions) => void;
   saveProgramForMember: (input: {
-    id: string;
+    id?: string;
     title: string;
     goal: string;
     notes: string;
     memberId: string;
     exercises: ProgramExercise[];
     imageUrl?: string;
-    programCreatedBy: "member";
-    programCreatedByName: string;
+    programCreatedBy?: "member" | "trainer";
+    programCreatedByName?: string;
     onPersisted?: (result: { ok: boolean; message?: string }) => void;
   }) => void;
   deleteProgramById: (programId: string) => void;
   refreshRemoteHydration?: () => void | Promise<void>;
   findSuggestedWeightForExercise: (exerciseName: string) => string;
+  editingProgram?: TrainingProgram | null;
+  onCancelEdit?: () => void;
+  onEditSaved?: () => void;
 };
 
 function MuscleGroupChips({ group }: { group: string }) {
@@ -80,6 +84,9 @@ export function CustomWorkoutBuilder({
   deleteProgramById,
   refreshRemoteHydration,
   findSuggestedWeightForExercise,
+  editingProgram = null,
+  onCancelEdit,
+  onEditSaved,
 }: CustomWorkoutBuilderProps) {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -106,6 +113,20 @@ export function CustomWorkoutBuilder({
   useEffect(() => {
     setShowAllBank(false);
   }, [search, categoryFilter, muscleFilter, favoritesOnly]);
+
+  useEffect(() => {
+    if (!editingProgram) {
+      setLines([]);
+      setProgramTitle("Mitt treningsprogram");
+      setProgramFormImageUrl("");
+      setSaveStatus(null);
+      return;
+    }
+    setLines(programExercisesToCustomLines(editingProgram.exercises));
+    setProgramTitle(editingProgram.title);
+    setProgramFormImageUrl(editingProgram.imageUrl ?? "");
+    setSaveStatus(null);
+  }, [editingProgram?.id]);
 
   const categories = useMemo(() => {
     return Array.from(new Set(exercises.map((exercise) => exercise.category.trim()).filter(Boolean))).sort((a, b) =>
@@ -227,7 +248,25 @@ export function CustomWorkoutBuilder({
 
   function buildProgramExercises(): ProgramExercise[] | null {
     const built = buildProgramExercisesFromCustomLines(lines, exercises, uid);
-    return built.length ? built : null;
+    if (!built.length) return null;
+    if (!editingProgram) return built;
+    return built.map((exercise, index) => {
+      const line = lines[index];
+      const existing = editingProgram.exercises.find(
+        (row) => (line?.key && row.id === line.key) || row.exerciseId === exercise.exerciseId,
+      );
+      if (!existing) return exercise;
+      return {
+        ...existing,
+        ...exercise,
+        id: existing.id,
+        durationMinutes: existing.durationMinutes,
+        speed: existing.speed,
+        incline: existing.incline,
+        restSeconds: existing.restSeconds ?? exercise.restSeconds,
+        notes: existing.notes ?? exercise.notes,
+      };
+    });
   }
 
   function buildStartWorkoutOptions(program: TrainingProgram): StartWorkoutModeOptions {
@@ -263,31 +302,37 @@ export function CustomWorkoutBuilder({
     if (!built || !activeMemberId.trim()) return;
     const title = programTitle.trim() || "Mitt treningsprogram";
     const authorFull = memberDisplayName.trim() || currentUserEmail.trim() || "Medlem";
-    const optimisticProgramId = uid("program");
+    const isEditing = Boolean(editingProgram?.id);
+    const programId = isEditing ? editingProgram!.id : uid("program");
     saveProgramForMember({
-      id: optimisticProgramId,
+      id: programId,
       title,
-      goal: "",
-      notes: "",
+      goal: isEditing ? editingProgram!.goal ?? "" : "",
+      notes: isEditing ? editingProgram!.notes ?? "" : "",
       memberId: activeMemberId,
-      exercises: built.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
-      imageUrl: programFormImageUrl,
-      programCreatedBy: "member",
-      programCreatedByName: authorFull,
+      exercises: isEditing ? built : built.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
+      imageUrl: programFormImageUrl.trim() || undefined,
+      programCreatedBy: isEditing ? editingProgram!.programCreatedBy ?? "member" : "member",
+      programCreatedByName: isEditing ? editingProgram!.programCreatedByName ?? authorFull : authorFull,
       onPersisted: (result) => {
         if (!result.ok) {
-          deleteProgramById(optimisticProgramId);
+          if (!isEditing) deleteProgramById(programId);
           setSaveStatus(`Kunne ikke lagre i skyen: ${result.message?.trim() || "Prøv igjen."}`);
           return;
         }
-        setSaveStatus(`«${title}» er lagret og synkronisert.`);
+        if (isEditing) {
+          setSaveStatus(`«${title}» er oppdatert.`);
+          onEditSaved?.();
+        } else {
+          setSaveStatus(`«${title}» er lagret og synkronisert.`);
+          setLines([]);
+          setSearch("");
+          setProgramFormImageUrl("");
+        }
         void refreshRemoteHydration?.();
       },
     });
-    setLines([]);
-    setSearch("");
-    setProgramFormImageUrl("");
-    setSaveStatus(`Lagrer «${title}» i skyen…`);
+    setSaveStatus(isEditing ? `Oppdaterer «${title}»…` : `Lagrer «${title}» i skyen…`);
   }
 
   async function handleProgramImageUpload(file: File) {
@@ -320,9 +365,20 @@ export function CustomWorkoutBuilder({
             <Sparkles className="h-5 w-5" />
           </MotusSectionIcon>
           <div>
-            <div className="motus-section-label text-teal-700">Lag egen økt</div>
-            <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">Bygg økten visuelt</h2>
-            <p className="mt-1 text-sm text-slate-600">Dra øvelser inn, se forhåndsvisning live og få smarte forslag underveis.</p>
+            <div className="motus-section-label text-teal-700">{editingProgram ? "Rediger program" : "Lag egen økt"}</div>
+            <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
+              {editingProgram ? editingProgram.title : "Bygg økten visuelt"}
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              {editingProgram
+                ? "Endre øvelser, navn og programbilde. Lagre når du er ferdig."
+                : "Dra øvelser inn, se forhåndsvisning live og få smarte forslag underveis."}
+            </p>
+            {editingProgram && onCancelEdit ? (
+              <OutlineButton type="button" onClick={onCancelEdit} className="mt-3">
+                Avbryt redigering
+              </OutlineButton>
+            ) : null}
           </div>
         </div>
 
@@ -486,7 +542,7 @@ export function CustomWorkoutBuilder({
                 {lines.length ? `Start egen økt (${lines.length})` : "Legg til øvelser for å starte"}
               </GradientButton>
               <OutlineButton type="button" onClick={handleSave} disabled={!lines.length || !activeMemberId.trim()} className="w-full sm:w-auto">
-                Lagre som treningsprogram
+                {editingProgram ? "Lagre endringer" : "Lagre som treningsprogram"}
               </OutlineButton>
             </div>
             {saveStatus ? <StatusMessage message={saveStatus} tone="success" className="mt-2 !rounded-xl !px-3 !py-2 !text-xs" /> : null}

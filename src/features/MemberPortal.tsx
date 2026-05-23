@@ -12,6 +12,7 @@ import {
   Layers,
   MessageSquare,
   MoreHorizontal,
+  Pencil,
   Plus,
   Play,
   Printer,
@@ -1038,6 +1039,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const prevWorkoutModeRef = useRef(workoutMode);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [programLibraryMenuId, setProgramLibraryMenuId] = useState<string | null>(null);
+  const [editingMemberProgramId, setEditingMemberProgramId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!programLibraryMenuId) return;
@@ -1325,6 +1327,10 @@ export function MemberPortal(props: MemberPortalProps) {
   const memberProgramsLibraryArchived = useMemo(
     () => memberAssignedPrograms.filter((program) => programIsInMemberArchive(program.memberLibraryStatus)),
     [memberAssignedPrograms],
+  );
+  const editingMemberProgram = useMemo(
+    () => (editingMemberProgramId ? memberPrograms.find((program) => program.id === editingMemberProgramId) ?? null : null),
+    [editingMemberProgramId, memberPrograms],
   );
   const memberLogs = useMemo(() => logs.filter((log) => relatedMemberIdSet.has(log.memberId)), [logs, relatedMemberIdSet]);
   const memberMessages = useMemo(() => {
@@ -5202,6 +5208,21 @@ export function MemberPortal(props: MemberPortalProps) {
                                   style={{ borderColor: "rgba(15,23,42,0.1)" }}
                                   role="menu"
                                 >
+                                  {memberMayDeleteProgram(program, memberProgramAuthorOptions) ? (
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                                      onClick={() => {
+                                        setProgramLibraryMenuId(null);
+                                        setEditingMemberProgramId(program.id);
+                                        setTrainingSection("custom");
+                                      }}
+                                    >
+                                      <Pencil className="h-4 w-4 shrink-0 text-slate-500" />
+                                      Rediger
+                                    </button>
+                                  ) : null}
                                   <button
                                     type="button"
                                     role="menuitem"
@@ -5518,6 +5539,13 @@ export function MemberPortal(props: MemberPortalProps) {
                 deleteProgramById={(programId) => deleteProgramById(programId)}
                 refreshRemoteHydration={refreshRemoteHydration}
                 findSuggestedWeightForExercise={findSuggestedWeightForExercise}
+                editingProgram={editingMemberProgram}
+                onCancelEdit={() => setEditingMemberProgramId(null)}
+                onEditSaved={() => {
+                  setEditingMemberProgramId(null);
+                  setTrainingSection("programs");
+                  setLibraryActionStatus("Programmet er oppdatert.");
+                }}
               />
               ) : null
               ) : null}

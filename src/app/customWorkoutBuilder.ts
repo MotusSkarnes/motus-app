@@ -198,6 +198,17 @@ export function recommendExercisesForCustomWorkout(input: {
     .slice(0, limit);
 }
 
+export function programExercisesToCustomLines(programExercises: ProgramExercise[]): CustomWorkoutLine[] {
+  return programExercises.map((exercise) => ({
+    key: exercise.id,
+    exerciseId: exercise.exerciseId,
+    sets: exercise.sets?.trim() || "3",
+    reps: exercise.reps?.trim() || "10",
+    weight: exercise.weight?.trim() ?? "",
+    holdSeconds: exercise.holdSeconds?.trim() || undefined,
+  }));
+}
+
 export function buildProgramExercisesFromCustomLines(lines: CustomWorkoutLine[], exercises: Exercise[], uid: (prefix: string) => string): ProgramExercise[] {
   const built: ProgramExercise[] = [];
   for (const line of lines) {
