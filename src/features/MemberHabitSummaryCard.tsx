@@ -51,7 +51,7 @@ export function MemberHabitSummaryCard({ progress, onOpenProgress }: MemberHabit
             {progress.monthGoal.current}/{progress.monthGoal.target} økter
           </span>
         </div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
+        <div className="motus-progress-track mt-2 h-2 rounded-full">
           <div
             className="motus-progress-fill h-2 rounded-full"
             style={{

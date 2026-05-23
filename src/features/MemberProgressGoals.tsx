@@ -68,7 +68,7 @@ export function MemberProgressGoals({
                       {Math.min(goal.current, goal.target)}/{goal.target}
                     </span>
                   </div>
-                  <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <div className="motus-progress-track mt-2.5 h-1.5 rounded-full">
                     <div
                       className="motus-progress-fill h-1.5 rounded-full transition-all"
                       style={{
@@ -132,7 +132,7 @@ export function MemberProgressGoals({
                   {goal.unlocked ? <Check className="h-4 w-4" strokeWidth={3} /> : <Circle className="h-3.5 w-3.5" />}
                 </span>
               </div>
-              <div className="mt-2.5 h-1.5 rounded-full bg-slate-200/80">
+              <div className="motus-progress-track mt-2.5 h-1.5 rounded-full">
                 <div
                   className="motus-progress-fill h-1.5 rounded-full transition-all"
                   style={{

@@ -585,7 +585,7 @@ export function IntervalWorkoutSessionModal({
                   </span>
                   <span>{progressPercent}%</span>
                 </div>
-                <div className="mt-2 h-3 rounded-full bg-slate-200">
+                <div className="motus-progress-track mt-2 h-3 rounded-full">
                   <div
                     className="motus-progress-fill h-3 rounded-full"
                     style={{

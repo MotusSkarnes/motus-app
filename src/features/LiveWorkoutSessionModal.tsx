@@ -542,7 +542,7 @@ export function LiveWorkoutSessionModal({
               {onDismissWorkout ? "Pause" : "Avslutt"}
             </button>
           </div>
-          <div className="mt-3 h-1 overflow-hidden rounded-full bg-slate-100">
+          <div className="motus-progress-track mt-3 h-1 rounded-full">
             <div
               className="motus-progress-fill h-full rounded-full transition-all duration-300"
               style={{ width: `${workoutProgressPct}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise}, ${MOTUS.pink})` }}

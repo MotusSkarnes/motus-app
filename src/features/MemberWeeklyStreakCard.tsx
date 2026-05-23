@@ -117,7 +117,7 @@ export function MemberWeeklyStreakCard({
                 {streakWeeks}/{currentStreakMilestoneTarget} uker
               </span>
             </div>
-            <div className={`mt-1.5 h-2 overflow-hidden rounded-full ${isFlow ? "bg-slate-100" : "bg-white/80"}`}>
+            <div className="motus-progress-track mt-1.5 h-2 rounded-full">
               <div
                 className="motus-progress-fill h-2 rounded-full"
                 style={{
