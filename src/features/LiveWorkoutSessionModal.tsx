@@ -359,6 +359,7 @@ export function LiveWorkoutSessionModal({
 
   const workoutProgressPct =
     workoutResultGroups.length > 0 ? Math.round(((workoutExerciseIndex + 1) / workoutResultGroups.length) * 100) : 0;
+  const workoutProgressDegrees = Math.round((workoutProgressPct / 100) * 360);
 
   const completedSetsCount = workoutMode?.results.filter((r) => r.completed).length ?? 0;
   const totalSetsCount = workoutMode?.results.length ?? 0;
@@ -517,30 +518,60 @@ export function LiveWorkoutSessionModal({
   const headerTitle = variant === "trainer" ? "Live PT-økt" : "Øktmodus";
 
   return (
-    <div className="motus-modal-insets fixed inset-0 z-[10010] overscroll-contain bg-slate-900/40">
-      <div className="mx-auto flex h-full max-w-xl flex-col rounded-2xl bg-white shadow-lg">
-        <div className="border-b px-4 pb-3 pt-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+    <div className="fixed inset-0 z-[10010] overscroll-contain bg-slate-950">
+      <div className="mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden bg-slate-950 text-white shadow-2xl sm:rounded-3xl">
+        <div
+          className="relative overflow-hidden border-b border-white/10 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5 sm:pt-5"
+          style={{
+            background:
+              "radial-gradient(circle at 86% 0%, rgba(217,18,120,0.24), rgba(217,18,120,0) 34%), radial-gradient(circle at 12% 12%, rgba(48,227,190,0.28), rgba(48,227,190,0) 38%), linear-gradient(135deg, #020617 0%, #0f172a 100%)",
+          }}
+        >
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={leaveWorkout}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/15"
               aria-label="Pause økt"
             >
               <ArrowLeft className="h-5 w-5" aria-hidden />
             </button>
             <div className="min-w-0 flex-1 text-center">
-              <div className="text-base font-semibold text-slate-900">{headerTitle}</div>
-              {trainerSubtitle ? <div className="mt-0.5 truncate text-xs text-slate-500">{trainerSubtitle}</div> : null}
+              <div className="text-xs font-black uppercase tracking-[0.16em] text-teal-100/80">{headerTitle}</div>
+              <div className="mt-1 truncate text-lg font-black tracking-tight text-white">{resolvedProgram.title}</div>
+              {trainerSubtitle ? <div className="mt-0.5 truncate text-xs text-white/60">{trainerSubtitle}</div> : null}
             </div>
             <button
               type="button"
               onClick={leaveWorkout}
-              className="rounded-full px-3 py-1.5 text-xs font-semibold text-white shadow-sm"
-              style={{ background: MOTUS.pink }}
+              className="rounded-full bg-white/10 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-white/15"
             >
               {onDismissWorkout ? "Pause" : "Avslutt"}
             </button>
+          </div>
+          <div className="mt-5 grid gap-4 sm:grid-cols-[8.5rem_1fr] sm:items-center">
+            <div
+              className="mx-auto flex h-32 w-32 items-center justify-center rounded-full p-2 shadow-2xl shadow-teal-500/20"
+              style={{
+                background: `conic-gradient(${MOTUS.turquoise} 0deg, ${MOTUS.pink} ${workoutProgressDegrees}deg, rgba(255,255,255,0.14) ${workoutProgressDegrees}deg 360deg)`,
+              }}
+            >
+              <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-slate-950 text-center ring-1 ring-white/10">
+                <span className="text-3xl font-black tabular-nums text-white">{workoutProgressPct}%</span>
+                <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-white/50">fullført</span>
+              </div>
+            </div>
+            <div className="min-w-0 text-center sm:text-left">
+              <div className="text-xs font-black uppercase tracking-wide text-teal-100/75">Nå</div>
+              <div className="mt-1 truncate text-3xl font-black tracking-tight text-white sm:text-4xl">
+                {currentWorkoutGroup?.exerciseName ?? "Økt i gang"}
+              </div>
+              <div className="mt-2 flex flex-wrap justify-center gap-2 text-xs font-semibold text-white/70 sm:justify-start">
+                <span className="rounded-full bg-white/10 px-3 py-1">{workoutExerciseIndex + 1} av {workoutResultGroups.length} øvelser</span>
+                <span className="rounded-full bg-white/10 px-3 py-1">{completedSetsCount}/{totalSetsCount} sett</span>
+                {activeSetProgressLabel ? <span className="rounded-full bg-white/10 px-3 py-1">{activeSetProgressLabel}</span> : null}
+              </div>
+            </div>
           </div>
           <div className="motus-progress-track mt-3 h-1 rounded-full">
             <div
@@ -548,7 +579,7 @@ export function LiveWorkoutSessionModal({
               style={{ width: `${workoutProgressPct}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise}, ${MOTUS.pink})` }}
             />
           </div>
-          <div className="mt-2 flex items-center justify-between gap-2 text-xs text-slate-500">
+          <div className="mt-2 flex items-center justify-between gap-2 text-xs text-white/55">
             <span>
               {workoutExerciseIndex + 1} av {workoutResultGroups.length} øvelser
             </span>
@@ -558,11 +589,11 @@ export function LiveWorkoutSessionModal({
           </div>
         </div>
 
-        <div className="motus-scroll-touch flex-1 space-y-2 overflow-auto p-3">
+        <div className="motus-scroll-touch flex-1 space-y-3 overflow-auto bg-slate-950 p-3 sm:p-4">
           {currentWorkoutGroup ? (
             <div
               key={currentWorkoutGroup.groupId}
-              className="w-full rounded-xl border p-3 text-left transition bg-slate-50"
+              className="w-full rounded-2xl border border-white/10 bg-white p-3 text-left text-slate-900 shadow-xl shadow-black/20 transition sm:p-4"
               style={{ borderColor: "rgba(15,23,42,0.08)" }}
             >
               <div className="flex items-start justify-between gap-3">
@@ -782,7 +813,7 @@ export function LiveWorkoutSessionModal({
           ) : null}
         </div>
 
-        <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+        <div className="sticky bottom-0 border-t border-white/10 bg-slate-950/92 p-3 text-slate-900 shadow-2xl backdrop-blur-xl sm:p-4">
           {nextWorkoutGroup && !isLastWorkoutGroup && !showWorkoutReflection ? (
             <button
               type="button"

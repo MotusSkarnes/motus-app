@@ -31,6 +31,7 @@ import motusLogo from "../assets/motus-logo-transparent.svg";
 import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
 import { memberBadgeImageSrc } from "../app/badgeAssets";
+import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "../app/exerciseCategories";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import {
@@ -789,6 +790,26 @@ function isMemberIntervalCooldownName(name: string): boolean {
 
 function memberProgramExerciseName(program: TrainingProgram, index: number): string {
   return isLegacyIntervalCooldownDrag(program.exercises, index) ? "Nedjogg" : program.exercises[index]?.exerciseName ?? "";
+}
+
+function estimateProgramMinutes(program: TrainingProgram): number {
+  if (!program.exercises.length) return 0;
+  return program.exercises.reduce((total, exercise) => {
+    const rounds = Math.max(1, Number(exercise.sets) || 1);
+    const workMinutes = Number(exercise.durationMinutes) || 0;
+    const restMinutes = Math.max(0, Number(exercise.restSeconds) || 0) / 60;
+    if (workMinutes > 0) return total + rounds * workMinutes + Math.max(0, rounds - 1) * restMinutes;
+    return total + rounds * 2.5 + Math.max(0, rounds - 1) * restMinutes;
+  }, 6);
+}
+
+function resolveProgramCategoryLabel(program: TrainingProgram, exerciseBank: Exercise[]): string {
+  const categories = program.exercises
+    .map((item) => exerciseBank.find((exercise) => exercise.id === item.exerciseId)?.category)
+    .filter(Boolean);
+  if (!categories.length) return "Program";
+  const unique = Array.from(new Set(categories));
+  return unique.length === 1 ? unique[0]! : "Miks";
 }
 
 type IntervalTimerStep = {
@@ -5051,7 +5072,72 @@ export function MemberPortal(props: MemberPortalProps) {
           {memberTab === "programs" ? (
             <>
               <div className="flex flex-col gap-4">
-              <MemberTabHero
+              <Card
+                variant="hero"
+                className="relative overflow-hidden p-0"
+                style={{
+                  borderColor: "rgba(48,227,190,0.24)",
+                  background: "linear-gradient(135deg, rgba(48,227,190,0.18) 0%, rgba(255,255,255,0.96) 45%, rgba(217,18,120,0.12) 100%)",
+                }}
+              >
+                <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-white/70 blur-3xl" aria-hidden />
+                <div className="relative grid gap-4 p-5 sm:p-6 md:grid-cols-[1fr_15rem] md:items-center">
+                  <div>
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-3 py-1 text-xs font-black uppercase tracking-wide text-teal-800 shadow-sm ring-1 ring-white/80">
+                      <Dumbbell className="h-3.5 w-3.5" aria-hidden />
+                      Trening
+                    </div>
+                    <h2 className="mt-4 text-4xl font-black leading-[1.02] tracking-tight text-slate-950 sm:text-5xl">
+                      Klar for å knuse dagens økt
+                    </h2>
+                    <p className="mt-3 max-w-2xl text-base font-semibold leading-relaxed text-slate-700">
+                      {todayPlanEntry
+                        ? "Dagens plan ligger klar. Start direkte, eller sjekk programmene dine først."
+                        : memberHasVisiblePeriodPlan
+                          ? "Programmer, periodeplan og egen økt samlet i én mer visuell treningsflate."
+                          : "Programmer og egen økt samlet i én mer visuell treningsflate."}
+                    </p>
+                    <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                      {todayPlanAction.kind === "start-program" ? (
+                        <GradientButton type="button" onClick={() => handlePeriodPlanStartProgram(todayPlanAction.program.id)} className="min-h-12 rounded-xl text-base sm:w-auto">
+                          <Play className="mr-2 h-4 w-4 fill-white/80" aria-hidden />
+                          Start dagens økt
+                        </GradientButton>
+                      ) : nextProgram ? (
+                        <GradientButton type="button" onClick={() => startWorkoutMode(nextProgram.id, buildStartWorkoutOptions(nextProgram))} className="min-h-12 rounded-xl text-base sm:w-auto">
+                          <Play className="mr-2 h-4 w-4 fill-white/80" aria-hidden />
+                          Start neste økt
+                        </GradientButton>
+                      ) : (
+                        <GradientButton type="button" onClick={() => setTrainingSection("custom")} className="min-h-12 rounded-xl text-base sm:w-auto">
+                          Lag egen økt
+                        </GradientButton>
+                      )}
+                      <OutlineButton type="button" onClick={() => setTrainingSection("programs")} className="min-h-12 rounded-xl bg-white/75 font-semibold sm:w-auto">
+                        Se programmer
+                      </OutlineButton>
+                    </div>
+                  </div>
+                  <div className="rounded-3xl border bg-white/72 p-4 shadow-lg shadow-slate-900/10 backdrop-blur-md" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="text-xs font-black uppercase tracking-wide text-slate-500">Denne uka</div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                      <div className="rounded-2xl bg-teal-50 px-2 py-3">
+                        <div className="text-2xl font-black text-slate-950">{homeWeeklySummary.completedThisWeek}</div>
+                        <div className="mt-0.5 text-[10px] font-bold uppercase text-slate-500">Økter</div>
+                      </div>
+                      <div className="rounded-2xl bg-pink-50 px-2 py-3">
+                        <div className="text-2xl font-black text-slate-950">{homeMomentumPct}%</div>
+                        <div className="mt-0.5 text-[10px] font-bold uppercase text-slate-500">Flyt</div>
+                      </div>
+                      <div className="rounded-2xl bg-slate-50 px-2 py-3">
+                        <div className="text-2xl font-black text-slate-950">{streakWeeks}</div>
+                        <div className="mt-0.5 text-[10px] font-bold uppercase text-slate-500">Streak</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+              <MemberTabHero className="hidden"
                 title="Klar for dagens økt"
                 description={
                   memberHasVisiblePeriodPlan
@@ -5302,28 +5388,55 @@ export function MemberPortal(props: MemberPortalProps) {
                       Alle program er skjult eller arkivert. Bruk seksjonene nedenfor for å gjenopprette dem i oversikten.
                     </div>
                   ) : null}
-                  {memberProgramsInActiveLibrary.map((program) => {
-                    const isExpanded = expandedProgramId === program.id;
-                    const isLibraryMenuOpen = programLibraryMenuId === program.id;
-                    const programAuthorLine = programAuthorCreditForMember(program, memberProgramAuthorOptions);
-                    return (
-                      <div
-                        key={program.id}
-                        id={`member-program-${program.id}`}
-                        className="rounded-lg border bg-white p-2.5 space-y-2"
-                        style={{ borderColor: "rgba(15,23,42,0.08)" }}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <div className="text-sm font-semibold leading-snug text-slate-900">{program.title}</div>
-                            {program.goal?.trim() ? (
-                              <div className="mt-0.5 line-clamp-1 text-[11px] text-slate-500">{program.goal.trim()}</div>
-                            ) : null}
-                            {programAuthorLine ? (
-                              <div className="mt-0.5 text-[10px] font-medium text-slate-600">{programAuthorLine}</div>
-                            ) : null}
-                            <div className="mt-0.5 text-[10px] text-slate-400">{program.createdAt}</div>
-                          </div>
+	                  {memberProgramsInActiveLibrary.map((program) => {
+	                    const isExpanded = expandedProgramId === program.id;
+	                    const isLibraryMenuOpen = programLibraryMenuId === program.id;
+	                    const programAuthorLine = programAuthorCreditForMember(program, memberProgramAuthorOptions);
+	                    const coverExercise = program.exercises
+	                      .map((item) => exercises.find((exercise) => exercise.id === item.exerciseId))
+	                      .find(Boolean);
+	                    const programMinutes = Math.max(20, Math.round(estimateProgramMinutes(program) / 5) * 5);
+	                    const programCategory = resolveProgramCategoryLabel(program, exercises);
+	                    const programLevel = coverExercise?.level ?? "Nivå tilpasses";
+	                    const completedProgramLogs = completedLogs.filter((log) => log.programTitle.trim().toLowerCase() === program.title.trim().toLowerCase()).length;
+	                    const programProgressPct = Math.min(100, Math.round((completedProgramLogs / Math.max(1, memberProgress.monthGoal.target)) * 100));
+	                    return (
+	                      <div
+	                        key={program.id}
+	                        id={`member-program-${program.id}`}
+	                        className="overflow-hidden rounded-2xl border bg-white shadow-md shadow-slate-900/[0.055] ring-1 ring-white/70"
+	                        style={{ borderColor: "rgba(15,23,42,0.08)" }}
+	                      >
+	                        <div className="grid gap-0 sm:grid-cols-[12rem_1fr]">
+	                        <div className="relative min-h-40 overflow-hidden bg-gradient-to-br from-teal-50 via-white to-pink-50">
+	                          {coverExercise ? (
+	                            <img
+	                              src={resolveExerciseImageSrc(coverExercise)}
+	                              alt=""
+	                              className="absolute inset-0 h-full w-full object-contain p-3"
+	                              loading="lazy"
+	                              decoding="async"
+	                            />
+	                          ) : (
+	                            <div className="flex h-full items-center justify-center">
+	                              <Dumbbell className="h-14 w-14 text-teal-400" aria-hidden />
+	                            </div>
+	                          )}
+	                          <div className="absolute left-3 top-3 rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-teal-800 shadow-sm">
+	                            {programCategory}
+	                          </div>
+	                        </div>
+	                        <div className="space-y-3 p-3 sm:p-4">
+	                        <div className="flex items-start justify-between gap-2">
+	                          <div className="min-w-0 flex-1">
+	                            <div className="text-lg font-black leading-tight tracking-tight text-slate-950">{program.title}</div>
+	                            {program.goal?.trim() ? (
+	                              <div className="mt-1 line-clamp-2 text-sm font-medium text-slate-600">{program.goal.trim()}</div>
+	                            ) : null}
+	                            {programAuthorLine ? (
+	                              <div className="mt-0.5 text-[10px] font-medium text-slate-600">{programAuthorLine}</div>
+	                            ) : null}
+	                          </div>
                           <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:flex-nowrap sm:items-center">
                             <div className="flex flex-nowrap items-center justify-end gap-1">
                             <OutlineButton
@@ -5425,10 +5538,36 @@ export function MemberPortal(props: MemberPortalProps) {
                               ) : null}
                             </div>
                             </div>
-                          </div>
-                        </div>
+	                          </div>
+	                        </div>
+	                        <div className="grid grid-cols-3 gap-2">
+	                          <div className="rounded-xl bg-slate-50 px-2.5 py-2">
+	                            <div className="text-[10px] font-bold uppercase text-slate-400">Tid</div>
+	                            <div className="mt-0.5 text-sm font-black text-slate-900">{programMinutes} min</div>
+	                          </div>
+	                          <div className="rounded-xl bg-slate-50 px-2.5 py-2">
+	                            <div className="text-[10px] font-bold uppercase text-slate-400">Nivå</div>
+	                            <div className="mt-0.5 truncate text-sm font-black text-slate-900">{programLevel}</div>
+	                          </div>
+	                          <div className="rounded-xl bg-slate-50 px-2.5 py-2">
+	                            <div className="text-[10px] font-bold uppercase text-slate-400">Øvelser</div>
+	                            <div className="mt-0.5 text-sm font-black text-slate-900">{program.exercises.length}</div>
+	                          </div>
+	                        </div>
+	                        <div>
+	                          <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-slate-500">
+	                            <span>Programprogresjon</span>
+	                            <span>{programProgressPct}%</span>
+	                          </div>
+	                          <div className="motus-progress-track mt-1.5 h-2 rounded-full">
+	                            <div
+	                              className="motus-progress-fill h-2 rounded-full"
+	                              style={{ width: `${programProgressPct}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+	                            />
+	                          </div>
+	                        </div>
 
-                        {isExpanded ? (
+	                        {isExpanded ? (
                           <>
                             {program.notes ? <div className="rounded-lg border bg-slate-50 px-2.5 py-2 text-xs text-slate-600">{program.notes}</div> : null}
 
@@ -5507,9 +5646,11 @@ export function MemberPortal(props: MemberPortalProps) {
                               );
                               })}
                             </div>
-                          </>
-                        ) : null}
-                      </div>
+	                          </>
+	                        ) : null}
+	                        </div>
+	                        </div>
+	                      </div>
                     );
                   })}
                   {memberProgramsLibraryArchived.length > 0 ? (
