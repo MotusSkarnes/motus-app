@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, ChevronRight, Plus, Repeat2, SkipForward, TimerReset, X } from "lucide-react";
 import { motusHaptic } from "../app/haptics";
+import { remainingSecondsUntilDeadline } from "../app/intervalTimerDeadline";
 import { useScreenWakeLock } from "../app/useScreenWakeLock";
 import { playWorkoutRestTone, primeWorkoutRestAudio } from "../app/workoutRestAudio";
 import { WorkoutCompactSetTable } from "./LiveWorkoutCompactSets";
