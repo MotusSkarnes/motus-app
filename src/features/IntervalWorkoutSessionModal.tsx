@@ -483,8 +483,7 @@ export function IntervalWorkoutSessionModal({
           ) : (
             <>
               <div
-                className="overflow-hidden rounded-2xl text-white shadow-md ring-1 ring-black/10"
-                style={{ background: `linear-gradient(155deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                className="overflow-hidden rounded-2xl bg-slate-900 text-white shadow-md ring-1 ring-slate-800"
               >
                 {currentStep ? (
                   <>
@@ -509,7 +508,7 @@ export function IntervalWorkoutSessionModal({
                     <div className="flex justify-center px-4 py-1 sm:px-5 sm:py-2">
                       <div className="text-6xl font-black tabular-nums tracking-tight sm:text-8xl">{formatSeconds(remainingSeconds)}</div>
                     </div>
-                    <div className="mx-4 mb-1 rounded-xl bg-black/18 backdrop-blur-[2px] sm:mx-5">
+                    <div className="mx-4 mb-1 rounded-xl bg-slate-800/90 sm:mx-5">
                       {canEditSpeedIncline ? (
                         <div className="grid gap-3 border-b border-white/15 px-3 py-3 sm:grid-cols-2 sm:px-4">
                           <label className="space-y-1">

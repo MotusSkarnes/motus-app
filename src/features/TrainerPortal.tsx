@@ -5304,12 +5304,9 @@ function pickFirstName(value: unknown): string {
                     <div className="rounded-xl border-2 border-teal-200/80 bg-white p-3 sm:p-5 space-y-4 shadow-sm">
                       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-teal-100 pb-3">
                         <div className="flex items-start gap-3">
-                          <span
-                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm"
-                            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                          >
+                          <MotusSectionIcon className="h-11 w-11 !p-0">
                             <CalendarRange className="h-5 w-5" aria-hidden />
-                          </span>
+                          </MotusSectionIcon>
                           <div>
                             <h3 className="text-lg font-bold text-slate-900">Lag periodeplan</h3>
                             <p className="mt-1 text-sm text-slate-600">Planlegg én eller flere uker. Medlemmet ser planen under Trening → Periodeplan.</p>
@@ -5542,12 +5539,9 @@ function pickFirstName(value: unknown): string {
                     <div className="min-w-0 flex-1 rounded-xl border-2 border-slate-200 bg-white p-3 sm:p-4 space-y-3 shadow-sm lg:max-w-[58%]">
                       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-3">
                         <div className="flex items-start gap-3">
-                          <span
-                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm"
-                            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                          >
+                          <MotusSectionIcon className="h-11 w-11 !p-0">
                             <ClipboardList className="h-5 w-5" aria-hidden />
-                          </span>
+                          </MotusSectionIcon>
                           <div>
                             <h3 className="text-lg font-bold text-slate-900">{editingProgramId ? "Rediger treningsprogram" : "Lag treningsprogram"}</h3>
                             <p className="mt-1 text-sm text-slate-600">Bygg en økt med øvelser. Medlemmet starter og logger under Trening.</p>

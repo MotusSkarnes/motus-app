@@ -4805,14 +4805,10 @@ export function MemberPortal(props: MemberPortalProps) {
           {memberTab === "programs" ? (
             <>
               <div className="flex flex-col gap-4">
-              <Card className="relative overflow-hidden p-4 sm:p-5">
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-teal-400/70 via-teal-300/30 to-pink-400/70"
-                />
+              <Card className="motus-card p-4 sm:p-5">
                 <div className="grid gap-4 md:grid-cols-[1fr_11.5rem] md:items-start">
                   <div>
-                    <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">Trening</p>
+                    <p className="motus-section-label">Trening</p>
                     <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
                       {todayPlanEntry
                         ? "Dagens plan ligger klar. Start direkte, eller sjekk programmene dine først."
@@ -4885,14 +4881,10 @@ export function MemberPortal(props: MemberPortalProps) {
                       onClick={() => setTrainingSection(item.id)}
                       className={`shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition ${
                         trainingSection === item.id
-                          ? "border-transparent text-white shadow-sm"
+                          ? "border-transparent bg-teal-500 text-white shadow-sm"
                           : "bg-white text-slate-700 hover:border-teal-200 hover:bg-teal-50 hover:text-teal-900"
                       }`}
-                      style={
-                        trainingSection === item.id
-                          ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
-                          : { borderColor: "rgba(15,23,42,0.12)" }
-                      }
+                      style={trainingSection === item.id ? undefined : { borderColor: "rgba(15,23,42,0.12)" }}
                     >
                       {item.label}
                     </button>
@@ -5423,12 +5415,9 @@ export function MemberPortal(props: MemberPortalProps) {
               <div className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-2">
-                    <div
-                      className="shrink-0 rounded-xl p-2 text-white shadow-sm"
-                      style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                    >
+                    <MotusSectionIcon className="!p-2">
                       <Users className="h-4 w-4" />
-                    </div>
+                    </MotusSectionIcon>
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-slate-800">Logg gruppetrening</div>
                       <div className="mt-1 text-xs text-slate-500">Registrer gruppetimer slik at PT ser all aktivitet. Velg annen dato hvis du glemte å logge.</div>
@@ -5539,12 +5528,9 @@ export function MemberPortal(props: MemberPortalProps) {
               <div className="rounded-xl border bg-white p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-2">
-                    <div
-                      className="shrink-0 rounded-xl p-2 text-white shadow-sm"
-                      style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                    >
+                    <MotusSectionIcon className="!p-2">
                       <CalendarRange className="h-4 w-4" aria-hidden />
-                    </div>
+                    </MotusSectionIcon>
                     <div className="min-w-0">
                       <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Periodeplan</div>
                       <div className="mt-1 text-lg font-bold text-slate-950">Uke for uke</div>
@@ -5813,12 +5799,9 @@ export function MemberPortal(props: MemberPortalProps) {
               ) : (
                 <div className="rounded-xl border bg-white p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                   <div className="flex min-w-0 items-start gap-2">
-                    <div
-                      className="shrink-0 rounded-xl p-2 text-white shadow-sm"
-                      style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                    >
+                    <MotusSectionIcon className="!p-2">
                       <CalendarRange className="h-4 w-4" aria-hidden />
-                    </div>
+                    </MotusSectionIcon>
                     <div className="min-w-0">
                       <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Periodeplan</div>
                       <div className="mt-1 text-lg font-bold text-slate-950">Ingen ukeplan ennå</div>
@@ -5832,12 +5815,9 @@ export function MemberPortal(props: MemberPortalProps) {
               <>
               <div className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
                 <div className="flex items-center gap-2">
-                  <div
-                    className="rounded-xl p-2 text-white shadow-sm"
-                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                  >
+                  <MotusSectionIcon className="!p-2">
                     <History className="h-4 w-4" />
-                  </div>
+                  </MotusSectionIcon>
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Historikk</div>
                     <div className="mt-1 text-lg font-bold text-slate-950">Siste 5 økter</div>
@@ -6141,14 +6121,9 @@ export function MemberPortal(props: MemberPortalProps) {
                           }}
                           className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border p-1.5 transition ${
                             cleanedFavoritePersonalRecordNames.includes(record.name)
-                              ? "border-transparent text-white"
+                              ? "border-transparent bg-teal-500 text-white"
                               : "border-slate-200 bg-white text-slate-400"
                           }`}
-                          style={
-                            cleanedFavoritePersonalRecordNames.includes(record.name)
-                              ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
-                              : { borderColor: "rgba(148,163,184,0.45)" }
-                          }
                           aria-label={
                             cleanedFavoritePersonalRecordNames.includes(record.name)
                               ? "Fjern fra fremhevede PR-er"
