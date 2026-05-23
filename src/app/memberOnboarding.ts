@@ -316,6 +316,7 @@ export function onboardingDraftFromStored(personalGoals: string | undefined): Om
 }
 
 const ONBOARDING_GATE_SEEN_KEY_PREFIX = "motus.member.onboarding.gateSeen.v1:";
+const ONBOARDING_COMPLETE_KEY_PREFIX = "motus.member.onboarding.complete.v1:";
 const MEMBER_WELCOME_SEEN_KEY_PREFIX = "motus.member.welcome.seen.v1:";
 
 export function memberOnboardingIdentityKey(member: Member): string {
@@ -330,6 +331,21 @@ export function hasSeenOnboardingGate(identityKey: string): boolean {
 export function markOnboardingGateSeen(identityKey: string): void {
   if (typeof window === "undefined" || !identityKey) return;
   window.localStorage.setItem(`${ONBOARDING_GATE_SEEN_KEY_PREFIX}${identityKey}`, "1");
+}
+
+export function markOnboardingCompleteLocally(identityKey: string, completedAt: string): void {
+  if (typeof window === "undefined" || !identityKey || !completedAt.trim()) return;
+  window.localStorage.setItem(`${ONBOARDING_COMPLETE_KEY_PREFIX}${identityKey}`, completedAt.trim());
+}
+
+export function hasLocalOnboardingComplete(identityKey: string): boolean {
+  if (typeof window === "undefined" || !identityKey) return false;
+  return Boolean(window.localStorage.getItem(`${ONBOARDING_COMPLETE_KEY_PREFIX}${identityKey}`)?.trim());
+}
+
+export function clearLocalOnboardingComplete(identityKey: string): void {
+  if (typeof window === "undefined" || !identityKey) return;
+  window.localStorage.removeItem(`${ONBOARDING_COMPLETE_KEY_PREFIX}${identityKey}`);
 }
 
 export function hasSeenMemberWelcome(identityKey: string): boolean {
@@ -377,6 +393,42 @@ function pickPreferredNonEmptyProfileField(values: Array<string | undefined | nu
   return "";
 }
 
+/** Slå sammen personal_goals på tvers av duplikat-rader — bevar oppstartsskjema fra hvilken som helst rad. */
+export function mergePersonalGoalsFromCandidates(candidates: Array<string | undefined | null>): string {
+  const values = candidates.map((value) => String(value ?? "").trim()).filter(Boolean);
+  if (!values.length) return "";
+  const best = pickBestPersonalGoals(values);
+  if (onboardingAnswersAreSubstantive(getOnboardingFromPersonalGoals(best))) return best;
+  for (const value of values) {
+    const onboarding = getOnboardingFromPersonalGoals(value);
+    if (onboardingAnswersAreSubstantive(onboarding)) {
+      return mergeOnboardingIntoPersonalGoals(best, onboarding);
+    }
+  }
+  return best;
+}
+
+export function resolveMemberPersonalGoals(
+  member: Member | null | undefined,
+  allMembers?: Member[],
+): string {
+  if (!member) return "";
+  const related = allMembers?.length ? findMembersByEmail(member, allMembers) : [member];
+  return mergePersonalGoalsFromCandidates(related.map((row) => row.personalGoals)) || member.personalGoals || "";
+}
+
+export function isMemberOnboardingComplete(
+  member: Member | null | undefined,
+  allMembers?: Member[],
+): boolean {
+  if (!member) return false;
+  const identityKey = memberOnboardingIdentityKey(member);
+  if (hasLocalOnboardingComplete(identityKey)) return true;
+  if (isOnboardingCompleted(member.personalGoals)) return true;
+  if (isOnboardingCompleted(resolveMemberPersonalGoals(member, allMembers))) return true;
+  return onboardingAnswersAreSubstantive(resolveMemberOnboarding(member, allMembers));
+}
+
 /** Kanonisk rad først (siste lagring); fall tilbake til andre duplikat-rader kun om feltet er tomt der. */
 function pickProfileScalarField(
   canonicalValue: string | undefined,
@@ -392,7 +444,7 @@ export function enrichMemberWithBestProfile(member: Member, allMembers: Member[]
   const candidates = allMembers.length ? findMembersByEmail(member, allMembers) : [member];
   if (!candidates.length) return member;
   const canonical = pickCanonicalMemberRowForProfile(member, allMembers);
-  const personalGoals = pickBestPersonalGoals(candidates.map((row) => row.personalGoals));
+  const personalGoals = mergePersonalGoalsFromCandidates(candidates.map((row) => row.personalGoals));
   const phone = pickProfileScalarField(canonical.phone, candidates.map((row) => row.phone));
   const birthDate = pickProfileScalarField(canonical.birthDate, candidates.map((row) => row.birthDate));
   const goal = pickProfileScalarField(canonical.goal, candidates.map((row) => row.goal));
@@ -517,5 +569,5 @@ export function shouldShowMemberOnboarding(
   allMembers?: Member[],
 ): boolean {
   if (!member || role !== "member") return false;
-  return !onboardingAnswersAreSubstantive(resolveMemberOnboarding(member, allMembers));
+  return !isMemberOnboardingComplete(member, allMembers);
 }

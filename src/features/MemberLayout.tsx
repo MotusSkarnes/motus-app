@@ -6,18 +6,20 @@ import { formatNotificationTimestamp } from "../app/dateFormat";
 import {
   enrichMemberWithBestProfile,
   findMembersByEmail,
-  isOnboardingCompleted,
-  onboardingAnswersAreSubstantive,
-  pickCanonicalMemberRowForProfile,
+  hasSeenMemberWelcome,
+  isMemberOnboardingComplete,
+  markOnboardingCompleteLocally,
   markOnboardingGateSeen,
   markMemberWelcomeSeen,
   memberOnboardingIdentityKey,
   mergeOnboardingIntoPersonalGoals,
+  onboardingAnswersAreSubstantive,
   onboardingDraftFromStored,
+  pickCanonicalMemberRowForProfile,
   primaryGoalFromOnboarding,
+  resolveMemberPersonalGoals,
   resolveMemberOnboarding,
   shouldShowMemberOnboarding,
-  hasSeenMemberWelcome,
   type MemberOnboardingAnswers,
 } from "../app/memberOnboarding";
 import { normalizePeriodSchedulePlan, readPeriodPlansByMemberId, writePeriodPlansByMemberId } from "../app/periodPlanMerge";
@@ -177,11 +179,8 @@ export function MemberLayout({
   const currentUserRole = appState.currentUser?.role;
   const onboardingIdentityKey = activeMember ? memberOnboardingIdentityKey(activeMember) : "";
   const onboardingCompleted = useMemo(
-    () => {
-      if (isOnboardingCompleted(activeMember?.personalGoals)) return true;
-      return onboardingAnswersAreSubstantive(resolveMemberOnboarding(activeMember, appState.members));
-    },
-    [activeMember, activeMember?.personalGoals, appState.members],
+    () => isMemberOnboardingComplete(activeMember, appState.members),
+    [activeMember, appState.members],
   );
   const needsOnboardingPrompt = useMemo(
     () => shouldShowMemberOnboarding(activeMember, currentUserRole, appState.members),
@@ -193,6 +192,14 @@ export function MemberLayout({
     if (hasSeenMemberWelcome(onboardingIdentityKey)) return;
     setWelcomeModalOpen(true);
   }, [activeMember, currentUserRole, onboardingIdentityKey]);
+
+  useEffect(() => {
+    if (!activeMember || !onboardingIdentityKey) return;
+    const resolved = resolveMemberOnboarding(activeMember, appState.members);
+    if (resolved?.completedAt && onboardingAnswersAreSubstantive(resolved)) {
+      markOnboardingCompleteLocally(onboardingIdentityKey, resolved.completedAt);
+    }
+  }, [activeMember, appState.members, onboardingIdentityKey]);
 
   function dismissWelcomeModal() {
     if (!onboardingIdentityKey) return;
@@ -262,7 +269,9 @@ export function MemberLayout({
     }
     if (onboardingIdentityKey) {
       markOnboardingGateSeen(onboardingIdentityKey);
+      markOnboardingCompleteLocally(onboardingIdentityKey, answers.completedAt);
     }
+    setOnboardingGateOpen(false);
 
     patchState((prev) => {
       const members = prev.members
@@ -617,7 +626,7 @@ export function MemberLayout({
       {onboardingGateOpen && activeMember ? (
         <MemberOnboarding
           memberName={activeMember.name}
-          initialDraft={onboardingDraftFromStored(activeMember.personalGoals)}
+          initialDraft={onboardingDraftFromStored(resolveMemberPersonalGoals(activeMember, appState.members))}
           onComplete={persistOnboardingAnswers}
           onClose={() => {
             setOnboardingGateOpen(false);

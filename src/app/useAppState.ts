@@ -43,7 +43,7 @@ import {
 import { getPausedWorkoutById, purgeExpiredPausedWorkouts } from "./pausedWorkoutStorage";
 import { notifyInspirationItemsChanged, saveInspirationItemsToStorage } from "./inspirationStorage";
 import { filterDeletedPrograms, registerDeletedProgram, unregisterDeletedProgram } from "./deletedProgramTombstones";
-import { enrichMemberWithBestProfile } from "./memberOnboarding";
+import { enrichMemberWithBestProfile, mergePersonalGoalsFromCandidates } from "./memberOnboarding";
 import { memberMayDeleteProgram, mergeProgramAuthorFields } from "./programAuthor";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import {
@@ -147,7 +147,8 @@ function mergeTwoMemberSnapshots(primary: Member, secondary: Member): Member {
   const sInv = secondary.invitedAt?.trim();
   merged.invitedAt = sInv || pInv || "";
   merged.personalGoals =
-    pickBestPersonalGoals([primary.personalGoals, secondary.personalGoals, merged.personalGoals]) || merged.personalGoals;
+    mergePersonalGoalsFromCandidates([primary.personalGoals, secondary.personalGoals, merged.personalGoals]) ||
+    merged.personalGoals;
   merged.phone = secondary.phone.trim() || primary.phone.trim() || merged.phone;
   merged.birthDate = secondary.birthDate.trim() || primary.birthDate.trim() || merged.birthDate;
   merged.goal = secondary.goal.trim() || primary.goal.trim() || merged.goal;
@@ -957,6 +958,7 @@ export function useAppState() {
             const remoteForEmail = filterMembersForSessionEmail(mergedMembers, normalizedUserEmail);
             const localForEmail = filterMembersForSessionEmail(prevStripped.members, normalizedUserEmail);
             mergedMembers = remoteForEmail.length > 0 ? remoteForEmail : localForEmail;
+            mergedMembers = mergeMembersById(mergedMembers, localForEmail) ?? mergedMembers;
             mergedMembers = mergedMembers.map((member) =>
               enrichMemberWithBestProfile(member, mergedMembers),
             );

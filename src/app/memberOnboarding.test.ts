@@ -4,13 +4,17 @@ import {
   enrichMemberWithBestProfile,
   getOnboardingFromPersonalGoals,
   hasSeenMemberWelcome,
+  isMemberOnboardingComplete,
   isOnboardingCompleted,
   markMemberWelcomeSeen,
   mergeOnboardingIntoPersonalGoals,
+  mergePersonalGoalsFromCandidates,
   onboardingAnswersAreSubstantive,
   primaryGoalFromOnboarding,
   findMembersByEmail,
   memberOnboardingIdentityKey,
+  markOnboardingCompleteLocally,
+  hasLocalOnboardingComplete,
   resolveMemberOnboarding,
 } from "./memberOnboarding";
 import type { Member } from "./types";
@@ -191,6 +195,50 @@ describe("memberOnboarding", () => {
     const resolved = resolveMemberOnboarding(base, [base, memberRow]);
     expect(resolved?.trainingGoals).toEqual(["Utholdenhet"]);
     expect(onboardingAnswersAreSubstantive(resolved)).toBe(true);
+  });
+
+  it("mergePersonalGoalsFromCandidates keeps onboarding when best blob is notification-only", () => {
+    const onboardingBlob = mergeOnboardingIntoPersonalGoals("", {
+      ...createEmptyOnboardingDraft(),
+      version: 1,
+      trainingGoals: ["Styrke"],
+      motivations: ["Helse"],
+      completedAt: "2026-05-16T12:00:00.000Z",
+    });
+    const notificationOnly = `MOTUS_PROFILE_V1:${JSON.stringify({
+      notificationPreferences: { seenHiddenBadgeIds: ["badge-1"], openedMemberAlertIds: ["alert-1"] },
+    })}`;
+    const merged = mergePersonalGoalsFromCandidates([notificationOnly, onboardingBlob]);
+    expect(isOnboardingCompleted(merged)).toBe(true);
+    expect(getOnboardingFromPersonalGoals(merged)?.trainingGoals).toEqual(["Styrke"]);
+  });
+
+  it("isMemberOnboardingComplete respects local completion marker", () => {
+    const member: Member = {
+      id: "local-onboarding",
+      name: "Test",
+      email: "local@test.no",
+      personalGoals: "",
+      goal: "",
+      focus: "",
+      injuries: "",
+      level: "Nybegynner",
+      membershipType: "Premium",
+      customerType: "PT-kunde",
+      daysSinceActivity: 0,
+      phone: "",
+      birthDate: "",
+      coachNotes: "",
+      avatarUrl: "",
+      invitedAt: "",
+      isActive: true,
+    };
+    const key = memberOnboardingIdentityKey(member);
+    window.localStorage.removeItem(`motus.member.onboarding.complete.v1:${key}`);
+    expect(isMemberOnboardingComplete(member, [member])).toBe(false);
+    markOnboardingCompleteLocally(key, "2026-05-16T12:00:00.000Z");
+    expect(isMemberOnboardingComplete(member, [member])).toBe(true);
+    window.localStorage.removeItem(`motus.member.onboarding.complete.v1:${key}`);
   });
 
   it("kobler ikke oppstartsskjema mellom ulike e-poster", () => {

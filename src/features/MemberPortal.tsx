@@ -40,6 +40,8 @@ import {
   parsePersonalGoalsJson,
   pickCanonicalMemberRowForProfile,
   readProfileExtensions,
+  mergePersonalGoalsFromCandidates,
+  resolveMemberPersonalGoals,
 } from "../app/memberOnboarding";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
 import {
@@ -433,7 +435,7 @@ function resolveBestPersonalGoalsForRelatedMembers(
     if (relatedIds.has(member.id)) return true;
     return Boolean(normalizedEmail && member.email.trim().toLowerCase() === normalizedEmail);
   });
-  return pickBestPersonalGoals(candidates.map((member) => member.personalGoals)) || anchor.personalGoals || "";
+  return mergePersonalGoalsFromCandidates(candidates.map((member) => member.personalGoals)) || anchor.personalGoals || "";
 }
 
 /** Same canonical choice as useAppState.resolveMemberViewIdForUser — avoids feil rad ved duplikat-e-post. */
@@ -1097,7 +1099,10 @@ export function MemberPortal(props: MemberPortalProps) {
     (patch: Parameters<typeof patchMemberNotificationPreferencesInPersonalGoals>[1]) => {
       if (!editableMember) return;
       const anchor = pickCanonicalMemberRowForProfile(editableMember, members);
-      const personalGoals = patchMemberNotificationPreferencesInPersonalGoals(anchor.personalGoals, patch);
+      const personalGoals = patchMemberNotificationPreferencesInPersonalGoals(
+        resolveMemberPersonalGoals(anchor, members),
+        patch,
+      );
       updateMember({ memberId: anchor.id, changes: { personalGoals } });
     },
     [editableMember, members, updateMember],
@@ -2185,8 +2190,7 @@ export function MemberPortal(props: MemberPortalProps) {
         homeVisibility,
         favoritePersonalRecords: cleanedFavoritePersonalRecordNames,
       },
-      pickCanonicalMemberRowForProfile(editableMember, members).personalGoals ||
-        editableMember.personalGoals,
+      resolveMemberPersonalGoals(editableMember, members),
     );
     const profileAnchor = pickCanonicalMemberRowForProfile(editableMember, members);
     window.localStorage.setItem(getProfileStorageKey(profileAnchor.id), JSON.stringify(next));
@@ -2626,7 +2630,7 @@ export function MemberPortal(props: MemberPortalProps) {
         homeVisibility: normalizedHomeVisibility,
         favoritePersonalRecords: cleanedFavoritePersonalRecordNames,
       },
-      editableMember.personalGoals,
+      resolveMemberPersonalGoals(editableMember, members),
     );
     const targetIds = Array.from(new Set([editableMember.id, ...relatedMemberIds].filter(Boolean)));
     targetIds.forEach((memberId) => {
@@ -2693,7 +2697,7 @@ export function MemberPortal(props: MemberPortalProps) {
         homeVisibility: normalizeHomeVisibilityForStorage(homeVisibility),
         favoritePersonalRecords: cleanedLocal,
       },
-      editableMember.personalGoals,
+      resolveMemberPersonalGoals(editableMember, members),
     );
     const targetIds = Array.from(new Set([editableMember.id, ...relatedMemberIds].filter(Boolean)));
     targetIds.forEach((memberId) => {
