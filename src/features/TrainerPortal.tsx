@@ -6,6 +6,9 @@ import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClear";
 import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { buildDeleteExerciseFromBankDialogCopy, findProgramsUsingBankExercise } from "../app/exerciseBankUsage";
+import { computeExercisePopularityScores, isPopularExercise, isRecommendedExercise } from "../app/exerciseBankStats";
+import { muscleGroupChipClass } from "../app/customWorkoutBuilder";
+import { splitMuscleGroupLabel } from "./muscleSplitStats";
 import { programAuthorLabelForTrainer } from "../app/programAuthor";
 import { uid } from "../app/storage";
 import {
@@ -1497,6 +1500,10 @@ function pickFirstName(value: unknown): string {
     if (level === 4) return "😮‍💨";
     return "🥵";
   }
+  const exercisePopularityScores = useMemo(
+    () => computeExercisePopularityScores(exercises, programs, logs),
+    [exercises, programs, logs],
+  );
   const visibleExercises = useMemo(() => {
     const query = exerciseSearch.trim().toLowerCase();
     const filtered = exercises.filter((exercise) => {
@@ -1517,9 +1524,12 @@ function pickFirstName(value: unknown): string {
       const aFavorite = favoriteExerciseIds.includes(a.id) ? 1 : 0;
       const bFavorite = favoriteExerciseIds.includes(b.id) ? 1 : 0;
       if (aFavorite !== bFavorite) return bFavorite - aFavorite;
+      const aScore = exercisePopularityScores.get(a.id) ?? 0;
+      const bScore = exercisePopularityScores.get(b.id) ?? 0;
+      if (aScore !== bScore) return bScore - aScore;
       return a.name.localeCompare(b.name, "no");
     });
-  }, [exercises, exerciseSearch, exerciseCategoryFilter, exerciseBankSubTab, favoriteExerciseIds, trainerTab]);
+  }, [exercises, exerciseSearch, exerciseCategoryFilter, exerciseBankSubTab, favoriteExerciseIds, trainerTab, exercisePopularityScores]);
   const programExerciseGroupOptions = useMemo(() => {
     const groups = Array.from(new Set(exercises.flatMap((exercise) => splitMultiValue(exercise.group))));
     return groups.sort((a, b) => a.localeCompare(b, "no"));
@@ -6617,11 +6627,17 @@ function pickFirstName(value: unknown): string {
                 ) : null}
                 {visibleExercises.map((exercise) => {
                   const isFavorite = favoriteExerciseIds.includes(exercise.id);
+                  const popularity = exercisePopularityScores.get(exercise.id) ?? 0;
+                  const categoryAccent = exerciseCategoryAccentColor(exercise.category);
                   return (
                   <div
                     key={exercise.id}
-                    className="rounded-xl border bg-slate-50 px-3 py-2.5"
-                    style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                    className="rounded-2xl border bg-white px-3 py-3 shadow-sm transition hover:shadow-md"
+                    style={{
+                      borderColor: "rgba(15,23,42,0.08)",
+                      borderLeftWidth: 4,
+                      borderLeftColor: categoryAccent,
+                    }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <button
@@ -6641,7 +6657,8 @@ function pickFirstName(value: unknown): string {
                           }}
                         />
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold leading-tight text-slate-800">{exercise.name}</div>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <div className="truncate text-sm font-semibold leading-tight text-slate-900">{exercise.name}</div>
                           <div className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
                             <span className="rounded-full border bg-white px-2 py-0.5 text-slate-600" style={{ borderColor: "rgba(15,23,42,0.1)" }}>{exercise.category}</span>
                             <span className="rounded-full border bg-white px-2 py-0.5 text-slate-600" style={{ borderColor: "rgba(15,23,42,0.1)" }}>{exercise.group}</span>
