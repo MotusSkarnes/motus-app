@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Archive,
   CalendarRange,
@@ -275,6 +275,8 @@ type MemberPortalProps = {
   showOnboardingHomePrompt?: boolean;
   /** Når false: vis knapp for å fylle ut / sende skjema på nytt (f.eks. etter mislykket sky-lagring). */
   onboardingSubstantivelyComplete?: boolean;
+  homeOverviewHeaderActions?: ReactNode;
+  homeOverviewNotificationsPanel?: ReactNode;
 };
 
 const MEMBER_AVATAR_BUCKET = "exercise-images";
@@ -923,6 +925,8 @@ export function MemberPortal(props: MemberPortalProps) {
     onOpenOnboarding,
     showOnboardingHomePrompt = false,
     onboardingSubstantivelyComplete = false,
+    homeOverviewHeaderActions,
+    homeOverviewNotificationsPanel,
   } = props;
   const [messageText, setMessageText] = useState("");
   const [memberChatSendStatus, setMemberChatSendStatus] = useState<string | null>(null);
@@ -4347,8 +4351,8 @@ export function MemberPortal(props: MemberPortalProps) {
   return (
     <>
     <div className="space-y-4 sm:space-y-6">
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-[280px_1fr]">
-        <Card className="hidden p-4 h-fit xl:p-5 lg:block">
+      <div className={`grid gap-4 sm:gap-6 ${memberTab === "overview" ? "" : "lg:grid-cols-[280px_1fr]"}`}>
+        <Card className={`hidden p-4 h-fit xl:p-5 ${memberTab === "overview" ? "" : "lg:block"}`}>
           <div className="flex items-start gap-3">
             <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><UserCircle2 className="h-5 w-5" /></div>
             <div>
@@ -4388,7 +4392,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
         <div className="min-w-0 w-full space-y-4 overflow-visible sm:space-y-6">
           {memberTab === "overview" ? (
-            <div className="space-y-5">
+            <div className="space-y-4">
               <MemberHomeOverview
                 memberFirstName={homeFirstName}
                 streakLine={homeStreakLine}
@@ -4396,6 +4400,8 @@ export function MemberPortal(props: MemberPortalProps) {
                 statusCard={homeStatusCard}
                 workoutTitle={homePrimaryFocus}
                 workoutDuration={homeWorkoutDuration}
+                headerActions={homeOverviewHeaderActions}
+                notificationsPanel={homeOverviewNotificationsPanel}
                 primaryCta={
                   todayPlanAction.kind === "start-program" ? (
                     <MemberHomeStartWorkoutButton

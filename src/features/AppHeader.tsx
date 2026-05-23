@@ -1,10 +1,11 @@
 import { useMemo } from "react";
-import { Bell, LogOut, UserCircle2 } from "lucide-react";
+import { UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
-import type { AuthUser, Role } from "../app/types";
+import type { AuthUser, MemberTab, Role } from "../app/types";
 import { Card, OutlineButton, PillButton } from "../app/ui";
 import type { MemberAlert } from "../app/useNotifications";
 import motusLogo from "../assets/motus-logo-transparent.svg";
+import { MemberHomeHeaderActions } from "./MemberHomeHeaderActions";
 import { MemberNotificationsPanel } from "./MemberNotificationsPanel";
 
 export function AppHeader({
@@ -12,6 +13,7 @@ export function AppHeader({
   memberDisplayName: _memberDisplayName,
   memberTrainerDisplayName: _memberTrainerDisplayName,
   role,
+  memberTab = "overview",
   showQuickLogin,
   onSwitchRole,
   onResetData,
@@ -28,6 +30,7 @@ export function AppHeader({
   memberDisplayName?: string;
   memberTrainerDisplayName?: string;
   role: Role;
+  memberTab?: MemberTab;
   showQuickLogin: boolean;
   onSwitchRole: (role: Role) => void;
   onResetData: () => void;
@@ -56,48 +59,19 @@ export function AppHeader({
   }, [currentUser.email, currentUser.name]);
 
   if (currentUser.role === "member") {
+    if (memberTab === "overview") return null;
+
     return (
       <div className="space-y-2">
-        <div className="flex items-center justify-end gap-1.5 sm:gap-2">
-          {showMemberNotifications ? (
-            <button
-              type="button"
-              onClick={onMemberBellToggle}
-              className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-100"
-              aria-label={memberNotificationsOpen ? "Lukk varsler" : "Åpne varsler"}
-              title={memberNotificationsOpen ? "Lukk varsler" : "Varsler"}
-            >
-              <Bell className="h-[1.125rem] w-[1.125rem]" aria-hidden />
-              {memberUnreadCount > 0 ? (
-                <span
-                  className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
-                  style={{ backgroundColor: MOTUS.pink }}
-                >
-                  {memberUnreadCount > 9 ? "9+" : memberUnreadCount}
-                </span>
-              ) : null}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => onOpenMemberProfile?.()}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white shadow-sm transition hover:opacity-90"
-            style={{ backgroundColor: MOTUS.turquoise }}
-            aria-label="Åpne profil"
-            title="Profil"
-          >
-            <UserCircle2 className="h-[1.125rem] w-[1.125rem]" aria-hidden />
-          </button>
-          <button
-            type="button"
-            onClick={onLogout}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white shadow-sm transition hover:opacity-90"
-            style={{ backgroundColor: MOTUS.pink }}
-            aria-label="Logg ut"
-            title="Logg ut"
-          >
-            <LogOut className="h-[1.125rem] w-[1.125rem]" aria-hidden />
-          </button>
+        <div className="flex items-center justify-end">
+          <MemberHomeHeaderActions
+            showNotifications={showMemberNotifications}
+            memberUnreadCount={memberUnreadCount}
+            memberNotificationsOpen={memberNotificationsOpen}
+            onMemberBellToggle={onMemberBellToggle}
+            onOpenMemberProfile={onOpenMemberProfile}
+            onLogout={onLogout}
+          />
         </div>
         {showMemberNotifications && memberNotificationsOpen && onOpenMemberAlert ? (
           <MemberNotificationsPanel alerts={memberVisibleAlerts} onOpenAlert={onOpenMemberAlert} />

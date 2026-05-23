@@ -39,6 +39,8 @@ import { MemberWelcomeModal } from "./MemberWelcomeModal";
 import { MemberPortal } from "./MemberPortal";
 import { InspirationHub } from "./InspirationHub";
 import { MemberDesktopTabNav, MemberMobileTabNav } from "./MemberTabNavigation";
+import { MemberHomeHeaderActions } from "./MemberHomeHeaderActions";
+import { MemberNotificationsPanel } from "./MemberNotificationsPanel";
 
 function resolveActiveMemberForUser(appState: AppState): Member | null {
   const currentUser = appState.currentUser;
@@ -394,6 +396,20 @@ export function MemberLayout({
     onOpenOnboarding: () => setOnboardingGateOpen(true),
     showOnboardingHomePrompt: !welcomeModalOpen && !onboardingGateOpen && !onboardingCompleted,
     onboardingSubstantivelyComplete: onboardingCompleted,
+    homeOverviewHeaderActions: (
+      <MemberHomeHeaderActions
+        showNotifications={!isMemberLimited}
+        memberUnreadCount={memberUnreadCount}
+        memberNotificationsOpen={memberNotificationsOpen}
+        onMemberBellToggle={handleMemberBellToggle}
+        onOpenMemberProfile={() => setMemberTab("profile")}
+        onLogout={onLogout}
+      />
+    ),
+    homeOverviewNotificationsPanel:
+      !isMemberLimited && memberNotificationsOpen ? (
+        <MemberNotificationsPanel alerts={memberVisibleAlerts} onOpenAlert={openAlert} />
+      ) : null,
   };
   const inspirationMemberId =
     appState.memberViewId ||

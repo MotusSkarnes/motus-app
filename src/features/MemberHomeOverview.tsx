@@ -15,6 +15,8 @@ export type MemberHomeOverviewProps = {
   statusCard: MemberHomeStatusCard | null;
   workoutTitle: string;
   workoutDuration: string | null;
+  headerActions?: ReactNode;
+  notificationsPanel?: ReactNode;
   primaryCta: ReactNode;
   secondaryCta?: ReactNode;
   onboardingPrompt?: ReactNode;
@@ -28,30 +30,38 @@ export function MemberHomeOverview({
   statusCard,
   workoutTitle,
   workoutDuration,
+  headerActions,
+  notificationsPanel,
   primaryCta,
   secondaryCta,
   onboardingPrompt,
   monthlyCheckInPrompt,
 }: MemberHomeOverviewProps) {
   return (
-    <div className="motus-fade-in-up space-y-6">
-      <header className="space-y-1 px-0.5">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-[1.65rem]">Hei {memberFirstName}</h1>
-        {streakLine ? <p className="text-sm font-medium text-slate-700">{streakLine}</p> : null}
-        {motivationLine ? <p className="text-sm leading-relaxed text-slate-500">{motivationLine}</p> : null}
+    <div className="motus-fade-in-up space-y-5">
+      <header className="px-0.5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-[1.65rem]">Hei {memberFirstName}</h1>
+            {streakLine ? <p className="text-sm font-medium text-slate-700">{streakLine}</p> : null}
+            {motivationLine ? <p className="text-sm leading-relaxed text-slate-500">{motivationLine}</p> : null}
+          </div>
+          {headerActions}
+        </div>
+        {notificationsPanel ? <div className="mt-3">{notificationsPanel}</div> : null}
       </header>
 
       {statusCard ? <HomeStatusRow statusCard={statusCard} /> : null}
 
-      <section className="relative overflow-hidden rounded-2xl bg-white px-4 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.06] sm:px-5 sm:py-5">
+      <section className="relative overflow-hidden rounded-2xl bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.06] sm:px-5 sm:py-4">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-teal-400/80 via-teal-300/40 to-pink-400/80"
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-teal-400/70 via-teal-300/30 to-pink-400/70"
         />
         <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">Dagens økt</p>
-        <h2 className="mt-2 text-lg font-semibold leading-snug tracking-tight text-slate-950 sm:text-xl">{workoutTitle}</h2>
-        {workoutDuration ? <p className="mt-1 text-sm tabular-nums text-slate-500">{workoutDuration}</p> : null}
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <h2 className="mt-1.5 text-lg font-semibold leading-snug tracking-tight text-slate-950">{workoutTitle}</h2>
+        {workoutDuration ? <p className="mt-0.5 text-sm tabular-nums text-slate-500">{workoutDuration}</p> : null}
+        <div className="mt-3.5 flex flex-wrap items-center gap-2">
           {primaryCta}
           {secondaryCta}
         </div>
@@ -64,14 +74,10 @@ export function MemberHomeOverview({
 }
 
 function HomeStatusRow({ statusCard }: { statusCard: MemberHomeStatusCard }) {
-  const content = (
+  const inner = (
     <>
-      <span className="text-xs font-medium text-slate-600">{statusCard.title}</span>
-      <span className="text-xs text-slate-300" aria-hidden>
-        ·
-      </span>
-      <span className="text-xs text-slate-500">{statusCard.detail}</span>
-      {statusCard.onClick ? <ChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden /> : null}
+      <p className="text-xs font-medium text-slate-600">{statusCard.title}</p>
+      <p className="text-xs text-slate-500">{statusCard.detail}</p>
     </>
   );
 
@@ -80,14 +86,15 @@ function HomeStatusRow({ statusCard }: { statusCard: MemberHomeStatusCard }) {
       <button
         type="button"
         onClick={statusCard.onClick}
-        className="motus-pressable flex w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-lg px-0.5 py-1 text-left transition hover:opacity-80"
+        className="motus-pressable group flex w-full items-center justify-between gap-3 rounded-lg px-0.5 py-1 text-left transition hover:opacity-80"
       >
-        {content}
+        <span className="min-w-0 space-y-0.5">{inner}</span>
+        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400 transition group-hover:text-slate-600" aria-hidden />
       </button>
     );
   }
 
-  return <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-0.5 py-1">{content}</div>;
+  return <div className="space-y-0.5 px-0.5 py-1">{inner}</div>;
 }
 
 export function MemberHomeCompactPrompt({

@@ -162,6 +162,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     memberDisplayName: memberHeaderDisplayName,
     memberTrainerDisplayName,
     role: layoutRole,
+    memberTab: state.memberTab,
     showQuickLogin: state.showQuickLogin,
     onSwitchRole: (role) => state.patchState({ role }),
     onResetData: handleResetData,
