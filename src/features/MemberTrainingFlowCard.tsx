@@ -1,12 +1,12 @@
 import { Route } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { PROGRESS_STEP_LABELS } from "../app/memberProgressGamification";
-
-const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
-const MOTUS_GRADIENT_90 = `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
 import type { ProgressGoal, RecentStreakWeek } from "../app/memberProgressGamification";
 import { MemberProgressGoals } from "./MemberProgressGoals";
 import { MemberWeeklyStreakCard } from "./MemberWeeklyStreakCard";
+
+const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
+const MOTUS_GRADIENT_90 = `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
 
 type MemberTrainingFlowCardProps = {
   achievementLevel: number;
@@ -72,19 +72,22 @@ export function MemberTrainingFlowCard({
         <div className="mt-4">
           <div className="mb-2 flex items-center justify-between gap-2 text-[11px] font-medium text-slate-500">
             <span>Din reise</span>
-            <span className="tabular-nums text-slate-600">
-              {achievedLevel} fullført · {hasCompletedAllLevels ? "mål nådd" : `jobber mot steg ${activeStep}`}
+            <span className="shrink-0 tabular-nums text-slate-600">
+              {achievedLevel} fullført · {hasCompletedAllLevels ? "mål nådd" : `mot steg ${activeStep}`}
             </span>
           </div>
-          <ol className="flex items-center gap-0 overflow-x-auto pb-1" aria-label="Steg i treningsflyten">
+          <ol
+            className="-mx-1 flex items-start gap-0 overflow-x-auto px-1 pb-1 scrollbar-none sm:mx-0 sm:px-0"
+            aria-label="Steg i treningsflyten"
+          >
             {PROGRESS_STEP_LABELS.map((label, index) => {
               const step = index + 1;
               const completed = step <= achievedLevel;
               const current = !hasCompletedAllLevels && step === activeStep;
               const upcoming = step > achievedLevel && !current;
               return (
-                <li key={label} className="flex min-w-0 flex-1 items-center">
-                  <div className="flex min-w-[2.25rem] flex-col items-center gap-1 px-0.5">
+                <li key={label} className="flex shrink-0 items-start">
+                  <div className="flex w-[3.1rem] flex-col items-center gap-1.5 sm:w-[3.75rem]">
                     <span
                       title={`Steg ${step}: ${label}`}
                       className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[10px] font-bold tabular-nums transition ${
@@ -105,7 +108,7 @@ export function MemberTrainingFlowCard({
                       {completed ? "✓" : step}
                     </span>
                     <span
-                      className={`max-w-[4.5rem] truncate text-center text-[9px] font-medium leading-tight ${
+                      className={`hidden h-8 w-full px-0.5 text-center text-[9px] font-medium leading-[1.15] sm:line-clamp-2 sm:block ${
                         current ? "font-semibold text-slate-800" : completed ? "text-slate-600" : upcoming ? "text-slate-400" : "text-slate-500"
                       }`}
                     >
@@ -114,7 +117,7 @@ export function MemberTrainingFlowCard({
                   </div>
                   {step < achievementMaxLevel ? (
                     <span
-                      className={`mx-0.5 h-0.5 min-w-[0.35rem] flex-1 rounded-full ${step < achievedLevel || (step === achievedLevel && current) ? "" : "bg-slate-200"}`}
+                      className={`mt-[0.85rem] h-0.5 w-2 shrink-0 rounded-full sm:w-2.5 ${step < achievedLevel || (step === achievedLevel && current) ? "" : "bg-slate-200"}`}
                       style={
                         step < achievedLevel
                           ? { background: MOTUS_GRADIENT_90, opacity: 0.85 }
@@ -129,6 +132,11 @@ export function MemberTrainingFlowCard({
               );
             })}
           </ol>
+          <p className="mt-2 text-center text-xs font-medium leading-snug text-slate-700 sm:hidden">
+            {hasCompletedAllLevels
+              ? "Alle steg fullført"
+              : `Steg ${activeStep}: ${PROGRESS_STEP_LABELS[activeStep - 1]}`}
+          </p>
         </div>
       </div>
 

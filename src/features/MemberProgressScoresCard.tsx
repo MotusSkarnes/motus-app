@@ -10,7 +10,7 @@ function ScoreTile({ label, value, subline }: { label: string; value: string; su
     <div className="rounded-xl border bg-white p-3 sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
       <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">{label}</div>
       <div className="mt-1 text-2xl font-black tabular-nums tracking-tight text-slate-950 sm:text-3xl">{value}</div>
-      <p className="mt-1 text-xs leading-snug text-slate-600">{subline}</p>
+      <p className="mt-1 line-clamp-2 text-xs leading-snug text-slate-600">{subline}</p>
     </div>
   );
 }
@@ -29,12 +29,12 @@ export function MemberProgressScoresCard({ scores }: MemberProgressScoresCardPro
         }}
       >
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-teal-800">Momentum</p>
             <p className="mt-1 text-4xl font-black tabular-nums tracking-tight text-slate-950 sm:text-5xl">{momentum.pct}%</p>
-            <p className="mt-1 max-w-md text-sm font-medium text-slate-700">{momentum.subline}</p>
+            <p className="mt-1 line-clamp-2 max-w-md text-sm font-medium leading-snug text-slate-700">{momentum.subline}</p>
           </div>
-          <div className="min-w-[8rem] rounded-xl bg-white/80 px-3 py-2 text-right shadow-sm ring-1 ring-white/90">
+          <div className="min-w-[8rem] shrink-0 rounded-xl bg-white/80 px-3 py-2 text-right shadow-sm ring-1 ring-white/90">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Nivå {xp.level}</p>
             <p className="text-sm font-bold text-slate-900">{xp.levelLabel}</p>
             <p className="mt-0.5 text-[11px] tabular-nums text-slate-500">{xp.totalXp.toLocaleString("nb-NO")} XP</p>
