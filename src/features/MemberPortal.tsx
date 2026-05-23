@@ -3635,7 +3635,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const progressShareLast7Days = computeShareCardLast7DaysStats(completedLogs, nowTimestamp);
   const progressLiftPlayfulLine = buildProgressLiftPlayfulLine(progressShareLast7Days);
   const memberShareDisplayName = viewedMember?.name ?? editableMember?.name ?? "Medlem";
-  const _nextBestAction = useMemo(() => {
+  const nextBestAction = useMemo(() => {
     if (!memberAssignedPrograms.length) {
       return {
         title: "Be om første program",
@@ -3667,7 +3667,7 @@ export function MemberPortal(props: MemberPortalProps) {
       action: "progress" as const,
     };
   }, [memberAssignedPrograms.length, memberProgramsInActiveLibrary.length, nextProgram]);
-  const _homeWeeklySummary = useMemo(() => {
+  const homeWeeklySummary = useMemo(() => {
     const today = getStartOfDay(new Date(nowTimestamp));
     const mondayOffset = (today.getDay() + 6) % 7;
     const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset);
@@ -3682,6 +3682,24 @@ export function MemberPortal(props: MemberPortalProps) {
     const completionRate = plannedThisWeek > 0 ? Math.min(100, Math.round((completedThisWeek / plannedThisWeek) * 100)) : 0;
     return { completedThisWeek, plannedThisWeek, completionRate };
   }, [nowTimestamp, completedLogDates, activeWeeklyPlanEffectiveDays]);
+  const homeMonthGoalPct = Math.min(
+    100,
+    Math.round((Math.min(memberProgress.monthGoal.current, memberProgress.monthGoal.target) / memberProgress.monthGoal.target) * 100),
+  );
+  const homeMomentumPct = homeWeeklySummary.plannedThisWeek > 0 ? homeWeeklySummary.completionRate : homeMonthGoalPct;
+  const homeRemainingMonthSessions = Math.max(0, memberProgress.monthGoal.target - memberProgress.monthGoal.current);
+  const homePrimaryFocus = todayPlanEntry || nextProgram?.title || "Bygg en økt som passer dagen";
+  const homeHeroTitle = streakWeeks > 0 ? `${streakWeeks} ukers streak` : "Klar for dagens økt";
+  const homeHeroSubtitle =
+    homeWeeklySummary.completedThisWeek > 0
+      ? `Du har ${homeWeeklySummary.completedThisWeek} økt${homeWeeklySummary.completedThisWeek === 1 ? "" : "er"} inne denne uken. Fortsett flyten.`
+      : "Start rolig, få en seier i dag og bygg momentum for resten av uka.";
+  const homeInsightText =
+    homeRemainingMonthSessions === 0
+      ? "Du er foran planen. En lett bonusøkt eller mobilitet kan holde kroppen fresh."
+      : homeRemainingMonthSessions <= 2
+        ? `${homeRemainingMonthSessions} økt${homeRemainingMonthSessions === 1 ? "" : "er"} unna månedens mål. Du er nær.`
+        : nextBestAction.description;
   let nextPlannedWorkout: { dayLabel: string; entry: string } | null = null;
   if (activeWeeklyPlanEffectiveDays && todayPlanDayKey) {
     const todayIndex = WEEKDAY_PLAN_ORDER.indexOf(todayPlanDayKey);
@@ -4416,10 +4434,130 @@ export function MemberPortal(props: MemberPortalProps) {
         <div className="min-w-0 w-full space-y-4 overflow-visible sm:space-y-6">
           {memberTab === "overview" ? (
             <div className="space-y-4">
-              <MemberTabHero
-                title="Du holder flyten"
-                description="Dagens plan, neste økt og små seire samlet på ett sted."
-              />
+              <Card
+                variant="hero"
+                className="motus-gradient-motion relative overflow-hidden p-0"
+                style={{
+                  borderColor: "rgba(48,227,190,0.24)",
+                  background:
+                    "linear-gradient(135deg, rgba(48,227,190,0.20) 0%, rgba(255,255,255,0.96) 42%, rgba(217,18,120,0.14) 100%)",
+                }}
+              >
+                <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-white/60 blur-3xl" aria-hidden />
+                <div
+                  className="pointer-events-none absolute -bottom-20 left-6 h-48 w-48 rounded-full blur-3xl"
+                  style={{ backgroundColor: "rgba(48,227,190,0.22)" }}
+                  aria-hidden
+                />
+                <div className="relative grid gap-5 p-5 sm:p-6 lg:grid-cols-[1.25fr_0.75fr] lg:items-center">
+                  <div className="min-w-0">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-black uppercase tracking-wide text-teal-800 shadow-sm ring-1 ring-white/80">
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                      Dagens fokus
+                    </div>
+                    <h2 className="mt-4 max-w-2xl text-4xl font-black leading-[1.02] tracking-tight text-slate-950 sm:text-5xl">
+                      {homeHeroTitle}
+                    </h2>
+                    <p className="mt-3 max-w-2xl text-base font-semibold leading-relaxed text-slate-700">
+                      {homeHeroSubtitle}
+                    </p>
+                    <div className="mt-5 rounded-2xl border bg-white/72 p-4 shadow-sm backdrop-blur-md" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="text-xs font-black uppercase tracking-wide text-teal-700">Neste beste steg</div>
+                      <div className="mt-1 text-xl font-black tracking-tight text-slate-950">{homePrimaryFocus}</div>
+                      <p className="mt-1 text-sm font-medium leading-relaxed text-slate-600">{homeInsightText}</p>
+                    </div>
+                    <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                      {todayPlanAction.kind === "start-program" ? (
+                        <GradientButton
+                          type="button"
+                          onClick={() => handlePeriodPlanStartProgram(todayPlanAction.program.id)}
+                          className="min-h-12 w-full rounded-xl text-base sm:w-auto"
+                        >
+                          <Play className="mr-2 h-4 w-4 fill-white/80" aria-hidden />
+                          Start dagens økt
+                        </GradientButton>
+                      ) : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch ? (
+                        <GradientButton
+                          type="button"
+                          onClick={() =>
+                            handlePeriodPlanLogGroup({
+                              entry: todayPlanEntry,
+                              plannedDate: resolvePeriodPlanEntryDate(
+                                todayPlanPeriodPlan,
+                                todayPeriodPlanMatch.weekNumber,
+                                todayPeriodPlanMatch.day,
+                              ),
+                              planId: todayPlanPeriodPlan.id,
+                              weekNumber: todayPeriodPlanMatch.weekNumber,
+                              day: todayPeriodPlanMatch.day,
+                            })
+                          }
+                          className="min-h-12 w-full rounded-xl text-base sm:w-auto"
+                        >
+                          Logg dagens økt
+                        </GradientButton>
+                      ) : nextProgram ? (
+                        <GradientButton
+                          type="button"
+                          onClick={() => startWorkoutMode(nextProgram.id, buildStartWorkoutOptions(nextProgram))}
+                          className="min-h-12 w-full rounded-xl text-base sm:w-auto"
+                        >
+                          <Play className="mr-2 h-4 w-4 fill-white/80" aria-hidden />
+                          Start neste økt
+                        </GradientButton>
+                      ) : (
+                        <GradientButton
+                          type="button"
+                          onClick={() => setMemberTab(nextBestAction.action === "progress" ? "progress" : "programs")}
+                          className="min-h-12 w-full rounded-xl text-base sm:w-auto"
+                        >
+                          {nextBestAction.cta}
+                        </GradientButton>
+                      )}
+                      <OutlineButton type="button" onClick={() => setMemberTab("programs")} className="min-h-12 w-full rounded-xl bg-white/75 font-semibold sm:w-auto">
+                        Se planen
+                      </OutlineButton>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                    <div className="rounded-2xl border bg-white/74 p-4 shadow-sm backdrop-blur-md" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs font-black uppercase tracking-wide text-slate-500">Ukesmomentum</span>
+                        <TrendingUp className="h-4 w-4 text-teal-700" aria-hidden />
+                      </div>
+                      <div className="mt-2 text-3xl font-black tabular-nums text-slate-950">{homeMomentumPct}%</div>
+                      <div className="motus-progress-track mt-2 h-2 rounded-full">
+                        <div
+                          className="motus-progress-fill h-2 rounded-full"
+                          style={{ width: `${homeMomentumPct}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border bg-white/74 p-4 shadow-sm backdrop-blur-md" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs font-black uppercase tracking-wide text-slate-500">Neste mål</span>
+                        <Target className="h-4 w-4 text-pink-600" aria-hidden />
+                      </div>
+                      <div className="mt-2 text-2xl font-black text-slate-950">
+                        {homeRemainingMonthSessions === 0 ? "Mål nådd" : `${homeRemainingMonthSessions} igjen`}
+                      </div>
+                      <p className="mt-1 text-xs font-semibold text-slate-600">
+                        {memberProgress.monthGoal.current}/{memberProgress.monthGoal.target} økter denne måneden
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border bg-white/74 p-4 shadow-sm backdrop-blur-md" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs font-black uppercase tracking-wide text-slate-500">Streak</span>
+                        <Trophy className="h-4 w-4 text-teal-700" aria-hidden />
+                      </div>
+                      <div className="mt-2 text-2xl font-black text-slate-950">
+                        {streakWeeks > 0 ? `${streakWeeks} uker` : "Start nå"}
+                      </div>
+                      <p className="mt-1 text-xs font-semibold text-slate-600">{streakSubline}</p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
               {onOpenOnboarding && showOnboardingHomePrompt ? (
                 <Card
                   className="border p-4 sm:p-5"
