@@ -829,9 +829,56 @@ button {
   display: flex;
   width: max-content;
   min-width: 100%;
-  align-items: stretch;
-  gap: 1rem;
+  align-items: center;
+  gap: 0.625rem;
   padding-inline: 0.75rem 1rem;
+}
+
+.motus-badge-tile {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  border: none;
+  background: transparent;
+  padding: 0.25rem;
+  cursor: pointer;
+  transition: transform 180ms ease;
+}
+
+.motus-badge-tile:hover {
+  transform: scale(1.04);
+}
+
+.motus-badge-tile:focus-visible {
+  outline: 2px solid var(--motus-brand-text, #0d9488);
+  outline-offset: 3px;
+  border-radius: 1rem;
+}
+
+.motus-badge-tile-art {
+  position: relative;
+  display: inline-flex;
+  overflow: visible;
+}
+
+.motus-badge-tile-lock {
+  position: absolute;
+  bottom: 0.25rem;
+  right: 0.25rem;
+  display: flex;
+  height: 1.625rem;
+  width: 1.625rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid #fff;
+  background: rgba(241, 245, 249, 0.95);
+  color: #94a3b8;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+}
+
+.motus-badge-detail {
+  padding-top: 0.5rem;
 }
 
 .motus-badge-frame {

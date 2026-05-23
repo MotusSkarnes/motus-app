@@ -1,11 +1,11 @@
-﻿import { useMemo, useState } from "react";
-import { Award, Lock, Share2, Sparkles, Target } from "lucide-react";
+﻿import { useEffect, useMemo, useState } from "react";
+import { Award, Lock, Share2, Sparkles, Target, X } from "lucide-react";
 import { memberBadgeImageSrc } from "../app/badgeAssets";
 import { BADGE_CAROUSEL_TRACK_SNAP_CLASS, BADGE_CAROUSEL_WRAPPER_CLASS, BADGE_CATEGORY_SCROLL_CLASS } from "../app/badgeImagePresentation";
 import { BadgeCarouselScroll } from "./BadgeCarouselScroll";
 import { BadgeImage } from "./BadgeImage";
 import { MOTUS } from "../app/data";
-import { MotusSectionIcon } from "../app/ui";
+import { GradientButton, MotusSectionIcon } from "../app/ui";
 import { motusShareStatusMessage, shareBadgeCard } from "../app/motusShareCard";
 import {
   formatBadgeMetricValue,
@@ -75,7 +75,32 @@ function LevelStep({ level, badge, active }: { level: MemberBadgeLevel; badge: M
     </div>
   );
 }
-function BadgeCard({
+
+function BadgeTile({ badge, onSelect }: { badge: MemberBadge; onSelect: () => void }) {
+  const level = LEVEL_STYLES[badge.level];
+  const badgeImage = memberBadgeImageSrc(badge);
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`motus-badge-tile shrink-0 snap-start ${badge.unlocked ? "motus-badge-tile--unlocked" : "motus-badge-tile--locked"}`}
+      style={badge.unlocked ? { boxShadow: `0 8px 20px ${level.fill}` } : undefined}
+      aria-label={`${badge.title}${badge.unlocked ? `, ${badge.levelLabel}` : ", låst"}`}
+    >
+      <span className="motus-badge-tile-art">
+        <BadgeImage src={badgeImage} size="tile" dimmed={!badge.unlocked} alt="" />
+        {!badge.unlocked ? (
+          <span className="motus-badge-tile-lock" aria-hidden>
+            <Lock className="h-3.5 w-3.5" strokeWidth={2.4} />
+          </span>
+        ) : null}
+      </span>
+    </button>
+  );
+}
+
+function BadgeDetailView({
   badge,
   memberDisplayName,
   shareLogoSrc,
@@ -91,6 +116,7 @@ function BadgeCard({
   const nextLevel = getBadgeNextLevel(badge);
   const isMaxed = !nextLevel;
   const badgeImage = memberBadgeImageSrc(badge);
+
   async function shareBadge() {
     if (!badge.unlocked || isSharing) return;
     setIsSharing(true);
@@ -113,59 +139,45 @@ function BadgeCard({
   }
 
   return (
-    <article
-      className={`motus-badge-card relative z-10 flex w-[15.5rem] shrink-0 snap-start flex-col overflow-visible rounded-2xl border p-2.5 shadow-sm sm:w-[16.5rem] ${badge.unlocked ? "bg-white" : "bg-slate-50/90"}`}
-      style={{
-        borderColor: badge.unlocked ? `${level.border}66` : "rgba(15,23,42,0.08)",
-        boxShadow: badge.unlocked ? `0 6px 18px ${level.fill}` : undefined,
-      }}
-    >
-      <div className="flex items-start gap-2.5">
-        <div className="motus-badge-card-art relative shrink-0 overflow-visible">
-          <BadgeImage src={badgeImage} size="cardCompact" dimmed={!badge.unlocked} alt={badge.title} />
-          {!badge.unlocked ? (
-            <span className="absolute bottom-0.5 right-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-white bg-slate-100 text-slate-400 shadow-md">
-              <Lock className="h-3 w-3" strokeWidth={2.4} />
-            </span>
-          ) : null}
-        </div>
-
-        <div className="min-w-0 flex flex-1 flex-col justify-center gap-1 py-0.5">
-          <div className="flex flex-wrap items-center gap-1">
-            <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600">{badge.categoryTitle}</span>
-            {badge.unlocked ? (
-              <span
-                className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[7px] font-black uppercase text-white shadow"
-                style={{ background: MOTUS_GRADIENT }}
-              >
-                <Sparkles className="h-2 w-2 shrink-0" />
-                <span className="truncate">{badge.levelLabel}</span>
-              </span>
-            ) : (
-              <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[8px] font-bold uppercase text-slate-500">Låst</span>
-            )}
-          </div>
-          <h3 className="break-words text-xs font-black uppercase leading-tight tracking-wide text-slate-900">{badge.title}</h3>
-          <p className="line-clamp-3 text-[10px] leading-snug text-slate-600">{badge.description}</p>
-        </div>
+    <div className="motus-badge-detail">
+      <div className="flex justify-center overflow-visible">
+        <BadgeImage src={badgeImage} size="popup" dimmed={!badge.unlocked} alt={badge.title} loading="eager" />
       </div>
 
-      <div className="mt-2.5 w-full rounded-lg border bg-slate-50/90 p-2" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
-        <div className="flex items-start gap-1.5">
-          <Target className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: badge.unlocked ? level.accent : "#64748B" }} />
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{badge.categoryTitle}</span>
+        {badge.unlocked ? (
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase text-white shadow"
+            style={{ background: MOTUS_GRADIENT }}
+          >
+            <Sparkles className="h-2.5 w-2.5 shrink-0" />
+            {badge.levelLabel}
+          </span>
+        ) : (
+          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[9px] font-bold uppercase text-slate-500">Låst</span>
+        )}
+      </div>
+
+      <h3 className="mt-3 text-center text-xl font-black uppercase tracking-wide text-slate-900">{badge.title}</h3>
+      <p className="mt-2 text-center text-sm leading-relaxed text-slate-600">{badge.description}</p>
+
+      <div className="mt-5 w-full rounded-xl border bg-slate-50/90 p-3" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
+        <div className="flex items-start gap-2">
+          <Target className="mt-0.5 h-4 w-4 shrink-0" style={{ color: badge.unlocked ? level.accent : "#64748B" }} />
           <div className="min-w-0">
-            <p className="text-[8px] font-black uppercase tracking-wide text-slate-700">{isMaxed ? "Fullført" : "Neste mål"}</p>
-            <p className="mt-0.5 text-[10px] font-medium leading-snug text-slate-700">{getBadgeUnlockHint(badge)}</p>
+            <p className="text-[9px] font-black uppercase tracking-wide text-slate-700">{isMaxed ? "Fullført" : "Neste mål"}</p>
+            <p className="mt-1 text-sm font-medium leading-snug text-slate-700">{getBadgeUnlockHint(badge)}</p>
           </div>
         </div>
 
         {!isMaxed ? (
-          <div className="mt-2">
-            <div className="mb-0.5 flex items-center justify-between gap-1 text-[8px] font-bold text-slate-600">
+          <div className="mt-3">
+            <div className="mb-1 flex items-center justify-between gap-1 text-[10px] font-bold text-slate-600">
               <span>Fremdrift</span>
               <span style={{ color: level.accent }}>{getBadgeProgressLabel(badge)}</span>
             </div>
-            <div className="motus-progress-track h-1.5 rounded-full ring-1 ring-slate-200/80">
+            <div className="motus-progress-track h-2 rounded-full ring-1 ring-slate-200/80">
               <div
                 className="motus-progress-fill h-full rounded-full transition-all"
                 style={{ width: `${badge.progressPct}%`, background: badge.unlocked ? MOTUS_GRADIENT : "rgba(148,163,184,0.5)" }}
@@ -173,12 +185,12 @@ function BadgeCard({
             </div>
           </div>
         ) : (
-          <p className="mt-2 text-[10px] font-semibold" style={{ color: level.accent }}>
+          <p className="mt-3 text-sm font-semibold" style={{ color: level.accent }}>
             Alle fem nivåer er låst opp.
           </p>
         )}
 
-        <div className="mt-2 flex gap-0.5">
+        <div className="mt-3 flex gap-1">
           {badge.levels.map((lvl) => (
             <LevelStep key={lvl.level} level={lvl} badge={badge} active={lvl.level === badge.level} />
           ))}
@@ -189,21 +201,84 @@ function BadgeCard({
             type="button"
             onClick={() => void shareBadge()}
             disabled={isSharing}
-            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-semibold text-slate-700 transition hover:border-teal-200 hover:bg-teal-50/80 disabled:opacity-60"
+            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-teal-200 hover:bg-teal-50/80 disabled:opacity-60"
             title="Del på Facebook eller andre apper"
           >
-            <Share2 className="h-3 w-3 shrink-0 text-teal-700" aria-hidden />
+            <Share2 className="h-3.5 w-3.5 shrink-0 text-teal-700" aria-hidden />
             {isSharing ? "Lager skrytekort…" : "Del badgen"}
           </button>
         ) : null}
       </div>
-    </article>
+    </div>
+  );
+}
+
+function BadgeDetailModal({
+  badge,
+  memberDisplayName,
+  shareLogoSrc,
+  onClose,
+  onShareStatus,
+}: {
+  badge: MemberBadge;
+  memberDisplayName: string;
+  shareLogoSrc: string;
+  onClose: () => void;
+  onShareStatus: (message: string | null) => void;
+}) {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      className="motus-modal-insets fixed inset-0 z-[10018] flex items-end justify-center overflow-y-auto overscroll-contain bg-slate-900/45 p-3 sm:items-center sm:p-6"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        className="motus-pop-in relative w-full max-w-sm overflow-visible rounded-2xl border bg-white shadow-xl"
+        style={{ borderColor: "rgba(15,23,42,0.1)" }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="badge-detail-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="motus-pressable absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-500 shadow-sm transition hover:text-slate-800"
+          aria-label="Lukk"
+        >
+          <X className="h-4 w-4" aria-hidden />
+        </button>
+        <div className="max-h-[min(85vh,720px)] overflow-y-auto p-5 pt-4 sm:p-6">
+          <h2 id="badge-detail-title" className="sr-only">
+            {badge.title}
+          </h2>
+          <BadgeDetailView
+            badge={badge}
+            memberDisplayName={memberDisplayName}
+            shareLogoSrc={shareLogoSrc}
+            onShareStatus={onShareStatus}
+          />
+          <GradientButton onClick={onClose} className="mt-5 w-full min-h-11 font-semibold">
+            Lukk
+          </GradientButton>
+        </div>
+      </div>
+    </div>
   );
 }
 
 export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoSrc }: MemberBadgesCarouselProps) {
   const [activeCategoryId, setActiveCategoryId] = useState<ActiveCategoryId>("all");
   const [badgeShareStatus, setBadgeShareStatus] = useState<string | null>(null);
+  const [selectedBadge, setSelectedBadge] = useState<MemberBadge | null>(null);
 
   const menuItems = useMemo(
     () => [
@@ -223,62 +298,68 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
   const overallPct = collection.totalLevels > 0 ? Math.round((collection.totalUnlockedLevels / collection.totalLevels) * 100) : 0;
 
   return (
-    <section className="motus-badges-section motus-card min-w-0 overflow-visible p-3 sm:p-4">
-      <div className="flex items-start gap-3">
-        <MotusSectionIcon>
-          <Award className="h-4 w-4" />
-        </MotusSectionIcon>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold text-slate-900">Badges</h2>
-          <p className="mt-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/90 px-3 py-2.5 text-xs leading-relaxed text-slate-600">
-            Det finnes flere skjulte badges som ikke vises før du oppnår de, oppdag de ved å bruke appen jevnlig.
-          </p>
-          <div className="mt-2 flex items-start justify-between gap-3">
-            <p className="text-xs text-slate-500">
-              {collection.totalUnlockedLevels} av {collection.totalLevels} nivåer låst opp
+    <>
+      <section className="motus-badges-section motus-card min-w-0 overflow-visible p-3 sm:p-4">
+        <div className="flex items-start gap-3">
+          <MotusSectionIcon>
+            <Award className="h-4 w-4" />
+          </MotusSectionIcon>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-semibold text-slate-900">Badges</h2>
+            <p className="mt-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/90 px-3 py-2.5 text-xs leading-relaxed text-slate-600">
+              Det finnes flere skjulte badges som ikke vises før du oppnår de, oppdag de ved å bruke appen jevnlig.
             </p>
-            <span className="rounded-full bg-[#F3F5F7] px-2.5 py-1 text-[10px] font-bold text-slate-900">{overallPct}%</span>
-          </div>
-          <div className="motus-progress-track mt-2 h-1.5 rounded-full">
-            <div className="motus-progress-fill h-full rounded-full" style={{ width: `${overallPct}%`, background: MOTUS_GRADIENT }} />
+            <div className="mt-2 flex items-start justify-between gap-3">
+              <p className="text-xs text-slate-500">
+                {collection.totalUnlockedLevels} av {collection.totalLevels} nivåer låst opp
+              </p>
+              <span className="rounded-full bg-[#F3F5F7] px-2.5 py-1 text-[10px] font-bold text-slate-900">{overallPct}%</span>
+            </div>
+            <div className="motus-progress-track mt-2 h-1.5 rounded-full">
+              <div className="motus-progress-fill h-full rounded-full" style={{ width: `${overallPct}%`, background: MOTUS_GRADIENT }} />
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className={`-mx-1 mt-3 ${BADGE_CATEGORY_SCROLL_CLASS}`}>
-        {menuItems.map((item) => {
-          const active = item.id === activeCategoryId;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setActiveCategoryId(item.id)}
-              className={`shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition ${
-                active ? "border-transparent motus-brand-fill shadow-sm" : "bg-white text-slate-600 hover:bg-slate-50"
-              }`}
-              style={{ borderColor: active ? "transparent" : "rgba(15,23,42,0.10)" }}
-            >
-              {item.title} <span className={active ? "text-white/75" : "text-slate-400"}>{item.count}</span>
-            </button>
-          );
-        })}
-      </div>
+        <div className={`-mx-1 mt-3 ${BADGE_CATEGORY_SCROLL_CLASS}`}>
+          {menuItems.map((item) => {
+            const active = item.id === activeCategoryId;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveCategoryId(item.id)}
+                className={`shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                  active ? "border-transparent motus-brand-fill shadow-sm" : "bg-white text-slate-600 hover:bg-slate-50"
+                }`}
+                style={{ borderColor: active ? "transparent" : "rgba(15,23,42,0.10)" }}
+              >
+                {item.title} <span className={active ? "text-white/75" : "text-slate-400"}>{item.count}</span>
+              </button>
+            );
+          })}
+        </div>
 
-      {badgeShareStatus ? (
-        <p className="mt-3 rounded-xl border border-teal-200/80 bg-teal-50 px-3 py-2 text-xs font-medium text-teal-950">{badgeShareStatus}</p>
+        {badgeShareStatus ? (
+          <p className="mt-3 rounded-xl border border-teal-200/80 bg-teal-50 px-3 py-2 text-xs font-medium text-teal-950">{badgeShareStatus}</p>
+        ) : null}
+
+        <BadgeCarouselScroll className={BADGE_CAROUSEL_WRAPPER_CLASS} trackClassName={BADGE_CAROUSEL_TRACK_SNAP_CLASS}>
+          {visibleBadges.map((badge) => (
+            <BadgeTile key={badge.id} badge={badge} onSelect={() => setSelectedBadge(badge)} />
+          ))}
+        </BadgeCarouselScroll>
+      </section>
+
+      {selectedBadge ? (
+        <BadgeDetailModal
+          badge={selectedBadge}
+          memberDisplayName={memberDisplayName}
+          shareLogoSrc={shareLogoSrc}
+          onClose={() => setSelectedBadge(null)}
+          onShareStatus={setBadgeShareStatus}
+        />
       ) : null}
-
-      <BadgeCarouselScroll className={BADGE_CAROUSEL_WRAPPER_CLASS} trackClassName={BADGE_CAROUSEL_TRACK_SNAP_CLASS}>
-        {visibleBadges.map((badge) => (
-          <BadgeCard
-            key={badge.id}
-            badge={badge}
-            memberDisplayName={memberDisplayName}
-            shareLogoSrc={shareLogoSrc}
-            onShareStatus={setBadgeShareStatus}
-          />
-        ))}
-      </BadgeCarouselScroll>
-    </section>
+    </>
   );
 }

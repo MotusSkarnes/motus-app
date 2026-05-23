@@ -3691,46 +3691,6 @@ export function MemberPortal(props: MemberPortalProps) {
       }),
     [nowTimestamp],
   );
-  const homeWeeklyMinutes = useMemo(() => {
-    const today = getStartOfDay(new Date(nowTimestamp));
-    const mondayOffset = (today.getDay() + 6) % 7;
-    const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset);
-    const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7);
-    let total = 0;
-    completedLogs.forEach((log) => {
-      if (log.status !== "Fullført") return;
-      const logDay = parseDateOnly(log.date);
-      if (!logDay) return;
-      const day = getStartOfDay(logDay);
-      if (day.getTime() < weekStart.getTime() || day.getTime() >= weekEnd.getTime()) return;
-      (log.results ?? []).forEach((result) => {
-        if (!result.completed) return;
-        const duration = Number(result.performedDurationMinutes) || 0;
-        if (duration > 0) {
-          total += duration;
-          return;
-        }
-        const sets = Math.max(1, Number(result.plannedSets) || 1);
-        total += sets * 2.5;
-      });
-    });
-    return Math.round(total);
-  }, [completedLogs, nowTimestamp]);
-  const homeWeeklyMinutesTarget = useMemo(() => {
-    const sessionTarget = Number(profileSessionsPerWeekTarget) || homeWeeklySummary.plannedThisWeek || 4;
-    return Math.max(sessionTarget * 45, homeWeeklyMinutes, 60);
-  }, [profileSessionsPerWeekTarget, homeWeeklySummary.plannedThisWeek, homeWeeklyMinutes]);
-  const homeSessionsTarget = useMemo(() => {
-    const profileTarget = Number(profileSessionsPerWeekTarget);
-    if (profileTarget > 0) return profileTarget;
-    if (homeWeeklySummary.plannedThisWeek > 0) return homeWeeklySummary.plannedThisWeek;
-    return 4;
-  }, [profileSessionsPerWeekTarget, homeWeeklySummary.plannedThisWeek]);
-  const homeBestLift = useMemo(() => {
-    const top = personalRecords[0];
-    if (!top?.weight) return null;
-    return { exerciseName: top.name, weightKg: top.weight };
-  }, [personalRecords]);
   const homeDashboardSubline = useMemo(() => {
     const nextBadge = memberBadgeCollection.allBadges
       .filter((badge) => !badge.secret && !badge.hidden && getBadgeNextLevel(badge))
@@ -4544,16 +4504,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 workoutDuration={homeWorkoutDuration}
                 workoutImageSrc={homeWorkoutCoverSrc}
                 workoutZoneLabel={homeWorkoutZoneLabel}
-                weeklySessions={{
-                  completed: homeWeeklySummary.completedThisWeek,
-                  target: homeSessionsTarget,
-                }}
-                weeklyMinutes={{
-                  completed: homeWeeklyMinutes,
-                  target: homeWeeklyMinutesTarget,
-                }}
-                bestLift={homeBestLift}
-                consistencyInsight={memberProgressScores.consistency.subline}
                 quickActions={{
                   onLogWorkout: () => {
                     setMemberTab("programs");

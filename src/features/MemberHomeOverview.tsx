@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+﻿import type { ReactNode } from "react";
 import {
   BarChart3,
   CalendarDays,
@@ -8,9 +8,7 @@ import {
   Dumbbell,
   Flame,
   Play,
-  Sparkles,
   Target,
-  Trophy,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { GradientButton, OutlineButton, TrainingStartButton } from "../app/ui";
@@ -53,10 +51,6 @@ export type MemberHomeOverviewProps = {
   workoutImageSrc?: string | null;
   workoutZoneLabel?: string | null;
   weekStats?: MemberHomeWeekStats | null;
-  weeklySessions: { completed: number; target: number };
-  weeklyMinutes: { completed: number; target: number };
-  bestLift?: { exerciseName: string; weightKg: number } | null;
-  consistencyInsight?: string | null;
   quickActions: MemberHomeQuickActions;
   betweenSections?: ReactNode;
   headerActions?: ReactNode;
@@ -85,10 +79,6 @@ export function MemberHomeOverview({
   workoutDuration,
   workoutImageSrc,
   workoutZoneLabel,
-  weeklySessions,
-  weeklyMinutes,
-  bestLift,
-  consistencyInsight,
   quickActions,
   betweenSections,
   primaryCta,
@@ -96,15 +86,6 @@ export function MemberHomeOverview({
   onboardingPrompt,
   monthlyCheckInPrompt,
 }: MemberHomeOverviewProps) {
-  const sessionsPct =
-    weeklySessions.target > 0
-      ? Math.min(100, Math.round((weeklySessions.completed / weeklySessions.target) * 100))
-      : 0;
-  const minutesPct =
-    weeklyMinutes.target > 0
-      ? Math.min(100, Math.round((weeklyMinutes.completed / weeklyMinutes.target) * 100))
-      : 0;
-
   return (
     <div className="motus-home motus-fade-in-up">
       <header className="px-0.5 pt-0.5">
@@ -113,7 +94,7 @@ export function MemberHomeOverview({
             type="button"
             onClick={onOpenProfile}
             className="motus-pressable relative h-11 w-11 shrink-0 overflow-hidden rounded-full ring-2 ring-white shadow-[0_2px_10px_-4px_rgba(15,23,42,0.25)]"
-            aria-label="Åpne profil"
+            aria-label="Ã…pne profil"
           >
             {memberAvatarUrl ? (
               <img src={memberAvatarUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
@@ -180,7 +161,7 @@ export function MemberHomeOverview({
                 <Clock3 className="h-3.5 w-3.5" />
               </span>
               <span>
-                <span className="motus-home-dash-stat-label">Dagens mål</span>
+                <span className="motus-home-dash-stat-label">Dagens mÃ¥l</span>
                 <span className="motus-home-dash-stat-value">{dailyGoalLabel}</span>
               </span>
             </div>
@@ -191,7 +172,7 @@ export function MemberHomeOverview({
                 <Dumbbell className="h-3.5 w-3.5" />
               </span>
               <span>
-                <span className="motus-home-dash-stat-label">Økter denne uka</span>
+                <span className="motus-home-dash-stat-label">Ã˜kter denne uka</span>
                 <span className="motus-home-dash-stat-value">{weekSessionsLabel}</span>
               </span>
             </div>
@@ -223,7 +204,7 @@ export function MemberHomeOverview({
           <div className="motus-home-workout-content">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="motus-home-workout-label">Dagens økt</p>
+                <p className="motus-home-workout-label">Dagens Ã¸kt</p>
                 <h2 className="motus-home-workout-title">{workoutTitle}</h2>
                 {workoutSubtitle ? <p className="motus-home-workout-subtitle">{workoutSubtitle}</p> : null}
               </div>
@@ -281,57 +262,6 @@ export function MemberHomeOverview({
         </div>
       ) : null}
 
-      <section className="motus-home-week-card" aria-labelledby="home-week-heading">
-        <div className="flex items-center justify-between gap-3">
-          <h2 id="home-week-heading" className="text-base font-semibold text-slate-900">
-            Denne uka
-          </h2>
-          <button
-            type="button"
-            onClick={quickActions.onViewProgress}
-            className="motus-pressable inline-flex items-center gap-0.5 text-sm font-medium text-slate-500 hover:text-slate-800"
-          >
-            Se detaljer
-            <ChevronRight className="h-4 w-4" aria-hidden />
-          </button>
-        </div>
-        <div className="motus-home-week-metrics mt-4">
-          <HomeWeekMetric
-            label="Økter"
-            value={`${weeklySessions.completed} / ${weeklySessions.target}`}
-            progressPct={sessionsPct}
-            variant="ring"
-          />
-          <HomeWeekMetric
-            label="Treningsminutter"
-            value={`${weeklyMinutes.completed}`}
-            subValue={weeklyMinutes.target > 0 ? `av ${weeklyMinutes.target} min` : undefined}
-            progressPct={minutesPct}
-            variant="progress"
-          />
-          <HomeWeekMetric
-            label="Beste løft"
-            value={bestLift ? `${bestLift.weightKg} kg` : "—"}
-            subValue={bestLift?.exerciseName}
-            progressPct={bestLift ? 100 : 0}
-            variant="lift"
-          />
-        </div>
-        {consistencyInsight ? (
-          <div className="motus-home-insight-banner mt-4">
-            <Sparkles className="h-4 w-4 shrink-0 motus-brand-icon" aria-hidden />
-            <p className="min-w-0 flex-1 text-sm leading-relaxed text-slate-700">{consistencyInsight}</p>
-            <button
-              type="button"
-              onClick={quickActions.onViewProgress}
-              className="motus-pressable shrink-0 text-xs font-semibold motus-brand-text"
-            >
-              Se innsikt
-            </button>
-          </div>
-        ) : null}
-      </section>
-
       {motivationLine ? (
         <aside className="motus-home-boost-card">
           <div className="min-w-0">
@@ -368,65 +298,6 @@ function HomeQuickAction({
       </span>
       <span className="mt-2.5 block text-center text-[11px] font-semibold leading-snug text-slate-700">{label}</span>
     </button>
-  );
-}
-
-function HomeWeekMetric({
-  label,
-  value,
-  subValue,
-  progressPct,
-  variant,
-}: {
-  label: string;
-  value: string;
-  subValue?: string;
-  progressPct: number;
-  variant: "ring" | "progress" | "lift";
-}) {
-  return (
-    <div className="motus-home-week-metric">
-      <p className="text-[11px] font-medium text-slate-500">{label}</p>
-      <p className="mt-0.5 text-lg font-bold tabular-nums tracking-tight text-slate-900">{value}</p>
-      {subValue ? <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-slate-500">{subValue}</p> : null}
-      <div className="mt-2.5">
-        {variant === "ring" ? (
-          <div className="relative h-9 w-9">
-            <svg viewBox="0 0 40 40" className="h-9 w-9">
-              <circle cx="20" cy="20" r="15" fill="none" stroke="rgba(48,227,190,0.18)" strokeWidth="3.5" />
-              <circle
-                cx="20"
-                cy="20"
-                r="15"
-                fill="none"
-                stroke={MOTUS.turquoise}
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                strokeDasharray={`${Math.max(4, (progressPct / 100) * 94)} 94`}
-                transform="rotate(-90 20 20)"
-              />
-            </svg>
-          </div>
-        ) : variant === "progress" ? (
-          <div className="motus-progress-track h-1.5 w-full max-w-[8.5rem] rounded-full">
-            <div
-              className="motus-progress-fill h-1.5 rounded-full"
-              style={{ width: `${progressPct}%`, backgroundColor: MOTUS.turquoise }}
-            />
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Trophy className="h-4 w-4 shrink-0 text-pink-600" aria-hidden />
-            <div className="motus-progress-track h-1.5 min-w-0 flex-1 rounded-full">
-              <div
-                className="motus-progress-fill h-1.5 rounded-full"
-                style={{ width: `${progressPct}%`, backgroundColor: MOTUS.pink }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
   );
 }
 
