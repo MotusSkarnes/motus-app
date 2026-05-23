@@ -92,7 +92,7 @@ export function MemberTrainingTodayCard({
       <div className="mt-5 space-y-2.5">
         {primaryAction ? (
           <TrainingStartButton onClick={primaryAction.onClick} className="w-full">
-            <Play className="h-4 w-4 fill-white/85" aria-hidden />
+            <Play className="h-4 w-4 fill-slate-900/80" aria-hidden />
             {primaryAction.label}
           </TrainingStartButton>
         ) : null}
@@ -108,7 +108,7 @@ export function MemberTrainingTodayCard({
             <button
               type="button"
               onClick={secondaryAction.onClick}
-              className="text-sm font-medium text-teal-700 transition hover:text-teal-800"
+              className="text-sm font-medium motus-brand-text transition hover:opacity-80"
             >
               {secondaryAction.label}
             </button>

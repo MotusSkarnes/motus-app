@@ -58,7 +58,7 @@ function computeIntervalPhaseBadge(tone: IntervalTimerStep["tone"], headlineForB
 function intervalTimerBadgeToneClass(tone: IntervalTimerStep["tone"]): string {
   switch (tone) {
     case "warmup":
-      return "bg-emerald-500/35 text-emerald-50 ring-1 ring-emerald-300/50";
+      return "bg-teal-500/35 text-teal-50 ring-1 ring-teal-300/50";
     case "cooldown":
       return "bg-sky-500/35 text-sky-50 ring-1 ring-sky-300/45";
     case "rest":
@@ -416,7 +416,7 @@ export function IntervalWorkoutSessionModal({
               <div className="text-xl font-semibold text-slate-900">{program.title}</div>
               <div className="mt-1 text-xs text-slate-500">{program.goal || "Nedtelling per intervallsteg"}</div>
               {isRunning ? (
-                <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
+                <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-teal-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
                   <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
                   {isPaused ? "Økt startet · pause" : "Økt startet · nedtelling pågår"}
                 </div>
@@ -459,7 +459,7 @@ export function IntervalWorkoutSessionModal({
                           type="button"
                           onClick={() => item.setValue(numericLevel)}
                           className={`rounded-xl border px-2 py-2 text-lg transition ${
-                            active ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                            active ? "border-teal-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
                           }`}
                           aria-label={`Velg nivå ${level}`}
                         >
@@ -626,7 +626,7 @@ export function IntervalWorkoutSessionModal({
                   disabled
                   aria-pressed="true"
                   aria-label="Økten er startet"
-                  className="w-full !cursor-default !border-emerald-400 !bg-emerald-50 !text-emerald-900 !opacity-100"
+                  className="w-full !cursor-default !motus-brand-surface !border-[var(--motus-brand-border-strong)] !opacity-100"
                 >
                   <span className="inline-flex items-center justify-center gap-1.5">
                     <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />

@@ -136,7 +136,7 @@ export function PeriodPlanWeekView({
       </div>
 
       {actionStatus ? (
-        <div className="mx-3 mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-900 sm:mx-4">{actionStatus}</div>
+        <div className="mx-3 mt-3 rounded-lg border motus-brand-surface px-3 py-2 text-xs font-medium text-emerald-900 sm:mx-4">{actionStatus}</div>
       ) : null}
 
       <div className="grid gap-2.5 p-3 sm:grid-cols-2 sm:gap-3 sm:p-4">
@@ -169,14 +169,14 @@ export function PeriodPlanWeekView({
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ${
                         completed
-                          ? "bg-emerald-100 text-emerald-900 ring-emerald-200/80"
+                          ? "bg-emerald-100 text-emerald-900 ring-teal-200/80"
                           : "bg-teal-50 text-teal-900 ring-teal-100"
                       }`}
                     >
                       {dayLabel}
                     </span>
                     {completed ? (
-                      <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-600/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
                         <Check className="h-3 w-3" aria-hidden />
                         Fullført
                       </span>
@@ -268,7 +268,7 @@ export function PeriodPlanWeekView({
               </div>
 
               {isSwapSource ? (
-                <div className="mx-3 mb-3 rounded-lg border border-teal-200 bg-teal-50/70 p-2">
+                <div className="mx-3 mb-3 rounded-lg border motus-brand-surface/70 p-2">
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-teal-900">Velg dag</div>
                   <div className="mt-1.5 grid gap-1.5">
                     {WEEKDAY_PLAN_ORDER.filter((key) => key !== dayKey).map((key) => (

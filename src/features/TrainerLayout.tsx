@@ -267,7 +267,7 @@ export function TrainerLayout({
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      <CheckCircle2 className="h-4 w-4 text-teal-500" />
                       <span>Alt er ajour</span>
                     </>
                   )}
@@ -277,7 +277,7 @@ export function TrainerLayout({
                 type="button"
                 onClick={handleTrainerBellToggle}
                 className="relative inline-flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-emerald-50"
-                style={{ borderColor: "rgba(20,184,166,0.25)" }}
+                style={{ borderColor: "rgba(48,227,190,0.25)" }}
                 aria-label={trainerNotificationsOpen ? "Lukk varsler" : "Åpne varsler"}
               >
                 <Bell className="h-4 w-4" />
@@ -376,7 +376,7 @@ export function TrainerLayout({
                       </span>
                       <ChevronRight
                         className={`h-4 w-4 shrink-0 transition ${
-                          isOpened ? "text-slate-300" : "text-slate-300 group-hover:text-emerald-500"
+                          isOpened ? "text-slate-300" : "text-slate-300 group-hover:text-teal-500"
                         }`}
                       />
                     </button>

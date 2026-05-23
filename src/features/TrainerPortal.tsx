@@ -3940,7 +3940,7 @@ function pickFirstName(value: unknown): string {
     if (tone === "orange") {
       return { label: "Oransje", dotClass: "bg-amber-500", pillClass: "bg-amber-50 text-amber-800 ring-amber-200" };
     }
-    return { label: "Grønn", dotClass: "bg-emerald-500", pillClass: "bg-emerald-50 text-emerald-800 ring-emerald-200" };
+    return { label: "Grønn", dotClass: "bg-teal-500", pillClass: "motus-brand-surface ring-teal-200" };
   }
 
   function renderMemberTypeBadge(member: Member, compact = false) {
@@ -4420,7 +4420,7 @@ function pickFirstName(value: unknown): string {
               Legger tilbake manglende standard testmedlemmer uten å overskrive eksisterende medlemmer.
             </div>
             {restoreDataStatus ? (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+              <div className="rounded-xl border motus-brand-surface px-3 py-2 text-xs text-emerald-700">
                 {restoreDataStatus}
               </div>
             ) : null}
@@ -4434,7 +4434,7 @@ function pickFirstName(value: unknown): string {
               Setter øvelsesbanken tilbake til originalversjonen i appen.
             </div>
             {restoreExerciseBankStatus ? (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+              <div className="rounded-xl border motus-brand-surface px-3 py-2 text-xs text-emerald-700">
                 {restoreExerciseBankStatus}
               </div>
             ) : null}
@@ -4808,7 +4808,7 @@ function pickFirstName(value: unknown): string {
                               setMemberEditIsPtCustomer(checked);
                               if (checked) setMemberEditIsSharedMember(false);
                             }}
-                            className="h-4 w-4 rounded border-slate-300 accent-emerald-500"
+                            className="h-4 w-4 rounded border-slate-300 accent-[#30e3be]"
                           />
                           PT-kunde
                         </label>
@@ -4823,7 +4823,7 @@ function pickFirstName(value: unknown): string {
                             type="checkbox"
                             checked={memberEditIsPremiumCustomer}
                             onChange={(event) => setMemberEditIsPremiumCustomer(event.target.checked)}
-                            className="h-4 w-4 rounded border-slate-300 accent-emerald-500"
+                            className="h-4 w-4 rounded border-slate-300 accent-[#30e3be]"
                           />
                           Premium-kunde
                         </label>
@@ -4842,7 +4842,7 @@ function pickFirstName(value: unknown): string {
                               setMemberEditIsSharedMember(checked);
                               if (checked) setMemberEditIsPtCustomer(false);
                             }}
-                            className="h-4 w-4 rounded border-slate-300 accent-emerald-500"
+                            className="h-4 w-4 rounded border-slate-300 accent-[#30e3be]"
                           />
                           Medlem (vises hos alle PT-er)
                         </label>
@@ -5175,7 +5175,7 @@ function pickFirstName(value: unknown): string {
                               <div
                                 key={entry.id}
                                 className={`rounded-xl border bg-slate-50 px-3 py-2.5 ${
-                                  entry.id === editingFollowUpEntryId ? "ring-2 ring-emerald-300/80" : ""
+                                  entry.id === editingFollowUpEntryId ? "ring-2 ring-teal-300/80" : ""
                                 }`}
                                 style={{ borderColor: "rgba(15,23,42,0.08)" }}
                               >
@@ -5375,7 +5375,7 @@ function pickFirstName(value: unknown): string {
                                     type="button"
                                     onClick={() => toggleGradientPeriodWeek(week.id)}
                                     className={`rounded-md border px-1 py-1.5 text-center text-xs font-semibold leading-tight transition ${
-                                      marked ? "border-transparent bg-teal-600 text-white shadow-sm" : "bg-white text-slate-700 hover:bg-slate-50"
+                                      marked ? "border-transparent motus-brand-fill shadow-sm" : "bg-white text-slate-700 hover:bg-slate-50"
                                     } ${isActive ? "ring-2 ring-teal-200" : ""}`}
                                     style={marked ? undefined : { borderColor: "rgba(15,23,42,0.08)" }}
                                     aria-pressed={marked}
@@ -5406,7 +5406,7 @@ function pickFirstName(value: unknown): string {
                                       <button
                                         type="button"
                                         onClick={() => setPeriodPlanPreviewProgram(previewProgram)}
-                                        className="inline-flex items-center gap-1 rounded-lg border border-teal-200 bg-teal-50/80 px-2 py-1 text-[11px] font-semibold text-teal-900 transition hover:border-teal-300 hover:bg-teal-100"
+                                        className="inline-flex items-center gap-1 rounded-lg border motus-brand-surface/80 px-2 py-1 text-[11px] font-semibold text-teal-900 transition hover:border-teal-300 hover:bg-teal-100"
                                         aria-label={`Se økt for ${field.label}`}
                                         title="Se økt"
                                       >
@@ -5564,7 +5564,7 @@ function pickFirstName(value: unknown): string {
 
                       <div
                         className={`space-y-3 rounded-2xl p-1 transition ${
-                          isDraftDropZoneActive ? "bg-emerald-50 ring-2 ring-emerald-300" : ""
+                          isDraftDropZoneActive ? "bg-emerald-50 ring-2 ring-teal-300" : ""
                         }`}
                         onDragOver={(event) => {
                           event.preventDefault();
@@ -5613,7 +5613,7 @@ function pickFirstName(value: unknown): string {
                               setDragOverDraftExerciseId(null);
                             }}
                             className={`rounded-2xl border bg-white p-4 space-y-3 cursor-move transition ${
-                              dragOverDraftExerciseId === item.id ? "ring-2 ring-emerald-300 border-emerald-300" : ""
+                              dragOverDraftExerciseId === item.id ? "ring-2 ring-teal-300 border-teal-300" : ""
                             } ${item.blockId ? "ring-1 ring-teal-200/80" : ""}`}
                           >
                             <ProgramExerciseBlockActions exercises={programExercisesDraft} index={index} onChange={setProgramExercisesDraft} />
@@ -5807,7 +5807,7 @@ function pickFirstName(value: unknown): string {
                                 <button
                                   type="button"
                                   onClick={() => toggleFavoriteExercise(exercise.id)}
-                                  className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent bg-teal-500 text-white" : "border-slate-200 text-slate-400"}`}
+                                  className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent motus-brand-fill" : "border-slate-200 text-slate-400"}`}
                                   aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                                   title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                                 >
@@ -5884,7 +5884,7 @@ function pickFirstName(value: unknown): string {
                               onClick={() => setSelectedWorkoutLogId(log.id)}
                               className={`w-full rounded-2xl border px-3 py-3 text-left text-sm transition ${
                                 filteredSelectedWorkoutLog?.id === log.id
-                                  ? "border-emerald-300 bg-emerald-50"
+                                  ? "border-teal-300 bg-emerald-50"
                                   : "border-slate-200 bg-white hover:bg-slate-100"
                               }`}
                             >
@@ -6219,7 +6219,7 @@ function pickFirstName(value: unknown): string {
                 />
                 <div
                   className={`space-y-3 rounded-2xl p-1 transition ${
-                    isDraftDropZoneActive ? "bg-emerald-50 ring-2 ring-emerald-300" : ""
+                    isDraftDropZoneActive ? "bg-emerald-50 ring-2 ring-teal-300" : ""
                   }`}
                   onDragOver={(event) => {
                     event.preventDefault();
@@ -6268,7 +6268,7 @@ function pickFirstName(value: unknown): string {
                         setDragOverDraftExerciseId(null);
                       }}
                       className={`rounded-2xl border bg-white p-3 sm:p-4 space-y-3 cursor-move transition ${
-                        dragOverDraftExerciseId === item.id ? "ring-2 ring-emerald-300 border-emerald-300" : ""
+                        dragOverDraftExerciseId === item.id ? "ring-2 ring-teal-300 border-teal-300" : ""
                       } ${item.blockId ? "ring-1 ring-teal-200/80" : ""}`}
                     >
                       <ProgramExerciseBlockActions exercises={programExercisesDraft} index={index} onChange={setProgramExercisesDraft} />
@@ -6478,7 +6478,7 @@ function pickFirstName(value: unknown): string {
                           <button
                             type="button"
                             onClick={() => toggleFavoriteExercise(exercise.id)}
-                            className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent bg-teal-500 text-white" : "border-slate-200 text-slate-400"}`}
+                            className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent motus-brand-fill" : "border-slate-200 text-slate-400"}`}
                             aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                             title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                           >
@@ -6518,7 +6518,7 @@ function pickFirstName(value: unknown): string {
                 Tildel mal til valgt kunde
               </GradientButton>
               {templateAssignStatus ? (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                <div className="rounded-xl border motus-brand-surface px-3 py-2 text-xs text-emerald-700">
                   {templateAssignStatus}
                 </div>
               ) : null}
@@ -6629,7 +6629,7 @@ function pickFirstName(value: unknown): string {
                 ) : null}
               </div>
               <TextArea value={exerciseFormDescription} onChange={(e) => setExerciseFormDescription(e.target.value)} className="min-h-[110px]" placeholder="Forklaring av teknikk og utførelse (valgfritt)" />
-              {exerciseFormStatus ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{exerciseFormStatus}</div> : null}
+              {exerciseFormStatus ? <div className="rounded-xl border motus-brand-surface px-3 py-2 text-xs text-emerald-700">{exerciseFormStatus}</div> : null}
               <div className="grid gap-2 sm:grid-cols-2">
                 <GradientButton onClick={submitExerciseForm} className="w-full">
                   {editingExerciseId ? "Lagre endring" : "Legg til øvelse"}
@@ -6711,7 +6711,7 @@ function pickFirstName(value: unknown): string {
                         <button
                           type="button"
                           onClick={() => toggleFavoriteExercise(exercise.id)}
-                          className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent bg-teal-500 text-white" : "border-slate-200 text-slate-400"}`}
+                          className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent motus-brand-fill" : "border-slate-200 text-slate-400"}`}
                           aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                           title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                         >

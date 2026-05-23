@@ -1290,7 +1290,7 @@ export function InspirationHub({
             className={`rounded-xl border px-3 py-2 text-sm font-medium ${
               /kunne ikke|for stort/i.test(actionStatus)
                 ? "border-rose-200 bg-rose-50 text-rose-900"
-                : "border-emerald-200 bg-emerald-50 text-emerald-900"
+                : "motus-brand-surface"
             }`}
           >
             {actionStatus}
@@ -1507,7 +1507,7 @@ export function InspirationHub({
           className={`rounded-xl border px-3 py-2 text-sm font-medium ${
             /kunne ikke|for stort/i.test(actionStatus)
               ? "border-rose-200 bg-rose-50 text-rose-900"
-              : "border-emerald-200 bg-emerald-50 text-emerald-900"
+              : "motus-brand-surface"
           }`}
         >
           {actionStatus}

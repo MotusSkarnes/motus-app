@@ -538,7 +538,7 @@ export function LiveWorkoutSessionModal({
               <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
             </button>
             <div className="min-w-0 flex-1 text-center">
-              <div className="text-[10px] font-black uppercase tracking-[0.14em] text-teal-100/80 sm:text-xs sm:tracking-[0.16em]">{headerTitle}</div>
+              <div className="text-[10px] font-black uppercase tracking-[0.14em] motus-brand-on-dark sm:text-xs sm:tracking-[0.16em]">{headerTitle}</div>
               <div className="mt-0.5 truncate text-sm font-bold tracking-tight text-white sm:mt-1 sm:text-lg sm:font-black">{resolvedProgram.title}</div>
               {trainerSubtitle ? <div className="mt-0.5 truncate text-[10px] text-white/60 sm:text-xs">{trainerSubtitle}</div> : null}
             </div>
@@ -578,7 +578,7 @@ export function LiveWorkoutSessionModal({
               </div>
             </div>
             <div className="min-w-0 text-center sm:text-left">
-              <div className="text-xs font-black uppercase tracking-wide text-teal-100/75">Nå</div>
+              <div className="text-xs font-black uppercase tracking-wide motus-brand-on-dark-muted">Nå</div>
               <div className="mt-1 truncate text-3xl font-black tracking-tight text-white sm:text-4xl">
                 {currentWorkoutGroup?.exerciseName ?? "Økt i gang"}
               </div>
@@ -675,7 +675,7 @@ export function LiveWorkoutSessionModal({
                         key={exercise.id}
                         type="button"
                         onClick={() => handleReplaceCurrentWorkoutExercise(exercise.id)}
-                        className="w-full rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-left text-xs font-medium text-slate-800 transition hover:bg-teal-100"
+                        className="w-full rounded-lg border motus-brand-surface px-3 py-2 text-left text-xs font-medium text-slate-800 transition hover:bg-teal-100"
                       >
                         {exercise.name} · {exercise.group}
                       </button>
@@ -791,7 +791,7 @@ export function LiveWorkoutSessionModal({
                             type="button"
                             onClick={() => item.setValue(numericLevel)}
                             className={`rounded-xl border px-2 py-2 text-lg transition ${
-                              active ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                              active ? "border-teal-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
                             }`}
                             aria-label={`Velg nivå ${level}`}
                           >
@@ -856,7 +856,7 @@ export function LiveWorkoutSessionModal({
             </button>
           ) : null}
           {restCountdown ? (
-            <div className="mb-2 rounded-lg border bg-teal-50 px-2.5 py-2 sm:mb-3 sm:rounded-xl sm:p-3" style={{ borderColor: "rgba(20,184,166,0.25)" }}>
+            <div className="mb-2 rounded-lg border bg-teal-50 px-2.5 py-2 sm:mb-3 sm:rounded-xl sm:p-3" style={{ borderColor: "rgba(48,227,190,0.25)" }}>
               <div className="flex items-center justify-between gap-2 sm:gap-3">
                 <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                   <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-teal-700 shadow-sm sm:h-10 sm:w-10">

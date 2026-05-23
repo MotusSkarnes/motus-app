@@ -77,7 +77,7 @@ function MemberMobileTabButton({
         if (memberTab !== tab.id) motusHaptic("light");
         setMemberTab(tab.id);
       }}
-      className={`${className} ${isActive ? "text-slate-900" : "text-slate-500"}`}
+      className={`${className} ${isActive ? "motus-mobile-tab-active rounded-xl bg-white/70 shadow-[0_1px_4px_-2px_rgba(15,23,42,0.12)]" : "text-slate-500"}`}
     >
       <Icon
         className="h-[22px] w-[22px] shrink-0"
@@ -100,7 +100,7 @@ export function MemberMobileTabNav({ memberTab, setMemberTab, isMemberLimited }:
   const profileTab = allTabs.find((tab) => tab.id === "profile");
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[9999] border-t border-slate-200/80 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur-md lg:hidden">
+    <div className="motus-mobile-tab-bar fixed inset-x-0 bottom-0 z-[9999] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 lg:hidden">
       <div className="mx-auto flex max-w-md items-stretch gap-1">
         <div className="flex min-w-0 flex-1 items-stretch gap-0.5">
           {mainTabs.map((tab) => (
@@ -115,7 +115,7 @@ export function MemberMobileTabNav({ memberTab, setMemberTab, isMemberLimited }:
         </div>
         {profileTab ? (
           <>
-            <div className="w-px self-stretch bg-slate-200/80" aria-hidden />
+            <div className="motus-mobile-tab-bar-separator" aria-hidden />
             <MemberMobileTabButton
               tab={profileTab}
               memberTab={memberTab}

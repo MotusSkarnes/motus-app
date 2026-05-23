@@ -115,7 +115,7 @@ export function MemberProgressGoals({
             <div
               key={goal.id}
               className={`rounded-xl border px-3 py-3 text-sm ${
-                goal.unlocked ? "border-emerald-300 bg-emerald-50/80 text-emerald-900" : "border-slate-200 bg-white text-slate-700"
+                goal.unlocked ? "border-teal-300 bg-emerald-50/80 text-emerald-900" : "border-slate-200 bg-white text-slate-700"
               }`}
             >
               <div className="flex items-start justify-between gap-2">

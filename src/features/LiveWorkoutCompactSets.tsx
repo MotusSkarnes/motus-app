@@ -61,7 +61,7 @@ function SetCheckToggle({
       aria-pressed={completed}
       className={`inline-flex shrink-0 items-center justify-center rounded-full border-2 transition ${dim} ${
         completed
-          ? "border-teal-400 bg-teal-400 text-white"
+          ? "motus-brand-fill border-[var(--motus-brand-border-strong)]"
           : "border-slate-200 bg-white text-transparent hover:border-teal-300"
       }`}
     >

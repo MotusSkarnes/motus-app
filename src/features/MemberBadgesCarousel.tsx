@@ -254,7 +254,7 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
               type="button"
               onClick={() => setActiveCategoryId(item.id)}
               className={`shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition ${
-                active ? "border-transparent bg-teal-500 text-white shadow-sm" : "bg-white text-slate-600 hover:bg-slate-50"
+                active ? "border-transparent motus-brand-fill shadow-sm" : "bg-white text-slate-600 hover:bg-slate-50"
               }`}
               style={{ borderColor: active ? "transparent" : "rgba(15,23,42,0.10)" }}
             >

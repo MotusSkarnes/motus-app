@@ -38,7 +38,7 @@ export function ExerciseBankBadges({ popularity, isFavorite = false, isTrainerPr
 
   if (isRecommendedExercise(popularity, false)) {
     badges.push(
-      <span key="rec" className="rounded-full bg-teal-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+      <span key="rec" className="rounded-full motus-brand-fill px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
         Anbefalt
       </span>,
     );
@@ -178,7 +178,7 @@ export function ExerciseBankListCard({
                 type="button"
                 onClick={onToggleFavorite}
                 className={`rounded-lg border p-1.5 transition ${
-                  isFavorite ? "border-transparent bg-teal-500 text-white" : "border-slate-200 text-slate-400 hover:text-amber-500"
+                  isFavorite ? "border-transparent motus-brand-fill" : "border-slate-200 text-slate-400 hover:text-amber-500"
                 }`}
                 aria-label={isFavorite ? "Fjern favoritt" : "Legg til favoritt"}
               >
@@ -193,7 +193,7 @@ export function ExerciseBankListCard({
                 className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
                   added
                     ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-                    : "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
+                    : "motus-brand-surface hover:bg-teal-100"
                 }`}
               >
                 {added ? (

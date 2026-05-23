@@ -185,7 +185,7 @@ export function TrainingStartButton({
         props.onPointerDown?.(event);
         if (!props.disabled) triggerLightHaptic();
       }}
-      className={`motus-pressable motus-training-start-btn inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      className={`motus-pressable motus-training-start-btn inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold text-slate-900 transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
     >
       {children}
     </button>
@@ -310,7 +310,7 @@ export function StatusMessage({
 }) {
   const toneClass =
     tone === "success"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      ? "motus-brand-surface"
       : tone === "error"
       ? "border-rose-200 bg-rose-50 text-rose-700"
       : "border-sky-200 bg-sky-50 text-sky-700";

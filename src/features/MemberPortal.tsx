@@ -853,7 +853,7 @@ function computeIntervalPhaseBadge(tone: IntervalTimerStep["tone"], headlineForB
 function intervalTimerBadgeToneClass(tone: IntervalTimerStep["tone"]): string {
   switch (tone) {
     case "warmup":
-      return "bg-emerald-500/35 text-emerald-50 ring-1 ring-emerald-300/50";
+      return "bg-teal-500/35 text-teal-50 ring-1 ring-teal-300/50";
     case "cooldown":
       return "bg-sky-500/35 text-sky-50 ring-1 ring-sky-300/45";
     case "rest":
@@ -4403,7 +4403,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
         <div className="min-w-0 w-full space-y-4 overflow-visible sm:space-y-6">
           {memberTab === "overview" ? (
-            <div className="space-y-4">
+            <div className="motus-home-shell space-y-6">
               <MemberHomeOverview
                 memberFirstName={homeFirstName}
                 streakWeeks={streakWeeks}
@@ -4411,6 +4411,14 @@ export function MemberPortal(props: MemberPortalProps) {
                 statusCard={homeStatusCard}
                 workoutTitle={homePrimaryFocus}
                 workoutDuration={homeWorkoutDuration}
+                workoutImageSrc={homeWorkoutCoverSrc}
+                workoutZoneLabel={homeWorkoutZoneLabel}
+                weekSessionsLabel={homeWeekSessionsLabel}
+                weekStats={{
+                  completedSessions: homeWeeklySummary.completedThisWeek,
+                  momentumPct: homeMomentumPct,
+                  streakWeeks,
+                }}
                 headerActions={homeOverviewHeaderActions}
                 notificationsPanel={homeOverviewNotificationsPanel}
                 primaryCta={
@@ -4638,7 +4646,7 @@ export function MemberPortal(props: MemberPortalProps) {
                               <div className="rounded-lg border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Detaljer fra økta</div>
                                 {selectedCalendarLog.trainerComment ? (
-                                  <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                                  <div className="mt-2 rounded-lg border motus-brand-surface px-3 py-2 text-sm text-emerald-900">
                                     <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Kommentar fra trener</div>
                                     <div className="mt-1">{selectedCalendarLog.trainerComment}</div>
                                   </div>
@@ -4711,7 +4719,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-600">
                     Du satte ny personlig rekord i øvelsen du nettopp gjorde.
                   </p>
-                  <div className="mt-5 w-full rounded-2xl border border-emerald-200/90 bg-emerald-50 px-4 py-4 text-left shadow-inner" style={{ borderColor: "rgba(16,185,129,0.35)" }}>
+                  <div className="mt-5 w-full rounded-2xl border border-emerald-200/90 bg-emerald-50 px-4 py-4 text-left shadow-inner" style={{ borderColor: "rgba(48,227,190,0.35)" }}>
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-900/80">Øvelse</div>
                     <div className="mt-1 text-lg font-semibold text-slate-900">{activeCelebration?.exerciseName}</div>
                     <div className="mt-3 flex flex-wrap items-baseline gap-2 text-sm">
@@ -4955,7 +4963,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
                 {secondaryPausedWorkouts.length > 0 ? (
                   <div className="mt-3 space-y-2">
-                    <div className="rounded-lg border border-teal-200 bg-teal-50/80 px-3 py-2">
+                    <div className="rounded-lg border motus-brand-surface/80 px-3 py-2">
                       <div className="text-xs font-semibold text-teal-900">Påbegynte økter</div>
                       <p className="mt-0.5 text-[11px] text-teal-800/90">Lagres i 4 timer. Fortsett der du slapp, eller slett.</p>
                     </div>
@@ -4965,7 +4973,7 @@ export function MemberPortal(props: MemberPortalProps) {
                         <div
                           key={draft.id}
                           className="rounded-lg border bg-white p-2.5"
-                          style={{ borderColor: "rgba(20,184,166,0.35)" }}
+                          style={{ borderColor: "rgba(48,227,190,0.35)" }}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
@@ -5444,7 +5452,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                 type="button"
                                 onClick={() => item.setValue(numericLevel)}
                                 className={`rounded-xl border px-2 py-2 text-lg transition ${
-                                  active ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                                  active ? "border-teal-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
                                 }`}
                                 aria-label={`Velg nivå ${level}`}
                               >
@@ -5836,7 +5844,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       {isExpanded ? (
                         <div className="space-y-2 border-t border-slate-100 px-3 pb-3 pt-2">
                           {fromPeriodPlan && log.note ? (
-                            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-900">
+                            <div className="rounded-lg border motus-brand-surface px-2.5 py-1.5 text-xs text-emerald-900">
                               {log.note}
                             </div>
                           ) : null}
@@ -5844,7 +5852,7 @@ export function MemberPortal(props: MemberPortalProps) {
                             <div className="text-sm text-slate-600">{log.note}</div>
                           ) : null}
                           {log.trainerComment ? (
-                            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                            <div className="rounded-lg border motus-brand-surface px-3 py-2 text-sm text-emerald-900">
                               <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Kommentar fra trener</div>
                               <div className="mt-1">{log.trainerComment}</div>
                             </div>
@@ -5891,7 +5899,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                                   <button
                                                     type="button"
                                                     onClick={() => saveEditLoggedExercise(log.id, originalIndex)}
-                                                    className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                                                    className="rounded-lg border motus-brand-surface px-2 py-1 text-[11px] font-semibold text-emerald-700 transition hover:bg-teal-100"
                                                   >
                                                     Lagre
                                                   </button>
@@ -6086,7 +6094,7 @@ export function MemberPortal(props: MemberPortalProps) {
                           }}
                           className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border p-1.5 transition ${
                             cleanedFavoritePersonalRecordNames.includes(record.name)
-                              ? "border-transparent bg-teal-500 text-white"
+                              ? "border-transparent motus-brand-fill"
                               : "border-slate-200 bg-white text-slate-400"
                           }`}
                           aria-label={

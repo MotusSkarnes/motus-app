@@ -115,7 +115,7 @@ export function PersonalRecordProgressModal({
         ) : history.length === 1 ? (
           <div className="mt-5 space-y-3">
             <p className="text-sm text-slate-600">Du har én registrering — logg flere økter for å se utviklingen som graf.</p>
-            <div className="rounded-xl border bg-teal-50 px-4 py-3 text-sm text-teal-950" style={{ borderColor: "rgba(20,184,166,0.25)" }}>
+            <div className="rounded-xl border bg-teal-50 px-4 py-3 text-sm text-teal-950" style={{ borderColor: "rgba(48,227,190,0.25)" }}>
               <div className="font-semibold">{history[0].dateLabel}</div>
               <div className="mt-1">
                 Estimert 1RM: <span className="font-bold">{history[0].estimated1RmKg} kg</span> ({history[0].bestSetLabel})

@@ -33,7 +33,7 @@ export const MUSCLE_GROUP_CHIP_CLASS: Record<string, string> = {
   Bryst: "border-rose-200 bg-rose-50 text-rose-900",
   Rygg: "border-sky-200 bg-sky-50 text-sky-900",
   Skuldre: "border-indigo-200 bg-indigo-50 text-indigo-900",
-  Bein: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  Bein: "motus-brand-surface",
   Armer: "border-violet-200 bg-violet-50 text-violet-900",
   Kjerne: "border-amber-200 bg-amber-50 text-amber-900",
   Kondisjon: "border-orange-200 bg-orange-50 text-orange-900",

@@ -95,7 +95,7 @@ export function MemberNotificationsPanel({ alerts, onOpenAlert }: MemberNotifica
               ) : null}
             </span>
             <ChevronRight
-              className={`h-4 w-4 shrink-0 transition ${isOpened ? "text-slate-300" : "text-slate-300 group-hover:text-emerald-500"}`}
+              className={`h-4 w-4 shrink-0 transition ${isOpened ? "text-slate-300" : "text-slate-300 group-hover:text-teal-500"}`}
             />
           </button>
         );

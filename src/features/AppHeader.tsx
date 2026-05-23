@@ -81,7 +81,7 @@ export function AppHeader({
   }
 
   return (
-    <Card className="overflow-hidden bg-[linear-gradient(135deg,rgba(20,184,166,0.07)_0%,rgba(236,72,153,0.07)_100%)] p-4 sm:p-5 md:p-6">
+    <Card className="overflow-hidden bg-[linear-gradient(135deg,rgba(48,227,190,0.07)_0%,rgba(236,72,153,0.07)_100%)] p-4 sm:p-5 md:p-6">
       <div
         className="-mx-4 -mt-4 mb-5 h-1.5 sm:-mx-5 sm:-mt-5 md:-mx-6 md:-mt-6"
         style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 70%, ${MOTUS.acid} 100%)` }}
@@ -96,7 +96,7 @@ export function AppHeader({
               <>
                 <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">Motus Coach</h1>
                 <div
-                  className="mt-3 inline-flex min-w-0 max-w-full items-center gap-3 rounded-2xl border border-emerald-200/90 bg-white/95 px-4 py-3 shadow-sm ring-1 ring-black/5"
+                  className="mt-3 inline-flex min-w-0 max-w-full items-center gap-3 rounded-2xl border border-teal-200/90 bg-white/95 px-4 py-3 shadow-sm ring-1 ring-black/5"
                   style={{ borderLeftWidth: 4, borderLeftColor: MOTUS.turquoise }}
                 >
                   <span

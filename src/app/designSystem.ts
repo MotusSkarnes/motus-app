@@ -14,6 +14,9 @@ export const DS = {
     accent: MOTUS.turquoise,
     accentPink: MOTUS.pink,
     accentSoft: MOTUS.paleMint,
+  accentText: "#0e8068",
+  accentTextStrong: "#0a5f4f",
+  accentBorder: "rgba(48, 227, 190, 0.28)",
   },
   radius: {
     card: "16px",
