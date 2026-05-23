@@ -9,6 +9,7 @@ import {
   Flame,
   Play,
   Target,
+  Timer,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { GradientButton, OutlineButton, TrainingStartButton } from "../app/ui";
@@ -43,6 +44,7 @@ export type MemberHomeOverviewProps = {
   momentumPct: number;
   dailyGoalLabel?: string | null;
   weekSessionsLabel?: string | null;
+  weekMinutesLabel?: string | null;
   motivationLine: string | null;
   statusCard: MemberHomeStatusCard | null;
   workoutTitle: string;
@@ -72,6 +74,7 @@ export function MemberHomeOverview({
   momentumPct,
   dailyGoalLabel,
   weekSessionsLabel,
+  weekMinutesLabel,
   motivationLine,
   statusCard,
   workoutTitle,
@@ -177,6 +180,17 @@ export function MemberHomeOverview({
               </span>
             </div>
           ) : null}
+          {weekMinutesLabel ? (
+            <div className="motus-home-dash-stat">
+              <span className="motus-home-dash-stat-icon" aria-hidden>
+                <Timer className="h-3.5 w-3.5" />
+              </span>
+              <span>
+                <span className="motus-home-dash-stat-label">Treningsminutter</span>
+                <span className="motus-home-dash-stat-value">{weekMinutesLabel}</span>
+              </span>
+            </div>
+          ) : null}
           <div className="motus-home-dash-stat">
             <span className="motus-home-dash-stat-icon motus-home-dash-stat-icon--pink" aria-hidden>
               <Flame className="h-3.5 w-3.5" />
@@ -262,6 +276,9 @@ export function MemberHomeOverview({
         </div>
       ) : null}
 
+      {onboardingPrompt ? <div className="px-0.5">{onboardingPrompt}</div> : null}
+      {monthlyCheckInPrompt ? <div className="px-0.5">{monthlyCheckInPrompt}</div> : null}
+
       {motivationLine ? (
         <aside className="motus-home-boost-card">
           <div className="min-w-0">
@@ -270,9 +287,6 @@ export function MemberHomeOverview({
           </div>
         </aside>
       ) : null}
-
-      {onboardingPrompt ? <div className="px-0.5">{onboardingPrompt}</div> : null}
-      {monthlyCheckInPrompt ? <div className="px-0.5">{monthlyCheckInPrompt}</div> : null}
     </div>
   );
 }

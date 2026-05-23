@@ -18,6 +18,13 @@ export function formatWeekSessionsLabel(completed: number, planned: number, week
   return `${completed}/${denominator} økter denne uka`;
 }
 
+export function formatWeekMinutesLabel(completed: number, target: number): string {
+  if (target <= 0) {
+    return completed === 1 ? "1 min" : `${completed} min`;
+  }
+  return `${completed}/${target} min`;
+}
+
 type MemberTrainingTodayCardProps = {
   title: string;
   imageSrc: string | null;

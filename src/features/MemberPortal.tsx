@@ -159,7 +159,7 @@ import {
 } from "./MemberHomeOverview";
 import { MemberProgressScoresCard } from "./MemberProgressScoresCard";
 import { MemberTrainingFlowCard } from "./MemberTrainingFlowCard";
-import { MemberTrainingTodayCard, extractZoneFromPlanEntry, formatWeekSessionsLabel } from "./MemberTrainingTodayCard";
+import { MemberTrainingTodayCard, extractZoneFromPlanEntry, formatWeekMinutesLabel, formatWeekSessionsLabel } from "./MemberTrainingTodayCard";
 import { MemberTrainingWeekStats } from "./MemberTrainingWeekStats";
 import { MuscleSplitCard } from "./MuscleSplitCard";
 import { IntervalWorkoutSessionModal } from "./IntervalWorkoutSessionModal";
@@ -3675,6 +3675,39 @@ export function MemberPortal(props: MemberPortalProps) {
       ),
     [homeWeeklySummary.completedThisWeek, homeWeeklySummary.plannedThisWeek, profileSessionsPerWeekTarget],
   );
+  const homeWeeklyMinutes = useMemo(() => {
+    const today = getStartOfDay(new Date(nowTimestamp));
+    const mondayOffset = (today.getDay() + 6) % 7;
+    const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset);
+    const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7);
+    let total = 0;
+    completedLogs.forEach((log) => {
+      if (log.status !== "Fullført") return;
+      const logDay = parseDateOnly(log.date);
+      if (!logDay) return;
+      const day = getStartOfDay(logDay);
+      if (day.getTime() < weekStart.getTime() || day.getTime() >= weekEnd.getTime()) return;
+      (log.results ?? []).forEach((result) => {
+        if (!result.completed) return;
+        const duration = Number(result.performedDurationMinutes) || 0;
+        if (duration > 0) {
+          total += duration;
+          return;
+        }
+        const sets = Math.max(1, Number(result.plannedSets) || 1);
+        total += sets * 2.5;
+      });
+    });
+    return Math.round(total);
+  }, [completedLogs, nowTimestamp]);
+  const homeWeeklyMinutesTarget = useMemo(() => {
+    const sessionTarget = Number(profileSessionsPerWeekTarget) || homeWeeklySummary.plannedThisWeek || 4;
+    return Math.max(sessionTarget * 45, homeWeeklyMinutes, 60);
+  }, [profileSessionsPerWeekTarget, homeWeeklySummary.plannedThisWeek, homeWeeklyMinutes]);
+  const homeWeekMinutesLabel = useMemo(
+    () => formatWeekMinutesLabel(homeWeeklyMinutes, homeWeeklyMinutesTarget),
+    [homeWeeklyMinutes, homeWeeklyMinutesTarget],
+  );
   const homeUnseenProgramCount = useMemo(
     () =>
       memberAssignedPrograms.filter(
@@ -4497,6 +4530,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 momentumPct={homeMomentumPct}
                 dailyGoalLabel={homeWorkoutDuration}
                 weekSessionsLabel={homeWeekSessionsLabel}
+                weekMinutesLabel={homeWeekMinutesLabel}
                 motivationLine={homeMotivationLine}
                 statusCard={homeStatusCard}
                 workoutTitle={homePrimaryFocus}
@@ -5195,160 +5229,158 @@ export function MemberPortal(props: MemberPortalProps) {
 	                          <div className="motus-member-program-category">{programCategory}</div>
 	                        </div>
 	                        <div className="motus-member-program-content">
-	                        <div className="flex items-start justify-between gap-2">
-	                          <div className="min-w-0 flex-1">
-	                            <div className="motus-member-program-title">{program.title}</div>
-	                            {program.goal?.trim() ? (
-	                              <div className="motus-member-program-goal">{program.goal.trim()}</div>
-	                            ) : null}
-	                            {programAuthorLine ? (
-	                              <div className="mt-0.5 text-[10px] font-medium text-slate-600">{programAuthorLine}</div>
-	                            ) : null}
+	                          <div className="motus-member-program-summary">
+	                            <div className="motus-member-program-header">
+	                              <div className="motus-member-program-title">{program.title}</div>
+	                              {program.goal?.trim() ? (
+	                                <div className="motus-member-program-goal">{program.goal.trim()}</div>
+	                              ) : null}
+	                              {programAuthorLine ? (
+	                                <div className="mt-0.5 text-[10px] font-medium text-slate-600">{programAuthorLine}</div>
+	                              ) : null}
+	                            </div>
+	                            <div className="motus-member-program-stats">
+	                              <div>
+	                                <div>Tid</div>
+	                                <div>{programMinutes} min</div>
+	                              </div>
+	                              <div>
+	                                <div>Nivå</div>
+	                                <div>{programLevel}</div>
+	                              </div>
+	                              <div>
+	                                <div>Øvelser</div>
+	                                <div>{program.exercises.length}</div>
+	                              </div>
+	                            </div>
+	                            <div>
+	                              <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-slate-500">
+	                                <span>Programprogresjon</span>
+	                                <span>{programProgressPct}%</span>
+	                              </div>
+	                              <div className="motus-progress-track mt-1.5 h-2 rounded-full">
+	                                <div
+	                                  className="motus-progress-fill h-2 rounded-full"
+	                                  style={{ width: `${programProgressPct}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+	                                />
+	                              </div>
+	                            </div>
+	                            <div className="motus-member-program-actions">
+	                              <OutlineButton
+	                                className="!min-h-8 !px-2.5 !py-1.5 !text-xs !leading-tight"
+	                                onClick={() => setExpandedProgramId((prev) => (prev === program.id ? null : program.id))}
+	                              >
+	                                <span className="inline-flex items-center justify-center gap-1">
+	                                  {isExpanded ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+	                                  <span>{isExpanded ? "Skjul" : "Vis"}</span>
+	                                </span>
+	                              </OutlineButton>
+	                              <OutlineButton className="!min-h-8 !px-2.5 !py-1.5 !text-xs !leading-tight" onClick={() => handlePrintProgram(program)}>
+	                                <span className="inline-flex items-center justify-center gap-1">
+	                                  <Printer className="h-3.5 w-3.5" />
+	                                  <span>PDF</span>
+	                                </span>
+	                              </OutlineButton>
+	                              <GradientButton
+	                                className="!min-h-8 !px-2.5 !py-1.5 !text-xs !leading-tight"
+	                                onClick={() => {
+	                                  if (intervalProgramIdSet.has(program.id)) {
+	                                    openIntervalTimerModal(program.id);
+	                                    return;
+	                                  }
+	                                  startWorkoutMode(program.id, buildStartWorkoutOptions(program));
+	                                }}
+	                              >
+	                                <span className="inline-flex items-center justify-center gap-1">
+	                                  <Play className="h-3.5 w-3.5" />
+	                                  <span>Start</span>
+	                                </span>
+	                              </GradientButton>
+	                              <div className="relative shrink-0" data-program-library-menu>
+	                                <OutlineButton
+	                                  type="button"
+	                                  className={`!min-h-8 !px-2 !py-1.5 !text-xs !leading-tight ${isLibraryMenuOpen ? "!border-teal-300 !bg-teal-50" : ""}`}
+	                                  onClick={() => setProgramLibraryMenuId((prev) => (prev === program.id ? null : program.id))}
+	                                  aria-label={isLibraryMenuOpen ? "Lukk meny" : "Flere valg"}
+	                                  aria-expanded={isLibraryMenuOpen}
+	                                  title="Mer"
+	                                >
+	                                  <MoreHorizontal className="h-4 w-4" aria-hidden />
+	                                </OutlineButton>
+	                                {isLibraryMenuOpen ? (
+	                                  <div
+	                                    className="absolute right-0 bottom-[calc(100%+4px)] z-30 w-44 overflow-hidden rounded-xl border bg-white py-1 shadow-lg ring-1 ring-black/5"
+	                                    style={{ borderColor: "rgba(15,23,42,0.1)" }}
+	                                    role="menu"
+	                                  >
+	                                    {memberMayEditProgram(program) ? (
+	                                      <button
+	                                        type="button"
+	                                        role="menuitem"
+	                                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+	                                        onClick={() => {
+	                                          setProgramLibraryMenuId(null);
+	                                          setEditingMemberProgramId(program.id);
+	                                          setTrainingSection("custom");
+	                                        }}
+	                                      >
+	                                        <Pencil className="h-4 w-4 shrink-0 text-slate-500" />
+	                                        Rediger
+	                                      </button>
+	                                    ) : null}
+	                                    <button
+	                                      type="button"
+	                                      role="menuitem"
+	                                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+	                                      onClick={() => {
+	                                        updateProgramMemberLibraryStatus(program.id, "archived");
+	                                        const focusedProgram = memberFocusProgramId
+	                                          ? memberPrograms.find((item) => item.id === memberFocusProgramId)
+	                                          : null;
+	                                        const archiveKey = buildTrainingProgramDisplayKey(program);
+	                                        if (
+	                                          memberFocusProgramId === program.id ||
+	                                          (focusedProgram &&
+	                                            buildTrainingProgramDisplayKey(focusedProgram) === archiveKey)
+	                                        ) {
+	                                          clearMemberFocusProgramId?.();
+	                                        }
+	                                        setExpandedProgramId((prev) => (prev === program.id ? null : prev));
+	                                        setLibraryActionStatus("Programmet er arkivert.");
+	                                        setProgramLibraryMenuId(null);
+	                                      }}
+	                                    >
+	                                      <Archive className="h-4 w-4 shrink-0 text-slate-500" />
+	                                      Arkiver
+	                                    </button>
+	                                    {memberMayDeleteProgram(program, memberProgramAuthorOptions) ? (
+	                                      <button
+	                                        type="button"
+	                                        role="menuitem"
+	                                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-rose-600 hover:bg-rose-50"
+	                                        onClick={() => {
+	                                          setProgramLibraryMenuId(null);
+	                                          setConfirmDialog({
+	                                            title: "Slette program?",
+	                                            message: `Dette sletter «${program.title.trim()}» fra biblioteket og tilhørende økter som er logget på dette programmet.`,
+	                                            confirmLabel: "Slett",
+	                                            tone: "danger",
+	                                            onConfirm: () => {
+	                                              deleteProgramById(program.id, { requestedBy: "member" });
+	                                              setLibraryActionStatus("Programmet er slettet.");
+	                                            },
+	                                          });
+	                                        }}
+	                                      >
+	                                        <Trash2 className="h-4 w-4 shrink-0" />
+	                                        Slett program
+	                                      </button>
+	                                    ) : null}
+	                                  </div>
+	                                ) : null}
+	                              </div>
+	                            </div>
 	                          </div>
-                          <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:flex-nowrap sm:items-center">
-                            <div className="flex flex-nowrap items-center justify-end gap-1">
-                            <OutlineButton
-                              className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
-                              onClick={() => setExpandedProgramId((prev) => (prev === program.id ? null : program.id))}
-                            >
-                              <span className="inline-flex items-center justify-center gap-1">
-                                {isExpanded ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                                <span>{isExpanded ? "Skjul" : "Vis"}</span>
-                              </span>
-                            </OutlineButton>
-                            <OutlineButton className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight" onClick={() => handlePrintProgram(program)}>
-                              <span className="inline-flex items-center justify-center gap-1">
-                                <Printer className="h-3 w-3" />
-                                <span>PDF</span>
-                              </span>
-                            </OutlineButton>
-                            <GradientButton
-                              className="!min-h-7 !px-2 !py-1 !text-[10px] !leading-tight"
-                              onClick={() => {
-                                if (intervalProgramIdSet.has(program.id)) {
-                                  openIntervalTimerModal(program.id);
-                                  return;
-                                }
-                                startWorkoutMode(program.id, buildStartWorkoutOptions(program));
-                              }}
-                            >
-                              <span className="inline-flex items-center justify-center gap-1">
-                                <Play className="h-3 w-3" />
-                                <span>Start</span>
-                              </span>
-                            </GradientButton>
-                            <div className="relative shrink-0" data-program-library-menu>
-                              <OutlineButton
-                                type="button"
-                                className={`!min-h-7 !px-1.5 !py-1 !text-[10px] !leading-tight ${isLibraryMenuOpen ? "!border-teal-300 !bg-teal-50" : ""}`}
-                                onClick={() => setProgramLibraryMenuId((prev) => (prev === program.id ? null : program.id))}
-                                aria-label={isLibraryMenuOpen ? "Lukk meny" : "Flere valg"}
-                                aria-expanded={isLibraryMenuOpen}
-                                title="Mer"
-                              >
-                                <MoreHorizontal className="h-3.5 w-3.5" aria-hidden />
-                              </OutlineButton>
-                              {isLibraryMenuOpen ? (
-                                <div
-                                  className="absolute right-0 top-[calc(100%+4px)] z-30 w-44 overflow-hidden rounded-xl border bg-white py-1 shadow-lg ring-1 ring-black/5"
-                                  style={{ borderColor: "rgba(15,23,42,0.1)" }}
-                                  role="menu"
-                                >
-                                  {memberMayEditProgram(program) ? (
-                                    <button
-                                      type="button"
-                                      role="menuitem"
-                                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
-                                      onClick={() => {
-                                        setProgramLibraryMenuId(null);
-                                        setEditingMemberProgramId(program.id);
-                                        setTrainingSection("custom");
-                                      }}
-                                    >
-                                      <Pencil className="h-4 w-4 shrink-0 text-slate-500" />
-                                      Rediger
-                                    </button>
-                                  ) : null}
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
-                                    onClick={() => {
-                                      updateProgramMemberLibraryStatus(program.id, "archived");
-                                      const focusedProgram = memberFocusProgramId
-                                        ? memberPrograms.find((item) => item.id === memberFocusProgramId)
-                                        : null;
-                                      const archiveKey = buildTrainingProgramDisplayKey(program);
-                                      if (
-                                        memberFocusProgramId === program.id ||
-                                        (focusedProgram &&
-                                          buildTrainingProgramDisplayKey(focusedProgram) === archiveKey)
-                                      ) {
-                                        clearMemberFocusProgramId?.();
-                                      }
-                                      setExpandedProgramId((prev) => (prev === program.id ? null : prev));
-                                      setLibraryActionStatus("Programmet er arkivert.");
-                                      setProgramLibraryMenuId(null);
-                                    }}
-                                  >
-                                    <Archive className="h-4 w-4 shrink-0 text-slate-500" />
-                                    Arkiver
-                                  </button>
-                                  {memberMayDeleteProgram(program, memberProgramAuthorOptions) ? (
-                                    <button
-                                      type="button"
-                                      role="menuitem"
-                                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-rose-600 hover:bg-rose-50"
-                                      onClick={() => {
-                                        setProgramLibraryMenuId(null);
-                                        setConfirmDialog({
-                                          title: "Slette program?",
-                                          message: `Dette sletter «${program.title.trim()}» fra biblioteket og tilhørende økter som er logget på dette programmet.`,
-                                          confirmLabel: "Slett",
-                                          tone: "danger",
-                                          onConfirm: () => {
-                                            deleteProgramById(program.id, { requestedBy: "member" });
-                                            setLibraryActionStatus("Programmet er slettet.");
-                                          },
-                                        });
-                                      }}
-                                    >
-                                      <Trash2 className="h-4 w-4 shrink-0" />
-                                      Slett program
-                                    </button>
-                                  ) : null}
-                                </div>
-                              ) : null}
-                            </div>
-                            </div>
-	                          </div>
-	                        </div>
-	                        <div className="motus-member-program-stats">
-	                          <div className="rounded-xl bg-slate-50 px-2.5 py-2">
-	                            <div className="text-[10px] font-bold uppercase text-slate-400">Tid</div>
-	                            <div className="mt-0.5 text-sm font-black text-slate-900">{programMinutes} min</div>
-	                          </div>
-	                          <div className="rounded-xl bg-slate-50 px-2.5 py-2">
-	                            <div className="text-[10px] font-bold uppercase text-slate-400">Nivå</div>
-	                            <div className="mt-0.5 truncate text-sm font-black text-slate-900">{programLevel}</div>
-	                          </div>
-	                          <div className="rounded-xl bg-slate-50 px-2.5 py-2">
-	                            <div className="text-[10px] font-bold uppercase text-slate-400">Øvelser</div>
-	                            <div className="mt-0.5 text-sm font-black text-slate-900">{program.exercises.length}</div>
-	                          </div>
-	                        </div>
-	                        <div>
-	                          <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-slate-500">
-	                            <span>Programprogresjon</span>
-	                            <span>{programProgressPct}%</span>
-	                          </div>
-	                          <div className="motus-progress-track mt-1.5 h-2 rounded-full">
-	                            <div
-	                              className="motus-progress-fill h-2 rounded-full"
-	                              style={{ width: `${programProgressPct}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-	                            />
-	                          </div>
-	                        </div>
 
 	                        {isExpanded ? (
                           <>
