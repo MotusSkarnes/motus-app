@@ -109,7 +109,9 @@ import {
   removeMemberOwnedPeriodPlanFromStorage,
   findPeriodPlanAutoCompleteTargets,
   findPeriodPlanEntryForCalendarDate,
-  findTodayPeriodPlanEntryInPlans,
+  readActivePeriodPlanIdForMembers,
+  resolvePeriodPlanWeekNumberForDate,
+  writeActivePeriodPlanIdForMembers,
   buildPeriodPlanPlannedEntriesByMonth,
   parsePeriodPlanStartDate,
   resolvePeriodPlanPlannedDate,
@@ -1233,6 +1235,16 @@ export function MemberPortal(props: MemberPortalProps) {
     [periodPlans, hiddenPeriodPlanIds],
   );
   const memberHasVisiblePeriodPlan = visiblePeriodPlans.length > 0;
+  const selectActiveMemberPeriodPlan = useCallback(
+    (planId: string) => {
+      const plan = visiblePeriodPlans.find((item) => item.id === planId);
+      if (!plan) return;
+      setActiveMemberPeriodPlanId(planId);
+      writeActivePeriodPlanIdForMembers(relatedMemberIds, planId);
+      setSelectedPeriodPlanWeekNumber(resolvePeriodPlanWeekNumberForDate(plan, new Date(nowTimestamp)));
+    },
+    [visiblePeriodPlans, relatedMemberIds, nowTimestamp],
+  );
   const primaryMemberIdForPeriodPlans = relatedMemberIds[0] ?? memberViewId ?? "";
   const relatedMembersForProfile = useMemo(
     () => members.filter((member) => relatedMemberIdSet.has(member.id)),
@@ -1626,22 +1638,14 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [activePeriodPlan, activePeriodWeekIndex]);
   const todayPeriodPlanMatch = useMemo(() => {
     if (!activePeriodPlan) return null;
-    return findTodayPeriodPlanEntryInPlans(
-      [activePeriodPlan],
+    const match = findPeriodPlanEntryForCalendarDate(
+      activePeriodPlan,
       getStartOfDay(new Date(nowTimestamp)),
       periodPlanSwapsByPlan,
-      activePeriodPlanId,
-      activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : null,
-      currentWeekdayKey,
     );
-  }, [
-    activePeriodPlan,
-    nowTimestamp,
-    periodPlanSwapsByPlan,
-    activePeriodPlanId,
-    activePeriodWeekIndex,
-    currentWeekdayKey,
-  ]);
+    if (!match?.entry.trim()) return null;
+    return { plan: activePeriodPlan, ...match };
+  }, [activePeriodPlan, nowTimestamp, periodPlanSwapsByPlan]);
   const todayPlanPeriodPlan = todayPeriodPlanMatch?.plan ?? activePeriodPlan;
   const todayPlanDayKey = todayPeriodPlanMatch?.day ?? null;
   const displayedPeriodWeek = useMemo(() => {
@@ -2420,18 +2424,22 @@ export function MemberPortal(props: MemberPortalProps) {
     // Avhengigheter bevisst snevre: «members» leses kun når signaturen sier at personalGoals faktisk endret seg.
   }, [editableMember?.id, relatedProfileGoalsSignature, relatedMemberIds, updateMember]);
 
+  const previousActivePeriodPlanIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!activePeriodPlanId || activePeriodSelectableWeekCount === 0) {
+    if (!activePeriodPlanId || activePeriodSelectableWeekCount === 0 || !activePeriodPlan) {
       setSelectedPeriodPlanWeekNumber(null);
+      previousActivePeriodPlanIdRef.current = activePeriodPlanId;
       return;
     }
-    const fallbackWeekNumber = activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : 1;
+    const calendarWeekNumber = resolvePeriodPlanWeekNumberForDate(activePeriodPlan, new Date(nowTimestamp));
+    const planChanged = previousActivePeriodPlanIdRef.current !== activePeriodPlanId;
+    previousActivePeriodPlanIdRef.current = activePeriodPlanId;
     setSelectedPeriodPlanWeekNumber((prev) => {
-      if (prev == null) return fallbackWeekNumber;
+      if (planChanged || prev == null) return calendarWeekNumber;
       const weekExists = Number(prev) >= 1 && Number(prev) <= activePeriodSelectableWeekCount;
-      return weekExists ? prev : fallbackWeekNumber;
+      return weekExists ? prev : calendarWeekNumber;
     });
-  }, [activePeriodPlanId, activePeriodSelectableWeekCount, activePeriodWeekIndex]);
+  }, [activePeriodPlanId, activePeriodSelectableWeekCount, activePeriodPlan, nowTimestamp]);
 
   useEffect(() => {
     if (!profileSaveInfo) return;
@@ -2762,7 +2770,9 @@ export function MemberPortal(props: MemberPortalProps) {
     const visible = combined.filter((plan) => !hiddenIds.includes(plan.id));
     setPeriodPlans(combined);
     setHiddenPeriodPlanIds(hiddenIds);
+    const storedActiveId = readActivePeriodPlanIdForMembers(relatedMemberIds);
     setActiveMemberPeriodPlanId((prev) => {
+      if (storedActiveId && visible.some((plan) => plan.id === storedActiveId)) return storedActiveId;
       if (prev && visible.some((plan) => plan.id === prev)) return prev;
       return visible[0]?.id ?? null;
     });
@@ -3605,9 +3615,12 @@ export function MemberPortal(props: MemberPortalProps) {
   const homeMomentumPct = memberProgressScores.momentum.pct;
   const homeWorkoutProgram = useMemo(() => {
     if (todayPlanAction.kind === "start-program") return todayPlanAction.program;
+    if (todayPlanEntry.trim()) {
+      return findProgramForPeriodPlanEntry(todayPlanEntry, memberPrograms) ?? null;
+    }
     if (nextProgram) return nextProgram;
     return null;
-  }, [todayPlanAction, nextProgram]);
+  }, [todayPlanAction, todayPlanEntry, memberPrograms, nextProgram]);
   const homePrimaryFocus = useMemo(() => {
     if (todayPlanEntry && homeWorkoutProgram?.title && todayPlanEntry !== homeWorkoutProgram.title) {
       return `${homeWorkoutProgram.title} · ${todayPlanEntry}`;
@@ -3843,7 +3856,11 @@ export function MemberPortal(props: MemberPortalProps) {
     setShowPeriodPlanPanel(true);
     if (activeMemberPeriodPlanId === planId) {
       const nextActive = visiblePeriodPlans.find((plan) => plan.id !== planId)?.id ?? null;
-      setActiveMemberPeriodPlanId(nextActive);
+      if (nextActive) selectActiveMemberPeriodPlan(nextActive);
+      else {
+        setActiveMemberPeriodPlanId(null);
+        writeActivePeriodPlanIdForMembers(targetMemberIds, null);
+      }
     }
     setPeriodPlanActionStatus("Planen er skjult fra oversikten. Den er ikke slettet — hent den tilbake under «Skjulte planer» nedenfor.");
   }
@@ -3854,8 +3871,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const nextHidden = hiddenPeriodPlanIds.filter((id) => id !== planId);
     writeHiddenPeriodPlanIdsForMembers(targetMemberIds, nextHidden);
     setHiddenPeriodPlanIds(nextHidden);
-    setActiveMemberPeriodPlanId(planId);
-    setSelectedPeriodPlanWeekNumber(1);
+    selectActiveMemberPeriodPlan(planId);
     setShowPeriodPlanPanel(true);
     setShowPeriodPlanManageSection(true);
     setPeriodPlanActionStatus("Periodeplanen er tilbake i oversikten.");
@@ -3866,11 +3882,8 @@ export function MemberPortal(props: MemberPortalProps) {
     if (targetMemberIds.length === 0) return;
     writeHiddenPeriodPlanIdsForMembers(targetMemberIds, []);
     setHiddenPeriodPlanIds([]);
-    const firstPlan = periodPlans[0];
-    if (firstPlan) {
-      setActiveMemberPeriodPlanId(firstPlan.id);
-      setSelectedPeriodPlanWeekNumber(1);
-    }
+    const firstPlan = visiblePeriodPlans[0] ?? periodPlans[0];
+    if (firstPlan) selectActiveMemberPeriodPlan(firstPlan.id);
     setShowPeriodPlanPanel(true);
     setShowPeriodPlanManageSection(true);
     setShowPeriodPlanHiddenSection(false);
@@ -3882,7 +3895,12 @@ export function MemberPortal(props: MemberPortalProps) {
     removeMemberOwnedPeriodPlanFromStorage(relatedMemberIds, plan.id);
     setPeriodPlanStorageRevision((value) => value + 1);
     if (activeMemberPeriodPlanId === plan.id) {
-      setActiveMemberPeriodPlanId(null);
+      const nextActive = visiblePeriodPlans.find((item) => item.id !== plan.id)?.id ?? null;
+      if (nextActive) selectActiveMemberPeriodPlan(nextActive);
+      else {
+        setActiveMemberPeriodPlanId(null);
+        writeActivePeriodPlanIdForMembers(relatedMemberIds, null);
+      }
     }
     setPeriodPlanActionStatus("Periodeplanen er slettet.");
   }
@@ -5665,10 +5683,7 @@ export function MemberPortal(props: MemberPortalProps) {
                             <button
                               key={plan.id}
                               type="button"
-                              onClick={() => {
-                                setActiveMemberPeriodPlanId(plan.id);
-                                setSelectedPeriodPlanWeekNumber(1);
-                              }}
+                              onClick={() => selectActiveMemberPeriodPlan(plan.id)}
                               className={`rounded-full px-3 py-1.5 text-left text-xs font-semibold transition ${
                                 active
                                   ? "bg-teal-100 text-teal-900 ring-2 ring-teal-200"
@@ -5777,10 +5792,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                     <button
                                       type="button"
-                                      onClick={() => {
-                                        setActiveMemberPeriodPlanId(plan.id);
-                                        setSelectedPeriodPlanWeekNumber(1);
-                                      }}
+                                      onClick={() => selectActiveMemberPeriodPlan(plan.id)}
                                       className="min-w-0 text-left"
                                     >
                                       <div className="text-sm font-semibold text-slate-900">{plan.title}</div>

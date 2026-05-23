@@ -348,6 +348,18 @@ export function periodPlanSelectableWeekCount(plan: PeriodSchedulePlan): number 
 
 export const PERIOD_PLANS_BY_MEMBER_STORAGE_KEY = "motus.trainer.periodPlansByMemberId";
 export const HIDDEN_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY = "motus.member.hiddenPeriodPlanIdsByMemberId";
+export const ACTIVE_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY = "motus.member.activePeriodPlanIdByMemberId";
+
+/** Kalenderuke (1-basert) for en plan på en gitt dato. */
+export function resolvePeriodPlanWeekNumberForDate(plan: PeriodSchedulePlan, targetDate: Date): number {
+  const start = parsePeriodPlanStartDate(plan);
+  const planWeekCount = Math.max(1, periodPlanSelectableWeekCount(plan));
+  if (!start) return 1;
+  const daysSinceStart = periodPlanDaysSinceStart(start, targetDate);
+  if (daysSinceStart < 0) return 1;
+  const weekIndex = Math.floor(daysSinceStart / 7);
+  return Math.min(planWeekCount, weekIndex + 1);
+}
 
 /** Planer fra Supabase / trener er ikke medlems-eide. */
 export function buildTrainerPeriodPlanIdSet(
@@ -418,6 +430,43 @@ export function writeHiddenPeriodPlanIdsForMember(memberId: string, planIds: str
   }
   byMember[memberId] = planIds;
   window.localStorage.setItem(HIDDEN_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY, JSON.stringify(byMember));
+}
+
+export function readActivePeriodPlanIdForMembers(memberIds: string[]): string | null {
+  if (typeof window === "undefined" || memberIds.length === 0) return null;
+  try {
+    const raw = window.localStorage.getItem(ACTIVE_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    if (!parsed || typeof parsed !== "object") return null;
+    for (const memberId of memberIds) {
+      const planId = String(parsed[memberId] ?? "").trim();
+      if (planId) return planId;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeActivePeriodPlanIdForMembers(memberIds: string[], planId: string | null) {
+  if (typeof window === "undefined") return;
+  const trimmedIds = memberIds.map((id) => id.trim()).filter(Boolean);
+  if (trimmedIds.length === 0) return;
+  let byMember: Record<string, string> = {};
+  try {
+    const raw = window.localStorage.getItem(ACTIVE_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY);
+    byMember = raw ? (JSON.parse(raw) as Record<string, string>) : {};
+    if (!byMember || typeof byMember !== "object") byMember = {};
+  } catch {
+    byMember = {};
+  }
+  const value = planId?.trim() ?? "";
+  trimmedIds.forEach((memberId) => {
+    if (value) byMember[memberId] = value;
+    else delete byMember[memberId];
+  });
+  window.localStorage.setItem(ACTIVE_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY, JSON.stringify(byMember));
 }
 
 export function writeHiddenPeriodPlanIdsForMembers(memberIds: string[], planIds: string[]) {

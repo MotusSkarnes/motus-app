@@ -9,8 +9,11 @@ import {
   isMemberOwnedPeriodPlan,
   normalizePeriodSchedulePlan,
   periodPlanEntryMatchesCompletedProgram,
+  readActivePeriodPlanIdForMembers,
   readHiddenPeriodPlanIdsForMembers,
   periodPlanWeekdayKeyForDate,
+  resolvePeriodPlanWeekNumberForDate,
+  writeActivePeriodPlanIdForMembers,
   resolvePeriodPlanPlannedDate,
   resolvePeriodPlanWeek,
   syncGradientMarkedWeekDays,
@@ -56,6 +59,27 @@ describe("resolvePeriodPlanPlannedDate", () => {
     expect(resolvePeriodPlanPlannedDate(plan, 1, "sunday")?.toLocaleDateString("sv-SE")).toBe("2026-05-24");
     expect(resolvePeriodPlanPlannedDate(plan, 1, "monday")?.toLocaleDateString("sv-SE")).toBe("2026-05-25");
     expect(resolvePeriodPlanPlannedDate(plan, 2, "monday")?.toLocaleDateString("sv-SE")).toBe("2026-06-01");
+  });
+});
+
+describe("resolvePeriodPlanWeekNumberForDate", () => {
+  it("returns week 2 for day 8–14 after start", () => {
+    const plan = makePlan([
+      { id: "w1", weekNumber: 1, days: { ...empty, monday: "A" } },
+      { id: "w2", weekNumber: 2, days: { ...empty, monday: "B" } },
+    ]);
+    plan.startDate = "2026-05-19";
+    const week = resolvePeriodPlanWeekNumberForDate(plan, new Date(2026, 4, 26));
+    expect(week).toBe(2);
+  });
+});
+
+describe("active period plan storage", () => {
+  it("round-trips active plan id per member", () => {
+    writeActivePeriodPlanIdForMembers(["member-a"], "plan-xyz");
+    expect(readActivePeriodPlanIdForMembers(["member-a"])).toBe("plan-xyz");
+    writeActivePeriodPlanIdForMembers(["member-a"], null);
+    expect(readActivePeriodPlanIdForMembers(["member-a"])).toBeNull();
   });
 });
 
