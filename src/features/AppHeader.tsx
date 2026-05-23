@@ -1,20 +1,28 @@
 import { useMemo } from "react";
-import { LogOut, UserCircle2 } from "lucide-react";
+import { Bell, LogOut, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { AuthUser, Role } from "../app/types";
 import { Card, OutlineButton, PillButton } from "../app/ui";
+import type { MemberAlert } from "../app/useNotifications";
 import motusLogo from "../assets/motus-logo-transparent.svg";
+import { MemberNotificationsPanel } from "./MemberNotificationsPanel";
 
 export function AppHeader({
   currentUser,
-  memberDisplayName,
-  memberTrainerDisplayName,
+  memberDisplayName: _memberDisplayName,
+  memberTrainerDisplayName: _memberTrainerDisplayName,
   role,
   showQuickLogin,
   onSwitchRole,
   onResetData,
   onLogout,
   onOpenMemberProfile,
+  memberUnreadCount = 0,
+  memberNotificationsOpen = false,
+  memberVisibleAlerts = [],
+  onMemberBellToggle,
+  onOpenMemberAlert,
+  showMemberNotifications = false,
 }: {
   currentUser: AuthUser;
   memberDisplayName?: string;
@@ -25,27 +33,14 @@ export function AppHeader({
   onResetData: () => void;
   onLogout: () => void;
   onOpenMemberProfile?: () => void;
+  memberUnreadCount?: number;
+  memberNotificationsOpen?: boolean;
+  memberVisibleAlerts?: MemberAlert[];
+  onMemberBellToggle?: () => void;
+  onOpenMemberAlert?: (alert: MemberAlert) => void;
+  showMemberNotifications?: boolean;
 }) {
   const showProductionSafeQuickTools = showQuickLogin && (import.meta.env.DEV || import.meta.env.MODE === "test");
-  const memberFirstName = useMemo(() => {
-    const rawName = (memberDisplayName || currentUser.name || "").trim();
-    if (!rawName) return "du";
-    return rawName.split(/\s+/)[0] || "du";
-  }, [currentUser.name, memberDisplayName]);
-
-  const memberMotivationText = useMemo(() => {
-    const options = [
-      "Klar for neste økt?",
-      "Små steg i dag gir stor fremgang i morgen.",
-      "Du er nærmere målet enn i går.",
-      "En økt nå er en seier senere i uka.",
-      "Bygg vanen - kroppen vil takke deg.",
-    ];
-    const daySeed = new Date().getDate();
-    const nameSeed = memberFirstName.length;
-    return options[(daySeed + nameSeed) % options.length];
-  }, [memberFirstName]);
-
   const isTrainerPortalView = role === "trainer";
   const trainerDisplayName = useMemo(() => {
     const name = currentUser.name.trim();
@@ -60,55 +55,72 @@ export function AppHeader({
       .join(" ");
   }, [currentUser.email, currentUser.name]);
 
+  if (currentUser.role === "member") {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-end gap-1.5 sm:gap-2">
+          {showMemberNotifications ? (
+            <button
+              type="button"
+              onClick={onMemberBellToggle}
+              className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-100"
+              aria-label={memberNotificationsOpen ? "Lukk varsler" : "Åpne varsler"}
+              title={memberNotificationsOpen ? "Lukk varsler" : "Varsler"}
+            >
+              <Bell className="h-[1.125rem] w-[1.125rem]" aria-hidden />
+              {memberUnreadCount > 0 ? (
+                <span
+                  className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
+                  style={{ backgroundColor: MOTUS.pink }}
+                >
+                  {memberUnreadCount > 9 ? "9+" : memberUnreadCount}
+                </span>
+              ) : null}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => onOpenMemberProfile?.()}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white shadow-sm transition hover:opacity-90"
+            style={{ backgroundColor: MOTUS.turquoise }}
+            aria-label="Åpne profil"
+            title="Profil"
+          >
+            <UserCircle2 className="h-[1.125rem] w-[1.125rem]" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={onLogout}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white shadow-sm transition hover:opacity-90"
+            style={{ backgroundColor: MOTUS.pink }}
+            aria-label="Logg ut"
+            title="Logg ut"
+          >
+            <LogOut className="h-[1.125rem] w-[1.125rem]" aria-hidden />
+          </button>
+        </div>
+        {showMemberNotifications && memberNotificationsOpen && onOpenMemberAlert ? (
+          <MemberNotificationsPanel alerts={memberVisibleAlerts} onOpenAlert={onOpenMemberAlert} />
+        ) : null}
+      </div>
+    );
+  }
+
   return (
-    <Card className="overflow-hidden p-4 sm:p-5 md:p-6 bg-[linear-gradient(135deg,rgba(20,184,166,0.07)_0%,rgba(236,72,153,0.07)_100%)]">
+    <Card className="overflow-hidden bg-[linear-gradient(135deg,rgba(20,184,166,0.07)_0%,rgba(236,72,153,0.07)_100%)] p-4 sm:p-5 md:p-6">
       <div
-        className="h-1.5 -mx-4 sm:-mx-5 md:-mx-6 -mt-4 sm:-mt-5 md:-mt-6 mb-5"
+        className="-mx-4 -mt-4 mb-5 h-1.5 sm:-mx-5 sm:-mt-5 md:-mx-6 md:-mt-6"
         style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 70%, ${MOTUS.acid} 100%)` }}
       />
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <img src={motusLogo} alt="Motus logo" className="h-10 w-auto object-contain sm:h-11" />
-            {currentUser.role === "member" ? (
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => onOpenMemberProfile?.()}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full md:h-9 md:w-9"
-                  style={{ backgroundColor: MOTUS.turquoise, color: "#ffffff" }}
-                  aria-label="Åpne profil"
-                  title="Profil"
-                >
-                  <UserCircle2 className="h-4 w-4 md:h-5 md:w-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={onLogout}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full md:h-9 md:w-9"
-                  style={{ backgroundColor: MOTUS.pink, color: "#ffffff" }}
-                  aria-label="Logg ut"
-                  title="Logg ut"
-                >
-                  <LogOut className="h-4 w-4 md:h-5 md:w-5" />
-                </button>
-              </div>
-            ) : null}
           </div>
           <div>
-            {currentUser.role === "member" ? (
+            {isTrainerPortalView ? (
               <>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Hei {memberFirstName}</h1>
-                <p className="mt-2 text-sm md:text-base text-slate-500 max-w-3xl">{memberMotivationText}</p>
-                {memberTrainerDisplayName ? (
-                  <p className="mt-1.5 text-sm text-slate-600 max-w-3xl">
-                    Din PT er <span className="font-semibold text-slate-800">{memberTrainerDisplayName}</span>
-                  </p>
-                ) : null}
-              </>
-            ) : isTrainerPortalView ? (
-              <>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Motus Coach</h1>
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">Motus Coach</h1>
                 <div
                   className="mt-3 inline-flex min-w-0 max-w-full items-center gap-3 rounded-2xl border border-emerald-200/90 bg-white/95 px-4 py-3 shadow-sm ring-1 ring-black/5"
                   style={{ borderLeftWidth: 4, borderLeftColor: MOTUS.turquoise }}
@@ -128,14 +140,14 @@ export function AppHeader({
                     <span className="block truncate text-xs text-slate-500 sm:text-sm">{currentUser.email}</span>
                   </span>
                 </div>
-                <p className="mt-3 text-sm md:text-base text-slate-500 max-w-3xl">
+                <p className="mt-3 max-w-3xl text-sm text-slate-500 md:text-base">
                   Du ser dine kunder, programmer og oppfølging. Medlemmer og andre PT-er ser kun sin egen konto.
                 </p>
               </>
             ) : (
               <>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Motus Coach</h1>
-                <p className="mt-2 text-sm md:text-base text-slate-500 max-w-3xl">
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">Motus Coach</h1>
+                <p className="mt-2 max-w-3xl text-sm text-slate-500 md:text-base">
                   Administrer medlemmer, programmer og oppfølging på ett sted.
                 </p>
               </>
@@ -143,8 +155,8 @@ export function AppHeader({
           </div>
         </div>
         {showProductionSafeQuickTools ? (
-          <Card className="p-1 w-full md:w-auto self-stretch md:self-auto">
-            <div className="grid w-full grid-cols-2 md:w-[280px] gap-1 rounded-xl bg-slate-50 p-1">
+          <Card className="w-full self-stretch p-1 md:w-auto md:self-auto">
+            <div className="grid w-full grid-cols-2 gap-1 rounded-xl bg-slate-50 p-1 md:w-[280px]">
               <PillButton active={role === "trainer"} onClick={() => onSwitchRole("trainer")}>
                 PT-side
               </PillButton>
@@ -156,7 +168,7 @@ export function AppHeader({
         ) : null}
         <div className="flex flex-col gap-2 sm:flex-row">
           {showProductionSafeQuickTools ? <OutlineButton onClick={onResetData}>Nullstill testdata</OutlineButton> : null}
-          {currentUser.role !== "member" ? <OutlineButton onClick={onLogout}>Logg ut</OutlineButton> : null}
+          <OutlineButton onClick={onLogout}>Logg ut</OutlineButton>
         </div>
       </div>
     </Card>

@@ -3607,8 +3607,12 @@ export function MemberPortal(props: MemberPortalProps) {
     if (nextProgram) return nextProgram;
     return null;
   }, [todayPlanAction, nextProgram]);
-  const homePrimaryFocus =
-    todayPlanEntry || homeWorkoutProgram?.title || "Velg program når du er klar";
+  const homePrimaryFocus = useMemo(() => {
+    if (todayPlanEntry && homeWorkoutProgram?.title && todayPlanEntry !== homeWorkoutProgram.title) {
+      return `${homeWorkoutProgram.title} · ${todayPlanEntry}`;
+    }
+    return todayPlanEntry || homeWorkoutProgram?.title || "Velg program når du er klar";
+  }, [todayPlanEntry, homeWorkoutProgram]);
   const homeWorkoutDuration = useMemo(() => {
     if (!homeWorkoutProgram) return null;
     const minutes = Math.max(20, Math.round(estimateProgramMinutes(homeWorkoutProgram) / 5) * 5);
@@ -4392,9 +4396,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 statusCard={homeStatusCard}
                 workoutTitle={homePrimaryFocus}
                 workoutDuration={homeWorkoutDuration}
-                sessionCount={completedLogs.length}
-                flowPct={homeMomentumPct}
-                streakWeeks={streakWeeks}
                 primaryCta={
                   todayPlanAction.kind === "start-program" ? (
                     <MemberHomeStartWorkoutButton

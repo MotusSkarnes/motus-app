@@ -15,9 +15,6 @@ export type MemberHomeOverviewProps = {
   statusCard: MemberHomeStatusCard | null;
   workoutTitle: string;
   workoutDuration: string | null;
-  sessionCount: number;
-  flowPct: number;
-  streakWeeks: number;
   primaryCta: ReactNode;
   secondaryCta?: ReactNode;
   onboardingPrompt?: ReactNode;
@@ -31,54 +28,34 @@ export function MemberHomeOverview({
   statusCard,
   workoutTitle,
   workoutDuration,
-  sessionCount,
-  flowPct,
-  streakWeeks,
   primaryCta,
   secondaryCta,
   onboardingPrompt,
   monthlyCheckInPrompt,
 }: MemberHomeOverviewProps) {
   return (
-    <div className="motus-fade-in-up space-y-5">
-      <header className="px-0.5">
-        <h1 className="text-xl font-semibold tracking-tight text-slate-950 sm:text-[1.35rem]">Hei {memberFirstName}</h1>
-        {streakLine ? <p className="mt-1 text-sm text-slate-600">{streakLine}</p> : null}
-        {motivationLine ? <p className="mt-0.5 text-sm leading-snug text-slate-500">{motivationLine}</p> : null}
+    <div className="motus-fade-in-up space-y-6">
+      <header className="space-y-1 px-0.5">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-[1.65rem]">Hei {memberFirstName}</h1>
+        {streakLine ? <p className="text-sm font-medium text-slate-700">{streakLine}</p> : null}
+        {motivationLine ? <p className="text-sm leading-relaxed text-slate-500">{motivationLine}</p> : null}
       </header>
 
-      {statusCard ? (
-        statusCard.onClick ? (
-          <button
-            type="button"
-            onClick={statusCard.onClick}
-            className="motus-pressable flex w-full items-center justify-between gap-3 rounded-xl bg-slate-50/90 px-3.5 py-2.5 text-left transition hover:bg-slate-100/90"
-          >
-            <StatusCardContent title={statusCard.title} detail={statusCard.detail} />
-            <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
-          </button>
-        ) : (
-          <div className="rounded-xl bg-slate-50/90 px-3.5 py-2.5">
-            <StatusCardContent title={statusCard.title} detail={statusCard.detail} />
-          </div>
-        )
-      ) : null}
+      {statusCard ? <HomeStatusRow statusCard={statusCard} /> : null}
 
-      <section className="rounded-xl bg-white px-4 py-4 ring-1 ring-slate-900/[0.06]">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Dagens økt</p>
-        <h2 className="mt-1.5 text-lg font-semibold leading-snug tracking-tight text-slate-950">{workoutTitle}</h2>
-        {workoutDuration ? <p className="mt-0.5 text-sm text-slate-500">{workoutDuration}</p> : null}
+      <section className="relative overflow-hidden rounded-2xl bg-white px-4 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.06] sm:px-5 sm:py-5">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-teal-400/80 via-teal-300/40 to-pink-400/80"
+        />
+        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">Dagens økt</p>
+        <h2 className="mt-2 text-lg font-semibold leading-snug tracking-tight text-slate-950 sm:text-xl">{workoutTitle}</h2>
+        {workoutDuration ? <p className="mt-1 text-sm tabular-nums text-slate-500">{workoutDuration}</p> : null}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {primaryCta}
           {secondaryCta}
         </div>
       </section>
-
-      <div className="flex flex-wrap gap-2 px-0.5">
-        <StatChip label={`${sessionCount} økter`} />
-        <StatChip label={`${flowPct}% flyt`} />
-        <StatChip label={streakWeeks > 0 ? `${streakWeeks} ukes streak` : "Start streak"} />
-      </div>
 
       {onboardingPrompt}
       {monthlyCheckInPrompt}
@@ -86,17 +63,31 @@ export function MemberHomeOverview({
   );
 }
 
-function StatusCardContent({ title, detail }: { title: string; detail: string }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-sm font-medium text-slate-800">{title}</p>
-      <p className="mt-0.5 text-xs text-slate-500">{detail}</p>
-    </div>
+function HomeStatusRow({ statusCard }: { statusCard: MemberHomeStatusCard }) {
+  const content = (
+    <>
+      <span className="text-xs font-medium text-slate-600">{statusCard.title}</span>
+      <span className="text-xs text-slate-300" aria-hidden>
+        ·
+      </span>
+      <span className="text-xs text-slate-500">{statusCard.detail}</span>
+      {statusCard.onClick ? <ChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden /> : null}
+    </>
   );
-}
 
-function StatChip({ label }: { label: string }) {
-  return <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">{label}</span>;
+  if (statusCard.onClick) {
+    return (
+      <button
+        type="button"
+        onClick={statusCard.onClick}
+        className="motus-pressable flex w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-lg px-0.5 py-1 text-left transition hover:opacity-80"
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-0.5 py-1">{content}</div>;
 }
 
 export function MemberHomeCompactPrompt({
@@ -111,7 +102,7 @@ export function MemberHomeCompactPrompt({
   onCta: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-xl bg-slate-50/90 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-2 rounded-xl bg-slate-50/70 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <p className="text-sm font-medium text-slate-800">{title}</p>
         <p className="mt-0.5 text-xs text-slate-500">{detail}</p>

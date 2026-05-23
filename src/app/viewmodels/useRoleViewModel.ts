@@ -140,6 +140,23 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
 
   const layoutRole = state.appState.currentUser?.role ?? state.appState.role;
 
+  const isMemberLimited = useMemo(() => {
+    const currentUser = state.appState.currentUser;
+    if (!currentUser) return false;
+    const normalizedEmail = currentUser.email.trim().toLowerCase();
+    const candidates = state.appState.members.filter((member) => {
+      if (currentUser.memberId && member.id === currentUser.memberId) return true;
+      if (state.appState.memberViewId && member.id === state.appState.memberViewId) return true;
+      return Boolean(normalizedEmail && member.email.trim().toLowerCase() === normalizedEmail);
+    });
+    if (currentUser.role === "member") {
+      return !candidates.some(
+        (member) => member.customerType !== "Medlem" || member.membershipType === "Premium",
+      );
+    }
+    return candidates.some((member) => member.customerType === "Medlem" && member.membershipType !== "Premium");
+  }, [state.appState.currentUser, state.appState.members, state.appState.memberViewId]);
+
   const appHeaderProps: ComponentProps<typeof AppHeader> = buildAppHeaderProps({
     currentUser: state.appState.currentUser!,
     memberDisplayName: memberHeaderDisplayName,
@@ -150,6 +167,12 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     onResetData: handleResetData,
     onLogout: state.handleLogout,
     onOpenMemberProfile: () => state.setMemberTab("profile"),
+    memberUnreadCount,
+    memberNotificationsOpen,
+    memberVisibleAlerts,
+    onMemberBellToggle: handleMemberBellToggle,
+    onOpenMemberAlert: openAlert,
+    showMemberNotifications: layoutRole === "member" && !isMemberLimited,
   });
 
   const trainerLayoutProps: ComponentProps<typeof TrainerLayout> = buildTrainerLayoutProps({
