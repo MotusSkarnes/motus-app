@@ -33,7 +33,7 @@ import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
 import { memberBadgeImageSrc } from "../app/badgeAssets";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
-import { programHasCustomCoverImage, resolveProgramImageSrc } from "../app/programImage";
+import { programHasCustomCoverImage, resolveGroupWorkoutCoverImage, resolveProgramImageSrc } from "../app/programImage";
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "../app/exerciseCategories";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import {
@@ -3649,9 +3649,12 @@ export function MemberPortal(props: MemberPortalProps) {
     return `${minutes} min`;
   }, [homeWorkoutProgram]);
   const homeWorkoutCoverSrc = useMemo(() => {
+    if (todayPlanAction.kind === "log-group") {
+      return resolveGroupWorkoutCoverImage(todayPlanAction.className);
+    }
     if (!homeWorkoutProgram) return null;
     return resolveProgramImageSrc(homeWorkoutProgram, homeWorkoutProgram.exercises[0] ?? null);
-  }, [homeWorkoutProgram]);
+  }, [homeWorkoutProgram, todayPlanAction]);
   const homeWorkoutZoneLabel = useMemo(
     () => (todayPlanEntry ? extractZoneFromPlanEntry(todayPlanEntry) : null),
     [todayPlanEntry],

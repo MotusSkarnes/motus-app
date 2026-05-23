@@ -3,8 +3,27 @@ import type { Exercise, TrainingProgram } from "./types";
 
 export const PROGRAM_IMAGE_BUCKET = "exercise-images";
 export const PROGRAM_IMAGE_PREFIX = "program-covers";
+export const SMILEPULS_COVER_IMAGE = "/program-covers/smilepuls.png";
 export const ALLOWED_PROGRAM_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 export const MAX_PROGRAM_IMAGE_BYTES = 5 * 1024 * 1024;
+
+const GROUP_WORKOUT_COVER_IMAGES: Record<string, string> = {
+  smilepuls: SMILEPULS_COVER_IMAGE,
+};
+
+function normalizeGroupWorkoutClassKey(className: string): string {
+  return className
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+export function resolveGroupWorkoutCoverImage(className: string): string | null {
+  const key = normalizeGroupWorkoutClassKey(className);
+  if (!key) return null;
+  return GROUP_WORKOUT_COVER_IMAGES[key] ?? null;
+}
 
 export function resolveProgramImageSrc(
   program: Pick<TrainingProgram, "imageUrl">,

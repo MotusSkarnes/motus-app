@@ -1,4 +1,5 @@
-import { Flame, Trophy, Zap } from "lucide-react";
+import { Flame, Zap } from "lucide-react";
+import { MotusFlameIcon } from "./MotusFlameIcon";
 
 type MemberTrainingWeekStatsProps = {
   completedSessions: number;
@@ -15,7 +16,6 @@ function streakLabel(weeks: number): string {
 const STAT_ICONS = {
   økter: Flame,
   flyt: Zap,
-  streak: Trophy,
 } as const;
 
 export function MemberTrainingWeekStats({
@@ -32,11 +32,15 @@ export function MemberTrainingWeekStats({
   return (
     <div className="flex gap-3 overflow-x-auto pb-0.5 scrollbar-none" aria-label="Ukeoversikt">
       {items.map((item) => {
-        const Icon = STAT_ICONS[item.label];
+        const Icon = item.label === "streak" ? null : STAT_ICONS[item.label];
         return (
           <div key={item.label} className="motus-stat-pill shrink-0">
             <span className="motus-stat-pill-icon" aria-hidden>
-              <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
+              {item.label === "streak" ? (
+                <MotusFlameIcon className="h-3.5 w-3.5" />
+              ) : Icon ? (
+                <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
+              ) : null}
             </span>
             <span className="min-w-0">
               <span className="block text-[17px] font-semibold tabular-nums leading-none tracking-tight text-slate-800">
