@@ -3181,19 +3181,23 @@ export async function fetchMessagesFromSupabase(): Promise<ChatMessage[] | null>
 export async function fetchProgramsFromSupabase(): Promise<TrainingProgram[] | null> {
   if (!supabaseClient) return null;
 
-  const { data, error } = await supabaseClient
-    .from("training_programs")
-    .select(
-      "id, member_id, title, goal, notes, exercises, created_at, member_library_status, owner_user_id, program_created_by, program_created_by_name, image_url",
-    )
-    .order("created_at", { ascending: false });
+  const selectWithImage =
+    "id, member_id, title, goal, notes, exercises, created_at, member_library_status, owner_user_id, program_created_by, program_created_by_name, image_url";
+  const selectWithoutImage =
+    "id, member_id, title, goal, notes, exercises, created_at, member_library_status, owner_user_id, program_created_by, program_created_by_name";
 
-  if (error) {
-    console.warn("Supabase programs fetch failed:", error.message);
+  let result = await supabaseClient.from("training_programs").select(selectWithImage).order("created_at", { ascending: false });
+
+  if (result.error && isTrainingProgramImageColumnDbError(result.error.message)) {
+    result = await supabaseClient.from("training_programs").select(selectWithoutImage).order("created_at", { ascending: false });
+  }
+
+  if (result.error) {
+    console.warn("Supabase programs fetch failed:", result.error.message);
     return null;
   }
 
-  return (data ?? []).map((row) => trainingProgramFromHydrateRow(row as Record<string, unknown>));
+  return (result.data ?? []).map((row) => trainingProgramFromHydrateRow(row as Record<string, unknown>));
 }
 
 export async function fetchLogsFromSupabase(): Promise<WorkoutLog[] | null> {

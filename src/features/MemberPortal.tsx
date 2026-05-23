@@ -1046,6 +1046,8 @@ export function MemberPortal(props: MemberPortalProps) {
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [programLibraryMenuId, setProgramLibraryMenuId] = useState<string | null>(null);
   const [editingMemberProgramId, setEditingMemberProgramId] = useState<string | null>(null);
+  const nowTimestamp = useMemo(() => Date.now(), []);
+  const nowDate = useMemo(() => new Date(nowTimestamp), [nowTimestamp]);
 
   useEffect(() => {
     if (!programLibraryMenuId) return;
@@ -1241,9 +1243,9 @@ export function MemberPortal(props: MemberPortalProps) {
       if (!plan) return;
       setActiveMemberPeriodPlanId(planId);
       writeActivePeriodPlanIdForMembers(relatedMemberIds, planId);
-      setSelectedPeriodPlanWeekNumber(resolvePeriodPlanWeekNumberForDate(plan, new Date(nowTimestamp)));
+      setSelectedPeriodPlanWeekNumber(resolvePeriodPlanWeekNumberForDate(plan, new Date()));
     },
-    [visiblePeriodPlans, relatedMemberIds, nowTimestamp],
+    [visiblePeriodPlans, relatedMemberIds],
   );
   const primaryMemberIdForPeriodPlans = relatedMemberIds[0] ?? memberViewId ?? "";
   const relatedMembersForProfile = useMemo(
@@ -1479,8 +1481,6 @@ export function MemberPortal(props: MemberPortalProps) {
     () => new Map(exercises.map((exercise) => [exercise.name.trim().toLowerCase(), exercise])),
     [exercises],
   );
-  const nowTimestamp = useMemo(() => Date.now(), []);
-  const nowDate = useMemo(() => new Date(nowTimestamp), [nowTimestamp]);
   const exerciseCategoryById = useMemo(() => {
     const byId = new Map<string, Exercise["category"]>();
     exercises.forEach((exercise) => {
@@ -4493,7 +4493,7 @@ export function MemberPortal(props: MemberPortalProps) {
           </div>
         </Card>
 
-        <div className="min-w-0 w-full space-y-4 overflow-visible sm:space-y-6">
+        <div className="min-w-0 w-full max-w-full space-y-4 overflow-x-hidden sm:space-y-6">
           {memberTab === "overview" ? (
             <div className="motus-home-shell space-y-6">
               <MemberHomeOverview
@@ -4535,8 +4535,6 @@ export function MemberPortal(props: MemberPortalProps) {
                   },
                   onViewProgress: () => setMemberTab("progress"),
                 }}
-                headerActions={homeOverviewHeaderActions}
-                notificationsPanel={homeOverviewNotificationsPanel}
                 onWorkoutCardClick={openHomeWorkoutDestination}
                 betweenSections={
                   !isMemberLimited ? (

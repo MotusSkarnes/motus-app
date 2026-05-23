@@ -1,4 +1,5 @@
 import { OfflineBanner } from "./app/OfflineBanner";
+import { AppErrorBoundary } from "./app/AppErrorBoundary";
 import { useAppViewModel } from "./app/viewmodels";
 import { AppShell } from "./app/ui";
 import { AppHeader, LoginScreen, MemberLayout, TrainerLayout } from "./features";
@@ -10,7 +11,8 @@ export default function App() {
   const layoutRole = appState.currentUser?.role ?? appState.role;
 
   return (
-    <AppShell>
+    <AppErrorBoundary>
+      <AppShell>
       {isAuthSessionLoading && !isRecoveryMode ? (
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
           Sjekker innlogging...
@@ -33,6 +35,7 @@ export default function App() {
           {layoutRole === "trainer" ? <TrainerLayout {...trainerLayoutProps} /> : <MemberLayout {...memberLayoutProps} />}
         </div>
       )}
-    </AppShell>
+      </AppShell>
+    </AppErrorBoundary>
   );
 }

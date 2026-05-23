@@ -6,11 +6,11 @@ import {
   ClipboardList,
   Clock3,
   Dumbbell,
+  Flame,
   Play,
   Sparkles,
   Target,
   Trophy,
-  Zap,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { GradientButton, OutlineButton, TrainingStartButton } from "../app/ui";
@@ -91,8 +91,6 @@ export function MemberHomeOverview({
   consistencyInsight,
   quickActions,
   betweenSections,
-  headerActions,
-  notificationsPanel,
   primaryCta,
   onWorkoutCardClick,
   onboardingPrompt,
@@ -109,103 +107,65 @@ export function MemberHomeOverview({
 
   return (
     <div className="motus-home motus-fade-in-up">
-      <header className="relative px-0.5">
-        <div className="pointer-events-none absolute -left-6 -right-6 -top-8 h-36 bg-[radial-gradient(ellipse_at_top,rgba(48,227,190,0.14),transparent_68%)]" aria-hidden />
-        <div className="relative flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <button
-              type="button"
-              onClick={onOpenProfile}
-              className="motus-pressable relative h-12 w-12 shrink-0 overflow-hidden rounded-full ring-2 ring-white shadow-[0_4px_14px_-6px_rgba(15,23,42,0.35)]"
-              aria-label="Åpne profil"
-            >
-              {memberAvatarUrl ? (
-                <img src={memberAvatarUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-              ) : (
-                <span
-                  className="flex h-full w-full items-center justify-center text-sm font-bold text-white"
-                  style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise}, ${MOTUS.pink})` }}
-                >
-                  {memberFirstName.charAt(0).toUpperCase()}
-                </span>
-              )}
-            </button>
-            <div className="min-w-0">
-              <h1 className="text-[1.35rem] font-semibold leading-tight tracking-tight text-slate-900 sm:text-[1.5rem]">
-                Hei, {memberFirstName}! <span aria-hidden>👋</span>
-              </h1>
-              <p className="mt-0.5 text-sm text-slate-500">{todayDateLabel}</p>
-            </div>
+      <header className="px-0.5 pt-0.5">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onOpenProfile}
+            className="motus-pressable relative h-11 w-11 shrink-0 overflow-hidden rounded-full ring-2 ring-white shadow-[0_2px_10px_-4px_rgba(15,23,42,0.25)]"
+            aria-label="Åpne profil"
+          >
+            {memberAvatarUrl ? (
+              <img src={memberAvatarUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+            ) : (
+              <span
+                className="flex h-full w-full items-center justify-center text-sm font-semibold text-white"
+                style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise}, ${MOTUS.pink})` }}
+              >
+                {memberFirstName.charAt(0).toUpperCase()}
+              </span>
+            )}
+          </button>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-[1.25rem] font-semibold leading-tight tracking-tight text-slate-900">
+              Hei, {memberFirstName}!
+            </h1>
+            <p className="mt-0.5 text-sm text-slate-500">{todayDateLabel}</p>
           </div>
-          {headerActions}
         </div>
-        {notificationsPanel ? <div className="relative mt-4">{notificationsPanel}</div> : null}
       </header>
 
       <section className="motus-home-dashboard" aria-label="Din fremgang">
         <div className="flex gap-4">
           <div className="motus-home-streak-ring shrink-0" aria-hidden>
-            <svg viewBox="0 0 88 88" className="h-[5.5rem] w-[5.5rem]">
-              <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(48,227,190,0.18)" strokeWidth="7" />
+            <svg viewBox="0 0 88 88" className="h-[5.75rem] w-[5.75rem]">
+              <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(48,227,190,0.16)" strokeWidth="6" />
               <circle
                 cx="44"
                 cy="44"
                 r="36"
                 fill="none"
                 stroke={MOTUS.turquoise}
-                strokeWidth="7"
+                strokeWidth="6"
                 strokeLinecap="round"
                 strokeDasharray={`${Math.max(12, Math.min(226, (momentumPct / 100) * 226))} 226`}
                 transform="rotate(-90 44 44)"
               />
             </svg>
             <div className="motus-home-streak-ring-center">
-              <MotusFlameIcon className="mx-auto h-4 w-4" title="" />
-              <span className="mt-1 block text-lg font-bold tabular-nums leading-none text-slate-900">{streakWeeks}</span>
-              <span className="mt-0.5 block text-[9px] font-semibold uppercase tracking-wide text-slate-500">
+              <MotusFlameIcon className="mx-auto h-3.5 w-3.5" title="" />
+              <span className="mt-1 block text-xl font-bold tabular-nums leading-none text-slate-900">{streakWeeks}</span>
+              <span className="mt-0.5 block max-w-[3.25rem] text-[8px] font-bold uppercase leading-tight tracking-wide text-slate-500">
                 {streakWeeks === 1 ? "uke streak" : "uker streak"}
               </span>
             </div>
           </div>
-          <div className="min-w-0 flex-1 pt-1">
-            <h2 className="text-base font-semibold leading-snug text-slate-900">{dashboardHeadline}</h2>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[1.0625rem] font-semibold leading-snug text-slate-900">{dashboardHeadline}</h2>
             {dashboardSubline ? <p className="mt-1 text-sm leading-relaxed text-slate-600">{dashboardSubline}</p> : null}
-            <ul className="mt-3 space-y-2">
-              {dailyGoalLabel ? (
-                <li className="flex items-center gap-2.5 text-sm text-slate-700">
-                  <span className="motus-home-dash-icon">
-                    <Clock3 className="h-3.5 w-3.5" aria-hidden />
-                  </span>
-                  <span>
-                    <span className="font-medium">Dagens mål</span>
-                    <span className="text-slate-500"> · {dailyGoalLabel}</span>
-                  </span>
-                </li>
-              ) : null}
-              {weekSessionsLabel ? (
-                <li className="flex items-center gap-2.5 text-sm text-slate-700">
-                  <span className="motus-home-dash-icon">
-                    <Dumbbell className="h-3.5 w-3.5" aria-hidden />
-                  </span>
-                  <span>
-                    <span className="font-medium">Økter denne uka</span>
-                    <span className="text-slate-500"> · {weekSessionsLabel}</span>
-                  </span>
-                </li>
-              ) : null}
-              <li className="flex items-center gap-2.5 text-sm text-slate-700">
-                <span className="motus-home-dash-icon">
-                  <Zap className="h-3.5 w-3.5" aria-hidden />
-                </span>
-                <span>
-                  <span className="font-medium">Flyt</span>
-                  <span className="text-slate-500"> · {momentumPct}%</span>
-                </span>
-              </li>
-            </ul>
-            <div className="motus-progress-track mt-3 h-1.5 rounded-full">
+            <div className="motus-progress-track mt-3 h-1 rounded-full">
               <div
-                className="motus-progress-fill h-1.5 rounded-full"
+                className="motus-progress-fill h-1 rounded-full"
                 style={{
                   width: `${momentumPct}%`,
                   background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
@@ -214,58 +174,91 @@ export function MemberHomeOverview({
             </div>
           </div>
         </div>
+        <div className="motus-home-dash-stats">
+          {dailyGoalLabel ? (
+            <div className="motus-home-dash-stat">
+              <span className="motus-home-dash-stat-icon" aria-hidden>
+                <Clock3 className="h-3.5 w-3.5" />
+              </span>
+              <span>
+                <span className="motus-home-dash-stat-label">Dagens mål</span>
+                <span className="motus-home-dash-stat-value">{dailyGoalLabel}</span>
+              </span>
+            </div>
+          ) : null}
+          {weekSessionsLabel ? (
+            <div className="motus-home-dash-stat">
+              <span className="motus-home-dash-stat-icon" aria-hidden>
+                <Dumbbell className="h-3.5 w-3.5" />
+              </span>
+              <span>
+                <span className="motus-home-dash-stat-label">Økter denne uka</span>
+                <span className="motus-home-dash-stat-value">{weekSessionsLabel}</span>
+              </span>
+            </div>
+          ) : null}
+          <div className="motus-home-dash-stat">
+            <span className="motus-home-dash-stat-icon motus-home-dash-stat-icon--pink" aria-hidden>
+              <Flame className="h-3.5 w-3.5" />
+            </span>
+            <span>
+              <span className="motus-home-dash-stat-label">Flyt</span>
+              <span className="motus-home-dash-stat-value">{momentumPct}%</span>
+            </span>
+          </div>
+        </div>
       </section>
 
       <article className="motus-home-workout-card">
-        <div className="flex gap-3">
+        <div className="flex gap-3.5">
           <div className="motus-home-workout-thumb shrink-0">
             {workoutImageSrc ? (
               <img src={workoutImageSrc} alt="" className="h-full w-full object-cover" loading="lazy" />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#ecfdf8] to-[#f4f6f8]">
-                <Dumbbell className="h-9 w-9 motus-brand-icon-muted" strokeWidth={1.75} />
+              <div className="flex h-full w-full items-center justify-center bg-slate-50">
+                <Dumbbell className="h-8 w-8 text-slate-300" strokeWidth={1.5} />
               </div>
             )}
-            <span className="motus-home-workout-thumb-badge">Klar for en sterk dag! 💪</span>
+            <span className="motus-home-workout-thumb-badge">Klar for en sterk dag</span>
           </div>
-          <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 flex-1 flex-col">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] motus-brand-text">Dagens økt</p>
-                <h2 className="mt-1 text-xl font-semibold leading-tight tracking-tight text-slate-900">{workoutTitle}</h2>
-                {workoutSubtitle ? <p className="mt-1 text-sm text-slate-500">{workoutSubtitle}</p> : null}
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-teal-700">Dagens økt</p>
+                <h2 className="mt-1 text-lg font-semibold leading-tight tracking-tight text-slate-900">{workoutTitle}</h2>
+                {workoutSubtitle ? <p className="mt-0.5 text-sm text-slate-500">{workoutSubtitle}</p> : null}
               </div>
               {onWorkoutCardClick ? (
                 <button
                   type="button"
                   onClick={onWorkoutCardClick}
-                  className="motus-pressable inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                  className="motus-pressable -mr-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-50 hover:text-slate-600"
                   aria-label="Se trening"
                 >
                   <ChevronRight className="h-5 w-5" aria-hidden />
                 </button>
               ) : null}
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] font-medium text-slate-500">
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-slate-500">
               {workoutDuration ? (
-                <span className="inline-flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1.5 font-medium">
                   <Clock3 className="h-3.5 w-3.5 text-slate-400" aria-hidden />
                   {workoutDuration}
                 </span>
               ) : null}
               {workoutZoneLabel ? (
-                <span className="inline-flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1.5 font-medium">
                   <Target className="h-3.5 w-3.5 text-slate-400" aria-hidden />
                   {workoutZoneLabel}
                 </span>
               ) : null}
             </div>
-            <div className="mt-3">{primaryCta}</div>
+            <div className="mt-auto pt-3">{primaryCta}</div>
           </div>
         </div>
       </article>
 
-      <section className="grid grid-cols-3 gap-2.5" aria-label="Hurtighandlinger">
+      <section className="grid grid-cols-3 gap-2" aria-label="Hurtighandlinger">
         <HomeQuickAction
           label="Registrer trening"
           icon={ClipboardList}
@@ -303,7 +296,7 @@ export function MemberHomeOverview({
             <ChevronRight className="h-4 w-4" aria-hidden />
           </button>
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="motus-home-week-metrics mt-4">
           <HomeWeekMetric
             label="Økter"
             value={`${weeklySessions.completed} / ${weeklySessions.target}`}
@@ -315,7 +308,7 @@ export function MemberHomeOverview({
             value={`${weeklyMinutes.completed}`}
             subValue={weeklyMinutes.target > 0 ? `av ${weeklyMinutes.target} min` : undefined}
             progressPct={minutesPct}
-            variant="bars"
+            variant="progress"
           />
           <HomeWeekMetric
             label="Beste løft"
@@ -342,13 +335,9 @@ export function MemberHomeOverview({
 
       {motivationLine ? (
         <aside className="motus-home-boost-card">
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Dagens boost</p>
-            <p className="mt-2 text-sm font-medium leading-relaxed text-slate-800">{motivationLine}</p>
-            <p className="mt-1 text-xs text-slate-500">Du har dette!</p>
-          </div>
-          <div className="motus-home-boost-art shrink-0" aria-hidden>
-            <Dumbbell className="h-10 w-10" style={{ color: MOTUS.pink }} strokeWidth={1.5} />
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-pink-700/80">Dagens boost</p>
+            <p className="mt-2 text-[0.9375rem] font-medium leading-relaxed text-slate-800">&ldquo;{motivationLine}&rdquo;</p>
           </div>
         </aside>
       ) : null}
@@ -378,7 +367,7 @@ function HomeQuickAction({
       >
         <Icon className="h-5 w-5" strokeWidth={2} />
       </span>
-      <span className="mt-2 block text-[11px] font-semibold leading-snug text-slate-800">{label}</span>
+      <span className="mt-2.5 block text-center text-[11px] font-semibold leading-snug text-slate-700">{label}</span>
     </button>
   );
 }
@@ -394,53 +383,42 @@ function HomeWeekMetric({
   value: string;
   subValue?: string;
   progressPct: number;
-  variant: "ring" | "bars" | "lift";
+  variant: "ring" | "progress" | "lift";
 }) {
   return (
-    <div className="rounded-2xl border border-white/80 bg-white/85 p-3 shadow-[0_2px_12px_-10px_rgba(15,23,42,0.14)]">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="mt-1 text-lg font-bold tabular-nums tracking-tight text-slate-900">{value}</p>
-      {subValue ? <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-slate-500">{subValue}</p> : null}
+    <div className="motus-home-week-metric">
+      <p className="text-[11px] font-medium text-slate-500">{label}</p>
+      <p className="mt-0.5 text-lg font-bold tabular-nums tracking-tight text-slate-900">{value}</p>
+      {subValue ? <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-slate-500">{subValue}</p> : null}
       <div className="mt-2.5">
         {variant === "ring" ? (
-          <div className="relative mx-auto h-10 w-10">
-            <svg viewBox="0 0 40 40" className="h-10 w-10">
-              <circle cx="20" cy="20" r="15" fill="none" stroke="rgba(48,227,190,0.2)" strokeWidth="4" />
+          <div className="relative h-9 w-9">
+            <svg viewBox="0 0 40 40" className="h-9 w-9">
+              <circle cx="20" cy="20" r="15" fill="none" stroke="rgba(48,227,190,0.18)" strokeWidth="3.5" />
               <circle
                 cx="20"
                 cy="20"
                 r="15"
                 fill="none"
                 stroke={MOTUS.turquoise}
-                strokeWidth="4"
+                strokeWidth="3.5"
                 strokeLinecap="round"
                 strokeDasharray={`${Math.max(4, (progressPct / 100) * 94)} 94`}
                 transform="rotate(-90 20 20)"
               />
             </svg>
           </div>
-        ) : variant === "bars" ? (
-          <div className="flex h-10 items-end justify-between gap-1 px-0.5">
-            {["M", "T", "O", "T", "F", "L", "S"].map((day, index) => {
-              const todayIndex = (new Date().getDay() + 6) % 7;
-              const height = Math.max(18, Math.round(((index + 1) / 7) * (progressPct / 100) * 100));
-              return (
-                <span
-                  key={`${day}-${index}`}
-                  className="w-2 rounded-sm"
-                  style={{
-                    height: `${height}%`,
-                    backgroundColor: index === todayIndex ? MOTUS.turquoise : "rgba(48,227,190,0.28)",
-                  }}
-                  title={day}
-                />
-              );
-            })}
+        ) : variant === "progress" ? (
+          <div className="motus-progress-track h-1.5 w-full max-w-[8.5rem] rounded-full">
+            <div
+              className="motus-progress-fill h-1.5 rounded-full"
+              style={{ width: `${progressPct}%`, backgroundColor: MOTUS.turquoise }}
+            />
           </div>
         ) : (
-          <div className="flex h-10 items-center gap-1">
-            <Trophy className="h-4 w-4 shrink-0" style={{ color: MOTUS.pink }} aria-hidden />
-            <div className="motus-progress-track h-1.5 flex-1 rounded-full">
+          <div className="flex items-center gap-2">
+            <Trophy className="h-4 w-4 shrink-0 text-pink-600" aria-hidden />
+            <div className="motus-progress-track h-1.5 min-w-0 flex-1 rounded-full">
               <div
                 className="motus-progress-fill h-1.5 rounded-full"
                 style={{ width: `${progressPct}%`, backgroundColor: MOTUS.pink }}
@@ -507,7 +485,7 @@ export function MemberHomeCompactPrompt({
 
 export function MemberHomeStartWorkoutButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <TrainingStartButton type="button" onClick={onClick} className="motus-home-start-btn w-full sm:w-auto sm:min-w-[9.5rem]">
+    <TrainingStartButton type="button" onClick={onClick} className="motus-home-start-btn w-full">
       <Play className="h-4 w-4 fill-slate-900/80" aria-hidden />
       {label}
     </TrainingStartButton>

@@ -18,7 +18,7 @@ import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { computeExercisePopularityScores, computeTrainerProgramExerciseIds } from "../app/exerciseBankStats";
 import { uploadProgramCoverImageToSupabase } from "../app/programImageUpload";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
-import { EXERCISE_IMAGE_MEDIUM_CLASS } from "../app/exerciseIllustrations/constants";
+import { EXERCISE_IMAGE_SMALL_CLASS } from "../app/exerciseIllustrations/constants";
 import type { Exercise, ProgramExercise, TrainingProgram, WorkoutLog } from "../app/types";
 import { uid } from "../app/storage";
 import { Card, EmptyState, GradientButton, MotusSectionIcon, OutlineButton, PillButton, StatusMessage, TextInput } from "../app/ui";
@@ -378,8 +378,8 @@ export function CustomWorkoutBuilder({
   }
 
   return (
-    <Card className="overflow-hidden p-0">
-      <div className="border-b bg-white p-5">
+    <Card className="motus-custom-workout overflow-hidden p-0">
+      <div className="border-b bg-white motus-custom-workout-panel">
         <div className="flex items-start gap-3">
           <MotusSectionIcon>
             <Sparkles className="h-5 w-5" />
@@ -421,8 +421,11 @@ export function CustomWorkoutBuilder({
         ) : null}
       </div>
 
-      <div className="grid gap-0 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <div className="space-y-5 border-b p-5 lg:border-b-0 lg:border-r" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+      <div className="grid min-w-0 max-w-full gap-0 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+        <div
+          className="motus-custom-workout-panel space-y-5 border-b lg:border-b-0 lg:border-r"
+          style={{ borderColor: "rgba(15,23,42,0.08)" }}
+        >
           <div>
             <div className="flex items-center justify-between gap-2">
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Din økt</div>
@@ -479,15 +482,15 @@ export function CustomWorkoutBuilder({
                         setDraggedLineKey(null);
                         setDragOverLineKey(null);
                       }}
-                      className={`rounded-2xl border bg-white p-3 shadow-sm transition ${
+                      className={`motus-custom-workout-line rounded-2xl border bg-white p-2.5 shadow-sm transition sm:p-3 ${
                         dragActive ? "opacity-60" : ""
                       } ${dragOver ? "border-teal-300 ring-2 ring-teal-100" : ""}`}
                       style={{ borderColor: dragOver ? undefined : "rgba(15,23,42,0.1)" }}
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="flex min-w-0 items-start gap-2 sm:gap-3">
                         <button
                           type="button"
-                          className="mt-1 cursor-grab text-slate-400 active:cursor-grabbing"
+                          className="mt-0.5 shrink-0 cursor-grab text-slate-400 active:cursor-grabbing sm:mt-1"
                           aria-label={`Flytt øvelse ${index + 1}`}
                         >
                           <GripVertical className="h-5 w-5" />
@@ -496,37 +499,41 @@ export function CustomWorkoutBuilder({
                           <img
                             src={resolveExerciseImageSrc(exercise)}
                             alt=""
-                            className={`${EXERCISE_IMAGE_MEDIUM_CLASS} rounded-xl`}
+                            className={`${EXERCISE_IMAGE_SMALL_CLASS} shrink-0 rounded-xl sm:h-20 sm:w-20 sm:max-h-20 sm:max-w-20`}
                             style={{ borderColor: exerciseCategoryAccentColor(exercise.category) }}
                           />
                         ) : null}
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-start justify-between gap-2">
-                            <div>
-                              <div className="font-semibold text-slate-900">{exercise?.name ?? "Ukjent øvelse"}</div>
+                          <div className="flex min-w-0 items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="truncate font-semibold text-slate-900">{exercise?.name ?? "Ukjent øvelse"}</div>
                               {exercise ? <MuscleGroupChips group={exercise.group} /> : null}
                             </div>
                             <button
                               type="button"
                               onClick={() => removeLine(line.key)}
-                              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                              className="shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
                               aria-label="Fjern øvelse"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
-                          <div className={`mt-3 grid gap-2 ${isStretch ? "grid-cols-2" : "grid-cols-3"}`}>
-                            <label className="space-y-1">
+                          <div
+                            className={`motus-custom-workout-input-grid mt-3 ${
+                              isStretch ? "motus-custom-workout-input-grid--two" : "motus-custom-workout-input-grid--three"
+                            }`}
+                          >
+                            <label className="min-w-0 space-y-1">
                               <span className="text-[11px] font-semibold text-slate-600">Sett</span>
                               <TextInput value={line.sets} onChange={(event) => updateLine(line.key, { sets: event.target.value })} placeholder="3" />
                             </label>
                             {!isStretch ? (
-                              <label className="space-y-1">
+                              <label className="min-w-0 space-y-1">
                                 <span className="text-[11px] font-semibold text-slate-600">Reps</span>
                                 <TextInput value={line.reps} onChange={(event) => updateLine(line.key, { reps: event.target.value })} placeholder="10" />
                               </label>
                             ) : null}
-                            <label className="space-y-1">
+                            <label className="min-w-0 space-y-1">
                               <span className="text-[11px] font-semibold text-slate-600">{isStretch ? "Sek. (hold)" : "kg"}</span>
                               <TextInput
                                 value={isStretch ? (line.holdSeconds ?? "") : line.weight}
@@ -545,11 +552,11 @@ export function CustomWorkoutBuilder({
               </div>
             )}
 
-            <label className="mt-4 block max-w-md space-y-1">
+            <label className="mt-4 block w-full min-w-0 space-y-1">
               <span className="text-[11px] font-semibold text-slate-600">Programnavn (ved lagring)</span>
               <TextInput value={programTitle} onChange={(event) => setProgramTitle(event.target.value)} placeholder="Mitt treningsprogram" />
             </label>
-            <div className="mt-3 max-w-md">
+            <div className="mt-3 w-full min-w-0">
               <ProgramCoverImageField
                 imageUrl={programFormImageUrl}
                 onImageUrlChange={setProgramFormImageUrl}
@@ -589,7 +596,7 @@ export function CustomWorkoutBuilder({
           ) : null}
         </div>
 
-        <div className="space-y-5 p-5">
+        <div className="motus-custom-workout-panel min-w-0 space-y-5">
           <div className="motus-card bg-[#F7F8FA] p-4">
             <div className="motus-section-label text-teal-700">Live forhåndsvisning</div>
             <div className="mt-2 text-2xl font-bold text-slate-950">{preview.exerciseCount || 0} øvelser</div>
@@ -626,7 +633,7 @@ export function CustomWorkoutBuilder({
               <TextInput value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Søk etter øvelse…" className="pl-10" />
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="motus-custom-workout-filters mt-3">
               <PillButton active={favoritesOnly} onClick={() => setFavoritesOnly((previous) => !previous)}>
                 ★ Favoritter
               </PillButton>
@@ -641,7 +648,7 @@ export function CustomWorkoutBuilder({
             </div>
 
             {muscleGroups.length ? (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="motus-custom-workout-filters mt-2">
                 <PillButton active={muscleFilter === "all"} onClick={() => setMuscleFilter("all")}>
                   Alle muskler
                 </PillButton>
