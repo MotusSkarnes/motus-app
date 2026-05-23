@@ -5,11 +5,13 @@ import {
   ChevronRight,
   ClipboardList,
   ClipboardPenLine,
+  Clock3,
   Dumbbell,
   Eye,
   EyeOff,
   History,
   Layers,
+  Lightbulb,
   MessageSquare,
   MoreHorizontal,
   Pencil,
@@ -18,6 +20,7 @@ import {
   Printer,
   Search,
   Share2,
+  Signal,
   Sparkles,
   Star,
   Target,
@@ -161,6 +164,8 @@ import { MemberProgressScoresCard } from "./MemberProgressScoresCard";
 import { MemberTrainingFlowCard } from "./MemberTrainingFlowCard";
 import { MemberTrainingTodayCard, extractZoneFromPlanEntry, formatWeekMinutesLabel, formatWeekSessionsLabel } from "./MemberTrainingTodayCard";
 import { MemberTrainingWeekStats } from "./MemberTrainingWeekStats";
+import { buildWeekDayModels, MemberTrainingCalendar } from "./MemberTrainingCalendar";
+import { getMondayStart, toCalendarDateKey, type TrainingCalendarDayStatus } from "../app/memberTrainingCalendar";
 import { MuscleSplitCard } from "./MuscleSplitCard";
 import { IntervalWorkoutSessionModal } from "./IntervalWorkoutSessionModal";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
@@ -1004,7 +1009,8 @@ export function MemberPortal(props: MemberPortalProps) {
   } | null>(null);
   const [syncedWorkoutExerciseIndex, setSyncedWorkoutExerciseIndex] = useState(0);
   const [expandedRecentLogId, setExpandedRecentLogId] = useState<string | null>(null);
-  const [selectedCalendarDay, setSelectedCalendarDay] = useState<number | null>(null);
+  const [selectedCalendarDateKey, setSelectedCalendarDateKey] = useState<string | null>(null);
+  const [calendarViewMode, setCalendarViewMode] = useState<"week" | "month">("week");
   const [selectedCalendarLogId, setSelectedCalendarLogId] = useState<string | null>(null);
   const [progressShareStatus, setProgressShareStatus] = useState<string | null>(null);
   const [motusCardShareStatus, setMotusCardShareStatus] = useState<string | null>(null);
@@ -1071,6 +1077,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const nowDate = new Date();
     return new Date(nowDate.getFullYear(), nowDate.getMonth(), 1);
   });
+  const [calendarWeekStart, setCalendarWeekStart] = useState(() => getMondayStart(new Date()));
   const normalizedCurrentUserEmail = currentUserEmail.trim().toLowerCase();
   const viewedMember = members.find((member) => member.id === memberViewId) ?? null;
   const motusShareLogoSrc = `${motusSkrytekortLogo}${motusSkrytekortLogo.includes("?") ? "&" : "?"}motus_skrytekort=2026-02`;
@@ -2009,6 +2016,25 @@ export function MemberPortal(props: MemberPortalProps) {
     [activeCardioMinutes, completedLogDates, completedLogs.length, estimatedSessionsThisMonth, maxLiftKg, memberProgress.monthGoal.target, memberProgress.streakWeeks, nowDate],
   );
 
+  const calendarDayLoadByDateKey = useMemo(() => {
+    const byKey = new Map<string, number>();
+    completedLogDates.forEach((date) => {
+      const key = toIsoDateInputValue(date);
+      byKey.set(key, (byKey.get(key) ?? 0) + 1);
+    });
+    return byKey;
+  }, [completedLogDates]);
+  const calendarLogsByDateKey = useMemo(() => {
+    const byKey = new Map<string, WorkoutLog[]>();
+    completedLogs.forEach((log) => {
+      const parsed = parseLogDate(log.date);
+      if (!parsed) return;
+      const key = toIsoDateInputValue(parsed);
+      const previous = byKey.get(key) ?? [];
+      byKey.set(key, [...previous, log]);
+    });
+    return byKey;
+  }, [completedLogs]);
   const calendarDayLoad = useMemo(() => {
     const byDay = new Map<number, number>();
     completedLogDates.forEach((date) => {
@@ -2039,7 +2065,7 @@ export function MemberPortal(props: MemberPortalProps) {
     });
   }, [activePeriodPlan, periodPlanSwapsByPlan, calendarMonth]);
   const calendarDayStatusByDay = useMemo(() => {
-    const statusByDay = new Map<number, "completed" | "planned" | "missed">();
+    const statusByDay = new Map<number, TrainingCalendarDayStatus>();
     const todayStart = getStartOfDay(new Date(nowTimestamp));
     calendarPlannedEntriesByDay.forEach((_entries, day) => {
       const candidateDate = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day);
@@ -2059,21 +2085,78 @@ export function MemberPortal(props: MemberPortalProps) {
     });
     return statusByDay;
   }, [calendarPlannedEntriesByDay, calendarDayLoad, calendarMonth, nowTimestamp]);
+  const calendarWeekDays = useMemo(() => {
+    const todayStart = getStartOfDay(nowDate);
+    const statusByDateKey = new Map<string, TrainingCalendarDayStatus>();
+    const workoutLabelByDateKey = new Map<string, string>();
+    const sessionCountByDateKey = new Map<string, number>();
+
+    for (let offset = 0; offset < 7; offset += 1) {
+      const date = new Date(
+        calendarWeekStart.getFullYear(),
+        calendarWeekStart.getMonth(),
+        calendarWeekStart.getDate() + offset,
+      );
+      const dateKey = toCalendarDateKey(date);
+      const sessionCount = calendarDayLoadByDateKey.get(dateKey) ?? 0;
+      sessionCountByDateKey.set(dateKey, sessionCount);
+
+      const plannedMatch = activePeriodPlan
+        ? findPeriodPlanEntryForCalendarDate(activePeriodPlan, date, periodPlanSwapsByPlan)
+        : null;
+      const plannedEntry = plannedMatch?.entry.trim() ?? "";
+      const logs = calendarLogsByDateKey.get(dateKey) ?? [];
+
+      if (sessionCount > 0) {
+        statusByDateKey.set(dateKey, "completed");
+        workoutLabelByDateKey.set(dateKey, (logs[0]?.programTitle ?? plannedEntry) || "Økt");
+      } else if (plannedEntry) {
+        workoutLabelByDateKey.set(dateKey, plannedEntry);
+        statusByDateKey.set(dateKey, date.getTime() < todayStart.getTime() ? "missed" : "planned");
+      } else {
+        statusByDateKey.set(dateKey, "none");
+        workoutLabelByDateKey.set(dateKey, "—");
+      }
+    }
+
+    return buildWeekDayModels({
+      weekStart: calendarWeekStart,
+      today: nowDate,
+      statusByDateKey,
+      workoutLabelByDateKey,
+      sessionCountByDateKey,
+    });
+  }, [
+    activePeriodPlan,
+    calendarDayLoadByDateKey,
+    calendarLogsByDateKey,
+    calendarWeekStart,
+    nowDate,
+    periodPlanSwapsByPlan,
+  ]);
+  const calendarWeekCompletedCount = calendarWeekDays.filter((day) => day.status === "completed").length;
+  const calendarWeekPlannedCount = calendarWeekDays.filter((day) => day.workoutLabel !== "—").length;
+  const selectedCalendarDate = useMemo(() => {
+    if (!selectedCalendarDateKey) return null;
+    const [year, month, day] = selectedCalendarDateKey.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  }, [selectedCalendarDateKey]);
   const selectedCalendarLogs = useMemo(() => {
-    if (!selectedCalendarDay) return [];
-    return calendarLogsByDay.get(selectedCalendarDay) ?? [];
-  }, [calendarLogsByDay, selectedCalendarDay]);
+    if (!selectedCalendarDateKey) return [];
+    return calendarLogsByDateKey.get(selectedCalendarDateKey) ?? [];
+  }, [calendarLogsByDateKey, selectedCalendarDateKey]);
   const selectedCalendarPlannedEntries = useMemo(() => {
-    if (!selectedCalendarDay) return [];
-    return calendarPlannedEntriesByDay.get(selectedCalendarDay) ?? [];
-  }, [calendarPlannedEntriesByDay, selectedCalendarDay]);
+    if (!selectedCalendarDate || !activePeriodPlan) return [];
+    const match = findPeriodPlanEntryForCalendarDate(activePeriodPlan, selectedCalendarDate, periodPlanSwapsByPlan);
+    if (!match?.entry.trim()) return [];
+    return [match.entry.trim()];
+  }, [selectedCalendarDate, activePeriodPlan, periodPlanSwapsByPlan]);
   const selectedCalendarPeriodMatch = useMemo(() => {
-    if (!selectedCalendarDay || !activePeriodPlan) return null;
-    const date = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), selectedCalendarDay);
-    const match = findPeriodPlanEntryForCalendarDate(activePeriodPlan, date, periodPlanSwapsByPlan);
+    if (!selectedCalendarDate || !activePeriodPlan) return null;
+    const match = findPeriodPlanEntryForCalendarDate(activePeriodPlan, selectedCalendarDate, periodPlanSwapsByPlan);
     if (!match?.entry.trim()) return null;
     return { plan: activePeriodPlan, ...match };
-  }, [selectedCalendarDay, calendarMonth, activePeriodPlan, periodPlanSwapsByPlan]);
+  }, [selectedCalendarDate, activePeriodPlan, periodPlanSwapsByPlan]);
   const selectedCalendarPlanEntry = selectedCalendarPeriodMatch?.entry?.trim() ?? selectedCalendarPlannedEntries[0]?.trim() ?? "";
   const selectedCalendarPlanAction = useMemo(
     () =>
@@ -3810,7 +3893,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
   useEffect(() => {
     setSelectedCalendarLogId(null);
-  }, [selectedCalendarDay, calendarMonth]);
+  }, [selectedCalendarDateKey]);
 
   function getReflectionEmoji(level: 1 | 2 | 3 | 4 | 5): string {
     if (level <= 1) return "🥳";
@@ -4638,46 +4721,60 @@ export function MemberPortal(props: MemberPortalProps) {
                     <MemberHomeSecondaryLink label="Se periodeplan" onClick={openProgramsWithPeriodPlan} />
                   </div>
                 ) : null}
-              <div className="min-w-0 w-full space-y-3 px-0.5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Plan og økter</p>
-                      <h3 className="mt-0.5 text-sm font-medium text-slate-700">Treningskalender</h3>
-                    </div>
-                    <p className="text-xs font-medium text-slate-500 capitalize">{calendarMonthLabel}</p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <OutlineButton
-                      className="px-3 py-1.5 text-xs"
-                      onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-                    >
-                      Forrige
-                    </OutlineButton>
-                    <OutlineButton
-                      className="px-3 py-1.5 text-xs"
-                      onClick={() => setCalendarMonth(new Date(nowDate.getFullYear(), nowDate.getMonth(), 1))}
-                    >
-                      I dag
-                    </OutlineButton>
-                    <OutlineButton
-                      className="px-3 py-1.5 text-xs"
-                      onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-                    >
-                      Neste
-                    </OutlineButton>
-                  </div>
-                  <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[11px] text-slate-500">
-                    <span>Ma</span><span>Ti</span><span>On</span><span>To</span><span>Fr</span><span>Lo</span><span>So</span>
-                  </div>
-                  <div className="mt-2 grid grid-cols-7 gap-1">
-                    {calendarCells.map((day, index) =>
+              <div className="min-w-0 w-full px-0.5">
+                  <MemberTrainingCalendar
+                    viewMode={calendarViewMode}
+                    onViewModeChange={(mode) => {
+                      setCalendarViewMode(mode);
+                      if (mode === "month") {
+                        setCalendarMonth(new Date(calendarWeekStart.getFullYear(), calendarWeekStart.getMonth(), 1));
+                      }
+                    }}
+                    weekStart={calendarWeekStart}
+                    onWeekStartChange={setCalendarWeekStart}
+                    weekDays={calendarWeekDays}
+                    weekCompletedCount={calendarWeekCompletedCount}
+                    weekPlannedCount={calendarWeekPlannedCount}
+                    streakWeeks={streakWeeks}
+                    monthLabel={calendarMonthLabel}
+                    selectedDateKey={selectedCalendarDateKey}
+                    onSelectDateKey={setSelectedCalendarDateKey}
+                    onGoToToday={() => {
+                      const today = nowDate;
+                      setCalendarWeekStart(getMondayStart(today));
+                      setCalendarMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+                    }}
+                    onPreviousMonth={() =>
+                      setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
+                    }
+                    onNextMonth={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                    monthWeekdayHeaders={
+                      <>
+                        <span>Ma</span>
+                        <span>Ti</span>
+                        <span>On</span>
+                        <span>To</span>
+                        <span>Fr</span>
+                        <span>Lø</span>
+                        <span>Sø</span>
+                      </>
+                    }
+                    monthCells={calendarCells.map((day, index) =>
                       day ? (
                         <button
                           type="button"
                           key={`${day}-${index}`}
-                          onClick={() => setSelectedCalendarDay((prev) => (prev === day ? null : day))}
+                          onClick={() => {
+                            const dateKey = toCalendarDateKey(
+                              new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day),
+                            );
+                            setSelectedCalendarDateKey((prev) => (prev === dateKey ? null : dateKey));
+                          }}
                           className={`rounded-lg px-1 py-2 text-center text-xs transition ${
-                            selectedCalendarDay === day ? "ring-2 ring-slate-900/10" : ""
+                            selectedCalendarDateKey ===
+                            toCalendarDateKey(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day))
+                              ? "ring-2 ring-slate-900/10"
+                              : ""
                           } ${
                             calendarDayStatusByDay.get(day) === "completed"
                               ? "motus-brand-fill font-semibold"
@@ -4703,32 +4800,40 @@ export function MemberPortal(props: MemberPortalProps) {
                         <div key={`empty-${index}`} />
                       ),
                     )}
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
-                    <div className="inline-flex items-center gap-1.5">
-                      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: MOTUS.turquoise }} />
-                      <span>Fullført</span>
-                    </div>
-                    <div className="inline-flex items-center gap-1.5">
-                      <span className="inline-block h-2.5 w-2.5 rounded-full border border-dashed motus-brand-muted-border" style={{ backgroundColor: MOTUS.paleMint }} />
-                      <span>Planlagt</span>
-                    </div>
-                    <div className="inline-flex items-center gap-1.5">
-                      <span className="inline-block h-2.5 w-2.5 rounded-full border" style={{ borderColor: "rgba(244,63,94,0.55)", backgroundColor: "rgba(254,226,226,0.9)" }} />
-                      <span>Misset</span>
-                    </div>
-                  </div>
-                  {selectedCalendarDay ? (
+                    monthLegend={
+                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+                        <div className="inline-flex items-center gap-1.5">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: MOTUS.turquoise }} />
+                          <span>Fullført</span>
+                        </div>
+                        <div className="inline-flex items-center gap-1.5">
+                          <span
+                            className="inline-block h-2.5 w-2.5 rounded-full border border-dashed motus-brand-muted-border"
+                            style={{ backgroundColor: MOTUS.paleMint }}
+                          />
+                          <span>Planlagt</span>
+                        </div>
+                        <div className="inline-flex items-center gap-1.5">
+                          <span
+                            className="inline-block h-2.5 w-2.5 rounded-full border"
+                            style={{ borderColor: "rgba(244,63,94,0.55)", backgroundColor: "rgba(254,226,226,0.9)" }}
+                          />
+                          <span>Misset</span>
+                        </div>
+                      </div>
+                    }
+                  />
+                  {selectedCalendarDateKey && selectedCalendarDate ? (
                     <div className="mt-3 rounded-xl bg-slate-50/90 p-3">
                       <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                        Økter {String(selectedCalendarDay).padStart(2, "0")}.{String(calendarMonth.getMonth() + 1).padStart(2, "0")}.{calendarMonth.getFullYear()}
+                        Økter {formatDateDdMmYyyy(selectedCalendarDate)}
                       </p>
                       <div className="mt-2 space-y-2">
                         {selectedCalendarPlannedEntries.length > 0 ? (
                           <div className="motus-brand-muted motus-brand-muted-border rounded-lg px-3 py-2 text-xs">
                             <div className="font-semibold">Planlagt økt</div>
                             {selectedCalendarPlannedEntries.map((entry, entryIndex) => (
-                              <div key={`${selectedCalendarDay}-planned-${entryIndex}`} className="mt-1">
+                              <div key={`${selectedCalendarDateKey}-planned-${entryIndex}`} className="mt-1">
                                 {entry}
                               </div>
                             ))}
@@ -5156,7 +5261,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     })}
                   </div>
                 ) : null}
-                <div className="mt-3 space-y-2">
+                <div className="mt-4 space-y-3">
                   {memberAssignedPrograms.length === 0 ? (
                     <EmptyState
                       icon="📋"
@@ -5226,10 +5331,10 @@ export function MemberPortal(props: MemberPortalProps) {
 	                              <Dumbbell className="h-7 w-7 text-teal-400" aria-hidden />
 	                            </div>
 	                          )}
-	                          <div className="motus-member-program-category">{programCategory}</div>
 	                        </div>
 	                        <div className="motus-member-program-content">
 	                          <div className="motus-member-program-summary">
+	                            <span className="motus-member-program-category-badge">{programCategory}</span>
 	                            <div className="motus-member-program-header">
 	                              <div className="motus-member-program-title">{program.title}</div>
 	                              {program.goal?.trim() ? (
@@ -5240,72 +5345,71 @@ export function MemberPortal(props: MemberPortalProps) {
 	                              ) : null}
 	                            </div>
 	                            <div className="motus-member-program-stats">
-	                              <div>
-	                                <div>Tid</div>
-	                                <div>{programMinutes} min</div>
-	                              </div>
-	                              <div>
-	                                <div>Nivå</div>
-	                                <div>{programLevel}</div>
-	                              </div>
-	                              <div>
-	                                <div>Øvelser</div>
-	                                <div>{program.exercises.length}</div>
-	                              </div>
+	                              <span className="motus-member-program-stat">
+	                                <Clock3 className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+	                                {programMinutes} min
+	                              </span>
+	                              <span className="motus-member-program-stat">
+	                                <Signal className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+	                                {programLevel}
+	                              </span>
+	                              <span className="motus-member-program-stat">
+	                                <Dumbbell className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+	                                {program.exercises.length} {program.exercises.length === 1 ? "øvelse" : "øvelser"}
+	                              </span>
 	                            </div>
-	                            <div>
-	                              <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-slate-500">
-	                                <span>Programprogresjon</span>
-	                                <span>{programProgressPct}%</span>
-	                              </div>
-	                              <div className="motus-progress-track mt-1.5 h-2 rounded-full">
+	                            <div className="motus-member-program-progress">
+	                              <span className="motus-member-program-progress-label">{programProgressPct}% fullført</span>
+	                              <div className="motus-progress-track mt-1.5 rounded-full">
 	                                <div
-	                                  className="motus-progress-fill h-2 rounded-full"
+	                                  className="motus-progress-fill rounded-full"
 	                                  style={{ width: `${programProgressPct}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
 	                                />
 	                              </div>
 	                            </div>
+	                            <GradientButton
+	                              className="motus-member-program-start w-full !min-h-11 !rounded-xl !text-sm"
+	                              onClick={() => {
+	                                if (intervalProgramIdSet.has(program.id)) {
+	                                  openIntervalTimerModal(program.id);
+	                                  return;
+	                                }
+	                                startWorkoutMode(program.id, buildStartWorkoutOptions(program));
+	                              }}
+	                            >
+	                              <span className="inline-flex items-center justify-center gap-2">
+	                                <Play className="h-4 w-4" fill="currentColor" aria-hidden />
+	                                Start økt
+	                              </span>
+	                            </GradientButton>
 	                            <div className="motus-member-program-actions">
 	                              <OutlineButton
-	                                className="!min-h-8 !px-2.5 !py-1.5 !text-xs !leading-tight"
+	                                className="motus-member-program-secondary-btn"
 	                                onClick={() => setExpandedProgramId((prev) => (prev === program.id ? null : program.id))}
 	                              >
-	                                <span className="inline-flex items-center justify-center gap-1">
-	                                  {isExpanded ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+	                                <span className="inline-flex items-center justify-center gap-1.5">
+	                                  {isExpanded ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
 	                                  <span>{isExpanded ? "Skjul" : "Vis"}</span>
 	                                </span>
 	                              </OutlineButton>
-	                              <OutlineButton className="!min-h-8 !px-2.5 !py-1.5 !text-xs !leading-tight" onClick={() => handlePrintProgram(program)}>
-	                                <span className="inline-flex items-center justify-center gap-1">
-	                                  <Printer className="h-3.5 w-3.5" />
+	                              <OutlineButton className="motus-member-program-secondary-btn" onClick={() => handlePrintProgram(program)}>
+	                                <span className="inline-flex items-center justify-center gap-1.5">
+	                                  <Printer className="h-4 w-4" />
 	                                  <span>PDF</span>
 	                                </span>
 	                              </OutlineButton>
-	                              <GradientButton
-	                                className="!min-h-8 !px-2.5 !py-1.5 !text-xs !leading-tight"
-	                                onClick={() => {
-	                                  if (intervalProgramIdSet.has(program.id)) {
-	                                    openIntervalTimerModal(program.id);
-	                                    return;
-	                                  }
-	                                  startWorkoutMode(program.id, buildStartWorkoutOptions(program));
-	                                }}
-	                              >
-	                                <span className="inline-flex items-center justify-center gap-1">
-	                                  <Play className="h-3.5 w-3.5" />
-	                                  <span>Start</span>
-	                                </span>
-	                              </GradientButton>
-	                              <div className="relative shrink-0" data-program-library-menu>
+	                              <div className="relative min-w-0" data-program-library-menu>
 	                                <OutlineButton
 	                                  type="button"
-	                                  className={`!min-h-8 !px-2 !py-1.5 !text-xs !leading-tight ${isLibraryMenuOpen ? "!border-teal-300 !bg-teal-50" : ""}`}
+	                                  className={`motus-member-program-secondary-btn w-full ${isLibraryMenuOpen ? "!border-teal-300 !bg-teal-50" : ""}`}
 	                                  onClick={() => setProgramLibraryMenuId((prev) => (prev === program.id ? null : program.id))}
 	                                  aria-label={isLibraryMenuOpen ? "Lukk meny" : "Flere valg"}
 	                                  aria-expanded={isLibraryMenuOpen}
-	                                  title="Mer"
 	                                >
-	                                  <MoreHorizontal className="h-4 w-4" aria-hidden />
+	                                  <span className="inline-flex items-center justify-center gap-1.5">
+	                                    <MoreHorizontal className="h-4 w-4" aria-hidden />
+	                                    <span>Mer</span>
+	                                  </span>
 	                                </OutlineButton>
 	                                {isLibraryMenuOpen ? (
 	                                  <div
@@ -5468,6 +5572,19 @@ export function MemberPortal(props: MemberPortalProps) {
 	                      </div>
                     );
                   })}
+                  {memberProgramsInActiveLibrary.length > 0 ? (
+                    <div className="motus-member-program-tips">
+                      <div className="motus-member-program-tips-icon" aria-hidden>
+                        <Lightbulb className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-teal-900">Tips</div>
+                        <p className="mt-0.5 text-xs leading-relaxed text-teal-800/90">
+                          Start med dagens program og hold flyten. Små steg hver uke gir størst fremgang over tid.
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
                   {memberProgramsLibraryArchived.length > 0 ? (
                     <div className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
                       <button
