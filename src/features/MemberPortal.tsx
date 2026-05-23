@@ -1017,17 +1017,16 @@ export function MemberPortal(props: MemberPortalProps) {
   const achievementCelebrationBaselineRef = useRef<number | null>(null);
   const hiddenBadgeUnlockedBaselineRef = useRef<{ memberId: string; badgeIds: Set<string> } | null>(null);
   const hiddenBadgeMigrationDoneRef = useRef(false);
-  const [periodPlans, setPeriodPlans] = useState<PeriodSchedulePlan[]>([]);
   const [showPeriodPlanPanel, setShowPeriodPlanPanel] = useState(true);
   const [activeMemberPeriodPlanId, setActiveMemberPeriodPlanId] = useState<string | null>(null);
   const [selectedPeriodPlanWeekNumber, setSelectedPeriodPlanWeekNumber] = useState<number | null>(null);
   const [periodPlanActionStatus, setPeriodPlanActionStatus] = useState<string | null>(null);
-  const [hiddenPeriodPlanIds, setHiddenPeriodPlanIds] = useState<string[]>([]);
   const [showPeriodPlanHiddenSection, setShowPeriodPlanHiddenSection] = useState(false);
   const [showPeriodPlanManageSection, setShowPeriodPlanManageSection] = useState(false);
   const [periodPlanStorageRevision, setPeriodPlanStorageRevision] = useState(0);
   const [completedPeriodPlanEntryKeys, setCompletedPeriodPlanEntryKeys] = useState<string[]>([]);
   const [periodPlanSwapsByPlan, setPeriodPlanSwapsByPlan] = useState<PeriodPlanSwapsByPlan>({});
+  const [periodPlanSwapsOwnerId, setPeriodPlanSwapsOwnerId] = useState<string | null>(null);
   const [selectedIntervalProgramId, setSelectedIntervalProgramId] = useState("");
   const [suggestedWeightOverridesByProgramExerciseId, setSuggestedWeightOverridesByProgramExerciseId] = useState<Record<string, string>>({});
   const [showIntervalTimerModal, setShowIntervalTimerModal] = useState(false);
@@ -1103,6 +1102,15 @@ export function MemberPortal(props: MemberPortalProps) {
     currentUserRole === "member"
       ? currentMemberByEmail ?? viewedMember ?? null
       : viewedMember ?? members[0] ?? null;
+  if (editableMember?.id !== periodPlanSwapsOwnerId) {
+    setPeriodPlanSwapsOwnerId(editableMember?.id ?? null);
+    setPeriodPlanSwapsByPlan(
+      editableMember?.id && typeof window !== "undefined"
+        ? parsePeriodPlanSwapsState(window.localStorage.getItem(getPeriodPlanSwapsStorageKey(editableMember.id)))
+        : {},
+    );
+    periodPlanSwapsDirtyRef.current = false;
+  }
   const memberNotificationPrefs = useMemo(
     () => readMemberNotificationPreferencesFromPersonalGoals(editableMember?.personalGoals),
     [editableMember?.personalGoals],
@@ -1228,10 +1236,32 @@ export function MemberPortal(props: MemberPortalProps) {
     () => buildTrainerPeriodPlanIdSet(relatedMemberIds, remoteMemberPeriodPlanRows),
     [relatedMemberIds, remoteMemberPeriodPlanRows],
   );
+  const periodPlans = useMemo(() => {
+    const localByMember = readPeriodPlansByMemberId();
+    const combined = mergedPeriodPlanListForMember(relatedMemberIds, localByMember, remoteMemberPeriodPlanRows);
+    return combined.sort((a, b) => (parseDateOnly(b.startDate)?.getTime() ?? 0) - (parseDateOnly(a.startDate)?.getTime() ?? 0));
+  }, [relatedMemberIds, remoteMemberPeriodPlanRows, periodPlanStorageRevision]);
+  const hiddenPeriodPlanIds = useMemo(
+    () => readHiddenPeriodPlanIdsForMembers(relatedMemberIds),
+    [relatedMemberIds, periodPlanStorageRevision],
+  );
   const visiblePeriodPlans = useMemo(
     () => periodPlans.filter((plan) => !hiddenPeriodPlanIds.includes(plan.id)),
     [periodPlans, hiddenPeriodPlanIds],
   );
+  const storedActivePeriodPlanId = useMemo(
+    () => readActivePeriodPlanIdForMembers(relatedMemberIds),
+    [relatedMemberIds, periodPlanStorageRevision],
+  );
+  const effectiveActiveMemberPeriodPlanId = useMemo(() => {
+    if (activeMemberPeriodPlanId && visiblePeriodPlans.some((plan) => plan.id === activeMemberPeriodPlanId)) {
+      return activeMemberPeriodPlanId;
+    }
+    if (storedActivePeriodPlanId && visiblePeriodPlans.some((plan) => plan.id === storedActivePeriodPlanId)) {
+      return storedActivePeriodPlanId;
+    }
+    return visiblePeriodPlans[0]?.id ?? null;
+  }, [activeMemberPeriodPlanId, storedActivePeriodPlanId, visiblePeriodPlans]);
   const hiddenPeriodPlans = useMemo(
     () => periodPlans.filter((plan) => hiddenPeriodPlanIds.includes(plan.id)),
     [periodPlans, hiddenPeriodPlanIds],
@@ -1619,7 +1649,7 @@ export function MemberPortal(props: MemberPortalProps) {
     return "saturday";
   }, [nowTimestamp]);
   const activePeriodPlan =
-    visiblePeriodPlans.find((plan) => plan.id === activeMemberPeriodPlanId) ?? visiblePeriodPlans[0] ?? null;
+    visiblePeriodPlans.find((plan) => plan.id === effectiveActiveMemberPeriodPlanId) ?? visiblePeriodPlans[0] ?? null;
   const activePeriodPlanId = activePeriodPlan?.id ?? null;
   const activePeriodSelectableWeekCount = activePeriodPlan ? periodPlanSelectableWeekCount(activePeriodPlan) : 0;
   const activePeriodPlanStartDate = activePeriodPlan ? parsePeriodPlanStartDate(activePeriodPlan) : null;
@@ -2522,14 +2552,6 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }, [editableMember?.id, completedPeriodPlanEntryKeys]);
   useEffect(() => {
-    periodPlanSwapsDirtyRef.current = false;
-    if (!editableMember || typeof window === "undefined") {
-      setPeriodPlanSwapsByPlan({});
-      return;
-    }
-    setPeriodPlanSwapsByPlan(parsePeriodPlanSwapsState(window.localStorage.getItem(getPeriodPlanSwapsStorageKey(editableMember.id))));
-  }, [editableMember?.id]);
-  useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     if (!periodPlanSwapsDirtyRef.current) return;
     try {
@@ -2778,22 +2800,6 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!container) return;
     container.scrollTop = container.scrollHeight;
   }, [memberTab, memberMessages.length]);
-  useEffect(() => {
-    const localByMember = readPeriodPlansByMemberId();
-    const combined = mergedPeriodPlanListForMember(relatedMemberIds, localByMember, remoteMemberPeriodPlanRows);
-    combined.sort((a, b) => (parseDateOnly(b.startDate)?.getTime() ?? 0) - (parseDateOnly(a.startDate)?.getTime() ?? 0));
-    const hiddenIds = readHiddenPeriodPlanIdsForMembers(relatedMemberIds);
-    const visible = combined.filter((plan) => !hiddenIds.includes(plan.id));
-    setPeriodPlans(combined);
-    setHiddenPeriodPlanIds(hiddenIds);
-    const storedActiveId = readActivePeriodPlanIdForMembers(relatedMemberIds);
-    setActiveMemberPeriodPlanId((prev) => {
-      if (storedActiveId && visible.some((plan) => plan.id === storedActiveId)) return storedActiveId;
-      if (prev && visible.some((plan) => plan.id === prev)) return prev;
-      return visible[0]?.id ?? null;
-    });
-  }, [relatedMemberIds, remoteMemberPeriodPlanRows, periodPlanStorageRevision]);
-
   useEffect(() => {
     if (memberTab !== "programs" || trainingSection !== "period") return;
     if (periodPlans.length > 0 && !memberHasVisiblePeriodPlan) {
@@ -3634,15 +3640,16 @@ export function MemberPortal(props: MemberPortalProps) {
     if (todayPlanEntry.trim()) {
       return findProgramForPeriodPlanEntry(todayPlanEntry, memberPrograms) ?? null;
     }
+    if (memberHasVisiblePeriodPlan) return null;
     if (nextProgram) return nextProgram;
     return null;
-  }, [todayPlanAction, todayPlanEntry, memberPrograms, nextProgram]);
+  }, [todayPlanAction, todayPlanEntry, memberPrograms, nextProgram, memberHasVisiblePeriodPlan]);
   const homePrimaryFocus = useMemo(() => {
     if (todayPlanEntry && homeWorkoutProgram?.title && todayPlanEntry !== homeWorkoutProgram.title) {
       return `${homeWorkoutProgram.title} · ${todayPlanEntry}`;
     }
-    return todayPlanEntry || homeWorkoutProgram?.title || "Velg program når du er klar";
-  }, [todayPlanEntry, homeWorkoutProgram]);
+    return todayPlanEntry || homeWorkoutProgram?.title || (memberHasVisiblePeriodPlan ? "Ingen plan i dag" : "Velg program når du er klar");
+  }, [todayPlanEntry, homeWorkoutProgram, memberHasVisiblePeriodPlan]);
   const homeWorkoutDuration = useMemo(() => {
     if (!homeWorkoutProgram) return null;
     const minutes = Math.max(20, Math.round(estimateProgramMinutes(homeWorkoutProgram) / 5) * 5);
@@ -3869,11 +3876,11 @@ export function MemberPortal(props: MemberPortalProps) {
     if (targetMemberIds.length === 0) return;
     const nextHidden = Array.from(new Set([...hiddenPeriodPlanIds, planId]));
     writeHiddenPeriodPlanIdsForMembers(targetMemberIds, nextHidden);
-    setHiddenPeriodPlanIds(nextHidden);
+    setPeriodPlanStorageRevision((value) => value + 1);
     setShowPeriodPlanManageSection(true);
     setShowPeriodPlanHiddenSection(true);
     setShowPeriodPlanPanel(true);
-    if (activeMemberPeriodPlanId === planId) {
+    if (activePeriodPlan?.id === planId) {
       const nextActive = visiblePeriodPlans.find((plan) => plan.id !== planId)?.id ?? null;
       if (nextActive) selectActiveMemberPeriodPlan(nextActive);
       else {
@@ -3889,7 +3896,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (targetMemberIds.length === 0) return;
     const nextHidden = hiddenPeriodPlanIds.filter((id) => id !== planId);
     writeHiddenPeriodPlanIdsForMembers(targetMemberIds, nextHidden);
-    setHiddenPeriodPlanIds(nextHidden);
+    setPeriodPlanStorageRevision((value) => value + 1);
     selectActiveMemberPeriodPlan(planId);
     setShowPeriodPlanPanel(true);
     setShowPeriodPlanManageSection(true);
@@ -3900,7 +3907,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const targetMemberIds = resolvePeriodPlanTargetMemberIds();
     if (targetMemberIds.length === 0) return;
     writeHiddenPeriodPlanIdsForMembers(targetMemberIds, []);
-    setHiddenPeriodPlanIds([]);
+    setPeriodPlanStorageRevision((value) => value + 1);
     const firstPlan = visiblePeriodPlans[0] ?? periodPlans[0];
     if (firstPlan) selectActiveMemberPeriodPlan(firstPlan.id);
     setShowPeriodPlanPanel(true);
@@ -3913,7 +3920,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!isMemberOwnedPeriodPlan(plan, trainerPeriodPlanIds)) return;
     removeMemberOwnedPeriodPlanFromStorage(relatedMemberIds, plan.id);
     setPeriodPlanStorageRevision((value) => value + 1);
-    if (activeMemberPeriodPlanId === plan.id) {
+    if (activePeriodPlan?.id === plan.id) {
       const nextActive = visiblePeriodPlans.find((item) => item.id !== plan.id)?.id ?? null;
       if (nextActive) selectActiveMemberPeriodPlan(nextActive);
       else {
@@ -5045,7 +5052,7 @@ export function MemberPortal(props: MemberPortalProps) {
               })() : null}
               {trainingSection === "today" ? (
                 <MemberTrainingTodayCard
-                  title={todayPlanEntry || nextProgram?.title || "Ingen plan i dag"}
+                  title={todayPlanEntry || homeWorkoutProgram?.title || (memberHasVisiblePeriodPlan ? "Ingen plan i dag" : nextProgram?.title || "Ingen plan i dag")}
                   imageSrc={homeWorkoutCoverSrc}
                   durationLabel={homeWorkoutDuration}
                   zoneLabel={homeWorkoutZoneLabel}
@@ -5218,33 +5225,31 @@ export function MemberPortal(props: MemberPortalProps) {
 	                      <div
 	                        key={program.id}
 	                        id={`member-program-${program.id}`}
-	                        className="motus-card overflow-hidden"
+	                        className="motus-member-program-card motus-card overflow-hidden"
 	                      >
-	                        <div className="grid gap-0 sm:grid-cols-[14rem_1fr]">
-	                        <div className="relative min-h-48 overflow-hidden bg-[#F3F5F7] sm:min-h-full">
+	                        <div className="motus-member-program-layout">
+	                        <div className="motus-member-program-thumb">
 	                          {programCoverSrc ? (
 	                            <img
 	                              src={programCoverSrc}
 	                              alt=""
-	                              className={`absolute inset-0 h-full w-full ${programUsesCustomCover ? "object-cover" : "object-contain p-2"}`}
+	                              className={programUsesCustomCover ? "motus-member-program-cover" : "motus-member-program-cover motus-member-program-cover--contain"}
 	                              loading="lazy"
 	                              decoding="async"
 	                            />
 	                          ) : (
-	                            <div className="flex h-full items-center justify-center">
-	                              <Dumbbell className="h-14 w-14 text-teal-400" aria-hidden />
+	                            <div className="motus-member-program-thumb-fallback">
+	                              <Dumbbell className="h-7 w-7 text-teal-400" aria-hidden />
 	                            </div>
 	                          )}
-	                          <div className="absolute left-3 top-3 rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-teal-800 shadow-sm">
-	                            {programCategory}
-	                          </div>
+	                          <div className="motus-member-program-category">{programCategory}</div>
 	                        </div>
-	                        <div className="space-y-3 p-3 sm:p-4">
+	                        <div className="motus-member-program-content">
 	                        <div className="flex items-start justify-between gap-2">
 	                          <div className="min-w-0 flex-1">
-	                            <div className="text-lg font-black leading-tight tracking-tight text-slate-950">{program.title}</div>
+	                            <div className="motus-member-program-title">{program.title}</div>
 	                            {program.goal?.trim() ? (
-	                              <div className="mt-1 line-clamp-2 text-sm font-medium text-slate-600">{program.goal.trim()}</div>
+	                              <div className="motus-member-program-goal">{program.goal.trim()}</div>
 	                            ) : null}
 	                            {programAuthorLine ? (
 	                              <div className="mt-0.5 text-[10px] font-medium text-slate-600">{programAuthorLine}</div>
@@ -5368,7 +5373,7 @@ export function MemberPortal(props: MemberPortalProps) {
                             </div>
 	                          </div>
 	                        </div>
-	                        <div className="grid grid-cols-3 gap-2">
+	                        <div className="motus-member-program-stats">
 	                          <div className="rounded-xl bg-slate-50 px-2.5 py-2">
 	                            <div className="text-[10px] font-bold uppercase text-slate-400">Tid</div>
 	                            <div className="mt-0.5 text-sm font-black text-slate-900">{programMinutes} min</div>

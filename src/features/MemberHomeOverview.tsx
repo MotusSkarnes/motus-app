@@ -209,23 +209,23 @@ export function MemberHomeOverview({
       </section>
 
       <article className="motus-home-workout-card">
-        <div className="flex gap-3.5">
+        <div className="motus-home-workout-layout">
           <div className="motus-home-workout-thumb shrink-0">
             {workoutImageSrc ? (
-              <img src={workoutImageSrc} alt="" className="h-full w-full object-cover" loading="lazy" />
+              <img src={workoutImageSrc} alt="" loading="lazy" />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-slate-50">
+              <div className="motus-home-workout-thumb-fallback">
                 <Dumbbell className="h-8 w-8 text-slate-300" strokeWidth={1.5} />
               </div>
             )}
             <span className="motus-home-workout-thumb-badge">Klar for en sterk dag</span>
           </div>
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="motus-home-workout-content">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-teal-700">Dagens økt</p>
-                <h2 className="mt-1 text-lg font-semibold leading-tight tracking-tight text-slate-900">{workoutTitle}</h2>
-                {workoutSubtitle ? <p className="mt-0.5 text-sm text-slate-500">{workoutSubtitle}</p> : null}
+                <p className="motus-home-workout-label">Dagens økt</p>
+                <h2 className="motus-home-workout-title">{workoutTitle}</h2>
+                {workoutSubtitle ? <p className="motus-home-workout-subtitle">{workoutSubtitle}</p> : null}
               </div>
               {onWorkoutCardClick ? (
                 <button
@@ -238,7 +238,7 @@ export function MemberHomeOverview({
                 </button>
               ) : null}
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-slate-500">
+            <div className="motus-home-workout-meta">
               {workoutDuration ? (
                 <span className="inline-flex items-center gap-1.5 font-medium">
                   <Clock3 className="h-3.5 w-3.5 text-slate-400" aria-hidden />
@@ -252,7 +252,7 @@ export function MemberHomeOverview({
                 </span>
               ) : null}
             </div>
-            <div className="mt-auto pt-3">{primaryCta}</div>
+            <div className="motus-home-workout-cta">{primaryCta}</div>
           </div>
         </div>
       </article>
