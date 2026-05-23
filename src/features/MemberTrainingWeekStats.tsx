@@ -46,7 +46,7 @@ export function MemberTrainingWeekStats({
               <span className="block text-[17px] font-semibold tabular-nums leading-none tracking-tight text-slate-800">
                 {item.value}
               </span>
-              <span className="mt-1 block text-[11px] font-medium leading-none text-slate-500">{item.label}</span>
+              <span className="mt-1 block text-[11px] font-semibold leading-none text-slate-700">{item.label}</span>
             </span>
           </div>
         );

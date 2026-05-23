@@ -4993,7 +4993,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div className="motus-training-paused">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
-                        <div className="inline-flex items-center gap-2 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-teal-800">
+                        <div className="inline-flex items-center gap-2 motus-surface-chip px-2.5 py-1 uppercase tracking-wide">
                           <Play className="h-3.5 w-3.5" />
                           Fortsett der du slapp
                         </div>
@@ -5697,11 +5697,7 @@ export function MemberPortal(props: MemberPortalProps) {
                               key={plan.id}
                               type="button"
                               onClick={() => selectActiveMemberPeriodPlan(plan.id)}
-                              className={`rounded-full px-3 py-1.5 text-left text-xs font-semibold transition ${
-                                active
-                                  ? "bg-teal-100 text-teal-900 ring-2 ring-teal-200"
-                                  : "bg-slate-100 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200"
-                              }`}
+                              className={`motus-pressable motus-surface-chip px-3 py-2 text-left ${active ? "motus-surface-chip--active" : ""}`}
                             >
                               {plan.title}
                               <span className="ml-1 font-normal text-slate-500">
@@ -5719,13 +5715,13 @@ export function MemberPortal(props: MemberPortalProps) {
                         <div className="border-b border-teal-900/10 px-4 py-3 sm:px-5 sm:py-4" style={{ background: "rgba(255,255,255,0.55)" }}>
                           <div className="text-base font-bold leading-snug text-slate-900 sm:text-lg">{activePeriodPlan.title}</div>
                           <div className="mt-3 flex flex-wrap gap-2">
-                            <span className="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-teal-950 shadow-sm ring-1 ring-teal-200/60">
+                            <span className="motus-surface-chip inline-flex px-2.5 py-1">
                               Start {activePeriodPlan.startDate}
                             </span>
-                            <span className="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-800 shadow-sm ring-1 ring-slate-200/80">
+                            <span className="motus-surface-chip inline-flex px-2.5 py-1">
                               {activePeriodPlan.weeks} {activePeriodPlan.weeks === 1 ? "uke" : "uker"}
                             </span>
-                            <span className="inline-flex items-center rounded-full bg-white/60 px-2.5 py-1 text-[11px] font-medium text-slate-600 ring-1 ring-slate-200/60">
+                            <span className="motus-surface-chip motus-surface-chip--muted inline-flex px-2.5 py-1">
                               {isMemberOwnedPeriodPlan(activePeriodPlan, trainerPeriodPlanIds) ? "Lagt til av deg" : "Fra trener"}
                             </span>
                           </div>

@@ -96,6 +96,7 @@ function BadgeTile({ badge, onSelect }: { badge: MemberBadge; onSelect: () => vo
           </span>
         ) : null}
       </span>
+      <span className={`motus-badge-tile-label ${badge.unlocked ? "" : "motus-badge-tile-label--locked"}`}>{badge.title}</span>
     </button>
   );
 }
@@ -139,13 +140,13 @@ function BadgeDetailView({
   }
 
   return (
-    <div className="motus-badge-detail">
+    <div className="motus-badge-detail motus-badge-detail--modal">
       <div className="flex justify-center overflow-visible">
-        <BadgeImage src={badgeImage} size="popup" dimmed={!badge.unlocked} alt={badge.title} loading="eager" />
+        <BadgeImage src={badgeImage} size="detail" dimmed={!badge.unlocked} alt={badge.title} loading="eager" />
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{badge.categoryTitle}</span>
+      <div className="mt-2 flex flex-wrap items-center justify-center gap-1">
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-semibold text-slate-600">{badge.categoryTitle}</span>
         {badge.unlocked ? (
           <span
             className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase text-white shadow"
@@ -159,25 +160,25 @@ function BadgeDetailView({
         )}
       </div>
 
-      <h3 className="mt-3 text-center text-xl font-black uppercase tracking-wide text-slate-900">{badge.title}</h3>
-      <p className="mt-2 text-center text-sm leading-relaxed text-slate-600">{badge.description}</p>
+      <h3 className="mt-2 text-center text-base font-black uppercase tracking-wide text-slate-900">{badge.title}</h3>
+      <p className="motus-badge-detail-description mt-1.5 text-center text-xs leading-relaxed text-slate-600">{badge.description}</p>
 
-      <div className="mt-5 w-full rounded-xl border bg-slate-50/90 p-3" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
+      <div className="mt-3 w-full rounded-xl border bg-slate-50/90 p-2.5" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
         <div className="flex items-start gap-2">
-          <Target className="mt-0.5 h-4 w-4 shrink-0" style={{ color: badge.unlocked ? level.accent : "#64748B" }} />
+          <Target className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: badge.unlocked ? level.accent : "#64748B" }} />
           <div className="min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-wide text-slate-700">{isMaxed ? "Fullført" : "Neste mål"}</p>
-            <p className="mt-1 text-sm font-medium leading-snug text-slate-700">{getBadgeUnlockHint(badge)}</p>
+            <p className="text-[8px] font-black uppercase tracking-wide text-slate-700">{isMaxed ? "Fullført" : "Neste mål"}</p>
+            <p className="mt-0.5 text-xs font-medium leading-snug text-slate-700">{getBadgeUnlockHint(badge)}</p>
           </div>
         </div>
 
         {!isMaxed ? (
-          <div className="mt-3">
-            <div className="mb-1 flex items-center justify-between gap-1 text-[10px] font-bold text-slate-600">
+          <div className="mt-2">
+            <div className="mb-1 flex items-center justify-between gap-1 text-[9px] font-bold text-slate-600">
               <span>Fremdrift</span>
               <span style={{ color: level.accent }}>{getBadgeProgressLabel(badge)}</span>
             </div>
-            <div className="motus-progress-track h-2 rounded-full ring-1 ring-slate-200/80">
+            <div className="motus-progress-track h-1.5 rounded-full ring-1 ring-slate-200/80">
               <div
                 className="motus-progress-fill h-full rounded-full transition-all"
                 style={{ width: `${badge.progressPct}%`, background: badge.unlocked ? MOTUS_GRADIENT : "rgba(148,163,184,0.5)" }}
@@ -185,12 +186,12 @@ function BadgeDetailView({
             </div>
           </div>
         ) : (
-          <p className="mt-3 text-sm font-semibold" style={{ color: level.accent }}>
+          <p className="mt-2 text-xs font-semibold" style={{ color: level.accent }}>
             Alle fem nivåer er låst opp.
           </p>
         )}
 
-        <div className="mt-3 flex gap-1">
+        <div className="mt-2 flex gap-0.5">
           {badge.levels.map((lvl) => (
             <LevelStep key={lvl.level} level={lvl} badge={badge} active={lvl.level === badge.level} />
           ))}
@@ -201,7 +202,7 @@ function BadgeDetailView({
             type="button"
             onClick={() => void shareBadge()}
             disabled={isSharing}
-            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-teal-200 hover:bg-teal-50/80 disabled:opacity-60"
+            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:border-teal-200 hover:bg-teal-50/80 disabled:opacity-60"
             title="Del på Facebook eller andre apper"
           >
             <Share2 className="h-3.5 w-3.5 shrink-0 text-teal-700" aria-hidden />
@@ -236,12 +237,12 @@ function BadgeDetailModal({
 
   return (
     <div
-      className="motus-modal-insets fixed inset-0 z-[10018] flex items-end justify-center overflow-y-auto overscroll-contain bg-slate-900/45 p-3 sm:items-center sm:p-6"
+      className="motus-modal-insets motus-badge-detail-modal fixed inset-0 z-[10018] flex items-center justify-center overflow-hidden bg-slate-900/45 p-3 sm:p-4"
       role="presentation"
       onClick={onClose}
     >
       <div
-        className="motus-pop-in relative w-full max-w-sm overflow-visible rounded-2xl border bg-white shadow-xl"
+        className="motus-pop-in relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-sm flex-col overflow-hidden rounded-2xl border bg-white shadow-xl"
         style={{ borderColor: "rgba(15,23,42,0.1)" }}
         role="dialog"
         aria-modal="true"
@@ -251,12 +252,12 @@ function BadgeDetailModal({
         <button
           type="button"
           onClick={onClose}
-          className="motus-pressable absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-500 shadow-sm transition hover:text-slate-800"
+          className="motus-pressable absolute right-2.5 top-2.5 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-500 shadow-sm transition hover:text-slate-800"
           aria-label="Lukk"
         >
           <X className="h-4 w-4" aria-hidden />
         </button>
-        <div className="max-h-[min(85vh,720px)] overflow-y-auto p-5 pt-4 sm:p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-3 pt-10 sm:px-5">
           <h2 id="badge-detail-title" className="sr-only">
             {badge.title}
           </h2>
@@ -266,7 +267,9 @@ function BadgeDetailModal({
             shareLogoSrc={shareLogoSrc}
             onShareStatus={onShareStatus}
           />
-          <GradientButton onClick={onClose} className="mt-5 w-full min-h-11 font-semibold">
+        </div>
+        <div className="shrink-0 border-t border-slate-100 px-4 py-3 sm:px-5">
+          <GradientButton onClick={onClose} className="w-full min-h-10 text-sm font-semibold">
             Lukk
           </GradientButton>
         </div>
@@ -329,12 +332,9 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
                 key={item.id}
                 type="button"
                 onClick={() => setActiveCategoryId(item.id)}
-                className={`shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition ${
-                  active ? "border-transparent motus-brand-fill shadow-sm" : "bg-white text-slate-600 hover:bg-slate-50"
-                }`}
-                style={{ borderColor: active ? "transparent" : "rgba(15,23,42,0.10)" }}
+                className={`motus-pressable motus-surface-chip shrink-0 px-3 py-2 ${active ? "motus-surface-chip--active" : ""}`}
               >
-                {item.title} <span className={active ? "text-white/75" : "text-slate-400"}>{item.count}</span>
+                {item.title} <span className={active ? "opacity-75" : "text-slate-400"}>{item.count}</span>
               </button>
             );
           })}
