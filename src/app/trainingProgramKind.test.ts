@@ -5,6 +5,7 @@ import {
   filterTemplateProgramsBySubTab,
   getTrainingProgramSubTab,
   isConditioningTrainingProgram,
+  trainingProgramCategoryLabel,
 } from "./trainingProgramKind";
 import type { Exercise, TrainingProgram } from "./types";
 
@@ -17,6 +18,24 @@ const exercises: Exercise[] = [
 
 const categories = buildExerciseCategoryById(exercises);
 
+function programRow(
+  exerciseId: string,
+  exerciseName: string,
+  durationMinutes?: string,
+): TrainingProgram["exercises"][number] {
+  return {
+    id: `x-${exerciseId}-${exerciseName}`,
+    exerciseId,
+    exerciseName,
+    sets: "1",
+    reps: "",
+    weight: "",
+    durationMinutes: durationMinutes ?? "",
+    restSeconds: "0",
+    notes: "",
+  };
+}
+
 function program(exerciseId: string, durationMinutes?: string): TrainingProgram {
   return {
     id: "p1",
@@ -25,19 +44,19 @@ function program(exerciseId: string, durationMinutes?: string): TrainingProgram 
     goal: "",
     notes: "",
     createdAt: "",
-    exercises: [
-      {
-        id: "x1",
-        exerciseId,
-        exerciseName: "Steg",
-        sets: "1",
-        reps: "",
-        weight: "",
-        durationMinutes: durationMinutes ?? "",
-        restSeconds: "0",
-        notes: "",
-      },
-    ],
+    exercises: [programRow(exerciseId, "Steg", durationMinutes)],
+  };
+}
+
+function multiStepProgram(rows: TrainingProgram["exercises"]): TrainingProgram {
+  return {
+    id: "p-multi",
+    memberId: "__template__",
+    title: "Multi",
+    goal: "",
+    notes: "",
+    createdAt: "",
+    exercises: rows,
   };
 }
 
@@ -71,5 +90,35 @@ describe("trainingProgramKind", () => {
     expect(exerciseMatchesExerciseBankTab("Styrke", "all")).toBe(true);
     expect(exerciseMatchesExerciseBankTab("Rehab", "all")).toBe(true);
     expect(exerciseMatchesExerciseBankTab("Styrke", "conditioning")).toBe(false);
+  });
+
+  it("infers kondisjon from timed steps when exerciseId is missing", () => {
+    const interval = program("unknown-id", "45");
+    expect(getTrainingProgramSubTab(interval, categories, exercises)).toBe("conditioning");
+    expect(trainingProgramCategoryLabel(interval, categories, exercises)).toBe("Kondisjon");
+  });
+
+  it("keeps pure strength programs as styrke", () => {
+    const strength = multiStepProgram([
+      programRow("e1", "Bøy"),
+      programRow("e1", "Benk"),
+    ]);
+    expect(trainingProgramCategoryLabel(strength, categories, exercises)).toBe("Styrke");
+  });
+
+  it("ignores nedjogg when classifying interval programs", () => {
+    const interval = multiStepProgram([
+      programRow("e2", "Oppvarming", "8"),
+      programRow("e2", "Drag 1", "4"),
+      programRow("unknown", "Nedjogg", "5"),
+    ]);
+    expect(isConditioningTrainingProgram(interval, categories, exercises)).toBe(true);
+    expect(trainingProgramCategoryLabel(interval, categories, exercises)).toBe("Kondisjon");
+  });
+
+  it("resolves category by exercise name when id is stale", () => {
+    const byName = programRow("stale-id", "Mølle", "30");
+    const resolved = multiStepProgram([byName]);
+    expect(trainingProgramCategoryLabel(resolved, categories, exercises)).toBe("Kondisjon");
   });
 });

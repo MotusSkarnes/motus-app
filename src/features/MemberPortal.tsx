@@ -138,6 +138,7 @@ import {
   computeMemberProgressState,
 } from "../app/memberProgressGamification";
 import { computeMemberProgressScores } from "../app/memberMomentumScores";
+import { trainingProgramCategoryLabel, isConditioningTrainingProgram } from "../app/trainingProgramKind";
 import { BadgeImage } from "./BadgeImage";
 import { MemberBadgesCarousel } from "./MemberBadgesCarousel";
 import { CustomWorkoutBuilder } from "./CustomWorkoutBuilder";
@@ -800,6 +801,12 @@ function memberProgramExerciseName(program: TrainingProgram, index: number): str
   return isLegacyIntervalCooldownDrag(program.exercises, index) ? "Nedjogg" : program.exercises[index]?.exerciseName ?? "";
 }
 
+function firstNameFromDisplayName(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return "der";
+  return trimmed.split(/\s+/)[0] ?? trimmed;
+}
+
 function estimateProgramMinutes(program: TrainingProgram): number {
   if (!program.exercises.length) return 0;
   return program.exercises.reduce((total, exercise) => {
@@ -809,15 +816,6 @@ function estimateProgramMinutes(program: TrainingProgram): number {
     if (workMinutes > 0) return total + rounds * workMinutes + Math.max(0, rounds - 1) * restMinutes;
     return total + rounds * 2.5 + Math.max(0, rounds - 1) * restMinutes;
   }, 6);
-}
-
-function resolveProgramCategoryLabel(program: TrainingProgram, exerciseBank: Exercise[]): string {
-  const categories = program.exercises
-    .map((item) => exerciseBank.find((exercise) => exercise.id === item.exerciseId)?.category)
-    .filter(Boolean);
-  if (!categories.length) return "Program";
-  const unique = Array.from(new Set(categories));
-  return unique.length === 1 ? unique[0]! : "Miks";
 }
 
 type IntervalTimerStep = {
@@ -1459,15 +1457,10 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [exercises]);
   const intervalPrograms = useMemo(
     () =>
-      memberProgramsInActiveLibrary.filter((program) => {
-        if (program.exercises.length === 0) return false;
-        return program.exercises.every((exercise) => {
-          const category = exerciseCategoryById.get(exercise.exerciseId);
-          const hasTimedStep = Number(exercise.durationMinutes) > 0;
-          return category === "Kondisjon" && hasTimedStep;
-        });
-      }),
-    [memberProgramsInActiveLibrary, exerciseCategoryById],
+      memberProgramsInActiveLibrary.filter((program) =>
+        isConditioningTrainingProgram(program, exerciseCategoryById, exercises),
+      ),
+    [memberProgramsInActiveLibrary, exerciseCategoryById, exercises],
   );
   const intervalProgramIdSet = useMemo(() => new Set(intervalPrograms.map((program) => program.id)), [intervalPrograms]);
   const activeIntervalProgram = useMemo(
@@ -3603,29 +3596,57 @@ export function MemberPortal(props: MemberPortalProps) {
       action: "progress" as const,
     };
   }, [memberAssignedPrograms.length, memberProgramsInActiveLibrary.length, nextProgram]);
+  const homeFirstName = firstNameFromDisplayName(memberShareDisplayName);
   const homeMomentumPct = memberProgressScores.momentum.pct;
-  const homeRemainingMonthSessions = Math.max(0, memberProgress.monthGoal.target - memberProgress.monthGoal.current);
-  const homePrimaryFocus = todayPlanEntry || nextProgram?.title || "Bygg en økt som passer dagen";
-  const homeTopStatusText =
-    streakWeeks > 0
-      ? `🔥 ${streakWeeks} ukes streak · Du holder flyten`
-      : homeWeeklySummary.completedThisWeek > 0
-        ? `🔥 ${homeWeeklySummary.completedThisWeek} økt${homeWeeklySummary.completedThisWeek === 1 ? "" : "er"} denne uka · Du er nærmere målet`
-        : "🔥 Klar for dagens økt";
-  const homeEmotionalChip =
-    homeWeeklySummary.plannedThisWeek > 0 && homeWeeklySummary.completedThisWeek >= homeWeeklySummary.plannedThisWeek
-      ? "Sterk uke 🔥"
-      : homeRemainingMonthSessions === 0
-        ? "Du er foran planen"
-        : homeMomentumPct >= 85
-          ? "Bra flyt"
-          : null;
-  const homeWorkoutHint =
-    nextProgram?.title && homePrimaryFocus !== nextProgram.title && homePrimaryFocus === todayPlanEntry
-      ? nextProgram.title
-      : homeWeeklySummary.plannedThisWeek > 0
-        ? `${homeWeeklySummary.completedThisWeek}/${homeWeeklySummary.plannedThisWeek} planlagt denne uka`
-        : null;
+  const homeWorkoutProgram = useMemo(() => {
+    if (todayPlanAction.kind === "start-program") return todayPlanAction.program;
+    if (nextProgram) return nextProgram;
+    return null;
+  }, [todayPlanAction, nextProgram]);
+  const homePrimaryFocus =
+    todayPlanEntry || homeWorkoutProgram?.title || "Velg program når du er klar";
+  const homeWorkoutDuration = useMemo(() => {
+    if (!homeWorkoutProgram) return null;
+    const minutes = Math.max(20, Math.round(estimateProgramMinutes(homeWorkoutProgram) / 5) * 5);
+    return `${minutes} min`;
+  }, [homeWorkoutProgram]);
+  const homeUnseenProgramCount = useMemo(
+    () =>
+      memberAssignedPrograms.filter(
+        (program) => !(memberNotificationPrefs?.seenMemberProgramIds ?? []).includes(program.id),
+      ).length,
+    [memberAssignedPrograms, memberNotificationPrefs?.seenMemberProgramIds],
+  );
+  const homeStreakLine = streakWeeks > 0 ? `🔥 ${streakWeeks} ukes streak` : null;
+  const homeMotivationLine =
+    homeWeeklySummary.completedThisWeek > 0
+      ? "Du er nærmere målet enn i går."
+      : streakWeeks > 0
+        ? "Du holder flyten."
+        : "Klar når du er.";
+  const homeStatusCard = useMemo(() => {
+    if (homeUnseenProgramCount > 0) {
+      return {
+        title: "Alt er ajour",
+        detail: `${homeUnseenProgramCount} n${homeUnseenProgramCount === 1 ? "ytt" : "ye"} program${homeUnseenProgramCount === 1 ? "" : "mer"} tilgjengelig`,
+        onClick: () => {
+          const seenIds = memberAssignedPrograms.map((program) => program.id);
+          persistMemberUiPrefs({
+            seenMemberProgramIds: Array.from(
+              new Set([...(memberNotificationPrefs?.seenMemberProgramIds ?? []), ...seenIds]),
+            ),
+          });
+          setMemberTab("programs");
+        },
+      };
+    }
+    return { title: "Alt er ajour", detail: "Plan og programmer er oppdatert" };
+  }, [
+    homeUnseenProgramCount,
+    memberAssignedPrograms,
+    memberNotificationPrefs?.seenMemberProgramIds,
+    persistMemberUiPrefs,
+  ]);
   let nextPlannedWorkout: { dayLabel: string; entry: string } | null = null;
   if (activeWeeklyPlanEffectiveDays && todayPlanDayKey) {
     const todayIndex = WEEKDAY_PLAN_ORDER.indexOf(todayPlanDayKey);
@@ -4359,17 +4380,17 @@ export function MemberPortal(props: MemberPortalProps) {
 
         <div className="min-w-0 w-full space-y-4 overflow-visible sm:space-y-6">
           {memberTab === "overview" ? (
-            <div className="space-y-6">
+            <div className="space-y-5">
               <MemberHomeOverview
-                topStatusText={homeTopStatusText}
-                emotionalChip={homeEmotionalChip}
+                memberFirstName={homeFirstName}
+                streakLine={homeStreakLine}
+                motivationLine={homeMotivationLine}
+                statusCard={homeStatusCard}
                 workoutTitle={homePrimaryFocus}
-                workoutHint={homeWorkoutHint}
-                momentumPct={homeMomentumPct}
-                monthGoalCurrent={memberProgress.monthGoal.current}
-                monthGoalTarget={memberProgress.monthGoal.target}
+                workoutDuration={homeWorkoutDuration}
+                sessionCount={completedLogs.length}
+                flowPct={homeMomentumPct}
                 streakWeeks={streakWeeks}
-                streakSubline={streakSubline}
                 primaryCta={
                   todayPlanAction.kind === "start-program" ? (
                     <MemberHomeStartWorkoutButton
@@ -4392,7 +4413,7 @@ export function MemberPortal(props: MemberPortalProps) {
                           day: todayPeriodPlanMatch.day,
                         })
                       }
-                      className="min-h-11 rounded-xl px-5 text-sm font-semibold sm:min-h-12 sm:text-base"
+                      className="motus-pressable h-10 rounded-lg px-4 text-sm font-semibold"
                     >
                       Logg dagens økt
                     </GradientButton>
@@ -4405,13 +4426,13 @@ export function MemberPortal(props: MemberPortalProps) {
                     <GradientButton
                       type="button"
                       onClick={() => setMemberTab(nextBestAction.action === "progress" ? "progress" : "programs")}
-                      className="min-h-11 rounded-xl px-5 text-sm font-semibold sm:min-h-12 sm:text-base"
+                      className="motus-pressable h-10 rounded-lg px-4 text-sm font-semibold"
                     >
                       {nextBestAction.cta}
                     </GradientButton>
                   )
                 }
-                secondaryCta={<MemberHomeSecondaryLink label="Se planen" onClick={() => setMemberTab("programs")} />}
+                secondaryCta={<MemberHomeSecondaryLink label="Se programmer" onClick={() => setMemberTab("programs")} />}
                 onboardingPrompt={
                   onOpenOnboarding && showOnboardingHomePrompt ? (
                     <MemberHomeCompactPrompt
@@ -4433,27 +4454,27 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : undefined
                 }
               />
-              <section className="space-y-5 border-t border-slate-200/70 pt-6">
+              <section className="space-y-4 pt-2">
                 {memberHasVisiblePeriodPlan && nextPlannedWorkout ? (
-                  <div className="flex flex-wrap items-center justify-between gap-3 pb-1">
+                  <div className="flex flex-wrap items-center justify-between gap-3 px-0.5">
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-500">Neste på planen</p>
-                      <p className="text-sm font-medium text-slate-800">
+                      <p className="text-[11px] font-medium text-slate-400">Neste på planen</p>
+                      <p className="text-sm text-slate-700">
                         {nextPlannedWorkout.dayLabel} · {nextPlannedWorkout.entry}
                       </p>
                     </div>
                     <MemberHomeSecondaryLink label="Se periodeplan" onClick={openProgramsWithPeriodPlan} />
                   </div>
                 ) : null}
-              <div className="min-w-0 w-full space-y-3">
+              <div className="min-w-0 w-full space-y-3 px-0.5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Plan og økter</div>
-                      <h3 className="mt-1 text-sm font-semibold text-slate-800">Treningskalender</h3>
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Plan og økter</p>
+                      <h3 className="mt-0.5 text-sm font-medium text-slate-700">Treningskalender</h3>
                     </div>
-                    <div className="text-sm font-semibold text-slate-600 capitalize">{calendarMonthLabel}</div>
+                    <p className="text-xs font-medium text-slate-500 capitalize">{calendarMonthLabel}</p>
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <OutlineButton
                       className="px-3 py-1.5 text-xs"
                       onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
@@ -4483,35 +4504,25 @@ export function MemberPortal(props: MemberPortalProps) {
                           type="button"
                           key={`${day}-${index}`}
                           onClick={() => setSelectedCalendarDay((prev) => (prev === day ? null : day))}
-                          className={`rounded-lg px-1 py-2 text-center text-xs ${
-                            calendarDayStatusByDay.get(day) === "completed" ? "text-white font-semibold" : "text-slate-700 bg-white"
+                          className={`rounded-lg px-1 py-2 text-center text-xs transition ${
+                            selectedCalendarDay === day ? "ring-2 ring-slate-900/10" : ""
+                          } ${
+                            calendarDayStatusByDay.get(day) === "completed"
+                              ? "font-semibold text-white"
+                              : calendarDayStatusByDay.get(day) === "missed"
+                                ? "bg-rose-50/80 text-rose-700"
+                                : calendarDayStatusByDay.get(day) === "planned"
+                                  ? "bg-emerald-50/70 text-emerald-800"
+                                  : "bg-slate-50/90 text-slate-600"
                           }`}
                           style={(() => {
                             const status = calendarDayStatusByDay.get(day);
                             if (status === "completed") {
                               return {
                                 background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
-                                boxShadow: selectedCalendarDay === day ? "0 0 0 2px rgba(15,23,42,0.2) inset" : "none",
                               };
                             }
-                            if (status === "missed") {
-                              return {
-                                border: "1px solid rgba(244,63,94,0.45)",
-                                backgroundColor: "rgba(254,226,226,0.7)",
-                                boxShadow: selectedCalendarDay === day ? "0 0 0 2px rgba(244,63,94,0.25) inset" : "none",
-                              };
-                            }
-                            if (status === "planned") {
-                              return {
-                                border: "1px dashed rgba(20,184,166,0.55)",
-                                backgroundColor: "rgba(236,253,245,0.85)",
-                                boxShadow: selectedCalendarDay === day ? "0 0 0 2px rgba(20,184,166,0.2) inset" : "none",
-                              };
-                            }
-                            return {
-                              border: "1px solid rgba(15,23,42,0.06)",
-                              boxShadow: selectedCalendarDay === day ? "0 0 0 2px rgba(15,23,42,0.12) inset" : "none",
-                            };
+                            return undefined;
                           })()}
                           title={
                             calendarDayStatusByDay.get(day) === "completed"
@@ -4545,10 +4556,10 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                   </div>
                   {selectedCalendarDay ? (
-                    <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <div className="mt-3 rounded-xl bg-slate-50/90 p-3">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                         Økter {String(selectedCalendarDay).padStart(2, "0")}.{String(calendarMonth.getMonth() + 1).padStart(2, "0")}.{calendarMonth.getFullYear()}
-                      </div>
+                      </p>
                       <div className="mt-2 space-y-2">
                         {selectedCalendarPlannedEntries.length > 0 ? (
                           <div className="rounded-lg border bg-emerald-50/60 px-3 py-2 text-xs text-emerald-800" style={{ borderColor: "rgba(20,184,166,0.25)" }}>
@@ -4655,11 +4666,14 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
               </section>
               {!isMemberLimited ? (
-                <MemberBadgesCarousel
-                  collection={memberBadgeCollection}
-                  memberDisplayName={memberShareDisplayName}
-                  shareLogoSrc={motusShareLogoSrc}
-                />
+                <div className="px-0.5 pt-2">
+                  <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-slate-400">Merker</p>
+                  <MemberBadgesCarousel
+                    collection={memberBadgeCollection}
+                    memberDisplayName={memberShareDisplayName}
+                    shareLogoSrc={motusShareLogoSrc}
+                  />
+                </div>
               ) : null}
             </div>
           ) : null}
@@ -5121,7 +5135,7 @@ export function MemberPortal(props: MemberPortalProps) {
 	                      .map((item) => exercises.find((exercise) => exercise.id === item.exerciseId))
 	                      .find(Boolean);
 	                    const programMinutes = Math.max(20, Math.round(estimateProgramMinutes(program) / 5) * 5);
-	                    const programCategory = resolveProgramCategoryLabel(program, exercises);
+	                    const programCategory = trainingProgramCategoryLabel(program, exerciseCategoryById, exercises);
 	                    const programLevel = coverExercise?.level ?? "Nivå tilpasses";
 	                    const completedProgramLogs = completedLogs.filter((log) => log.programTitle.trim().toLowerCase() === program.title.trim().toLowerCase()).length;
 	                    const programProgressPct = Math.min(100, Math.round((completedProgramLogs / Math.max(1, memberProgress.monthGoal.target)) * 100));
