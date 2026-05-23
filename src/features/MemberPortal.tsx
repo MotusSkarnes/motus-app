@@ -139,6 +139,7 @@ import {
 } from "../app/memberProgressGamification";
 import { BadgeImage } from "./BadgeImage";
 import { MemberBadgesCarousel } from "./MemberBadgesCarousel";
+import { CustomWorkoutBuilder } from "./CustomWorkoutBuilder";
 import { MemberHabitSummaryCard } from "./MemberHabitSummaryCard";
 import { MemberTrainingFlowCard } from "./MemberTrainingFlowCard";
 import { MuscleSplitCard } from "./MuscleSplitCard";
@@ -940,9 +941,6 @@ export function MemberPortal(props: MemberPortalProps) {
   const [homeVisibility, setHomeVisibility] = useState<Record<HomeSectionKey, boolean>>({ ...DEFAULT_HOME_VISIBILITY });
   const [pushRegisterBusy, setPushRegisterBusy] = useState(false);
   const [pushRegisterStatus, setPushRegisterStatus] = useState<string | null>(null);
-  const [customWorkoutSearch, setCustomWorkoutSearch] = useState("");
-  const [customWorkoutCategoryFilter, setCustomWorkoutCategoryFilter] = useState<string>("all");
-  const [showAllCustomWorkoutOptions, setShowAllCustomWorkoutOptions] = useState(false);
   const [showAllPersonalRecords, setShowAllPersonalRecords] = useState(false);
   const [prProgressExerciseName, setPrProgressExerciseName] = useState<string | null>(null);
   const [muscleSplitPeriod, setMuscleSplitPeriod] = useState<MuscleSplitPeriod>(28);
@@ -950,11 +948,6 @@ export function MemberPortal(props: MemberPortalProps) {
   const [favoritePersonalRecordNames, setFavoritePersonalRecordNames] = useState<string[]>([]);
   const [favoritePersonalRecordPreferencesHydrated, setFavoritePersonalRecordPreferencesHydrated] = useState(false);
   const [profileMetricsHydrated, setProfileMetricsHydrated] = useState(false);
-  const [customWorkoutLines, setCustomWorkoutLines] = useState<
-    Array<{ key: string; exerciseId: string; sets: string; reps: string; weight: string; holdSeconds?: string }>
-  >([]);
-  const [memberSavedProgramTitle, setMemberSavedProgramTitle] = useState("Mitt treningsprogram");
-  const [customProgramSaveStatus, setCustomProgramSaveStatus] = useState<string | null>(null);
   const [pausedWorkoutsTick, setPausedWorkoutsTick] = useState(0);
   const [profileSaveInfo, setProfileSaveInfo] = useState<string | null>(null);
   const [memberNameDraft, setMemberNameDraft] = useState("");
@@ -1074,7 +1067,6 @@ export function MemberPortal(props: MemberPortalProps) {
   useAutoClearStatus(periodPlanActionStatus, () => setPeriodPlanActionStatus(null), getStatusClearDelayMs(periodPlanActionStatus));
   useAutoClearStatus(intervalTimerStatus, () => setIntervalTimerStatus(null), getStatusClearDelayMs(intervalTimerStatus));
   useAutoClearStatus(libraryActionStatus, () => setLibraryActionStatus(null), getStatusClearDelayMs(libraryActionStatus));
-  useAutoClearStatus(customProgramSaveStatus, () => setCustomProgramSaveStatus(null), getStatusClearDelayMs(customProgramSaveStatus));
   useToastStatus(memberChatSendStatus, { title: "Meldinger", tone: inferStatusTone });
   useToastStatus(pushRegisterStatus, { title: "Varsler", tone: inferStatusTone });
   useToastStatus(groupWorkoutStatus, { title: "Gruppetrening", tone: inferStatusTone });
@@ -1713,118 +1705,6 @@ export function MemberPortal(props: MemberPortalProps) {
     return { suggestedWeightByProgramExerciseId };
   }
 
-  const customWorkoutCategories = useMemo(() => {
-    const categories = Array.from(
-      new Set(
-        exercises
-          .map((exercise) => exercise.category.trim())
-          .filter(Boolean),
-      ),
-    );
-    return categories.sort((a, b) => a.localeCompare(b, "nb"));
-  }, [exercises]);
-
-  const CUSTOM_WORKOUT_BANK_PREVIEW = 40;
-  const customWorkoutBankFiltered = useMemo(() => {
-    const q = customWorkoutSearch.trim().toLowerCase();
-    return exercises.filter((ex) => {
-      if (customWorkoutCategoryFilter !== "all" && ex.category !== customWorkoutCategoryFilter) return false;
-      if (!q) return true;
-      return ex.name.toLowerCase().includes(q) || ex.group.toLowerCase().includes(q) || ex.equipment.toLowerCase().includes(q);
-    });
-  }, [exercises, customWorkoutSearch, customWorkoutCategoryFilter]);
-  const customWorkoutExerciseOptions = useMemo(() => {
-    const list = customWorkoutBankFiltered;
-    const hasSearch = Boolean(customWorkoutSearch.trim());
-    if (showAllCustomWorkoutOptions || hasSearch) return list;
-    return list.slice(0, CUSTOM_WORKOUT_BANK_PREVIEW);
-  }, [customWorkoutBankFiltered, showAllCustomWorkoutOptions, customWorkoutSearch]);
-  const customWorkoutBankOverflow = Math.max(0, customWorkoutBankFiltered.length - CUSTOM_WORKOUT_BANK_PREVIEW);
-
-  useEffect(() => {
-    setShowAllCustomWorkoutOptions(false);
-  }, [customWorkoutSearch, customWorkoutCategoryFilter]);
-
-  function removeCustomWorkoutLine(key: string) {
-    setCustomWorkoutLines((prev) => prev.filter((line) => line.key !== key));
-  }
-
-  function updateCustomWorkoutLine(
-    key: string,
-    patch: Partial<{ exerciseId: string; sets: string; reps: string; weight: string; holdSeconds: string }>,
-  ) {
-    setCustomWorkoutLines((prev) => prev.map((line) => (line.key === key ? { ...line, ...patch } : line)));
-  }
-
-  function buildCustomWorkoutProgramExercises(): ProgramExercise[] | null {
-    if (!activeMemberId.trim()) return null;
-    const built: ProgramExercise[] = [];
-    for (const line of customWorkoutLines) {
-      const ex = exercises.find((e) => e.id === line.exerciseId);
-      if (!ex) continue;
-      const isStretch = isHoldBasedExerciseCategory(ex.category);
-      built.push({
-        id: uid("prog-ex"),
-        exerciseId: ex.id,
-        exerciseName: ex.name,
-        sets: line.sets.trim() || (isStretch ? "2" : "3"),
-        reps: line.reps.trim() || (isStretch ? "1" : "10"),
-        weight: isStretch ? "" : line.weight.trim(),
-        holdSeconds: isStretch ? (line.holdSeconds ?? "").trim() || "30" : "",
-        restSeconds: "60",
-        notes: "",
-      });
-    }
-    return built.length ? built : null;
-  }
-
-  function handleStartCustomWorkout() {
-    const built = buildCustomWorkoutProgramExercises();
-    if (!built) return;
-    const tempProgram: TrainingProgram = {
-      id: "",
-      memberId: activeMemberId,
-      title: "Egen økt",
-      goal: "",
-      notes: "",
-      createdAt: "",
-      exercises: built,
-    };
-    startCustomWorkout({ memberId: activeMemberId, exercises: built }, buildStartWorkoutOptions(tempProgram));
-    setCustomWorkoutLines([]);
-    setCustomWorkoutSearch("");
-  }
-
-  function handleSaveMemberTrainingProgram() {
-    const built = buildCustomWorkoutProgramExercises();
-    if (!built) return;
-    const title = memberSavedProgramTitle.trim() || "Mitt treningsprogram";
-    const authorFull = viewedMember?.name?.trim() || currentUserEmail.trim() || "Medlem";
-    const optimisticProgramId = uid("program");
-    saveProgramForMember({
-      id: optimisticProgramId,
-      title,
-      goal: "",
-      notes: "",
-      memberId: activeMemberId,
-      exercises: built.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
-      programCreatedBy: "member",
-      programCreatedByName: authorFull,
-      onPersisted: (result) => {
-        if (!result.ok) {
-          deleteProgramById(optimisticProgramId);
-          setCustomProgramSaveStatus(`Kunne ikke lagre i skyen: ${result.message?.trim() || "Prøv igjen."}`);
-          return;
-        }
-        setCustomProgramSaveStatus(`«${title}» er lagret og synkronisert.`);
-        void refreshRemoteHydration?.();
-      },
-    });
-    setCustomWorkoutLines([]);
-    setCustomWorkoutSearch("");
-    setCustomProgramSaveStatus(`Lagrer «${title}» i skyen…`);
-  }
-
   const syncProfileToPtBackend = useCallback(async (payload: {
     email: string;
     emails: string[];
@@ -1972,28 +1852,6 @@ export function MemberPortal(props: MemberPortalProps) {
       }
     }
     return "";
-  }
-  function addCustomWorkoutLine(exerciseId: string) {
-    const id = exerciseId.trim();
-    if (!id) return;
-    setCustomWorkoutLines((prev) => {
-      if (prev.some((line) => line.exerciseId === id)) return prev;
-      const ex = exercises.find((e) => e.id === id);
-      const isStretch = Boolean(ex?.category && isHoldBasedExerciseCategory(ex.category));
-      const weightHint = ex && !isStretch ? findSuggestedWeightForExercise(ex.name) : "";
-      const secHint = ex && isStretch ? findSuggestedWeightForExercise(ex.name) : "";
-      return [
-        ...prev,
-        {
-          key: uid("row"),
-          exerciseId: id,
-          sets: isStretch ? "2" : "3",
-          reps: isStretch ? "1" : "10",
-          weight: isStretch ? "" : weightHint,
-          holdSeconds: isStretch ? (secHint || "30") : "",
-        },
-      ];
-    });
   }
   const completedLogDates = useMemo(
     () => completedLogs.map((log) => parseStoredLogDate(log.date)).filter((date): date is Date => Boolean(date)),
@@ -5793,198 +5651,22 @@ export function MemberPortal(props: MemberPortalProps) {
               ) : null}
               {!isMemberLimited ? (
               trainingSection === "custom" ? (
-              <Card className="p-5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-xl p-2.5 text-white shrink-0" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
-                      <Sparkles className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Lag egen økt</div>
-                      <h2 className="mt-1 text-xl font-semibold tracking-tight">Bygg og start selv</h2>
-                      <p className="mt-1 text-sm text-slate-600">Velg øvelser, start med en gang eller lagre som eget program.</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-5 space-y-5">
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Din økt</div>
-                    {customWorkoutLines.length === 0 ? (
-                      <EmptyState
-                        icon="🏋️"
-                        title="Ingen øvelser ennå"
-                        description="Finn øvelser i listen under og trykk «Legg til»."
-                        className="mt-2"
-                      />
-                    ) : (
-                      <div className="mt-2 space-y-2">
-                        {customWorkoutLines.map((line) => {
-                          const ex = exercises.find((e) => e.id === line.exerciseId);
-                          const isStretch = Boolean(ex?.category && isHoldBasedExerciseCategory(ex.category));
-                          return (
-                            <div key={line.key} className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div className="min-w-0 font-medium text-sm text-slate-800">{ex?.name ?? "Ukjent øvelse"}</div>
-                                <DangerButton type="button" onClick={() => removeCustomWorkoutLine(line.key)} className="shrink-0 px-2 py-1 text-xs">
-                                  Fjern
-                                </DangerButton>
-                              </div>
-                              <div className={`mt-3 grid gap-2 ${isStretch ? "grid-cols-2" : "grid-cols-3"}`}>
-                                <label className="space-y-1">
-                                  <span className="text-[11px] font-semibold text-slate-600">Sett</span>
-                                  <TextInput value={line.sets} onChange={(e) => updateCustomWorkoutLine(line.key, { sets: e.target.value })} placeholder="3" />
-                                </label>
-                                {!isStretch ? (
-                                  <label className="space-y-1">
-                                    <span className="text-[11px] font-semibold text-slate-600">Reps</span>
-                                    <TextInput value={line.reps} onChange={(e) => updateCustomWorkoutLine(line.key, { reps: e.target.value })} placeholder="10" />
-                                  </label>
-                                ) : null}
-                                <label className="space-y-1">
-                                  <span className="text-[11px] font-semibold text-slate-600">{isStretch ? "Sek. (hold)" : "kg"}</span>
-                                  <TextInput
-                                    value={isStretch ? (line.holdSeconds ?? "") : line.weight}
-                                    onChange={(e) =>
-                                      updateCustomWorkoutLine(line.key, isStretch ? { holdSeconds: e.target.value } : { weight: e.target.value })
-                                    }
-                                    placeholder={isStretch ? "30" : "–"}
-                                  />
-                                </label>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    <label className="mt-3 block max-w-md space-y-1">
-                      <span className="text-[11px] font-semibold text-slate-600">Programnavn (ved lagring som program)</span>
-                      <TextInput
-                        value={memberSavedProgramTitle}
-                        onChange={(e) => setMemberSavedProgramTitle(e.target.value)}
-                        placeholder="Mitt treningsprogram"
-                      />
-                    </label>
-                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                    <GradientButton
-                      onClick={handleStartCustomWorkout}
-                      disabled={!customWorkoutLines.length || !activeMemberId.trim()}
-                      className="w-full sm:w-auto"
-                    >
-                      {customWorkoutLines.length
-                        ? `Start egen økt (${customWorkoutLines.length} øvelse${customWorkoutLines.length === 1 ? "" : "r"})`
-                        : "Legg til øvelser for å starte"}
-                    </GradientButton>
-                    <OutlineButton
-                      type="button"
-                      onClick={handleSaveMemberTrainingProgram}
-                      disabled={!customWorkoutLines.length || !activeMemberId.trim()}
-                      className="w-full sm:w-auto"
-                    >
-                      Lagre som treningsprogram
-                    </OutlineButton>
-                    </div>
-                    {customProgramSaveStatus ? (
-                      <StatusMessage
-                        message={customProgramSaveStatus}
-                        tone="success"
-                        className="mt-2 !rounded-xl !px-3 !py-2 !text-xs"
-                      />
-                    ) : null}
-                  </div>
-
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Øvelsesbank</div>
-                    <p className="mt-1 text-sm text-slate-600">Søk eller filtrer, scroll i listen, trykk «Legg til».</p>
-                    <div className="relative mt-3">
-                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
-                      <TextInput
-                        value={customWorkoutSearch}
-                        onChange={(e) => setCustomWorkoutSearch(e.target.value)}
-                        placeholder="Søk etter øvelse…"
-                        className="pl-10"
-                      />
-                    </div>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,220px)_1fr] sm:items-end">
-                      <label className="space-y-1">
-                        <span className="text-[11px] font-semibold text-slate-600">Kategori</span>
-                        <select
-                          value={customWorkoutCategoryFilter}
-                          onChange={(event) => setCustomWorkoutCategoryFilter(event.target.value)}
-                          className="h-10 w-full rounded-xl border bg-white px-3 text-sm text-slate-700"
-                          style={{ borderColor: "rgba(15,23,42,0.12)" }}
-                        >
-                          <option value="all">Alle</option>
-                          {customWorkoutCategories.map((category) => (
-                            <option key={category} value={category}>
-                              {category}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <div className="text-xs text-slate-500 sm:pb-2 sm:text-right">
-                        {customWorkoutBankFiltered.length === 0 && exercises.length > 0 ? (
-                          <span>Ingen treff – prøv annet søk eller kategori.</span>
-                        ) : !customWorkoutSearch.trim() && !showAllCustomWorkoutOptions && customWorkoutBankOverflow > 0 ? (
-                          <span>
-                            Viser {customWorkoutExerciseOptions.length} av {customWorkoutBankFiltered.length} øvelser
-                          </span>
-                        ) : (
-                          <span>{customWorkoutBankFiltered.length} øvelse{customWorkoutBankFiltered.length === 1 ? "" : "r"}</span>
-                        )}
-                      </div>
-                    </div>
-                    {exercises.length === 0 ? (
-                      <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
-                        Øvelsesbanken er tom. Oppdater siden eller kontakt treneren din.
-                      </div>
-                    ) : (
-                      <div
-                        className="mt-3 max-h-[min(50vh,320px)] overflow-y-auto rounded-xl border bg-white"
-                        style={{ borderColor: "rgba(15,23,42,0.1)" }}
-                      >
-                        <ul className="divide-y" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
-                          {customWorkoutExerciseOptions.map((ex) => {
-                            const already = customWorkoutLines.some((line) => line.exerciseId === ex.id);
-                            return (
-                              <li key={ex.id} className="flex items-center gap-2 px-3 py-2.5 sm:px-3.5">
-                                <div className="min-w-0 flex-1">
-                                  <div className="text-sm font-medium text-slate-800">{ex.name}</div>
-                                  <div className="text-[11px] text-slate-500">
-                                    {[ex.category, ex.group].filter(Boolean).join(" · ")}
-                                  </div>
-                                </div>
-                                <button
-                                  type="button"
-                                  disabled={already}
-                                  onClick={() => addCustomWorkoutLine(ex.id)}
-                                  className={`shrink-0 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
-                                    already
-                                      ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-                                      : "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
-                                  }`}
-                                >
-                                  {already ? "Lagt til" : (
-                                    <span className="inline-flex items-center gap-1">
-                                      <Plus className="h-3.5 w-3.5" /> Legg til
-                                    </span>
-                                  )}
-                                </button>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                    )}
-                    {!customWorkoutSearch.trim() && !showAllCustomWorkoutOptions && customWorkoutBankOverflow > 0 ? (
-                      <OutlineButton type="button" onClick={() => setShowAllCustomWorkoutOptions(true)} className="mt-3 w-full sm:w-auto">
-                        Vis alle øvelser ({customWorkoutBankFiltered.length})
-                      </OutlineButton>
-                    ) : null}
-                  </div>
-                </div>
-              </Card>
+              <CustomWorkoutBuilder
+                exercises={exercises}
+                completedLogs={completedLogs}
+                activeMemberId={activeMemberId}
+                memberDisplayName={viewedMember?.name?.trim() || editableMember?.name?.trim() || ""}
+                currentUserEmail={currentUserEmail}
+                nowDate={nowDate}
+                startCustomWorkout={startCustomWorkout}
+                saveProgramForMember={saveProgramForMember}
+                deleteProgramById={(programId) => deleteProgramById(programId)}
+                refreshRemoteHydration={refreshRemoteHydration}
+                findSuggestedWeightForExercise={findSuggestedWeightForExercise}
+              />
               ) : null
               ) : null}
+
 
               {trainingSection === "period" ? (
               periodPlans.length > 0 ? (
