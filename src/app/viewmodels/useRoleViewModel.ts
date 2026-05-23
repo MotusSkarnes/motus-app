@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState, type ComponentProps } from "react";
 import { enrichMemberWithBestProfile } from "../memberOnboarding";
 import { resolveMemberTrainerDisplayName } from "../trainerProfile";
 import {
-  mergeMemberNotificationPreferencesIntoPersonalGoals,
+  patchMemberNotificationPreferencesInPersonalGoals,
   type MemberNotificationPreferences,
 } from "../notificationPreferences";
 import { AppHeader, MemberLayout, TrainerLayout } from "../../features";
@@ -47,7 +47,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     (preferences: MemberNotificationPreferences) => {
       const member = memberForNotificationSync;
       if (!member) return;
-      const encoded = mergeMemberNotificationPreferencesIntoPersonalGoals(member.personalGoals, preferences);
+      const encoded = patchMemberNotificationPreferencesInPersonalGoals(member.personalGoals, preferences);
       state.updateMember({
         memberId: member.id,
         changes: { personalGoals: encoded },
