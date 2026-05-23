@@ -7,6 +7,7 @@ import {
   enrichMemberWithBestProfile,
   findMembersByEmail,
   isOnboardingCompleted,
+  onboardingAnswersAreSubstantive,
   pickCanonicalMemberRowForProfile,
   markOnboardingGateSeen,
   markMemberWelcomeSeen,
@@ -14,6 +15,7 @@ import {
   mergeOnboardingIntoPersonalGoals,
   onboardingDraftFromStored,
   primaryGoalFromOnboarding,
+  resolveMemberOnboarding,
   shouldShowMemberOnboarding,
   hasSeenMemberWelcome,
   type MemberOnboardingAnswers,
@@ -175,8 +177,11 @@ export function MemberLayout({
   const currentUserRole = appState.currentUser?.role;
   const onboardingIdentityKey = activeMember ? memberOnboardingIdentityKey(activeMember) : "";
   const onboardingCompleted = useMemo(
-    () => isOnboardingCompleted(activeMember?.personalGoals),
-    [activeMember?.personalGoals],
+    () => {
+      if (isOnboardingCompleted(activeMember?.personalGoals)) return true;
+      return onboardingAnswersAreSubstantive(resolveMemberOnboarding(activeMember, appState.members));
+    },
+    [activeMember, activeMember?.personalGoals, appState.members],
   );
   const needsOnboardingPrompt = useMemo(
     () => shouldShowMemberOnboarding(activeMember, currentUserRole, appState.members),
@@ -254,6 +259,9 @@ export function MemberLayout({
           applyInviteStampToMembersByEmail(prev, loginEmail, linkResult.invitedAt ?? new Date().toISOString()),
         );
       }
+    }
+    if (onboardingIdentityKey) {
+      markOnboardingGateSeen(onboardingIdentityKey);
     }
 
     patchState((prev) => {

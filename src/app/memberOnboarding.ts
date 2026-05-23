@@ -287,8 +287,7 @@ export function getOnboardingFromPersonalGoals(personalGoals: string | undefined
 }
 
 /** Fullført med reelle svar — ikke bare tom «completedAt»-markør i profilblob. */
-export function hasSubstantiveOnboardingAnswers(personalGoals: string | undefined): boolean {
-  const onboarding = getOnboardingFromPersonalGoals(personalGoals);
+export function onboardingAnswersAreSubstantive(onboarding: MemberOnboardingAnswers | null | undefined): boolean {
   if (!onboarding?.completedAt) return false;
   if (onboarding.skipped) return true;
   return (
@@ -299,6 +298,10 @@ export function hasSubstantiveOnboardingAnswers(personalGoals: string | undefine
     Boolean(onboarding.energyInTraining.trim()) ||
     Boolean(onboarding.goalsNotes.trim())
   );
+}
+
+export function hasSubstantiveOnboardingAnswers(personalGoals: string | undefined): boolean {
+  return onboardingAnswersAreSubstantive(getOnboardingFromPersonalGoals(personalGoals));
 }
 
 export function isOnboardingCompleted(personalGoals: string | undefined): boolean {
@@ -514,6 +517,5 @@ export function shouldShowMemberOnboarding(
   allMembers?: Member[],
 ): boolean {
   if (!member || role !== "member") return false;
-  const profile = allMembers?.length ? enrichMemberWithBestProfile(member, allMembers) : member;
-  return !isOnboardingCompleted(profile.personalGoals);
+  return !onboardingAnswersAreSubstantive(resolveMemberOnboarding(member, allMembers));
 }

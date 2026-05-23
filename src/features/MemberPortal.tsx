@@ -4420,7 +4420,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 title="Du holder flyten"
                 description="Dagens plan, neste økt og små seire samlet på ett sted."
               />
-              {onOpenOnboarding && (showOnboardingHomePrompt || !onboardingSubstantivelyComplete) ? (
+              {onOpenOnboarding && showOnboardingHomePrompt ? (
                 <Card
                   className="border p-4 sm:p-5"
                   style={{ borderColor: "rgba(20,184,166,0.35)", background: "linear-gradient(135deg, rgba(20,184,166,0.08) 0%, rgba(236,72,153,0.06) 100%)" }}

@@ -7,6 +7,7 @@ import {
   isOnboardingCompleted,
   markMemberWelcomeSeen,
   mergeOnboardingIntoPersonalGoals,
+  onboardingAnswersAreSubstantive,
   primaryGoalFromOnboarding,
   findMembersByEmail,
   memberOnboardingIdentityKey,
@@ -189,6 +190,7 @@ describe("memberOnboarding", () => {
     const memberRow = { ...base, id: "member-row", personalGoals: onboardingBlob };
     const resolved = resolveMemberOnboarding(base, [base, memberRow]);
     expect(resolved?.trainingGoals).toEqual(["Utholdenhet"]);
+    expect(onboardingAnswersAreSubstantive(resolved)).toBe(true);
   });
 
   it("kobler ikke oppstartsskjema mellom ulike e-poster", () => {
