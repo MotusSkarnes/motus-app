@@ -6643,13 +6643,13 @@ function pickFirstName(value: unknown): string {
                       <button
                         type="button"
                         onClick={() => setExpandedExerciseId((prev) => (prev === exercise.id ? null : exercise.id))}
-                        className="min-w-0 flex flex-1 items-start gap-2 text-left"
+                        className="min-w-0 flex flex-1 items-start gap-3 text-left"
                       >
                         <img
                           src={getExercisePreviewSrc(exercise)}
                           alt={exercise.name}
-                          className="mt-0.5 h-10 w-10 shrink-0 rounded-lg border object-cover bg-white"
-                          style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                          className="mt-0.5 h-16 w-16 shrink-0 rounded-xl border object-cover bg-white shadow-sm"
+                          style={{ borderColor: `${categoryAccent}55` }}
                           loading="lazy"
                           decoding="async"
                           onError={(event) => {
@@ -6659,10 +6659,30 @@ function pickFirstName(value: unknown): string {
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <div className="truncate text-sm font-semibold leading-tight text-slate-900">{exercise.name}</div>
+                            {isRecommendedExercise(popularity, isFavorite) ? (
+                              <span
+                                className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                                style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                              >
+                                Anbefalt
+                              </span>
+                            ) : null}
+                            {isPopularExercise(popularity) ? (
+                              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-900">
+                                Ofte brukt
+                              </span>
+                            ) : null}
                           </div>
                           <div className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
                             <span className="rounded-full border bg-white px-2 py-0.5 text-slate-600" style={{ borderColor: "rgba(15,23,42,0.1)" }}>{exercise.category}</span>
-                            <span className="rounded-full border bg-white px-2 py-0.5 text-slate-600" style={{ borderColor: "rgba(15,23,42,0.1)" }}>{exercise.group}</span>
+                            {splitMuscleGroupLabel(exercise.group).map((part) => (
+                              <span
+                                key={part}
+                                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${muscleGroupChipClass(part)}`}
+                              >
+                                {part}
+                              </span>
+                            ))}
                             <span className="rounded-full border bg-white px-2 py-0.5 text-slate-600" style={{ borderColor: "rgba(15,23,42,0.1)" }}>{exercise.equipment || "Uten utstyr"}</span>
                             <span className="rounded-full border bg-white px-2 py-0.5 text-slate-600" style={{ borderColor: "rgba(15,23,42,0.1)" }}>{exercise.level}</span>
                           </div>

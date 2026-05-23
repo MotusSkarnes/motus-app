@@ -137,6 +137,7 @@ import {
   buildCelebrationCopy,
   computeMemberProgressState,
 } from "../app/memberProgressGamification";
+import { computeMemberProgressScores } from "../app/memberMomentumScores";
 import { BadgeImage } from "./BadgeImage";
 import { MemberBadgesCarousel } from "./MemberBadgesCarousel";
 import { CustomWorkoutBuilder } from "./CustomWorkoutBuilder";
@@ -146,6 +147,7 @@ import {
   MemberHomeSecondaryLink,
   MemberHomeStartWorkoutButton,
 } from "./MemberHomeOverview";
+import { MemberProgressScoresCard } from "./MemberProgressScoresCard";
 import { MemberTrainingFlowCard } from "./MemberTrainingFlowCard";
 import { MuscleSplitCard } from "./MuscleSplitCard";
 import { IntervalWorkoutSessionModal } from "./IntervalWorkoutSessionModal";
@@ -1875,6 +1877,56 @@ export function MemberPortal(props: MemberPortalProps) {
       }),
     [completedLogDates, nowDate, profileSessionsPerWeekTarget],
   );
+  const homeWeeklySummary = useMemo(() => {
+    const today = getStartOfDay(new Date(nowTimestamp));
+    const mondayOffset = (today.getDay() + 6) % 7;
+    const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset);
+    const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7);
+    const completedThisWeek = completedLogDates.filter((date) => {
+      const day = getStartOfDay(date);
+      return day.getTime() >= weekStart.getTime() && day.getTime() < weekEnd.getTime();
+    }).length;
+    const plannedThisWeek = activeWeeklyPlanEffectiveDays
+      ? Object.values(activeWeeklyPlanEffectiveDays).filter((entry) => entry.trim().length > 0).length
+      : 0;
+    const completionRate = plannedThisWeek > 0 ? Math.min(100, Math.round((completedThisWeek / plannedThisWeek) * 100)) : 0;
+    return { completedThisWeek, plannedThisWeek, completionRate };
+  }, [nowTimestamp, completedLogDates, activeWeeklyPlanEffectiveDays]);
+  const recentWorkoutReflections = useMemo(
+    () =>
+      completedLogs
+        .filter((log) => log.reflection)
+        .slice(0, 8)
+        .map((log) => log.reflection!),
+    [completedLogs],
+  );
+  const memberProgressScores = useMemo(
+    () =>
+      computeMemberProgressScores({
+        completedLogDates,
+        completedSessions: completedLogs.length,
+        nowDate,
+        streakWeeks: memberProgress.streakWeeks,
+        achievedLevel: memberProgress.achievedLevel,
+        recentStreakWeeks: memberProgress.recentStreakWeeks,
+        sessionsPerWeekTarget: Number(profileSessionsPerWeekTarget) || undefined,
+        plannedThisWeek: homeWeeklySummary.plannedThisWeek,
+        completedThisWeek: homeWeeklySummary.completedThisWeek,
+        recentReflections: recentWorkoutReflections,
+      }),
+    [
+      completedLogDates,
+      completedLogs.length,
+      nowDate,
+      memberProgress.streakWeeks,
+      memberProgress.achievedLevel,
+      memberProgress.recentStreakWeeks,
+      profileSessionsPerWeekTarget,
+      homeWeeklySummary.plannedThisWeek,
+      homeWeeklySummary.completedThisWeek,
+      recentWorkoutReflections,
+    ],
+  );
   const achievementMaxLevel = ACHIEVEMENT_MAX_LEVEL;
   const achievedLevel = memberProgress.achievedLevel;
   const achievementLevel = memberProgress.workingLevel;
@@ -3551,26 +3603,7 @@ export function MemberPortal(props: MemberPortalProps) {
       action: "progress" as const,
     };
   }, [memberAssignedPrograms.length, memberProgramsInActiveLibrary.length, nextProgram]);
-  const homeWeeklySummary = useMemo(() => {
-    const today = getStartOfDay(new Date(nowTimestamp));
-    const mondayOffset = (today.getDay() + 6) % 7;
-    const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset);
-    const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7);
-    const completedThisWeek = completedLogDates.filter((date) => {
-      const day = getStartOfDay(date);
-      return day.getTime() >= weekStart.getTime() && day.getTime() < weekEnd.getTime();
-    }).length;
-    const plannedThisWeek = activeWeeklyPlanEffectiveDays
-      ? Object.values(activeWeeklyPlanEffectiveDays).filter((entry) => entry.trim().length > 0).length
-      : 0;
-    const completionRate = plannedThisWeek > 0 ? Math.min(100, Math.round((completedThisWeek / plannedThisWeek) * 100)) : 0;
-    return { completedThisWeek, plannedThisWeek, completionRate };
-  }, [nowTimestamp, completedLogDates, activeWeeklyPlanEffectiveDays]);
-  const homeMonthGoalPct = Math.min(
-    100,
-    Math.round((Math.min(memberProgress.monthGoal.current, memberProgress.monthGoal.target) / memberProgress.monthGoal.target) * 100),
-  );
-  const homeMomentumPct = homeWeeklySummary.plannedThisWeek > 0 ? homeWeeklySummary.completionRate : homeMonthGoalPct;
+  const homeMomentumPct = memberProgressScores.momentum.pct;
   const homeRemainingMonthSessions = Math.max(0, memberProgress.monthGoal.target - memberProgress.monthGoal.current);
   const homePrimaryFocus = todayPlanEntry || nextProgram?.title || "Bygg en økt som passer dagen";
   const homeTopStatusText =
@@ -6036,10 +6069,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
           {!isMemberLimited && memberTab === "progress" ? (
             <div className="space-y-4">
-                            <MemberTabHero
-                title="Momentum"
-                description="Se hva som bygger seg opp: streak, mål, rekorder og styrke over tid."
-              />
+              <MemberProgressScoresCard scores={memberProgressScores} />
               <MemberTrainingFlowCard
                 achievementLevel={achievementLevel}
                 achievementMaxLevel={achievementMaxLevel}

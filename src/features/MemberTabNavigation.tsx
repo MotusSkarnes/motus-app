@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
+import { motusHaptic } from "../app/haptics";
 import type { MemberTab } from "../app/types";
 import { Card } from "../app/ui";
 
@@ -79,7 +80,10 @@ export function MemberMobileTabNav({ memberTab, setMemberTab, isMemberLimited }:
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setMemberTab(tab.id)}
+                onClick={() => {
+                  if (memberTab !== tab.id) motusHaptic("light");
+                  setMemberTab(tab.id);
+                }}
                 className={`relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ease-out ${
                   isActive ? "scale-[1.04] text-slate-950" : "text-slate-500 hover:bg-white/55 hover:text-slate-800"
                 }`}

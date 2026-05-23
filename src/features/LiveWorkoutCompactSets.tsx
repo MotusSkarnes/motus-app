@@ -1,4 +1,5 @@
 import { Check, Minus, Plus } from "lucide-react";
+import { motusHaptic } from "../app/haptics";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { GradientButton, TextInput } from "../app/ui";
 import type { Exercise, WorkoutModeState } from "../app/types";
@@ -96,6 +97,7 @@ export function WorkoutCompactSetTable({
 
   function tryCompleteSet(row: WorkoutSetRow) {
     if (!row.completed && rowIsLoggable(row)) {
+      motusHaptic("success");
       onUpdate(row.exerciseId, "completed", true);
     }
   }
@@ -283,7 +285,7 @@ export function WorkoutCompactSetTable({
               key={row.exerciseId}
               className={`grid items-center gap-1.5 border-b px-2 py-1.5 last:border-b-0 sm:gap-2 sm:px-3 sm:py-2 ${
                 isActive ? "bg-pink-50/40 ring-1 ring-inset ring-pink-200" : ""
-              } ${isFuture ? "opacity-55" : ""}`}
+              } ${isFuture ? "opacity-55" : ""} ${isDone ? "motus-set-complete" : ""}`}
               style={{ borderColor: "rgba(15,23,42,0.06)", gridTemplateColumns: gridCols }}
             >
               {showExerciseColumn ? (
@@ -353,7 +355,11 @@ export function WorkoutCompactSetTable({
               <SetCheckToggle
                 size="sm"
                 completed={row.completed}
-                onToggle={() => onUpdate(row.exerciseId, "completed", !row.completed)}
+                onToggle={() => {
+                  const nextCompleted = !row.completed;
+                  if (nextCompleted) motusHaptic("success");
+                  onUpdate(row.exerciseId, "completed", nextCompleted);
+                }}
               />
             </div>
           );

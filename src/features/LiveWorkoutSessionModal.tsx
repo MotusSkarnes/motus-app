@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, ChevronRight, Plus, Repeat2, SkipForward, TimerReset, X } from "lucide-react";
-import { remainingSecondsUntilDeadline } from "../app/intervalTimerDeadline";
+import { motusHaptic } from "../app/haptics";
 import { useScreenWakeLock } from "../app/useScreenWakeLock";
 import { playWorkoutRestTone, primeWorkoutRestAudio } from "../app/workoutRestAudio";
 import { WorkoutCompactSetTable } from "./LiveWorkoutCompactSets";
@@ -113,6 +113,11 @@ export function LiveWorkoutSessionModal({
   const lastRestBeepSecondRef = useRef<number | null>(null);
 
   useScreenWakeLock(Boolean(workoutMode));
+
+  useEffect(() => {
+    if (!workoutMode) return;
+    motusHaptic("medium");
+  }, [workoutMode?.programId]);
 
   useEffect(() => {
     if (!workoutMode || !restCountdownEnabled) return;
@@ -440,6 +445,7 @@ export function LiveWorkoutSessionModal({
   function handleGoToNextWorkoutExercise() {
     setRestCountdown(null);
     onBeforeNextExercise?.();
+    motusHaptic("selection");
     setWorkoutExerciseIndex((prev) => prev + 1);
   }
 
@@ -518,8 +524,8 @@ export function LiveWorkoutSessionModal({
   const headerTitle = variant === "trainer" ? "Live PT-økt" : "Øktmodus";
 
   return (
-    <div className="fixed inset-0 z-[10010] overscroll-contain bg-slate-950">
-      <div className="mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden bg-slate-950 text-white shadow-2xl sm:rounded-3xl">
+    <div className="motus-workout-focus fixed inset-0 z-[10010] overscroll-contain bg-black">
+      <div className="motus-workout-focus-panel mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden bg-slate-950 text-white shadow-2xl sm:rounded-3xl">
         <div
           className="relative overflow-hidden border-b border-white/10 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-5 sm:pb-4 sm:pt-5"
           style={{
