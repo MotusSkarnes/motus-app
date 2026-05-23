@@ -4417,8 +4417,8 @@ export function MemberPortal(props: MemberPortalProps) {
           {memberTab === "overview" ? (
             <div className="space-y-4">
               <MemberTabHero
-                title="Hjem"
-                description="Kalender, planlagte økter og snarveier — et raskt overblikk over treningsuken din."
+                title="Du holder flyten"
+                description="Dagens plan, neste økt og små seire samlet på ett sted."
               />
               {onOpenOnboarding && (showOnboardingHomePrompt || !onboardingSubstantivelyComplete) ? (
                 <Card
@@ -4914,11 +4914,11 @@ export function MemberPortal(props: MemberPortalProps) {
             <>
               <div className="flex flex-col gap-4">
               <MemberTabHero
-                title="Trening"
+                title="Klar for dagens økt"
                 description={
                   memberHasVisiblePeriodPlan
-                    ? "Mine programmer, periodeplan og egen økt — alt samlet på ett sted."
-                    : "Mine programmer og egen økt — alt samlet på ett sted."
+                    ? "Programmer, periodeplan og egen økt når du vil trene smart."
+                    : "Programmer og egen økt når du vil trene smart."
                 }
               />
               <Card className="p-3 sm:p-4">
@@ -6242,8 +6242,8 @@ export function MemberPortal(props: MemberPortalProps) {
           {!isMemberLimited && memberTab === "progress" ? (
             <div className="space-y-4">
                             <MemberTabHero
-                title="Fremgang"
-                description="Streak, treningsmål, personlige rekorder og muskelfordeling."
+                title="Momentum"
+                description="Se hva som bygger seg opp: streak, mål, rekorder og styrke over tid."
               />
               <MemberTrainingFlowCard
                 achievementLevel={achievementLevel}
@@ -6453,8 +6453,8 @@ export function MemberPortal(props: MemberPortalProps) {
           {!isMemberLimited && memberTab === "messages" ? (
             <div className="space-y-4">
               <MemberTabHero
-                title="Meldinger"
-                description="Skriv med personlig trener. Samtalen lagres her slik at dere begge ser oppdateringene."
+                title="Dialog med PT"
+                description="Hold kontakten tett, få svar raskt og ta vare på hele oppfølgingen."
               />
             <Card className="p-5">
               <div className="space-y-4">
@@ -6512,8 +6512,8 @@ export function MemberPortal(props: MemberPortalProps) {
               <div className="flex items-start gap-3">
                 <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Target className="h-5 w-5" /></div>
                 <div>
-                  <h2 className="text-xl font-semibold tracking-tight">Medlemsprofil</h2>
-                  <p className="text-sm text-slate-500">Se og rediger kundeinformasjon</p>
+                  <h2 className="text-2xl font-black tracking-tight text-slate-950">Min profil</h2>
+                  <p className="text-sm font-medium text-slate-600">Mål, vaner og innstillinger samlet for deg.</p>
                 </div>
               </div>
               {editableMember ? (

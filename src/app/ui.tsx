@@ -72,9 +72,9 @@ export function MemberTabHero({
       <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-white/55 blur-3xl" aria-hidden />
       <div className="pointer-events-none absolute -bottom-24 left-8 h-44 w-44 rounded-full blur-3xl" style={{ backgroundColor: "rgba(48,227,190,0.20)" }} aria-hidden />
       <div className="relative h-1.5" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
-      <div className="relative p-4 sm:p-5">
-        <h2 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">{title}</h2>
-        {description ? <p className="mt-1.5 max-w-2xl text-sm font-medium leading-relaxed text-slate-700">{description}</p> : null}
+      <div className="relative p-4 sm:p-6">
+        <h2 className="max-w-3xl text-3xl font-black leading-[1.02] tracking-tight text-slate-950 sm:text-4xl">{title}</h2>
+        {description ? <p className="mt-2 max-w-2xl text-[15px] font-semibold leading-relaxed text-slate-700">{description}</p> : null}
         {children ? <div className="mt-4">{children}</div> : null}
       </div>
     </div>

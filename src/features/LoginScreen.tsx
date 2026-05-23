@@ -84,8 +84,8 @@ export function LoginScreen(props: LoginScreenProps) {
             </div>
           </div>
           <div>
-            <h1 className="max-w-[12ch] text-[2rem] leading-tight font-bold tracking-tight text-slate-900 sm:max-w-none sm:text-4xl">Velkommen til Motus Coach</h1>
-            <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-600 sm:max-w-xl sm:text-base">Logg inn for å styre kunder, programmer, periodeplaner, fremgang og oppfølging i en samlet arbeidsflate.</p>
+            <h1 className="max-w-[12ch] text-[2.35rem] font-black leading-[1.02] tracking-tight text-slate-950 sm:max-w-none sm:text-5xl">Velkommen til Motus Coach</h1>
+            <p className="mt-3 max-w-md text-base font-semibold leading-relaxed text-slate-700 sm:max-w-xl">Logg inn for å styre kunder, programmer, periodeplaner, fremgang og oppfølging i en samlet arbeidsflate.</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
             <StatCard label="Kunder" value="Full kontroll" hint="Profiler, meldinger, planer" />
@@ -106,10 +106,10 @@ export function LoginScreen(props: LoginScreenProps) {
       <Card className="order-1 p-5 sm:p-8 xl:order-2">
         <div className="space-y-3 sm:space-y-4">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">
+            <h2 className="text-2xl font-black tracking-tight text-slate-950">
               {isRecoveryMode ? (recoveryInviteFlow ? "Aktiver kontoen din" : "Sett nytt passord") : "Innlogging"}
             </h2>
-            <p className="text-sm text-slate-500">
+            <p className="mt-1 text-sm font-medium leading-relaxed text-slate-600">
               {isRecoveryMode
                 ? recoveryInviteFlow
                   ? "Trykk «Aktiver konto» i e-posten og opprett passord her. Du kommer ikke inn i appen før passordet er lagret."
