@@ -134,7 +134,7 @@ export function WorkoutCompactSetTable({
 
     if (cardio) {
       return (
-        <div className="mt-3 space-y-2 rounded-xl border border-pink-200 bg-white p-3">
+        <div className="mt-2 space-y-1.5 rounded-lg border border-pink-200 bg-white p-2 sm:mt-3 sm:space-y-2 sm:rounded-xl sm:p-3">
           <div className={`grid gap-2 ${treadmill ? "grid-cols-3" : "grid-cols-1"}`}>
             <TextInput
               value={row.performedDurationMinutes ?? ""}
@@ -183,7 +183,7 @@ export function WorkoutCompactSetTable({
 
     const step = stretch ? 5 : 2.5;
     return (
-      <div className="mt-3 space-y-2 rounded-xl border border-pink-200 bg-white p-3">
+      <div className="mt-2 space-y-1.5 rounded-lg border border-pink-200 bg-white p-2 sm:mt-3 sm:space-y-2 sm:rounded-xl sm:p-3">
         <div className="flex items-center justify-center gap-3">
           <button
             type="button"
@@ -239,7 +239,7 @@ export function WorkoutCompactSetTable({
       {exerciseLabel ? <div className="mb-2 text-xs font-semibold text-slate-700">{exerciseLabel}</div> : null}
       <div className="overflow-hidden rounded-xl border bg-white" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
         <div
-          className="grid items-center gap-2 border-b px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400"
+          className="grid items-center gap-1.5 border-b px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 sm:gap-2 sm:px-3 sm:py-2"
           style={{ borderColor: "rgba(15,23,42,0.06)", gridTemplateColumns: gridCols }}
         >
           {showExerciseColumn ? <span>Øvelse</span> : null}
@@ -281,7 +281,7 @@ export function WorkoutCompactSetTable({
           return (
             <div
               key={row.exerciseId}
-              className={`grid items-center gap-2 border-b px-3 py-2 last:border-b-0 ${
+              className={`grid items-center gap-1.5 border-b px-2 py-1.5 last:border-b-0 sm:gap-2 sm:px-3 sm:py-2 ${
                 isActive ? "bg-pink-50/40 ring-1 ring-inset ring-pink-200" : ""
               } ${isFuture ? "opacity-55" : ""}`}
               style={{ borderColor: "rgba(15,23,42,0.06)", gridTemplateColumns: gridCols }}
