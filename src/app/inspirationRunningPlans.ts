@@ -29,7 +29,11 @@ export type InspirationProgramTemplate = {
   exercises: ProgramExercise[];
   programCreatedBy: "member";
   programCreatedByName: string;
+  imageUrl?: string;
 };
+
+/** Forsidebilde for SUB60 langtur (ligger i public/program-covers/). */
+export const SUB60_LONG_RUN_COVER_IMAGE = "/program-covers/sub60-langtur-sone-2.png";
 
 export type RunningInspirationItem = {
   id: string;
@@ -187,6 +191,7 @@ function buildSub60Programs(): InspirationProgramTemplate[] {
       exercises: [cardioStep("Langtur", "Nedjogg", 52, "8.8", "1", "0")],
       programCreatedBy: "member",
       programCreatedByName: AUTHOR,
+      imageUrl: SUB60_LONG_RUN_COVER_IMAGE,
     },
     {
       title: SUB60_PROGRAM_TITLES.race,

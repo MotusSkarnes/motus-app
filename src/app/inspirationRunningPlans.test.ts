@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { normalizePeriodSchedulePlan } from "./periodPlanMerge";
-import { RUNNING_INSPIRATION_ITEMS, SUB45_PROGRAM_TITLES, SUB60_PROGRAM_TITLES } from "./inspirationRunningPlans";
+import {
+  RUNNING_INSPIRATION_ITEMS,
+  SUB45_PROGRAM_TITLES,
+  SUB60_LONG_RUN_COVER_IMAGE,
+  SUB60_PROGRAM_TITLES,
+} from "./inspirationRunningPlans";
 
 describe("inspirationRunningPlans", () => {
   it("exposes SUB60 and SUB45 period plans with 12 weeks", () => {
@@ -27,6 +32,8 @@ describe("inspirationRunningPlans", () => {
       expect(titles.has(entry)).toBe(true);
     }
     expect(titles.has(SUB60_PROGRAM_TITLES.strength)).toBe(true);
+    const longRun = sub60.bundledProgramTemplates.find((program) => program.title === SUB60_PROGRAM_TITLES.long);
+    expect(longRun?.imageUrl).toBe(SUB60_LONG_RUN_COVER_IMAGE);
 
     const sub45 = RUNNING_INSPIRATION_ITEMS.find((item) => item.id === "default-period-sub45-10k")!;
     const sub45Titles = new Set(sub45.bundledProgramTemplates.map((program) => program.title));

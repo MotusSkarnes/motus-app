@@ -1623,9 +1623,9 @@ export function MemberPortal(props: MemberPortalProps) {
     return resolvePeriodPlanWeek(activePeriodPlan, activePeriodWeekIndex + 1);
   }, [activePeriodPlan, activePeriodWeekIndex]);
   const todayPeriodPlanMatch = useMemo(() => {
-    if (!visiblePeriodPlans.length) return null;
+    if (!activePeriodPlan) return null;
     return findTodayPeriodPlanEntryInPlans(
-      visiblePeriodPlans,
+      [activePeriodPlan],
       getStartOfDay(new Date(nowTimestamp)),
       periodPlanSwapsByPlan,
       activePeriodPlanId,
@@ -1633,7 +1633,7 @@ export function MemberPortal(props: MemberPortalProps) {
       currentWeekdayKey,
     );
   }, [
-    visiblePeriodPlans,
+    activePeriodPlan,
     nowTimestamp,
     periodPlanSwapsByPlan,
     activePeriodPlanId,
