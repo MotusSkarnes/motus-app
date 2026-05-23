@@ -67,7 +67,7 @@ import {
   isLegacyIntervalCooldownDrag,
   programIsInMemberArchive,
 } from "../app/programBlocks";
-import { memberMayDeleteProgram, programAuthorCreditForMember } from "../app/programAuthor";
+import { memberMayDeleteProgram, memberMayEditProgram, programAuthorCreditForMember } from "../app/programAuthor";
 import {
   buildCheckInNotificationCopy,
   resolveCheckInWindow,
@@ -5199,7 +5199,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                   style={{ borderColor: "rgba(15,23,42,0.1)" }}
                                   role="menu"
                                 >
-                                  {memberMayDeleteProgram(program, memberProgramAuthorOptions) ? (
+                                  {memberMayEditProgram(program) ? (
                                     <button
                                       type="button"
                                       role="menuitem"

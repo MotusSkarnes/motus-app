@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { EXERCISE_CATEGORY_OPTIONS, exerciseCategoryAccentColor, isHoldBasedExerciseCategory } from "../app/exerciseCategories";
-import { EXERCISE_IMAGE_SMALL_CLASS } from "../app/exerciseIllustrations/constants";
+import { EXERCISE_IMAGE_THUMB_CLASS } from "../app/exerciseIllustrations/constants";
 import { getMedicalSketchFallbackDataUri, resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { compressImageDataUrl, compressImageFile } from "../app/imageCompress";
 import { uploadProgramCoverImageToSupabase } from "../app/programImageUpload";
@@ -41,6 +41,7 @@ import { uid } from "../app/storage";
 import { EmptyState, GradientButton, MotusSectionIcon, OutlineButton, SelectBox, TextArea, TextInput } from "../app/ui";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { ProgramCoverImageField } from "./ProgramCoverImageField";
+import { ExerciseBankListCard } from "./ExerciseBankListCard";
 import type { Exercise, PeriodSchedulePlan, ProgramExercise, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "../app/types";
 import type { SaveProgramInput } from "../services/appRepository";
 
@@ -1272,6 +1273,7 @@ export function InspirationHub({
     const DetailIcon = detailMeta.icon;
     const showProgramPreview = expandedItem.kind === "program" || Boolean(expandedItem.programTemplate);
     const programPreview = showProgramPreview ? resolveProgramTemplateForItem(expandedItem, exerciseBank) : null;
+    const detailImageUrl = programPreview?.imageUrl?.trim() || expandedItem.imageUrl?.trim() || "";
   return (
       <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
         <button
@@ -1296,9 +1298,9 @@ export function InspirationHub({
         ) : null}
 
         <article className="mx-auto w-full max-w-2xl overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-          {expandedItem.imageUrl ? (
+          {detailImageUrl ? (
             <div className="aspect-[4/3] w-full overflow-hidden bg-slate-100 sm:aspect-[16/10]">
-              <img src={expandedItem.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+              <img src={detailImageUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
           </div>
           ) : (
             <div className="flex aspect-[4/3] w-full items-center justify-center bg-[#F3F5F7] sm:aspect-[16/10]">
@@ -1849,29 +1851,17 @@ export function InspirationHub({
                         <EmptyState icon="🔎" title="Ingen øvelser matcher" description="Prøv annet søk." className="bg-slate-50 py-4" />
                       ) : null}
                       {visibleProgramExercises.map((exercise) => (
-                        <button
+                        <ExerciseBankListCard
                           key={exercise.id}
-                          type="button"
-                          onClick={() => addProgramExerciseFromBank(exercise)}
-                          className="flex w-full items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-left hover:border-teal-200 hover:bg-teal-50/40"
-                        >
-                          <img
-                            src={getExercisePreviewSrc(exercise)}
-                            alt=""
-                            className={EXERCISE_IMAGE_SMALL_CLASS}
-                            style={{ borderColor: "rgba(15,23,42,0.08)" }}
-                            loading="lazy"
-                            onError={(event) => {
-                              event.currentTarget.src = getExerciseSketchDataUri(exercise);
-                            }}
-                          />
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium text-slate-900">{exercise.name}</div>
-                            <div className="text-xs text-slate-500">
-                              {exercise.category} · {exercise.group}
-                            </div>
-                          </div>
-                        </button>
+                          exercise={exercise}
+                          compact
+                          imageSrc={getExercisePreviewSrc(exercise)}
+                          onImageError={(event) => {
+                            event.currentTarget.src = getExerciseSketchDataUri(exercise);
+                          }}
+                          onMainClick={() => addProgramExerciseFromBank(exercise)}
+                          showAddButton={false}
+                        />
                       ))}
                     </div>
                   </div>

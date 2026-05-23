@@ -93,3 +93,8 @@ export function memberMayDeleteProgram(
 ): boolean {
   return resolveProgramAuthorKind(program, options) === "member";
 }
+
+/** Medlem kan tilpasse alle program i biblioteket (inkl. fra trener). Sletting er mer begrenset. */
+export function memberMayEditProgram(program: TrainingProgram): boolean {
+  return !program.ephemeral;
+}
