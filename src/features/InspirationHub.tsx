@@ -37,7 +37,7 @@ import { RUNNING_INSPIRATION_ITEMS } from "../app/inspirationRunningPlans";
 import { buildPeriodPlanProgramSelectOptions, WEEKDAY_PLAN_FIELDS } from "../app/periodPlanBuilder";
 import { normalizePeriodSchedulePlan, syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { uid } from "../app/storage";
-import { EmptyState, GradientButton, OutlineButton, SelectBox, TextArea, TextInput } from "../app/ui";
+import { EmptyState, GradientButton, MotusSectionIcon, OutlineButton, SelectBox, TextArea, TextInput } from "../app/ui";
 import type { Exercise, PeriodSchedulePlan, ProgramExercise, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "../app/types";
 import type { SaveProgramInput } from "../services/appRepository";
 
@@ -1413,11 +1413,8 @@ export function InspirationHub({
 
   return (
     <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
-      <div
-        className="overflow-hidden rounded-2xl border shadow-sm"
-        style={{ borderColor: "rgba(48,227,190,0.20)", background: `linear-gradient(135deg, ${MOTUS.paleMint} 0%, #ffffff 48%, rgba(217,18,120,0.08) 100%)` }}
-      >
-        <div className="h-1.5" style={{ background: MOTUS_GRADIENT }} />
+      <div className="motus-card-hero overflow-hidden">
+        <div className="motus-hairline-accent mx-4 mt-4 sm:mx-5 sm:mt-5" aria-hidden />
         <div className="flex items-start justify-between gap-3 p-4 sm:p-5">
           <div className="min-w-0">
           <h2 className="text-2xl font-bold tracking-tight text-slate-950">Inspirasjon</h2>
@@ -1504,12 +1501,9 @@ export function InspirationHub({
             <section key={category} className="min-w-0 overflow-hidden rounded-2xl border bg-white p-3 shadow-sm sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
-                  <span
-                    className="inline-flex shrink-0 rounded-lg p-1.5 text-white shadow-sm"
-                    style={{ background: MOTUS_GRADIENT }}
-                  >
+                  <MotusSectionIcon className="!p-1.5">
                     <SectionIcon className="h-4 w-4" />
-                  </span>
+                  </MotusSectionIcon>
                   <div className="min-w-0">
                     <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
                     <p className="text-xs text-slate-500">{sectionItems.length} innlegg</p>

@@ -59,13 +59,9 @@ export function MemberHomeOverview({
 
       {statusCard ? <HomeStatusRow statusCard={statusCard} /> : null}
 
-      <section className="relative overflow-hidden rounded-2xl bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.06] sm:px-5 sm:py-4">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-teal-400/70 via-teal-300/30 to-pink-400/70"
-        />
-        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">Dagens økt</p>
-        <h2 className="mt-1.5 text-lg font-semibold leading-snug tracking-tight text-slate-950">{workoutTitle}</h2>
+      <section className="motus-card overflow-hidden px-4 py-4 sm:px-5">
+        <p className="motus-section-label">Dagens økt</p>
+        <h2 className="mt-2 text-lg font-semibold leading-snug tracking-tight text-slate-950">{workoutTitle}</h2>
         {workoutDuration ? <p className="mt-0.5 text-sm tabular-nums text-slate-500">{workoutDuration}</p> : null}
         <div className="mt-3.5 flex flex-wrap items-center gap-2">
           {primaryCta}

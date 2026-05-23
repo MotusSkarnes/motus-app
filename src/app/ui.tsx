@@ -5,14 +5,8 @@ import { ToastProvider } from "./toast";
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
-      <div
-        className="min-h-screen min-h-svh overflow-x-hidden p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-slate-900 sm:p-4 sm:pb-[max(1rem,env(safe-area-inset-bottom))] md:p-8 md:pb-[max(2rem,env(safe-area-inset-bottom))]"
-        style={{
-          background:
-            "radial-gradient(circle at 12% 0%, rgba(48,227,190,0.18) 0%, rgba(48,227,190,0) 32%), radial-gradient(circle at 88% 8%, rgba(217,18,120,0.13) 0%, rgba(217,18,120,0) 30%), linear-gradient(180deg, #f8fffd 0%, #f7f8fb 46%, #ffffff 100%)",
-        }}
-      >
-        <div className="mx-auto w-full max-w-[90rem] px-1 sm:px-0">{children}</div>
+      <div className="motus-page min-h-screen min-h-svh overflow-x-hidden p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-4 md:p-8 md:pb-[max(2rem,env(safe-area-inset-bottom))]">
+        <div className="mx-auto w-full max-w-[90rem]">{children}</div>
       </div>
     </ToastProvider>
   );
@@ -21,12 +15,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 type CardVariant = "hero" | "standard" | "secondary";
 
 const CARD_VARIANT_CLASS: Record<CardVariant, string> = {
-  hero:
-    "rounded-2xl border bg-white/88 shadow-xl shadow-slate-900/10 ring-1 ring-white/70 backdrop-blur-md",
-  standard:
-    "rounded-xl border bg-white/92 shadow-md shadow-slate-900/[0.055] ring-1 ring-white/60 backdrop-blur-sm",
-  secondary:
-    "rounded-xl border bg-slate-50/78 shadow-sm shadow-slate-900/[0.035] ring-1 ring-white/50",
+  hero: "motus-card-hero",
+  standard: "motus-card",
+  secondary: "rounded-2xl border bg-[#F7F8FA]",
 };
 
 export function Card({
@@ -62,23 +53,19 @@ export function MemberTabHero({
   className?: string;
 }) {
   return (
-    <div
-      className={`relative overflow-hidden rounded-2xl border shadow-xl shadow-slate-900/10 ring-1 ring-white/70 ${className}`}
-      style={{
-        borderColor: "rgba(48,227,190,0.24)",
-        background: `linear-gradient(135deg, rgba(48,227,190,0.18) 0%, rgba(255,255,255,0.94) 42%, rgba(217,18,120,0.11) 100%)`,
-      }}
-    >
-      <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-white/55 blur-3xl" aria-hidden />
-      <div className="pointer-events-none absolute -bottom-24 left-8 h-44 w-44 rounded-full blur-3xl" style={{ backgroundColor: "rgba(48,227,190,0.20)" }} aria-hidden />
-      <div className="relative h-1.5" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
-      <div className="relative p-4 sm:p-6">
-        <h2 className="max-w-3xl text-3xl font-black leading-[1.02] tracking-tight text-slate-950 sm:text-4xl">{title}</h2>
-        {description ? <p className="mt-2 max-w-2xl text-[15px] font-semibold leading-relaxed text-slate-700">{description}</p> : null}
+    <div className={`motus-card-hero overflow-hidden ${className}`}>
+      <div className="motus-hairline-accent mx-4 mt-4 sm:mx-6 sm:mt-6" aria-hidden />
+      <div className="p-4 sm:p-6">
+        <h2 className="max-w-3xl text-2xl font-bold leading-tight tracking-tight text-slate-950">{title}</h2>
+        {description ? <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-slate-600">{description}</p> : null}
         {children ? <div className="mt-4">{children}</div> : null}
       </div>
     </div>
   );
+}
+
+export function MotusSectionIcon({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <span className={`motus-icon-chip ${className}`}>{children}</span>;
 }
 
 export function Badge({ children }: { children: React.ReactNode }) {
@@ -176,7 +163,7 @@ export function GradientButton({ children, className = "", type = "button", ...p
         props.onPointerDown?.(event);
         if (!props.disabled) triggerLightHaptic();
       }}
-      className={`motus-gradient-motion motus-pressable inline-flex min-h-10 items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-pink-500/15 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-pink-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      className={`motus-pressable inline-flex min-h-10 items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
       style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, ...props.style }}
     >
       {children}
@@ -283,14 +270,10 @@ export function EmptyState({
 
 export function StatCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div
-      className="relative overflow-hidden rounded-xl border bg-white/90 p-4 shadow-md shadow-slate-900/[0.055] ring-1 ring-white/60"
-      style={{ borderColor: "rgba(15,23,42,0.10)" }}
-    >
-      <div className="pointer-events-none absolute right-0 top-0 h-16 w-16 rounded-full bg-teal-100/50 blur-2xl" aria-hidden />
-      <div className="relative text-xs font-bold uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="relative mt-1.5 text-lg font-black tracking-tight text-slate-950 sm:text-xl">{value}</div>
-      <div className="relative mt-1 text-xs font-medium text-slate-600">{hint}</div>
+    <div className="motus-card p-4">
+      <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="mt-2 text-xl font-bold tracking-tight text-slate-950">{value}</div>
+      <div className="mt-1 text-[13px] text-slate-600">{hint}</div>
     </div>
   );
 }

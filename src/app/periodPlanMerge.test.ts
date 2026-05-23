@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPeriodPlanWeekNavItemsFromPlan,
+  buildPeriodPlanPlannedEntriesByMonth,
   HIDDEN_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY,
   findPeriodPlanAutoCompleteTargets,
   findPeriodPlanEntryForCalendarDate,
@@ -83,6 +84,32 @@ describe("findTodayPeriodPlanEntryInPlans", () => {
     plan.startDate = "";
     const match = findTodayPeriodPlanEntryInPlans([plan], new Date(2026, 4, 20), {}, plan.id, 1, "wednesday");
     expect(match?.entry).toBe("Kondisjon");
+  });
+});
+
+describe("buildPeriodPlanPlannedEntriesByMonth", () => {
+  it("builds entries only from the supplied plans", () => {
+    const planA = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, tuesday: "Plan A tirsdag" } }]);
+    planA.id = "plan-a";
+    planA.startDate = "2026-05-19";
+
+    const planB = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, tuesday: "Plan B tirsdag" } }]);
+    planB.id = "plan-b";
+    planB.startDate = "2026-05-19";
+
+    const onlyA = buildPeriodPlanPlannedEntriesByMonth({
+      plans: [planA],
+      swapsByPlan: {},
+      calendarMonth: new Date(2026, 4, 1),
+    });
+    expect(onlyA.get(19)).toEqual(["Plan A tirsdag"]);
+
+    const onlyB = buildPeriodPlanPlannedEntriesByMonth({
+      plans: [planB],
+      swapsByPlan: {},
+      calendarMonth: new Date(2026, 4, 1),
+    });
+    expect(onlyB.get(19)).toEqual(["Plan B tirsdag"]);
   });
 });
 

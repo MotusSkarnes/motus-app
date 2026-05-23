@@ -3,7 +3,7 @@ import { Award, EyeOff, Sparkles } from "lucide-react";
 import { memberBadgeImageSrc, WORKOUT_CLUB_BADGE_IMAGE_BY_TARGET } from "../app/badgeAssets";
 import { MOTUS } from "../app/data";
 import { getMemberBadgeCatalog } from "../app/memberBadges";
-import { Card } from "../app/ui";
+import { Card, MotusSectionIcon } from "../app/ui";
 import { BadgeImage } from "./BadgeImage";
 
 const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
@@ -30,9 +30,9 @@ export function TrainerBadgeCatalog() {
     <div className="motus-badges-section space-y-4 overflow-visible sm:space-y-5">
       <Card className="p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
         <div className="flex items-start gap-3">
-          <span className="inline-flex shrink-0 rounded-xl p-2.5 text-white shadow-sm" style={{ background: MOTUS_GRADIENT }}>
+          <MotusSectionIcon className="!p-2.5">
             <Award className="h-5 w-5" />
-          </span>
+          </MotusSectionIcon>
           <div className="min-w-0">
             <h1 className="text-lg font-semibold text-slate-900 sm:text-xl">Badge-oversikt</h1>
             <p className="mt-1 text-sm leading-relaxed text-slate-600">

@@ -88,6 +88,36 @@ export function findPeriodPlanEntryForCalendarDate(
   return null;
 }
 
+/** Planlagte økter per kalenderdag i en måned — kun fra angitte planer. */
+export function buildPeriodPlanPlannedEntriesByMonth(input: {
+  plans: PeriodSchedulePlan[];
+  swapsByPlan: PeriodPlanSwapsByPlan;
+  calendarMonth: Date;
+}): Map<number, string[]> {
+  const byDay = new Map<number, string[]>();
+  const month = input.calendarMonth.getMonth();
+  const year = input.calendarMonth.getFullYear();
+
+  for (const plan of input.plans) {
+    for (const week of plan.weeklyPlans ?? []) {
+      for (const weekdayKey of WEEKDAY_PLAN_ORDER) {
+        const swaps = getSwapsForWeek(input.swapsByPlan, plan.id, week.weekNumber);
+        const effectiveDays = applyPeriodPlanSwaps(week.days, swaps);
+        const plannedEntry = effectiveDays[weekdayKey]?.trim() ?? "";
+        if (!plannedEntry) continue;
+        const plannedDate = resolvePeriodPlanPlannedDate(plan, week.weekNumber, weekdayKey);
+        if (!plannedDate) continue;
+        if (plannedDate.getMonth() !== month || plannedDate.getFullYear() !== year) continue;
+        const day = plannedDate.getDate();
+        const previous = byDay.get(day) ?? [];
+        byDay.set(day, [...previous, plannedEntry]);
+      }
+    }
+  }
+
+  return byDay;
+}
+
 /** Første planlagte økt på en dato; foretrekker aktiv plan om angitt. */
 export function findPeriodPlanEntryForCalendarDateInPlans(
   plans: PeriodSchedulePlan[],

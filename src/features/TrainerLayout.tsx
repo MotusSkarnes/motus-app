@@ -233,7 +233,7 @@ export function TrainerLayout({
                   }`}
                   style={
                     trainerTab === item.key
-                      ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }
+                      ? { backgroundColor: MOTUS.turquoise }
                       : undefined
                   }
                 >
@@ -255,7 +255,7 @@ export function TrainerLayout({
               </div>
             </Card>
           ) : null}
-          <Card className="bg-gradient-to-br from-emerald-50/90 via-white to-pink-50/70 p-4 shadow-sm ring-1 ring-black/5 sm:p-5">
+          <Card className="motus-card p-4 sm:p-5">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Aktuelt nå</div>
@@ -411,12 +411,7 @@ export function TrainerLayout({
         </div>
       </div>
 
-      <div
-        className="fixed inset-x-0 bottom-0 z-[9999] px-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] xl:hidden"
-        style={{
-          background: "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(248,250,252,0.78) 38%, rgba(248,250,252,0.94) 100%)",
-        }}
-      >
+      <div className="fixed inset-x-0 bottom-0 z-[9999] border-t border-slate-200/80 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur-md xl:hidden">
         {moreMenuOpen ? (
           <button
             type="button"
@@ -427,7 +422,7 @@ export function TrainerLayout({
         ) : null}
         {moreMenuOpen ? (
           <div
-            className="absolute bottom-full left-2 right-2 z-[10000] mb-2 overflow-hidden rounded-2xl border bg-white shadow-xl"
+            className="absolute bottom-full left-2 right-2 z-[10000] mb-2 overflow-hidden rounded-2xl border bg-white shadow-lg"
             style={{ borderColor: "rgba(15,23,42,0.1)" }}
             role="menu"
           >
@@ -455,77 +450,57 @@ export function TrainerLayout({
             })}
           </div>
         ) : null}
-        <div
-          className="relative z-[10001] mx-auto flex max-w-lg items-center rounded-[1.65rem] border bg-white/78 p-1.5 shadow-2xl shadow-slate-900/15 ring-1 ring-white/80 backdrop-blur-xl"
-          style={{ borderColor: "rgba(15,23,42,0.08)" }}
-        >
-          <div
-            className="flex w-full items-center gap-1 rounded-[1.25rem] bg-white/55 p-1"
-            style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.75)" }}
-          >
-            {visibleMobileTabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = trainerTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => {
-                    setMoreMenuOpen(false);
-                    setTrainerTab(tab.id);
-                  }}
-                  className={`relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl px-1 py-2 text-[10px] font-bold transition duration-200 ${
-                    isActive ? "scale-[1.03] text-slate-950 shadow-lg shadow-teal-500/18" : "text-slate-500 hover:bg-white/70 hover:text-slate-800"
-                  }`}
-                  style={
-                    isActive
-                      ? {
-                          background: "linear-gradient(135deg, rgba(236,253,245,0.96) 0%, rgba(252,231,243,0.88) 100%)",
-                          boxShadow: "0 10px 26px rgba(20,184,166,0.18), inset 0 0 0 1px rgba(255,255,255,0.9)",
-                        }
-                      : undefined
-                  }
-                >
-                  {isActive ? (
-                    <span
-                      className="pointer-events-none absolute inset-x-3 -top-3 h-7 rounded-full blur-xl"
-                      style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                      aria-hidden
-                    />
-                  ) : null}
-                  <Icon className={`${isActive ? "h-5 w-5" : "h-4 w-4"} relative shrink-0 transition-all duration-200`} strokeWidth={isActive ? 2.6 : 2.1} />
-                  <span className="relative truncate leading-none">{tab.label}</span>
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              onClick={() => setMoreMenuOpen((open) => !open)}
-              className={`relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl px-1 py-2 text-[10px] font-bold transition duration-200 ${
-                isMoreTabActive || moreMenuOpen ? "scale-[1.03] text-slate-950 shadow-lg shadow-teal-500/18" : "text-slate-500 hover:bg-white/70 hover:text-slate-800"
-              }`}
-              style={
-                isMoreTabActive || moreMenuOpen
-                  ? {
-                      background: "linear-gradient(135deg, rgba(236,253,245,0.96) 0%, rgba(252,231,243,0.88) 100%)",
-                      boxShadow: "0 10px 26px rgba(20,184,166,0.18), inset 0 0 0 1px rgba(255,255,255,0.9)",
-                    }
-                  : undefined
-              }
-              aria-expanded={moreMenuOpen}
-              aria-haspopup="menu"
-            >
-              {isMoreTabActive || moreMenuOpen ? (
-                <span
-                  className="pointer-events-none absolute inset-x-3 -top-3 h-7 rounded-full blur-xl"
-                  style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                  aria-hidden
+        <div className="relative z-[10001] mx-auto flex max-w-lg items-stretch gap-0.5">
+          {visibleMobileTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = trainerTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setMoreMenuOpen(false);
+                  setTrainerTab(tab.id);
+                }}
+                className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-semibold transition ${
+                  isActive ? "text-slate-900" : "text-slate-500"
+                }`}
+              >
+                <Icon
+                  className="h-[22px] w-[22px] shrink-0"
+                  strokeWidth={isActive ? 2.5 : 2}
+                  style={isActive ? { color: MOTUS.turquoise } : undefined}
                 />
-              ) : null}
-              <MoreHorizontal className={`${isMoreTabActive || moreMenuOpen ? "h-5 w-5" : "h-4 w-4"} relative shrink-0 transition-all duration-200`} strokeWidth={isMoreTabActive || moreMenuOpen ? 2.6 : 2.1} />
-              <span className="relative leading-none">Mer</span>
-            </button>
-          </div>
+                <span className="truncate leading-none">{tab.label}</span>
+                {isActive ? (
+                  <span className="h-0.5 w-4 rounded-full" style={{ backgroundColor: MOTUS.turquoise }} aria-hidden />
+                ) : (
+                  <span className="h-0.5 w-4" aria-hidden />
+                )}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setMoreMenuOpen((open) => !open)}
+            className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-semibold transition ${
+              isMoreTabActive || moreMenuOpen ? "text-slate-900" : "text-slate-500"
+            }`}
+            aria-expanded={moreMenuOpen}
+            aria-haspopup="menu"
+          >
+            <MoreHorizontal
+              className="h-[22px] w-[22px] shrink-0"
+              strokeWidth={isMoreTabActive || moreMenuOpen ? 2.5 : 2}
+              style={isMoreTabActive || moreMenuOpen ? { color: MOTUS.turquoise } : undefined}
+            />
+            <span className="leading-none">Mer</span>
+            {isMoreTabActive || moreMenuOpen ? (
+              <span className="h-0.5 w-4 rounded-full" style={{ backgroundColor: MOTUS.turquoise }} aria-hidden />
+            ) : (
+              <span className="h-0.5 w-4" aria-hidden />
+            )}
+          </button>
         </div>
       </div>
     </>

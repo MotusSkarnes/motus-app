@@ -38,16 +38,11 @@ export function MemberTrainingFlowCard({
   const activeStep = hasCompletedAllLevels ? achievementMaxLevel : achievementLevel;
 
   return (
-    <section
-      className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/80 shadow-sm"
-      aria-labelledby="member-training-flow-heading"
-    >
-      <div className="motus-gradient-motion h-1" style={{ background: MOTUS_GRADIENT_90 }} aria-hidden />
-      <div className="border-b border-slate-200/90 bg-white px-4 py-4 sm:px-5">
+    <div className="rounded-2xl border border-slate-200/90 bg-white" aria-labelledby="member-training-flow-heading">
+      <div className="border-b border-slate-100 px-4 py-4 sm:px-5">
         <div className="flex flex-wrap items-start gap-3">
           <span
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm"
-            style={{ background: MOTUS_GRADIENT }}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F3F5F7] text-teal-600"
             aria-hidden
           >
             <Route className="h-5 w-5" strokeWidth={2.25} />
@@ -156,6 +151,6 @@ export function MemberTrainingFlowCard({
           hasCompletedAllLevels={hasCompletedAllLevels}
         />
       </div>
-    </section>
+    </div>
   );
 }

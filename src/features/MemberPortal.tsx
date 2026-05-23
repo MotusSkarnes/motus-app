@@ -75,7 +75,7 @@ import {
 import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { supabaseClient } from "../services/supabaseClient";
 import { isWebPushConfigurable, registerWebPushWithSupabase } from "../services/webPush";
-import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, MemberTabHero, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput } from "../app/ui";
+import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, MemberTabHero, MotusSectionIcon, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { useToastStatus } from "../app/toast";
 import { uid } from "../app/storage";
 import type {
@@ -107,8 +107,9 @@ import {
   readPeriodPlansByMemberId,
   removeMemberOwnedPeriodPlanFromStorage,
   findPeriodPlanAutoCompleteTargets,
-  findPeriodPlanEntryForCalendarDateInPlans,
+  findPeriodPlanEntryForCalendarDate,
   findTodayPeriodPlanEntryInPlans,
+  buildPeriodPlanPlannedEntriesByMonth,
   parsePeriodPlanStartDate,
   resolvePeriodPlanPlannedDate,
   resolvePeriodPlanWeek,
@@ -1980,25 +1981,13 @@ export function MemberPortal(props: MemberPortalProps) {
     return byDay;
   }, [completedLogs, calendarMonth]);
   const calendarPlannedEntriesByDay = useMemo(() => {
-    const byDay = new Map<number, string[]>();
-    visiblePeriodPlans.forEach((plan) => {
-      (plan.weeklyPlans ?? []).forEach((week) => {
-        WEEKDAY_PLAN_ORDER.forEach((weekdayKey) => {
-          const swaps = getSwapsForWeek(periodPlanSwapsByPlan, plan.id, week.weekNumber);
-          const effectiveDays = applyPeriodPlanSwaps(week.days, swaps);
-          const plannedEntry = effectiveDays[weekdayKey]?.trim() ?? "";
-          if (!plannedEntry) return;
-          const plannedDate = resolvePeriodPlanPlannedDate(plan, week.weekNumber, weekdayKey);
-          if (!plannedDate) return;
-          if (plannedDate.getMonth() !== calendarMonth.getMonth() || plannedDate.getFullYear() !== calendarMonth.getFullYear()) return;
-          const day = plannedDate.getDate();
-          const previous = byDay.get(day) ?? [];
-          byDay.set(day, [...previous, plannedEntry]);
-        });
-      });
+    if (!activePeriodPlan) return new Map<number, string[]>();
+    return buildPeriodPlanPlannedEntriesByMonth({
+      plans: [activePeriodPlan],
+      swapsByPlan: periodPlanSwapsByPlan,
+      calendarMonth,
     });
-    return byDay;
-  }, [visiblePeriodPlans, periodPlanSwapsByPlan, calendarMonth]);
+  }, [activePeriodPlan, periodPlanSwapsByPlan, calendarMonth]);
   const calendarDayStatusByDay = useMemo(() => {
     const statusByDay = new Map<number, "completed" | "planned" | "missed">();
     const todayStart = getStartOfDay(new Date(nowTimestamp));
@@ -2029,15 +2018,12 @@ export function MemberPortal(props: MemberPortalProps) {
     return calendarPlannedEntriesByDay.get(selectedCalendarDay) ?? [];
   }, [calendarPlannedEntriesByDay, selectedCalendarDay]);
   const selectedCalendarPeriodMatch = useMemo(() => {
-    if (!selectedCalendarDay) return null;
+    if (!selectedCalendarDay || !activePeriodPlan) return null;
     const date = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), selectedCalendarDay);
-    return findPeriodPlanEntryForCalendarDateInPlans(
-      visiblePeriodPlans,
-      date,
-      periodPlanSwapsByPlan,
-      activePeriodPlanId,
-    );
-  }, [selectedCalendarDay, calendarMonth, visiblePeriodPlans, periodPlanSwapsByPlan, activePeriodPlanId]);
+    const match = findPeriodPlanEntryForCalendarDate(activePeriodPlan, date, periodPlanSwapsByPlan);
+    if (!match?.entry.trim()) return null;
+    return { plan: activePeriodPlan, ...match };
+  }, [selectedCalendarDay, calendarMonth, activePeriodPlan, periodPlanSwapsByPlan]);
   const selectedCalendarPlanEntry = selectedCalendarPeriodMatch?.entry?.trim() ?? selectedCalendarPlannedEntries[0]?.trim() ?? "";
   const selectedCalendarPlanAction = useMemo(
     () =>
@@ -4354,7 +4340,7 @@ export function MemberPortal(props: MemberPortalProps) {
       <div className={`grid gap-4 sm:gap-6 ${memberTab === "overview" ? "" : "lg:grid-cols-[280px_1fr]"}`}>
         <Card className={`hidden p-4 h-fit xl:p-5 ${memberTab === "overview" ? "" : "lg:block"}`}>
           <div className="flex items-start gap-3">
-            <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><UserCircle2 className="h-5 w-5" /></div>
+            <MotusSectionIcon><UserCircle2 className="h-5 w-5" /></MotusSectionIcon>
             <div>
               <h2 className="text-xl font-semibold tracking-tight">Min profil</h2>
               <p className="text-sm text-slate-500">Dine medlemsdata</p>
@@ -5146,16 +5132,15 @@ export function MemberPortal(props: MemberPortalProps) {
 	                      <div
 	                        key={program.id}
 	                        id={`member-program-${program.id}`}
-	                        className="overflow-hidden rounded-2xl border bg-white shadow-md shadow-slate-900/[0.055] ring-1 ring-white/70"
-	                        style={{ borderColor: "rgba(15,23,42,0.08)" }}
+	                        className="motus-card overflow-hidden"
 	                      >
-	                        <div className="grid gap-0 sm:grid-cols-[12rem_1fr]">
-	                        <div className="relative min-h-40 overflow-hidden bg-gradient-to-br from-teal-50 via-white to-pink-50">
+	                        <div className="grid gap-0 sm:grid-cols-[14rem_1fr]">
+	                        <div className="relative min-h-48 overflow-hidden bg-[#F3F5F7] sm:min-h-full">
 	                          {programCoverSrc ? (
 	                            <img
 	                              src={programCoverSrc}
 	                              alt=""
-	                              className={`absolute inset-0 h-full w-full ${programUsesCustomCover ? "object-cover" : "object-contain p-3"}`}
+	                              className={`absolute inset-0 h-full w-full ${programUsesCustomCover ? "object-cover" : "object-contain p-2"}`}
 	                              loading="lazy"
 	                              decoding="async"
 	                            />
@@ -6205,37 +6190,26 @@ export function MemberPortal(props: MemberPortalProps) {
                 onPeriodChange={setMuscleSplitPeriod}
               />
 
-              <div
-                className="relative mt-6 overflow-hidden rounded-2xl border shadow-xl ring-1 ring-white/10"
-                style={{
-                  borderColor: "rgba(255,255,255,0.22)",
-                  background: `linear-gradient(155deg, #0f766e 0%, ${MOTUS.turquoise} 32%, ${MOTUS.pink} 68%, #9d174d 100%)`,
-                }}
-              >
+              <div className="motus-card-hero relative mt-6 overflow-hidden">
                 <img
                   src={motusSkrytekortLogo}
                   alt=""
-                  className="pointer-events-none absolute right-4 top-4 z-[1] h-auto max-h-[5.75rem] w-auto max-w-[44%] object-contain opacity-95 drop-shadow-[0_3px_12px_rgba(255,255,255,0.18)] sm:max-h-24"
+                  className="pointer-events-none absolute right-4 top-4 z-[1] h-auto max-h-16 w-auto max-w-[38%] object-contain opacity-90 sm:max-h-20"
                   aria-hidden
                 />
-                <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-white/15 blur-3xl" aria-hidden />
-                <div className="pointer-events-none absolute -bottom-24 -left-16 h-64 w-64 rounded-full bg-cyan-200/20 blur-3xl" aria-hidden />
-                <div className="pointer-events-none absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/5 blur-3xl" aria-hidden />
 
                 <div className="relative p-5 sm:p-6">
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
                     <div className="min-w-0 flex-1 space-y-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white ring-1 ring-white/30 backdrop-blur-sm">
-                          <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                          Ukesoppsummering
-                        </span>
-                      </div>
+                      <span className="motus-section-label inline-flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5 shrink-0 text-teal-500" aria-hidden />
+                        Ukesoppsummering
+                      </span>
 
                       <div>
-                        <h3 className="text-xl font-bold tracking-tight text-white drop-shadow-sm sm:text-2xl">Ukesoppsummering</h3>
-                        <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-white/88">
-                          Siste 7 dager — et delbart kort med mine tall og løftefakta, laget for treningsfeed.
+                        <h3 className="text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">Ukesoppsummering</h3>
+                        <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-slate-600">
+                          Siste 7 dager — delbart kort med tall og løftefakta.
                         </p>
                       </div>
 
@@ -6246,36 +6220,29 @@ export function MemberPortal(props: MemberPortalProps) {
                           { k: "Mine sett", v: String(progressShareLast7Days.completedSets) },
                           { k: "Mitt volum", v: `${Math.round(progressShareLast7Days.volumeKg).toLocaleString("nb-NO")} kg` },
                         ].map((cell) => (
-                          <div
-                            key={cell.k}
-                            className="rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 text-left shadow-sm backdrop-blur-md"
-                          >
-                            <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">{cell.k}</div>
-                            <div className="mt-0.5 text-lg font-bold tabular-nums text-white">{cell.v}</div>
+                          <div key={cell.k} className="rounded-xl bg-[#F7F8FA] px-3 py-2.5 text-left">
+                            <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{cell.k}</div>
+                            <div className="mt-0.5 text-lg font-bold tabular-nums text-slate-950">{cell.v}</div>
                           </div>
                         ))}
                       </div>
 
-                      <div className="rounded-xl border border-white/15 bg-white/10 px-3 py-3 text-left shadow-sm backdrop-blur-md">
-                        <div className="text-[11px] font-semibold uppercase tracking-wide text-white/75">Løftefakta</div>
-                        <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-white/92">{progressLiftPlayfulLine}</p>
+                      <div className="rounded-xl bg-[#F7F8FA] px-3 py-3 text-left">
+                        <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Løftefakta</div>
+                        <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-slate-700">{progressLiftPlayfulLine}</p>
                       </div>
 
-                      <p className="text-xs font-medium text-white/80">
+                      <p className="text-[13px] text-slate-500">
                         Siste 7 dager: {progressShareLast7Days.workouts} økter fordelt på {progressShareLast7Days.trainingDays} treningsdager.
                       </p>
                     </div>
 
                     <div className="flex w-full shrink-0 flex-col gap-2 sm:max-w-xs lg:w-56">
-                      <button
-                        type="button"
-                        onClick={() => void shareMonthlyProgressSummary()}
-                        className="group inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-black/25 ring-2 ring-white/50 transition hover:bg-white/95 hover:shadow-xl active:scale-[0.98]"
-                      >
-                        <Share2 className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5" aria-hidden />
+                      <GradientButton type="button" onClick={() => void shareMonthlyProgressSummary()} className="w-full gap-2">
+                        <Share2 className="h-4 w-4 shrink-0" aria-hidden />
                         Last ned eller del bilde
-                      </button>
-                      <p className="text-center text-[11px] leading-snug text-white/75 lg:text-left">
+                      </GradientButton>
+                      <p className="text-center text-[11px] leading-snug text-slate-500 lg:text-left">
                         Bildet kan lagres eller deles videre fra galleriet.
                       </p>
                     </div>
@@ -6296,7 +6263,7 @@ export function MemberPortal(props: MemberPortalProps) {
             <div className="space-y-4">
               <MemberTabHero
                 title="Dialog med PT"
-                description="Hold kontakten tett, få svar raskt og ta vare på hele oppfølgingen."
+                description="Skriv kort til treneren din."
               />
             <Card className="p-5">
               <div className="space-y-4">
@@ -6352,7 +6319,7 @@ export function MemberPortal(props: MemberPortalProps) {
           {memberTab === "profile" ? (
             <Card className="p-5">
               <div className="flex items-start gap-3">
-                <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Target className="h-5 w-5" /></div>
+                <MotusSectionIcon><Target className="h-5 w-5" /></MotusSectionIcon>
                 <div>
                   <h2 className="text-2xl font-black tracking-tight text-slate-950">Min profil</h2>
                   <p className="text-sm font-medium text-slate-600">Mål, vaner og innstillinger samlet for deg.</p>
@@ -6403,21 +6370,12 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                   </div>
                   {onOpenOnboarding ? (
-                    <div
-                      className="rounded-xl border p-4"
-                      style={{
-                        borderColor: "rgba(20,184,166,0.35)",
-                        background: "linear-gradient(135deg, rgba(20,184,166,0.08) 0%, rgba(236,72,153,0.06) 100%)",
-                      }}
-                    >
+                    <div className="motus-card p-4">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-start gap-3">
-                          <div
-                            className="rounded-xl p-2 text-white shadow-sm"
-                            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                          >
+                          <MotusSectionIcon>
                             <UserCircle2 className="h-5 w-5" />
-                          </div>
+                          </MotusSectionIcon>
                           <div>
                             <div className="text-sm font-semibold text-slate-900">Oppstartsskjema</div>
                             <p className="mt-1 text-sm text-slate-600">
@@ -6434,21 +6392,12 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                   ) : null}
                   {!isMemberLimited ? (
-                    <div
-                      className="rounded-xl border p-4"
-                      style={{
-                        borderColor: "rgba(20,184,166,0.25)",
-                        background: "linear-gradient(135deg, rgba(20,184,166,0.06) 0%, rgba(248,250,252,0.92) 100%)",
-                      }}
-                    >
+                    <div className="motus-card p-4">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="flex min-w-0 items-start gap-3">
-                          <div
-                            className="rounded-xl p-2 text-white shadow-sm"
-                            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                          >
+                          <MotusSectionIcon>
                             <MessageSquare className="h-5 w-5" />
-                          </div>
+                          </MotusSectionIcon>
                           <div className="min-w-0">
                             <div className="text-sm font-semibold text-slate-900">Behov for å bytte PT?</div>
                             <p className="mt-1 text-sm leading-relaxed text-slate-600">

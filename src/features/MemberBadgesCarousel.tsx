@@ -5,6 +5,7 @@ import { BADGE_CAROUSEL_TRACK_SNAP_CLASS, BADGE_CAROUSEL_WRAPPER_CLASS, BADGE_CA
 import { BadgeCarouselScroll } from "./BadgeCarouselScroll";
 import { BadgeImage } from "./BadgeImage";
 import { MOTUS } from "../app/data";
+import { MotusSectionIcon } from "../app/ui";
 import { motusShareStatusMessage, shareBadgeCard } from "../app/motusShareCard";
 import {
   formatBadgeMetricValue,
@@ -222,11 +223,11 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
   const overallPct = collection.totalLevels > 0 ? Math.round((collection.totalUnlockedLevels / collection.totalLevels) * 100) : 0;
 
   return (
-    <section className="motus-badges-section min-w-0 overflow-visible rounded-2xl border bg-white p-3 shadow-sm sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+    <section className="motus-badges-section motus-card min-w-0 overflow-visible p-3 sm:p-4">
       <div className="flex items-start gap-3">
-        <span className="inline-flex shrink-0 rounded-xl p-2 text-white shadow-sm" style={{ background: MOTUS_GRADIENT }}>
+        <MotusSectionIcon>
           <Award className="h-4 w-4" />
-        </span>
+        </MotusSectionIcon>
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-semibold text-slate-900">Badges</h2>
           <p className="mt-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/90 px-3 py-2.5 text-xs leading-relaxed text-slate-600">
@@ -236,7 +237,7 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
             <p className="text-xs text-slate-500">
               {collection.totalUnlockedLevels} av {collection.totalLevels} nivåer låst opp
             </p>
-            <span className="rounded-full bg-slate-950 px-2.5 py-1 text-[10px] font-bold text-white">{overallPct}%</span>
+            <span className="rounded-full bg-[#F3F5F7] px-2.5 py-1 text-[10px] font-bold text-slate-900">{overallPct}%</span>
           </div>
           <div className="motus-progress-track mt-2 h-1.5 rounded-full">
             <div className="motus-progress-fill h-full rounded-full" style={{ width: `${overallPct}%`, background: MOTUS_GRADIENT }} />
@@ -253,9 +254,9 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
               type="button"
               onClick={() => setActiveCategoryId(item.id)}
               className={`shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition ${
-                active ? "text-white shadow-sm" : "bg-white text-slate-600 hover:bg-slate-50"
+                active ? "border-transparent bg-teal-500 text-white shadow-sm" : "bg-white text-slate-600 hover:bg-slate-50"
               }`}
-              style={{ background: active ? MOTUS_GRADIENT : undefined, borderColor: active ? "transparent" : "rgba(15,23,42,0.10)" }}
+              style={{ borderColor: active ? "transparent" : "rgba(15,23,42,0.10)" }}
             >
               {item.title} <span className={active ? "text-white/75" : "text-slate-400"}>{item.count}</span>
             </button>

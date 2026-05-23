@@ -24,18 +24,11 @@ export function MemberWeeklyStreakCard({
   const isFlow = variant === "flow";
 
   return (
-    <div
-      className={`overflow-hidden rounded-xl border ${compact ? "mt-0" : isFlow ? "mt-0" : "mt-3"}`}
-      style={{
-        borderColor: "rgba(48,227,190,0.22)",
-        background: `linear-gradient(135deg, ${MOTUS.paleMint} 0%, #ffffff 52%, rgba(217,18,120,0.06) 100%)`,
-      }}
-    >
-      <div className="h-1" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
-      <div className={compact ? "p-3" : isFlow ? "p-4" : "p-4"}>
+    <div className={`motus-card overflow-hidden ${compact ? "mt-0" : isFlow ? "mt-0" : "mt-3"}`}>
+      <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Streak</div>
+            <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Streak</div>
             <p className="mt-0.5 text-[11px] text-slate-500">Minst én fullført økt per kalenderuke</p>
             <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
               {streakWeeks > 0 ? (
@@ -52,10 +45,9 @@ export function MemberWeeklyStreakCard({
             <p className={`leading-relaxed text-slate-600 ${compact ? "mt-1.5 text-xs" : "mt-2 text-sm"}`}>{streakSubline}</p>
           </div>
           <div
-            className={`shrink-0 rounded-xl p-2.5 text-white shadow-sm ${streakWeeks > 0 ? "motus-soft-pulse" : ""}`}
-            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+            className={`shrink-0 rounded-xl bg-[#F3F5F7] p-2.5 ${streakWeeks > 0 ? "motus-soft-pulse" : ""}`}
           >
-            <MotusFlameIcon tone="solid" className={compact ? "h-4 w-4" : "h-5 w-5"} />
+            <MotusFlameIcon className={compact ? "h-4 w-4" : "h-5 w-5"} />
           </div>
         </div>
         {!compact ? (

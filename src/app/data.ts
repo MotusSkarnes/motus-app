@@ -7,6 +7,8 @@ export const MOTUS = {
   acid: "#daff01",
   paleMint: "#d6fbf1",
   ink: "#0f172a",
+  gradient: "linear-gradient(135deg, #30e3be 0%, #d91278 100%)",
+  gradient90: "linear-gradient(90deg, #30e3be 0%, #d91278 100%)",
 };
 
 export const STORAGE_KEY = "motus_pt_app_v2";

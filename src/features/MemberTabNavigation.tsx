@@ -35,11 +35,8 @@ type MemberTabNavigationProps = {
 export function MemberDesktopTabNav({ memberTab, setMemberTab, isMemberLimited }: MemberTabNavigationProps) {
   const tabs = memberNavTabs(isMemberLimited);
   return (
-    <Card className="hidden overflow-hidden lg:block">
-      <div
-        className="flex gap-2 overflow-auto px-3 py-3"
-        style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-      >
+    <Card className="hidden overflow-hidden border-0 bg-[#F7F8FA] p-1 lg:block">
+      <div className="flex flex-wrap gap-1 px-1 py-1">
         {tabs.map((tab) => {
           const isActive = memberTab === tab.id;
           return (
@@ -47,8 +44,8 @@ export function MemberDesktopTabNav({ memberTab, setMemberTab, isMemberLimited }
               key={tab.id}
               type="button"
               onClick={() => setMemberTab(tab.id)}
-              className={`shrink-0 rounded-2xl px-4 py-2 text-sm font-medium transition ${
-                isActive ? "bg-white text-slate-900 shadow-sm" : "bg-white/20 text-white hover:bg-white/30"
+              className={`shrink-0 rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                isActive ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:bg-white/60 hover:text-slate-900"
               }`}
             >
               {tab.label}
@@ -63,52 +60,37 @@ export function MemberDesktopTabNav({ memberTab, setMemberTab, isMemberLimited }
 export function MemberMobileTabNav({ memberTab, setMemberTab, isMemberLimited }: MemberTabNavigationProps) {
   const tabs = memberNavTabs(isMemberLimited).filter((tab) => tab.id !== "profile");
   return (
-    <div
-      className="fixed inset-x-0 bottom-0 z-[9999] px-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] lg:hidden"
-      style={{
-        background: "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(248,250,252,0.55) 42%, rgba(248,250,252,0.88) 100%)",
-      }}
-    >
-      <div
-        className="mx-auto flex max-w-md items-center rounded-[1.75rem] border border-white/60 bg-white/55 p-1.5 shadow-[0_18px_40px_rgba(15,23,42,0.14)] ring-1 ring-white/70 backdrop-blur-2xl backdrop-saturate-150"
-      >
-        <div className="flex w-full items-center gap-1 rounded-[1.35rem] bg-white/35 p-1">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = memberTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  if (memberTab !== tab.id) motusHaptic("light");
-                  setMemberTab(tab.id);
-                }}
-                className={`relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ease-out ${
-                  isActive ? "scale-[1.04] text-slate-950" : "text-slate-500 hover:bg-white/55 hover:text-slate-800"
-                }`}
-                style={
-                  isActive
-                    ? {
-                        background: "linear-gradient(135deg, rgba(236,253,245,0.92) 0%, rgba(252,231,243,0.82) 100%)",
-                        boxShadow: "0 8px 22px rgba(20,184,166,0.16), inset 0 0 0 1px rgba(255,255,255,0.85)",
-                      }
-                    : undefined
-                }
-              >
-                {isActive ? (
-                  <span
-                    className="pointer-events-none absolute inset-x-5 -top-4 h-8 rounded-full blur-2xl opacity-80"
-                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                    aria-hidden
-                  />
-                ) : null}
-                <Icon className={`${isActive ? "h-5 w-5" : "h-4 w-4"} relative shrink-0 transition-all duration-300`} strokeWidth={isActive ? 2.6 : 2.1} />
-                <span className="relative truncate leading-none">{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
+    <div className="fixed inset-x-0 bottom-0 z-[9999] border-t border-slate-200/80 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur-md lg:hidden">
+      <div className="mx-auto flex max-w-md items-stretch gap-0.5">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = memberTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => {
+                if (memberTab !== tab.id) motusHaptic("light");
+                setMemberTab(tab.id);
+              }}
+              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-semibold transition ${
+                isActive ? "text-slate-900" : "text-slate-500"
+              }`}
+            >
+              <Icon
+                className="h-[22px] w-[22px] shrink-0"
+                strokeWidth={isActive ? 2.5 : 2}
+                style={isActive ? { color: MOTUS.turquoise } : undefined}
+              />
+              <span className="truncate leading-none">{tab.label}</span>
+              {isActive ? (
+                <span className="h-0.5 w-4 rounded-full" style={{ backgroundColor: MOTUS.turquoise }} aria-hidden />
+              ) : (
+                <span className="h-0.5 w-4" aria-hidden />
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

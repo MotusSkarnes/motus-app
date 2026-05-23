@@ -40,7 +40,7 @@ import {
   filterTemplateProgramsBySubTab,
   getTrainingProgramSubTab,
 } from "../app/trainingProgramKind";
-import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
+import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, MotusSectionIcon, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { useToastStatus } from "../app/toast";
 import motusLogo from "../assets/motus-logo-transparent.svg";
 import type {
@@ -4157,13 +4157,9 @@ function pickFirstName(value: unknown): string {
       {trainerTab === "dashboard" ? (
         <Card className="p-5 shadow-sm ring-1 ring-black/5 space-y-5 sm:p-6">
           <div
-            className="rounded-2xl border p-4 text-sm text-slate-600 shadow-sm"
-            style={{
-              borderColor: "rgba(15,23,42,0.08)",
-              background: "linear-gradient(135deg, rgba(20,184,166,0.08) 0%, rgba(236,72,153,0.08) 100%)",
-            }}
+            className="motus-card rounded-2xl p-4 text-sm text-slate-600"
           >
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dagens fokus</div>
+            <div className="motus-section-label">Dagens fokus</div>
             <div className="mt-1 text-base font-semibold text-slate-800">Drift og oppfølging</div>
             <div className="mt-2 flex flex-wrap items-center gap-x-1 gap-y-1">
               {followUpCount > 0 ? (
@@ -4454,7 +4450,7 @@ function pickFirstName(value: unknown): string {
           </div>
           <Card className={`p-4 ${showCustomerToolsMobile ? "block" : "hidden"} lg:sticky lg:top-4 lg:block`}>
             <div className="flex items-start gap-3">
-              <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Users className="h-5 w-5" /></div>
+              <MotusSectionIcon><Users className="h-5 w-5" /></MotusSectionIcon>
               <div>
                 <h2 className="text-xl font-semibold tracking-tight">Kunder</h2>
                 <p className="text-sm text-slate-500">Velg kunde eller filtrer listen.</p>
@@ -4735,10 +4731,10 @@ function pickFirstName(value: unknown): string {
                     options={visibleMembers.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
                   />
                 </div>
-                <div className="rounded-[26px] p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.ink} 100%)` }}>
+                <div className="motus-card-hero p-5">
                   <div className="mb-3 flex items-start justify-between gap-3">
-                    <div className="text-sm text-white/80">Kundekort</div>
-                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-white/40 bg-white/15 text-white/80 sm:h-14 sm:w-14">
+                    <div className="motus-section-label">Kundekort</div>
+                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-slate-400 sm:h-14 sm:w-14">
                       <ClientAvatarFallback iconClassName="h-8 w-8 sm:h-9 sm:w-9" />
                       {resolveMemberAvatarUrl(selectedMember) ? (
                         <img
@@ -4754,28 +4750,28 @@ function pickFirstName(value: unknown): string {
                       ) : null}
                     </div>
                   </div>
-                  <div className="mt-1 text-2xl font-bold tracking-tight">{selectedMemberProfile?.name ?? selectedMember.name}</div>
+                  <div className="mt-1 text-2xl font-bold tracking-tight text-slate-950">{selectedMemberProfile?.name ?? selectedMember.name}</div>
                   {isEditingCustomerCard ? (
-                    <div className="mt-3 space-y-3 rounded-2xl border border-white/25 bg-white/10 p-3">
+                    <div className="mt-3 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                       <div className="grid gap-3 md:grid-cols-2">
-                        <label className="space-y-1 text-xs font-medium text-white">
+                        <label className="space-y-1 text-xs font-medium text-slate-700">
                           <span>Navn</span>
                           <TextInput value={memberEditName} onChange={(event) => setMemberEditName(event.target.value)} placeholder="f.eks. Ola Nordmann" />
                         </label>
-                        <label className="space-y-1 text-xs font-medium text-white">
+                        <label className="space-y-1 text-xs font-medium text-slate-700">
                           <span>E-post</span>
                           <TextInput value={memberEditEmail} onChange={(event) => setMemberEditEmail(event.target.value)} placeholder="f.eks. navn@epost.no" />
                         </label>
-                        <label className="space-y-1 text-xs font-medium text-white">
+                        <label className="space-y-1 text-xs font-medium text-slate-700">
                           <span>Telefon</span>
                           <TextInput value={memberEditPhone} onChange={(event) => setMemberEditPhone(event.target.value)} placeholder="f.eks. 900 00 000" />
                         </label>
-                        <label className="space-y-1 text-xs font-medium text-white">
+                        <label className="space-y-1 text-xs font-medium text-slate-700">
                           <span>Fødselsdato</span>
                           <TextInput value={memberEditBirthDate} onChange={(event) => setMemberEditBirthDate(event.target.value)} placeholder="dd.mm.yyyy" />
                         </label>
                       </div>
-                      <label className="space-y-1 text-xs font-medium text-white">
+                      <label className="space-y-1 text-xs font-medium text-slate-700">
                         <span>Mål</span>
                         <SelectBox
                           value={MEMBER_GOAL_OPTIONS.includes(memberEditGoal as (typeof MEMBER_GOAL_OPTIONS)[number]) ? memberEditGoal : ""}
@@ -4786,18 +4782,18 @@ function pickFirstName(value: unknown): string {
                           ]}
                         />
                       </label>
-                      <label className="space-y-1 text-xs font-medium text-white">
+                      <label className="space-y-1 text-xs font-medium text-slate-700">
                         <span>Skader/hensyn</span>
                         <TextArea value={memberEditInjuries} onChange={(event) => setMemberEditInjuries(event.target.value)} className="min-h-[90px]" placeholder="Skader/hensyn" />
                       </label>
-                      <div className="rounded-xl border border-white/25 bg-white/10 p-3 space-y-2.5">
-                        <div className="text-xs font-medium text-white">Kundetype og medlemskap</div>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2.5">
+                        <div className="text-xs font-medium text-slate-700">Kundetype og medlemskap</div>
                         <div className="grid gap-2 sm:grid-cols-2">
                         <label
                           className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition ${
                             memberEditIsPtCustomer
-                              ? "border-white/70 bg-white/25 text-white"
-                              : "border-white/30 bg-white/10 text-white/90 hover:bg-white/20"
+                              ? "border-teal-300 bg-teal-50 text-teal-900"
+                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                           }`}
                         >
                           <input
@@ -4808,30 +4804,30 @@ function pickFirstName(value: unknown): string {
                               setMemberEditIsPtCustomer(checked);
                               if (checked) setMemberEditIsSharedMember(false);
                             }}
-                            className="h-4 w-4 rounded border-white/40 bg-white/20 accent-emerald-500"
+                            className="h-4 w-4 rounded border-slate-300 accent-emerald-500"
                           />
                           PT-kunde
                         </label>
                         <label
                           className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition ${
                             memberEditIsPremiumCustomer
-                              ? "border-white/70 bg-white/25 text-white"
-                              : "border-white/30 bg-white/10 text-white/90 hover:bg-white/20"
+                              ? "border-teal-300 bg-teal-50 text-teal-900"
+                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                           }`}
                         >
                           <input
                             type="checkbox"
                             checked={memberEditIsPremiumCustomer}
                             onChange={(event) => setMemberEditIsPremiumCustomer(event.target.checked)}
-                            className="h-4 w-4 rounded border-white/40 bg-white/20 accent-emerald-500"
+                            className="h-4 w-4 rounded border-slate-300 accent-emerald-500"
                           />
                           Premium-kunde
                         </label>
                         <label
                           className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition ${
                             memberEditIsSharedMember
-                              ? "border-white/70 bg-white/25 text-white"
-                              : "border-white/30 bg-white/10 text-white/90 hover:bg-white/20"
+                              ? "border-teal-300 bg-teal-50 text-teal-900"
+                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                           }`}
                         >
                           <input
@@ -4842,15 +4838,15 @@ function pickFirstName(value: unknown): string {
                               setMemberEditIsSharedMember(checked);
                               if (checked) setMemberEditIsPtCustomer(false);
                             }}
-                            className="h-4 w-4 rounded border-white/40 bg-white/20 accent-emerald-500"
+                            className="h-4 w-4 rounded border-slate-300 accent-emerald-500"
                           />
                           Medlem (vises hos alle PT-er)
                         </label>
                         </div>
                       </div>
-                      <div className="rounded-xl border border-white/25 bg-white/10 p-3 space-y-2">
-                        <div className="text-xs font-medium text-white">Profilbilde</div>
-                        <div className="relative h-14 w-14 overflow-hidden rounded-full border border-white/40 bg-white/20 text-white/80">
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                        <div className="text-xs font-medium text-slate-700">Profilbilde</div>
+                        <div className="relative h-14 w-14 overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-slate-400">
                           <ClientAvatarFallback iconClassName="h-9 w-9" />
                           {resolveMemberAvatarUrl(selectedMember) ? (
                             <img
@@ -4867,46 +4863,46 @@ function pickFirstName(value: unknown): string {
                           type="file"
                           accept="image/*"
                           onChange={(event) => void handleCustomerAvatarSelected(event.target.files?.[0] ?? null)}
-                          className="block w-full text-xs text-white/90 file:mr-3 file:rounded-xl file:border-0 file:bg-white/80 file:px-3 file:py-2 file:text-xs file:font-medium file:text-slate-800"
+                          className="block w-full text-xs text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-white file:px-3 file:py-2 file:text-xs file:font-medium file:text-slate-800"
                         />
                       </div>
                     </div>
                   ) : (
                     <>
                       <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                        <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm">
-                          <div className="text-[11px] text-white/70">E-post</div>
-                          <div className="font-medium text-white/95">{selectedMember.email || "Ikke satt"}</div>
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                          <div className="text-[11px] text-slate-500">E-post</div>
+                          <div className="font-medium text-slate-900">{selectedMember.email || "Ikke satt"}</div>
                         </div>
-                        <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm">
-                          <div className="text-[11px] text-white/70">Telefon</div>
-                          <div className="font-medium text-white/95">{selectedMemberProfile?.phone || selectedMember.phone || "Ikke satt"}</div>
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                          <div className="text-[11px] text-slate-500">Telefon</div>
+                          <div className="font-medium text-slate-900">{selectedMemberProfile?.phone || selectedMember.phone || "Ikke satt"}</div>
                         </div>
-                        <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm">
-                          <div className="text-[11px] text-white/70">Fødselsdato</div>
-                          <div className="font-medium text-white/95">{selectedMemberProfile?.birthDate || selectedMember.birthDate || "Ikke satt"}</div>
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                          <div className="text-[11px] text-slate-500">Fødselsdato</div>
+                          <div className="font-medium text-slate-900">{selectedMemberProfile?.birthDate || selectedMember.birthDate || "Ikke satt"}</div>
                         </div>
-                        <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm">
-                          <div className="text-[11px] text-white/70">Mål</div>
-                          <div className="font-medium text-white/95">{selectedMemberProfile?.goal || selectedMember.goal || "Ikke satt"}</div>
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                          <div className="text-[11px] text-slate-500">Mål</div>
+                          <div className="font-medium text-slate-900">{selectedMemberProfile?.goal || selectedMember.goal || "Ikke satt"}</div>
                         </div>
                       </div>
-                      <div className="mt-2 rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm">
-                        <div className="text-[11px] text-white/70">Skader/hensyn</div>
-                        <div className="font-medium text-white/95">{selectedMemberProfile?.injuries || selectedMember.injuries || "Ingen registrerte skader"}</div>
+                      <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                        <div className="text-[11px] text-slate-500">Skader/hensyn</div>
+                        <div className="font-medium text-slate-900">{selectedMemberProfile?.injuries || selectedMember.injuries || "Ingen registrerte skader"}</div>
                       </div>
-                      <div className="mt-3 rounded-xl border border-white/25 bg-white/10 p-3">
+                      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
                         <MemberOnboardingSummary
                           member={selectedMemberProfile ?? selectedMember}
                           allMembers={members}
                           variant="inline"
-                          tone="dark"
+                          tone="light"
                         />
                       </div>
-                      <div className="mt-2 text-sm text-white/85">
+                      <div className="mt-2 text-sm text-slate-600">
                         Sist trening: {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}
                       </div>
-                      <div className="mt-1 text-xs text-white/80">
+                      <div className="mt-1 text-xs text-slate-500">
                         {selectedMember.invitedAt?.trim()
                           ? `Invitert ${formatInvitedAt(selectedMember.invitedAt)}`
                           : "Ikke invitert ennå"}
@@ -5220,10 +5216,7 @@ function pickFirstName(value: unknown): string {
 
                 {customerSubTab === "programs" ? (
                   <div className="space-y-4">
-                    <div
-                      className="rounded-2xl border bg-white p-4 shadow-sm"
-                      style={{ borderColor: "rgba(48,227,190,0.18)", background: `linear-gradient(135deg, ${MOTUS.paleMint}33 0%, #ffffff 72%)` }}
-                    >
+                    <div className="motus-card p-4">
                       <div className="text-sm font-semibold text-slate-900">To ulike verktøy for kunden</div>
                       <p className="mt-1 text-sm leading-relaxed text-slate-600">
                         <strong className="text-teal-900">Periodeplan</strong> er ukeoversikt (mandag–søndag).{" "}
@@ -5239,12 +5232,9 @@ function pickFirstName(value: unknown): string {
                               : "border-slate-200 bg-white hover:border-teal-200 hover:bg-slate-50"
                           }`}
                         >
-                          <span
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white shadow-sm"
-                            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                          >
+                          <MotusSectionIcon className="h-10 w-10 !p-0">
                             <CalendarRange className="h-5 w-5" aria-hidden />
-                          </span>
+                          </MotusSectionIcon>
                           <span>
                             <span className="block text-sm font-bold text-slate-900">Periodeplan</span>
                             <span className="mt-0.5 block text-xs leading-snug text-slate-600">Uke-for-uke: hva kunden skal gjøre hver dag</span>
@@ -5259,12 +5249,9 @@ function pickFirstName(value: unknown): string {
                               : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
                           }`}
                         >
-                          <span
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white shadow-sm"
-                            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-                          >
+                          <MotusSectionIcon className="h-10 w-10 !p-0">
                             <ClipboardList className="h-5 w-5" aria-hidden />
-                          </span>
+                          </MotusSectionIcon>
                           <span>
                             <span className="block text-sm font-bold text-slate-900">Treningsprogram</span>
                             <span className="mt-0.5 block text-xs leading-snug text-slate-600">Øvelser med sett og reps — logges som økt</span>
@@ -6073,7 +6060,7 @@ function pickFirstName(value: unknown): string {
                             ) : null}
                             <div className={`max-w-[88%] rounded-xl p-3 text-sm ${message.id === selectedMessages[selectedMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "trainer" ? "ml-auto border border-transparent text-white" : "border bg-slate-50 text-slate-700"}`} style={message.sender === "trainer" ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { borderColor: "rgba(15,23,42,0.08)" }}>
                               <div>{message.text}</div>
-                              <div className={`mt-1 text-[11px] ${message.sender === "trainer" ? "text-white/80" : "text-slate-500"}`}>{message.createdAt}</div>
+                              <div className={`mt-1 text-[11px] ${message.sender === "trainer" ? "text-slate-500" : "text-slate-500"}`}>{message.createdAt}</div>
                             </div>
                           </div>
                         );
@@ -6222,7 +6209,7 @@ function pickFirstName(value: unknown): string {
               )}
             </div>
             <div className="mt-5 flex items-start gap-3 border-t border-slate-100 pt-5">
-              <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><ClipboardList className="h-5 w-5" /></div>
+              <MotusSectionIcon><ClipboardList className="h-5 w-5" /></MotusSectionIcon>
               <div>
                 <h2 className="text-xl font-semibold tracking-tight">{programsBuilderTitle(programsSubTab)}</h2>
                 <p className="text-sm text-slate-500">{programsBuilderDescription(programsSubTab)}</p>
@@ -6559,7 +6546,7 @@ function pickFirstName(value: unknown): string {
           </div>
           <Card className="p-5">
           <div className="flex items-start gap-3">
-            <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}><Dumbbell className="h-5 w-5" /></div>
+            <MotusSectionIcon><Dumbbell className="h-5 w-5" /></MotusSectionIcon>
             <div>
               <h2 className="text-xl font-semibold tracking-tight">{exerciseBankTitle(exerciseBankSubTab)}</h2>
               <p className="text-sm text-slate-500">{exerciseBankDescription(exerciseBankSubTab)}</p>
@@ -6845,9 +6832,7 @@ function pickFirstName(value: unknown): string {
       {trainerTab === "admin" && canAccessAdminTools ? (
         <Card className="p-5 space-y-4">
           <div className="flex items-start gap-3">
-            <div className="rounded-xl p-2.5 text-white" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}>
-              <ShieldCheck className="h-5 w-5" />
-            </div>
+            <MotusSectionIcon><ShieldCheck className="h-5 w-5" /></MotusSectionIcon>
             <div>
               <h2 className="text-xl font-semibold tracking-tight">Team og tilgang</h2>
               <p className="text-sm text-slate-500">Inviter nye PT-er og hold kundeoversikten ryddig.</p>
