@@ -57,40 +57,73 @@ export function MemberDesktopTabNav({ memberTab, setMemberTab, isMemberLimited }
   );
 }
 
+function MemberMobileTabButton({
+  tab,
+  memberTab,
+  setMemberTab,
+  className,
+}: {
+  tab: MemberTabNavItem;
+  memberTab: MemberTab;
+  setMemberTab: (tab: MemberTab) => void;
+  className: string;
+}) {
+  const Icon = tab.icon;
+  const isActive = memberTab === tab.id;
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (memberTab !== tab.id) motusHaptic("light");
+        setMemberTab(tab.id);
+      }}
+      className={`${className} ${isActive ? "text-slate-900" : "text-slate-500"}`}
+    >
+      <Icon
+        className="h-[22px] w-[22px] shrink-0"
+        strokeWidth={isActive ? 2.5 : 2}
+        style={isActive ? { color: MOTUS.turquoise } : undefined}
+      />
+      <span className="truncate leading-none">{tab.label}</span>
+      {isActive ? (
+        <span className="h-0.5 w-4 rounded-full" style={{ backgroundColor: MOTUS.turquoise }} aria-hidden />
+      ) : (
+        <span className="h-0.5 w-4" aria-hidden />
+      )}
+    </button>
+  );
+}
+
 export function MemberMobileTabNav({ memberTab, setMemberTab, isMemberLimited }: MemberTabNavigationProps) {
-  const tabs = memberNavTabs(isMemberLimited).filter((tab) => tab.id !== "profile");
+  const allTabs = memberNavTabs(isMemberLimited);
+  const mainTabs = allTabs.filter((tab) => tab.id !== "profile");
+  const profileTab = allTabs.find((tab) => tab.id === "profile");
+
   return (
     <div className="fixed inset-x-0 bottom-0 z-[9999] border-t border-slate-200/80 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur-md lg:hidden">
-      <div className="mx-auto flex max-w-md items-stretch gap-0.5">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = memberTab === tab.id;
-          return (
-            <button
+      <div className="mx-auto flex max-w-md items-stretch gap-1">
+        <div className="flex min-w-0 flex-1 items-stretch gap-0.5">
+          {mainTabs.map((tab) => (
+            <MemberMobileTabButton
               key={tab.id}
-              type="button"
-              onClick={() => {
-                if (memberTab !== tab.id) motusHaptic("light");
-                setMemberTab(tab.id);
-              }}
-              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-semibold transition ${
-                isActive ? "text-slate-900" : "text-slate-500"
-              }`}
-            >
-              <Icon
-                className="h-[22px] w-[22px] shrink-0"
-                strokeWidth={isActive ? 2.5 : 2}
-                style={isActive ? { color: MOTUS.turquoise } : undefined}
-              />
-              <span className="truncate leading-none">{tab.label}</span>
-              {isActive ? (
-                <span className="h-0.5 w-4 rounded-full" style={{ backgroundColor: MOTUS.turquoise }} aria-hidden />
-              ) : (
-                <span className="h-0.5 w-4" aria-hidden />
-              )}
-            </button>
-          );
-        })}
+              tab={tab}
+              memberTab={memberTab}
+              setMemberTab={setMemberTab}
+              className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-semibold transition"
+            />
+          ))}
+        </div>
+        {profileTab ? (
+          <>
+            <div className="w-px self-stretch bg-slate-200/80" aria-hidden />
+            <MemberMobileTabButton
+              tab={profileTab}
+              memberTab={memberTab}
+              setMemberTab={setMemberTab}
+              className="flex w-[4.25rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-semibold transition"
+            />
+          </>
+        ) : null}
       </div>
     </div>
   );

@@ -171,6 +171,27 @@ export function GradientButton({ children, className = "", type = "button", ...p
   );
 }
 
+export function TrainingStartButton({
+  children,
+  className = "",
+  type = "button",
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode }) {
+  return (
+    <button
+      type={type}
+      {...props}
+      onPointerDown={(event) => {
+        props.onPointerDown?.(event);
+        if (!props.disabled) triggerLightHaptic();
+      }}
+      className={`motus-pressable motus-training-start-btn inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function OutlineButton({ children, className = "", type = "button", ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode }) {
   return (
     <button

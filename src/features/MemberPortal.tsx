@@ -76,7 +76,7 @@ import {
 import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { supabaseClient } from "../services/supabaseClient";
 import { isWebPushConfigurable, registerWebPushWithSupabase } from "../services/webPush";
-import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, MemberTabHero, MotusSectionIcon, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput } from "../app/ui";
+import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, MemberTabHero, MotusSectionIcon, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput, TrainingStartButton } from "../app/ui";
 import { useToastStatus } from "../app/toast";
 import { uid } from "../app/storage";
 import type {
@@ -155,6 +155,8 @@ import {
 } from "./MemberHomeOverview";
 import { MemberProgressScoresCard } from "./MemberProgressScoresCard";
 import { MemberTrainingFlowCard } from "./MemberTrainingFlowCard";
+import { MemberTrainingTodayCard, extractZoneFromPlanEntry, formatWeekSessionsLabel } from "./MemberTrainingTodayCard";
+import { MemberTrainingWeekStats } from "./MemberTrainingWeekStats";
 import { MuscleSplitCard } from "./MuscleSplitCard";
 import { IntervalWorkoutSessionModal } from "./IntervalWorkoutSessionModal";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
@@ -3615,6 +3617,23 @@ export function MemberPortal(props: MemberPortalProps) {
     const minutes = Math.max(20, Math.round(estimateProgramMinutes(homeWorkoutProgram) / 5) * 5);
     return `${minutes} min`;
   }, [homeWorkoutProgram]);
+  const homeWorkoutCoverSrc = useMemo(() => {
+    if (!homeWorkoutProgram) return null;
+    return resolveProgramImageSrc(homeWorkoutProgram, homeWorkoutProgram.exercises[0] ?? null);
+  }, [homeWorkoutProgram]);
+  const homeWorkoutZoneLabel = useMemo(
+    () => (todayPlanEntry ? extractZoneFromPlanEntry(todayPlanEntry) : null),
+    [todayPlanEntry],
+  );
+  const homeWeekSessionsLabel = useMemo(
+    () =>
+      formatWeekSessionsLabel(
+        homeWeeklySummary.completedThisWeek,
+        homeWeeklySummary.plannedThisWeek,
+        Number(profileSessionsPerWeekTarget) || undefined,
+      ),
+    [homeWeeklySummary.completedThisWeek, homeWeeklySummary.plannedThisWeek, profileSessionsPerWeekTarget],
+  );
   const homeUnseenProgramCount = useMemo(
     () =>
       memberAssignedPrograms.filter(
@@ -4511,11 +4530,11 @@ export function MemberPortal(props: MemberPortalProps) {
                             selectedCalendarDay === day ? "ring-2 ring-slate-900/10" : ""
                           } ${
                             calendarDayStatusByDay.get(day) === "completed"
-                              ? "bg-teal-600 font-semibold text-white"
+                              ? "motus-brand-fill font-semibold"
                               : calendarDayStatusByDay.get(day) === "missed"
                                 ? "bg-rose-50/80 text-rose-700"
                                 : calendarDayStatusByDay.get(day) === "planned"
-                                  ? "bg-emerald-50/70 text-emerald-800"
+                                  ? "motus-brand-muted font-medium"
                                   : "bg-slate-50/90 text-slate-600"
                           }`}
                           title={
@@ -4541,7 +4560,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       <span>Fullført</span>
                     </div>
                     <div className="inline-flex items-center gap-1.5">
-                      <span className="inline-block h-2.5 w-2.5 rounded-full border border-dashed" style={{ borderColor: "rgba(20,184,166,0.75)", backgroundColor: "rgba(236,253,245,0.9)" }} />
+                      <span className="inline-block h-2.5 w-2.5 rounded-full border border-dashed motus-brand-muted-border" style={{ backgroundColor: MOTUS.paleMint }} />
                       <span>Planlagt</span>
                     </div>
                     <div className="inline-flex items-center gap-1.5">
@@ -4556,7 +4575,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       </p>
                       <div className="mt-2 space-y-2">
                         {selectedCalendarPlannedEntries.length > 0 ? (
-                          <div className="rounded-lg border bg-emerald-50/60 px-3 py-2 text-xs text-emerald-800" style={{ borderColor: "rgba(20,184,166,0.25)" }}>
+                          <div className="motus-brand-muted motus-brand-muted-border rounded-lg px-3 py-2 text-xs">
                             <div className="font-semibold">Planlagt økt</div>
                             {selectedCalendarPlannedEntries.map((entry, entryIndex) => (
                               <div key={`${selectedCalendarDay}-planned-${entryIndex}`} className="mt-1">
@@ -4801,68 +4820,8 @@ export function MemberPortal(props: MemberPortalProps) {
 
           {memberTab === "programs" ? (
             <>
-              <div className="flex flex-col gap-4">
-              <Card className="motus-card p-4 sm:p-5">
-                <div className="grid gap-4 md:grid-cols-[1fr_11.5rem] md:items-start">
-                  <div>
-                    <p className="motus-section-label">Trening</p>
-                    <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
-                      {todayPlanEntry
-                        ? "Dagens plan ligger klar. Start direkte, eller sjekk programmene dine først."
-                        : memberHasVisiblePeriodPlan
-                          ? "Programmer, periodeplan og egen økt samlet på ett sted."
-                          : "Programmer og egen økt samlet på ett sted."}
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {todayPlanAction.kind === "start-program" ? (
-                        <GradientButton type="button" onClick={() => handlePeriodPlanStartProgram(todayPlanAction.program.id)} className="min-h-10 rounded-xl text-sm sm:w-auto">
-                          <Play className="mr-2 h-3.5 w-3.5 fill-white/80" aria-hidden />
-                          Start dagens økt
-                        </GradientButton>
-                      ) : nextProgram ? (
-                        <GradientButton type="button" onClick={() => startWorkoutMode(nextProgram.id, buildStartWorkoutOptions(nextProgram))} className="min-h-10 rounded-xl text-sm sm:w-auto">
-                          <Play className="mr-2 h-3.5 w-3.5 fill-white/80" aria-hidden />
-                          Start neste økt
-                        </GradientButton>
-                      ) : (
-                        <GradientButton type="button" onClick={() => setTrainingSection("custom")} className="min-h-10 rounded-xl text-sm sm:w-auto">
-                          Lag egen økt
-                        </GradientButton>
-                      )}
-                      <OutlineButton type="button" onClick={() => setTrainingSection("programs")} className="min-h-10 rounded-xl text-sm font-medium sm:w-auto">
-                        Se programmer
-                      </OutlineButton>
-                    </div>
-                  </div>
-                  <div className="rounded-xl border bg-slate-50/80 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">Denne uka</div>
-                    <div className="mt-2 grid grid-cols-3 gap-1.5 text-center">
-                      <div className="rounded-lg bg-white px-1.5 py-2">
-                        <div className="text-base font-semibold tabular-nums text-slate-950">{homeWeeklySummary.completedThisWeek}</div>
-                        <div className="mt-0.5 text-[9px] font-medium uppercase text-slate-400">Økter</div>
-                      </div>
-                      <div className="rounded-lg bg-white px-1.5 py-2">
-                        <div className="text-base font-semibold tabular-nums text-slate-950">{homeMomentumPct}%</div>
-                        <div className="mt-0.5 text-[9px] font-medium uppercase text-slate-400">Flyt</div>
-                      </div>
-                      <div className="rounded-lg bg-white px-1.5 py-2">
-                        <div className="text-base font-semibold tabular-nums text-slate-950">{streakWeeks}</div>
-                        <div className="mt-0.5 text-[9px] font-medium uppercase text-slate-400">Streak</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-              <MemberTabHero className="hidden"
-                title="Klar for dagens økt"
-                description={
-                  memberHasVisiblePeriodPlan
-                    ? "Programmer, periodeplan og egen økt når du vil trene smart."
-                    : "Programmer og egen økt når du vil trene smart."
-                }
-              />
-              <Card className="p-3 sm:p-4">
-                <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Trening-seksjoner">
+              <div className="flex flex-col gap-5">
+              <div className="motus-training-segments scrollbar-none pb-0.5" role="tablist" aria-label="Trening-seksjoner">
                   {[
                     { id: "today" as const, label: "Dagens plan" },
                     { id: "programs" as const, label: "Mine programmer" },
@@ -4876,47 +4835,44 @@ export function MemberPortal(props: MemberPortalProps) {
                       role="tab"
                       aria-selected={trainingSection === item.id}
                       onClick={() => setTrainingSection(item.id)}
-                      className={`shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition ${
-                        trainingSection === item.id
-                          ? "border-transparent bg-teal-500 text-white shadow-sm"
-                          : "bg-white text-slate-700 hover:border-teal-200 hover:bg-teal-50 hover:text-teal-900"
-                      }`}
-                      style={trainingSection === item.id ? undefined : { borderColor: "rgba(15,23,42,0.12)" }}
+                      className="motus-training-segment"
                     >
                       {item.label}
                     </button>
                   ))}
                 </div>
-              </Card>
+              <MemberTrainingWeekStats
+                completedSessions={homeWeeklySummary.completedThisWeek}
+                momentumPct={homeMomentumPct}
+                streakWeeks={streakWeeks}
+              />
               {primaryPausedWorkout ? (() => {
                 const progress = pausedWorkoutProgress(primaryPausedWorkout.workoutMode);
                 return (
-                  <Card className="border-2 border-teal-200 bg-teal-50 p-4 shadow-sm sm:p-5">
+                  <div className="motus-training-paused">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
-                        <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-teal-800">
+                        <div className="inline-flex items-center gap-2 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-teal-800">
                           <Play className="h-3.5 w-3.5" />
                           Fortsett der du slapp
                         </div>
-                        <h3 className="mt-3 text-lg font-bold leading-tight text-slate-950 sm:text-xl">{primaryPausedWorkout.programTitle}</h3>
-                        <p className="mt-1 text-sm text-slate-700">
-                          {progress.completed} av {progress.total} sett fullført. {formatPausedWorkoutExpiry(primaryPausedWorkout.expiresAt)}
+                        <h3 className="mt-2.5 text-lg font-semibold leading-tight text-slate-950">{primaryPausedWorkout.programTitle}</h3>
+                        <p className="mt-1 text-sm text-slate-600">
+                          {progress.completed} av {progress.total} sett · {formatPausedWorkoutExpiry(primaryPausedWorkout.expiresAt)}
                         </p>
                       </div>
                       <div className="flex shrink-0 flex-col gap-2 sm:min-w-44">
-                        <GradientButton
-                          className="w-full !min-h-12 !px-5 !py-3 text-sm font-bold"
+                        <TrainingStartButton
+                          className="w-full"
                           onClick={() => {
                             resumePausedWorkout(primaryPausedWorkout.id, primaryPausedWorkout.memberId);
                           }}
                         >
-                          <span className="inline-flex items-center justify-center gap-2">
-                            <Play className="h-4 w-4" />
-                            Fortsett økt
-                          </span>
-                        </GradientButton>
+                          <Play className="h-4 w-4 fill-white/85" aria-hidden />
+                          Fortsett økt
+                        </TrainingStartButton>
                         <OutlineButton
-                          className="w-full !min-h-9 !py-2 text-xs"
+                          className="w-full !min-h-9 !border-transparent !bg-transparent !py-2 text-xs text-slate-500 shadow-none hover:!bg-slate-100/80"
                           onClick={() => {
                             setConfirmDialog({
                               title: "Slette påbegynt økt?",
@@ -4934,66 +4890,58 @@ export function MemberPortal(props: MemberPortalProps) {
                         </OutlineButton>
                       </div>
                     </div>
-                  </Card>
+                  </div>
                 );
               })() : null}
               {trainingSection === "today" ? (
-              <Card className="p-4 sm:p-5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Dagens plan</div>
-                    <h3 className="mt-1 text-lg font-bold text-slate-950">
-                      {todayPlanEntry ? todayPlanEntry : "Ingen planlagt økt i dag"}
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-600">
-                      {todayPlanEntry
-                        ? "Start direkte herfra, eller åpne hele periodeplanen."
-                        : "Du kan likevel trene: start et program eller bygg en egen økt."}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-col gap-2 sm:min-w-44">
-                    {todayPlanAction.kind === "start-program" ? (
-                      <GradientButton onClick={() => handlePeriodPlanStartProgram(todayPlanAction.program.id)} className="w-full">
-                        Start dagens økt
-                      </GradientButton>
-                    ) : null}
-                    {todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch ? (
-                      <GradientButton
-                        onClick={() =>
-                          handlePeriodPlanLogGroup({
-                            entry: todayPlanEntry,
-                            plannedDate: resolvePeriodPlanEntryDate(
-                              todayPlanPeriodPlan,
-                              todayPeriodPlanMatch.weekNumber,
-                              todayPeriodPlanMatch.day,
-                            ),
-                            planId: todayPlanPeriodPlan.id,
-                            weekNumber: todayPeriodPlanMatch.weekNumber,
-                            day: todayPeriodPlanMatch.day,
-                          })
+                <MemberTrainingTodayCard
+                  title={todayPlanEntry || nextProgram?.title || "Ingen plan i dag"}
+                  imageSrc={homeWorkoutCoverSrc}
+                  durationLabel={homeWorkoutDuration}
+                  zoneLabel={homeWorkoutZoneLabel}
+                  weekSessionsLabel={homeWeekSessionsLabel}
+                  primaryAction={
+                    todayPlanAction.kind === "start-program"
+                      ? {
+                          label: "Start dagens økt",
+                          onClick: () => handlePeriodPlanStartProgram(todayPlanAction.program.id),
                         }
-                        className="w-full"
-                      >
-                        Logg gruppetime
-                      </GradientButton>
-                    ) : null}
-                    <OutlineButton
-                      onClick={() => setTrainingSection(todayPlanEntry ? "period" : "programs")}
-                      className="w-full"
-                    >
-                      {todayPlanEntry ? "Se periodeplan" : "Se programmer"}
-                    </OutlineButton>
-                    {!todayPlanEntry && !isMemberLimited ? (
-                      <OutlineButton
-                        onClick={() => setTrainingSection("custom")}
-                        className="w-full"
-                      >
-                        Lag egen økt
-                      </OutlineButton>
-                    ) : null}
-                  </div>
-                </div>
-              </Card>
+                      : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch
+                        ? {
+                            label: "Logg gruppetime",
+                            onClick: () =>
+                              handlePeriodPlanLogGroup({
+                                entry: todayPlanEntry,
+                                plannedDate: resolvePeriodPlanEntryDate(
+                                  todayPlanPeriodPlan,
+                                  todayPeriodPlanMatch.weekNumber,
+                                  todayPeriodPlanMatch.day,
+                                ),
+                                planId: todayPlanPeriodPlan.id,
+                                weekNumber: todayPeriodPlanMatch.weekNumber,
+                                day: todayPeriodPlanMatch.day,
+                              }),
+                          }
+                        : !todayPlanEntry && nextProgram
+                          ? {
+                              label: "Start neste økt",
+                              onClick: () => startWorkoutMode(nextProgram.id, buildStartWorkoutOptions(nextProgram)),
+                            }
+                          : undefined
+                  }
+                  secondaryAction={{
+                    label: todayPlanEntry ? "Se periodeplan" : "Se programmer",
+                    onClick: () => setTrainingSection(todayPlanEntry ? "period" : "programs"),
+                  }}
+                  tertiaryAction={
+                    !todayPlanEntry && !isMemberLimited
+                      ? {
+                          label: "Lag egen økt",
+                          onClick: () => setTrainingSection("custom"),
+                        }
+                      : undefined
+                  }
+                />
               ) : null}
               {trainingSection === "programs" ? (
               <>
@@ -6271,9 +6219,9 @@ export function MemberPortal(props: MemberPortalProps) {
                     />
                   ) : null}
                   {memberMessages.map((message) => (
-                    <div key={message.id} className={`max-w-[85%] rounded-xl p-3 text-sm ${message.id === memberMessages[memberMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "member" ? "ml-auto bg-teal-600 text-white" : "border bg-white"}`} style={message.sender === "member" ? undefined : { borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div key={message.id} className={`max-w-[85%] rounded-xl p-3 text-sm ${message.id === memberMessages[memberMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "member" ? "motus-chat-bubble-own ml-auto" : "border bg-white"}`} style={message.sender === "member" ? undefined : { borderColor: "rgba(15,23,42,0.08)" }}>
                       <div>{message.text}</div>
-                      <div className={`mt-1 text-[11px] ${message.sender === "member" ? "text-white/80" : "text-slate-500"}`}>{message.createdAt}</div>
+                      <div className={`mt-1 text-[11px] ${message.sender === "member" ? "text-slate-600/75" : "text-slate-500"}`}>{message.createdAt}</div>
                     </div>
                   ))}
                 </div>
@@ -6294,8 +6242,12 @@ export function MemberPortal(props: MemberPortalProps) {
                 </div>
                 {memberChatSendStatus ? (
                   <div
-                    className={`rounded-xl border px-3 py-2 text-xs ${memberChatSendStatus.startsWith("Melding sendt") ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}
-                    style={{ borderColor: memberChatSendStatus.startsWith("Melding sendt") ? "rgba(16,185,129,0.3)" : "rgba(244,63,94,0.3)" }}
+                    className={`rounded-xl border px-3 py-2 text-xs ${
+                      memberChatSendStatus.startsWith("Melding sendt")
+                        ? "motus-brand-muted motus-brand-muted-border"
+                        : "bg-rose-50 text-rose-800"
+                    }`}
+                    style={memberChatSendStatus.startsWith("Melding sendt") ? undefined : { borderColor: "rgba(244,63,94,0.3)" }}
                   >
                     {memberChatSendStatus}
                   </div>

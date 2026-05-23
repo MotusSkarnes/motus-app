@@ -4245,7 +4245,7 @@ function pickFirstName(value: unknown): string {
                       key={dateIso}
                       type="button"
                       onClick={() => setSelectedTodoDate(dateIso)}
-                      className={`rounded-lg px-1 py-2 text-center text-xs ${isSelected ? "bg-teal-600 font-semibold text-white" : "text-slate-600 bg-white"}`}
+                      className={`rounded-lg px-1 py-2 text-center text-xs ${isSelected ? "motus-brand-fill font-semibold" : "text-slate-600 bg-white"}`}
                       style={
                         !isSelected && hasTodo
                           ? { border: `1px solid ${MOTUS.turquoise}` }
@@ -6051,9 +6051,9 @@ function pickFirstName(value: unknown): string {
                             {showDateDivider ? (
                               <div className="my-2 text-center text-[11px] font-medium text-slate-400">{dateKey}</div>
                             ) : null}
-                            <div className={`max-w-[88%] rounded-xl p-3 text-sm ${message.id === selectedMessages[selectedMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "trainer" ? "ml-auto border border-transparent bg-teal-600 text-white" : "border bg-slate-50 text-slate-700"}`} style={message.sender === "trainer" ? undefined : { borderColor: "rgba(15,23,42,0.08)" }}>
+                            <div className={`max-w-[88%] rounded-xl p-3 text-sm ${message.id === selectedMessages[selectedMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "trainer" ? "motus-chat-bubble-own ml-auto" : "border bg-slate-50 text-slate-700"}`} style={message.sender === "trainer" ? undefined : { borderColor: "rgba(15,23,42,0.08)" }}>
                               <div>{message.text}</div>
-                              <div className={`mt-1 text-[11px] ${message.sender === "trainer" ? "text-slate-500" : "text-slate-500"}`}>{message.createdAt}</div>
+                              <div className={`mt-1 text-[11px] ${message.sender === "trainer" ? "text-slate-600/75" : "text-slate-500"}`}>{message.createdAt}</div>
                             </div>
                           </div>
                         );
@@ -6084,8 +6084,8 @@ function pickFirstName(value: unknown): string {
                     )}
                     {trainerChatSendStatus ? (
                       <div
-                        className={`rounded-xl border px-3 py-2 text-xs ${trainerChatSendStatus.startsWith("Melding sendt") ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}
-                        style={{ borderColor: trainerChatSendStatus.startsWith("Melding sendt") ? "rgba(16,185,129,0.3)" : "rgba(244,63,94,0.3)" }}
+                        className={`rounded-xl border px-3 py-2 text-xs ${trainerChatSendStatus.startsWith("Melding sendt") ? "motus-brand-muted motus-brand-muted-border" : "bg-rose-50 text-rose-800"}`}
+                        style={{ borderColor: trainerChatSendStatus.startsWith("Melding sendt") ? undefined : "rgba(244,63,94,0.3)" }}
                       >
                         {trainerChatSendStatus}
                       </div>
