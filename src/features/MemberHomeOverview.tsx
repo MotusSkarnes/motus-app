@@ -153,10 +153,9 @@ export function MemberHomeOverview({
               />
             </svg>
             <div className="motus-home-streak-ring-center">
-              <MotusFlameIcon className="mx-auto h-3.5 w-3.5" title="" />
-              <span className="mt-1 block text-xl font-bold tabular-nums leading-none text-slate-900">{streakWeeks}</span>
-              <span className="mt-0.5 block max-w-[3.25rem] text-[8px] font-bold uppercase leading-tight tracking-wide text-slate-500">
-                {streakWeeks === 1 ? "uke streak" : "uker streak"}
+              <MotusFlameIcon className="h-8 w-8" title="" />
+              <span className="sr-only">
+                {streakWeeks} {streakWeeks === 1 ? "uke" : "uker"} streak
               </span>
             </div>
           </div>

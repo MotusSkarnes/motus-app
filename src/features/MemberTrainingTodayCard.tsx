@@ -1,4 +1,4 @@
-import { Clock3, Dumbbell, Play, Zap } from "lucide-react";
+import { Check, Clock3, Dumbbell, Play, Zap } from "lucide-react";
 import { TrainingStartButton } from "../app/ui";
 
 export function extractZoneFromPlanEntry(entry: string): string | null {
@@ -27,6 +27,8 @@ type MemberTrainingTodayCardProps = {
   primaryAction?: {
     label: string;
     onClick: () => void;
+    disabled?: boolean;
+    completed?: boolean;
   };
   secondaryAction?: {
     label: string;
@@ -91,8 +93,16 @@ export function MemberTrainingTodayCard({
 
       <div className="mt-5 space-y-2.5">
         {primaryAction ? (
-          <TrainingStartButton onClick={primaryAction.onClick} className="w-full">
-            <Play className="h-4 w-4 fill-slate-900/80" aria-hidden />
+          <TrainingStartButton
+            onClick={primaryAction.onClick}
+            disabled={primaryAction.disabled}
+            className="w-full"
+          >
+            {primaryAction.completed ? (
+              <Check className="h-4 w-4" aria-hidden />
+            ) : (
+              <Play className="h-4 w-4 fill-slate-900/80" aria-hidden />
+            )}
             {primaryAction.label}
           </TrainingStartButton>
         ) : null}

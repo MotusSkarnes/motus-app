@@ -1672,6 +1672,12 @@ export function MemberPortal(props: MemberPortalProps) {
     if (rescuedProgram) return { kind: "start-program" as const, program: rescuedProgram };
     return resolved;
   }, [todayPlanEntry, memberProgramsForPeriodPlan, memberPrograms]);
+  const todayPeriodPlanCompleted = useMemo(() => {
+    if (!todayPlanPeriodPlan || !todayPeriodPlanMatch) return false;
+    return completedPeriodPlanEntryKeys.includes(
+      buildPeriodPlanEntryKey(todayPlanPeriodPlan.id, todayPeriodPlanMatch.weekNumber, todayPeriodPlanMatch.day),
+    );
+  }, [todayPlanPeriodPlan, todayPeriodPlanMatch, completedPeriodPlanEntryKeys]);
   const profileMetricsFromDb = decodeMemberProfileMetrics(editableMember?.personalGoals);
   const profileHasUnsavedChanges = useMemo(() => {
     if (!editableMember) return false;
@@ -2046,6 +2052,16 @@ export function MemberPortal(props: MemberPortalProps) {
         : { kind: "none" as const },
     [selectedCalendarPlanEntry, memberProgramsForPeriodPlan],
   );
+  const selectedCalendarPeriodPlanCompleted = useMemo(() => {
+    if (!selectedCalendarPeriodMatch) return false;
+    return completedPeriodPlanEntryKeys.includes(
+      buildPeriodPlanEntryKey(
+        selectedCalendarPeriodMatch.plan.id,
+        selectedCalendarPeriodMatch.weekNumber,
+        selectedCalendarPeriodMatch.day,
+      ),
+    );
+  }, [selectedCalendarPeriodMatch, completedPeriodPlanEntryKeys]);
   const selectedCalendarLog = useMemo(() => {
     if (!selectedCalendarLogs.length) return null;
     if (!selectedCalendarLogId) return selectedCalendarLogs[0];
@@ -4056,6 +4072,10 @@ export function MemberPortal(props: MemberPortalProps) {
       setPeriodPlanActionStatus("Du kan ikke logge gruppetimer fra periodeplanen før selve dagen.");
       return;
     }
+    if (isPeriodPlanEntryCompleted(input.planId, input.weekNumber, input.day)) {
+      setPeriodPlanActionStatus("Denne økten er allerede logget.");
+      return;
+    }
     logGroupWorkout({
       memberId: activeMemberId,
       className: resolveGroupClassNameFromPeriodEntry(trimmed),
@@ -4557,6 +4577,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch ? (
                     <GradientButton
                       type="button"
+                      disabled={todayPeriodPlanCompleted}
                       onClick={() =>
                         handlePeriodPlanLogGroup({
                           entry: todayPlanEntry,
@@ -4570,9 +4591,10 @@ export function MemberPortal(props: MemberPortalProps) {
                           day: todayPeriodPlanMatch.day,
                         })
                       }
-                      className="motus-pressable h-10 rounded-lg px-4 text-sm font-semibold"
+                      className="motus-pressable h-10 rounded-lg px-4 text-sm font-semibold disabled:cursor-default disabled:opacity-100"
+                      aria-disabled={todayPeriodPlanCompleted}
                     >
-                      Logg dagens økt
+                      {todayPeriodPlanCompleted ? "Dagens økt er logget" : "Logg dagens økt"}
                     </GradientButton>
                   ) : nextProgram ? (
                     <MemberHomeStartWorkoutButton
@@ -4727,6 +4749,7 @@ export function MemberPortal(props: MemberPortalProps) {
                               ) : null}
                               {selectedCalendarPlanAction.kind === "log-group" && selectedCalendarPeriodMatch ? (
                                 <GradientButton
+                                  disabled={selectedCalendarPeriodPlanCompleted}
                                   onClick={() =>
                                     handlePeriodPlanLogGroup({
                                       entry: selectedCalendarPlanEntry,
@@ -4740,9 +4763,9 @@ export function MemberPortal(props: MemberPortalProps) {
                                       day: selectedCalendarPeriodMatch.day,
                                     })
                                   }
-                                  className="w-full sm:w-auto"
+                                  className="w-full sm:w-auto disabled:cursor-default disabled:opacity-100"
                                 >
-                                  Logg gruppetime
+                                  {selectedCalendarPeriodPlanCompleted ? "Gruppetime logget" : "Logg gruppetime"}
                                 </GradientButton>
                               ) : null}
                             </div>
@@ -5032,7 +5055,9 @@ export function MemberPortal(props: MemberPortalProps) {
                         }
                       : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch
                         ? {
-                            label: "Logg gruppetime",
+                            label: todayPeriodPlanCompleted ? "Dagens økt er logget" : "Logg gruppetime",
+                            disabled: todayPeriodPlanCompleted,
+                            completed: todayPeriodPlanCompleted,
                             onClick: () =>
                               handlePeriodPlanLogGroup({
                                 entry: todayPlanEntry,
@@ -5045,7 +5070,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                 weekNumber: todayPeriodPlanMatch.weekNumber,
                                 day: todayPeriodPlanMatch.day,
                               }),
-                          }
+                           }
                         : !todayPlanEntry && nextProgram
                           ? {
                               label: "Start neste økt",
