@@ -154,28 +154,141 @@ button {
   gap: 0.25rem;
 }
 
-.motus-home-hero-card {
-  border-radius: 1.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  background:
-    linear-gradient(155deg, rgba(255, 255, 255, 0.94) 0%, rgba(236, 253, 248, 0.72) 52%, rgba(255, 255, 255, 0.88) 100%);
-  padding: 1.375rem 1.25rem 1.5rem;
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.03),
-    0 10px 28px -14px rgba(48, 227, 190, 0.28),
-    0 18px 40px -24px rgba(15, 23, 42, 0.12);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+.motus-home-dashboard {
+  border-radius: 1.5rem;
+  border: 1px solid rgba(48, 227, 190, 0.22);
+  background: linear-gradient(135deg, rgba(236, 253, 248, 0.95) 0%, rgba(255, 255, 255, 0.92) 58%, rgba(255, 240, 248, 0.5) 100%);
+  padding: 1.125rem 1rem 1.25rem;
+  box-shadow: 0 10px 28px -18px rgba(48, 227, 190, 0.35);
 }
 
-.motus-home-hero-thumb {
-  width: 4.75rem;
-  height: 4.75rem;
-  overflow: hidden;
-  border-radius: 1.125rem;
+.motus-home-streak-ring {
+  position: relative;
+  width: 5.5rem;
+  height: 5.5rem;
+}
+
+.motus-home-streak-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.motus-home-dash-icon {
+  display: inline-flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: rgba(48, 227, 190, 0.14);
+  color: var(--motus-brand-text);
+}
+
+.motus-home-workout-card {
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.94);
+  padding: 1rem;
   box-shadow:
-    0 4px 14px -8px rgba(15, 23, 42, 0.28),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.65);
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 12px 32px -20px rgba(15, 23, 42, 0.18);
+}
+
+.motus-home-workout-thumb {
+  position: relative;
+  width: 6.5rem;
+  height: 6.5rem;
+  overflow: hidden;
+  border-radius: 1rem;
+  box-shadow: 0 6px 18px -10px rgba(15, 23, 42, 0.35);
+}
+
+.motus-home-workout-thumb-badge {
+  position: absolute;
+  inset-inline: 0.25rem;
+  bottom: 0.25rem;
+  border-radius: 0.5rem;
+  background: rgba(15, 23, 42, 0.72);
+  padding: 0.2rem 0.35rem;
+  text-align: center;
+  font-size: 7px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #fff;
+}
+
+.motus-home-quick-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 1.125rem;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 0.875rem 0.5rem;
+  box-shadow: 0 4px 16px -12px rgba(15, 23, 42, 0.14);
+}
+
+.motus-home-quick-action-icon {
+  display: inline-flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.875rem;
+}
+
+.motus-home-quick-action-icon--brand {
+  background: rgba(48, 227, 190, 0.16);
+  color: var(--motus-brand-text);
+}
+
+.motus-home-quick-action-icon--pink {
+  background: rgba(217, 18, 120, 0.1);
+  color: #d91278;
+}
+
+.motus-home-week-card {
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 1rem 1rem 1.125rem;
+  box-shadow: 0 8px 24px -18px rgba(15, 23, 42, 0.16);
+}
+
+.motus-home-insight-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: 1rem;
+  background: rgba(236, 253, 248, 0.9);
+  border: 1px solid rgba(48, 227, 190, 0.2);
+  padding: 0.75rem 0.875rem;
+}
+
+.motus-home-boost-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(217, 18, 120, 0.12);
+  background: linear-gradient(135deg, rgba(255, 240, 248, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+  padding: 1rem 1.125rem;
+}
+
+.motus-home-boost-art {
+  display: flex;
+  height: 4.5rem;
+  width: 4.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .motus-stat-pill {

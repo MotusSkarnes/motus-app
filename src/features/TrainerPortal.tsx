@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CalendarRange, ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, MessageSquare, Pencil, Play, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, periodPlanStartDateForDateInput } from "../app/dateFormat";
@@ -66,6 +66,7 @@ import {
   type InviteTrainerResult,
 } from "../services/supabaseAuth";
 import { TrainerProfileCard } from "./TrainerProfileCard";
+import { TrainerHomeOverview, TrainerHomeSection } from "./TrainerHomeOverview";
 import type {
   AuthUser,
   ChatMessage,
@@ -247,6 +248,8 @@ type TrainerPortalProps = {
   /** Innlogget treners visningsnavn — brukes når program lagres på kunde. */
   trainerAccountName?: string;
   onTrainerProfileSaved?: (user: AuthUser) => void;
+  trainerHomeHeaderActions?: ReactNode;
+  trainerHomeNotificationsPanel?: ReactNode;
   /** Synket fra Supabase ved hydrering (per medlem, inkl. tom liste). */
   remoteTrainerPeriodPlansByMemberId?: Record<string, PeriodSchedulePlan[]>;
   /** Live PT-økt på kundens program — samme tilstand som medlemssiden. */
@@ -658,6 +661,8 @@ function pickFirstName(value: unknown): string {
     remoteTrainerPeriodPlansByMemberId = {},
     trainerAccountName = "",
     onTrainerProfileSaved,
+    trainerHomeHeaderActions,
+    trainerHomeNotificationsPanel,
     workoutMode = null,
     startWorkoutMode = () => {},
     updateWorkoutExerciseResult = () => {},
@@ -3839,6 +3844,24 @@ function pickFirstName(value: unknown): string {
       .slice(0, 6);
   }, [activeMembers, logs, memberRelatedIdSetByCanonicalId, lastFollowUpByMemberId, members]);
   const followUpCount = followUpCandidates.length;
+  const trainerFirstName = pickFirstName(trainerAccountName) || "PT";
+  const trainerTodayDateLabel = new Date().toLocaleDateString("no-NO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  const trainerOpsHealthPct = Math.max(
+    12,
+    Math.min(100, 100 - followUpCount * 14 - membersWithoutProgramCount * 10 - dashboardSummary.newMessages24h * 4),
+  );
+  const trainerDashboardHeadline =
+    followUpCount > 0 || dashboardSummary.newMessages24h > 0 ? "Du har ting å følge opp" : "Alt ser bra ut";
+  const trainerDashboardSubline =
+    followUpCount > 0
+      ? `${followUpCount} kunder bør prioriteres i dag.`
+      : dashboardSummary.newMessages24h > 0
+        ? `${dashboardSummary.newMessages24h} nye meldinger siste 24 timer.`
+        : "Ingen kritiske oppfølginger akkurat nå.";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -4159,49 +4182,30 @@ function pickFirstName(value: unknown): string {
     <>
     <div className="space-y-4 sm:space-y-6">
       {trainerTab === "dashboard" ? (
-        <Card className="p-5 shadow-sm ring-1 ring-black/5 space-y-5 sm:p-6">
-          <div
-            className="motus-card rounded-2xl p-4 text-sm text-slate-600"
+        <div className="motus-home-shell">
+          <TrainerHomeOverview
+            trainerFirstName={trainerFirstName}
+            todayDateLabel={trainerTodayDateLabel}
+            dashboardHeadline={trainerDashboardHeadline}
+            dashboardSubline={trainerDashboardSubline}
+            opsHealthPct={trainerOpsHealthPct}
+            followUpCount={followUpCount}
+            membersWithoutProgramCount={membersWithoutProgramCount}
+            todaysCustomers={dashboardSummary.todaysCustomers}
+            todaysWorkouts={dashboardSummary.todaysWorkouts}
+            newMessages24h={dashboardSummary.newMessages24h}
+            onFollowUpClick={() => openCustomersWithListFilters({ memberFilter: "followUp" })}
+            onMissingProgramClick={() => openCustomersWithListFilters({ memberFilter: "noProgram" })}
+            quickActions={{
+              onOpenCustomers: () => setTrainerTab("customers"),
+              onOpenPrograms: () => setTrainerTab("programs"),
+              onOpenMessages: () => setTrainerTab("customers"),
+            }}
+            headerActions={trainerHomeHeaderActions}
+            notificationsPanel={trainerHomeNotificationsPanel}
           >
-            <div className="motus-section-label">Dagens fokus</div>
-            <div className="mt-1 text-base font-semibold text-slate-800">Drift og oppfølging</div>
-            <div className="mt-2 flex flex-wrap items-center gap-x-1 gap-y-1">
-              {followUpCount > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => openCustomersWithListFilters({ memberFilter: "followUp" })}
-                  className="font-semibold text-rose-700 underline decoration-rose-300 underline-offset-2 hover:text-rose-800"
-                >
-                  {followUpCount} kunder må følges opp
-                </button>
-              ) : (
-                <span>Ingen kunder trenger oppfølging akkurat nå.</span>
-              )}
-              <span className="text-slate-500">·</span>
-              {membersWithoutProgramCount > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => openCustomersWithListFilters({ memberFilter: "noProgram" })}
-                  className="font-semibold text-amber-800 underline decoration-amber-300 underline-offset-2 hover:text-amber-900"
-                >
-                  {membersWithoutProgramCount} mangler program
-                </button>
-              ) : (
-                <span>Alle aktive kunder har program.</span>
-              )}
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <StatCard label="Dagens kunder" value={String(dashboardSummary.todaysCustomers)} hint="Unike med aktivitet i dag" />
-            <StatCard label="Dagens økter" value={String(dashboardSummary.todaysWorkouts)} hint="Loggede økter i dag" />
-            <StatCard label="Nye meldinger" value={String(dashboardSummary.newMessages24h)} hint="Fra kunder siste 24 timer" />
-          </div>
           <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
-            <div className="rounded-2xl border bg-white p-5 space-y-4 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Planlegging</div>
-                <div className="mt-1 font-semibold text-slate-800">To-do per dag</div>
-              </div>
+            <TrainerHomeSection title="To-do per dag" subtitle="Planlegging">
               <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
                 <TextInput value={todoTitle} onChange={(e) => setTodoTitle(e.target.value)} placeholder="Ny oppgave (f.eks. ring Martin)" />
                 <TextInput type="date" value={selectedTodoDate} onChange={(e) => setSelectedTodoDate(e.target.value)} />
@@ -4218,19 +4222,17 @@ function pickFirstName(value: unknown): string {
                   </div>
                 ))}
               </div>
-            </div>
-            <div className="rounded-2xl border bg-white p-5 space-y-4 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Oversikt</div>
-                  <div className="mt-1 font-semibold text-slate-800">Kalender</div>
-                </div>
+            </TrainerHomeSection>
+            <TrainerHomeSection
+              title="Kalender"
+              subtitle={monthLabel}
+              actions={
                 <div className="flex items-center gap-2">
                   <OutlineButton onClick={() => setDashboardMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))} className="px-3 py-1.5 text-xs">Forrige</OutlineButton>
                   <OutlineButton onClick={() => setDashboardMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))} className="px-3 py-1.5 text-xs">Neste</OutlineButton>
                 </div>
-              </div>
-              <div className="text-sm text-slate-600">{monthLabel}</div>
+              }
+            >
               <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-slate-500">
                 <span>Ma</span><span>Ti</span><span>On</span><span>To</span><span>Fr</span><span>Lo</span><span>So</span>
               </div>
@@ -4259,15 +4261,12 @@ function pickFirstName(value: unknown): string {
                   );
                 })}
               </div>
-            </div>
+            </TrainerHomeSection>
           </div>
-          <div className="rounded-2xl border bg-white p-5 space-y-4 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Kundeoversikt</div>
-                <div className="mt-1 font-semibold text-slate-800">Kundeprioritering</div>
-                <div className="mt-1 text-xs text-slate-500">Rød prioritet haster mest.</div>
-              </div>
+          <TrainerHomeSection
+            title="Kundeprioritering"
+            subtitle="Rød prioritet haster mest."
+            actions={
               <div className="flex flex-wrap items-center gap-2">
                 <SelectBox
                   value={priorityFilter}
@@ -4315,7 +4314,8 @@ function pickFirstName(value: unknown): string {
                   Vis i klientliste
                 </OutlineButton>
               </div>
-            </div>
+            }
+          >
             <div className="space-y-2">
               {membersWithPriority.length === 0 ? (
                 <div className="rounded-xl border border-dashed bg-white p-4 text-sm text-slate-500">
@@ -4359,12 +4359,8 @@ function pickFirstName(value: unknown): string {
                 </button>
               ))}
             </div>
-          </div>
-          <div className="rounded-2xl border bg-white p-5 space-y-4 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Oppfølging</div>
-              <div className="mt-1 font-semibold text-slate-800">Bør kontaktes nå</div>
-            </div>
+          </TrainerHomeSection>
+          <TrainerHomeSection title="Bør kontaktes nå" subtitle="Oppfølging">
             {followUpCandidates.length === 0 ? (
               <div className="rounded-xl border border-dashed bg-white p-3 text-sm text-slate-500">
                 Ingen kunder trenger ekstra oppfølging akkurat nå.
@@ -4399,8 +4395,9 @@ function pickFirstName(value: unknown): string {
                 ))}
               </div>
             )}
-          </div>
-        </Card>
+          </TrainerHomeSection>
+          </TrainerHomeOverview>
+        </div>
       ) : null}
 
       {trainerTab === "settings" ? (

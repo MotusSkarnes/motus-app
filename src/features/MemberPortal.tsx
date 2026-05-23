@@ -135,6 +135,8 @@ import {
   computeMemberBadges,
   computeMonthUniqueDays,
   computeMonthWeeksWithSession,
+  formatBadgeMetricValue,
+  getBadgeNextLevel,
   type MemberBadge,
 } from "../app/memberBadges";
 import {
@@ -3641,12 +3643,84 @@ export function MemberPortal(props: MemberPortalProps) {
       ).length,
     [memberAssignedPrograms, memberNotificationPrefs?.seenMemberProgramIds],
   );
+  const homeTodayDateLabel = useMemo(
+    () =>
+      new Date(nowTimestamp).toLocaleDateString("no-NO", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      }),
+    [nowTimestamp],
+  );
+  const homeWeeklyMinutes = useMemo(() => {
+    const today = getStartOfDay(new Date(nowTimestamp));
+    const mondayOffset = (today.getDay() + 6) % 7;
+    const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset);
+    const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7);
+    let total = 0;
+    completedLogs.forEach((log) => {
+      if (log.status !== "Fullført") return;
+      const logDay = parseDateOnly(log.date);
+      if (!logDay) return;
+      const day = getStartOfDay(logDay);
+      if (day.getTime() < weekStart.getTime() || day.getTime() >= weekEnd.getTime()) return;
+      (log.results ?? []).forEach((result) => {
+        if (!result.completed) return;
+        const duration = Number(result.performedDurationMinutes) || 0;
+        if (duration > 0) {
+          total += duration;
+          return;
+        }
+        const sets = Math.max(1, Number(result.plannedSets) || 1);
+        total += sets * 2.5;
+      });
+    });
+    return Math.round(total);
+  }, [completedLogs, nowTimestamp]);
+  const homeWeeklyMinutesTarget = useMemo(() => {
+    const sessionTarget = Number(profileSessionsPerWeekTarget) || homeWeeklySummary.plannedThisWeek || 4;
+    return Math.max(sessionTarget * 45, homeWeeklyMinutes, 60);
+  }, [profileSessionsPerWeekTarget, homeWeeklySummary.plannedThisWeek, homeWeeklyMinutes]);
+  const homeSessionsTarget = useMemo(() => {
+    const profileTarget = Number(profileSessionsPerWeekTarget);
+    if (profileTarget > 0) return profileTarget;
+    if (homeWeeklySummary.plannedThisWeek > 0) return homeWeeklySummary.plannedThisWeek;
+    return 4;
+  }, [profileSessionsPerWeekTarget, homeWeeklySummary.plannedThisWeek]);
+  const homeBestLift = useMemo(() => {
+    const top = personalRecords[0];
+    if (!top?.weight) return null;
+    return { exerciseName: top.name, weightKg: top.weight };
+  }, [personalRecords]);
+  const homeDashboardSubline = useMemo(() => {
+    const nextBadge = memberBadgeCollection.allBadges
+      .filter((badge) => !badge.secret && !badge.hidden && getBadgeNextLevel(badge))
+      .sort((a, b) => b.progressPct - a.progressPct)[0];
+    if (!nextBadge) return memberProgressScores.momentum.subline;
+    const nextLevel = getBadgeNextLevel(nextBadge);
+    if (!nextLevel) return memberProgressScores.momentum.subline;
+    const remaining = Math.max(0, Math.ceil(nextLevel.target - nextBadge.current));
+    const unit = formatBadgeMetricValue(nextBadge.id, remaining);
+    if (remaining <= 0) return `Nesten i mål med ${nextBadge.title}`;
+    return `${unit} igjen til ${nextBadge.title}`;
+  }, [memberBadgeCollection.allBadges, memberProgressScores.momentum.subline]);
+  const homeDashboardHeadline =
+    homeWeeklySummary.completedThisWeek > 0 || streakWeeks > 0 ? "Du er på vei!" : "Klar for en ny uke";
+  const homeWorkoutSubtitle = useMemo(() => {
+    const goal = homeWorkoutProgram?.goal?.trim();
+    if (goal) return goal;
+    return null;
+  }, [homeWorkoutProgram?.goal]);
   const homeMotivationLine =
     homeWeeklySummary.completedThisWeek > 0
-      ? "Du er nærmere målet enn i går."
+      ? "Litt bedre hver dag gir store resultater over tid."
       : streakWeeks > 0
-        ? "Du holder flyten."
-        : "Klar når du er.";
+        ? "Du holder flyten – fortsett i ditt eget tempo."
+        : "Små steg teller. Start når det passer deg.";
+  const openHomeWorkoutDestination = useCallback(() => {
+    setMemberTab("programs");
+    setTrainingSection(todayPlanEntry ? "period" : "programs");
+  }, [setMemberTab, todayPlanEntry]);
   const homeStatusCard = useMemo(() => {
     if (homeUnseenProgramCount > 0) {
       return {
@@ -4406,21 +4480,58 @@ export function MemberPortal(props: MemberPortalProps) {
             <div className="motus-home-shell space-y-6">
               <MemberHomeOverview
                 memberFirstName={homeFirstName}
+                todayDateLabel={homeTodayDateLabel}
+                memberAvatarUrl={memberAvatarUrl}
+                onOpenProfile={() => setMemberTab("profile")}
                 streakWeeks={streakWeeks}
+                dashboardHeadline={homeDashboardHeadline}
+                dashboardSubline={homeDashboardSubline}
+                momentumPct={homeMomentumPct}
+                dailyGoalLabel={homeWorkoutDuration}
+                weekSessionsLabel={homeWeekSessionsLabel}
                 motivationLine={homeMotivationLine}
                 statusCard={homeStatusCard}
                 workoutTitle={homePrimaryFocus}
+                workoutSubtitle={homeWorkoutSubtitle}
                 workoutDuration={homeWorkoutDuration}
                 workoutImageSrc={homeWorkoutCoverSrc}
                 workoutZoneLabel={homeWorkoutZoneLabel}
-                weekSessionsLabel={homeWeekSessionsLabel}
-                weekStats={{
-                  completedSessions: homeWeeklySummary.completedThisWeek,
-                  momentumPct: homeMomentumPct,
-                  streakWeeks,
+                weeklySessions={{
+                  completed: homeWeeklySummary.completedThisWeek,
+                  target: homeSessionsTarget,
+                }}
+                weeklyMinutes={{
+                  completed: homeWeeklyMinutes,
+                  target: homeWeeklyMinutesTarget,
+                }}
+                bestLift={homeBestLift}
+                consistencyInsight={memberProgressScores.consistency.subline}
+                quickActions={{
+                  onLogWorkout: () => {
+                    setMemberTab("programs");
+                    setTrainingSection("custom");
+                  },
+                  onViewPrograms: () => {
+                    setMemberTab("programs");
+                    setTrainingSection("programs");
+                  },
+                  onViewProgress: () => setMemberTab("progress"),
                 }}
                 headerActions={homeOverviewHeaderActions}
                 notificationsPanel={homeOverviewNotificationsPanel}
+                onWorkoutCardClick={openHomeWorkoutDestination}
+                betweenSections={
+                  !isMemberLimited ? (
+                    <div>
+                      <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-slate-400">Merker</p>
+                      <MemberBadgesCarousel
+                        collection={memberBadgeCollection}
+                        memberDisplayName={memberShareDisplayName}
+                        shareLogoSrc={motusShareLogoSrc}
+                      />
+                    </div>
+                  ) : null
+                }
                 primaryCta={
                   todayPlanAction.kind === "start-program" ? (
                     <MemberHomeStartWorkoutButton
@@ -4462,7 +4573,6 @@ export function MemberPortal(props: MemberPortalProps) {
                     </GradientButton>
                   )
                 }
-                secondaryCta={<MemberHomeSecondaryLink label="Se programmer" onClick={() => setMemberTab("programs")} />}
                 onboardingPrompt={
                   onOpenOnboarding && showOnboardingHomePrompt ? (
                     <MemberHomeCompactPrompt
@@ -4686,16 +4796,6 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null}
                 </div>
               </section>
-              {!isMemberLimited ? (
-                <div className="px-0.5 pt-2">
-                  <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-slate-400">Merker</p>
-                  <MemberBadgesCarousel
-                    collection={memberBadgeCollection}
-                    memberDisplayName={memberShareDisplayName}
-                    shareLogoSrc={motusShareLogoSrc}
-                  />
-                </div>
-              ) : null}
             </div>
           ) : null}
 
