@@ -1,4 +1,5 @@
 import type { ChatMessage, Member } from "./types";
+import { messageReactionsHaveEntries, normalizeMessageReactions } from "./chatReactions";
 
 /** Parses createdAt from ISO or Norwegian dd.mm.yyyy format used locally. */
 export function parseChatMessageCreatedAtMs(value: string): number {
@@ -38,10 +39,30 @@ export function mergeRemoteMessagesWithLocalOptimistic(
   const canonicalMemberKey = (memberId: string): string => memberEmailById.get(memberId) || memberId;
   const messageMergeKey = (message: ChatMessage): string =>
     `${message.sender}|${message.text.trim().replace(/\s+/g, " ").toLowerCase()}|${canonicalMemberKey(message.memberId)}`;
+  const localById = new Map(prevMessages.map((message) => [message.id, message]));
+  const localByMergeKey = new Map<string, ChatMessage[]>();
+  prevMessages.forEach((message) => {
+    const key = messageMergeKey(message);
+    const list = localByMergeKey.get(key) ?? [];
+    list.push(message);
+    localByMergeKey.set(key, list);
+  });
+  const mergeLocalReactions = (remoteMessage: ChatMessage): ChatMessage => {
+    const localByExactId = localById.get(remoteMessage.id);
+    const remoteCreatedAtMs = parseCreatedAtMs(remoteMessage.createdAt);
+    const localByLogicalMessage = (localByMergeKey.get(messageMergeKey(remoteMessage)) ?? []).find((localMessage) => {
+      const localCreatedAtMs = parseCreatedAtMs(localMessage.createdAt);
+      if (!remoteCreatedAtMs || !localCreatedAtMs) return false;
+      return Math.abs(remoteCreatedAtMs - localCreatedAtMs) <= 120000;
+    });
+    const localReactions = normalizeMessageReactions(localByExactId?.reactions ?? localByLogicalMessage?.reactions);
+    if (!messageReactionsHaveEntries(localReactions)) return remoteMessage;
+    return { ...remoteMessage, reactions: localReactions };
+  };
 
   const dedupedRemoteById = new Map<string, ChatMessage>();
   remoteMessages.forEach((message) => {
-    if (!dedupedRemoteById.has(message.id)) dedupedRemoteById.set(message.id, message);
+    if (!dedupedRemoteById.has(message.id)) dedupedRemoteById.set(message.id, mergeLocalReactions(message));
   });
   const dedupedRemote = Array.from(dedupedRemoteById.values()).sort(
     (a, b) => parseCreatedAtMs(a.createdAt) - parseCreatedAtMs(b.createdAt),

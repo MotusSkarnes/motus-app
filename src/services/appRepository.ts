@@ -9,6 +9,7 @@ import {
   workoutResultGroupId,
 } from "../app/programBlocks";
 import { uid } from "../app/storage";
+import { toggleReactionInState, type ChatReactionActor, type ChatReactionEmoji } from "../app/chatReactions";
 import type {
   AppState,
   ChatMessage,
@@ -196,6 +197,7 @@ export interface AppRepository {
   updateProgramMemberLibraryStatus(state: AppState, programId: string, status: MemberProgramLibraryStatus | undefined): AppState;
   appendTrainerMessage(state: AppState, memberId: string, text: string): AppState;
   appendMemberMessage(state: AppState, memberId: string, text: string): AppState;
+  toggleChatMessageReaction(state: AppState, messageId: string, emoji: ChatReactionEmoji, actor: ChatReactionActor): AppState;
   startWorkoutMode(state: AppState, programId: string, options?: StartWorkoutModeOptions): AppState;
   startCustomWorkout(state: AppState, input: StartCustomWorkoutInput, options?: StartWorkoutModeOptions): AppState;
   updateWorkoutResult(state: AppState, input: UpdateWorkoutResultInput): AppState;
@@ -411,6 +413,23 @@ export function appendMemberMessage(state: AppState, memberId: string, text: str
     createdAt: formatDateTimeDdMmYyyy(new Date()),
   };
   return { ...state, messages: [...state.messages, nextMessage] };
+}
+
+export function toggleChatMessageReaction(
+  state: AppState,
+  messageId: string,
+  emoji: ChatReactionEmoji,
+  actor: ChatReactionActor,
+): AppState {
+  if (!messageId.trim()) return state;
+  return {
+    ...state,
+    messages: state.messages.map((message) =>
+      message.id === messageId
+        ? { ...message, reactions: toggleReactionInState(message.reactions, emoji, actor) }
+        : message,
+    ),
+  };
 }
 
 export function startWorkoutModeInState(state: AppState, programId: string, options?: StartWorkoutModeOptions): AppState {
@@ -998,6 +1017,7 @@ export const localAppRepository: AppRepository = {
   updateProgramMemberLibraryStatus: updateProgramMemberLibraryStatusInState,
   appendTrainerMessage,
   appendMemberMessage,
+  toggleChatMessageReaction,
   startWorkoutMode: (state, programId, options) => startWorkoutModeInState(state, programId, options),
   startCustomWorkout: (state, input, options) => startCustomWorkoutInState(state, input, options),
   updateWorkoutResult: (state, input) => updateWorkoutResultInState(state, input.exerciseId, input.field, input.value),

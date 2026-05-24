@@ -4029,6 +4029,9 @@ export const supabaseAppRepository: AppRepository = {
     void persistMessage(memberId, "member", text.trim(), hints);
     return nextState;
   },
+  toggleChatMessageReaction(state: AppState, messageId, emoji, actor): AppState {
+    return localAppRepository.toggleChatMessageReaction(state, messageId, emoji, actor);
+  },
   startWorkoutMode(state: AppState, programId: string, options?: StartWorkoutModeOptions): AppState {
     return localAppRepository.startWorkoutMode(state, programId, options);
   },

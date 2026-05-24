@@ -1,3 +1,5 @@
+import type { ChatReactionState } from "./chatReactions";
+
 export type Role = "trainer" | "member";
 export type Level = "Nybegynner" | "Litt øvet" | "Øvet";
 export type MembershipType = "Standard" | "Premium";
@@ -181,6 +183,7 @@ export type ChatMessage = {
   sender: "trainer" | "member";
   text: string;
   createdAt: string;
+  reactions?: ChatReactionState;
 };
 
 export type WeekdayPlanKey = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";

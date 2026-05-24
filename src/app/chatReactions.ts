@@ -2,8 +2,45 @@ const STORAGE_KEY = "MOTUS_CHAT_REACTIONS_V1";
 
 export const CHAT_REACTION_EMOJIS = ["❤️", "💪", "🔥", "👏", "✅", "👍"] as const;
 export type ChatReactionEmoji = (typeof CHAT_REACTION_EMOJIS)[number];
+export type ChatReactionActor = "member" | "trainer";
+export type ChatReactionState = Partial<Record<ChatReactionEmoji, ChatReactionActor[]>>;
+export type ChatReactionMap = Record<string, ChatReactionState>;
 
-export type ChatReactionMap = Record<string, Record<ChatReactionEmoji, ("member" | "trainer")[]>>;
+export function normalizeMessageReactions(reactions: ChatReactionState | undefined): ChatReactionState {
+  if (!reactions) return {};
+  return CHAT_REACTION_EMOJIS.reduce<ChatReactionState>((next, emoji) => {
+    const actors = Array.from(
+      new Set((reactions[emoji] ?? []).filter((actor) => actor === "member" || actor === "trainer")),
+    );
+    if (actors.length > 0) next[emoji] = actors;
+    return next;
+  }, {});
+}
+
+export function messageReactionsHaveEntries(reactions: ChatReactionState | undefined): boolean {
+  return CHAT_REACTION_EMOJIS.some((emoji) => (reactions?.[emoji]?.length ?? 0) > 0);
+}
+
+export function toggleReactionInState(
+  reactions: ChatReactionState | undefined,
+  emoji: ChatReactionEmoji,
+  actor: ChatReactionActor,
+): ChatReactionState | undefined {
+  const next = normalizeMessageReactions(reactions);
+  const actors = [...(next[emoji] ?? [])];
+  const index = actors.indexOf(actor);
+  if (index >= 0) {
+    actors.splice(index, 1);
+  } else {
+    actors.push(actor);
+  }
+  if (actors.length === 0) {
+    delete next[emoji];
+  } else {
+    next[emoji] = actors;
+  }
+  return messageReactionsHaveEntries(next) ? next : undefined;
+}
 
 function readAll(): ChatReactionMap {
   if (typeof window === "undefined") return {};
@@ -22,41 +59,30 @@ function writeAll(map: ChatReactionMap): void {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
 }
 
-export function readMessageReactions(messageId: string): Record<ChatReactionEmoji, ("member" | "trainer")[]> {
+export function readMessageReactions(messageId: string): Record<ChatReactionEmoji, ChatReactionActor[]> {
   const all = readAll();
-  return (all[messageId] ?? {}) as Record<ChatReactionEmoji, ("member" | "trainer")[]>;
+  return normalizeMessageReactions(all[messageId]) as Record<ChatReactionEmoji, ChatReactionActor[]>;
 }
 
 export function toggleMessageReaction(
   messageId: string,
   emoji: ChatReactionEmoji,
-  actor: "member" | "trainer",
-): Record<ChatReactionEmoji, ("member" | "trainer")[]> {
+  actor: ChatReactionActor,
+): Record<ChatReactionEmoji, ChatReactionActor[]> {
   const all = readAll();
-  const current = { ...(all[messageId] ?? {}) } as Record<ChatReactionEmoji, ("member" | "trainer")[]>;
-  const actors = [...(current[emoji] ?? [])];
-  const index = actors.indexOf(actor);
-  if (index >= 0) {
-    actors.splice(index, 1);
-  } else {
-    actors.push(actor);
-  }
-  if (actors.length === 0) {
-    delete current[emoji];
-  } else {
-    current[emoji] = actors;
-  }
-  const hasAny = Object.keys(current).length > 0;
-  if (hasAny) {
+  const current = toggleReactionInState(all[messageId], emoji, actor);
+  if (current) {
     all[messageId] = current;
   } else {
     delete all[messageId];
   }
   writeAll(all);
-  return current;
+  return (current ?? {}) as Record<ChatReactionEmoji, ChatReactionActor[]>;
 }
 
-export function countReactions(reactions: Record<ChatReactionEmoji, ("member" | "trainer")[]> | undefined): Array<{ emoji: ChatReactionEmoji; count: number; own: boolean }> {
+export function countReactions(
+  reactions: ChatReactionState | undefined,
+): Array<{ emoji: ChatReactionEmoji; count: number; own: boolean }> {
   if (!reactions) return [];
   return CHAT_REACTION_EMOJIS.flatMap((emoji) => {
     const actors = reactions[emoji] ?? [];

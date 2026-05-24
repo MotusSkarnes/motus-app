@@ -180,6 +180,7 @@ import { MemberHomeWeeklyProgress } from "./MemberHomeWeeklyProgress";
 import { MemberHomeNextPlanCard, MemberHomeStatusGradientCard } from "./MemberHomeNextPlanCard";
 import { MemberProgressScoresCard } from "./MemberProgressScoresCard";
 import { buildShareProgramChatMessage } from "../app/chatFormat";
+import type { ChatReactionActor, ChatReactionEmoji } from "../app/chatReactions";
 import { MotusChat, type MotusChatQuickAction } from "./MotusChat";
 import { resolveMemberTrainerDisplayName } from "../app/trainerProfile";
 import { MemberPersonalRecordsSection } from "./MemberPersonalRecordsSection";
@@ -268,6 +269,7 @@ type MemberPortalProps = {
   setMemberAvatarUrl: (url: string) => void;
   exercises: Exercise[];
   sendMemberMessage: (memberId: string, text: string) => void;
+  toggleChatMessageReaction: (messageId: string, emoji: ChatReactionEmoji, actor: ChatReactionActor) => void;
   workoutMode: WorkoutModeState | null;
   startWorkoutMode: (programId: string, options?: StartWorkoutModeOptions) => void;
   startCustomWorkout: (input: StartCustomWorkoutInput, options?: StartWorkoutModeOptions) => void;
@@ -933,6 +935,7 @@ export function MemberPortal(props: MemberPortalProps) {
     setMemberAvatarUrl,
     exercises,
     sendMemberMessage,
+    toggleChatMessageReaction,
     workoutMode,
     startWorkoutMode,
     startCustomWorkout,
@@ -6770,6 +6773,7 @@ export function MemberPortal(props: MemberPortalProps) {
               sendStatus={memberChatSendStatus}
               messagesContainerRef={memberMessagesContainerRef}
               quickActions={memberChatQuickActions}
+              onToggleReaction={toggleChatMessageReaction}
             />
           ) : null}
 

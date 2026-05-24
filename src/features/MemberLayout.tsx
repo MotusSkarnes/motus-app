@@ -70,6 +70,7 @@ type MemberLayoutProps = {
   currentMemberAvatarUrl: string;
   setCurrentMemberAvatarUrl: (url: string) => void;
   sendMemberMessage: ComponentProps<typeof MemberPortal>["sendMemberMessage"];
+  toggleChatMessageReaction: ComponentProps<typeof MemberPortal>["toggleChatMessageReaction"];
   startWorkoutMode: ComponentProps<typeof MemberPortal>["startWorkoutMode"];
   startCustomWorkout: ComponentProps<typeof MemberPortal>["startCustomWorkout"];
   saveProgramForMember: ComponentProps<typeof MemberPortal>["saveProgramForMember"];
@@ -124,6 +125,7 @@ export function MemberLayout({
   currentMemberAvatarUrl,
   setCurrentMemberAvatarUrl,
   sendMemberMessage,
+  toggleChatMessageReaction,
   startWorkoutMode,
   startCustomWorkout,
   saveProgramForMember,
@@ -364,6 +366,7 @@ export function MemberLayout({
     setMemberAvatarUrl: setCurrentMemberAvatarUrl,
     exercises: appState.exercises,
     sendMemberMessage,
+    toggleChatMessageReaction,
     workoutMode: appState.workoutMode,
     startWorkoutMode,
     startCustomWorkout,

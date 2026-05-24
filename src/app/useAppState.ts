@@ -2225,7 +2225,16 @@ export function useAppState() {
           prev.members,
           readPinnedTrainerMembers(),
         ),
-        ...(remoteMessages ? { messages: remoteMessages } : {}),
+        ...(remoteMessages
+          ? {
+              messages: mergeRemoteMessagesWithLocalOptimistic(
+                remoteMessages,
+                prev.messages,
+                [...prev.members, ...remoteMembers],
+                Date.now(),
+              ),
+            }
+          : {}),
         ...(remotePrograms ? { programs: mergeRemoteProgramsWithLocal(remotePrograms, prev.programs) } : {}),
         ...(remoteLogs ? { logs: remoteLogs } : {}),
         ...(hydratedTrainer?.periodPlansByMemberId

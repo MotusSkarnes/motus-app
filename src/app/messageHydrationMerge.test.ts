@@ -82,6 +82,31 @@ describe("mergeRemoteMessagesWithLocalOptimistic", () => {
     expect(merged[0].memberId).toBe("m2");
   });
 
+  it("keeps local reactions when the remote row replaces a local message", () => {
+    const baseTime = new Date("2026-05-06T12:30:00.000Z").getTime();
+    const members = [minimalMember("m1", "kunde@example.com"), minimalMember("m2", "kunde@example.com")];
+    const local: ChatMessage = {
+      id: "msg-optimistic-reaction",
+      memberId: "m1",
+      sender: "member",
+      text: "Sterk økt",
+      createdAt: new Date(baseTime).toISOString(),
+      reactions: { "🔥": ["trainer"] },
+    };
+    const server: ChatMessage = {
+      id: "uuid-server-reaction",
+      memberId: "m2",
+      sender: "member",
+      text: "Sterk økt",
+      createdAt: new Date(baseTime + 1000).toISOString(),
+    };
+
+    const merged = mergeRemoteMessagesWithLocalOptimistic([server], [local], members, baseTime + 2000);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].reactions).toEqual({ "🔥": ["trainer"] });
+  });
+
   it("keeps two identical short texts from server when sent close together (separate sends)", () => {
     const members = [minimalMember("m1", "kunde@test.no")];
     const t0 = new Date("2026-05-06T14:00:00.000Z").getTime();

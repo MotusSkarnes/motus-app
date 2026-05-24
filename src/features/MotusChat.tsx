@@ -17,7 +17,9 @@ import {
   CHAT_REACTION_EMOJIS,
   readMessageReactions,
   toggleMessageReaction,
+  type ChatReactionActor,
   type ChatReactionEmoji,
+  type ChatReactionState,
 } from "../app/chatReactions";
 
 export type MotusChatQuickAction = {
@@ -47,6 +49,7 @@ export type MotusChatProps = {
   messagesContainerRef?: RefObject<HTMLDivElement | null>;
   onBack?: () => void;
   headerExtra?: ReactNode;
+  onToggleReaction?: (messageId: string, emoji: ChatReactionEmoji, actor: ChatReactionActor) => void;
 };
 
 const DEFAULT_TRAINER_QUICK_REPLIES = [
@@ -108,16 +111,20 @@ function useLongPress(onLongPress: () => void, delayMs = 450) {
 
 function ReactionBar({
   messageId,
+  reactions: messageReactions,
   viewerRole,
   align,
   onReactionChange,
+  onToggleReaction,
 }: {
   messageId: string;
+  reactions?: ChatReactionState;
   viewerRole: "member" | "trainer";
   align: "left" | "right";
   onReactionChange: () => void;
+  onToggleReaction?: (messageId: string, emoji: ChatReactionEmoji, actor: ChatReactionActor) => void;
 }) {
-  const reactions = readMessageReactions(messageId);
+  const reactions = messageReactions ?? readMessageReactions(messageId);
   const entries = CHAT_REACTION_EMOJIS.flatMap((emoji) => {
     const actors = reactions[emoji] ?? [];
     if (actors.length === 0) return [];
@@ -132,7 +139,11 @@ function ReactionBar({
           type="button"
           className={`motus-chat-reaction-pill motus-pressable ${own ? "motus-chat-reaction-pill--own" : ""}`}
           onClick={() => {
-            toggleMessageReaction(messageId, emoji, viewerRole);
+            if (onToggleReaction) {
+              onToggleReaction(messageId, emoji, viewerRole);
+            } else {
+              toggleMessageReaction(messageId, emoji, viewerRole);
+            }
             onReactionChange();
           }}
         >
@@ -153,6 +164,7 @@ function MessageBubble({
   viewerRole,
   isNewest,
   onReactionChange,
+  onToggleReaction,
 }: {
   message: ChatMessage;
   isOwn: boolean;
@@ -162,6 +174,7 @@ function MessageBubble({
   viewerRole: "member" | "trainer";
   isNewest: boolean;
   onReactionChange: () => void;
+  onToggleReaction?: (messageId: string, emoji: ChatReactionEmoji, actor: ChatReactionActor) => void;
 }) {
   const [reactionOpen, setReactionOpen] = useState(false);
   const [reactionPulse, setReactionPulse] = useState(false);
@@ -177,7 +190,11 @@ function MessageBubble({
   const longPress = useLongPress(openReactions);
 
   const pickReaction = (emoji: ChatReactionEmoji) => {
-    toggleMessageReaction(message.id, emoji, viewerRole);
+    if (onToggleReaction) {
+      onToggleReaction(message.id, emoji, viewerRole);
+    } else {
+      toggleMessageReaction(message.id, emoji, viewerRole);
+    }
     setReactionOpen(false);
     setReactionPulse(true);
     onReactionChange();
@@ -241,7 +258,14 @@ function MessageBubble({
           </div>
         </div>
 
-        <ReactionBar messageId={message.id} viewerRole={viewerRole} align={isOwn ? "right" : "left"} onReactionChange={onReactionChange} />
+        <ReactionBar
+          messageId={message.id}
+          reactions={message.reactions}
+          viewerRole={viewerRole}
+          align={isOwn ? "right" : "left"}
+          onReactionChange={onReactionChange}
+          onToggleReaction={onToggleReaction}
+        />
       </div>
     </div>
   );
@@ -267,6 +291,7 @@ export function MotusChat({
   messagesContainerRef,
   onBack,
   headerExtra,
+  onToggleReaction,
 }: MotusChatProps) {
   const internalRef = useRef<HTMLDivElement>(null);
   const scrollRef = messagesContainerRef ?? internalRef;
@@ -370,6 +395,7 @@ export function MotusChat({
                 viewerRole={viewerRole}
                 isNewest={index === messages.length - 1}
                 onReactionChange={() => setReactionVersion((value) => value + 1)}
+                onToggleReaction={onToggleReaction}
               />
             </div>
           );
