@@ -327,9 +327,9 @@ button {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 10px;
-  max-width: min(27rem, 100%);
-  padding: 5rem 24px 24px;
+  gap: 8px;
+  max-width: min(23rem, 100%);
+  padding: 4.25rem 24px 20px;
   color: #ffffff;
 }
 
@@ -343,10 +343,10 @@ button {
 }
 
 .motus-home-workout-title {
-  margin-top: 8px;
-  font-size: 2rem;
+  margin-top: 6px;
+  font-size: clamp(1.55rem, 7vw, 2rem);
   font-weight: 650;
-  line-height: 1.05;
+  line-height: 1;
   color: #ffffff;
   text-shadow: 0 2px 16px rgba(2, 6, 23, 0.46);
 }
@@ -369,7 +369,7 @@ button {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.375rem 0.75rem;
-  margin-top: 10px;
+  margin-top: 8px;
   font-size: 0.875rem;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.94);
@@ -377,16 +377,17 @@ button {
 }
 
 .motus-home-workout-cta {
-  margin-top: 14px;
-  width: min(17rem, 100%);
+  margin-top: 10px;
+  width: min(14.5rem, 74%);
+  min-width: 12.5rem;
 }
 
 .motus-home-workout-cta > button {
-  min-height: 56px;
+  min-height: 48px;
   width: 100%;
-  border-radius: var(--motus-radius-button) !important;
-  padding-inline: 24px !important;
-  font-size: 1rem !important;
+  border-radius: 16px !important;
+  padding-inline: 18px !important;
+  font-size: 0.95rem !important;
   color: #ffffff !important;
   box-shadow:
     0 10px 24px -14px rgba(217, 18, 120, 0.85),
@@ -400,11 +401,15 @@ button {
 
 @media (min-width: 640px) {
   .motus-home-workout-content {
-    padding: 5.25rem 2rem 2rem;
+    padding: 5rem 2rem 1.75rem;
   }
 
   .motus-home-workout-title {
-    font-size: 2.625rem;
+    font-size: 2.25rem;
+  }
+
+  .motus-home-workout-cta {
+    width: min(15.5rem, 68%);
   }
 }
 
