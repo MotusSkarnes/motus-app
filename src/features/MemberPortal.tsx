@@ -4966,6 +4966,17 @@ export function MemberPortal(props: MemberPortalProps) {
                 workoutImageSrc={homeDisplayCoverSrc}
                 workoutZoneLabel={homeDisplayZoneLabel}
                 onWorkoutCardClick={openHomeWorkoutDestination}
+                quickActions={{
+                  onLogWorkout: () => {
+                    setMemberTab("programs");
+                    setTrainingSection("custom");
+                  },
+                  onViewPrograms: () => {
+                    setMemberTab("programs");
+                    setTrainingSection("programs");
+                  },
+                  onViewProgress: () => setMemberTab("progress"),
+                }}
                 belowWorkout={
                   <MemberHomeBelowWorkout>
                     {memberHasVisiblePeriodPlan && nextPlannedWorkout ? (

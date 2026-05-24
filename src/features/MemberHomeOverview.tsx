@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+﻿import type { ReactNode } from "react";
 import {
   BarChart3,
   Bookmark,
@@ -88,6 +88,7 @@ export function MemberHomeOverview({
   workoutZoneLabel,
   primaryCta,
   onWorkoutCardClick,
+  quickActions,
   belowWorkout,
   onboardingPrompt,
   monthlyCheckInPrompt,
@@ -261,6 +262,14 @@ export function MemberHomeOverview({
           {primaryCta ? <div className="motus-home-workout-cta">{primaryCta}</div> : null}
         </div>
       </article>
+
+      {quickActions ? (
+        <section className="motus-home-quick-actions" aria-label="Hurtighandlinger">
+          <HomeQuickAction label="Registrer trening" icon={ClipboardList} tone="brand" onClick={quickActions.onLogWorkout} />
+          <HomeQuickAction label="Se program" icon={CalendarDays} tone="pink" onClick={quickActions.onViewPrograms} />
+          <HomeQuickAction label="Fremgang" icon={BarChart3} tone="pink" onClick={quickActions.onViewProgress} />
+        </section>
+      ) : null}
 
       {belowWorkout}
       {onboardingPrompt ? <div className="w-full">{onboardingPrompt}</div> : null}
