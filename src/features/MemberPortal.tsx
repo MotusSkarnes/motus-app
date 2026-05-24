@@ -3987,10 +3987,18 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     return homeWorkoutCoverSrc;
   }, [homeWorkoutHydrationPending, cachedHomeWorkout, homeWorkoutCoverSrc]);
-  const homeWorkoutZoneLabel = useMemo(
-    () => (todayPlanEntry ? extractZoneFromPlanEntry(todayPlanEntry) : null),
-    [todayPlanEntry],
-  );
+  const homeWorkoutZoneLabel = useMemo(() => {
+    if (todayPlanAction.kind === "log-group") {
+      return extractZoneFromPlanEntry(todayPlanEntry) ?? "Gruppe";
+    }
+    if (homeWorkoutProgram) {
+      return trainingProgramCategoryLabel(homeWorkoutProgram, exerciseCategoryById, exercises);
+    }
+    if (todayPlanEntry) {
+      return extractZoneFromPlanEntry(todayPlanEntry);
+    }
+    return null;
+  }, [homeWorkoutProgram, todayPlanEntry, todayPlanAction, exerciseCategoryById, exercises]);
   const homeWeekSessionsLabel = useMemo(
     () =>
       formatWeekSessionsLabel(
@@ -6613,7 +6621,7 @@ export function MemberPortal(props: MemberPortalProps) {
           ) : null}
 
           {!isMemberLimited && memberTab === "progress" ? (
-            <div className="motus-progress-page space-y-5">
+            <div className="motus-progress-page">
               <MemberProgressScoresCard scores={memberProgressScores} memberFirstName={homeFirstName} streakWeeks={streakWeeks} />
               <MemberTrainingFlowCard
                 achievementLevel={achievementLevel}

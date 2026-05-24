@@ -5,7 +5,6 @@ import type { ScoreTrend } from "../app/memberMomentumScores";
 import { PROGRESS_HERO_IMAGE } from "../app/progressImagery";
 import type { MemberProgressScores } from "../app/memberMomentumScores";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
-import { MotusFlameIcon } from "./MotusFlameIcon";
 
 type MemberProgressHeroCardProps = {
   scores: MemberProgressScores;
@@ -72,8 +71,8 @@ function ScoreRing({
 
   return (
     <div className="motus-progress-status-card">
-      <div className="relative mx-auto h-16 w-16">
-        <svg viewBox="0 0 88 88" className="h-16 w-16" aria-hidden>
+      <div className="relative mx-auto h-14 w-14">
+        <svg viewBox="0 0 88 88" className="h-14 w-14" aria-hidden>
           <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(15,23,42,0.08)" strokeWidth="6" />
           {pct !== null ? (
             <circle
@@ -91,7 +90,7 @@ function ScoreRing({
         </svg>
         <div className="absolute inset-0 flex items-center justify-center text-sm font-bold tabular-nums text-slate-900">{value}</div>
       </div>
-      <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
       <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-slate-600">{subline}</p>
     </div>
   );
@@ -113,21 +112,21 @@ function StatHighlight({
   return (
     <div className="motus-progress-status-card">
       <span className={`motus-progress-status-icon motus-progress-status-icon--${tone}`}>{icon}</span>
-      <p className="mt-2 text-2xl font-black tabular-nums tracking-tight text-slate-950">{value}</p>
+      <p className="mt-1.5 text-xl font-black tabular-nums tracking-tight text-slate-950">{value}</p>
       <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
       <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-slate-600">{subline}</p>
     </div>
   );
 }
 
-export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks }: MemberProgressHeroCardProps) {
+export function MemberProgressHeroCard({ scores, memberFirstName }: MemberProgressHeroCardProps) {
   const { momentum, consistency, weekly, recovery, xp } = scores;
 
   return (
     <section className="motus-progress-hero motus-fade-in-up">
-      <div className="px-4 pt-4 sm:px-5 sm:pt-5">
-        <h2 className="text-lg font-bold tracking-tight text-slate-950">Hei {memberFirstName}! 👋</h2>
-        <p className="mt-0.5 text-sm text-slate-600">Her er din fremgang så langt</p>
+      <div className="px-3 pt-3 sm:px-4 sm:pt-3.5">
+        <h2 className="text-base font-bold tracking-tight text-slate-950">Hei {memberFirstName}! 👋</h2>
+        <p className="text-xs text-slate-600">Her er din fremgang så langt</p>
       </div>
 
       <div className="motus-progress-hero-gradient">
@@ -142,7 +141,7 @@ export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks }:
           <div className="motus-progress-momentum-hero min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-white/75">Momentum</p>
             <div className="mt-1 flex items-center gap-2">
-              <p className="text-3xl font-black tabular-nums tracking-tight text-white sm:text-4xl">{momentum.pct}%</p>
+              <p className="text-2xl font-black tabular-nums tracking-tight text-white sm:text-3xl">{momentum.pct}%</p>
               <MomentumTrendIcon trend={momentum.trend} />
               <MomentumSparkline points={momentum.sparkPoints} trend={momentum.trend} />
             </div>
@@ -173,21 +172,14 @@ export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks }:
         </div>
       </div>
 
-      <div className="motus-progress-status-grid px-4 pb-4 sm:px-5 sm:pb-5">
-        <h3 className="col-span-full text-sm font-semibold text-slate-900">Din status</h3>
+      <div className="motus-progress-status-grid">
+        <h3 className="col-span-full text-xs font-semibold text-slate-900">Din status</h3>
         <ScoreRing label="Consistency" value={`${consistency.pct}%`} subline={consistency.subline} pct={consistency.pct} tone="mint" />
-        <StatHighlight
-          label="Streak"
-          value={String(streakWeeks)}
-          subline={streakWeeks === 1 ? "1 uke på rad" : `${streakWeeks} uker på rad`}
-          icon={<MotusFlameIcon className="h-5 w-5" title="" />}
-          tone="pink"
-        />
         <StatHighlight
           label="Uke-score"
           value={`${weekly.score}/${weekly.maxScore}`}
           subline={weekly.subline}
-          icon={<Target className="h-5 w-5" strokeWidth={2} />}
+          icon={<Target className="h-4 w-4" strokeWidth={2} />}
           tone="pink"
         />
         <ScoreRing

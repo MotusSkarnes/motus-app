@@ -32,7 +32,7 @@ export function MemberWeeklyStreakCard({
             <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
               {streakWeeks > 0 ? (
                 <>
-                  <span className={`font-black tabular-nums tracking-tight text-slate-950 ${compact ? "text-2xl" : "text-3xl"}`}>
+                  <span className={`font-black tabular-nums tracking-tight text-slate-950 ${compact ? "text-xl" : isFlow ? "text-2xl" : "text-3xl"}`}>
                     {streakWeeks}
                   </span>
                   <span className="text-sm font-semibold text-slate-600">ukers streak</span>
@@ -41,7 +41,7 @@ export function MemberWeeklyStreakCard({
                 <span className="text-base font-semibold text-slate-800 sm:text-lg">Ingen aktiv streak ennå</span>
               )}
             </div>
-            <p className={`leading-relaxed text-slate-600 ${compact ? "mt-1.5 text-xs" : "mt-2 text-sm"}`}>{streakSubline}</p>
+            <p className={`leading-snug text-slate-600 ${compact ? "mt-1 text-xs" : isFlow ? "mt-1 text-xs" : "mt-2 text-sm"}`}>{streakSubline}</p>
           </div>
           <div className={`shrink-0 rounded-xl bg-[#F3F5F7] p-2.5 ${streakWeeks > 0 ? "motus-soft-pulse" : ""}`}>
             <MotusFlameIcon className={compact ? "h-4 w-4" : "h-5 w-5"} />
@@ -49,8 +49,8 @@ export function MemberWeeklyStreakCard({
         </div>
 
         {!compact ? (
-          <div className="mt-4">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+          <div className="mt-3">
+            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500">
               <span>Siste 8 uker</span>
               <span className="flex flex-wrap items-center gap-3">
                 <span className="inline-flex items-center gap-1">
@@ -67,7 +67,7 @@ export function MemberWeeklyStreakCard({
                 </span>
               </span>
             </div>
-            <div className="grid grid-cols-8 gap-1.5">
+            <div className="grid grid-cols-8 gap-1">
               {recentStreakWeeks.map((week) => (
                 <div key={week.key} className="flex min-w-0 flex-col items-center gap-1">
                   <div

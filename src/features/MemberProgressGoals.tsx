@@ -46,7 +46,7 @@ export function MemberProgressGoals({
 
   if (isFlow) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h4 className="text-sm font-semibold text-slate-900">
@@ -64,7 +64,7 @@ export function MemberProgressGoals({
             </span>
           ) : null}
         </div>
-        <ol className="space-y-2">
+        <ol className="space-y-1.5">
           {goals.map((goal, index) => {
             const progressPct = Math.min(100, Math.round((Math.min(goal.current, goal.target) / goal.target) * 100));
             return (

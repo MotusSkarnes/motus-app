@@ -52,7 +52,7 @@ export function MemberTrainingFlowCard({
         <div className="motus-progress-flow-cinematic-overlay" aria-hidden />
         <div className="motus-progress-flow-cinematic-content">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-white/75">Din treningsflyt</p>
-          <h3 id="member-training-flow-heading" className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">
+          <h3 id="member-training-flow-heading" className="mt-0.5 text-xl font-black tracking-tight text-white sm:text-2xl">
             {hasCompletedAllLevels ? (
               <>Alle {achievementMaxLevel} steg fullført</>
             ) : (
@@ -61,7 +61,7 @@ export function MemberTrainingFlowCard({
               </>
             )}
           </h3>
-          <p className="mt-2 max-w-md text-sm leading-relaxed text-white/85">
+          <p className="mt-1.5 max-w-md text-xs leading-snug text-white/85">
             {hasCompletedAllLevels
               ? "Fantastisk kontinuitet — hold vanen levende."
               : nextStepLabel
@@ -69,7 +69,7 @@ export function MemberTrainingFlowCard({
                 : `Du er på «${stepLabel}».`}
           </p>
           {!hasCompletedAllLevels && onContinue ? (
-            <GradientButton type="button" onClick={onContinue} className="mt-4 gap-2 shadow-lg">
+            <GradientButton type="button" onClick={onContinue} className="mt-3 gap-2 shadow-lg">
               Fortsett steg {activeStep}
               <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
             </GradientButton>
@@ -77,8 +77,8 @@ export function MemberTrainingFlowCard({
         </div>
       </div>
 
-      <div className="px-4 py-4 sm:px-5">
-        <div className="mb-2 flex items-center justify-between gap-2 text-[11px] font-medium text-slate-500">
+      <div className="px-3 py-3 sm:px-4">
+        <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px] font-medium text-slate-500">
           <span>Din reise</span>
           <span className="shrink-0 tabular-nums text-slate-600">
             {achievedLevel} fullført · {hasCompletedAllLevels ? "mål nådd" : `mot steg ${activeStep}`}
@@ -125,7 +125,7 @@ export function MemberTrainingFlowCard({
         </ol>
       </div>
 
-      <div className="space-y-4 border-t border-slate-100 px-4 py-4 sm:px-5 sm:py-5">
+      <div className="space-y-3 border-t border-slate-100 px-3 py-3 sm:px-4">
         <MemberWeeklyStreakCard
           variant="flow"
           streakWeeks={streakWeeks}

@@ -55,7 +55,7 @@ export function MuscleSplitCard({
   const topGroups = stats.slice(0, 10);
 
   return (
-    <section className="motus-progress-section-card p-4 sm:p-5">
+    <section className="motus-progress-section-card">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-2">
           <div className="motus-muscle-split-header-icon shrink-0" aria-hidden>
@@ -85,7 +85,7 @@ export function MuscleSplitCard({
           className="mt-4 bg-slate-50/80"
         />
       ) : (
-        <ul className="motus-muscle-split-grid mt-4">
+        <ul className="motus-muscle-split-grid mt-3">
           {topGroups.map((row, index) => {
             const value = muscleSplitMetricValue(row, metric);
             const share = total > 0 ? Math.round((value / total) * 100) : 0;

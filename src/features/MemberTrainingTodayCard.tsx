@@ -4,9 +4,9 @@ import { TrainingStartButton } from "../app/ui";
 export function extractZoneFromPlanEntry(entry: string): string | null {
   const zoneMatch = entry.match(/sone\s*(\d+)/i);
   if (zoneMatch) return `Sone ${zoneMatch[1]}`;
-  if (/gruppetime|spinning|yoga|pilates/i.test(entry)) return "Gruppe";
-  if (/kondisjon|løp|mølle|intervall|ro/i.test(entry)) return "Kondisjon";
-  if (/styrke|press|løft|hypertrofi/i.test(entry)) return "Styrke";
+  if (/\b(gruppetime|spinning|yoga|pilates)\b/i.test(entry)) return "Gruppe";
+  if (/\b(styrke|press|løft|hypertrofi)\b/i.test(entry)) return "Styrke";
+  if (/\b(kondisjon|løp|løping|mølle|intervall|roing)\b/i.test(entry)) return "Kondisjon";
   return null;
 }
 

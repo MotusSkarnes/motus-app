@@ -36,7 +36,7 @@ export function MemberWeeklySummaryCard({ stats, onShare, shareStatus }: MemberW
           <h3 className="text-base font-bold tracking-tight text-slate-950">Ukesoppsummering</h3>
           <p className="mt-0.5 text-xs text-slate-500">Siste 7 dager</p>
 
-          <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="mt-3 grid grid-cols-2 gap-1.5">
             {[
               { k: "Økter", v: String(stats.workouts) },
               { k: "Treningsdager", v: String(stats.trainingDays) },
@@ -50,7 +50,7 @@ export function MemberWeeklySummaryCard({ stats, onShare, shareStatus }: MemberW
             ))}
           </div>
 
-          <GradientButton type="button" onClick={onShare} className="mt-4 w-full gap-2">
+          <GradientButton type="button" onClick={onShare} className="mt-3 w-full gap-2">
             <Share2 className="h-4 w-4 shrink-0" aria-hidden />
             Last ned eller del bilde
           </GradientButton>
