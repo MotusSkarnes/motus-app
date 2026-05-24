@@ -365,14 +365,8 @@ function mergeWorkoutLogsById(
 const LOCAL_OPTIMISTIC_WORKOUT_LOG_KEEP_MS = 48 * 60 * 60 * 1000;
 const remoteTombstoneCleanupInFlight = new Set<string>();
 
-function filterProgramsHiddenFromCloudViews(
-  programs: TrainingProgram[],
-  viewer: "member" | "trainer",
-): TrainingProgram[] {
-  return filterDeletedPrograms(programs).filter((program) => {
-    if (!programIsInMemberArchive(program.memberLibraryStatus)) return true;
-    return viewer === "trainer" && program.programCreatedBy !== "member";
-  });
+function filterProgramsHiddenFromCloudViews(programs: TrainingProgram[]): TrainingProgram[] {
+  return filterDeletedPrograms(programs).filter((program) => !programIsInMemberArchive(program.memberLibraryStatus));
 }
 
 function cleanupRemoteProgramsDeletedLocally(
@@ -915,7 +909,7 @@ export function useAppState() {
             memberIds: remoteMembers?.map((member) => member.id) ?? [],
           });
         }
-        remotePrograms = filterProgramsHiddenFromCloudViews(remotePrograms, isTrainerSession ? "trainer" : "member");
+        remotePrograms = filterProgramsHiddenFromCloudViews(remotePrograms);
       }
       let remoteLogs =
         hydratedTrainer?.logs ??
@@ -960,7 +954,7 @@ export function useAppState() {
                 targetEmail: email,
                 memberIds: remoteMembers?.map((member) => member.id) ?? [],
               });
-              remotePrograms = filterProgramsHiddenFromCloudViews(retryPrograms, "member");
+              remotePrograms = filterProgramsHiddenFromCloudViews(retryPrograms);
             }
             if (retryLogs?.length) {
               remoteLogs = retryLogs;
@@ -2264,7 +2258,7 @@ export function useAppState() {
       : directTrainerMembers;
     const remoteMessages = hydratedTrainer?.messages ?? (await fetchMessagesFromSupabase());
     const remoteProgramsRaw = hydratedTrainer?.programs ?? (await fetchProgramsFromSupabase());
-    const remotePrograms = remoteProgramsRaw ? filterProgramsHiddenFromCloudViews(remoteProgramsRaw, "trainer") : null;
+    const remotePrograms = remoteProgramsRaw ? filterProgramsHiddenFromCloudViews(remoteProgramsRaw) : null;
     const remoteLogs = hydratedTrainer?.logs ?? (await fetchLogsFromSupabase());
 
     if (remoteMembers) {

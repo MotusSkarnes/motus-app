@@ -154,7 +154,13 @@ import { syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { buildDefaultStartWorkoutOptions } from "../app/buildStartWorkoutOptions";
 import { MemberMonthlyCheckInSummary } from "./MemberMonthlyCheckInSummary";
 import { MemberOnboardingSummary } from "./MemberOnboardingSummary";
-import { isLegacyIntervalCooldownDrag, unlinkProgramExerciseBlock } from "../app/programBlocks";
+import {
+  buildTrainingProgramDisplayKey,
+  dedupeTrainingPrograms,
+  isLegacyIntervalCooldownDrag,
+  programIsInMemberArchive,
+  unlinkProgramExerciseBlock,
+} from "../app/programBlocks";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
 import { ProgramExerciseBlockActions } from "./ProgramExerciseBlockActions";
 import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
@@ -1286,25 +1292,18 @@ function pickFirstName(value: unknown): string {
     () => {
       const selected = selectedMemberProfile ?? members.find((member) => member.id === selectedMemberId) ?? null;
       if (!selected) return [] as TrainingProgram[];
-      const matchingPrograms = programsAttributedToMember(selected, members, programs).sort((a, b) =>
-        b.createdAt.localeCompare(a.createdAt),
+      return dedupeTrainingPrograms(
+        programsAttributedToMember(selected, members, programs).filter(
+          (program) => !programIsInMemberArchive(program.memberLibraryStatus),
+        ),
       );
-      const uniqueByFingerprint = new Map<string, TrainingProgram>();
-      matchingPrograms.forEach((program) => {
-        const fingerprint = buildProgramFingerprint(program.exercises, program.title, program.goal, program.notes);
-        const existing = uniqueByFingerprint.get(fingerprint);
-        if (!existing || program.createdAt.localeCompare(existing.createdAt) > 0) {
-          uniqueByFingerprint.set(fingerprint, program);
-        }
-      });
-      return Array.from(uniqueByFingerprint.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
     [programs, members, selectedMemberId, selectedMemberProfile]
   );
   const visibleSelectedPrograms = useMemo(() => {
     if (!dismissedProgramFingerprints.length) return selectedPrograms;
     const dismissed = new Set(dismissedProgramFingerprints);
-    return selectedPrograms.filter((program) => !dismissed.has(buildProgramFingerprint(program.exercises, program.title, program.goal, program.notes)));
+    return selectedPrograms.filter((program) => !dismissed.has(buildTrainingProgramDisplayKey(program)));
   }, [dismissedProgramFingerprints, selectedPrograms]);
   const activeTrainerWorkoutProgram = useMemo(() => {
     if (!workoutMode) return null;
@@ -2569,10 +2568,12 @@ function pickFirstName(value: unknown): string {
   }
 
   function buildProgramFingerprint(program: ProgramExercise[] | undefined, title: string, goal: string, notes: string): string {
-    const exerciseFingerprint = (program ?? [])
-      .map((item) => `${item.exerciseName}|${item.sets}|${item.reps}|${item.weight}|${item.holdSeconds ?? ""}|${item.durationMinutes ?? ""}|${item.speed ?? ""}|${item.incline ?? ""}|${item.restSeconds}|${item.targetHrPercent ?? ""}|${item.notes}`)
-      .join("||");
-    return `${title.trim()}::${goal.trim()}::${notes.trim()}::${exerciseFingerprint}`;
+    return buildTrainingProgramDisplayKey({
+      title,
+      goal,
+      notes,
+      exercises: program ?? [],
+    });
   }
 
   const programBelongsToSelectedMember = useCallback(
