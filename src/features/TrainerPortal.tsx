@@ -81,6 +81,7 @@ import {
 import { TrainerPtDashboard, type TrainerListFilterTab, type TrainerPtListMember } from "./trainer-dashboard/TrainerPtDashboard";
 import { TrainerPtDetailPortal } from "./trainer-dashboard/TrainerPtDetailPortal";
 import { TrainerExerciseBankView } from "./TrainerExerciseBankView";
+import { TrainerProgramBuilderView } from "./TrainerProgramBuilderView";
 import type {
   AuthUser,
   ChatMessage,
@@ -6251,385 +6252,78 @@ function pickFirstName(value: unknown): string {
       ) : null}
 
       {trainerTab === "programs" ? (
-        <div className="grid gap-4">
-          <div className="flex flex-wrap gap-2">
-            {TRAINING_SUB_TAB_OPTIONS.map((tab) => (
-              <PillButton key={tab.id} active={programsSubTab === tab.id} onClick={() => setProgramsSubTab(tab.id)}>
-                {tab.programsLabel}
-              </PillButton>
-            ))}
-          </div>
-          <Card className="p-4 sm:p-5">
-            <div className="rounded-xl border-2 border-slate-200 bg-slate-50/50 p-3 sm:p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold text-slate-900">{savedTemplatesTitle(programsSubTab)}</h2>
-                <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                  {activeTemplatePrograms.length} maler
-                </span>
-              </div>
-              {activeTemplatePrograms.length === 0 ? (
-                <div className="rounded-xl border border-dashed bg-white p-4 text-sm text-slate-500">
-                  {emptyTemplatesMessage(programsSubTab)}
-                </div>
-              ) : (
-                <div className="max-h-[min(400px,50vh)] space-y-2 overflow-auto pr-1">
-                  {activeTemplatePrograms.map((program) => {
-                    const isExpanded = expandedTemplateProgramId === program.id;
-                    return (
-                    <div key={program.id} className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-slate-800">{program.title}</div>
-                          {programAuthorLabelForTrainer(program) ? (
-                            <div className="mt-1 text-[11px] font-medium text-slate-600">{programAuthorLabelForTrainer(program)}</div>
-                          ) : null}
-                          <div className="mt-0.5 text-xs text-slate-500">
-                            {program.exercises.length} øvelse(r){program.createdAt ? ` · ${program.createdAt}` : ""}
-                          </div>
-                        </div>
-                        <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end">
-                          <OutlineButton onClick={() => setExpandedTemplateProgramId((prev) => (prev === program.id ? null : program.id))} className="w-full px-2 py-1.5 text-xs sm:w-auto sm:px-3">
-                            {isExpanded ? "Skjul" : "Vis"}
-                          </OutlineButton>
-                          <OutlineButton onClick={() => startEditTemplateProgram(program)} className="w-full px-2 py-1.5 text-xs sm:w-auto sm:px-3">
-                            Rediger
-                          </OutlineButton>
-                          <OutlineButton onClick={() => deleteTemplateProgram(program)} className="w-full px-2 py-1.5 text-xs text-rose-700 sm:w-auto sm:px-3">
-                            Slett
-                          </OutlineButton>
-                        </div>
-                      </div>
-                      {isExpanded ? (
-                        <div className="mt-3 space-y-2">
-                          {program.notes ? (
-                            <div className="rounded-lg border bg-slate-50 px-2.5 py-2 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                              {program.notes}
-                            </div>
-                          ) : null}
-                          {program.exercises.length === 0 ? (
-                            <div className="rounded-lg border border-dashed bg-slate-50 px-2.5 py-2 text-xs text-slate-500">
-                              Ingen øvelser i malen ennå.
-                            </div>
-                          ) : (
-                            <div className="space-y-1.5">
-                              {program.exercises.map((exercise, exerciseIndex) => {
-                                const exerciseName = cardioProgramExerciseName(program.exercises, exerciseIndex);
-                                return (
-                                <div key={exercise.id} className="rounded-lg border bg-slate-50 px-2.5 py-2 text-xs text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                  <div className="font-medium text-slate-800">{exerciseName}</div>
-                                  <div className="mt-0.5 text-slate-500">
-                                    {exercise.durationMinutes
-                                      ? `${exercise.sets || "-"} ${/^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder"} × ${exercise.durationMinutes || "-"} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}`
-                                      : (() => {
-                                          const category = exercises.find((e) => e.id === exercise.exerciseId)?.category;
-                                          return category && isHoldBasedExerciseCategory(category)
-                                            ? `${exercise.sets || "-"} sett × ${programExerciseHoldSeconds(exercise, category) || "-"} sek · ${exercise.restSeconds || "0"}s`
-                                            : `${exercise.sets || "-"}×${exercise.reps || "-"} · ${exercise.weight || "0"}kg · ${exercise.restSeconds || "0"}s`;
-                                        })()}
-                                  </div>
-                                </div>
-                              )})}
-                            </div>
-                          )}
-                        </div>
-                      ) : null}
-                    </div>
-                  )})}
-                </div>
-              )}
-            </div>
-            <div className="mt-5 flex items-start gap-3 border-t border-slate-100 pt-5">
-              <MotusSectionIcon><ClipboardList className="h-5 w-5" /></MotusSectionIcon>
-              <div>
-                <h2 className="text-xl font-semibold tracking-tight">{programsBuilderTitle(programsSubTab)}</h2>
-                <p className="text-sm text-slate-500">{programsBuilderDescription(programsSubTab)}</p>
-              </div>
-            </div>
-            <div className="mt-5 grid gap-4 lg:grid-cols-2">
-              <div className="min-w-0 space-y-3">
-                <TextInput value={templateProgramTitle} onChange={(e) => setTemplateProgramTitle(e.target.value)} placeholder="Navn på treningsmal" />
-                <ProgramCoverImageField
-                  imageUrl={programFormImageUrl}
-                  onImageUrlChange={setProgramFormImageUrl}
-                  onUploadFile={(file) => handleProgramImageUpload(file)}
-                  isUploading={isUploadingProgramImage}
-                />
-                <div
-                  className={`space-y-3 rounded-2xl p-1 transition ${
-                    isDraftDropZoneActive ? "bg-emerald-50 ring-2 ring-teal-300" : ""
-                  }`}
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    if (draggedExerciseIdFromLibrary) setIsDraftDropZoneActive(true);
-                  }}
-                  onDragLeave={() => setIsDraftDropZoneActive(false)}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    if (!draggedExerciseIdFromLibrary) return;
-                    const exercise = exercises.find((item) => item.id === draggedExerciseIdFromLibrary);
-                    if (exercise) addExerciseToDraft(exercise);
-                    setDraggedExerciseIdFromLibrary(null);
-                    setIsDraftDropZoneActive(false);
-                  }}
-                >
-                  {programExercisesDraft.length === 0 ? (
-                    <EmptyState
-                      icon="...?️"
-                      title="Ingen øvelser valgt ennå"
-                      description="Legg til øvelser fra biblioteket for å bygge programmet."
-                      className="bg-white"
-                    />
-                  ) : null}
-                  {programExercisesDraft.map((item, index) => {
-                    const itemExerciseName = cardioProgramExerciseName(programExercisesDraft, index);
-                    return (
-                    <div
-                      key={item.id}
-                      draggable
-                      onDragStart={() => setDraggedDraftExerciseId(item.id)}
-                      onDragEnd={() => {
-                        setDraggedDraftExerciseId(null);
-                        setDragOverDraftExerciseId(null);
-                      }}
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        if (draggedDraftExerciseId) setDragOverDraftExerciseId(item.id);
-                      }}
-                      onDragLeave={() => {
-                        if (dragOverDraftExerciseId === item.id) setDragOverDraftExerciseId(null);
-                      }}
-                      onDrop={(event) => {
-                        event.preventDefault();
-                        if (!draggedDraftExerciseId) return;
-                        moveDraftExercise(draggedDraftExerciseId, item.id);
-                        setDragOverDraftExerciseId(null);
-                      }}
-                      className={`rounded-2xl border bg-white p-3 sm:p-4 space-y-3 cursor-move transition ${
-                        dragOverDraftExerciseId === item.id ? "ring-2 ring-teal-300 border-teal-300" : ""
-                      } ${item.blockId ? "ring-1 ring-teal-200/80" : ""}`}
-                    >
-                      <ProgramExerciseBlockActions exercises={programExercisesDraft} index={index} onChange={setProgramExercisesDraft} />
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="font-medium">{itemExerciseName}</div>
-                        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center">
-                          <OutlineButton
-                            onClick={() => moveDraftExerciseByOffset(item.id, -1)}
-                            className="w-full px-3 py-1.5 text-xs sm:w-auto"
-                            disabled={index === 0}
-                          >
-                            Opp
-                          </OutlineButton>
-                          <OutlineButton
-                            onClick={() => moveDraftExerciseByOffset(item.id, 1)}
-                            className="w-full px-3 py-1.5 text-xs sm:w-auto"
-                            disabled={index === programExercisesDraft.length - 1}
-                          >
-                            Ned
-                          </OutlineButton>
-                          <OutlineButton onClick={() => removeDraftExercise(item.id)} className="w-full sm:w-auto">Fjern</OutlineButton>
-                        </div>
-                      </div>
-                      {(() => {
-                        const linkedExercise = exercisesById.get(item.exerciseId);
-                        const isCardio = isCardioDraftRow(item, linkedExercise, {
-                          conditioningBuilder: programsSubTab === "conditioning",
-                        });
-                        const isStretch = programDraftUsesHoldFields(linkedExercise?.category, programsSubTab);
-                        const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
-                        return (
-                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                        <div className="space-y-1">
-                          <div className="text-[11px] font-medium text-slate-500">{isCardio ? cardioSetLabel() : "Antall sett"}</div>
-                          <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder={isCardio ? cardioSetPlaceholder() : "Sett"} />
-                        </div>
-                        {isCardio ? (
-                          <div className="space-y-1">
-                            <div className="text-[11px] font-medium text-slate-500">Tid (min)</div>
-                            <TextInput value={item.durationMinutes ?? ""} onChange={(e) => updateDraftExercise(item.id, "durationMinutes", e.target.value)} placeholder="Minutter" />
-                          </div>
-                        ) : isStretch ? (
-                          <div className="space-y-1">
-                            <div className="text-[11px] font-medium text-slate-500">Hold (sek)</div>
-                            <TextInput
-                              value={item.holdSeconds ?? ""}
-                              onChange={(e) => updateDraftExercise(item.id, "holdSeconds", e.target.value)}
-                              placeholder="Sekunder"
-                            />
-                          </div>
-                        ) : (
-                          <>
-                            <div className="space-y-1">
-                              <div className="text-[11px] font-medium text-slate-500">Antall reps</div>
-                              <TextInput value={item.reps} onChange={(e) => updateDraftExercise(item.id, "reps", e.target.value)} placeholder="Reps" />
-                            </div>
-                            <div className="space-y-1">
-                              <div className="text-[11px] font-medium text-slate-500">Kg</div>
-                              <TextInput value={item.weight} onChange={(e) => updateDraftExercise(item.id, "weight", e.target.value)} placeholder="Kg" />
-                            </div>
-                          </>
-                        )}
-                        {isCardio && isTreadmill ? (
-                          <>
-                            <div className="space-y-1">
-                              <div className="text-[11px] font-medium text-slate-500">Fart (km/t)</div>
-                              <TextInput value={item.speed ?? ""} onChange={(e) => updateDraftExercise(item.id, "speed", e.target.value)} placeholder="Fart" />
-                            </div>
-                            <div className="space-y-1">
-                              <div className="text-[11px] font-medium text-slate-500">Incline (%)</div>
-                              <TextInput value={item.incline ?? ""} onChange={(e) => updateDraftExercise(item.id, "incline", e.target.value)} placeholder="Incline" />
-                            </div>
-                          </>
-                        ) : null}
-                        {isCardio ? (
-                          <div className="space-y-1">
-                            <div className="text-[11px] font-medium text-slate-500">Puls (% av makspuls)</div>
-                            <TextInput
-                              value={item.targetHrPercent ?? ""}
-                              onChange={(e) => updateDraftExercise(item.id, "targetHrPercent", e.target.value)}
-                              placeholder="f.eks. 85–90"
-                            />
-                          </div>
-                        ) : null}
-                        <div className="space-y-1">
-                          <div className="text-[11px] font-medium text-slate-500">Hvile (sekunder)</div>
-                          <TextInput value={item.restSeconds} onChange={(e) => updateDraftExercise(item.id, "restSeconds", e.target.value)} placeholder="Hvile sek" />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="text-[11px] font-medium text-slate-500">Notat til øvelsen</div>
-                          <TextInput value={item.notes} onChange={(e) => updateDraftExercise(item.id, "notes", e.target.value)} placeholder="Notat" />
-                        </div>
-                      </div>
-                        );
-                      })()}
-                    </div>
-                  )})}
-                </div>
-                <GradientButton
-                  onClick={saveTemplateFromProgramsTab}
-                  className="w-full"
-                >
-                  {editingTemplateProgramId ? "Lagre endringer i mal" : "Lagre treningsmal"}
-                </GradientButton>
-                {editingTemplateProgramId ? (
-                  <OutlineButton onClick={resetTemplateProgramBuilder} className="w-full">
-                    Avbryt redigering
+        <TrainerProgramBuilderView
+          programsSubTab={programsSubTab}
+          onProgramsSubTabChange={setProgramsSubTab}
+          templateProgramTitle={templateProgramTitle}
+          onTemplateProgramTitleChange={setTemplateProgramTitle}
+          programFormImageUrl={programFormImageUrl}
+          onProgramFormImageUrlChange={setProgramFormImageUrl}
+          onProgramImageUpload={(file) => void handleProgramImageUpload(file)}
+          isUploadingProgramImage={isUploadingProgramImage}
+          programExercisesDraft={programExercisesDraft}
+          editingTemplateProgramId={editingTemplateProgramId}
+          exercises={exercises}
+          exercisesById={exercisesById}
+          visibleProgramExercises={visibleProgramExercises}
+          favoriteExerciseIds={favoriteExerciseIds}
+          programExerciseSearch={programExerciseSearch}
+          onProgramExerciseSearchChange={setProgramExerciseSearch}
+          exercisePopularityScores={exercisePopularityScores}
+          isDraftDropZoneActive={isDraftDropZoneActive}
+          onDraftDropZoneActiveChange={setIsDraftDropZoneActive}
+          draggedExerciseIdFromLibrary={draggedExerciseIdFromLibrary}
+          onDraggedExerciseIdFromLibraryChange={setDraggedExerciseIdFromLibrary}
+          draggedDraftExerciseId={draggedDraftExerciseId}
+          onDraggedDraftExerciseIdChange={setDraggedDraftExerciseId}
+          dragOverDraftExerciseId={dragOverDraftExerciseId}
+          onDragOverDraftExerciseIdChange={setDragOverDraftExerciseId}
+          onAddExercise={addExerciseToDraft}
+          onMoveDraftExercise={moveDraftExercise}
+          onUpdateDraftExercise={updateDraftExercise}
+          onRemoveDraftExercise={removeDraftExercise}
+          onProgramExercisesDraftChange={setProgramExercisesDraft}
+          onSaveTemplate={saveTemplateFromProgramsTab}
+          onResetTemplate={resetTemplateProgramBuilder}
+          getExercisePreviewSrc={getExercisePreviewSrc}
+          getExerciseSketchDataUri={getExerciseSketchDataUri}
+          onToggleFavorite={toggleFavoriteExercise}
+          activeTemplatePrograms={activeTemplatePrograms}
+          expandedTemplateProgramId={expandedTemplateProgramId}
+          onExpandedTemplateProgramIdChange={setExpandedTemplateProgramId}
+          onStartEditTemplate={startEditTemplateProgram}
+          onDeleteTemplate={deleteTemplateProgram}
+          programsSubTabConditioningExtras={
+            programsSubTab === "conditioning" ? (
+              <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="text-sm font-semibold text-slate-700">Steg for intervalløkt</div>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Start med oppvarming, legg inn drag med arbeidstid/pause, og avslutt med nedjogg.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <OutlineButton type="button" onClick={startNewCardioTemplateDraft}>
+                    Start med oppvarming
                   </OutlineButton>
-                ) : null}
-                {programsSubTab === "conditioning" ? (
-                <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="text-sm font-semibold text-slate-700">Steg for intervalløkt</div>
-                  <p className="text-xs text-slate-500 leading-relaxed">
-                    Skriv inn malnavn øverst først. Start med oppvarming, legg inn ett drag med arbeidstid/pause og velg antall drag, og legg til nedjogg til slutt.
-                    Når nedjogg er lagt inn kan du ikke legge til flere drag før du fjerner nedjogg-raden fra utkastet.
-                    Øvelsesradene bruker automatisk valgt kondisjons-/mølleøvelse fra biblioteket; du kan endre tid, fart, stigning og målpuls på hvert steg.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <OutlineButton type="button" onClick={startNewCardioTemplateDraft}>
-                      Start med oppvarming
-                    </OutlineButton>
-                    <OutlineButton
-                      type="button"
-                      onClick={appendCardioDragRow}
-                      disabled={programExercisesDraft.length === 0 || hasCardioNedjoggRow(programExercisesDraft)}
-                    >
-                      Legg til drag
-                    </OutlineButton>
-                    <OutlineButton
-                      type="button"
-                      onClick={appendCardioCooldownRow}
-                      disabled={programExercisesDraft.length === 0 || hasCardioNedjoggRow(programExercisesDraft)}
-                    >
-                      Legg til nedjogg
-                    </OutlineButton>
-                  </div>
-                </div>
-                ) : null}
-              </div>
-              <div className="min-w-0 rounded-xl border bg-slate-50 p-3 sm:p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="font-semibold">Øvelser</div>
-                <TextInput
-                  value={programExerciseSearch}
-                  onChange={(e) => setProgramExerciseSearch(e.target.value)}
-                  placeholder="Søk øvelse, muskelgruppe eller utstyr"
-                />
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <SelectBox
-                    value={programExerciseCategoryFilter}
-                    onChange={(value) => setProgramExerciseCategoryFilter(value as "all" | Exercise["category"])}
-                    options={[
-                      { value: categoryForSubTab(programsSubTab), label: categoryForSubTab(programsSubTab) },
-                      { value: "all", label: "Alle typer" },
-                    ]}
-                  />
-                  <SelectBox
-                    value={programExerciseGroupFilter}
-                    onChange={setProgramExerciseGroupFilter}
-                    options={[
-                      { value: "all", label: "Alle muskelgrupper" },
-                      ...programExerciseGroupOptions.map((group) => ({ value: group, label: group })),
-                    ]}
-                  />
-                </div>
-                <div className="text-xs text-slate-500">Favoritter og ofte brukte øvelser vises øverst.</div>
-                <div className="max-h-[560px] space-y-2 overflow-auto pr-1">
-                  {visibleProgramExercises.length === 0 ? (
-                    <EmptyState
-                      icon="–?"
-                      title="Ingen øvelser matcher søk/filter"
-                      description="Prøv en annen muskelgruppe eller et kortere søk."
-                      className="bg-white py-4"
-                    />
-                  ) : null}
-                  {visibleProgramExercises.map((exercise) => {
-                    const isFavorite = favoriteExerciseIds.includes(exercise.id);
-                    const popularity = exercisePopularityScores.get(exercise.id) ?? 0;
-                    return (
-                      <div
-                        key={exercise.id}
-                        draggable
-                        onDragStart={() => setDraggedExerciseIdFromLibrary(exercise.id)}
-                        onDragEnd={() => setDraggedExerciseIdFromLibrary(null)}
-                        className="rounded-2xl border bg-white p-2.5 sm:p-3 cursor-grab active:cursor-grabbing"
-                      >
-                        <div className="flex items-start justify-between gap-2.5">
-                          <button type="button" onClick={() => addExerciseToDraft(exercise)} className="flex flex-1 items-start gap-2 text-left">
-                            <img
-                              src={getExercisePreviewSrc(exercise)}
-                              alt={exercise.name}
-                              className="mt-0.5 h-20 w-20 shrink-0 rounded-xl border object-cover bg-white"
-                              style={{ borderColor: "rgba(15,23,42,0.08)" }}
-                              loading="lazy"
-                              decoding="async"
-                              onError={(event) => {
-                                event.currentTarget.src = getExerciseSketchDataUri(exercise);
-                              }}
-                            />
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                <div className="font-medium text-sm">{exercise.name}</div>
-                                <ExerciseBankBadges popularity={popularity} isFavorite={isFavorite} variant="trainer" />
-                              </div>
-                              <div className="text-xs leading-5 text-slate-500">{exercise.category} · {exercise.group} · Utstyr: {exercise.equipment}</div>
-                            </div>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => toggleFavoriteExercise(exercise.id)}
-                            className="motus-favorite-star-toggle"
-                            aria-pressed={isFavorite}
-                            aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
-                            title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
-                          >
-                            <Star className="h-4 w-4" aria-hidden />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  <OutlineButton
+                    type="button"
+                    onClick={appendCardioDragRow}
+                    disabled={programExercisesDraft.length === 0 || hasCardioNedjoggRow(programExercisesDraft)}
+                  >
+                    Legg til drag
+                  </OutlineButton>
+                  <OutlineButton
+                    type="button"
+                    onClick={appendCardioCooldownRow}
+                    disabled={programExercisesDraft.length === 0 || hasCardioNedjoggRow(programExercisesDraft)}
+                  >
+                    Legg til nedjogg
+                  </OutlineButton>
                 </div>
               </div>
-            </div>
-            <div className="mt-5 rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            ) : null
+          }
+          assignTemplateSection={
+            <Card className="mt-4 p-4 space-y-3">
               <div className="font-semibold">Tildel mal til kunde</div>
               <div className="grid gap-3 md:grid-cols-2">
                 <SelectBox
@@ -6643,12 +6337,7 @@ function pickFirstName(value: unknown): string {
                   options={
                     activeTemplatePrograms.length
                       ? activeTemplatePrograms.map((program) => ({ value: program.id, label: program.title }))
-                      : [
-                          {
-                            value: "",
-                            label: emptyTemplatesMessage(programsSubTab),
-                          },
-                        ]
+                      : [{ value: "", label: emptyTemplatesMessage(programsSubTab) }]
                   }
                 />
               </div>
@@ -6660,10 +6349,11 @@ function pickFirstName(value: unknown): string {
                   {templateAssignStatus}
                 </div>
               ) : null}
-            </div>
-          </Card>
-        </div>
+            </Card>
+          }
+        />
       ) : null}
+
 
       {trainerTab === "exerciseBank" ? (
         <TrainerExerciseBankView
