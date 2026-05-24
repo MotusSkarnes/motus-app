@@ -454,24 +454,22 @@ export function MemberTrainingHistoryView({
                       className="motus-member-history-pr-card motus-pressable"
                     >
                       <div className="motus-member-history-pr-card-top">
-                        <div className="motus-member-history-pr-image motus-image-frame motus-image-frame--square">
-                          <img
-                            src={imageSrc}
-                            alt=""
-                            className="motus-image-media"
-                            loading="lazy"
-                            style={{ objectPosition: imageObjectPositionFromSrc(imageSrc) }}
-                          />
+                        <div className="motus-member-history-pr-image">
+                          <img src={imageSrc} alt="" className="motus-member-history-pr-image-media" loading="lazy" />
                         </div>
                         <span className="motus-member-history-pr-menu" aria-hidden>
                           <MoreVertical className="h-4 w-4" />
                         </span>
                       </div>
-                      <div className="motus-member-history-pr-name">{record.name}</div>
-                      <div className="motus-member-history-pr-weight">
-                        {record.weight} kg{record.reps ? ` · ${record.reps} reps` : ""}
+                      <div className="motus-member-history-pr-body">
+                        <div className="motus-member-history-pr-name">{record.name}</div>
+                        <div className="motus-member-history-pr-weight">
+                          {record.weight} kg{record.reps ? ` · ${record.reps} reps` : ""}
+                        </div>
+                        <div className="motus-member-history-pr-badge-slot">
+                          {record.isNewRecord ? <div className="motus-member-history-pr-badge">Ny rekord! 🎉</div> : null}
+                        </div>
                       </div>
-                      {record.isNewRecord ? <div className="motus-member-history-pr-badge">Ny rekord! 🎉</div> : null}
                     </button>
                   );
                 })}

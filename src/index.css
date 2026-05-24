@@ -7962,12 +7962,19 @@ button {
   flex-direction: column;
   flex: 0 0 auto;
   width: 10.5rem;
-  min-height: 15.5rem;
+  height: 16rem;
   border-radius: 1rem;
   border: 1px solid rgba(15, 23, 42, 0.06);
   background: #fff;
   padding: 0.75rem;
   text-align: left;
+}
+
+.motus-member-history-pr-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .motus-member-history-pr-card-top {
@@ -8035,24 +8042,15 @@ button {
   background: #30e3be;
 }
 
-.motus-member-history-pr-image {
-  width: 100%;
-  height: 7.25rem;
-  border-radius: 0.875rem;
-  overflow: hidden;
-}
-
-.motus-member-history-pr-image.motus-image-frame::after {
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0.08) 45%, transparent 100%);
-}
-
-.motus-member-history-pr-image .motus-image-media {
-  object-fit: cover;
-  object-position: center center;
+.motus-member-history-pr-badge-slot {
+  display: flex;
+  align-items: flex-end;
+  min-height: 1.5rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
 }
 
 .motus-member-history-pr-badge {
-  margin-top: 0.5rem;
   display: inline-flex;
   border-radius: 999px;
   background: rgba(217, 18, 120, 0.1);
@@ -8060,6 +8058,26 @@ button {
   font-size: 0.625rem;
   font-weight: 700;
   color: #d91278;
+}
+
+.motus-member-history-pr-image {
+  position: relative;
+  width: 100%;
+  height: 7.25rem;
+  flex-shrink: 0;
+  border-radius: 0.875rem;
+  overflow: hidden;
+  background: #e2e8f0;
+}
+
+.motus-member-history-pr-image-media {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
 }
 
 .motus-member-history-heatmap {
