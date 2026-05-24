@@ -101,6 +101,8 @@ import type {
   UpdateMemberInput,
 } from "../services/appRepository";
 import {
+  buildPeriodPlanLinkedProgramIdSet,
+  findPeriodPlanForProgram,
   findProgramForPeriodPlanEntry,
   groupWorkoutLogTitle,
   isGroupPeriodPlanEntry,
@@ -1064,6 +1066,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const prevWorkoutModeRef = useRef(workoutMode);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [programLibraryMenuId, setProgramLibraryMenuId] = useState<string | null>(null);
+  const [programLibraryFilter, setProgramLibraryFilter] = useState<"all" | "standalone" | "periodPlan">("all");
   const [editingMemberProgramId, setEditingMemberProgramId] = useState<string | null>(null);
   const nowTimestamp = useMemo(() => Date.now(), []);
   const nowDate = useMemo(() => new Date(nowTimestamp), [nowTimestamp]);
@@ -1413,6 +1416,25 @@ export function MemberPortal(props: MemberPortalProps) {
     () => memberAssignedPrograms.filter((program) => programIsInMemberArchive(program.memberLibraryStatus)),
     [memberAssignedPrograms],
   );
+  const periodPlanLinkedProgramIds = useMemo(
+    () => buildPeriodPlanLinkedProgramIdSet(visiblePeriodPlans, memberProgramsForPeriodPlan),
+    [visiblePeriodPlans, memberProgramsForPeriodPlan],
+  );
+  const periodPlanProgramCount = useMemo(
+    () => memberProgramsInActiveLibrary.filter((program) => periodPlanLinkedProgramIds.has(program.id)).length,
+    [memberProgramsInActiveLibrary, periodPlanLinkedProgramIds],
+  );
+  const standaloneProgramCount = memberProgramsInActiveLibrary.length - periodPlanProgramCount;
+  const filteredMemberProgramsInActiveLibrary = useMemo(() => {
+    if (programLibraryFilter === "periodPlan") {
+      return memberProgramsInActiveLibrary.filter((program) => periodPlanLinkedProgramIds.has(program.id));
+    }
+    if (programLibraryFilter === "standalone") {
+      return memberProgramsInActiveLibrary.filter((program) => !periodPlanLinkedProgramIds.has(program.id));
+    }
+    return memberProgramsInActiveLibrary;
+  }, [memberProgramsInActiveLibrary, periodPlanLinkedProgramIds, programLibraryFilter]);
+  const showProgramLibraryFilter = periodPlanProgramCount > 0 && memberProgramsInActiveLibrary.length > periodPlanProgramCount;
   const editingMemberProgram = useMemo(
     () => (editingMemberProgramId ? memberPrograms.find((program) => program.id === editingMemberProgramId) ?? null : null),
     [editingMemberProgramId, memberPrograms],
@@ -5303,9 +5325,39 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Mine programmer</div>
                     <h3 className="mt-1 text-lg font-bold text-slate-950">Treningsprogram</h3>
-                    <p className="mt-1 text-sm text-slate-600">Start, vis, skjul eller arkiver programmene dine.</p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      {showProgramLibraryFilter
+                        ? "Filtrer listen, eller start økter direkte fra Periodeplan-fanen."
+                        : "Start, vis, skjul eller arkiver programmene dine."}
+                    </p>
                   </div>
                 </div>
+                {showProgramLibraryFilter ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setProgramLibraryFilter("all")}
+                      className={`motus-pressable motus-surface-chip px-3 py-2 ${programLibraryFilter === "all" ? "motus-surface-chip--active" : ""}`}
+                    >
+                      Alle <span className={programLibraryFilter === "all" ? "opacity-75" : "text-slate-400"}>{memberProgramsInActiveLibrary.length}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProgramLibraryFilter("standalone")}
+                      className={`motus-pressable motus-surface-chip px-3 py-2 ${programLibraryFilter === "standalone" ? "motus-surface-chip--active" : ""}`}
+                    >
+                      Egne <span className={programLibraryFilter === "standalone" ? "opacity-75" : "text-slate-400"}>{standaloneProgramCount}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProgramLibraryFilter("periodPlan")}
+                      className={`motus-pressable motus-surface-chip px-3 py-2 ${programLibraryFilter === "periodPlan" ? "motus-surface-chip--active" : ""}`}
+                    >
+                      Fra periodeplan{" "}
+                      <span className={programLibraryFilter === "periodPlan" ? "opacity-75" : "text-slate-400"}>{periodPlanProgramCount}</span>
+                    </button>
+                  </div>
+                ) : null}
                 {secondaryPausedWorkouts.length > 0 ? (
                   <div className="mt-3 space-y-2">
                     <div className="rounded-lg border motus-brand-surface/80 px-3 py-2">
@@ -5401,7 +5453,14 @@ export function MemberPortal(props: MemberPortalProps) {
                       Alle program er skjult eller arkivert. Bruk seksjonene nedenfor for å gjenopprette dem i oversikten.
                     </div>
                   ) : null}
-	                  {memberProgramsInActiveLibrary.map((program) => {
+                  {memberAssignedPrograms.length > 0 &&
+                  memberProgramsInActiveLibrary.length > 0 &&
+                  filteredMemberProgramsInActiveLibrary.length === 0 ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                      Ingen program i dette filteret. Prøv et annet filter, eller gå til Periodeplan for å starte planlagte økter.
+                    </div>
+                  ) : null}
+	                  {filteredMemberProgramsInActiveLibrary.map((program) => {
 	                    const isExpanded = expandedProgramId === program.id;
 	                    const isLibraryMenuOpen = programLibraryMenuId === program.id;
 	                    const coverExercise = program.exercises
@@ -5415,6 +5474,9 @@ export function MemberPortal(props: MemberPortalProps) {
 	                    const programUsesCustomCover = programCoverUsesPhotoStyle(program, programCoverSrc);
 	                    const completedProgramLogs = completedLogs.filter((log) => log.programTitle.trim().toLowerCase() === program.title.trim().toLowerCase()).length;
 	                    const programProgressPct = Math.min(100, Math.round((completedProgramLogs / Math.max(1, memberProgress.monthGoal.target)) * 100));
+	                    const linkedPeriodPlan = periodPlanLinkedProgramIds.has(program.id)
+	                      ? findPeriodPlanForProgram(program, visiblePeriodPlans, memberProgramsForPeriodPlan)
+	                      : null;
 	                    return (
 	                      <div
 	                        key={program.id}
@@ -5441,6 +5503,14 @@ export function MemberPortal(props: MemberPortalProps) {
 	                          <div className="motus-member-program-summary">
 	                            <div className="motus-member-program-header">
 	                              <div className="motus-member-program-title">{program.title}</div>
+	                              {linkedPeriodPlan ? (
+	                                <span
+	                                  className="mt-1 inline-flex max-w-full items-center rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-800 ring-1 ring-teal-200/80"
+	                                  title={`Tilhører periodeplanen «${linkedPeriodPlan.title}»`}
+	                                >
+	                                  Periodeplan
+	                                </span>
+	                              ) : null}
 	                            </div>
 	                            <div className="motus-member-program-stats">
 	                              <span className="motus-member-program-stat">

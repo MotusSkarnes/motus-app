@@ -1,5 +1,6 @@
 import { parseStoredLogDate } from "./dateFormat";
-import type { TrainingProgram } from "./types";
+import { WEEKDAY_PLAN_ORDER } from "./periodPlanSwaps";
+import type { PeriodSchedulePlan, TrainingProgram } from "./types";
 
 /** Planlagt periodeplan-dato er etter dagens dato (lokal kalenderdag). */
 export function isPeriodPlanEntryDateInFuture(plannedDate: string | null | undefined, now = new Date()): boolean {
@@ -132,6 +133,50 @@ export function resolvePeriodPlanEntryAction(
     return { kind: "start-program", program };
   }
   return { kind: "log-generic", title: trimmed };
+}
+
+export function collectActivePeriodPlanEntryLabels(periodPlans: PeriodSchedulePlan[]): string[] {
+  const labels = new Set<string>();
+  for (const plan of periodPlans) {
+    for (const week of plan.weeklyPlans ?? []) {
+      for (const dayKey of WEEKDAY_PLAN_ORDER) {
+        const entry = week.days[dayKey]?.trim() ?? "";
+        if (!entry || isPassivePeriodPlanEntry(entry) || isGroupPeriodPlanEntry(entry)) continue;
+        labels.add(entry);
+      }
+    }
+  }
+  return [...labels];
+}
+
+export function buildPeriodPlanLinkedProgramIdSet(
+  periodPlans: PeriodSchedulePlan[],
+  programs: TrainingProgram[],
+): Set<string> {
+  const linked = new Set<string>();
+  for (const entry of collectActivePeriodPlanEntryLabels(periodPlans)) {
+    const program = findProgramForPeriodPlanEntry(entry, programs);
+    if (program) linked.add(program.id);
+  }
+  return linked;
+}
+
+export function findPeriodPlanForProgram(
+  program: TrainingProgram,
+  periodPlans: PeriodSchedulePlan[],
+  programs: TrainingProgram[],
+): PeriodSchedulePlan | null {
+  for (const plan of periodPlans) {
+    for (const week of plan.weeklyPlans ?? []) {
+      for (const dayKey of WEEKDAY_PLAN_ORDER) {
+        const entry = week.days[dayKey]?.trim() ?? "";
+        if (!entry || isPassivePeriodPlanEntry(entry) || isGroupPeriodPlanEntry(entry)) continue;
+        const matched = findProgramForPeriodPlanEntry(entry, programs);
+        if (matched?.id === program.id) return plan;
+      }
+    }
+  }
+  return null;
 }
 
 /** Kort etikett i periodeplan-listen — full øktinfo vises først ved trykk inn. */

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { TrainingProgram } from "./types";
+import type { PeriodSchedulePlan, TrainingProgram } from "./types";
 import {
+  buildPeriodPlanLinkedProgramIdSet,
+  findPeriodPlanForProgram,
   findProgramForPeriodPlanEntry,
   isGroupPeriodPlanEntry,
   isPeriodPlanEntryDateInFuture,
@@ -78,6 +80,28 @@ describe("periodPlanEntryActions", () => {
     expect(getPeriodPlanDayListLabel("Hvile / restitusjon", resolvePeriodPlanEntryAction("Hvile / restitusjon", programs))).toBe(
       "Hvile",
     );
+  });
+
+  it("builds linked program ids from period plan entries", () => {
+    const periodPlans: PeriodSchedulePlan[] = [
+      {
+        id: "plan-1",
+        title: "SUB60",
+        notes: "",
+        startDate: "01.01.2026",
+        weeks: 1,
+        createdAt: "01.01.2026",
+        weeklyPlans: [
+          {
+            id: "w1",
+            weekNumber: 1,
+            days: { monday: "Styrke A", tuesday: "Hvile / restitusjon", wednesday: "", thursday: "", friday: "", saturday: "", sunday: "" },
+          },
+        ],
+      },
+    ];
+    expect(buildPeriodPlanLinkedProgramIdSet(periodPlans, programs)).toEqual(new Set(["p1"]));
+    expect(findPeriodPlanForProgram(programs[0], periodPlans, programs)?.id).toBe("plan-1");
   });
 
   it("blocks future plan dates for completion", () => {
