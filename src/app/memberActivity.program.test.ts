@@ -77,4 +77,17 @@ describe("programBelongsToMember", () => {
 
     expect(programBelongsToMember(ptMember, [ptMember], memberSavedOnAuthId)).toBe(true);
   });
+
+  it("matches member-saved program when author name is a prefix of member name", () => {
+    const memberSavedOnAuthId: TrainingProgram = {
+      ...programOnCanonical,
+      id: "prog-auth-member-prefix",
+      memberId: "auth-user-id-from-login",
+      title: "Inspo styrke",
+      programCreatedBy: "member",
+      programCreatedByName: "Kari",
+    };
+
+    expect(programBelongsToMember(ptMember, [ptMember], memberSavedOnAuthId)).toBe(true);
+  });
 });

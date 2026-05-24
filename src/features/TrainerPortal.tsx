@@ -1280,7 +1280,7 @@ function pickFirstName(value: unknown): string {
     JSON.stringify(currentMemberEditSnapshot) !== JSON.stringify(selectedMemberEditSnapshot);
   const selectedPrograms = useMemo(
     () => {
-      const selected = members.find((member) => member.id === selectedMemberId) ?? null;
+      const selected = selectedMemberProfile ?? members.find((member) => member.id === selectedMemberId) ?? null;
       if (!selected) return [] as TrainingProgram[];
       const matchingPrograms = programsAttributedToMember(selected, members, programs).sort((a, b) =>
         b.createdAt.localeCompare(a.createdAt),
@@ -1295,7 +1295,7 @@ function pickFirstName(value: unknown): string {
       });
       return Array.from(uniqueByFingerprint.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
-    [programs, members, selectedMemberId]
+    [programs, members, selectedMemberId, selectedMemberProfile]
   );
   const visibleSelectedPrograms = useMemo(() => {
     if (!dismissedProgramFingerprints.length) return selectedPrograms;
@@ -2410,7 +2410,8 @@ function pickFirstName(value: unknown): string {
     if (!selectedMemberId || selectedMemberId === "__template__") return false;
     if (isSavingProgram) return false;
     const trainerAuthor = pickFirstName(trainerAccountName) || pickFirstName(MOTUS.name) || "Trener";
-    const selectedMemberName = members.find((member) => member.id === selectedMemberId)?.name ?? "kunden";
+    const persistMemberId = selectedMemberProfile?.id ?? selectedMemberId;
+    const selectedMemberName = selectedMemberProfile?.name ?? members.find((member) => member.id === selectedMemberId)?.name ?? "kunden";
     setIsSavingProgram(true);
     setProgramSaveStatus("Lagrer program ...");
     let saveSettled = false;
@@ -2425,7 +2426,7 @@ function pickFirstName(value: unknown): string {
       title: input.title,
       goal: input.goal,
       notes: input.notes,
-      memberId: selectedMemberId,
+      memberId: persistMemberId,
       imageUrl: input.imageUrl,
       exercises: (input.id ? input.exercises : input.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") }))).map(
         (exercise) => normalizeProgramExerciseForCategory(exercise, exercisesById.get(exercise.exerciseId)?.category),
@@ -4919,7 +4920,7 @@ function pickFirstName(value: unknown): string {
                     options={visibleMembers.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
                   />
                 </div>
-                <TrainerPtDetailPortal>
+                <TrainerPtDetailPortal activeTab={customerSubTab} syncKey={selectedMemberId ?? ""}>
                 {customerSubTab === "overview" ? (
                   <>
                 <div id="motus-pt-customer-card" className="motus-card-hero scroll-mt-4 p-5">
@@ -5191,7 +5192,7 @@ function pickFirstName(value: unknown): string {
                 ) : null}
                   </>
                 ) : null}
-                {customerSubTab !== "workouts" && customerSubTab !== "messages" ? (
+                {customerSubTab === "overview" ? (
                 <div className="motus-pt-dash-legacy-hide-xl grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
                   <div className="rounded-xl border bg-white p-4 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -5258,7 +5259,7 @@ function pickFirstName(value: unknown): string {
                   </div>
                 </div>
                 ) : null}
-                {customerSubTab !== "programs" && customerSubTab !== "workouts" ? (
+                {customerSubTab === "overview" ? (
                   <div className="motus-pt-dash-legacy-hide-xl grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <StatCard label="Programmer" value={String(selectedPrograms.length)} hint="På denne kunden" />
                     <StatCard label="Logger" value={String(selectedLogs.length)} hint="På denne kunden" />

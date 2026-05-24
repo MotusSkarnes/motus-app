@@ -21,7 +21,15 @@ export function programBelongsToMember(member: Member, allMembers: Member[], pro
   if (selectedEmail && rawProgramMemberId === selectedEmail) return true;
   if (selectedEmail && (rawProgramMemberId === `auth-${selectedEmail}` || rawProgramMemberId.endsWith(`:${selectedEmail}`))) return true;
   const programAuthorName = (program.programCreatedByName ?? "").trim().toLowerCase();
-  if (program.programCreatedBy === "member" && selectedName && programAuthorName === selectedName) return true;
+  if (program.programCreatedBy === "member" && selectedName && programAuthorName) {
+    if (
+      programAuthorName === selectedName ||
+      selectedName.startsWith(programAuthorName) ||
+      programAuthorName.startsWith(selectedName)
+    ) {
+      return true;
+    }
+  }
   const ownerMember = memberById.get(program.memberId);
   if (!ownerMember) return false;
   const ownerEmail = ownerMember.email.trim().toLowerCase();
