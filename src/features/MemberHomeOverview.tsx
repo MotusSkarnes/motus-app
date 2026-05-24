@@ -269,7 +269,7 @@ export function MemberHomeOverview({
         <section className="motus-home-quick-actions" aria-label="Hurtighandlinger">
           <HomeQuickAction label="Registrer trening" icon={ClipboardList} tone="brand" onClick={quickActions.onLogWorkout} />
           <HomeQuickAction label="Se program" icon={CalendarDays} tone="pink" onClick={quickActions.onViewPrograms} />
-          <HomeQuickAction label="Periodeplan" icon={CalendarRange} tone="pink" onClick={quickActions.onViewPeriodPlan} />
+          <HomeQuickAction label="Periodeplan" icon={CalendarRange} tone="brand" onClick={quickActions.onViewPeriodPlan} />
           <HomeQuickAction label="Fremgang" icon={BarChart3} tone="pink" onClick={quickActions.onViewProgress} />
         </section>
       ) : null}
