@@ -37,7 +37,7 @@ import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, stor
 import { memberBadgeImageSrc } from "../app/badgeAssets";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
-import { programHasCustomCoverImage, resolveGroupWorkoutCoverImage, resolveProgramImageSrc, resolveRestDayCoverImage } from "../app/programImage";
+import { programCoverUsesPhotoStyle, resolveGroupWorkoutCoverImage, resolveProgramImageSrc, resolveRestDayCoverImage } from "../app/programImage";
 import {
   memberLocalDateKey,
   readMemberHomeWorkoutSnapshot,
@@ -159,7 +159,7 @@ import {
   computeMemberProgressState,
 } from "../app/memberProgressGamification";
 import { computeMemberProgressScores } from "../app/memberMomentumScores";
-import { trainingProgramCategoryLabel, isConditioningTrainingProgram } from "../app/trainingProgramKind";
+import { getTrainingProgramSubTab, trainingProgramCategoryLabel, isConditioningTrainingProgram } from "../app/trainingProgramKind";
 import { BadgeImage } from "./BadgeImage";
 import { MemberBadgesCarousel } from "./MemberBadgesCarousel";
 import { CustomWorkoutBuilder } from "./CustomWorkoutBuilder";
@@ -3798,8 +3798,13 @@ export function MemberPortal(props: MemberPortalProps) {
       return resolveGroupWorkoutCoverImage(todayPlanAction.className);
     }
     if (!homeWorkoutProgram) return null;
-    return resolveProgramImageSrc(homeWorkoutProgram, homeWorkoutProgram.exercises[0] ?? null);
-  }, [homeWorkoutProgram, todayPlanAction, todayPlanIsPassiveDay]);
+    const coverExercise = homeWorkoutProgram.exercises
+      .map((item) => exercises.find((exercise) => exercise.id === item.exerciseId))
+      .find(Boolean);
+    return resolveProgramImageSrc(homeWorkoutProgram, coverExercise ?? null, {
+      subTab: getTrainingProgramSubTab(homeWorkoutProgram, exerciseCategoryById, exercises),
+    });
+  }, [homeWorkoutProgram, todayPlanAction, todayPlanIsPassiveDay, exercises, exerciseCategoryById]);
   const homeDisplayTitle = useMemo(() => {
     if (homeWorkoutHydrationPending) {
       return cachedHomeWorkout?.title ?? "";
@@ -5399,9 +5404,10 @@ export function MemberPortal(props: MemberPortalProps) {
 	                      .find(Boolean);
 	                    const programMinutes = Math.max(20, Math.round(estimateProgramMinutes(program) / 5) * 5);
 	                    const programCategory = trainingProgramCategoryLabel(program, exerciseCategoryById, exercises);
+	                    const programSubTab = getTrainingProgramSubTab(program, exerciseCategoryById, exercises);
 	                    const programLevel = coverExercise?.level ?? "Nivå tilpasses";
-	                    const programCoverSrc = resolveProgramImageSrc(program, coverExercise);
-	                    const programUsesCustomCover = programHasCustomCoverImage(program);
+	                    const programCoverSrc = resolveProgramImageSrc(program, coverExercise, { subTab: programSubTab });
+	                    const programUsesCustomCover = programCoverUsesPhotoStyle(program, programCoverSrc);
 	                    const completedProgramLogs = completedLogs.filter((log) => log.programTitle.trim().toLowerCase() === program.title.trim().toLowerCase()).length;
 	                    const programProgressPct = Math.min(100, Math.round((completedProgramLogs / Math.max(1, memberProgress.monthGoal.target)) * 100));
 	                    return (
