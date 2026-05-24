@@ -88,6 +88,7 @@ function programRowVisibleToTrainer(
   if (rowBelongsToOwner(row, ownerUserId)) return true;
   const memberId = String((row as { member_id?: string }).member_id ?? "").trim();
   if (!memberId || memberId === "__template__") return false;
+  if (String((row as { program_created_by?: string }).program_created_by ?? "").trim() === "member") return true;
   if (sharedMemberIds.has(memberId)) return true;
   const memberIdLower = memberId.toLowerCase();
   if (memberIdLower.includes("@") && sharedMemberEmails.has(memberIdLower)) return true;
