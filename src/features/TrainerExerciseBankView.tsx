@@ -293,13 +293,36 @@ export function TrainerExerciseBankView({
             Opprett, organiser og administrer øvelser for alle trenere og kunder.
           </p>
         </div>
+        <div className="motus-exbank-stats motus-exbank-stats--header">
+          <div className="motus-exbank-stat motus-exbank-stat--mint">
+            <Dumbbell className="h-5 w-5" aria-hidden />
+            <div>
+              <div className="motus-exbank-stat-value">{stats.total}</div>
+              <div className="motus-exbank-stat-label">Totalt øvelser</div>
+            </div>
+          </div>
+          <div className="motus-exbank-stat motus-exbank-stat--pink">
+            <Heart className="h-5 w-5" aria-hidden />
+            <div>
+              <div className="motus-exbank-stat-value">{stats.favorites}</div>
+              <div className="motus-exbank-stat-label">Favoritter</div>
+            </div>
+          </div>
+          <div className="motus-exbank-stat motus-exbank-stat--blue">
+            <Grid3X3 className="h-5 w-5" aria-hidden />
+            <div>
+              <div className="motus-exbank-stat-value">{stats.categories}</div>
+              <div className="motus-exbank-stat-label">Kategorier</div>
+            </div>
+          </div>
+        </div>
         <GradientButton type="button" onClick={handleNewExercise} className="motus-exbank-new-btn shrink-0">
           <Plus className="h-4 w-4" aria-hidden />
           Ny øvelse
         </GradientButton>
       </header>
 
-      <div className="motus-exbank-stats">
+      <div className="motus-exbank-stats motus-exbank-stats--panel">
         <div className="motus-exbank-stat motus-exbank-stat--mint">
           <Dumbbell className="h-5 w-5" aria-hidden />
           <div>
@@ -325,7 +348,7 @@ export function TrainerExerciseBankView({
 
       <div className="motus-exbank-layout">
         <aside ref={formRef} className="motus-exbank-form-col">
-          <div className="motus-exbank-form-card">
+          <div className="motus-exbank-form-card motus-exbank-form-card--fit">
             <h2 className="motus-exbank-form-heading">{editingExerciseId ? "Rediger øvelse" : "Ny øvelse"}</h2>
 
             <FormSection icon={<Dumbbell className="h-4 w-4" />} title="Øvelse">
@@ -417,7 +440,7 @@ export function TrainerExerciseBankView({
                 <TextArea
                   value={exerciseFormDescription}
                   onChange={(e) => onExerciseFormDescriptionChange(e.target.value)}
-                  className="min-h-[120px]"
+                  className="motus-exbank-description-input min-h-[120px]"
                   placeholder="Beskriv teknikk, tips og vanlige feil..."
                 />
               </label>

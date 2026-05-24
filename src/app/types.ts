@@ -7,6 +7,7 @@ export type CustomerType = "PT-kunde" | "Oppfølging" | "Egentrening" | "Medlem"
 export type TrainerTab =
   | "dashboard"
   | "customers"
+  | "calendar"
   | "programs"
   | "exerciseBank"
   | "admin"

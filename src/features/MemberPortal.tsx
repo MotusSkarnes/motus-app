@@ -9,7 +9,6 @@ import {
   Dumbbell,
   Eye,
   EyeOff,
-  History,
   Layers,
   Lightbulb,
   MessageSquare,
@@ -190,9 +189,16 @@ import { MotusChat, type MotusChatQuickAction } from "./MotusChat";
 import { resolveMemberTrainerDisplayName } from "../app/trainerProfile";
 import { MemberPersonalRecordsSection } from "./MemberPersonalRecordsSection";
 import { MemberWeeklySummaryCard } from "./MemberWeeklySummaryCard";
+import {
+  computeDailyWeekProgress,
+  computeWeeklyProgressDelta,
+  computeWeeklyProgressPct,
+} from "../app/memberTrainingWeekChart";
+import { MemberTrainingHistoryView } from "./MemberTrainingHistoryView";
+import { MemberTrainingOverview } from "./MemberTrainingOverview";
+import { MemberTrainingQuickActions } from "./MemberTrainingQuickActions";
 import { MemberTrainingFlowCard } from "./MemberTrainingFlowCard";
-import { MemberTrainingTodayCard, extractZoneFromPlanEntry, formatWeekMinutesLabel, formatWeekSessionsLabel } from "./MemberTrainingTodayCard";
-import { MemberTrainingWeekStats } from "./MemberTrainingWeekStats";
+import { extractZoneFromPlanEntry, formatWeekMinutesLabel, formatWeekSessionsLabel } from "./MemberTrainingTodayCard";
 import { buildWeekDayModels, MemberTrainingCalendar } from "./MemberTrainingCalendar";
 import { getMondayStart, toCalendarDateKey, type TrainingCalendarDayStatus } from "../app/memberTrainingCalendar";
 import { MuscleSplitCard } from "./MuscleSplitCard";
@@ -1583,8 +1589,7 @@ export function MemberPortal(props: MemberPortalProps) {
       return !(sameProgram && sameMember);
     });
   }, [activeMemberId, workoutMode, pausedWorkoutsTick]);
-  const primaryPausedWorkout = pausedWorkouts[0] ?? null;
-  const secondaryPausedWorkouts = pausedWorkouts.slice(1);
+  const secondaryPausedWorkouts = pausedWorkouts;
   const nextProgram = memberProgramsInActiveLibrary[0] ?? null;
 
   async function handleMemberShareProgramClick() {
@@ -2008,6 +2013,11 @@ export function MemberPortal(props: MemberPortalProps) {
     if (recentCompletedLogs.some((log) => log.id === focused.id)) return recentCompletedLogs;
     return [focused, ...recentCompletedLogs.slice(0, 4)];
   }, [completedLogs, memberFocusWorkoutLogId, recentCompletedLogs]);
+  const allMemberLogsSorted = useMemo(
+    () =>
+      [...memberLogs].sort((a, b) => (parseLogDate(b.date)?.getTime() ?? 0) - (parseLogDate(a.date)?.getTime() ?? 0)),
+    [memberLogs],
+  );
   const latestCompletedLog = recentCompletedLogs[0] ?? null;
   function findSuggestedWeightForExercise(exerciseName: string): string {
     const normalizedExerciseName = exerciseName.trim().toLowerCase();
@@ -4124,6 +4134,78 @@ export function MemberPortal(props: MemberPortalProps) {
       ),
     [homeWeeklySummary.completedThisWeek, homeWeeklySummary.plannedThisWeek, profileSessionsPerWeekTarget],
   );
+  const trainingWeeklyPoints = useMemo(
+    () => computeDailyWeekProgress(completedLogDates, nowTimestamp),
+    [completedLogDates, nowTimestamp],
+  );
+  const trainingWeeklyProgressPct = useMemo(
+    () => computeWeeklyProgressPct(trainingWeeklyPoints, nowTimestamp),
+    [trainingWeeklyPoints, nowTimestamp],
+  );
+  const trainingWeeklyDeltaLabel = useMemo(() => {
+    const delta = computeWeeklyProgressDelta(completedLogDates, nowTimestamp);
+    if (delta === null) return null;
+    if (delta === 0) return "Samme nivå som forrige uke";
+    const sign = delta > 0 ? "+" : "";
+    return `${sign}${delta}% vs. forrige uke`;
+  }, [completedLogDates, nowTimestamp]);
+  const trainingPausedCards = useMemo(
+    () =>
+      pausedWorkouts.map((draft) => {
+        const progress = pausedWorkoutProgress(draft.workoutMode);
+        const program =
+          memberPrograms.find((item) => item.id === draft.programId) ??
+          memberPrograms.find((item) => item.title.trim().toLowerCase() === draft.programTitle.trim().toLowerCase()) ??
+          null;
+        const coverExercise = program?.exercises
+          .map((item) => exercises.find((exercise) => exercise.id === item.exerciseId))
+          .find(Boolean);
+        const imageSrc = program
+          ? resolveProgramImageSrc(program, coverExercise ?? null, {
+              subTab: getTrainingProgramSubTab(program, exerciseCategoryById, exercises),
+            })
+          : null;
+        const minutes = program ? Math.max(20, Math.round(estimateProgramMinutes(program) / 5) * 5) : 45;
+        return {
+          id: draft.id,
+          title: draft.programTitle,
+          imageSrc,
+          durationLabel: `${minutes} min`,
+          exerciseCountLabel: `${program?.exercises.length ?? progress.total} ${(program?.exercises.length ?? progress.total) === 1 ? "øvelse" : "øvelser"}`,
+          progressPct: progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0,
+          onResume: () => resumePausedWorkout(draft.id, draft.memberId),
+        };
+      }),
+    [pausedWorkouts, memberPrograms, exercises, exerciseCategoryById, resumePausedWorkout],
+  );
+  const trainingProgramPreviews = useMemo(
+    () =>
+      memberProgramsInActiveLibrary.slice(0, 8).map((program) => {
+        const coverExercise = program.exercises
+          .map((item) => exercises.find((exercise) => exercise.id === item.exerciseId))
+          .find(Boolean);
+        const programSubTab = getTrainingProgramSubTab(program, exerciseCategoryById, exercises);
+        const imageSrc = resolveProgramImageSrc(program, coverExercise ?? null, { subTab: programSubTab });
+        const completedProgramLogs = completedLogs.filter(
+          (log) => log.programTitle.trim().toLowerCase() === program.title.trim().toLowerCase(),
+        ).length;
+        const progressPct = Math.min(100, Math.round((completedProgramLogs / Math.max(1, memberProgress.monthGoal.target)) * 100));
+        return {
+          id: program.id,
+          title: program.title,
+          imageSrc,
+          metaLabel: `${program.exercises.length} ${program.exercises.length === 1 ? "øvelse" : "øvelser"} · ${progressPct}%`,
+          progressPct,
+        };
+      }),
+    [
+      memberProgramsInActiveLibrary,
+      exercises,
+      exerciseCategoryById,
+      completedLogs,
+      memberProgress.monthGoal.target,
+    ],
+  );
   const homeWeeklyMinutes = useMemo(() => {
     const today = getStartOfDay(new Date(nowTimestamp));
     const mondayOffset = (today.getDay() + 6) % 7;
@@ -5562,97 +5644,34 @@ export function MemberPortal(props: MemberPortalProps) {
 
           {memberTab === "programs" ? (
             <>
-              <div className="flex flex-col gap-5">
-              <div className="motus-training-segments scrollbar-none pb-0.5" role="tablist" aria-label="Trening-seksjoner">
-                  {[
-                    { id: "today" as const, label: "Dagens plan" },
-                    { id: "programs" as const, label: "Mine programmer" },
-                    { id: "custom" as const, label: "Lag egen økt" },
-                    { id: "period" as const, label: "Periodeplan" },
-                    { id: "history" as const, label: "Historikk" },
-                  ].map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={trainingSection === item.id}
-                      onClick={() => setTrainingSection(item.id)}
-                      className="motus-training-segment"
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              <MemberTrainingWeekStats
-                completedSessions={homeWeeklySummary.completedThisWeek}
-                momentumPct={homeMomentumPct}
-                streakWeeks={streakWeeks}
+              <div className="motus-training-page flex flex-col gap-4">
+              <MemberTrainingQuickActions
+                activeSection={trainingSection}
+                onNavigate={setTrainingSection}
+                hideCustom={isMemberLimited}
               />
-              {primaryPausedWorkout ? (() => {
-                const progress = pausedWorkoutProgress(primaryPausedWorkout.workoutMode);
-                return (
-                  <div className="motus-training-paused">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="inline-flex items-center gap-2 motus-surface-chip px-2.5 py-1 uppercase tracking-wide">
-                          <Play className="h-3.5 w-3.5" />
-                          Fortsett der du slapp
-                        </div>
-                        <h3 className="mt-2.5 text-lg font-semibold leading-tight text-slate-950">{primaryPausedWorkout.programTitle}</h3>
-                        <p className="mt-1 text-sm text-slate-600">
-                          {progress.completed} av {progress.total} sett · {formatPausedWorkoutExpiry(primaryPausedWorkout.expiresAt)}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 flex-col gap-2 sm:min-w-44">
-                        <TrainingStartButton
-                          className="w-full"
-                          onClick={() => {
-                            resumePausedWorkout(primaryPausedWorkout.id, primaryPausedWorkout.memberId);
-                          }}
-                        >
-                          <Play className="h-4 w-4 fill-white/85" aria-hidden />
-                          Fortsett økt
-                        </TrainingStartButton>
-                        <OutlineButton
-                          className="w-full !min-h-9 !border-transparent !bg-transparent !py-2 text-xs text-slate-500 shadow-none hover:!bg-slate-100/80"
-                          onClick={() => {
-                            setConfirmDialog({
-                              title: "Slette påbegynt økt?",
-                              message: "Fremgangen i denne økten fjernes permanent.",
-                              confirmLabel: "Slett",
-                              tone: "danger",
-                              onConfirm: () => {
-                                discardPausedWorkoutDraft(activeMemberId, primaryPausedWorkout.id);
-                                setPausedWorkoutsTick((value) => value + 1);
-                              },
-                            });
-                          }}
-                        >
-                          Slett utkast
-                        </OutlineButton>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })() : null}
               {trainingSection === "today" ? (
-                <MemberTrainingTodayCard
+                <MemberTrainingOverview
                   title={todayPlanEntry || homeWorkoutProgram?.title || (memberHasVisiblePeriodPlan ? "Ingen plan i dag" : nextProgram?.title || "Ingen plan i dag")}
                   imageSrc={homeWorkoutCoverSrc}
                   durationLabel={homeWorkoutDuration}
                   zoneLabel={homeWorkoutZoneLabel}
-                  weekSessionsLabel={homeWeekSessionsLabel}
+                  exerciseCountLabel={
+                    homeWorkoutProgram?.exercises.length
+                      ? `${homeWorkoutProgram.exercises.length} ${homeWorkoutProgram.exercises.length === 1 ? "øvelse" : "øvelser"}`
+                      : null
+                  }
                   primaryAction={
                     todayPlanAction.kind === "start-program"
                       ? {
-                          label: todayPeriodPlanCompleted ? "Dagens økt er fullført" : "Start økt",
+                          label: todayPeriodPlanCompleted ? "Fullført" : "Start økt",
                           disabled: todayPeriodPlanCompleted,
                           completed: todayPeriodPlanCompleted,
                           onClick: () => handlePeriodPlanStartProgram(todayPlanAction.program.id),
                         }
-                      : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch
+                      : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPlanPeriodPlanMatch
                         ? {
-                            label: todayPeriodPlanCompleted ? "Dagens økt er logget" : "Logg gruppetime",
+                            label: todayPeriodPlanCompleted ? "Fullført" : "Logg gruppetime",
                             disabled: todayPeriodPlanCompleted,
                             completed: todayPeriodPlanCompleted,
                             onClick: () =>
@@ -5660,14 +5679,14 @@ export function MemberPortal(props: MemberPortalProps) {
                                 entry: todayPlanEntry,
                                 plannedDate: resolvePeriodPlanEntryDate(
                                   todayPlanPeriodPlan,
-                                  todayPeriodPlanMatch.weekNumber,
-                                  todayPeriodPlanMatch.day,
+                                  todayPlanPeriodPlanMatch.weekNumber,
+                                  todayPlanPeriodPlanMatch.day,
                                 ),
                                 planId: todayPlanPeriodPlan.id,
-                                weekNumber: todayPeriodPlanMatch.weekNumber,
-                                day: todayPeriodPlanMatch.day,
+                                weekNumber: todayPlanPeriodPlanMatch.weekNumber,
+                                day: todayPlanPeriodPlanMatch.day,
                               }),
-                           }
+                          }
                         : !todayPlanEntry && nextProgram
                           ? {
                               label: "Start neste økt",
@@ -5675,18 +5694,29 @@ export function MemberPortal(props: MemberPortalProps) {
                             }
                           : undefined
                   }
-                  secondaryAction={{
-                    label: todayPlanEntry ? "Se periodeplan" : "Se programmer",
-                    onClick: () => setTrainingSection(todayPlanEntry ? "period" : "programs"),
-                  }}
-                  tertiaryAction={
-                    !todayPlanEntry && !isMemberLimited
-                      ? {
-                          label: "Lag egen økt",
-                          onClick: () => setTrainingSection("custom"),
-                        }
-                      : undefined
-                  }
+                  completedHint={todayPeriodPlanCompleted ? "Dagens økt er logget" : null}
+                  completedSessions={homeWeeklySummary.completedThisWeek}
+                  momentumPct={homeMomentumPct}
+                  streakWeeks={streakWeeks}
+                  pausedWorkouts={trainingPausedCards}
+                  weeklyPoints={trainingWeeklyPoints}
+                  weeklyProgressPct={trainingWeeklyProgressPct}
+                  weeklyDeltaLabel={trainingWeeklyDeltaLabel}
+                  programs={trainingProgramPreviews.map((program) => ({
+                    ...program,
+                    onOpen: () => {
+                      setTrainingSection("programs");
+                      setExpandedProgramId(program.id);
+                      requestAnimationFrame(() => {
+                        document.getElementById(`member-program-${program.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      });
+                    },
+                  }))}
+                  onViewAllPrograms={() => setTrainingSection("programs")}
+                  records={personalRecords.slice(0, 8)}
+                  exercises={exercises}
+                  onViewAllRecords={() => setTrainingSection("history")}
+                  onOpenRecord={setPrProgressExerciseName}
                 />
               ) : null}
               {trainingSection === "programs" ? (
@@ -6527,222 +6557,37 @@ export function MemberPortal(props: MemberPortalProps) {
               )
               ) : null}
               {trainingSection === "history" ? (
-              <>
-              <div className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
-                <div className="flex items-center gap-2">
-                  <MotusSectionIcon className="!p-2">
-                    <History className="h-4 w-4" />
-                  </MotusSectionIcon>
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Historikk</div>
-                    <div className="mt-1 text-lg font-bold text-slate-950">Siste 5 økter</div>
-                  </div>
-                </div>
-                <div className="mt-4 space-y-3">
-                  {lastDeletedLogResult ? (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                      Øvelse slettet fra loggen.
-                      <button type="button" onClick={undoDeleteLoggedExercise} className="ml-2 font-semibold underline">
-                        Angre
-                      </button>
-                    </div>
-                  ) : null}
-                  {completedLogs.length === 0 ? (
-                    <EmptyState
-                      icon="🧾"
-                      title="Ingen økter logget ennå"
-                      description="Start en økt for å bygge historikk og fremgang."
-                      className="bg-white"
-                    />
-                  ) : null}
-                  {recentCompletedLogsForDisplay.map((log) => {
-                    const isExpanded = expandedRecentLogId === log.id;
-                    const fromPeriodPlan = isPeriodPlanWorkoutLog(log);
-                    const isFocusedFromNotification = memberFocusWorkoutLogId === log.id;
-                    return (
-                    <div
-                      key={log.id}
-                      id={`member-workout-log-${log.id}`}
-                      className={`overflow-hidden rounded-lg border bg-white ${isFocusedFromNotification ? "ring-2 ring-teal-400/80 ring-offset-1" : ""}`}
-                      style={{ borderColor: "rgba(15,23,42,0.08)" }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setExpandedRecentLogId((prev) => (prev === log.id ? null : log.id))}
-                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-slate-50"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-semibold text-slate-900">{log.date}</div>
-                          <div className="truncate text-xs text-slate-500">{log.programTitle}</div>
-                        </div>
-                        <span className="shrink-0 text-[11px] font-semibold text-teal-700">
-                          {isExpanded ? "Skjul" : "Detaljer"}
-                        </span>
-                        <ChevronRight
-                          className={`h-4 w-4 shrink-0 text-slate-400 transition ${isExpanded ? "rotate-90" : ""}`}
-                          aria-hidden
-                        />
-                      </button>
-                      {isExpanded ? (
-                        <div className="space-y-2 border-t border-slate-100 px-3 pb-3 pt-2">
-                          {fromPeriodPlan && log.note ? (
-                            <div className="rounded-lg border motus-brand-surface px-2.5 py-1.5 text-xs text-emerald-900">
-                              {log.note}
-                            </div>
-                          ) : null}
-                          {!fromPeriodPlan && log.note ? (
-                            <div className="text-sm text-slate-600">{log.note}</div>
-                          ) : null}
-                          {log.trainerComment ? (
-                            <div className="rounded-lg border motus-brand-surface px-3 py-2 text-sm text-emerald-900">
-                              <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Kommentar fra trener</div>
-                              <div className="mt-1">{log.trainerComment}</div>
-                            </div>
-                          ) : null}
-                          <div className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Utført i økta</div>
-                          <div className="mt-2 space-y-2">
-                            {(log.results ?? []).length === 0 ? (
-                              <div className="text-sm text-slate-500">Ingen settdata registrert for denne økta.</div>
-                            ) : (
-                              groupLoggedResultsForDisplay(log.results ?? []).map((group) => (
-                                <div key={group.key} className="rounded-lg border bg-white px-3 py-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                      <div className="font-medium text-slate-800">{group.exerciseName}</div>
-                                      <div className="mt-0.5 text-[11px] text-slate-500">
-                                        {group.rows.length === 1 ? "1 sett logget" : `${group.rows.length} sett logget`}
-                                      </div>
-                                      {group.exerciseNote ? (
-                                        <div className="mt-1 text-xs text-slate-600 italic">«{group.exerciseNote}»
-                                      </div>
-                                      ) : null}
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteLoggedExercise(log.id, group.rows[0]?.result.exerciseId ?? "")}
-                                      className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
-                                    >
-                                      Slett øvelse
-                                    </button>
-                                  </div>
-                                  <div className="mt-3 space-y-2">
-                                    {group.rows.map(({ result, originalIndex }) => {
-                                      const editKey = `${log.id}:${result.exerciseId}:${originalIndex}`;
-                                      const isEditing = editingLoggedExerciseKey === editKey && Boolean(editingLoggedExerciseDraft);
-                                      const setLabel = result.setNumber && result.setNumber > 0 ? `Sett ${result.setNumber}` : "Sett";
-                                      return (
-                                        <div key={`${group.key}:${originalIndex}`} className="rounded-lg border bg-slate-50 px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                          <div className="flex items-start justify-between gap-2">
-                                            <div className="font-medium text-slate-700">{setLabel}</div>
-                                            <div className="flex items-center gap-1.5">
-                                              {isEditing ? (
-                                                <>
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => saveEditLoggedExercise(log.id, originalIndex)}
-                                                    className="rounded-lg border motus-brand-surface px-2 py-1 text-[11px] font-semibold text-emerald-700 transition hover:bg-teal-100"
-                                                  >
-                                                    Lagre
-                                                  </button>
-                                                  <button
-                                                    type="button"
-                                                    onClick={cancelEditLoggedExercise}
-                                                    className="rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-200"
-                                                  >
-                                                    Avbryt
-                                                  </button>
-                                                </>
-                                              ) : (
-                                                <button
-                                                  type="button"
-                                                  onClick={() => startEditLoggedExercise(log.id, result, originalIndex)}
-                                                  className="rounded-lg border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold text-sky-700 transition hover:bg-sky-100"
-                                                >
-                                                  Rediger sett
-                                                </button>
-                                              )}
-                                            </div>
-                                          </div>
-                                          {isEditing && editingLoggedExerciseDraft ? (
-                                            <div className="mt-2 grid gap-2">
-                                              {result.exerciseCategory === "Kondisjon" ? (
-                                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                                                  <TextInput
-                                                    value={editingLoggedExerciseDraft.performedDurationMinutes}
-                                                    onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedDurationMinutes: e.target.value } : prev)}
-                                                    placeholder="Minutter"
-                                                  />
-                                                  <TextInput
-                                                    value={editingLoggedExerciseDraft.performedSpeed}
-                                                    onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedSpeed: e.target.value } : prev)}
-                                                    placeholder="Km/t"
-                                                  />
-                                                  <TextInput
-                                                    value={editingLoggedExerciseDraft.performedIncline}
-                                                    onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedIncline: e.target.value } : prev)}
-                                                    placeholder="Incline %"
-                                                  />
-                                                </div>
-                                              ) : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory) ? (
-                                                <div className="grid grid-cols-1 gap-2">
-                                                  <TextInput
-                                                    value={editingLoggedExerciseDraft.performedWeight}
-                                                    onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedWeight: e.target.value } : prev)}
-                                                    placeholder="Sekunder"
-                                                  />
-                                                </div>
-                                              ) : (
-                                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                                  <TextInput
-                                                    value={editingLoggedExerciseDraft.performedWeight}
-                                                    onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedWeight: e.target.value } : prev)}
-                                                    placeholder="Kg"
-                                                  />
-                                                  <TextInput
-                                                    value={editingLoggedExerciseDraft.performedReps}
-                                                    onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, performedReps: e.target.value } : prev)}
-                                                    placeholder="Reps"
-                                                  />
-                                                </div>
-                                              )}
-                                              <label className="inline-flex items-center gap-2 text-xs text-slate-700">
-                                                <input
-                                                  type="checkbox"
-                                                  checked={editingLoggedExerciseDraft.completed}
-                                                  onChange={(e) => setEditingLoggedExerciseDraft((prev) => prev ? { ...prev, completed: e.target.checked } : prev)}
-                                                />
-                                                Markert som fullført
-                                              </label>
-                                            </div>
-                                          ) : (
-                                            <div className="mt-1 text-xs text-slate-600">
-                                              {result.exerciseCategory === "Kondisjon"
-                                                ? `Utført: ${result.performedDurationMinutes || "0"} min${result.performedSpeed ? ` · ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` · ${result.performedIncline}% incline` : ""}`
-                                                : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)
-                                                  ? `Utført: ${result.performedWeight || "0"} sek`
-                                                  : `Utført: ${result.performedWeight || "0"} kg x ${result.performedReps || "0"} reps`}
-                                              {result.completed ? " - Fullført" : " - Ikke markert fullført"}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
-
-                        </div>
-                      ) : null}
-                    </div>
-                    );
-                  })}
-                </div>
-              </div>
-              </>
+                <MemberTrainingHistoryView
+                  memberLogs={memberLogs}
+                  completedLogs={completedLogs}
+                  allLogsForSessions={allMemberLogsSorted}
+                  personalRecords={personalRecords}
+                  exercises={exercises}
+                  programs={memberPrograms}
+                  nowTimestamp={nowTimestamp}
+                  streakWeeks={streakWeeks}
+                  muscleSplitStats={muscleSplitStats}
+                  muscleSplitMetric={muscleSplitMetric}
+                  muscleSplitPeriod={muscleSplitPeriod}
+                  onMuscleSplitMetricChange={setMuscleSplitMetric}
+                  onMuscleSplitPeriodChange={setMuscleSplitPeriod}
+                  onOpenProgress={() => setMemberTab("progress")}
+                  onOpenProgressExercise={setPrProgressExerciseName}
+                  focusLogId={memberFocusWorkoutLogId}
+                  logListProps={{
+                    expandedLogId: expandedRecentLogId,
+                    onToggleExpanded: (logId) => setExpandedRecentLogId((prev) => (prev === logId ? null : logId)),
+                    lastDeletedMessage: Boolean(lastDeletedLogResult),
+                    onUndoDelete: undoDeleteLoggedExercise,
+                    editingKey: editingLoggedExerciseKey,
+                    editingDraft: editingLoggedExerciseDraft,
+                    onStartEdit: startEditLoggedExercise,
+                    onSaveEdit: saveEditLoggedExercise,
+                    onCancelEdit: cancelEditLoggedExercise,
+                    onDeleteExercise: handleDeleteLoggedExercise,
+                    onDraftChange: setEditingLoggedExerciseDraft,
+                  }}
+                />
               ) : null}
               </div>
               <IntervalWorkoutSessionModal

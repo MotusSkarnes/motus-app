@@ -3485,45 +3485,11 @@ button {
   display: none;
 }
 
-.motus-trainer-nav-brand {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 1rem 0.85rem 0.75rem;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-}
-
-.motus-trainer-nav-logo {
-  height: 2.25rem;
-  width: auto;
-  object-fit: contain;
-}
-
-.motus-trainer-nav-brand-text {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  line-height: 1.15;
-}
-
-.motus-trainer-nav-brand-title {
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  color: #0f172a;
-}
-
-.motus-trainer-nav-brand-sub {
-  font-size: 0.58rem;
-  font-weight: 600;
-  color: #64748b;
-}
-
 .motus-trainer-nav-list {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  padding: 0.65rem 0.5rem;
+  padding: 0.4rem 0.5rem;
 }
 
 .motus-trainer-nav-item {
@@ -3573,40 +3539,6 @@ button {
   line-height: 1.2;
 }
 
-.motus-trainer-nav-promo {
-  margin: 0.5rem;
-  margin-top: auto;
-  border-radius: 1rem;
-  padding: 0.85rem;
-  background: linear-gradient(135deg, rgba(217, 18, 120, 0.12) 0%, rgba(48, 227, 190, 0.14) 100%);
-}
-
-.motus-trainer-nav-promo-title {
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: #0f172a;
-}
-
-.motus-trainer-nav-promo-text {
-  margin-top: 0.25rem;
-  font-size: 0.625rem;
-  line-height: 1.35;
-  color: #64748b;
-}
-
-.motus-trainer-nav-promo-btn {
-  margin-top: 0.55rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  border: 0;
-  border-radius: 9999px;
-  padding: 0.35rem 0.65rem;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  color: #fff;
-  background: linear-gradient(90deg, #30e3be, #d91278);
-}
 
 @media (min-width: 1280px) {
   .motus-trainer-shell {
@@ -3617,7 +3549,9 @@ button {
     display: flex !important;
     flex-direction: column;
     grid-column: 1;
-    min-height: calc(100vh - 8rem);
+    position: sticky;
+    top: 0.5rem;
+    align-self: start;
   }
 
   .motus-trainer-main {
@@ -4688,6 +4622,493 @@ button {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
+.motus-training-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 560px;
+  margin-inline: auto;
+}
+
+.motus-training-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+
+.motus-training-quick-action {
+  display: flex;
+  min-height: 6rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(15, 23, 42, 0.04);
+  background: #fff;
+  padding: 0.75rem 0.5rem;
+  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
+  text-align: center;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.motus-training-quick-action:hover,
+.motus-training-quick-action.is-active {
+  border-color: rgba(48, 227, 190, 0.35);
+  background: rgba(48, 227, 190, 0.08);
+}
+
+.motus-training-quick-action-icon {
+  display: inline-flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+}
+
+.motus-training-quick-action-icon--teal {
+  background: rgba(48, 227, 190, 0.12);
+  color: #0f766e;
+}
+
+.motus-training-quick-action-icon--pink {
+  background: rgba(217, 18, 120, 0.1);
+  color: #be185d;
+}
+
+.motus-training-quick-action-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.motus-training-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.motus-training-hero {
+  min-height: 18rem;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  background: #0f172a;
+  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
+}
+
+.motus-training-hero-cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.motus-training-hero-cover--fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 28% 25%, rgba(48, 227, 190, 0.34), transparent 34%),
+    radial-gradient(circle at 76% 72%, rgba(217, 18, 120, 0.3), transparent 36%),
+    linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+}
+
+.motus-training-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+.motus-training-hero-content {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.375rem;
+  padding: 1rem 1.25rem 1.25rem;
+  color: #fff;
+}
+
+.motus-training-hero-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(48, 227, 190, 0.96);
+}
+
+.motus-training-hero-title {
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.motus-training-hero-meta {
+  font-size: 0.9375rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.motus-training-hero-cta {
+  margin-top: 0.75rem;
+  width: 100%;
+}
+
+.motus-training-hero-cta > button {
+  min-height: 3.25rem;
+  border-radius: 1.625rem;
+}
+
+.motus-training-hero-next {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.motus-training-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+
+.motus-training-stat-card {
+  display: flex;
+  min-height: 6.875rem;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.375rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  background: #fff;
+  padding: 0.875rem;
+  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
+}
+
+.motus-training-stat-icon {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: #fff;
+}
+
+.motus-training-stat-icon--teal {
+  background: linear-gradient(135deg, #2dd4bf, #0d9488);
+}
+
+.motus-training-stat-icon--pink {
+  background: linear-gradient(135deg, #f472b6, #d91278);
+}
+
+.motus-training-stat-icon--violet {
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
+}
+
+.motus-training-stat-value {
+  font-size: 2.125rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #0f172a;
+}
+
+.motus-training-stat-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: capitalize;
+}
+
+.motus-training-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.motus-training-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.motus-training-section-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.motus-training-section-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0d9488;
+}
+
+.motus-training-scroll-row {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.motus-training-resume-card {
+  flex: 0 0 auto;
+  width: 15rem;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
+  text-align: left;
+}
+
+.motus-training-resume-media {
+  position: relative;
+  height: 5.625rem;
+  overflow: hidden;
+}
+
+.motus-training-resume-media img,
+.motus-training-resume-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.motus-training-resume-fallback {
+  background: linear-gradient(135deg, rgba(48, 227, 190, 0.25), rgba(217, 18, 120, 0.18));
+}
+
+.motus-training-resume-badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  padding: 0.2rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.motus-training-resume-body {
+  padding: 0.75rem;
+}
+
+.motus-training-resume-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-training-resume-meta {
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.motus-training-resume-progress {
+  margin-top: 0.625rem;
+  height: 0.375rem;
+  border-radius: 999px;
+}
+
+.motus-training-week-panel {
+  display: grid;
+  gap: 0.75rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  padding: 1rem;
+  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
+}
+
+@media (min-width: 640px) {
+  .motus-training-week-panel {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+}
+
+.motus-training-week-chart {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.motus-training-week-chart-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.motus-training-week-chart-svg {
+  width: 100%;
+  height: auto;
+}
+
+.motus-training-week-chart-labels {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+  margin-top: 0.375rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.motus-training-week-chart-badge {
+  display: inline-flex;
+  border-radius: 999px;
+  background: rgba(48, 227, 190, 0.14);
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: #0f766e;
+}
+
+.motus-training-week-insight {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  border-radius: 1rem;
+  background: #f8fafc;
+  padding: 0.75rem;
+}
+
+.motus-training-week-insight-icon {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(48, 227, 190, 0.14);
+  color: #0f766e;
+}
+
+.motus-training-week-insight-title {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.motus-training-week-insight-copy {
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.motus-training-program-card {
+  position: relative;
+  flex: 0 0 auto;
+  width: 15.5rem;
+  height: 10rem;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
+  text-align: left;
+}
+
+.motus-training-program-cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.motus-training-program-cover--fallback {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #14b8a6, #d91278);
+}
+
+.motus-training-program-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0.72));
+}
+
+.motus-training-program-content {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 1;
+  padding: 0.875rem;
+  color: #fff;
+}
+
+.motus-training-program-title {
+  font-size: 0.9375rem;
+  font-weight: 800;
+}
+
+.motus-training-program-meta {
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.motus-training-program-progress {
+  margin-top: 0.5rem;
+  height: 0.375rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.motus-training-pr-card {
+  flex: 0 0 auto;
+  width: 8.5rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  padding: 0.625rem;
+  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
+  text-align: left;
+}
+
+.motus-training-pr-image {
+  aspect-ratio: 1;
+  border-radius: 0.875rem;
+  overflow: hidden;
+}
+
+.motus-training-pr-name {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-training-pr-weight {
+  margin-top: 0.125rem;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.motus-training-pr-badge {
+  margin-top: 0.375rem;
+  display: inline-flex;
+  border-radius: 999px;
+  background: rgba(217, 18, 120, 0.12);
+  padding: 0.15rem 0.45rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #be185d;
+}
+
 .motus-brand-fill {
   background-color: var(--motus-brand);
   color: #0f172a;
@@ -5283,6 +5704,175 @@ button {
 .motus-exbank-empty {
   border-radius: 1.25rem;
   background: #fff;
+}
+
+.motus-exbank-stats--header {
+  display: none;
+}
+
+@media (min-width: 1280px) {
+  .motus-exbank {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    height: calc(100dvh - 9.5rem);
+    max-height: calc(100dvh - 9.5rem);
+    overflow: hidden;
+  }
+
+  .motus-exbank-header {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .motus-exbank-title {
+    font-size: 1.25rem;
+  }
+
+  .motus-exbank-subtitle {
+    display: none;
+  }
+
+  .motus-exbank-stats--panel {
+    display: none;
+  }
+
+  .motus-exbank-stats--header {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, max-content));
+    gap: 0.5rem;
+    width: fit-content;
+    margin-left: auto;
+  }
+
+  .motus-exbank-stat {
+    padding: 0.45rem 0.7rem;
+    gap: 0.45rem;
+  }
+
+  .motus-exbank-stat-value {
+    font-size: 1rem;
+  }
+
+  .motus-exbank-stat-label {
+    font-size: 0.625rem;
+  }
+
+  .motus-exbank-stat--mint svg,
+  .motus-exbank-stat--pink svg,
+  .motus-exbank-stat--blue svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    padding: 0.3rem;
+  }
+
+  .motus-exbank-layout {
+    flex: 1;
+    min-height: 0;
+    grid-template-columns: minmax(340px, 0.44fr) minmax(0, 0.56fr);
+    gap: 0.85rem;
+    align-items: stretch;
+  }
+
+  .motus-exbank-form-col {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    min-height: 0;
+  }
+
+  .motus-exbank-form-card--fit {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 0.85rem;
+    row-gap: 0.55rem;
+    height: 100%;
+    max-height: 100%;
+    padding: 0.85rem 1rem;
+    overflow: visible;
+  }
+
+  .motus-exbank-form-heading,
+  .motus-exbank-form-status,
+  .motus-exbank-form-actions {
+    grid-column: 1 / -1;
+  }
+
+  .motus-exbank-form-heading {
+    margin-bottom: 0.35rem;
+    font-size: 1rem;
+  }
+
+  .motus-exbank-form-section {
+    margin-bottom: 0;
+    padding-bottom: 0.55rem;
+    min-width: 0;
+  }
+
+  .motus-exbank-form-section-head {
+    margin-bottom: 0.45rem;
+  }
+
+  .motus-exbank-form-section-icon {
+    width: 1.65rem;
+    height: 1.65rem;
+  }
+
+  .motus-exbank-form-section-title {
+    font-size: 0.8125rem;
+  }
+
+  .motus-exbank-form-section-body {
+    gap: 0.5rem;
+  }
+
+  .motus-exbank-field-label {
+    font-size: 0.625rem;
+  }
+
+  .motus-exbank-field-grid {
+    gap: 0.5rem;
+  }
+
+  .motus-exbank-upload-zone {
+    min-height: 4.5rem;
+  }
+
+  .motus-exbank-upload-placeholder {
+    gap: 0.25rem;
+    padding: 0.55rem;
+    font-size: 0.6875rem;
+  }
+
+  .motus-exbank-upload-placeholder span:not(.text-xs) {
+    line-height: 1.25;
+  }
+
+  .motus-exbank-upload-placeholder .text-xs {
+    display: none;
+  }
+
+  .motus-exbank-upload-preview {
+    max-height: 4.5rem;
+    object-fit: cover;
+  }
+
+  .motus-exbank-description-input {
+    min-height: 3.25rem !important;
+  }
+
+  .motus-exbank-form-actions {
+    gap: 0.45rem;
+    padding-top: 0.15rem;
+  }
+
+  .motus-exbank-library-col {
+    min-height: 0;
+    max-height: 100%;
+    overflow-y: auto;
+    padding-right: 0.15rem;
+  }
 }
 
 @media (max-width: 1279px) {
@@ -6826,4 +7416,407 @@ button {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+.motus-member-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.motus-member-history-header {
+  padding: 0.125rem 0.125rem 0;
+}
+
+.motus-member-history-tabs {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.125rem;
+}
+
+.motus-member-history-tab {
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.motus-member-history-tab:hover {
+  border-color: rgba(13, 148, 136, 0.25);
+  color: #0f766e;
+}
+
+.motus-member-history-tab[aria-selected="true"] {
+  border-color: rgba(13, 148, 136, 0.35);
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.18), rgba(20, 184, 166, 0.12));
+  color: #0f766e;
+  box-shadow: 0 8px 20px -16px rgba(13, 148, 136, 0.8);
+}
+
+.motus-member-history-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.motus-member-history-card {
+  overflow: hidden;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  padding: 0.875rem;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 16px 40px -28px rgba(15, 23, 42, 0.18);
+}
+
+.motus-member-history-card--flush {
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+@media (min-width: 640px) {
+  .motus-member-history-card {
+    padding: 1rem 1.125rem;
+  }
+}
+
+.motus-member-history-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.875rem;
+}
+
+.motus-member-history-select,
+.motus-member-history-chip {
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #f8fafc;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.motus-member-history-select {
+  cursor: pointer;
+}
+
+.motus-member-history-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+
+.motus-member-history-kpi {
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  padding: 0.75rem;
+}
+
+.motus-member-history-kpi-icon {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  color: #fff;
+}
+
+.motus-member-history-kpi-icon--teal {
+  background: linear-gradient(135deg, #2dd4bf, #0d9488);
+}
+
+.motus-member-history-kpi-icon--orange {
+  background: linear-gradient(135deg, #fb923c, #ea580c);
+}
+
+.motus-member-history-kpi-icon--amber {
+  background: linear-gradient(135deg, #fbbf24, #d97706);
+}
+
+.motus-member-history-kpi-icon--violet {
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
+}
+
+.motus-member-history-kpi-value {
+  margin-top: 0.625rem;
+  font-size: 1.125rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #0f172a;
+}
+
+.motus-member-history-kpi-label {
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.motus-member-history-kpi-delta {
+  margin-top: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.motus-member-history-kpi-delta.is-positive {
+  color: #059669;
+}
+
+.motus-member-history-kpi-delta.is-accent.is-positive {
+  color: #7c3aed;
+}
+
+.motus-member-history-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.375rem;
+  min-height: 9rem;
+  padding-top: 0.5rem;
+}
+
+.motus-member-history-chart-col {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+  min-width: 0;
+  height: 8rem;
+}
+
+.motus-member-history-chart-bar {
+  width: 100%;
+  max-width: 2rem;
+  border-radius: 0.75rem 0.75rem 0.25rem 0.25rem;
+  background: linear-gradient(180deg, #5eead4 0%, #14b8a6 55%, #0f766e 100%);
+  transition: height 240ms ease;
+}
+
+.motus-member-history-chart-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.motus-member-history-insight {
+  margin-top: 0.875rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.14), rgba(20, 184, 166, 0.08));
+  padding: 0.75rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0f766e;
+}
+
+.motus-member-history-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0d9488;
+}
+
+.motus-member-history-session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.motus-member-history-session-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  padding: 0.625rem;
+  text-align: left;
+}
+
+.motus-member-history-session-row:hover {
+  background: #f8fafc;
+}
+
+.motus-member-history-session-thumb {
+  height: 3.5rem;
+  width: 3.5rem;
+  flex-shrink: 0;
+  border-radius: 0.875rem;
+  overflow: hidden;
+}
+
+.motus-member-history-status {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.motus-member-history-status.is-done {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.motus-member-history-status.is-planned {
+  background: rgba(148, 163, 184, 0.16);
+  color: #475569;
+}
+
+.motus-member-history-pr-scroll {
+  display: flex;
+  gap: 0.625rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.motus-member-history-pr-card {
+  flex: 0 0 auto;
+  width: 9.5rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  padding: 0.625rem;
+  text-align: left;
+}
+
+.motus-member-history-pr-image {
+  aspect-ratio: 1;
+  border-radius: 0.875rem;
+  overflow: hidden;
+}
+
+.motus-member-history-pr-badge {
+  margin-top: 0.5rem;
+  display: inline-flex;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.12);
+  padding: 0.2rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #6d28d9;
+}
+
+.motus-member-history-heatmap {
+  display: grid;
+  gap: 0.875rem;
+}
+
+@media (min-width: 640px) {
+  .motus-member-history-heatmap {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.motus-member-history-heatmap-month {
+  min-width: 0;
+}
+
+.motus-member-history-heatmap-label {
+  margin-bottom: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #334155;
+  text-transform: capitalize;
+}
+
+.motus-member-history-heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.2rem;
+}
+
+.motus-member-history-heatmap-cell {
+  aspect-ratio: 1;
+  border-radius: 0.25rem;
+  background: #f1f5f9;
+}
+
+.motus-member-history-heatmap-cell.level-empty {
+  background: transparent;
+}
+
+.motus-member-history-heatmap-cell.level-0 {
+  background: #f1f5f9;
+}
+
+.motus-member-history-heatmap-cell.level-1 {
+  background: rgba(45, 212, 191, 0.28);
+}
+
+.motus-member-history-heatmap-cell.level-2 {
+  background: rgba(20, 184, 166, 0.45);
+}
+
+.motus-member-history-heatmap-cell.level-3 {
+  background: rgba(13, 148, 136, 0.68);
+}
+
+.motus-member-history-heatmap-cell.level-4 {
+  background: #0f766e;
+}
+
+.motus-member-history-heatmap-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  margin-top: 0.75rem;
+  font-size: 0.6875rem;
+  color: #64748b;
+}
+
+.motus-member-history-heatmap-legend .motus-member-history-heatmap-cell {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.motus-member-history-exercise-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.motus-member-history-exercise-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 0.875rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #f8fafc;
+  padding: 0.625rem 0.75rem;
+}
+
+.motus-member-history-exercise-rank {
+  display: inline-flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(13, 148, 136, 0.12);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #0f766e;
 }

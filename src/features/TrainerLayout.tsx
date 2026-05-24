@@ -17,7 +17,6 @@ import {
 import { MOTUS } from "../app/data";
 import type { AppState, AuthUser, TrainerTab } from "../app/types";
 import { Card } from "../app/ui";
-import motusLogo from "../assets/motus-logo-transparent.svg";
 import { TrainerPortal } from "./TrainerPortal";
 import type { MemberPortal } from "./MemberPortal";
 import { InspirationHub } from "./InspirationHub";
@@ -92,7 +91,7 @@ function buildTrainerMenuItems(messageBadgeCount: number, includeAdmin: boolean)
     { key: "inspiration", label: "Innhold", icon: FileText },
     { key: "inspiration", label: "Ernæring", icon: Apple, action: "nutrition" },
     { key: "customers", label: "Meldinger", icon: MessageSquare, badge: messageBadgeCount, action: "messages" },
-    { key: "customers", label: "Kalender", icon: CalendarDays, action: "calendar" },
+    { key: "calendar", label: "Kalender", icon: CalendarDays },
     { key: "statistics", label: "Statistikk", icon: BarChart3 },
     { key: "settings", label: "Innstillinger", icon: Settings },
   ];
@@ -111,6 +110,7 @@ const mobileTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
 ];
 
 const mobileMoreTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
+  { id: "calendar", label: "Kalender", icon: CalendarDays },
   { id: "statistics", label: "Statistikk", icon: BarChart3 },
   { id: "settings", label: "Innstillinger", icon: Settings },
   { id: "admin", label: "Admin", icon: ShieldCheck },
@@ -178,8 +178,8 @@ export function TrainerLayout({
       setOpenCustomerMessagesSignal((value) => value + 1);
       return;
     }
-    if (item.action === "calendar" || item.action === "nutrition") {
-      setTrainerTab(item.action === "nutrition" ? "inspiration" : "customers");
+    if (item.action === "nutrition") {
+      setTrainerTab("inspiration");
       return;
     }
     setTrainerTab(item.key);
@@ -248,13 +248,6 @@ export function TrainerLayout({
     <>
       <div className="motus-trainer-shell grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)]">
         <Card className="motus-trainer-nav h-fit overflow-hidden border-0 bg-[#f7f9fb] p-0 shadow-sm ring-1 ring-black/5 xl:col-start-1">
-          <div className="motus-trainer-nav-brand">
-            <img src={motusLogo} alt="Motus" className="motus-trainer-nav-logo" />
-            <div className="motus-trainer-nav-brand-text">
-              <span className="motus-trainer-nav-brand-title">MOTUS</span>
-              <span className="motus-trainer-nav-brand-sub">Trening &amp; Helse Skarnes</span>
-            </div>
-          </div>
           <nav aria-label="Hovedmeny trener" className="motus-trainer-nav-list">
             {trainerMenuItems.map((item) => {
               const Icon = item.icon;
@@ -276,14 +269,6 @@ export function TrainerLayout({
               );
             })}
           </nav>
-          <div className="motus-trainer-nav-promo">
-            <p className="motus-trainer-nav-promo-title">Oppgrader din PT-opplevelse</p>
-            <p className="motus-trainer-nav-promo-text">Få mer innsikt, raskere oppfølging og smartere verktøy.</p>
-            <button type="button" className="motus-trainer-nav-promo-btn motus-pressable" onClick={() => setTrainerTab("statistics")}>
-              Utforsk Pro
-              <span aria-hidden>→</span>
-            </button>
-          </div>
         </Card>
         <div className="motus-trainer-main min-w-0 space-y-4 sm:space-y-5 xl:col-start-2">
           {isLocalDemoSession ? (

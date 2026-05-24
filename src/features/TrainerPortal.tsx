@@ -92,6 +92,7 @@ import {
 import { TrainerPtDashboard, type TrainerListFilterTab, type TrainerPtListMember } from "./trainer-dashboard/TrainerPtDashboard";
 import { TrainerPtDetailPortal } from "./trainer-dashboard/TrainerPtDetailPortal";
 import { TrainerExerciseBankView } from "./TrainerExerciseBankView";
+import { TrainerPeriodPlanCalendar } from "./TrainerPeriodPlanCalendar";
 import { TrainerProgramBuilderView } from "./TrainerProgramBuilderView";
 import { TrainerPtHomeScreen } from "./trainer-home/TrainerPtHomeScreen";
 import {
@@ -4434,7 +4435,7 @@ function pickFirstName(value: unknown): string {
           progressDeltaPct={ptHomeProgress.monthDeltaPct}
           progressFocusLabel={ptHomeProgress.topFocusLabel}
           popularContent={ptHomePopularContent}
-          onOpenCalendar={() => setTrainerTab("customers")}
+          onOpenCalendar={() => setTrainerTab("calendar")}
           onOpenAllClients={() => openCustomersWithListFilters({ memberFilter: "all" })}
           onOpenClient={(memberId) => {
             setTrainerTab("customers");
@@ -6383,6 +6384,20 @@ function pickFirstName(value: unknown): string {
         />
       ) : null}
 
+
+      {trainerTab === "calendar" ? (
+        <TrainerPeriodPlanCalendar
+          members={members}
+          periodPlansByMemberId={periodPlansByMemberId}
+          logs={logs}
+          onOpenClient={(memberId) => {
+            setSelectedMemberId(memberId);
+            setTrainerTab("customers");
+            setCustomerSubTab("programs");
+            setCustomerProgramBuilderFocus("period");
+          }}
+        />
+      ) : null}
 
       {trainerTab === "exerciseBank" ? (
         <TrainerExerciseBankView
