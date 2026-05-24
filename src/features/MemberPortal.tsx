@@ -3067,6 +3067,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [memberTab]);
 
   function openProgramsWithPeriodPlan() {
+    setTrainingSection("period");
     setShowPeriodPlanPanel(true);
     setMemberTab("programs");
   }
@@ -5026,6 +5027,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     setMemberTab("programs");
                     setTrainingSection("programs");
                   },
+                  onViewPeriodPlan: openProgramsWithPeriodPlan,
                   onViewProgress: () => setMemberTab("progress"),
                 }}
                 belowWorkout={

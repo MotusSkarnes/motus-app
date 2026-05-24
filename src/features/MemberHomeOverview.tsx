@@ -3,6 +3,7 @@ import {
   BarChart3,
   Bookmark,
   CalendarDays,
+  CalendarRange,
   ChevronRight,
   ClipboardList,
   Clock3,
@@ -31,6 +32,7 @@ export type MemberHomeWeekStats = {
 export type MemberHomeQuickActions = {
   onLogWorkout: () => void;
   onViewPrograms: () => void;
+  onViewPeriodPlan: () => void;
   onViewProgress: () => void;
 };
 
@@ -267,6 +269,7 @@ export function MemberHomeOverview({
         <section className="motus-home-quick-actions" aria-label="Hurtighandlinger">
           <HomeQuickAction label="Registrer trening" icon={ClipboardList} tone="brand" onClick={quickActions.onLogWorkout} />
           <HomeQuickAction label="Se program" icon={CalendarDays} tone="pink" onClick={quickActions.onViewPrograms} />
+          <HomeQuickAction label="Periodeplan" icon={CalendarRange} tone="pink" onClick={quickActions.onViewPeriodPlan} />
           <HomeQuickAction label="Fremgang" icon={BarChart3} tone="pink" onClick={quickActions.onViewProgress} />
         </section>
       ) : null}
