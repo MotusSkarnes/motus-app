@@ -374,34 +374,30 @@ export function MemberTrainingHistoryView({
             </div>
           ) : null}
 
-          <div className="motus-member-history-heatmap-layout">
-            <div className="motus-member-history-heatmap-weekdays" aria-hidden>
-              {HEATMAP_WEEKDAYS.map((day) => (
-                <span key={day} className="motus-member-history-heatmap-weekday">
-                  {day}
-                </span>
-              ))}
-            </div>
-            <div className="motus-member-history-heatmap-months scrollbar-none">
-              {heatmapMonths.map((month) => (
-                <div key={month.label} className="motus-member-history-heatmap-month">
-                  <div className="motus-member-history-heatmap-label">{month.label}</div>
-                  <div className="motus-member-history-heatmap-grid">
-                    {month.cells.map((cell, index) =>
-                      cell ? (
-                        <span
-                          key={cell.dateKey}
-                          className={`motus-member-history-heatmap-cell level-${cell.level}`}
-                          title={`${cell.dateKey}: ${cell.count} ${cell.count === 1 ? "økt" : "økter"}`}
-                        />
-                      ) : (
-                        <span key={`empty-${month.label}-${index}`} className="motus-member-history-heatmap-cell level-empty" aria-hidden />
-                      ),
-                    )}
-                  </div>
+          <div className="motus-member-history-heatmap">
+            {heatmapMonths.map((month) => (
+              <div key={month.label} className="motus-member-history-heatmap-month">
+                <div className="motus-member-history-heatmap-label">{month.label}</div>
+                <div className="motus-member-history-heatmap-weekdays-row" aria-hidden>
+                  {HEATMAP_WEEKDAYS.map((day) => (
+                    <span key={day}>{day.charAt(0)}</span>
+                  ))}
                 </div>
-              ))}
-            </div>
+                <div className="motus-member-history-heatmap-grid">
+                  {month.cells.map((cell, index) =>
+                    cell ? (
+                      <span
+                        key={cell.dateKey}
+                        className={`motus-member-history-heatmap-cell level-${cell.level}${cell.count > 0 ? " has-activity" : ""}`}
+                        title={`${cell.dateKey}: ${cell.count} ${cell.count === 1 ? "økt" : "økter"}`}
+                      />
+                    ) : (
+                      <span key={`empty-${month.label}-${index}`} className="motus-member-history-heatmap-cell level-empty" aria-hidden />
+                    ),
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="motus-member-history-heatmap-legend">
@@ -416,16 +412,16 @@ export function MemberTrainingHistoryView({
 
           <div className="motus-member-history-consistency-stats">
             <div className="motus-member-history-consistency-stat">
-              <Check className="h-4 w-4 text-[#0e8f73]" aria-hidden />
+              <Check className="h-4 w-4 shrink-0 text-[#0e8f73]" aria-hidden />
               <span>{consistencySummary.activeDaysThisMonth} dager denne mnd.</span>
             </div>
             <div className="motus-member-history-consistency-stat">
-              <TrendingUp className="h-4 w-4 text-[#d91278]" aria-hidden />
+              <TrendingUp className="h-4 w-4 shrink-0 text-[#d91278]" aria-hidden />
               <span>{consistencySummary.consistencyPct}% konsistens</span>
             </div>
             <div className="motus-member-history-consistency-stat">
-              <Star className="h-4 w-4 text-[#7c3aed]" aria-hidden />
-              <span>{consistencySummary.bestWeek} beste uke</span>
+              <Star className="h-4 w-4 shrink-0 text-[#7c3aed]" aria-hidden />
+              <span>{consistencySummary.bestWeek} økter beste uke</span>
             </div>
           </div>
         </section>
