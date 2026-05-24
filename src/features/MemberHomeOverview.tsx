@@ -104,7 +104,7 @@ export function MemberHomeOverview({
             onClick={() => onOpenProfile?.()}
             disabled={!onOpenProfile}
             className="motus-pressable relative h-11 w-11 shrink-0 overflow-hidden rounded-full ring-2 ring-white shadow-[0_2px_10px_-4px_rgba(15,23,42,0.25)] disabled:cursor-default"
-            aria-label="�pne profil"
+            aria-label="Åpne profil"
           >
             {memberAvatarUrl ? (
               <img src={memberAvatarUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
@@ -171,7 +171,7 @@ export function MemberHomeOverview({
                 <Clock3 className="h-3.5 w-3.5" />
               </span>
               <span>
-                <span className="motus-home-dash-stat-label">Dagens m�l</span>
+                <span className="motus-home-dash-stat-label">Dagens mål</span>
                 <span className="motus-home-dash-stat-value">{dailyGoalLabel}</span>
               </span>
             </div>
@@ -182,7 +182,7 @@ export function MemberHomeOverview({
                 <Dumbbell className="h-3.5 w-3.5" />
               </span>
               <span>
-                <span className="motus-home-dash-stat-label">�kter denne uka</span>
+                <span className="motus-home-dash-stat-label">Økter denne uka</span>
                 <span className="motus-home-dash-stat-value">{weekSessionsLabel}</span>
               </span>
             </div>
@@ -239,11 +239,11 @@ export function MemberHomeOverview({
 
         <div className="motus-home-workout-content">
           <div className="min-w-0">
-            <p className="motus-home-workout-label">Dagens �kt</p>
+            <p className="motus-home-workout-label">Dagens økt</p>
             <h2
               className={`motus-home-workout-title ${workoutTitleLoading ? "animate-pulse text-slate-400" : ""}`}
             >
-              {workoutTitleLoading ? "Henter dagens plan�" : workoutTitle || "Ingen plan i dag"}
+              {workoutTitleLoading ? "Henter dagens plan…" : workoutTitle || "Ingen plan i dag"}
             </h2>
             <div className="motus-home-workout-meta">
               {workoutDuration ? (
@@ -254,7 +254,7 @@ export function MemberHomeOverview({
               ) : null}
               {workoutZoneLabel ? (
                 <span className="inline-flex items-center gap-1.5">
-                  <span aria-hidden>�</span>
+                  <span aria-hidden>•</span>
                   {workoutZoneLabel}
                 </span>
               ) : null}
