@@ -458,7 +458,7 @@ export function MemberTrainingHistoryView({
                       className="motus-member-history-pr-card motus-pressable"
                     >
                       <div className="motus-member-history-pr-card-top">
-                        <div className="motus-member-history-pr-image motus-image-frame">
+                        <div className="motus-member-history-pr-image motus-image-frame motus-image-frame--square">
                           <img
                             src={imageSrc}
                             alt=""
