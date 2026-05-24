@@ -152,13 +152,11 @@ export function MemberPersonalRecordsSection({
                     <button
                       type="button"
                       onClick={() => onToggleFavorite(record.name)}
-                      className={`motus-pressable inline-flex h-7 w-7 items-center justify-center rounded-md border p-0 ${
-                        isFavorite ? "border-transparent motus-brand-fill text-white" : "border-slate-200 bg-white text-slate-400"
-                      }`}
+                      className="motus-favorite-star-toggle motus-favorite-star-toggle--compact motus-pressable"
                       aria-label={isFavorite ? "Fjern fra fremhevede PR-er" : "Fremhev denne PR-en"}
                       aria-pressed={isFavorite}
                     >
-                      <Star className={`h-3 w-3 ${isFavorite ? "fill-white" : ""}`} aria-hidden />
+                      <Star className="h-3 w-3" aria-hidden />
                     </button>
                   </div>
                 </article>

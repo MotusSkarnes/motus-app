@@ -1,4 +1,5 @@
 import type { ChatMessage, Member, TrainingProgram, WorkoutLog } from "../../app/types";
+import { parseLogDateMs } from "../../app/workoutLogDate";
 
 export type CustomerMetrics = {
   trainingDays: number;
@@ -24,14 +25,6 @@ export type CustomerFollowUpItem = {
   title: string;
   priority: "high" | "medium" | "low";
 };
-
-function parseLogMs(date: string): number {
-  const trimmed = date.trim();
-  if (!trimmed) return 0;
-  const iso = trimmed.includes("T") ? trimmed : `${trimmed}T12:00:00`;
-  const ms = Date.parse(iso);
-  return Number.isFinite(ms) ? ms : 0;
-}
 
 function parseChatMs(value: string): number {
   const ms = Date.parse(value.trim());
@@ -59,13 +52,13 @@ export function buildCustomerMetrics(input: {
   const now = Date.now();
   const fourWeeksMs = 28 * 24 * 60 * 60 * 1000;
   const recentLogs = input.memberLogs.filter((log) => {
-    const ms = parseLogMs(log.date);
+    const ms = parseLogDateMs(log.date);
     return ms > 0 && now - ms <= fourWeeksMs;
   });
   const completed = recentLogs.filter((log) => String(log.status ?? "").trim() === "Fullført");
   const uniqueDays = new Set(
     completed.map((log) => {
-      const ms = parseLogMs(log.date);
+      const ms = parseLogDateMs(log.date);
       const d = new Date(ms);
       return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
     }),
@@ -100,7 +93,7 @@ export function buildCustomerTimeline(input: {
   const items: CustomerTimelineItem[] = [];
 
   input.memberLogs.forEach((log) => {
-    const ts = parseLogMs(log.date);
+    const ts = parseLogDateMs(log.date);
     if (ts <= 0) return;
     const completed = String(log.status ?? "").trim() === "Fullført";
     items.push({

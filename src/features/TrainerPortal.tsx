@@ -15,12 +15,8 @@ import { uid } from "../app/storage";
 import {
   categoryForSubTab,
   defaultCategoryForExerciseBankTab,
-  emptyExerciseBankMessage,
   emptyTemplatesMessage,
-  EXERCISE_BANK_TAB_OPTIONS,
   EXERCISE_CATEGORY_OPTIONS,
-  exerciseBankDescription,
-  exerciseBankTitle,
   exerciseMatchesExerciseBankTab,
   exerciseMatchesSubTab,
   exerciseCategoryAccentColor,
@@ -84,6 +80,7 @@ import {
 } from "./trainer-dashboard/buildCustomerDashboardData";
 import { TrainerPtDashboard, type TrainerListFilterTab, type TrainerPtListMember } from "./trainer-dashboard/TrainerPtDashboard";
 import { TrainerPtDetailPortal } from "./trainer-dashboard/TrainerPtDetailPortal";
+import { TrainerExerciseBankView } from "./TrainerExerciseBankView";
 import type {
   AuthUser,
   ChatMessage,
@@ -1761,14 +1758,6 @@ function pickFirstName(value: unknown): string {
 
     void sendInviteForNewMember();
   }, [pendingInviteMemberEmail, findNewestPendingMemberByEmail, inviteMember, markMemberInvited, setSelectedMemberId, setTrainerTab]);
-
-  useEffect(() => {
-    if (!editingExerciseId) return;
-    const frame = window.requestAnimationFrame(() => {
-      document.getElementById(`inline-exercise-edit-${editingExerciseId}`)?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [editingExerciseId]);
 
   useEffect(() => {
     if (!selectedMemberId || selectedMemberId === "__template__") return;
@@ -3628,6 +3617,21 @@ function pickFirstName(value: unknown): string {
     setExerciseFormStatus(editingExerciseId ? "Øvelsen ble oppdatert." : "Ny øvelse ble lagt til i banken.");
     resetExerciseForm();
   }
+
+  function duplicateExercise(exercise: Exercise) {
+    saveExercise({
+      name: `${exercise.name.trim()} (kopi)`,
+      category: exercise.category,
+      group: exercise.group,
+      equipment: exercise.equipment,
+      level: exercise.level,
+      description: exercise.description,
+      imageUrl: exercise.imageUrl?.trim() ?? "",
+    });
+    setExerciseFormStatus(`Kopi av «${exercise.name}» ble lagt til.`);
+    resetExerciseForm();
+  }
+
   function handleDeleteExercise(exercise: Exercise) {
     const usages = findProgramsUsingBankExercise(programs, members, exercise);
     const dialogCopy = buildDeleteExerciseFromBankDialogCopy(exercise.name, usages);
@@ -3711,63 +3715,6 @@ function pickFirstName(value: unknown): string {
     } finally {
       setIsUploadingExerciseImage(false);
     }
-  }
-
-  function renderExerciseMultiSelectField({
-    label,
-    value,
-    options,
-    onChange,
-    placeholder,
-    emptyText,
-    required = false,
-  }: {
-    label: string;
-    value: string;
-    options: string[];
-    onChange: (value: string) => void;
-    placeholder: string;
-    emptyText: string;
-    required?: boolean;
-  }) {
-    const selectedValues = splitMultiValue(value);
-    const availableOptions = options.filter((option) => !multiValueIncludes(value, option));
-    return (
-      <div className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <div className="text-xs font-semibold text-slate-700">
-            {label}{required ? " *" : ""}
-          </div>
-          <div className="text-[11px] text-slate-400">{selectedValues.length ? `${selectedValues.length} valgt` : emptyText}</div>
-        </div>
-        <SelectBox
-          value=""
-          onChange={(nextValue) => {
-            if (!nextValue) return;
-            onChange(addMultiValue(value, nextValue));
-          }}
-          options={[
-            { value: "", label: placeholder },
-            ...availableOptions.map((option) => ({ value: option, label: option })),
-          ]}
-        />
-        <div className="mt-2 flex min-h-7 flex-wrap gap-1.5">
-          {selectedValues.map((selectedValue) => (
-            <button
-              key={selectedValue}
-              type="button"
-              onClick={() => onChange(removeMultiValue(value, selectedValue))}
-              className="rounded-full border bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-700 transition hover:bg-rose-50 hover:text-rose-700"
-              style={{ borderColor: "rgba(15,23,42,0.1)" }}
-              title={`Fjern ${selectedValue}`}
-            >
-              {selectedValue} ×
-            </button>
-          ))}
-          {selectedValues.length === 0 ? <span className="text-xs text-slate-400">{emptyText}</span> : null}
-        </div>
-      </div>
-    );
   }
 
   function getExerciseSketchDataUri(exercise: Exercise): string {
@@ -6022,11 +5969,12 @@ function pickFirstName(value: unknown): string {
                                 <button
                                   type="button"
                                   onClick={() => toggleFavoriteExercise(exercise.id)}
-                                  className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent motus-brand-fill" : "border-slate-200 text-slate-400"}`}
+                                  className="motus-favorite-star-toggle"
+                                  aria-pressed={isFavorite}
                                   aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                                   title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                                 >
-                                  <Star className={`h-4 w-4 ${isFavorite ? "text-white" : ""}`} />
+                                  <Star className="h-4 w-4" aria-hidden />
                                 </button>
                               </div>
                             </div>
@@ -6667,11 +6615,12 @@ function pickFirstName(value: unknown): string {
                           <button
                             type="button"
                             onClick={() => toggleFavoriteExercise(exercise.id)}
-                            className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent motus-brand-fill" : "border-slate-200 text-slate-400"}`}
+                            className="motus-favorite-star-toggle"
+                            aria-pressed={isFavorite}
                             aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                             title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
                           >
-                            <Star className={`h-4 w-4 ${isFavorite ? "text-white" : ""}`} />
+                            <Star className="h-4 w-4" aria-hidden />
                           </button>
                         </div>
                       </div>
@@ -6717,282 +6666,44 @@ function pickFirstName(value: unknown): string {
       ) : null}
 
       {trainerTab === "exerciseBank" ? (
-        <div className="grid gap-4">
-          <div className="flex flex-wrap gap-2">
-            {EXERCISE_BANK_TAB_OPTIONS.map((tab) => (
-              <PillButton key={tab.id} active={exerciseBankSubTab === tab.id} onClick={() => setExerciseBankSubTab(tab.id)}>
-                {tab.label}
-              </PillButton>
-            ))}
-          </div>
-          <Card className="p-5">
-          <div className="flex items-start gap-3">
-            <MotusSectionIcon><Dumbbell className="h-5 w-5" /></MotusSectionIcon>
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight">{exerciseBankTitle(exerciseBankSubTab)}</h2>
-              <p className="text-sm text-slate-500">{exerciseBankDescription(exerciseBankSubTab)}</p>
-            </div>
-          </div>
-          <div className="mt-5 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-            <div className="rounded-xl border bg-slate-50 p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-              <div className="font-semibold">{editingExerciseId ? "Rediger øvelse" : "Legg til ny øvelse"}</div>
-              <TextInput value={exerciseFormName} onChange={(e) => setExerciseFormName(e.target.value)} placeholder="Navn på øvelse" />
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className="grid gap-1">
-                  <span className="text-[11px] font-medium text-slate-500">Type øvelse</span>
-                  <SelectBox
-                    value={exerciseFormCategory}
-                    onChange={(value) => setExerciseFormCategory(value as Exercise["category"])}
-                    options={EXERCISE_CATEGORY_OPTIONS}
-                  />
-                </label>
-                <label className="grid gap-1">
-                  <span className="text-[11px] font-medium text-slate-500">Nivå</span>
-                  <SelectBox
-                    value={exerciseFormLevel}
-                    onChange={(value) => setExerciseFormLevel(value as Exercise["level"])}
-                    options={["Nybegynner", "Litt øvet", "Øvet"]}
-                  />
-                </label>
-              </div>
-              {renderExerciseMultiSelectField({
-                label: "Muskelgruppe",
-                value: exerciseFormGroup,
-                options: exerciseFormGroupOptions,
-                onChange: setExerciseFormGroup,
-                placeholder: "Legg til muskelgruppe",
-                emptyText: "Ingen muskelgruppe valgt",
-                required: true,
-              })}
-              {renderExerciseMultiSelectField({
-                label: "Utstyr",
-                value: exerciseFormEquipment,
-                options: exerciseFormEquipmentOptions,
-                onChange: setExerciseFormEquipment,
-                placeholder: "Legg til utstyr",
-                emptyText: "Valgfritt / blank",
-              })}
-              <TextInput value={exerciseFormImageUrl} onChange={(e) => setExerciseFormImageUrl(e.target.value)} placeholder="Bilde-URL (valgfritt). La stå tom for auto-skisse." />
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <label className="inline-flex">
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      onChange={(event) => {
-                        const selectedFile = event.currentTarget.files?.[0] ?? null;
-                        void handleExerciseImageUpload(selectedFile);
-                        event.currentTarget.value = "";
-                      }}
-                      disabled={isUploadingExerciseImage}
-                    />
-                    <span
-                      className={`cursor-pointer rounded-xl px-3 py-2 text-xs font-medium ${
-                        isUploadingExerciseImage ? "bg-slate-200 text-slate-500" : "bg-slate-900 text-white"
-                      }`}
-                    >
-                      {isUploadingExerciseImage ? "Laster opp..." : "Last opp bilde"}
-                    </span>
-                  </label>
-                  <div className="text-xs text-slate-500">JPG/PNG/WEBP, maks 5 MB.</div>
-                </div>
-                {exerciseFormImageUrl.trim() ? (
-                  <img
-                    src={exerciseFormImageUrl}
-                    alt="Forhåndsvisning av øvelsesbilde"
-                    className="h-20 w-20 rounded-xl border bg-white object-cover"
-                    style={{ borderColor: "rgba(15,23,42,0.08)" }}
-                    onError={(event) => {
-                      event.currentTarget.src = getExerciseSketchDataUri({
-                        id: "preview",
-                        name: exerciseFormName || "preview",
-                        category: exerciseFormCategory,
-                        group: exerciseFormGroup || "",
-                        equipment: exerciseFormEquipment || "",
-                        level: exerciseFormLevel,
-                        description: exerciseFormDescription || "",
-                      });
-                    }}
-                  />
-                ) : null}
-              </div>
-              <TextArea value={exerciseFormDescription} onChange={(e) => setExerciseFormDescription(e.target.value)} className="min-h-[110px]" placeholder="Forklaring av teknikk og utførelse (valgfritt)" />
-              {exerciseFormStatus ? <div className="rounded-xl border motus-brand-surface px-3 py-2 text-xs text-emerald-700">{exerciseFormStatus}</div> : null}
-              <div className="grid gap-2 sm:grid-cols-2">
-                <GradientButton onClick={submitExerciseForm} className="w-full">
-                  {editingExerciseId ? "Lagre endring" : "Legg til øvelse"}
-                </GradientButton>
-                {editingExerciseId ? <OutlineButton onClick={resetExerciseForm} className="w-full">Avbryt</OutlineButton> : null}
-              </div>
-              <div className="text-xs text-slate-500">
-                Øvelser lagres i felles øvelsesbank slik at alle trenere kan bruke dem.
-              </div>
-            </div>
-            <div className="space-y-3">
-              <TextInput value={exerciseSearch} onChange={(e) => setExerciseSearch(e.target.value)} placeholder="Søk på navn, muskelgruppe, utstyr eller forklaring" />
-              <div className="text-xs text-slate-500">{visibleExercises.length} øvelser vist</div>
-              <div className="text-xs text-slate-500">Favoritter vises alltid øverst.</div>
-              <div className="space-y-2">
-                {visibleExercises.length === 0 ? (
-                  <EmptyState
-                    icon="...?️"
-                    title={emptyExerciseBankMessage(exerciseBankSubTab)}
-                    description="Juster søket eller legg til en ny øvelse for å komme i gang."
-                    className="bg-white"
-                    action={<GradientButton onClick={resetExerciseForm}>Legg til øvelse</GradientButton>}
-                  />
-                ) : null}
-                {visibleExercises.map((exercise) => {
-                  const isFavorite = favoriteExerciseIds.includes(exercise.id);
-                  const popularity = exercisePopularityScores.get(exercise.id) ?? 0;
-                  const categoryAccent = exerciseCategoryAccentColor(exercise.category);
-                  return (
-                  <div
-                    key={exercise.id}
-                    className="rounded-2xl border bg-white px-3 py-3 shadow-sm transition hover:shadow-md"
-                    style={{
-                      borderColor: "rgba(15,23,42,0.08)",
-                      borderLeftWidth: 4,
-                      borderLeftColor: categoryAccent,
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setExpandedExerciseId((prev) => (prev === exercise.id ? null : exercise.id))}
-                        className="min-w-0 flex flex-1 items-start gap-3 text-left"
-                      >
-                        <img
-                          src={getExercisePreviewSrc(exercise)}
-                          alt={exercise.name}
-                          className="mt-0.5 h-20 w-20 shrink-0 rounded-xl border object-cover bg-white shadow-sm"
-                          style={{ borderColor: `${categoryAccent}55` }}
-                          loading="lazy"
-                          decoding="async"
-                          onError={(event) => {
-                            event.currentTarget.src = getExerciseSketchDataUri(exercise);
-                          }}
-                        />
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <div className="truncate text-sm font-semibold leading-tight text-slate-900">{exercise.name}</div>
-                            {isRecommendedExercise(popularity, isFavorite) || isPopularExercise(popularity) ? (
-                              <ExerciseBankBadges popularity={popularity} isFavorite={isFavorite} variant="trainer" />
-                            ) : null}
-                          </div>
-                          <div className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
-                            <span className="rounded-full border bg-white px-2 py-0.5 text-slate-600" style={{ borderColor: "rgba(15,23,42,0.1)" }}>{exercise.category}</span>
-                            {splitMuscleGroupLabel(exercise.group).map((part) => (
-                              <span
-                                key={part}
-                                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${muscleGroupChipClass(part)}`}
-                              >
-                                {part}
-                              </span>
-                            ))}
-                            <span className="rounded-full border bg-white px-2 py-0.5 text-slate-600" style={{ borderColor: "rgba(15,23,42,0.1)" }}>{exercise.equipment || "Uten utstyr"}</span>
-                            <span className="rounded-full border bg-white px-2 py-0.5 text-slate-600" style={{ borderColor: "rgba(15,23,42,0.1)" }}>{exercise.level}</span>
-                          </div>
-                        </div>
-                      </button>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => toggleFavoriteExercise(exercise.id)}
-                          className={`rounded-lg border p-1.5 ${isFavorite ? "border-transparent motus-brand-fill" : "border-slate-200 text-slate-400"}`}
-                          aria-label={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
-                          title={isFavorite ? "Fjern favoritt" : "Marker som favoritt"}
-                        >
-                          <Star className={`h-4 w-4 ${isFavorite ? "text-white" : ""}`} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            startEditExercise(exercise);
-                          }}
-                          className="rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-100"
-                          aria-label="Rediger øvelse"
-                          title="Rediger øvelse"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteExercise(exercise)}
-                          className="rounded-lg border border-rose-200 p-1.5 text-rose-700 transition hover:bg-rose-50"
-                          aria-label="Skjul øvelse"
-                          title="Skjul øvelse"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setExpandedExerciseId((prev) => (prev === exercise.id ? null : exercise.id))}
-                          className="rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-100"
-                          aria-label={expandedExerciseId === exercise.id ? "Skjul beskrivelse" : "Vis beskrivelse"}
-                          title={expandedExerciseId === exercise.id ? "Skjul beskrivelse" : "Vis beskrivelse"}
-                        >
-                          {expandedExerciseId === exercise.id ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </div>
-                    {expandedExerciseId === exercise.id && editingExerciseId !== exercise.id ? (
-                      <div className="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{exercise.description}</div>
-                    ) : null}
-                    {editingExerciseId === exercise.id ? (
-                      <div id={`inline-exercise-edit-${exercise.id}`} className="mt-3 rounded-xl border bg-white p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.10)" }}>
-                        <div className="text-xs font-semibold text-slate-600">Rediger øvelse her</div>
-                        <TextInput value={exerciseFormName} onChange={(e) => setExerciseFormName(e.target.value)} placeholder="Navn på øvelse" />
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          <SelectBox
-                            value={exerciseFormCategory}
-                            onChange={(value) => setExerciseFormCategory(value as Exercise["category"])}
-                            options={EXERCISE_CATEGORY_OPTIONS}
-                          />
-                          <SelectBox
-                            value={exerciseFormLevel}
-                            onChange={(value) => setExerciseFormLevel(value as Exercise["level"])}
-                            options={["Nybegynner", "Litt øvet", "Øvet"]}
-                          />
-                        </div>
-                        {renderExerciseMultiSelectField({
-                          label: "Muskelgruppe",
-                          value: exerciseFormGroup,
-                          options: exerciseFormGroupOptions,
-                          onChange: setExerciseFormGroup,
-                          placeholder: "Legg til muskelgruppe",
-                          emptyText: "Ingen muskelgruppe valgt",
-                          required: true,
-                        })}
-                        {renderExerciseMultiSelectField({
-                          label: "Utstyr",
-                          value: exerciseFormEquipment,
-                          options: exerciseFormEquipmentOptions,
-                          onChange: setExerciseFormEquipment,
-                          placeholder: "Legg til utstyr",
-                          emptyText: "Valgfritt / blank",
-                        })}
-                        <TextInput value={exerciseFormImageUrl} onChange={(e) => setExerciseFormImageUrl(e.target.value)} placeholder="Bilde-URL (valgfritt)" />
-                        <TextArea value={exerciseFormDescription} onChange={(e) => setExerciseFormDescription(e.target.value)} className="min-h-[90px]" placeholder="Forklaring av teknikk og utførelse (valgfritt)" />
-                        <div className="flex gap-2">
-                          <GradientButton onClick={submitExerciseForm} className="w-full">
-                            Lagre endring
-                          </GradientButton>
-                          <OutlineButton onClick={resetExerciseForm} className="w-full">
-                            Avbryt
-                          </OutlineButton>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                )})}
-              </div>
-            </div>
-          </div>
-        </Card>
-        </div>
+        <TrainerExerciseBankView
+          exerciseBankSubTab={exerciseBankSubTab}
+          onExerciseBankSubTabChange={setExerciseBankSubTab}
+          exercises={exercises}
+          visibleExercises={visibleExercises}
+          favoriteExerciseIds={favoriteExerciseIds}
+          exerciseSearch={exerciseSearch}
+          onExerciseSearchChange={setExerciseSearch}
+          editingExerciseId={editingExerciseId}
+          exerciseFormName={exerciseFormName}
+          onExerciseFormNameChange={setExerciseFormName}
+          exerciseFormCategory={exerciseFormCategory}
+          onExerciseFormCategoryChange={setExerciseFormCategory}
+          exerciseFormLevel={exerciseFormLevel}
+          onExerciseFormLevelChange={setExerciseFormLevel}
+          exerciseFormGroup={exerciseFormGroup}
+          onExerciseFormGroupChange={setExerciseFormGroup}
+          exerciseFormEquipment={exerciseFormEquipment}
+          onExerciseFormEquipmentChange={setExerciseFormEquipment}
+          exerciseFormImageUrl={exerciseFormImageUrl}
+          onExerciseFormImageUrlChange={setExerciseFormImageUrl}
+          exerciseFormDescription={exerciseFormDescription}
+          onExerciseFormDescriptionChange={setExerciseFormDescription}
+          exerciseFormGroupOptions={exerciseFormGroupOptions}
+          exerciseFormEquipmentOptions={exerciseFormEquipmentOptions}
+          exerciseFormStatus={exerciseFormStatus}
+          isUploadingExerciseImage={isUploadingExerciseImage}
+          onImageUpload={(file) => void handleExerciseImageUpload(file)}
+          onSubmit={submitExerciseForm}
+          onReset={resetExerciseForm}
+          onStartEdit={startEditExercise}
+          onDuplicate={duplicateExercise}
+          onDelete={handleDeleteExercise}
+          onToggleFavorite={toggleFavoriteExercise}
+          getExercisePreviewSrc={getExercisePreviewSrc}
+          getExerciseSketchDataUri={getExerciseSketchDataUri}
+          exercisePopularityScores={exercisePopularityScores}
+        />
       ) : null}
 
       {trainerTab === "admin" && canAccessAdminTools ? (

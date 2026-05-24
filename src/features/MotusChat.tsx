@@ -33,8 +33,6 @@ export type MotusChatProps = {
   viewerRole: "member" | "trainer";
   counterpartyName: string;
   counterpartyAvatarUrl?: string | null;
-  counterpartyStatus?: string;
-  counterpartyStatusHint?: string;
   composeValue: string;
   onComposeChange: (value: string) => void;
   onSend: () => void;
@@ -255,8 +253,6 @@ export function MotusChat({
   viewerRole,
   counterpartyName,
   counterpartyAvatarUrl,
-  counterpartyStatus = "Online nå",
-  counterpartyStatusHint = "Svar vanligvis innen 1 time",
   composeValue,
   onComposeChange,
   onSend,
@@ -314,11 +310,6 @@ export function MotusChat({
               <AvatarBubble name={counterpartyName} avatarUrl={counterpartyAvatarUrl} size="lg" gradient />
             </div>
             <h2 className="mt-2 truncate text-base font-bold text-slate-950">{counterpartyName}</h2>
-            <p className="mt-0.5 flex items-center justify-center gap-1.5 text-xs font-medium text-emerald-600">
-              <span className="motus-chat-online-dot" aria-hidden />
-              {counterpartyStatus}
-            </p>
-            <p className="mt-0.5 text-[11px] text-slate-500">{counterpartyStatusHint}</p>
           </div>
           <div className="flex items-center gap-1">
             <button type="button" className="motus-chat-header-icon motus-pressable" aria-label="Ring">

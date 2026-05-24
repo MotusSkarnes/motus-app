@@ -177,12 +177,11 @@ export function ExerciseBankListCard({
               <button
                 type="button"
                 onClick={onToggleFavorite}
-                className={`rounded-lg border p-1.5 transition ${
-                  isFavorite ? "border-transparent motus-brand-fill" : "border-slate-200 text-slate-400 hover:text-amber-500"
-                }`}
+                className="motus-favorite-star-toggle"
+                aria-pressed={isFavorite}
                 aria-label={isFavorite ? "Fjern favoritt" : "Legg til favoritt"}
               >
-                <Star className={`h-4 w-4 ${isFavorite ? "fill-current" : ""}`} />
+                <Star className="h-4 w-4" aria-hidden />
               </button>
             ) : null}
             {showAddButton && onAdd ? (
