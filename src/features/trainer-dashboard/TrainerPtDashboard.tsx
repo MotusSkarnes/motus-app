@@ -46,8 +46,8 @@ export type TrainerPtDashboardProps = {
   showInactiveToggle?: boolean;
   onToggleInactive?: () => void;
   listFooter?: ReactNode;
-  centerContent: ReactNode;
   showCustomerChrome: boolean;
+  customerSubTab?: "overview" | "programs" | "workouts" | "messages";
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
@@ -139,8 +139,8 @@ export function TrainerPtDashboard({
   showInactiveToggle,
   onToggleInactive,
   listFooter,
-  centerContent,
   showCustomerChrome,
+  customerSubTab = "overview",
   customerName,
   customerEmail,
   customerPhone,
@@ -170,6 +170,7 @@ export function TrainerPtDashboard({
   aggregateOverview,
 }: TrainerPtDashboardProps) {
   const openTodos = todos.filter((todo) => !todo.done);
+  const showOverviewPanels = !showCustomerChrome || customerSubTab === "overview";
 
   return (
     <div className="motus-pt-dash">
@@ -225,7 +226,7 @@ export function TrainerPtDashboard({
               </div>
               <div className="min-w-0 flex-1 text-left">
                 <div className="flex items-center gap-2">
-                  <span className="truncate font-semibold text-slate-900">{row.member.name}</span>
+                  <span className="truncate text-sm font-semibold text-slate-900">{row.member.name}</span>
                   <StatusDot tone={row.statusTone} />
                 </div>
                 <div className="mt-0.5 truncate text-xs text-slate-500">{row.customerTypeLabel}</div>
@@ -314,7 +315,7 @@ export function TrainerPtDashboard({
               {subTabs ? <div className="motus-pt-dash-subtabs">{subTabs}</div> : null}
             </section>
 
-            {metrics ? (
+            {metrics && showOverviewPanels ? (
               <section className="motus-pt-dash-kpi-grid" aria-label="Nøkkeltall">
                 <article className="motus-pt-dash-kpi-card">
                   <div className="motus-pt-dash-kpi-label">Treningsdager</div>
@@ -331,29 +332,32 @@ export function TrainerPtDashboard({
                 </article>
                 <article className="motus-pt-dash-kpi-card">
                   <div className="motus-pt-dash-kpi-label">Aktivitetsnivå</div>
-                  <div className="motus-pt-dash-kpi-value text-xl">{metrics.activityLevel}</div>
+                  <div className="motus-pt-dash-kpi-value motus-pt-dash-kpi-value--text">{metrics.activityLevel}</div>
                   <div className="motus-pt-dash-kpi-sub">Score {metrics.activityScore}/10</div>
-                  <Activity className="mt-2 h-7 w-7 text-[#30E3BE]" strokeWidth={1.5} />
+                  <Activity className="motus-pt-dash-kpi-icon text-[#30E3BE]" strokeWidth={1.5} />
                 </article>
                 <article className="motus-pt-dash-kpi-card">
                   <div className="motus-pt-dash-kpi-label">Programstatus</div>
-                  <div className="motus-pt-dash-kpi-value text-base leading-snug">{metrics.programStatus}</div>
+                  <div className="motus-pt-dash-kpi-value motus-pt-dash-kpi-value--compact" title={metrics.programStatus}>
+                    {metrics.programStatus}
+                  </div>
                   <div className="motus-pt-dash-kpi-sub">Respons {metrics.responseRatePct}%</div>
                   <ClipboardList
-                    className={`mt-2 h-7 w-7 ${metrics.programStatusTone === "pink" ? "text-[#D91278]" : "text-[#30E3BE]"}`}
+                    className={`motus-pt-dash-kpi-icon ${metrics.programStatusTone === "pink" ? "text-[#D91278]" : "text-[#30E3BE]"}`}
                     strokeWidth={1.5}
                   />
                 </article>
               </section>
             ) : null}
 
+            {showOverviewPanels ? (
             <div className="motus-pt-dash-dual">
               <section className="motus-pt-dash-panel">
                 <h2 className="motus-pt-dash-panel-title">Oppfølging nå</h2>
                 <ul className="motus-pt-dash-followup-list">
                   {followUpItems.map((item) => (
                     <li key={item.id} className="motus-pt-dash-followup-item">
-                      <span className="font-medium text-slate-800">{item.title}</span>
+                      <span className="motus-pt-dash-followup-title">{item.title}</span>
                       <PriorityBadge priority={item.priority} />
                     </li>
                   ))}
@@ -378,7 +382,7 @@ export function TrainerPtDashboard({
                           <Icon className="h-4 w-4" />
                         </span>
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium text-slate-800">{item.title}</div>
+                          <div className="motus-pt-dash-timeline-title">{item.title}</div>
                           <div className="text-xs text-slate-500">{item.timeLabel}</div>
                         </div>
                         <button
@@ -397,13 +401,15 @@ export function TrainerPtDashboard({
                 </ul>
               </section>
             </div>
+            ) : null}
+
+            <div id="motus-pt-detail-root" className="motus-pt-dash-detail-root" />
           </>
         ) : (
           aggregateOverview
         )}
 
       </main>
-        <div className="motus-pt-dash-detail">{centerContent}</div>
       </div>
 
       <aside className="motus-pt-dash-insights" aria-label="Innsikt og oppgaver">

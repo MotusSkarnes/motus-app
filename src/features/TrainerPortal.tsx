@@ -83,6 +83,7 @@ import {
   memberAgeLabel,
 } from "./trainer-dashboard/buildCustomerDashboardData";
 import { TrainerPtDashboard, type TrainerListFilterTab, type TrainerPtListMember } from "./trainer-dashboard/TrainerPtDashboard";
+import { TrainerPtDetailPortal } from "./trainer-dashboard/TrainerPtDetailPortal";
 import type {
   AuthUser,
   ChatMessage,
@@ -4433,6 +4434,7 @@ function pickFirstName(value: unknown): string {
           showInactiveToggle={!showInactiveMembers}
           onToggleInactive={() => setShowInactiveMembers(true)}
           showCustomerChrome={Boolean(selectedMember)}
+          customerSubTab={customerSubTab}
           customerName={selectedMemberProfile?.name ?? selectedMember?.name}
           customerEmail={selectedMember?.email}
           customerPhone={selectedMemberProfile?.phone ?? selectedMember?.phone}
@@ -4476,16 +4478,29 @@ function pickFirstName(value: unknown): string {
                 <PillButton
                   active={customerSubTab === "programs"}
                   onClick={() => {
+                    if (trainerTab === "dashboard") setTrainerTab("customers");
                     setCustomerSubTab("programs");
                     setCustomerProgramBuilderFocus("training");
                   }}
                 >
                   Programmer
                 </PillButton>
-                <PillButton active={customerSubTab === "workouts"} onClick={() => setCustomerSubTab("workouts")}>
+                <PillButton
+                  active={customerSubTab === "workouts"}
+                  onClick={() => {
+                    if (trainerTab === "dashboard") setTrainerTab("customers");
+                    setCustomerSubTab("workouts");
+                  }}
+                >
                   Økter
                 </PillButton>
-                <PillButton active={customerSubTab === "messages"} onClick={() => setCustomerSubTab("messages")}>
+                <PillButton
+                  active={customerSubTab === "messages"}
+                  onClick={() => {
+                    if (trainerTab === "dashboard") setTrainerTab("customers");
+                    setCustomerSubTab("messages");
+                  }}
+                >
                   Meldinger
                 </PillButton>
               </div>
@@ -4559,7 +4574,6 @@ function pickFirstName(value: unknown): string {
               <div className="motus-pt-dash-empty py-16 text-base">Velg en kunde i listen for å se kundekortet.</div>
             ) : undefined
           }
-          centerContent={null}
         />
       )}
 
@@ -4932,7 +4946,7 @@ function pickFirstName(value: unknown): string {
             </div>
           </Card>
 
-          <Card className="motus-pt-customers-detail-card p-4 sm:p-5 w-full">
+          <Card className="motus-pt-customers-detail-card p-4 sm:p-5 w-full max-xl:block xl:hidden">
             {selectedMember ? (
               <div className="space-y-5">
                 <div className="lg:hidden rounded-xl border bg-slate-50 p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -5311,6 +5325,7 @@ function pickFirstName(value: unknown): string {
                   </div>
                 </div>
 
+                <TrainerPtDetailPortal>
                 {customerSubTab === "overview" ? (
                   <div className="space-y-4">
                     <div className="grid gap-4 xl:grid-cols-2">
@@ -6272,6 +6287,7 @@ function pickFirstName(value: unknown): string {
                     }
                   />
                 ) : null}
+                </TrainerPtDetailPortal>
               </div>
             ) : (
               <div className="space-y-4 rounded-xl border border-dashed bg-slate-50 p-8 text-center text-slate-500">

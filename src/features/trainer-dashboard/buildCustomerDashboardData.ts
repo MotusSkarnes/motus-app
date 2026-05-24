@@ -87,7 +87,7 @@ export function buildCustomerMetrics(input: {
     activityScore,
     programStatus: hasProgram
       ? input.programs[0]?.title?.trim() || "Aktivt program"
-      : "Mangler oppdatering",
+      : "Mangler program",
     programStatusTone: hasProgram ? "mint" : "pink",
     responseRatePct,
   };
