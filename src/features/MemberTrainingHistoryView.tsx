@@ -21,7 +21,6 @@ import {
   computeHistoryPeriodStats,
   computeWeeklyWorkoutBars,
   estimateLogTrainingMinutesForDisplay,
-  formatDeltaLabel,
   formatTrainingDuration,
   topLoggedExercises,
   type HistoryPeriodWeeks,
@@ -98,6 +97,12 @@ function formatLogDateLabel(date: string): string {
   const parsed = parseStoredLogDate(date);
   if (!parsed) return date;
   return parsed.toLocaleDateString("no-NO", { day: "numeric", month: "long", year: "numeric" });
+}
+
+function formatShortPeriodDelta(value: number): string {
+  if (value === 0) return "0 fra forrige periode";
+  const sign = value > 0 ? "+" : "-";
+  return `${sign}${Math.abs(value).toLocaleString("nb-NO")} fra forrige periode`;
 }
 
 function formatMinutesDelta(minutes: number): string {
@@ -310,22 +315,22 @@ export function MemberTrainingHistoryView({
               ))}
             </select>
           </div>
-          <div className="motus-member-history-kpi-row scrollbar-none">
+          <div className="motus-member-history-kpi-row">
             <article className="motus-member-history-kpi-card">
               <div className="motus-member-history-kpi-icon motus-member-history-kpi-icon--teal">
-                <Target className="h-4 w-4" aria-hidden />
+                <Target className="h-3.5 w-3.5" aria-hidden />
               </div>
               <div className="motus-member-history-kpi-main">
                 <span className="motus-member-history-kpi-value">{periodStats.workouts}</span>
                 <span className="motus-member-history-kpi-label">Økter</span>
               </div>
               <div className={`motus-member-history-kpi-delta is-teal ${periodStats.workoutsDelta >= 0 ? "is-positive" : ""}`}>
-                {formatDeltaLabel(periodStats.workoutsDelta, periodStats.workoutsDelta === 1 ? "økt" : "økter")}
+                {formatShortPeriodDelta(periodStats.workoutsDelta)}
               </div>
             </article>
             <article className="motus-member-history-kpi-card">
               <div className="motus-member-history-kpi-icon motus-member-history-kpi-icon--pink">
-                <Flame className="h-4 w-4" aria-hidden />
+                <Flame className="h-3.5 w-3.5" aria-hidden />
               </div>
               <div className="motus-member-history-kpi-main">
                 <span className="motus-member-history-kpi-value">{formatTrainingDuration(periodStats.trainingMinutes)}</span>
@@ -337,14 +342,14 @@ export function MemberTrainingHistoryView({
             </article>
             <article className="motus-member-history-kpi-card">
               <div className="motus-member-history-kpi-icon motus-member-history-kpi-icon--violet">
-                <Trophy className="h-4 w-4" aria-hidden />
+                <Trophy className="h-3.5 w-3.5" aria-hidden />
               </div>
               <div className="motus-member-history-kpi-main">
                 <span className="motus-member-history-kpi-value">{periodStats.personalRecords}</span>
-                <span className="motus-member-history-kpi-label">Personlige rekorder</span>
+                <span className="motus-member-history-kpi-label">Rekorder</span>
               </div>
               <div className={`motus-member-history-kpi-delta is-pink ${periodStats.personalRecordsDelta >= 0 ? "is-positive" : ""}`}>
-                {formatDeltaLabel(periodStats.personalRecordsDelta, periodStats.personalRecordsDelta === 1 ? "rekord" : "rekorder")}
+                {formatShortPeriodDelta(periodStats.personalRecordsDelta)}
               </div>
             </article>
           </div>
