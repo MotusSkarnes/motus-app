@@ -184,6 +184,7 @@ import { MemberHomeWeeklyProgress } from "./MemberHomeWeeklyProgress";
 import { MemberHomeNextPlanCard, MemberHomeStatusGradientCard } from "./MemberHomeNextPlanCard";
 import { MemberProgressScoresCard } from "./MemberProgressScoresCard";
 import { buildShareProgramChatMessage } from "../app/chatFormat";
+import { computeWeekProgressPct } from "../app/memberHomeWeekInsights";
 import type { ChatReactionActor, ChatReactionEmoji } from "../app/chatReactions";
 import { MotusChat, type MotusChatQuickAction } from "./MotusChat";
 import { resolveMemberTrainerDisplayName } from "../app/trainerProfile";
@@ -4255,6 +4256,24 @@ export function MemberPortal(props: MemberPortalProps) {
       }),
     [nowTimestamp],
   );
+  const homeHeaderMotivation = useMemo(() => {
+    const completed = homeWeeklySummary.completedThisWeek;
+    const planned = homeWeeklySummary.plannedThisWeek;
+    const progressPct = computeWeekProgressPct(
+      completed,
+      planned,
+      Number(profileSessionsPerWeekTarget) || undefined,
+    );
+    if (completed >= 2 || progressPct >= 50) return "Sterk uke så langt!";
+    if (completed > 0) return "God start på uka!";
+    if (streakWeeks > 0) return `${streakWeeks} uke${streakWeeks === 1 ? "" : "r"} på rad — fortsett!`;
+    return null;
+  }, [
+    homeWeeklySummary.completedThisWeek,
+    homeWeeklySummary.plannedThisWeek,
+    profileSessionsPerWeekTarget,
+    streakWeeks,
+  ]);
   const homeDashboardSubline = useMemo(() => {
     const nextBadge = memberBadgeCollection.allBadges
       .filter((badge) => !badge.secret && !badge.hidden && getBadgeNextLevel(badge))
@@ -5361,13 +5380,13 @@ export function MemberPortal(props: MemberPortalProps) {
               <MemberHomeOverview
                 memberFirstName={homeFirstName}
                 todayDateLabel={homeTodayDateLabel}
+                headerMotivation={homeHeaderMotivation}
                 memberAvatarUrl={memberAvatarUrl}
                 onOpenProfile={() => setMemberTab("profile")}
                 streakWeeks={streakWeeks}
                 dashboardHeadline={homeDashboardHeadline}
                 dashboardSubline={homeDashboardSubline}
                 momentumPct={homeMomentumPct}
-                dailyGoalLabel={homeDisplayDuration}
                 weekSessionsLabel={homeWeekSessionsLabel}
                 weekMinutesLabel={homeWeekMinutesLabel}
                 workoutTitle={homeDisplayTitle}
@@ -5387,7 +5406,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     setTrainingSection("programs");
                   },
                   onViewPeriodPlan: openProgramsWithPeriodPlan,
-                  onViewProgress: () => setMemberTab("progress"),
+                  onViewMessages: () => setMemberTab("messages"),
                 }}
                 belowWorkout={
                   <MemberHomeBelowWorkout>
@@ -5418,6 +5437,7 @@ export function MemberPortal(props: MemberPortalProps) {
                         lastWeekSessions={homeLastWeekSessions}
                         completedLogDates={completedLogDates}
                         nowDate={nowDate}
+                        showStats={false}
                         onOpenCalendar={() => {
                           setHomeCalendarViewMode("month");
                           setCalendarMonth(new Date(calendarWeekStart.getFullYear(), calendarWeekStart.getMonth(), 1));
@@ -5449,7 +5469,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       </GradientButton>
                     ) : (
                       <MemberHomeStartWorkoutButton
-                        label="Start økt"
+                        label="Start dagens økt"
                         onClick={() => handlePeriodPlanStartProgram(todayPlanAction.program.id)}
                       />
                     )
@@ -5477,7 +5497,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     </GradientButton>
                   ) : todayPlanIsPassiveDay ? null : homeWorkoutHydrationPending ? null : nextProgram ? (
                     <MemberHomeStartWorkoutButton
-                      label="Start økt"
+                      label="Start dagens økt"
                       onClick={() => startWorkoutMode(nextProgram.id, buildStartWorkoutOptions(nextProgram))}
                     />
                   ) : (

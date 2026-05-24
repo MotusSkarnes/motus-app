@@ -35,6 +35,7 @@ type MemberHomeWeeklyProgressProps = {
   nowDate: Date;
   onOpenCalendar: () => void;
   onOpenProgress?: () => void;
+  showStats?: boolean;
 };
 
 function WeekProgressRing({ pct }: { pct: number }) {
@@ -106,6 +107,7 @@ export function MemberHomeWeeklyProgress({
   nowDate,
   onOpenCalendar,
   onOpenProgress,
+  showStats = true,
 }: MemberHomeWeeklyProgressProps) {
   const progressPct = useMemo(
     () => computeWeekProgressPct(completedSessions, plannedSessions, weeklyTarget),
@@ -193,7 +195,8 @@ export function MemberHomeWeeklyProgress({
           <WeekProgressRing pct={progressPct} />
         </div>
 
-        <div className="motus-home-week-stats">
+        {showStats ? (
+          <div className="motus-home-week-stats">
           <div className="motus-home-week-stat">
             <span className="motus-home-week-stat-icon motus-home-week-stat-icon--time" aria-hidden>
               <Clock3 className="h-4 w-4" />
@@ -221,7 +224,8 @@ export function MemberHomeWeeklyProgress({
             </span>
             <span className="motus-home-week-stat-label">på rad</span>
           </div>
-        </div>
+          </div>
+        ) : null}
 
         <div className="motus-home-week-strip">
           <div className="motus-home-week-strip-days">

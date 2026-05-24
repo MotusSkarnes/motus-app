@@ -1,6 +1,5 @@
 ﻿import type { ReactNode } from "react";
 import {
-  BarChart3,
   Bookmark,
   CalendarDays,
   CalendarRange,
@@ -8,9 +7,8 @@ import {
   ClipboardList,
   Clock3,
   Dumbbell,
-  Flame,
+  MessageSquare,
   Play,
-  Timer,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
@@ -33,23 +31,21 @@ export type MemberHomeQuickActions = {
   onLogWorkout: () => void;
   onViewPrograms: () => void;
   onViewPeriodPlan: () => void;
-  onViewProgress: () => void;
+  onViewMessages: () => void;
 };
 
 export type MemberHomeOverviewProps = {
   memberFirstName: string;
   todayDateLabel: string;
+  headerMotivation?: string | null;
   memberAvatarUrl?: string | null;
   onOpenProfile?: () => void;
   streakWeeks: number;
   dashboardHeadline: string;
   dashboardSubline?: string | null;
   momentumPct: number;
-  dailyGoalLabel?: string | null;
   weekSessionsLabel?: string | null;
   weekMinutesLabel?: string | null;
-  motivationLine: string | null;
-  statusCard: MemberHomeStatusCard | null;
   workoutTitle: string;
   workoutTitleLoading?: boolean;
   workoutSubtitle?: string | null;
@@ -71,17 +67,15 @@ export type MemberHomeOverviewProps = {
 export function MemberHomeOverview({
   memberFirstName,
   todayDateLabel,
+  headerMotivation,
   memberAvatarUrl,
   onOpenProfile,
   streakWeeks,
   dashboardHeadline,
   dashboardSubline,
   momentumPct,
-  dailyGoalLabel,
   weekSessionsLabel,
   weekMinutesLabel,
-  motivationLine,
-  statusCard,
   workoutTitle,
   workoutTitleLoading = false,
   workoutSubtitle,
@@ -95,6 +89,9 @@ export function MemberHomeOverview({
   onboardingPrompt,
   monthlyCheckInPrompt,
 }: MemberHomeOverviewProps) {
+  const streakLabel = streakWeeks > 0 ? `${streakWeeks} ${streakWeeks === 1 ? "uke" : "uker"}` : "0 uker";
+  const headerLine = headerMotivation?.trim() || todayDateLabel;
+
   return (
     <div className="motus-home motus-fade-in-up">
       <header className="px-0.5 pt-0.5">
@@ -121,10 +118,63 @@ export function MemberHomeOverview({
             <h1 className="text-[1.25rem] font-semibold leading-tight tracking-tight text-slate-900">
               Hei, {memberFirstName}!
             </h1>
-            <p className="mt-0.5 text-sm text-slate-500">{todayDateLabel}</p>
+            <p className="mt-0.5 text-sm text-slate-500">{headerLine}</p>
           </div>
         </div>
       </header>
+
+      <article className="motus-home-workout-card motus-image-frame motus-image-frame--hero">
+        {workoutImageSrc ? (
+          <img
+            className="motus-home-workout-cover motus-image-media"
+            src={workoutImageSrc}
+            alt=""
+            loading="lazy"
+            style={{ objectPosition: imageObjectPositionFromSrc(workoutImageSrc) }}
+          />
+        ) : (
+          <div className="motus-home-workout-cover motus-home-workout-cover--fallback" aria-hidden>
+            <Dumbbell className="h-10 w-10 text-white/60" strokeWidth={1.5} />
+          </div>
+        )}
+
+        {onWorkoutCardClick ? (
+          <button
+            type="button"
+            onClick={onWorkoutCardClick}
+            className="motus-home-workout-top-action motus-pressable"
+            aria-label="Se trening"
+            title="Se trening"
+          >
+            <Bookmark className="h-5 w-5" aria-hidden />
+          </button>
+        ) : null}
+
+        <div className="motus-home-workout-content">
+          <div className="min-w-0 w-full">
+            <p className="motus-home-workout-label">Dagens økt</p>
+            <h2 className={`motus-home-workout-title ${workoutTitleLoading ? "animate-pulse text-slate-400" : ""}`}>
+              {workoutTitleLoading ? "Henter dagens plan…" : workoutTitle || "Ingen plan i dag"}
+            </h2>
+            <div className="motus-home-workout-meta">
+              {workoutDuration ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock3 className="h-3.5 w-3.5" aria-hidden />
+                  {workoutDuration}
+                </span>
+              ) : null}
+              {workoutZoneLabel ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <span aria-hidden>·</span>
+                  {workoutZoneLabel}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          {workoutSubtitle ? <p className="motus-home-workout-subtitle">{workoutSubtitle}</p> : null}
+          {primaryCta ? <div className="motus-home-workout-cta">{primaryCta}</div> : null}
+        </div>
+      </article>
 
       <section className="motus-home-dashboard" aria-label="Din fremgang">
         <div className="flex gap-4">
@@ -164,119 +214,34 @@ export function MemberHomeOverview({
             </div>
           </div>
         </div>
-        <div className="motus-home-dash-stats">
-          {dailyGoalLabel ? (
-            <div className="motus-home-dash-stat">
-              <span className="motus-home-dash-stat-icon" aria-hidden>
-                <Clock3 className="h-3.5 w-3.5" />
-              </span>
-              <span>
-                <span className="motus-home-dash-stat-label">Dagens mål</span>
-                <span className="motus-home-dash-stat-value">{dailyGoalLabel}</span>
-              </span>
-            </div>
-          ) : null}
-          {weekSessionsLabel ? (
-            <div className="motus-home-dash-stat">
-              <span className="motus-home-dash-stat-icon" aria-hidden>
-                <Dumbbell className="h-3.5 w-3.5" />
-              </span>
-              <span>
-                <span className="motus-home-dash-stat-label">Økter denne uka</span>
-                <span className="motus-home-dash-stat-value">{weekSessionsLabel}</span>
-              </span>
-            </div>
-          ) : null}
-          {weekMinutesLabel ? (
-            <div className="motus-home-dash-stat">
-              <span className="motus-home-dash-stat-icon" aria-hidden>
-                <Timer className="h-3.5 w-3.5" />
-              </span>
-              <span>
-                <span className="motus-home-dash-stat-label">Treningsminutter</span>
-                <span className="motus-home-dash-stat-value">{weekMinutesLabel}</span>
-              </span>
-            </div>
-          ) : null}
-          <div className="motus-home-dash-stat">
-            <span className="motus-home-dash-stat-icon motus-home-dash-stat-icon--pink" aria-hidden>
-              <Flame className="h-3.5 w-3.5" />
-            </span>
-            <span>
-              <span className="motus-home-dash-stat-label">Flyt</span>
-              <span className="motus-home-dash-stat-value">{momentumPct}%</span>
-            </span>
+        <div className="motus-home-dash-kpi-row">
+          <div className="motus-home-dash-kpi">
+            <span className="motus-home-dash-kpi-value">{weekSessionsLabel ?? "0/0"}</span>
+            <span className="motus-home-dash-kpi-label">økter denne uka</span>
+          </div>
+          <div className="motus-home-dash-kpi">
+            <span className="motus-home-dash-kpi-value">{weekMinutesLabel ?? "0 min"}</span>
+            <span className="motus-home-dash-kpi-label">trening</span>
+          </div>
+          <div className="motus-home-dash-kpi">
+            <span className="motus-home-dash-kpi-value">{streakLabel}</span>
+            <span className="motus-home-dash-kpi-label">på rad</span>
           </div>
         </div>
       </section>
 
-      <article className="motus-home-workout-card motus-image-frame motus-image-frame--hero">
-        {workoutImageSrc ? (
-          <img
-            className="motus-home-workout-cover motus-image-media"
-            src={workoutImageSrc}
-            alt=""
-            loading="lazy"
-            style={{ objectPosition: imageObjectPositionFromSrc(workoutImageSrc) }}
-          />
-        ) : (
-          <div className="motus-home-workout-cover motus-home-workout-cover--fallback" aria-hidden>
-            <Dumbbell className="h-10 w-10 text-white/60" strokeWidth={1.5} />
-          </div>
-        )}
-
-        {onWorkoutCardClick ? (
-          <button
-            type="button"
-            onClick={onWorkoutCardClick}
-            className="motus-home-workout-top-action motus-pressable"
-            aria-label="Se trening"
-            title="Se trening"
-          >
-            <Bookmark className="h-5 w-5" aria-hidden />
-          </button>
-        ) : null}
-
-        <div className="motus-home-workout-content">
-          <div className="min-w-0">
-            <p className="motus-home-workout-label">Dagens økt</p>
-            <h2
-              className={`motus-home-workout-title ${workoutTitleLoading ? "animate-pulse text-slate-400" : ""}`}
-            >
-              {workoutTitleLoading ? "Henter dagens plan…" : workoutTitle || "Ingen plan i dag"}
-            </h2>
-            <div className="motus-home-workout-meta">
-              {workoutDuration ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <Clock3 className="h-3.5 w-3.5" aria-hidden />
-                  {workoutDuration}
-                </span>
-              ) : null}
-              {workoutZoneLabel ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <span aria-hidden>·</span>
-                  {workoutZoneLabel}
-                </span>
-              ) : null}
-            </div>
-          </div>
-          {workoutSubtitle ? <p className="motus-home-workout-subtitle">{workoutSubtitle}</p> : null}
-          {primaryCta ? <div className="motus-home-workout-cta">{primaryCta}</div> : null}
-        </div>
-      </article>
+      {belowWorkout}
+      {onboardingPrompt ? <div className="w-full">{onboardingPrompt}</div> : null}
+      {monthlyCheckInPrompt ? <div className="w-full">{monthlyCheckInPrompt}</div> : null}
 
       {quickActions ? (
         <section className="motus-home-quick-actions" aria-label="Hurtighandlinger">
           <HomeQuickAction label="Registrer trening" icon={ClipboardList} tone="brand" onClick={quickActions.onLogWorkout} />
           <HomeQuickAction label="Se program" icon={CalendarDays} tone="pink" onClick={quickActions.onViewPrograms} />
           <HomeQuickAction label="Periodeplan" icon={CalendarRange} tone="brand" onClick={quickActions.onViewPeriodPlan} />
-          <HomeQuickAction label="Fremgang" icon={BarChart3} tone="pink" onClick={quickActions.onViewProgress} />
+          <HomeQuickAction label="Meldinger" icon={MessageSquare} tone="pink" onClick={quickActions.onViewMessages} />
         </section>
       ) : null}
-
-      {belowWorkout}
-      {onboardingPrompt ? <div className="w-full">{onboardingPrompt}</div> : null}
-      {monthlyCheckInPrompt ? <div className="w-full">{monthlyCheckInPrompt}</div> : null}
     </div>
   );
 }
