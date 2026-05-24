@@ -182,14 +182,12 @@ import {
 import { MemberHomeBelowWorkout } from "./MemberHomeBelowWorkout";
 import { MemberHomeWeeklyProgress } from "./MemberHomeWeeklyProgress";
 import { MemberHomeNextPlanCard, MemberHomeStatusGradientCard } from "./MemberHomeNextPlanCard";
-import { MemberProgressScoresCard } from "./MemberProgressScoresCard";
+import { MemberProgressPageView } from "./MemberProgressPageView";
 import { buildShareProgramChatMessage } from "../app/chatFormat";
 import { computeWeekProgressPct } from "../app/memberHomeWeekInsights";
 import type { ChatReactionActor, ChatReactionEmoji } from "../app/chatReactions";
 import { MotusChat, type MotusChatQuickAction } from "./MotusChat";
 import { resolveMemberTrainerDisplayName } from "../app/trainerProfile";
-import { MemberPersonalRecordsSection } from "./MemberPersonalRecordsSection";
-import { MemberWeeklySummaryCard } from "./MemberWeeklySummaryCard";
 import {
   computeDailyWeekProgress,
   computeWeeklyProgressDelta,
@@ -198,11 +196,9 @@ import {
 import { MemberTrainingHistoryView } from "./MemberTrainingHistoryView";
 import { MemberTrainingOverview } from "./MemberTrainingOverview";
 import { MemberTrainingQuickActions } from "./MemberTrainingQuickActions";
-import { MemberTrainingFlowCard } from "./MemberTrainingFlowCard";
 import { extractZoneFromPlanEntry, formatWeekMinutesLabel, formatWeekSessionsLabel } from "./MemberTrainingTodayCard";
 import { buildWeekDayModels, MemberTrainingCalendar } from "./MemberTrainingCalendar";
 import { getMondayStart, toCalendarDateKey, type TrainingCalendarDayStatus } from "../app/memberTrainingCalendar";
-import { MuscleSplitCard } from "./MuscleSplitCard";
 import { IntervalWorkoutSessionModal } from "./IntervalWorkoutSessionModal";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
 import { PersonalRecordProgressModal } from "./PersonalRecordProgressModal";
@@ -1428,16 +1424,8 @@ export function MemberPortal(props: MemberPortalProps) {
     : resolvedFavoritePersonalRecordNames;
   const memberPrograms = useMemo(() => {
     const scopedPrograms = programs.filter((program) => relatedMemberIdSet.has(program.memberId));
-    const visiblePrograms =
-      currentUserRole === "member" && scopedPrograms.length === 0 && programs.length > 0
-        ? programs
-        : scopedPrograms;
-    if (currentUserRole === "member" && scopedPrograms.length === 0 && programs.length > 0) {
-      // Last-resort fallback for legacy member_id drift: in member session the payload is already scoped.
-      return dedupeTrainingPrograms(visiblePrograms);
-    }
-    return dedupeTrainingPrograms(visiblePrograms);
-  }, [programs, relatedMemberIdSet, currentUserRole]);
+    return dedupeTrainingPrograms(scopedPrograms);
+  }, [programs, relatedMemberIdSet]);
   const memberAssignedPrograms = useMemo(() => memberPrograms.filter((program) => !program.ephemeral), [memberPrograms]);
   const memberProgramsInActiveLibrary = useMemo(
     () => memberAssignedPrograms.filter((program) => !programIsInMemberArchive(program.memberLibraryStatus)),
@@ -4801,7 +4789,7 @@ export function MemberPortal(props: MemberPortalProps) {
     }
 
     unmarkPeriodPlanDayCompleted(input.planId, input.weekNumber, input.day);
-    dismissPeriodPlanDay(input.planId, input.weekNumber, input.day);
+    clearPeriodPlanDayDismissed(input.planId, input.weekNumber, input.day);
     setPeriodPlanActionStatus(`Fjernet markering for «${trimmed}».`);
   }
 
@@ -6627,55 +6615,36 @@ export function MemberPortal(props: MemberPortalProps) {
           ) : null}
 
           {!isMemberLimited && memberTab === "progress" ? (
-            <div className="motus-progress-page">
-              <MemberProgressScoresCard scores={memberProgressScores} memberFirstName={homeFirstName} streakWeeks={streakWeeks} />
-              <MemberTrainingFlowCard
-                achievementLevel={achievementLevel}
-                achievementMaxLevel={achievementMaxLevel}
-                achievedLevel={achievedLevel}
-                hasCompletedAllLevels={hasCompletedAllAchievementLevels}
-                stepLabel={memberProgress.stepLabel}
-                nextStepLabel={memberProgress.nextStepLabel}
-                goals={achievements}
-                streakWeeks={streakWeeks}
-                streakSubline={streakSubline}
-                recentStreakWeeks={recentStreakWeeks}
-                currentStreakMilestoneTarget={currentStreakMilestoneTarget}
-                onContinue={() => {
-                  setMemberTab("programs");
-                  setTrainingSection("today");
-                }}
-              />
-
-              <MemberPersonalRecordsSection
-                records={personalRecords}
-                previewRecords={personalRecordsPreview}
-                showAll={showAllPersonalRecords}
-                onToggleShowAll={() => setShowAllPersonalRecords((prev) => !prev)}
-                favoriteNames={cleanedFavoritePersonalRecordNames}
-                onToggleFavorite={toggleFavoritePersonalRecord}
-                onOpenProgress={setPrProgressExerciseName}
-                onShare={(record) => void sharePersonalRecordEntry(record)}
-                exercises={exercises}
-                profileSaveInfo={profileSaveInfo && memberTab === "progress" ? profileSaveInfo : null}
-              />
-
-              <MuscleSplitCard
-                stats={muscleSplitStats}
-                metric={muscleSplitMetric}
-                period={muscleSplitPeriod}
-                onMetricChange={setMuscleSplitMetric}
-                onPeriodChange={setMuscleSplitPeriod}
-              />
-
-              <MemberWeeklySummaryCard
-                stats={progressShareLast7Days}
-                playfulLine={progressLiftPlayfulLine}
-                logoSrc={motusShareLogoSrc}
-                onShare={() => void shareMonthlyProgressSummary()}
-                shareStatus={progressShareStatus}
-              />
-            </div>
+            <MemberProgressPageView
+              scores={memberProgressScores}
+              memberProgress={memberProgress}
+              streakWeeks={streakWeeks}
+              completedLogDates={completedLogDates}
+              completedLogs={completedLogs}
+              nowTimestamp={nowTimestamp}
+              personalRecords={personalRecords}
+              personalRecordsPreview={personalRecordsPreview}
+              showAllPersonalRecords={showAllPersonalRecords}
+              onToggleShowAllPersonalRecords={() => setShowAllPersonalRecords((prev) => !prev)}
+              favoritePersonalRecordNames={cleanedFavoritePersonalRecordNames}
+              onToggleFavoritePersonalRecord={toggleFavoritePersonalRecord}
+              onOpenProgressExercise={setPrProgressExerciseName}
+              onSharePersonalRecord={(record) => void sharePersonalRecordEntry(record)}
+              exercises={exercises}
+              profileSaveInfo={profileSaveInfo && memberTab === "progress" ? profileSaveInfo : null}
+              muscleSplitStats={muscleSplitStats}
+              muscleSplitMetric={muscleSplitMetric}
+              muscleSplitPeriod={muscleSplitPeriod}
+              onMuscleSplitMetricChange={setMuscleSplitMetric}
+              onMuscleSplitPeriodChange={setMuscleSplitPeriod}
+              weeklySummaryStats={progressShareLast7Days}
+              onShareWeeklySummary={() => void shareMonthlyProgressSummary()}
+              weeklyShareStatus={progressShareStatus}
+              onContinueTrainingFlow={() => {
+                setMemberTab("programs");
+                setTrainingSection("today");
+              }}
+            />
           ) : null}
 
           {!isMemberLimited && memberTab === "messages" ? (

@@ -277,8 +277,8 @@ export function isPeriodPlanDayComplete(input: {
   logsForDate?: Array<{ programTitle: string; status: string }>;
 }): boolean {
   const key = buildPeriodPlanEntryKey(input.planId, input.weekNumber, input.day);
-  if (input.dismissedKeys?.includes(key)) return false;
   if (input.completedKeys.includes(key)) return true;
+  if (input.dismissedKeys?.includes(key)) return false;
 
   const trimmedEntry = input.entry.trim();
   if (!trimmedEntry || !input.logsForDate?.length) return false;

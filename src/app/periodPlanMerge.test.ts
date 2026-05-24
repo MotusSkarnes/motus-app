@@ -400,7 +400,7 @@ describe("period plan auto-complete", () => {
         dismissedKeys: ["plan-1:1:monday"],
         programs,
       }),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       isPeriodPlanDayComplete({
         planId: "plan-1",

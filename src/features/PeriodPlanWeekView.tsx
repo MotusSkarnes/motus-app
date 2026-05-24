@@ -175,7 +175,11 @@ export function PeriodPlanWeekView({
           const completed = isEntryCompleted(plan.id, week.weekNumber, dayKey);
           const status = resolveDayStatus(entry, completed);
           const isFutureDate = isPeriodPlanEntryDateInFuture(plannedDate);
-          const canMarkCompleted = completed || !isFutureDate;
+          const canStartProgram =
+            !completed && entryAction.kind === "start-program" && !isFutureDate;
+          const canLogGroup = !completed && entryAction.kind === "log-group" && !isFutureDate;
+          const canMarkCompletedManually =
+            !completed && entryAction.kind !== "start-program" && entryAction.kind !== "log-group";
           const isSwapSource = swapFromDay === dayKey;
           const canOpenPreview = Boolean(previewProgramForEntry);
           const canStartFromPreview =
@@ -238,31 +242,77 @@ export function PeriodPlanWeekView({
 
                   {entry && status !== "rest" ? (
                     <div className="motus-period-plan-day-footer">
-                      <button
-                        type="button"
-                        disabled={!canMarkCompleted}
-                        onClick={() => {
-                          if (!canMarkCompleted) return;
-                          onToggleCompleted({
-                            planId: plan.id,
-                            weekNumber: week.weekNumber,
-                            day: dayKey,
-                            entry: effectiveDays[dayKey],
-                            plannedDate,
-                          });
-                        }}
-                        className={`motus-period-plan-day-primary ${completed ? "motus-period-plan-day-primary--done" : ""}`}
-                        aria-label={
-                          completed
-                            ? `Angre fullført for ${dayLabel}`
-                            : isFutureDate
+                      {completed ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onToggleCompleted({
+                              planId: plan.id,
+                              weekNumber: week.weekNumber,
+                              day: dayKey,
+                              entry: effectiveDays[dayKey],
+                              plannedDate,
+                            })
+                          }
+                          className="motus-period-plan-day-primary motus-period-plan-day-primary--done"
+                          aria-label={`Angre fullført for ${dayLabel}`}
+                        >
+                          <Check className="h-4 w-4 shrink-0" strokeWidth={3} aria-hidden />
+                          Angre fullført
+                        </button>
+                      ) : canStartProgram ? (
+                        <button
+                          type="button"
+                          onClick={() => onStartProgram(entryAction.program.id)}
+                          className="motus-period-plan-day-primary"
+                          aria-label={`Start økt for ${dayLabel}`}
+                        >
+                          <Play className="h-4 w-4 shrink-0" aria-hidden />
+                          Start økt
+                        </button>
+                      ) : canLogGroup ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onLogGroup({
+                              entry: effectiveDays[dayKey],
+                              plannedDate,
+                              planId: plan.id,
+                              weekNumber: week.weekNumber,
+                              day: dayKey,
+                            })
+                          }
+                          className="motus-period-plan-day-primary"
+                          aria-label={`Logg gruppetime for ${dayLabel}`}
+                        >
+                          <Check className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+                          Logg gruppetime
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={!canMarkCompletedManually || isFutureDate}
+                          onClick={() => {
+                            if (!canMarkCompletedManually || isFutureDate) return;
+                            onToggleCompleted({
+                              planId: plan.id,
+                              weekNumber: week.weekNumber,
+                              day: dayKey,
+                              entry: effectiveDays[dayKey],
+                              plannedDate,
+                            });
+                          }}
+                          className="motus-period-plan-day-primary"
+                          aria-label={
+                            isFutureDate
                               ? `${dayLabel} kan markeres fra og med planlagt dato`
                               : `Marker ${dayLabel} som fullført`
-                        }
-                      >
-                        <Check className="h-4 w-4 shrink-0" strokeWidth={completed ? 3 : 2.25} aria-hidden />
-                        {completed ? "Angre fullført" : "Marker fullført"}
-                      </button>
+                          }
+                        >
+                          <Check className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+                          Marker fullført
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleSwapButtonClick(dayKey)}

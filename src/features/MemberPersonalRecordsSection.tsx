@@ -26,6 +26,7 @@ type MemberPersonalRecordsSectionProps = {
   onShare: (record: PersonalRecordEntry) => void;
   exercises: Exercise[];
   profileSaveInfo?: string | null;
+  variant?: "default" | "v2";
 };
 
 function resolveRecordImage(name: string, exercises: Exercise[]): string {
@@ -65,26 +66,36 @@ export function MemberPersonalRecordsSection({
   onShare,
   exercises,
   profileSaveInfo,
+  variant = "default",
 }: MemberPersonalRecordsSectionProps) {
   const hiddenCount = Math.max(0, records.length - previewRecords.length);
+  const isV2 = variant === "v2";
 
   return (
-    <section className="motus-progress-section-card">
-      <div className="flex items-start justify-between gap-3">
+    <section className={isV2 ? "motus-progress-v2-section" : "motus-progress-section-card"}>
+      <div className={isV2 ? "motus-progress-v2-section-head" : "flex items-start justify-between gap-3"}>
         <div>
-          <h3 className="text-base font-bold tracking-tight text-slate-900">Personlige rekorder</h3>
-          <p className="mt-0.5 text-xs text-slate-500">
-            {showAll ? "Trykk stjernen for å velge opptil 3 fremhevede" : "Trykk for utvikling · stjernen velger fremhevede"}
-          </p>
+          <h3 className={isV2 ? "motus-progress-v2-section-title" : "text-base font-bold tracking-tight text-slate-900"}>
+            Personlige rekorder
+          </h3>
+          {!isV2 ? (
+            <p className="mt-0.5 text-xs text-slate-500">
+              {showAll ? "Trykk stjernen for å velge opptil 3 fremhevede" : "Trykk for utvikling · stjernen velger fremhevede"}
+            </p>
+          ) : null}
         </div>
         {records.length > 0 ? (
           <button
             type="button"
             onClick={() => onToggleShowAll()}
-            className="motus-pressable shrink-0 text-xs font-semibold text-[#0d9488] hover:text-teal-800"
+            className={
+              isV2
+                ? "motus-progress-v2-section-link motus-pressable"
+                : "motus-pressable shrink-0 text-xs font-semibold text-[#0d9488] hover:text-teal-800"
+            }
           >
             {showAll ? "Vis færre" : `Se alle (${records.length})`}
-            <ChevronRight className="ml-0.5 inline h-3.5 w-3.5" aria-hidden />
+            <ChevronRight className={isV2 ? "h-3.5 w-3.5" : "ml-0.5 inline h-3.5 w-3.5"} aria-hidden />
           </button>
         ) : null}
       </div>
@@ -107,7 +118,7 @@ export function MemberPersonalRecordsSection({
       ) : (
         <>
           <div
-            className={`motus-progress-pr-grid scrollbar-none mt-3 ${showAll ? "motus-progress-pr-grid--all" : ""}`}
+            className={`motus-progress-pr-grid scrollbar-none mt-3 ${showAll ? "motus-progress-pr-grid--all" : ""} ${isV2 ? "motus-progress-pr-grid--v2" : ""}`}
             role="list"
             aria-label="Personlige rekorder"
           >
@@ -118,28 +129,35 @@ export function MemberPersonalRecordsSection({
                 <article
                   key={record.name}
                   role="listitem"
-                  className="motus-progress-pr-card motus-progress-pr-card--animated"
+                  className={`motus-progress-pr-card ${isV2 ? "motus-progress-pr-card--v2" : "motus-progress-pr-card--animated"}`}
                   style={{ animationDelay: `${index * 70}ms` }}
                 >
                   <button type="button" onClick={() => onOpenProgress(record.name)} className="motus-pressable block w-full text-left">
                     <div className="relative">
-                      <div className="motus-progress-pr-image motus-image-frame motus-image-frame--square">
+                      <div className={`motus-progress-pr-image ${isV2 ? "motus-progress-pr-image--v2" : "motus-image-frame motus-image-frame--square"}`}>
                         <img
                           src={imageSrc}
                           alt=""
-                          className="motus-image-media"
+                          className={isV2 ? "motus-progress-pr-image-media" : "motus-image-media"}
                           loading="lazy"
-                          style={{ objectPosition: imageObjectPositionFromSrc(imageSrc) }}
+                          style={isV2 ? undefined : { objectPosition: imageObjectPositionFromSrc(imageSrc) }}
                         />
                       </div>
-                      {record.isNewRecord ? <span className="motus-progress-pr-new-badge">Ny rekord</span> : null}
+                      {record.isNewRecord ? (
+                        <span className={isV2 ? "motus-progress-pr-new-badge motus-progress-pr-new-badge--v2" : "motus-progress-pr-new-badge"}>
+                          Ny rekord
+                        </span>
+                      ) : null}
                     </div>
-                    <p className="mt-1.5 line-clamp-2 text-[11px] font-bold leading-snug text-slate-900">{record.name}</p>
-                    <p className="mt-0.5 text-[10px] font-semibold tabular-nums text-slate-700">
-                      {record.weight} kg × {record.reps}
+                    <p className={`line-clamp-2 font-bold leading-snug text-slate-900 ${isV2 ? "mt-2 text-sm" : "mt-1.5 text-[11px]"}`}>
+                      {record.name}
                     </p>
-                    <RecordSparkline tone={index % 2 === 0 ? "mint" : "pink"} />
+                    <p className={`font-semibold tabular-nums ${isV2 ? "mt-0.5 text-sm text-[#0d9488]" : "mt-0.5 text-[10px] text-slate-700"}`}>
+                      {record.weight} kg{isV2 ? ` · ${record.reps} reps` : ` × ${record.reps}`}
+                    </p>
+                    {!isV2 ? <RecordSparkline tone={index % 2 === 0 ? "mint" : "pink"} /> : null}
                   </button>
+                  {!isV2 ? (
                   <div className="mt-1.5 flex items-center justify-center gap-1">
                     <button
                       type="button"
@@ -159,6 +177,7 @@ export function MemberPersonalRecordsSection({
                       <Star className="h-3 w-3" aria-hidden />
                     </button>
                   </div>
+                  ) : null}
                 </article>
               );
             })}
