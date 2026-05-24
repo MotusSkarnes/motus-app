@@ -381,6 +381,20 @@ Deno.serve(async (req) => {
   const { sharedMemberIds, sharedMemberEmails } = buildSharedMedlemLookup(members ?? []);
   const programLookupMemberIds = new Set(visibleMemberIds);
   if (visibleMemberEmails.length > 0) {
+    const { data: relatedEmailMembers, error: relatedEmailMembersError } = await adminClient
+      .from("members")
+      .select("id, email")
+      .in("email", visibleMemberEmails);
+    if (relatedEmailMembersError) {
+      console.warn("hydrate-trainer-data: related email member lookup failed:", relatedEmailMembersError.message);
+    } else {
+      for (const row of relatedEmailMembers ?? []) {
+        const rowEmail = normalizeEmail((row as { email?: string }).email);
+        if (!rowEmail || !visibleMemberEmails.includes(rowEmail)) continue;
+        const id = String((row as { id?: string }).id ?? "").trim();
+        if (id && id !== "__template__") programLookupMemberIds.add(id);
+      }
+    }
     const { data: authUsersData, error: authUsersError } = await adminClient.auth.admin.listUsers({
       page: 1,
       perPage: 1000,
