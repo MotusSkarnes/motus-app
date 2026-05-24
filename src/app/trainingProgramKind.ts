@@ -72,6 +72,12 @@ export function resolveProgramExerciseCategory(
   exerciseBank: Exercise[],
   exerciseCategoryById: Map<string, Exercise["category"]>,
 ): Exercise["category"] {
+  const holdSeconds = String(exercise.holdSeconds ?? "").trim();
+  if (holdSeconds && Number(holdSeconds) > 0) return "Mobilitet";
+
+  const inferredMobility = inferMobilityCategoryFromProgramExercise(exercise);
+  if (inferredMobility) return inferredMobility;
+
   const normalizedName = exercise.exerciseName.trim().toLowerCase();
   const byName = exerciseBank.find((item) => item.name.trim().toLowerCase() === normalizedName);
   if (byName) return byName.category;
@@ -79,13 +85,7 @@ export function resolveProgramExerciseCategory(
   const fromId = exerciseCategoryById.get(exercise.exerciseId);
   if (fromId) return fromId;
 
-  const inferredMobility = inferMobilityCategoryFromProgramExercise(exercise);
-  if (inferredMobility) return inferredMobility;
-
   if (Number(exercise.durationMinutes) > 0) return "Kondisjon";
-
-  const holdSeconds = String(exercise.holdSeconds ?? "").trim();
-  if (holdSeconds) return "Mobilitet";
 
   return "Styrke";
 }
@@ -120,10 +120,13 @@ export function isConditioningTrainingProgram(
 }
 
 export function getTrainingProgramSubTab(
-  program: Pick<TrainingProgram, "exercises">,
+  program: Pick<TrainingProgram, "exercises" | "title">,
   exerciseCategoryById: Map<string, Exercise["category"]>,
   exerciseBank: Exercise[] = [],
 ): TrainingSubTab {
+  const titleKey = program.title?.trim().toLowerCase() ?? "";
+  if (titleKey.endsWith("· mobilitet løper")) return "mobility";
+
   if (program.exercises.length === 0) return "strength";
   if (isConditioningTrainingProgram(program, exerciseCategoryById, exerciseBank)) return "conditioning";
 
@@ -148,7 +151,7 @@ export function getTrainingProgramSubTab(
 }
 
 export function trainingProgramCategoryLabel(
-  program: Pick<TrainingProgram, "exercises">,
+  program: Pick<TrainingProgram, "exercises" | "title">,
   exerciseCategoryById: Map<string, Exercise["category"]>,
   exerciseBank: Exercise[] = [],
 ): string {
@@ -165,7 +168,7 @@ export function trainingProgramCategoryLabel(
 }
 
 export function trainingProgramMatchesSubTab(
-  program: Pick<TrainingProgram, "exercises">,
+  program: Pick<TrainingProgram, "exercises" | "title">,
   subTab: TrainingSubTab,
   exerciseCategoryById: Map<string, Exercise["category"]>,
   exerciseBank: Exercise[] = [],

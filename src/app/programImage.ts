@@ -1,5 +1,5 @@
 import { resolveExerciseImageSrc } from "./exerciseIllustrations";
-import { RUNNER_STRENGTH_COVER_IMAGE, SUB45_PROGRAM_TITLES, SUB60_PROGRAM_TITLES } from "./inspirationRunningPlans";
+import { RUNNER_STRENGTH_COVER_IMAGE, RUNNER_MOBILITY_COVER_IMAGE, SUB45_PROGRAM_TITLES, SUB60_PROGRAM_TITLES } from "./inspirationRunningPlans";
 import type { TrainingSubTab } from "./exerciseCategories";
 import type { Exercise, TrainingProgram } from "./types";
 
@@ -20,6 +20,8 @@ const GROUP_WORKOUT_COVER_IMAGES: Record<string, string> = {
 const PROGRAM_TITLE_COVER_IMAGES: Record<string, string> = {
   [normalizeProgramTitleKey(SUB60_PROGRAM_TITLES.strength)]: RUNNER_STRENGTH_COVER_IMAGE,
   [normalizeProgramTitleKey(SUB45_PROGRAM_TITLES.strength)]: RUNNER_STRENGTH_COVER_IMAGE,
+  [normalizeProgramTitleKey(SUB60_PROGRAM_TITLES.mobility)]: RUNNER_MOBILITY_COVER_IMAGE,
+  [normalizeProgramTitleKey(SUB45_PROGRAM_TITLES.mobility)]: RUNNER_MOBILITY_COVER_IMAGE,
 };
 
 function normalizeProgramTitleKey(title: string): string {
@@ -82,6 +84,7 @@ export function programCoverUsesPhotoStyle(
   return (
     resolvedSrc === STRENGTH_TRAINING_COVER_IMAGE ||
     resolvedSrc === RUNNER_STRENGTH_COVER_IMAGE ||
+    resolvedSrc === RUNNER_MOBILITY_COVER_IMAGE ||
     resolvedSrc === CONDITIONING_TRAINING_COVER_IMAGE ||
     resolvedSrc === MOBILITY_TRAINING_COVER_IMAGE
   );

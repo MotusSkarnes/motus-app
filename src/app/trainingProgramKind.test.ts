@@ -136,6 +136,26 @@ describe("trainingProgramKind", () => {
     expect(trainingProgramCategoryLabel(mobility, new Map(), [])).toBe("Mobilitet");
   });
 
+  it("classifies mobilitet løper by title even with mixed exercise rows", () => {
+    const strengthLike = multiStepProgram([programRow("e1", "Bøy")]);
+    strengthLike.title = "SUB60 · Mobilitet løper";
+    expect(getTrainingProgramSubTab(strengthLike, categories, exercises)).toBe("mobility");
+    expect(trainingProgramCategoryLabel(strengthLike, categories, exercises)).toBe("Mobilitet");
+  });
+
+  it("prefers hold seconds over stale exercise bank category", () => {
+    const holdRow: TrainingProgram["exercises"][number] = {
+      ...programRow("stale-id", "Couch stretch"),
+      reps: "",
+      holdSeconds: "45",
+      notes: "Per side",
+    };
+    const staleCategories = buildExerciseCategoryById([
+      { id: "stale-id", name: "Couch stretch", category: "Styrke", group: "Bein", equipment: "Stang", level: "Nybegynner", description: "" },
+    ]);
+    expect(trainingProgramCategoryLabel(multiStepProgram([holdRow]), staleCategories, exercises)).toBe("Mobilitet");
+  });
+
   it("prefers exercise name over stale id category", () => {
     const staleCategories = buildExerciseCategoryById([
       { id: "stale-id", name: "Other", category: "Styrke", group: "Bein", equipment: "Stang", level: "Nybegynner", description: "" },

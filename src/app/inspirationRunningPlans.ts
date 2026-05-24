@@ -38,6 +38,9 @@ export const SUB60_LONG_RUN_COVER_IMAGE = "/program-covers/sub60-langtur-sone-2.
 /** Forsidebilde for styrke for løpere (SUB60/SUB45). */
 export const RUNNER_STRENGTH_COVER_IMAGE = "/program-covers/styrke-loper.png";
 
+/** Forsidebilde for mobilitet for løpere (SUB60/SUB45). */
+export const RUNNER_MOBILITY_COVER_IMAGE = "/program-covers/mobilitet.png";
+
 export type RunningInspirationItem = {
   id: string;
   category: "programs";
@@ -159,16 +162,17 @@ function buildSub60Programs(): InspirationProgramTemplate[] {
       goal: "Mobilitet og restitusjon for løpere",
       notes: "Rolig tempo. Pust dypt. Ingen smerte – bare behagelig strekk.",
       exercises: [
-        strengthExercise("World's greatest stretch", "2", "8", "Per side"),
-        strengthExercise("90/90 hofte-rotasjon", "2", "10", "Per side"),
+        mobilityExercise("World's greatest stretch", "2", "45", "Per side"),
+        mobilityExercise("90/90 hofte-rotasjon", "2", "45", "Per side"),
         mobilityExercise("Couch stretch", "2", "45", "Per side"),
         mobilityExercise("Leggstrekk mot vegg", "2", "45", "Per side"),
-        strengthExercise("Ankelmobilitet kne-til-vegg", "2", "12", "Per side"),
+        mobilityExercise("Ankelmobilitet kne-til-vegg", "2", "45", "Per side"),
         mobilityExercise("Pigeon stretch", "2", "45", "Per side"),
         mobilityExercise("Setestrekk liggende", "2", "45", "Sekunder per side"),
       ],
       programCreatedBy: "member",
       programCreatedByName: AUTHOR,
+      imageUrl: RUNNER_MOBILITY_COVER_IMAGE,
     },
     {
       title: SUB60_PROGRAM_TITLES.easy,
@@ -252,15 +256,16 @@ function buildSub45Programs(): InspirationProgramTemplate[] {
       goal: "Mobilitet for høy løpebelastning",
       notes: "Kort og ofte. Fokus hofte, legg og ankler.",
       exercises: [
-        strengthExercise("World's greatest stretch", "2", "10", "Per side"),
-        strengthExercise("90/90 hofte-rotasjon", "2", "12", "Per side"),
+        mobilityExercise("World's greatest stretch", "2", "50", "Per side"),
+        mobilityExercise("90/90 hofte-rotasjon", "2", "50", "Per side"),
         mobilityExercise("Couch stretch", "2", "50", "Per side"),
         mobilityExercise("Frog stretch", "2", "50"),
-        strengthExercise("Ankelmobilitet kne-til-vegg", "2", "14", "Per side"),
+        mobilityExercise("Ankelmobilitet kne-til-vegg", "2", "50", "Per side"),
         mobilityExercise("Leggstrekk mot vegg", "2", "50", "Per side"),
       ],
       programCreatedBy: "member",
       programCreatedByName: AUTHOR,
+      imageUrl: RUNNER_MOBILITY_COVER_IMAGE,
     },
     {
       title: SUB45_PROGRAM_TITLES.easy,

@@ -6,7 +6,7 @@ import {
   programCoverUsesPhotoStyle,
   resolveProgramImageSrc,
 } from "./programImage";
-import { RUNNER_STRENGTH_COVER_IMAGE, SUB60_PROGRAM_TITLES } from "./inspirationRunningPlans";
+import { RUNNER_STRENGTH_COVER_IMAGE, RUNNER_MOBILITY_COVER_IMAGE, SUB60_PROGRAM_TITLES } from "./inspirationRunningPlans";
 import type { Exercise, TrainingProgram } from "./types";
 
 const strengthExercise: Pick<Exercise, "id" | "imageUrl" | "category" | "group" | "name"> = {
@@ -49,6 +49,14 @@ describe("resolveProgramImageSrc", () => {
         subTab: "strength",
       }),
     ).toBe(RUNNER_STRENGTH_COVER_IMAGE);
+  });
+
+  it("uses runner mobility cover for mobilitet løper-programmer", () => {
+    expect(
+      resolveProgramImageSrc(program(undefined, SUB60_PROGRAM_TITLES.mobility), strengthExercise, {
+        subTab: "mobility",
+      }),
+    ).toBe(RUNNER_MOBILITY_COVER_IMAGE);
   });
 
   it("uses conditioning default cover for kondisjonsprogrammer", () => {
