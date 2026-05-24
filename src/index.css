@@ -73,6 +73,8 @@ body,
 html {
   -webkit-text-size-adjust: 100%;
   touch-action: manipulation;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 body {
@@ -2936,6 +2938,12 @@ button {
 
 .motus-mobile-tab-bar button {
   touch-action: manipulation;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.motus-mobile-tab-button {
+  min-height: 2.75rem;
 }
 
 @media (hover: hover) and (pointer: fine) {

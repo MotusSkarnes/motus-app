@@ -1,15 +1,12 @@
-import { useState } from "react";
 import { OfflineBanner } from "./app/OfflineBanner";
 import { AppErrorBoundary } from "./app/AppErrorBoundary";
 import { resolveLayoutRole } from "./app/resolveLayoutRole";
 import { useAppViewModel } from "./app/viewmodels";
 import { AppShell } from "./app/ui";
 import { AppHeader, LoginScreen, MemberLayout, TrainerLayout } from "./features";
-import { MemberMobileTabNav } from "./features/MemberTabNavigation";
 import { isSupabaseConfigured } from "./services/supabaseClient";
 
 export default function App() {
-  const [memberMobileNavVisible, setMemberMobileNavVisible] = useState(true);
   const {
     appState,
     isAuthSessionLoading,
@@ -18,7 +15,6 @@ export default function App() {
     appHeaderProps,
     trainerLayoutProps,
     memberLayoutProps,
-    memberMobileNavProps,
   } = useAppViewModel();
   const layoutRole = resolveLayoutRole(appState);
 
@@ -32,7 +28,7 @@ export default function App() {
         ) : !appState.currentUser || isRecoveryMode ? (
           <LoginScreen {...loginScreenProps} />
         ) : (
-          <div className="space-y-3 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] xl:space-y-4 xl:pb-6">
+          <div className="space-y-3 xl:space-y-4">
             {!isSupabaseConfigured ? (
               <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                 <div className="font-semibold">Supabase er ikke konfigurert.</div>
@@ -44,15 +40,10 @@ export default function App() {
             <OfflineBanner />
             <AppHeader {...appHeaderProps} />
 
-            {layoutRole === "trainer" ? (
-              <TrainerLayout {...trainerLayoutProps} />
-            ) : (
-              <MemberLayout {...memberLayoutProps} onMemberMobileNavVisibilityChange={setMemberMobileNavVisible} />
-            )}
+            {layoutRole === "trainer" ? <TrainerLayout {...trainerLayoutProps} /> : <MemberLayout {...memberLayoutProps} />}
           </div>
         )}
       </AppShell>
-      {memberMobileNavProps && memberMobileNavVisible ? <MemberMobileTabNav {...memberMobileNavProps} /> : null}
     </AppErrorBoundary>
   );
 }

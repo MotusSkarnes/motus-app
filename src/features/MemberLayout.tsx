@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ComponentProps } from "react";
 import { MOTUS } from "../app/data";
 import {
@@ -38,7 +38,7 @@ import { MemberOnboarding } from "./MemberOnboarding";
 import { MemberWelcomeModal } from "./MemberWelcomeModal";
 import { MemberPortal } from "./MemberPortal";
 import { InspirationHub } from "./InspirationHub";
-import { MemberDesktopTabNav } from "./MemberTabNavigation";
+import { MemberDesktopTabNav, MemberMobileTabNav } from "./MemberTabNavigation";
 import { MemberHomeHeaderActions } from "./MemberHomeHeaderActions";
 import { MemberNotificationsPanel } from "./MemberNotificationsPanel";
 
@@ -114,7 +114,6 @@ type MemberLayoutProps = {
   isLocalDemoSession?: ComponentProps<typeof MemberPortal>["isLocalDemoSession"];
   refreshRemoteHydration?: ComponentProps<typeof MemberPortal>["refreshRemoteHydration"];
   onLogout: () => void;
-  onMemberMobileNavVisibilityChange?: (visible: boolean) => void;
 };
 
 export function MemberLayout({
@@ -170,7 +169,6 @@ export function MemberLayout({
   isLocalDemoSession = false,
   refreshRemoteHydration,
   onLogout,
-  onMemberMobileNavVisibilityChange,
 }: MemberLayoutProps) {
   const [onboardingGateOpen, setOnboardingGateOpen] = useState(false);
   const [welcomeModalOpen, setWelcomeModalOpen] = useState(false);
@@ -201,12 +199,6 @@ export function MemberLayout({
     setWelcomeModalOpen(true);
   }, [activeMember, currentUserRole, onboardingIdentityKey]);
 
-  const memberMobileNavVisible = !onboardingGateOpen && !memberCheckInOverlayOpen;
-
-  useEffect(() => {
-    onMemberMobileNavVisibilityChange?.(memberMobileNavVisible);
-  }, [memberMobileNavVisible, onMemberMobileNavVisibilityChange]);
-
   useEffect(() => {
     if (!activeMember || !onboardingIdentityKey) return;
     const resolved = resolveMemberOnboarding(activeMember, appState.members);
@@ -222,12 +214,22 @@ export function MemberLayout({
     setWelcomeModalOpen(false);
   }
 
-  const memberTabRef = useRef(memberTab);
-  useEffect(() => {
-    if (memberTabRef.current === memberTab) return;
-    memberTabRef.current = memberTab;
-    if (welcomeModalOpen) dismissWelcomeModal();
-  }, [memberTab, welcomeModalOpen, onboardingIdentityKey]);
+  const navigateMemberTab = useCallback(
+    (tab: MemberTab) => {
+      if (welcomeModalOpen) dismissWelcomeModal();
+      if (onboardingGateOpen) setOnboardingGateOpen(false);
+      if (memberCheckInOverlayOpen) setMemberCheckInOverlayOpen(false);
+      setMemberTab(tab);
+    },
+    [
+      welcomeModalOpen,
+      onboardingGateOpen,
+      memberCheckInOverlayOpen,
+      onboardingIdentityKey,
+      setMemberTab,
+      setMemberCheckInOverlayOpen,
+    ],
+  );
 
   function startOnboardingFromWelcome() {
     if (!onboardingIdentityKey) return;
@@ -375,7 +377,7 @@ export function MemberLayout({
     messages: appState.messages,
     memberViewId: appState.memberViewId,
     memberTab,
-    setMemberTab,
+    setMemberTab: navigateMemberTab,
     updateMember,
     memberAvatarUrl: currentMemberAvatarUrl,
     setMemberAvatarUrl: setCurrentMemberAvatarUrl,
@@ -486,7 +488,7 @@ export function MemberLayout({
   return (
     <>
       <div className="space-y-4 sm:space-y-5">
-        <MemberDesktopTabNav memberTab={memberTab} setMemberTab={setMemberTab} isMemberLimited={isMemberLimited} />
+        <MemberDesktopTabNav memberTab={memberTab} setMemberTab={navigateMemberTab} isMemberLimited={isMemberLimited} />
         <div className="pb-[calc(5rem+env(safe-area-inset-bottom,0px))] xl:pb-0">
         {memberTab === "inspiration" ? (
           <InspirationHub
@@ -538,6 +540,8 @@ export function MemberLayout({
           onClose={() => setMemberCheckInOverlayOpen(false)}
         />
       ) : null}
+
+      <MemberMobileTabNav memberTab={memberTab} setMemberTab={navigateMemberTab} isMemberLimited={isMemberLimited} />
     </>
   );
 }

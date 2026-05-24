@@ -277,7 +277,7 @@ export function TrainerLayout({
               </div>
             </Card>
           ) : null}
-          <div className={trainerTab === "dashboard" ? "pb-[calc(5rem+env(safe-area-inset-bottom,0px))] xl:pb-0" : undefined}>
+          <div className="pb-[calc(5rem+env(safe-area-inset-bottom,0px))] xl:pb-0">
             {trainerTab === "inspiration" ? (
               <InspirationHub
                 canManage
@@ -298,11 +298,11 @@ export function TrainerLayout({
         </div>
       </div>
 
-      <div className="motus-mobile-tab-bar fixed inset-x-0 bottom-0 z-[99999] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 xl:hidden">
+      <div className="motus-mobile-tab-bar fixed inset-x-0 bottom-0 z-[100001] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 xl:hidden">
         {moreMenuOpen ? (
           <button
             type="button"
-            className="fixed inset-0 z-[9998] cursor-default bg-slate-900/20"
+            className="fixed inset-0 z-0 cursor-default bg-slate-900/20"
             aria-label="Lukk meny"
             onClick={() => setMoreMenuOpen(false)}
           />
@@ -337,7 +337,7 @@ export function TrainerLayout({
             })}
           </div>
         ) : null}
-        <div className="mx-auto flex max-w-lg items-stretch gap-0.5">
+        <div className="relative z-10 mx-auto flex max-w-lg items-stretch gap-0.5">
           {visibleMobileTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = trainerTab === tab.id;

@@ -70,14 +70,17 @@ function MemberMobileTabButton({
 }) {
   const Icon = tab.icon;
   const isActive = memberTab === tab.id;
+
+  function activateTab() {
+    if (memberTab !== tab.id) motusHaptic("light");
+    setMemberTab(tab.id);
+  }
+
   return (
     <button
       type="button"
-      onClick={() => {
-        if (memberTab !== tab.id) motusHaptic("light");
-        setMemberTab(tab.id);
-      }}
-      className={`${className} ${isActive ? "motus-mobile-tab-active rounded-xl bg-white/70 shadow-[0_1px_4px_-2px_rgba(15,23,42,0.12)]" : "text-slate-500"}`}
+      onClick={activateTab}
+      className={`motus-mobile-tab-button ${className} ${isActive ? "motus-mobile-tab-active rounded-xl bg-white/70 shadow-[0_1px_4px_-2px_rgba(15,23,42,0.12)]" : "text-slate-500"}`}
     >
       <Icon
         className="h-[22px] w-[22px] shrink-0"
