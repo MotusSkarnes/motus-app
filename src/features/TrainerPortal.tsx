@@ -4234,7 +4234,7 @@ function pickFirstName(value: unknown): string {
               }
             >
               <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-slate-500">
-                <span>Ma</span><span>Ti</span><span>On</span><span>To</span><span>Fr</span><span>Lo</span><span>So</span>
+                <span>Ma</span><span>Ti</span><span>On</span><span>To</span><span>Fr</span><span>Lø</span><span>Sø</span>
               </div>
               <div className="grid grid-cols-7 gap-1">
                 {dashboardCalendarCells.map((day, index) => {
@@ -4470,7 +4470,7 @@ function pickFirstName(value: unknown): string {
                   customerTypeFilter !== "all" ||
                   priorityFilter !== "all") ? (
                   <OutlineButton onClick={resetMemberListControls} className="px-3 py-1.5 text-xs">
-                    Nullstill sok/filter
+                    Nullstill søk/filter
                   </OutlineButton>
                 ) : null}
               </div>
@@ -4478,7 +4478,7 @@ function pickFirstName(value: unknown): string {
                 <TextInput
                   value={memberSearch}
                   onChange={(e) => setMemberSearch(e.target.value)}
-                  placeholder="Sok etter navn, e-post eller mal"
+                  placeholder="Søk etter navn, e-post eller mal"
                 />
                 <SelectBox
                   value={memberFilter}
@@ -4619,7 +4619,7 @@ function pickFirstName(value: unknown): string {
               {sortedMembers.length === 0 ? (
                 <div className="space-y-3">
                   <div className="rounded-xl border border-dashed bg-slate-50 p-4 text-center text-sm text-slate-500">
-                    Ingen kunder matcher sok/filter. Proev et enklere sok eller bytt filter.
+                    Ingen kunder matcher søk/filter. Prøv et enklere søk eller bytt filter.
                   </div>
                   {memberSearchRecovery ? (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
@@ -4627,10 +4627,10 @@ function pickFirstName(value: unknown): string {
                       <p className="mt-1 text-xs text-amber-900">
                         {memberSearchRecovery.rawMatches.length === 1
                           ? `${memberSearchRecovery.rawMatches[0]?.name || "Ukjent navn"} (${memberSearchRecovery.primaryEmail || "uten e-post"})`
-                          : `${memberSearchRecovery.rawMatches.length} rader matcher soket.`}
+                          : `${memberSearchRecovery.rawMatches.length} rader matcher søket.`}
                         {memberSearchRecovery.inactiveMatches.length
                           ? " Minst en rad er markert inaktiv (ofte etter duplikatopprydding)."
-                          : " Raden kan vaere skjult av filter."}
+                          : " Raden kan være skjult av filter."}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         <OutlineButton type="button" onClick={() => setShowInactiveMembers(true)} className="text-xs">

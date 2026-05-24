@@ -176,7 +176,6 @@ import {
 import { MemberHomeBelowWorkout } from "./MemberHomeBelowWorkout";
 import { MemberHomeWeeklyProgress } from "./MemberHomeWeeklyProgress";
 import { MemberHomeNextPlanCard, MemberHomeStatusGradientCard } from "./MemberHomeNextPlanCard";
-import { MemberHomeMotivationCard } from "./MemberHomeMotivationCard";
 import { MemberProgressScoresCard } from "./MemberProgressScoresCard";
 import { MemberPersonalRecordsSection } from "./MemberPersonalRecordsSection";
 import { MemberWeeklySummaryCard } from "./MemberWeeklySummaryCard";
@@ -987,7 +986,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [celebrationSoundEnabled, setCelebrationSoundEnabled] = useState(false);
   const [restCountdownEnabled, setRestCountdownEnabled] = useState(true);
   const [homeVisibility, setHomeVisibility] = useState<Record<HomeSectionKey, boolean>>({ ...DEFAULT_HOME_VISIBILITY });
-  const [homeCalendarExpanded, setHomeCalendarExpanded] = useState(false);
+  const [homeCalendarViewMode, setHomeCalendarViewMode] = useState<"week" | "month">("week");
   const [pushRegisterBusy, setPushRegisterBusy] = useState(false);
   const [pushRegisterStatus, setPushRegisterStatus] = useState<string | null>(null);
   const [showAllPersonalRecords, setShowAllPersonalRecords] = useState(false);
@@ -1034,7 +1033,6 @@ export function MemberPortal(props: MemberPortalProps) {
   const [syncedWorkoutExerciseIndex, setSyncedWorkoutExerciseIndex] = useState(0);
   const [expandedRecentLogId, setExpandedRecentLogId] = useState<string | null>(null);
   const [selectedCalendarDateKey, setSelectedCalendarDateKey] = useState<string | null>(null);
-  const [calendarViewMode, setCalendarViewMode] = useState<"week" | "month">("week");
   const [selectedCalendarLogId, setSelectedCalendarLogId] = useState<string | null>(null);
   const [progressShareStatus, setProgressShareStatus] = useState<string | null>(null);
   const [motusCardShareStatus, setMotusCardShareStatus] = useState<string | null>(null);
@@ -2005,6 +2003,17 @@ export function MemberPortal(props: MemberPortalProps) {
       }),
     [completedLogDates, nowDate, profileSessionsPerWeekTarget],
   );
+  const homeLastWeekSessions = useMemo(() => {
+    const today = getStartOfDay(new Date(nowTimestamp));
+    const mondayOffset = (today.getDay() + 6) % 7;
+    const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset);
+    const prevStart = new Date(weekStart);
+    prevStart.setDate(prevStart.getDate() - 7);
+    return completedLogDates.filter((date) => {
+      const day = getStartOfDay(date);
+      return day.getTime() >= prevStart.getTime() && day.getTime() < weekStart.getTime();
+    }).length;
+  }, [nowTimestamp, completedLogDates]);
   const homeWeeklySummary = useMemo(() => {
     const today = getStartOfDay(new Date(nowTimestamp));
     const mondayOffset = (today.getDay() + 6) % 7;
@@ -3975,12 +3984,6 @@ export function MemberPortal(props: MemberPortalProps) {
     });
   }, [homeWorkoutHydrationPending, homePrimaryFocus, homeWorkoutCoverSrc, todayPlanIsPassiveDay, todayDateKey]);
 
-  const homeMotivationLine =
-    homeWeeklySummary.completedThisWeek > 0
-      ? "Litt bedre hver dag gir store resultater over tid."
-      : streakWeeks > 0
-        ? "Du holder flyten – fortsett i ditt eget tempo."
-        : "Små steg teller. Start når det passer deg.";
   const openHomeWorkoutDestination = useCallback(() => {
     setMemberTab("programs");
     setTrainingSection(todayPlanEntry ? "period" : "programs");
@@ -4740,10 +4743,12 @@ export function MemberPortal(props: MemberPortalProps) {
                 <section className="motus-home-section-card motus-home-calendar-panel space-y-4 p-4 sm:p-5">
               <div className="min-w-0 w-full">
                   <MemberTrainingCalendar
-                    viewMode={calendarViewMode}
+                    viewMode="month"
                     onViewModeChange={(mode) => {
-                      setCalendarViewMode(mode);
-                      if (mode === "month") {
+                      if (mode === "week") {
+                        setHomeCalendarViewMode("week");
+                      } else {
+                        setHomeCalendarViewMode("month");
                         setCalendarMonth(new Date(calendarWeekStart.getFullYear(), calendarWeekStart.getMonth(), 1));
                       }
                     }}
@@ -5045,33 +5050,34 @@ export function MemberPortal(props: MemberPortalProps) {
                         onClick={homeStatusCard.onClick}
                       />
                     ) : null}
-                    <MemberHomeWeeklyProgress
-                      weekStart={calendarWeekStart}
-                      weekDays={calendarWeekDays}
-                      weekCompletedCount={calendarWeekCompletedCount}
-                      weekPlannedCount={calendarWeekPlannedCount}
-                      streakWeeks={streakWeeks}
-                      onOpenCalendar={() => {
-                        setHomeCalendarExpanded(true);
-                        setCalendarViewMode("month");
-                        setCalendarMonth(new Date(calendarWeekStart.getFullYear(), calendarWeekStart.getMonth(), 1));
-                      }}
-                      selectedDateKey={selectedCalendarDateKey}
-                      onSelectDateKey={setSelectedCalendarDateKey}
-                    />
-                    {homeCalendarExpanded ? memberHomeCalendarPanel : null}
+                    {homeCalendarViewMode === "week" ? (
+                      <MemberHomeWeeklyProgress
+                        weekDays={calendarWeekDays}
+                        completedSessions={homeWeeklySummary.completedThisWeek}
+                        plannedSessions={homeWeeklySummary.plannedThisWeek}
+                        weeklyTarget={Number(profileSessionsPerWeekTarget) || undefined}
+                        weeklyMinutes={homeWeeklyMinutes}
+                        streakWeeks={streakWeeks}
+                        streakSubline={streakSubline}
+                        momentumTrend={memberProgressScores.momentum.trend}
+                        thisWeekSessions={homeWeeklySummary.completedThisWeek}
+                        lastWeekSessions={homeLastWeekSessions}
+                        completedLogDates={completedLogDates}
+                        nowDate={nowDate}
+                        onOpenCalendar={() => {
+                          setHomeCalendarViewMode("month");
+                          setCalendarMonth(new Date(calendarWeekStart.getFullYear(), calendarWeekStart.getMonth(), 1));
+                        }}
+                        onOpenProgress={() => setMemberTab("progress")}
+                      />
+                    ) : (
+                      memberHomeCalendarPanel
+                    )}
                     {!isMemberLimited ? (
                       <MemberBadgesCarousel
                         collection={memberBadgeCollection}
                         memberDisplayName={memberShareDisplayName}
                         shareLogoSrc={motusShareLogoSrc}
-                      />
-                    ) : null}
-                    {homeMotivationLine ? (
-                      <MemberHomeMotivationCard
-                        title={homeWeeklySummary.completedThisWeek > 0 ? "Hold momentumet oppe! 💪" : "Klar for en ny uke"}
-                        detail={homeMotivationLine}
-                        onClick={() => setMemberTab("progress")}
                       />
                     ) : null}
                   </MemberHomeBelowWorkout>

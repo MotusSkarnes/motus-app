@@ -1525,7 +1525,7 @@ export function useAppState() {
   async function completePasswordRecovery() {
     const password = recoveryPassword.trim();
     if (password.length < 6) {
-      setRecoveryError("Passord ma vaere minst 6 tegn.");
+      setRecoveryError("Passord må være minst 6 tegn.");
       return;
     }
     if (password !== recoveryPasswordConfirm.trim()) {
