@@ -228,7 +228,7 @@ export function MemberHomeOverview({
 
         <div className="motus-home-workout-content">
           <div className="min-w-0">
-            <p className="motus-home-workout-label">Dagens økt</p>
+            <p className="motus-home-workout-label">Dagens plan</p>
             <h2
               className={`motus-home-workout-title ${workoutTitleLoading ? "animate-pulse text-slate-400" : ""}`}
             >
