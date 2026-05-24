@@ -848,10 +848,11 @@ export function useAppState() {
       const isTrainerSession = sessionRole === "trainer";
       const isMemberLikeSession = Boolean(sessionUser) && !isTrainerSession;
       const hydratedTrainer = isTrainerSession && ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
-      const [hydratedMember, directMemberPrograms, directMemberLogs] = await Promise.all([
+      const [hydratedMember, directMemberPrograms, directMemberLogs, directTrainerPrograms] = await Promise.all([
         isMemberLikeSession ? fetchHydratedMemberData() : Promise.resolve(null),
         isMemberLikeSession ? fetchProgramsFromSupabase() : Promise.resolve(null),
         isMemberLikeSession ? fetchLogsFromSupabase() : Promise.resolve(null),
+        isTrainerSession ? fetchProgramsFromSupabase() : Promise.resolve(null),
       ]);
       const sessionEmail = sessionUser?.email?.trim().toLowerCase() ?? "";
       const archivedMessage = hydratedMemberAccessDenied(hydratedMember);
@@ -873,7 +874,7 @@ export function useAppState() {
       // Edge hydrate and RLS-backed selects can disagree; merge by id so new devices still see programs/logs
       // the member can read directly from Postgres even when hydrate returns a partial list.
       let remotePrograms: TrainingProgram[] | null =
-        hydratedTrainer?.programs ??
+        (hydratedTrainer ? mergeTrainingProgramsById(hydratedTrainer.programs, directTrainerPrograms) : null) ??
         (isMemberLikeSession ? mergeTrainingProgramsById(hydratedMember?.programs, directMemberPrograms) : null);
       if (remotePrograms) {
         remotePrograms = filterDeletedPrograms(remotePrograms);
