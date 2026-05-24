@@ -475,12 +475,12 @@ export function TrainerLayout({
                   setMoreMenuOpen(false);
                   setTrainerTab(tab.id);
                 }}
-                className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-semibold transition ${
-                  isActive ? "motus-mobile-tab-active rounded-xl bg-white/70 shadow-[0_1px_4px_-2px_rgba(15,23,42,0.12)]" : "text-slate-500"
+                className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-2 text-[10px] font-semibold transition ${
+                  isActive ? "motus-mobile-tab-active" : "text-slate-400"
                 }`}
               >
                 <Icon
-                  className="h-[22px] w-[22px] shrink-0"
+                  className={`shrink-0 ${isActive ? "h-6 w-6" : "h-[22px] w-[22px]"}`}
                   strokeWidth={isActive ? 2.5 : 2}
                   style={isActive ? { color: MOTUS.turquoise } : undefined}
                 />

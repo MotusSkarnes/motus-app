@@ -38,7 +38,7 @@ describe("Trainer flows", () => {
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
     await user.click(screen.getAllByRole("button", { name: "Admin" })[0]);
-    await user.click(screen.getByRole("button", { name: "Start opprydding" }));
+    await user.click(screen.getByRole("button", { name: "Sjekk duplikater" }));
 
     expect(screen.getByText("Opprydding er ikke tilgjengelig akkurat nå.")).toBeInTheDocument();
   });
@@ -60,7 +60,7 @@ describe("Trainer flows", () => {
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
     await user.click(screen.getAllByRole("button", { name: "Klienter" })[0]);
-    await user.click(screen.getAllByRole("button", { name: "Program" })[0]);
+    await user.click(screen.getByRole("button", { name: "Program & planer" }));
 
     expect(await screen.findByText("Lag treningsprogram")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Lagre program på kunde" })).toBeInTheDocument();
@@ -120,7 +120,7 @@ describe("Trainer flows", () => {
       {
         id: "m1",
         name: "Emma Hansen",
-        email: "legacy+emma@motus.no",
+        email: "emma@motus.no",
         isActive: false,
         invitedAt: "",
         phone: "",
@@ -179,7 +179,7 @@ describe("Trainer flows", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Åpne økter" }));
+    await user.click(screen.getByRole("button", { name: "Økter" }));
     expect((await screen.findAllByText("Legacy styrkeøkt")).length).toBeGreaterThan(0);
   });
 
@@ -276,7 +276,7 @@ describe("Trainer flows", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Åpne økter" }));
+    await user.click(screen.getByRole("button", { name: "Økter" }));
     expect(screen.getByText("Økter siste 7 dager")).toBeInTheDocument();
     expect(screen.getByText("Gruppetimer siste 30 dager")).toBeInTheDocument();
     expect(screen.getByText("Snitt belastning 30 dager")).toBeInTheDocument();
@@ -358,7 +358,10 @@ describe("Trainer flows", () => {
       />
     );
 
-    expect(screen.getAllByText(/lene@example\.com/i).length).toBe(1);
+    expect(screen.getByText("Dagens fokus")).toBeInTheDocument();
+    expect(screen.getByText("Bør kontaktes nå")).toBeInTheDocument();
+    expect(screen.getAllByText(/^Lene$/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText(/lene@example\.com/i)).not.toBeInTheDocument();
   });
 
   it("allows marking follow-up from suggested contact list", async () => {

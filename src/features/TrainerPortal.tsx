@@ -66,7 +66,14 @@ import {
   type InviteTrainerResult,
 } from "../services/supabaseAuth";
 import { TrainerProfileCard } from "./TrainerProfileCard";
-import { TrainerHomeOverview, TrainerHomeSection } from "./TrainerHomeOverview";
+import { TrainerHomeOverview } from "./TrainerHomeOverview";
+import type { TrainerFollowUpCardModel, TrainerPriorityMemberModel, TrainerTodoModel } from "./TrainerHomeOverview";
+import {
+  buildTrainerFocusItems,
+  buildTrainerInsightText,
+  buildTrainerTodayFeed,
+  countInactiveLastWeek,
+} from "../app/trainerDashboardFeed";
 import type {
   AuthUser,
   ChatMessage,
@@ -3498,11 +3505,19 @@ function pickFirstName(value: unknown): string {
     });
   }
 
-  function addTodoItem() {
+  function addTodoItem(forDate?: string) {
     const title = todoTitle.trim();
-    if (!title || !selectedTodoDate) return;
-    setTodos((prev) => [{ id: uid("todo"), title, date: selectedTodoDate, done: false }, ...prev]);
+    const date = forDate ?? selectedTodoDate;
+    if (!title || !date) return;
+    setTodos((prev) => [{ id: uid("todo"), title, date, done: false }, ...prev]);
     setTodoTitle("");
+  }
+
+  function inferTodoPriority(title: string): TrainerTodoModel["priority"] {
+    const lower = title.toLowerCase();
+    if (lower.includes("program")) return "high";
+    if (lower.includes("ring") || lower.includes("følg") || lower.includes("folg")) return "medium";
+    return undefined;
   }
 
   function toggleTodoDone(todoId: string) {
@@ -3844,6 +3859,58 @@ function pickFirstName(value: unknown): string {
       .slice(0, 6);
   }, [activeMembers, logs, memberRelatedIdSetByCanonicalId, lastFollowUpByMemberId, members]);
   const followUpCount = followUpCandidates.length;
+  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const inactiveLastWeekCount = useMemo(
+    () => countInactiveLastWeek(activeMembers, members, logs),
+    [activeMembers, members, logs],
+  );
+  const trainerFocusItems = useMemo(
+    () =>
+      buildTrainerFocusItems({
+        followUpCount,
+        inactiveLastWeekCount,
+        membersWithoutProgramCount,
+        newMessages24h: dashboardSummary.newMessages24h,
+      }),
+    [followUpCount, inactiveLastWeekCount, membersWithoutProgramCount, dashboardSummary.newMessages24h],
+  );
+  const mapFollowUpCard = useCallback(
+    (item: (typeof followUpCandidates)[number]): TrainerFollowUpCardModel => ({
+      memberId: item.member.id,
+      memberName: item.member.name,
+      memberEmail: item.member.email,
+      avatarUrl: resolveMemberAvatarUrl(item.member) || null,
+      customerTypeLabel: getMemberCustomerTypeDisplay(item.member).label,
+      primaryReason: item.reasons[0] ?? "Trenger oppfølging",
+      secondaryReason: item.reasons.slice(1).join(" · ") || undefined,
+      score: item.score,
+      lastFollowUpLabel: item.lastFollowUpIso ? formatDateDdMmYyyy(new Date(item.lastFollowUpIso)) : "Aldri",
+      priorityTone: memberPriorityTone(item.member, members, logs),
+    }),
+    [members, logs],
+  );
+  const primaryFollowUpCard = followUpCandidates[0] ? mapFollowUpCard(followUpCandidates[0]) : null;
+  const secondaryFollowUpCards = followUpCandidates.slice(1, 4).map(mapFollowUpCard);
+  const criticalFollowUpCount = followUpCandidates.filter(
+    (item) => item.score >= 3 || memberPriorityTone(item.member, members, logs) === "red",
+  ).length;
+  const todoItemsForToday = useMemo(() => todos.filter((todo) => todo.date === todayIso), [todos, todayIso]);
+  const trainerTodayFeed = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const end = start + 24 * 60 * 60 * 1000;
+    const todaysLogs = logs.filter((log) => {
+      const ts = parseLogDateMs(log.date);
+      return ts >= start && ts < end;
+    });
+    const membersById = new Map(members.map((member) => [member.id, member]));
+    return buildTrainerTodayFeed({
+      followUpNames: followUpCandidates.map((item) => item.member.name),
+      todos: todoItemsForToday,
+      todaysLogs,
+      membersById,
+    });
+  }, [followUpCandidates, todoItemsForToday, logs, members]);
   const trainerFirstName = pickFirstName(trainerAccountName) || "PT";
   const trainerTodayDateLabel = new Date().toLocaleDateString("no-NO", {
     weekday: "long",
@@ -3939,6 +4006,33 @@ function pickFirstName(value: unknown): string {
     });
   }, [activeMembers, priorityFilter, prioritySort, priorityMemberTypeSort, members, logs]);
 
+  const homePriorityMembers = useMemo((): TrainerPriorityMemberModel[] => {
+    const urgent = membersWithPriority.filter((item) => item.priority.tone !== "green").slice(0, 5);
+    const stable = membersWithPriority.filter((item) => item.priority.tone === "green").slice(0, 3);
+    return [...urgent, ...stable].map(({ member, priority }) => ({
+      memberId: member.id,
+      memberName: member.name,
+      avatarUrl: resolveMemberAvatarUrl(member) || null,
+      customerTypeLabel: getMemberCustomerTypeDisplay(member).label,
+      activityLabel: formatTrainerMemberActivitySubtitle(member, members, logs),
+      statusTone: priority.tone,
+    }));
+  }, [membersWithPriority, members, logs]);
+  const trainerInsight = useMemo(() => {
+    const atRisk = membersWithPriority.filter((item) => item.priority.tone === "red").length;
+    return buildTrainerInsightText(atRisk, followUpCount);
+  }, [membersWithPriority, followUpCount]);
+  const trainerTodosForHome = useMemo(
+    (): TrainerTodoModel[] =>
+      todoItemsForToday.map((todo) => ({
+        id: todo.id,
+        title: todo.title,
+        done: todo.done,
+        priority: inferTodoPriority(todo.title),
+      })),
+    [todoItemsForToday],
+  );
+
   function getMemberCustomerTypeDisplay(member: Member): { label: string; badgeClass: string } {
     if (isSharedMedlemCustomerType(member.customerType)) {
       return { label: "Medlem", badgeClass: "bg-slate-100 text-slate-700 ring-slate-200" };
@@ -3958,12 +4052,12 @@ function pickFirstName(value: unknown): string {
     pillClass: string;
   } {
     if (tone === "red") {
-      return { label: "Rød", dotClass: "bg-rose-500", pillClass: "bg-rose-50 text-rose-800 ring-rose-200" };
+      return { label: "Krever oppfølging", dotClass: "bg-rose-500", pillClass: "bg-rose-50 text-rose-800 ring-rose-200" };
     }
     if (tone === "orange") {
-      return { label: "Oransje", dotClass: "bg-amber-500", pillClass: "bg-amber-50 text-amber-800 ring-amber-200" };
+      return { label: "Mister momentum", dotClass: "bg-amber-500", pillClass: "bg-amber-50 text-amber-800 ring-amber-200" };
     }
-    return { label: "Grønn", dotClass: "bg-teal-500", pillClass: "motus-brand-surface ring-teal-200" };
+    return { label: "Stabil", dotClass: "bg-teal-500", pillClass: "motus-brand-surface ring-teal-200" };
   }
 
   function renderMemberTypeBadge(member: Member, compact = false) {
@@ -4186,16 +4280,39 @@ function pickFirstName(value: unknown): string {
           <TrainerHomeOverview
             trainerFirstName={trainerFirstName}
             todayDateLabel={trainerTodayDateLabel}
-            dashboardHeadline={trainerDashboardHeadline}
-            dashboardSubline={trainerDashboardSubline}
-            opsHealthPct={trainerOpsHealthPct}
-            followUpCount={followUpCount}
-            membersWithoutProgramCount={membersWithoutProgramCount}
+            focusItems={trainerFocusItems}
+            activeMemberCount={activeMembers.length}
             todaysCustomers={dashboardSummary.todaysCustomers}
             todaysWorkouts={dashboardSummary.todaysWorkouts}
             newMessages24h={dashboardSummary.newMessages24h}
+            followUpCount={followUpCount}
+            criticalFollowUpCount={criticalFollowUpCount}
+            primaryFollowUp={primaryFollowUpCard}
+            secondaryFollowUps={secondaryFollowUpCards}
+            todayFeed={trainerTodayFeed}
+            todos={trainerTodosForHome}
+            todoDraft={todoTitle}
+            onTodoDraftChange={setTodoTitle}
+            onAddTodo={() => addTodoItem(todayIso)}
+            onToggleTodo={toggleTodoDone}
+            priorityMembers={homePriorityMembers}
+            insightTitle={trainerInsight.title}
+            insightDetail={trainerInsight.detail}
             onFollowUpClick={() => openCustomersWithListFilters({ memberFilter: "followUp" })}
             onMissingProgramClick={() => openCustomersWithListFilters({ memberFilter: "noProgram" })}
+            onOpenMember={(memberId) => {
+              setTrainerTab("customers");
+              selectMemberWithUnsavedChangesGuard(memberId, () => setCustomerSubTab("overview"));
+            }}
+            onContactMember={(memberId) => {
+              const member = members.find((row) => row.id === memberId);
+              if (member) handleQuickFollowUpMessage(member);
+            }}
+            onMarkFollowedUp={(memberId) => {
+              const member = members.find((row) => row.id === memberId);
+              if (member) markMemberFollowedUp(member);
+            }}
+            onOpenProgressInsight={() => openCustomersWithListFilters({ priorityFilter: "red" })}
             quickActions={{
               onOpenCustomers: () => setTrainerTab("customers"),
               onOpenPrograms: () => setTrainerTab("programs"),
@@ -4203,200 +4320,7 @@ function pickFirstName(value: unknown): string {
             }}
             headerActions={trainerHomeHeaderActions}
             notificationsPanel={trainerHomeNotificationsPanel}
-          >
-          <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
-            <TrainerHomeSection title="To-do per dag" subtitle="Planlegging">
-              <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
-                <TextInput value={todoTitle} onChange={(e) => setTodoTitle(e.target.value)} placeholder="Ny oppgave (f.eks. ring Martin)" />
-                <TextInput type="date" value={selectedTodoDate} onChange={(e) => setSelectedTodoDate(e.target.value)} />
-                <GradientButton onClick={addTodoItem}>Legg til</GradientButton>
-              </div>
-              <div className="space-y-2">
-                {todoItemsForSelectedDate.length === 0 ? <div className="rounded-xl border border-dashed bg-white p-3 text-sm text-slate-500">Ingen oppgaver for valgt dag.</div> : null}
-                {todoItemsForSelectedDate.map((todo) => (
-                  <div key={todo.id} className="flex items-center justify-between gap-2 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <button type="button" onClick={() => toggleTodoDone(todo.id)} className={`text-left text-sm ${todo.done ? "line-through text-slate-400" : "text-slate-700"}`}>
-                      {todo.title}
-                    </button>
-                    <OutlineButton onClick={() => deleteTodo(todo.id)} className="px-3 py-1.5 text-xs">Slett</OutlineButton>
-                  </div>
-                ))}
-              </div>
-            </TrainerHomeSection>
-            <TrainerHomeSection
-              title="Kalender"
-              subtitle={monthLabel}
-              actions={
-                <div className="flex items-center gap-2">
-                  <OutlineButton onClick={() => setDashboardMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))} className="px-3 py-1.5 text-xs">Forrige</OutlineButton>
-                  <OutlineButton onClick={() => setDashboardMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))} className="px-3 py-1.5 text-xs">Neste</OutlineButton>
-                </div>
-              }
-            >
-              <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-slate-500">
-                <span>Ma</span><span>Ti</span><span>On</span><span>To</span><span>Fr</span><span>Lø</span><span>Sø</span>
-              </div>
-              <div className="grid grid-cols-7 gap-1">
-                {dashboardCalendarCells.map((day, index) => {
-                  if (!day) return <div key={`empty-${index}`} />;
-                  const dateIso = `${dashboardMonth.getFullYear()}-${String(dashboardMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                  const hasTodo = todoDateSet.has(dateIso);
-                  const isSelected = selectedTodoDate === dateIso;
-                  return (
-                    <button
-                      key={dateIso}
-                      type="button"
-                      onClick={() => setSelectedTodoDate(dateIso)}
-                      className={`rounded-lg px-1 py-2 text-center text-xs ${isSelected ? "motus-brand-fill font-semibold" : "text-slate-600 bg-white"}`}
-                      style={
-                        !isSelected && hasTodo
-                          ? { border: `1px solid ${MOTUS.turquoise}` }
-                          : !isSelected
-                            ? { border: "1px solid rgba(15,23,42,0.06)" }
-                            : undefined
-                      }
-                    >
-                      {day}
-                    </button>
-                  );
-                })}
-              </div>
-            </TrainerHomeSection>
-          </div>
-          <TrainerHomeSection
-            title="Kundeprioritering"
-            subtitle="Rød prioritet haster mest."
-            actions={
-              <div className="flex flex-wrap items-center gap-2">
-                <SelectBox
-                  value={priorityFilter}
-                  onChange={(value) => setPriorityFilter(value as "all" | "red" | "orange" | "green")}
-                  options={[
-                    { value: "all", label: "Alle" },
-                    { value: "red", label: "Rød" },
-                    { value: "orange", label: "Oransje" },
-                    { value: "green", label: "Grønn" },
-                  ]}
-                />
-                <SelectBox
-                  value={prioritySort}
-                  onChange={(value) => setPrioritySort(value as "highFirst" | "lowFirst")}
-                  options={[
-                    { value: "highFirst", label: "Sorter: høy prioritet først" },
-                    { value: "lowFirst", label: "Sorter: lav prioritet først" },
-                  ]}
-                />
-                <SelectBox
-                  value={priorityMemberTypeSort}
-                  onChange={(value) => setPriorityMemberTypeSort(value as "none" | "ptFirst" | "premiumFirst" | "standardFirst")}
-                  options={[
-                    { value: "none", label: "Type: ingen" },
-                    { value: "ptFirst", label: "Type: PT-kunde først" },
-                    { value: "premiumFirst", label: "Type: Premium først" },
-                    { value: "standardFirst", label: "Type: Standard først" },
-                  ]}
-                />
-                <OutlineButton
-                  onClick={() => {
-                    setPriorityFilter("all");
-                    setPrioritySort("highFirst");
-                    setPriorityMemberTypeSort("none");
-                  }}
-                  className="px-3 py-2 text-xs"
-                >
-                  Nullstill
-                </OutlineButton>
-                <OutlineButton
-                  onClick={() => openCustomersWithListFilters({ priorityFilter })}
-                  className="px-3 py-2 text-xs"
-                  disabled={priorityFilter === "all"}
-                >
-                  Vis i klientliste
-                </OutlineButton>
-              </div>
-            }
-          >
-            <div className="space-y-2">
-              {membersWithPriority.length === 0 ? (
-                <div className="rounded-xl border border-dashed bg-white p-4 text-sm text-slate-500">
-                  Ingen kunder matcher valgt prioritet/type-sortering akkurat nå.
-                </div>
-              ) : null}
-              {membersWithPriority.map(({ member, priority }) => (
-                <button
-                  key={member.id}
-                  type="button"
-                  onClick={() => {
-                    setTrainerTab("customers");
-                    selectMemberWithUnsavedChangesGuard(member.id, () => setCustomerSubTab("overview"));
-                  }}
-                  className="flex w-full items-center justify-between gap-2 rounded-xl border bg-white p-3 text-left transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
-                  style={{ borderColor: "rgba(15,23,42,0.08)" }}
-                  aria-label={`Åpne kundekort for ${member.name}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="relative h-9 w-9 overflow-hidden rounded-full border bg-slate-100 text-slate-400" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
-                      <ClientAvatarFallback />
-                      {resolveMemberAvatarUrl(member) ? (
-                        <img
-                          src={resolveMemberAvatarUrl(member)}
-                          alt={member.name}
-                          className="relative z-10 h-full w-full object-cover"
-                          loading="lazy"
-                          decoding="async"
-                          onError={(event) => {
-                            event.currentTarget.style.display = "none";
-                          }}
-                        />
-                      ) : null}
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-slate-800">{member.name}</div>
-                      <div className="text-xs text-slate-500">{member.email} · {formatTrainerMemberActivitySubtitle(member, members, logs)}</div>
-                    </div>
-                  </div>
-                  {renderMemberPriorityMeta(member, priority)}
-                </button>
-              ))}
-            </div>
-          </TrainerHomeSection>
-          <TrainerHomeSection title="Bør kontaktes nå" subtitle="Oppfølging">
-            {followUpCandidates.length === 0 ? (
-              <div className="rounded-xl border border-dashed bg-white p-3 text-sm text-slate-500">
-                Ingen kunder trenger ekstra oppfølging akkurat nå.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {followUpCandidates.map((item) => (
-                  <div key={`followup-${item.member.id}`} className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-semibold text-slate-800">{item.member.name}</div>
-                        <div className="text-xs text-slate-500">{item.member.email}</div>
-                        <div className="mt-1 text-xs text-slate-600">{item.reasons.join(" · ")}</div>
-                        <div className="mt-1 text-[11px] text-slate-500">
-                          Sist fulgt opp: {item.lastFollowUpIso ? formatDateDdMmYyyy(new Date(item.lastFollowUpIso)) : "Aldri"}
-                        </div>
-                      </div>
-                      <span className="rounded-full bg-rose-100 px-2 py-1 text-[11px] font-semibold text-rose-700">Prioritet {item.score}</span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <GradientButton onClick={() => openMemberWithNextAction(item.member)} className="px-3 py-1.5 text-xs">
-                        Åpne kunde
-                      </GradientButton>
-                      <OutlineButton onClick={() => handleQuickFollowUpMessage(item.member)} className="px-3 py-1.5 text-xs">
-                        Send melding
-                      </OutlineButton>
-                      <OutlineButton onClick={() => markMemberFollowedUp(item.member)} className="px-3 py-1.5 text-xs">
-                        Marker fulgt opp
-                      </OutlineButton>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </TrainerHomeSection>
-          </TrainerHomeOverview>
+          />
         </div>
       ) : null}
 

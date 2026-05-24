@@ -2159,7 +2159,458 @@ button {
 }
 
 .motus-mobile-tab-active {
-  color: #1e293b !important;
+  color: #0f766e !important;
+  background: rgba(39, 224, 193, 0.12) !important;
+  box-shadow:
+    0 0 0 1px rgba(39, 224, 193, 0.2),
+    0 8px 20px -14px rgba(39, 224, 193, 0.55) !important;
+}
+
+.motus-trainer-home {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.motus-trainer-section-eyebrow {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #0d9488;
+}
+
+.motus-trainer-focus-card {
+  border-radius: 1.5rem;
+  padding: 1.125rem 1.125rem 1rem;
+  background: linear-gradient(135deg, rgba(39, 224, 193, 0.08) 0%, rgba(255, 255, 255, 0.98) 55%, rgba(255, 45, 149, 0.04) 100%);
+  box-shadow: 0 12px 32px -26px rgba(15, 23, 42, 0.28);
+}
+
+.motus-trainer-focus-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #334155;
+}
+
+.motus-trainer-focus-dot {
+  margin-top: 0.35rem;
+  height: 0.5rem;
+  width: 0.5rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: #94a3b8;
+}
+
+.motus-trainer-focus-item--critical .motus-trainer-focus-dot {
+  background: #f43f5e;
+  box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.18);
+}
+
+.motus-trainer-focus-item--warning .motus-trainer-focus-dot {
+  background: #f59e0b;
+}
+
+.motus-trainer-focus-item--critical {
+  color: #9f1239;
+}
+
+.motus-trainer-stats-row {
+  display: flex;
+  gap: 0.625rem;
+  overflow-x: auto;
+  padding-bottom: 0.125rem;
+}
+
+.motus-trainer-stat-card {
+  min-width: 7.25rem;
+  flex: 1;
+  border-radius: 1.125rem;
+  border: none;
+  padding: 0.875rem 0.75rem;
+  background: #ffffff;
+  box-shadow: 0 10px 24px -22px rgba(15, 23, 42, 0.35);
+}
+
+.motus-trainer-stat-icon {
+  display: inline-flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+}
+
+.motus-trainer-stat-icon--mint {
+  background: rgba(39, 224, 193, 0.14);
+  color: #0d9488;
+}
+
+.motus-trainer-stat-icon--pink {
+  background: rgba(255, 45, 149, 0.1);
+  color: #db2777;
+}
+
+.motus-trainer-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.875rem;
+}
+
+.motus-trainer-section-title {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.motus-trainer-critical-badge {
+  display: inline-flex;
+  margin-left: 0.5rem;
+  border-radius: 9999px;
+  background: rgba(244, 63, 94, 0.12);
+  padding: 0.125rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #be123c;
+}
+
+.motus-trainer-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  border: 0;
+  background: transparent;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0d9488;
+}
+
+.motus-trainer-priority-hero-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.motus-trainer-priority-hero {
+  overflow: hidden;
+  border-radius: 1.5rem;
+  padding: 1.125rem;
+  background: #ffffff;
+  box-shadow: 0 16px 40px -28px rgba(15, 23, 42, 0.35);
+}
+
+.motus-trainer-priority-hero.motus-trainer-status--critical {
+  background: linear-gradient(135deg, rgba(255, 45, 149, 0.1) 0%, #ffffff 48%, rgba(255, 255, 255, 0.98) 100%);
+  box-shadow:
+    0 0 0 1px rgba(244, 63, 94, 0.14),
+    0 20px 44px -28px rgba(244, 63, 94, 0.45);
+}
+
+.motus-trainer-priority-hero.motus-trainer-status--pulse {
+  animation: motusTrainerCriticalPulse 2.8s ease-in-out infinite;
+}
+
+@keyframes motusTrainerCriticalPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(244, 63, 94, 0.14),
+      0 20px 44px -28px rgba(244, 63, 94, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(244, 63, 94, 0.22),
+      0 22px 48px -24px rgba(244, 63, 94, 0.55);
+  }
+}
+
+.motus-trainer-priority-hero-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+}
+
+.motus-trainer-type-badge {
+  display: inline-flex;
+  border-radius: 9999px;
+  background: rgba(255, 45, 149, 0.1);
+  padding: 0.125rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #be185d;
+}
+
+.motus-trainer-score-pill {
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: rgba(244, 63, 94, 0.12);
+  padding: 0.25rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #be123c;
+}
+
+.motus-trainer-priority-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.motus-trainer-cta-primary {
+  flex: 1 1 100%;
+  min-height: 2.75rem;
+  border: 0;
+  border-radius: 0.875rem;
+  background: linear-gradient(90deg, #27e0c1 0%, #ff2d95 100%);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #ffffff;
+  box-shadow: 0 12px 28px -16px rgba(255, 45, 149, 0.65);
+}
+
+.motus-trainer-cta-secondary {
+  flex: 1;
+  min-height: 2.375rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.motus-trainer-priority-scroll {
+  display: flex;
+  gap: 0.625rem;
+  overflow-x: auto;
+  padding-bottom: 0.125rem;
+}
+
+.motus-trainer-priority-chip,
+.motus-trainer-member-card {
+  display: flex;
+  min-width: 11.5rem;
+  flex-direction: column;
+  gap: 0.625rem;
+  border-radius: 1.125rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  padding: 0.875rem;
+  background: #ffffff;
+  text-align: left;
+  box-shadow: 0 8px 22px -20px rgba(15, 23, 42, 0.35);
+}
+
+.motus-trainer-member-card {
+  min-width: 10.5rem;
+}
+
+.motus-trainer-status-pill {
+  display: inline-flex;
+  margin-top: 0.375rem;
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+}
+
+.motus-trainer-status--critical {
+  background: rgba(244, 63, 94, 0.1);
+  color: #be123c;
+}
+
+.motus-trainer-status--warning {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.motus-trainer-status--stable {
+  background: rgba(39, 224, 193, 0.12);
+  color: #0f766e;
+}
+
+.motus-trainer-dual-grid {
+  display: grid;
+  gap: 0.875rem;
+}
+
+@media (min-width: 1024px) {
+  .motus-trainer-dual-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.motus-trainer-panel {
+  border-radius: 1.375rem;
+  padding: 1rem 1.125rem;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12px 30px -24px rgba(15, 23, 42, 0.28);
+}
+
+.motus-trainer-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.motus-trainer-feed-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  border-radius: 0.875rem;
+  padding: 0.625rem 0.75rem;
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.motus-trainer-feed-time {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #64748b;
+}
+
+.motus-trainer-feed-item--followup {
+  background: rgba(255, 45, 149, 0.06);
+}
+
+.motus-trainer-feed-item--task {
+  background: rgba(39, 224, 193, 0.08);
+}
+
+.motus-trainer-feed-empty {
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.motus-trainer-icon-btn {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(39, 224, 193, 0.14);
+  color: #0d9488;
+}
+
+.motus-trainer-todo-add {
+  margin-bottom: 0.75rem;
+}
+
+.motus-trainer-todo-input {
+  width: 100%;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.8125rem;
+  background: #ffffff;
+}
+
+.motus-trainer-todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.motus-trainer-todo-row {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 0.625rem;
+  border-radius: 0.75rem;
+  border: 0;
+  padding: 0.5rem 0.25rem;
+  background: transparent;
+  text-align: left;
+}
+
+.motus-trainer-todo-check {
+  display: inline-flex;
+  height: 1.125rem;
+  width: 1.125rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.3rem;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  margin-top: 0.125rem;
+}
+
+.motus-trainer-todo-check--done {
+  border-color: transparent;
+  background: linear-gradient(135deg, #27e0c1, #1fcfb0);
+  color: #ffffff;
+}
+
+.motus-trainer-open-link {
+  margin-top: auto;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #0d9488;
+}
+
+.motus-trainer-empty-card {
+  border-radius: 1rem;
+  padding: 1rem;
+  background: rgba(248, 250, 252, 0.95);
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.motus-trainer-insight-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  gap: 0.875rem;
+  border-radius: 1.375rem;
+  padding: 1rem 1.125rem;
+  background: linear-gradient(135deg, rgba(39, 224, 193, 0.1) 0%, #ffffff 52%, rgba(255, 45, 149, 0.04) 100%);
+}
+
+.motus-trainer-insight-art {
+  position: absolute;
+  right: -0.5rem;
+  bottom: -0.75rem;
+  width: 7rem;
+  height: 5rem;
+  opacity: 0.28;
+  background: radial-gradient(circle at 30% 70%, rgba(39, 224, 193, 0.45) 0%, transparent 55%);
+  pointer-events: none;
+}
+
+.motus-trainer-insight-icon {
+  display: inline-flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.875rem;
+  background: rgba(39, 224, 193, 0.16);
+  color: #0d9488;
+}
+
+.motus-trainer-insight-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  border: 1px solid rgba(39, 224, 193, 0.35);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0f766e;
 }
 
 .motus-card {
