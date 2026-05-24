@@ -71,8 +71,8 @@ function ScoreRing({
 
   return (
     <div className="motus-progress-status-card">
-      <div className="relative mx-auto h-14 w-14">
-        <svg viewBox="0 0 88 88" className="h-14 w-14" aria-hidden>
+      <div className="relative mx-auto motus-progress-status-ring">
+        <svg viewBox="0 0 88 88" className="h-full w-full" aria-hidden>
           <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(15,23,42,0.08)" strokeWidth="6" />
           {pct !== null ? (
             <circle
@@ -88,10 +88,10 @@ function ScoreRing({
             />
           ) : null}
         </svg>
-        <div className="absolute inset-0 flex items-center justify-center text-sm font-bold tabular-nums text-slate-900">{value}</div>
+        <div className="motus-progress-status-value absolute inset-0 flex items-center justify-center font-bold tabular-nums text-slate-900">{value}</div>
       </div>
-      <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-slate-600">{subline}</p>
+      <p className="motus-progress-status-label mt-1 font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="motus-progress-status-subline mt-0.5 line-clamp-2 text-slate-600">{subline}</p>
     </div>
   );
 }
@@ -112,9 +112,9 @@ function StatHighlight({
   return (
     <div className="motus-progress-status-card">
       <span className={`motus-progress-status-icon motus-progress-status-icon--${tone}`}>{icon}</span>
-      <p className="mt-1.5 text-xl font-black tabular-nums tracking-tight text-slate-950">{value}</p>
-      <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-slate-600">{subline}</p>
+      <p className="motus-progress-status-stat-value mt-1 font-black tabular-nums tracking-tight text-slate-950">{value}</p>
+      <p className="motus-progress-status-label mt-0.5 font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="motus-progress-status-subline mt-0.5 line-clamp-2 text-slate-600">{subline}</p>
     </div>
   );
 }
@@ -179,7 +179,7 @@ export function MemberProgressHeroCard({ scores, memberFirstName }: MemberProgre
           label="Uke-score"
           value={`${weekly.score}/${weekly.maxScore}`}
           subline={weekly.subline}
-          icon={<Target className="h-4 w-4" strokeWidth={2} />}
+          icon={<Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={2} />}
           tone="pink"
         />
         <ScoreRing
