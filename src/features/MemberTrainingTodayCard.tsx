@@ -103,12 +103,12 @@ export function MemberTrainingTodayCard({
           <TrainingStartButton
             onClick={primaryAction.onClick}
             disabled={primaryAction.disabled}
-            className="w-full"
+            className="w-full text-white"
           >
             {primaryAction.completed ? (
-              <Check className="h-4 w-4" aria-hidden />
+              <Check className="h-4 w-4 text-white" aria-hidden />
             ) : (
-              <Play className="h-4 w-4 fill-slate-900/80" aria-hidden />
+              <Play className="h-4 w-4 fill-white text-white" aria-hidden />
             )}
             {primaryAction.label}
           </TrainingStartButton>
