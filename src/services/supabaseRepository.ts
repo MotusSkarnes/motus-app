@@ -1723,6 +1723,36 @@ export async function deleteProgramRemote(
 ): Promise<boolean> {
   if (!supabaseClient) return false;
   const memberInitiated = context?.requestedBy === "member";
+
+  try {
+    const edgeResult = await promiseWithTimeout(
+      supabaseClient.functions.invoke("delete-training-program", {
+        body: {
+          programId,
+          memberIds: context?.memberIds,
+          targetEmail: context?.targetEmail,
+          targetName: context?.targetName,
+          requestedBy: context?.requestedBy,
+        },
+      }),
+      PROGRAM_EDGE_INVOKE_TIMEOUT_MS,
+      { data: null, error: { message: "delete-training-program timeout" } },
+    );
+    if (!edgeResult.error && (edgeResult.data as { ok?: boolean } | null)?.ok === true) {
+      return true;
+    }
+    if (edgeResult.error) {
+      const details = await extractFunctionErrorDetails(edgeResult.error);
+      console.warn(
+        "delete-training-program invoke failed; falling back to direct delete:",
+        String((edgeResult.error as { message?: string }).message ?? "Unknown error"),
+        details,
+      );
+    }
+  } catch (error) {
+    console.warn("delete-training-program invoke threw; falling back to direct delete:", error);
+  }
+
   const { data: programRow, error: lookupError } = await supabaseClient
     .from("training_programs")
     .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by")
@@ -1812,7 +1842,7 @@ export async function deleteProgramRemote(
   if (error) {
     console.warn("Supabase linked program delete failed:", error.message);
     if (memberInitiated) {
-      return true;
+      return false;
     }
     return false;
   }
