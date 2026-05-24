@@ -4,6 +4,7 @@ import {
   buildPeriodPlanPlannedEntriesByMonth,
   HIDDEN_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY,
   findPeriodPlanAutoCompleteTargets,
+  derivePeriodPlanCompletedEntryKeysFromLogs,
   findPeriodPlanEntryForCalendarDate,
   findTodayPeriodPlanEntryInPlans,
   resolveTodayPeriodPlanEntryForHome,
@@ -339,5 +340,41 @@ describe("period plan auto-complete", () => {
       completedAt: new Date(2026, 4, 22),
     });
     expect(targets).toEqual([{ planId: "plan-1", weekNumber: 1, day: "friday" }]);
+  });
+
+  it("matches by program id when log title differs from plan entry", () => {
+    const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "Styrke A" } }]);
+    plan.startDate = "2026-05-19";
+    const mondayDate = resolvePeriodPlanPlannedDate(plan, 1, "monday");
+    expect(mondayDate).not.toBeNull();
+    const targets = findPeriodPlanAutoCompleteTargets({
+      plans: [plan],
+      swapsByPlan: {},
+      programTitle: "Styrke A (kopi)",
+      programId: "p1",
+      programs,
+      completedAt: mondayDate!,
+    });
+    expect(targets).toEqual([{ planId: "plan-1", weekNumber: 1, day: "monday" }]);
+  });
+
+  it("derives completed keys from finished workout logs", () => {
+    const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, friday: "Styrke A" } }]);
+    plan.startDate = "2026-05-22";
+    const keys = derivePeriodPlanCompletedEntryKeysFromLogs({
+      plans: [plan],
+      swapsByPlan: {},
+      programs,
+      memberId: "m1",
+      logs: [
+        {
+          memberId: "m1",
+          programTitle: "Styrke A",
+          date: "22.05.2026 kl 18:30",
+          status: "Fullført",
+        },
+      ],
+    });
+    expect(keys).toEqual(["plan-1:1:friday"]);
   });
 });

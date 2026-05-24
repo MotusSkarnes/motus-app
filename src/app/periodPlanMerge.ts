@@ -1,5 +1,5 @@
 import { getDefaultPeriodPlanStartMondayISO, parseStoredLogDate } from "./dateFormat";
-import { findProgramForPeriodPlanEntry, isPassivePeriodPlanEntry } from "./periodPlanEntryActions";
+import { findProgramForPeriodPlanEntry, isPassivePeriodPlanEntry, isGroupPeriodPlanEntry, groupWorkoutLogTitle, resolveGroupClassNameFromPeriodEntry } from "./periodPlanEntryActions";
 import { applyPeriodPlanSwaps, getSwapsForWeek, WEEKDAY_PLAN_ORDER, type PeriodPlanSwapsByPlan } from "./periodPlanSwaps";
 import type { PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "./types";
 
@@ -223,15 +223,30 @@ export type PeriodPlanAutoCompleteTarget = {
   day: WeekdayPlanKey;
 };
 
-/** Om planlagt periodeplan-rad svarer til et fullført program (tittel / fuzzy match). */
+/** Om planlagt periodeplan-rad svarer til et fullført program (tittel / fuzzy match / program-id). */
 export function periodPlanEntryMatchesCompletedProgram(
   entry: string,
   programTitle: string,
   programs: TrainingProgram[],
+  programId?: string,
 ): boolean {
   const trimmedEntry = entry.trim();
   const trimmedTitle = programTitle.trim();
   if (!trimmedEntry || !trimmedTitle || isPassivePeriodPlanEntry(trimmedEntry)) return false;
+
+  if (isGroupPeriodPlanEntry(trimmedEntry)) {
+    const expectedTitle = groupWorkoutLogTitle(resolveGroupClassNameFromPeriodEntry(trimmedEntry));
+    const entryNorm = trimmedEntry.toLowerCase();
+    const logNorm = trimmedTitle.toLowerCase();
+    const expectedNorm = expectedTitle.toLowerCase();
+    return entryNorm === logNorm || expectedNorm === logNorm;
+  }
+
+  const trimmedProgramId = programId?.trim() ?? "";
+  if (trimmedProgramId) {
+    const entryProgram = findProgramForPeriodPlanEntry(trimmedEntry, programs);
+    if (entryProgram?.id === trimmedProgramId) return true;
+  }
 
   const entryProgram = findProgramForPeriodPlanEntry(trimmedEntry, programs);
   const titleProgram = findProgramForPeriodPlanEntry(trimmedTitle, programs);
@@ -247,12 +262,17 @@ export function periodPlanEntryMatchesCompletedProgram(
   return trimmedEntry.toLowerCase() === trimmedTitle.toLowerCase();
 }
 
+export function buildPeriodPlanEntryKey(planId: string, weekNumber: number, day: WeekdayPlanKey): string {
+  return `${planId}:${weekNumber}:${day}`;
+}
+
 /** Finn periodeplan-rader som skal hakkes av når et program er fullført på en kalenderdag. */
 export function findPeriodPlanAutoCompleteTargets(input: {
   plans: PeriodSchedulePlan[];
   swapsByPlan: PeriodPlanSwapsByPlan;
   programTitle: string;
   programs: TrainingProgram[];
+  programId?: string;
   completedAt?: Date;
 }): PeriodPlanAutoCompleteTarget[] {
   const completedAt = input.completedAt ?? new Date();
@@ -262,14 +282,51 @@ export function findPeriodPlanAutoCompleteTargets(input: {
   for (const plan of input.plans) {
     const match = findPeriodPlanEntryForCalendarDate(plan, completedAt, input.swapsByPlan);
     if (!match?.entry.trim()) continue;
-    if (!periodPlanEntryMatchesCompletedProgram(match.entry, input.programTitle, input.programs)) continue;
-    const key = `${plan.id}:${match.weekNumber}:${match.day}`;
+    if (
+      !periodPlanEntryMatchesCompletedProgram(match.entry, input.programTitle, input.programs, input.programId)
+    ) {
+      continue;
+    }
+    const key = buildPeriodPlanEntryKey(plan.id, match.weekNumber, match.day);
     if (seen.has(key)) continue;
     seen.add(key);
     targets.push({ planId: plan.id, weekNumber: match.weekNumber, day: match.day });
   }
 
   return targets;
+}
+
+/** Avled fullførte periodeplan-nøkler fra fullførte øktlogger (synk ved oppstart). */
+export function derivePeriodPlanCompletedEntryKeysFromLogs(input: {
+  plans: PeriodSchedulePlan[];
+  swapsByPlan: PeriodPlanSwapsByPlan;
+  programs: TrainingProgram[];
+  logs: Array<{ memberId: string; programTitle: string; date: string; status: string }>;
+  memberId: string;
+}): string[] {
+  const memberId = input.memberId.trim();
+  if (!memberId) return [];
+
+  const keys = new Set<string>();
+  for (const log of input.logs) {
+    if (log.memberId.trim() !== memberId) continue;
+    if (log.status !== "Fullført") continue;
+    const completedAt = parseStoredLogDate(log.date);
+    if (!completedAt) continue;
+
+    const targets = findPeriodPlanAutoCompleteTargets({
+      plans: input.plans,
+      swapsByPlan: input.swapsByPlan,
+      programTitle: log.programTitle,
+      programs: input.programs,
+      completedAt,
+    });
+    for (const target of targets) {
+      keys.add(buildPeriodPlanEntryKey(target.planId, target.weekNumber, target.day));
+    }
+  }
+
+  return Array.from(keys);
 }
 
 export type PeriodPlanWeekNavItem = {

@@ -120,6 +120,8 @@ import {
   readPeriodPlansByMemberId,
   removeMemberOwnedPeriodPlanFromStorage,
   findPeriodPlanAutoCompleteTargets,
+  buildPeriodPlanEntryKey,
+  derivePeriodPlanCompletedEntryKeysFromLogs,
   findPeriodPlanEntryForCalendarDate,
   readActivePeriodPlanIdForMembers,
   resolvePeriodPlanWeekNumberForDate,
@@ -1069,7 +1071,6 @@ export function MemberPortal(props: MemberPortalProps) {
   const lastMemberCoreHydrationIdRef = useRef<string | null>(null);
   const periodPlanCompletedDirtyRef = useRef(false);
   const periodPlanSwapsDirtyRef = useRef(false);
-  const prevWorkoutModeRef = useRef(workoutMode);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [programLibraryMenuId, setProgramLibraryMenuId] = useState<string | null>(null);
   const [programLibraryFilter, setProgramLibraryFilter] = useState<"all" | "standalone" | "periodPlan">("all");
@@ -2701,22 +2702,36 @@ export function MemberPortal(props: MemberPortalProps) {
       setCompletedPeriodPlanEntryKeys([]);
       return;
     }
+
+    let stored: string[] = [];
     try {
       const raw = window.localStorage.getItem(getPeriodPlanCompletedStorageKey(memberId));
-      if (!raw) {
-        setCompletedPeriodPlanEntryKeys([]);
-        return;
+      if (raw) {
+        const parsed = JSON.parse(raw) as unknown;
+        if (Array.isArray(parsed)) {
+          stored = parsed.map((item) => String(item)).filter(Boolean);
+        }
       }
-      const parsed = JSON.parse(raw) as unknown;
-      if (!Array.isArray(parsed)) {
-        setCompletedPeriodPlanEntryKeys([]);
-        return;
-      }
-      setCompletedPeriodPlanEntryKeys(parsed.map((item) => String(item)).filter(Boolean));
     } catch {
-      setCompletedPeriodPlanEntryKeys([]);
+      stored = [];
     }
-  }, [editableMember?.id]);
+
+    const derived = derivePeriodPlanCompletedEntryKeysFromLogs({
+      plans: visiblePeriodPlans,
+      swapsByPlan: periodPlanSwapsByPlan,
+      programs: memberProgramsForPeriodPlan,
+      logs: memberLogs,
+      memberId,
+    });
+
+    setCompletedPeriodPlanEntryKeys(Array.from(new Set([...stored, ...derived])));
+  }, [
+    editableMember?.id,
+    visiblePeriodPlans,
+    periodPlanSwapsByPlan,
+    memberProgramsForPeriodPlan,
+    memberLogs,
+  ]);
   useEffect(() => {
     const memberId = editableMember?.id;
     if (!memberId || typeof window === "undefined") return;
@@ -4083,8 +4098,72 @@ export function MemberPortal(props: MemberPortalProps) {
     return formatDateDdMmYyyy(plannedDate);
   }
 
-  function buildPeriodPlanEntryKey(planId: string, weekNumber: number, day: WeekdayPlanKey): string {
-    return `${planId}:${weekNumber}:${day}`;
+  function resolveWorkoutProgramTitle(programId: string, fallbackTitle?: string): string {
+    const trimmedFallback = fallbackTitle?.trim() ?? "";
+    if (trimmedFallback) return trimmedFallback;
+    return (
+      memberProgramsForPeriodPlan.find((item) => item.id === programId)?.title ??
+      memberProgramsInActiveLibrary.find((item) => item.id === programId)?.title ??
+      programs.find((item) => item.id === programId)?.title ??
+      ""
+    );
+  }
+
+  function applyPeriodPlanAutoComplete(input: { programId?: string; programTitle: string; completedAt: Date }) {
+    if (!activeMemberId || !input.programTitle.trim()) return;
+
+    const targets = findPeriodPlanAutoCompleteTargets({
+      plans: visiblePeriodPlans,
+      swapsByPlan: periodPlanSwapsByPlan,
+      programTitle: input.programTitle,
+      programId: input.programId,
+      programs: memberProgramsForPeriodPlan,
+      completedAt: input.completedAt,
+    });
+    if (!targets.length) return;
+
+    periodPlanCompletedDirtyRef.current = true;
+    setCompletedPeriodPlanEntryKeys((prev) => {
+      const next = [...prev];
+      let changed = false;
+      for (const target of targets) {
+        const key = buildPeriodPlanEntryKey(target.planId, target.weekNumber, target.day);
+        if (!next.includes(key)) {
+          next.push(key);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }
+
+  function handleFinishWorkoutMode(input?: { reflection?: WorkoutReflection }) {
+    const snapshot = workoutMode;
+    finishWorkoutMode(input);
+    if (!snapshot?.programId) return;
+    applyPeriodPlanAutoComplete({
+      programId: snapshot.programId,
+      programTitle: resolveWorkoutProgramTitle(snapshot.programId, snapshot.programTitle),
+      completedAt: new Date(),
+    });
+  }
+
+  function handleLogIntervalWorkout(input: LogIntervalWorkoutInput) {
+    logIntervalWorkout(input);
+    applyPeriodPlanAutoComplete({
+      programId: input.programId,
+      programTitle: input.programTitle?.trim() || resolveWorkoutProgramTitle(input.programId),
+      completedAt: new Date(),
+    });
+  }
+
+  function handleLogGroupWorkout(input: Parameters<typeof logGroupWorkout>[0]) {
+    logGroupWorkout(input);
+    const completedAt = input.date?.trim() ? parseStoredLogDate(input.date) ?? new Date() : new Date();
+    applyPeriodPlanAutoComplete({
+      programTitle: groupWorkoutLogTitle(input.className),
+      completedAt,
+    });
   }
 
   function resolvePeriodPlanTargetMemberIds(): string[] {
@@ -4223,51 +4302,6 @@ export function MemberPortal(props: MemberPortalProps) {
     periodPlanCompletedDirtyRef.current = true;
     setCompletedPeriodPlanEntryKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
   }
-
-  useEffect(() => {
-    const previous = prevWorkoutModeRef.current;
-    prevWorkoutModeRef.current = workoutMode;
-    if (!previous || workoutMode || !activeMemberId) return;
-
-    const programTitle =
-      previous.programTitle?.trim() ||
-      memberProgramsForPeriodPlan.find((item) => item.id === previous.programId)?.title ||
-      memberProgramsInActiveLibrary.find((item) => item.id === previous.programId)?.title ||
-      programs.find((item) => item.id === previous.programId)?.title ||
-      "";
-    if (!programTitle.trim()) return;
-
-    const targets = findPeriodPlanAutoCompleteTargets({
-      plans: visiblePeriodPlans,
-      swapsByPlan: periodPlanSwapsByPlan,
-      programTitle,
-      programs: memberProgramsForPeriodPlan,
-      completedAt: new Date(),
-    });
-    if (!targets.length) return;
-
-    periodPlanCompletedDirtyRef.current = true;
-    setCompletedPeriodPlanEntryKeys((prev) => {
-      const next = [...prev];
-      let changed = false;
-      for (const target of targets) {
-        const key = buildPeriodPlanEntryKey(target.planId, target.weekNumber, target.day);
-        if (!next.includes(key)) {
-          next.push(key);
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [
-    workoutMode,
-    activeMemberId,
-    visiblePeriodPlans,
-    periodPlanSwapsByPlan,
-    memberProgramsForPeriodPlan,
-    memberProgramsInActiveLibrary,
-    programs,
-  ]);
 
   function unmarkPeriodPlanDayCompleted(planId: string, weekNumber: number, day: WeekdayPlanKey) {
     const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
@@ -6429,7 +6463,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   setIntervalTimerStatus("Kondisjonsøkten er lagret. PT kan se den i loggen.");
                   setShowIntervalTimerModal(false);
                 }}
-                logIntervalWorkout={logIntervalWorkout}
+                logIntervalWorkout={handleLogIntervalWorkout}
               />
             </>
           ) : null}
@@ -6631,7 +6665,7 @@ export function MemberPortal(props: MemberPortalProps) {
       deferWorkoutExerciseGroup={deferWorkoutExerciseGroup}
       updateWorkoutModeNote={updateWorkoutModeNote}
       updateWorkoutExerciseNote={updateWorkoutExerciseNote}
-      finishWorkoutMode={finishWorkoutMode}
+      finishWorkoutMode={handleFinishWorkoutMode}
       cancelWorkoutMode={cancelWorkoutMode}
       restCountdownEnabled={restCountdownEnabled}
       onDismissWorkout={() => {

@@ -188,7 +188,7 @@ export function findPeriodPlanForProgram(
 export function getPeriodPlanDayListLabel(entry: string, action: PeriodPlanEntryAction): string {
   const trimmed = entry.trim();
   if (!trimmed) return "Ingen plan";
-  if (action.kind === "log-group") return "Gruppetime";
+  if (action.kind === "log-group") return groupWorkoutLogTitle(action.className);
   if (action.kind === "start-program") return "Økt planlagt";
   if (action.kind === "log-generic") return "Planlagt aktivitet";
   const normalized = trimmed.toLowerCase();
