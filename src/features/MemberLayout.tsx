@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "react";
 import { MOTUS } from "../app/data";
 import {
@@ -41,10 +41,7 @@ import { InspirationHub } from "./InspirationHub";
 import { MemberDesktopTabNav, MemberMobileTabNav } from "./MemberTabNavigation";
 import { MemberHomeHeaderActions } from "./MemberHomeHeaderActions";
 import { MemberNotificationsPanel } from "./MemberNotificationsPanel";
-
-const MemberProgressTab = lazy(() =>
-  import("./MemberProgressTab").then((module) => ({ default: module.MemberProgressTab })),
-);
+import { MemberProgressTab } from "./MemberProgressTab";
 
 function resolveActiveMemberForUser(appState: AppState): Member | null {
   const currentUser = appState.currentUser;
@@ -257,14 +254,6 @@ export function MemberLayout({
       if (!cancelled) setRenderedPortalTab(memberTab);
     };
 
-    if (typeof window.requestIdleCallback === "function") {
-      const idleId = window.requestIdleCallback(mountPortal, { timeout: 80 });
-      return () => {
-        cancelled = true;
-        window.cancelIdleCallback(idleId);
-      };
-    }
-
     const timeoutId = window.setTimeout(mountPortal, 0);
     return () => {
       cancelled = true;
@@ -418,30 +407,6 @@ export function MemberLayout({
   }, [isMemberLimited, memberTab, setMemberTab]);
 
   const showProgressTab = memberTab === "progress" && !isMemberLimited && Boolean(activeMember);
-  const [progressTabReady, setProgressTabReady] = useState(showProgressTab);
-  useEffect(() => {
-    if (!showProgressTab) {
-      setProgressTabReady(false);
-      return;
-    }
-    setProgressTabReady(false);
-    let cancelled = false;
-    const ready = () => {
-      if (!cancelled) setProgressTabReady(true);
-    };
-    if (typeof window.requestIdleCallback === "function") {
-      const idleId = window.requestIdleCallback(ready, { timeout: 120 });
-      return () => {
-        cancelled = true;
-        window.cancelIdleCallback(idleId);
-      };
-    }
-    const timeoutId = window.setTimeout(ready, 16);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timeoutId);
-    };
-  }, [showProgressTab, memberTab]);
 
   const memberPortalProps: ComponentProps<typeof MemberPortal> = {
     members: appState.members,
@@ -585,35 +550,21 @@ export function MemberLayout({
             }}
             onAddPeriodPlan={addInspirationPeriodPlan}
           />
-        ) : showProgressTab ? (
-          progressTabReady && activeMember ? (
-            <Suspense
-              fallback={
-                <div className="flex min-h-[40vh] items-center justify-center py-12 text-sm text-slate-500" aria-live="polite">
-                  Laster fremgang…
-                </div>
-              }
-            >
-              <MemberProgressTab
-                activeMember={activeMember}
-                members={appState.members}
-                logs={appState.logs}
-                exercises={appState.exercises}
-                programs={appState.programs}
-                messages={appState.messages}
-                memberViewId={appState.memberViewId}
-                currentUserEmail={appState.currentUser?.email ?? ""}
-                currentUserMemberId={appState.currentUser?.memberId}
-                currentUserSupabaseId={appState.currentUser?.id}
-                setMemberTab={setMemberTab}
-                updateMember={updateMember}
-              />
-            </Suspense>
-          ) : (
-            <div className="flex min-h-[40vh] items-center justify-center py-12 text-sm text-slate-500" aria-live="polite">
-              Laster fremgang…
-            </div>
-          )
+        ) : showProgressTab && activeMember ? (
+          <MemberProgressTab
+            activeMember={activeMember}
+            members={appState.members}
+            logs={appState.logs}
+            exercises={appState.exercises}
+            programs={appState.programs}
+            messages={appState.messages}
+            memberViewId={appState.memberViewId}
+            currentUserEmail={appState.currentUser?.email ?? ""}
+            currentUserMemberId={appState.currentUser?.memberId}
+            currentUserSupabaseId={appState.currentUser?.id}
+            setMemberTab={setMemberTab}
+            updateMember={updateMember}
+          />
         ) : renderedPortalTab && renderedPortalTab === memberTab ? (
           <MemberPortal key={renderedPortalTab} {...memberPortalProps} />
         ) : (

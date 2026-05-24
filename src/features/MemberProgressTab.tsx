@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { parseStoredLogDate } from "../app/dateFormat";
 import { computeMemberProgressScores } from "../app/memberMomentumScores";
 import { computeMemberProgressState } from "../app/memberProgressGamification";
@@ -15,10 +15,7 @@ import { PersonalRecordProgressModal } from "./PersonalRecordProgressModal";
 import { buildExerciseGroupByName, computeMuscleGroupStats } from "./muscleSplitStats";
 import type { MuscleSplitMetric, MuscleSplitPeriod } from "./muscleSplitStats";
 import type { PersonalRecordEntry } from "./MemberPersonalRecordsSection";
-
-const MemberProgressPageView = lazy(() =>
-  import("./MemberProgressPageView").then((module) => ({ default: module.MemberProgressPageView })),
-);
+import { MemberProgressPageView } from "./MemberProgressPageView";
 
 function getStartOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -320,41 +317,33 @@ export function MemberProgressTab({
 
   return (
     <>
-      <Suspense
-        fallback={
-          <div className="flex min-h-[40vh] items-center justify-center py-12 text-sm text-slate-500" aria-live="polite">
-            Laster fremgang…
-          </div>
-        }
-      >
-        <MemberProgressPageView
-          scores={memberProgressScores}
-          memberProgress={memberProgress}
-          streakWeeks={memberProgress.streakWeeks}
-          completedLogDates={completedLogDates}
-          completedLogs={completedLogs}
-          nowTimestamp={nowTimestamp}
-          personalRecords={personalRecords}
-          personalRecordsPreview={personalRecordsPreview}
-          showAllPersonalRecords={showAllPersonalRecords}
-          onToggleShowAllPersonalRecords={() => setShowAllPersonalRecords((prev) => !prev)}
-          favoritePersonalRecordNames={cleanedFavoritePersonalRecordNames}
-          onToggleFavoritePersonalRecord={toggleFavoritePersonalRecord}
-          onOpenProgressExercise={setPrProgressExerciseName}
-          onSharePersonalRecord={(record) => void sharePersonalRecordEntry(record)}
-          exercises={exercises}
-          profileSaveInfo={profileSaveInfo}
-          muscleSplitStats={muscleSplitStats}
-          muscleSplitMetric={muscleSplitMetric}
-          muscleSplitPeriod={muscleSplitPeriod}
-          onMuscleSplitMetricChange={setMuscleSplitMetric}
-          onMuscleSplitPeriodChange={setMuscleSplitPeriod}
-          weeklySummaryStats={progressShareLast7Days}
-          onShareWeeklySummary={() => void shareMonthlyProgressSummary()}
-          weeklyShareStatus={progressShareStatus ?? motusCardShareStatus}
-          onContinueTrainingFlow={() => setMemberTab("programs")}
-        />
-      </Suspense>
+      <MemberProgressPageView
+        scores={memberProgressScores}
+        memberProgress={memberProgress}
+        streakWeeks={memberProgress.streakWeeks}
+        completedLogDates={completedLogDates}
+        completedLogs={completedLogs}
+        nowTimestamp={nowTimestamp}
+        personalRecords={personalRecords}
+        personalRecordsPreview={personalRecordsPreview}
+        showAllPersonalRecords={showAllPersonalRecords}
+        onToggleShowAllPersonalRecords={() => setShowAllPersonalRecords((prev) => !prev)}
+        favoritePersonalRecordNames={cleanedFavoritePersonalRecordNames}
+        onToggleFavoritePersonalRecord={toggleFavoritePersonalRecord}
+        onOpenProgressExercise={setPrProgressExerciseName}
+        onSharePersonalRecord={(record) => void sharePersonalRecordEntry(record)}
+        exercises={exercises}
+        profileSaveInfo={profileSaveInfo}
+        muscleSplitStats={muscleSplitStats}
+        muscleSplitMetric={muscleSplitMetric}
+        muscleSplitPeriod={muscleSplitPeriod}
+        onMuscleSplitMetricChange={setMuscleSplitMetric}
+        onMuscleSplitPeriodChange={setMuscleSplitPeriod}
+        weeklySummaryStats={progressShareLast7Days}
+        onShareWeeklySummary={() => void shareMonthlyProgressSummary()}
+        weeklyShareStatus={progressShareStatus ?? motusCardShareStatus}
+        onContinueTrainingFlow={() => setMemberTab("programs")}
+      />
 
       {prProgressExerciseName ? (
         <PersonalRecordProgressModal
