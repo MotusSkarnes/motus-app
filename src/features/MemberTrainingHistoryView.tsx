@@ -264,37 +264,39 @@ export function MemberTrainingHistoryView({
           </svg>
         </div>
         <div className="motus-member-history-hero-body">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h2 className="motus-member-history-hero-title">Historikk</h2>
-              <Sparkles className="h-5 w-5 shrink-0 text-[#ff4da6]" aria-hidden />
+          <div className="motus-member-history-hero-top">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h2 className="motus-member-history-hero-title">Historikk</h2>
+                <Sparkles className="h-5 w-5 shrink-0 text-[#ff4da6]" aria-hidden />
+              </div>
+              <p className="motus-member-history-hero-subtitle">Se utviklingen din over tid</p>
             </div>
-            <p className="motus-member-history-hero-subtitle">Se utviklingen din over tid</p>
-            {periodBadge ? <span className="motus-member-history-hero-badge">{periodBadge}</span> : null}
-          </div>
-          <div className="motus-member-history-hero-ring" aria-hidden>
-            <svg viewBox="0 0 88 88" className="motus-member-history-hero-ring-svg">
-              <circle cx="44" cy="44" r="32" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="4" />
+            <div className="motus-member-history-hero-ring" aria-hidden>
+            <svg viewBox="0 0 72 72" className="motus-member-history-hero-ring-svg">
+              <circle cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="3.5" />
               <circle
-                cx="44"
-                cy="44"
-                r="32"
+                cx="36"
+                cy="36"
+                r="28"
                 fill="none"
                 stroke="#ffffff"
-                strokeWidth="4"
+                strokeWidth="3.5"
                 strokeLinecap="round"
-                strokeDasharray={`${Math.max(18, Math.min(201, streakWeeks > 0 ? 201 : 40))} 201`}
-                transform="rotate(-90 44 44)"
+                strokeDasharray={`${Math.max(16, Math.min(176, streakWeeks > 0 ? 176 : 36))} 176`}
+                transform="rotate(-90 36 36)"
               />
             </svg>
             <div className="motus-member-history-hero-ring-center">
-              <MotusFlameIcon className="h-6 w-6" title="" />
+              <MotusFlameIcon className="motus-member-history-hero-flame" title="" />
               <span className="motus-member-history-hero-ring-value">{streakWeeks}</span>
               <span className="motus-member-history-hero-ring-label">
                 {streakWeeks === 1 ? "uke" : "uker"} på rad
               </span>
             </div>
           </div>
+          </div>
+          {periodBadge ? <span className="motus-member-history-hero-badge">{periodBadge}</span> : null}
         </div>
       </section>
 
