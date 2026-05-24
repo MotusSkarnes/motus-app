@@ -2573,11 +2573,11 @@ button {
   min-height: 2.75rem;
   border: 0;
   border-radius: 0.875rem;
-  background: linear-gradient(90deg, #27e0c1 0%, #ff2d95 100%);
+  background: var(--motus-gradient);
   font-size: 0.875rem;
   font-weight: 700;
   color: #ffffff;
-  box-shadow: 0 12px 28px -16px rgba(255, 45, 149, 0.65);
+  box-shadow: 0 12px 28px -16px rgba(217, 18, 120, 0.45);
 }
 
 .motus-trainer-cta-secondary {
@@ -3881,7 +3881,8 @@ button {
   font-size: 0.6875rem;
   font-weight: 800;
   color: #fff;
-  background: linear-gradient(90deg, #30e3be, #22d3ee);
+  background: var(--motus-gradient);
+  box-shadow: 0 8px 20px -12px rgba(217, 18, 120, 0.45);
 }
 
 .motus-pt-home-insight-grid {
@@ -4003,8 +4004,8 @@ button {
 }
 
 .motus-pt-home-tool-icon--mint {
-  background: rgba(34, 211, 238, 0.15);
-  color: #0891b2;
+  background: rgba(48, 227, 190, 0.15);
+  color: #0d9488;
 }
 
 .motus-pt-home-tool-icon--slate {
@@ -4057,7 +4058,8 @@ button {
   font-size: 0.75rem;
   font-weight: 800;
   color: #fff;
-  background: linear-gradient(90deg, #30e3be, #d91278);
+  background: var(--motus-gradient);
+  box-shadow: 0 8px 20px -12px rgba(217, 18, 120, 0.45);
 }
 
 .motus-pt-home-promo-preview-card {
