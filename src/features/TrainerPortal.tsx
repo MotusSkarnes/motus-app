@@ -4500,9 +4500,12 @@ function pickFirstName(value: unknown): string {
             setCustomerSubTab("messages");
             handleQuickFollowUpMessage(selectedMember);
           }}
-          onCall={() => {
-            if (!selectedMember?.phone?.trim()) return;
-            window.open(`tel:${selectedMember.phone.trim()}`, "_self");
+          onOpenCustomerCard={() => {
+            if (!selectedMember) return;
+            setCustomerSubTab("overview");
+            window.requestAnimationFrame(() => {
+              document.getElementById("motus-pt-customer-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
           }}
           onNewTask={() => {
             setTodoTitle(selectedMember ? `Oppfølging: ${selectedMember.name}` : "");
@@ -4916,7 +4919,8 @@ function pickFirstName(value: unknown): string {
                     options={visibleMembers.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
                   />
                 </div>
-                <div className="motus-card-hero motus-pt-dash-legacy-hide-xl p-5">
+                <TrainerPtDetailPortal>
+                <div id="motus-pt-customer-card" className="motus-card-hero scroll-mt-4 p-5">
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div className="motus-section-label">Kundekort</div>
                     <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-slate-400 sm:h-14 sm:w-14">
@@ -5284,7 +5288,6 @@ function pickFirstName(value: unknown): string {
                   </div>
                 </div>
 
-                <TrainerPtDetailPortal>
                 {customerSubTab === "overview" ? (
                   <div className="space-y-4">
                     <div className="grid gap-4 xl:grid-cols-2">

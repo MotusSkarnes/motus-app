@@ -8,9 +8,9 @@ import {
   Dumbbell,
   Filter,
   Flame,
+  IdCard,
   MessageSquare,
   MoreHorizontal,
-  Phone,
   Pin,
   Plus,
   Search,
@@ -57,7 +57,7 @@ export type TrainerPtDashboardProps = {
   customerStatusTone?: "active" | "warning" | "critical";
   customerAvatarUrl?: string | null;
   onMessage?: () => void;
-  onCall?: () => void;
+  onOpenCustomerCard?: () => void;
   onNewTask?: () => void;
   subTabs?: ReactNode;
   metrics?: CustomerMetrics | null;
@@ -158,7 +158,7 @@ export function TrainerPtDashboard({
   customerStatusTone = "active",
   customerAvatarUrl,
   onMessage,
-  onCall,
+  onOpenCustomerCard,
   onNewTask,
   subTabs,
   metrics,
@@ -380,9 +380,9 @@ export function TrainerPtDashboard({
                     <MessageSquare className="h-4 w-4" />
                     Melding
                   </button>
-                  <button type="button" className="motus-pt-dash-btn motus-pt-dash-btn--ghost" onClick={onCall}>
-                    <Phone className="h-4 w-4" />
-                    Ring
+                  <button type="button" className="motus-pt-dash-btn motus-pt-dash-btn--ghost" onClick={onOpenCustomerCard}>
+                    <IdCard className="h-4 w-4" />
+                    Kundekort
                   </button>
                   <button type="button" className="motus-pt-dash-btn motus-pt-dash-btn--ghost" aria-label="Flere valg">
                     <MoreHorizontal className="h-4 w-4" />
