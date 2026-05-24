@@ -1,3 +1,5 @@
+import { createPortal } from "react-dom";
+import { memo } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp } from "lucide-react";
 import { MOTUS } from "../app/data";
@@ -77,7 +79,10 @@ function MemberMobileTabButton({
   return (
     <button
       type="button"
-      onClick={activateTab}
+      onPointerUp={(event) => {
+        if (event.button !== 0) return;
+        activateTab();
+      }}
       className={`motus-mobile-tab-button ${className} ${isActive ? "motus-mobile-tab-active rounded-xl bg-white/70 shadow-[0_1px_4px_-2px_rgba(15,23,42,0.12)]" : "text-slate-500"}`}
     >
       <Icon
@@ -95,7 +100,7 @@ function MemberMobileTabButton({
   );
 }
 
-function MemberMobileTabBar({ memberTab, setMemberTab, isMemberLimited }: MemberTabNavigationProps) {
+const MemberMobileTabBar = memo(function MemberMobileTabBar({ memberTab, setMemberTab, isMemberLimited }: MemberTabNavigationProps) {
   const tabs = memberNavTabs(isMemberLimited);
 
   return (
@@ -116,8 +121,9 @@ function MemberMobileTabBar({ memberTab, setMemberTab, isMemberLimited }: Member
       </div>
     </nav>
   );
-}
+});
 
 export function MemberMobileTabNav(props: MemberTabNavigationProps) {
-  return <MemberMobileTabBar {...props} />;
+  if (typeof document === "undefined") return null;
+  return createPortal(<MemberMobileTabBar {...props} />, document.body);
 }

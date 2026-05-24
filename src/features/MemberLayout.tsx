@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "react";
 import { MOTUS } from "../app/data";
 import {
@@ -214,25 +214,58 @@ export function MemberLayout({
     setWelcomeModalOpen(false);
   }
 
-  const navigateMemberTab = useCallback(
-    (tab: MemberTab) => {
-      if (tab === memberTab) return;
-      clearMemberFocusWorkoutLogId?.();
-      clearMemberFocusProgramId?.();
-      setMemberTab(tab);
-    },
-    [clearMemberFocusProgramId, clearMemberFocusWorkoutLogId, memberTab, setMemberTab],
-  );
-
-  const deferredMemberTab = useDeferredValue(memberTab);
-  const isMemberTabTransitionPending = deferredMemberTab !== memberTab;
-
   const welcomeModalOpenRef = useRef(welcomeModalOpen);
   welcomeModalOpenRef.current = welcomeModalOpen;
   const onboardingGateOpenRef = useRef(onboardingGateOpen);
   onboardingGateOpenRef.current = onboardingGateOpen;
   const memberCheckInOverlayOpenRef = useRef(memberCheckInOverlayOpen);
   memberCheckInOverlayOpenRef.current = memberCheckInOverlayOpen;
+
+  const navigateMemberTab = useCallback(
+    (tab: MemberTab) => {
+      if (tab === memberTab) return;
+      clearMemberFocusWorkoutLogId?.();
+      clearMemberFocusProgramId?.();
+      if (welcomeModalOpenRef.current) dismissWelcomeModal();
+      if (onboardingGateOpenRef.current) setOnboardingGateOpen(false);
+      if (memberCheckInOverlayOpenRef.current) setMemberCheckInOverlayOpen(false);
+      setMemberTab(tab);
+    },
+    [clearMemberFocusProgramId, clearMemberFocusWorkoutLogId, memberTab, setMemberCheckInOverlayOpen, setMemberTab],
+  );
+
+  const [renderedPortalTab, setRenderedPortalTab] = useState<MemberTab | null>(
+    memberTab === "inspiration" ? null : memberTab,
+  );
+  const isPortalTransitionPending = memberTab !== "inspiration" && renderedPortalTab !== memberTab;
+
+  useEffect(() => {
+    if (memberTab === "inspiration") {
+      setRenderedPortalTab(null);
+      return;
+    }
+    if (renderedPortalTab === memberTab) return;
+
+    setRenderedPortalTab(null);
+    let cancelled = false;
+    const mountPortal = () => {
+      if (!cancelled) setRenderedPortalTab(memberTab);
+    };
+
+    if (typeof window.requestIdleCallback === "function") {
+      const idleId = window.requestIdleCallback(mountPortal, { timeout: 80 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(idleId);
+      };
+    }
+
+    const timeoutId = window.setTimeout(mountPortal, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [memberTab, renderedPortalTab]);
 
   const previousMemberTabRef = useRef(memberTab);
   useEffect(() => {
@@ -389,7 +422,7 @@ export function MemberLayout({
     logs: appState.logs,
     messages: appState.messages,
     memberViewId: appState.memberViewId,
-    memberTab: deferredMemberTab,
+    memberTab: renderedPortalTab ?? memberTab,
     memberInteractionTab: memberTab,
     setMemberTab,
     updateMember,
@@ -504,8 +537,8 @@ export function MemberLayout({
       <div className="space-y-4 sm:space-y-5">
         <MemberDesktopTabNav memberTab={memberTab} setMemberTab={navigateMemberTab} isMemberLimited={isMemberLimited} />
         <div
-          className={`pb-[calc(5rem+env(safe-area-inset-bottom,0px))] xl:pb-0 ${isMemberTabTransitionPending ? "opacity-95" : ""}`}
-          aria-busy={isMemberTabTransitionPending}
+          className={`pb-[calc(5rem+env(safe-area-inset-bottom,0px))] xl:pb-0 ${isPortalTransitionPending ? "opacity-95" : ""}`}
+          aria-busy={isPortalTransitionPending}
         >
         {memberTab === "inspiration" ? (
           <InspirationHub
@@ -521,8 +554,12 @@ export function MemberLayout({
             }}
             onAddPeriodPlan={addInspirationPeriodPlan}
           />
+        ) : renderedPortalTab && renderedPortalTab === memberTab ? (
+          <MemberPortal key={renderedPortalTab} {...memberPortalProps} />
         ) : (
-          <MemberPortal {...memberPortalProps} />
+          <div className="flex min-h-[40vh] items-center justify-center py-12 text-sm text-slate-500" aria-live="polite">
+            Laster…
+          </div>
         )}
         </div>
       </div>
