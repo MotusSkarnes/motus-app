@@ -25,6 +25,7 @@ export function buildTrainerLayoutProps(input: {
   trainerTab: TrainerLayoutProps["trainerTab"];
   setTrainerTab: TrainerLayoutProps["setTrainerTab"];
   patchState: TrainerLayoutProps["patchState"];
+  messageBadgeCount?: TrainerLayoutProps["messageBadgeCount"];
   addMember: TrainerLayoutProps["addMember"];
   deactivateMember: TrainerLayoutProps["deactivateMember"];
   deleteMember: TrainerLayoutProps["deleteMember"];

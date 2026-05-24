@@ -186,6 +186,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     trainerTab: state.trainerTab,
     setTrainerTab: state.setTrainerTab,
     patchState: state.patchState,
+    messageBadgeCount: trainerUnreadCount,
     addMember: state.addMember,
     deactivateMember: state.deactivateMember,
     deleteMember: state.deleteMember,

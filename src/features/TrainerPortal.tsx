@@ -1,4 +1,14 @@
-﻿import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+﻿import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 import { CalendarRange, ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, MessageSquare, MoreHorizontal, Pencil, Play, Share2, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, periodPlanStartDateForDateInput } from "../app/dateFormat";
@@ -83,6 +93,19 @@ import { TrainerPtDashboard, type TrainerListFilterTab, type TrainerPtListMember
 import { TrainerPtDetailPortal } from "./trainer-dashboard/TrainerPtDetailPortal";
 import { TrainerExerciseBankView } from "./TrainerExerciseBankView";
 import { TrainerProgramBuilderView } from "./TrainerProgramBuilderView";
+import { TrainerPtHomeScreen } from "./trainer-home/TrainerPtHomeScreen";
+import {
+  buildTrainerPtHomeAttentionClients,
+  buildTrainerPtHomeKpis,
+  buildTrainerPtHomePlanItems,
+  buildTrainerPtHomePopularContent,
+  buildTrainerPtHomeProgressSeries,
+  computeAverageClientProgressPct,
+  countInspirationPostsThisMonth,
+  countNewMembersThisWeek,
+  countProgramsCreatedThisWeek,
+} from "../app/buildTrainerPtHomeData";
+import { loadInspirationItemsFromLocalStorage } from "../app/inspirationStorage";
 import type {
   AuthUser,
   ChatMessage,
@@ -205,6 +228,7 @@ type TrainerPortalProps = {
   setSelectedMemberId: (id: string) => void;
   trainerTab: TrainerTab;
   setTrainerTab: (tab: TrainerTab) => void;
+  onSwitchToMemberView?: () => void;
   addMember: (input: CreateMemberInput) => Promise<CreateMemberResult>;
   deactivateMember: (memberId: string) => void;
   deleteMember: (memberId: string) => void;
@@ -259,6 +283,7 @@ type TrainerPortalProps = {
   }) => void;
   deleteExercise: (exerciseId: string) => void;
   openCustomerMessagesSignal?: number;
+  setOpenCustomerMessagesSignal?: Dispatch<SetStateAction<number>>;
   openCustomerOverviewSignal?: number;
   memberAvatarById?: Record<string, string>;
   setMemberAvatarUrlForMember?: (memberId: string, avatarUrl: string) => void;
@@ -651,6 +676,7 @@ function pickFirstName(value: unknown): string {
     setSelectedMemberId,
     trainerTab,
     setTrainerTab,
+    onSwitchToMemberView,
     addMember,
     deactivateMember,
     deleteMember,
@@ -671,6 +697,7 @@ function pickFirstName(value: unknown): string {
     saveExercise,
     deleteExercise,
     openCustomerMessagesSignal = 0,
+    setOpenCustomerMessagesSignal,
     openCustomerOverviewSignal = 0,
     memberAvatarById = {},
     setMemberAvatarUrlForMember,
@@ -3896,6 +3923,57 @@ function pickFirstName(value: unknown): string {
     day: "numeric",
     month: "long",
   });
+  const trainerWeekLabel = useMemo(() => {
+    const now = new Date();
+    const target = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    const day = target.getUTCDay() || 7;
+    target.setUTCDate(target.getUTCDate() + 4 - day);
+    const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+    const week = Math.ceil(((target.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+    return `Uke ${week}`;
+  }, []);
+  const inspirationItemsForHome = useMemo(() => loadInspirationItemsFromLocalStorage(), []);
+  const ptHomeKpis = useMemo(
+    () =>
+      buildTrainerPtHomeKpis({
+        activeMemberCount: activeMembers.length,
+        newMembersThisWeek: countNewMembersThisWeek(activeMembers),
+        programsThisWeek: countProgramsCreatedThisWeek(programs),
+        inspirationPostsMonth: countInspirationPostsThisMonth(inspirationItemsForHome.length),
+        averageProgressPct: computeAverageClientProgressPct(activeMembers, members, logs),
+      }),
+    [activeMembers, members, logs, programs, inspirationItemsForHome.length],
+  );
+  const ptHomePlanItems = useMemo(() => {
+    const membersById = new Map(members.map((member) => [member.id, member]));
+    return buildTrainerPtHomePlanItems(trainerTodayFeed, membersById, (member) => resolveMemberAvatarUrl(member) || null);
+  }, [trainerTodayFeed, members]);
+  const ptHomeAttentionClients = useMemo(
+    () =>
+      buildTrainerPtHomeAttentionClients({
+        followUpCards: [primaryFollowUpCard, ...secondaryFollowUpCards].filter(
+          (card): card is TrainerFollowUpCardModel => Boolean(card),
+        ),
+        members: activeMembers,
+        allMembers: members,
+        logs,
+        messages,
+        resolveAvatar: (member) => resolveMemberAvatarUrl(member) || null,
+      }),
+    [primaryFollowUpCard, secondaryFollowUpCards, activeMembers, members, logs, messages],
+  );
+  const ptHomeProgress = useMemo(() => buildTrainerPtHomeProgressSeries(logs), [logs]);
+  const ptHomePopularContent = useMemo(
+    () =>
+      buildTrainerPtHomePopularContent(
+        inspirationItemsForHome.map((item) => ({
+          id: item.id,
+          title: item.title,
+          createdAt: item.createdAt,
+        })),
+      ),
+    [inspirationItemsForHome],
+  );
   const trainerOpsHealthPct = Math.max(
     12,
     Math.min(100, 100 - followUpCount * 14 - membersWithoutProgramCount * 10 - dashboardSummary.newMessages24h * 4),
@@ -4343,7 +4421,40 @@ function pickFirstName(value: unknown): string {
   return (
     <>
     <div className="space-y-4 sm:space-y-6">
-      {(trainerTab === "dashboard" || trainerTab === "customers") && (
+      {trainerTab === "dashboard" ? (
+        <TrainerPtHomeScreen
+          trainerFirstName={trainerFirstName}
+          todayDateLabel={trainerTodayDateLabel}
+          weekLabel={trainerWeekLabel}
+          kpis={ptHomeKpis}
+          planItems={ptHomePlanItems}
+          attentionClients={ptHomeAttentionClients}
+          progressPoints={ptHomeProgress.points}
+          progressDeltaPct={ptHomeProgress.monthDeltaPct}
+          progressFocusLabel={ptHomeProgress.topFocusLabel}
+          popularContent={ptHomePopularContent}
+          onOpenCalendar={() => setTrainerTab("customers")}
+          onOpenAllClients={() => openCustomersWithListFilters({ memberFilter: "all" })}
+          onOpenClient={(memberId) => {
+            setTrainerTab("customers");
+            selectMemberWithUnsavedChangesGuard(memberId, () => setCustomerSubTab("overview"));
+          }}
+          onOpenInsights={() => openCustomersWithListFilters({ priorityFilter: "red" })}
+          onSwitchToMemberView={onSwitchToMemberView}
+          quickActions={{
+            onCreateProgram: () => setTrainerTab("programs"),
+            onOpenExerciseBank: () => setTrainerTab("exerciseBank"),
+            onOpenNutrition: () => setTrainerTab("inspiration"),
+            onShareContent: () => setTrainerTab("inspiration"),
+            onBulkMessage: () => {
+              setTrainerTab("customers");
+              setOpenCustomerMessagesSignal?.((value) => value + 1);
+            },
+          }}
+        />
+      ) : null}
+
+      {trainerTab === "customers" && (
         <TrainerPtDashboard
           listMembers={ptListMembers}
           listFilterTab={ptListFilterTab}
@@ -4355,7 +4466,6 @@ function pickFirstName(value: unknown): string {
           memberSearch={memberSearch}
           onMemberSearchChange={setMemberSearch}
           onSelectMember={(memberId) => {
-            if (trainerTab === "dashboard") setTrainerTab("customers");
             selectMemberWithUnsavedChangesGuard(memberId, () => setCustomerSubTab("overview"));
           }}
           onResetFilters={resetMemberListControls}
@@ -4406,7 +4516,6 @@ function pickFirstName(value: unknown): string {
                 <PillButton
                   active={customerSubTab === "programs"}
                   onClick={() => {
-                    if (trainerTab === "dashboard") setTrainerTab("customers");
                     setCustomerSubTab("programs");
                     setCustomerProgramBuilderFocus("training");
                   }}
@@ -4416,7 +4525,6 @@ function pickFirstName(value: unknown): string {
                 <PillButton
                   active={customerSubTab === "workouts"}
                   onClick={() => {
-                    if (trainerTab === "dashboard") setTrainerTab("customers");
                     setCustomerSubTab("workouts");
                   }}
                 >
@@ -4425,7 +4533,6 @@ function pickFirstName(value: unknown): string {
                 <PillButton
                   active={customerSubTab === "messages"}
                   onClick={() => {
-                    if (trainerTab === "dashboard") setTrainerTab("customers");
                     setCustomerSubTab("messages");
                   }}
                 >
@@ -4453,103 +4560,27 @@ function pickFirstName(value: unknown): string {
           latestNote={selectedLatestNote}
           onOpenNote={() => setCustomerSubTab("overview")}
           aggregateOverview={
-            !selectedMember && trainerTab === "dashboard" ? (
-              <div className="motus-home-shell py-2">
-                <TrainerHomeOverview
-                  trainerFirstName={trainerFirstName}
-                  todayDateLabel={trainerTodayDateLabel}
-                  focusItems={trainerFocusItems}
-                  activeMemberCount={activeMembers.length}
-                  todaysCustomers={dashboardSummary.todaysCustomers}
-                  todaysWorkouts={dashboardSummary.todaysWorkouts}
-                  newMessages24h={dashboardSummary.newMessages24h}
-                  followUpCount={followUpCount}
-                  criticalFollowUpCount={criticalFollowUpCount}
-                  primaryFollowUp={primaryFollowUpCard}
-                  secondaryFollowUps={secondaryFollowUpCards}
-                  todayFeed={trainerTodayFeed}
-                  todos={trainerTodosForHome}
-                  todoDraft={todoTitle}
-                  onTodoDraftChange={setTodoTitle}
-                  onAddTodo={() => addTodoItem(todayIso)}
-                  onToggleTodo={toggleTodoDone}
-                  priorityMembers={homePriorityMembers}
-                  insightTitle={trainerInsight.title}
-                  insightDetail={trainerInsight.detail}
-                  onFollowUpClick={() => openCustomersWithListFilters({ memberFilter: "followUp" })}
-                  onMissingProgramClick={() => openCustomersWithListFilters({ memberFilter: "noProgram" })}
-                  onOpenMember={(memberId) => {
-                    setTrainerTab("customers");
-                    selectMemberWithUnsavedChangesGuard(memberId, () => setCustomerSubTab("overview"));
-                  }}
-                  onContactMember={(memberId) => {
-                    const member = members.find((row) => row.id === memberId);
-                    if (member) handleQuickFollowUpMessage(member);
-                  }}
-                  onMarkFollowedUp={(memberId) => {
-                    const member = members.find((row) => row.id === memberId);
-                    if (member) markMemberFollowedUp(member);
-                  }}
-                  onOpenProgressInsight={() => openCustomersWithListFilters({ priorityFilter: "red" })}
-                  quickActions={{
-                    onOpenCustomers: () => setTrainerTab("customers"),
-                    onOpenPrograms: () => setTrainerTab("programs"),
-                    onOpenMessages: () => setTrainerTab("customers"),
-                  }}
-                />
-              </div>
-            ) : !selectedMember ? (
+            !selectedMember ? (
               <div className="motus-pt-dash-empty py-16 text-base">Velg en kunde i listen for å se kundekortet.</div>
             ) : undefined
           }
         />
       )}
 
-      {trainerTab === "dashboard" ? (
-        <div className="motus-home-shell motus-pt-dash-mobile-only">
-          <TrainerHomeOverview
-            trainerFirstName={trainerFirstName}
-            todayDateLabel={trainerTodayDateLabel}
-            focusItems={trainerFocusItems}
-            activeMemberCount={activeMembers.length}
-            todaysCustomers={dashboardSummary.todaysCustomers}
-            todaysWorkouts={dashboardSummary.todaysWorkouts}
-            newMessages24h={dashboardSummary.newMessages24h}
-            followUpCount={followUpCount}
-            criticalFollowUpCount={criticalFollowUpCount}
-            primaryFollowUp={primaryFollowUpCard}
-            secondaryFollowUps={secondaryFollowUpCards}
-            todayFeed={trainerTodayFeed}
-            todos={trainerTodosForHome}
-            todoDraft={todoTitle}
-            onTodoDraftChange={setTodoTitle}
-            onAddTodo={() => addTodoItem(todayIso)}
-            onToggleTodo={toggleTodoDone}
-            priorityMembers={homePriorityMembers}
-            insightTitle={trainerInsight.title}
-            insightDetail={trainerInsight.detail}
-            onFollowUpClick={() => openCustomersWithListFilters({ memberFilter: "followUp" })}
-            onMissingProgramClick={() => openCustomersWithListFilters({ memberFilter: "noProgram" })}
-            onOpenMember={(memberId) => {
-              setTrainerTab("customers");
-              selectMemberWithUnsavedChangesGuard(memberId, () => setCustomerSubTab("overview"));
-            }}
-            onContactMember={(memberId) => {
-              const member = members.find((row) => row.id === memberId);
-              if (member) handleQuickFollowUpMessage(member);
-            }}
-            onMarkFollowedUp={(memberId) => {
-              const member = members.find((row) => row.id === memberId);
-              if (member) markMemberFollowedUp(member);
-            }}
-            onOpenProgressInsight={() => openCustomersWithListFilters({ priorityFilter: "red" })}
-            quickActions={{
-              onOpenCustomers: () => setTrainerTab("customers"),
-              onOpenPrograms: () => setTrainerTab("programs"),
-              onOpenMessages: () => setTrainerTab("customers"),
-            }}
-          />
-        </div>
+      {trainerTab === "statistics" ? (
+        <Card className="p-5 space-y-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Statistikk</h2>
+            <p className="mt-1 text-sm text-slate-600">Oversikt over klienter, aktivitet og innhold.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard label="Aktive klienter" value={String(activeMembers.length)} />
+            <StatCard label="Økter logget" value={String(logs.length)} />
+            <StatCard label="Programmer" value={String(programs.filter((p) => p.memberId !== "__template__").length)} />
+            <StatCard label="Gj.sn. fremgang" value={`${computeAverageClientProgressPct(activeMembers, members, logs)}%`} />
+          </div>
+          <p className="text-sm text-slate-600">{trainerInsight.detail}</p>
+        </Card>
       ) : null}
 
       {trainerTab === "settings" ? (

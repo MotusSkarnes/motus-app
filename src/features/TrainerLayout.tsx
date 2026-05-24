@@ -1,20 +1,23 @@
 import { useState, type ComponentProps, type Dispatch, type SetStateAction } from "react";
 import {
+  Apple,
+  BarChart3,
+  CalendarDays,
   ClipboardList,
   Dumbbell,
-  Award,
-  LayoutDashboard,
+  FileText,
+  Home,
   MessageSquare,
   MoreHorizontal,
   Settings,
   ShieldCheck,
-  Sparkles,
   Users,
   type LucideIcon,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { AppState, AuthUser, TrainerTab } from "../app/types";
 import { Card } from "../app/ui";
+import motusLogo from "../assets/motus-logo-transparent.svg";
 import { TrainerPortal } from "./TrainerPortal";
 import type { MemberPortal } from "./MemberPortal";
 import { InspirationHub } from "./InspirationHub";
@@ -34,11 +37,22 @@ type TrainerWorkoutBridge = Pick<
   | "cancelWorkoutMode"
 >;
 
+type TrainerNavAction = "messages" | "calendar" | "nutrition";
+
+type TrainerMenuItem = {
+  key: TrainerTab;
+  label: string;
+  icon: LucideIcon;
+  badge?: number;
+  action?: TrainerNavAction;
+};
+
 type TrainerLayoutProps = {
   appState: AppState;
   trainerTab: ComponentProps<typeof TrainerPortal>["trainerTab"];
   setTrainerTab: ComponentProps<typeof TrainerPortal>["setTrainerTab"];
   patchState: (patch: Partial<AppState>) => void;
+  messageBadgeCount?: number;
   addMember: ComponentProps<typeof TrainerPortal>["addMember"];
   deactivateMember: ComponentProps<typeof TrainerPortal>["deactivateMember"];
   deleteMember: ComponentProps<typeof TrainerPortal>["deleteMember"];
@@ -69,36 +83,50 @@ type TrainerLayoutProps = {
   applyTrainerProfileSaved: (user: AuthUser) => void;
 } & TrainerWorkoutBridge;
 
-const trainerMenuItems: Array<{ key: TrainerTab; label: string; icon: LucideIcon }> = [
-  { key: "dashboard", label: "Oversikt", icon: LayoutDashboard },
-  { key: "customers", label: "Klienter", icon: Users },
-  { key: "exerciseBank", label: "Øvelsesbank", icon: Dumbbell },
-  { key: "programs", label: "Programmer", icon: ClipboardList },
-  { key: "inspiration", label: "Inspirasjon", icon: Sparkles },
-  { key: "badges", label: "Badges", icon: Award },
-  { key: "settings", label: "Innstillinger", icon: Settings },
-  { key: "admin", label: "Admin", icon: ShieldCheck },
-];
+function buildTrainerMenuItems(messageBadgeCount: number, includeAdmin: boolean): TrainerMenuItem[] {
+  const items: TrainerMenuItem[] = [
+    { key: "dashboard", label: "Hjem", icon: Home },
+    { key: "customers", label: "Klienter", icon: Users },
+    { key: "programs", label: "Programmer", icon: ClipboardList },
+    { key: "exerciseBank", label: "Øvelsesbank", icon: Dumbbell },
+    { key: "inspiration", label: "Innhold", icon: FileText },
+    { key: "inspiration", label: "Ernæring", icon: Apple, action: "nutrition" },
+    { key: "customers", label: "Meldinger", icon: MessageSquare, badge: messageBadgeCount, action: "messages" },
+    { key: "customers", label: "Kalender", icon: CalendarDays, action: "calendar" },
+    { key: "statistics", label: "Statistikk", icon: BarChart3 },
+    { key: "settings", label: "Innstillinger", icon: Settings },
+  ];
+  if (includeAdmin) {
+    items.push({ key: "admin", label: "Admin", icon: ShieldCheck });
+  }
+  return items;
+}
 
 const mobileTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
-  { id: "dashboard", label: "Oversikt", icon: LayoutDashboard },
-  { id: "customers", label: "Kunder", icon: Users },
+  { id: "dashboard", label: "Hjem", icon: Home },
+  { id: "customers", label: "Klienter", icon: Users },
   { id: "programs", label: "Program", icon: ClipboardList },
-  { id: "inspiration", label: "Inspo", icon: Sparkles },
+  { id: "inspiration", label: "Innhold", icon: FileText },
   { id: "exerciseBank", label: "Øvelser", icon: Dumbbell },
 ];
 
 const mobileMoreTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
-  { id: "badges", label: "Badges", icon: Award },
+  { id: "statistics", label: "Statistikk", icon: BarChart3 },
   { id: "settings", label: "Innstillinger", icon: Settings },
   { id: "admin", label: "Admin", icon: ShieldCheck },
 ];
+
+function isNavItemActive(item: TrainerMenuItem, trainerTab: TrainerTab): boolean {
+  if (item.action) return false;
+  return trainerTab === item.key;
+}
 
 export function TrainerLayout({
   appState,
   trainerTab,
   setTrainerTab,
   patchState,
+  messageBadgeCount = 0,
   addMember,
   deactivateMember,
   deleteMember,
@@ -140,9 +168,22 @@ export function TrainerLayout({
 }: TrainerLayoutProps) {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const canAccessAdminTools = true;
-  const visibleTrainerMenuItems = trainerMenuItems;
+  const trainerMenuItems = buildTrainerMenuItems(messageBadgeCount, canAccessAdminTools);
   const visibleMobileTabs = mobileTabs;
   const isMoreTabActive = mobileMoreTabs.some((tab) => tab.id === trainerTab);
+
+  const handleNavClick = (item: TrainerMenuItem) => {
+    if (item.action === "messages") {
+      setTrainerTab("customers");
+      setOpenCustomerMessagesSignal((value) => value + 1);
+      return;
+    }
+    if (item.action === "calendar" || item.action === "nutrition") {
+      setTrainerTab(item.action === "nutrition" ? "inspiration" : "customers");
+      return;
+    }
+    setTrainerTab(item.key);
+  };
 
   const trainerPortalProps: ComponentProps<typeof TrainerPortal> = {
     members: appState.members,
@@ -154,6 +195,7 @@ export function TrainerLayout({
     setSelectedMemberId: (id) => patchState({ selectedMemberId: id }),
     trainerTab,
     setTrainerTab,
+    onSwitchToMemberView: () => patchState({ role: "member" }),
     addMember,
     deactivateMember,
     deleteMember,
@@ -174,6 +216,7 @@ export function TrainerLayout({
     deleteExercise,
     inviteTrainer,
     openCustomerMessagesSignal,
+    setOpenCustomerMessagesSignal,
     openCustomerOverviewSignal,
     memberAvatarById,
     setMemberAvatarUrlForMember,
@@ -196,33 +239,44 @@ export function TrainerLayout({
 
   return (
     <>
-      <div className="motus-trainer-shell grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
-        <Card className="motus-trainer-nav hidden h-fit overflow-hidden border-0 bg-[#F7F8FA] p-1 shadow-sm ring-1 ring-black/5 xl:block">
-          <div className="mb-1 px-2 pt-1">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">PT-meny</div>
+      <div className="motus-trainer-shell grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)]">
+        <Card className="motus-trainer-nav hidden h-fit overflow-hidden border-0 bg-[#f7f9fb] p-0 shadow-sm ring-1 ring-black/5 xl:flex xl:flex-col">
+          <div className="motus-trainer-nav-brand">
+            <img src={motusLogo} alt="Motus" className="motus-trainer-nav-logo" />
+            <div className="motus-trainer-nav-brand-text">
+              <span className="motus-trainer-nav-brand-title">MOTUS</span>
+              <span className="motus-trainer-nav-brand-sub">Trening &amp; Helse Skarnes</span>
+            </div>
           </div>
-          <nav aria-label="Hovedmeny trener" className="space-y-1 px-1 pb-1">
-            {visibleTrainerMenuItems.map((item) => {
+          <nav aria-label="Hovedmeny trener" className="motus-trainer-nav-list">
+            {trainerMenuItems.map((item) => {
               const Icon = item.icon;
+              const active = isNavItemActive(item, trainerTab);
+              const navKey = `${item.key}-${item.label}`;
               return (
                 <button
-                  key={item.key}
+                  key={navKey}
                   type="button"
-                  onClick={() => setTrainerTab(item.key)}
-                  className={`motus-trainer-nav-item w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold whitespace-nowrap transition ${
-                    trainerTab === item.key
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-600 hover:bg-white/60 hover:text-slate-900"
-                  }`}
+                  onClick={() => handleNavClick(item)}
+                  className={`motus-trainer-nav-item ${active ? "motus-trainer-nav-item--active" : ""}`}
                 >
-                  <span className="inline-flex items-center gap-2">
-                    <Icon className="motus-trainer-nav-icon h-4 w-4" />
-                    <span className="motus-trainer-nav-text">{item.label}</span>
-                  </span>
+                  <Icon className="motus-trainer-nav-icon h-[18px] w-[18px] shrink-0" aria-hidden />
+                  <span className="motus-trainer-nav-text">{item.label}</span>
+                  {item.badge && item.badge > 0 ? (
+                    <span className="motus-trainer-nav-badge">{item.badge > 9 ? "9+" : item.badge}</span>
+                  ) : null}
                 </button>
               );
             })}
           </nav>
+          <div className="motus-trainer-nav-promo">
+            <p className="motus-trainer-nav-promo-title">Oppgrader din PT-opplevelse</p>
+            <p className="motus-trainer-nav-promo-text">Få mer innsikt, raskere oppfølging og smartere verktøy.</p>
+            <button type="button" className="motus-trainer-nav-promo-btn motus-pressable" onClick={() => setTrainerTab("statistics")}>
+              Utforsk Pro
+              <span aria-hidden>→</span>
+            </button>
+          </div>
         </Card>
         <div className="min-w-0 space-y-4 sm:space-y-5">
           {isLocalDemoSession ? (
@@ -234,20 +288,20 @@ export function TrainerLayout({
             </Card>
           ) : null}
           <div className={trainerTab === "dashboard" ? "pb-24 xl:pb-0" : undefined}>
-          {trainerTab === "inspiration" ? (
-            <InspirationHub
-              canManage
-              authorName={appState.currentUser?.name ?? "Motus"}
-              exerciseBank={appState.exercises}
-              programTemplates={appState.programs
-                .filter((program) => program.memberId === "__template__")
-                .map((program) => ({ id: program.id, title: program.title }))}
-            />
-          ) : trainerTab === "badges" ? (
-            <TrainerBadgeCatalog />
-          ) : (
-            <TrainerPortal {...trainerPortalProps} />
-          )}
+            {trainerTab === "inspiration" ? (
+              <InspirationHub
+                canManage
+                authorName={appState.currentUser?.name ?? "Motus"}
+                exerciseBank={appState.exercises}
+                programTemplates={appState.programs
+                  .filter((program) => program.memberId === "__template__")
+                  .map((program) => ({ id: program.id, title: program.title }))}
+              />
+            ) : trainerTab === "badges" ? (
+              <TrainerBadgeCatalog />
+            ) : (
+              <TrainerPortal {...trainerPortalProps} />
+            )}
           </div>
         </div>
       </div>
