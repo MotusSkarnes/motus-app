@@ -6449,6 +6449,10 @@ export function MemberPortal(props: MemberPortalProps) {
                 streakSubline={streakSubline}
                 recentStreakWeeks={recentStreakWeeks}
                 currentStreakMilestoneTarget={currentStreakMilestoneTarget}
+                onContinue={() => {
+                  setMemberTab("programs");
+                  setTrainingSection("today");
+                }}
               />
 
               <MemberPersonalRecordsSection
@@ -6464,7 +6468,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 profileSaveInfo={profileSaveInfo && memberTab === "progress" ? profileSaveInfo : null}
               />
 
-              <div className="motus-progress-section-card overflow-hidden p-1 sm:p-2">
               <MuscleSplitCard
                 stats={muscleSplitStats}
                 metric={muscleSplitMetric}
@@ -6472,8 +6475,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 onMetricChange={setMuscleSplitMetric}
                 onPeriodChange={setMuscleSplitPeriod}
               />
-
-              </div>
 
               <MemberWeeklySummaryCard
                 stats={progressShareLast7Days}

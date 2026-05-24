@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Target } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, Shield, Target } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { ScoreTrend } from "../app/memberMomentumScores";
 import { PROGRESS_HERO_IMAGE } from "../app/progressImagery";
@@ -20,9 +20,9 @@ function momentumTrendLabel(trend: ScoreTrend): string {
 }
 
 function MomentumTrendIcon({ trend }: { trend: ScoreTrend }) {
-  if (trend === "up") return <ArrowUpRight className="h-3.5 w-3.5 text-[#0d9488]" aria-hidden />;
-  if (trend === "down") return <ArrowDownRight className="h-3.5 w-3.5 text-[#be185d]" aria-hidden />;
-  return <ArrowRight className="h-3.5 w-3.5 text-slate-400" aria-hidden />;
+  if (trend === "up") return <ArrowUpRight className="h-3.5 w-3.5 text-white/90" aria-hidden />;
+  if (trend === "down") return <ArrowDownRight className="h-3.5 w-3.5 text-white/90" aria-hidden />;
+  return <ArrowRight className="h-3.5 w-3.5 text-white/70" aria-hidden />;
 }
 
 function MomentumSparkline({ points, trend }: { points: number[]; trend: ScoreTrend }) {
@@ -37,7 +37,7 @@ function MomentumSparkline({ points, trend }: { points: number[]; trend: ScoreTr
       return `${x},${y}`;
     })
     .join(" ");
-  const stroke = trend === "down" ? MOTUS.pink : MOTUS.turquoise;
+  const stroke = trend === "down" ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.95)";
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="motus-progress-momentum-spark" aria-hidden>
@@ -130,54 +130,46 @@ export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks }:
         <p className="mt-0.5 text-sm text-slate-600">Her er din fremgang så langt</p>
       </div>
 
-      <div className="motus-progress-hero-main">
-        <div className="motus-progress-hero-content">
-          <div className="flex flex-wrap items-start gap-3">
-            <span className="motus-progress-level-badge" aria-hidden>
-              <span className="text-[10px] font-bold uppercase tracking-wide text-white/85">Nivå {xp.level}</span>
-              <span className="mt-0.5 block text-xs font-black uppercase text-white">{xp.levelLabel}</span>
-              <span className="mt-1 block text-[10px] font-semibold tabular-nums text-white/90">{xp.totalXp.toLocaleString("nb-NO")} XP</span>
-            </span>
-            <div className="motus-progress-momentum-card min-w-0 flex-1">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Momentum</p>
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <p className="text-xl font-black tabular-nums tracking-tight text-slate-950 sm:text-2xl">{momentum.pct}%</p>
-                    <MomentumTrendIcon trend={momentum.trend} />
-                  </div>
-                </div>
-                <MomentumSparkline points={momentum.sparkPoints} trend={momentum.trend} />
-              </div>
-              <p className="mt-1 text-[11px] font-medium text-slate-500">{momentumTrendLabel(momentum.trend)}</p>
-            </div>
+      <div className="motus-progress-hero-gradient">
+        <div className="motus-progress-hero-gradient-inner">
+          <div className="motus-progress-level-badge">
+            <Shield className="h-5 w-5 text-white/90" strokeWidth={2.25} aria-hidden />
+            <span className="mt-1.5 text-[10px] font-bold uppercase tracking-wide text-white/85">Nivå {xp.level}</span>
+            <span className="mt-0.5 block text-xs font-black uppercase text-white">{xp.levelLabel}</span>
+            <span className="mt-1 block text-[10px] font-semibold tabular-nums text-white/90">{xp.totalXp.toLocaleString("nb-NO")} XP</span>
           </div>
 
-          <div className="mt-4">
-            <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold text-slate-600">
-              <span>XP til neste nivå</span>
-              <span className="tabular-nums">
-                {xp.xpInLevel}/{xp.xpForNextLevel}
-              </span>
+          <div className="motus-progress-momentum-hero min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-white/75">Momentum</p>
+            <div className="mt-1 flex items-center gap-2">
+              <p className="text-3xl font-black tabular-nums tracking-tight text-white sm:text-4xl">{momentum.pct}%</p>
+              <MomentumTrendIcon trend={momentum.trend} />
+              <MomentumSparkline points={momentum.sparkPoints} trend={momentum.trend} />
             </div>
-            <div className="motus-progress-track h-2.5 rounded-full">
-              <div
-                className="motus-progress-fill h-2.5 rounded-full"
-                style={{ width: `${xp.pctToNext}%`, background: MOTUS.gradient }}
-              />
-            </div>
+            <p className="mt-1 text-xs font-medium text-white/85">{momentum.subline || momentumTrendLabel(momentum.trend)}</p>
+          </div>
+
+          <div className="motus-progress-hero-portrait motus-image-frame">
+            <img
+              src={PROGRESS_HERO_IMAGE}
+              alt=""
+              className="motus-image-media"
+              loading="lazy"
+              style={{ objectPosition: imageObjectPositionFromSrc(PROGRESS_HERO_IMAGE) }}
+            />
           </div>
         </div>
 
-        <div className="motus-progress-hero-media motus-progress-side-thumb motus-image-frame">
-          <img
-            src={PROGRESS_HERO_IMAGE}
-            alt=""
-            className="motus-image-media"
-            loading="lazy"
-            style={{ objectPosition: imageObjectPositionFromSrc(PROGRESS_HERO_IMAGE) }}
-          />
-          <div className="motus-progress-hero-media-fade" aria-hidden />
+        <div className="motus-progress-hero-xp">
+          <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold text-white/90">
+            <span>XP til neste nivå</span>
+            <span className="tabular-nums">
+              {xp.xpInLevel}/{xp.xpForNextLevel}
+            </span>
+          </div>
+          <div className="motus-progress-hero-xp-track">
+            <div className="motus-progress-hero-xp-fill" style={{ width: `${xp.pctToNext}%` }} />
+          </div>
         </div>
       </div>
 
