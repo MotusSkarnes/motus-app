@@ -13,10 +13,13 @@ export const PROGRESS_RECOVERY_FALLBACK_IMAGE = MOBILITY_TRAINING_COVER_IMAGE;
 /** Cinematic photos for PR-kort på Fremgang — øvelsesbanken beholder medisinske skisser. */
 export const PROGRESS_PR_SQUAT_IMAGE = "/progress/pr-kneboy.png";
 export const PROGRESS_PR_DEADLIFT_IMAGE = "/progress/pr-markloft.png";
+export const PROGRESS_PR_LAT_PULLDOWN_IMAGE = "/progress/pr-nedtrekk.png";
 
 const PROGRESS_PERSONAL_RECORD_IMAGES: Record<string, string> = {
   knebøy: PROGRESS_PR_SQUAT_IMAGE,
   markløft: PROGRESS_PR_DEADLIFT_IMAGE,
+  nedtrekk: PROGRESS_PR_LAT_PULLDOWN_IMAGE,
+  "nedtrekk bredt grep": PROGRESS_PR_LAT_PULLDOWN_IMAGE,
 };
 
 function normalizeExerciseNameKey(name: string): string {
