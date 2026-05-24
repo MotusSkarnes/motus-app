@@ -195,7 +195,14 @@ export function TrainerLayout({
     setSelectedMemberId: (id) => patchState({ selectedMemberId: id }),
     trainerTab,
     setTrainerTab,
-    onSwitchToMemberView: () => patchState({ role: "member" }),
+    onSwitchToMemberView: () =>
+      patchState((prev) => {
+        const memberId = prev.selectedMemberId.trim() || prev.memberViewId.trim();
+        return {
+          role: "member",
+          ...(memberId ? { memberViewId: memberId, selectedMemberId: memberId } : {}),
+        };
+      }),
     addMember,
     deactivateMember,
     deleteMember,

@@ -767,7 +767,7 @@ export function useAppState() {
 
   useEffect(() => {
     const persisted =
-      appState.currentUser && appState.role !== appState.currentUser.role
+      appState.currentUser?.role === "member" && appState.role !== appState.currentUser.role
         ? { ...appState, role: appState.currentUser.role }
         : appState;
     saveState(persisted);

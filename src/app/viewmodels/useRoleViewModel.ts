@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, type ComponentProps } from "react";
+import { isTrainerMemberPreview, resolveLayoutRole } from "../resolveLayoutRole";
 import { enrichMemberWithBestProfile } from "../memberOnboarding";
 import { resolveMemberTrainerDisplayName } from "../trainerProfile";
 import {
@@ -138,7 +139,8 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     return resolveMemberTrainerDisplayName(member, state.appState.programs);
   }, [activeMemberForHeader, state.appState.programs]);
 
-  const layoutRole = state.appState.currentUser?.role ?? state.appState.role;
+  const layoutRole = resolveLayoutRole(state.appState);
+  const trainerMemberPreview = isTrainerMemberPreview(state.appState);
 
   const isMemberLimited = useMemo(() => {
     const currentUser = state.appState.currentUser;
@@ -165,6 +167,8 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     memberTab: state.memberTab,
     showQuickLogin: state.showQuickLogin,
     onSwitchRole: (role) => state.patchState({ role }),
+    showTrainerMemberPreviewBar: trainerMemberPreview,
+    onExitTrainerMemberPreview: trainerMemberPreview ? () => state.patchState({ role: "trainer" }) : undefined,
     onResetData: handleResetData,
     onLogout: state.handleLogout,
     memberUnreadCount,

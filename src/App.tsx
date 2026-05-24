@@ -1,5 +1,6 @@
 import { OfflineBanner } from "./app/OfflineBanner";
 import { AppErrorBoundary } from "./app/AppErrorBoundary";
+import { resolveLayoutRole } from "./app/resolveLayoutRole";
 import { useAppViewModel } from "./app/viewmodels";
 import { AppShell } from "./app/ui";
 import { AppHeader, LoginScreen, MemberLayout, TrainerLayout } from "./features";
@@ -8,7 +9,7 @@ import { isSupabaseConfigured } from "./services/supabaseClient";
 export default function App() {
   const { appState, isAuthSessionLoading, isRecoveryMode, loginScreenProps, appHeaderProps, trainerLayoutProps, memberLayoutProps } =
     useAppViewModel();
-  const layoutRole = appState.currentUser?.role ?? appState.role;
+  const layoutRole = resolveLayoutRole(appState);
 
   return (
     <AppErrorBoundary>
