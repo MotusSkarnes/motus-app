@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
 import { ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp } from "lucide-react";
 import { MOTUS } from "../app/data";
@@ -33,7 +34,7 @@ type MemberTabNavigationProps = {
 export function MemberDesktopTabNav({ memberTab, setMemberTab, isMemberLimited }: MemberTabNavigationProps) {
   const tabs = memberNavTabs(isMemberLimited);
   return (
-    <Card className="hidden overflow-hidden border-0 bg-[#F7F8FA] p-1 lg:block">
+    <Card className="hidden overflow-hidden border-0 bg-[#F7F8FA] p-1 xl:block">
       <div className="flex flex-wrap gap-1 px-1 py-1">
         {tabs.map((tab) => {
           const isActive = memberTab === tab.id;
@@ -92,12 +93,16 @@ function MemberMobileTabButton({
   );
 }
 
-export function MemberMobileTabNav({ memberTab, setMemberTab, isMemberLimited }: MemberTabNavigationProps) {
+function MemberMobileTabBar({ memberTab, setMemberTab, isMemberLimited }: MemberTabNavigationProps) {
   const tabs = memberNavTabs(isMemberLimited);
 
   return (
-    <div className="motus-mobile-tab-bar fixed inset-x-0 bottom-0 z-[9999] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 lg:hidden">
-      <div className="mx-auto flex max-w-md items-stretch gap-0.5">
+    <div
+      className="motus-mobile-tab-bar fixed inset-x-0 bottom-0 z-[10001] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 xl:hidden"
+      role="navigation"
+      aria-label="Hovedmeny medlem"
+    >
+      <div className="motus-mobile-tab-bar-inner relative z-[10001] mx-auto flex max-w-md items-stretch gap-0.5">
         {tabs.map((tab) => (
           <MemberMobileTabButton
             key={tab.id}
@@ -110,4 +115,9 @@ export function MemberMobileTabNav({ memberTab, setMemberTab, isMemberLimited }:
       </div>
     </div>
   );
+}
+
+export function MemberMobileTabNav(props: MemberTabNavigationProps) {
+  if (typeof document === "undefined") return null;
+  return createPortal(<MemberMobileTabBar {...props} />, document.body);
 }

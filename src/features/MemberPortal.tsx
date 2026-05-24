@@ -77,6 +77,7 @@ import {
   programIsInMemberArchive,
 } from "../app/programBlocks";
 import { memberMayDeleteProgram, memberMayEditProgram } from "../app/programAuthor";
+import { programsAttributedToMember } from "../app/memberActivity";
 import {
   buildCheckInNotificationCopy,
   resolveCheckInWindow,
@@ -1423,9 +1424,15 @@ export function MemberPortal(props: MemberPortalProps) {
     ? favoritePersonalRecordNames
     : resolvedFavoritePersonalRecordNames;
   const memberPrograms = useMemo(() => {
-    const scopedPrograms = programs.filter((program) => relatedMemberIdSet.has(program.memberId));
+    const anchorMember =
+      editableMember ??
+      members.find((member) => relatedMemberIdSet.has(member.id)) ??
+      null;
+    const scopedPrograms = anchorMember
+      ? programsAttributedToMember(anchorMember, members, programs)
+      : programs.filter((program) => relatedMemberIdSet.has(program.memberId));
     return dedupeTrainingPrograms(scopedPrograms);
-  }, [programs, relatedMemberIdSet]);
+  }, [programs, members, editableMember, relatedMemberIdSet]);
   const memberAssignedPrograms = useMemo(() => memberPrograms.filter((program) => !program.ephemeral), [memberPrograms]);
   const memberProgramsInActiveLibrary = useMemo(
     () => memberAssignedPrograms.filter((program) => !programIsInMemberArchive(program.memberLibraryStatus)),
@@ -1597,7 +1604,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
   const memberChatQuickActions = useMemo(
     (): MotusChatQuickAction[] => [
-      { id: "workout", label: "Send økt", icon: Dumbbell, onClick: () => setMemberTab("home") },
+      { id: "workout", label: "Send økt", icon: Dumbbell, onClick: () => setMemberTab("overview") },
       { id: "program", label: "Del program", icon: Share2, onClick: () => void handleMemberShareProgramClick() },
       { id: "more", label: "Flere", icon: MoreHorizontal },
     ],
@@ -5362,7 +5369,7 @@ export function MemberPortal(props: MemberPortalProps) {
           </div>
         </Card>
 
-        <div className="min-w-0 w-full max-w-full space-y-4 overflow-x-hidden sm:space-y-6">
+        <div className="min-w-0 w-full max-w-full space-y-4 sm:space-y-6">
           {memberTab === "overview" ? (
             <div className="motus-home-shell space-y-6">
               <MemberHomeOverview

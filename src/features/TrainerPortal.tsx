@@ -158,7 +158,6 @@ import {
   buildTrainingProgramDisplayKey,
   dedupeTrainingPrograms,
   isLegacyIntervalCooldownDrag,
-  programIsInMemberArchive,
   unlinkProgramExerciseBlock,
 } from "../app/programBlocks";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
@@ -1292,11 +1291,7 @@ function pickFirstName(value: unknown): string {
     () => {
       const selected = selectedMemberProfile ?? members.find((member) => member.id === selectedMemberId) ?? null;
       if (!selected) return [] as TrainingProgram[];
-      return dedupeTrainingPrograms(
-        programsAttributedToMember(selected, members, programs).filter(
-          (program) => !programIsInMemberArchive(program.memberLibraryStatus),
-        ),
-      );
+      return dedupeTrainingPrograms(programsAttributedToMember(selected, members, programs));
     },
     [programs, members, selectedMemberId, selectedMemberProfile]
   );

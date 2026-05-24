@@ -27,6 +27,7 @@ import type { ChatReactionActor, ChatReactionEmoji } from "./chatReactions";
 import {
   clearSessionOwnerEmail,
   filterMembersForSessionEmail,
+  filterProgramsForMemberSession,
   memberIdsForSessionEmail,
   rememberSessionOwnerEmail,
   resetCatalogForSessionOwnerChange,
@@ -327,6 +328,10 @@ function mergeMemberProgramsWithLocalEphemeral(
       });
       continue;
     }
+    if (programIsInMemberArchive(local.memberLibraryStatus)) {
+      merged.set(local.id, local);
+      continue;
+    }
     const keepEphemeral = local.ephemeral === true;
     const keepActiveWorkout = Boolean(activeWorkoutProgramId && local.id === activeWorkoutProgramId);
     if (keepEphemeral || keepActiveWorkout) {
@@ -359,10 +364,6 @@ function mergeWorkoutLogsById(
 
 const LOCAL_OPTIMISTIC_WORKOUT_LOG_KEEP_MS = 48 * 60 * 60 * 1000;
 const remoteTombstoneCleanupInFlight = new Set<string>();
-
-function filterProgramsHiddenFromCloudViews(programs: TrainingProgram[]): TrainingProgram[] {
-  return filterDeletedPrograms(programs).filter((program) => !programIsInMemberArchive(program.memberLibraryStatus));
-}
 
 function cleanupRemoteProgramsDeletedLocally(
   programs: TrainingProgram[],
@@ -904,7 +905,7 @@ export function useAppState() {
             memberIds: remoteMembers?.map((member) => member.id) ?? [],
           });
         }
-        remotePrograms = filterProgramsHiddenFromCloudViews(remotePrograms);
+        remotePrograms = filterDeletedPrograms(remotePrograms);
       }
       let remoteLogs =
         hydratedTrainer?.logs ??
@@ -949,7 +950,7 @@ export function useAppState() {
                 targetEmail: email,
                 memberIds: remoteMembers?.map((member) => member.id) ?? [],
               });
-              remotePrograms = filterProgramsHiddenFromCloudViews(retryPrograms);
+              remotePrograms = filterDeletedPrograms(retryPrograms);
             }
             if (retryLogs?.length) {
               remoteLogs = retryLogs;
@@ -1112,11 +1113,19 @@ export function useAppState() {
         }
 
         if (isMemberLikeSession && sessionEmail) {
+          const linkedMemberId = prevStripped.currentUser?.memberId?.trim();
+          const authUserId = String(prevStripped.currentUser?.id ?? sessionUser?.id ?? "").trim();
+          next.programs = filterProgramsForMemberSession(next.programs, next.members, sessionEmail, {
+            linkedMemberId,
+            authUserId,
+          });
           const allowedMemberIds = memberIdsForSessionEmail(next.members, sessionEmail);
           allowedMemberIds.add(sessionEmail);
-          const linkedMemberId = prevStripped.currentUser?.memberId?.trim();
           if (linkedMemberId) allowedMemberIds.add(linkedMemberId);
-          next.programs = next.programs.filter((program) => allowedMemberIds.has(program.memberId.trim()));
+          if (authUserId) {
+            allowedMemberIds.add(authUserId);
+            allowedMemberIds.add(`auth-${authUserId}`);
+          }
           next.logs = next.logs.filter((log) => allowedMemberIds.has(log.memberId.trim()));
           next.messages = next.messages.filter((message) => allowedMemberIds.has(message.memberId.trim()));
           next.members = filterMembersForSessionEmail(next.members, sessionEmail);
@@ -2253,7 +2262,7 @@ export function useAppState() {
       : directTrainerMembers;
     const remoteMessages = hydratedTrainer?.messages ?? (await fetchMessagesFromSupabase());
     const remoteProgramsRaw = hydratedTrainer?.programs ?? (await fetchProgramsFromSupabase());
-    const remotePrograms = remoteProgramsRaw ? filterProgramsHiddenFromCloudViews(remoteProgramsRaw) : null;
+    const remotePrograms = remoteProgramsRaw ? filterDeletedPrograms(remoteProgramsRaw) : null;
     const remoteLogs = hydratedTrainer?.logs ?? (await fetchLogsFromSupabase());
 
     if (remoteMembers) {

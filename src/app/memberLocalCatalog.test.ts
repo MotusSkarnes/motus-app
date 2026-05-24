@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   collectCanonicalMemberIds,
   filterMembersForSessionEmail,
+  filterProgramsForMemberSession,
   isContaminatedDemoMemberProfile,
   isDemoSeedMemberId,
   memberIdsForSessionEmail,
@@ -76,6 +77,20 @@ describe("memberLocalCatalog", () => {
     expect(resepsjonIds.has("m1")).toBe(false);
     const scopedPrograms = state.programs.filter((p) => resepsjonIds.has(p.memberId));
     expect(scopedPrograms).toHaveLength(0);
+  });
+
+  it("filterProgramsForMemberSession keeps programs on duplicate member ids with same email", () => {
+    const members = [
+      { id: "member-a", email: "lene@example.com", name: "Lene A", isActive: true } as AppState["members"][number],
+      { id: "member-b", email: "lene@example.com", name: "Lene B", isActive: true } as AppState["members"][number],
+    ];
+    const programs = [
+      { id: "p-a", memberId: "member-a", title: "Program A", exercises: [] } as AppState["programs"][number],
+      { id: "p-b", memberId: "member-b", title: "Program B", exercises: [] } as AppState["programs"][number],
+      { id: "p-other", memberId: "other-member", title: "Other", exercises: [] } as AppState["programs"][number],
+    ];
+    const scoped = filterProgramsForMemberSession(programs, members, "lene@example.com", { linkedMemberId: "member-a" });
+    expect(scoped.map((program) => program.id).sort()).toEqual(["p-a", "p-b"]);
   });
 
   it("reports session owner email change", () => {

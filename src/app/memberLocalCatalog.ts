@@ -1,4 +1,5 @@
 import { getSupabaseBootstrapState } from "./data";
+import { programBelongsToMember } from "./memberActivity";
 import type { AppState, Member, TrainingProgram, WorkoutLog } from "./types";
 
 export const CATALOG_SCHEMA_VERSION = 3;
@@ -96,6 +97,34 @@ export function memberIdsForSessionEmail(members: Member[], sessionEmail: string
     if (id) ids.add(id);
   }
   return ids;
+}
+
+/** Behold program som tilhører innlogget medlem — samme attributtering som trener ser på kunden. */
+export function filterProgramsForMemberSession(
+  programs: TrainingProgram[],
+  members: Member[],
+  sessionEmail: string,
+  options?: { linkedMemberId?: string; authUserId?: string },
+): TrainingProgram[] {
+  const sessionMembers = filterMembersForSessionEmail(members, sessionEmail);
+  const linkedMemberId = options?.linkedMemberId?.trim() ?? "";
+  const authUserId = options?.authUserId?.trim() ?? "";
+
+  if (sessionMembers.length > 0) {
+    const anchor =
+      (linkedMemberId ? sessionMembers.find((member) => member.id === linkedMemberId) : undefined) ??
+      sessionMembers[0]!;
+    return programs.filter((program) => programBelongsToMember(anchor, members, program));
+  }
+
+  const allowed = memberIdsForSessionEmail(members, sessionEmail);
+  if (sessionEmail) allowed.add(sessionEmail);
+  if (linkedMemberId) allowed.add(linkedMemberId);
+  if (authUserId) {
+    allowed.add(authUserId);
+    allowed.add(`auth-${authUserId}`);
+  }
+  return programs.filter((program) => allowed.has(program.memberId.trim()));
 }
 
 export function collectCanonicalMemberIds(

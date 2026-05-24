@@ -234,6 +234,10 @@ export function MemberLayout({
     }
   }, [memberTab, markMemberInspirationAsSeen]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [memberTab]);
+
   async function persistOnboardingAnswers(answers: MemberOnboardingAnswers) {
     if (!activeMember) return;
     const loginEmail = appState.currentUser?.email.trim().toLowerCase() ?? "";
@@ -472,7 +476,7 @@ export function MemberLayout({
     <>
       <div className="space-y-4 sm:space-y-5">
         <MemberDesktopTabNav memberTab={memberTab} setMemberTab={setMemberTab} isMemberLimited={isMemberLimited} />
-        <div className="pb-24 lg:pb-0">
+        <div className="pb-[calc(5rem+env(safe-area-inset-bottom,0px))] xl:pb-0">
         {memberTab === "inspiration" ? (
           <InspirationHub
             memberId={inspirationMemberId}
@@ -490,6 +494,7 @@ export function MemberLayout({
         ) : (
           <MemberPortal {...memberPortalProps} />
         )}
+        </div>
       </div>
 
       {!welcomeModalOpen && !onboardingGateOpen && !memberCheckInOverlayOpen ? (
@@ -526,7 +531,6 @@ export function MemberLayout({
           onClose={() => setMemberCheckInOverlayOpen(false)}
         />
       ) : null}
-      </div>
     </>
   );
 }
