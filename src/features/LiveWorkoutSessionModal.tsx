@@ -379,7 +379,6 @@ export function LiveWorkoutSessionModal({
   );
   const incompleteExerciseNames = incompleteWorkoutGroups.map((group) => group.exerciseName).filter(Boolean);
   const incompleteExerciseCount = incompleteWorkoutGroups.length;
-  const shouldWarnAboutIncompleteWorkout = incompleteSetsCount > 0 && !incompleteWarningSeenRef.current;
 
   const activeSetProgressLabel = useMemo(() => {
     if (!currentWorkoutGroup || currentWorkoutGroup.blockType) return "";
@@ -479,7 +478,7 @@ export function LiveWorkoutSessionModal({
   }
 
   function requestFinishWorkout(action: FinishWorkoutAction) {
-    if (shouldWarnAboutIncompleteWorkout) {
+    if (incompleteSetsCount > 0 && !incompleteWarningSeenRef.current) {
       setPendingIncompleteFinishAction(action);
       return;
     }

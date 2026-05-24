@@ -326,7 +326,9 @@ export function useNotifications({
   ]);
 
   const buildMemberNotificationSnapshotRef = useRef(buildMemberNotificationSnapshot);
-  buildMemberNotificationSnapshotRef.current = buildMemberNotificationSnapshot;
+  useEffect(() => {
+    buildMemberNotificationSnapshotRef.current = buildMemberNotificationSnapshot;
+  }, [buildMemberNotificationSnapshot]);
 
   const applyMemberNotificationSnapshot = useCallback((preferences: MemberNotificationPreferences) => {
     skipMemberPersistRef.current = true;

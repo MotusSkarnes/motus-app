@@ -9,8 +9,6 @@ type WakeLockNavigator = Navigator & {
 /** Keep the device screen on while `active` (e.g. live workout, interval timer). */
 export function useScreenWakeLock(active: boolean): void {
   const sentinelRef = useRef<WakeLockSentinel | null>(null);
-  const activeRef = useRef(active);
-  activeRef.current = active;
 
   useEffect(() => {
     if (!active) return undefined;
@@ -29,7 +27,7 @@ export function useScreenWakeLock(active: boolean): void {
     }
 
     async function acquire() {
-      if (cancelled || !activeRef.current) return;
+      if (cancelled) return;
       const nav = navigator as WakeLockNavigator;
       if (!nav.wakeLock?.request) return;
       if (sentinelRef.current) return;
@@ -53,13 +51,13 @@ export function useScreenWakeLock(active: boolean): void {
     void acquire();
 
     const onVisibilityChange = () => {
-      if (document.visibilityState === "visible" && activeRef.current) {
+      if (document.visibilityState === "visible") {
         void acquire();
       }
     };
 
     const onPointerDown = () => {
-      if (activeRef.current && !sentinelRef.current) {
+      if (!sentinelRef.current) {
         void acquire();
       }
     };

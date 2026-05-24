@@ -20,7 +20,10 @@ export function useDeadlineIntervalTimer<T extends IntervalTimerDeadlineStep>({
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const stepEndsAtMsRef = useRef<number | null>(null);
   const onCompleteRef = useRef(onAllStepsComplete);
-  onCompleteRef.current = onAllStepsComplete;
+
+  useEffect(() => {
+    onCompleteRef.current = onAllStepsComplete;
+  }, [onAllStepsComplete]);
 
   const applySync = useCallback(
     (nowMs: number = Date.now()) => {
