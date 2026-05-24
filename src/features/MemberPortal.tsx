@@ -77,7 +77,7 @@ import {
   isLegacyIntervalCooldownDrag,
   programIsInMemberArchive,
 } from "../app/programBlocks";
-import { memberMayDeleteProgram, memberMayEditProgram, programAuthorCreditForMember } from "../app/programAuthor";
+import { memberMayDeleteProgram, memberMayEditProgram } from "../app/programAuthor";
 import {
   buildCheckInNotificationCopy,
   resolveCheckInWindow,
@@ -5394,7 +5394,6 @@ export function MemberPortal(props: MemberPortalProps) {
 	                  {memberProgramsInActiveLibrary.map((program) => {
 	                    const isExpanded = expandedProgramId === program.id;
 	                    const isLibraryMenuOpen = programLibraryMenuId === program.id;
-	                    const programAuthorLine = programAuthorCreditForMember(program, memberProgramAuthorOptions);
 	                    const coverExercise = program.exercises
 	                      .map((item) => exercises.find((exercise) => exercise.id === item.exerciseId))
 	                      .find(Boolean);
@@ -5423,9 +5422,7 @@ export function MemberPortal(props: MemberPortalProps) {
 	                              style={{ objectPosition: imageObjectPositionFromSrc(programCoverSrc) }}
 	                            />
 	                          ) : (
-	                            <div className="motus-member-program-thumb-fallback">
-	                              <Dumbbell className="h-7 w-7 text-teal-400" aria-hidden />
-	                            </div>
+	                            <div className="motus-member-program-thumb-fallback" aria-hidden />
 	                          )}
 	                        </div>
 	                        <div className="motus-member-program-content">
@@ -5433,12 +5430,6 @@ export function MemberPortal(props: MemberPortalProps) {
 	                            <span className="motus-member-program-category-badge">{programCategory}</span>
 	                            <div className="motus-member-program-header">
 	                              <div className="motus-member-program-title">{program.title}</div>
-	                              {program.goal?.trim() ? (
-	                                <div className="motus-member-program-goal">{program.goal.trim()}</div>
-	                              ) : null}
-	                              {programAuthorLine ? (
-	                                <div className="mt-0.5 text-[10px] font-medium text-slate-600">{programAuthorLine}</div>
-	                              ) : null}
 	                            </div>
 	                            <div className="motus-member-program-stats">
 	                              <span className="motus-member-program-stat">
@@ -5463,8 +5454,9 @@ export function MemberPortal(props: MemberPortalProps) {
 	                                />
 	                              </div>
 	                            </div>
+	                            <div className="motus-member-program-actions">
 	                            <GradientButton
-	                              className="motus-member-program-start w-full !min-h-11 !rounded-xl !text-sm"
+	                              className="motus-member-program-start !text-sm"
 	                              onClick={() => {
 	                                if (intervalProgramIdSet.has(program.id)) {
 	                                  openIntervalTimerModal(program.id);
@@ -5478,23 +5470,6 @@ export function MemberPortal(props: MemberPortalProps) {
 	                                Start økt
 	                              </span>
 	                            </GradientButton>
-	                            <div className="motus-member-program-actions">
-	                              <OutlineButton
-	                                className="motus-member-program-secondary-btn"
-	                                onClick={() => setExpandedProgramId((prev) => (prev === program.id ? null : program.id))}
-	                                aria-label={isExpanded ? "Skjul programdetaljer" : "Vis programdetaljer"}
-	                                title={isExpanded ? "Skjul" : "Vis"}
-	                              >
-	                                {isExpanded ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
-	                              </OutlineButton>
-	                              <OutlineButton
-	                                className="motus-member-program-secondary-btn"
-	                                onClick={() => handlePrintProgram(program)}
-	                                aria-label="Last ned program som PDF"
-	                                title="PDF"
-	                              >
-	                                <Printer className="h-4 w-4" aria-hidden />
-	                              </OutlineButton>
 	                              <div className="relative min-w-0" data-program-library-menu>
 	                                <OutlineButton
 	                                  type="button"
@@ -5512,6 +5487,30 @@ export function MemberPortal(props: MemberPortalProps) {
 	                                    style={{ borderColor: "rgba(15,23,42,0.1)" }}
 	                                    role="menu"
 	                                  >
+	                                    <button
+	                                      type="button"
+	                                      role="menuitem"
+	                                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+	                                      onClick={() => {
+	                                        setProgramLibraryMenuId(null);
+	                                        setExpandedProgramId((prev) => (prev === program.id ? null : program.id));
+	                                      }}
+	                                    >
+	                                      {isExpanded ? <EyeOff className="h-4 w-4 shrink-0 text-slate-500" /> : <Eye className="h-4 w-4 shrink-0 text-slate-500" />}
+	                                      {isExpanded ? "Skjul detaljer" : "Vis detaljer"}
+	                                    </button>
+	                                    <button
+	                                      type="button"
+	                                      role="menuitem"
+	                                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+	                                      onClick={() => {
+	                                        setProgramLibraryMenuId(null);
+	                                        handlePrintProgram(program);
+	                                      }}
+	                                    >
+	                                      <Printer className="h-4 w-4 shrink-0 text-slate-500" />
+	                                      PDF
+	                                    </button>
 	                                    {memberMayEditProgram(program) ? (
 	                                      <button
 	                                        type="button"
