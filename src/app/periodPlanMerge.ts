@@ -266,6 +266,28 @@ export function buildPeriodPlanEntryKey(planId: string, weekNumber: number, day:
   return `${planId}:${weekNumber}:${day}`;
 }
 
+export function isPeriodPlanDayComplete(input: {
+  planId: string;
+  weekNumber: number;
+  day: WeekdayPlanKey;
+  entry: string;
+  completedKeys: string[];
+  programs: TrainingProgram[];
+  logsForDate?: Array<{ programTitle: string; status: string }>;
+}): boolean {
+  const key = buildPeriodPlanEntryKey(input.planId, input.weekNumber, input.day);
+  if (input.completedKeys.includes(key)) return true;
+
+  const trimmedEntry = input.entry.trim();
+  if (!trimmedEntry || !input.logsForDate?.length) return false;
+
+  return input.logsForDate.some(
+    (log) =>
+      log.status === "Fullført" &&
+      periodPlanEntryMatchesCompletedProgram(trimmedEntry, log.programTitle, input.programs),
+  );
+}
+
 /** Finn periodeplan-rader som skal hakkes av når et program er fullført på en kalenderdag. */
 export function findPeriodPlanAutoCompleteTargets(input: {
   plans: PeriodSchedulePlan[];

@@ -49,12 +49,6 @@ export function buildTrainerLayoutProps(input: {
   setOpenCustomerOverviewSignal: Dispatch<SetStateAction<number>>;
   memberAvatarById: TrainerLayoutProps["memberAvatarById"];
   setMemberAvatarUrlForMember: TrainerLayoutProps["setMemberAvatarUrlForMember"];
-  trainerNotificationsOpen: boolean;
-  setTrainerNotificationsOpen: (open: boolean) => void;
-  trainerUnreadCount: number;
-  trainerVisibleAlerts: TrainerLayoutProps["trainerVisibleAlerts"];
-  openTrainerAlert: TrainerLayoutProps["openTrainerAlert"];
-  handleTrainerBellToggle: () => void;
   isLocalDemoSession: boolean;
   remoteTrainerPeriodPlansByMemberId: TrainerLayoutProps["remoteTrainerPeriodPlansByMemberId"];
   applyTrainerProfileSaved: TrainerLayoutProps["applyTrainerProfileSaved"];

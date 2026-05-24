@@ -121,6 +121,7 @@ import {
   removeMemberOwnedPeriodPlanFromStorage,
   findPeriodPlanAutoCompleteTargets,
   buildPeriodPlanEntryKey,
+  isPeriodPlanDayComplete,
   derivePeriodPlanCompletedEntryKeysFromLogs,
   findPeriodPlanEntryForCalendarDate,
   readActivePeriodPlanIdForMembers,
@@ -1805,12 +1806,6 @@ export function MemberPortal(props: MemberPortalProps) {
     if (rescuedProgram) return { kind: "start-program" as const, program: rescuedProgram };
     return resolved;
   }, [todayPlanEntry, memberProgramsForPeriodPlan, memberPrograms]);
-  const todayPeriodPlanCompleted = useMemo(() => {
-    if (!todayPlanPeriodPlan || !todayPeriodPlanMatch) return false;
-    return completedPeriodPlanEntryKeys.includes(
-      buildPeriodPlanEntryKey(todayPlanPeriodPlan.id, todayPeriodPlanMatch.weekNumber, todayPeriodPlanMatch.day),
-    );
-  }, [todayPlanPeriodPlan, todayPeriodPlanMatch, completedPeriodPlanEntryKeys]);
   const profileMetricsFromDb = decodeMemberProfileMetrics(editableMember?.personalGoals);
   const profileHasUnsavedChanges = useMemo(() => {
     if (!editableMember) return false;
@@ -2142,6 +2137,28 @@ export function MemberPortal(props: MemberPortalProps) {
     });
     return byKey;
   }, [completedLogs]);
+  const todayPeriodPlanCompleted = useMemo(() => {
+    if (!todayPlanPeriodPlan || !todayPeriodPlanMatch || !todayPlanEntry) return false;
+    const todayKey = toCalendarDateKey(nowDate);
+    const logsForToday = calendarLogsByDateKey.get(todayKey) ?? [];
+    return isPeriodPlanDayComplete({
+      planId: todayPlanPeriodPlan.id,
+      weekNumber: todayPeriodPlanMatch.weekNumber,
+      day: todayPeriodPlanMatch.day,
+      entry: todayPlanEntry,
+      completedKeys: completedPeriodPlanEntryKeys,
+      programs: memberProgramsForPeriodPlan,
+      logsForDate: logsForToday,
+    });
+  }, [
+    todayPlanPeriodPlan,
+    todayPeriodPlanMatch,
+    todayPlanEntry,
+    completedPeriodPlanEntryKeys,
+    memberProgramsForPeriodPlan,
+    calendarLogsByDateKey,
+    nowDate,
+  ]);
   const calendarDayLoad = useMemo(() => {
     const byDay = new Map<number, number>();
     completedLogDates.forEach((date) => {
@@ -2181,6 +2198,24 @@ export function MemberPortal(props: MemberPortalProps) {
         statusByDay.set(day, "completed");
         return;
       }
+      const plannedMatch = activePeriodPlan
+        ? findPeriodPlanEntryForCalendarDate(activePeriodPlan, candidateDate, periodPlanSwapsByPlan)
+        : null;
+      if (
+        plannedMatch?.entry.trim() &&
+        isPeriodPlanDayComplete({
+          planId: activePeriodPlan!.id,
+          weekNumber: plannedMatch.weekNumber,
+          day: plannedMatch.day,
+          entry: plannedMatch.entry,
+          completedKeys: completedPeriodPlanEntryKeys,
+          programs: memberProgramsForPeriodPlan,
+          logsForDate: calendarLogsByDay.get(day) ?? [],
+        })
+      ) {
+        statusByDay.set(day, "completed");
+        return;
+      }
       if (candidateDate.getTime() < todayStart.getTime()) {
         statusByDay.set(day, "missed");
       } else {
@@ -2191,7 +2226,17 @@ export function MemberPortal(props: MemberPortalProps) {
       statusByDay.set(day, "completed");
     });
     return statusByDay;
-  }, [calendarPlannedEntriesByDay, calendarDayLoad, calendarMonth, nowTimestamp]);
+  }, [
+    calendarPlannedEntriesByDay,
+    calendarDayLoad,
+    calendarMonth,
+    nowTimestamp,
+    activePeriodPlan,
+    periodPlanSwapsByPlan,
+    completedPeriodPlanEntryKeys,
+    memberProgramsForPeriodPlan,
+    calendarLogsByDay,
+  ]);
   const calendarWeekDays = useMemo(() => {
     const todayStart = getStartOfDay(nowDate);
     const statusByDateKey = new Map<string, TrainingCalendarDayStatus>();
@@ -2213,8 +2258,20 @@ export function MemberPortal(props: MemberPortalProps) {
         : null;
       const plannedEntry = plannedMatch?.entry.trim() ?? "";
       const logs = calendarLogsByDateKey.get(dateKey) ?? [];
+      const periodCompleted =
+        plannedMatch?.entry.trim() && activePeriodPlan
+          ? isPeriodPlanDayComplete({
+              planId: activePeriodPlan.id,
+              weekNumber: plannedMatch.weekNumber,
+              day: plannedMatch.day,
+              entry: plannedMatch.entry,
+              completedKeys: completedPeriodPlanEntryKeys,
+              programs: memberProgramsForPeriodPlan,
+              logsForDate: logs,
+            })
+          : false;
 
-      if (sessionCount > 0) {
+      if (sessionCount > 0 || periodCompleted) {
         statusByDateKey.set(dateKey, "completed");
         workoutLabelByDateKey.set(dateKey, (logs[0]?.programTitle ?? plannedEntry) || "Økt");
       } else if (plannedEntry) {
@@ -2240,6 +2297,8 @@ export function MemberPortal(props: MemberPortalProps) {
     calendarWeekStart,
     nowDate,
     periodPlanSwapsByPlan,
+    completedPeriodPlanEntryKeys,
+    memberProgramsForPeriodPlan,
   ]);
   const calendarWeekCompletedCount = calendarWeekDays.filter((day) => day.status === "completed").length;
   const calendarWeekPlannedCount = calendarWeekDays.filter((day) => day.workoutLabel !== "—").length;
@@ -2273,15 +2332,23 @@ export function MemberPortal(props: MemberPortalProps) {
     [selectedCalendarPlanEntry, memberProgramsForPeriodPlan],
   );
   const selectedCalendarPeriodPlanCompleted = useMemo(() => {
-    if (!selectedCalendarPeriodMatch) return false;
-    return completedPeriodPlanEntryKeys.includes(
-      buildPeriodPlanEntryKey(
-        selectedCalendarPeriodMatch.plan.id,
-        selectedCalendarPeriodMatch.weekNumber,
-        selectedCalendarPeriodMatch.day,
-      ),
-    );
-  }, [selectedCalendarPeriodMatch, completedPeriodPlanEntryKeys]);
+    if (!selectedCalendarPeriodMatch || !selectedCalendarPlanEntry) return false;
+    return isPeriodPlanDayComplete({
+      planId: selectedCalendarPeriodMatch.plan.id,
+      weekNumber: selectedCalendarPeriodMatch.weekNumber,
+      day: selectedCalendarPeriodMatch.day,
+      entry: selectedCalendarPlanEntry,
+      completedKeys: completedPeriodPlanEntryKeys,
+      programs: memberProgramsForPeriodPlan,
+      logsForDate: selectedCalendarLogs,
+    });
+  }, [
+    selectedCalendarPeriodMatch,
+    selectedCalendarPlanEntry,
+    completedPeriodPlanEntryKeys,
+    memberProgramsForPeriodPlan,
+    selectedCalendarLogs,
+  ]);
   const selectedCalendarLog = useMemo(() => {
     if (!selectedCalendarLogs.length) return null;
     if (!selectedCalendarLogId) return selectedCalendarLogs[0];
@@ -4266,8 +4333,29 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   function isPeriodPlanEntryCompleted(planId: string, weekNumber: number, day: WeekdayPlanKey): boolean {
-    const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
-    return completedPeriodPlanEntryKeys.includes(key);
+    const plan = visiblePeriodPlans.find((item) => item.id === planId);
+    const week = plan ? resolvePeriodPlanWeek(plan, weekNumber) : null;
+    if (!plan || !week) {
+      return completedPeriodPlanEntryKeys.includes(buildPeriodPlanEntryKey(planId, weekNumber, day));
+    }
+    const swaps = getSwapsForWeek(periodPlanSwapsByPlan, planId, weekNumber);
+    const entry = applyPeriodPlanSwaps(week.days, swaps)[day]?.trim() ?? "";
+    if (!entry) {
+      return completedPeriodPlanEntryKeys.includes(buildPeriodPlanEntryKey(planId, weekNumber, day));
+    }
+    const plannedDate = resolvePeriodPlanPlannedDate(plan, weekNumber, day);
+    const logsForDate = plannedDate
+      ? calendarLogsByDateKey.get(toCalendarDateKey(plannedDate)) ?? []
+      : [];
+    return isPeriodPlanDayComplete({
+      planId,
+      weekNumber,
+      day,
+      entry,
+      completedKeys: completedPeriodPlanEntryKeys,
+      programs: memberProgramsForPeriodPlan,
+      logsForDate,
+    });
   }
 
   function swapPeriodPlanDays(planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) {
@@ -4893,10 +4981,14 @@ export function MemberPortal(props: MemberPortalProps) {
                             <div className="mt-3 flex flex-wrap gap-2">
                               {selectedCalendarPlanAction.kind === "start-program" ? (
                                 <GradientButton
-                                  onClick={() => handlePeriodPlanStartProgram(selectedCalendarPlanAction.program.id)}
-                                  className="w-full sm:w-auto"
+                                  disabled={selectedCalendarPeriodPlanCompleted}
+                                  onClick={() => {
+                                    if (selectedCalendarPeriodPlanCompleted) return;
+                                    handlePeriodPlanStartProgram(selectedCalendarPlanAction.program.id);
+                                  }}
+                                  className="w-full sm:w-auto disabled:cursor-default disabled:opacity-100"
                                 >
-                                  Start økt
+                                  {selectedCalendarPeriodPlanCompleted ? "Fullført" : "Start økt"}
                                 </GradientButton>
                               ) : null}
                               {selectedCalendarPlanAction.kind === "log-group" && selectedCalendarPeriodMatch ? (
@@ -5115,10 +5207,21 @@ export function MemberPortal(props: MemberPortalProps) {
                 }
                 primaryCta={
                   todayPlanAction.kind === "start-program" ? (
-                    <MemberHomeStartWorkoutButton
-                      label="Start økt"
-                      onClick={() => handlePeriodPlanStartProgram(todayPlanAction.program.id)}
-                    />
+                    todayPeriodPlanCompleted ? (
+                      <GradientButton
+                        type="button"
+                        disabled
+                        className="motus-pressable h-10 w-full rounded-lg px-4 text-sm font-semibold disabled:cursor-default disabled:opacity-100"
+                        aria-disabled
+                      >
+                        Dagens økt er fullført
+                      </GradientButton>
+                    ) : (
+                      <MemberHomeStartWorkoutButton
+                        label="Start økt"
+                        onClick={() => handlePeriodPlanStartProgram(todayPlanAction.program.id)}
+                      />
+                    )
                   ) : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch ? (
                     <GradientButton
                       type="button"
@@ -5393,7 +5496,9 @@ export function MemberPortal(props: MemberPortalProps) {
                   primaryAction={
                     todayPlanAction.kind === "start-program"
                       ? {
-                          label: "Start dagens økt",
+                          label: todayPeriodPlanCompleted ? "Dagens økt er fullført" : "Start økt",
+                          disabled: todayPeriodPlanCompleted,
+                          completed: todayPeriodPlanCompleted,
                           onClick: () => handlePeriodPlanStartProgram(todayPlanAction.program.id),
                         }
                       : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch

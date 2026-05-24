@@ -1,7 +1,5 @@
 import { useState, type ComponentProps, type Dispatch, type SetStateAction } from "react";
 import {
-  Bell,
-  CheckCircle2,
   ClipboardList,
   Dumbbell,
   Award,
@@ -17,12 +15,10 @@ import {
 import { MOTUS } from "../app/data";
 import type { AppState, AuthUser, TrainerTab } from "../app/types";
 import { Card } from "../app/ui";
-import type { TrainerAlert } from "../app/useNotifications";
 import { TrainerPortal } from "./TrainerPortal";
 import type { MemberPortal } from "./MemberPortal";
 import { InspirationHub } from "./InspirationHub";
 import { TrainerBadgeCatalog } from "./TrainerBadgeCatalog";
-import { TrainerNotificationsPanel } from "./TrainerNotificationsPanel";
 
 type TrainerWorkoutBridge = Pick<
   ComponentProps<typeof MemberPortal>,
@@ -67,12 +63,6 @@ type TrainerLayoutProps = {
   setOpenCustomerOverviewSignal: Dispatch<SetStateAction<number>>;
   memberAvatarById: Record<string, string>;
   setMemberAvatarUrlForMember: ComponentProps<typeof TrainerPortal>["setMemberAvatarUrlForMember"];
-  trainerNotificationsOpen: boolean;
-  setTrainerNotificationsOpen: (open: boolean) => void;
-  trainerUnreadCount: number;
-  trainerVisibleAlerts: TrainerAlert[];
-  openTrainerAlert: (alert: TrainerAlert) => void;
-  handleTrainerBellToggle: () => void;
   isLocalDemoSession: boolean;
   remoteTrainerPeriodPlansByMemberId: ComponentProps<typeof TrainerPortal>["remoteTrainerPeriodPlansByMemberId"];
   applyTrainerProfileSaved: (user: AuthUser) => void;
@@ -132,12 +122,6 @@ export function TrainerLayout({
   setOpenCustomerOverviewSignal,
   memberAvatarById,
   setMemberAvatarUrlForMember,
-  trainerNotificationsOpen,
-  setTrainerNotificationsOpen,
-  trainerUnreadCount,
-  trainerVisibleAlerts,
-  openTrainerAlert,
-  handleTrainerBellToggle,
   isLocalDemoSession,
   remoteTrainerPeriodPlansByMemberId,
   applyTrainerProfileSaved,
@@ -244,51 +228,6 @@ export function TrainerLayout({
               <div className="mt-1 text-xs sm:text-sm text-amber-800">
                 Data lagres kun lokalt i denne sesjonen. Logg inn med ekte konto for synk mot medlemssiden.
               </div>
-            </Card>
-          ) : null}
-          {trainerTab !== "dashboard" ? (
-            <Card className="motus-card p-4 sm:p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Aktuelt nå</div>
-                  <div className="mt-0.5 flex items-center gap-2 text-sm font-semibold text-slate-900">
-                    {trainerUnreadCount > 0 ? (
-                      <>
-                        <span>{trainerUnreadCount} ting å følge opp</span>
-                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: MOTUS.pink }} />
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-4 w-4 text-teal-500" />
-                        <span>Alt er ajour</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleTrainerBellToggle}
-                  className="relative inline-flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-emerald-50"
-                  style={{ borderColor: "rgba(48,227,190,0.25)" }}
-                  aria-label={trainerNotificationsOpen ? "Lukk varsler" : "Åpne varsler"}
-                >
-                  <Bell className="h-4 w-4" />
-                  <span>{trainerNotificationsOpen ? "Lukk" : "Se"}</span>
-                  {trainerUnreadCount > 0 ? (
-                    <span
-                      className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
-                      style={{ backgroundColor: MOTUS.pink }}
-                    >
-                      {trainerUnreadCount}
-                    </span>
-                  ) : null}
-                </button>
-              </div>
-              {trainerNotificationsOpen ? (
-                <div className="mt-3">
-                  <TrainerNotificationsPanel alerts={trainerVisibleAlerts} onOpenAlert={openTrainerAlert} />
-                </div>
-              ) : null}
             </Card>
           ) : null}
           <div className={trainerTab === "dashboard" ? "pb-24 xl:pb-0" : undefined}>

@@ -5,6 +5,7 @@ import {
   HIDDEN_PERIOD_PLAN_IDS_BY_MEMBER_STORAGE_KEY,
   findPeriodPlanAutoCompleteTargets,
   derivePeriodPlanCompletedEntryKeysFromLogs,
+  isPeriodPlanDayComplete,
   findPeriodPlanEntryForCalendarDate,
   findTodayPeriodPlanEntryInPlans,
   resolveTodayPeriodPlanEntryForHome,
@@ -376,5 +377,40 @@ describe("period plan auto-complete", () => {
       ],
     });
     expect(keys).toEqual(["plan-1:1:friday"]);
+  });
+
+  it("isPeriodPlanDayComplete checks keys and matching logs", () => {
+    expect(
+      isPeriodPlanDayComplete({
+        planId: "plan-1",
+        weekNumber: 1,
+        day: "monday",
+        entry: "Styrke A",
+        completedKeys: ["plan-1:1:monday"],
+        programs,
+      }),
+    ).toBe(true);
+    expect(
+      isPeriodPlanDayComplete({
+        planId: "plan-1",
+        weekNumber: 1,
+        day: "monday",
+        entry: "Styrke A",
+        completedKeys: [],
+        programs,
+        logsForDate: [{ programTitle: "Styrke A", status: "Fullført" }],
+      }),
+    ).toBe(true);
+    expect(
+      isPeriodPlanDayComplete({
+        planId: "plan-1",
+        weekNumber: 1,
+        day: "monday",
+        entry: "Styrke A",
+        completedKeys: [],
+        programs,
+        logsForDate: [{ programTitle: "Annet program", status: "Fullført" }],
+      }),
+    ).toBe(false);
   });
 });

@@ -73,7 +73,7 @@ describe("periodPlanEntryActions", () => {
   });
 
   it("summarizes list labels without full workout text", () => {
-    expect(getPeriodPlanDayListLabel("Styrke A", resolvePeriodPlanEntryAction("Styrke A", programs))).toBe("Økt planlagt");
+    expect(getPeriodPlanDayListLabel("Styrke A", resolvePeriodPlanEntryAction("Styrke A", programs))).toBe("Styrke A");
     expect(getPeriodPlanDayListLabel("Gruppetime: Yoga", resolvePeriodPlanEntryAction("Gruppetime: Yoga", programs))).toBe(
       "Gruppetime: Yoga",
     );

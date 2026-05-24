@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, ChevronRight, Coffee, RotateCcw, Users, X } from "lucide-react";
+import { Check, ChevronRight, Coffee, Play, RotateCcw, X } from "lucide-react";
 import {
   findProgramForPeriodPlanEntry,
   getPeriodPlanDayListLabel,
@@ -305,26 +305,6 @@ export function PeriodPlanWeekView({
                   </div>
                 ) : null}
 
-                {entry && !completed && entryAction.kind === "log-group" ? (
-                  <div className="mt-2 px-1">
-                    <OutlineButton
-                      type="button"
-                      onClick={() =>
-                        onLogGroup({
-                          entry,
-                          plannedDate,
-                          planId: plan.id,
-                          weekNumber: week.weekNumber,
-                          day: dayKey,
-                        })
-                      }
-                      className="w-full !min-h-9 !text-xs"
-                    >
-                      <Users className="mr-1 inline h-3.5 w-3.5" aria-hidden />
-                      Logg gruppetime
-                    </OutlineButton>
-                  </div>
-                ) : null}
               </div>
             </li>
           );
