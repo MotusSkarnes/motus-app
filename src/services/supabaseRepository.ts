@@ -1167,7 +1167,10 @@ export async function syncMemberLocalCatalogToSupabase(state: AppState): Promise
 
   await ensureMemberAuthLink(sessionEmail, canonicalMemberId);
 
-  const memberIds = new Set<string>([canonicalMemberId, state.memberViewId.trim()].filter(Boolean));
+  const authUserId = String(state.currentUser.id ?? "").trim();
+  const memberIds = new Set<string>(
+    [canonicalMemberId, state.memberViewId.trim(), state.currentUser.memberId?.trim() ?? "", authUserId, authUserId ? `auth-${authUserId}` : "", sessionEmail].filter(Boolean),
+  );
   const emailMembers = state.members.filter((member) => member.email.trim().toLowerCase() === sessionEmail);
   emailMembers.forEach((member) => memberIds.add(member.id.trim()));
 
@@ -1193,6 +1196,7 @@ export async function syncMemberLocalCatalogToSupabase(state: AppState): Promise
       notes: program.notes,
       memberId: canonicalMemberId,
       exercises: program.exercises,
+      imageUrl: program.imageUrl,
       programCreatedBy: program.programCreatedBy,
       programCreatedByName: program.programCreatedByName,
     };
