@@ -74,10 +74,10 @@ describe("Trainer flows", () => {
     await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
     await user.click(screen.getAllByRole("button", { name: "Klienter" })[0]);
     await user.click(screen.getByRole("button", { name: "Meldinger" }));
-    await user.type(screen.getByPlaceholderText("Skriv melding til kunden"), trainerMessage);
+    await user.type(screen.getByPlaceholderText("Skriv melding..."), trainerMessage);
     await user.click(screen.getAllByRole("button", { name: "Send" })[0]);
 
-    expect(screen.getByPlaceholderText("Skriv melding til kunden")).toHaveValue("");
+    expect(screen.getByPlaceholderText("Skriv melding...")).toHaveValue("");
   });
 
   it("lets trainer deactivate a member and reveal inactive list", async () => {

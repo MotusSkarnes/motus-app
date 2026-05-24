@@ -177,6 +177,8 @@ import { MemberHomeBelowWorkout } from "./MemberHomeBelowWorkout";
 import { MemberHomeWeeklyProgress } from "./MemberHomeWeeklyProgress";
 import { MemberHomeNextPlanCard, MemberHomeStatusGradientCard } from "./MemberHomeNextPlanCard";
 import { MemberProgressScoresCard } from "./MemberProgressScoresCard";
+import { MotusChat, type MotusChatQuickAction } from "./MotusChat";
+import { resolveMemberTrainerDisplayName } from "../app/trainerProfile";
 import { MemberPersonalRecordsSection } from "./MemberPersonalRecordsSection";
 import { MemberWeeklySummaryCard } from "./MemberWeeklySummaryCard";
 import { MemberTrainingFlowCard } from "./MemberTrainingFlowCard";
@@ -1510,6 +1512,24 @@ export function MemberPortal(props: MemberPortalProps) {
     });
     return Array.from(bySignature.values()).sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
   }, [messages, relatedMemberIdSet, members, editableMember?.email, editableMember?.name, normalizedCurrentUserEmail, currentUserRole]);
+  const chatTrainerName = useMemo(() => {
+    if (!editableMember) return "Trener";
+    return resolveMemberTrainerDisplayName(editableMember, programs) ?? "Trener";
+  }, [editableMember, programs]);
+  const memberChatQuickActions = useMemo(
+    (): MotusChatQuickAction[] => [
+      { id: "workout", label: "Send økt", icon: Dumbbell, onClick: () => setMemberTab("home") },
+      { id: "program", label: "Del program", icon: Share2, onClick: () => setMemberTab("programs") },
+      {
+        id: "book",
+        label: "Book time",
+        icon: CalendarRange,
+        onClick: () => setMessageText("Hei! Kan vi finne en time som passer?"),
+      },
+      { id: "more", label: "Flere", icon: MoreHorizontal },
+    ],
+    [setMemberTab],
+  );
   const activeWorkoutProgram = useMemo(() => {
     if (!workoutMode?.programId) return null;
     const programId = workoutMode.programId;
@@ -6529,64 +6549,28 @@ export function MemberPortal(props: MemberPortalProps) {
           ) : null}
 
           {!isMemberLimited && memberTab === "messages" ? (
-            <div className="space-y-4">
-              <MemberTabHero
-                title="Dialog med PT"
-                description="Skriv kort til treneren din."
-              />
-            <Card className="p-5">
-              <div className="space-y-4">
-                <div ref={memberMessagesContainerRef} className="max-h-[min(52vh,20rem)] space-y-3 overflow-auto rounded-xl border bg-white p-3 sm:p-4">
-                  {memberMessages.length === 0 ? (
-                    <EmptyState
-                      icon="💬"
-                      title="Ingen meldinger ennå"
-                      description="Start med en kort oppdatering til trener."
-                      className="bg-slate-50"
-                      action={
-                        <OutlineButton onClick={() => setMessageText("Hei! Kort status:")} className="w-full sm:w-auto">
-                          Sett inn forslag
-                        </OutlineButton>
-                      }
-                    />
-                  ) : null}
-                  {memberMessages.map((message) => (
-                    <div key={message.id} className={`max-w-[85%] rounded-xl p-3 text-sm ${message.id === memberMessages[memberMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "member" ? "motus-chat-bubble-own ml-auto" : "border bg-white"}`} style={message.sender === "member" ? undefined : { borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div>{message.text}</div>
-                      <div className={`mt-1 text-[11px] ${message.sender === "member" ? "text-slate-600/75" : "text-slate-500"}`}>{message.createdAt}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <TextInput
-                    value={messageText}
-                    onChange={(e) => {
-                      setMessageText(e.target.value);
-                      if (memberChatSendStatus) setMemberChatSendStatus(null);
-                    }}
-                    placeholder="Skriv melding til trener"
-                  />
-                  <GradientButton className="w-full sm:w-auto" onClick={() => {
-                    if (!activeMemberId || !messageText.trim()) return;
-                    void dispatchMemberMessageToRelatedMembers(messageText);
-                    setMessageText("");
-                  }} disabled={!messageText.trim() || isSendingMemberMessage}>{isSendingMemberMessage ? "Sender..." : "Send"}</GradientButton>
-                </div>
-                {memberChatSendStatus ? (
-                  <div
-                    className={`rounded-xl border px-3 py-2 text-xs ${
-                      memberChatSendStatus.startsWith("Melding sendt")
-                        ? "motus-brand-muted motus-brand-muted-border"
-                        : "bg-rose-50 text-rose-800"
-                    }`}
-                    style={memberChatSendStatus.startsWith("Melding sendt") ? undefined : { borderColor: "rgba(244,63,94,0.3)" }}
-                  >
-                    {memberChatSendStatus}
-                  </div>
-                ) : null}
-              </div>
-            </Card>
-            </div>
+            <MotusChat
+              variant="member"
+              messages={memberMessages}
+              viewerRole="member"
+              counterpartyName={chatTrainerName}
+              composeValue={messageText}
+              onComposeChange={(value) => {
+                setMessageText(value);
+                if (memberChatSendStatus) setMemberChatSendStatus(null);
+              }}
+              onSend={() => {
+                if (!activeMemberId || !messageText.trim()) return;
+                void dispatchMemberMessageToRelatedMembers(messageText);
+                setMessageText("");
+              }}
+              isSending={isSendingMemberMessage}
+              sendDisabled={!messageText.trim()}
+              composePlaceholder="Skriv melding..."
+              sendStatus={memberChatSendStatus}
+              messagesContainerRef={memberMessagesContainerRef}
+              quickActions={memberChatQuickActions}
+            />
           ) : null}
 
           {memberTab === "profile" ? (

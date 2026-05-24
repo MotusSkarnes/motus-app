@@ -33,7 +33,7 @@ describe("Member flows", () => {
     const memberMessage = "Medlem testmelding";
     await user.click(screen.getAllByRole("button", { name: /Logg inn som Emma/i })[0]);
     await user.click(screen.getAllByRole("button", { name: "Meldinger" })[0]);
-    await user.type(screen.getByPlaceholderText("Skriv melding til trener"), memberMessage);
+    await user.type(screen.getByPlaceholderText("Skriv melding..."), memberMessage);
     await user.click(screen.getByRole("button", { name: "Send" }));
 
     expect(screen.getByText(memberMessage)).toBeInTheDocument();
@@ -46,7 +46,7 @@ describe("Member flows", () => {
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som Emma/i })[0]);
     await user.click(screen.getAllByRole("button", { name: "Meldinger" })[0]);
-    await user.type(screen.getByPlaceholderText("Skriv melding til trener"), memberMessage);
+    await user.type(screen.getByPlaceholderText("Skriv melding..."), memberMessage);
     await user.click(screen.getByRole("button", { name: "Send" }));
 
     expect(screen.getByText(memberMessage)).toBeInTheDocument();

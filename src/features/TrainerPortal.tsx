@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { CalendarRange, ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, MessageSquare, Pencil, Play, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
+import { CalendarRange, ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, MessageSquare, MoreHorizontal, Pencil, Play, Share2, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, periodPlanStartDateForDateInput } from "../app/dateFormat";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
@@ -68,6 +68,7 @@ import {
 import { TrainerProfileCard } from "./TrainerProfileCard";
 import { TrainerHomeOverview } from "./TrainerHomeOverview";
 import type { TrainerFollowUpCardModel, TrainerPriorityMemberModel, TrainerTodoModel } from "./TrainerHomeOverview";
+import { MotusChat, type MotusChatQuickAction } from "./MotusChat";
 import {
   buildTrainerFocusItems,
   buildTrainerInsightText,
@@ -154,7 +155,7 @@ function inferStatusTone(message: string): "success" | "error" | "info" {
   return "info";
 }
 
-/** Ikke popup for «Sender…»-status (vises allerede i knapper/skjema). */
+/** Ikke popup for «Sender�?�»-status (vises allerede i knapper/skjema). */
 function trainerPtStatusShouldToast(message: string): boolean {
   return !message.trim().toLowerCase().startsWith("sender");
 }
@@ -252,14 +253,14 @@ type TrainerPortalProps = {
   setMemberAvatarUrlForMember?: (memberId: string, avatarUrl: string) => void;
   isLocalDemoSession?: boolean;
   canAccessAdminTools?: boolean;
-  /** Innlogget treners visningsnavn — brukes når program lagres på kunde. */
+  /** Innlogget treners visningsnavn �?? brukes når program lagres på kunde. */
   trainerAccountName?: string;
   onTrainerProfileSaved?: (user: AuthUser) => void;
   trainerHomeHeaderActions?: ReactNode;
   trainerHomeNotificationsPanel?: ReactNode;
   /** Synket fra Supabase ved hydrering (per medlem, inkl. tom liste). */
   remoteTrainerPeriodPlansByMemberId?: Record<string, PeriodSchedulePlan[]>;
-  /** Live PT-økt på kundens program — samme tilstand som medlemssiden. */
+  /** Live PT-økt på kundens program �?? samme tilstand som medlemssiden. */
   workoutMode?: WorkoutModeState | null;
   startWorkoutMode?: (programId: string, options?: StartWorkoutModeOptions) => void;
   updateWorkoutExerciseResult?: (
@@ -396,7 +397,7 @@ function nextLastFollowUpMapForIds(
   return out;
 }
 
-/** Øvelse brukt som malrad ved oppretting av kondisjonsintervaller fra øvelsesbanken. */
+/** �?velse brukt som malrad ved oppretting av kondisjonsintervaller fra øvelsesbanken. */
 function pickCardioIntervalExerciseForTemplate(allExercises: Exercise[]): Exercise | undefined {
   if (!allExercises.length) return undefined;
   const eqLo = (e: Exercise) => e.equipment.trim().toLowerCase();
@@ -435,7 +436,7 @@ function cardioSetPlaceholder(): string {
   return "drag";
 }
 
-/** Kondisjonsmal / intervallrader — ikke bare når øvelsesbanken har category «Kondisjon». */
+/** Kondisjonsmal / intervallrader �?? ikke bare når øvelsesbanken har category «Kondisjon». */
 function isCardioDraftRow(
   item: ProgramExercise,
   linkedExercise: Exercise | undefined,
@@ -595,7 +596,7 @@ function parseChatCreatedAtMs(value: string): number {
   return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 }
 
-/** Relaterte medlems-ID-er (e-post/navn) for valgt rad — brukes når listen oppdateres uten at det logisk er en annen kunde. */
+/** Relaterte medlems-ID-er (e-post/navn) for valgt rad �?? brukes når listen oppdateres uten at det logisk er en annen kunde. */
 function computeSelectedMemberRelatedIds(members: Member[], selectedMemberId: string | null): string[] {
   if (selectedMemberId === "__template__") return [];
   if (!selectedMemberId) return [];
@@ -910,8 +911,8 @@ function pickFirstName(value: unknown): string {
   useToastStatus(inviteStatus, { title: "Invitasjon", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   useToastStatus(memberEditStatus, { title: "Kundekort", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   useToastStatus(memberLinkStatus, { title: "Medlemskobling", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
-  useToastStatus(exerciseFormStatus, { title: "Øvelse", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
-  useToastStatus(trainerWorkoutCommentStatus, { title: "Øktkommentar", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
+  useToastStatus(exerciseFormStatus, { title: "�?velse", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
+  useToastStatus(trainerWorkoutCommentStatus, { title: "�?ktkommentar", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   useToastStatus(trainerLiveWorkoutSaveStatus, { title: "Live økt", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
   const selectedMemberHasMessagingAccess = selectedMember
@@ -1308,7 +1309,7 @@ function pickFirstName(value: unknown): string {
       ...input,
       onPersisted: (result) => {
         if (result.ok) {
-          setTrainerLiveWorkoutSaveStatus(`Økten er lagret på ${customerName}.`);
+          setTrainerLiveWorkoutSaveStatus(`�?kten er lagret på ${customerName}.`);
         } else {
           setTrainerLiveWorkoutSaveStatus(result.message?.trim() || "Kunne ikke lagre økten i sky. Prøv igjen.");
         }
@@ -1389,6 +1390,20 @@ function pickFirstName(value: unknown): string {
     });
     return Array.from(bySignature.values()).sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
   }, [messages, selectedMemberRelatedIdSet, members, selectedMemberId, memberById]);
+  const trainerChatQuickActions = useMemo(
+    (): MotusChatQuickAction[] => [
+      { id: "workout", label: "Send økt", icon: Dumbbell, onClick: () => setCustomerSubTab("workouts") },
+      { id: "program", label: "Del program", icon: Share2, onClick: () => setCustomerSubTab("programs") },
+      {
+        id: "book",
+        label: "Book time",
+        icon: CalendarRange,
+        onClick: () => setTrainerMessage("Hei! Skal vi finne en time som passer for deg?"),
+      },
+      { id: "more", label: "Flere", icon: MoreHorizontal },
+    ],
+    [],
+  );
   const selectedMemberFollowUpLog = useMemo(
     () => mergeFollowUpEntriesForMemberIds(selectedMemberRelatedIds, followUpDetailsByMemberId),
     [selectedMemberRelatedIds, followUpDetailsByMemberId]
@@ -1511,12 +1526,12 @@ function pickFirstName(value: unknown): string {
     setTrainerWorkoutCommentDraft(filteredSelectedWorkoutLog?.trainerComment ?? "");
   }, [filteredSelectedWorkoutLog?.id, filteredSelectedWorkoutLog?.trainerComment]);
   function reflectionEmoji(level?: 1 | 2 | 3 | 4 | 5): string {
-    if (!level) return "—";
-    if (level <= 1) return "🥳";
-    if (level === 2) return "🙂";
-    if (level === 3) return "😌";
-    if (level === 4) return "😮‍💨";
-    return "🥵";
+    if (!level) return "�??";
+    if (level <= 1) return "�?��";
+    if (level === 2) return "�???";
+    if (level === 3) return "�???";
+    if (level === 4) return "�??��?��??�";
+    return "�?��";
   }
   const exercisePopularityScores = useMemo(
     () => computeExercisePopularityScores(exercises, programs, logs),
@@ -2073,7 +2088,7 @@ function pickFirstName(value: unknown): string {
       incline: "1",
       restSeconds: "0",
       notes: "",
-      targetHrPercent: "65–75",
+      targetHrPercent: "65�??75",
     };
     setProgramExercisesDraft([warmup]);
     setEditingTemplateProgramId(null);
@@ -2100,7 +2115,7 @@ function pickFirstName(value: unknown): string {
       incline: "1.5",
       restSeconds: "180",
       notes: "",
-      targetHrPercent: "85–92",
+      targetHrPercent: "85�??92",
     };
     setProgramExercisesDraft((prev) => [...prev, drag]);
     setTemplateAssignStatus(null);
@@ -2125,7 +2140,7 @@ function pickFirstName(value: unknown): string {
       incline: "0",
       restSeconds: "0",
       notes: "",
-      targetHrPercent: "55–65",
+      targetHrPercent: "55�??65",
     };
     setProgramExercisesDraft((prev) => [...prev, cooldown]);
     setTemplateAssignStatus("Nedjogg lagt til. Fjern nedjogg-raden om du vil legge til flere drag.");
@@ -2394,7 +2409,7 @@ function pickFirstName(value: unknown): string {
     const trainerAuthor = pickFirstName(trainerAccountName) || pickFirstName(MOTUS.name) || "Trener";
     const selectedMemberName = members.find((member) => member.id === selectedMemberId)?.name ?? "kunden";
     setIsSavingProgram(true);
-    setProgramSaveStatus("Lagrer program …");
+    setProgramSaveStatus("Lagrer program �?�");
     let saveSettled = false;
     const saveTimeoutId = window.setTimeout(() => {
       if (saveSettled) return;
@@ -2488,7 +2503,7 @@ function pickFirstName(value: unknown): string {
     setNewMemberFocus("");
     setNewMemberSuccess(
       options?.inviteAfterCreate
-        ? `Kunde «${name}» opprettet — sender invitasjon…`
+        ? `Kunde «${name}» opprettet �?? sender invitasjon�?�`
         : `Kunde «${name}» er opprettet. Du finner vedkommende under Klienter.`,
     );
     if (options?.openProgramAfterCreate) {
@@ -2516,7 +2531,7 @@ function pickFirstName(value: unknown): string {
     const member = members.find((entry) => entry.id === memberId);
     const email = member?.email?.trim() ?? "";
     if (!email) {
-      setMemberEditStatus("Kunden har ingen e-post — kan ikke aktiveres på nytt.");
+      setMemberEditStatus("Kunden har ingen e-post �?? kan ikke aktiveres på nytt.");
       return;
     }
     setConfirmDialog({
@@ -2628,7 +2643,7 @@ function pickFirstName(value: unknown): string {
                 exercise && typeof exercise === "object"
                   ? (exercise as Partial<ProgramExercise>)
                   : ({} as Partial<ProgramExercise>);
-              const exerciseName = cardioProgramExerciseName(safeExercises, index) || String(safeExercise.exerciseName ?? "Øvelse").trim() || "Øvelse";
+              const exerciseName = cardioProgramExerciseName(safeExercises, index) || String(safeExercise.exerciseName ?? "�?velse").trim() || "�?velse";
               const exerciseId = String(safeExercise.exerciseId ?? "").trim();
               const libraryMatch =
                 exercises.find((item) => item.id === exerciseId) ??
@@ -2643,11 +2658,11 @@ function pickFirstName(value: unknown): string {
               const restSeconds = String(safeExercise.restSeconds ?? "").trim() || "0";
               const notes = String(safeExercise.notes ?? "").trim();
               const prescription = durationMinutes
-                ? `${setCount} ${/^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder"} × ${durationMinutes} min${
+                ? `${setCount} ${/^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder"} �? ${durationMinutes} min${
                     speed ? ` · ${speed} km/t` : ""
                   }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause${cardioTargetHrPrescriptionSuffix(safeExercise.targetHrPercent)}`
                 : libraryMatch && isHoldBasedExerciseCategory(libraryMatch.category)
-                  ? `${setCount} sett × ${programExerciseHoldSeconds(safeExercise, libraryMatch.category) || "-"} sek hold · ${restSeconds}s pause`
+                  ? `${setCount} sett �? ${programExerciseHoldSeconds(safeExercise, libraryMatch.category) || "-"} sek hold · ${restSeconds}s pause`
                   : `${setCount} x ${reps} · ${weight} kg · ${restSeconds}s pause`;
               const imageUrl = libraryMatch?.imageUrl?.trim() || "";
               const description = libraryMatch?.description?.trim() || "Ingen forklaring tilgjengelig for denne øvelsen.";
@@ -2718,7 +2733,7 @@ function pickFirstName(value: unknown): string {
       </div>
     </div>
     ${program.notes ? `<div class="notes-card"><div class="notes-title">Notater</div>${escapeHtml(program.notes)}</div>` : ""}
-    <div class="section-title">Øvelser</div>
+    <div class="section-title">�?velser</div>
     ${exercisesHtml}
     <div class="footer">Generert fra Motus medlemsportal.</div>
   </div>
@@ -2798,7 +2813,7 @@ function pickFirstName(value: unknown): string {
         ? "PT-kunde"
         : "Oppfølging";
 
-    /** PT-rader skal eies av innlogget trener etter lagring — da kan vi «rette» feil owner etter invitasjon/link. */
+    /** PT-rader skal eies av innlogget trener etter lagring �?? da kan vi «rette» feil owner etter invitasjon/link. */
     const claimingPrivateWithSessionOwner =
       isPrivatePtRosterCustomerType(nextCustomerType) && Boolean(currentTrainerOwnerUserId.trim());
 
@@ -2912,8 +2927,8 @@ function pickFirstName(value: unknown): string {
         await ensureMemberAuthLink(nextEmail, selectedMember.id);
       }
       const typeHint = isSharedMedlemCustomerType(nextCustomerType)
-        ? "Delt medlem — synlig for alle PT-er."
-        : "PT-kunde — kun synlig for deg.";
+        ? "Delt medlem �?? synlig for alle PT-er."
+        : "PT-kunde �?? kun synlig for deg.";
       setMemberEditStatus(`Kundekort oppdatert. ${typeHint}`);
       editLockedMemberIdRef.current = null;
       editLockedIdentityRef.current = null;
@@ -3465,7 +3480,7 @@ function pickFirstName(value: unknown): string {
         title: "Bekreft duplikatopprydding",
         message:
           `Fant ${duplicateGroups} duplikatgruppe${duplicateGroups === 1 ? "" : "r"} (samme e-post, flere medlemsrader). ` +
-          "Ekstra rader settes inaktive — de slettes ikke. Kun helt identisk e-post slås sammen (ikke alle med «lene» i adressen). " +
+          "Ekstra rader settes inaktive �?? de slettes ikke. Kun helt identisk e-post slås sammen (ikke alle med «lene» i adressen). " +
           "Aktive kunder skal fortsatt vises; inaktive finnes under «Vis inaktive» eller «Gjenopprett klient».",
         confirmLabel: "Kjør opprydding",
         cancelLabel: "Avbryt",
@@ -3582,7 +3597,7 @@ function pickFirstName(value: unknown): string {
       imageUrl: exerciseFormImageUrl.trim(),
     });
 
-    setExerciseFormStatus(editingExerciseId ? "Øvelsen ble oppdatert." : "Ny øvelse ble lagt til i banken.");
+    setExerciseFormStatus(editingExerciseId ? "�?velsen ble oppdatert." : "Ny øvelse ble lagt til i banken.");
     resetExerciseForm();
   }
   function handleDeleteExercise(exercise: Exercise) {
@@ -3598,7 +3613,7 @@ function pickFirstName(value: unknown): string {
         setFavoriteExerciseIds((prev) => prev.filter((id) => id !== exercise.id));
         if (editingExerciseId === exercise.id) resetExerciseForm();
         if (expandedExerciseId === exercise.id) setExpandedExerciseId(null);
-        setExerciseFormStatus(`Øvelsen "${exercise.name}" er skjult fra øvelsesbank.`);
+        setExerciseFormStatus(`�?velsen "${exercise.name}" er skjult fra øvelsesbank.`);
       },
     });
   }
@@ -3610,7 +3625,7 @@ function pickFirstName(value: unknown): string {
       return;
     }
     setIsUploadingProgramImage(true);
-    setProgramSaveStatus("Laster opp programbilde…");
+    setProgramSaveStatus("Laster opp programbilde�?�");
     try {
       const result = await uploadProgramCoverImageToSupabase(file, supabaseClient);
       if (!result.ok) {
@@ -3718,7 +3733,7 @@ function pickFirstName(value: unknown): string {
               style={{ borderColor: "rgba(15,23,42,0.1)" }}
               title={`Fjern ${selectedValue}`}
             >
-              {selectedValue} ×
+              {selectedValue} �?
             </button>
           ))}
           {selectedValues.length === 0 ? <span className="text-xs text-slate-400">{emptyText}</span> : null}
@@ -4257,7 +4272,7 @@ function pickFirstName(value: unknown): string {
           }}
           className="w-full md:w-auto"
         >
-          {isCreatingMember ? "Oppretter…" : "Opprett kunde"}
+          {isCreatingMember ? "Oppretter�?�" : "Opprett kunde"}
         </GradientButton>
         <OutlineButton
           disabled={isCreatingMember}
@@ -4266,7 +4281,7 @@ function pickFirstName(value: unknown): string {
           }}
           className="w-full md:w-auto"
         >
-          {isCreatingMember ? "Oppretter…" : "Opprett + send invitasjon"}
+          {isCreatingMember ? "Oppretter�?�" : "Opprett + send invitasjon"}
         </OutlineButton>
       </div>
     );
@@ -4442,8 +4457,8 @@ function pickFirstName(value: unknown): string {
                   onChange={(value) => setMemberSort(value as "activityRecent" | "nameAsc" | "nameDesc")}
                   options={[
                     { value: "activityRecent", label: "Siste økt (nyeste først)" },
-                    { value: "nameAsc", label: "Navn A-Å" },
-                    { value: "nameDesc", label: "Navn Å-A" },
+                    { value: "nameAsc", label: "Navn A-�?" },
+                    { value: "nameDesc", label: "Navn �?-A" },
                   ]}
                 />
               </div>
@@ -4471,7 +4486,7 @@ function pickFirstName(value: unknown): string {
                     const activityLabel =
                       daysSinceWorkout !== null
                         ? daysSinceWorkout === 0
-                          ? "Økt i dag"
+                          ? "�?kt i dag"
                           : `${daysSinceWorkout}d siden økt`
                         : "Ingen økter";
                     return (
@@ -4582,7 +4597,7 @@ function pickFirstName(value: unknown): string {
                   ) : null}
                   {!memberSearchRecovery && isLookingUpEmail ? (
                     <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-xs text-slate-600">
-                      Søker i databasen etter e-post…
+                      Søker i databasen etter e-post�?�
                     </p>
                   ) : null}
                   {!memberSearchRecovery && databaseEmailLookup?.ok && databaseEmailLookup.members.length > 0 ? (
@@ -4874,7 +4889,7 @@ function pickFirstName(value: unknown): string {
                       disabled={isInvitingMember}
                       className={`${CUSTOMER_CARD_ACTION_BTN} w-full sm:w-auto`}
                     >
-                      {isInvitingMember ? "Sender…" : "Inviter på nytt"}
+                      {isInvitingMember ? "Sender�?�" : "Inviter på nytt"}
                     </OutlineButton>
                     {selectedMember.isActive === false ? (
                       <GradientButton
@@ -4882,7 +4897,7 @@ function pickFirstName(value: unknown): string {
                         disabled={isRestoringMember}
                         className={`${CUSTOMER_CARD_ACTION_BTN} w-full sm:w-auto`}
                       >
-                        {isRestoringMember ? "Aktiverer…" : "Aktiver kunde igjen"}
+                        {isRestoringMember ? "Aktiverer�?�" : "Aktiver kunde igjen"}
                       </GradientButton>
                     ) : (
                       <OutlineButton
@@ -4997,7 +5012,7 @@ function pickFirstName(value: unknown): string {
                     <StatCard label="Meldinger" value={String(selectedMessages.length)} hint="På denne kunden" />
                     <StatCard
                       label="Siste økt"
-                      value={selectedDaysSinceLastCompletedWorkout !== null ? `${selectedDaysSinceLastCompletedWorkout} dager` : "–"}
+                      value={selectedDaysSinceLastCompletedWorkout !== null ? `${selectedDaysSinceLastCompletedWorkout} dager` : "�??"}
                       hint={
                         selectedDaysSinceLastCompletedWorkout !== null
                           ? "Siden siste fullførte økt"
@@ -5019,7 +5034,7 @@ function pickFirstName(value: unknown): string {
                     >
                       Program & planer
                     </PillButton>
-                    <PillButton active={customerSubTab === "workouts"} onClick={() => setCustomerSubTab("workouts")}>Økter</PillButton>
+                    <PillButton active={customerSubTab === "workouts"} onClick={() => setCustomerSubTab("workouts")}>�?kter</PillButton>
                     <PillButton active={customerSubTab === "messages"} onClick={() => setCustomerSubTab("messages")}>Meldinger</PillButton>
                   </div>
                 </div>
@@ -5069,7 +5084,7 @@ function pickFirstName(value: unknown): string {
                           value={followUpNoteDraft}
                           onChange={(event) => setFollowUpNoteDraft(event.target.value)}
                           aria-label="Oppfølgingsnotat"
-                          placeholder={editingFollowUpEntryId ? "Rediger notatet …" : "Skriv notatet her …"}
+                          placeholder={editingFollowUpEntryId ? "Rediger notatet �?�" : "Skriv notatet her �?�"}
                           className="min-h-[92px]"
                         />
                       </div>
@@ -5107,7 +5122,7 @@ function pickFirstName(value: unknown): string {
                                       <span className="mx-1.5 text-slate-300">·</span>
                                       <span>{followUpMethodLabel(entry.method)}</span>
                                     </div>
-                                    <div className="text-xs text-slate-700 whitespace-pre-wrap break-words">{entry.note || "—"}</div>
+                                    <div className="text-xs text-slate-700 whitespace-pre-wrap break-words">{entry.note || "�??"}</div>
                                   </div>
                                   <div className="flex shrink-0 items-center gap-2">
                                     <button
@@ -5144,7 +5159,7 @@ function pickFirstName(value: unknown): string {
                     <div className="motus-card p-4">
                       <div className="text-sm font-semibold text-slate-900">To ulike verktøy for kunden</div>
                       <p className="mt-1 text-sm leading-relaxed text-slate-600">
-                        <strong className="text-teal-900">Periodeplan</strong> er ukeoversikt (mandag–søndag).{" "}
+                        <strong className="text-teal-900">Periodeplan</strong> er ukeoversikt (mandag�??søndag).{" "}
                         <strong className="text-slate-900">Treningsprogram</strong> er en konkret økt med øvelser, sett og reps som logges.
                       </p>
                       <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -5179,7 +5194,7 @@ function pickFirstName(value: unknown): string {
                           </MotusSectionIcon>
                           <span>
                             <span className="block text-sm font-bold text-slate-900">Treningsprogram</span>
-                            <span className="mt-0.5 block text-xs leading-snug text-slate-600">Øvelser med sett og reps — logges som økt</span>
+                            <span className="mt-0.5 block text-xs leading-snug text-slate-600">�?velser med sett og reps �?? logges som økt</span>
                           </span>
                         </button>
                       </div>
@@ -5194,7 +5209,7 @@ function pickFirstName(value: unknown): string {
                         </span>
                       </div>
                       {visibleSelectedPrograms.length === 0 ? (
-                        <p className="text-sm text-slate-500">Ingen lagret ennå — opprett under «Lag treningsprogram» lenger ned.</p>
+                        <p className="text-sm text-slate-500">Ingen lagret ennå �?? opprett under «Lag treningsprogram» lenger ned.</p>
                       ) : (
                         <div className="max-h-[min(360px,45vh)] space-y-2 overflow-auto pr-1">
                           {visibleSelectedPrograms.map((program) => (
@@ -5234,7 +5249,7 @@ function pickFirstName(value: unknown): string {
                           </MotusSectionIcon>
                           <div>
                             <h3 className="text-lg font-bold text-slate-900">Lag periodeplan</h3>
-                            <p className="mt-1 text-sm text-slate-600">Planlegg én eller flere uker. Medlemmet ser planen under Trening → Periodeplan.</p>
+                            <p className="mt-1 text-sm text-slate-600">Planlegg én eller flere uker. Medlemmet ser planen under Trening �?? Periodeplan.</p>
                           </div>
                         </div>
                         {selectedPeriodPlans.length > 0 ? (
@@ -5265,7 +5280,7 @@ function pickFirstName(value: unknown): string {
                             <TextInput
                               value={periodPlanWeeksDraft}
                               onChange={(e) => handlePeriodPlanWeeksDraftChange(e.target.value)}
-                              placeholder="1–12"
+                              placeholder="1�??12"
                               type="number"
                               inputMode="numeric"
                               min={1}
@@ -5503,7 +5518,7 @@ function pickFirstName(value: unknown): string {
                       >
                         {programExercisesDraft.length === 0 ? (
                           <EmptyState
-                            icon="🏋️"
+                            icon="�?�?️"
                             title="Ingen øvelser valgt ennå"
                             description="Legg til fra øvelseslisten til høyre."
                             className="!px-3 !py-3 bg-white"
@@ -5617,7 +5632,7 @@ function pickFirstName(value: unknown): string {
                                   <TextInput
                                     value={item.targetHrPercent ?? ""}
                                     onChange={(e) => updateDraftExercise(item.id, "targetHrPercent", e.target.value)}
-                                    placeholder="f.eks. 85–90"
+                                    placeholder="f.eks. 85�??90"
                                   />
                                 </div>
                               ) : null}
@@ -5650,7 +5665,7 @@ function pickFirstName(value: unknown): string {
                         className="w-full"
                         disabled={isLocalDemoSession || isSavingProgram}
                       >
-                        {isSavingProgram ? "Lagrer …" : editingProgramId ? "Oppdater program" : "Lagre program på kunde"}
+                        {isSavingProgram ? "Lagrer �?�" : editingProgramId ? "Oppdater program" : "Lagre program på kunde"}
                       </GradientButton>
                       {programSaveStatus ? (
                         <StatusMessage
@@ -5663,7 +5678,7 @@ function pickFirstName(value: unknown): string {
 
                     <div className="min-w-0 flex-1 space-y-3 lg:sticky lg:top-4 lg:max-h-[min(78vh,920px)] lg:self-start">
                     <div className="rounded-xl border bg-slate-50 p-3 space-y-2.5 lg:max-h-full lg:overflow-hidden lg:flex lg:flex-col">
-                      <div className="text-sm font-semibold text-slate-800">Øvelser</div>
+                      <div className="text-sm font-semibold text-slate-800">�?velser</div>
                       <TextInput
                         value={programExerciseSearch}
                         onChange={(e) => setProgramExerciseSearch(e.target.value)}
@@ -5750,7 +5765,7 @@ function pickFirstName(value: unknown): string {
                   <div className="grid gap-5 xl:grid-cols-[minmax(300px,22rem)_minmax(0,1fr)] xl:items-start">
                     <div className="flex min-h-0 flex-col rounded-xl border bg-slate-50 p-4 xl:max-h-[min(78vh,920px)]">
                       <div className="mb-3 grid gap-2 sm:grid-cols-3">
-                        <StatCard label="Økter siste 7 dager" value={String(workoutInsights.workoutsLast7Days)} hint="Alle økter" />
+                        <StatCard label="�?kter siste 7 dager" value={String(workoutInsights.workoutsLast7Days)} hint="Alle økter" />
                         <StatCard label="Gruppetimer siste 30 dager" value={String(workoutInsights.groupWorkoutsLast30Days)} hint="Kun gruppetimer" />
                         <StatCard label="Snitt belastning 30 dager" value={workoutInsights.averageDifficulty} hint="Basert på refleksjon" />
                       </div>
@@ -5845,7 +5860,7 @@ function pickFirstName(value: unknown): string {
                       </div>
                     </div>
                     <div className="flex min-h-0 flex-col rounded-xl border bg-slate-50 p-4 xl:max-h-[min(78vh,920px)]">
-                      <div className="font-semibold">Øktdetaljer</div>
+                      <div className="font-semibold">�?ktdetaljer</div>
                       {filteredSelectedWorkoutLog ? (
                         <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
                           <div className="rounded-2xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -5857,7 +5872,7 @@ function pickFirstName(value: unknown): string {
                             <div className="mt-2 text-xs text-slate-700">
                               Følelse: {reflectionEmoji(filteredSelectedWorkoutLog.reflection?.energyLevel)} · Belastning: {reflectionEmoji(filteredSelectedWorkoutLog.reflection?.difficultyLevel)} · Motivasjon: {reflectionEmoji(filteredSelectedWorkoutLog.reflection?.motivationLevel)}
                             </div>
-                            {filteredSelectedWorkoutLog.note ? <div className="mt-2 text-xs text-slate-600">Øktnotat: {filteredSelectedWorkoutLog.note}</div> : null}
+                            {filteredSelectedWorkoutLog.note ? <div className="mt-2 text-xs text-slate-600">�?ktnotat: {filteredSelectedWorkoutLog.note}</div> : null}
                             {filteredSelectedWorkoutLog.reflection?.note ? <div className="mt-1 text-xs text-slate-600">Til PT: {filteredSelectedWorkoutLog.reflection.note}</div> : null}
                           </div>
                           <div className="rounded-2xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -5902,9 +5917,9 @@ function pickFirstName(value: unknown): string {
                                     <div className="min-w-0">
                                       Plan:{" "}
                                       {result.exerciseCategory === "Kondisjon" && (result.plannedDurationMinutes ?? "").trim()
-                                        ? `${result.plannedSets} runder × ${result.plannedDurationMinutes} min`
+                                        ? `${result.plannedSets} runder �? ${result.plannedDurationMinutes} min`
                                         : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)
-                                          ? `${result.plannedSets} sett × ${result.plannedWeight || "0"} sek`
+                                          ? `${result.plannedSets} sett �? ${result.plannedWeight || "0"} sek`
                                           : `${result.plannedSets} x ${result.plannedReps} @ ${result.plannedWeight || "0"} kg`}
                                     </div>
                                     <div>
@@ -5925,7 +5940,7 @@ function pickFirstName(value: unknown): string {
                         </div>
                       ) : (
                         <EmptyState
-                          icon="📋"
+                          icon="�???"
                           title="Velg en økt for detaljer"
                           description="Trykk på en økt i listen for å se sett, reps og tilbakemelding."
                           className="mt-3 bg-slate-50"
@@ -5936,82 +5951,32 @@ function pickFirstName(value: unknown): string {
                 ) : null}
 
                 {customerSubTab === "messages" ? (
-                  <div className="rounded-xl border bg-slate-50 p-3 sm:p-4 space-y-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="font-semibold">Dialog med kunde</div>
-                      <div className="text-xs text-slate-500">Direkte chat</div>
-                    </div>
-                    {selectedMemberMessagesLocked ? (
-                      <div className="rounded-xl border bg-white p-5 text-sm font-medium text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                        Medlem har ikke tilgang til meldinger.
-                      </div>
-                    ) : (
-                      <>
-                    <div ref={trainerMessagesContainerRef} className="max-h-[min(52vh,420px)] space-y-3 overflow-auto rounded-xl border bg-white p-3 sm:p-4">
-                      {selectedMessages.length === 0 ? (
-                        <EmptyState
-                          icon="💬"
-                          title="Ingen meldinger ennå"
-                          description="Send en kort velkomstmelding for bedre oppstart."
-                          className="bg-slate-50"
-                          action={
-                            <OutlineButton onClick={() => setTrainerMessage("Hei! Klar for en god uke?")} className="w-full sm:w-auto">
-                              Sett inn forslag
-                            </OutlineButton>
-                          }
-                        />
-                      ) : null}
-                      {selectedMessages.map((message, index) => {
-                        const timestamp = parseChatCreatedAtMs(message.createdAt);
-                        const dateKey = timestamp > 0 ? new Date(timestamp).toLocaleDateString("nb-NO") : message.createdAt;
-                        const prevTimestamp = index > 0 ? parseChatCreatedAtMs(selectedMessages[index - 1].createdAt) : 0;
-                        const prevDateKey = prevTimestamp > 0 ? new Date(prevTimestamp).toLocaleDateString("nb-NO") : "";
-                        const showDateDivider = index === 0 || dateKey !== prevDateKey;
-                        return (
-                          <div key={message.id}>
-                            {showDateDivider ? (
-                              <div className="my-2 text-center text-[11px] font-medium text-slate-400">{dateKey}</div>
-                            ) : null}
-                            <div className={`max-w-[88%] rounded-xl p-3 text-sm ${message.id === selectedMessages[selectedMessages.length - 1]?.id ? "motus-fade-in-up" : ""} ${message.sender === "trainer" ? "motus-chat-bubble-own ml-auto" : "border bg-slate-50 text-slate-700"}`} style={message.sender === "trainer" ? undefined : { borderColor: "rgba(15,23,42,0.08)" }}>
-                              <div>{message.text}</div>
-                              <div className={`mt-1 text-[11px] ${message.sender === "trainer" ? "text-slate-600/75" : "text-slate-500"}`}>{message.createdAt}</div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="sticky bottom-0 -mx-3 flex flex-col gap-3 border-t border-slate-200 bg-slate-50/95 px-3 pb-3 pt-3 backdrop-blur sm:mx-0 sm:px-0 sm:pb-0 sm:flex-row">
-                      <TextInput
-                        value={trainerMessage}
-                        onChange={(e) => {
-                          setTrainerMessage(e.target.value);
-                          if (trainerChatSendStatus) setTrainerChatSendStatus(null);
-                        }}
-                        placeholder="Skriv melding til kunden"
-                      />
-                      <GradientButton
-                        onClick={async () => {
-                          if (!selectedMemberId || selectedMemberId === "__template__" || !trainerMessage.trim()) return;
-                          const sent = await dispatchTrainerMessageToSelectedMember(trainerMessage);
-                          if (sent) setTrainerMessage("");
-                        }}
-                        className="w-full sm:w-auto"
-                        disabled={!trainerMessage.trim() || isSendingTrainerMessage}
-                      >
-                        {isSendingTrainerMessage ? "Sender..." : "Send"}
-                      </GradientButton>
-                    </div>
-                      </>
-                    )}
-                    {trainerChatSendStatus ? (
-                      <div
-                        className={`rounded-xl border px-3 py-2 text-xs ${trainerChatSendStatus.startsWith("Melding sendt") ? "motus-brand-muted motus-brand-muted-border" : "bg-rose-50 text-rose-800"}`}
-                        style={{ borderColor: trainerChatSendStatus.startsWith("Melding sendt") ? undefined : "rgba(244,63,94,0.3)" }}
-                      >
-                        {trainerChatSendStatus}
-                      </div>
-                    ) : null}
-                  </div>
+                  <MotusChat
+                    variant="trainer"
+                    messages={selectedMessages}
+                    viewerRole="trainer"
+                    counterpartyName={selectedMemberProfile?.name?.trim() || selectedMember?.name?.trim() || "Kunde"}
+                    counterpartyAvatarUrl={selectedMember ? resolveMemberAvatarUrl(selectedMember) : null}
+                    locked={selectedMemberMessagesLocked}
+                    lockedMessage="Medlem har ikke tilgang til meldinger."
+                    composeValue={trainerMessage}
+                    onComposeChange={(value) => {
+                      setTrainerMessage(value);
+                      if (trainerChatSendStatus) setTrainerChatSendStatus(null);
+                    }}
+                    onSend={() => {
+                      if (!selectedMemberId || selectedMemberId === "__template__" || !trainerMessage.trim()) return;
+                      void dispatchTrainerMessageToSelectedMember(trainerMessage).then((sent) => {
+                        if (sent) setTrainerMessage("");
+                      });
+                    }}
+                    isSending={isSendingTrainerMessage}
+                    sendDisabled={!trainerMessage.trim()}
+                    composePlaceholder="Skriv melding..."
+                    sendStatus={trainerChatSendStatus}
+                    messagesContainerRef={trainerMessagesContainerRef}
+                    quickActions={trainerChatQuickActions}
+                  />
                 ) : null}
               </div>
             ) : (
@@ -6103,12 +6068,12 @@ function pickFirstName(value: unknown): string {
                                   <div className="font-medium text-slate-800">{exerciseName}</div>
                                   <div className="mt-0.5 text-slate-500">
                                     {exercise.durationMinutes
-                                      ? `${exercise.sets || "-"} ${/^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder"} × ${exercise.durationMinutes || "-"} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}`
+                                      ? `${exercise.sets || "-"} ${/^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder"} �? ${exercise.durationMinutes || "-"} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}`
                                       : (() => {
                                           const category = exercises.find((e) => e.id === exercise.exerciseId)?.category;
                                           return category && isHoldBasedExerciseCategory(category)
-                                            ? `${exercise.sets || "-"} sett × ${programExerciseHoldSeconds(exercise, category) || "-"} sek · ${exercise.restSeconds || "0"}s`
-                                            : `${exercise.sets || "-"}×${exercise.reps || "-"} · ${exercise.weight || "0"}kg · ${exercise.restSeconds || "0"}s`;
+                                            ? `${exercise.sets || "-"} sett �? ${programExerciseHoldSeconds(exercise, category) || "-"} sek · ${exercise.restSeconds || "0"}s`
+                                            : `${exercise.sets || "-"}�?${exercise.reps || "-"} · ${exercise.weight || "0"}kg · ${exercise.restSeconds || "0"}s`;
                                         })()}
                                   </div>
                                 </div>
@@ -6158,7 +6123,7 @@ function pickFirstName(value: unknown): string {
                 >
                   {programExercisesDraft.length === 0 ? (
                     <EmptyState
-                      icon="🏋️"
+                      icon="�?�?️"
                       title="Ingen øvelser valgt ennå"
                       description="Legg til øvelser fra biblioteket for å bygge programmet."
                       className="bg-white"
@@ -6270,7 +6235,7 @@ function pickFirstName(value: unknown): string {
                             <TextInput
                               value={item.targetHrPercent ?? ""}
                               onChange={(e) => updateDraftExercise(item.id, "targetHrPercent", e.target.value)}
-                              placeholder="f.eks. 85–90"
+                              placeholder="f.eks. 85�??90"
                             />
                           </div>
                         ) : null}
@@ -6305,7 +6270,7 @@ function pickFirstName(value: unknown): string {
                   <p className="text-xs text-slate-500 leading-relaxed">
                     Skriv inn malnavn øverst først. Start med oppvarming, legg inn ett drag med arbeidstid/pause og velg antall drag, og legg til nedjogg til slutt.
                     Når nedjogg er lagt inn kan du ikke legge til flere drag før du fjerner nedjogg-raden fra utkastet.
-                    Øvelsesradene bruker automatisk valgt kondisjons-/mølleøvelse fra biblioteket; du kan endre tid, fart, stigning og målpuls på hvert steg.
+                    �?velsesradene bruker automatisk valgt kondisjons-/mølleøvelse fra biblioteket; du kan endre tid, fart, stigning og målpuls på hvert steg.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <OutlineButton type="button" onClick={startNewCardioTemplateDraft}>
@@ -6330,7 +6295,7 @@ function pickFirstName(value: unknown): string {
                 ) : null}
               </div>
               <div className="min-w-0 rounded-xl border bg-slate-50 p-3 sm:p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="font-semibold">Øvelser</div>
+                <div className="font-semibold">�?velser</div>
                 <TextInput
                   value={programExerciseSearch}
                   onChange={(e) => setProgramExerciseSearch(e.target.value)}
@@ -6358,7 +6323,7 @@ function pickFirstName(value: unknown): string {
                 <div className="max-h-[560px] space-y-2 overflow-auto pr-1">
                   {visibleProgramExercises.length === 0 ? (
                     <EmptyState
-                      icon="🔎"
+                      icon="�???"
                       title="Ingen øvelser matcher søk/filter"
                       description="Prøv en annen muskelgruppe eller et kortere søk."
                       className="bg-white py-4"
@@ -6483,7 +6448,7 @@ function pickFirstName(value: unknown): string {
                   <SelectBox
                     value={exerciseFormLevel}
                     onChange={(value) => setExerciseFormLevel(value as Exercise["level"])}
-                    options={["Nybegynner", "Litt øvet", "Øvet"]}
+                    options={["Nybegynner", "Litt øvet", "�?vet"]}
                   />
                 </label>
               </div>
@@ -6558,7 +6523,7 @@ function pickFirstName(value: unknown): string {
                 {editingExerciseId ? <OutlineButton onClick={resetExerciseForm} className="w-full">Avbryt</OutlineButton> : null}
               </div>
               <div className="text-xs text-slate-500">
-                Øvelser lagres i felles øvelsesbank slik at alle trenere kan bruke dem.
+                �?velser lagres i felles øvelsesbank slik at alle trenere kan bruke dem.
               </div>
             </div>
             <div className="space-y-3">
@@ -6568,7 +6533,7 @@ function pickFirstName(value: unknown): string {
               <div className="space-y-2">
                 {visibleExercises.length === 0 ? (
                   <EmptyState
-                    icon="🏋️"
+                    icon="�?�?️"
                     title={emptyExerciseBankMessage(exerciseBankSubTab)}
                     description="Juster søket eller legg til en ny øvelse for å komme i gang."
                     className="bg-white"
@@ -6686,7 +6651,7 @@ function pickFirstName(value: unknown): string {
                           <SelectBox
                             value={exerciseFormLevel}
                             onChange={(value) => setExerciseFormLevel(value as Exercise["level"])}
-                            options={["Nybegynner", "Litt øvet", "Øvet"]}
+                            options={["Nybegynner", "Litt øvet", "�?vet"]}
                           />
                         </div>
                         {renderExerciseMultiSelectField({
@@ -6828,7 +6793,7 @@ function pickFirstName(value: unknown): string {
                     onChange={setReassignMemberId}
                     className="w-full"
                     options={[
-                      { value: "", label: "Velg kunde…" },
+                      { value: "", label: "Velg kunde�?�" },
                       ...reassignableOwnedMembers.map((member) => ({
                         value: member.id,
                         label: memberReassignLabel(member),
@@ -6846,7 +6811,7 @@ function pickFirstName(value: unknown): string {
                     options={[
                       {
                         value: "",
-                        label: isLoadingTrainerOptions ? "Laster PT-er…" : "Velg mottaker…",
+                        label: isLoadingTrainerOptions ? "Laster PT-er�?�" : "Velg mottaker�?�",
                       },
                       ...trainerOptionsForReassign.map((trainer) => ({
                         value: trainer.id,
