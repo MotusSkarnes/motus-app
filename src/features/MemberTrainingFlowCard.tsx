@@ -8,7 +8,6 @@ import { MemberProgressGoals } from "./MemberProgressGoals";
 import { MemberWeeklyStreakCard } from "./MemberWeeklyStreakCard";
 
 const MOTUS_GRADIENT = `${MOTUS.gradient}`;
-const MOTUS_GRADIENT_90 = MOTUS.gradient;
 
 type MemberTrainingFlowCardProps = {
   achievementLevel: number;
@@ -87,7 +86,7 @@ export function MemberTrainingFlowCard({
             </span>
           </div>
           <ol
-            className="-mx-1 flex items-start gap-0 overflow-x-auto px-1 pb-1 scrollbar-none sm:mx-0 sm:px-0"
+            className="motus-progress-flow-steps scrollbar-none"
             aria-label="Steg i treningsflyten"
           >
             {PROGRESS_STEP_LABELS.map((label, index) => {
@@ -97,28 +96,21 @@ export function MemberTrainingFlowCard({
               const upcoming = step > achievedLevel && !current;
               return (
                 <li key={label} className="flex shrink-0 items-start">
-                  <div className="flex w-[3.1rem] flex-col items-center gap-1.5 sm:w-[3.75rem]">
+                  <div className="flex w-[3.75rem] flex-col items-center gap-2 sm:w-[4.5rem]">
                     <span
                       title={`Steg ${step}: ${label}`}
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[10px] font-bold tabular-nums transition ${
+                      className={`motus-progress-flow-step ${
                         completed
-                          ? "border-transparent text-white"
+                          ? "motus-progress-flow-step--completed"
                           : current
-                            ? "motus-soft-pulse border-transparent bg-white text-slate-800 ring-2 ring-pink-200/80 ring-offset-1"
-                            : "border-slate-200 bg-white text-slate-400"
+                            ? "motus-progress-flow-step--current motus-soft-pulse"
+                            : "motus-progress-flow-step--upcoming"
                       }`}
-                      style={
-                        completed
-                          ? { background: MOTUS_GRADIENT }
-                          : current
-                            ? { boxShadow: `inset 0 0 0 2px ${MOTUS.turquoise}` }
-                            : undefined
-                      }
                     >
                       {completed ? "✓" : step}
                     </span>
                     <span
-                      className={`hidden h-8 w-full px-0.5 text-center text-[9px] font-medium leading-[1.15] sm:line-clamp-2 sm:block ${
+                      className={`hidden h-9 w-full px-0.5 text-center text-[9px] font-medium leading-[1.15] sm:line-clamp-2 sm:block ${
                         current ? "font-semibold text-slate-800" : completed ? "text-slate-600" : upcoming ? "text-slate-400" : "text-slate-500"
                       }`}
                     >
@@ -127,14 +119,7 @@ export function MemberTrainingFlowCard({
                   </div>
                   {step < achievementMaxLevel ? (
                     <span
-                      className={`mt-[0.85rem] h-0.5 w-2 shrink-0 rounded-full sm:w-2.5 ${step < achievedLevel || (step === achievedLevel && current) ? "" : "bg-slate-200"}`}
-                      style={
-                        step < achievedLevel
-                          ? { background: MOTUS_GRADIENT_90, opacity: 0.85 }
-                          : step === achievedLevel && current
-                            ? { background: `linear-gradient(90deg, ${MOTUS.turquoise}55 0%, ${MOTUS.pink}55 100%)` }
-                            : undefined
-                      }
+                      className={`motus-progress-flow-connector mt-[1.15rem] ${step < achievedLevel || (step === achievedLevel && current) ? "motus-progress-flow-connector--active" : ""}`}
                       aria-hidden
                     />
                   ) : null}

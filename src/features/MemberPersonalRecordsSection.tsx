@@ -11,6 +11,7 @@ export type PersonalRecordEntry = {
   weight: number;
   reps: number;
   score: number;
+  isNewRecord?: boolean;
 };
 
 type MemberPersonalRecordsSectionProps = {
@@ -68,7 +69,7 @@ export function MemberPersonalRecordsSection({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-base font-bold tracking-tight text-slate-900">Personlige rekorder</h3>
-          <p className="mt-0.5 text-xs text-slate-500">Trykk for styrkeutvikling. Stjernemerk opptil tre favoritter.</p>
+          <p className="mt-0.5 text-xs text-slate-500">Sveip for flere · trykk for utvikling</p>
         </div>
         {records.length > 0 ? (
           <button
@@ -98,21 +99,31 @@ export function MemberPersonalRecordsSection({
           className="mt-4 bg-slate-50/80"
         />
       ) : (
-        <div className="motus-progress-pr-scroll scrollbar-none mt-4">
+        <div className="motus-progress-pr-carousel scrollbar-none mt-4" role="list" aria-label="Personlige rekorder">
           {previewRecords.map((record, index) => {
             const imageSrc = resolveRecordImage(record.name, exercises);
             const isFavorite = favoriteNames.includes(record.name);
             return (
-              <article key={record.name} className="motus-progress-pr-card">
+              <article
+                key={record.name}
+                role="listitem"
+                className="motus-progress-pr-card motus-progress-pr-card--animated"
+                style={{ animationDelay: `${index * 70}ms` }}
+              >
                 <button type="button" onClick={() => onOpenProgress(record.name)} className="motus-pressable block w-full text-left">
-                  <div className="motus-progress-pr-image motus-image-frame motus-image-frame--square">
-                    <img
-                      src={imageSrc}
-                      alt=""
-                      className="motus-image-media"
-                      loading="lazy"
-                      style={{ objectPosition: imageObjectPositionFromSrc(imageSrc) }}
-                    />
+                  <div className="relative">
+                    <div className="motus-progress-pr-image motus-image-frame motus-image-frame--square">
+                      <img
+                        src={imageSrc}
+                        alt=""
+                        className="motus-image-media"
+                        loading="lazy"
+                        style={{ objectPosition: imageObjectPositionFromSrc(imageSrc) }}
+                      />
+                    </div>
+                    {record.isNewRecord ? (
+                      <span className="motus-progress-pr-new-badge">Ny rekord</span>
+                    ) : null}
                   </div>
                   <p className="mt-2 line-clamp-2 text-sm font-semibold leading-snug text-slate-900">{record.name}</p>
                   <p className="mt-0.5 text-xs font-medium text-slate-600">

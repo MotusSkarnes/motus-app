@@ -862,6 +862,103 @@ button {
   pointer-events: none;
 }
 
+.motus-progress-momentum-card {
+  border-radius: 1rem;
+  background: rgba(248, 250, 252, 0.85);
+  padding: 0.75rem 0.875rem;
+}
+
+.motus-progress-momentum-spark {
+  width: 4.75rem;
+  flex-shrink: 0;
+}
+
+.motus-progress-flow-steps {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  overflow-x: auto;
+  margin: 0 -0.25rem;
+  padding: 0.25rem 0.25rem 0.5rem;
+}
+
+.motus-progress-flow-step {
+  display: inline-flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  background: #f8fafc;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #94a3b8;
+  transition: box-shadow 200ms ease, transform 200ms ease, border-color 200ms ease;
+}
+
+@media (min-width: 640px) {
+  .motus-progress-flow-step {
+    height: 2.75rem;
+    width: 2.75rem;
+    font-size: 0.8125rem;
+  }
+}
+
+.motus-progress-flow-step--completed {
+  border-color: transparent;
+  background: linear-gradient(135deg, #30e3be 0%, #d91278 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 16px -8px rgba(48, 227, 190, 0.55);
+}
+
+.motus-progress-flow-step--current {
+  border-color: #30e3be;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow:
+    0 0 0 3px rgba(48, 227, 190, 0.22),
+    0 0 20px rgba(48, 227, 190, 0.35),
+    0 0 28px rgba(217, 18, 120, 0.15);
+  transform: scale(1.06);
+}
+
+.motus-progress-flow-step--upcoming {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: #f1f5f9;
+  color: #cbd5e1;
+}
+
+.motus-progress-flow-connector {
+  height: 0.1875rem;
+  width: 0.625rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: #e2e8f0;
+}
+
+@media (min-width: 640px) {
+  .motus-progress-flow-connector {
+    width: 0.875rem;
+  }
+}
+
+.motus-progress-flow-connector--active {
+  background: linear-gradient(90deg, #30e3be 0%, #d91278 100%);
+  opacity: 0.85;
+}
+
+.motus-progress-pr-carousel {
+  display: flex;
+  gap: 0.875rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 0.25rem;
+  padding-bottom: 0.375rem;
+  -webkit-overflow-scrolling: touch;
+}
+
 .motus-progress-pr-scroll {
   display: flex;
   gap: 0.75rem;
@@ -870,11 +967,50 @@ button {
 }
 
 .motus-progress-pr-card {
-  width: 9.5rem;
+  width: 10.25rem;
   flex-shrink: 0;
+  scroll-snap-align: start;
   border-radius: 1rem;
   background: rgba(248, 250, 252, 0.92);
   padding: 0.75rem;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.motus-progress-pr-card--animated {
+  animation: motus-pr-card-enter 420ms ease both;
+}
+
+@keyframes motus-pr-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.motus-progress-pr-card:hover {
+  box-shadow: 0 8px 20px -14px rgba(15, 23, 42, 0.28);
+  transform: translateY(-2px);
+}
+
+.motus-progress-pr-new-badge {
+  position: absolute;
+  top: 0.375rem;
+  left: 0.375rem;
+  z-index: 2;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #30e3be 0%, #d91278 100%);
+  padding: 0.125rem 0.5rem;
+  font-size: 0.5625rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #ffffff;
+  box-shadow: 0 4px 10px -4px rgba(217, 18, 120, 0.45);
+  animation: motus-soft-pulse 2.4s ease-in-out infinite;
 }
 
 .motus-progress-pr-image {
@@ -944,6 +1080,71 @@ button {
   max-width: 38%;
   object-fit: contain;
   opacity: 0.92;
+}
+
+.motus-muscle-split-header-icon {
+  display: inline-flex;
+  border-radius: 0.75rem;
+  padding: 0.5rem;
+  color: #ffffff;
+  background: linear-gradient(135deg, #30e3be 0%, #d91278 100%);
+  box-shadow: 0 6px 16px -10px rgba(217, 18, 120, 0.45);
+}
+
+.motus-muscle-split-segment {
+  display: inline-flex;
+  border-radius: 0.625rem;
+  background: rgba(248, 250, 252, 0.95);
+  padding: 0.125rem;
+}
+
+.motus-muscle-split-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.motus-muscle-split-row {
+  opacity: 0.72;
+  transition: opacity 180ms ease;
+}
+
+.motus-muscle-split-row--active {
+  opacity: 1;
+}
+
+.motus-muscle-split-icon {
+  display: inline-flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  background: rgba(48, 227, 190, 0.12);
+  color: #0d9488;
+}
+
+.motus-muscle-split-row--active .motus-muscle-split-icon {
+  background: rgba(48, 227, 190, 0.2);
+  color: #0f766e;
+}
+
+.motus-muscle-split-track {
+  margin-top: 0.625rem;
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgba(226, 232, 240, 0.75);
+}
+
+.motus-muscle-split-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 500ms ease-out;
 }
 
 .motus-member-program-card {
@@ -2421,8 +2622,12 @@ button {
 
   .motus-badge-card,
   .motus-pressable,
-  .motus-badge-card:hover {
+  .motus-badge-card:hover,
+  .motus-progress-pr-card--animated,
+  .motus-progress-pr-new-badge {
     transform: none !important;
     transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

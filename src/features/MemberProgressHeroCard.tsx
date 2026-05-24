@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { Target } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, Target } from "lucide-react";
 import { MOTUS } from "../app/data";
+import type { ScoreTrend } from "../app/memberMomentumScores";
 import { PROGRESS_HERO_IMAGE } from "../app/progressImagery";
 import type { MemberProgressScores } from "../app/memberMomentumScores";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
@@ -11,6 +12,46 @@ type MemberProgressHeroCardProps = {
   memberFirstName: string;
   streakWeeks: number;
 };
+
+function momentumTrendLabel(trend: ScoreTrend): string {
+  if (trend === "up") return "Opp fra forrige uke";
+  if (trend === "down") return "Under forrige uke";
+  return "Jevn uke";
+}
+
+function MomentumTrendIcon({ trend }: { trend: ScoreTrend }) {
+  if (trend === "up") return <ArrowUpRight className="h-3.5 w-3.5 text-[#0d9488]" aria-hidden />;
+  if (trend === "down") return <ArrowDownRight className="h-3.5 w-3.5 text-[#be185d]" aria-hidden />;
+  return <ArrowRight className="h-3.5 w-3.5 text-slate-400" aria-hidden />;
+}
+
+function MomentumSparkline({ points, trend }: { points: number[]; trend: ScoreTrend }) {
+  if (!points.length) return null;
+  const max = Math.max(...points, 1);
+  const width = 76;
+  const height = 32;
+  const polylinePoints = points
+    .map((value, index) => {
+      const x = points.length === 1 ? width / 2 : (index / (points.length - 1)) * (width - 8) + 4;
+      const y = height - 5 - (value / max) * (height - 10);
+      return `${x},${y}`;
+    })
+    .join(" ");
+  const stroke = trend === "down" ? MOTUS.pink : MOTUS.turquoise;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="motus-progress-momentum-spark" aria-hidden>
+      <polyline
+        fill="none"
+        stroke={stroke}
+        strokeWidth="2.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={polylinePoints}
+      />
+    </svg>
+  );
+}
 
 function ScoreRing({
   label,
@@ -97,10 +138,18 @@ export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks }:
               <span className="mt-0.5 block text-xs font-black uppercase text-white">{xp.levelLabel}</span>
               <span className="mt-1 block text-[10px] font-semibold tabular-nums text-white/90">{xp.totalXp.toLocaleString("nb-NO")} XP</span>
             </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Momentum</p>
-              <p className="mt-0.5 text-3xl font-black tabular-nums tracking-tight text-slate-950">{momentum.pct}%</p>
-              <p className="mt-1 text-xs leading-snug text-slate-600">{momentum.subline}</p>
+            <div className="motus-progress-momentum-card min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Momentum</p>
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <p className="text-xl font-black tabular-nums tracking-tight text-slate-950 sm:text-2xl">{momentum.pct}%</p>
+                    <MomentumTrendIcon trend={momentum.trend} />
+                  </div>
+                </div>
+                <MomentumSparkline points={momentum.sparkPoints} trend={momentum.trend} />
+              </div>
+              <p className="mt-1 text-[11px] font-medium text-slate-500">{momentumTrendLabel(momentum.trend)}</p>
             </div>
           </div>
 

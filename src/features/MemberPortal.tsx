@@ -2261,9 +2261,18 @@ export function MemberPortal(props: MemberPortalProps) {
   });
 
   const personalRecords = useMemo(() => {
-    const best = new Map<string, { weight: number; reps: number; score: number }>();
+    const best = new Map<string, { weight: number; reps: number; score: number; achievedAt: Date | null }>();
+    const sortedLogs = completedLogs
+      .filter((log) => log.status === "Fullført")
+      .slice()
+      .sort((a, b) => {
+        const aTime = parseStoredLogDate(a.date)?.getTime() ?? 0;
+        const bTime = parseStoredLogDate(b.date)?.getTime() ?? 0;
+        return aTime - bTime;
+      });
 
-    completedLogs.forEach((log) => {
+    sortedLogs.forEach((log) => {
+      const achievedAt = parseStoredLogDate(log.date);
       (log.results ?? []).forEach((r) => {
         if (!r.completed) return;
         const w = Number(r.performedWeight) || 0;
@@ -2271,15 +2280,23 @@ export function MemberPortal(props: MemberPortalProps) {
         const score = w * Math.max(reps, 1);
         const current = best.get(r.exerciseName);
         if (!current || score > current.score) {
-          best.set(r.exerciseName, { weight: w, reps, score });
+          best.set(r.exerciseName, { weight: w, reps, score, achievedAt: achievedAt ?? null });
         }
       });
     });
 
+    const newRecordCutoffMs = nowTimestamp - 14 * 24 * 60 * 60 * 1000;
+
     return Array.from(best.entries())
-      .map(([name, value]) => ({ name, ...value }))
+      .map(([name, value]) => ({
+        name,
+        weight: value.weight,
+        reps: value.reps,
+        score: value.score,
+        isNewRecord: value.achievedAt ? value.achievedAt.getTime() >= newRecordCutoffMs : false,
+      }))
       .sort((a, b) => b.score - a.score);
-  }, [completedLogs]);
+  }, [completedLogs, nowTimestamp]);
   const personalRecordExerciseNameSet = useMemo(
     () => new Set(personalRecords.map((r) => r.name)),
     [personalRecords],

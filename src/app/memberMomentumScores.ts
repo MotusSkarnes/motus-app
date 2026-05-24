@@ -7,6 +7,8 @@ export type MomentumScore = {
   pct: number;
   trend: ScoreTrend;
   subline: string;
+  /** Weekly session counts for sparkline (oldest → newest). */
+  sparkPoints: number[];
 };
 
 export type ConsistencyScore = {
@@ -78,6 +80,19 @@ function countWorkoutsBetween(dates: Date[], start: Date, end: Date): number {
   }).length;
 }
 
+function buildMomentumSparkPoints(completedLogDates: Date[], nowDate: Date, weeks = 6): number[] {
+  const weekStart = getWeekStart(nowDate);
+  const points: number[] = [];
+  for (let index = weeks - 1; index >= 0; index -= 1) {
+    const start = new Date(weekStart);
+    start.setDate(start.getDate() - index * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    points.push(countWorkoutsBetween(completedLogDates, start, end));
+  }
+  return points;
+}
+
 export function getXpLevelLabel(level: number): string {
   const index = Math.max(0, Math.min(XP_LEVEL_LABELS.length - 1, level - 1));
   return XP_LEVEL_LABELS[index];
@@ -125,7 +140,7 @@ export function computeMomentumScore(input: {
     subline = "Du er i gang — fortsett jevnt.";
   }
 
-  return { pct, trend, subline };
+  return { pct, trend, subline, sparkPoints: buildMomentumSparkPoints(input.completedLogDates, input.nowDate) };
 }
 
 export function computeConsistencyScore(

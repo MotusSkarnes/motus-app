@@ -1,4 +1,5 @@
-import { BarChart3 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Activity, BarChart3, BicepsFlexed, Dumbbell, Footprints, Heart, PersonStanding, Shield } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { EmptyState } from "../app/ui";
 import type { MuscleGroupStat, MuscleSplitMetric, MuscleSplitPeriod } from "./muscleSplitStats";
@@ -18,10 +19,30 @@ const PERIOD_OPTIONS: { value: MuscleSplitPeriod; label: string }[] = [
   { value: "all", label: "Alt" },
 ];
 
+const MUSCLE_GROUP_ICONS: Record<string, LucideIcon> = {
+  Bein: Footprints,
+  Rygg: Activity,
+  Bryst: Heart,
+  Skuldre: PersonStanding,
+  Biceps: BicepsFlexed,
+  Triceps: Dumbbell,
+  Mage: Shield,
+  Core: Shield,
+};
+
 function segmentButtonClass(active: boolean): string {
   return active
     ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
     : "text-slate-600 hover:text-slate-900";
+}
+
+function MuscleGroupIcon({ group }: { group: string }) {
+  const Icon = MUSCLE_GROUP_ICONS[group] ?? Dumbbell;
+  return (
+    <span className="motus-muscle-split-icon" aria-hidden>
+      <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
+    </span>
+  );
 }
 
 export function MuscleSplitCard({
@@ -37,27 +58,21 @@ export function MuscleSplitCard({
   const periodLabel = PERIOD_OPTIONS.find((option) => option.value === period)?.label ?? "";
 
   return (
-    <div className="mt-4 rounded-xl border bg-slate-50 p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+    <section className="motus-progress-section-card mt-4 p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-2">
-          <div
-            className="shrink-0 rounded-xl p-2 text-white shadow-sm"
-            style={{ background: `${MOTUS.gradient}` }}
-          >
-            <BarChart3 className="h-4 w-4" />
+          <div className="motus-muscle-split-header-icon shrink-0" aria-hidden>
+            <BarChart3 className="h-4 w-4" strokeWidth={2.25} />
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-slate-800">Muskelsplitt</div>
-            <div className="mt-1 text-xs text-slate-500">
-              Fordeling av sett og styrkevolum (vekt × reps) på tvers av muskelgrupper — {periodLabel.toLowerCase()}.
-            </div>
+            <h3 className="text-base font-bold tracking-tight text-slate-900">Muskelsplitt</h3>
+            <p className="mt-0.5 text-xs text-slate-500">Fordeling per muskelgruppe — {periodLabel.toLowerCase()}.</p>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
           <div
-            className="inline-flex rounded-lg border bg-white p-0.5"
-            style={{ borderColor: "rgba(15,23,42,0.10)" }}
+            className="motus-muscle-split-segment"
             role="group"
             aria-label="Tidsperiode"
           >
@@ -72,12 +87,7 @@ export function MuscleSplitCard({
               </button>
             ))}
           </div>
-          <div
-            className="inline-flex rounded-lg border bg-white p-0.5"
-            style={{ borderColor: "rgba(15,23,42,0.10)" }}
-            role="group"
-            aria-label="Visning"
-          >
+          <div className="motus-muscle-split-segment" role="group" aria-label="Visning">
             <button
               type="button"
               onClick={() => onMetricChange("sets")}
@@ -101,31 +111,36 @@ export function MuscleSplitCard({
           icon="📊"
           title="Ingen splitt ennå"
           description="Fullfør styrke- eller kondisjonsøkter med logging — da vises fordelingen per muskelgruppe her."
-          className="mt-4 bg-white"
+          className="mt-4 bg-slate-50/80"
         />
       ) : (
-        <ul className="mt-4 space-y-3">
+        <ul className="motus-muscle-split-list mt-4">
           {topGroups.map((row, index) => {
             const value = muscleSplitMetricValue(row, metric);
             const share = total > 0 ? Math.round((value / total) * 100) : 0;
             const width = Math.max(6, Math.round((value / max) * 100));
-            const barStop = index % 2 === 0 ? MOTUS.turquoise : MOTUS.pink;
+            const isActive = index < 3 && value > 0;
 
             return (
-              <li key={row.group}>
-                <div className="flex items-baseline justify-between gap-3 text-sm">
-                  <span className="font-medium text-slate-800">{row.group}</span>
+              <li key={row.group} className={`motus-muscle-split-row ${isActive ? "motus-muscle-split-row--active" : ""}`}>
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="flex min-w-0 items-center gap-2 font-medium text-slate-800">
+                    <MuscleGroupIcon group={row.group} />
+                    <span className="truncate">{row.group}</span>
+                  </span>
                   <span className="shrink-0 tabular-nums text-slate-600">
                     {formatMuscleSplitMetricValue(value, metric)}
                     <span className="ml-1.5 text-xs text-slate-400">({share}%)</span>
                   </span>
                 </div>
-                <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-slate-200/90">
+                <div className="motus-muscle-split-track">
                   <div
-                    className="h-full rounded-full transition-[width] duration-500 ease-out"
+                    className="motus-muscle-split-fill"
                     style={{
                       width: `${width}%`,
-                      background: `linear-gradient(90deg, ${barStop} 0%, ${MOTUS.pink} 100%)`,
+                      background: isActive
+                        ? MOTUS.gradient
+                        : "linear-gradient(90deg, rgba(148,163,184,0.45) 0%, rgba(148,163,184,0.25) 100%)",
                     }}
                   />
                 </div>
@@ -138,6 +153,6 @@ export function MuscleSplitCard({
       {stats.length > 10 ? (
         <p className="mt-3 text-xs text-slate-500">Viser topp 10 av {stats.length} muskelgrupper i perioden.</p>
       ) : null}
-    </div>
+    </section>
   );
 }
