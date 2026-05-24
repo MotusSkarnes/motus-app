@@ -272,6 +272,8 @@ type MemberPortalProps = {
   messages: ChatMessage[];
   memberViewId: string;
   memberTab: MemberTab;
+  /** Umiddelbar fane fra navigasjon (overlays/modaler), mens memberTab kan være utsatt under tunge bytter. */
+  memberInteractionTab?: MemberTab;
   setMemberTab: (tab: MemberTab) => void;
   updateMember: (input: UpdateMemberInput) => void;
   memberAvatarUrl: string;
@@ -938,6 +940,7 @@ export function MemberPortal(props: MemberPortalProps) {
     messages,
     memberViewId,
     memberTab,
+    memberInteractionTab = memberTab,
     setMemberTab,
     updateMember,
     memberAvatarUrl,
@@ -2471,6 +2474,9 @@ export function MemberPortal(props: MemberPortalProps) {
   const activeCelebration = liveWorkoutCelebration ?? workoutCelebration;
   /** Ny PR / økt rekord: alltid synlig for aktiv bruker (uavhengig av «små feiringer»). */
   const shouldShowPrCelebration = Boolean(activeCelebration && activeCelebration.memberId === activeMemberId);
+  const showLiveWorkoutOverlay =
+    Boolean(workoutMode) &&
+    (memberInteractionTab === "overview" || memberInteractionTab === "programs");
 
   const playCelebrationSound = useCallback(() => {
     if (typeof window === "undefined" || !celebrationSoundEnabled) return;
@@ -3294,6 +3300,14 @@ export function MemberPortal(props: MemberPortalProps) {
       setShowPeriodPlanPanel(true);
     }
   }, [memberTab]);
+
+  useEffect(() => {
+    setShowIntervalTimerModal(false);
+    setConfirmDialog(null);
+    setPrProgressExerciseName(null);
+    setShowGroupWorkoutLogger(false);
+    setProgramLibraryMenuId(null);
+  }, [memberInteractionTab]);
 
   function openProgramsWithPeriodPlan() {
     setTrainingSection("period");
@@ -6753,7 +6767,7 @@ export function MemberPortal(props: MemberPortalProps) {
     </div>
     <LiveWorkoutSessionModal
       variant="member"
-      workoutMode={workoutMode}
+      workoutMode={showLiveWorkoutOverlay ? workoutMode : null}
       activeProgram={activeWorkoutProgram}
       exercises={exercises}
       onBeforeNextExercise={maybeCelebrateCurrentWorkoutGroup}

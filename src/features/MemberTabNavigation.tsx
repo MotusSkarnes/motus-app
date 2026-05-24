@@ -1,4 +1,3 @@
-import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
 import { ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp } from "lucide-react";
 import { MOTUS } from "../app/data";
@@ -120,6 +119,5 @@ function MemberMobileTabBar({ memberTab, setMemberTab, isMemberLimited }: Member
 }
 
 export function MemberMobileTabNav(props: MemberTabNavigationProps) {
-  if (typeof document === "undefined") return null;
-  return createPortal(<MemberMobileTabBar {...props} />, document.body);
+  return <MemberMobileTabBar {...props} />;
 }

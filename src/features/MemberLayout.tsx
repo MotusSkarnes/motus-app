@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "react";
 import { MOTUS } from "../app/data";
 import {
@@ -216,34 +216,33 @@ export function MemberLayout({
 
   const navigateMemberTab = useCallback(
     (tab: MemberTab) => {
+      if (tab === memberTab) return;
       clearMemberFocusWorkoutLogId?.();
       clearMemberFocusProgramId?.();
-      startTransition(() => {
-        setMemberTab(tab);
-      });
+      setMemberTab(tab);
     },
-    [clearMemberFocusProgramId, clearMemberFocusWorkoutLogId, setMemberTab],
+    [clearMemberFocusProgramId, clearMemberFocusWorkoutLogId, memberTab, setMemberTab],
   );
+
+  const deferredMemberTab = useDeferredValue(memberTab);
+  const isMemberTabTransitionPending = deferredMemberTab !== memberTab;
+
+  const welcomeModalOpenRef = useRef(welcomeModalOpen);
+  welcomeModalOpenRef.current = welcomeModalOpen;
+  const onboardingGateOpenRef = useRef(onboardingGateOpen);
+  onboardingGateOpenRef.current = onboardingGateOpen;
+  const memberCheckInOverlayOpenRef = useRef(memberCheckInOverlayOpen);
+  memberCheckInOverlayOpenRef.current = memberCheckInOverlayOpen;
 
   const previousMemberTabRef = useRef(memberTab);
   useEffect(() => {
     if (previousMemberTabRef.current === memberTab) return;
     previousMemberTabRef.current = memberTab;
 
-    if (welcomeModalOpen) dismissWelcomeModal();
-    if (onboardingGateOpen) setOnboardingGateOpen(false);
-    if (memberCheckInOverlayOpen) setMemberCheckInOverlayOpen(false);
-    if (appState.workoutMode) dismissWorkoutMode();
-  }, [
-    memberTab,
-    welcomeModalOpen,
-    onboardingGateOpen,
-    memberCheckInOverlayOpen,
-    appState.workoutMode,
-    dismissWorkoutMode,
-    setMemberCheckInOverlayOpen,
-    onboardingIdentityKey,
-  ]);
+    if (welcomeModalOpenRef.current) dismissWelcomeModal();
+    if (onboardingGateOpenRef.current) setOnboardingGateOpen(false);
+    if (memberCheckInOverlayOpenRef.current) setMemberCheckInOverlayOpen(false);
+  }, [memberTab, onboardingIdentityKey, setMemberCheckInOverlayOpen]);
 
   function startOnboardingFromWelcome() {
     if (!onboardingIdentityKey) return;
@@ -390,7 +389,8 @@ export function MemberLayout({
     logs: appState.logs,
     messages: appState.messages,
     memberViewId: appState.memberViewId,
-    memberTab,
+    memberTab: deferredMemberTab,
+    memberInteractionTab: memberTab,
     setMemberTab,
     updateMember,
     memberAvatarUrl: currentMemberAvatarUrl,
@@ -503,7 +503,10 @@ export function MemberLayout({
     <>
       <div className="space-y-4 sm:space-y-5">
         <MemberDesktopTabNav memberTab={memberTab} setMemberTab={navigateMemberTab} isMemberLimited={isMemberLimited} />
-        <div className="pb-[calc(5rem+env(safe-area-inset-bottom,0px))] xl:pb-0">
+        <div
+          className={`pb-[calc(5rem+env(safe-area-inset-bottom,0px))] xl:pb-0 ${isMemberTabTransitionPending ? "opacity-95" : ""}`}
+          aria-busy={isMemberTabTransitionPending}
+        >
         {memberTab === "inspiration" ? (
           <InspirationHub
             memberId={inspirationMemberId}

@@ -72,7 +72,6 @@ body,
 
 html {
   -webkit-text-size-adjust: 100%;
-  touch-action: manipulation;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -84,6 +83,7 @@ body {
   color: #0f172a;
   overflow-x: hidden;
   overflow-y: auto;
+  touch-action: pan-x pan-y;
   -webkit-overflow-scrolling: touch;
 }
 
