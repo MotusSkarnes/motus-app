@@ -25,10 +25,12 @@ import {
   touchRecentFoodId,
   upsertFoodItem,
 } from "../app/foodBankStorage";
+import { compressImageFile } from "../app/imageCompress";
 import {
   EMPTY_MACRO_FILTER,
   FOOD_BANK_CATEGORIES,
   foodCategoryMeta,
+  foodItemMayDelete,
   foodSourceLabel,
   formatMacro,
   type FoodBankFilterChip,
@@ -39,7 +41,11 @@ import {
 } from "../app/foodBankTypes";
 import { uid } from "../app/storage";
 import { GradientButton, OutlineButton, SelectBox, TextInput } from "../app/ui";
+import { FoodBankImportModal } from "./FoodBankImportModal";
+import { FoodImageField } from "./FoodImageField";
 import "../foodbank.css";
+
+const MAX_FOOD_IMAGE_BYTES = 5 * 1024 * 1024;
 
 const PAGE_SIZE = 16;
 
@@ -67,6 +73,7 @@ type FoodFormState = {
   origin: string;
   source: FoodSource;
   imageEmoji: string;
+  imageUrl: string;
   kcal: string;
   protein: string;
   carbs: string;
@@ -87,6 +94,7 @@ function emptyForm(): FoodFormState {
     origin: "",
     source: "egen",
     imageEmoji: "🍽️",
+    imageUrl: "",
     kcal: "",
     protein: "",
     carbs: "",
@@ -108,6 +116,7 @@ function formFromFood(item: FoodItem): FoodFormState {
     origin: item.origin,
     source: item.source,
     imageEmoji: item.imageEmoji ?? "🍽️",
+    imageUrl: item.imageUrl ?? "",
     kcal: String(item.nutritionPer100g.kcal),
     protein: String(item.nutritionPer100g.protein),
     carbs: String(item.nutritionPer100g.carbs),
@@ -132,13 +141,18 @@ function formatDateLabel(iso: string): string {
 
 function FoodThumb({ item }: { item: FoodItem }) {
   const meta = foodCategoryMeta(item.category);
+  const photo = item.imageUrl?.trim();
   return (
     <div
       className="motus-foodbank-thumb"
-      style={{ background: `linear-gradient(145deg, ${meta.accent}22 0%, ${meta.accent}08 100%)` }}
+      style={{ background: photo ? "#f8fafc" : `linear-gradient(145deg, ${meta.accent}22 0%, ${meta.accent}08 100%)` }}
       aria-hidden
     >
-      <span className="motus-foodbank-thumb-emoji">{item.imageEmoji ?? meta.emoji}</span>
+      {photo ? (
+        <img src={photo} alt="" className="motus-foodbank-thumb-photo" />
+      ) : (
+        <span className="motus-foodbank-thumb-emoji">{item.imageEmoji ?? meta.emoji}</span>
+      )}
     </div>
   );
 }
@@ -168,11 +182,13 @@ export function TrainerFoodBankView({ trainerName }: TrainerFoodBankViewProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<FoodFormState>(emptyForm);
   const [formStatus, setFormStatus] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
   const [sources, setSources] = useState<FoodSource[]>([]);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [mineOnly, setMineOnly] = useState(false);
   const [macroFilter, setMacroFilter] = useState<FoodMacroFilter>(EMPTY_MACRO_FILTER);
   const [mealPlanNotice, setMealPlanNotice] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const reload = useCallback(() => {
     setItems(loadFoodBankItems());
@@ -229,7 +245,36 @@ export function TrainerFoodBankView({ trainerName }: TrainerFoodBankViewProps) {
   const openCreateForm = () => {
     setForm(emptyForm());
     setFormStatus(null);
+    setImageUploading(false);
     setFormOpen(true);
+  };
+
+  const openEditForm = (item: FoodItem) => {
+    setForm(formFromFood(item));
+    setFormStatus(null);
+    setImageUploading(false);
+    setFormOpen(true);
+  };
+
+  const handleFoodImageUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setFormStatus("Velg en bildefil (JPG, PNG eller WEBP).");
+      return;
+    }
+    if (file.size > MAX_FOOD_IMAGE_BYTES) {
+      setFormStatus("Bildet er for stort (maks 5 MB).");
+      return;
+    }
+    setImageUploading(true);
+    setFormStatus(null);
+    try {
+      const dataUrl = await compressImageFile(file, 720, 0.85);
+      setForm((current) => ({ ...current, imageUrl: dataUrl }));
+    } catch {
+      setFormStatus("Kunne ikke laste opp bildet. Prøv en annen fil.");
+    } finally {
+      setImageUploading(false);
+    }
   };
 
   const saveForm = () => {
@@ -237,6 +282,8 @@ export function TrainerFoodBankView({ trainerName }: TrainerFoodBankViewProps) {
       setFormStatus("Navn må fylles ut.");
       return;
     }
+    const existing = form.id ? items.find((row) => row.id === form.id) : undefined;
+    const imageUrl = form.imageUrl.trim() || undefined;
     const nextItem: FoodItem = {
       id: form.id ?? uid("food"),
       name: form.name.trim(),
@@ -245,10 +292,12 @@ export function TrainerFoodBankView({ trainerName }: TrainerFoodBankViewProps) {
       category: form.category,
       origin: form.origin.trim() || foodCategoryMeta(form.category).originHint,
       source: form.source,
-      createdBy: trainerName,
-      createdAt: form.id ? items.find((row) => row.id === form.id)?.createdAt ?? new Date().toISOString() : new Date().toISOString(),
-      imageEmoji: form.imageEmoji.trim() || foodCategoryMeta(form.category).emoji,
-      isCustom: form.source === "egen" || Boolean(form.id && items.find((row) => row.id === form.id)?.isCustom),
+      createdBy: existing?.createdBy ?? trainerName,
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
+      imageUrl,
+      imageEmoji: imageUrl ? undefined : form.imageEmoji.trim() || foodCategoryMeta(form.category).emoji,
+      isCustom: form.source === "egen" || Boolean(existing?.isCustom),
+      isEdited: existing ? existing.isEdited === true || existing.isCustom !== true : false,
       nutritionPer100g: {
         kcal: parseNumber(form.kcal),
         protein: parseNumber(form.protein),
@@ -268,10 +317,6 @@ export function TrainerFoodBankView({ trainerName }: TrainerFoodBankViewProps) {
     setFormStatus(null);
   };
 
-  const handleImport = () => {
-    setMealPlanNotice("Import av matvarer kommer snart. Du kan legge til matvarer manuelt med «Legg til matvare».");
-    window.setTimeout(() => setMealPlanNotice(null), 4000);
-  };
 
   const handleAddToMealPlan = (item: FoodItem) => {
     setMealPlanNotice(`${item.name} er klar — matplan-redigering kobles på i neste steg.`);
@@ -290,7 +335,7 @@ export function TrainerFoodBankView({ trainerName }: TrainerFoodBankViewProps) {
             <Plus className="h-4 w-4" aria-hidden />
             Legg til matvare
           </GradientButton>
-          <OutlineButton onClick={handleImport}>
+          <OutlineButton onClick={() => setImportOpen(true)}>
             <Upload className="h-4 w-4" aria-hidden />
             Importer matvarer
           </OutlineButton>
@@ -481,39 +526,22 @@ export function TrainerFoodBankView({ trainerName }: TrainerFoodBankViewProps) {
                 <Plus className="h-4 w-4" aria-hidden />
                 Legg til i matplan
               </GradientButton>
-              {selectedItem.isCustom ? (
-                <>
-                  <OutlineButton className="w-full" onClick={() => { setForm(formFromFood(selectedItem)); setFormOpen(true); }}>
-                    Rediger matvare
-                  </OutlineButton>
-                  <OutlineButton
-                    className="w-full"
-                    onClick={() => {
-                      const nextItems = deleteFoodItem(items, selectedItem.id);
-                      setItems(nextItems);
-                      persistFoodBankItems(nextItems);
-                      setSelectedId(null);
-                    }}
-                  >
-                    Slett matvare
-                  </OutlineButton>
-                </>
-              ) : (
+              <OutlineButton className="w-full" onClick={() => openEditForm(selectedItem)}>
+                Rediger matvare
+              </OutlineButton>
+              {foodItemMayDelete(selectedItem) ? (
                 <OutlineButton
                   className="w-full"
                   onClick={() => {
-                    setForm({
-                      ...formFromFood(selectedItem),
-                      id: null,
-                      name: `${selectedItem.name} (kopi)`,
-                      source: "egen",
-                    });
-                    setFormOpen(true);
+                    const nextItems = deleteFoodItem(items, selectedItem.id);
+                    setItems(nextItems);
+                    persistFoodBankItems(nextItems);
+                    setSelectedId(null);
                   }}
                 >
-                  Dupliser og rediger
+                  Slett matvare
                 </OutlineButton>
-              )}
+              ) : null}
             </div>
           </aside>
         ) : null}
@@ -588,6 +616,20 @@ export function TrainerFoodBankView({ trainerName }: TrainerFoodBankViewProps) {
         </div>
       ) : null}
 
+      {importOpen ? (
+        <FoodBankImportModal
+          trainerName={trainerName}
+          existingItems={items}
+          onClose={() => setImportOpen(false)}
+          onImported={(nextItems, summary) => {
+            setItems(nextItems);
+            persistFoodBankItems(nextItems);
+            setMealPlanNotice(summary);
+            window.setTimeout(() => setMealPlanNotice(null), 5000);
+          }}
+        />
+      ) : null}
+
       {formOpen ? (
         <div className="motus-foodbank-modal-backdrop" role="presentation" onClick={() => setFormOpen(false)}>
           <div className="motus-foodbank-modal motus-foodbank-modal--wide" role="dialog" aria-labelledby="food-form-title" onClick={(event) => event.stopPropagation()}>
@@ -598,13 +640,19 @@ export function TrainerFoodBankView({ trainerName }: TrainerFoodBankViewProps) {
               </button>
             </div>
             <div className="motus-foodbank-modal-body motus-foodbank-form-grid">
+              <div className="motus-foodbank-form-span-all">
+                <FoodImageField
+                  imageUrl={form.imageUrl}
+                  imageEmoji={form.imageEmoji}
+                  onImageUrlChange={(imageUrl) => setForm((current) => ({ ...current, imageUrl }))}
+                  onImageEmojiChange={(imageEmoji) => setForm((current) => ({ ...current, imageEmoji }))}
+                  onUploadFile={handleFoodImageUpload}
+                  isUploading={imageUploading}
+                />
+              </div>
               <label className="motus-foodbank-field">
                 <span className="motus-foodbank-field-label">Navn</span>
                 <TextInput value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
-              </label>
-              <label className="motus-foodbank-field">
-                <span className="motus-foodbank-field-label">Emoji / ikon</span>
-                <TextInput value={form.imageEmoji} onChange={(event) => setForm((current) => ({ ...current, imageEmoji: event.target.value }))} />
               </label>
               <label className="motus-foodbank-field">
                 <span className="motus-foodbank-field-label">Kategori</span>

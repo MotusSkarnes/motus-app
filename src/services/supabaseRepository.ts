@@ -1729,7 +1729,10 @@ export async function deleteProgramRemote(
   }
 
   if (!programRow) {
-    if (memberInitiated) return false;
+    if (memberInitiated) {
+      await persistMemberProgramLibraryStatus([programId], "archived");
+      return true;
+    }
     const { error } = await supabaseClient.from("training_programs").delete().eq("id", programId);
     if (error) {
       console.warn("Supabase program delete failed:", error.message);
@@ -1794,12 +1797,19 @@ export async function deleteProgramRemote(
     programIdsToDelete.push(programId);
   }
 
+  if (memberInitiated) {
+    await persistMemberProgramLibraryStatus(programIdsToDelete, "archived");
+  }
+
   const { error } = await supabaseClient
     .from("training_programs")
     .delete()
     .in("id", programIdsToDelete);
   if (error) {
     console.warn("Supabase linked program delete failed:", error.message);
+    if (memberInitiated) {
+      return true;
+    }
     return false;
   }
 

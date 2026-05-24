@@ -32,8 +32,14 @@ export type FoodItem = {
   imageUrl?: string;
   imageEmoji?: string;
   isCustom?: boolean;
+  /** Egne endringer på matvare fra tabell/import (samme id, ingen kopi). */
+  isEdited?: boolean;
   nutritionPer100g: FoodNutrition;
 };
+
+export function foodItemMayDelete(item: FoodItem): boolean {
+  return item.isCustom === true || item.isEdited === true;
+}
 
 export type FoodBankFilterChip =
   | "all"

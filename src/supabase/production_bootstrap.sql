@@ -127,6 +127,8 @@ drop policy if exists "training_programs_select_trainer_or_member" on public.tra
 drop policy if exists "training_programs_insert_own" on public.training_programs;
 drop policy if exists "training_programs_update_own" on public.training_programs;
 drop policy if exists "training_programs_delete_own" on public.training_programs;
+drop policy if exists "training_programs_delete_member_created" on public.training_programs;
+drop policy if exists "training_programs_update_member_library" on public.training_programs;
 
 drop policy if exists "workout_logs_select_dev" on public.workout_logs;
 drop policy if exists "workout_logs_insert_dev" on public.workout_logs;
@@ -137,6 +139,7 @@ drop policy if exists "workout_logs_select_trainer_or_member" on public.workout_
 drop policy if exists "workout_logs_insert_own" on public.workout_logs;
 drop policy if exists "workout_logs_update_own" on public.workout_logs;
 drop policy if exists "workout_logs_delete_own" on public.workout_logs;
+drop policy if exists "workout_logs_delete_member_own" on public.workout_logs;
 
 -- Strict authenticated-owner policies.
 create policy "members_select_own"
@@ -230,6 +233,39 @@ create policy "training_programs_delete_own"
   for delete to authenticated
   using (owner_user_id = auth.uid());
 
+create policy "training_programs_update_member_library"
+  on public.training_programs
+  for update to authenticated
+  using (
+    member_id is not null
+    and (
+      member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+      or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+      or lower(btrim(member_id)) = lower(btrim(coalesce(auth.jwt() ->> 'email', '')))
+    )
+  )
+  with check (
+    member_id is not null
+    and (
+      member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+      or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+      or lower(btrim(member_id)) = lower(btrim(coalesce(auth.jwt() ->> 'email', '')))
+    )
+  );
+
+create policy "training_programs_delete_member_created"
+  on public.training_programs
+  for delete to authenticated
+  using (
+    lower(btrim(coalesce(program_created_by, ''))) = 'member'
+    and member_id is not null
+    and (
+      member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+      or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+      or lower(btrim(member_id)) = lower(btrim(coalesce(auth.jwt() ->> 'email', '')))
+    )
+  );
+
 create policy "workout_logs_select_trainer_or_member"
   on public.workout_logs
   for select to authenticated
@@ -254,6 +290,18 @@ create policy "workout_logs_delete_own"
   on public.workout_logs
   for delete to authenticated
   using (owner_user_id = auth.uid());
+
+create policy "workout_logs_delete_member_own"
+  on public.workout_logs
+  for delete to authenticated
+  using (
+    member_id is not null
+    and (
+      member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+      or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+      or lower(btrim(member_id)) = lower(btrim(coalesce(auth.jwt() ->> 'email', '')))
+    )
+  );
 
 -- Medlem kan lagre øktlogg (intervalløkt) med PT som owner_user_id — se også workout_logs_member_insert_rls.sql
 drop policy if exists "workout_logs_insert_member" on public.workout_logs;
