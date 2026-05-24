@@ -76,6 +76,13 @@ import {
   buildTrainerTodayFeed,
   countInactiveLastWeek,
 } from "../app/trainerDashboardFeed";
+import {
+  buildCustomerFollowUpItems,
+  buildCustomerMetrics,
+  buildCustomerTimeline,
+  memberAgeLabel,
+} from "./trainer-dashboard/buildCustomerDashboardData";
+import { TrainerPtDashboard, type TrainerListFilterTab, type TrainerPtListMember } from "./trainer-dashboard/TrainerPtDashboard";
 import type {
   AuthUser,
   ChatMessage,
@@ -695,6 +702,7 @@ function pickFirstName(value: unknown): string {
   const trainerSendAttemptRef = useRef(0);
   const [trainerChatSendStatus, setTrainerChatSendStatus] = useState<string | null>(null);
   const [chatShareProgramPickerOpen, setChatShareProgramPickerOpen] = useState(false);
+  const [ptListFilterTab, setPtListFilterTab] = useState<TrainerListFilterTab>("all");
   const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
   const [programsSubTab, setProgramsSubTab] = useState<TrainingSubTab>("strength");
   const [exerciseBankSubTab, setExerciseBankSubTab] = useState<ExerciseBankSubTab>("all");
@@ -4071,6 +4079,99 @@ function pickFirstName(value: unknown): string {
     [todoItemsForToday],
   );
 
+  const ptListCounts = useMemo(() => {
+    const active = visibleMembers.filter((m) => m.isActive !== false);
+    const inactive = members.filter((m) => m.isActive === false).length;
+    const risk = active.filter((m) => {
+      const tone = memberPriorityTone(m, members, logs);
+      return tone === "red" || tone === "orange";
+    }).length;
+    return {
+      all: visibleMembers.length,
+      active: active.filter((m) => memberPriorityTone(m, members, logs) === "green").length,
+      risk,
+      inactive,
+    };
+  }, [visibleMembers, members, logs]);
+
+  const ptFilteredMembers = useMemo(() => {
+    if (ptListFilterTab === "inactive") {
+      return sortedMembers.filter((m) => m.isActive === false);
+    }
+    const activeSorted = sortedMembers.filter((m) => m.isActive !== false);
+    if (ptListFilterTab === "all") return activeSorted;
+    if (ptListFilterTab === "active") {
+      return activeSorted.filter((m) => memberPriorityTone(m, members, logs) === "green");
+    }
+    return activeSorted.filter((m) => {
+      const tone = memberPriorityTone(m, members, logs);
+      return tone === "red" || tone === "orange";
+    });
+  }, [sortedMembers, ptListFilterTab, members, logs]);
+
+  const ptListMembers = useMemo((): TrainerPtListMember[] => {
+    return ptFilteredMembers.map((member) => {
+      const tone = memberPriorityTone(member, members, logs);
+      const daysSinceWorkout = daysSinceLastCompletedWorkout(member, members, logs);
+      const statusTone: TrainerPtListMember["statusTone"] =
+        tone === "red" ? "critical" : tone === "orange" ? "warning" : daysSinceWorkout !== null && daysSinceWorkout <= 3 ? "active" : "neutral";
+      return {
+        member,
+        avatarUrl: resolveMemberAvatarUrl(member) || null,
+        customerTypeLabel: getMemberCustomerTypeDisplay(member).label,
+        activityLabel:
+          daysSinceWorkout === null ? "ingen økt" : daysSinceWorkout === 0 ? "i dag" : `${daysSinceWorkout} d siden`,
+        statusLabel: statusTone === "critical" ? "Risiko" : statusTone === "warning" ? "Følg opp" : "Aktiv",
+        statusTone,
+        selected: member.id === selectedMemberId,
+      };
+    });
+  }, [ptFilteredMembers, members, logs, selectedMemberId]);
+
+  const selectedCustomerMetrics = useMemo(() => {
+    if (!selectedMember) return null;
+    const relatedIds = selectedMemberRelatedIdSet;
+    const memberLogs = logs.filter((log) => relatedIds.has(log.memberId));
+    const memberMessages = messages.filter((msg) => relatedIds.has(msg.memberId));
+    return buildCustomerMetrics({
+      memberLogs,
+      programs: selectedPrograms,
+      memberMessages,
+    });
+  }, [selectedMember, selectedMemberRelatedIdSet, logs, messages, selectedPrograms]);
+
+  const selectedCustomerTimeline = useMemo(() => {
+    if (!selectedMember) return [];
+    const relatedIds = selectedMemberRelatedIdSet;
+    return buildCustomerTimeline({
+      memberLogs: logs.filter((log) => relatedIds.has(log.memberId)),
+      memberMessages: messages.filter((msg) => relatedIds.has(msg.memberId)),
+    });
+  }, [selectedMember, selectedMemberRelatedIdSet, logs, messages]);
+
+  const selectedCustomerFollowUps = useMemo(() => {
+    if (!selectedMember) return [];
+    const daysSinceWorkout = daysSinceLastCompletedWorkout(selectedMember, members, logs);
+    const candidate = followUpCandidates.find((item) => item.member.id === selectedMember.id);
+    return buildCustomerFollowUpItems({
+      nextAction: selectedNextAction,
+      reasons: candidate?.reasons ?? [],
+      hasProgram: selectedPrograms.length > 0,
+      daysSinceWorkout,
+    });
+  }, [selectedMember, members, logs, followUpCandidates, selectedNextAction, selectedPrograms.length]);
+
+  const selectedLatestNote = useMemo(() => {
+    const entry = selectedMemberFollowUpLog[0];
+    if (!entry) return null;
+    const methodTitle =
+      entry.method === "telefon" ? "Telefon" : entry.method === "mote" ? "Møte" : "Melding";
+    return {
+      title: methodTitle,
+      preview: entry.note.trim() || "Oppfølgingsnotat",
+    };
+  }, [selectedMemberFollowUpLog]);
+
   function getMemberCustomerTypeDisplay(member: Member): { label: string; badgeClass: string } {
     if (isSharedMedlemCustomerType(member.customerType)) {
       return { label: "Medlem", badgeClass: "bg-slate-100 text-slate-700 ring-slate-200" };
@@ -4313,8 +4414,157 @@ function pickFirstName(value: unknown): string {
   return (
     <>
     <div className="space-y-4 sm:space-y-6">
+      {(trainerTab === "dashboard" || trainerTab === "customers") && (
+        <TrainerPtDashboard
+          listMembers={ptListMembers}
+          listFilterTab={ptListFilterTab}
+          onListFilterTabChange={(tab) => {
+            setPtListFilterTab(tab);
+            if (tab === "inactive") setShowInactiveMembers(true);
+          }}
+          listCounts={ptListCounts}
+          memberSearch={memberSearch}
+          onMemberSearchChange={setMemberSearch}
+          onSelectMember={(memberId) => {
+            if (trainerTab === "dashboard") setTrainerTab("customers");
+            selectMemberWithUnsavedChangesGuard(memberId, () => setCustomerSubTab("overview"));
+          }}
+          onResetFilters={resetMemberListControls}
+          showInactiveToggle={!showInactiveMembers}
+          onToggleInactive={() => setShowInactiveMembers(true)}
+          showCustomerChrome={Boolean(selectedMember)}
+          customerName={selectedMemberProfile?.name ?? selectedMember?.name}
+          customerEmail={selectedMember?.email}
+          customerPhone={selectedMemberProfile?.phone ?? selectedMember?.phone}
+          customerAge={memberAgeLabel(selectedMemberProfile?.birthDate ?? selectedMember?.birthDate)}
+          customerTypeLabel={selectedMember ? getMemberCustomerTypeDisplay(selectedMember).label : undefined}
+          customerStatusLabel={
+            selectedFollowUpTone === "critical"
+              ? "Risiko"
+              : selectedFollowUpTone === "watch"
+                ? "Følg opp"
+                : selectedMember
+                  ? "Aktiv"
+                  : undefined
+          }
+          customerStatusTone={
+            selectedFollowUpTone === "critical"
+              ? "critical"
+              : selectedFollowUpTone === "watch"
+                ? "warning"
+                : "active"
+          }
+          customerAvatarUrl={selectedMember ? resolveMemberAvatarUrl(selectedMember) : null}
+          onMessage={() => {
+            if (!selectedMember) return;
+            setCustomerSubTab("messages");
+            handleQuickFollowUpMessage(selectedMember);
+          }}
+          onCall={() => {
+            if (!selectedMember?.phone?.trim()) return;
+            window.open(`tel:${selectedMember.phone.trim()}`, "_self");
+          }}
+          onNewTask={() => {
+            setTodoTitle(selectedMember ? `Oppfølging: ${selectedMember.name}` : "");
+          }}
+          subTabs={
+            selectedMember ? (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <PillButton active={customerSubTab === "overview"} onClick={() => setCustomerSubTab("overview")}>
+                  Oversikt
+                </PillButton>
+                <PillButton
+                  active={customerSubTab === "programs"}
+                  onClick={() => {
+                    setCustomerSubTab("programs");
+                    setCustomerProgramBuilderFocus("training");
+                  }}
+                >
+                  Programmer
+                </PillButton>
+                <PillButton active={customerSubTab === "workouts"} onClick={() => setCustomerSubTab("workouts")}>
+                  Økter
+                </PillButton>
+                <PillButton active={customerSubTab === "messages"} onClick={() => setCustomerSubTab("messages")}>
+                  Meldinger
+                </PillButton>
+              </div>
+            ) : null
+          }
+          metrics={selectedCustomerMetrics}
+          followUpItems={selectedCustomerFollowUps}
+          timeline={selectedCustomerTimeline}
+          onTimelineAction={(item) => {
+            if (item.icon === "message") setCustomerSubTab("messages");
+            else if (item.icon === "workout") setCustomerSubTab("workouts");
+            else setCustomerSubTab("overview");
+          }}
+          todos={trainerTodosForHome}
+          todoDraft={todoTitle}
+          onTodoDraftChange={setTodoTitle}
+          onAddTodo={() => addTodoItem(todayIso)}
+          onToggleTodo={toggleTodoDone}
+          insightTitle={trainerInsight.title}
+          insightDetail={trainerInsight.detail}
+          coachScore={Math.min(10, Math.max(6, trainerOpsHealthPct / 10))}
+          latestNote={selectedLatestNote}
+          onOpenNote={() => setCustomerSubTab("overview")}
+          aggregateOverview={
+            !selectedMember && trainerTab === "dashboard" ? (
+              <div className="motus-home-shell py-2">
+                <TrainerHomeOverview
+                  trainerFirstName={trainerFirstName}
+                  todayDateLabel={trainerTodayDateLabel}
+                  focusItems={trainerFocusItems}
+                  activeMemberCount={activeMembers.length}
+                  todaysCustomers={dashboardSummary.todaysCustomers}
+                  todaysWorkouts={dashboardSummary.todaysWorkouts}
+                  newMessages24h={dashboardSummary.newMessages24h}
+                  followUpCount={followUpCount}
+                  criticalFollowUpCount={criticalFollowUpCount}
+                  primaryFollowUp={primaryFollowUpCard}
+                  secondaryFollowUps={secondaryFollowUpCards}
+                  todayFeed={trainerTodayFeed}
+                  todos={trainerTodosForHome}
+                  todoDraft={todoTitle}
+                  onTodoDraftChange={setTodoTitle}
+                  onAddTodo={() => addTodoItem(todayIso)}
+                  onToggleTodo={toggleTodoDone}
+                  priorityMembers={homePriorityMembers}
+                  insightTitle={trainerInsight.title}
+                  insightDetail={trainerInsight.detail}
+                  onFollowUpClick={() => openCustomersWithListFilters({ memberFilter: "followUp" })}
+                  onMissingProgramClick={() => openCustomersWithListFilters({ memberFilter: "noProgram" })}
+                  onOpenMember={(memberId) => {
+                    setTrainerTab("customers");
+                    selectMemberWithUnsavedChangesGuard(memberId, () => setCustomerSubTab("overview"));
+                  }}
+                  onContactMember={(memberId) => {
+                    const member = members.find((row) => row.id === memberId);
+                    if (member) handleQuickFollowUpMessage(member);
+                  }}
+                  onMarkFollowedUp={(memberId) => {
+                    const member = members.find((row) => row.id === memberId);
+                    if (member) markMemberFollowedUp(member);
+                  }}
+                  onOpenProgressInsight={() => openCustomersWithListFilters({ priorityFilter: "red" })}
+                  quickActions={{
+                    onOpenCustomers: () => setTrainerTab("customers"),
+                    onOpenPrograms: () => setTrainerTab("programs"),
+                    onOpenMessages: () => setTrainerTab("customers"),
+                  }}
+                />
+              </div>
+            ) : !selectedMember ? (
+              <div className="motus-pt-dash-empty py-16 text-base">Velg en kunde i listen for å se kundekortet.</div>
+            ) : undefined
+          }
+          centerContent={null}
+        />
+      )}
+
       {trainerTab === "dashboard" ? (
-        <div className="motus-home-shell">
+        <div className="motus-home-shell motus-pt-dash-mobile-only">
           <TrainerHomeOverview
             trainerFirstName={trainerFirstName}
             todayDateLabel={trainerTodayDateLabel}
@@ -4403,13 +4653,14 @@ function pickFirstName(value: unknown): string {
       ) : null}
 
       {trainerTab === "customers" ? (
+        <div className="motus-pt-customers-detail-host">
         <div className="grid gap-4 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)] lg:items-start">
-          <div className="lg:hidden lg:col-span-2">
+          <div className="motus-pt-dash-mobile-only lg:hidden lg:col-span-2">
             <OutlineButton onClick={() => setShowCustomerToolsMobile((prev) => !prev)} className="w-full">
               {showCustomerToolsMobile ? "Skjul kundeliste" : "Vis kundeliste"}
             </OutlineButton>
           </div>
-          <Card className={`p-4 ${showCustomerToolsMobile ? "block" : "hidden"} lg:sticky lg:top-4 lg:block`}>
+          <Card className={`motus-pt-dash-mobile-only p-4 ${showCustomerToolsMobile ? "block" : "hidden"} lg:sticky lg:top-4 lg:block`}>
             <div className="flex items-start gap-3">
               <MotusSectionIcon><Users className="h-5 w-5" /></MotusSectionIcon>
               <div>
@@ -4681,7 +4932,7 @@ function pickFirstName(value: unknown): string {
             </div>
           </Card>
 
-          <Card className="p-4 sm:p-5 w-full">
+          <Card className="motus-pt-customers-detail-card p-4 sm:p-5 w-full">
             {selectedMember ? (
               <div className="space-y-5">
                 <div className="lg:hidden rounded-xl border bg-slate-50 p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -4692,7 +4943,7 @@ function pickFirstName(value: unknown): string {
                     options={visibleMembers.map((member) => ({ value: member.id, label: `${member.name} (${member.email})` }))}
                   />
                 </div>
-                <div className="motus-card-hero p-5">
+                <div className="motus-card-hero motus-pt-dash-legacy-hide-xl p-5">
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div className="motus-section-label">Kundekort</div>
                     <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-slate-400 sm:h-14 sm:w-14">
@@ -4960,7 +5211,7 @@ function pickFirstName(value: unknown): string {
                   />
                 ) : null}
                 {customerSubTab !== "workouts" && customerSubTab !== "messages" ? (
-                <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
+                <div className="motus-pt-dash-legacy-hide-xl grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
                   <div className="rounded-xl border bg-white p-4 shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
@@ -5027,7 +5278,7 @@ function pickFirstName(value: unknown): string {
                 </div>
                 ) : null}
                 {customerSubTab !== "programs" && customerSubTab !== "workouts" ? (
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="motus-pt-dash-legacy-hide-xl grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <StatCard label="Programmer" value={String(selectedPrograms.length)} hint="På denne kunden" />
                     <StatCard label="Logger" value={String(selectedLogs.length)} hint="På denne kunden" />
                     <StatCard label="Meldinger" value={String(selectedMessages.length)} hint="På denne kunden" />
@@ -5043,7 +5294,7 @@ function pickFirstName(value: unknown): string {
                   </div>
                 ) : null}
 
-                <div className="rounded-xl border bg-slate-50/80 p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="motus-pt-dash-legacy-hide-xl rounded-xl border bg-slate-50/80 p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <PillButton active={customerSubTab === "overview"} onClick={() => setCustomerSubTab("overview")}>Oversikt og logg</PillButton>
                     <PillButton
@@ -6039,6 +6290,7 @@ function pickFirstName(value: unknown): string {
               </div>
             )}
           </Card>
+        </div>
         </div>
       ) : null}
 

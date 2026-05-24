@@ -209,8 +209,8 @@ export function TrainerLayout({
 
   return (
     <>
-      <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
-        <Card className="hidden h-fit overflow-hidden border-0 bg-[#F7F8FA] p-1 shadow-sm ring-1 ring-black/5 xl:block">
+      <div className="motus-trainer-shell grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
+        <Card className="motus-trainer-nav hidden h-fit overflow-hidden border-0 bg-[#F7F8FA] p-1 shadow-sm ring-1 ring-black/5 xl:block">
           <div className="mb-1 px-2 pt-1">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">PT-meny</div>
           </div>
@@ -222,15 +222,15 @@ export function TrainerLayout({
                   key={item.key}
                   type="button"
                   onClick={() => setTrainerTab(item.key)}
-                  className={`w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold whitespace-nowrap transition ${
+                  className={`motus-trainer-nav-item w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold whitespace-nowrap transition ${
                     trainerTab === item.key
                       ? "bg-white text-slate-900 shadow-sm"
                       : "text-slate-600 hover:bg-white/60 hover:text-slate-900"
                   }`}
                 >
                   <span className="inline-flex items-center gap-2">
-                    <Icon className="h-4 w-4" />
-                    <span>{item.label}</span>
+                    <Icon className="motus-trainer-nav-icon h-4 w-4" />
+                    <span className="motus-trainer-nav-text">{item.label}</span>
                   </span>
                 </button>
               );
