@@ -23,6 +23,7 @@ import {
   type StartWorkoutModeOptions,
   type UpdateMemberInput,
 } from "../services/appRepository";
+import type { ChatReactionActor, ChatReactionEmoji } from "./chatReactions";
 import {
   clearSessionOwnerEmail,
   filterMembersForSessionEmail,
@@ -256,11 +257,39 @@ function mergeTrainingProgramsById(
 
 function mergeRemoteProgramsWithLocal(remotePrograms: TrainingProgram[], localPrograms: TrainingProgram[]): TrainingProgram[] {
   const localById = new Map(localPrograms.map((program) => [program.id, program]));
-  return remotePrograms.map((remoteProgram) => {
+  const remoteIds = new Set(remotePrograms.map((program) => program.id));
+  const merged = remotePrograms.map((remoteProgram) => {
     const localProgram = localById.get(remoteProgram.id);
     if (!localProgram) return remoteProgram;
     return mergeTrainingProgramSnapshots(localProgram, remoteProgram);
   });
+  for (const localProgram of localPrograms) {
+    if (remoteIds.has(localProgram.id)) continue;
+    if (localProgram.memberId.trim() === "__template__") continue;
+    merged.push(localProgram);
+  }
+  return merged;
+}
+
+function patchProgramIdAfterPersist(
+  state: AppState,
+  input: SaveProgramInput,
+  persistedProgramId: string,
+): AppState {
+  const trimmedPersistedId = persistedProgramId.trim();
+  if (!trimmedPersistedId) return state;
+  const localId = String(input.id ?? "").trim();
+  const title = input.title.trim();
+  return {
+    ...state,
+    programs: state.programs.map((program) => {
+      const matches =
+        (localId && program.id === localId) ||
+        (!localId && program.memberId === input.memberId && program.title.trim() === title);
+      if (!matches) return program;
+      return { ...program, id: trimmedPersistedId };
+    }),
+  };
 }
 
 function visibleMemberIdSet(members: Member[]): Set<string> {
@@ -1880,7 +1909,17 @@ export function useAppState() {
   function saveProgramForMember(input: SaveProgramInput) {
     if (!input.title.trim() || !input.memberId) return;
 
-    setAppState((prev) => syncExercisesWithProgramsAfterSave(repository.saveProgram(prev, input), input));
+    const wrappedInput: SaveProgramInput = {
+      ...input,
+      onPersisted: (result) => {
+        if (result.ok && result.ids?.length) {
+          setAppState((prev) => patchProgramIdAfterPersist(prev, input, result.ids![0] ?? ""));
+        }
+        input.onPersisted?.(result);
+      },
+    };
+
+    setAppState((prev) => syncExercisesWithProgramsAfterSave(repository.saveProgram(prev, wrappedInput), wrappedInput));
   }
 
   function deleteProgramById(programId: string, context?: DeleteProgramContext) {
@@ -1925,6 +1964,10 @@ export function useAppState() {
   function sendTrainerMessage(memberId: string, text: string) {
     if (!text.trim()) return;
     setAppState((prev) => repository.appendTrainerMessage(prev, memberId, text));
+  }
+
+  function toggleChatMessageReaction(messageId: string, emoji: ChatReactionEmoji, actor: ChatReactionActor) {
+    setAppState((prev) => repository.toggleChatMessageReaction(prev, messageId, emoji, actor));
   }
 
   function saveExercise(input: SaveExerciseInput) {
@@ -2390,6 +2433,7 @@ export function useAppState() {
     deleteProgramById,
     updateProgramMemberLibraryStatus,
     sendTrainerMessage,
+    toggleChatMessageReaction,
     saveExercise,
     deleteExercise,
     startWorkoutMode,

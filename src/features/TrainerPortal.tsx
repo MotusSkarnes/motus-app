@@ -65,6 +65,7 @@ import { TrainerProfileCard } from "./TrainerProfileCard";
 import { TrainerHomeOverview } from "./TrainerHomeOverview";
 import type { TrainerFollowUpCardModel, TrainerPriorityMemberModel, TrainerTodoModel } from "./TrainerHomeOverview";
 import { buildShareProgramChatMessage } from "../app/chatFormat";
+import type { ChatReactionActor, ChatReactionEmoji } from "../app/chatReactions";
 import { MotusChat, type MotusChatQuickAction } from "./MotusChat";
 import {
   buildTrainerFocusItems,
@@ -104,6 +105,8 @@ import {
   formatTrainerMemberActivitySubtitle,
   memberPriorityScore,
   memberPriorityTone,
+  programBelongsToMember,
+  programsAttributedToMember,
   trainerActivitySortKey,
   trainerInactiveDaysForFollowUp,
   type MemberPriorityTone,
@@ -236,6 +239,7 @@ type TrainerPortalProps = {
   }) => void;
   deleteProgramById: (programId: string, context?: DeleteProgramContext) => void;
   sendTrainerMessage: (memberId: string, text: string) => void;
+  toggleChatMessageReaction: (messageId: string, emoji: ChatReactionEmoji, actor: ChatReactionActor) => void;
   updateWorkoutLogTrainerComment?: (input: {
     logId: string;
     trainerComment: string;
@@ -659,9 +663,10 @@ function pickFirstName(value: unknown): string {
     restoreMissingTestData,
     restoreOriginalExerciseBank,
     saveProgramForMember,
-    deleteProgramById,
-    sendTrainerMessage,
-    updateWorkoutLogTrainerComment,
+  deleteProgramById,
+  sendTrainerMessage,
+  toggleChatMessageReaction,
+  updateWorkoutLogTrainerComment,
     clearLocalChatCache,
     saveExercise,
     deleteExercise,
@@ -1249,21 +1254,10 @@ function pickFirstName(value: unknown): string {
   const selectedPrograms = useMemo(
     () => {
       const selected = members.find((member) => member.id === selectedMemberId) ?? null;
-      const isSharedMember = selected?.customerType === "Medlem";
-      const selectedEmail = selected?.email.trim().toLowerCase() ?? "";
-      const matchingPrograms = programs
-        .filter((program) => {
-          if (selectedMemberRelatedIdSet.has(program.memberId)) return true;
-          if (!isSharedMember) return false;
-          const rawProgramMemberId = program.memberId.trim().toLowerCase();
-          if (selectedEmail && rawProgramMemberId === selectedEmail) return true;
-          const ownerMember = memberById.get(program.memberId);
-          if (!ownerMember) return false;
-          const ownerEmail = ownerMember.email.trim().toLowerCase();
-          if (selectedEmail && ownerEmail && ownerEmail === selectedEmail) return true;
-          return false;
-        })
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      if (!selected) return [] as TrainingProgram[];
+      const matchingPrograms = programsAttributedToMember(selected, members, programs).sort((a, b) =>
+        b.createdAt.localeCompare(a.createdAt),
+      );
       const uniqueByFingerprint = new Map<string, TrainingProgram>();
       matchingPrograms.forEach((program) => {
         const fingerprint = buildProgramFingerprint(program.exercises, program.title, program.goal, program.notes);
@@ -1274,7 +1268,7 @@ function pickFirstName(value: unknown): string {
       });
       return Array.from(uniqueByFingerprint.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
-    [programs, selectedMemberRelatedIdSet, members, selectedMemberId, memberById]
+    [programs, members, selectedMemberId]
   );
   const visibleSelectedPrograms = useMemo(() => {
     if (!dismissedProgramFingerprints.length) return selectedPrograms;
@@ -2549,20 +2543,14 @@ function pickFirstName(value: unknown): string {
     return `${title.trim()}::${goal.trim()}::${notes.trim()}::${exerciseFingerprint}`;
   }
 
-  const programBelongsToSelectedMember = useCallback((program: TrainingProgram): boolean => {
-    const selected = members.find((member) => member.id === selectedMemberId) ?? null;
-    const isSharedMember = selected?.customerType === "Medlem";
-    const selectedEmail = selected?.email.trim().toLowerCase() ?? "";
-    if (selectedMemberRelatedIdSet.has(program.memberId)) return true;
-    if (!isSharedMember) return false;
-    const rawProgramMemberId = program.memberId.trim().toLowerCase();
-    if (selectedEmail && rawProgramMemberId === selectedEmail) return true;
-    const ownerMember = memberById.get(program.memberId);
-    if (!ownerMember) return false;
-    const ownerEmail = ownerMember.email.trim().toLowerCase();
-    if (selectedEmail && ownerEmail && ownerEmail === selectedEmail) return true;
-    return false;
-  }, [memberById, members, selectedMemberId, selectedMemberRelatedIdSet]);
+  const programBelongsToSelectedMember = useCallback(
+    (program: TrainingProgram): boolean => {
+      const selected = members.find((member) => member.id === selectedMemberId) ?? null;
+      if (!selected) return false;
+      return programBelongsToMember(selected, members, program);
+    },
+    [members, selectedMemberId],
+  );
 
   function handleDeleteProgram(programId: string) {
     const target = selectedPrograms.find((program) => program.id === programId);
@@ -6204,6 +6192,7 @@ function pickFirstName(value: unknown): string {
                     sendStatus={trainerChatSendStatus}
                     messagesContainerRef={trainerMessagesContainerRef}
                     quickActions={trainerChatQuickActions}
+                    onToggleReaction={toggleChatMessageReaction}
                     headerExtra={
                       chatShareProgramPickerOpen && selectedPrograms.length > 1 ? (
                         <div className="motus-chat-share-panel">
