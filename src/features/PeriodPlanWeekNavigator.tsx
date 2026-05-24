@@ -78,7 +78,7 @@ export function PeriodPlanWeekNavigator({
 
   if (variant === "hero") {
     return (
-      <div className={`motus-period-plan-hero-wrap space-y-3 ${className}`.trim()}>
+      <div className={`motus-period-plan-hero-wrap ${className}`.trim()}>
         <section className="motus-period-plan-hero" aria-label={`Uke ${activeWeek.weekNumber} i periodeplanen`}>
           <img
             src={PERIOD_PLAN_HERO_IMAGE}

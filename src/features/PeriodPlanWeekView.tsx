@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, Check, ChevronRight, Coffee, RotateCcw, Users, X } from "lucide-react";
-import { MOTUS } from "../app/data";
+import { Check, ChevronRight, Coffee, RotateCcw, Users, X } from "lucide-react";
 import {
   findProgramForPeriodPlanEntry,
   getPeriodPlanDayListLabel,
@@ -19,8 +18,6 @@ import {
 import { GradientButton, OutlineButton } from "../app/ui";
 import type { Exercise, PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklySchedulePlan } from "../app/types";
 import { TrainingProgramPreviewModal } from "./TrainingProgramPreviewModal";
-
-const MOTUS_GRADIENT = `${MOTUS.gradient}`;
 
 const WEEKDAY_SHORT: Record<WeekdayPlanKey, string> = {
   monday: "MAN",
@@ -163,7 +160,7 @@ export function PeriodPlanWeekView({
       </div>
 
       {actionStatus ? (
-        <div className="mx-4 mt-3 rounded-xl bg-[rgba(48,227,190,0.12)] px-3 py-2 text-xs font-medium text-teal-900 sm:mx-5">{actionStatus}</div>
+        <div className="motus-period-plan-action-status mx-4 mt-3 sm:mx-5">{actionStatus}</div>
       ) : null}
 
       <ol className="motus-period-plan-timeline">
@@ -194,113 +191,93 @@ export function PeriodPlanWeekView({
               <div className="motus-period-plan-day-rail" aria-hidden>
                 <span className={`motus-period-plan-day-node motus-period-plan-day-node--${status}`}>
                   {status === "completed" ? (
-                    <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                    <Check className="h-3 w-3" strokeWidth={3} />
                   ) : status === "rest" ? (
-                    <Coffee className="h-3.5 w-3.5" strokeWidth={2.25} />
+                    <Coffee className="h-3 w-3" strokeWidth={2.25} />
                   ) : null}
                 </span>
                 {!isLast ? <span className="motus-period-plan-day-line" /> : null}
               </div>
 
               <div className="min-w-0 flex-1">
-                <div className="flex items-stretch gap-2">
-                <button
-                  type="button"
-                  disabled={!canOpenPreview}
-                  onClick={() => {
-                    if (previewProgramForEntry) {
-                      openProgramPreview(previewProgramForEntry, canStartFromPreview);
-                    }
-                  }}
-                  className={`motus-period-plan-day-main min-w-0 flex-1 ${canOpenPreview ? "motus-period-plan-day-main--clickable" : ""}`}
-                  aria-label={canOpenPreview ? `Se økt for ${dayLabel}` : undefined}
+                <div
+                  className={`motus-period-plan-day-card motus-period-plan-day-card--${status}${isSwapSource ? " motus-period-plan-day-card--swap-source" : ""}`}
                 >
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="motus-period-plan-day-date">
-                      {WEEKDAY_SHORT[dayKey]}
-                      {dateShort ? ` ${dateShort}` : ""}
-                    </span>
-                    {completed ? (
-                      <span className="motus-period-plan-day-status motus-period-plan-day-status--completed">Fullført</span>
-                    ) : status === "rest" ? (
-                      <span className="motus-period-plan-day-status motus-period-plan-day-status--rest">Hviledag</span>
-                    ) : entry ? (
-                      <span className="motus-period-plan-day-status motus-period-plan-day-status--planned">Planlagt</span>
+                  <button
+                    type="button"
+                    disabled={!canOpenPreview}
+                    onClick={() => {
+                      if (previewProgramForEntry) {
+                        openProgramPreview(previewProgramForEntry, canStartFromPreview);
+                      }
+                    }}
+                    className={`motus-period-plan-day-main ${canOpenPreview ? "motus-period-plan-day-main--clickable" : ""}`}
+                    aria-label={canOpenPreview ? `Se økt for ${dayLabel}` : undefined}
+                  >
+                    <p className="motus-period-plan-day-title">{listLabel}</p>
+                    <div className="motus-period-plan-day-meta">
+                      <span className="motus-period-plan-day-date">
+                        {WEEKDAY_SHORT[dayKey]}
+                        {dateShort ? ` ${dateShort}` : ""}
+                      </span>
+                      {completed ? (
+                        <span className="motus-period-plan-day-status motus-period-plan-day-status--completed">Fullført</span>
+                      ) : status === "rest" ? (
+                        <span className="motus-period-plan-day-status motus-period-plan-day-status--rest">Hviledag</span>
+                      ) : entry ? (
+                        <span className="motus-period-plan-day-status motus-period-plan-day-status--planned">Planlagt</span>
+                      ) : null}
+                    </div>
+                    {status === "rest" ? (
+                      <p className="motus-period-plan-day-sub">Restitusjon er også trening</p>
+                    ) : sourceDay ? (
+                      <p className="motus-period-plan-day-sub">Flyttet fra {WEEKDAY_PLAN_LABELS[sourceDay].toLowerCase()}</p>
                     ) : null}
-                  </div>
-                  <p className="motus-period-plan-day-title">{listLabel}</p>
-                  {status === "rest" ? (
-                    <p className="motus-period-plan-day-sub">Restitusjon er også trening</p>
-                  ) : sourceDay ? (
-                    <p className="motus-period-plan-day-sub">Flyttet fra {WEEKDAY_PLAN_LABELS[sourceDay].toLowerCase()}</p>
-                  ) : null}
-                  {canOpenPreview ? <ChevronRight className="motus-period-plan-day-chevron" aria-hidden /> : null}
-                </button>
+                    {canOpenPreview ? <ChevronRight className="motus-period-plan-day-chevron" aria-hidden /> : null}
+                  </button>
 
-                {entry && status !== "rest" ? (
-                  <div className="motus-period-plan-day-actions shrink-0">
-                    <button
-                      type="button"
-                      disabled={!canMarkCompleted}
-                      onClick={() => {
-                        if (!canMarkCompleted) return;
-                        onToggleCompleted({
-                          planId: plan.id,
-                          weekNumber: week.weekNumber,
-                          day: dayKey,
-                          entry: effectiveDays[dayKey],
-                          plannedDate,
-                        });
-                      }}
-                      className={`motus-period-plan-action motus-period-plan-action--complete ${
-                        completed ? "motus-period-plan-action--complete-active" : ""
-                      }`}
-                      style={completed ? { background: MOTUS_GRADIENT } : undefined}
-                      aria-label={
-                        completed
-                          ? `Angre fullført for ${dayLabel}`
-                          : isFutureDate
-                            ? `${dayLabel} kan markeres fra og med planlagt dato`
-                            : `Marker ${dayLabel} som fullført`
-                      }
-                      title={
-                        completed ? "Angre fullført" : isFutureDate ? "Kan ikke markeres før planlagt dato" : "Marker fullført"
-                      }
-                    >
-                      <Check className="h-4 w-4" strokeWidth={completed ? 3 : 2.25} aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSwapButtonClick(dayKey)}
-                      className={`motus-period-plan-action motus-period-plan-action--swap ${
-                        isSwapSource ? "motus-period-plan-action--swap-active" : ""
-                      }`}
-                      style={isSwapSource ? { background: MOTUS_GRADIENT } : undefined}
-                      aria-label={
-                        isSwapSource
-                          ? `Avbryt bytte for ${dayLabel}`
-                          : swapFromDay
-                            ? `Bytt ${WEEKDAY_PLAN_LABELS[swapFromDay]} med ${dayLabel}`
-                            : `Bytt ${dayLabel} med annen dag`
-                      }
-                      aria-expanded={isSwapSource}
-                      title={isSwapSource ? "Avbryt" : swapFromDay ? "Fullfør bytte" : "Bytt dag"}
-                    >
-                      <ArrowLeftRight className="h-4 w-4" aria-hidden />
-                    </button>
-                  </div>
-                ) : status === "rest" ? (
-                  <div className="motus-period-plan-day-actions shrink-0">
-                    <span className="motus-period-plan-rest-icon" aria-hidden>
-                      <Coffee className="h-4 w-4" />
-                    </span>
-                  </div>
-                ) : null}
+                  {entry && status !== "rest" ? (
+                    <div className="motus-period-plan-day-footer">
+                      <button
+                        type="button"
+                        disabled={!canMarkCompleted}
+                        onClick={() => {
+                          if (!canMarkCompleted) return;
+                          onToggleCompleted({
+                            planId: plan.id,
+                            weekNumber: week.weekNumber,
+                            day: dayKey,
+                            entry: effectiveDays[dayKey],
+                            plannedDate,
+                          });
+                        }}
+                        className={`motus-period-plan-day-primary ${completed ? "motus-period-plan-day-primary--done" : ""}`}
+                        aria-label={
+                          completed
+                            ? `Angre fullført for ${dayLabel}`
+                            : isFutureDate
+                              ? `${dayLabel} kan markeres fra og med planlagt dato`
+                              : `Marker ${dayLabel} som fullført`
+                        }
+                      >
+                        <Check className="h-4 w-4 shrink-0" strokeWidth={completed ? 3 : 2.25} aria-hidden />
+                        {completed ? "Fullført" : "Marker fullført"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSwapButtonClick(dayKey)}
+                        className={`motus-period-plan-day-swap-link ${isSwapSource ? "motus-period-plan-day-swap-link--active" : ""}`}
+                        aria-expanded={isSwapSource}
+                      >
+                        {isSwapSource ? "Avbryt bytte" : "Bytt dag"}
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
 
-              {isSwapSource ? (
+                {isSwapSource ? (
                   <div className="motus-period-plan-swap-panel">
-                    <div className="text-[10px] font-semibold uppercase tracking-wide text-teal-900">Velg dag</div>
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Velg dag</div>
                     <div className="mt-2 grid gap-1.5">
                       {WEEKDAY_PLAN_ORDER.filter((key) => key !== dayKey).map((key) => (
                         <div key={key} className="motus-period-plan-swap-row">
@@ -329,7 +306,7 @@ export function PeriodPlanWeekView({
                 ) : null}
 
                 {entry && !completed && entryAction.kind === "log-group" ? (
-                  <div className="col-span-full px-1 pb-1 pt-1">
+                  <div className="mt-2 px-1">
                     <OutlineButton
                       type="button"
                       onClick={() =>
@@ -398,7 +375,7 @@ export function PeriodPlanWeekView({
                 <X className="h-4 w-4" aria-hidden />
               </button>
             </div>
-            <div className="mt-3 rounded-xl border bg-slate-50 p-3 text-xs text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div className="mt-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
               <div className="font-semibold text-slate-800">Time som blir slettet</div>
               <div className="mt-1">{pendingOverwriteMove.targetEntry}</div>
             </div>
