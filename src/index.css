@@ -185,6 +185,10 @@ button {
   aspect-ratio: 16 / 10;
 }
 
+.motus-image-frame--training-hero {
+  aspect-ratio: 3 / 2;
+}
+
 .motus-image-frame--portrait {
   aspect-ratio: 3 / 4;
 }
@@ -4690,7 +4694,8 @@ button {
 }
 
 .motus-training-hero {
-  min-height: 18rem;
+  width: min(100%, 21rem);
+  margin-inline: auto;
   border-radius: 1.5rem;
   overflow: hidden;
   background: #0f172a;

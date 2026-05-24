@@ -12,6 +12,7 @@ export type TrainerTab =
   | "exerciseBank"
   | "admin"
   | "inspiration"
+  | "nutrition"
   | "badges"
   | "statistics"
   | "settings";

@@ -165,7 +165,7 @@ export function MemberTrainingOverview({
 
   return (
     <div className="motus-training-overview motus-fade-in-up">
-      <article className="motus-training-hero motus-image-frame motus-image-frame--hero">
+      <article className="motus-training-hero motus-image-frame motus-image-frame--training-hero">
         {imageSrc ? (
           <img
             className="motus-training-hero-cover motus-image-media"

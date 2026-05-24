@@ -19,6 +19,7 @@ import type { AppState, AuthUser, TrainerTab } from "../app/types";
 import { Card } from "../app/ui";
 import { TrainerPortal } from "./TrainerPortal";
 import type { MemberPortal } from "./MemberPortal";
+import { TrainerFoodBankView } from "./TrainerFoodBankView";
 import { InspirationHub } from "./InspirationHub";
 import { TrainerBadgeCatalog } from "./TrainerBadgeCatalog";
 
@@ -36,7 +37,7 @@ type TrainerWorkoutBridge = Pick<
   | "cancelWorkoutMode"
 >;
 
-type TrainerNavAction = "messages" | "calendar" | "nutrition";
+type TrainerNavAction = "messages" | "calendar";
 
 type TrainerMenuItem = {
   key: TrainerTab;
@@ -89,7 +90,7 @@ function buildTrainerMenuItems(messageBadgeCount: number, includeAdmin: boolean)
     { key: "programs", label: "Programmer", icon: ClipboardList },
     { key: "exerciseBank", label: "Øvelsesbank", icon: Dumbbell },
     { key: "inspiration", label: "Innhold", icon: FileText },
-    { key: "inspiration", label: "Ernæring", icon: Apple, action: "nutrition" },
+    { key: "nutrition", label: "Ernæring", icon: Apple },
     { key: "customers", label: "Meldinger", icon: MessageSquare, badge: messageBadgeCount, action: "messages" },
     { key: "calendar", label: "Kalender", icon: CalendarDays },
     { key: "statistics", label: "Statistikk", icon: BarChart3 },
@@ -111,6 +112,7 @@ const mobileTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
 
 const mobileMoreTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
   { id: "calendar", label: "Kalender", icon: CalendarDays },
+  { id: "nutrition", label: "Ernæring", icon: Apple },
   { id: "statistics", label: "Statistikk", icon: BarChart3 },
   { id: "settings", label: "Innstillinger", icon: Settings },
   { id: "admin", label: "Admin", icon: ShieldCheck },
@@ -176,10 +178,6 @@ export function TrainerLayout({
     if (item.action === "messages") {
       setTrainerTab("customers");
       setOpenCustomerMessagesSignal((value) => value + 1);
-      return;
-    }
-    if (item.action === "nutrition") {
-      setTrainerTab("inspiration");
       return;
     }
     setTrainerTab(item.key);
@@ -289,6 +287,8 @@ export function TrainerLayout({
                   .filter((program) => program.memberId === "__template__")
                   .map((program) => ({ id: program.id, title: program.title }))}
               />
+            ) : trainerTab === "nutrition" ? (
+              <TrainerFoodBankView trainerName={appState.currentUser?.name ?? "Motus PT"} />
             ) : trainerTab === "badges" ? (
               <TrainerBadgeCatalog />
             ) : (

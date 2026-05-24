@@ -4463,7 +4463,7 @@ function pickFirstName(value: unknown): string {
           quickActions={{
             onCreateProgram: () => setTrainerTab("programs"),
             onOpenExerciseBank: () => setTrainerTab("exerciseBank"),
-            onOpenNutrition: () => setTrainerTab("inspiration"),
+            onOpenNutrition: () => setTrainerTab("nutrition"),
             onShareContent: () => setTrainerTab("inspiration"),
             onBulkMessage: () => {
               setTrainerTab("customers");
