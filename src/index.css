@@ -422,6 +422,9 @@ button {
 }
 
 .motus-member-program-thumb {
+  width: 100%;
+  aspect-ratio: 3 / 4 !important;
+  align-self: start;
   background: #eef2f7;
   border-radius: 0;
 }
