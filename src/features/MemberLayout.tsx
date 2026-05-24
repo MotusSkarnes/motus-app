@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { AppErrorBoundary } from "../app/AppErrorBoundary";
 import type { ComponentProps } from "react";
 import { MOTUS } from "../app/data";
 import {
@@ -230,36 +231,24 @@ export function MemberLayout({
       if (welcomeModalOpenRef.current) dismissWelcomeModal();
       if (onboardingGateOpenRef.current) setOnboardingGateOpen(false);
       if (memberCheckInOverlayOpenRef.current) setMemberCheckInOverlayOpen(false);
+      if (appState.workoutMode && tab !== "overview" && tab !== "programs") {
+        dismissWorkoutMode();
+      }
       setMemberTab(tab);
     },
-    [clearMemberFocusProgramId, clearMemberFocusWorkoutLogId, memberTab, setMemberCheckInOverlayOpen, setMemberTab],
+    [
+      appState.workoutMode,
+      clearMemberFocusProgramId,
+      clearMemberFocusWorkoutLogId,
+      dismissWorkoutMode,
+      memberTab,
+      setMemberCheckInOverlayOpen,
+      setMemberTab,
+    ],
   );
 
-  const [renderedPortalTab, setRenderedPortalTab] = useState<MemberTab | null>(
-    memberTab === "inspiration" || memberTab === "progress" ? null : memberTab,
-  );
-  const isPortalTransitionPending =
-    memberTab !== "inspiration" && memberTab !== "progress" && renderedPortalTab !== memberTab;
-
-  useEffect(() => {
-    if (memberTab === "inspiration" || memberTab === "progress") {
-      setRenderedPortalTab(null);
-      return;
-    }
-    if (renderedPortalTab === memberTab) return;
-
-    setRenderedPortalTab(null);
-    let cancelled = false;
-    const mountPortal = () => {
-      if (!cancelled) setRenderedPortalTab(memberTab);
-    };
-
-    const timeoutId = window.setTimeout(mountPortal, 0);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timeoutId);
-    };
-  }, [memberTab, renderedPortalTab]);
+  const contentTab = useDeferredValue(memberTab);
+  const isContentPending = contentTab !== memberTab;
 
   const previousMemberTabRef = useRef(memberTab);
   useEffect(() => {
@@ -406,7 +395,7 @@ export function MemberLayout({
     }
   }, [isMemberLimited, memberTab, setMemberTab]);
 
-  const showProgressTab = memberTab === "progress" && !isMemberLimited && Boolean(activeMember);
+  const showProgressTab = contentTab === "progress" && !isMemberLimited;
 
   const memberPortalProps: ComponentProps<typeof MemberPortal> = {
     members: appState.members,
@@ -418,9 +407,9 @@ export function MemberLayout({
     logs: appState.logs,
     messages: appState.messages,
     memberViewId: appState.memberViewId,
-    memberTab: renderedPortalTab ?? memberTab,
+    memberTab: contentTab,
     memberInteractionTab: memberTab,
-    setMemberTab,
+    setMemberTab: navigateMemberTab,
     updateMember,
     memberAvatarUrl: currentMemberAvatarUrl,
     setMemberAvatarUrl: setCurrentMemberAvatarUrl,
@@ -508,7 +497,7 @@ export function MemberLayout({
     if (typeof window !== "undefined") {
       window.sessionStorage.setItem("motus.member.openPeriodPlanOnPrograms", "1");
     }
-    setMemberTab("programs");
+    navigateMemberTab("programs");
   }
 
   if (memberAccessBlocked) {
@@ -533,10 +522,10 @@ export function MemberLayout({
       <div className="space-y-4 sm:space-y-5">
         <MemberDesktopTabNav memberTab={memberTab} setMemberTab={navigateMemberTab} isMemberLimited={isMemberLimited} />
         <div
-          className={`pb-[calc(5rem+env(safe-area-inset-bottom,0px))] xl:pb-0 ${isPortalTransitionPending ? "opacity-95" : ""}`}
-          aria-busy={isPortalTransitionPending}
+          className={`pb-[calc(5rem+env(safe-area-inset-bottom,0px))] xl:pb-0${isContentPending ? " opacity-95" : ""}`}
+          aria-busy={isContentPending}
         >
-        {memberTab === "inspiration" ? (
+        {contentTab === "inspiration" ? (
           <InspirationHub
             memberId={inspirationMemberId}
             memberName={appState.currentUser?.name ?? "Medlem"}
@@ -546,31 +535,35 @@ export function MemberLayout({
             onAddProgram={(program) => {
               if (!inspirationMemberId) return;
               saveProgramForMember({ ...program, memberId: inspirationMemberId, programCreatedBy: "member", programCreatedByName: appState.currentUser?.name ?? "Medlem" });
-              setMemberTab("programs");
+              navigateMemberTab("programs");
             }}
             onAddPeriodPlan={addInspirationPeriodPlan}
           />
-        ) : showProgressTab && activeMember ? (
-          <MemberProgressTab
-            activeMember={activeMember}
-            members={appState.members}
-            logs={appState.logs}
-            exercises={appState.exercises}
-            programs={appState.programs}
-            messages={appState.messages}
-            memberViewId={appState.memberViewId}
-            currentUserEmail={appState.currentUser?.email ?? ""}
-            currentUserMemberId={appState.currentUser?.memberId}
-            currentUserSupabaseId={appState.currentUser?.id}
-            setMemberTab={setMemberTab}
-            updateMember={updateMember}
-          />
-        ) : renderedPortalTab && renderedPortalTab === memberTab ? (
-          <MemberPortal key={renderedPortalTab} {...memberPortalProps} />
+        ) : showProgressTab ? (
+          activeMember ? (
+            <AppErrorBoundary>
+              <MemberProgressTab
+              activeMember={activeMember}
+              members={appState.members}
+              logs={appState.logs}
+              exercises={appState.exercises}
+              programs={appState.programs}
+              messages={appState.messages}
+              memberViewId={appState.memberViewId}
+              currentUserEmail={appState.currentUser?.email ?? ""}
+              currentUserMemberId={appState.currentUser?.memberId}
+              currentUserSupabaseId={appState.currentUser?.id}
+              setMemberTab={navigateMemberTab}
+              updateMember={updateMember}
+              />
+            </AppErrorBoundary>
+          ) : (
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-600">
+              Laster medlemsprofil…
+            </div>
+          )
         ) : (
-          <div className="flex min-h-[40vh] items-center justify-center py-12 text-sm text-slate-500" aria-live="polite">
-            Laster…
-          </div>
+          <MemberPortal {...memberPortalProps} />
         )}
         </div>
       </div>
