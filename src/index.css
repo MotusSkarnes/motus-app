@@ -457,20 +457,26 @@ button {
 }
 
 .motus-member-program-category-badge {
+  position: absolute;
+  left: 0.875rem;
+  bottom: 0.875rem;
+  z-index: 2;
   display: inline-flex;
-  align-self: flex-start;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   border-radius: 9999px;
-  background: rgba(48, 227, 190, 0.11);
-  padding: 0.15625rem 0.4375rem;
+  background: rgba(13, 148, 136, 0.86);
+  padding: 0.25rem 0.5rem;
   font-size: 0.54rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #0f766e;
+  color: #ffffff;
+  box-shadow: 0 6px 16px -12px rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .motus-member-program-content {
@@ -538,10 +544,16 @@ button {
 }
 
 .motus-member-program-progress-label {
-  display: none;
+  flex: 0 0 auto;
   font-size: 0.6875rem;
   font-weight: 600;
   color: #64748b;
+}
+
+.motus-member-program-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
 }
 
 .motus-member-program-start {
@@ -572,7 +584,9 @@ button {
 }
 
 .motus-member-program-content .motus-progress-track {
+  flex: 1 1 auto;
   height: 0.25rem;
+  margin-top: 0 !important;
 }
 
 .motus-member-program-content .motus-progress-fill {

@@ -5424,10 +5424,10 @@ export function MemberPortal(props: MemberPortalProps) {
 	                          ) : (
 	                            <div className="motus-member-program-thumb-fallback" aria-hidden />
 	                          )}
+	                          <span className="motus-member-program-category-badge">{programCategory}</span>
 	                        </div>
 	                        <div className="motus-member-program-content">
 	                          <div className="motus-member-program-summary">
-	                            <span className="motus-member-program-category-badge">{programCategory}</span>
 	                            <div className="motus-member-program-header">
 	                              <div className="motus-member-program-title">{program.title}</div>
 	                            </div>
@@ -5446,13 +5446,13 @@ export function MemberPortal(props: MemberPortalProps) {
 	                              </span>
 	                            </div>
 	                            <div className="motus-member-program-progress">
-	                              <span className="motus-member-program-progress-label">{programProgressPct}% fullført</span>
 	                              <div className="motus-progress-track mt-1.5 rounded-full">
 	                                <div
 	                                  className="motus-progress-fill rounded-full"
 	                                  style={{ width: `${programProgressPct}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
 	                                />
 	                              </div>
+	                              <span className="motus-member-program-progress-label">{programProgressPct}% fullført</span>
 	                            </div>
 	                            <div className="motus-member-program-actions">
 	                            <GradientButton
