@@ -535,7 +535,7 @@ export function TrainerExerciseBankView({
                 const isFavorite = favoriteExerciseIds.includes(exercise.id);
                 const popularity = exercisePopularityScores.get(exercise.id) ?? 0;
                 const accent = exerciseCategoryAccentColor(exercise.category);
-                const muscleParts = splitMuscleGroupLabel(exercise.group).slice(0, 2);
+                const muscleParts = splitMuscleGroupLabel(exercise.group).slice(0, gridView ? 1 : 2);
                 const descriptionPreview = exercise.description.trim().slice(0, 120);
 
                 return (
