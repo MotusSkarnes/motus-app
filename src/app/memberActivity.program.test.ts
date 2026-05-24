@@ -43,4 +43,38 @@ describe("programBelongsToMember", () => {
     expect(programBelongsToMember(ptMember, [ptMember, canonicalMember, other], programOnCanonical)).toBe(true);
     expect(programBelongsToMember(other, [ptMember, canonicalMember, other], programOnCanonical)).toBe(false);
   });
+
+  it("counts both trainer-created and member-saved programs for the same customer", () => {
+    const memberSavedFromInspo: TrainingProgram = {
+      ...programOnCanonical,
+      id: "prog-member-inspo",
+      memberId: "uuid-canonical",
+      title: "Inspo løp",
+      programCreatedBy: "member",
+      programCreatedByName: "Kari",
+    };
+    const trainerCreated: TrainingProgram = {
+      ...programOnCanonical,
+      id: "prog-trainer",
+      memberId: "m-local",
+      title: "PT styrke",
+      programCreatedBy: "trainer",
+      programCreatedByName: "Lene",
+    };
+
+    expect(programsAttributedToMember(ptMember, [ptMember, canonicalMember], [memberSavedFromInspo, trainerCreated])).toHaveLength(2);
+  });
+
+  it("matches member-saved program by member author name when stored on auth id", () => {
+    const memberSavedOnAuthId: TrainingProgram = {
+      ...programOnCanonical,
+      id: "prog-auth-member",
+      memberId: "auth-user-id-from-login",
+      title: "Inspo styrke",
+      programCreatedBy: "member",
+      programCreatedByName: "Kari Nord",
+    };
+
+    expect(programBelongsToMember(ptMember, [ptMember], memberSavedOnAuthId)).toBe(true);
+  });
 });

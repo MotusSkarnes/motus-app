@@ -19,6 +19,9 @@ export function programBelongsToMember(member: Member, allMembers: Member[], pro
   if (relatedIdSet.has(program.memberId)) return true;
   const rawProgramMemberId = program.memberId.trim().toLowerCase();
   if (selectedEmail && rawProgramMemberId === selectedEmail) return true;
+  if (selectedEmail && (rawProgramMemberId === `auth-${selectedEmail}` || rawProgramMemberId.endsWith(`:${selectedEmail}`))) return true;
+  const programAuthorName = (program.programCreatedByName ?? "").trim().toLowerCase();
+  if (program.programCreatedBy === "member" && selectedName && programAuthorName === selectedName) return true;
   const ownerMember = memberById.get(program.memberId);
   if (!ownerMember) return false;
   const ownerEmail = ownerMember.email.trim().toLowerCase();

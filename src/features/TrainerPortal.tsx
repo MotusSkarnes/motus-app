@@ -3094,7 +3094,7 @@ function pickFirstName(value: unknown): string {
   }
 
   function openMemberWithNextAction(member: Member) {
-    const hasProgram = programs.some((program) => program.memberId === member.id);
+    const hasProgram = programsAttributedToMember(member, members, programs).length > 0;
     const inactiveDays = trainerInactiveDaysForFollowUp(member, members, logs);
     const needsMessage = inactiveDays !== null && inactiveDays >= 7;
     const hasCompletedLogs = logs.some(
@@ -4726,7 +4726,7 @@ function pickFirstName(value: unknown): string {
                     const selected = member.id === selectedMemberId;
                     const daysSinceWorkout = daysSinceLastCompletedWorkout(member, members, logs);
                     const needsFollowUp = daysSinceWorkout !== null && daysSinceWorkout >= 7;
-                    const hasProgram = programs.some((program) => program.memberId === member.id);
+                    const hasProgram = programsAttributedToMember(member, members, programs).length > 0;
                     const priorityTone = memberPriorityTone(member, members, logs);
                     const activityLabel =
                       daysSinceWorkout !== null
