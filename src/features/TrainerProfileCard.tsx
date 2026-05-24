@@ -103,7 +103,7 @@ export function TrainerProfileCard({ loadProfile, saveProfile, onProfileSaved }:
 
   if (isLoading) {
     return (
-      <div className="rounded-[26px] p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.ink} 100%)` }}>
+      <div className="rounded-[26px] p-5 text-white shadow-lg" style={{ background: MOTUS.gradient }}>
         <div className="text-sm text-white/80">PT-kort</div>
         <p className="mt-3 text-sm text-white/90">Laster profil…</p>
       </div>
@@ -111,7 +111,7 @@ export function TrainerProfileCard({ loadProfile, saveProfile, onProfileSaved }:
   }
 
   return (
-    <div className="rounded-[26px] p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.ink} 100%)` }}>
+    <div className="rounded-[26px] p-5 text-white shadow-lg" style={{ background: MOTUS.gradient }}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="text-sm text-white/80">PT-kort</div>
         <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/40 bg-white/15 text-white/90 sm:h-14 sm:w-14">

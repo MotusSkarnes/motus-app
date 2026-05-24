@@ -1,15 +1,19 @@
 import type { AppState, AuthUser, ChatMessage, Exercise, Member, TrainingProgram, WorkoutLog } from "./types";
 import { formatDateDdMmYyyy } from "./dateFormat";
 
+import { MOTUS_COLORS, MOTUS_GRADIENT } from "./designSystem";
+
 export const MOTUS = {
-  turquoise: "#30e3be",
-  pink: "#d91278",
+  turquoise: MOTUS_COLORS.mint,
+  pink: MOTUS_COLORS.pink,
   acid: "#daff01",
-  paleMint: "#d6fbf1",
-  ink: "#0f172a",
-  gradient: "linear-gradient(135deg, #30e3be 0%, #d91278 100%)",
-  gradient90: "linear-gradient(90deg, #30e3be 0%, #d91278 100%)",
+  paleMint: MOTUS_COLORS.paleMint,
+  ink: MOTUS_COLORS.ink,
+  gradient: MOTUS_GRADIENT,
+  gradient90: MOTUS_GRADIENT,
 };
+
+export { MOTUS_GRADIENT, MOTUS_GRADIENT_90 } from "./designSystem";
 
 export const STORAGE_KEY = "motus_pt_app_v2";
 

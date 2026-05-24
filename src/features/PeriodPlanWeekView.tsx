@@ -19,7 +19,7 @@ import { GradientButton, OutlineButton } from "../app/ui";
 import type { Exercise, PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklySchedulePlan } from "../app/types";
 import { TrainingProgramPreviewModal } from "./TrainingProgramPreviewModal";
 
-const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
+const MOTUS_GRADIENT = `${MOTUS.gradient}`;
 const MOTUS_SOFT_BACKGROUND = `linear-gradient(160deg, ${MOTUS.paleMint} 0%, #ffffff 42%, rgba(217,18,120,0.045) 100%)`;
 
 type PeriodPlanWeekViewProps = {

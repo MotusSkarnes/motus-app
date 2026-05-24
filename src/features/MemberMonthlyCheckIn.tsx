@@ -47,7 +47,7 @@ function ScalePicker({
                   ? "border-transparent text-white shadow-sm"
                   : "border-slate-200 bg-white text-slate-600 hover:border-teal-200"
               }`}
-              style={active ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : undefined}
+              style={active ? { background: `${MOTUS.gradient}` } : undefined}
             >
               {score}
             </button>
@@ -67,7 +67,7 @@ function Chip({ active, label, onClick }: { active: boolean; label: string; onCl
       className={`rounded-full border px-3 py-1.5 text-left text-sm font-medium transition ${
         active ? "border-transparent text-white shadow-sm" : "border-slate-200 bg-white text-slate-700 hover:bg-teal-50/50"
       }`}
-      style={active ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : undefined}
+      style={active ? { background: `${MOTUS.gradient}` } : undefined}
     >
       {label}
     </button>

@@ -70,7 +70,7 @@ type InspirationItem = {
   bundledProgramTemplates?: ProgramTemplateInput[];
 };
 
-const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
+const MOTUS_GRADIENT = `${MOTUS.gradient}`;
 
 const CATEGORY_META: Record<InspirationCategory, { label: string; plural: string; icon: typeof Soup }> = {
   recipes: { label: "Oppskrift", plural: "Oppskrifter", icon: Soup },
@@ -1918,7 +1918,7 @@ export function InspirationHub({
                             marked
                               ? {
                                   borderColor: "transparent",
-                                  background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
+                                  background: `${MOTUS.gradient}`,
                                 }
                               : { borderColor: "rgba(15,23,42,0.08)" }
                           }

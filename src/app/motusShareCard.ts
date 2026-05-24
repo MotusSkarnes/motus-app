@@ -73,7 +73,7 @@ async function loadImage(src: string): Promise<HTMLImageElement | null> {
 
 function paintMotusShareBackground(ctx: CanvasRenderingContext2D, width: number, height: number) {
   const bg = ctx.createLinearGradient(0, 0, width, height * 1.05);
-  bg.addColorStop(0, "#0d9488");
+  bg.addColorStop(0, "#30E3BE");
   bg.addColorStop(0.35, MOTUS.turquoise);
   bg.addColorStop(0.72, MOTUS.pink);
   bg.addColorStop(1, "#831843");

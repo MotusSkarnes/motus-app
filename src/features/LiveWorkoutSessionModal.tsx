@@ -631,7 +631,7 @@ export function LiveWorkoutSessionModal({
                         type="button"
                         onClick={() => setShowReplacementOptions((prev) => !prev)}
                         className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm transition hover:opacity-90"
-                        style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                        style={{ background: `${MOTUS.gradient}` }}
                         aria-label="Bytt øvelse"
                         title="Bytt øvelse"
                       >

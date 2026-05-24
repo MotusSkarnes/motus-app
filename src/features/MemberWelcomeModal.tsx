@@ -64,7 +64,7 @@ export function MemberWelcomeModal({
       <Card className="w-full max-w-lg overflow-hidden p-0 shadow-xl ring-1 ring-black/10">
         <div
           className="px-5 py-5 sm:px-6 sm:py-6"
-          style={{ background: `linear-gradient(155deg, rgba(48,227,190,0.12) 0%, rgba(236,72,153,0.08) 55%, #fff 100%)` }}
+          style={{ background: `linear-gradient(155deg, rgba(48,227,190,0.12) 0%, rgba(217, 18, 120,0.08) 55%, #fff 100%)` }}
         >
           <div className="flex items-center gap-3">
             <img src={motusLogo} alt="" className="h-10 w-auto sm:h-11" />
@@ -82,7 +82,7 @@ export function MemberWelcomeModal({
           <div className="rounded-2xl border bg-slate-50/80 p-5 text-center" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <span
               className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-sm"
-              style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+              style={{ background: `${MOTUS.gradient}` }}
             >
               <ActiveIcon className="h-6 w-6" aria-hidden />
             </span>

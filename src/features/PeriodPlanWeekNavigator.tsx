@@ -5,7 +5,7 @@ import type { PeriodPlanWeekNavItem } from "../app/periodPlanMerge";
 
 export type { PeriodPlanWeekNavItem };
 
-const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
+const MOTUS_GRADIENT = `${MOTUS.gradient}`;
 
 type PeriodPlanWeekNavigatorProps = {
   weeks: PeriodPlanWeekNavItem[];

@@ -108,7 +108,7 @@ export function MemberHomeOverview({
             ) : (
               <span
                 className="flex h-full w-full items-center justify-center text-sm font-semibold text-white"
-                style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise}, ${MOTUS.pink})` }}
+                style={{ background: `${MOTUS.gradient}` }}
               >
                 {memberFirstName.charAt(0).toUpperCase()}
               </span>

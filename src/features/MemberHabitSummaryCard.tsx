@@ -18,7 +18,7 @@ export function MemberHabitSummaryCard({ progress, onOpenProgress }: MemberHabit
         <div className="flex items-center gap-2">
           <div
             className="rounded-xl p-2 text-white shadow-sm"
-            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+            style={{ background: `${MOTUS.gradient}` }}
           >
             <MotusFlameIcon tone="solid" className="h-4 w-4" />
           </div>

@@ -2,7 +2,7 @@ import { Check, Circle } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { ProgressGoal } from "../app/memberProgressGamification";
 
-const MOTUS_GRADIENT_90 = `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
+const MOTUS_GRADIENT_90 = MOTUS.gradient;
 
 type MemberProgressGoalsProps = {
   goals: ProgressGoal[];
@@ -53,7 +53,7 @@ export function MemberProgressGoals({
                   className={`relative z-[1] flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold ${
                     goal.unlocked ? "border-transparent text-white" : "border-slate-200 bg-white text-slate-500"
                   }`}
-                  style={goal.unlocked ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : undefined}
+                  style={goal.unlocked ? { background: `${MOTUS.gradient}` } : undefined}
                   aria-hidden
                 >
                   {goal.unlocked ? <Check className="h-4 w-4" strokeWidth={3} /> : index + 1}

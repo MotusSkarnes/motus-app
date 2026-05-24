@@ -62,14 +62,14 @@ export function MemberWeeklyStreakCard({
                 <span className="inline-flex items-center gap-1">
                   <span
                     className="inline-block h-2 w-2 rounded-sm opacity-80"
-                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                    style={{ background: `${MOTUS.gradient}` }}
                   />
                   Med økt
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <span
                     className="inline-block h-2 w-2 rounded-sm"
-                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                    style={{ background: `${MOTUS.gradient}` }}
                   />
                   I streak
                 </span>
@@ -84,12 +84,12 @@ export function MemberWeeklyStreakCard({
                     style={
                       week.inActiveStreak
                         ? {
-                            background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
+                            background: `${MOTUS.gradient}`,
                             borderColor: "transparent",
                           }
                         : week.trained
                           ? {
-                              background: `linear-gradient(135deg, ${MOTUS.turquoise}99 0%, ${MOTUS.pink}99 100%)`,
+                              background: `linear-gradient(90deg, ${MOTUS.turquoise}99 0%, ${MOTUS.pink}99 100%)`,
                               borderColor: "rgba(48,227,190,0.35)",
                             }
                           : { backgroundColor: "rgba(248,250,252,0.9)", borderColor: "rgba(148,163,184,0.35)" }

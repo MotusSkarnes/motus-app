@@ -1,4 +1,15 @@
-import { MOTUS } from "./data";
+/** Motus global design tokens — single source of truth for brand colors. */
+export const MOTUS_COLORS = {
+  mint: "#30E3BE",
+  pink: "#D91278",
+  paleMint: "#D6FBF1",
+  ink: "#0F172A",
+} as const;
+
+export const MOTUS_GRADIENT = `linear-gradient(90deg, ${MOTUS_COLORS.mint} 0%, ${MOTUS_COLORS.pink} 100%)`;
+
+/** @deprecated Use MOTUS_GRADIENT — kept for imports that expect this name. */
+export const MOTUS_GRADIENT_90 = MOTUS_GRADIENT;
 
 /** Shared Motus UI tokens — spacing, surfaces, typography scale. */
 export const DS = {
@@ -8,15 +19,16 @@ export const DS = {
     bgTertiary: "#F3F5F7",
     border: "rgba(15, 23, 42, 0.08)",
     borderStrong: "rgba(15, 23, 42, 0.12)",
-    text: MOTUS.ink,
+    text: MOTUS_COLORS.ink,
     textSecondary: "#475569",
-    textMuted: "#94a3b8",
-    accent: MOTUS.turquoise,
-    accentPink: MOTUS.pink,
-    accentSoft: MOTUS.paleMint,
-  accentText: "#0e8068",
-  accentTextStrong: "#0a5f4f",
-  accentBorder: "rgba(48, 227, 190, 0.28)",
+    textMuted: "#94A3B8",
+    accent: MOTUS_COLORS.mint,
+    accentPink: MOTUS_COLORS.pink,
+    accentSoft: MOTUS_COLORS.paleMint,
+    accentText: MOTUS_COLORS.ink,
+    accentTextStrong: MOTUS_COLORS.ink,
+    accentBorder: "rgba(48, 227, 190, 0.28)",
+    accentPinkSoft: "rgba(217, 18, 120, 0.08)",
   },
   radius: {
     card: "16px",
@@ -37,6 +49,3 @@ export const DS = {
     xxl: 32,
   },
 } as const;
-
-export const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
-export const MOTUS_GRADIENT_90 = `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;

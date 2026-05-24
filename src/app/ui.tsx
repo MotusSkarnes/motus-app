@@ -90,7 +90,7 @@ export function MobileNavButton({ active, icon, label, onClick }: { active?: boo
       type="button"
       onClick={onClick}
       className={`motus-pressable flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1.5 py-2 text-[10px] font-medium transition ${active ? "text-white shadow-sm" : "text-slate-600"}`}
-      style={active ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : { backgroundColor: "transparent" }}
+      style={active ? { background: MOTUS.gradient } : { backgroundColor: "transparent" }}
     >
       <span className="flex h-4 w-4 items-center justify-center">{icon}</span>
       <span className="truncate leading-none">{label}</span>
@@ -163,7 +163,7 @@ export function GradientButton({ children, className = "", type = "button", ...p
         if (!props.disabled) triggerLightHaptic();
       }}
       className={`motus-pressable inline-flex min-h-10 items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
-      style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`, ...props.style }}
+      style={{ background: `${MOTUS.gradient}`, ...props.style }}
     >
       {children}
     </button>

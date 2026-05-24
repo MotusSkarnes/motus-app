@@ -6,7 +6,7 @@ import { getMemberBadgeCatalog } from "../app/memberBadges";
 import { Card, MotusSectionIcon } from "../app/ui";
 import { BadgeImage } from "./BadgeImage";
 
-const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
+const MOTUS_GRADIENT = `${MOTUS.gradient}`;
 
 const CLUB_MILESTONES = [100, 200, 300, 400, 500] as const;
 

@@ -5,7 +5,7 @@ import { isLegacyIntervalCooldownDrag } from "../app/programBlocks";
 import { GradientButton, OutlineButton } from "../app/ui";
 import type { Exercise, ProgramExercise, TrainingProgram } from "../app/types";
 
-const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
+const MOTUS_GRADIENT = `${MOTUS.gradient}`;
 
 function cardioProgramExerciseName(rows: ProgramExercise[], index: number): string {
   return isLegacyIntervalCooldownDrag(rows, index) ? "Nedjogg" : rows[index]?.exerciseName ?? "";

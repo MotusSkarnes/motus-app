@@ -58,7 +58,7 @@ export function AppHeader({
 
   if (currentUser.role === "member") {
     return (
-      <Card className="overflow-hidden bg-[linear-gradient(135deg,rgba(48,227,190,0.07)_0%,rgba(236,72,153,0.07)_100%)] p-3 sm:p-4 md:p-5">
+      <Card className="overflow-hidden bg-[linear-gradient(90deg,rgba(48,227,190,0.07)_0%,rgba(217,18,120,0.07)_100%)] p-3 sm:p-4 md:p-5">
         <div
           className="-mx-3 -mt-3 mb-3 h-1 sm:-mx-4 sm:-mt-4 sm:mb-4 md:-mx-5 md:-mt-5"
           style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 70%, ${MOTUS.acid} 100%)` }}
@@ -83,7 +83,7 @@ export function AppHeader({
   }
 
   return (
-    <Card className="overflow-hidden bg-[linear-gradient(135deg,rgba(48,227,190,0.07)_0%,rgba(236,72,153,0.07)_100%)] p-4 sm:p-5 md:p-6">
+    <Card className="overflow-hidden bg-[linear-gradient(90deg,rgba(48,227,190,0.07)_0%,rgba(217,18,120,0.07)_100%)] p-4 sm:p-5 md:p-6">
       <div
         className="-mx-4 -mt-4 mb-5 h-1.5 sm:-mx-5 sm:-mt-5 md:-mx-6 md:-mt-6"
         style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 70%, ${MOTUS.acid} 100%)` }}
@@ -103,7 +103,7 @@ export function AppHeader({
                 >
                   <span
                     className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white shadow-sm"
-                    style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+                    style={{ background: `${MOTUS.gradient}` }}
                     aria-hidden
                   >
                     <UserCircle2 className="h-5 w-5" />

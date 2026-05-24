@@ -19,7 +19,7 @@ import {
   type MemberBadgeLevel,
 } from "../app/memberBadges";
 
-const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
+const MOTUS_GRADIENT = MOTUS.gradient;
 
 const LEVEL_ROMAN: Record<BadgeLevelId, string> = {
   bronze: "I",

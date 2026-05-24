@@ -8,7 +8,7 @@ import { GradientButton, OutlineButton } from "../app/ui";
 
 const CHART_WIDTH = 340;
 const CHART_HEIGHT = 200;
-const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
+const MOTUS_GRADIENT = `${MOTUS.gradient}`;
 
 type PersonalRecordProgressModalProps = {
   exerciseName: string;

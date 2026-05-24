@@ -1,40 +1,58 @@
 @import "tailwindcss";
 
 @theme {
-  --color-teal-50: #ecfdf8;
+  --color-teal-50: #ecfbf7;
   --color-teal-100: #d6fbf1;
-  --color-teal-200: #b8f0e4;
-  --color-teal-300: #8de8d4;
-  --color-teal-400: #5cdfc6;
+  --color-teal-200: rgba(48, 227, 190, 0.35);
+  --color-teal-300: #30e3be;
+  --color-teal-400: #30e3be;
   --color-teal-500: #30e3be;
   --color-teal-600: #30e3be;
-  --color-teal-700: #0e8068;
-  --color-teal-800: #0c6b56;
-  --color-teal-900: #0a5f4f;
-  --color-teal-950: #073d32;
+  --color-teal-700: #30e3be;
+  --color-teal-800: #30e3be;
+  --color-teal-900: #30e3be;
+  --color-teal-950: #30e3be;
 
-  --color-emerald-50: #ecfdf8;
+  --color-emerald-50: #ecfbf7;
   --color-emerald-100: #d6fbf1;
-  --color-emerald-200: #b8f0e4;
-  --color-emerald-300: #8de8d4;
-  --color-emerald-400: #5cdfc6;
+  --color-emerald-200: rgba(48, 227, 190, 0.35);
+  --color-emerald-300: #30e3be;
+  --color-emerald-400: #30e3be;
   --color-emerald-500: #30e3be;
-  --color-emerald-600: #0e8068;
-  --color-emerald-700: #0e8068;
-  --color-emerald-800: #0c6b56;
-  --color-emerald-900: #0a5f4f;
-  --color-emerald-950: #073d32;
+  --color-emerald-600: #30e3be;
+  --color-emerald-700: #30e3be;
+  --color-emerald-800: #30e3be;
+  --color-emerald-900: #30e3be;
+  --color-emerald-950: #30e3be;
+
+  --color-pink-50: #fce8f2;
+  --color-pink-100: #f9d0e5;
+  --color-pink-200: rgba(217, 18, 120, 0.22);
+  --color-pink-300: #d91278;
+  --color-pink-400: #d91278;
+  --color-pink-500: #d91278;
+  --color-pink-600: #d91278;
+  --color-pink-700: #d91278;
+  --color-pink-800: #d91278;
+  --color-pink-900: #d91278;
+  --color-pink-950: #d91278;
 }
 
 :root {
+  --motus-mint: #30e3be;
+  --motus-pink: #d91278;
   --motus-brand: #30e3be;
   --motus-brand-soft: #d6fbf1;
-  --motus-brand-soft-hover: #c5f5e8;
-  --motus-brand-text: #0e8068;
-  --motus-brand-text-strong: #0a5f4f;
+  --motus-brand-soft-hover: rgba(48, 227, 190, 0.18);
+  --motus-brand-text: #0f172a;
+  --motus-brand-text-strong: #0f172a;
+  --motus-brand-pink-text: #d91278;
+  --motus-gradient: linear-gradient(90deg, #30e3be 0%, #d91278 100%);
   --motus-brand-border: rgba(48, 227, 190, 0.28);
   --motus-brand-border-strong: rgba(48, 227, 190, 0.45);
   --motus-brand-ring: rgba(48, 227, 190, 0.35);
+  --motus-pink-border: rgba(217, 18, 120, 0.22);
+  --motus-pink-soft: rgba(217, 18, 120, 0.08);
   --motus-radius-lg: 28px;
   --motus-radius-sm-card: 22px;
   --motus-radius-button: 18px;
@@ -254,7 +272,7 @@ button {
 
 .motus-home-dash-stat-icon--pink {
   background: rgba(217, 18, 120, 0.08);
-  color: #c4106a;
+  color: var(--motus-brand-pink-text);
 }
 
 .motus-home-dash-stat-label {
@@ -457,8 +475,8 @@ button {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 24% 22%, rgba(53, 224, 197, 0.34), transparent 34%),
-    radial-gradient(circle at 78% 82%, rgba(255, 45, 149, 0.24), transparent 36%),
+    radial-gradient(circle at 24% 22%, rgba(48, 227, 190, 0.34), transparent 34%),
+    radial-gradient(circle at 78% 82%, rgba(217, 18, 120, 0.24), transparent 36%),
     linear-gradient(145deg, #dfe8ea 0%, #f7faf9 100%);
 }
 
@@ -473,7 +491,7 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
   border-radius: 9999px;
-  background: rgba(13, 148, 136, 0.86);
+  background: rgba(48, 227, 190, 0.88);
   padding: 0.25rem 0.5rem;
   font-size: 0.54rem;
   font-weight: 700;
@@ -616,7 +634,7 @@ button {
   justify-content: center;
   border-radius: 9999px;
   background: rgba(48, 227, 190, 0.18);
-  color: #0f766e;
+  color: var(--motus-brand);
 }
 
 .motus-home-quick-actions {
@@ -664,7 +682,7 @@ button {
 
 .motus-home-quick-action-icon--pink {
   background: rgba(217, 18, 120, 0.09);
-  color: #c4106a;
+  color: var(--motus-brand-pink-text);
 }
 
 .motus-surface-chip {
@@ -756,7 +774,7 @@ button {
   gap: 0;
   border-radius: 1.25rem;
   border: 1px solid rgba(217, 18, 120, 0.1);
-  background: linear-gradient(135deg, #fff5f9 0%, #ffffff 100%);
+  background: linear-gradient(90deg, #fff5f9 0%, #ffffff 100%);
   padding: 1.125rem 1.25rem;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   border-left-width: 3px;
@@ -850,7 +868,7 @@ button {
 .motus-hairline-accent {
   height: 2px;
   border-radius: 9999px;
-  background: rgba(48, 227, 190, 0.55);
+  background: var(--motus-gradient);
 }
 
 .motus-nav-bar {
@@ -868,7 +886,7 @@ button {
   justify-content: center;
   border-radius: 12px;
   background: #f3f5f7;
-  color: #0f766e;
+  color: var(--motus-brand);
   padding: 0.625rem;
 }
 
@@ -1088,7 +1106,7 @@ button {
 }
 
 .motus-badge-tile:focus-visible {
-  outline: 2px solid var(--motus-brand-text, #0d9488);
+  outline: 2px solid var(--motus-brand);
   outline-offset: 3px;
   border-radius: 1rem;
 }
@@ -1329,7 +1347,7 @@ button {
 }
 
 .motus-training-start-btn {
-  background: linear-gradient(135deg, var(--motus-brand) 0%, #d91278 100%);
+  background: var(--motus-gradient);
   color: #ffffff;
   box-shadow:
     0 1px 2px rgba(15, 23, 42, 0.06),
@@ -1343,7 +1361,7 @@ button {
 
 .motus-training-paused {
   border-radius: 1.25rem;
-  background: linear-gradient(135deg, rgba(240, 253, 250, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+  background: linear-gradient(90deg, rgba(214, 251, 241, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
   padding: 1rem 1.25rem;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }

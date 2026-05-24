@@ -52,7 +52,7 @@ function Chip({
           ? "border-transparent text-white shadow-sm"
           : "border-slate-200 bg-white text-slate-700 hover:border-teal-200 hover:bg-teal-50/50"
       }`}
-      style={active ? { background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` } : undefined}
+      style={active ? { background: `${MOTUS.gradient}` } : undefined}
     >
       {label}
     </button>

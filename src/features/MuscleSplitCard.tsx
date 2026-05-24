@@ -42,7 +42,7 @@ export function MuscleSplitCard({
         <div className="flex items-start gap-2">
           <div
             className="shrink-0 rounded-xl p-2 text-white shadow-sm"
-            style={{ background: `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
+            style={{ background: `${MOTUS.gradient}` }}
           >
             <BarChart3 className="h-4 w-4" />
           </div>

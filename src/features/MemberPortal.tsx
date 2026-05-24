@@ -3315,7 +3315,7 @@ export function MemberPortal(props: MemberPortalProps) {
       const periodTitle = "Siste 7 dager";
 
       const bg = context.createLinearGradient(0, 0, canvas.width, canvas.height * 1.05);
-      bg.addColorStop(0, "#0d9488");
+      bg.addColorStop(0, "#30E3BE");
       bg.addColorStop(0.35, MOTUS.turquoise);
       bg.addColorStop(0.72, MOTUS.pink);
       bg.addColorStop(1, "#831843");
@@ -3395,7 +3395,7 @@ export function MemberPortal(props: MemberPortalProps) {
       const stats: Array<{ label: string; value: string; accent: string }> = [
         { label: "Mine økter", value: String(progressShareLast7Days.workouts), accent: MOTUS.turquoise },
         { label: "Mine treningsdager", value: String(progressShareLast7Days.trainingDays), accent: MOTUS.pink },
-        { label: "Mine sett", value: String(progressShareLast7Days.completedSets), accent: "#0d9488" },
+        { label: "Mine sett", value: String(progressShareLast7Days.completedSets), accent: "#30E3BE" },
         { label: "Mitt volum", value: `${Math.round(progressShareLast7Days.volumeKg).toLocaleString("nb-NO")} kg`, accent: "#db2777" },
       ];
       stats.forEach((stat, index) => {
@@ -4564,7 +4564,7 @@ export function MemberPortal(props: MemberPortalProps) {
   <style>
     body { font-family: Arial, sans-serif; margin: 0; color: #0f172a; background: #f8fafc; }
     .page { padding: 10px; max-width: 940px; margin: 0 auto; }
-    .header-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; border-radius: 10px; padding: 8px 10px; background: #0d9488; color: #fff; }
+    .header-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; border-radius: 10px; padding: 8px 10px; background: #30E3BE; color: #fff; }
     .header-main { min-width: 0; padding-top: 1px; }
     .brand-logo-frame { display: inline-flex; align-items: center; flex-shrink: 0; padding: 0; background: transparent; box-shadow: none; }
     .brand-logo { height: 56px; width: auto; max-width: 208px; object-fit: contain; display: block; }
@@ -4579,7 +4579,7 @@ export function MemberPortal(props: MemberPortalProps) {
     .exercise-image { width: 100%; height: 100%; object-fit: cover; display: block; }
     .exercise-image-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px; }
     .exercise-title { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
-    .exercise-prescription { font-size: 12px; color: #0f766e; margin-bottom: 3px; }
+    .exercise-prescription { font-size: 12px; color: #30E3BE; margin-bottom: 3px; }
     .exercise-description { font-size: 11px; color: #475569; line-height: 1.24; }
     .exercise-notes { margin-top: 3px; font-size: 11px; color: #7c2d12; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 5px; padding: 3px 4px; }
     .empty-state { border: 1px dashed #cbd5e1; border-radius: 10px; background: #fff; padding: 10px; color: #64748b; }

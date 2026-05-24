@@ -5,8 +5,8 @@ import type { ProgressGoal, RecentStreakWeek } from "../app/memberProgressGamifi
 import { MemberProgressGoals } from "./MemberProgressGoals";
 import { MemberWeeklyStreakCard } from "./MemberWeeklyStreakCard";
 
-const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
-const MOTUS_GRADIENT_90 = `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
+const MOTUS_GRADIENT = `${MOTUS.gradient}`;
+const MOTUS_GRADIENT_90 = MOTUS.gradient;
 
 type MemberTrainingFlowCardProps = {
   achievementLevel: number;
