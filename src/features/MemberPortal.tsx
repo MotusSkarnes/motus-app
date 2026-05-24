@@ -122,6 +122,7 @@ import {
   findPeriodPlanAutoCompleteTargets,
   buildPeriodPlanEntryKey,
   isPeriodPlanDayComplete,
+  periodPlanEntryMatchesCompletedProgram,
   derivePeriodPlanCompletedEntryKeysFromLogs,
   findPeriodPlanEntryForCalendarDate,
   readActivePeriodPlanIdForMembers,
@@ -321,6 +322,7 @@ const MEMBER_AVATAR_BUCKET = "exercise-images";
 const MEMBER_AVATAR_PREFIX = "member-avatars";
 const EMPTY_REMOTE_PERIOD_PLAN_ROWS: Array<{ memberId: string; plan: PeriodSchedulePlan }> = [];
 const PERIOD_PLAN_COMPLETED_STORAGE_PREFIX = "MOTUS_PERIOD_PLAN_COMPLETED_V1:";
+const PERIOD_PLAN_DISMISSED_STORAGE_PREFIX = "MOTUS_PERIOD_PLAN_DISMISSED_V1:";
 const HIDDEN_BADGE_SEEN_STORAGE_PREFIX = "MOTUS_HIDDEN_BADGE_SEEN_V1:";
 const HIDDEN_BADGE_POPUP_COPY: Record<string, string> = {
   "may-17-workout": "Du registrerte en økt på 17. mai. Sterk nasjonaldagsinnsats.",
@@ -816,6 +818,10 @@ function getPeriodPlanCompletedStorageKey(memberId: string): string {
   return `${PERIOD_PLAN_COMPLETED_STORAGE_PREFIX}${memberId}`;
 }
 
+function getPeriodPlanDismissedStorageKey(memberId: string): string {
+  return `${PERIOD_PLAN_DISMISSED_STORAGE_PREFIX}${memberId}`;
+}
+
 function isPeriodPlanWorkoutLog(log: WorkoutLog): boolean {
   const note = log.note?.trim().toLowerCase() ?? "";
   return note.includes("periodeplan");
@@ -1057,6 +1063,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [showPeriodPlanManageSection, setShowPeriodPlanManageSection] = useState(false);
   const [periodPlanStorageRevision, setPeriodPlanStorageRevision] = useState(0);
   const [completedPeriodPlanEntryKeys, setCompletedPeriodPlanEntryKeys] = useState<string[]>([]);
+  const [dismissedPeriodPlanEntryKeys, setDismissedPeriodPlanEntryKeys] = useState<string[]>([]);
   const [periodPlanSwapsByPlan, setPeriodPlanSwapsByPlan] = useState<PeriodPlanSwapsByPlan>({});
   const [periodPlanSwapsOwnerId, setPeriodPlanSwapsOwnerId] = useState<string | null>(null);
   const [selectedIntervalProgramId, setSelectedIntervalProgramId] = useState("");
@@ -1072,6 +1079,8 @@ export function MemberPortal(props: MemberPortalProps) {
   /** Unngår å nullstille toast ved hvert felt-synk fra autosave — kun ved bytte aktiv profil. */
   const lastMemberCoreHydrationIdRef = useRef<string | null>(null);
   const periodPlanCompletedDirtyRef = useRef(false);
+  const periodPlanDismissedDirtyRef = useRef(false);
+  const periodPlanCompletionHydratedMemberRef = useRef<string | null>(null);
   const periodPlanSwapsDirtyRef = useRef(false);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [programLibraryMenuId, setProgramLibraryMenuId] = useState<string | null>(null);
@@ -2147,6 +2156,7 @@ export function MemberPortal(props: MemberPortalProps) {
       day: todayPeriodPlanMatch.day,
       entry: todayPlanEntry,
       completedKeys: completedPeriodPlanEntryKeys,
+      dismissedKeys: dismissedPeriodPlanEntryKeys,
       programs: memberProgramsForPeriodPlan,
       logsForDate: logsForToday,
     });
@@ -2155,6 +2165,7 @@ export function MemberPortal(props: MemberPortalProps) {
     todayPeriodPlanMatch,
     todayPlanEntry,
     completedPeriodPlanEntryKeys,
+    dismissedPeriodPlanEntryKeys,
     memberProgramsForPeriodPlan,
     calendarLogsByDateKey,
     nowDate,
@@ -2209,6 +2220,7 @@ export function MemberPortal(props: MemberPortalProps) {
           day: plannedMatch.day,
           entry: plannedMatch.entry,
           completedKeys: completedPeriodPlanEntryKeys,
+          dismissedKeys: dismissedPeriodPlanEntryKeys,
           programs: memberProgramsForPeriodPlan,
           logsForDate: calendarLogsByDay.get(day) ?? [],
         })
@@ -2234,6 +2246,7 @@ export function MemberPortal(props: MemberPortalProps) {
     activePeriodPlan,
     periodPlanSwapsByPlan,
     completedPeriodPlanEntryKeys,
+    dismissedPeriodPlanEntryKeys,
     memberProgramsForPeriodPlan,
     calendarLogsByDay,
   ]);
@@ -2266,6 +2279,7 @@ export function MemberPortal(props: MemberPortalProps) {
               day: plannedMatch.day,
               entry: plannedMatch.entry,
               completedKeys: completedPeriodPlanEntryKeys,
+              dismissedKeys: dismissedPeriodPlanEntryKeys,
               programs: memberProgramsForPeriodPlan,
               logsForDate: logs,
             })
@@ -2298,6 +2312,7 @@ export function MemberPortal(props: MemberPortalProps) {
     nowDate,
     periodPlanSwapsByPlan,
     completedPeriodPlanEntryKeys,
+    dismissedPeriodPlanEntryKeys,
     memberProgramsForPeriodPlan,
   ]);
   const calendarWeekCompletedCount = calendarWeekDays.filter((day) => day.status === "completed").length;
@@ -2339,6 +2354,7 @@ export function MemberPortal(props: MemberPortalProps) {
       day: selectedCalendarPeriodMatch.day,
       entry: selectedCalendarPlanEntry,
       completedKeys: completedPeriodPlanEntryKeys,
+      dismissedKeys: dismissedPeriodPlanEntryKeys,
       programs: memberProgramsForPeriodPlan,
       logsForDate: selectedCalendarLogs,
     });
@@ -2346,6 +2362,7 @@ export function MemberPortal(props: MemberPortalProps) {
     selectedCalendarPeriodMatch,
     selectedCalendarPlanEntry,
     completedPeriodPlanEntryKeys,
+    dismissedPeriodPlanEntryKeys,
     memberProgramsForPeriodPlan,
     selectedCalendarLogs,
   ]);
@@ -2803,14 +2820,25 @@ export function MemberPortal(props: MemberPortalProps) {
     return () => window.clearTimeout(timer);
   }, [memberTab, editableMember, profileHasUnsavedChanges, saveProfile]);
   useEffect(() => {
-    periodPlanCompletedDirtyRef.current = false;
     const memberId = editableMember?.id;
     if (!memberId || typeof window === "undefined") {
       setCompletedPeriodPlanEntryKeys([]);
+      setDismissedPeriodPlanEntryKeys([]);
+      periodPlanCompletionHydratedMemberRef.current = null;
+      return;
+    }
+
+    const isNewMember = periodPlanCompletionHydratedMemberRef.current !== memberId;
+    if (isNewMember) {
+      periodPlanCompletionHydratedMemberRef.current = memberId;
+      periodPlanCompletedDirtyRef.current = false;
+      periodPlanDismissedDirtyRef.current = false;
+    } else if (periodPlanCompletedDirtyRef.current || periodPlanDismissedDirtyRef.current) {
       return;
     }
 
     let stored: string[] = [];
+    let dismissed: string[] = [];
     try {
       const raw = window.localStorage.getItem(getPeriodPlanCompletedStorageKey(memberId));
       if (raw) {
@@ -2819,8 +2847,16 @@ export function MemberPortal(props: MemberPortalProps) {
           stored = parsed.map((item) => String(item)).filter(Boolean);
         }
       }
+      const dismissedRaw = window.localStorage.getItem(getPeriodPlanDismissedStorageKey(memberId));
+      if (dismissedRaw) {
+        const parsedDismissed = JSON.parse(dismissedRaw) as unknown;
+        if (Array.isArray(parsedDismissed)) {
+          dismissed = parsedDismissed.map((item) => String(item)).filter(Boolean);
+        }
+      }
     } catch {
       stored = [];
+      dismissed = [];
     }
 
     const derived = derivePeriodPlanCompletedEntryKeysFromLogs({
@@ -2829,9 +2865,11 @@ export function MemberPortal(props: MemberPortalProps) {
       programs: memberProgramsForPeriodPlan,
       logs: memberLogs,
       memberId,
+      dismissedKeys: dismissed,
     });
 
     setCompletedPeriodPlanEntryKeys(Array.from(new Set([...stored, ...derived])));
+    setDismissedPeriodPlanEntryKeys(dismissed);
   }, [
     editableMember?.id,
     visiblePeriodPlans,
@@ -2852,6 +2890,19 @@ export function MemberPortal(props: MemberPortalProps) {
       // ignore storage write errors (quota/private mode)
     }
   }, [editableMember?.id, completedPeriodPlanEntryKeys]);
+  useEffect(() => {
+    const memberId = editableMember?.id;
+    if (!memberId || typeof window === "undefined") return;
+    if (!periodPlanDismissedDirtyRef.current) return;
+    try {
+      window.localStorage.setItem(
+        getPeriodPlanDismissedStorageKey(memberId),
+        JSON.stringify(dismissedPeriodPlanEntryKeys),
+      );
+    } catch {
+      // ignore storage write errors (quota/private mode)
+    }
+  }, [editableMember?.id, dismissedPeriodPlanEntryKeys]);
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     if (!periodPlanSwapsDirtyRef.current) return;
@@ -4233,6 +4284,12 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!targets.length) return;
 
     periodPlanCompletedDirtyRef.current = true;
+    periodPlanDismissedDirtyRef.current = true;
+    const targetKeys = targets.map((target) => buildPeriodPlanEntryKey(target.planId, target.weekNumber, target.day));
+    setDismissedPeriodPlanEntryKeys((prev) => {
+      const next = prev.filter((key) => !targetKeys.includes(key));
+      return next.length === prev.length ? prev : next;
+    });
     setCompletedPeriodPlanEntryKeys((prev) => {
       const next = [...prev];
       let changed = false;
@@ -4361,9 +4418,22 @@ export function MemberPortal(props: MemberPortalProps) {
       day,
       entry,
       completedKeys: completedPeriodPlanEntryKeys,
+      dismissedKeys: dismissedPeriodPlanEntryKeys,
       programs: memberProgramsForPeriodPlan,
       logsForDate,
     });
+  }
+
+  function dismissPeriodPlanDay(planId: string, weekNumber: number, day: WeekdayPlanKey) {
+    const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
+    periodPlanDismissedDirtyRef.current = true;
+    setDismissedPeriodPlanEntryKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
+  }
+
+  function clearPeriodPlanDayDismissed(planId: string, weekNumber: number, day: WeekdayPlanKey) {
+    const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
+    periodPlanDismissedDirtyRef.current = true;
+    setDismissedPeriodPlanEntryKeys((prev) => prev.filter((item) => item !== key));
   }
 
   function swapPeriodPlanDays(planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) {
@@ -4479,6 +4549,7 @@ export function MemberPortal(props: MemberPortalProps) {
       keepCurrentTab: true,
       date: input.plannedDate ?? undefined,
     });
+    clearPeriodPlanDayDismissed(input.planId, input.weekNumber, input.day);
     markPeriodPlanDayCompleted(input.planId, input.weekNumber, input.day);
     setPeriodPlanActionStatus(`«${trimmed}» er logget.`);
   }
@@ -4497,19 +4568,20 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   function togglePeriodPlanEntryCompleted(input: { planId: string; weekNumber: number; day: WeekdayPlanKey; entry: string; plannedDate?: string | null }) {
-    const key = buildPeriodPlanEntryKey(input.planId, input.weekNumber, input.day);
-    const alreadyCompleted = completedPeriodPlanEntryKeys.includes(key);
     const trimmed = input.entry.trim();
     if (!trimmed || !activeMemberId) return;
 
     const storedDate = resolvePeriodPlanStoredDate(input.plannedDate);
     const logTitle = resolvePeriodPlanLogTitle(trimmed);
+    const linkedProgram = findProgramForPeriodPlanEntry(trimmed, memberProgramsForPeriodPlan);
+    const isCompleted = isPeriodPlanEntryCompleted(input.planId, input.weekNumber, input.day);
 
-    if (!alreadyCompleted) {
+    if (!isCompleted) {
       if (isPeriodPlanEntryDateInFuture(input.plannedDate)) {
         setPeriodPlanActionStatus("Du kan bare markere økter med dato i dag eller tidligere.");
         return;
       }
+      clearPeriodPlanDayDismissed(input.planId, input.weekNumber, input.day);
       if (isGroupPeriodPlanEntry(trimmed)) {
         logGroupWorkout({
           memberId: activeMemberId,
@@ -4534,13 +4606,12 @@ export function MemberPortal(props: MemberPortalProps) {
       return;
     }
 
-    const matchingLog = memberLogs.find(
+    const matchingLogs = memberLogs.filter(
       (log) =>
         log.memberId === activeMemberId &&
         log.status === "Fullført" &&
-        log.programTitle.trim().toLowerCase() === logTitle.trim().toLowerCase() &&
-        isPeriodPlanWorkoutLog(log) &&
-        storedLogDatesMatch(log.date, storedDate),
+        storedLogDatesMatch(log.date, storedDate) &&
+        periodPlanEntryMatchesCompletedProgram(trimmed, log.programTitle, memberProgramsForPeriodPlan, linkedProgram?.id),
     );
 
     if (isGroupPeriodPlanEntry(trimmed)) {
@@ -4550,16 +4621,21 @@ export function MemberPortal(props: MemberPortalProps) {
         date: storedDate,
       });
     } else {
-      removeCompletedPlanEntryLog({
-        memberId: activeMemberId,
-        programTitle: logTitle,
-        date: storedDate,
-      });
+      for (const log of matchingLogs) {
+        removeCompletedPlanEntryLog({
+          memberId: activeMemberId,
+          programTitle: log.programTitle,
+          date: storedDate,
+        });
+      }
     }
-    if (matchingLog?.id === expandedRecentLogId) {
+
+    if (matchingLogs.some((log) => log.id === expandedRecentLogId)) {
       setExpandedRecentLogId(null);
     }
+
     unmarkPeriodPlanDayCompleted(input.planId, input.weekNumber, input.day);
+    dismissPeriodPlanDay(input.planId, input.weekNumber, input.day);
     setPeriodPlanActionStatus(`Fjernet markering for «${trimmed}».`);
   }
 

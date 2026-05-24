@@ -272,10 +272,12 @@ export function isPeriodPlanDayComplete(input: {
   day: WeekdayPlanKey;
   entry: string;
   completedKeys: string[];
+  dismissedKeys?: string[];
   programs: TrainingProgram[];
   logsForDate?: Array<{ programTitle: string; status: string }>;
 }): boolean {
   const key = buildPeriodPlanEntryKey(input.planId, input.weekNumber, input.day);
+  if (input.dismissedKeys?.includes(key)) return false;
   if (input.completedKeys.includes(key)) return true;
 
   const trimmedEntry = input.entry.trim();
@@ -325,6 +327,7 @@ export function derivePeriodPlanCompletedEntryKeysFromLogs(input: {
   programs: TrainingProgram[];
   logs: Array<{ memberId: string; programTitle: string; date: string; status: string }>;
   memberId: string;
+  dismissedKeys?: string[];
 }): string[] {
   const memberId = input.memberId.trim();
   if (!memberId) return [];
@@ -344,7 +347,9 @@ export function derivePeriodPlanCompletedEntryKeysFromLogs(input: {
       completedAt,
     });
     for (const target of targets) {
-      keys.add(buildPeriodPlanEntryKey(target.planId, target.weekNumber, target.day));
+      const key = buildPeriodPlanEntryKey(target.planId, target.weekNumber, target.day);
+      if (input.dismissedKeys?.includes(key)) continue;
+      keys.add(key);
     }
   }
 

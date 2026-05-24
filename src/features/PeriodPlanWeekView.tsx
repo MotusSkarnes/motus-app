@@ -261,7 +261,7 @@ export function PeriodPlanWeekView({
                         }
                       >
                         <Check className="h-4 w-4 shrink-0" strokeWidth={completed ? 3 : 2.25} aria-hidden />
-                        {completed ? "Fullført" : "Marker fullført"}
+                        {completed ? "Angre fullført" : "Marker fullført"}
                       </button>
                       <button
                         type="button"

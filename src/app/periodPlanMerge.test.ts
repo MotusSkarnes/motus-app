@@ -396,11 +396,34 @@ describe("period plan auto-complete", () => {
         weekNumber: 1,
         day: "monday",
         entry: "Styrke A",
+        completedKeys: ["plan-1:1:monday"],
+        dismissedKeys: ["plan-1:1:monday"],
+        programs,
+      }),
+    ).toBe(false);
+    expect(
+      isPeriodPlanDayComplete({
+        planId: "plan-1",
+        weekNumber: 1,
+        day: "monday",
+        entry: "Styrke A",
         completedKeys: [],
         programs,
         logsForDate: [{ programTitle: "Styrke A", status: "Fullført" }],
       }),
     ).toBe(true);
+    expect(
+      isPeriodPlanDayComplete({
+        planId: "plan-1",
+        weekNumber: 1,
+        day: "monday",
+        entry: "Styrke A",
+        completedKeys: [],
+        dismissedKeys: ["plan-1:1:monday"],
+        programs,
+        logsForDate: [{ programTitle: "Styrke A", status: "Fullført" }],
+      }),
+    ).toBe(false);
     expect(
       isPeriodPlanDayComplete({
         planId: "plan-1",
