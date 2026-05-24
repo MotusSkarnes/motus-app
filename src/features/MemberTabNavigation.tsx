@@ -1,5 +1,4 @@
 import { createPortal } from "react-dom";
-import { useEffect, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp } from "lucide-react";
 import { MOTUS } from "../app/data";
@@ -121,12 +120,6 @@ function MemberMobileTabBar({ memberTab, setMemberTab, isMemberLimited }: Member
 }
 
 export function MemberMobileTabNav(props: MemberTabNavigationProps) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted || typeof document === "undefined") return null;
+  if (typeof document === "undefined") return null;
   return createPortal(<MemberMobileTabBar {...props} />, document.body);
 }

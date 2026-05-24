@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "react";
 import { MOTUS } from "../app/data";
 import {
@@ -216,20 +216,34 @@ export function MemberLayout({
 
   const navigateMemberTab = useCallback(
     (tab: MemberTab) => {
-      if (welcomeModalOpen) dismissWelcomeModal();
-      if (onboardingGateOpen) setOnboardingGateOpen(false);
-      if (memberCheckInOverlayOpen) setMemberCheckInOverlayOpen(false);
-      setMemberTab(tab);
+      clearMemberFocusWorkoutLogId?.();
+      clearMemberFocusProgramId?.();
+      startTransition(() => {
+        setMemberTab(tab);
+      });
     },
-    [
-      welcomeModalOpen,
-      onboardingGateOpen,
-      memberCheckInOverlayOpen,
-      onboardingIdentityKey,
-      setMemberTab,
-      setMemberCheckInOverlayOpen,
-    ],
+    [clearMemberFocusProgramId, clearMemberFocusWorkoutLogId, setMemberTab],
   );
+
+  const previousMemberTabRef = useRef(memberTab);
+  useEffect(() => {
+    if (previousMemberTabRef.current === memberTab) return;
+    previousMemberTabRef.current = memberTab;
+
+    if (welcomeModalOpen) dismissWelcomeModal();
+    if (onboardingGateOpen) setOnboardingGateOpen(false);
+    if (memberCheckInOverlayOpen) setMemberCheckInOverlayOpen(false);
+    if (appState.workoutMode) dismissWorkoutMode();
+  }, [
+    memberTab,
+    welcomeModalOpen,
+    onboardingGateOpen,
+    memberCheckInOverlayOpen,
+    appState.workoutMode,
+    dismissWorkoutMode,
+    setMemberCheckInOverlayOpen,
+    onboardingIdentityKey,
+  ]);
 
   function startOnboardingFromWelcome() {
     if (!onboardingIdentityKey) return;
@@ -377,7 +391,7 @@ export function MemberLayout({
     messages: appState.messages,
     memberViewId: appState.memberViewId,
     memberTab,
-    setMemberTab: navigateMemberTab,
+    setMemberTab,
     updateMember,
     memberAvatarUrl: currentMemberAvatarUrl,
     setMemberAvatarUrl: setCurrentMemberAvatarUrl,
