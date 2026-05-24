@@ -3615,15 +3615,29 @@ button {
   }
 
   .motus-trainer-nav {
+    display: flex !important;
+    flex-direction: column;
+    grid-column: 1;
     min-height: calc(100vh - 8rem);
+  }
+
+  .motus-trainer-main {
+    grid-column: 2;
   }
 }
 
 /* —— PT Hjem (oversikt) —— */
+.motus-trainer-main {
+  min-width: 0;
+  width: 100%;
+}
+
 .motus-pt-home {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  width: 100%;
+  min-width: 0;
   padding: 0.15rem 0 1.5rem;
 }
 
@@ -4116,6 +4130,16 @@ button {
   padding: 0.65rem 0.75rem;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1);
   min-width: 10rem;
+}
+
+@media (min-width: 1024px) {
+  .motus-pt-home-plan-row,
+  .motus-pt-home-attention-row {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-columns: unset;
+    overflow-x: visible;
+  }
 }
 
 @media (max-width: 1279px) {

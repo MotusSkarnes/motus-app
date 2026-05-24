@@ -240,7 +240,7 @@ export function TrainerLayout({
   return (
     <>
       <div className="motus-trainer-shell grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)]">
-        <Card className="motus-trainer-nav hidden h-fit overflow-hidden border-0 bg-[#f7f9fb] p-0 shadow-sm ring-1 ring-black/5 xl:flex xl:flex-col">
+        <Card className="motus-trainer-nav h-fit overflow-hidden border-0 bg-[#f7f9fb] p-0 shadow-sm ring-1 ring-black/5 xl:col-start-1">
           <div className="motus-trainer-nav-brand">
             <img src={motusLogo} alt="Motus" className="motus-trainer-nav-logo" />
             <div className="motus-trainer-nav-brand-text">
@@ -278,7 +278,7 @@ export function TrainerLayout({
             </button>
           </div>
         </Card>
-        <div className="min-w-0 space-y-4 sm:space-y-5">
+        <div className="motus-trainer-main min-w-0 space-y-4 sm:space-y-5 xl:col-start-2">
           {isLocalDemoSession ? (
             <Card className="border-amber-200 bg-amber-50 p-2.5 sm:p-3">
               <div className="text-xs sm:text-sm font-semibold text-amber-900">Demo-innlogging aktiv</div>
