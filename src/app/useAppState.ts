@@ -1904,6 +1904,8 @@ export function useAppState() {
     void (async () => {
       const ok = await deleteProgramRemote(programId, context);
       if (!ok) {
+        const memberInitiated = context?.requestedBy === "member" || appState.role === "member";
+        if (memberInitiated) return;
         unregisterDeletedProgram(programId);
         const program = deletedSnapshot;
         if (!program) return;
