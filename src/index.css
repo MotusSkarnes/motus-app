@@ -35,6 +35,13 @@
   --motus-brand-border: rgba(48, 227, 190, 0.28);
   --motus-brand-border-strong: rgba(48, 227, 190, 0.45);
   --motus-brand-ring: rgba(48, 227, 190, 0.35);
+  --motus-radius-lg: 28px;
+  --motus-radius-sm-card: 22px;
+  --motus-radius-button: 18px;
+  --motus-home-padding-x: 24px;
+  --motus-home-gap: 20px;
+  --motus-shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.04), 0 14px 32px -22px rgba(15, 23, 42, 0.24);
+  --motus-image-bg: #f3f3f3;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -145,7 +152,45 @@ button {
 .motus-home {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: var(--motus-home-gap);
+  padding-inline: var(--motus-home-padding-x);
+}
+
+.motus-image-frame {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--motus-image-bg);
+}
+
+.motus-image-frame--hero {
+  aspect-ratio: 16 / 10;
+}
+
+.motus-image-frame--portrait {
+  aspect-ratio: 3 / 4;
+}
+
+.motus-image-frame--square {
+  aspect-ratio: 1 / 1;
+}
+
+.motus-image-media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  filter: saturate(0.94) contrast(1.08) brightness(0.92) sepia(0.04);
+}
+
+.motus-image-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.25) 54%, rgba(0, 0, 0, 0.05) 100%);
+  pointer-events: none;
 }
 
 .motus-home-dashboard {
@@ -226,16 +271,10 @@ button {
 }
 
 .motus-home-workout-card {
-  position: relative;
-  isolation: isolate;
-  min-height: 19rem;
-  overflow: hidden;
-  border-radius: 1.5rem;
+  border-radius: var(--motus-radius-lg);
   border: 1px solid rgba(255, 255, 255, 0.72);
   background: #0f172a;
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.05),
-    0 14px 32px -16px rgba(15, 23, 42, 0.26);
+  box-shadow: var(--motus-shadow-soft);
 }
 
 .motus-home-workout-cover {
@@ -243,8 +282,6 @@ button {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: center;
 }
 
 .motus-home-workout-cover--fallback {
@@ -255,16 +292,6 @@ button {
     radial-gradient(circle at 28% 25%, rgba(48, 227, 190, 0.34), transparent 34%),
     radial-gradient(circle at 76% 72%, rgba(217, 18, 120, 0.3), transparent 36%),
     linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
-}
-
-.motus-home-workout-card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(90deg, rgba(2, 6, 23, 0.76) 0%, rgba(2, 6, 23, 0.38) 48%, rgba(2, 6, 23, 0.12) 100%),
-    linear-gradient(0deg, rgba(2, 6, 23, 0.84) 0%, rgba(2, 6, 23, 0.26) 58%, rgba(2, 6, 23, 0.1) 100%);
-  pointer-events: none;
 }
 
 .motus-home-workout-top-action {
@@ -296,13 +323,13 @@ button {
 .motus-home-workout-content {
   position: absolute;
   inset: auto 0 0 0;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.625rem;
-  max-width: min(25rem, 100%);
-  padding: 4.5rem 1.25rem 1.375rem;
+  gap: 10px;
+  max-width: min(27rem, 100%);
+  padding: 5rem 24px 24px;
   color: #ffffff;
 }
 
@@ -316,10 +343,10 @@ button {
 }
 
 .motus-home-workout-title {
-  margin-top: 0.3125rem;
+  margin-top: 8px;
   font-size: 2rem;
-  font-weight: 800;
-  line-height: 1.02;
+  font-weight: 650;
+  line-height: 1.05;
   color: #ffffff;
   text-shadow: 0 2px 16px rgba(2, 6, 23, 0.46);
 }
@@ -330,7 +357,7 @@ button {
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 500;
   line-height: 1.35;
   color: rgba(255, 255, 255, 0.82);
@@ -342,23 +369,23 @@ button {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.375rem 0.75rem;
-  margin-top: 0.75rem;
-  font-size: 1rem;
+  margin-top: 10px;
+  font-size: 0.875rem;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.94);
   text-shadow: 0 1px 10px rgba(2, 6, 23, 0.48);
 }
 
 .motus-home-workout-cta {
-  margin-top: 1.25rem;
+  margin-top: 14px;
   width: min(17rem, 100%);
 }
 
 .motus-home-workout-cta > button {
-  min-height: 3.5rem;
+  min-height: 56px;
   width: 100%;
-  border-radius: 9999px !important;
-  padding-inline: 1.5rem !important;
+  border-radius: var(--motus-radius-button) !important;
+  padding-inline: 24px !important;
   font-size: 1rem !important;
   color: #ffffff !important;
   box-shadow:
@@ -372,10 +399,6 @@ button {
 }
 
 @media (min-width: 640px) {
-  .motus-home-workout-card {
-    min-height: 22rem;
-  }
-
   .motus-home-workout-content {
     padding: 5.25rem 2rem 2rem;
   }
@@ -387,25 +410,24 @@ button {
 
 .motus-member-program-card {
   overflow: hidden;
-  border-radius: 1rem;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.04);
+  border-radius: var(--motus-radius-lg);
+  box-shadow: var(--motus-shadow-soft);
 }
 
 .motus-member-program-layout {
-  display: flex;
-  align-items: stretch;
-  min-height: 10.5rem;
+  display: grid;
+  grid-template-columns: clamp(7.75rem, 34vw, 10rem) minmax(0, 1fr);
+  align-items: start;
+  min-height: 0;
 }
 
 .motus-member-program-thumb {
-  position: relative;
-  flex: 0 0 clamp(6.5rem, 36%, 9.5rem);
-  overflow: hidden;
   background: #eef2f7;
+  border-radius: 0;
 }
 
 .motus-member-program-thumb::after {
-  content: none;
+  z-index: 1;
 }
 
 .motus-member-program-cover {
@@ -413,13 +435,10 @@ button {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
 }
 
-.motus-member-program-cover--contain {
-  object-fit: contain;
-  padding: 0.375rem;
-  background: #eef2f7;
+.motus-member-program-cover--exercise {
+  object-position: center top;
 }
 
 .motus-member-program-thumb-fallback {
@@ -453,13 +472,13 @@ button {
   min-width: 0;
   flex: 1;
   flex-direction: column;
-  padding: 0.875rem 0.875rem 0.875rem 0.75rem;
+  padding: 1rem;
 }
 
 .motus-member-program-summary {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.625rem;
 }
 
 .motus-member-program-header {
@@ -467,7 +486,7 @@ button {
 }
 
 .motus-member-program-title {
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 700;
   line-height: 1.25;
   letter-spacing: -0.02em;
@@ -510,6 +529,8 @@ button {
 
 .motus-member-program-start {
   margin-top: 0.125rem;
+  min-height: 48px !important;
+  border-radius: var(--motus-radius-button) !important;
 }
 
 .motus-member-program-actions {
@@ -521,11 +542,11 @@ button {
 
 .motus-member-program-secondary-btn {
   width: 100%;
-  min-height: 2.25rem !important;
+  min-height: 2.5rem !important;
   padding: 0.375rem 0.5rem !important;
   font-size: 0.75rem !important;
   line-height: 1.2 !important;
-  border-radius: 0.75rem !important;
+  border-radius: var(--motus-radius-button) !important;
   background: #fff !important;
 }
 
@@ -565,7 +586,7 @@ button {
   align-items: center;
   justify-content: center;
   min-height: 5.5rem;
-  border-radius: 1rem;
+  border-radius: var(--motus-radius-sm-card);
   border: 1px solid rgba(15, 23, 42, 0.06);
   background: #ffffff;
   padding: 0.875rem 0.625rem;
@@ -1082,7 +1103,13 @@ button {
 }
 
 .motus-badge-frame {
-  overflow: visible;
+  border-radius: var(--motus-radius-sm-card);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.motus-badge-frame::after {
+  content: none;
 }
 
 .motus-badge-card {
@@ -1226,14 +1253,14 @@ button {
   width: 4.75rem;
   height: 4.75rem;
   overflow: hidden;
-  border-radius: 1.125rem;
+  border-radius: var(--motus-radius-sm-card);
   box-shadow:
     0 4px 14px -8px rgba(15, 23, 42, 0.28),
     inset 0 0 0 1px rgba(255, 255, 255, 0.65);
 }
 
 .motus-training-start-btn {
-  background: linear-gradient(180deg, #3de8c8 0%, var(--motus-brand) 100%);
+  background: linear-gradient(135deg, var(--motus-brand) 0%, #d91278 100%);
   color: #0f172a;
   box-shadow:
     0 1px 2px rgba(15, 23, 42, 0.06),

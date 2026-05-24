@@ -33,7 +33,7 @@ export function BadgeImage({ src, alt = "", size = "card", dimmed = false, class
 
   return (
     <span
-      className={`motus-badge-frame inline-flex shrink-0 items-center justify-center overflow-visible ${className}`.trim()}
+      className={`motus-badge-frame motus-image-frame motus-image-frame--square inline-flex shrink-0 items-center justify-center ${className}`.trim()}
       style={{ width: px, height: px, boxSizing: "border-box", padding: pad }}
     >
       <img

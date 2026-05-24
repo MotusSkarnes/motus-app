@@ -36,6 +36,7 @@ import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
 import { memberBadgeImageSrc } from "../app/badgeAssets";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
+import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
 import { programHasCustomCoverImage, resolveGroupWorkoutCoverImage, resolveProgramImageSrc, resolveRestDayCoverImage } from "../app/programImage";
 import {
   memberLocalDateKey,
@@ -5411,14 +5412,15 @@ export function MemberPortal(props: MemberPortalProps) {
 	                        className="motus-member-program-card motus-card overflow-hidden"
 	                      >
 	                        <div className="motus-member-program-layout">
-	                        <div className="motus-member-program-thumb">
+	                        <div className="motus-member-program-thumb motus-image-frame motus-image-frame--portrait">
 	                          {programCoverSrc ? (
 	                            <img
 	                              src={programCoverSrc}
 	                              alt=""
-	                              className={programUsesCustomCover ? "motus-member-program-cover" : "motus-member-program-cover motus-member-program-cover--contain"}
+	                              className={`motus-member-program-cover motus-image-media${programUsesCustomCover ? "" : " motus-member-program-cover--exercise"}`}
 	                              loading="lazy"
 	                              decoding="async"
+	                              style={{ objectPosition: imageObjectPositionFromSrc(programCoverSrc) }}
 	                            />
 	                          ) : (
 	                            <div className="motus-member-program-thumb-fallback">

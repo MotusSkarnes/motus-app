@@ -20,6 +20,7 @@ import { EXERCISE_CATEGORY_OPTIONS, exerciseCategoryAccentColor, isHoldBasedExer
 import { EXERCISE_IMAGE_THUMB_CLASS } from "../app/exerciseIllustrations/constants";
 import { getMedicalSketchFallbackDataUri, resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { compressImageDataUrl, compressImageFile } from "../app/imageCompress";
+import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
 import { uploadProgramCoverImageToSupabase } from "../app/programImageUpload";
 import {
   fetchInspirationItemsForHub,
@@ -105,7 +106,7 @@ const INSPO_CARD_DESCRIPTION_MAX = 88;
 const INSPO_CARD_TITLE_MAX = 64;
 const INSPO_FEED_CARD_WIDTH_CLASS = "w-52 sm:w-56";
 const INSPO_FEED_CARD_HEIGHT_CLASS = "h-[21rem] sm:h-[21.75rem]";
-const INSPO_FEED_CARD_IMAGE_CLASS = "h-[10rem] sm:h-[10.5rem]";
+const INSPO_FEED_CARD_IMAGE_CLASS = "aspect-square";
 const INSPO_FEED_CARD_TITLE_CLASS = "line-clamp-2 min-h-[2.5rem] max-h-[2.5rem] overflow-hidden text-sm font-semibold leading-[1.25rem] text-slate-950";
 const INSPO_FEED_CARD_DESCRIPTION_CLASS =
   "line-clamp-2 min-h-[2.25rem] max-h-[2.25rem] overflow-hidden text-xs leading-[1.125rem] text-slate-500";
@@ -867,9 +868,18 @@ export function InspirationHub({
         ) : null}
         <button type="button" onClick={() => openInspirationItem(item)} className="flex min-h-0 flex-1 flex-col text-left">
           <div
-            className={`w-full shrink-0 overflow-hidden ${INSPO_FEED_CARD_IMAGE_CLASS} ${item.imageUrl ? "bg-slate-100" : "bg-[#F3F5F7]"}`}
+            className={`motus-image-frame motus-image-frame--square w-full shrink-0 ${INSPO_FEED_CARD_IMAGE_CLASS} ${item.imageUrl ? "bg-slate-100" : "bg-[#F3F5F7]"}`}
           >
-            {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
+            {item.imageUrl ? (
+              <img
+                src={item.imageUrl}
+                alt=""
+                className="motus-image-media h-full w-full"
+                loading="lazy"
+                decoding="async"
+                style={{ objectPosition: imageObjectPositionFromSrc(item.imageUrl) }}
+              />
+            ) : null}
             {!item.imageUrl ? (
               <div className="flex h-full w-full items-center justify-center text-teal-600/80">
                 <Icon className="h-9 w-9" />

@@ -12,6 +12,7 @@ import {
   Timer,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
+import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
 import { GradientButton, OutlineButton, TrainingStartButton } from "../app/ui";
 import { MotusFlameIcon } from "./MotusFlameIcon";
 
@@ -205,9 +206,15 @@ export function MemberHomeOverview({
         </div>
       </section>
 
-      <article className="motus-home-workout-card">
+      <article className="motus-home-workout-card motus-image-frame motus-image-frame--hero">
         {workoutImageSrc ? (
-          <img className="motus-home-workout-cover" src={workoutImageSrc} alt="" loading="lazy" />
+          <img
+            className="motus-home-workout-cover motus-image-media"
+            src={workoutImageSrc}
+            alt=""
+            loading="lazy"
+            style={{ objectPosition: imageObjectPositionFromSrc(workoutImageSrc) }}
+          />
         ) : (
           <div className="motus-home-workout-cover motus-home-workout-cover--fallback" aria-hidden>
             <Dumbbell className="h-10 w-10 text-white/60" strokeWidth={1.5} />
@@ -228,7 +235,7 @@ export function MemberHomeOverview({
 
         <div className="motus-home-workout-content">
           <div className="min-w-0">
-            <p className="motus-home-workout-label">Dagens plan</p>
+            <p className="motus-home-workout-label">Dagens økt</p>
             <h2
               className={`motus-home-workout-title ${workoutTitleLoading ? "animate-pulse text-slate-400" : ""}`}
             >
