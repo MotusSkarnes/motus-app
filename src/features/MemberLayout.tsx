@@ -38,7 +38,7 @@ import { MemberOnboarding } from "./MemberOnboarding";
 import { MemberWelcomeModal } from "./MemberWelcomeModal";
 import { MemberPortal } from "./MemberPortal";
 import { InspirationHub } from "./InspirationHub";
-import { MemberDesktopTabNav, MemberMobileTabNav } from "./MemberTabNavigation";
+import { MemberDesktopTabNav } from "./MemberTabNavigation";
 import { MemberHomeHeaderActions } from "./MemberHomeHeaderActions";
 import { MemberNotificationsPanel } from "./MemberNotificationsPanel";
 
@@ -233,10 +233,6 @@ export function MemberLayout({
       markMemberInspirationAsSeen();
     }
   }, [memberTab, markMemberInspirationAsSeen]);
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  }, [memberTab]);
 
   async function persistOnboardingAnswers(answers: MemberOnboardingAnswers) {
     if (!activeMember) return;
@@ -496,10 +492,6 @@ export function MemberLayout({
         )}
         </div>
       </div>
-
-      {!welcomeModalOpen && !onboardingGateOpen && !memberCheckInOverlayOpen ? (
-        <MemberMobileTabNav memberTab={memberTab} setMemberTab={setMemberTab} isMemberLimited={isMemberLimited} />
-      ) : null}
 
       {welcomeModalOpen && activeMember ? (
         <MemberWelcomeModal

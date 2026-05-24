@@ -298,7 +298,7 @@ export function TrainerLayout({
         </div>
       </div>
 
-      <div className="motus-mobile-tab-bar fixed inset-x-0 bottom-0 z-[10001] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 xl:hidden">
+      <div className="motus-mobile-tab-bar fixed inset-x-0 bottom-0 z-[99999] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 xl:hidden">
         {moreMenuOpen ? (
           <button
             type="button"
@@ -337,7 +337,7 @@ export function TrainerLayout({
             })}
           </div>
         ) : null}
-        <div className="motus-mobile-tab-bar-inner relative z-[10001] mx-auto flex max-w-lg items-stretch gap-0.5">
+        <div className="mx-auto flex max-w-lg items-stretch gap-0.5">
           {visibleMobileTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = trainerTab === tab.id;

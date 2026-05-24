@@ -290,5 +290,13 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     appHeaderProps,
     trainerLayoutProps,
     memberLayoutProps,
+    memberMobileNavProps:
+      layoutRole === "member" && state.appState.currentUser
+        ? {
+            memberTab: state.memberTab,
+            setMemberTab: state.setMemberTab,
+            isMemberLimited,
+          }
+        : null,
   };
 }

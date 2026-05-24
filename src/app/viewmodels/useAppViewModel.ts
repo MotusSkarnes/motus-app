@@ -6,7 +6,7 @@ import type { AppViewModel } from "./types";
 export function useAppViewModel(): AppViewModel {
   const state = useAppState();
   const { isRecoveryMode, loginScreenProps } = useAuthViewModel(state);
-  const { appHeaderProps, trainerLayoutProps, memberLayoutProps } = useRoleViewModel(state);
+  const { appHeaderProps, trainerLayoutProps, memberLayoutProps, memberMobileNavProps } = useRoleViewModel(state);
 
   return {
     appState: state.appState,
@@ -16,5 +16,6 @@ export function useAppViewModel(): AppViewModel {
     appHeaderProps,
     trainerLayoutProps,
     memberLayoutProps,
+    memberMobileNavProps,
   };
 }

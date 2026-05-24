@@ -1,4 +1,3 @@
-import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
 import { ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp } from "lucide-react";
 import { MOTUS } from "../app/data";
@@ -93,16 +92,15 @@ function MemberMobileTabButton({
   );
 }
 
-function MemberMobileTabBar({ memberTab, setMemberTab, isMemberLimited }: MemberTabNavigationProps) {
+export function MemberMobileTabNav({ memberTab, setMemberTab, isMemberLimited }: MemberTabNavigationProps) {
   const tabs = memberNavTabs(isMemberLimited);
 
   return (
-    <div
-      className="motus-mobile-tab-bar fixed inset-x-0 bottom-0 z-[10001] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 xl:hidden"
-      role="navigation"
+    <nav
+      className="motus-mobile-tab-bar fixed inset-x-0 bottom-0 z-[99999] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 xl:hidden"
       aria-label="Hovedmeny medlem"
     >
-      <div className="motus-mobile-tab-bar-inner relative z-[10001] mx-auto flex max-w-md items-stretch gap-0.5">
+      <div className="mx-auto flex max-w-md items-stretch gap-0.5">
         {tabs.map((tab) => (
           <MemberMobileTabButton
             key={tab.id}
@@ -113,11 +111,6 @@ function MemberMobileTabBar({ memberTab, setMemberTab, isMemberLimited }: Member
           />
         ))}
       </div>
-    </div>
+    </nav>
   );
-}
-
-export function MemberMobileTabNav(props: MemberTabNavigationProps) {
-  if (typeof document === "undefined") return null;
-  return createPortal(<MemberMobileTabBar {...props} />, document.body);
 }

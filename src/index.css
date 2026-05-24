@@ -71,8 +71,6 @@ body,
 }
 
 html {
-  overflow-x: clip;
-  overscroll-behavior-y: none;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -81,9 +79,9 @@ body {
   min-height: 100%;
   background: #ffffff;
   color: #0f172a;
-  overflow-x: clip;
-  overflow-y: visible;
-  overscroll-behavior-y: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 button {
@@ -161,7 +159,6 @@ button {
 .motus-page {
   background: linear-gradient(180deg, #f8faf9 0%, #f4f6f8 42%, #ffffff 100%);
   color: #1e293b;
-  overflow-x: clip;
 }
 
 .motus-home-shell {
@@ -2933,19 +2930,13 @@ button {
   border-top: 1px solid rgba(15, 23, 42, 0.06);
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 -8px 28px -20px rgba(15, 23, 42, 0.18);
-  pointer-events: none;
-  transform: translateZ(0);
-}
-
-.motus-mobile-tab-bar-inner {
-  pointer-events: auto;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .motus-mobile-tab-bar {
-    background: rgba(255, 255, 255, 0.78);
-    backdrop-filter: blur(18px) saturate(1.4);
-    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(16px) saturate(1.35);
+    -webkit-backdrop-filter: blur(16px) saturate(1.35);
   }
 }
 
