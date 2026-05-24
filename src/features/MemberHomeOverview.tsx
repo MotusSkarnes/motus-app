@@ -98,8 +98,9 @@ export function MemberHomeOverview({
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={onOpenProfile}
-            className="motus-pressable relative h-11 w-11 shrink-0 overflow-hidden rounded-full ring-2 ring-white shadow-[0_2px_10px_-4px_rgba(15,23,42,0.25)]"
+            onClick={() => onOpenProfile?.()}
+            disabled={!onOpenProfile}
+            className="motus-pressable relative h-11 w-11 shrink-0 overflow-hidden rounded-full ring-2 ring-white shadow-[0_2px_10px_-4px_rgba(15,23,42,0.25)] disabled:cursor-default"
             aria-label="Åpne profil"
           >
             {memberAvatarUrl ? (

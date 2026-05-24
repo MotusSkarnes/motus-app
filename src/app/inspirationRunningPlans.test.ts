@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { normalizePeriodSchedulePlan } from "./periodPlanMerge";
+import { buildExerciseCategoryById, trainingProgramCategoryLabel } from "./trainingProgramKind";
 import {
   RUNNING_INSPIRATION_ITEMS,
   SUB45_PROGRAM_TITLES,
@@ -44,5 +45,25 @@ describe("inspirationRunningPlans", () => {
     expect(lastWeek?.weekNumber).toBe(12);
     expect(lastWeek?.days.saturday?.trim()).toBe(SUB45_PROGRAM_TITLES.race);
     expect(sub45Titles.has(SUB45_PROGRAM_TITLES.race)).toBe(true);
+  });
+
+  it("labels bundled mobility programs as Mobilitet", () => {
+    const sub60 = RUNNING_INSPIRATION_ITEMS.find((item) => item.id === "default-period-sub60-10k")!;
+    const mobility = sub60.bundledProgramTemplates.find((program) => program.title === SUB60_PROGRAM_TITLES.mobility)!;
+    expect(
+      trainingProgramCategoryLabel(
+        {
+          id: "mobility-template",
+          memberId: "__template__",
+          title: mobility.title,
+          goal: mobility.goal,
+          notes: mobility.notes,
+          createdAt: "",
+          exercises: mobility.exercises,
+        },
+        buildExerciseCategoryById([]),
+        [],
+      ),
+    ).toBe("Mobilitet");
   });
 });

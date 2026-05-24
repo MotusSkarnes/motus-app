@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp, UserCircle2 } from "lucide-react";
+import { ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { motusHaptic } from "../app/haptics";
 import type { MemberTab } from "../app/types";
@@ -13,7 +13,6 @@ export function memberNavTabs(isMemberLimited: boolean): MemberTabNavItem[] {
       { id: "overview", label: "Hjem", icon: LayoutDashboard },
       { id: "programs", label: "Trening", icon: ClipboardList },
       { id: "inspiration", label: "Inspo", icon: Sparkles },
-      { id: "profile", label: "Profil", icon: UserCircle2 },
     ];
   }
   return [
@@ -22,7 +21,6 @@ export function memberNavTabs(isMemberLimited: boolean): MemberTabNavItem[] {
     { id: "inspiration", label: "Inspo", icon: Sparkles },
     { id: "progress", label: "Fremgang", icon: TrendingUp },
     { id: "messages", label: "Meldinger", icon: MessageSquare },
-    { id: "profile", label: "Profil", icon: UserCircle2 },
   ];
 }
 
@@ -95,35 +93,20 @@ function MemberMobileTabButton({
 }
 
 export function MemberMobileTabNav({ memberTab, setMemberTab, isMemberLimited }: MemberTabNavigationProps) {
-  const allTabs = memberNavTabs(isMemberLimited);
-  const mainTabs = allTabs.filter((tab) => tab.id !== "profile");
-  const profileTab = allTabs.find((tab) => tab.id === "profile");
+  const tabs = memberNavTabs(isMemberLimited);
 
   return (
     <div className="motus-mobile-tab-bar fixed inset-x-0 bottom-0 z-[9999] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 lg:hidden">
-      <div className="mx-auto flex max-w-md items-stretch gap-1">
-        <div className="flex min-w-0 flex-1 items-stretch gap-0.5">
-          {mainTabs.map((tab) => (
-            <MemberMobileTabButton
-              key={tab.id}
-              tab={tab}
-              memberTab={memberTab}
-              setMemberTab={setMemberTab}
-              className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-semibold transition"
-            />
-          ))}
-        </div>
-        {profileTab ? (
-          <>
-            <div className="motus-mobile-tab-bar-separator" aria-hidden />
-            <MemberMobileTabButton
-              tab={profileTab}
-              memberTab={memberTab}
-              setMemberTab={setMemberTab}
-              className="flex w-[4.25rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-semibold transition"
-            />
-          </>
-        ) : null}
+      <div className="mx-auto flex max-w-md items-stretch gap-0.5">
+        {tabs.map((tab) => (
+          <MemberMobileTabButton
+            key={tab.id}
+            tab={tab}
+            memberTab={memberTab}
+            setMemberTab={setMemberTab}
+            className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-semibold transition"
+          />
+        ))}
       </div>
     </div>
   );

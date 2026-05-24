@@ -18,7 +18,6 @@ export function AppHeader({
   onSwitchRole,
   onResetData,
   onLogout,
-  onOpenMemberProfile,
   memberUnreadCount = 0,
   memberNotificationsOpen = false,
   memberVisibleAlerts = [],
@@ -35,7 +34,6 @@ export function AppHeader({
   onSwitchRole: (role: Role) => void;
   onResetData: () => void;
   onLogout: () => void;
-  onOpenMemberProfile?: () => void;
   memberUnreadCount?: number;
   memberNotificationsOpen?: boolean;
   memberVisibleAlerts?: MemberAlert[];
@@ -72,7 +70,6 @@ export function AppHeader({
             memberUnreadCount={memberUnreadCount}
             memberNotificationsOpen={memberNotificationsOpen}
             onMemberBellToggle={onMemberBellToggle}
-            onOpenMemberProfile={onOpenMemberProfile}
             onLogout={onLogout}
           />
         </div>

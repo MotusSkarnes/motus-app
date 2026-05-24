@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  CONDITIONING_TRAINING_COVER_IMAGE,
+  MOBILITY_TRAINING_COVER_IMAGE,
   STRENGTH_TRAINING_COVER_IMAGE,
   programCoverUsesPhotoStyle,
   resolveProgramImageSrc,
@@ -19,6 +21,14 @@ const program = (imageUrl?: string, title = "Helkropp"): Pick<TrainingProgram, "
   imageUrl,
   title,
 });
+
+const cardioExercise: Pick<Exercise, "id" | "imageUrl" | "category" | "group" | "name"> = {
+  id: "e2",
+  name: "Nedjogg",
+  category: "Kondisjon",
+  group: "Bein",
+  imageUrl: "/exercises/treadmill.png",
+};
 
 describe("resolveProgramImageSrc", () => {
   it("prefers custom program cover", () => {
@@ -41,8 +51,20 @@ describe("resolveProgramImageSrc", () => {
     ).toBe(RUNNER_STRENGTH_COVER_IMAGE);
   });
 
-  it("falls back to exercise illustration for non-strength programs", () => {
-    expect(resolveProgramImageSrc(program(), strengthExercise, { subTab: "mobility" })).toBe("/exercises/bench.png");
+  it("uses conditioning default cover for kondisjonsprogrammer", () => {
+    expect(resolveProgramImageSrc(program(), cardioExercise, { subTab: "conditioning" })).toBe(
+      CONDITIONING_TRAINING_COVER_IMAGE,
+    );
+  });
+
+  it("uses mobility default cover for mobilitetsprogrammer", () => {
+    expect(resolveProgramImageSrc(program(), strengthExercise, { subTab: "mobility" })).toBe(
+      MOBILITY_TRAINING_COVER_IMAGE,
+    );
+  });
+
+  it("falls back to exercise illustration for other program types", () => {
+    expect(resolveProgramImageSrc(program(), strengthExercise)).toBe("/exercises/bench.png");
   });
 });
 

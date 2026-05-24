@@ -408,7 +408,6 @@ export function MemberLayout({
         memberUnreadCount={memberUnreadCount}
         memberNotificationsOpen={memberNotificationsOpen}
         onMemberBellToggle={handleMemberBellToggle}
-        onOpenMemberProfile={() => setMemberTab("profile")}
         onLogout={onLogout}
       />
     ),

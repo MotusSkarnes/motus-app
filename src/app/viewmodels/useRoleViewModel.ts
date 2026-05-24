@@ -167,7 +167,6 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     onSwitchRole: (role) => state.patchState({ role }),
     onResetData: handleResetData,
     onLogout: state.handleLogout,
-    onOpenMemberProfile: () => state.setMemberTab("profile"),
     memberUnreadCount,
     memberNotificationsOpen,
     memberVisibleAlerts,

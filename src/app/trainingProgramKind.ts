@@ -31,17 +31,56 @@ function primaryProgramExercises(program: Pick<TrainingProgram, "exercises">): P
   return filtered.length > 0 ? filtered : program.exercises;
 }
 
+const MOBILITY_EXERCISE_NAME_PATTERN =
+  /stretch|strekk|mobilitet|uttøy|foam|pigeon|couch|frog|ankel|rotasjon|world's greatest|90\/90|leggstrekk|setestrekk/i;
+
+function inferMobilityCategoryFromProgramExercise(exercise: ProgramExercise): Exercise["category"] | null {
+  const nameLower = exercise.exerciseName.trim().toLowerCase();
+  const notesLower = exercise.notes.trim().toLowerCase();
+  const combined = `${nameLower} ${notesLower}`;
+
+  if (MOBILITY_EXERCISE_NAME_PATTERN.test(nameLower)) {
+    return "Mobilitet";
+  }
+
+  const holdSeconds = String(exercise.holdSeconds ?? "").trim();
+  if (holdSeconds && Number(holdSeconds) > 0) {
+    return "Mobilitet";
+  }
+
+  const reps = exercise.reps.trim();
+  const repsNum = Number(reps);
+  if (
+    reps &&
+    Number.isFinite(repsNum) &&
+    repsNum > 0 &&
+    repsNum <= 15 &&
+    /per side|rotasjon|stretch|strekk|mobilitet/i.test(combined)
+  ) {
+    return "Mobilitet";
+  }
+
+  if (/sekund/i.test(notesLower) && reps && Number(reps) >= 15 && MOBILITY_EXERCISE_NAME_PATTERN.test(nameLower)) {
+    return "Mobilitet";
+  }
+
+  return null;
+}
+
 export function resolveProgramExerciseCategory(
   exercise: ProgramExercise,
   exerciseBank: Exercise[],
   exerciseCategoryById: Map<string, Exercise["category"]>,
 ): Exercise["category"] {
-  const fromId = exerciseCategoryById.get(exercise.exerciseId);
-  if (fromId) return fromId;
-
   const normalizedName = exercise.exerciseName.trim().toLowerCase();
   const byName = exerciseBank.find((item) => item.name.trim().toLowerCase() === normalizedName);
   if (byName) return byName.category;
+
+  const fromId = exerciseCategoryById.get(exercise.exerciseId);
+  if (fromId) return fromId;
+
+  const inferredMobility = inferMobilityCategoryFromProgramExercise(exercise);
+  if (inferredMobility) return inferredMobility;
 
   if (Number(exercise.durationMinutes) > 0) return "Kondisjon";
 

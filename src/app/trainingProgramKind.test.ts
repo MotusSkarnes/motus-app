@@ -121,4 +121,26 @@ describe("trainingProgramKind", () => {
     const resolved = multiStepProgram([byName]);
     expect(trainingProgramCategoryLabel(resolved, categories, exercises)).toBe("Kondisjon");
   });
+
+  it("classifies mobility programs even without exercise bank matches", () => {
+    const mobility = multiStepProgram([
+      programRow("unknown-1", "World's greatest stretch"),
+      programRow("unknown-2", "Couch stretch", "", "45"),
+    ]);
+    mobility.exercises[1] = {
+      ...mobility.exercises[1]!,
+      reps: "",
+      holdSeconds: "45",
+      notes: "Per side",
+    };
+    expect(trainingProgramCategoryLabel(mobility, new Map(), [])).toBe("Mobilitet");
+  });
+
+  it("prefers exercise name over stale id category", () => {
+    const staleCategories = buildExerciseCategoryById([
+      { id: "stale-id", name: "Other", category: "Styrke", group: "Bein", equipment: "Stang", level: "Nybegynner", description: "" },
+    ]);
+    const row = programRow("stale-id", "Mølle", "30");
+    expect(trainingProgramCategoryLabel(multiStepProgram([row]), staleCategories, exercises)).toBe("Kondisjon");
+  });
 });

@@ -1,4 +1,4 @@
-import { Bell, LogOut, UserCircle2 } from "lucide-react";
+import { Bell, LogOut } from "lucide-react";
 import { MOTUS } from "../app/data";
 
 type MemberHomeHeaderActionsProps = {
@@ -6,7 +6,6 @@ type MemberHomeHeaderActionsProps = {
   memberUnreadCount?: number;
   memberNotificationsOpen?: boolean;
   onMemberBellToggle?: () => void;
-  onOpenMemberProfile?: () => void;
   onLogout: () => void;
 };
 
@@ -15,7 +14,6 @@ export function MemberHomeHeaderActions({
   memberUnreadCount = 0,
   memberNotificationsOpen = false,
   onMemberBellToggle,
-  onOpenMemberProfile,
   onLogout,
 }: MemberHomeHeaderActionsProps) {
   return (
@@ -39,16 +37,6 @@ export function MemberHomeHeaderActions({
           ) : null}
         </button>
       ) : null}
-      <button
-        type="button"
-        onClick={() => onOpenMemberProfile?.()}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-full text-white shadow-sm transition hover:opacity-90"
-        style={{ backgroundColor: MOTUS.turquoise }}
-        aria-label="Åpne profil"
-        title="Profil"
-      >
-        <UserCircle2 className="h-4 w-4" aria-hidden />
-      </button>
       <button
         type="button"
         onClick={onLogout}

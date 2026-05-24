@@ -78,6 +78,20 @@ function strengthExercise(name: string, sets: string, reps: string, notes = "", 
   };
 }
 
+function mobilityExercise(name: string, sets: string, holdSeconds: string, notes = ""): ProgramExercise {
+  return {
+    id: uid("run-mob-ex"),
+    exerciseId: `inspo-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    exerciseName: name,
+    sets,
+    reps: "",
+    weight: "0",
+    holdSeconds,
+    restSeconds: "30",
+    notes,
+  };
+}
+
 function cardioStep(
   label: string,
   exerciseName: string,
@@ -147,11 +161,11 @@ function buildSub60Programs(): InspirationProgramTemplate[] {
       exercises: [
         strengthExercise("World's greatest stretch", "2", "8", "Per side"),
         strengthExercise("90/90 hofte-rotasjon", "2", "10", "Per side"),
-        strengthExercise("Couch stretch", "2", "45", "Sekunder per side"),
-        strengthExercise("Leggstrekk mot vegg", "2", "45", "Sekunder per side"),
+        mobilityExercise("Couch stretch", "2", "45", "Per side"),
+        mobilityExercise("Leggstrekk mot vegg", "2", "45", "Per side"),
         strengthExercise("Ankelmobilitet kne-til-vegg", "2", "12", "Per side"),
-        strengthExercise("Pigeon stretch", "2", "45", "Sekunder per side"),
-        strengthExercise("Setestrekk liggende", "2", "45", "Sekunder per side"),
+        mobilityExercise("Pigeon stretch", "2", "45", "Per side"),
+        mobilityExercise("Setestrekk liggende", "2", "45", "Sekunder per side"),
       ],
       programCreatedBy: "member",
       programCreatedByName: AUTHOR,
@@ -240,10 +254,10 @@ function buildSub45Programs(): InspirationProgramTemplate[] {
       exercises: [
         strengthExercise("World's greatest stretch", "2", "10", "Per side"),
         strengthExercise("90/90 hofte-rotasjon", "2", "12", "Per side"),
-        strengthExercise("Couch stretch", "2", "50", "Sekunder per side"),
-        strengthExercise("Frog stretch", "2", "50", "Sekunder"),
+        mobilityExercise("Couch stretch", "2", "50", "Per side"),
+        mobilityExercise("Frog stretch", "2", "50"),
         strengthExercise("Ankelmobilitet kne-til-vegg", "2", "14", "Per side"),
-        strengthExercise("Leggstrekk mot vegg", "2", "50", "Sekunder per side"),
+        mobilityExercise("Leggstrekk mot vegg", "2", "50", "Per side"),
       ],
       programCreatedBy: "member",
       programCreatedByName: AUTHOR,
