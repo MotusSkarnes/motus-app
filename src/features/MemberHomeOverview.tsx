@@ -261,7 +261,7 @@ export function MemberHomeOverview({
         </div>
       </article>
 
-      <section className="grid grid-cols-3 gap-2" aria-label="Hurtighandlinger">
+      <section className="motus-home-quick-actions" aria-label="Hurtighandlinger">
         <HomeQuickAction
           label="Registrer trening"
           icon={ClipboardList}
@@ -319,7 +319,7 @@ function HomeQuickAction({
       >
         <Icon className="h-5 w-5" strokeWidth={2} />
       </span>
-      <span className="mt-2.5 block text-center text-[11px] font-semibold leading-snug text-slate-700">{label}</span>
+      <span className="block text-[12px] font-semibold leading-none text-slate-700">{label}</span>
     </button>
   );
 }

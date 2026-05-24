@@ -5442,15 +5442,15 @@ export function MemberPortal(props: MemberPortalProps) {
 	                            </div>
 	                            <div className="motus-member-program-stats">
 	                              <span className="motus-member-program-stat">
-	                                <Clock3 className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+	                                <Clock3 className="h-3.5 w-3.5 shrink-0" aria-hidden />
 	                                {programMinutes} min
 	                              </span>
 	                              <span className="motus-member-program-stat">
-	                                <Signal className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+	                                <Signal className="h-3.5 w-3.5 shrink-0" aria-hidden />
 	                                {programLevel}
 	                              </span>
 	                              <span className="motus-member-program-stat">
-	                                <Dumbbell className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+	                                <Dumbbell className="h-3.5 w-3.5 shrink-0" aria-hidden />
 	                                {program.exercises.length} {program.exercises.length === 1 ? "øvelse" : "øvelser"}
 	                              </span>
 	                            </div>
@@ -5482,17 +5482,18 @@ export function MemberPortal(props: MemberPortalProps) {
 	                              <OutlineButton
 	                                className="motus-member-program-secondary-btn"
 	                                onClick={() => setExpandedProgramId((prev) => (prev === program.id ? null : program.id))}
+	                                aria-label={isExpanded ? "Skjul programdetaljer" : "Vis programdetaljer"}
+	                                title={isExpanded ? "Skjul" : "Vis"}
 	                              >
-	                                <span className="inline-flex items-center justify-center gap-1.5">
-	                                  {isExpanded ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-	                                  <span>{isExpanded ? "Skjul" : "Vis"}</span>
-	                                </span>
+	                                {isExpanded ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
 	                              </OutlineButton>
-	                              <OutlineButton className="motus-member-program-secondary-btn" onClick={() => handlePrintProgram(program)}>
-	                                <span className="inline-flex items-center justify-center gap-1.5">
-	                                  <Printer className="h-4 w-4" />
-	                                  <span>PDF</span>
-	                                </span>
+	                              <OutlineButton
+	                                className="motus-member-program-secondary-btn"
+	                                onClick={() => handlePrintProgram(program)}
+	                                aria-label="Last ned program som PDF"
+	                                title="PDF"
+	                              >
+	                                <Printer className="h-4 w-4" aria-hidden />
 	                              </OutlineButton>
 	                              <div className="relative min-w-0" data-program-library-menu>
 	                                <OutlineButton
@@ -5501,11 +5502,9 @@ export function MemberPortal(props: MemberPortalProps) {
 	                                  onClick={() => setProgramLibraryMenuId((prev) => (prev === program.id ? null : program.id))}
 	                                  aria-label={isLibraryMenuOpen ? "Lukk meny" : "Flere valg"}
 	                                  aria-expanded={isLibraryMenuOpen}
+	                                  title="Flere valg"
 	                                >
-	                                  <span className="inline-flex items-center justify-center gap-1.5">
-	                                    <MoreHorizontal className="h-4 w-4" aria-hidden />
-	                                    <span>Mer</span>
-	                                  </span>
+	                                  <MoreHorizontal className="h-4 w-4" aria-hidden />
 	                                </OutlineButton>
 	                                {isLibraryMenuOpen ? (
 	                                  <div
