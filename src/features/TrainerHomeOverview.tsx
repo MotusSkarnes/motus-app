@@ -147,17 +147,13 @@ export function TrainerHomeOverview({
           className="pointer-events-none absolute -left-6 -right-6 -top-8 h-40 bg-[radial-gradient(ellipse_at_top,rgba(48,227,190,0.16),transparent_68%)]"
           aria-hidden
         />
-        <div className="relative flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-[1.45rem] font-bold leading-tight tracking-tight text-slate-950 sm:text-[1.65rem]">
-              Hei, {trainerFirstName}! <span aria-hidden>👋</span>
-            </h1>
-            <p className="mt-1 text-sm font-medium text-slate-600">Her er oversikten din for i dag</p>
-            <p className="mt-0.5 text-xs text-slate-500">{todayDateLabel}</p>
-          </div>
-          {headerActions}
+        <div className="relative min-w-0">
+          <h1 className="text-[1.45rem] font-bold leading-tight tracking-tight text-slate-950 sm:text-[1.65rem]">
+            Hei, {trainerFirstName}! <span aria-hidden>👋</span>
+          </h1>
+          <p className="mt-1 text-sm font-medium text-slate-600">Her er oversikten din for i dag</p>
+          <p className="mt-0.5 text-xs text-slate-500">{todayDateLabel}</p>
         </div>
-        {notificationsPanel ? <div className="relative mt-4">{notificationsPanel}</div> : null}
       </header>
 
       <section className="motus-trainer-focus-card" aria-label="Dagens fokus">
