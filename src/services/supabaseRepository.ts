@@ -41,7 +41,11 @@ import {
   type UpdateWorkoutLogTrainerCommentInput,
   type UpdateWorkoutResultInput,
 } from "./appRepository";
-import { buildTrainingProgramDisplayKey, normalizeLegacyIntervalCooldownExerciseNames } from "../app/programBlocks";
+import {
+  buildTrainingProgramDisplayKey,
+  normalizeLegacyIntervalCooldownExerciseNames,
+  programIsInMemberArchive,
+} from "../app/programBlocks";
 import { isContaminatedDemoMemberProfile } from "../app/memberLocalCatalog";
 import { detectNewMemberFormSubmissions } from "../app/memberFormNotifications";
 import { ensureMemberAuthLink, resolveSessionAuthRole } from "./supabaseAuth";
@@ -1187,7 +1191,12 @@ export async function syncMemberLocalCatalogToSupabase(state: AppState): Promise
     fallbackOwnerUserId: String(state.currentUser.id ?? "").trim(),
   };
 
-  const localPrograms = state.programs.filter((program) => memberIds.has(program.memberId.trim()));
+  const localPrograms = state.programs.filter(
+    (program) =>
+      memberIds.has(program.memberId.trim()) &&
+      !program.ephemeral &&
+      !programIsInMemberArchive(program.memberLibraryStatus),
+  );
   for (const program of localPrograms) {
     const saveInput: SaveProgramInput = {
       id: program.id,

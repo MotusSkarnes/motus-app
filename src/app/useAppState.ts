@@ -1179,7 +1179,7 @@ export function useAppState() {
       });
 
       if (!cancelled && isMemberLikeSession && sessionEmail && stateAfterHydrate && typeof window !== "undefined") {
-        const pushKey = `motus.memberCatalogPush:v3:${sessionUser?.id ?? sessionEmail}`;
+        const pushKey = `motus.memberCatalogPush:v4:${sessionUser?.id ?? sessionEmail}`;
         if (!window.sessionStorage.getItem(pushKey)) {
           window.sessionStorage.setItem(pushKey, "1");
           void (async () => {
