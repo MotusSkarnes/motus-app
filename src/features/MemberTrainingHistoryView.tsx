@@ -268,24 +268,26 @@ export function MemberTrainingHistoryView({
             {periodBadge ? <span className="motus-member-history-hero-badge">{periodBadge}</span> : null}
           </div>
           <div className="motus-member-history-hero-ring" aria-hidden>
-            <svg viewBox="0 0 88 88" className="h-[5.5rem] w-[5.5rem]">
-              <circle cx="44" cy="44" r="34" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="5" />
+            <svg viewBox="0 0 88 88" className="motus-member-history-hero-ring-svg">
+              <circle cx="44" cy="44" r="32" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="4" />
               <circle
                 cx="44"
                 cy="44"
-                r="34"
+                r="32"
                 fill="none"
                 stroke="#ffffff"
-                strokeWidth="5"
+                strokeWidth="4"
                 strokeLinecap="round"
-                strokeDasharray={`${Math.max(18, Math.min(214, streakWeeks > 0 ? 214 : 40))} 214`}
+                strokeDasharray={`${Math.max(18, Math.min(201, streakWeeks > 0 ? 201 : 40))} 201`}
                 transform="rotate(-90 44 44)"
               />
             </svg>
             <div className="motus-member-history-hero-ring-center">
-              <MotusFlameIcon className="h-7 w-7" title="" />
-              <span className="motus-member-history-hero-ring-value">{streakLabel}</span>
-              <span className="motus-member-history-hero-ring-label">på rad</span>
+              <MotusFlameIcon className="h-6 w-6" title="" />
+              <span className="motus-member-history-hero-ring-value">{streakWeeks}</span>
+              <span className="motus-member-history-hero-ring-label">
+                {streakWeeks === 1 ? "uke" : "uker"} på rad
+              </span>
             </div>
           </div>
         </div>
