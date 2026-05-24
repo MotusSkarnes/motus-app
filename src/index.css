@@ -153,7 +153,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: var(--motus-home-gap);
-  padding-inline: var(--motus-home-padding-x);
+  padding-inline: 0;
 }
 
 .motus-image-frame {
