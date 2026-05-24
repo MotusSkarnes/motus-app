@@ -1012,20 +1012,6 @@ button {
   color: #0f172a;
 }
 
-.motus-training-week-day-workout {
-  min-height: 2rem;
-  width: 100%;
-  text-align: center;
-  font-size: 0.625rem;
-  font-weight: 600;
-  line-height: 1.2;
-  color: #334155;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
 .motus-training-week-summary {
   display: flex;
   align-items: flex-end;

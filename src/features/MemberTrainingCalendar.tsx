@@ -6,7 +6,6 @@ import {
   getMondayStart,
   getWeekDates,
   getWeekdayShortLabel,
-  shortWorkoutLabel,
   toCalendarDateKey,
   type TrainingCalendarDayStatus,
 } from "../app/memberTrainingCalendar";
@@ -155,7 +154,6 @@ export function MemberTrainingCalendar({
                       day.date.getDate()
                     )}
                   </span>
-                  <span className="motus-training-week-day-workout">{shortWorkoutLabel(day.workoutLabel)}</span>
                 </button>
               );
             })}
