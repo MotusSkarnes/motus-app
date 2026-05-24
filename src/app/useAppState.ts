@@ -326,9 +326,10 @@ function mergeMemberProgramsWithLocalEphemeral(
       merged.set(local.id, local);
       continue;
     }
+    const keepMemberSavedProgram = local.programCreatedBy === "member";
     const keepEphemeral = local.ephemeral === true;
     const keepActiveWorkout = Boolean(activeWorkoutProgramId && local.id === activeWorkoutProgramId);
-    if (keepEphemeral || keepActiveWorkout) {
+    if (keepMemberSavedProgram || keepEphemeral || keepActiveWorkout) {
       merged.set(local.id, local);
     }
   }
@@ -1035,6 +1036,11 @@ export function useAppState() {
           const mergedProgs = remotePrograms ?? [];
           if (isMemberLikeSession && (hydratedMember !== null || mergedProgs.length > 0)) {
             const memberIds = memberIdsForSessionEmail(next.members, sessionEmail);
+            const authUserId = String(prevStripped.currentUser?.id ?? sessionUser?.id ?? "").trim();
+            [prevStripped.currentUser?.memberId, authUserId, authUserId ? `auth-${authUserId}` : "", sessionEmail]
+              .map((id) => String(id ?? "").trim())
+              .filter(Boolean)
+              .forEach((id) => memberIds.add(id));
             next.programs = mergeMemberProgramsWithLocalEphemeral(
               mergedProgs,
               prevStripped.programs,
@@ -1129,7 +1135,7 @@ export function useAppState() {
       });
 
       if (!cancelled && isMemberLikeSession && sessionEmail && stateAfterHydrate && typeof window !== "undefined") {
-        const pushKey = `motus.memberCatalogPush:v2:${sessionUser?.id ?? sessionEmail}`;
+        const pushKey = `motus.memberCatalogPush:v3:${sessionUser?.id ?? sessionEmail}`;
         if (!window.sessionStorage.getItem(pushKey)) {
           window.sessionStorage.setItem(pushKey, "1");
           void (async () => {
