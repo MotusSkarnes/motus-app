@@ -6,6 +6,7 @@ import {
   isPeriodPlanEntryDateInFuture,
   resolveGroupClassNameFromPeriodEntry,
   resolvePeriodPlanEntryAction,
+  getPeriodPlanDayListLabel,
 } from "./periodPlanEntryActions";
 
 const programs: TrainingProgram[] = [
@@ -67,6 +68,16 @@ describe("periodPlanEntryActions", () => {
     expect(resolvePeriodPlanEntryAction("Styrke A", programs).kind).toBe("start-program");
     expect(resolvePeriodPlanEntryAction("Gruppetime: Yoga", programs).kind).toBe("log-group");
     expect(resolvePeriodPlanEntryAction("Hvile / restitusjon", programs).kind).toBe("none");
+  });
+
+  it("summarizes list labels without full workout text", () => {
+    expect(getPeriodPlanDayListLabel("Styrke A", resolvePeriodPlanEntryAction("Styrke A", programs))).toBe("Økt planlagt");
+    expect(getPeriodPlanDayListLabel("Gruppetime: Yoga", resolvePeriodPlanEntryAction("Gruppetime: Yoga", programs))).toBe(
+      "Gruppetime",
+    );
+    expect(getPeriodPlanDayListLabel("Hvile / restitusjon", resolvePeriodPlanEntryAction("Hvile / restitusjon", programs))).toBe(
+      "Hvile",
+    );
   });
 
   it("blocks future plan dates for completion", () => {

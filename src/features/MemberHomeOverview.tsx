@@ -1,6 +1,7 @@
 ﻿import type { ReactNode } from "react";
 import {
   BarChart3,
+  Bookmark,
   CalendarDays,
   ChevronRight,
   ClipboardList,
@@ -8,7 +9,6 @@ import {
   Dumbbell,
   Flame,
   Play,
-  Target,
   Timer,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
@@ -48,6 +48,7 @@ export type MemberHomeOverviewProps = {
   motivationLine: string | null;
   statusCard: MemberHomeStatusCard | null;
   workoutTitle: string;
+  workoutTitleLoading?: boolean;
   workoutSubtitle?: string | null;
   workoutDuration: string | null;
   workoutImageSrc?: string | null;
@@ -78,6 +79,7 @@ export function MemberHomeOverview({
   motivationLine,
   statusCard,
   workoutTitle,
+  workoutTitleLoading = false,
   workoutSubtitle,
   workoutDuration,
   workoutImageSrc,
@@ -204,51 +206,51 @@ export function MemberHomeOverview({
       </section>
 
       <article className="motus-home-workout-card">
-        <div className="motus-home-workout-layout">
-          <div className="motus-home-workout-thumb shrink-0">
-            {workoutImageSrc ? (
-              <img src={workoutImageSrc} alt="" loading="lazy" />
-            ) : (
-              <div className="motus-home-workout-thumb-fallback">
-                <Dumbbell className="h-8 w-8 text-slate-300" strokeWidth={1.5} />
-              </div>
-            )}
-            <span className="motus-home-workout-thumb-badge">Klar for en sterk dag</span>
+        {workoutImageSrc ? (
+          <img className="motus-home-workout-cover" src={workoutImageSrc} alt="" loading="lazy" />
+        ) : (
+          <div className="motus-home-workout-cover motus-home-workout-cover--fallback" aria-hidden>
+            <Dumbbell className="h-10 w-10 text-white/60" strokeWidth={1.5} />
           </div>
-          <div className="motus-home-workout-content">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="motus-home-workout-label">Dagens økt</p>
-                <h2 className="motus-home-workout-title">{workoutTitle}</h2>
-                {workoutSubtitle ? <p className="motus-home-workout-subtitle">{workoutSubtitle}</p> : null}
-              </div>
-              {onWorkoutCardClick ? (
-                <button
-                  type="button"
-                  onClick={onWorkoutCardClick}
-                  className="motus-pressable -mr-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-50 hover:text-slate-600"
-                  aria-label="Se trening"
-                >
-                  <ChevronRight className="h-5 w-5" aria-hidden />
-                </button>
-              ) : null}
-            </div>
+        )}
+
+        {onWorkoutCardClick ? (
+          <button
+            type="button"
+            onClick={onWorkoutCardClick}
+            className="motus-home-workout-top-action motus-pressable"
+            aria-label="Se trening"
+            title="Se trening"
+          >
+            <Bookmark className="h-5 w-5" aria-hidden />
+          </button>
+        ) : null}
+
+        <div className="motus-home-workout-content">
+          <div className="min-w-0">
+            <p className="motus-home-workout-label">Dagens økt</p>
+            <h2
+              className={`motus-home-workout-title ${workoutTitleLoading ? "animate-pulse text-slate-400" : ""}`}
+            >
+              {workoutTitleLoading ? "Henter dagens plan…" : workoutTitle || "Ingen plan i dag"}
+            </h2>
             <div className="motus-home-workout-meta">
               {workoutDuration ? (
-                <span className="inline-flex items-center gap-1.5 font-medium">
-                  <Clock3 className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock3 className="h-3.5 w-3.5" aria-hidden />
                   {workoutDuration}
                 </span>
               ) : null}
               {workoutZoneLabel ? (
-                <span className="inline-flex items-center gap-1.5 font-medium">
-                  <Target className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+                <span className="inline-flex items-center gap-1.5">
+                  <span aria-hidden>•</span>
                   {workoutZoneLabel}
                 </span>
               ) : null}
             </div>
-            <div className="motus-home-workout-cta">{primaryCta}</div>
           </div>
+          {workoutSubtitle ? <p className="motus-home-workout-subtitle">{workoutSubtitle}</p> : null}
+          {primaryCta ? <div className="motus-home-workout-cta">{primaryCta}</div> : null}
         </div>
       </article>
 

@@ -34,6 +34,11 @@ import {
 } from "./memberLocalCatalog";
 import { pickBestPersonalGoals } from "./memberProfileGoals";
 import {
+  clearMemberSessionCaches,
+  readCachedMemberPeriodPlanRows,
+  writeCachedMemberPeriodPlanRows,
+} from "./memberSessionCache";
+import {
   clearPausedWorkoutForProgram,
   discardPausedWorkoutDraftForMember,
   dismissWorkoutModeInState,
@@ -581,8 +586,9 @@ export function useAppState() {
     {},
   );
   const [remoteMemberPeriodPlanRows, setRemoteMemberPeriodPlanRows] = useState<Array<{ memberId: string; plan: PeriodSchedulePlan }>>(
-    [],
+    () => readCachedMemberPeriodPlanRows(),
   );
+  const [memberRemoteHydrated, setMemberRemoteHydrated] = useState(false);
 
   function applyMemberSessionBaseState(state: AppState, user: AuthUser): AppState {
     let base = stripDemoSeedCatalog(state);
@@ -921,7 +927,9 @@ export function useAppState() {
         }
       }
       if (hydratedMember) {
-        setRemoteMemberPeriodPlanRows(hydratedMember.periodPlanRows ?? []);
+        const periodPlanRows = hydratedMember.periodPlanRows ?? [];
+        setRemoteMemberPeriodPlanRows(periodPlanRows);
+        writeCachedMemberPeriodPlanRows(periodPlanRows);
         if (
           !cancelled &&
           Array.isArray(hydratedMember.inspirationItems) &&
@@ -1107,6 +1115,10 @@ export function useAppState() {
             }
           })();
         }
+      }
+
+      if (!cancelled && isMemberLikeSession) {
+        setMemberRemoteHydrated(true);
       }
     }
 
@@ -1706,6 +1718,8 @@ export function useAppState() {
     setIsLocalDemoSession(false);
     setRemoteTrainerPeriodPlansByMemberId({});
     setRemoteMemberPeriodPlanRows([]);
+    setMemberRemoteHydrated(false);
+    clearMemberSessionCaches();
   }
 
   function resetAllData() {
@@ -1718,6 +1732,8 @@ export function useAppState() {
     setIsLocalDemoSession(false);
     setRemoteTrainerPeriodPlansByMemberId({});
     setRemoteMemberPeriodPlanRows([]);
+    setMemberRemoteHydrated(false);
+    clearMemberSessionCaches();
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
     }
@@ -2405,5 +2421,6 @@ export function useAppState() {
     restoreOriginalExerciseBank,
     remoteTrainerPeriodPlansByMemberId,
     remoteMemberPeriodPlanRows,
+    memberRemoteHydrated,
   };
 }

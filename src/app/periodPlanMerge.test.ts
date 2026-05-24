@@ -6,6 +6,7 @@ import {
   findPeriodPlanAutoCompleteTargets,
   findPeriodPlanEntryForCalendarDate,
   findTodayPeriodPlanEntryInPlans,
+  resolveTodayPeriodPlanEntryForHome,
   isMemberOwnedPeriodPlan,
   normalizePeriodSchedulePlan,
   periodPlanEntryMatchesCompletedProgram,
@@ -108,6 +109,27 @@ describe("findTodayPeriodPlanEntryInPlans", () => {
     plan.startDate = "";
     const match = findTodayPeriodPlanEntryInPlans([plan], new Date(2026, 4, 20), {}, plan.id, 1, "wednesday");
     expect(match?.entry).toBe("Kondisjon");
+  });
+});
+
+describe("resolveTodayPeriodPlanEntryForHome", () => {
+  it("prefers newest plan with entry on today over older plan on the same date", () => {
+    const oldPlan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "Gammel styrke" } }]);
+    oldPlan.id = "old-plan";
+    oldPlan.startDate = "2026-05-18";
+
+    const newPlan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "Ny styrke" } }]);
+    newPlan.id = "new-plan";
+    newPlan.startDate = "2026-05-18";
+
+    const match = resolveTodayPeriodPlanEntryForHome(
+      [newPlan, oldPlan],
+      new Date(2026, 4, 18),
+      {},
+      "monday",
+    );
+    expect(match?.plan.id).toBe("new-plan");
+    expect(match?.entry).toBe("Ny styrke");
   });
 });
 

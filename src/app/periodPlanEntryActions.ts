@@ -133,3 +133,17 @@ export function resolvePeriodPlanEntryAction(
   }
   return { kind: "log-generic", title: trimmed };
 }
+
+/** Kort etikett i periodeplan-listen — full øktinfo vises først ved trykk inn. */
+export function getPeriodPlanDayListLabel(entry: string, action: PeriodPlanEntryAction): string {
+  const trimmed = entry.trim();
+  if (!trimmed) return "Ingen plan";
+  if (action.kind === "log-group") return "Gruppetime";
+  if (action.kind === "start-program") return "Økt planlagt";
+  if (action.kind === "log-generic") return "Planlagt aktivitet";
+  const normalized = trimmed.toLowerCase();
+  if (normalized.includes("aktiv restitusjon")) return "Aktiv restitusjon";
+  if (normalized.includes("hvile")) return "Hvile";
+  if (normalized.includes("ingen plan")) return "Ingen plan";
+  return "Hviledag";
+}

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, CalendarOff, Check, Eye, Play, Users, X } from "lucide-react";
+import { ArrowLeftRight, CalendarOff, Check, ChevronRight, Users, X } from "lucide-react";
 import { MOTUS } from "../app/data";
 import {
   findProgramForPeriodPlanEntry,
+  getPeriodPlanDayListLabel,
   isPeriodPlanEntryDateInFuture,
   resolvePeriodPlanEntryAction,
 } from "../app/periodPlanEntryActions";
@@ -70,6 +71,7 @@ export function PeriodPlanWeekView({
   const effectiveDays = applyPeriodPlanSwaps(week.days, weekSwaps);
   const [swapFromDay, setSwapFromDay] = useState<WeekdayPlanKey | null>(null);
   const [previewProgram, setPreviewProgram] = useState<TrainingProgram | null>(null);
+  const [previewCanStart, setPreviewCanStart] = useState(false);
   const [pendingOverwriteMove, setPendingOverwriteMove] = useState<{
     dayA: WeekdayPlanKey;
     dayB: WeekdayPlanKey;
@@ -80,7 +82,18 @@ export function PeriodPlanWeekView({
     setSwapFromDay(null);
     setPendingOverwriteMove(null);
     setPreviewProgram(null);
+    setPreviewCanStart(false);
   }, [plan.id, week.weekNumber]);
+
+  function openProgramPreview(program: TrainingProgram, canStart: boolean) {
+    setPreviewProgram(program);
+    setPreviewCanStart(canStart);
+  }
+
+  function closeProgramPreview() {
+    setPreviewProgram(null);
+    setPreviewCanStart(false);
+  }
 
   function handleSwapButtonClick(dayKey: WeekdayPlanKey) {
     if (swapFromDay && swapFromDay !== dayKey) {
@@ -139,7 +152,7 @@ export function PeriodPlanWeekView({
         <div className="mx-3 mt-3 rounded-lg border motus-brand-surface px-3 py-2 text-xs font-medium text-emerald-900 sm:mx-4">{actionStatus}</div>
       ) : null}
 
-      <div className="grid gap-2.5 p-3 sm:grid-cols-2 sm:gap-3 sm:p-4">
+      <div className="grid gap-2 p-3 sm:p-4">
         {WEEKDAY_PLAN_ORDER.map((dayKey) => {
           const dayLabel = WEEKDAY_PLAN_LABELS[dayKey];
           const entry = effectiveDays[dayKey]?.trim() ?? "";
@@ -147,10 +160,14 @@ export function PeriodPlanWeekView({
           const plannedDate = resolveEntryDate(plan, week.weekNumber, dayKey);
           const entryAction = entry ? resolvePeriodPlanEntryAction(entry, memberPrograms) : { kind: "none" as const };
           const previewProgramForEntry = entry ? findProgramForPeriodPlanEntry(entry, memberPrograms) : null;
+          const listLabel = getPeriodPlanDayListLabel(entry, entryAction);
           const completed = isEntryCompleted(plan.id, week.weekNumber, dayKey);
           const isFutureDate = isPeriodPlanEntryDateInFuture(plannedDate);
           const canMarkCompleted = completed || !isFutureDate;
           const isSwapSource = swapFromDay === dayKey;
+          const canOpenPreview = Boolean(previewProgramForEntry);
+          const canStartFromPreview =
+            canOpenPreview && !completed && entryAction.kind === "start-program" && !isFutureDate;
 
           return (
             <div
@@ -163,11 +180,23 @@ export function PeriodPlanWeekView({
                     : "border-slate-200/90 bg-white hover:border-teal-200"
               }`}
             >
-              <div className="flex items-start gap-2 p-2.5 sm:p-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+              <div className="flex items-stretch">
+                <button
+                  type="button"
+                  disabled={!canOpenPreview}
+                  onClick={() => {
+                    if (previewProgramForEntry) {
+                      openProgramPreview(previewProgramForEntry, canStartFromPreview);
+                    }
+                  }}
+                  className={`min-w-0 flex-1 p-3 text-left transition ${
+                    canOpenPreview ? "hover:bg-slate-50/80" : "cursor-default"
+                  }`}
+                  aria-label={canOpenPreview ? `Se økt for ${dayLabel}` : undefined}
+                >
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ${
+                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ${
                         completed
                           ? "bg-emerald-100 text-emerald-900 ring-teal-200/80"
                           : "bg-teal-50 text-teal-900 ring-teal-100"
@@ -176,37 +205,26 @@ export function PeriodPlanWeekView({
                       {dayLabel}
                     </span>
                     {completed ? (
-                      <span className="inline-flex items-center gap-0.5 rounded-full bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-teal-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
                         <Check className="h-3 w-3" aria-hidden />
                         Fullført
                       </span>
                     ) : null}
-                    {plannedDate ? <span className="text-[11px] text-slate-400">{plannedDate}</span> : null}
+                    {plannedDate ? <span className="text-xs text-slate-400">{plannedDate}</span> : null}
                   </div>
-                  {entry ? (
-                    <p className={`mt-1.5 text-sm leading-snug ${completed ? "text-slate-600" : "font-medium text-slate-900"}`}>{entry}</p>
-                  ) : (
-                    <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400">
-                      <CalendarOff className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                      Ingen plan
-                    </p>
-                  )}
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <p className={`text-sm ${completed ? "text-slate-600" : "font-medium text-slate-800"}`}>{listLabel}</p>
+                    {canOpenPreview ? (
+                      <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                    ) : !entry ? (
+                      <CalendarOff className="h-4 w-4 shrink-0 text-slate-300" aria-hidden />
+                    ) : null}
+                  </div>
                   {sourceDay ? (
-                    <p className="mt-1 text-[11px] font-medium text-slate-500">Flyttet fra {WEEKDAY_PLAN_LABELS[sourceDay].toLowerCase()}</p>
+                    <p className="mt-1.5 text-xs text-slate-500">Flyttet fra {WEEKDAY_PLAN_LABELS[sourceDay].toLowerCase()}</p>
                   ) : null}
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  {previewProgramForEntry ? (
-                    <button
-                      type="button"
-                      onClick={() => setPreviewProgram(previewProgramForEntry)}
-                      className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-500 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-800"
-                      aria-label={`Se økt for ${dayLabel}`}
-                      title="Se økt"
-                    >
-                      <Eye className="h-3.5 w-3.5" aria-hidden />
-                    </button>
-                  ) : null}
+                </button>
+                <div className="flex shrink-0 flex-col justify-start gap-1 border-l border-slate-100/90 p-2">
                   {entry ? (
                     <button
                       type="button"
@@ -221,7 +239,7 @@ export function PeriodPlanWeekView({
                           plannedDate,
                         });
                       }}
-                      className={`rounded-lg border p-1.5 transition ${
+                      className={`rounded-lg border p-2 transition ${
                         completed
                           ? "border-transparent text-white shadow-sm"
                           : canMarkCompleted
@@ -240,13 +258,13 @@ export function PeriodPlanWeekView({
                         completed ? "Angre fullført" : isFutureDate ? "Kan ikke markeres før planlagt dato" : "Marker fullført"
                       }
                     >
-                      <Check className="h-3.5 w-3.5" strokeWidth={completed ? 3 : 2.25} aria-hidden />
+                      <Check className="h-4 w-4" strokeWidth={completed ? 3 : 2.25} aria-hidden />
                     </button>
                   ) : null}
                   <button
                     type="button"
                     onClick={() => handleSwapButtonClick(dayKey)}
-                    className={`rounded-lg border p-1.5 transition ${
+                    className={`rounded-lg border p-2 transition ${
                       isSwapSource
                         ? "border-transparent text-white shadow-sm"
                         : "border-slate-200 bg-white text-slate-500 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-900"
@@ -262,7 +280,7 @@ export function PeriodPlanWeekView({
                     aria-expanded={isSwapSource}
                     title={isSwapSource ? "Avbryt" : swapFromDay ? "Fullfør bytte" : "Bytt dag"}
                   >
-                    <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden />
+                    <ArrowLeftRight className="h-4 w-4" aria-hidden />
                   </button>
                 </div>
               </div>
@@ -297,36 +315,24 @@ export function PeriodPlanWeekView({
                 </div>
               ) : null}
 
-              {entry && !completed && (entryAction.kind === "start-program" || entryAction.kind === "log-group") ? (
-                <div className="flex flex-wrap gap-1.5 border-t border-slate-100/80 px-2.5 pb-2.5 pt-2 sm:px-3">
-                  {entryAction.kind === "start-program" ? (
-                    <GradientButton
-                      type="button"
-                      onClick={() => onStartProgram(entryAction.program.id)}
-                      className="!min-h-8 flex-1 !px-2.5 !py-1.5 !text-[11px] shadow-sm"
-                    >
-                      <Play className="mr-1 inline h-3 w-3" aria-hidden />
-                      Start økt
-                    </GradientButton>
-                  ) : null}
-                  {entryAction.kind === "log-group" ? (
-                    <OutlineButton
-                      type="button"
-                      onClick={() =>
-                        onLogGroup({
-                          entry,
-                          plannedDate,
-                          planId: plan.id,
-                          weekNumber: week.weekNumber,
-                          day: dayKey,
-                        })
-                      }
-                      className="!min-h-8 flex-1 !px-2.5 !py-1.5 !text-[11px]"
-                    >
-                      <Users className="mr-1 inline h-3 w-3" aria-hidden />
-                      Logg gruppetime
-                    </OutlineButton>
-                  ) : null}
+              {entry && !completed && entryAction.kind === "log-group" ? (
+                <div className="border-t border-slate-100/80 px-3 pb-3 pt-2">
+                  <OutlineButton
+                    type="button"
+                    onClick={() =>
+                      onLogGroup({
+                        entry,
+                        plannedDate,
+                        planId: plan.id,
+                        weekNumber: week.weekNumber,
+                        day: dayKey,
+                      })
+                    }
+                    className="w-full !min-h-9 !text-xs"
+                  >
+                    <Users className="mr-1 inline h-3.5 w-3.5" aria-hidden />
+                    Logg gruppetime
+                  </OutlineButton>
                 </div>
               ) : null}
             </div>
@@ -337,8 +343,19 @@ export function PeriodPlanWeekView({
       <TrainingProgramPreviewModal
         program={previewProgram}
         open={previewProgram !== null}
-        onClose={() => setPreviewProgram(null)}
+        onClose={closeProgramPreview}
         exerciseLibrary={exerciseLibrary}
+        primaryAction={
+          previewCanStart && previewProgram
+            ? {
+                label: "Start økt",
+                onClick: () => {
+                  onStartProgram(previewProgram.id);
+                  closeProgramPreview();
+                },
+              }
+            : undefined
+        }
       />
 
       {pendingOverwriteMove ? (

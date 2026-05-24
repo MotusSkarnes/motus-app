@@ -177,6 +177,46 @@ export function findTodayPeriodPlanEntryInPlans(
   return null;
 }
 
+/**
+ * Dagens økt for hjemskjerm / Start økt: nyeste synlige plan med treff på dato vinner,
+ * uavhengig av manuelt valgt aktiv plan (unngår at gammel plan styrer når trener har lagt ut ny).
+ * `plans` bør være sortert med nyeste startdato først.
+ */
+export function resolveTodayPeriodPlanEntryForHome(
+  plans: PeriodSchedulePlan[],
+  targetDate: Date,
+  swapsByPlan: PeriodPlanSwapsByPlan = {},
+  calendarWeekdayKey?: WeekdayPlanKey,
+): PeriodPlanDayEntryMatchWithPlan | null {
+  if (!plans.length) return null;
+
+  for (const plan of plans) {
+    const match = findPeriodPlanEntryForCalendarDate(plan, targetDate, swapsByPlan);
+    if (match?.entry.trim()) {
+      return { plan, ...match };
+    }
+  }
+
+  if (!calendarWeekdayKey) return null;
+
+  for (const plan of plans) {
+    const weekNumber = resolvePeriodPlanWeekNumberForDate(plan, targetDate);
+    const week = resolvePeriodPlanWeek(plan, weekNumber);
+    if (!week) continue;
+    const start = parsePeriodPlanStartDate(plan);
+    const swaps = getSwapsForWeek(swapsByPlan, plan.id, week.weekNumber);
+    const effective = applyPeriodPlanSwaps(week.days, swaps);
+    const dayFromStart = start ? periodPlanWeekdayKeyForDate(start, targetDate) : null;
+    const day = dayFromStart ?? calendarWeekdayKey;
+    const entry = effective[day]?.trim() ?? "";
+    if (entry) {
+      return { plan, entry, weekNumber: week.weekNumber, day };
+    }
+  }
+
+  return null;
+}
+
 export type PeriodPlanAutoCompleteTarget = {
   planId: string;
   weekNumber: number;

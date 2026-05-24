@@ -2,7 +2,7 @@ import { X } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "../app/exerciseCategories";
 import { isLegacyIntervalCooldownDrag } from "../app/programBlocks";
-import { EmptyState, OutlineButton } from "../app/ui";
+import { GradientButton, OutlineButton } from "../app/ui";
 import type { Exercise, ProgramExercise, TrainingProgram } from "../app/types";
 
 const MOTUS_GRADIENT = `linear-gradient(135deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`;
@@ -40,9 +40,19 @@ type TrainingProgramPreviewModalProps = {
   open: boolean;
   onClose: () => void;
   exerciseLibrary: Exercise[];
+  primaryAction?: {
+    label: string;
+    onClick: () => void;
+  };
 };
 
-export function TrainingProgramPreviewModal({ program, open, onClose, exerciseLibrary }: TrainingProgramPreviewModalProps) {
+export function TrainingProgramPreviewModal({
+  program,
+  open,
+  onClose,
+  exerciseLibrary,
+  primaryAction,
+}: TrainingProgramPreviewModalProps) {
   if (!open || !program) return null;
 
   const safeExercises = Array.isArray(program.exercises) ? program.exercises : [];
@@ -108,7 +118,12 @@ export function TrainingProgramPreviewModal({ program, open, onClose, exerciseLi
             </ol>
           )}
         </div>
-        <div className="shrink-0 border-t px-4 py-3 sm:px-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+        <div className="shrink-0 space-y-2 border-t px-4 py-3 sm:px-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          {primaryAction ? (
+            <GradientButton type="button" className="w-full" onClick={primaryAction.onClick}>
+              {primaryAction.label}
+            </GradientButton>
+          ) : null}
           <OutlineButton type="button" className="w-full" onClick={onClose}>
             Lukk
           </OutlineButton>

@@ -36,7 +36,13 @@ import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
 import { memberBadgeImageSrc } from "../app/badgeAssets";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
-import { programHasCustomCoverImage, resolveGroupWorkoutCoverImage, resolveProgramImageSrc } from "../app/programImage";
+import { programHasCustomCoverImage, resolveGroupWorkoutCoverImage, resolveProgramImageSrc, resolveRestDayCoverImage } from "../app/programImage";
+import {
+  memberLocalDateKey,
+  readMemberHomeWorkoutSnapshot,
+  writeMemberHomeWorkoutSnapshot,
+} from "../app/memberSessionCache";
+import { isSupabaseConfigured } from "../services/supabaseClient";
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "../app/exerciseCategories";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import {
@@ -97,6 +103,7 @@ import {
   findProgramForPeriodPlanEntry,
   groupWorkoutLogTitle,
   isGroupPeriodPlanEntry,
+  isPassivePeriodPlanEntry,
   isPeriodPlanEntryDateInFuture,
   resolveGroupClassNameFromPeriodEntry,
   resolvePeriodPlanEntryAction,
@@ -119,6 +126,7 @@ import {
   parsePeriodPlanStartDate,
   resolvePeriodPlanPlannedDate,
   resolvePeriodPlanWeek,
+  resolveTodayPeriodPlanEntryForHome,
   writeHiddenPeriodPlanIdsForMembers,
 } from "../app/periodPlanMerge";
 import {
@@ -282,6 +290,9 @@ type MemberPortalProps = {
   clearMemberFocusProgramId?: () => void;
   /** Periodeplaner fra Supabase (hydrate-member-data). */
   remoteMemberPeriodPlanRows?: Array<{ memberId: string; plan: PeriodSchedulePlan }>;
+  /** Første sky-hydrate for medlem er ferdig — unngår feil «Dagens økt» under lasting. */
+  memberRemoteHydrated?: boolean;
+  isLocalDemoSession?: boolean;
   /** Etter lagring: kjør hydrate fra Supabase (persist er asynk) */
   refreshRemoteHydration?: () => void | Promise<void>;
   onOpenMonthlyCheckIn?: () => void;
@@ -934,6 +945,8 @@ export function MemberPortal(props: MemberPortalProps) {
     memberFocusProgramId = null,
     clearMemberFocusProgramId,
     remoteMemberPeriodPlanRows = EMPTY_REMOTE_PERIOD_PLAN_ROWS,
+    memberRemoteHydrated = true,
+    isLocalDemoSession = false,
     refreshRemoteHydration,
     onOpenMonthlyCheckIn,
     onOpenOnboarding,
@@ -1272,6 +1285,22 @@ export function MemberPortal(props: MemberPortalProps) {
   const hiddenPeriodPlans = useMemo(
     () => periodPlans.filter((plan) => hiddenPeriodPlanIds.includes(plan.id)),
     [periodPlans, hiddenPeriodPlanIds],
+  );
+  const homeWorkoutHydrationPending =
+    currentUserRole === "member" && isSupabaseConfigured && !memberRemoteHydrated && !isLocalDemoSession;
+  const todayDateKey = useMemo(() => memberLocalDateKey(new Date(nowTimestamp)), [nowTimestamp]);
+  const cachedHomeWorkout = useMemo(() => {
+    const cached = readMemberHomeWorkoutSnapshot();
+    return cached?.dateKey === todayDateKey ? cached : null;
+  }, [todayDateKey]);
+  const periodPlansForHome = useMemo(() => {
+    if (!homeWorkoutHydrationPending) return periodPlans;
+    const remoteOnly = mergedPeriodPlanListForMember(relatedMemberIds, {}, remoteMemberPeriodPlanRows);
+    return remoteOnly.sort((a, b) => (parseDateOnly(b.startDate)?.getTime() ?? 0) - (parseDateOnly(a.startDate)?.getTime() ?? 0));
+  }, [homeWorkoutHydrationPending, periodPlans, relatedMemberIds, remoteMemberPeriodPlanRows]);
+  const visiblePeriodPlansForHome = useMemo(
+    () => periodPlansForHome.filter((plan) => !hiddenPeriodPlanIds.includes(plan.id)),
+    [periodPlansForHome, hiddenPeriodPlanIds],
   );
   const memberHasVisiblePeriodPlan = visiblePeriodPlans.length > 0;
   const selectActiveMemberPeriodPlan = useCallback(
@@ -1674,15 +1703,22 @@ export function MemberPortal(props: MemberPortalProps) {
     return resolvePeriodPlanWeek(activePeriodPlan, activePeriodWeekIndex + 1);
   }, [activePeriodPlan, activePeriodWeekIndex]);
   const todayPeriodPlanMatch = useMemo(() => {
-    if (!activePeriodPlan) return null;
-    const match = findPeriodPlanEntryForCalendarDate(
-      activePeriodPlan,
+    const plansForToday = homeWorkoutHydrationPending ? visiblePeriodPlansForHome : visiblePeriodPlans;
+    if (!plansForToday.length) return null;
+    return resolveTodayPeriodPlanEntryForHome(
+      plansForToday,
       getStartOfDay(new Date(nowTimestamp)),
       periodPlanSwapsByPlan,
+      currentWeekdayKey,
     );
-    if (!match?.entry.trim()) return null;
-    return { plan: activePeriodPlan, ...match };
-  }, [activePeriodPlan, nowTimestamp, periodPlanSwapsByPlan]);
+  }, [
+    homeWorkoutHydrationPending,
+    visiblePeriodPlansForHome,
+    visiblePeriodPlans,
+    nowTimestamp,
+    periodPlanSwapsByPlan,
+    currentWeekdayKey,
+  ]);
   const todayPlanPeriodPlan = todayPeriodPlanMatch?.plan ?? activePeriodPlan;
   const todayPlanDayKey = todayPeriodPlanMatch?.day ?? null;
   const displayedPeriodWeek = useMemo(() => {
@@ -1701,6 +1737,7 @@ export function MemberPortal(props: MemberPortalProps) {
     return applyPeriodPlanSwaps(activeWeeklyPlan.days, swaps);
   }, [activeWeeklyPlan, activePeriodPlan, periodPlanSwapsByPlan]);
   const todayPlanEntry = todayPeriodPlanMatch?.entry?.trim() ?? "";
+  const todayPlanIsPassiveDay = isPassivePeriodPlanEntry(todayPlanEntry);
   const todayPlanAction = useMemo(() => {
     if (!todayPlanEntry) return { kind: "none" as const };
     const resolved = resolvePeriodPlanEntryAction(todayPlanEntry, memberProgramsForPeriodPlan);
@@ -2569,6 +2606,19 @@ export function MemberPortal(props: MemberPortalProps) {
       return weekExists ? prev : calendarWeekNumber;
     });
   }, [activePeriodPlanId, activePeriodSelectableWeekCount, activePeriodPlan, nowTimestamp]);
+
+  useEffect(() => {
+    const planId = todayPeriodPlanMatch?.plan.id;
+    if (!planId || homeWorkoutHydrationPending) return;
+    if (planId === effectiveActiveMemberPeriodPlanId) return;
+    setActiveMemberPeriodPlanId(planId);
+    writeActivePeriodPlanIdForMembers(relatedMemberIds, planId);
+  }, [
+    todayPeriodPlanMatch?.plan.id,
+    effectiveActiveMemberPeriodPlanId,
+    relatedMemberIds,
+    homeWorkoutHydrationPending,
+  ]);
 
   useEffect(() => {
     if (!profileSaveInfo) return;
@@ -3719,6 +3769,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const homeFirstName = firstNameFromDisplayName(memberShareDisplayName);
   const homeMomentumPct = memberProgressScores.momentum.pct;
   const homeWorkoutProgram = useMemo(() => {
+    if (homeWorkoutHydrationPending) return null;
     if (todayPlanAction.kind === "start-program") return todayPlanAction.program;
     if (todayPlanEntry.trim()) {
       return findProgramForPeriodPlanEntry(todayPlanEntry, memberPrograms) ?? null;
@@ -3726,7 +3777,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (memberHasVisiblePeriodPlan) return null;
     if (nextProgram) return nextProgram;
     return null;
-  }, [todayPlanAction, todayPlanEntry, memberPrograms, nextProgram, memberHasVisiblePeriodPlan]);
+  }, [homeWorkoutHydrationPending, todayPlanAction, todayPlanEntry, memberPrograms, nextProgram, memberHasVisiblePeriodPlan]);
   const homePrimaryFocus = useMemo(() => {
     if (todayPlanEntry && homeWorkoutProgram?.title && todayPlanEntry !== homeWorkoutProgram.title) {
       return `${homeWorkoutProgram.title} · ${todayPlanEntry}`;
@@ -3739,12 +3790,29 @@ export function MemberPortal(props: MemberPortalProps) {
     return `${minutes} min`;
   }, [homeWorkoutProgram]);
   const homeWorkoutCoverSrc = useMemo(() => {
+    if (todayPlanIsPassiveDay) {
+      return resolveRestDayCoverImage();
+    }
     if (todayPlanAction.kind === "log-group") {
       return resolveGroupWorkoutCoverImage(todayPlanAction.className);
     }
     if (!homeWorkoutProgram) return null;
     return resolveProgramImageSrc(homeWorkoutProgram, homeWorkoutProgram.exercises[0] ?? null);
-  }, [homeWorkoutProgram, todayPlanAction]);
+  }, [homeWorkoutProgram, todayPlanAction, todayPlanIsPassiveDay]);
+  const homeDisplayTitle = useMemo(() => {
+    if (homeWorkoutHydrationPending) {
+      return cachedHomeWorkout?.title ?? "";
+    }
+    return homePrimaryFocus;
+  }, [homeWorkoutHydrationPending, cachedHomeWorkout, homePrimaryFocus]);
+  const homeDisplayLoading = homeWorkoutHydrationPending && !cachedHomeWorkout?.title;
+  const homeDisplayCoverSrc = useMemo(() => {
+    if (homeWorkoutHydrationPending) {
+      if (cachedHomeWorkout?.isPassiveDay) return resolveRestDayCoverImage();
+      return cachedHomeWorkout?.imageSrc ?? null;
+    }
+    return homeWorkoutCoverSrc;
+  }, [homeWorkoutHydrationPending, cachedHomeWorkout, homeWorkoutCoverSrc]);
   const homeWorkoutZoneLabel = useMemo(
     () => (todayPlanEntry ? extractZoneFromPlanEntry(todayPlanEntry) : null),
     [todayPlanEntry],
@@ -3826,6 +3894,20 @@ export function MemberPortal(props: MemberPortalProps) {
     if (goal) return goal;
     return null;
   }, [homeWorkoutProgram?.goal]);
+  const homeDisplayDuration = homeWorkoutHydrationPending ? null : homeWorkoutDuration;
+  const homeDisplayZoneLabel = homeWorkoutHydrationPending ? null : homeWorkoutZoneLabel;
+  const homeDisplaySubtitle = homeWorkoutHydrationPending ? null : homeWorkoutSubtitle;
+
+  useEffect(() => {
+    if (homeWorkoutHydrationPending || !homePrimaryFocus.trim()) return;
+    writeMemberHomeWorkoutSnapshot({
+      dateKey: todayDateKey,
+      title: homePrimaryFocus,
+      imageSrc: homeWorkoutCoverSrc,
+      isPassiveDay: todayPlanIsPassiveDay,
+    });
+  }, [homeWorkoutHydrationPending, homePrimaryFocus, homeWorkoutCoverSrc, todayPlanIsPassiveDay, todayDateKey]);
+
   const homeMotivationLine =
     homeWeeklySummary.completedThisWeek > 0
       ? "Litt bedre hver dag gir store resultater over tid."
@@ -3859,13 +3941,24 @@ export function MemberPortal(props: MemberPortalProps) {
     memberNotificationPrefs?.seenMemberProgramIds,
     persistMemberUiPrefs,
   ]);
+  const homePeriodPlanWeeklyDays = useMemo(() => {
+    const plan = todayPeriodPlanMatch?.plan ?? activePeriodPlan;
+    if (!plan) return null;
+    const weekNumber =
+      todayPeriodPlanMatch?.weekNumber ??
+      (activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : 1);
+    const week = resolvePeriodPlanWeek(plan, weekNumber);
+    if (!week) return null;
+    const swaps = getSwapsForWeek(periodPlanSwapsByPlan, plan.id, week.weekNumber);
+    return applyPeriodPlanSwaps(week.days, swaps);
+  }, [todayPeriodPlanMatch, activePeriodPlan, activePeriodWeekIndex, periodPlanSwapsByPlan]);
   let nextPlannedWorkout: { dayLabel: string; entry: string } | null = null;
-  if (activeWeeklyPlanEffectiveDays && todayPlanDayKey) {
+  if (homePeriodPlanWeeklyDays && todayPlanDayKey) {
     const todayIndex = WEEKDAY_PLAN_ORDER.indexOf(todayPlanDayKey);
     for (let step = 1; step <= 7; step += 1) {
       const index = (todayIndex + step) % 7;
       const dayKey = WEEKDAY_PLAN_ORDER[index];
-      const entry = activeWeeklyPlanEffectiveDays[dayKey]?.trim();
+      const entry = homePeriodPlanWeeklyDays[dayKey]?.trim();
       if (!entry) continue;
       nextPlannedWorkout = { dayLabel: WEEKDAY_PLAN_LABELS[dayKey], entry };
       break;
@@ -4611,16 +4704,17 @@ export function MemberPortal(props: MemberPortalProps) {
                 dashboardHeadline={homeDashboardHeadline}
                 dashboardSubline={homeDashboardSubline}
                 momentumPct={homeMomentumPct}
-                dailyGoalLabel={homeWorkoutDuration}
+                dailyGoalLabel={homeDisplayDuration}
                 weekSessionsLabel={homeWeekSessionsLabel}
                 weekMinutesLabel={homeWeekMinutesLabel}
                 motivationLine={homeMotivationLine}
                 statusCard={homeStatusCard}
-                workoutTitle={homePrimaryFocus}
-                workoutSubtitle={homeWorkoutSubtitle}
-                workoutDuration={homeWorkoutDuration}
-                workoutImageSrc={homeWorkoutCoverSrc}
-                workoutZoneLabel={homeWorkoutZoneLabel}
+                workoutTitle={homeDisplayTitle}
+                workoutTitleLoading={homeDisplayLoading}
+                workoutSubtitle={homeDisplaySubtitle}
+                workoutDuration={homeDisplayDuration}
+                workoutImageSrc={homeDisplayCoverSrc}
+                workoutZoneLabel={homeDisplayZoneLabel}
                 quickActions={{
                   onLogWorkout: () => {
                     setMemberTab("programs");
@@ -4673,7 +4767,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     >
                       {todayPeriodPlanCompleted ? "Dagens økt er logget" : "Logg dagens økt"}
                     </GradientButton>
-                  ) : nextProgram ? (
+                  ) : todayPlanIsPassiveDay ? null : homeWorkoutHydrationPending ? null : nextProgram ? (
                     <MemberHomeStartWorkoutButton
                       label="Start økt"
                       onClick={() => startWorkoutMode(nextProgram.id, buildStartWorkoutOptions(nextProgram))}
