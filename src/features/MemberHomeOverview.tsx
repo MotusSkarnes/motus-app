@@ -379,7 +379,7 @@ export function MemberHomeCompactPrompt({
 export function MemberHomeStartWorkoutButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <TrainingStartButton type="button" onClick={onClick} className="motus-home-start-btn w-full">
-      <Play className="h-4 w-4 fill-slate-900/80" aria-hidden />
+      <Play className="h-3.5 w-3.5 fill-white text-white" aria-hidden />
       {label}
     </TrainingStartButton>
   );

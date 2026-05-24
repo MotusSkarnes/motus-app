@@ -5469,8 +5469,8 @@ export function MemberPortal(props: MemberPortalProps) {
 	                              <span className="motus-member-program-progress-label">{programProgressPct}% fullført</span>
 	                            </div>
 	                            <div className="motus-member-program-actions">
-	                            <GradientButton
-	                              className="motus-member-program-start !text-sm"
+	                            <TrainingStartButton
+	                              className="motus-member-program-start"
 	                              onClick={() => {
 	                                if (intervalProgramIdSet.has(program.id)) {
 	                                  openIntervalTimerModal(program.id);
@@ -5479,11 +5479,9 @@ export function MemberPortal(props: MemberPortalProps) {
 	                                startWorkoutMode(program.id, buildStartWorkoutOptions(program));
 	                              }}
 	                            >
-	                              <span className="inline-flex items-center justify-center gap-2">
-	                                <Play className="h-4 w-4" fill="currentColor" aria-hidden />
-	                                Start økt
-	                              </span>
-	                            </GradientButton>
+	                              <Play className="h-4 w-4 fill-white text-white" aria-hidden />
+	                              Start økt
+	                            </TrainingStartButton>
 	                              <div className="relative min-w-0" data-program-library-menu>
 	                                <OutlineButton
 	                                  type="button"
