@@ -11,7 +11,7 @@ export const MEDICAL_SKETCH = {
   equipment: "#94a3b8",
   wall: "#cbd5e1",
   floor: "#e2e8f0",
-  accentRehab: "#8b5cf6",
+  accentRehab: "#9333ea",
 } as const;
 
 export function medicalSketchSvg(inner: string, viewBox = "0 0 96 96"): string {

@@ -16,6 +16,7 @@ import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClear";
 import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { buildDeleteExerciseFromBankDialogCopy, findProgramsUsingBankExercise } from "../app/exerciseBankUsage";
+import { buildTrainerStatisticsData, type StatsPeriodPreset } from "../app/buildTrainerStatisticsData";
 import { computeExercisePopularityScores, isPopularExercise, isRecommendedExercise } from "../app/exerciseBankStats";
 import { muscleGroupChipClass } from "../app/customWorkoutBuilder";
 import { splitMuscleGroupLabel } from "./muscleSplitStats";
@@ -91,6 +92,7 @@ import {
 } from "./trainer-dashboard/buildCustomerDashboardData";
 import { TrainerPtDashboard, type TrainerListFilterTab, type TrainerPtListMember } from "./trainer-dashboard/TrainerPtDashboard";
 import { TrainerPtDetailPortal } from "./trainer-dashboard/TrainerPtDetailPortal";
+import { TrainerStatisticsView } from "./TrainerStatisticsView";
 import { TrainerExerciseBankView } from "./TrainerExerciseBankView";
 import { TrainerPeriodPlanCalendar } from "./TrainerPeriodPlanCalendar";
 import { TrainerProgramBuilderView } from "./TrainerProgramBuilderView";
@@ -735,6 +737,7 @@ function pickFirstName(value: unknown): string {
   const [trainerChatSendStatus, setTrainerChatSendStatus] = useState<string | null>(null);
   const [chatShareProgramPickerOpen, setChatShareProgramPickerOpen] = useState(false);
   const [ptListFilterTab, setPtListFilterTab] = useState<TrainerListFilterTab>("all");
+  const [statsPeriodPreset, setStatsPeriodPreset] = useState<StatsPeriodPreset>("30d");
   const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
   const [programsSubTab, setProgramsSubTab] = useState<TrainingSubTab>("strength");
   const [exerciseBankSubTab, setExerciseBankSubTab] = useState<ExerciseBankSubTab>("all");
@@ -3941,10 +3944,10 @@ function pickFirstName(value: unknown): string {
         activeMemberCount: activeMembers.length,
         newMembersThisWeek: countNewMembersThisWeek(activeMembers),
         programsThisWeek: countProgramsCreatedThisWeek(programs),
-        inspirationPostsMonth: countInspirationPostsThisMonth(inspirationItemsForHome.length),
+        inspirationPostsMonth: countInspirationPostsThisMonth(inspirationItemsForHome?.length ?? 0),
         averageProgressPct: computeAverageClientProgressPct(activeMembers, members, logs),
       }),
-    [activeMembers, members, logs, programs, inspirationItemsForHome.length],
+    [activeMembers, members, logs, programs, inspirationItemsForHome?.length],
   );
   const ptHomePlanItems = useMemo(() => {
     const membersById = new Map(members.map((member) => [member.id, member]));
@@ -3968,7 +3971,7 @@ function pickFirstName(value: unknown): string {
   const ptHomePopularContent = useMemo(
     () =>
       buildTrainerPtHomePopularContent(
-        inspirationItemsForHome.map((item) => ({
+        (inspirationItemsForHome ?? []).map((item) => ({
           id: item.id,
           title: item.title,
           createdAt: item.createdAt,
@@ -4077,6 +4080,20 @@ function pickFirstName(value: unknown): string {
       statusTone: priority.tone,
     }));
   }, [membersWithPriority, members, logs]);
+  const trainerStatisticsData = useMemo(
+    () =>
+      buildTrainerStatisticsData({
+        members: activeMembers,
+        allMembers: members,
+        logs,
+        programs,
+        exercises,
+        exercisePopularityScores,
+        periodPreset: statsPeriodPreset,
+        resolveAvatar: (member) => resolveMemberAvatarUrl(member) || null,
+      }),
+    [activeMembers, members, logs, programs, exercises, exercisePopularityScores, statsPeriodPreset],
+  );
   const trainerInsight = useMemo(() => {
     const atRisk = membersWithPriority.filter((item) => item.priority.tone === "red").length;
     return buildTrainerInsightText(atRisk, followUpCount);
@@ -4573,19 +4590,18 @@ function pickFirstName(value: unknown): string {
       )}
 
       {trainerTab === "statistics" ? (
-        <Card className="p-5 space-y-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">Statistikk</h2>
-            <p className="mt-1 text-sm text-slate-600">Oversikt over klienter, aktivitet og innhold.</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Aktive klienter" value={String(activeMembers.length)} />
-            <StatCard label="Økter logget" value={String(logs.length)} />
-            <StatCard label="Programmer" value={String(programs.filter((p) => p.memberId !== "__template__").length)} />
-            <StatCard label="Gj.sn. fremgang" value={`${computeAverageClientProgressPct(activeMembers, members, logs)}%`} />
-          </div>
-          <p className="text-sm text-slate-600">{trainerInsight.detail}</p>
-        </Card>
+        <TrainerStatisticsView
+          data={trainerStatisticsData}
+          periodPreset={statsPeriodPreset}
+          onPeriodPresetChange={setStatsPeriodPreset}
+          onOpenClient={(memberId) => {
+            setSelectedMemberId(memberId);
+            setTrainerTab("customers");
+          }}
+          onOpenCustomers={() => setTrainerTab("customers")}
+          onOpenPrograms={() => setTrainerTab("programs")}
+          onOpenExerciseBank={() => setTrainerTab("exerciseBank")}
+        />
       ) : null}
 
       {trainerTab === "settings" ? (

@@ -17,11 +17,10 @@ import {
 import {
   EXERCISE_BANK_TAB_OPTIONS,
   EXERCISE_CATEGORY_OPTIONS,
-  exerciseCategoryAccentColor,
+  exerciseCategoryTagClass,
   emptyExerciseBankMessage,
   type ExerciseBankSubTab,
 } from "../app/exerciseCategories";
-import { muscleGroupChipClass } from "../app/customWorkoutBuilder";
 import { isPopularExercise, isRecommendedExercise } from "../app/exerciseBankStats";
 import { splitMuscleGroupLabel } from "./muscleSplitStats";
 import { ExerciseBankBadges } from "./ExerciseBankListCard";
@@ -557,7 +556,7 @@ export function TrainerExerciseBankView({
               {displayedExercises.map((exercise) => {
                 const isFavorite = favoriteExerciseIds.includes(exercise.id);
                 const popularity = exercisePopularityScores.get(exercise.id) ?? 0;
-                const accent = exerciseCategoryAccentColor(exercise.category);
+                const categoryTagClass = exerciseCategoryTagClass(exercise.category);
                 const muscleParts = splitMuscleGroupLabel(exercise.group).slice(0, gridView ? 1 : 2);
                 const descriptionPreview = exercise.description.trim().slice(0, 120);
 
@@ -600,11 +599,11 @@ export function TrainerExerciseBankView({
                         <p className="motus-exbank-card-desc motus-exbank-card-desc--muted">Ingen beskrivelse ennå.</p>
                       )}
                       <div className="motus-exbank-card-tags">
-                        <span className="motus-exbank-tag motus-exbank-tag--category" style={{ borderColor: `${accent}55`, color: accent }}>
+                        <span className={`motus-exbank-tag motus-exbank-tag--category ${categoryTagClass}`}>
                           {exercise.category}
                         </span>
                         {muscleParts.map((part) => (
-                          <span key={part} className={`motus-exbank-tag ${muscleGroupChipClass(part)}`}>
+                          <span key={part} className="motus-exbank-tag motus-exbank-tag--muscle">
                             {part}
                           </span>
                         ))}

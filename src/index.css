@@ -7820,3 +7820,526 @@ button {
   font-weight: 800;
   color: #0f766e;
 }
+
+/* PT Statistikk dashboard — hvit bakgrunn, kort og grafer */
+.motus-trainer-stats {
+  padding: 0.25rem 0 1.5rem;
+}
+
+.motus-trainer-stats-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.motus-trainer-stats-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.motus-trainer-stats-subtitle {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.motus-trainer-stats-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.motus-trainer-stats-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  padding: 0.45rem 0.85rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.motus-trainer-stats-control select {
+  border: 0;
+  background: transparent;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+  outline: none;
+}
+
+.motus-trainer-stats-comparison {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.motus-trainer-stats-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .motus-trainer-stats-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .motus-trainer-stats-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .motus-trainer-stats-kpi-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.motus-trainer-stats-kpi-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  padding: 1rem 1rem 0.85rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+  min-height: 8.5rem;
+}
+
+.motus-trainer-stats-kpi-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.motus-trainer-stats-kpi-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.motus-trainer-stats-kpi-value {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.motus-trainer-stats-kpi-sub {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.motus-trainer-stats-kpi-visual {
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  min-height: 2.5rem;
+}
+
+.motus-trainer-stats-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  border-radius: 999px;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: rgba(148, 163, 184, 0.14);
+  color: #64748b;
+}
+
+.motus-trainer-stats-trend--positive {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.motus-trainer-stats-trend--negative {
+  background: rgba(244, 63, 94, 0.12);
+  color: #e11d48;
+}
+
+.motus-trainer-stats-sparkline {
+  width: 5.5rem;
+  height: 2.25rem;
+}
+
+.motus-trainer-stats-ring {
+  display: block;
+}
+
+.motus-trainer-stats-panel {
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  padding: 1.15rem 1.15rem 1rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.motus-trainer-stats-panel h3 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.motus-trainer-stats-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.motus-trainer-stats-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.motus-trainer-stats-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.motus-trainer-stats-legend i {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+}
+
+.motus-trainer-stats-activity-chart {
+  width: 100%;
+  height: auto;
+}
+
+.motus-trainer-stats-chart-axis {
+  font-size: 9px;
+  fill: #94a3b8;
+}
+
+.motus-trainer-stats-avatar {
+  display: flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.motus-trainer-stats-followup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.motus-trainer-stats-followup-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.65rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  background: #f8fafc;
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.motus-trainer-stats-followup-row:hover {
+  background: #f1f5f9;
+}
+
+.motus-trainer-stats-followup-name {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-trainer-stats-followup-reason {
+  display: block;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.motus-trainer-stats-risk {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.motus-trainer-stats-risk--high {
+  background: rgba(244, 63, 94, 0.12);
+  color: #e11d48;
+}
+
+.motus-trainer-stats-risk--medium {
+  background: rgba(245, 158, 11, 0.14);
+  color: #d97706;
+}
+
+.motus-trainer-stats-risk--low {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.motus-trainer-stats-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0d9488;
+}
+
+.motus-trainer-stats-link:hover {
+  color: #0f766e;
+}
+
+.motus-trainer-stats-empty {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.motus-trainer-stats-progress-list,
+.motus-trainer-stats-exercise-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.motus-trainer-stats-progress-row {
+  display: grid;
+  width: 100%;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.motus-trainer-stats-progress-name {
+  min-width: 3.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.motus-trainer-stats-progress-bar-wrap {
+  height: 0.45rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+  overflow: hidden;
+}
+
+.motus-trainer-stats-progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.motus-trainer-stats-progress-bar--positive {
+  background: linear-gradient(90deg, #10b981, #30e3be);
+}
+
+.motus-trainer-stats-progress-bar--negative {
+  background: linear-gradient(90deg, #f43f5e, #fb7185);
+}
+
+.motus-trainer-stats-progress-bar--neutral {
+  background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+}
+
+.motus-trainer-stats-progress-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.motus-trainer-stats-exercise-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.motus-trainer-stats-exercise-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #334155;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.motus-trainer-stats-exercise-bar-wrap {
+  height: 0.45rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+  overflow: hidden;
+}
+
+.motus-trainer-stats-exercise-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #30e3be, #0d9488);
+}
+
+.motus-trainer-stats-exercise-count {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.motus-trainer-stats-donut-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.motus-trainer-stats-donut-legend {
+  display: flex;
+  flex: 1;
+  min-width: 10rem;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: #475569;
+}
+
+.motus-trainer-stats-donut-legend li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.motus-trainer-stats-donut-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+}
+
+.motus-trainer-stats-donut-legend strong {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.motus-trainer-stats-empty-chart {
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.motus-trainer-stats-gamification-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+@media (min-width: 640px) {
+  .motus-trainer-stats-gamification-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.motus-trainer-stats-gamification-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  background: #f8fafc;
+  padding: 0.85rem;
+}
+
+.motus-trainer-stats-gamification-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.motus-trainer-stats-gamification-label {
+  font-size: 0.72rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.motus-trainer-stats-business-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .motus-trainer-stats-business-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.motus-trainer-stats-business-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  background: #f8fafc;
+  padding: 0.75rem;
+  min-height: 6.5rem;
+}
+
+.motus-trainer-stats-business-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.motus-trainer-stats-business-value {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.motus-trainer-stats-business-sub {
+  font-size: 0.65rem;
+  color: #94a3b8;
+}
+
+.motus-trainer-stats-footnote {
+  margin-top: 0.75rem;
+  font-size: 0.68rem;
+  color: #94a3b8;
+}

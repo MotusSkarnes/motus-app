@@ -1,9 +1,27 @@
 import { describe, expect, it } from "vitest";
 import {
+  exerciseCategoryAccentColor,
+  exerciseCategoryTagClass,
   normalizeProgramExerciseForCategory,
   programDraftUsesHoldFields,
   programExerciseHoldSeconds,
 } from "./exerciseCategories";
+import { MOTUS_COLORS } from "./designSystem";
+
+describe("exerciseCategory colors", () => {
+  it("uses Motus palette for category accents", () => {
+    expect(exerciseCategoryAccentColor("Styrke")).toBe("#0f766e");
+    expect(exerciseCategoryAccentColor("Kondisjon")).toBe(MOTUS_COLORS.pink);
+    expect(exerciseCategoryAccentColor("Mobilitet")).toBe("#0891b2");
+    expect(exerciseCategoryAccentColor("Rehab")).toBe("#9333ea");
+  });
+
+  it("maps categories to exbank tag classes", () => {
+    expect(exerciseCategoryTagClass("Styrke")).toBe("motus-exbank-tag--cat-styrke");
+    expect(exerciseCategoryTagClass("Kondisjon")).toBe("motus-exbank-tag--cat-kondisjon");
+    expect(exerciseCategoryTagClass("Uttøyning")).toBe("motus-exbank-tag--cat-uttoyning");
+  });
+});
 
 describe("exerciseCategories mobility prescription", () => {
   it("does not use weight field as hold seconds for Mobilitet", () => {

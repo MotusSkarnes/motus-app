@@ -1,4 +1,5 @@
 import type { Exercise, ProgramExercise } from "./types";
+import { MOTUS_COLORS } from "./designSystem";
 
 export type TrainingSubTab = "strength" | "conditioning" | "mobility" | "rehab";
 
@@ -119,11 +120,65 @@ export function countsTowardStrengthVolume(category?: Exercise["category"]): boo
   return category === "Styrke";
 }
 
+export type ExerciseCategoryTagTokens = {
+  accent: string;
+  background: string;
+  border: string;
+};
+
+/** Motus-tilpassede farger for øvelsestype (kategori). */
+export function exerciseCategoryTagTokens(category: Exercise["category"]): ExerciseCategoryTagTokens {
+  switch (category) {
+    case "Kondisjon":
+      return {
+        accent: MOTUS_COLORS.pink,
+        background: "rgba(217, 18, 120, 0.1)",
+        border: "rgba(217, 18, 120, 0.28)",
+      };
+    case "Rehab":
+      return {
+        accent: "#9333ea",
+        background: "rgba(147, 51, 234, 0.1)",
+        border: "rgba(147, 51, 234, 0.24)",
+      };
+    case "Mobilitet":
+      return {
+        accent: "#0891b2",
+        background: "rgba(8, 145, 178, 0.1)",
+        border: "rgba(8, 145, 178, 0.24)",
+      };
+    case "Uttøyning":
+      return {
+        accent: "#0e7490",
+        background: "rgba(14, 116, 144, 0.1)",
+        border: "rgba(14, 116, 144, 0.24)",
+      };
+    default:
+      return {
+        accent: "#0f766e",
+        background: "rgba(48, 227, 190, 0.12)",
+        border: "rgba(48, 227, 190, 0.32)",
+      };
+  }
+}
+
 export function exerciseCategoryAccentColor(category: Exercise["category"]): string {
-  if (category === "Kondisjon") return "#f97316";
-  if (category === "Rehab") return "#8b5cf6";
-  if (isHoldBasedExerciseCategory(category)) return "#0ea5e9";
-  return "#14b8a6";
+  return exerciseCategoryTagTokens(category).accent;
+}
+
+export function exerciseCategoryTagClass(category: Exercise["category"]): string {
+  switch (category) {
+    case "Kondisjon":
+      return "motus-exbank-tag--cat-kondisjon";
+    case "Rehab":
+      return "motus-exbank-tag--cat-rehab";
+    case "Mobilitet":
+      return "motus-exbank-tag--cat-mobilitet";
+    case "Uttøyning":
+      return "motus-exbank-tag--cat-uttoyning";
+    default:
+      return "motus-exbank-tag--cat-styrke";
+  }
 }
 
 export function programsBuilderTitle(subTab: TrainingSubTab): string {
