@@ -62,37 +62,15 @@ function rowBelongsToOwner(row: Record<string, unknown>, ownerUserId: string): b
   return String(row.owner_user_id ?? "").trim() === ownerUserId;
 }
 
-function buildSharedMedlemLookup(members: Array<Record<string, unknown>>): {
-  sharedMemberIds: Set<string>;
-  sharedMemberEmails: Set<string>;
-} {
-  const sharedMemberIds = new Set<string>();
-  const sharedMemberEmails = new Set<string>();
-  for (const row of members) {
-    if (!isSharedMember(row)) continue;
-    const id = String((row as { id?: string }).id ?? "").trim();
-    if (id) sharedMemberIds.add(id);
-    const email = normalizeEmail((row as { email?: string }).email);
-    if (email && email.includes("@")) sharedMemberEmails.add(email);
-  }
-  return { sharedMemberIds, sharedMemberEmails };
-}
-
-/** PT-kunde: kun egen owner. Medlem (delt): alle PT-er ser program på kunden. */
+/** Query is already limited to customer-related member_id values; include those rows regardless of owner_user_id. */
 function programRowVisibleToTrainer(
   row: Record<string, unknown>,
   ownerUserId: string,
-  sharedMemberIds: Set<string>,
-  sharedMemberEmails: Set<string>,
 ): boolean {
   if (rowBelongsToOwner(row, ownerUserId)) return true;
   const memberId = String((row as { member_id?: string }).member_id ?? "").trim();
   if (!memberId || memberId === "__template__") return false;
-  if (String((row as { program_created_by?: string }).program_created_by ?? "").trim() === "member") return true;
-  if (sharedMemberIds.has(memberId)) return true;
-  const memberIdLower = memberId.toLowerCase();
-  if (memberIdLower.includes("@") && sharedMemberEmails.has(memberIdLower)) return true;
-  return false;
+  return true;
 }
 
 function profileCanonicalScore(row: Record<string, unknown>): number {
@@ -378,7 +356,6 @@ Deno.serve(async (req) => {
         .filter((email) => email && email.includes("@")),
     ),
   );
-  const { sharedMemberIds, sharedMemberEmails } = buildSharedMedlemLookup(members ?? []);
   const programLookupMemberIds = new Set(visibleMemberIds);
   if (visibleMemberEmails.length > 0) {
     const { data: relatedEmailMembers, error: relatedEmailMembersError } = await adminClient
@@ -450,7 +427,7 @@ Deno.serve(async (req) => {
       .in("member_id", Array.from(programLookupMemberIds))
       .order("created_at", { ascending: false });
     programsByMember = ((data ?? []) as Array<Record<string, unknown>>).filter((row) =>
-      programRowVisibleToTrainer(row, ownerUserId, sharedMemberIds, sharedMemberEmails),
+      programRowVisibleToTrainer(row, ownerUserId),
     );
     programsByMemberError = error;
   }
