@@ -3940,7 +3940,7 @@ export function MemberPortal(props: MemberPortalProps) {
         },
       };
     }
-    return { title: "Alt er ajour", detail: "Plan og programmer er oppdatert" };
+    return null;
   }, [
     homeUnseenProgramCount,
     memberAssignedPrograms,
