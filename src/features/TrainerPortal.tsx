@@ -5415,16 +5415,18 @@ function pickFirstName(value: unknown): string {
                       </div>
                     </div>
 
-                    {customerProgramBuilderFocus === "training" ? (
                     <div className="rounded-xl border-2 border-slate-200 bg-white p-3 sm:p-4 space-y-2 shadow-sm">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="text-base font-semibold text-slate-900">Lagrede programmer</div>
+                        <div>
+                          <div className="text-base font-semibold text-slate-900">Lagrede treningsprogram</div>
+                          <div className="text-xs text-slate-500">På denne kunden</div>
+                        </div>
                         <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
                           {visibleSelectedPrograms.length}
                         </span>
                       </div>
                       {visibleSelectedPrograms.length === 0 ? (
-                        <p className="text-sm text-slate-500">Ingen lagret ennå – opprett under «Lag treningsprogram» lenger ned.</p>
+                        <p className="text-sm text-slate-500">Ingen lagrede treningsprogram på kunden ennå.</p>
                       ) : (
                         <div className="max-h-[min(360px,45vh)] space-y-2 overflow-auto pr-1">
                           {visibleSelectedPrograms.map((program) => (
@@ -5453,7 +5455,6 @@ function pickFirstName(value: unknown): string {
                         </div>
                       )}
                     </div>
-                    ) : null}
 
                     {customerProgramBuilderFocus === "period" ? (
                     <div className="rounded-xl border-2 border-teal-200/80 bg-white p-3 sm:p-5 space-y-4 shadow-sm">
