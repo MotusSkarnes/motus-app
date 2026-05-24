@@ -1133,6 +1133,40 @@ button {
   color: #94a3b8;
 }
 
+.motus-badges-home-motivation {
+  border-radius: 1rem;
+  border: 1px solid rgba(48, 227, 190, 0.22);
+  background: rgba(48, 227, 190, 0.08);
+  padding: 0.875rem 1rem;
+}
+
+.motus-badge-tile--celebrate .motus-badge-tile-art {
+  filter: drop-shadow(0 4px 12px rgba(48, 227, 190, 0.25));
+}
+
+.motus-badge-sparkle {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  color: #30e3be;
+  opacity: 0.85;
+}
+
+.motus-badge-sparkle--tl {
+  top: -0.35rem;
+  left: -0.2rem;
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.motus-badge-sparkle--br {
+  right: -0.15rem;
+  bottom: 0.15rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  color: #d91278;
+}
+
 .motus-badge-detail {
   padding-top: 0.5rem;
 }

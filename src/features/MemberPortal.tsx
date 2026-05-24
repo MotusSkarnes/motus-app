@@ -4966,14 +4966,11 @@ export function MemberPortal(props: MemberPortalProps) {
                   <div className="space-y-5">
                     {memberHomeScheduleSections}
                     {!isMemberLimited ? (
-                      <div>
-                        <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-slate-400">Merker</p>
-                        <MemberBadgesCarousel
-                          collection={memberBadgeCollection}
-                          memberDisplayName={memberShareDisplayName}
-                          shareLogoSrc={motusShareLogoSrc}
-                        />
-                      </div>
+                      <MemberBadgesCarousel
+                        collection={memberBadgeCollection}
+                        memberDisplayName={memberShareDisplayName}
+                        shareLogoSrc={motusShareLogoSrc}
+                      />
                     ) : null}
                   </div>
                 }

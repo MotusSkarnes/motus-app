@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { Award, Lock, Share2, Sparkles, Target, X } from "lucide-react";
+import { Award, Lock, Share2, Sparkles, Star, Target, X } from "lucide-react";
 import { memberBadgeImageSrc } from "../app/badgeAssets";
 import { BADGE_CAROUSEL_TRACK_SNAP_CLASS, BADGE_CAROUSEL_WRAPPER_CLASS, BADGE_CATEGORY_SCROLL_CLASS } from "../app/badgeImagePresentation";
 import { BadgeCarouselScroll } from "./BadgeCarouselScroll";
@@ -76,19 +76,34 @@ function LevelStep({ level, badge, active }: { level: MemberBadgeLevel; badge: M
   );
 }
 
-function BadgeTile({ badge, onSelect }: { badge: MemberBadge; onSelect: () => void }) {
+function BadgeTile({
+  badge,
+  onSelect,
+  celebrate = false,
+}: {
+  badge: MemberBadge;
+  onSelect: () => void;
+  celebrate?: boolean;
+}) {
   const level = LEVEL_STYLES[badge.level];
   const badgeImage = memberBadgeImageSrc(badge);
+  const showCelebrate = celebrate && badge.unlocked;
 
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`motus-badge-tile shrink-0 snap-start ${badge.unlocked ? "motus-badge-tile--unlocked" : "motus-badge-tile--locked"}`}
+      className={`motus-badge-tile shrink-0 snap-start ${badge.unlocked ? "motus-badge-tile--unlocked" : "motus-badge-tile--locked"} ${showCelebrate ? "motus-badge-tile--celebrate" : ""}`}
       style={badge.unlocked ? { boxShadow: `0 8px 20px ${level.fill}` } : undefined}
       aria-label={`${badge.title}${badge.unlocked ? `, ${badge.levelLabel}` : ", låst"}`}
     >
       <span className="motus-badge-tile-art">
+        {showCelebrate ? (
+          <>
+            <Sparkles className="motus-badge-sparkle motus-badge-sparkle--tl" aria-hidden />
+            <Sparkles className="motus-badge-sparkle motus-badge-sparkle--br" aria-hidden />
+          </>
+        ) : null}
         <BadgeImage src={badgeImage} size="tile" dimmed={!badge.unlocked} alt="" />
         {!badge.unlocked ? (
           <span className="motus-badge-tile-lock" aria-hidden>
@@ -278,10 +293,16 @@ function BadgeDetailModal({
   );
 }
 
-export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoSrc }: MemberBadgesCarouselProps) {
+function BadgeCatalogModal({
+  collection,
+  onClose,
+  onSelectBadge,
+}: {
+  collection: MemberBadgeCollection;
+  onClose: () => void;
+  onSelectBadge: (badge: MemberBadge) => void;
+}) {
   const [activeCategoryId, setActiveCategoryId] = useState<ActiveCategoryId>("all");
-  const [badgeShareStatus, setBadgeShareStatus] = useState<string | null>(null);
-  const [selectedBadge, setSelectedBadge] = useState<MemberBadge | null>(null);
 
   const menuItems = useMemo(
     () => [
@@ -296,35 +317,48 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
     return collection.categories.find((category) => category.id === activeCategoryId)?.badges ?? [];
   }, [activeCategoryId, collection.allBadges, collection.categories]);
 
-  if (!collection.totalCount) return null;
-
-  const overallPct = collection.totalLevels > 0 ? Math.round((collection.totalUnlockedLevels / collection.totalLevels) * 100) : 0;
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
 
   return (
-    <>
-      <section className="motus-badges-section motus-card min-w-0 overflow-visible p-3 sm:p-4">
-        <div className="flex items-start gap-3">
-          <MotusSectionIcon>
-            <Award className="h-4 w-4" />
-          </MotusSectionIcon>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-semibold text-slate-900">Badges</h2>
-            <p className="mt-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/90 px-3 py-2.5 text-xs leading-relaxed text-slate-600">
-              Det finnes flere skjulte badges som ikke vises før du oppnår de, oppdag de ved å bruke appen jevnlig.
+    <div
+      className="motus-modal-insets motus-badge-catalog-modal fixed inset-0 z-[10017] flex items-end justify-center overflow-hidden bg-slate-900/45 sm:items-center"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        className="motus-pop-in relative flex max-h-[calc(100dvh-1rem)] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border bg-white shadow-xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl"
+        style={{ borderColor: "rgba(15,23,42,0.1)" }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="badge-catalog-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:px-5">
+          <div>
+            <h2 id="badge-catalog-title" className="text-base font-semibold text-slate-900">
+              Alle badges
+            </h2>
+            <p className="mt-0.5 text-xs text-slate-500">
+              {collection.totalUnlocked} av {collection.totalCount} låst opp
             </p>
-            <div className="mt-2 flex items-start justify-between gap-3">
-              <p className="text-xs text-slate-500">
-                {collection.totalUnlockedLevels} av {collection.totalLevels} nivåer låst opp
-              </p>
-              <span className="rounded-full bg-[#F3F5F7] px-2.5 py-1 text-[10px] font-bold text-slate-900">{overallPct}%</span>
-            </div>
-            <div className="motus-progress-track mt-2 h-1.5 rounded-full">
-              <div className="motus-progress-fill h-full rounded-full" style={{ width: `${overallPct}%`, background: MOTUS_GRADIENT }} />
-            </div>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="motus-pressable inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:text-slate-800"
+            aria-label="Lukk"
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </button>
         </div>
 
-        <div className={`-mx-1 mt-3 ${BADGE_CATEGORY_SCROLL_CLASS}`}>
+        <div className={`shrink-0 px-4 pt-3 sm:px-5 ${BADGE_CATEGORY_SCROLL_CLASS}`}>
           {menuItems.map((item) => {
             const active = item.id === activeCategoryId;
             return (
@@ -340,16 +374,128 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
           })}
         </div>
 
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-4 pt-2 sm:px-2">
+          <BadgeCarouselScroll className={BADGE_CAROUSEL_WRAPPER_CLASS} trackClassName={BADGE_CAROUSEL_TRACK_SNAP_CLASS}>
+            {visibleBadges.map((badge) => (
+              <BadgeTile key={badge.id} badge={badge} onSelect={() => onSelectBadge(badge)} />
+            ))}
+          </BadgeCarouselScroll>
+          <p className="mx-4 mt-1 text-[11px] leading-relaxed text-slate-400 sm:mx-5">
+            Noen badges er skjulte og vises først når du oppnår dem.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoSrc }: MemberBadgesCarouselProps) {
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [badgeShareStatus, setBadgeShareStatus] = useState<string | null>(null);
+  const [selectedBadge, setSelectedBadge] = useState<MemberBadge | null>(null);
+
+  const recentBadges = useMemo(
+    () =>
+      collection.allBadges
+        .filter((badge) => badge.unlocked)
+        .sort((a, b) => b.achievedLevelIndex - a.achievedLevelIndex || b.progressPct - a.progressPct)
+        .slice(0, 6),
+    [collection.allBadges],
+  );
+
+  const nextGoalBadge = useMemo(
+    () =>
+      collection.allBadges
+        .filter((badge) => !badge.unlocked && !badge.hidden)
+        .sort((a, b) => b.progressPct - a.progressPct)[0] ?? null,
+    [collection.allBadges],
+  );
+
+  if (!collection.totalCount) return null;
+
+  const overallPct = collection.totalCount > 0 ? Math.round((collection.totalUnlocked / collection.totalCount) * 100) : 0;
+
+  const motivationText =
+    recentBadges.length > 0
+      ? "Fortsett slik – du er på vei mot noe stort!"
+      : nextGoalBadge
+        ? `Neste badge: ${nextGoalBadge.title} – ${nextGoalBadge.progressPct}%`
+        : "Fullfør økter for å låse opp badges.";
+
+  function openBadgeDetail(badge: MemberBadge) {
+    setCatalogOpen(false);
+    setSelectedBadge(badge);
+  }
+
+  return (
+    <>
+      <section className="motus-badges-section motus-badges-home motus-card min-w-0 overflow-visible px-4 py-5 sm:px-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <MotusSectionIcon>
+              <Award className="h-4 w-4" />
+            </MotusSectionIcon>
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-slate-900">Badges</h2>
+              <p className="mt-0.5 text-xs text-slate-500">Dine prestasjoner</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCatalogOpen(true)}
+            className="motus-pressable shrink-0 text-xs font-semibold text-teal-700 transition hover:text-teal-900"
+          >
+            Se alle →
+          </button>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <p className="text-xs font-medium text-slate-600">
+            {collection.totalUnlocked} av {collection.totalCount} badges
+          </p>
+          <span className="text-xs font-bold text-slate-900">{overallPct}%</span>
+        </div>
+        <div className="motus-progress-track mt-2 h-1.5 rounded-full">
+          <div className="motus-progress-fill h-full rounded-full" style={{ width: `${overallPct}%`, background: MOTUS_GRADIENT }} />
+        </div>
+
+        {recentBadges.length > 0 ? (
+          <div className="mt-5">
+            <h3 className="text-xs font-semibold text-slate-800">Nylig oppnådd</h3>
+            <BadgeCarouselScroll className={`${BADGE_CAROUSEL_WRAPPER_CLASS} -mx-2`} trackClassName={BADGE_CAROUSEL_TRACK_SNAP_CLASS}>
+              {recentBadges.map((badge) => (
+                <BadgeTile key={badge.id} badge={badge} celebrate onSelect={() => setSelectedBadge(badge)} />
+              ))}
+            </BadgeCarouselScroll>
+          </div>
+        ) : (
+          <div className="mt-5 rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-5 text-center">
+            <p className="text-xs font-medium text-slate-600">Ingen badges oppnådd ennå</p>
+            {nextGoalBadge ? (
+              <button
+                type="button"
+                onClick={() => setSelectedBadge(nextGoalBadge)}
+                className="motus-pressable mt-2 text-xs font-semibold text-teal-700 hover:text-teal-900"
+              >
+                Se neste mål: {nextGoalBadge.title}
+              </button>
+            ) : null}
+          </div>
+        )}
+
         {badgeShareStatus ? (
-          <p className="mt-3 rounded-xl border border-teal-200/80 bg-teal-50 px-3 py-2 text-xs font-medium text-teal-950">{badgeShareStatus}</p>
+          <p className="mt-4 rounded-xl border border-teal-200/80 bg-teal-50 px-3 py-2 text-xs font-medium text-teal-950">{badgeShareStatus}</p>
         ) : null}
 
-        <BadgeCarouselScroll className={BADGE_CAROUSEL_WRAPPER_CLASS} trackClassName={BADGE_CAROUSEL_TRACK_SNAP_CLASS}>
-          {visibleBadges.map((badge) => (
-            <BadgeTile key={badge.id} badge={badge} onSelect={() => setSelectedBadge(badge)} />
-          ))}
-        </BadgeCarouselScroll>
+        <div className="motus-badges-home-motivation mt-5 flex items-start gap-2.5">
+          <Star className="mt-0.5 h-4 w-4 shrink-0 text-teal-600" aria-hidden />
+          <p className="text-xs font-medium leading-relaxed text-teal-950">{motivationText}</p>
+        </div>
       </section>
+
+      {catalogOpen ? (
+        <BadgeCatalogModal collection={collection} onClose={() => setCatalogOpen(false)} onSelectBadge={openBadgeDetail} />
+      ) : null}
 
       {selectedBadge ? (
         <BadgeDetailModal
