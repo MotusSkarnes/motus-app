@@ -4920,6 +4920,8 @@ function pickFirstName(value: unknown): string {
                   />
                 </div>
                 <TrainerPtDetailPortal>
+                {customerSubTab === "overview" ? (
+                  <>
                 <div id="motus-pt-customer-card" className="motus-card-hero scroll-mt-4 p-5">
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div className="motus-section-label">Kundekort</div>
@@ -5186,6 +5188,8 @@ function pickFirstName(value: unknown): string {
                     tone={memberEditStatus.toLowerCase().includes("feilet") ? "error" : "success"}
                     className="!rounded-xl !px-3 !py-2 !text-xs"
                   />
+                ) : null}
+                  </>
                 ) : null}
                 {customerSubTab !== "workouts" && customerSubTab !== "messages" ? (
                 <div className="motus-pt-dash-legacy-hide-xl grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
