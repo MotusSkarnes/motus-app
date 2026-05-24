@@ -183,7 +183,6 @@ import {
 import { MemberHomeBelowWorkout } from "./MemberHomeBelowWorkout";
 import { MemberHomeWeeklyProgress } from "./MemberHomeWeeklyProgress";
 import { MemberHomeNextPlanCard, MemberHomeStatusGradientCard } from "./MemberHomeNextPlanCard";
-import { MemberProgressPageView } from "./MemberProgressPageView";
 import { buildShareProgramChatMessage } from "../app/chatFormat";
 import { computeWeekProgressPct } from "../app/memberHomeWeekInsights";
 import type { ChatReactionActor, ChatReactionEmoji } from "../app/chatReactions";
@@ -716,109 +715,6 @@ function computeLiftVolumeKgWeekAndMonth(
   return { weekKg, monthKg };
 }
 
-function computeShareCardLast7DaysStats(
-  completedLogs: WorkoutLog[],
-  nowTimestamp: number,
-): { workouts: number; trainingDays: number; volumeKg: number; completedSets: number } {
-  const today = getStartOfDay(new Date(nowTimestamp));
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
-
-  const parseNum = (raw: string | undefined): number => {
-    const n = Number(String(raw ?? "").replace(",", ".").trim());
-    return Number.isFinite(n) && n > 0 ? n : 0;
-  };
-
-  let workouts = 0;
-  let volumeKg = 0;
-  let completedSets = 0;
-  const dayKeys = new Set<string>();
-
-  for (const log of completedLogs) {
-    const d = parseLogDate(log.date);
-    if (!d) continue;
-    const day = getStartOfDay(d);
-    if (day.getTime() < start.getTime() || day.getTime() > today.getTime()) continue;
-    workouts += 1;
-    dayKeys.add(day.toDateString());
-    for (const result of log.results ?? []) {
-      if (!result.completed) continue;
-      completedSets += 1;
-      if (result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)) continue;
-      const durationMinutes = parseNum(result.performedDurationMinutes);
-      const weight = parseNum(result.performedWeight);
-      const reps = parseNum(result.performedReps);
-      if (durationMinutes > 0 && weight <= 0) continue;
-      if (weight > 0 && reps > 0) volumeKg += weight * reps;
-    }
-  }
-
-  return {
-    workouts,
-    trainingDays: dayKeys.size,
-    volumeKg,
-    completedSets,
-  };
-}
-
-/** Artig «løftevolum»-tekst for skrytekort basert på siste 7 dager. */
-function buildProgressLiftPlayfulLine(stats: {
-  workouts: number;
-  trainingDays: number;
-  volumeKg: number;
-  completedSets: number;
-}): string {
-  const { workouts, trainingDays, volumeKg, completedSets } = stats;
-  const fmt = (n: number) => Math.round(n).toLocaleString("nb-NO");
-
-  const lineFor = (kg: number): string | null => {
-    if (!Number.isFinite(kg) || kg < 1) return null;
-    if (kg >= 5500) {
-      return `Siste 7 dager har jeg løftet ca. ${fmt(kg)} kg totalt - omtrent som en flodhest`;
-    }
-    if (kg >= 3200) {
-      return `Siste 7 dager har jeg flyttet ca. ${fmt(kg)} kg - omtrent som en liten bil`;
-    }
-    if (kg >= 1600) {
-      return `Siste 7 dager har jeg logget ca. ${fmt(kg)} kg - omtrent som flere flygel`;
-    }
-    if (kg >= 700) {
-      return `Siste 7 dager har jeg løftet ca. ${fmt(kg)} kg - omtrent som flere voksne til sammen`;
-    }
-    if (kg >= 250) {
-      const people = Math.max(2, Math.round(kg / 72));
-      return `Siste 7 dager har jeg samlet ca. ${fmt(kg)} kg - omtrent som ${people} voksne til sammen`;
-    }
-    if (kg >= 60) {
-      const melons = Math.max(6, Math.round(kg / 8));
-      return `Siste 7 dager ble det ca. ${fmt(kg)} kg for meg - omtrent som ${melons} store vannmeloner`;
-    }
-    if (kg >= 15) {
-      return `Siste 7 dager har jeg logget ca. ${fmt(kg)} kg i vekt x reps - litt etter litt bygger det seg opp`;
-    }
-    return `Siste 7 dager har jeg logget ca. ${fmt(kg)} kg i vekt x reps`;
-  };
-
-  const weekLine = lineFor(volumeKg);
-  if (weekLine) return weekLine;
-
-  if (completedSets >= 24) {
-    return `Siste 7 dager fullførte jeg ${completedSets} sett fordelt på ${workouts} økter`;
-  }
-  if (workouts >= 4 && trainingDays >= 4) {
-    return `Siste 7 dager trente jeg ${workouts} økter fordelt på ${trainingDays} treningsdager`;
-  }
-  if (workouts >= 3) {
-    return `Siste 7 dager holdt jeg flyten med ${workouts} økter og ${completedSets} fullførte sett`;
-  }
-  if (trainingDays >= 2) {
-    return `Siste 7 dager fikk jeg inn ${trainingDays} treningsdager - nå bygger jeg videre`;
-  }
-  if (workouts >= 1) {
-    return `Siste 7 dager fikk jeg inn ${workouts} økt og ${completedSets} sett på veien`;
-  }
-  return "Siste 7 dager har jeg startet uka mi i riktig retning";
-}
-
 function getProfileStorageKey(memberId: string): string {
   return `motus.member.profile.${memberId}`;
 }
@@ -1059,7 +955,6 @@ export function MemberPortal(props: MemberPortalProps) {
   const [expandedRecentLogId, setExpandedRecentLogId] = useState<string | null>(null);
   const [selectedCalendarDateKey, setSelectedCalendarDateKey] = useState<string | null>(null);
   const [selectedCalendarLogId, setSelectedCalendarLogId] = useState<string | null>(null);
-  const [progressShareStatus, setProgressShareStatus] = useState<string | null>(null);
   const [motusCardShareStatus, setMotusCardShareStatus] = useState<string | null>(null);
   const [isSharingCelebrationPr, setIsSharingCelebrationPr] = useState(false);
   const [achievementCelebration, setAchievementCelebration] = useState<{ achievedLevel: number } | null>(null);
@@ -1141,7 +1036,6 @@ export function MemberPortal(props: MemberPortalProps) {
   useAutoClearStatus(memberChatSendStatus, () => setMemberChatSendStatus(null), getStatusClearDelayMs(memberChatSendStatus));
   useAutoClearStatus(pushRegisterStatus, () => setPushRegisterStatus(null), getStatusClearDelayMs(pushRegisterStatus));
   useAutoClearStatus(groupWorkoutStatus, () => setGroupWorkoutStatus(null), getStatusClearDelayMs(groupWorkoutStatus));
-  useAutoClearStatus(progressShareStatus, () => setProgressShareStatus(null), getStatusClearDelayMs(progressShareStatus));
   useAutoClearStatus(motusCardShareStatus, () => setMotusCardShareStatus(null), getStatusClearDelayMs(motusCardShareStatus));
   useAutoClearStatus(periodPlanActionStatus, () => setPeriodPlanActionStatus(null), getStatusClearDelayMs(periodPlanActionStatus));
   useAutoClearStatus(intervalTimerStatus, () => setIntervalTimerStatus(null), getStatusClearDelayMs(intervalTimerStatus));
@@ -1149,7 +1043,6 @@ export function MemberPortal(props: MemberPortalProps) {
   useToastStatus(memberChatSendStatus, { title: "Meldinger", tone: inferStatusTone });
   useToastStatus(pushRegisterStatus, { title: "Varsler", tone: inferStatusTone });
   useToastStatus(groupWorkoutStatus, { title: "Gruppetrening", tone: inferStatusTone });
-  useToastStatus(progressShareStatus, { title: "Fremgang", tone: inferStatusTone });
   useToastStatus(motusCardShareStatus, { title: "Deling", tone: inferStatusTone });
   useToastStatus(periodPlanActionStatus, { title: "Periodeplan", tone: inferStatusTone });
   useToastStatus(intervalTimerStatus, { title: "Intervalltimer", tone: inferStatusTone });
@@ -3524,292 +3417,6 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }
 
-  async function shareMonthlyProgressSummary() {
-    if (typeof window === "undefined") return;
-    try {
-      function fillWrappedCanvasText(
-        ctx: CanvasRenderingContext2D,
-        text: string,
-        x: number,
-        y: number,
-        maxWidth: number,
-        lineHeight: number,
-      ) {
-        const words = text.split(/\s+/).filter(Boolean);
-        let line = "";
-        let cy = y;
-        for (let i = 0; i < words.length; i += 1) {
-          const word = words[i] ?? "";
-          const test = line ? `${line} ${word}` : word;
-          if (ctx.measureText(test).width > maxWidth && line) {
-            ctx.fillText(line, x, cy);
-            line = word;
-            cy += lineHeight;
-          } else {
-            line = test;
-          }
-        }
-        if (line) ctx.fillText(line, x, cy);
-      }
-
-      function fillRoundRect(
-        ctx: CanvasRenderingContext2D,
-        x: number,
-        y: number,
-        w: number,
-        h: number,
-        r: number,
-      ) {
-        if (typeof ctx.roundRect === "function") {
-          ctx.beginPath();
-          ctx.roundRect(x, y, w, h, r);
-          ctx.fill();
-        } else {
-          ctx.fillRect(x, y, w, h);
-        }
-      }
-
-      const canvas = document.createElement("canvas");
-      canvas.width = 1080;
-      canvas.height = 1920;
-      const context = canvas.getContext("2d");
-      if (!context) {
-        setProgressShareStatus("Kunne ikke lage bilde akkurat nå.");
-        return;
-      }
-
-      let shareCardLogo: HTMLImageElement | null = null;
-      const shareLogoSrc = `${motusSkrytekortLogo}${motusSkrytekortLogo.includes("?") ? "&" : "?"}motus_skrytekort=2026-02`;
-      try {
-        shareCardLogo = await new Promise<HTMLImageElement>((resolve, reject) => {
-          const im = new Image();
-          im.crossOrigin = "anonymous";
-          im.onload = () => resolve(im);
-          im.onerror = () => reject(new Error("logo"));
-          im.src = shareLogoSrc;
-        });
-      } catch {
-        shareCardLogo = null;
-      }
-
-      const memberName = viewedMember?.name ?? "Medlem";
-      const displayName = memberName.length > 20 ? `${memberName.slice(0, 20)}…` : memberName;
-      const periodTitle = "Siste 7 dager";
-
-      const bg = context.createLinearGradient(0, 0, canvas.width, canvas.height * 1.05);
-      bg.addColorStop(0, "#30E3BE");
-      bg.addColorStop(0.35, MOTUS.turquoise);
-      bg.addColorStop(0.72, MOTUS.pink);
-      bg.addColorStop(1, "#831843");
-      context.fillStyle = bg;
-      context.fillRect(0, 0, canvas.width, canvas.height);
-
-      context.save();
-      context.globalAlpha = 0.14;
-      context.fillStyle = "#ffffff";
-      context.beginPath();
-      context.arc(140, 220, 200, 0, Math.PI * 2);
-      context.fill();
-      context.beginPath();
-      context.arc(980, 420, 260, 0, Math.PI * 2);
-      context.fill();
-      context.beginPath();
-      context.arc(200, 1680, 240, 0, Math.PI * 2);
-      context.fill();
-      context.restore();
-
-      const headerH = 380;
-      context.fillStyle = "rgba(15,23,42,0.28)";
-      context.fillRect(0, 0, canvas.width, headerH);
-
-      context.fillStyle = "rgba(255,255,255,0.92)";
-      context.font = "600 34px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("MOTUS", 72, 95);
-      context.font = "300 30px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText(periodTitle, 72, 145);
-      context.font = "bold 76px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText(displayName, 72, 255);
-      context.font = "26px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.globalAlpha = 0.88;
-      context.fillText("Ukesoppsummering · mine siste 7 dager", 72, 318);
-      context.globalAlpha = 1;
-
-      if (shareCardLogo && shareCardLogo.naturalWidth > 0) {
-        const maxW = 292;
-        const lw = maxW;
-        const lh = (shareCardLogo.naturalHeight / shareCardLogo.naturalWidth) * lw;
-        const lx = canvas.width - 56 - lw;
-        const ly = 56;
-        context.save();
-        context.translate(lx, ly);
-        context.globalAlpha = 0.98;
-        context.drawImage(shareCardLogo, 0, 0, lw, lh);
-        context.restore();
-      }
-
-      const cardX = 56;
-      const cardY = 420;
-      const cardW = canvas.width - 112;
-      const cardH = 1450;
-      const cardR = 40;
-      context.shadowColor = "rgba(15, 23, 42, 0.22)";
-      context.shadowBlur = 48;
-      context.shadowOffsetY = 28;
-      context.fillStyle = "rgba(255,255,255,0.96)";
-      fillRoundRect(context, cardX, cardY, cardW, cardH, cardR);
-      context.shadowBlur = 0;
-      context.shadowOffsetY = 0;
-
-      const pad = 52;
-      let y = cardY + pad + 36;
-      context.fillStyle = MOTUS.ink;
-      context.font = "bold 40px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Mine tall · siste 7 dager", cardX + pad, y);
-      y += 52;
-      context.fillStyle = "#64748b";
-      context.font = "26px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Økter, treningsdager, sett og løftevolum jeg har logget", cardX + pad, y);
-      y += 72;
-
-      const tileGap = 22;
-      const tileW = (cardW - pad * 2 - tileGap) / 2;
-      const tileH = 168;
-      const stats: Array<{ label: string; value: string; accent: string }> = [
-        { label: "Mine økter", value: String(progressShareLast7Days.workouts), accent: MOTUS.turquoise },
-        { label: "Mine treningsdager", value: String(progressShareLast7Days.trainingDays), accent: MOTUS.pink },
-        { label: "Mine sett", value: String(progressShareLast7Days.completedSets), accent: "#30E3BE" },
-        { label: "Mitt volum", value: `${Math.round(progressShareLast7Days.volumeKg).toLocaleString("nb-NO")} kg`, accent: "#db2777" },
-      ];
-      stats.forEach((stat, index) => {
-        const col = index % 2;
-        const row = Math.floor(index / 2);
-        const tx = cardX + pad + col * (tileW + tileGap);
-        const ty = y + row * (tileH + tileGap);
-        context.fillStyle = "#f8fafc";
-        if (typeof context.roundRect === "function") {
-          context.beginPath();
-          context.roundRect(tx, ty, tileW, tileH, 22);
-          context.fill();
-          context.strokeStyle = "rgba(148,163,184,0.45)";
-          context.lineWidth = 1;
-          context.stroke();
-        } else {
-          context.fillRect(tx, ty, tileW, tileH);
-          context.strokeStyle = "rgba(148,163,184,0.45)";
-          context.lineWidth = 1;
-          context.strokeRect(tx, ty, tileW, tileH);
-        }
-        context.fillStyle = stat.accent;
-        context.fillRect(tx, ty, 6, tileH);
-        context.fillStyle = "#94a3b8";
-        context.font = "22px system-ui, -apple-system, Segoe UI, sans-serif";
-        context.fillText(stat.label, tx + 28, ty + 48);
-        context.fillStyle = MOTUS.ink;
-        context.font = "bold 48px system-ui, -apple-system, Segoe UI, sans-serif";
-        context.fillText(stat.value, tx + 28, ty + 118);
-      });
-      y += 2 * (tileH + tileGap) + 28;
-
-      const playfulBoxH = 152;
-      context.fillStyle = "#f8fafc";
-      if (typeof context.roundRect === "function") {
-        context.beginPath();
-        context.roundRect(cardX + pad, y, cardW - pad * 2, playfulBoxH, 22);
-        context.fill();
-        context.strokeStyle = "rgba(148,163,184,0.45)";
-        context.lineWidth = 1;
-        context.stroke();
-      } else {
-        context.fillRect(cardX + pad, y, cardW - pad * 2, playfulBoxH);
-        context.strokeStyle = "rgba(148,163,184,0.45)";
-        context.lineWidth = 1;
-        context.strokeRect(cardX + pad, y, cardW - pad * 2, playfulBoxH);
-      }
-      context.fillStyle = MOTUS.ink;
-      context.font = "bold 24px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Løftefakta", cardX + pad + 24, y + 42);
-      context.fillStyle = "#475569";
-      context.font = "24px system-ui, -apple-system, Segoe UI, sans-serif";
-      fillWrappedCanvasText(
-        context,
-        progressLiftPlayfulLine,
-        cardX + pad + 24,
-        y + 78,
-        cardW - pad * 2 - 48,
-        30,
-      );
-      y += playfulBoxH + 22;
-
-      const stripH = 112;
-      const stripGrad = context.createLinearGradient(cardX + pad, y, cardX + cardW - pad, y + stripH);
-      stripGrad.addColorStop(0, MOTUS.turquoise);
-      stripGrad.addColorStop(1, MOTUS.pink);
-      context.fillStyle = stripGrad;
-      fillRoundRect(context, cardX + pad, y, cardW - pad * 2, stripH, 22);
-      context.fillStyle = "#ffffff";
-      context.font = "bold 28px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText(`Jeg fullførte ${progressShareLast7Days.workouts} økter på ${progressShareLast7Days.trainingDays} dager.`, cardX + pad + 32, y + 72);
-      y += stripH + 28;
-
-      context.fillStyle = "#f1f5f9";
-      fillRoundRect(context, cardX + pad, y, cardW - pad * 2, 200, 22);
-      context.fillStyle = MOTUS.ink;
-      context.font = "bold 26px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Min siste uke", cardX + pad + 28, y + 48);
-      context.fillStyle = "#475569";
-      context.font = "26px system-ui, -apple-system, Segoe UI, sans-serif";
-      fillWrappedCanvasText(
-        context,
-        `Jeg logget ${progressShareLast7Days.completedSets} sett og ${Math.round(progressShareLast7Days.volumeKg).toLocaleString("nb-NO")} kg i samlet løftevolum siste 7 dager.`,
-        cardX + pad + 28,
-        y + 92,
-        cardW - pad * 2 - 56,
-        36,
-      );
-      y += 220;
-
-      context.strokeStyle = "rgba(148,163,184,0.5)";
-      context.lineWidth = 1;
-      context.beginPath();
-      context.moveTo(cardX + pad, y);
-      context.lineTo(cardX + cardW - pad, y);
-      context.stroke();
-      y += 40;
-      context.fillStyle = "#94a3b8";
-      context.font = "22px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("motus · del styrken din", cardX + pad, y);
-
-      const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
-      if (!blob) {
-        setProgressShareStatus("Kunne ikke lage bilde akkurat nå.");
-        return;
-      }
-
-      const file = new File([blob], "motus-skrytekort-siste-7-dager.png", { type: "image/png" });
-      const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };
-      const canShareFile = typeof nav.canShare === "function" ? nav.canShare({ files: [file] }) : false;
-      if (typeof nav.share === "function" && canShareFile) {
-        await nav.share({
-          title: "Min Motus-oppsummering",
-          text: "Siste 7 dager - se tallene mine #Motus",
-          files: [file],
-        });
-        setProgressShareStatus("Kort delt.");
-        return;
-      }
-
-      const imageUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = imageUrl;
-      link.download = "motus-skrytekort-siste-7-dager.png";
-      link.click();
-      URL.revokeObjectURL(imageUrl);
-      setProgressShareStatus("Bilde lastet ned. Del det fra galleriet.");
-    } catch {
-      setProgressShareStatus("Deling ble avbrutt.");
-    }
-  }
-
   async function dispatchMemberMessageToRelatedMembers(text: string): Promise<boolean> {
     if (isSendingMemberMessageRef.current) return false;
     const trimmed = text.trim();
@@ -4036,8 +3643,6 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }
 
-  const progressShareLast7Days = computeShareCardLast7DaysStats(completedLogs, nowTimestamp);
-  const progressLiftPlayfulLine = buildProgressLiftPlayfulLine(progressShareLast7Days);
   const memberShareDisplayName = viewedMember?.name ?? editableMember?.name ?? "Medlem";
   const nextBestAction = useMemo(() => {
     if (!memberAssignedPrograms.length) {
@@ -6633,39 +6238,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 logIntervalWorkout={handleLogIntervalWorkout}
               />
             </>
-          ) : null}
-
-          {!isMemberLimited && memberTab === "progress" ? (
-            <MemberProgressPageView
-              scores={memberProgressScores}
-              memberProgress={memberProgress}
-              streakWeeks={streakWeeks}
-              completedLogDates={completedLogDates}
-              completedLogs={completedLogs}
-              nowTimestamp={nowTimestamp}
-              personalRecords={personalRecords}
-              personalRecordsPreview={personalRecordsPreview}
-              showAllPersonalRecords={showAllPersonalRecords}
-              onToggleShowAllPersonalRecords={() => setShowAllPersonalRecords((prev) => !prev)}
-              favoritePersonalRecordNames={cleanedFavoritePersonalRecordNames}
-              onToggleFavoritePersonalRecord={toggleFavoritePersonalRecord}
-              onOpenProgressExercise={setPrProgressExerciseName}
-              onSharePersonalRecord={(record) => void sharePersonalRecordEntry(record)}
-              exercises={exercises}
-              profileSaveInfo={profileSaveInfo && memberTab === "progress" ? profileSaveInfo : null}
-              muscleSplitStats={muscleSplitStats}
-              muscleSplitMetric={muscleSplitMetric}
-              muscleSplitPeriod={muscleSplitPeriod}
-              onMuscleSplitMetricChange={setMuscleSplitMetric}
-              onMuscleSplitPeriodChange={setMuscleSplitPeriod}
-              weeklySummaryStats={progressShareLast7Days}
-              onShareWeeklySummary={() => void shareMonthlyProgressSummary()}
-              weeklyShareStatus={progressShareStatus}
-              onContinueTrainingFlow={() => {
-                setMemberTab("programs");
-                setTrainingSection("today");
-              }}
-            />
           ) : null}
 
           {!isMemberLimited && memberTab === "messages" ? (

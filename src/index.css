@@ -1201,6 +1201,9 @@ button {
 
 .motus-progress-page--v2 {
   gap: 1rem;
+  -webkit-overflow-scrolling: touch;
+  overflow-y: visible;
+  touch-action: pan-y;
 }
 
 .motus-progress-v2-hero {
