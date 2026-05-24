@@ -177,6 +177,8 @@ import { MemberHomeWeeklyProgress } from "./MemberHomeWeeklyProgress";
 import { MemberHomeNextPlanCard, MemberHomeStatusGradientCard } from "./MemberHomeNextPlanCard";
 import { MemberHomeMotivationCard } from "./MemberHomeMotivationCard";
 import { MemberProgressScoresCard } from "./MemberProgressScoresCard";
+import { MemberPersonalRecordsSection } from "./MemberPersonalRecordsSection";
+import { MemberWeeklySummaryCard } from "./MemberWeeklySummaryCard";
 import { MemberTrainingFlowCard } from "./MemberTrainingFlowCard";
 import { MemberTrainingTodayCard, extractZoneFromPlanEntry, formatWeekMinutesLabel, formatWeekSessionsLabel } from "./MemberTrainingTodayCard";
 import { MemberTrainingWeekStats } from "./MemberTrainingWeekStats";
@@ -6458,8 +6460,8 @@ export function MemberPortal(props: MemberPortalProps) {
           ) : null}
 
           {!isMemberLimited && memberTab === "progress" ? (
-            <div className="space-y-4">
-              <MemberProgressScoresCard scores={memberProgressScores} />
+            <div className="motus-progress-page space-y-5">
+              <MemberProgressScoresCard scores={memberProgressScores} memberFirstName={homeFirstName} streakWeeks={streakWeeks} />
               <MemberTrainingFlowCard
                 achievementLevel={achievementLevel}
                 achievementMaxLevel={achievementMaxLevel}
@@ -6474,97 +6476,20 @@ export function MemberPortal(props: MemberPortalProps) {
                 currentStreakMilestoneTarget={currentStreakMilestoneTarget}
               />
 
-              <Card className="p-4 sm:p-5">
-                <h3 className="text-sm font-semibold text-slate-900">Personlige rekorder</h3>
-                <p className="mt-0.5 text-xs text-slate-500">Trykk på en øvelse for styrkeutvikling over tid. Stjernemerk opptil tre rekorder du vil fremheve først.</p>
-                {profileSaveInfo && memberTab === "progress" ? (
-                  <StatusMessage
-                    message={profileSaveInfo}
-                    tone={
-                      profileSaveInfo.toLowerCase().includes("maks tre") || profileSaveInfo.toLowerCase().includes("feilet")
-                        ? "error"
-                        : "success"
-                    }
-                    className="mt-3 !rounded-xl !px-3 !py-2 !text-sm"
-                  />
-                ) : null}
-                <div className="mt-4 space-y-3">
-                  {personalRecords.length === 0 ? (
-                    <EmptyState
-                      icon="🏅"
-                      title="Ingen PR-er registrert ennå"
-                      description="Når du logger styrkeøkter, vises personlige rekorder her."
-                      className="bg-white"
-                    />
-                  ) : null}
-                  {personalRecordsPreview.map((record) => (
-                    <div key={record.name} className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="flex items-start justify-between gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setPrProgressExerciseName(record.name)}
-                          className="min-w-0 flex-1 rounded-lg px-1 py-0.5 text-left transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500"
-                        >
-                          <div className="flex items-center gap-2 font-medium text-slate-900">
-                            <span className="truncate">{record.name}</span>
-                            <TrendingUp className="h-4 w-4 shrink-0 text-teal-600" aria-hidden />
-                          </div>
-                          <div className="mt-1 text-sm text-slate-500">Beste registrerte: {record.weight} kg × {record.reps}</div>
-                          <div className="mt-0.5 text-xs font-medium text-teal-700">Se styrkeutvikling</div>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void sharePersonalRecordEntry(record);
-                          }}
-                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-500 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
-                          aria-label={`Del personlig rekord for ${record.name}`}
-                          title="Del på Facebook eller andre apper"
-                        >
-                          <Share2 className="h-4 w-4" aria-hidden />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            toggleFavoritePersonalRecord(record.name);
-                          }}
-                          className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border p-1.5 transition ${
-                            cleanedFavoritePersonalRecordNames.includes(record.name)
-                              ? "border-transparent motus-brand-fill"
-                              : "border-slate-200 bg-white text-slate-400"
-                          }`}
-                          aria-label={
-                            cleanedFavoritePersonalRecordNames.includes(record.name)
-                              ? "Fjern fra fremhevede PR-er"
-                              : "Fremhev denne PR-en"
-                          }
-                          title={
-                            cleanedFavoritePersonalRecordNames.includes(record.name)
-                              ? "Fjern fra fremhevede PR-er"
-                              : "Fremhev denne PR-en"
-                          }
-                        >
-                          <Star
-                            className={`h-4 w-4 ${cleanedFavoritePersonalRecordNames.includes(record.name) ? "text-white" : ""}`}
-                          />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  {personalRecords.length > 3 ? (
-                    <OutlineButton
-                      type="button"
-                      onClick={() => setShowAllPersonalRecords((prev) => !prev)}
-                      className="w-full sm:w-auto"
-                    >
-                      {showAllPersonalRecords ? "Vis bare fremhevede / topp 3" : `Se alle personlige rekorder (${personalRecords.length})`}
-                    </OutlineButton>
-                  ) : null}
-                </div>
-              </Card>
+              <MemberPersonalRecordsSection
+                records={personalRecords}
+                previewRecords={personalRecordsPreview}
+                showAll={showAllPersonalRecords}
+                onToggleShowAll={() => setShowAllPersonalRecords((prev) => !prev)}
+                favoriteNames={cleanedFavoritePersonalRecordNames}
+                onToggleFavorite={toggleFavoritePersonalRecord}
+                onOpenProgress={setPrProgressExerciseName}
+                onShare={(record) => void sharePersonalRecordEntry(record)}
+                exercises={exercises}
+                profileSaveInfo={profileSaveInfo && memberTab === "progress" ? profileSaveInfo : null}
+              />
 
+              <div className="motus-progress-section-card overflow-hidden p-1 sm:p-2">
               <MuscleSplitCard
                 stats={muscleSplitStats}
                 metric={muscleSplitMetric}
@@ -6573,72 +6498,15 @@ export function MemberPortal(props: MemberPortalProps) {
                 onPeriodChange={setMuscleSplitPeriod}
               />
 
-              <div className="motus-card-hero relative mt-6 overflow-hidden">
-                <img
-                  src={motusSkrytekortLogo}
-                  alt=""
-                  className="pointer-events-none absolute right-4 top-4 z-[1] h-auto max-h-16 w-auto max-w-[38%] object-contain opacity-90 sm:max-h-20"
-                  aria-hidden
-                />
-
-                <div className="relative p-5 sm:p-6">
-                  <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
-                    <div className="min-w-0 flex-1 space-y-4">
-                      <span className="motus-section-label inline-flex items-center gap-1.5">
-                        <Sparkles className="h-3.5 w-3.5 shrink-0 text-teal-500" aria-hidden />
-                        Ukesoppsummering
-                      </span>
-
-                      <div>
-                        <h3 className="text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">Ukesoppsummering</h3>
-                        <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-slate-600">
-                          Siste 7 dager — delbart kort med tall og løftefakta.
-                        </p>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        {[
-                          { k: "Mine økter", v: String(progressShareLast7Days.workouts) },
-                          { k: "Treningsdager", v: String(progressShareLast7Days.trainingDays) },
-                          { k: "Mine sett", v: String(progressShareLast7Days.completedSets) },
-                          { k: "Mitt volum", v: `${Math.round(progressShareLast7Days.volumeKg).toLocaleString("nb-NO")} kg` },
-                        ].map((cell) => (
-                          <div key={cell.k} className="rounded-xl bg-[#F7F8FA] px-3 py-2.5 text-left">
-                            <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{cell.k}</div>
-                            <div className="mt-0.5 text-lg font-bold tabular-nums text-slate-950">{cell.v}</div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="rounded-xl bg-[#F7F8FA] px-3 py-3 text-left">
-                        <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Løftefakta</div>
-                        <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-slate-700">{progressLiftPlayfulLine}</p>
-                      </div>
-
-                      <p className="text-[13px] text-slate-500">
-                        Siste 7 dager: {progressShareLast7Days.workouts} økter fordelt på {progressShareLast7Days.trainingDays} treningsdager.
-                      </p>
-                    </div>
-
-                    <div className="flex w-full shrink-0 flex-col gap-2 sm:max-w-xs lg:w-56">
-                      <GradientButton type="button" onClick={() => void shareMonthlyProgressSummary()} className="w-full gap-2">
-                        <Share2 className="h-4 w-4 shrink-0" aria-hidden />
-                        Last ned eller del bilde
-                      </GradientButton>
-                      <p className="text-center text-[11px] leading-snug text-slate-500 lg:text-left">
-                        Bildet kan lagres eller deles videre fra galleriet.
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </div>
-              {progressShareStatus ? (
-                <StatusMessage
-                  message={progressShareStatus}
-                  tone={progressShareStatus.toLowerCase().includes("kunne ikke") ? "error" : "success"}
-                  className="mt-3 !rounded-xl !px-3 !py-2 !text-xs"
-                />
-              ) : null}
+
+              <MemberWeeklySummaryCard
+                stats={progressShareLast7Days}
+                playfulLine={progressLiftPlayfulLine}
+                logoSrc={motusShareLogoSrc}
+                onShare={() => void shareMonthlyProgressSummary()}
+                shareStatus={progressShareStatus}
+              />
             </div>
           ) : null}
 

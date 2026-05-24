@@ -1,5 +1,7 @@
 import { Route } from "lucide-react";
 import { MOTUS } from "../app/data";
+import { PROGRESS_FLOW_IMAGE } from "../app/progressImagery";
+import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
 import { PROGRESS_STEP_LABELS } from "../app/memberProgressGamification";
 import type { ProgressGoal, RecentStreakWeek } from "../app/memberProgressGamification";
 import { MemberProgressGoals } from "./MemberProgressGoals";
@@ -38,7 +40,20 @@ export function MemberTrainingFlowCard({
   const activeStep = hasCompletedAllLevels ? achievementMaxLevel : achievementLevel;
 
   return (
-    <div className="rounded-2xl border border-slate-200/90 bg-white" aria-labelledby="member-training-flow-heading">
+    <div className="motus-progress-flow-card" aria-labelledby="member-training-flow-heading">
+      <div className="motus-progress-flow-layout">
+        <div className="motus-progress-flow-media motus-image-frame motus-image-frame--portrait hidden sm:block">
+          <img
+            src={PROGRESS_FLOW_IMAGE}
+            alt=""
+            className="motus-image-media"
+            loading="lazy"
+            style={{ objectPosition: imageObjectPositionFromSrc(PROGRESS_FLOW_IMAGE) }}
+          />
+          <div className="motus-progress-flow-media-fade" aria-hidden />
+        </div>
+
+        <div className="min-w-0 flex-1">
       <div className="border-b border-slate-100 px-4 py-4 sm:px-5">
         <div className="flex flex-wrap items-start gap-3">
           <span
@@ -150,6 +165,8 @@ export function MemberTrainingFlowCard({
           stepLabel={stepLabel}
           hasCompletedAllLevels={hasCompletedAllLevels}
         />
+      </div>
+        </div>
       </div>
     </div>
   );
