@@ -1,4 +1,5 @@
 import { resolveExerciseImageSrc } from "./exerciseIllustrations";
+import { RUNNER_STRENGTH_COVER_IMAGE, SUB45_PROGRAM_TITLES, SUB60_PROGRAM_TITLES } from "./inspirationRunningPlans";
 import type { TrainingSubTab } from "./exerciseCategories";
 import type { Exercise, TrainingProgram } from "./types";
 
@@ -13,6 +14,25 @@ export const MAX_PROGRAM_IMAGE_BYTES = 5 * 1024 * 1024;
 const GROUP_WORKOUT_COVER_IMAGES: Record<string, string> = {
   smilepuls: SMILEPULS_COVER_IMAGE,
 };
+
+const PROGRAM_TITLE_COVER_IMAGES: Record<string, string> = {
+  [normalizeProgramTitleKey(SUB60_PROGRAM_TITLES.strength)]: RUNNER_STRENGTH_COVER_IMAGE,
+  [normalizeProgramTitleKey(SUB45_PROGRAM_TITLES.strength)]: RUNNER_STRENGTH_COVER_IMAGE,
+};
+
+function normalizeProgramTitleKey(title: string): string {
+  return title
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function resolveProgramCoverImageByTitle(title: string): string | null {
+  const key = normalizeProgramTitleKey(title);
+  if (!key) return null;
+  return PROGRAM_TITLE_COVER_IMAGES[key] ?? null;
+}
 
 function normalizeGroupWorkoutClassKey(className: string): string {
   return className
@@ -33,12 +53,14 @@ export function resolveRestDayCoverImage(): string {
 }
 
 export function resolveProgramImageSrc(
-  program: Pick<TrainingProgram, "imageUrl">,
+  program: Pick<TrainingProgram, "imageUrl" | "title">,
   coverExercise?: Pick<Exercise, "id" | "imageUrl" | "category" | "group" | "name"> | null,
   options?: { subTab?: TrainingSubTab },
 ): string | null {
   const custom = program.imageUrl?.trim();
   if (custom) return custom;
+  const byTitle = program.title ? resolveProgramCoverImageByTitle(program.title) : null;
+  if (byTitle) return byTitle;
   if (options?.subTab === "strength") return STRENGTH_TRAINING_COVER_IMAGE;
   if (coverExercise) return resolveExerciseImageSrc(coverExercise);
   return null;
@@ -53,5 +75,5 @@ export function programCoverUsesPhotoStyle(
   resolvedSrc?: string | null,
 ): boolean {
   if (programHasCustomCoverImage(program)) return true;
-  return resolvedSrc === STRENGTH_TRAINING_COVER_IMAGE;
+  return resolvedSrc === STRENGTH_TRAINING_COVER_IMAGE || resolvedSrc === RUNNER_STRENGTH_COVER_IMAGE;
 }

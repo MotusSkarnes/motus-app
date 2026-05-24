@@ -5,6 +5,7 @@ import {
   SUB45_PROGRAM_TITLES,
   SUB60_LONG_RUN_COVER_IMAGE,
   SUB60_PROGRAM_TITLES,
+  RUNNER_STRENGTH_COVER_IMAGE,
 } from "./inspirationRunningPlans";
 
 describe("inspirationRunningPlans", () => {
@@ -32,6 +33,8 @@ describe("inspirationRunningPlans", () => {
       expect(titles.has(entry)).toBe(true);
     }
     expect(titles.has(SUB60_PROGRAM_TITLES.strength)).toBe(true);
+    const strength = sub60.bundledProgramTemplates.find((program) => program.title === SUB60_PROGRAM_TITLES.strength);
+    expect(strength?.imageUrl).toBe(RUNNER_STRENGTH_COVER_IMAGE);
     const longRun = sub60.bundledProgramTemplates.find((program) => program.title === SUB60_PROGRAM_TITLES.long);
     expect(longRun?.imageUrl).toBe(SUB60_LONG_RUN_COVER_IMAGE);
 

@@ -35,6 +35,9 @@ export type InspirationProgramTemplate = {
 /** Forsidebilde for SUB60 langtur (ligger i public/program-covers/). */
 export const SUB60_LONG_RUN_COVER_IMAGE = "/program-covers/sub60-langtur-sone-2.png";
 
+/** Forsidebilde for styrke for løpere (SUB60/SUB45). */
+export const RUNNER_STRENGTH_COVER_IMAGE = "/program-covers/styrke-loper.png";
+
 export type RunningInspirationItem = {
   id: string;
   category: "programs";
@@ -135,6 +138,7 @@ function buildSub60Programs(): InspirationProgramTemplate[] {
       ],
       programCreatedBy: "member",
       programCreatedByName: AUTHOR,
+      imageUrl: RUNNER_STRENGTH_COVER_IMAGE,
     },
     {
       title: SUB60_PROGRAM_TITLES.mobility,
@@ -227,6 +231,7 @@ function buildSub45Programs(): InspirationProgramTemplate[] {
       ],
       programCreatedBy: "member",
       programCreatedByName: AUTHOR,
+      imageUrl: RUNNER_STRENGTH_COVER_IMAGE,
     },
     {
       title: SUB45_PROGRAM_TITLES.mobility,

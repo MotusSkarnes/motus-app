@@ -4,6 +4,7 @@ import {
   programCoverUsesPhotoStyle,
   resolveProgramImageSrc,
 } from "./programImage";
+import { RUNNER_STRENGTH_COVER_IMAGE, SUB60_PROGRAM_TITLES } from "./inspirationRunningPlans";
 import type { Exercise, TrainingProgram } from "./types";
 
 const strengthExercise: Pick<Exercise, "id" | "imageUrl" | "category" | "group" | "name"> = {
@@ -14,7 +15,10 @@ const strengthExercise: Pick<Exercise, "id" | "imageUrl" | "category" | "group" 
   imageUrl: "/exercises/bench.png",
 };
 
-const program = (imageUrl?: string): Pick<TrainingProgram, "imageUrl"> => ({ imageUrl });
+const program = (imageUrl?: string, title = "Helkropp"): Pick<TrainingProgram, "imageUrl" | "title"> => ({
+  imageUrl,
+  title,
+});
 
 describe("resolveProgramImageSrc", () => {
   it("prefers custom program cover", () => {
@@ -27,6 +31,14 @@ describe("resolveProgramImageSrc", () => {
     expect(resolveProgramImageSrc(program(), strengthExercise, { subTab: "strength" })).toBe(
       STRENGTH_TRAINING_COVER_IMAGE,
     );
+  });
+
+  it("uses runner strength cover for styrke løper-programmer", () => {
+    expect(
+      resolveProgramImageSrc(program(undefined, SUB60_PROGRAM_TITLES.strength), strengthExercise, {
+        subTab: "strength",
+      }),
+    ).toBe(RUNNER_STRENGTH_COVER_IMAGE);
   });
 
   it("falls back to exercise illustration for non-strength programs", () => {
