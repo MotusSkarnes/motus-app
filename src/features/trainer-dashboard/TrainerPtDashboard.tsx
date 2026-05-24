@@ -484,6 +484,123 @@ export function TrainerPtDashboard({
             </div>
             ) : null}
 
+            {showOverviewPanels && showCustomerChrome ? (
+              <div className="motus-pt-dash-secondary-row">
+                <section className="motus-pt-dash-panel">
+                  <h2 className="motus-pt-dash-panel-title">Dagens oppgaver</h2>
+                  <div className="motus-pt-dash-todo-input-row">
+                    <input
+                      type="text"
+                      value={todoDraft}
+                      onChange={(event) => onTodoDraftChange(event.target.value)}
+                      placeholder="Legg til oppgave..."
+                      className="motus-pt-dash-todo-input"
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") onAddTodo();
+                      }}
+                    />
+                    <button type="button" className="motus-pt-dash-btn motus-pt-dash-btn--primary !px-3" onClick={onAddTodo}>
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <ul className="motus-pt-dash-todo-list">
+                    {openTodos.map((todo) => (
+                      <li key={todo.id} className="motus-pt-dash-todo-item">
+                        <button
+                          type="button"
+                          className={`motus-pt-dash-todo-check ${todo.done ? "motus-pt-dash-todo-check--done" : ""}`}
+                          onClick={() => onToggleTodo(todo.id)}
+                          aria-label={todo.done ? "Marker som åpen" : "Marker som fullført"}
+                        />
+                        <span className={`flex-1 text-sm ${todo.done ? "text-slate-400 line-through" : "text-slate-800"}`}>
+                          {todo.title}
+                        </span>
+                        <span
+                          className={`h-2 w-2 shrink-0 rounded-full ${
+                            todo.priority === "high" ? "bg-[#FF5C7C]" : todo.priority === "medium" ? "bg-[#FFB84D]" : "bg-slate-300"
+                          }`}
+                        />
+                      </li>
+                    ))}
+                    {!openTodos.length ? <li className="motus-pt-dash-empty text-sm">Ingen åpne oppgaver i dag.</li> : null}
+                  </ul>
+                </section>
+
+                <section className="motus-pt-dash-panel motus-pt-dash-coach-ai">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="motus-pt-dash-panel-title flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-[#D91278]" />
+                      Coach AI
+                    </h2>
+                    <span className="motus-pt-dash-coach-score">{coachScore.toFixed(1)}</span>
+                  </div>
+                  <ul className="mt-3 space-y-3">
+                    <li className="motus-pt-dash-ai-item">
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-[#D91278]" />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-slate-900">{insightTitle}</div>
+                        <p className="mt-0.5 text-xs text-slate-500">{insightDetail}</p>
+                        <button
+                          type="button"
+                          className="motus-pt-dash-link-btn mt-1"
+                          onClick={() => setShowCoachSuggestions((value) => !value)}
+                          aria-expanded={showCoachSuggestions}
+                        >
+                          {showCoachSuggestions ? "Skjul forslag" : "Vis forslag"} <ChevronRight className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </li>
+                    {showCoachSuggestions ? (
+                      <li className="rounded-xl bg-white/80 p-2">
+                        <div className="space-y-2">
+                          {coachSuggestions.map((suggestion) => (
+                            <div key={suggestion.id} className="rounded-lg border border-slate-100 bg-white px-3 py-2 shadow-sm">
+                              <div className="text-xs font-bold text-slate-900">{suggestion.title}</div>
+                              <p className="mt-0.5 text-xs leading-snug text-slate-500">{suggestion.detail}</p>
+                              {suggestion.onAction ? (
+                                <button type="button" className="motus-pt-dash-link-btn mt-1.5" onClick={suggestion.onAction}>
+                                  {suggestion.actionLabel} <ChevronRight className="h-3 w-3" />
+                                </button>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      </li>
+                    ) : null}
+                    <li className="motus-pt-dash-ai-item">
+                      <Flame className="h-4 w-4 shrink-0 text-[#30E3BE]" />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-slate-900">Sterk progresjon</div>
+                        <p className="mt-0.5 text-xs text-slate-500">Kunden holder momentum denne uken.</p>
+                      </div>
+                    </li>
+                  </ul>
+                </section>
+
+                <section className="motus-pt-dash-panel">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="motus-pt-dash-panel-title">Notater</h2>
+                    {onOpenNote ? (
+                      <button type="button" className="motus-pt-dash-link-btn" onClick={onOpenNote}>
+                        Se alle
+                      </button>
+                    ) : null}
+                  </div>
+                  {latestNote ? (
+                    <button type="button" className="motus-pt-dash-note-preview" onClick={onOpenNote}>
+                      <Pin className="h-3.5 w-3.5 shrink-0 text-[#D91278]" />
+                      <div className="min-w-0 text-left">
+                        <div className="font-semibold text-slate-900">{latestNote.title}</div>
+                        <p className="mt-0.5 truncate text-xs text-slate-500">{latestNote.preview}</p>
+                      </div>
+                    </button>
+                  ) : (
+                    <p className="motus-pt-dash-empty text-sm">Ingen notater ennå.</p>
+                  )}
+                </section>
+              </div>
+            ) : null}
+
             <div id="motus-pt-detail-root" className="motus-pt-dash-detail-root" />
           </>
         ) : (
@@ -492,121 +609,6 @@ export function TrainerPtDashboard({
 
       </main>
       </div>
-
-      <aside className="motus-pt-dash-insights" aria-label="Innsikt og oppgaver">
-        <section className="motus-pt-dash-panel">
-          <h2 className="motus-pt-dash-panel-title">Dagens oppgaver</h2>
-          <div className="motus-pt-dash-todo-input-row">
-            <input
-              type="text"
-              value={todoDraft}
-              onChange={(event) => onTodoDraftChange(event.target.value)}
-              placeholder="Legg til oppgave..."
-              className="motus-pt-dash-todo-input"
-              onKeyDown={(event) => {
-                if (event.key === "Enter") onAddTodo();
-              }}
-            />
-            <button type="button" className="motus-pt-dash-btn motus-pt-dash-btn--primary !px-3" onClick={onAddTodo}>
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
-          <ul className="motus-pt-dash-todo-list">
-            {openTodos.map((todo) => (
-              <li key={todo.id} className="motus-pt-dash-todo-item">
-                <button
-                  type="button"
-                  className={`motus-pt-dash-todo-check ${todo.done ? "motus-pt-dash-todo-check--done" : ""}`}
-                  onClick={() => onToggleTodo(todo.id)}
-                  aria-label={todo.done ? "Marker som åpen" : "Marker som fullført"}
-                />
-                <span className={`flex-1 text-sm ${todo.done ? "text-slate-400 line-through" : "text-slate-800"}`}>
-                  {todo.title}
-                </span>
-                <span
-                  className={`h-2 w-2 shrink-0 rounded-full ${
-                    todo.priority === "high" ? "bg-[#FF5C7C]" : todo.priority === "medium" ? "bg-[#FFB84D]" : "bg-slate-300"
-                  }`}
-                />
-              </li>
-            ))}
-            {!openTodos.length ? <li className="motus-pt-dash-empty text-sm">Ingen åpne oppgaver i dag.</li> : null}
-          </ul>
-        </section>
-
-        <section className="motus-pt-dash-panel motus-pt-dash-coach-ai">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="motus-pt-dash-panel-title flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-[#D91278]" />
-              Coach AI
-            </h2>
-            <span className="motus-pt-dash-coach-score">{coachScore.toFixed(1)}</span>
-          </div>
-          <ul className="mt-3 space-y-3">
-            <li className="motus-pt-dash-ai-item">
-              <AlertTriangle className="h-4 w-4 shrink-0 text-[#D91278]" />
-              <div className="min-w-0 flex-1">
-                <div className="font-semibold text-slate-900">{insightTitle}</div>
-                <p className="mt-0.5 text-xs text-slate-500">{insightDetail}</p>
-                <button
-                  type="button"
-                  className="motus-pt-dash-link-btn mt-1"
-                  onClick={() => setShowCoachSuggestions((value) => !value)}
-                  aria-expanded={showCoachSuggestions}
-                >
-                  {showCoachSuggestions ? "Skjul forslag" : "Vis forslag"} <ChevronRight className="h-3 w-3" />
-                </button>
-              </div>
-            </li>
-            {showCoachSuggestions ? (
-              <li className="rounded-xl bg-white/80 p-2">
-                <div className="space-y-2">
-                  {coachSuggestions.map((suggestion) => (
-                    <div key={suggestion.id} className="rounded-lg border border-slate-100 bg-white px-3 py-2 shadow-sm">
-                      <div className="text-xs font-bold text-slate-900">{suggestion.title}</div>
-                      <p className="mt-0.5 text-xs leading-snug text-slate-500">{suggestion.detail}</p>
-                      {suggestion.onAction ? (
-                        <button type="button" className="motus-pt-dash-link-btn mt-1.5" onClick={suggestion.onAction}>
-                          {suggestion.actionLabel} <ChevronRight className="h-3 w-3" />
-                        </button>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              </li>
-            ) : null}
-            <li className="motus-pt-dash-ai-item">
-              <Flame className="h-4 w-4 shrink-0 text-[#30E3BE]" />
-              <div className="min-w-0 flex-1">
-                <div className="font-semibold text-slate-900">Sterk progresjon</div>
-                <p className="mt-0.5 text-xs text-slate-500">Kunden holder momentum denne uken.</p>
-              </div>
-            </li>
-          </ul>
-        </section>
-
-        <section className="motus-pt-dash-panel">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="motus-pt-dash-panel-title">Notater</h2>
-            {onOpenNote ? (
-              <button type="button" className="motus-pt-dash-link-btn" onClick={onOpenNote}>
-                Se alle
-              </button>
-            ) : null}
-          </div>
-          {latestNote ? (
-            <button type="button" className="motus-pt-dash-note-preview" onClick={onOpenNote}>
-              <Pin className="h-3.5 w-3.5 shrink-0 text-[#D91278]" />
-              <div className="min-w-0 text-left">
-                <div className="font-semibold text-slate-900">{latestNote.title}</div>
-                <p className="mt-0.5 truncate text-xs text-slate-500">{latestNote.preview}</p>
-              </div>
-            </button>
-          ) : (
-            <p className="motus-pt-dash-empty text-sm">Ingen notater ennå.</p>
-          )}
-        </section>
-      </aside>
     </div>
   );
 }
