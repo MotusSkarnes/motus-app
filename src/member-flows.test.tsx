@@ -19,10 +19,12 @@ describe("Member flows", () => {
     render(<App />);
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som Emma/i })[0]);
+    const welcomeLater = screen.queryByRole("button", { name: "Jeg gjør det senere" });
+    if (welcomeLater) await user.click(welcomeLater);
     await user.click(screen.getAllByRole("button", { name: "Trening" })[0]);
-    await user.click(screen.getByRole("button", { name: "Start" }));
+    await user.click(screen.getByRole("button", { name: "Start neste økt" }));
 
-    expect(await screen.findByText("Økt-modus")).toBeInTheDocument();
+    expect(await screen.findByText("Øktmodus")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Avbryt" })).toBeInTheDocument();
   });
 
@@ -32,6 +34,8 @@ describe("Member flows", () => {
 
     const memberMessage = "Medlem testmelding";
     await user.click(screen.getAllByRole("button", { name: /Logg inn som Emma/i })[0]);
+    const welcomeLater = screen.queryByRole("button", { name: "Jeg gjør det senere" });
+    if (welcomeLater) await user.click(welcomeLater);
     await user.click(screen.getAllByRole("button", { name: "Meldinger" })[0]);
     await user.type(screen.getByPlaceholderText("Skriv melding..."), memberMessage);
     await user.click(screen.getByRole("button", { name: "Send" }));
@@ -45,6 +49,8 @@ describe("Member flows", () => {
     const first = render(<App />);
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som Emma/i })[0]);
+    const welcomeLater = screen.queryByRole("button", { name: "Jeg gjør det senere" });
+    if (welcomeLater) await user.click(welcomeLater);
     await user.click(screen.getAllByRole("button", { name: "Meldinger" })[0]);
     await user.type(screen.getByPlaceholderText("Skriv melding..."), memberMessage);
     await user.click(screen.getByRole("button", { name: "Send" }));

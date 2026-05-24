@@ -60,8 +60,12 @@ export function MemberWelcomeModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="member-welcome-title"
+      onClick={onDismiss}
     >
-      <Card className="w-full max-w-lg overflow-hidden p-0 shadow-xl ring-1 ring-black/10">
+      <Card
+        className="w-full max-w-lg overflow-hidden p-0 shadow-xl ring-1 ring-black/10"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div
           className="px-5 py-5 sm:px-6 sm:py-6"
           style={{ background: `linear-gradient(155deg, rgba(48,227,190,0.12) 0%, rgba(217, 18, 120,0.08) 55%, #fff 100%)` }}

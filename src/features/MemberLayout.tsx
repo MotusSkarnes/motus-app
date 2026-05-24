@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "react";
 import { MOTUS } from "../app/data";
 import {
@@ -114,6 +114,7 @@ type MemberLayoutProps = {
   isLocalDemoSession?: ComponentProps<typeof MemberPortal>["isLocalDemoSession"];
   refreshRemoteHydration?: ComponentProps<typeof MemberPortal>["refreshRemoteHydration"];
   onLogout: () => void;
+  onMemberMobileNavVisibilityChange?: (visible: boolean) => void;
 };
 
 export function MemberLayout({
@@ -169,6 +170,7 @@ export function MemberLayout({
   isLocalDemoSession = false,
   refreshRemoteHydration,
   onLogout,
+  onMemberMobileNavVisibilityChange,
 }: MemberLayoutProps) {
   const [onboardingGateOpen, setOnboardingGateOpen] = useState(false);
   const [welcomeModalOpen, setWelcomeModalOpen] = useState(false);
@@ -199,6 +201,12 @@ export function MemberLayout({
     setWelcomeModalOpen(true);
   }, [activeMember, currentUserRole, onboardingIdentityKey]);
 
+  const memberMobileNavVisible = !onboardingGateOpen && !memberCheckInOverlayOpen;
+
+  useEffect(() => {
+    onMemberMobileNavVisibilityChange?.(memberMobileNavVisible);
+  }, [memberMobileNavVisible, onMemberMobileNavVisibilityChange]);
+
   useEffect(() => {
     if (!activeMember || !onboardingIdentityKey) return;
     const resolved = resolveMemberOnboarding(activeMember, appState.members);
@@ -213,6 +221,13 @@ export function MemberLayout({
     markOnboardingGateSeen(onboardingIdentityKey);
     setWelcomeModalOpen(false);
   }
+
+  const memberTabRef = useRef(memberTab);
+  useEffect(() => {
+    if (memberTabRef.current === memberTab) return;
+    memberTabRef.current = memberTab;
+    if (welcomeModalOpen) dismissWelcomeModal();
+  }, [memberTab, welcomeModalOpen, onboardingIdentityKey]);
 
   function startOnboardingFromWelcome() {
     if (!onboardingIdentityKey) return;

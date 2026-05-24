@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { OfflineBanner } from "./app/OfflineBanner";
 import { AppErrorBoundary } from "./app/AppErrorBoundary";
 import { resolveLayoutRole } from "./app/resolveLayoutRole";
@@ -8,6 +9,7 @@ import { MemberMobileTabNav } from "./features/MemberTabNavigation";
 import { isSupabaseConfigured } from "./services/supabaseClient";
 
 export default function App() {
+  const [memberMobileNavVisible, setMemberMobileNavVisible] = useState(true);
   const {
     appState,
     isAuthSessionLoading,
@@ -42,11 +44,15 @@ export default function App() {
             <OfflineBanner />
             <AppHeader {...appHeaderProps} />
 
-            {layoutRole === "trainer" ? <TrainerLayout {...trainerLayoutProps} /> : <MemberLayout {...memberLayoutProps} />}
+            {layoutRole === "trainer" ? (
+              <TrainerLayout {...trainerLayoutProps} />
+            ) : (
+              <MemberLayout {...memberLayoutProps} onMemberMobileNavVisibilityChange={setMemberMobileNavVisible} />
+            )}
           </div>
         )}
       </AppShell>
-      {memberMobileNavProps ? <MemberMobileTabNav {...memberMobileNavProps} /> : null}
+      {memberMobileNavProps && memberMobileNavVisible ? <MemberMobileTabNav {...memberMobileNavProps} /> : null}
     </AppErrorBoundary>
   );
 }
