@@ -1,12 +1,13 @@
 import { badgeAssetUrl } from "../app/badgeAssets";
 
-type BadgeImageSize = "card" | "cardCompact" | "catalog" | "detail" | "hero" | "popup" | "tile";
+type BadgeImageSize = "card" | "cardCompact" | "catalog" | "detail" | "hero" | "home" | "popup" | "tile";
 
 /** Ytre boks (layout-størrelse brukeren ser). */
 const SIZE_PX: Record<BadgeImageSize, number> = {
   card: 260,
   cardCompact: 108,
   tile: 92,
+  home: 112,
   catalog: 210,
   detail: 176,
   hero: 280,

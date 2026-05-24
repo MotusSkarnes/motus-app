@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
   BarChart3,
   Bookmark,
@@ -55,12 +55,13 @@ export type MemberHomeOverviewProps = {
   workoutImageSrc?: string | null;
   workoutZoneLabel?: string | null;
   weekStats?: MemberHomeWeekStats | null;
-  quickActions: MemberHomeQuickActions;
+  quickActions?: MemberHomeQuickActions;
   betweenSections?: ReactNode;
   headerActions?: ReactNode;
   notificationsPanel?: ReactNode;
   primaryCta: ReactNode;
   onWorkoutCardClick?: () => void;
+  belowWorkout?: ReactNode;
   onboardingPrompt?: ReactNode;
   monthlyCheckInPrompt?: ReactNode;
 };
@@ -85,10 +86,9 @@ export function MemberHomeOverview({
   workoutDuration,
   workoutImageSrc,
   workoutZoneLabel,
-  quickActions,
-  betweenSections,
   primaryCta,
   onWorkoutCardClick,
+  belowWorkout,
   onboardingPrompt,
   monthlyCheckInPrompt,
 }: MemberHomeOverviewProps) {
@@ -101,7 +101,7 @@ export function MemberHomeOverview({
             onClick={() => onOpenProfile?.()}
             disabled={!onOpenProfile}
             className="motus-pressable relative h-11 w-11 shrink-0 overflow-hidden rounded-full ring-2 ring-white shadow-[0_2px_10px_-4px_rgba(15,23,42,0.25)] disabled:cursor-default"
-            aria-label="Åpne profil"
+            aria-label="�pne profil"
           >
             {memberAvatarUrl ? (
               <img src={memberAvatarUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
@@ -168,7 +168,7 @@ export function MemberHomeOverview({
                 <Clock3 className="h-3.5 w-3.5" />
               </span>
               <span>
-                <span className="motus-home-dash-stat-label">Dagens mål</span>
+                <span className="motus-home-dash-stat-label">Dagens m�l</span>
                 <span className="motus-home-dash-stat-value">{dailyGoalLabel}</span>
               </span>
             </div>
@@ -179,7 +179,7 @@ export function MemberHomeOverview({
                 <Dumbbell className="h-3.5 w-3.5" />
               </span>
               <span>
-                <span className="motus-home-dash-stat-label">Økter denne uka</span>
+                <span className="motus-home-dash-stat-label">�kter denne uka</span>
                 <span className="motus-home-dash-stat-value">{weekSessionsLabel}</span>
               </span>
             </div>
@@ -236,11 +236,11 @@ export function MemberHomeOverview({
 
         <div className="motus-home-workout-content">
           <div className="min-w-0">
-            <p className="motus-home-workout-label">Dagens økt</p>
+            <p className="motus-home-workout-label">Dagens �kt</p>
             <h2
               className={`motus-home-workout-title ${workoutTitleLoading ? "animate-pulse text-slate-400" : ""}`}
             >
-              {workoutTitleLoading ? "Henter dagens plan…" : workoutTitle || "Ingen plan i dag"}
+              {workoutTitleLoading ? "Henter dagens plan�" : workoutTitle || "Ingen plan i dag"}
             </h2>
             <div className="motus-home-workout-meta">
               {workoutDuration ? (
@@ -251,7 +251,7 @@ export function MemberHomeOverview({
               ) : null}
               {workoutZoneLabel ? (
                 <span className="inline-flex items-center gap-1.5">
-                  <span aria-hidden>•</span>
+                  <span aria-hidden>�</span>
                   {workoutZoneLabel}
                 </span>
               ) : null}
@@ -262,41 +262,9 @@ export function MemberHomeOverview({
         </div>
       </article>
 
-      <section className="motus-home-quick-actions" aria-label="Hurtighandlinger">
-        <HomeQuickAction
-          label="Registrer trening"
-          icon={ClipboardList}
-          tone="brand"
-          onClick={quickActions.onLogWorkout}
-        />
-        <HomeQuickAction label="Se program" icon={CalendarDays} tone="pink" onClick={quickActions.onViewPrograms} />
-        <HomeQuickAction
-          label="Fremgang"
-          icon={BarChart3}
-          tone="pink"
-          onClick={quickActions.onViewProgress}
-        />
-      </section>
-
-      {betweenSections ? <div className="w-full">{betweenSections}</div> : null}
-
-      {statusCard ? (
-        <div className="w-full">
-          <HomeStatusRow statusCard={statusCard} />
-        </div>
-      ) : null}
-
+      {belowWorkout}
       {onboardingPrompt ? <div className="w-full">{onboardingPrompt}</div> : null}
       {monthlyCheckInPrompt ? <div className="w-full">{monthlyCheckInPrompt}</div> : null}
-
-      {motivationLine ? (
-        <aside className="motus-home-boost-card">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-pink-700/80">Dagens boost</p>
-            <p className="mt-2 text-[0.9375rem] font-medium leading-relaxed text-slate-800">&ldquo;{motivationLine}&rdquo;</p>
-          </div>
-        </aside>
-      ) : null}
     </div>
   );
 }

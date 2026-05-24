@@ -172,6 +172,10 @@ import {
   MemberHomeSecondaryLink,
   MemberHomeStartWorkoutButton,
 } from "./MemberHomeOverview";
+import { MemberHomeBelowWorkout } from "./MemberHomeBelowWorkout";
+import { MemberHomeWeeklyProgress } from "./MemberHomeWeeklyProgress";
+import { MemberHomeNextPlanCard, MemberHomeStatusGradientCard } from "./MemberHomeNextPlanCard";
+import { MemberHomeMotivationCard } from "./MemberHomeMotivationCard";
 import { MemberProgressScoresCard } from "./MemberProgressScoresCard";
 import { MemberTrainingFlowCard } from "./MemberTrainingFlowCard";
 import { MemberTrainingTodayCard, extractZoneFromPlanEntry, formatWeekMinutesLabel, formatWeekSessionsLabel } from "./MemberTrainingTodayCard";
@@ -981,6 +985,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [celebrationSoundEnabled, setCelebrationSoundEnabled] = useState(false);
   const [restCountdownEnabled, setRestCountdownEnabled] = useState(true);
   const [homeVisibility, setHomeVisibility] = useState<Record<HomeSectionKey, boolean>>({ ...DEFAULT_HOME_VISIBILITY });
+  const [homeCalendarExpanded, setHomeCalendarExpanded] = useState(false);
   const [pushRegisterBusy, setPushRegisterBusy] = useState(false);
   const [pushRegisterStatus, setPushRegisterStatus] = useState<string | null>(null);
   const [showAllPersonalRecords, setShowAllPersonalRecords] = useState(false);
@@ -4679,19 +4684,8 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }
 
-  const memberHomeScheduleSections = (
-                <section className="space-y-4">
-                {memberHasVisiblePeriodPlan && nextPlannedWorkout ? (
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-medium text-slate-400">Neste på planen</p>
-                      <p className="text-sm text-slate-700">
-                        {nextPlannedWorkout.dayLabel} · {nextPlannedWorkout.entry}
-                      </p>
-                    </div>
-                    <MemberHomeSecondaryLink label="Se periodeplan" onClick={openProgramsWithPeriodPlan} />
-                  </div>
-                ) : null}
+  const memberHomeCalendarPanel = (
+                <section className="motus-home-section-card motus-home-calendar-panel space-y-4 p-4 sm:p-5">
               <div className="min-w-0 w-full">
                   <MemberTrainingCalendar
                     viewMode={calendarViewMode}
@@ -4965,29 +4959,43 @@ export function MemberPortal(props: MemberPortalProps) {
                 dailyGoalLabel={homeDisplayDuration}
                 weekSessionsLabel={homeWeekSessionsLabel}
                 weekMinutesLabel={homeWeekMinutesLabel}
-                motivationLine={homeMotivationLine}
-                statusCard={homeStatusCard}
                 workoutTitle={homeDisplayTitle}
                 workoutTitleLoading={homeDisplayLoading}
                 workoutSubtitle={homeDisplaySubtitle}
                 workoutDuration={homeDisplayDuration}
                 workoutImageSrc={homeDisplayCoverSrc}
                 workoutZoneLabel={homeDisplayZoneLabel}
-                quickActions={{
-                  onLogWorkout: () => {
-                    setMemberTab("programs");
-                    setTrainingSection("custom");
-                  },
-                  onViewPrograms: () => {
-                    setMemberTab("programs");
-                    setTrainingSection("programs");
-                  },
-                  onViewProgress: () => setMemberTab("progress"),
-                }}
                 onWorkoutCardClick={openHomeWorkoutDestination}
-                betweenSections={
-                  <div className="space-y-5">
-                    {memberHomeScheduleSections}
+                belowWorkout={
+                  <MemberHomeBelowWorkout>
+                    {memberHasVisiblePeriodPlan && nextPlannedWorkout ? (
+                      <MemberHomeNextPlanCard
+                        dayLabel={nextPlannedWorkout.dayLabel}
+                        entry={nextPlannedWorkout.entry}
+                        onClick={openProgramsWithPeriodPlan}
+                      />
+                    ) : homeStatusCard ? (
+                      <MemberHomeStatusGradientCard
+                        title={homeStatusCard.title}
+                        detail={homeStatusCard.detail}
+                        onClick={homeStatusCard.onClick}
+                      />
+                    ) : null}
+                    <MemberHomeWeeklyProgress
+                      weekStart={calendarWeekStart}
+                      weekDays={calendarWeekDays}
+                      weekCompletedCount={calendarWeekCompletedCount}
+                      weekPlannedCount={calendarWeekPlannedCount}
+                      streakWeeks={streakWeeks}
+                      onOpenCalendar={() => {
+                        setHomeCalendarExpanded(true);
+                        setCalendarViewMode("month");
+                        setCalendarMonth(new Date(calendarWeekStart.getFullYear(), calendarWeekStart.getMonth(), 1));
+                      }}
+                      selectedDateKey={selectedCalendarDateKey}
+                      onSelectDateKey={setSelectedCalendarDateKey}
+                    />
+                    {homeCalendarExpanded ? memberHomeCalendarPanel : null}
                     {!isMemberLimited ? (
                       <MemberBadgesCarousel
                         collection={memberBadgeCollection}
@@ -4995,7 +5003,14 @@ export function MemberPortal(props: MemberPortalProps) {
                         shareLogoSrc={motusShareLogoSrc}
                       />
                     ) : null}
-                  </div>
+                    {homeMotivationLine ? (
+                      <MemberHomeMotivationCard
+                        title={homeWeeklySummary.completedThisWeek > 0 ? "Hold momentumet oppe! 💪" : "Klar for en ny uke"}
+                        detail={homeMotivationLine}
+                        onClick={() => setMemberTab("progress")}
+                      />
+                    ) : null}
+                  </MemberHomeBelowWorkout>
                 }
                 primaryCta={
                   todayPlanAction.kind === "start-program" ? (
