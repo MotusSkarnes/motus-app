@@ -277,16 +277,16 @@ export function MemberHomeOverview({
         />
       </section>
 
-      {betweenSections ? <div className="px-0.5">{betweenSections}</div> : null}
+      {betweenSections ? <div className="w-full">{betweenSections}</div> : null}
 
       {statusCard ? (
-        <div className="px-0.5">
+        <div className="w-full">
           <HomeStatusRow statusCard={statusCard} />
         </div>
       ) : null}
 
-      {onboardingPrompt ? <div className="px-0.5">{onboardingPrompt}</div> : null}
-      {monthlyCheckInPrompt ? <div className="px-0.5">{monthlyCheckInPrompt}</div> : null}
+      {onboardingPrompt ? <div className="w-full">{onboardingPrompt}</div> : null}
+      {monthlyCheckInPrompt ? <div className="w-full">{monthlyCheckInPrompt}</div> : null}
 
       {motivationLine ? (
         <aside className="motus-home-boost-card">

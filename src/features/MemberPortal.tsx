@@ -4656,162 +4656,10 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }
 
-  return (
-    <>
-    <div className="space-y-4 sm:space-y-6">
-      <div className={`grid gap-4 sm:gap-6 ${memberTab === "overview" ? "" : "lg:grid-cols-[280px_1fr]"}`}>
-        <Card className={`hidden p-4 h-fit xl:p-5 ${memberTab === "overview" ? "" : "lg:block"}`}>
-          <div className="flex items-start gap-3">
-            <MotusSectionIcon><UserCircle2 className="h-5 w-5" /></MotusSectionIcon>
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight">Min profil</h2>
-              <p className="text-sm text-slate-500">Dine medlemsdata</p>
-            </div>
-          </div>
-          <div className="mt-5 space-y-3">
-            {viewedMember ? (
-              <div className="rounded-2xl border p-4" style={{ backgroundColor: "#f8fffd", borderColor: MOTUS.turquoise }}>
-                <div className="flex items-center gap-3">
-                  <div className="relative h-12 w-12 overflow-hidden rounded-full border bg-slate-100 text-slate-400" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
-                    <ClientAvatarFallback iconClassName="h-7 w-7" />
-                    {memberAvatarUrl ? (
-                      <img
-                        src={memberAvatarUrl}
-                        alt={viewedMember.name}
-                        className="relative z-10 h-full w-full object-cover"
-                        loading="lazy"
-                        decoding="async"
-                        onError={(event) => {
-                          event.currentTarget.style.display = "none";
-                        }}
-                      />
-                    ) : null}
-                  </div>
-                  <div>
-                    <div className="font-medium">{viewedMember.name}</div>
-                    <div className="text-sm text-slate-500">{viewedMember.email}</div>
-                  </div>
-                </div>
-                <div className="mt-2 text-sm"><span className="font-medium">Mål:</span> {viewedMember.goal}</div>
-              </div>
-            ) : null}
-          </div>
-        </Card>
-
-        <div className="min-w-0 w-full max-w-full space-y-4 overflow-x-hidden sm:space-y-6">
-          {memberTab === "overview" ? (
-            <div className="motus-home-shell space-y-6">
-              <MemberHomeOverview
-                memberFirstName={homeFirstName}
-                todayDateLabel={homeTodayDateLabel}
-                memberAvatarUrl={memberAvatarUrl}
-                onOpenProfile={() => setMemberTab("profile")}
-                streakWeeks={streakWeeks}
-                dashboardHeadline={homeDashboardHeadline}
-                dashboardSubline={homeDashboardSubline}
-                momentumPct={homeMomentumPct}
-                dailyGoalLabel={homeDisplayDuration}
-                weekSessionsLabel={homeWeekSessionsLabel}
-                weekMinutesLabel={homeWeekMinutesLabel}
-                motivationLine={homeMotivationLine}
-                statusCard={homeStatusCard}
-                workoutTitle={homeDisplayTitle}
-                workoutTitleLoading={homeDisplayLoading}
-                workoutSubtitle={homeDisplaySubtitle}
-                workoutDuration={homeDisplayDuration}
-                workoutImageSrc={homeDisplayCoverSrc}
-                workoutZoneLabel={homeDisplayZoneLabel}
-                quickActions={{
-                  onLogWorkout: () => {
-                    setMemberTab("programs");
-                    setTrainingSection("custom");
-                  },
-                  onViewPrograms: () => {
-                    setMemberTab("programs");
-                    setTrainingSection("programs");
-                  },
-                  onViewProgress: () => setMemberTab("progress"),
-                }}
-                onWorkoutCardClick={openHomeWorkoutDestination}
-                betweenSections={
-                  !isMemberLimited ? (
-                    <div>
-                      <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-slate-400">Merker</p>
-                      <MemberBadgesCarousel
-                        collection={memberBadgeCollection}
-                        memberDisplayName={memberShareDisplayName}
-                        shareLogoSrc={motusShareLogoSrc}
-                      />
-                    </div>
-                  ) : null
-                }
-                primaryCta={
-                  todayPlanAction.kind === "start-program" ? (
-                    <MemberHomeStartWorkoutButton
-                      label="Start økt"
-                      onClick={() => handlePeriodPlanStartProgram(todayPlanAction.program.id)}
-                    />
-                  ) : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch ? (
-                    <GradientButton
-                      type="button"
-                      disabled={todayPeriodPlanCompleted}
-                      onClick={() =>
-                        handlePeriodPlanLogGroup({
-                          entry: todayPlanEntry,
-                          plannedDate: resolvePeriodPlanEntryDate(
-                            todayPlanPeriodPlan,
-                            todayPeriodPlanMatch.weekNumber,
-                            todayPeriodPlanMatch.day,
-                          ),
-                          planId: todayPlanPeriodPlan.id,
-                          weekNumber: todayPeriodPlanMatch.weekNumber,
-                          day: todayPeriodPlanMatch.day,
-                        })
-                      }
-                      className="motus-pressable h-10 rounded-lg px-4 text-sm font-semibold disabled:cursor-default disabled:opacity-100"
-                      aria-disabled={todayPeriodPlanCompleted}
-                    >
-                      {todayPeriodPlanCompleted ? "Dagens økt er logget" : "Logg dagens økt"}
-                    </GradientButton>
-                  ) : todayPlanIsPassiveDay ? null : homeWorkoutHydrationPending ? null : nextProgram ? (
-                    <MemberHomeStartWorkoutButton
-                      label="Start økt"
-                      onClick={() => startWorkoutMode(nextProgram.id, buildStartWorkoutOptions(nextProgram))}
-                    />
-                  ) : (
-                    <GradientButton
-                      type="button"
-                      onClick={() => setMemberTab(nextBestAction.action === "progress" ? "progress" : "programs")}
-                      className="motus-pressable h-10 rounded-lg px-4 text-sm font-semibold"
-                    >
-                      {nextBestAction.cta}
-                    </GradientButton>
-                  )
-                }
-                onboardingPrompt={
-                  onOpenOnboarding && showOnboardingHomePrompt ? (
-                    <MemberHomeCompactPrompt
-                      title="Fortell oss litt om deg"
-                      detail="Ca. 3–5 min · én gang"
-                      ctaLabel="Start skjema"
-                      onCta={onOpenOnboarding}
-                    />
-                  ) : undefined
-                }
-                monthlyCheckInPrompt={
-                  monthlyCheckInPrompt && onOpenMonthlyCheckIn ? (
-                    <MemberHomeCompactPrompt
-                      title={monthlyCheckInPrompt.copy.text}
-                      detail={`${monthlyCheckInPrompt.copy.detail} · ${monthlyCheckInPrompt.window.daysRemaining} dager igjen`}
-                      ctaLabel="Start sjekk-inn"
-                      onCta={onOpenMonthlyCheckIn}
-                    />
-                  ) : undefined
-                }
-              />
-              <section className="space-y-4 pt-2">
+  const memberHomeScheduleSections = (
+                <section className="space-y-4">
                 {memberHasVisiblePeriodPlan && nextPlannedWorkout ? (
-                  <div className="flex flex-wrap items-center justify-between gap-3 px-0.5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-[11px] font-medium text-slate-400">Neste på planen</p>
                       <p className="text-sm text-slate-700">
@@ -4821,7 +4669,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     <MemberHomeSecondaryLink label="Se periodeplan" onClick={openProgramsWithPeriodPlan} />
                   </div>
                 ) : null}
-              <div className="min-w-0 w-full px-0.5">
+              <div className="min-w-0 w-full">
                   <MemberTrainingCalendar
                     viewMode={calendarViewMode}
                     onViewModeChange={(mode) => {
@@ -5033,7 +4881,167 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                   ) : null}
                 </div>
-              </section>
+                </section>
+  );
+
+
+  return (
+    <>
+    <div className="space-y-4 sm:space-y-6">
+      <div className={`grid gap-4 sm:gap-6 ${memberTab === "overview" ? "" : "lg:grid-cols-[280px_1fr]"}`}>
+        <Card className={`hidden p-4 h-fit xl:p-5 ${memberTab === "overview" ? "" : "lg:block"}`}>
+          <div className="flex items-start gap-3">
+            <MotusSectionIcon><UserCircle2 className="h-5 w-5" /></MotusSectionIcon>
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight">Min profil</h2>
+              <p className="text-sm text-slate-500">Dine medlemsdata</p>
+            </div>
+          </div>
+          <div className="mt-5 space-y-3">
+            {viewedMember ? (
+              <div className="rounded-2xl border p-4" style={{ backgroundColor: "#f8fffd", borderColor: MOTUS.turquoise }}>
+                <div className="flex items-center gap-3">
+                  <div className="relative h-12 w-12 overflow-hidden rounded-full border bg-slate-100 text-slate-400" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
+                    <ClientAvatarFallback iconClassName="h-7 w-7" />
+                    {memberAvatarUrl ? (
+                      <img
+                        src={memberAvatarUrl}
+                        alt={viewedMember.name}
+                        className="relative z-10 h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : null}
+                  </div>
+                  <div>
+                    <div className="font-medium">{viewedMember.name}</div>
+                    <div className="text-sm text-slate-500">{viewedMember.email}</div>
+                  </div>
+                </div>
+                <div className="mt-2 text-sm"><span className="font-medium">Mål:</span> {viewedMember.goal}</div>
+              </div>
+            ) : null}
+          </div>
+        </Card>
+
+        <div className="min-w-0 w-full max-w-full space-y-4 overflow-x-hidden sm:space-y-6">
+          {memberTab === "overview" ? (
+            <div className="motus-home-shell space-y-6">
+              <MemberHomeOverview
+                memberFirstName={homeFirstName}
+                todayDateLabel={homeTodayDateLabel}
+                memberAvatarUrl={memberAvatarUrl}
+                onOpenProfile={() => setMemberTab("profile")}
+                streakWeeks={streakWeeks}
+                dashboardHeadline={homeDashboardHeadline}
+                dashboardSubline={homeDashboardSubline}
+                momentumPct={homeMomentumPct}
+                dailyGoalLabel={homeDisplayDuration}
+                weekSessionsLabel={homeWeekSessionsLabel}
+                weekMinutesLabel={homeWeekMinutesLabel}
+                motivationLine={homeMotivationLine}
+                statusCard={homeStatusCard}
+                workoutTitle={homeDisplayTitle}
+                workoutTitleLoading={homeDisplayLoading}
+                workoutSubtitle={homeDisplaySubtitle}
+                workoutDuration={homeDisplayDuration}
+                workoutImageSrc={homeDisplayCoverSrc}
+                workoutZoneLabel={homeDisplayZoneLabel}
+                quickActions={{
+                  onLogWorkout: () => {
+                    setMemberTab("programs");
+                    setTrainingSection("custom");
+                  },
+                  onViewPrograms: () => {
+                    setMemberTab("programs");
+                    setTrainingSection("programs");
+                  },
+                  onViewProgress: () => setMemberTab("progress"),
+                }}
+                onWorkoutCardClick={openHomeWorkoutDestination}
+                betweenSections={
+                  <div className="space-y-5">
+                    {memberHomeScheduleSections}
+                    {!isMemberLimited ? (
+                      <div>
+                        <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-slate-400">Merker</p>
+                        <MemberBadgesCarousel
+                          collection={memberBadgeCollection}
+                          memberDisplayName={memberShareDisplayName}
+                          shareLogoSrc={motusShareLogoSrc}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                }
+                primaryCta={
+                  todayPlanAction.kind === "start-program" ? (
+                    <MemberHomeStartWorkoutButton
+                      label="Start økt"
+                      onClick={() => handlePeriodPlanStartProgram(todayPlanAction.program.id)}
+                    />
+                  ) : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch ? (
+                    <GradientButton
+                      type="button"
+                      disabled={todayPeriodPlanCompleted}
+                      onClick={() =>
+                        handlePeriodPlanLogGroup({
+                          entry: todayPlanEntry,
+                          plannedDate: resolvePeriodPlanEntryDate(
+                            todayPlanPeriodPlan,
+                            todayPeriodPlanMatch.weekNumber,
+                            todayPeriodPlanMatch.day,
+                          ),
+                          planId: todayPlanPeriodPlan.id,
+                          weekNumber: todayPeriodPlanMatch.weekNumber,
+                          day: todayPeriodPlanMatch.day,
+                        })
+                      }
+                      className="motus-pressable h-10 rounded-lg px-4 text-sm font-semibold disabled:cursor-default disabled:opacity-100"
+                      aria-disabled={todayPeriodPlanCompleted}
+                    >
+                      {todayPeriodPlanCompleted ? "Dagens økt er logget" : "Logg dagens økt"}
+                    </GradientButton>
+                  ) : todayPlanIsPassiveDay ? null : homeWorkoutHydrationPending ? null : nextProgram ? (
+                    <MemberHomeStartWorkoutButton
+                      label="Start økt"
+                      onClick={() => startWorkoutMode(nextProgram.id, buildStartWorkoutOptions(nextProgram))}
+                    />
+                  ) : (
+                    <GradientButton
+                      type="button"
+                      onClick={() => setMemberTab(nextBestAction.action === "progress" ? "progress" : "programs")}
+                      className="motus-pressable h-10 rounded-lg px-4 text-sm font-semibold"
+                    >
+                      {nextBestAction.cta}
+                    </GradientButton>
+                  )
+                }
+                onboardingPrompt={
+                  onOpenOnboarding && showOnboardingHomePrompt ? (
+                    <MemberHomeCompactPrompt
+                      title="Fortell oss litt om deg"
+                      detail="Ca. 3–5 min · én gang"
+                      ctaLabel="Start skjema"
+                      onCta={onOpenOnboarding}
+                    />
+                  ) : undefined
+                }
+                monthlyCheckInPrompt={
+                  monthlyCheckInPrompt && onOpenMonthlyCheckIn ? (
+                    <MemberHomeCompactPrompt
+                      title={monthlyCheckInPrompt.copy.text}
+                      detail={`${monthlyCheckInPrompt.copy.detail} · ${monthlyCheckInPrompt.window.daysRemaining} dager igjen`}
+                      ctaLabel="Start sjekk-inn"
+                      onCta={onOpenMonthlyCheckIn}
+                    />
+                  ) : undefined
+                }
+              />
+
             </div>
           ) : null}
 
