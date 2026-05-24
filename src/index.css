@@ -752,25 +752,16 @@ button {
 }
 
 .motus-progress-hero-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0;
-}
-
-@media (min-width: 640px) {
-  .motus-progress-hero-main {
-    grid-template-columns: minmax(0, 1.15fr) minmax(9rem, 0.85fr);
-  }
-}
-
-.motus-progress-hero-content {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
   padding: 0 1rem 1rem;
 }
 
-@media (min-width: 640px) {
-  .motus-progress-hero-content {
-    padding: 0 0 1.25rem 1.25rem;
-  }
+.motus-progress-hero-content {
+  min-width: 0;
+  flex: 1;
+  padding: 0;
 }
 
 .motus-progress-level-badge {
@@ -783,23 +774,34 @@ button {
   box-shadow: 0 8px 18px -12px rgba(217, 18, 120, 0.45);
 }
 
+.motus-progress-side-thumb {
+  width: 4.25rem;
+  flex-shrink: 0;
+  align-self: stretch;
+  min-height: 5.5rem;
+  max-height: 7rem;
+  border-radius: 0.875rem;
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .motus-progress-side-thumb {
+    width: 5rem;
+    min-height: 6rem;
+    max-height: 7.5rem;
+  }
+}
+
 .motus-progress-hero-media {
-  min-height: 10rem;
-  border-radius: 0;
+  border-radius: 0.875rem;
 }
 
 .motus-progress-hero-media-fade {
   position: absolute;
   inset: 0;
   z-index: 2;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.15) 42%, transparent 100%);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.75) 0%, transparent 45%);
   pointer-events: none;
-}
-
-@media (min-width: 640px) {
-  .motus-progress-hero-media-fade {
-    background: linear-gradient(270deg, rgba(255, 255, 255, 0.08) 0%, transparent 38%), linear-gradient(90deg, rgba(255, 255, 255, 0.88) 0%, transparent 55%);
-  }
 }
 
 .motus-progress-status-grid {
@@ -842,27 +844,21 @@ button {
   color: #be185d;
 }
 
-.motus-progress-flow-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-@media (min-width: 640px) {
-  .motus-progress-flow-layout {
-    grid-template-columns: minmax(7.5rem, 0.72fr) minmax(0, 1.28fr);
-  }
+.motus-progress-flow-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
 }
 
 .motus-progress-flow-media {
-  min-height: 100%;
-  border-radius: 0;
+  border-radius: 0.875rem;
 }
 
 .motus-progress-flow-media-fade {
   position: absolute;
   inset: 0;
   z-index: 2;
-  background: linear-gradient(180deg, transparent 35%, rgba(255, 255, 255, 0.18) 100%), linear-gradient(90deg, transparent 55%, rgba(255, 255, 255, 0.75) 100%);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.7) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -901,37 +897,40 @@ button {
 }
 
 .motus-progress-weekly-summary {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  display: block;
 }
 
-@media (min-width: 768px) {
-  .motus-progress-weekly-summary {
-    grid-template-columns: minmax(10rem, 0.9fr) minmax(0, 1.1fr);
+.motus-progress-weekly-summary-body {
+  display: flex;
+  align-items: stretch;
+  gap: 0.875rem;
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .motus-progress-weekly-summary-body {
+    gap: 1rem;
+    padding: 1.25rem 1.25rem 1.5rem;
   }
 }
 
 .motus-progress-weekly-summary-media {
-  min-height: 12rem;
+  min-height: 5.5rem;
 }
 
 .motus-progress-weekly-summary-media-overlay {
   position: absolute;
   inset: 0;
   z-index: 2;
-  background: linear-gradient(180deg, transparent 20%, rgba(255, 255, 255, 0.15) 100%), linear-gradient(90deg, transparent 40%, rgba(255, 255, 255, 0.82) 100%);
+  background: linear-gradient(90deg, transparent 35%, rgba(255, 255, 255, 0.82) 100%);
   pointer-events: none;
 }
 
 .motus-progress-weekly-summary-content {
   position: relative;
-  padding: 1.25rem 1rem 1.5rem;
-}
-
-@media (min-width: 768px) {
-  .motus-progress-weekly-summary-content {
-    padding: 1.5rem 1.25rem 1.5rem 0.5rem;
-  }
+  min-width: 0;
+  flex: 1;
+  padding: 0;
 }
 
 .motus-progress-weekly-summary-logo {

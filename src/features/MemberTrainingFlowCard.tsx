@@ -41,42 +41,42 @@ export function MemberTrainingFlowCard({
 
   return (
     <div className="motus-progress-flow-card" aria-labelledby="member-training-flow-heading">
-      <div className="motus-progress-flow-layout">
-        <div className="motus-progress-flow-media motus-image-frame motus-image-frame--portrait hidden sm:block">
-          <img
-            src={PROGRESS_FLOW_IMAGE}
-            alt=""
-            className="motus-image-media"
-            loading="lazy"
-            style={{ objectPosition: imageObjectPositionFromSrc(PROGRESS_FLOW_IMAGE) }}
-          />
-          <div className="motus-progress-flow-media-fade" aria-hidden />
-        </div>
-
-        <div className="min-w-0 flex-1">
       <div className="border-b border-slate-100 px-4 py-4 sm:px-5">
-        <div className="flex flex-wrap items-start gap-3">
-          <span
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F3F5F7] text-teal-600"
-            aria-hidden
-          >
-            <Route className="h-5 w-5" strokeWidth={2.25} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h3 id="member-training-flow-heading" className="text-base font-bold tracking-tight text-slate-900">
-              Din treningsflyt
-            </h3>
-            <p className="mt-1 text-sm leading-relaxed text-slate-600">
-              {hasCompletedAllLevels
-                ? `Du har fullført alle ${achievementMaxLevel} steg — fantastisk kontinuitet.`
-                : nextStepLabel
-                  ? `Du er på «${stepLabel}». Neste steg blir «${nextStepLabel}».`
-                  : `Du er på «${stepLabel}».`}
-            </p>
+        <div className="motus-progress-flow-header">
+          <div className="flex min-w-0 flex-1 flex-wrap items-start gap-3">
+            <span
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F3F5F7] text-teal-600"
+              aria-hidden
+            >
+              <Route className="h-5 w-5" strokeWidth={2.25} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h3 id="member-training-flow-heading" className="text-base font-bold tracking-tight text-slate-900">
+                Din treningsflyt
+              </h3>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                {hasCompletedAllLevels
+                  ? `Du har fullført alle ${achievementMaxLevel} steg — fantastisk kontinuitet.`
+                  : nextStepLabel
+                    ? `Du er på «${stepLabel}». Neste steg blir «${nextStepLabel}».`
+                    : `Du er på «${stepLabel}».`}
+              </p>
+            </div>
+            <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold tabular-nums text-slate-700">
+              {hasCompletedAllLevels ? "Alle steg fullført" : `Steg ${activeStep} / ${achievementMaxLevel}`}
+            </span>
           </div>
-          <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold tabular-nums text-slate-700">
-            {hasCompletedAllLevels ? "Alle steg fullført" : `Steg ${activeStep} / ${achievementMaxLevel}`}
-          </span>
+
+          <div className="motus-progress-flow-media motus-progress-side-thumb motus-image-frame shrink-0">
+            <img
+              src={PROGRESS_FLOW_IMAGE}
+              alt=""
+              className="motus-image-media"
+              loading="lazy"
+              style={{ objectPosition: imageObjectPositionFromSrc(PROGRESS_FLOW_IMAGE) }}
+            />
+            <div className="motus-progress-flow-media-fade" aria-hidden />
+          </div>
         </div>
 
         <div className="mt-4">
@@ -165,8 +165,6 @@ export function MemberTrainingFlowCard({
           stepLabel={stepLabel}
           hasCompletedAllLevels={hasCompletedAllLevels}
         />
-      </div>
-        </div>
       </div>
     </div>
   );

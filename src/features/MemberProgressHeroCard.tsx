@@ -120,7 +120,7 @@ export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks }:
           </div>
         </div>
 
-        <div className="motus-progress-hero-media motus-image-frame motus-image-frame--portrait">
+        <div className="motus-progress-hero-media motus-progress-side-thumb motus-image-frame">
           <img
             src={PROGRESS_HERO_IMAGE}
             alt=""
