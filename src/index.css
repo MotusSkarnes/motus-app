@@ -3229,6 +3229,54 @@ button {
   gap: 0.5rem;
 }
 
+.motus-chat-share-panel {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.motus-chat-share-panel-title {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.motus-chat-share-panel-list {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.motus-chat-share-panel-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.625rem;
+  text-align: left;
+  font-size: 0.875rem;
+  color: #0f172a;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.motus-chat-share-panel-item:hover {
+  background: #f8fafc;
+  border-color: rgba(39, 224, 193, 0.35);
+}
+
+.motus-chat-share-panel-goal {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
 .motus-chat-header-icon {
   display: inline-flex;
   align-items: center;

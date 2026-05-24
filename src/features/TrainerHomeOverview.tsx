@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import {
   BarChart3,
   Check,
@@ -78,8 +77,6 @@ export type TrainerHomeOverviewProps = {
   onMarkFollowedUp: (memberId: string) => void;
   onOpenProgressInsight?: () => void;
   quickActions: TrainerHomeQuickActions;
-  headerActions?: ReactNode;
-  notificationsPanel?: ReactNode;
 };
 
 function MemberAvatar({ name, avatarUrl, size = "md" }: { name: string; avatarUrl: string | null; size?: "sm" | "md" | "lg" }) {
@@ -140,8 +137,6 @@ export function TrainerHomeOverview({
   onMarkFollowedUp,
   onOpenProgressInsight,
   quickActions,
-  headerActions,
-  notificationsPanel,
 }: TrainerHomeOverviewProps) {
   const openTodos = todos.filter((todo) => !todo.done);
 

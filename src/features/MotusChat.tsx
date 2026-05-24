@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import {
-  Calendar,
   ChevronLeft,
   Dumbbell,
   MoreHorizontal,
@@ -64,7 +63,6 @@ const DEFAULT_MEMBER_QUICK_REPLIES = ["Hei! Kort status:", "Trenger hjelp med pr
 const DEFAULT_QUICK_ACTIONS: MotusChatQuickAction[] = [
   { id: "workout", label: "Send økt", icon: Dumbbell },
   { id: "program", label: "Del program", icon: Share2 },
-  { id: "book", label: "Book time", icon: Calendar },
   { id: "more", label: "Flere", icon: MoreHorizontal },
 ];
 

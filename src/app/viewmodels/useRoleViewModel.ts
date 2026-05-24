@@ -173,6 +173,12 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     onMemberBellToggle: handleMemberBellToggle,
     onOpenMemberAlert: openAlert,
     showMemberNotifications: layoutRole === "member" && !isMemberLimited,
+    trainerUnreadCount,
+    trainerNotificationsOpen,
+    trainerVisibleAlerts,
+    onTrainerBellToggle: handleTrainerBellToggle,
+    onOpenTrainerAlert: openTrainerAlert,
+    showTrainerNotifications: layoutRole === "trainer",
   });
 
   const trainerLayoutProps: ComponentProps<typeof TrainerLayout> = buildTrainerLayoutProps({

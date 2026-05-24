@@ -68,6 +68,7 @@ import {
 import { TrainerProfileCard } from "./TrainerProfileCard";
 import { TrainerHomeOverview } from "./TrainerHomeOverview";
 import type { TrainerFollowUpCardModel, TrainerPriorityMemberModel, TrainerTodoModel } from "./TrainerHomeOverview";
+import { buildShareProgramChatMessage } from "../app/chatFormat";
 import { MotusChat, type MotusChatQuickAction } from "./MotusChat";
 import {
   buildTrainerFocusItems,
@@ -256,8 +257,6 @@ type TrainerPortalProps = {
   /** Innlogget treners visningsnavn �?? brukes når program lagres på kunde. */
   trainerAccountName?: string;
   onTrainerProfileSaved?: (user: AuthUser) => void;
-  trainerHomeHeaderActions?: ReactNode;
-  trainerHomeNotificationsPanel?: ReactNode;
   /** Synket fra Supabase ved hydrering (per medlem, inkl. tom liste). */
   remoteTrainerPeriodPlansByMemberId?: Record<string, PeriodSchedulePlan[]>;
   /** Live PT-økt på kundens program �?? samme tilstand som medlemssiden. */
@@ -669,8 +668,6 @@ function pickFirstName(value: unknown): string {
     remoteTrainerPeriodPlansByMemberId = {},
     trainerAccountName = "",
     onTrainerProfileSaved,
-    trainerHomeHeaderActions,
-    trainerHomeNotificationsPanel,
     workoutMode = null,
     startWorkoutMode = () => {},
     updateWorkoutExerciseResult = () => {},
@@ -697,6 +694,7 @@ function pickFirstName(value: unknown): string {
   const trainerMessagesContainerRef = useRef<HTMLDivElement | null>(null);
   const trainerSendAttemptRef = useRef(0);
   const [trainerChatSendStatus, setTrainerChatSendStatus] = useState<string | null>(null);
+  const [chatShareProgramPickerOpen, setChatShareProgramPickerOpen] = useState(false);
   const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
   const [programsSubTab, setProgramsSubTab] = useState<TrainingSubTab>("strength");
   const [exerciseBankSubTab, setExerciseBankSubTab] = useState<ExerciseBankSubTab>("all");
@@ -1390,20 +1388,6 @@ function pickFirstName(value: unknown): string {
     });
     return Array.from(bySignature.values()).sort((a, b) => parseChatCreatedAtMs(a.createdAt) - parseChatCreatedAtMs(b.createdAt));
   }, [messages, selectedMemberRelatedIdSet, members, selectedMemberId, memberById]);
-  const trainerChatQuickActions = useMemo(
-    (): MotusChatQuickAction[] => [
-      { id: "workout", label: "Send økt", icon: Dumbbell, onClick: () => setCustomerSubTab("workouts") },
-      { id: "program", label: "Del program", icon: Share2, onClick: () => setCustomerSubTab("programs") },
-      {
-        id: "book",
-        label: "Book time",
-        icon: CalendarRange,
-        onClick: () => setTrainerMessage("Hei! Skal vi finne en time som passer for deg?"),
-      },
-      { id: "more", label: "Flere", icon: MoreHorizontal },
-    ],
-    [],
-  );
   const selectedMemberFollowUpLog = useMemo(
     () => mergeFollowUpEntriesForMemberIds(selectedMemberRelatedIds, followUpDetailsByMemberId),
     [selectedMemberRelatedIds, followUpDetailsByMemberId]
@@ -1451,6 +1435,9 @@ function pickFirstName(value: unknown): string {
     if (!container) return;
     container.scrollTop = container.scrollHeight;
   }, [customerSubTab, selectedMessages.length]);
+  useEffect(() => {
+    setChatShareProgramPickerOpen(false);
+  }, [selectedMemberId, customerSubTab]);
   const filteredWorkoutLogs = useMemo(() => {
     const now = Date.now();
     const query = workoutSearchQuery.trim().toLowerCase();
@@ -3041,6 +3028,42 @@ function pickFirstName(value: unknown): string {
     }
   }
 
+  async function shareSelectedProgramInChat(program: TrainingProgram) {
+    const message = buildShareProgramChatMessage({
+      programTitle: program.title,
+      goal: program.goal,
+      sender: "trainer",
+    });
+    const sent = await dispatchTrainerMessageToSelectedMember(message);
+    if (sent) {
+      setTrainerMessage("");
+      setChatShareProgramPickerOpen(false);
+    }
+  }
+
+  function handleTrainerShareProgramClick() {
+    if (selectedPrograms.length === 0) {
+      setChatShareProgramPickerOpen(false);
+      setCustomerSubTab("programs");
+      setTrainerChatSendStatus("Lag et program først — åpnet Program-fanen.");
+      return;
+    }
+    if (selectedPrograms.length === 1) {
+      void shareSelectedProgramInChat(selectedPrograms[0]);
+      return;
+    }
+    setChatShareProgramPickerOpen((open) => !open);
+  }
+
+  const trainerChatQuickActions = useMemo(
+    (): MotusChatQuickAction[] => [
+      { id: "workout", label: "Send økt", icon: Dumbbell, onClick: () => setCustomerSubTab("workouts") },
+      { id: "program", label: "Del program", icon: Share2, onClick: handleTrainerShareProgramClick },
+      { id: "more", label: "Flere", icon: MoreHorizontal },
+    ],
+    [selectedPrograms],
+  );
+
   function resetMemberListControls() {
     setMemberSearch("");
     setMemberFilter("all");
@@ -4333,8 +4356,6 @@ function pickFirstName(value: unknown): string {
               onOpenPrograms: () => setTrainerTab("programs"),
               onOpenMessages: () => setTrainerTab("customers"),
             }}
-            headerActions={trainerHomeHeaderActions}
-            notificationsPanel={trainerHomeNotificationsPanel}
           />
         </div>
       ) : null}
@@ -5976,6 +5997,28 @@ function pickFirstName(value: unknown): string {
                     sendStatus={trainerChatSendStatus}
                     messagesContainerRef={trainerMessagesContainerRef}
                     quickActions={trainerChatQuickActions}
+                    headerExtra={
+                      chatShareProgramPickerOpen && selectedPrograms.length > 1 ? (
+                        <div className="motus-chat-share-panel">
+                          <div className="motus-chat-share-panel-title">Velg program å dele</div>
+                          <div className="motus-chat-share-panel-list">
+                            {selectedPrograms.map((program) => (
+                              <button
+                                key={program.id}
+                                type="button"
+                                className="motus-chat-share-panel-item"
+                                onClick={() => void shareSelectedProgramInChat(program)}
+                              >
+                                <span className="font-medium">{program.title}</span>
+                                {program.goal?.trim() ? (
+                                  <span className="motus-chat-share-panel-goal">{program.goal.trim()}</span>
+                                ) : null}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null
+                    }
                   />
                 ) : null}
               </div>

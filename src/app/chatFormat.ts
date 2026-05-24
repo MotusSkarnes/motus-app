@@ -34,3 +34,16 @@ export function chatDateKey(value: string): string {
   const date = new Date(ms);
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
+
+export function buildShareProgramChatMessage(input: {
+  programTitle: string;
+  goal?: string;
+  sender: "trainer" | "member";
+}): string {
+  const title = input.programTitle.trim() || "Program";
+  if (input.sender === "trainer") {
+    const goalLine = input.goal?.trim() ? `\nMål: ${input.goal.trim()}` : "";
+    return `📋 Her er programmet ditt: «${title}»${goalLine}\n\nDu finner det under Trening → Mine programmer. Si fra om noe skal justeres!`;
+  }
+  return `Hei! Jeg holder på med «${title}» nå. Gi beskjed om du vil justere noe i programmet.`;
+}

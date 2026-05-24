@@ -177,6 +177,7 @@ import { MemberHomeBelowWorkout } from "./MemberHomeBelowWorkout";
 import { MemberHomeWeeklyProgress } from "./MemberHomeWeeklyProgress";
 import { MemberHomeNextPlanCard, MemberHomeStatusGradientCard } from "./MemberHomeNextPlanCard";
 import { MemberProgressScoresCard } from "./MemberProgressScoresCard";
+import { buildShareProgramChatMessage } from "../app/chatFormat";
 import { MotusChat, type MotusChatQuickAction } from "./MotusChat";
 import { resolveMemberTrainerDisplayName } from "../app/trainerProfile";
 import { MemberPersonalRecordsSection } from "./MemberPersonalRecordsSection";
@@ -1516,20 +1517,6 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!editableMember) return "Trener";
     return resolveMemberTrainerDisplayName(editableMember, programs) ?? "Trener";
   }, [editableMember, programs]);
-  const memberChatQuickActions = useMemo(
-    (): MotusChatQuickAction[] => [
-      { id: "workout", label: "Send økt", icon: Dumbbell, onClick: () => setMemberTab("home") },
-      { id: "program", label: "Del program", icon: Share2, onClick: () => setMemberTab("programs") },
-      {
-        id: "book",
-        label: "Book time",
-        icon: CalendarRange,
-        onClick: () => setMessageText("Hei! Kan vi finne en time som passer?"),
-      },
-      { id: "more", label: "Flere", icon: MoreHorizontal },
-    ],
-    [setMemberTab],
-  );
   const activeWorkoutProgram = useMemo(() => {
     if (!workoutMode?.programId) return null;
     const programId = workoutMode.programId;
@@ -1581,6 +1568,30 @@ export function MemberPortal(props: MemberPortalProps) {
   const primaryPausedWorkout = pausedWorkouts[0] ?? null;
   const secondaryPausedWorkouts = pausedWorkouts.slice(1);
   const nextProgram = memberProgramsInActiveLibrary[0] ?? null;
+
+  async function handleMemberShareProgramClick() {
+    if (!nextProgram) {
+      setMemberTab("programs");
+      setMemberChatSendStatus("Du har ingen aktivt program — gikk til Mine programmer.");
+      return;
+    }
+    const message = buildShareProgramChatMessage({
+      programTitle: nextProgram.title,
+      goal: nextProgram.goal,
+      sender: "member",
+    });
+    await dispatchMemberMessageToRelatedMembers(message);
+  }
+
+  const memberChatQuickActions = useMemo(
+    (): MotusChatQuickAction[] => [
+      { id: "workout", label: "Send økt", icon: Dumbbell, onClick: () => setMemberTab("home") },
+      { id: "program", label: "Del program", icon: Share2, onClick: () => void handleMemberShareProgramClick() },
+      { id: "more", label: "Flere", icon: MoreHorizontal },
+    ],
+    [nextProgram, setMemberTab],
+  );
+
   useEffect(() => {
     if (!isMemberLimited) return;
     if (memberTab === "overview" || memberTab === "programs" || memberTab === "profile" || memberTab === "inspiration") return;
