@@ -4127,24 +4127,20 @@ function pickFirstName(value: unknown): string {
 
   const selectedCustomerMetrics = useMemo(() => {
     if (!selectedMember) return null;
-    const relatedIds = selectedMemberRelatedIdSet;
-    const memberLogs = logs.filter((log) => relatedIds.has(log.memberId));
-    const memberMessages = messages.filter((msg) => relatedIds.has(msg.memberId));
     return buildCustomerMetrics({
-      memberLogs,
+      memberLogs: selectedLogs,
       programs: selectedPrograms,
-      memberMessages,
+      memberMessages: selectedMessages,
     });
-  }, [selectedMember, selectedMemberRelatedIdSet, logs, messages, selectedPrograms]);
+  }, [selectedMember, selectedLogs, selectedMessages, selectedPrograms]);
 
   const selectedCustomerTimeline = useMemo(() => {
     if (!selectedMember) return [];
-    const relatedIds = selectedMemberRelatedIdSet;
     return buildCustomerTimeline({
-      memberLogs: logs.filter((log) => relatedIds.has(log.memberId)),
-      memberMessages: messages.filter((msg) => relatedIds.has(msg.memberId)),
+      memberLogs: selectedLogs,
+      memberMessages: selectedMessages,
     });
-  }, [selectedMember, selectedMemberRelatedIdSet, logs, messages]);
+  }, [selectedMember, selectedLogs, selectedMessages]);
 
   const selectedCustomerFollowUps = useMemo(() => {
     if (!selectedMember) return [];
