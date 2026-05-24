@@ -335,18 +335,21 @@ export function MemberTrainingOverview({
                 onClick={() => onOpenRecord(record.name)}
                 className="motus-training-pr-card motus-pressable"
               >
-                <div className="motus-training-pr-image motus-image-frame">
+                <div className="motus-training-pr-image">
                   <img
                     src={resolveRecordImage(record.name, exercises)}
                     alt=""
-                    className="motus-image-media"
+                    className="motus-training-pr-image-media"
                     loading="lazy"
-                    style={{ objectPosition: imageObjectPositionFromSrc(resolveRecordImage(record.name, exercises)) }}
                   />
                 </div>
-                <div className="motus-training-pr-name">{record.name}</div>
-                <div className="motus-training-pr-weight">{record.weight} kg</div>
-                {record.isNewRecord ? <div className="motus-training-pr-badge">Ny rekord!</div> : null}
+                <div className="motus-training-pr-body">
+                  <div className="motus-training-pr-name">{record.name}</div>
+                  <div className="motus-training-pr-weight">{record.weight} kg</div>
+                  <div className="motus-training-pr-badge-slot">
+                    {record.isNewRecord ? <div className="motus-training-pr-badge">Ny rekord!</div> : null}
+                  </div>
+                </div>
               </button>
             ))}
           </div>

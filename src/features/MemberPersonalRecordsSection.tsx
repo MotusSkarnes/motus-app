@@ -149,13 +149,15 @@ export function MemberPersonalRecordsSection({
                         </span>
                       ) : null}
                     </div>
-                    <p className={`line-clamp-2 font-bold leading-snug text-slate-900 ${isV2 ? "mt-2 text-sm" : "mt-1.5 text-[11px]"}`}>
+                    <p className={`motus-progress-pr-v2-name line-clamp-2 font-bold leading-snug text-slate-900 ${isV2 ? "text-sm" : "mt-1.5 text-[11px]"}`}>
                       {record.name}
                     </p>
-                    <p className={`font-semibold tabular-nums ${isV2 ? "mt-0.5 text-sm text-[#0d9488]" : "mt-0.5 text-[10px] text-slate-700"}`}>
-                      {record.weight} kg{isV2 ? ` · ${record.reps} reps` : ` × ${record.reps}`}
-                    </p>
-                    {!isV2 ? <RecordSparkline tone={index % 2 === 0 ? "mint" : "pink"} /> : null}
+                    <div className={isV2 ? "motus-progress-pr-v2-meta" : undefined}>
+                      <p className={`font-semibold tabular-nums ${isV2 ? "text-sm text-[#0d9488]" : "mt-0.5 text-[10px] text-slate-700"}`}>
+                        {record.weight} kg{isV2 ? ` · ${record.reps} reps` : ` × ${record.reps}`}
+                      </p>
+                      {!isV2 ? <RecordSparkline tone={index % 2 === 0 ? "mint" : "pink"} /> : null}
+                    </div>
                   </button>
                   {!isV2 ? (
                   <div className="mt-1.5 flex items-center justify-center gap-1">
