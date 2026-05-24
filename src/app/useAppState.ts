@@ -327,14 +327,9 @@ function mergeMemberProgramsWithLocalEphemeral(
       });
       continue;
     }
-    if (programIsInMemberArchive(local.memberLibraryStatus)) {
-      merged.set(local.id, local);
-      continue;
-    }
-    const keepMemberSavedProgram = local.programCreatedBy === "member";
     const keepEphemeral = local.ephemeral === true;
     const keepActiveWorkout = Boolean(activeWorkoutProgramId && local.id === activeWorkoutProgramId);
-    if (keepMemberSavedProgram || keepEphemeral || keepActiveWorkout) {
+    if (keepEphemeral || keepActiveWorkout) {
       merged.set(local.id, local);
     }
   }
