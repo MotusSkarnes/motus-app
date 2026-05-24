@@ -136,6 +136,11 @@ import {
   writeHiddenPeriodPlanIdsForMembers,
 } from "../app/periodPlanMerge";
 import {
+  mergePeriodPlanCompletionIntoPersonalGoals,
+  readPeriodPlanCompletionFromPersonalGoals,
+  reconcilePeriodPlanCompletionKeys,
+} from "../app/periodPlanCompletionPrefs";
+import {
   applyPeriodPlanSwaps,
   buildPeriodPlanWeekOverride,
   getPeriodPlanSwapsStorageKey,
@@ -2836,31 +2841,39 @@ export function MemberPortal(props: MemberPortalProps) {
       periodPlanCompletionHydratedMemberRef.current = memberId;
       periodPlanCompletedDirtyRef.current = false;
       periodPlanDismissedDirtyRef.current = false;
-    } else if (periodPlanCompletedDirtyRef.current || periodPlanDismissedDirtyRef.current) {
-      return;
     }
 
-    let stored: string[] = [];
-    let dismissed: string[] = [];
+    let storedCompleted: string[] = [];
+    let storedDismissed: string[] = [];
+  const shouldReadLocalStorage = isNewMember || (!periodPlanCompletedDirtyRef.current && !periodPlanDismissedDirtyRef.current);
+  if (shouldReadLocalStorage) {
     try {
       const raw = window.localStorage.getItem(getPeriodPlanCompletedStorageKey(memberId));
       if (raw) {
         const parsed = JSON.parse(raw) as unknown;
         if (Array.isArray(parsed)) {
-          stored = parsed.map((item) => String(item)).filter(Boolean);
+          storedCompleted = parsed.map((item) => String(item)).filter(Boolean);
         }
       }
       const dismissedRaw = window.localStorage.getItem(getPeriodPlanDismissedStorageKey(memberId));
       if (dismissedRaw) {
         const parsedDismissed = JSON.parse(dismissedRaw) as unknown;
         if (Array.isArray(parsedDismissed)) {
-          dismissed = parsedDismissed.map((item) => String(item)).filter(Boolean);
+          storedDismissed = parsedDismissed.map((item) => String(item)).filter(Boolean);
         }
       }
     } catch {
-      stored = [];
-      dismissed = [];
+      storedCompleted = [];
+      storedDismissed = [];
     }
+  } else {
+    storedCompleted = completedPeriodPlanEntryKeys;
+    storedDismissed = dismissedPeriodPlanEntryKeys;
+  }
+
+    const remotePrefs = readPeriodPlanCompletionFromPersonalGoals(
+      resolveBestPersonalGoalsForRelatedMembers(editableMember, members, relatedMemberIdSet),
+    );
 
     const derived = derivePeriodPlanCompletedEntryKeysFromLogs({
       plans: visiblePeriodPlans,
@@ -2868,44 +2881,93 @@ export function MemberPortal(props: MemberPortalProps) {
       programs: memberProgramsForPeriodPlan,
       logs: memberLogs,
       memberId,
-      dismissedKeys: dismissed,
+      memberIds: relatedMemberIds,
+      dismissedKeys: storedDismissed,
     });
 
-    setCompletedPeriodPlanEntryKeys(Array.from(new Set([...stored, ...derived])));
-    setDismissedPeriodPlanEntryKeys(dismissed);
+    const reconciled = reconcilePeriodPlanCompletionKeys({
+      storedCompleted,
+      storedDismissed,
+      remotePrefs,
+      derivedCompleted: derived,
+    });
+
+    setCompletedPeriodPlanEntryKeys((prev) => {
+      const next = reconciled.completedKeys;
+      if (prev.length === next.length && prev.every((key, index) => key === next[index])) return prev;
+      return next;
+    });
+    setDismissedPeriodPlanEntryKeys((prev) => {
+      const next = reconciled.dismissedKeys;
+      if (prev.length === next.length && prev.every((key, index) => key === next[index])) return prev;
+      return next;
+    });
   }, [
-    editableMember?.id,
+    editableMember,
+    members,
+    relatedMemberIdSet,
+    relatedMemberIds,
     visiblePeriodPlans,
     periodPlanSwapsByPlan,
     memberProgramsForPeriodPlan,
     memberLogs,
+    memberRemoteHydrated,
+    relatedProfileGoalsSignature,
   ]);
   useEffect(() => {
     const memberId = editableMember?.id;
     if (!memberId || typeof window === "undefined") return;
-    if (!periodPlanCompletedDirtyRef.current) return;
-    try {
-      window.localStorage.setItem(
-        getPeriodPlanCompletedStorageKey(memberId),
-        JSON.stringify(completedPeriodPlanEntryKeys),
-      );
-    } catch {
-      // ignore storage write errors (quota/private mode)
-    }
-  }, [editableMember?.id, completedPeriodPlanEntryKeys]);
-  useEffect(() => {
-    const memberId = editableMember?.id;
-    if (!memberId || typeof window === "undefined") return;
-    if (!periodPlanDismissedDirtyRef.current) return;
-    try {
-      window.localStorage.setItem(
-        getPeriodPlanDismissedStorageKey(memberId),
-        JSON.stringify(dismissedPeriodPlanEntryKeys),
-      );
-    } catch {
-      // ignore storage write errors (quota/private mode)
-    }
-  }, [editableMember?.id, dismissedPeriodPlanEntryKeys]);
+    if (!periodPlanCompletedDirtyRef.current && !periodPlanDismissedDirtyRef.current) return;
+
+    const timer = window.setTimeout(() => {
+      try {
+        if (periodPlanCompletedDirtyRef.current) {
+          window.localStorage.setItem(
+            getPeriodPlanCompletedStorageKey(memberId),
+            JSON.stringify(completedPeriodPlanEntryKeys),
+          );
+        }
+        if (periodPlanDismissedDirtyRef.current) {
+          window.localStorage.setItem(
+            getPeriodPlanDismissedStorageKey(memberId),
+            JSON.stringify(dismissedPeriodPlanEntryKeys),
+          );
+        }
+      } catch {
+        // ignore storage write errors (quota/private mode)
+      }
+
+      if (currentUserRole === "member") {
+        const encoded = mergePeriodPlanCompletionIntoPersonalGoals(
+          resolveBestPersonalGoalsForRelatedMembers(editableMember, members, relatedMemberIdSet),
+          {
+            version: 1,
+            completedEntryKeys: completedPeriodPlanEntryKeys,
+            dismissedEntryKeys: dismissedPeriodPlanEntryKeys,
+            updatedAt: Date.now(),
+          },
+        );
+        const targetIds = Array.from(new Set([memberId, ...relatedMemberIds].filter(Boolean)));
+        targetIds.forEach((targetMemberId) => {
+          updateMember({
+            memberId: targetMemberId,
+            changes: { personalGoals: encoded },
+          });
+        });
+      }
+    }, 350);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    editableMember,
+    members,
+    relatedMemberIdSet,
+    relatedMemberIds,
+    completedPeriodPlanEntryKeys,
+    dismissedPeriodPlanEntryKeys,
+    currentUserRole,
+    updateMember,
+  ]);
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     if (!periodPlanSwapsDirtyRef.current) return;
@@ -4625,12 +4687,12 @@ export function MemberPortal(props: MemberPortalProps) {
       });
     } else {
       for (const log of matchingLogs) {
-        removeCompletedPlanEntryLog({
-          memberId: activeMemberId,
+      removeCompletedPlanEntryLog({
+        memberId: activeMemberId,
           programTitle: log.programTitle,
-          date: storedDate,
-        });
-      }
+        date: storedDate,
+      });
+    }
     }
 
     if (matchingLogs.some((log) => log.id === expandedRecentLogId)) {
@@ -5165,7 +5227,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     </div>
                   ) : null}
                 </div>
-                </section>
+              </section>
   );
 
 
@@ -5856,7 +5918,7 @@ export function MemberPortal(props: MemberPortalProps) {
 	                              }}
 	                            >
 	                              <Play className="h-4 w-4 fill-white text-white" aria-hidden />
-	                              Start økt
+	                                Start økt
 	                            </TrainingStartButton>
 	                              <div className="relative min-w-0" data-program-library-menu>
 	                                <OutlineButton
@@ -5867,7 +5929,7 @@ export function MemberPortal(props: MemberPortalProps) {
 	                                  aria-expanded={isLibraryMenuOpen}
 	                                  title="Flere valg"
 	                                >
-	                                  <MoreHorizontal className="h-4 w-4" aria-hidden />
+	                                    <MoreHorizontal className="h-4 w-4" aria-hidden />
 	                                </OutlineButton>
 	                                {isLibraryMenuOpen ? (
 	                                  <div
@@ -6312,21 +6374,21 @@ export function MemberPortal(props: MemberPortalProps) {
                         plan={activePeriodPlan}
                         isMemberOwned={isMemberOwnedPeriodPlan(activePeriodPlan, trainerPeriodPlanIds)}
                         swapsByPlan={periodPlanSwapsByPlan}
-                        selectedWeekNumber={selectedPeriodPlanWeekForView}
-                        onWeekSelectByNumber={setSelectedPeriodPlanWeekNumber}
-                        currentWeekNumber={activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : null}
+                            selectedWeekNumber={selectedPeriodPlanWeekForView}
+                            onWeekSelectByNumber={setSelectedPeriodPlanWeekNumber}
+                            currentWeekNumber={activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : null}
                         resolveEntryDate={resolvePeriodPlanEntryDate}
-                        memberPrograms={memberProgramsForPeriodPlan}
-                        actionStatus={periodPlanActionStatus}
-                        isEntryCompleted={isPeriodPlanEntryCompleted}
-                        onToggleCompleted={togglePeriodPlanEntryCompleted}
-                        onSwapDays={swapPeriodPlanDays}
-                        onMoveDay={movePeriodPlanDay}
-                        onResetSwaps={resetPeriodPlanSwapsForWeek}
-                        onStartProgram={handlePeriodPlanStartProgram}
-                        onLogGroup={handlePeriodPlanLogGroup}
-                        exerciseLibrary={exercises}
-                      />
+                              memberPrograms={memberProgramsForPeriodPlan}
+                              actionStatus={periodPlanActionStatus}
+                              isEntryCompleted={isPeriodPlanEntryCompleted}
+                              onToggleCompleted={togglePeriodPlanEntryCompleted}
+                              onSwapDays={swapPeriodPlanDays}
+                              onMoveDay={movePeriodPlanDay}
+                              onResetSwaps={resetPeriodPlanSwapsForWeek}
+                              onStartProgram={handlePeriodPlanStartProgram}
+                              onLogGroup={handlePeriodPlanLogGroup}
+                              exerciseLibrary={exercises}
+                            />
                     ) : null}
                   </div>
                 ) : memberHasVisiblePeriodPlan ? (
@@ -6760,12 +6822,12 @@ export function MemberPortal(props: MemberPortalProps) {
               composeValue={messageText}
               onComposeChange={(value) => {
                 setMessageText(value);
-                if (memberChatSendStatus) setMemberChatSendStatus(null);
-              }}
+                      if (memberChatSendStatus) setMemberChatSendStatus(null);
+                    }}
               onSend={() => {
-                if (!activeMemberId || !messageText.trim()) return;
-                void dispatchMemberMessageToRelatedMembers(messageText);
-                setMessageText("");
+                    if (!activeMemberId || !messageText.trim()) return;
+                    void dispatchMemberMessageToRelatedMembers(messageText);
+                    setMessageText("");
               }}
               isSending={isSendingMemberMessage}
               sendDisabled={!messageText.trim()}
@@ -6812,8 +6874,8 @@ export function MemberPortal(props: MemberPortalProps) {
                 ptChangeReason={ptChangeReason}
                 setPtChangeReason={(value) => {
                   setPtChangeReason(value);
-                  if (ptChangeRequestStatus) setPtChangeRequestStatus(null);
-                }}
+                            if (ptChangeRequestStatus) setPtChangeRequestStatus(null);
+                          }}
                 onRequestPtChange={() => void handleRequestPtChange()}
                 isSendingMemberMessage={isSendingMemberMessage}
                 ptChangeRequestStatus={ptChangeRequestStatus}
@@ -6842,7 +6904,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     </OutlineButton>
                   }
                 />
-              </Card>
+            </Card>
             )
           ) : null}
         </div>

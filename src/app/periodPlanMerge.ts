@@ -327,14 +327,19 @@ export function derivePeriodPlanCompletedEntryKeysFromLogs(input: {
   programs: TrainingProgram[];
   logs: Array<{ memberId: string; programTitle: string; date: string; status: string }>;
   memberId: string;
+  memberIds?: string[];
   dismissedKeys?: string[];
 }): string[] {
-  const memberId = input.memberId.trim();
-  if (!memberId) return [];
+  const memberIds = new Set(
+    (input.memberIds?.length ? input.memberIds : [input.memberId])
+      .map((id) => id.trim())
+      .filter(Boolean),
+  );
+  if (!memberIds.size) return [];
 
   const keys = new Set<string>();
   for (const log of input.logs) {
-    if (log.memberId.trim() !== memberId) continue;
+    if (!memberIds.has(log.memberId.trim())) continue;
     if (log.status !== "Fullført") continue;
     const completedAt = parseStoredLogDate(log.date);
     if (!completedAt) continue;

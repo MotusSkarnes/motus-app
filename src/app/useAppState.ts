@@ -1056,7 +1056,7 @@ export function useAppState() {
             const memberIds = memberIdsForSessionEmail(next.members, sessionEmail);
             next.logs = mergeRemoteWorkoutLogsWithLocalOptimistic(
               filterLogsForMembers(mergedLogs, memberIds),
-              [],
+              filterLogsForMembers(prev.logs, memberIds),
               next.members,
             );
           } else if (isTrainerSession && trainerHydrateOk) {

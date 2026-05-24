@@ -14,6 +14,7 @@ export function pickBestPersonalGoals(candidates: Array<string | undefined | nul
     else if (value.includes('"onboarding"')) score += 80;
     if (value.includes('"monthlyCheckIns"')) score += 50;
     if (value.includes('"notificationPreferences"')) score += 120;
+    if (value.includes('"periodPlanCompletion"')) score += 140;
     if (value.includes('"openedMemberAlertIds"')) score += 40;
     if (value.includes('"seenHiddenBadgeIds"')) score += 40;
     score += Math.min(20, Math.floor(value.length / 200));
