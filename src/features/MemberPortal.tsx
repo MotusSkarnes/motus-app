@@ -164,6 +164,7 @@ import { computeMemberProgressScores } from "../app/memberMomentumScores";
 import { getTrainingProgramSubTab, trainingProgramCategoryLabel, isConditioningTrainingProgram } from "../app/trainingProgramKind";
 import { BadgeImage } from "./BadgeImage";
 import { MemberBadgesCarousel } from "./MemberBadgesCarousel";
+import { MemberProfileDashboard } from "./MemberProfileDashboard";
 import { CustomWorkoutBuilder } from "./CustomWorkoutBuilder";
 import {
   MemberHomeCompactPrompt,
@@ -6677,213 +6678,59 @@ export function MemberPortal(props: MemberPortalProps) {
           ) : null}
 
           {memberTab === "profile" ? (
-            <Card className="p-5">
-              <div className="flex items-start gap-3">
-                <MotusSectionIcon><Target className="h-5 w-5" /></MotusSectionIcon>
-                <div>
-                  <h2 className="text-2xl font-black tracking-tight text-slate-950">Min profil</h2>
-                  <p className="text-sm font-medium text-slate-600">Mål, vaner og innstillinger samlet for deg.</p>
-                </div>
-              </div>
-              {editableMember ? (
-                <div className="mt-5 space-y-4">
-                  <div className="rounded-xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="text-sm font-semibold text-slate-700">Om meg</div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <label className="space-y-1">
-                        <span className="text-sm font-semibold text-slate-700">Navn</span>
-                        <TextInput value={memberNameDraft} onChange={(e) => setMemberNameDraft(e.target.value)} placeholder="Navn" />
-                      </label>
-                      <label className="space-y-1">
-                        <span className="text-sm font-semibold text-slate-700">E-post</span>
-                        <TextInput value={memberEmailDraft} onChange={(e) => setMemberEmailDraft(e.target.value)} placeholder="E-post" />
-                      </label>
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <label className="space-y-1">
-                        <span className="text-sm font-semibold text-slate-700">Telefon</span>
-                        <TextInput value={memberPhoneDraft} onChange={(e) => setMemberPhoneDraft(e.target.value)} placeholder="Telefon" />
-                      </label>
-                      <label className="space-y-1">
-                        <span className="text-sm font-semibold text-slate-700">Fødselsdato</span>
-                        <TextInput value={memberBirthDateDraft} onChange={(e) => setMemberBirthDateDraft(e.target.value)} placeholder="Fødselsdato (dd.mm.yyyy)" />
-                      </label>
-                    </div>
-                    <label className="space-y-1">
-                      <span className="text-sm font-semibold text-slate-700">Mål</span>
-                      <SelectBox
-                        value={MEMBER_GOAL_OPTIONS.includes(memberGoalDraft as (typeof MEMBER_GOAL_OPTIONS)[number]) ? memberGoalDraft : ""}
-                        onChange={(value) => setMemberGoalDraft(value)}
-                        options={[
-                          { value: "", label: "Velg mål" },
-                          ...MEMBER_GOAL_OPTIONS.map((goal) => ({ value: goal, label: goal })),
-                        ]}
-                      />
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-sm font-semibold text-slate-700">Skader / hensyn</span>
-                      <TextArea value={memberInjuriesDraft} onChange={(e) => setMemberInjuriesDraft(e.target.value)} className="min-h-[90px]" placeholder="Skader / hensyn" />
-                    </label>
-                    <div className="grid gap-2 text-sm text-slate-600 md:grid-cols-2">
-                      <div><span className="font-medium text-slate-800">Status:</span> {customerStatusLabel}</div>
-                      <div><span className="font-medium text-slate-800">Siste trening:</span> {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}</div>
-                    </div>
-                  </div>
-                  {onOpenOnboarding ? (
-                    <div className="motus-card p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-start gap-3">
-                          <MotusSectionIcon>
-                            <UserCircle2 className="h-5 w-5" />
-                          </MotusSectionIcon>
-                          <div>
-                            <div className="text-sm font-semibold text-slate-900">Oppstartsskjema</div>
-                            <p className="mt-1 text-sm text-slate-600">
-                              {showOnboardingHomePrompt || !onboardingSubstantivelyComplete
-                                ? "Fyll ut én gang — PT bruker svarene til å lage et treningsprogram tilpasset deg."
-                                : "Send inn på nytt hvis treneren ikke ser svarene dine, eller oppdater svarene."}
-                            </p>
-                          </div>
-                        </div>
-                        <GradientButton type="button" onClick={onOpenOnboarding} className="w-full shrink-0 sm:w-auto">
-                          {showOnboardingHomePrompt || !onboardingSubstantivelyComplete ? "Start skjema" : "Åpne skjema"}
-                        </GradientButton>
-                      </div>
-                    </div>
-                  ) : null}
-                  {!isMemberLimited ? (
-                    <div className="motus-card p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="flex min-w-0 items-start gap-3">
-                          <MotusSectionIcon>
-                            <MessageSquare className="h-5 w-5" />
-                          </MotusSectionIcon>
-                          <div className="min-w-0">
-                            <div className="text-sm font-semibold text-slate-900">Behov for å bytte PT?</div>
-                            <p className="mt-1 text-sm leading-relaxed text-slate-600">
-                              Send en forespørsel til PT. Selve byttet bekreftes og gjennomføres av PT/admin, slik at program, logg og meldinger følger riktig med.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      <label className="mt-3 block space-y-1">
-                        <span className="text-xs font-medium text-slate-600">Kort forklaring (valgfritt)</span>
-                        <TextArea
-                          value={ptChangeReason}
-                          onChange={(event) => {
-                            setPtChangeReason(event.target.value);
-                            if (ptChangeRequestStatus) setPtChangeRequestStatus(null);
-                          }}
-                          className="min-h-[76px]"
-                          placeholder="F.eks. ønsker annen oppfølging, byttet treningsmål eller praktiske årsaker."
-                        />
-                      </label>
-                      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <GradientButton type="button" onClick={() => void handleRequestPtChange()} disabled={isSendingMemberMessage} className="w-full sm:w-auto">
-                          {isSendingMemberMessage ? "Sender..." : "Be om PT-bytte"}
-                        </GradientButton>
-                        <OutlineButton type="button" onClick={() => setMemberTab("messages")} className="w-full sm:w-auto">
-                          Åpne meldinger
-                        </OutlineButton>
-                      </div>
-                      {ptChangeRequestStatus ? (
-                        <StatusMessage
-                          message={ptChangeRequestStatus}
-                          tone={ptChangeRequestStatus.toLowerCase().includes("kunne ikke") ? "error" : "success"}
-                          className="mt-3 !rounded-xl !px-3 !py-2 !text-xs"
-                        />
-                      ) : null}
-                    </div>
-                  ) : null}
-                  <div className="rounded-xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="text-sm font-semibold text-slate-700">Profilbilde</div>
-                    <div className="relative h-24 w-24 overflow-hidden rounded-full border bg-slate-100 text-slate-400" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
-                      <ClientAvatarFallback iconClassName="h-12 w-12" />
-                      {memberAvatarUrl ? (
-                        <img
-                          src={memberAvatarUrl}
-                          alt="Ditt profilbilde"
-                          className="relative z-10 h-full w-full object-cover"
-                          loading="eager"
-                          decoding="async"
-                          onError={(event) => {
-                            event.currentTarget.style.display = "none";
-                          }}
-                        />
-                      ) : null}
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(event) => handleAvatarFileSelected(event.target.files?.[0] ?? null)}
-                      className="block w-full text-xs text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-white file:px-3 file:py-2 file:text-xs file:font-medium"
-                    />
-                    {memberAvatarUrl ? (
-                      <OutlineButton onClick={() => setMemberAvatarUrl("")} className="w-full md:w-auto">
-                        Fjern profilbilde
-                      </OutlineButton>
-                    ) : null}
-                  </div>
-                  {!isMemberLimited ? (
-                  <div className="rounded-xl border bg-slate-50 p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                    <div className="text-sm font-semibold text-slate-700">Øktmodus, feiring og varsler</div>
-                    <p className="text-xs leading-snug text-slate-600">
-                      Ny PR etter økt vises alltid. Du kan slå av den ekstra meldingen som kommer når du går opp et nivå i fremdriftssystemet på oversikten.
-                    </p>
-                    <label className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <span>Pausenedtelling etter sett</span>
-                      <input
-                        type="checkbox"
-                        checked={restCountdownEnabled}
-                        onChange={(e) => setRestCountdownEnabled(e.target.checked)}
-                      />
-                    </label>
-                    <label className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <span>Melding ved nytt fremdriftsnivå</span>
-                      <input
-                        type="checkbox"
-                        checked={microCelebrationsEnabled}
-                        onChange={(e) => setMicroCelebrationsEnabled(e.target.checked)}
-                      />
-                    </label>
-                    <label className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <span>Lyd når du setter ny PR etter økt</span>
-                      <input
-                        type="checkbox"
-                        checked={celebrationSoundEnabled}
-                        onChange={(e) => setCelebrationSoundEnabled(e.target.checked)}
-                      />
-                    </label>
-                  </div>
-                  ) : null}
-                  {!isMemberLimited && supabaseClient && isWebPushConfigurable() ? (
-                    <div className="rounded-xl border bg-slate-50 p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                      <div className="text-sm font-semibold text-slate-700">Varsler på denne enheten</div>
-                      <p className="text-xs text-slate-600">
-                        Slå på varsler for å få beskjed når treneren sender deg en ny melding.
-                      </p>
-                      <OutlineButton type="button" onClick={handleRegisterWebPush} disabled={pushRegisterBusy} className="w-full md:w-auto">
-                        {pushRegisterBusy ? "Aktiverer…" : "Slå på push-varsler"}
-                      </OutlineButton>
-                      {pushRegisterStatus ? (
-                        <StatusMessage
-                          message={pushRegisterStatus}
-                          tone={pushRegisterStatus.startsWith("Push-varsler er") ? "success" : "error"}
-                          className="!rounded-xl !px-3 !py-2 !text-xs"
-                        />
-                      ) : null}
-                    </div>
-                  ) : null}
-                  <GradientButton onClick={saveProfile} className="w-full md:w-auto">Lagre min profil</GradientButton>
-                  {profileSaveInfo ? (
-                    <StatusMessage
-                      message={profileSaveInfo}
-                      tone={profileSaveInfo.toLowerCase().includes("feilet") ? "error" : "success"}
-                      className="!rounded-xl !px-3 !py-2 !text-xs"
-                    />
-                  ) : null}
-                </div>
-              ) : (
+            editableMember ? (
+              <MemberProfileDashboard
+                memberFirstName={homeFirstName}
+                memberAvatarUrl={memberAvatarUrl}
+                onAvatarFileSelected={handleAvatarFileSelected}
+                onRemoveAvatar={() => setMemberAvatarUrl("")}
+                customerStatusLabel={customerStatusLabel}
+                latestCompletedLog={latestCompletedLog}
+                memberNameDraft={memberNameDraft}
+                setMemberNameDraft={setMemberNameDraft}
+                memberEmailDraft={memberEmailDraft}
+                setMemberEmailDraft={setMemberEmailDraft}
+                memberPhoneDraft={memberPhoneDraft}
+                setMemberPhoneDraft={setMemberPhoneDraft}
+                memberBirthDateDraft={memberBirthDateDraft}
+                setMemberBirthDateDraft={setMemberBirthDateDraft}
+                memberGoalDraft={memberGoalDraft}
+                setMemberGoalDraft={setMemberGoalDraft}
+                memberInjuriesDraft={memberInjuriesDraft}
+                setMemberInjuriesDraft={setMemberInjuriesDraft}
+                streakWeeks={streakWeeks}
+                streakSubline={streakSubline}
+                totalWorkouts={completedLogs.length}
+                memberSince={editableMember.invitedAt ?? ""}
+                onOpenProgress={() => setMemberTab("progress")}
+                onSaveProfile={saveProfile}
+                profileSaveInfo={profileSaveInfo}
+                isMemberLimited={isMemberLimited}
+                onOpenOnboarding={onOpenOnboarding}
+                showOnboardingHomePrompt={showOnboardingHomePrompt}
+                onboardingSubstantivelyComplete={onboardingSubstantivelyComplete}
+                ptChangeReason={ptChangeReason}
+                setPtChangeReason={(value) => {
+                  setPtChangeReason(value);
+                  if (ptChangeRequestStatus) setPtChangeRequestStatus(null);
+                }}
+                onRequestPtChange={() => void handleRequestPtChange()}
+                isSendingMemberMessage={isSendingMemberMessage}
+                ptChangeRequestStatus={ptChangeRequestStatus}
+                onOpenMessages={() => setMemberTab("messages")}
+                restCountdownEnabled={restCountdownEnabled}
+                setRestCountdownEnabled={setRestCountdownEnabled}
+                microCelebrationsEnabled={microCelebrationsEnabled}
+                setMicroCelebrationsEnabled={setMicroCelebrationsEnabled}
+                celebrationSoundEnabled={celebrationSoundEnabled}
+                setCelebrationSoundEnabled={setCelebrationSoundEnabled}
+                showWebPushSettings={!isMemberLimited && Boolean(supabaseClient) && isWebPushConfigurable()}
+                onRegisterWebPush={() => void handleRegisterWebPush()}
+                pushRegisterBusy={pushRegisterBusy}
+                pushRegisterStatus={pushRegisterStatus}
+              />
+            ) : (
+              <Card className="p-5">
                 <EmptyState
                   icon="👤"
                   title="Fant ingen medlemsprofil"
@@ -6895,8 +6742,8 @@ export function MemberPortal(props: MemberPortalProps) {
                     </OutlineButton>
                   }
                 />
-              )}
-            </Card>
+              </Card>
+            )
           ) : null}
         </div>
       </div>
