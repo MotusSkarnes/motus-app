@@ -7545,8 +7545,8 @@ button {
 
 .motus-member-history-hero-ring {
   position: relative;
-  width: 4.25rem;
-  height: 4.25rem;
+  width: 4.5rem;
+  height: 4.5rem;
   flex-shrink: 0;
   justify-self: end;
 }
@@ -7555,39 +7555,38 @@ button {
   display: block;
   width: 100%;
   height: 100%;
-  overflow: visible;
 }
 
 .motus-member-history-hero-ring-center {
   position: absolute;
-  inset: 0.125rem;
+  inset: 0.5625rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 0.25rem;
-  gap: 0;
+  gap: 0.0625rem;
+  pointer-events: none;
 }
 
 .motus-member-history-hero-flame {
-  height: 1.375rem;
-  width: 1.375rem;
+  height: 1.125rem;
+  width: 1.125rem;
   flex-shrink: 0;
 }
 
 .motus-member-history-hero-ring-value {
-  font-size: 0.9375rem;
+  font-size: 1.0625rem;
   font-weight: 750;
   line-height: 1;
 }
 
 .motus-member-history-hero-ring-label {
-  max-width: 3.25rem;
-  font-size: 0.5rem;
+  font-size: 0.5625rem;
   font-weight: 600;
-  line-height: 1.15;
-  color: rgba(255, 255, 255, 0.78);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .motus-member-history-section-title {
