@@ -1935,6 +1935,478 @@ button {
   color: #0f172a;
 }
 
+/* —— Periodeplan premium layout —— */
+.motus-period-plan-active {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.motus-period-plan-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+
+@media (max-width: 639px) {
+  .motus-period-plan-meta-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.motus-period-plan-meta-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  border-radius: 1rem;
+  background: #ffffff;
+  padding: 0.75rem 0.875rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 24px -20px rgba(15, 23, 42, 0.14);
+}
+
+.motus-period-plan-meta-icon {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.625rem;
+  background: rgba(48, 227, 190, 0.14);
+  color: #0d9488;
+}
+
+.motus-period-plan-hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 10.5rem;
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 24px -8px rgba(15, 23, 42, 0.28);
+}
+
+.motus-period-plan-hero-image {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+.motus-period-plan-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    rgba(48, 227, 190, 0.92) 0%,
+    rgba(48, 227, 190, 0.55) 38%,
+    rgba(15, 23, 42, 0.15) 72%,
+    rgba(15, 23, 42, 0.35) 100%
+  );
+}
+
+.motus-period-plan-hero-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.25rem 0.75rem;
+  min-height: 10.5rem;
+}
+
+.motus-period-plan-hero-nav {
+  display: inline-flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0d9488;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.motus-period-plan-hero-nav:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.motus-period-plan-hero-badge {
+  display: inline-flex;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.35);
+  padding: 0.25rem 0.625rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+
+.motus-period-plan-hero-track {
+  height: 0.375rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.motus-period-plan-hero-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: #ffffff;
+  transition: width 280ms ease;
+}
+
+.motus-period-plan-week-tabs {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.125rem;
+}
+
+.motus-period-plan-week-tab {
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.motus-period-plan-week-tab--active {
+  border-color: transparent;
+  background: #30e3be;
+  color: #0f172a;
+  box-shadow: 0 6px 16px -8px rgba(48, 227, 190, 0.65);
+}
+
+.motus-period-plan-week {
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 14px 32px -24px rgba(15, 23, 42, 0.16);
+}
+
+.motus-period-plan-week-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  padding: 1rem 1rem 0.875rem;
+}
+
+.motus-period-plan-week-badge {
+  display: inline-flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, #30e3be 0%, #d91278 100%);
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.motus-period-plan-reset-swaps {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 0.75rem;
+  background: rgba(48, 227, 190, 0.1);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0d9488;
+  transition: background-color 160ms ease;
+}
+
+.motus-period-plan-reset-swaps:hover {
+  background: rgba(48, 227, 190, 0.18);
+}
+
+.motus-period-plan-timeline {
+  margin: 0;
+  padding: 0.75rem 1rem 1.25rem;
+  list-style: none;
+}
+
+.motus-period-plan-day {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.75rem;
+  padding-bottom: 0.875rem;
+}
+
+.motus-period-plan-day:last-child {
+  padding-bottom: 0;
+}
+
+.motus-period-plan-day-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.motus-period-plan-day-node {
+  display: inline-flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 2px solid rgba(148, 163, 184, 0.45);
+  background: #ffffff;
+  color: #94a3b8;
+}
+
+.motus-period-plan-day-node--completed {
+  border-color: transparent;
+  background: #30e3be;
+  color: #0f172a;
+}
+
+.motus-period-plan-day-node--rest {
+  border-color: transparent;
+  background: rgba(217, 18, 120, 0.14);
+  color: #be185d;
+}
+
+.motus-period-plan-day-node--planned {
+  border-color: rgba(148, 163, 184, 0.5);
+  background: #f8fafc;
+}
+
+.motus-period-plan-day-line {
+  margin-top: 0.25rem;
+  width: 2px;
+  flex: 1;
+  min-height: 1.5rem;
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.28);
+}
+
+.motus-period-plan-day-body {
+  min-width: 0;
+}
+
+.motus-period-plan-day-main {
+  position: relative;
+  display: block;
+  width: 100%;
+  border-radius: 1rem;
+  padding: 0.875rem 3rem 0.875rem 1rem;
+  text-align: left;
+  transition: box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.motus-period-plan-day-main--clickable:hover {
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.motus-period-plan-day--completed .motus-period-plan-day-main {
+  background: rgba(48, 227, 190, 0.08);
+}
+
+.motus-period-plan-day--rest .motus-period-plan-day-main {
+  background: rgba(217, 18, 120, 0.06);
+}
+
+.motus-period-plan-day--planned .motus-period-plan-day-main,
+.motus-period-plan-day--empty .motus-period-plan-day-main {
+  background: rgba(248, 250, 252, 0.85);
+}
+
+.motus-period-plan-day--swap-source .motus-period-plan-day-main {
+  box-shadow: 0 0 0 2px rgba(48, 227, 190, 0.45);
+}
+
+.motus-period-plan-day-date {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.motus-period-plan-day--completed .motus-period-plan-day-date {
+  color: #0d9488;
+}
+
+.motus-period-plan-day--rest .motus-period-plan-day-date {
+  color: #be185d;
+}
+
+.motus-period-plan-day-status {
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.motus-period-plan-day-status--completed {
+  background: rgba(48, 227, 190, 0.2);
+  color: #0f766e;
+}
+
+.motus-period-plan-day-status--rest {
+  background: rgba(217, 18, 120, 0.12);
+  color: #be185d;
+}
+
+.motus-period-plan-day-status--planned {
+  background: rgba(148, 163, 184, 0.16);
+  color: #64748b;
+}
+
+.motus-period-plan-day-title {
+  margin-top: 0.375rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.motus-period-plan-day-sub {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.motus-period-plan-day--rest .motus-period-plan-day-sub {
+  color: #be185d;
+}
+
+.motus-period-plan-day-chevron {
+  position: absolute;
+  right: 0.875rem;
+  top: 50%;
+  height: 1rem;
+  width: 1rem;
+  transform: translateY(-50%);
+  color: #94a3b8;
+}
+
+.motus-period-plan-day-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding-top: 0.125rem;
+}
+
+.motus-period-plan-action {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.625rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  color: #94a3b8;
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+}
+
+.motus-period-plan-action--complete-active,
+.motus-period-plan-action--swap-active {
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.motus-period-plan-action:hover:not(:disabled) {
+  border-color: rgba(48, 227, 190, 0.45);
+  color: #0d9488;
+}
+
+.motus-period-plan-rest-icon {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.625rem;
+  background: rgba(217, 18, 120, 0.1);
+  color: #be185d;
+}
+
+.motus-period-plan-swap-panel {
+  margin: 0.5rem 0 0;
+  border-radius: 0.875rem;
+  background: rgba(48, 227, 190, 0.08);
+  padding: 0.75rem;
+}
+
+.motus-period-plan-swap-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 0.625rem;
+  background: #ffffff;
+  padding: 0.5rem 0.625rem;
+}
+
+.motus-period-plan-swap-btn {
+  border-radius: 0.5rem;
+  border: 1px solid rgba(48, 227, 190, 0.25);
+  background: #ffffff;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.motus-period-plan-swap-btn--move {
+  border-color: rgba(217, 18, 120, 0.2);
+}
+
+.motus-period-plan-progress-card {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  border-radius: 1.25rem;
+  background: #ffffff;
+  padding: 1rem 1.125rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 28px -22px rgba(15, 23, 42, 0.16);
+}
+
+.motus-period-plan-progress-icon {
+  display: inline-flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: rgba(48, 227, 190, 0.14);
+  color: #0d9488;
+}
+
+.motus-period-plan-progress-ring {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.motus-period-plan-progress-ring-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .motus-fade-in-up,
   .motus-pop-in,

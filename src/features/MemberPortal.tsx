@@ -112,7 +112,6 @@ import {
   resolvePeriodPlanEntryAction,
 } from "../app/periodPlanEntryActions";
 import {
-  buildPeriodPlanWeekNavItemsFromPlan,
   buildTrainerPeriodPlanIdSet,
   isMemberOwnedPeriodPlan,
   mergedPeriodPlanListForMember,
@@ -188,8 +187,7 @@ import { MuscleSplitCard } from "./MuscleSplitCard";
 import { IntervalWorkoutSessionModal } from "./IntervalWorkoutSessionModal";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
 import { PersonalRecordProgressModal } from "./PersonalRecordProgressModal";
-import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
-import { PeriodPlanWeekView } from "./PeriodPlanWeekView";
+import { PeriodPlanActiveView } from "./PeriodPlanActiveView";
 import {
   buildExerciseGroupByName,
   computeMuscleGroupStats,
@@ -6028,65 +6026,25 @@ export function MemberPortal(props: MemberPortalProps) {
                       </div>
                     ) : null}
                     {activePeriodPlan ? (
-                      <div
-                        className="overflow-hidden rounded-2xl border bg-white p-0 shadow-md ring-1 ring-teal-500/15"
-                      >
-                        <div className="border-b border-teal-900/10 px-4 py-3 sm:px-5 sm:py-4" style={{ background: "rgba(255,255,255,0.55)" }}>
-                          <div className="text-base font-bold leading-snug text-slate-900 sm:text-lg">{activePeriodPlan.title}</div>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <span className="motus-surface-chip inline-flex px-2.5 py-1">
-                              Start {activePeriodPlan.startDate}
-                            </span>
-                            <span className="motus-surface-chip inline-flex px-2.5 py-1">
-                              {activePeriodPlan.weeks} {activePeriodPlan.weeks === 1 ? "uke" : "uker"}
-                            </span>
-                            <span className="motus-surface-chip motus-surface-chip--muted inline-flex px-2.5 py-1">
-                              {isMemberOwnedPeriodPlan(activePeriodPlan, trainerPeriodPlanIds) ? "Lagt til av deg" : "Fra trener"}
-                            </span>
-                          </div>
-                        </div>
-                        {activePeriodPlan.notes ? (
-                          <div className="mx-4 mt-3 rounded-xl border border-teal-200/50 bg-white/70 px-3 py-2.5 text-sm leading-relaxed text-slate-700 shadow-sm sm:mx-5">
-                            {activePeriodPlan.notes}
-                          </div>
-                        ) : null}
-                        {(activePeriodPlan.weeklyPlans ?? []).length > 0 ? (
-                          <PeriodPlanWeekNavigator
-                            className="mt-4 px-4 sm:px-5"
-                            weeks={buildPeriodPlanWeekNavItemsFromPlan(activePeriodPlan)}
-                            selectedWeekNumber={selectedPeriodPlanWeekForView}
-                            onWeekSelectByNumber={setSelectedPeriodPlanWeekNumber}
-                            currentWeekNumber={activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : null}
-                            formatWeekRange={(weekNumber) => {
-                              const monday = resolvePeriodPlanEntryDate(activePeriodPlan, weekNumber, "monday");
-                              const sunday = resolvePeriodPlanEntryDate(activePeriodPlan, weekNumber, "sunday");
-                              if (!monday || !sunday) return null;
-                              return `${monday} – ${sunday}`;
-                            }}
-                          />
-                        ) : null}
-                        {resolvePeriodPlanWeek(activePeriodPlan, selectedPeriodPlanWeekForView) ? (
-                          <div className="px-4 pb-4 sm:px-5 sm:pb-5">
-                            <PeriodPlanWeekView
-                              key={`${activePeriodPlan.id}-${selectedPeriodPlanWeekForView}`}
-                              plan={activePeriodPlan}
-                              week={resolvePeriodPlanWeek(activePeriodPlan, selectedPeriodPlanWeekForView)!}
-                              swapsByPlan={periodPlanSwapsByPlan}
-                              memberPrograms={memberProgramsForPeriodPlan}
-                              actionStatus={periodPlanActionStatus}
-                              isEntryCompleted={isPeriodPlanEntryCompleted}
-                              onToggleCompleted={togglePeriodPlanEntryCompleted}
-                              onSwapDays={swapPeriodPlanDays}
-                              onMoveDay={movePeriodPlanDay}
-                              onResetSwaps={resetPeriodPlanSwapsForWeek}
-                              onStartProgram={handlePeriodPlanStartProgram}
-                              onLogGroup={handlePeriodPlanLogGroup}
-                              resolveEntryDate={resolvePeriodPlanEntryDate}
-                              exerciseLibrary={exercises}
-                            />
-                          </div>
-                        ) : null}
-                      </div>
+                      <PeriodPlanActiveView
+                        plan={activePeriodPlan}
+                        isMemberOwned={isMemberOwnedPeriodPlan(activePeriodPlan, trainerPeriodPlanIds)}
+                        swapsByPlan={periodPlanSwapsByPlan}
+                        selectedWeekNumber={selectedPeriodPlanWeekForView}
+                        onWeekSelectByNumber={setSelectedPeriodPlanWeekNumber}
+                        currentWeekNumber={activePeriodWeekIndex !== null ? activePeriodWeekIndex + 1 : null}
+                        resolveEntryDate={resolvePeriodPlanEntryDate}
+                        memberPrograms={memberProgramsForPeriodPlan}
+                        actionStatus={periodPlanActionStatus}
+                        isEntryCompleted={isPeriodPlanEntryCompleted}
+                        onToggleCompleted={togglePeriodPlanEntryCompleted}
+                        onSwapDays={swapPeriodPlanDays}
+                        onMoveDay={movePeriodPlanDay}
+                        onResetSwaps={resetPeriodPlanSwapsForWeek}
+                        onStartProgram={handlePeriodPlanStartProgram}
+                        onLogGroup={handlePeriodPlanLogGroup}
+                        exerciseLibrary={exercises}
+                      />
                     ) : null}
                   </div>
                 ) : memberHasVisiblePeriodPlan ? (

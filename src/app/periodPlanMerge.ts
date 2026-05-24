@@ -560,3 +560,23 @@ export function mergedPeriodPlanListForMember(
   }
   return Array.from(merged.values()).sort((a, b) => planStartTimeMs(b) - planStartTimeMs(a));
 }
+
+export function computePeriodPlanSessionProgress(
+  plan: PeriodSchedulePlan,
+  swapsByPlan: PeriodPlanSwapsByPlan,
+  isEntryCompleted: (planId: string, weekNumber: number, day: WeekdayPlanKey) => boolean,
+): { completed: number; total: number; pct: number } {
+  let completed = 0;
+  let total = 0;
+  for (const week of plan.weeklyPlans ?? []) {
+    const swaps = getSwapsForWeek(swapsByPlan, plan.id, week.weekNumber);
+    const days = applyPeriodPlanSwaps(week.days, swaps);
+    for (const dayKey of WEEKDAY_PLAN_ORDER) {
+      const entry = days[dayKey]?.trim() ?? "";
+      if (!entry || isPassivePeriodPlanEntry(entry)) continue;
+      total += 1;
+      if (isEntryCompleted(plan.id, week.weekNumber, dayKey)) completed += 1;
+    }
+  }
+  return { completed, total, pct: total === 0 ? 0 : Math.round((completed / total) * 100) };
+}

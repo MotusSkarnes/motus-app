@@ -28,6 +28,11 @@ export function isPassivePeriodPlanEntry(entry: string): boolean {
   );
 }
 
+export function isRestPeriodPlanEntry(entry: string): boolean {
+  const normalized = entry.trim().toLowerCase();
+  return normalized.includes("hvile") || normalized.includes("restitusjon");
+}
+
 /** Klassenavn til logGroupWorkout (uten «Gruppetime:»-prefiks). */
 export function resolveGroupClassNameFromPeriodEntry(entry: string): string {
   const trimmed = entry.trim();

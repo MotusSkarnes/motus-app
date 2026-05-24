@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { MOTUS } from "../app/data";
+import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
 import type { PeriodPlanWeekNavItem } from "../app/periodPlanMerge";
+import { PERIOD_PLAN_HERO_IMAGE } from "../app/periodPlanImagery";
 
 export type { PeriodPlanWeekNavItem };
 
@@ -16,6 +18,7 @@ type PeriodPlanWeekNavigatorProps = {
   currentWeekNumber?: number | null;
   formatWeekRange?: (weekNumber: number) => string | null;
   className?: string;
+  variant?: "compact" | "hero";
 };
 
 export function PeriodPlanWeekNavigator({
@@ -27,6 +30,7 @@ export function PeriodPlanWeekNavigator({
   currentWeekNumber = null,
   formatWeekRange,
   className = "",
+  variant = "compact",
 }: PeriodPlanWeekNavigatorProps) {
   const sortedWeeks = useMemo(() => [...weeks].sort((a, b) => a.weekNumber - b.weekNumber), [weeks]);
 
@@ -69,7 +73,88 @@ export function PeriodPlanWeekNavigator({
   const weekRange = formatWeekRange?.(activeWeek.weekNumber) ?? null;
   const canGoPrev = activeIndex > 0;
   const canGoNext = activeIndex < sortedWeeks.length - 1;
-  const showNowBadge = currentWeekNumber != null;
+  const isCurrentWeek = currentWeekNumber != null && currentWeekNumber === activeWeek.weekNumber;
+  const weekProgressPct = sortedWeeks.length <= 1 ? 100 : Math.round(((activeIndex + 1) / sortedWeeks.length) * 100);
+
+  if (variant === "hero") {
+    return (
+      <div className={`motus-period-plan-hero-wrap space-y-3 ${className}`.trim()}>
+        <section className="motus-period-plan-hero" aria-label={`Uke ${activeWeek.weekNumber} i periodeplanen`}>
+          <img
+            src={PERIOD_PLAN_HERO_IMAGE}
+            alt=""
+            className="motus-period-plan-hero-image"
+            loading="lazy"
+            style={{ objectPosition: imageObjectPositionFromSrc(PERIOD_PLAN_HERO_IMAGE) }}
+          />
+          <div className="motus-period-plan-hero-overlay" aria-hidden />
+          <div className="motus-period-plan-hero-content">
+            <button
+              type="button"
+              disabled={!canGoPrev}
+              onClick={() => goToIndex(activeIndex - 1)}
+              className="motus-period-plan-hero-nav motus-period-plan-hero-nav--prev"
+              aria-label="Forrige uke"
+            >
+              <ChevronLeft className="h-5 w-5" aria-hidden />
+            </button>
+
+            <div className="min-w-0 flex-1 px-1 text-center sm:px-3">
+              <span className="motus-period-plan-hero-badge">Uke {activeWeek.weekNumber} av {sortedWeeks.length}</span>
+              <h3 className="mt-2 text-xl font-black tracking-tight text-white sm:text-2xl">
+                Uke {activeWeek.weekNumber}
+                {isCurrentWeek ? <span className="font-semibold text-white/90"> (nå)</span> : null}
+              </h3>
+              {weekRange ? <p className="mt-1 text-sm font-medium text-white/85">{weekRange}</p> : null}
+              <div className="mt-4">
+                <div className="motus-period-plan-hero-track">
+                  <div className="motus-period-plan-hero-fill" style={{ width: `${weekProgressPct}%` }} />
+                </div>
+                <p className="mt-1.5 text-xs font-semibold text-white/80">
+                  {activeIndex + 1} av {sortedWeeks.length} uker
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={!canGoNext}
+              onClick={() => goToIndex(activeIndex + 1)}
+              className="motus-period-plan-hero-nav motus-period-plan-hero-nav--next"
+              aria-label="Neste uke"
+            >
+              <ChevronRight className="h-5 w-5" aria-hidden />
+            </button>
+          </div>
+        </section>
+
+        {sortedWeeks.length > 1 ? (
+          <div
+            className="motus-period-plan-week-tabs"
+            role="tablist"
+            aria-label="Velg uke i periodeplan"
+          >
+            {sortedWeeks.map((week, index) => {
+              const selected = index === activeIndex;
+              return (
+                <button
+                  key={week.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  aria-label={`Uke ${week.weekNumber}`}
+                  onClick={() => goToIndex(index)}
+                  className={`motus-period-plan-week-tab ${selected ? "motus-period-plan-week-tab--active" : ""}`}
+                >
+                  Uke {week.weekNumber}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className={`relative z-10 space-y-2 ${className}`.trim()}>
@@ -91,7 +176,7 @@ export function PeriodPlanWeekNavigator({
         >
           <div className="text-sm font-semibold">
             Uke {activeWeek.weekNumber}
-            {showNowBadge && currentWeekNumber === activeWeek.weekNumber ? (
+            {currentWeekNumber != null && currentWeekNumber === activeWeek.weekNumber ? (
               <span className="ml-1 text-xs font-medium text-white/85">(nå)</span>
             ) : null}
           </div>
