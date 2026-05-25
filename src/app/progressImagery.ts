@@ -26,10 +26,20 @@ const PROGRESS_PERSONAL_RECORD_IMAGES: Record<string, string> = {
   "nedtrekk smalt grep": PROGRESS_PR_CLOSE_GRIP_PULLDOWN_IMAGE,
   "hip thrust": PROGRESS_PR_HIP_THRUST_IMAGE,
   "hip-trust": PROGRESS_PR_HIP_THRUST_IMAGE,
+  "hip trust": PROGRESS_PR_HIP_THRUST_IMAGE,
+  "single-leg hip trust": PROGRESS_PR_HIP_THRUST_IMAGE,
+  "single-leg hip thrust": PROGRESS_PR_HIP_THRUST_IMAGE,
 };
 
 function normalizeExerciseNameKey(name: string): string {
-  return name.trim().toLowerCase();
+  return name
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** Lifestyle-bilde for PR på Fremgang; null = bruk vanlig øvelses-skisse. */
