@@ -2541,6 +2541,103 @@ button {
   font-size: 0.75rem !important;
 }
 
+.motus-program-exercise-card {
+  position: relative;
+}
+
+.motus-program-exercise-card--in-block {
+  border-left: 4px solid #30e3be;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  background: linear-gradient(90deg, rgba(48, 227, 190, 0.06) 0%, #ffffff 8%);
+}
+
+.motus-program-exercise-card--block-continuation {
+  margin-top: -0.5rem;
+  position: relative;
+}
+
+.motus-program-exercise-card--block-continuation::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: -0.5rem;
+  width: 4px;
+  height: 0.5rem;
+  background: #30e3be;
+}
+
+.motus-program-exercise-card--block-end {
+  margin-bottom: 0.5rem;
+}
+
+.motus-block-marker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.875rem;
+  background: rgba(48, 227, 190, 0.12);
+  border: 1px solid rgba(48, 227, 190, 0.35);
+}
+
+.motus-block-marker--continuation {
+  background: rgba(48, 227, 190, 0.08);
+  border-style: dashed;
+}
+
+.motus-block-marker-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.motus-block-marker-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.5rem;
+  width: 1.5rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: #30e3be;
+  color: #0d1b2a;
+  font-size: 0.75rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.motus-block-marker--continuation .motus-block-marker-index {
+  background: #ffffff;
+  border: 1.5px solid #30e3be;
+  color: #0d6e5b;
+}
+
+.motus-block-marker-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+  min-width: 0;
+}
+
+.motus-block-marker-title {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #0d6e5b;
+  line-height: 1;
+}
+
+.motus-block-marker-meta {
+  font-size: 0.6875rem;
+  color: #475569;
+  line-height: 1.15;
+}
+
 .motus-muscle-split-header-icon {
   display: inline-flex;
   border-radius: 0.75rem;

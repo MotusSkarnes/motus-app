@@ -16,6 +16,17 @@ type ProgramExerciseBlockActionsProps = {
   onChange: (next: ProgramExercise[]) => void;
 };
 
+function positionInBlock(exercises: ProgramExercise[], index: number): number {
+  const exercise = exercises[index];
+  if (!exercise?.blockId) return 0;
+  const trimmed = exercise.blockId.trim();
+  let position = 0;
+  for (let i = 0; i <= index; i += 1) {
+    if (exercises[i]?.blockId?.trim() === trimmed) position += 1;
+  }
+  return position;
+}
+
 export function ProgramExerciseBlockActions({ exercises, index, onChange }: ProgramExerciseBlockActionsProps) {
   const exercise = exercises[index];
   if (!exercise) return null;
@@ -23,17 +34,23 @@ export function ProgramExerciseBlockActions({ exercises, index, onChange }: Prog
   const inBlock = Boolean(exercise.blockId?.trim() && exercise.blockType);
   const isBlockStart = inBlock && isFirstExerciseInBlock(exercises, index);
   const blockSize = inBlock && exercise.blockId ? countExercisesInBlock(exercises, exercise.blockId) : 0;
+  const blockPosition = inBlock ? positionInBlock(exercises, index) : 0;
 
   function applyBlock(count: number, blockType: ExerciseBlockType) {
     onChange(linkProgramExercisesAsBlock(exercises, index, count, blockType));
   }
 
   if (inBlock && isBlockStart) {
+    const blockLabel = EXERCISE_BLOCK_LABELS[exercise.blockType!];
     return (
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-teal-200/80 bg-teal-50/60 px-2.5 py-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-teal-800">
-          {EXERCISE_BLOCK_LABELS[exercise.blockType!]} · {blockSize} øvelser
-        </span>
+      <div className="motus-block-marker motus-block-marker--start">
+        <div className="motus-block-marker-pill">
+          <span className="motus-block-marker-index">1</span>
+          <span className="motus-block-marker-label">
+            <span className="motus-block-marker-title">{blockLabel}</span>
+            <span className="motus-block-marker-meta">{blockSize} øvelser sammen</span>
+          </span>
+        </div>
         <OutlineButton
           type="button"
           className="!min-h-7 !px-2 !py-1 !text-[10px]"
@@ -46,7 +63,22 @@ export function ProgramExerciseBlockActions({ exercises, index, onChange }: Prog
     );
   }
 
-  if (inBlock && !isBlockStart) return null;
+  if (inBlock && !isBlockStart) {
+    const blockLabel = EXERCISE_BLOCK_LABELS[exercise.blockType!];
+    return (
+      <div className="motus-block-marker motus-block-marker--continuation">
+        <div className="motus-block-marker-pill">
+          <span className="motus-block-marker-index">{blockPosition}</span>
+          <span className="motus-block-marker-label">
+            <span className="motus-block-marker-title">{blockLabel}</span>
+            <span className="motus-block-marker-meta">
+              Del {blockPosition} av {blockSize}
+            </span>
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-wrap gap-1.5">

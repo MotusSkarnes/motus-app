@@ -157,6 +157,8 @@ import { MemberOnboardingSummary } from "./MemberOnboardingSummary";
 import {
   buildTrainingProgramDisplayKey,
   dedupeTrainingPrograms,
+  countExercisesInBlock,
+  isFirstExerciseInBlock,
   isLegacyIntervalCooldownDrag,
   programIsInMemberArchive,
   unlinkProgramExerciseBlock,
@@ -5821,9 +5823,24 @@ function pickFirstName(value: unknown): string {
                               moveDraftExercise(draggedDraftExerciseId, item.id);
                               setDragOverDraftExerciseId(null);
                             }}
-                            className={`rounded-2xl border bg-white p-4 space-y-3 cursor-move transition ${
+                            className={`motus-program-exercise-card rounded-2xl border bg-white p-4 space-y-3 cursor-move transition ${
                               dragOverDraftExerciseId === item.id ? "ring-2 ring-teal-300 border-teal-300" : ""
-                            } ${item.blockId ? "ring-1 ring-teal-200/80" : ""}`}
+                            } ${item.blockId ? "motus-program-exercise-card--in-block" : ""} ${
+                              item.blockId && isFirstExerciseInBlock(programExercisesDraft, index)
+                                ? "motus-program-exercise-card--block-start"
+                                : ""
+                            } ${
+                              item.blockId &&
+                              !isFirstExerciseInBlock(programExercisesDraft, index)
+                                ? "motus-program-exercise-card--block-continuation"
+                                : ""
+                            } ${
+                              item.blockId &&
+                              countExercisesInBlock(programExercisesDraft, item.blockId) > 0 &&
+                              programExercisesDraft.findIndex((other, otherIndex) => other.blockId?.trim() === item.blockId?.trim() && otherIndex > index) === -1
+                                ? "motus-program-exercise-card--block-end"
+                                : ""
+                            }`}
                           >
                             <ProgramExerciseBlockActions exercises={programExercisesDraft} index={index} onChange={setProgramExercisesDraft} />
                             <div className="flex items-center justify-between gap-3">
