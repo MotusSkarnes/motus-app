@@ -9529,13 +9529,15 @@ button.motus-progress-status-banner {
   font-weight: 700;
   color: #334155;
   text-transform: capitalize;
+  text-align: center;
 }
 
 .motus-member-history-heatmap-grid {
   display: grid;
   grid-template-columns: repeat(7, 1.125rem);
   gap: 0.1875rem;
-  justify-content: start;
+  width: fit-content;
+  margin: 0 auto;
 }
 
 @media (min-width: 480px) {
@@ -9607,8 +9609,8 @@ button.motus-progress-status-banner {
   display: grid;
   grid-template-columns: repeat(7, 1.125rem);
   gap: 0.1875rem;
-  margin-bottom: 0.25rem;
-  justify-content: start;
+  margin: 0 auto 0.25rem;
+  width: fit-content;
 }
 
 @media (min-width: 480px) {
