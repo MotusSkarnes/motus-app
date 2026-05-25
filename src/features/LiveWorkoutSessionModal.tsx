@@ -120,6 +120,7 @@ export function LiveWorkoutSessionModal({
   const [showExerciseDetail, setShowExerciseDetail] = useState(false);
   const [restCountdown, setRestCountdown] = useState<RestCountdownState | null>(null);
   const [pendingIncompleteFinishAction, setPendingIncompleteFinishAction] = useState<FinishWorkoutAction | null>(null);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const deferredJumpTargetGroupIdRef = useRef<string | null>(null);
   const incompleteWarningSeenRef = useRef(false);
   const completedCountByGroupRef = useRef<Record<string, number>>({});
@@ -946,7 +947,7 @@ export function LiveWorkoutSessionModal({
             </GradientButton>
           )}
           <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
-            <OutlineButton type="button" className="w-full !min-h-9 !px-2 !py-1.5 !text-[11px] sm:!min-h-10 sm:!text-sm" onClick={cancelWorkoutMode}>
+            <OutlineButton type="button" className="w-full !min-h-9 !px-2 !py-1.5 !text-[11px] sm:!min-h-10 sm:!text-sm" onClick={() => setCancelConfirmOpen(true)}>
               Avbryt
             </OutlineButton>
             <OutlineButton
@@ -1105,6 +1106,47 @@ export function LiveWorkoutSessionModal({
               <OutlineButton type="button" className="w-full" onClick={confirmIncompleteFinish}>
                 Lagre likevel
               </OutlineButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {cancelConfirmOpen ? (
+        <div
+          className="motus-modal-insets fixed inset-0 z-[10021] flex items-center justify-center bg-slate-900/55 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cancel-workout-title"
+        >
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+            <h3 id="cancel-workout-title" className="text-base font-bold text-slate-950">
+              Er du sikker på at du vil avbryte?
+            </h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Dette sletter alt du har lagt inn i denne økten
+              {completedSetsCount > 0
+                ? ` (${completedSetsCount} ${completedSetsCount === 1 ? "registrert sett" : "registrerte sett"})`
+                : ""}
+              .
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <OutlineButton
+                type="button"
+                className="w-full"
+                onClick={() => setCancelConfirmOpen(false)}
+              >
+                Nei
+              </OutlineButton>
+              <button
+                type="button"
+                className="inline-flex w-full items-center justify-center rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700"
+                onClick={() => {
+                  setCancelConfirmOpen(false);
+                  cancelWorkoutMode();
+                }}
+              >
+                Ja, avbryt
+              </button>
             </div>
           </div>
         </div>
