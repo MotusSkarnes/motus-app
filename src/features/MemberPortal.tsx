@@ -2205,10 +2205,39 @@ export function MemberPortal(props: MemberPortalProps) {
     });
     return byKey;
   }, [completedLogs]);
+
+  function completedLogMatchesProgramForPeriodEntry(log: WorkoutLog, program: TrainingProgram, entry: string): boolean {
+    if (log.status !== "Fullført") return false;
+    if (periodPlanEntryMatchesCompletedProgram(entry, log.programTitle, memberProgramsForPeriodPlan, program.id)) return true;
+
+    const programExerciseIds = new Set(program.exercises.map((exercise) => exercise.exerciseId.trim()).filter(Boolean));
+    const programExerciseNames = new Set(
+      program.exercises.map((exercise) => exercise.exerciseName.trim().toLowerCase()).filter(Boolean),
+    );
+    const logResults = log.results ?? [];
+    if (!logResults.length || (!programExerciseIds.size && !programExerciseNames.size)) return false;
+
+    let matches = 0;
+    for (const result of logResults) {
+      const resultExerciseId = result.exerciseId.trim();
+      const resultExerciseName = result.exerciseName.trim().toLowerCase();
+      if ((resultExerciseId && programExerciseIds.has(resultExerciseId)) || (resultExerciseName && programExerciseNames.has(resultExerciseName))) {
+        matches += 1;
+      }
+    }
+    return matches >= Math.min(2, Math.max(1, program.exercises.length));
+  }
+
   const todayPeriodPlanCompleted = useMemo(() => {
     if (!todayPlanPeriodPlan || !todayPeriodPlanMatch || !todayPlanEntry) return false;
     const todayKey = toCalendarDateKey(nowDate);
     const logsForToday = calendarLogsByDateKey.get(todayKey) ?? [];
+    if (
+      todayPlanAction.kind === "start-program" &&
+      logsForToday.some((log) => completedLogMatchesProgramForPeriodEntry(log, todayPlanAction.program, todayPlanEntry))
+    ) {
+      return true;
+    }
     return isPeriodPlanDayComplete({
       planId: todayPlanPeriodPlan.id,
       weekNumber: todayPeriodPlanMatch.weekNumber,
@@ -2228,6 +2257,7 @@ export function MemberPortal(props: MemberPortalProps) {
     memberProgramsForPeriodPlan,
     calendarLogsByDateKey,
     nowDate,
+    todayPlanAction,
   ]);
   const calendarDayLoad = useMemo(() => {
     const byDay = new Map<number, number>();
@@ -4708,7 +4738,16 @@ export function MemberPortal(props: MemberPortalProps) {
     const plannedDate = resolvePeriodPlanPlannedDate(plan, weekNumber, day);
     const logsForDate = plannedDate
       ? calendarLogsByDateKey.get(toCalendarDateKey(plannedDate)) ?? []
+      : day === currentWeekdayKey
+        ? calendarLogsByDateKey.get(toCalendarDateKey(nowDate)) ?? []
       : [];
+    const entryAction = resolvePeriodPlanEntryAction(entry, memberProgramsForPeriodPlan);
+    if (
+      entryAction.kind === "start-program" &&
+      logsForDate.some((log) => completedLogMatchesProgramForPeriodEntry(log, entryAction.program, entry))
+    ) {
+      return true;
+    }
     return isPeriodPlanDayComplete({
       planId,
       weekNumber,
