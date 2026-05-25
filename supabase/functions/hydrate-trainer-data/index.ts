@@ -401,7 +401,7 @@ Deno.serve(async (req) => {
   if (visibleMemberEmails.length > 0) {
     const { data: relatedEmailMembers, error: relatedEmailMembersError } = await adminClient
       .from("members")
-      .select("id, email")
+      .select("id, email, owner_user_id, customer_type")
       .in("email", visibleMemberEmails);
     if (relatedEmailMembersError) {
       console.warn("hydrate-trainer-data: related email member lookup failed:", relatedEmailMembersError.message);
@@ -409,6 +409,7 @@ Deno.serve(async (req) => {
       for (const row of relatedEmailMembers ?? []) {
         const rowEmail = normalizeEmail((row as { email?: string }).email);
         if (!rowEmail || !visibleMemberEmails.includes(rowEmail)) continue;
+        if (!isVisibleToTrainer(row as Record<string, unknown>, ownerUserId)) continue;
         const id = String((row as { id?: string }).id ?? "").trim();
         if (id && id !== "__template__") programLookupMemberIds.add(id);
       }
