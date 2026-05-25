@@ -1327,6 +1327,112 @@ button {
   outline-offset: 2px;
 }
 
+.motus-progress-consistency-card {
+  padding: 0.875rem 1rem 1rem;
+  border-radius: 1.25rem;
+  background: #ffffff;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 16px 40px -28px rgba(15, 23, 42, 0.22);
+}
+
+@media (min-width: 640px) {
+  .motus-progress-consistency-card {
+    padding: 1rem 1.125rem 1.125rem;
+  }
+}
+
+.motus-progress-consistency-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.motus-progress-consistency-card-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-progress-consistency-card-link {
+  border: none;
+  background: transparent;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #d91278;
+  cursor: pointer;
+  padding: 0.25rem 0.375rem;
+  border-radius: 0.5rem;
+}
+
+.motus-progress-consistency-card-link:hover {
+  background: rgba(217, 18, 120, 0.08);
+}
+
+.motus-progress-consistency-card-link--static {
+  cursor: default;
+  color: #94a3b8;
+}
+
+.motus-progress-consistency-card-link--static:hover {
+  background: transparent;
+}
+
+.motus-progress-consistency-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.375rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.motus-progress-consistency-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.motus-progress-consistency-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.motus-progress-consistency-label--today {
+  color: #d91278;
+}
+
+.motus-progress-consistency-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.125rem;
+  height: 2.125rem;
+  border-radius: 9999px;
+  color: #ffffff;
+  transition: transform 200ms ease-out;
+}
+
+.motus-progress-consistency-dot--trained {
+  background: #30e3be;
+  box-shadow: 0 4px 12px -4px rgba(48, 227, 190, 0.55);
+}
+
+.motus-progress-consistency-dot--missed {
+  background: transparent;
+  border: 1.5px dashed rgba(148, 163, 184, 0.55);
+}
+
+.motus-progress-consistency-dot--future {
+  background: transparent;
+  border: 1.5px solid rgba(203, 213, 225, 0.7);
+}
+
 @media (min-width: 640px) {
   .motus-progress-hero-gradient {
     margin: 0.625rem 1rem 0;

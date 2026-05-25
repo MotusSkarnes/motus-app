@@ -191,6 +191,7 @@ import { resolveMemberTrainerDisplayName } from "../app/trainerProfile";
 import { MemberPersonalRecordsSection } from "./MemberPersonalRecordsSection";
 import { MemberWeeklySummaryCard } from "./MemberWeeklySummaryCard";
 import { MemberProgressStatusBanner } from "./MemberProgressStatusBanner";
+import { MemberConsistencyWeekCard } from "./MemberConsistencyWeekCard";
 import {
   computeDailyWeekProgress,
   computeWeeklyProgressDelta,
@@ -6634,6 +6635,10 @@ export function MemberPortal(props: MemberPortalProps) {
               <MemberProgressStatusBanner
                 workoutsLast7Days={progressShareLast7Days.workouts}
                 trainingDaysLast7Days={progressShareLast7Days.trainingDays}
+              />
+              <MemberConsistencyWeekCard
+                completedLogs={completedLogs}
+                nowTimestamp={nowTimestamp}
               />
               <MemberTrainingFlowCard
                 achievementLevel={achievementLevel}
