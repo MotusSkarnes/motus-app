@@ -284,11 +284,12 @@ export function isPeriodPlanDayComplete(input: {
 }): boolean {
   const key = buildPeriodPlanEntryKey(input.planId, input.weekNumber, input.day);
   if (input.dismissedKeys?.includes(key)) return false;
+  if (input.completedKeys.includes(key)) return true;
 
   const trimmedEntry = input.entry.trim();
   if (!trimmedEntry) return false;
 
-  if (!input.logsForDate) return input.completedKeys.includes(key);
+  if (!input.logsForDate) return false;
   if (!input.logsForDate.length) return false;
 
   return input.logsForDate.some(
@@ -388,6 +389,7 @@ export function derivePeriodPlanCompletedEntryKeysFromLogs(input: {
       programTitle: log.programTitle,
       programs: input.programs,
       completedAt,
+      calendarWeekdayKey: WEEKDAY_PLAN_ORDER[localMondayBasedWeekdayIndex(completedAt)],
     });
     for (const target of targets) {
       const key = buildPeriodPlanEntryKey(target.planId, target.weekNumber, target.day);

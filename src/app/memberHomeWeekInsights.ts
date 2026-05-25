@@ -62,7 +62,7 @@ export function buildHomeWeekHeadline(
     return { headline: "Sterk uke! 💪", subline: "Du er foran planen denne uka." };
   }
   if (momentumTrend === "up" && completed > 0) {
-    return { headline: "Bygger momentum 🔥", subline: "Du trener mer enn forrige uke." };
+    return { headline: "Bygger flyt 🔥", subline: "Du trener mer enn forrige uke." };
   }
   if (completed > 0) {
     return { headline: "God start", subline: "Fortsett jevnt — du er på vei." };
@@ -166,7 +166,7 @@ export function buildHomeWeekInsight(completedLogDates: Date[], nowDate: Date): 
 export function buildHomeWeekFlow(streakWeeks: number, streakSubline: string): HomeWeekFlow {
   const title = streakWeeks >= 4 ? "Sterk flyt" : streakWeeks > 0 ? "Stabil flyt" : "Bygg streak";
   const detail =
-    streakWeeks > 0 ? streakSubline.trim() || "Hold momentumet gående!" : "Fullfør én økt denne uka for å starte.";
+    streakWeeks > 0 ? streakSubline.trim() || "Hold flyten gående!" : "Fullfør én økt denne uka for å starte.";
   const streakLabel =
     streakWeeks > 0 ? `${streakWeeks} ${streakWeeks === 1 ? "uke" : "uker"} på rad` : null;
 

@@ -26,8 +26,9 @@ export function estimateDraftExerciseSeconds(
   if (isCardio) {
     const sets = parsePositiveInt(item.sets, 1);
     const minutes = Number.parseFloat(String(item.durationMinutes ?? "").trim()) || 0;
+    const seconds = Number.parseFloat(String(item.holdSeconds ?? "").trim()) || 0;
     const rest = parsePositiveInt(item.restSeconds, 0);
-    return sets * minutes * 60 + Math.max(0, sets - 1) * rest;
+    return sets * (minutes * 60 + seconds) + Math.max(0, sets - 1) * rest;
   }
 
   if (isStretch) {
@@ -87,7 +88,17 @@ export function draftExercisePrescriptionLabel(
 
   if (isCardio) {
     const dragLabel = /^drag\b/i.test(name) ? "drag" : "runder";
-    return `${item.sets || "1"} ${dragLabel} × ${item.durationMinutes || "—"} min`;
+    const minutes = String(item.durationMinutes ?? "").trim();
+    const seconds = String(item.holdSeconds ?? "").trim();
+    let timeLabel: string;
+    if (minutes && seconds) {
+      timeLabel = `${minutes} min ${seconds} sek`;
+    } else if (seconds) {
+      timeLabel = `${seconds} sek`;
+    } else {
+      timeLabel = `${minutes || "—"} min`;
+    }
+    return `${item.sets || "1"} ${dragLabel} × ${timeLabel}`;
   }
   if (isStretch) {
     const hold = programExerciseHoldSeconds(item, linkedExercise?.category) || item.holdSeconds || "30";

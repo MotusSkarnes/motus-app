@@ -242,7 +242,12 @@ function formatProgramExercisePrescription(exercise: ProgramExercise, linked?: E
   const isTreadmill = (linked?.equipment ?? "").trim().toLowerCase().includes("tredem");
 
   if (isCardio) {
-    const parts = [`${sets} sett`, exercise.durationMinutes?.trim() ? `${exercise.durationMinutes} min` : null];
+    const minutes = exercise.durationMinutes?.trim();
+    const seconds = exercise.holdSeconds?.trim();
+    const timeParts: string[] = [];
+    if (minutes) timeParts.push(`${minutes} min`);
+    if (seconds) timeParts.push(`${seconds} sek`);
+    const parts: Array<string | null> = [`${sets} sett`, timeParts.length ? timeParts.join(" ") : null];
     if (exercise.speed?.trim()) parts.push(`${exercise.speed} km/t`);
     if (isTreadmill && exercise.incline?.trim()) parts.push(`${exercise.incline}% stigning`);
     return parts.filter(Boolean).join(" · ");
@@ -1782,16 +1787,22 @@ export function InspirationHub({
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
-                        <div className={`grid gap-2 sm:grid-cols-2 ${isCardio ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}>
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                           <div className="space-y-1">
                             <div className="text-[11px] font-medium text-slate-500">Sett</div>
                             <TextInput value={item.sets} onChange={(e) => updateProgramExercise(item.id, "sets", e.target.value)} placeholder="Sett" />
                           </div>
                           {isCardio ? (
-                            <div className="space-y-1">
-                              <div className="text-[11px] font-medium text-slate-500">Tid (min)</div>
-                              <TextInput value={item.durationMinutes ?? ""} onChange={(e) => updateProgramExercise(item.id, "durationMinutes", e.target.value)} placeholder="Min" />
-                            </div>
+                            <>
+                              <div className="space-y-1">
+                                <div className="text-[11px] font-medium text-slate-500">Tid (min)</div>
+                                <TextInput value={item.durationMinutes ?? ""} onChange={(e) => updateProgramExercise(item.id, "durationMinutes", e.target.value)} placeholder="Min" />
+                              </div>
+                              <div className="space-y-1">
+                                <div className="text-[11px] font-medium text-slate-500">Tid (sek)</div>
+                                <TextInput value={item.holdSeconds ?? ""} onChange={(e) => updateProgramExercise(item.id, "holdSeconds", e.target.value)} placeholder="Sek" />
+                              </div>
+                            </>
                           ) : isStretch ? (
                             <div className="space-y-1">
                               <div className="text-[11px] font-medium text-slate-500">Hold (sek)</div>

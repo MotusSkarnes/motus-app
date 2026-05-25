@@ -417,7 +417,7 @@ export function MemberTrainingHistoryView({
             </div>
             <div className="motus-member-history-consistency-stat">
               <TrendingUp className="h-4 w-4 shrink-0 text-[#d91278]" aria-hidden />
-              <span>{consistencySummary.consistencyPct}% konsistens</span>
+              <span>{consistencySummary.consistencyPct}% kontinuitet</span>
             </div>
             <div className="motus-member-history-consistency-stat">
               <Star className="h-4 w-4 shrink-0 text-[#7c3aed]" aria-hidden />

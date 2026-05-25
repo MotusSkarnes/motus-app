@@ -2658,12 +2658,18 @@ function pickFirstName(value: unknown): string {
               const reps = String(safeExercise.reps ?? "").trim() || "-";
               const weight = String(safeExercise.weight ?? "").trim() || "-";
               const durationMinutes = String(safeExercise.durationMinutes ?? "").trim();
+              const cardioHoldSeconds = String(safeExercise.holdSeconds ?? "").trim();
               const speed = String(safeExercise.speed ?? "").trim();
               const incline = String(safeExercise.incline ?? "").trim();
               const restSeconds = String(safeExercise.restSeconds ?? "").trim() || "0";
               const notes = String(safeExercise.notes ?? "").trim();
-              const prescription = durationMinutes
-                ? `${setCount} ${/^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder"} × ${durationMinutes} min${
+              const isCardioExercise = libraryMatch?.category === "Kondisjon" || Boolean(durationMinutes);
+              const cardioTimeParts: string[] = [];
+              if (durationMinutes) cardioTimeParts.push(`${durationMinutes} min`);
+              if (isCardioExercise && cardioHoldSeconds) cardioTimeParts.push(`${cardioHoldSeconds} sek`);
+              const cardioTimeLabel = cardioTimeParts.length ? cardioTimeParts.join(" ") : "—";
+              const prescription = isCardioExercise
+                ? `${setCount} ${/^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder"} × ${cardioTimeLabel}${
                     speed ? ` · ${speed} km/t` : ""
                   }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause${cardioTargetHrPrescriptionSuffix(safeExercise.targetHrPercent)}`
                 : libraryMatch && isHoldBasedExerciseCategory(libraryMatch.category)
@@ -5879,10 +5885,16 @@ function pickFirstName(value: unknown): string {
                                 <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder={isCardio ? cardioSetPlaceholder() : "Sett"} />
                               </div>
                               {isCardio ? (
-                                <div className="space-y-1">
-                                  <div className="text-[11px] font-medium text-slate-500">Tid (min)</div>
-                                  <TextInput value={item.durationMinutes ?? ""} onChange={(e) => updateDraftExercise(item.id, "durationMinutes", e.target.value)} placeholder="Minutter" />
-                                </div>
+                                <>
+                                  <div className="space-y-1">
+                                    <div className="text-[11px] font-medium text-slate-500">Tid (min)</div>
+                                    <TextInput value={item.durationMinutes ?? ""} onChange={(e) => updateDraftExercise(item.id, "durationMinutes", e.target.value)} placeholder="Minutter" />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="text-[11px] font-medium text-slate-500">Tid (sek)</div>
+                                    <TextInput value={item.holdSeconds ?? ""} onChange={(e) => updateDraftExercise(item.id, "holdSeconds", e.target.value)} placeholder="Sekunder" />
+                                  </div>
+                                </>
                               ) : isStretch ? (
                                 <div className="space-y-1">
                                   <div className="text-[11px] font-medium text-slate-500">Hold (sek)</div>

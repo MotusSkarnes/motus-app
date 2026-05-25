@@ -455,10 +455,16 @@ export function TrainerProgramBuilderView({
                           <TextInput value={item.sets} onChange={(e) => onUpdateDraftExercise(item.id, "sets", e.target.value)} placeholder={isCardio ? cardioSetPlaceholder() : "Sett"} />
                         </label>
                         {isCardio ? (
-                          <label className="motus-exbank-field">
-                            <span className="motus-exbank-field-label">Tid (min)</span>
-                            <TextInput value={item.durationMinutes ?? ""} onChange={(e) => onUpdateDraftExercise(item.id, "durationMinutes", e.target.value)} placeholder="Min" />
-                          </label>
+                          <>
+                            <label className="motus-exbank-field">
+                              <span className="motus-exbank-field-label">Tid (min)</span>
+                              <TextInput value={item.durationMinutes ?? ""} onChange={(e) => onUpdateDraftExercise(item.id, "durationMinutes", e.target.value)} placeholder="Min" />
+                            </label>
+                            <label className="motus-exbank-field">
+                              <span className="motus-exbank-field-label">Tid (sek)</span>
+                              <TextInput value={item.holdSeconds ?? ""} onChange={(e) => onUpdateDraftExercise(item.id, "holdSeconds", e.target.value)} placeholder="Sek" />
+                            </label>
+                          </>
                         ) : isStretch ? (
                           <label className="motus-exbank-field">
                             <span className="motus-exbank-field-label">Hold (sek)</span>

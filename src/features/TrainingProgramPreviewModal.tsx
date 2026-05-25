@@ -24,11 +24,18 @@ function formatExercisePrescription(
   exerciseLibrary: Exercise[],
 ): string {
   const exerciseName = cardioProgramExerciseName(exercises, exerciseIndex);
-  if (exercise.durationMinutes) {
-    const dragLabel = /^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder";
-    return `${exercise.sets || "-"} ${dragLabel} × ${exercise.durationMinutes || "-"} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}`;
-  }
   const category = exerciseLibrary.find((item) => item.id === exercise.exerciseId)?.category;
+  const cardioMinutes = String(exercise.durationMinutes ?? "").trim();
+  const cardioSeconds = String(exercise.holdSeconds ?? "").trim();
+  const isCardio = category === "Kondisjon" || Boolean(cardioMinutes);
+  if (isCardio) {
+    const dragLabel = /^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder";
+    const parts: string[] = [];
+    if (cardioMinutes) parts.push(`${cardioMinutes} min`);
+    if (cardioSeconds) parts.push(`${cardioSeconds} sek`);
+    const timeLabel = parts.length ? parts.join(" ") : "—";
+    return `${exercise.sets || "-"} ${dragLabel} × ${timeLabel}${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}`;
+  }
   if (category && isHoldBasedExerciseCategory(category)) {
     return `${exercise.sets || "-"} sett × ${programExerciseHoldSeconds(exercise, category) || "-"} sek · ${exercise.restSeconds || "0"}s`;
   }

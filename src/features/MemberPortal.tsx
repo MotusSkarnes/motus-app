@@ -169,6 +169,7 @@ import {
 } from "../app/memberProgressGamification";
 import { computeMemberProgressScores } from "../app/memberMomentumScores";
 import { getTrainingProgramSubTab, trainingProgramCategoryLabel, isConditioningTrainingProgram } from "../app/trainingProgramKind";
+import { programsAttributedToMember } from "../app/memberActivity";
 import { BadgeImage } from "./BadgeImage";
 import { MemberBadgesCarousel } from "./MemberBadgesCarousel";
 import { MemberProfileDashboard } from "./MemberProfileDashboard";
@@ -882,8 +883,10 @@ function estimateProgramMinutes(program: TrainingProgram): number {
   return program.exercises.reduce((total, exercise) => {
     const rounds = Math.max(1, Number(exercise.sets) || 1);
     const workMinutes = Number(exercise.durationMinutes) || 0;
+    const workSeconds = Number(exercise.holdSeconds) || 0;
+    const workMinutesTotal = workMinutes + workSeconds / 60;
     const restMinutes = Math.max(0, Number(exercise.restSeconds) || 0) / 60;
-    if (workMinutes > 0) return total + rounds * workMinutes + Math.max(0, rounds - 1) * restMinutes;
+    if (workMinutesTotal > 0) return total + rounds * workMinutesTotal + Math.max(0, rounds - 1) * restMinutes;
     return total + rounds * 2.5 + Math.max(0, rounds - 1) * restMinutes;
   }, 6);
 }
@@ -1438,6 +1441,10 @@ export function MemberPortal(props: MemberPortalProps) {
     ? favoritePersonalRecordNames
     : resolvedFavoritePersonalRecordNames;
   const memberPrograms = useMemo(() => {
+    if (editableMember) {
+      const attributedPrograms = programsAttributedToMember(editableMember, members, programs);
+      if (attributedPrograms.length > 0) return dedupeTrainingPrograms(attributedPrograms);
+    }
     const scopedPrograms = programs.filter((program) => relatedMemberIdSet.has(program.memberId));
     const visiblePrograms =
       currentUserRole === "member" && scopedPrograms.length === 0 && programs.length > 0
@@ -1448,7 +1455,7 @@ export function MemberPortal(props: MemberPortalProps) {
       return dedupeTrainingPrograms(visiblePrograms);
     }
     return dedupeTrainingPrograms(visiblePrograms);
-  }, [programs, relatedMemberIdSet, currentUserRole]);
+  }, [programs, relatedMemberIdSet, currentUserRole, editableMember, members]);
   const memberAssignedPrograms = useMemo(() => memberPrograms.filter((program) => !program.ephemeral), [memberPrograms]);
   const memberProgramsInActiveLibrary = useMemo(
     () => memberAssignedPrograms.filter((program) => !programIsInMemberArchive(program.memberLibraryStatus)),
@@ -1670,7 +1677,9 @@ export function MemberPortal(props: MemberPortalProps) {
 
     for (let index = 0; index < activeIntervalProgram.exercises.length; index++) {
       const exercise = activeIntervalProgram.exercises[index];
-      const workDurationSeconds = Math.max(0, Math.round((Number(exercise.durationMinutes) || 0) * 60));
+      const intervalMinutesPart = (Number(exercise.durationMinutes) || 0) * 60;
+      const intervalSecondsPart = Number(exercise.holdSeconds) || 0;
+      const workDurationSeconds = Math.max(0, Math.round(intervalMinutesPart + intervalSecondsPart));
       const rawRestStr = String(exercise.restSeconds ?? "").trim();
       const rawRestParsed = rawRestStr === "" ? NaN : Number(rawRestStr);
       const rawRestValue = Number.isFinite(rawRestParsed) ? rawRestParsed : 0;
@@ -1891,6 +1900,8 @@ export function MemberPortal(props: MemberPortalProps) {
     const suggestedWeightByProgramExerciseId: Record<string, string> = {};
     program.exercises.forEach((exercise) => {
       if (Number(exercise.durationMinutes) > 0) return;
+      const meta = exercises.find((e) => e.id === exercise.exerciseId);
+      if (meta?.category === "Kondisjon") return;
       const suggestedWeight = resolveSuggestedWorkoutWeight(exercise).trim();
       if (!suggestedWeight) return;
       suggestedWeightByProgramExerciseId[exercise.id] = suggestedWeight;
@@ -5034,12 +5045,18 @@ export function MemberPortal(props: MemberPortalProps) {
               const reps = printField(safeExercise.reps) || "-";
               const weight = printField(safeExercise.weight) || "-";
               const durationMinutes = printField(safeExercise.durationMinutes);
+              const cardioHoldSeconds = printField(safeExercise.holdSeconds);
               const speed = printField(safeExercise.speed);
               const incline = printField(safeExercise.incline);
               const restSeconds = printField(safeExercise.restSeconds) || "0";
               const notes = printField(safeExercise.notes);
-              const prescription = durationMinutes
-                ? `${setCount} runder × ${durationMinutes} min${
+              const isCardioExercise = libraryMatch?.category === "Kondisjon" || Boolean(durationMinutes);
+              const cardioTimeParts: string[] = [];
+              if (durationMinutes) cardioTimeParts.push(`${durationMinutes} min`);
+              if (isCardioExercise && cardioHoldSeconds) cardioTimeParts.push(`${cardioHoldSeconds} sek`);
+              const cardioTimeLabel = cardioTimeParts.length ? cardioTimeParts.join(" ") : "—";
+              const prescription = isCardioExercise
+                ? `${setCount} runder × ${cardioTimeLabel}${
                     speed ? ` · ${speed} km/t` : ""
                   }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause${cardioHrPrescriptionSuffixForMember(safeExercise as ProgramExercise)}`
                 : libraryMatch && isHoldBasedExerciseCategory(libraryMatch.category)
@@ -6207,13 +6224,24 @@ export function MemberPortal(props: MemberPortalProps) {
                                   ) : null}
                                   <div className="text-xs font-medium text-slate-800">{exerciseName}</div>
                                   <div className="mt-0.5 text-[11px] text-slate-500">
-                                    {exercise.durationMinutes
-                                      ? `${exercise.sets} runder × ${exercise.durationMinutes} min${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s${cardioHrPrescriptionSuffixForMember(exercise)}`
-                                      : isStretch
-                                        ? `${exercise.sets} sett × ${programExerciseHoldSeconds(exercise, lib?.category) || "-"} sek · ${exercise.restSeconds}s`
-                                        : `${exercise.sets}×${exercise.reps} · ${exercise.weight}kg · ${exercise.restSeconds}s`}
+                                    {(() => {
+                                      const cardioMin = String(exercise.durationMinutes ?? "").trim();
+                                      const cardioSek = String(exercise.holdSeconds ?? "").trim();
+                                      const isCardio = lib?.category === "Kondisjon" || Boolean(cardioMin);
+                                      if (isCardio) {
+                                        const timeParts: string[] = [];
+                                        if (cardioMin) timeParts.push(`${cardioMin} min`);
+                                        if (cardioSek) timeParts.push(`${cardioSek} sek`);
+                                        const timeLabel = timeParts.length ? timeParts.join(" ") : "—";
+                                        return `${exercise.sets} runder × ${timeLabel}${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s${cardioHrPrescriptionSuffixForMember(exercise)}`;
+                                      }
+                                      if (isStretch) {
+                                        return `${exercise.sets} sett × ${programExerciseHoldSeconds(exercise, lib?.category) || "-"} sek · ${exercise.restSeconds}s`;
+                                      }
+                                      return `${exercise.sets}×${exercise.reps} · ${exercise.weight}kg · ${exercise.restSeconds}s`;
+                                    })()}
                                   </div>
-                                  {!exercise.durationMinutes && !isStretch ? (
+                                  {!exercise.durationMinutes && !isStretch && lib?.category !== "Kondisjon" ? (
                                     <div className="mt-1.5 rounded-lg border bg-white px-2 py-1.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                                       <div className="text-[10px] text-slate-500">Foreslått vekt fra forrige gang (kan endres)</div>
                                       <TextInput

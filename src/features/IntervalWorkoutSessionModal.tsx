@@ -105,7 +105,9 @@ function buildIntervalProgramSteps(program: TrainingProgram): IntervalTimerStep[
 
   for (let index = 0; index < program.exercises.length; index++) {
     const exercise = program.exercises[index];
-    const workDurationSeconds = Math.max(0, Math.round((Number(exercise.durationMinutes) || 0) * 60));
+    const minutesPart = (Number(exercise.durationMinutes) || 0) * 60;
+    const secondsPart = Number(exercise.holdSeconds) || 0;
+    const workDurationSeconds = Math.max(0, Math.round(minutesPart + secondsPart));
     const rawRestStr = String(exercise.restSeconds ?? "").trim();
     const rawRestParsed = rawRestStr === "" ? NaN : Number(rawRestStr);
     const rawRestValue = Number.isFinite(rawRestParsed) ? rawRestParsed : 0;

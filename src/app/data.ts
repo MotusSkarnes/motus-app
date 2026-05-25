@@ -212,7 +212,7 @@ const initialExercises: Exercise[] = [
   { id: "e143", name: "Toe touches", category: "Styrke", group: "Kjerne", equipment: "Kroppsvekt", level: "Nybegynner", description: "Rekk mot tærne med kontrollert kjernespenn." },
   { id: "e144", name: "Sideplanke med hoftehev", category: "Styrke", group: "Kjerne", equipment: "Kroppsvekt", level: "Litt øvet", description: "Løft og senk hoften med stabil linje." },
   { id: "e145", name: "Bird dog", category: "Styrke", group: "Kjerne", equipment: "Kroppsvekt", level: "Nybegynner", description: "Strekk motsatt arm og ben uten bevegelse i korsrygg." },
-  { id: "e146", name: "Mountain climber sakte", category: "Styrke", group: "Kjerne", equipment: "Kroppsvekt", level: "Nybegynner", description: "Trekk knær frem med kontroll og stabil hofte." },
+  { id: "e146", name: "Mountain climber sakte", category: "Mobilitet", group: "Kjerne", equipment: "Kroppsvekt", level: "Nybegynner", description: "Trekk knær frem med kontroll og stabil hofte. Logg som sekunder per sett." },
   { id: "e147", name: "TRX fallout", category: "Styrke", group: "Kjerne", equipment: "TRX", level: "Øvet", description: "Hold kroppen strak mens armene glir frem." },
   { id: "e148", name: "Enarms farmer hold", category: "Styrke", group: "Grepsstyrke", equipment: "Manual", level: "Nybegynner", description: "Stå stille med tung vekt og hold overkroppen rett." },
   { id: "e149", name: "Plate pinch hold", category: "Styrke", group: "Grepsstyrke", equipment: "Vektskive", level: "Nybegynner", description: "Klem vektskiver mellom fingrene over tid." },

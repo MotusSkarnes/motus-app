@@ -293,6 +293,8 @@ export function CustomWorkoutBuilder({
     const suggestedWeightByProgramExerciseId: Record<string, string> = {};
     program.exercises.forEach((exercise) => {
       if (Number(exercise.durationMinutes) > 0) return;
+      const meta = exercises.find((e) => e.id === exercise.exerciseId);
+      if (meta?.category === "Kondisjon") return;
       const suggestedWeight = findSuggestedWeightForExercise(exercise.exerciseName).trim();
       if (!suggestedWeight) return;
       suggestedWeightByProgramExerciseId[exercise.id] = suggestedWeight;
