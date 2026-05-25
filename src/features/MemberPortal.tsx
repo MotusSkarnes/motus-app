@@ -4487,12 +4487,18 @@ export function MemberPortal(props: MemberPortalProps) {
       setGroupWorkoutStatus("Velg en gyldig dato for gruppetime.");
       return;
     }
+    const trimmedClassName = groupWorkoutClassName.trim();
     logGroupWorkout({
       memberId: activeMemberId,
-      className: groupWorkoutClassName.trim(),
+      className: trimmedClassName,
       note: groupWorkoutNote.trim(),
       reflection: buildGroupWorkoutReflection(),
       date: groupWorkoutDateIso,
+    });
+    const completedAt = parseStoredLogDate(groupWorkoutDateIso) ?? new Date();
+    applyPeriodPlanAutoComplete({
+      programTitle: groupWorkoutLogTitle(trimmedClassName),
+      completedAt,
     });
     setGroupWorkoutStatus("Gruppetime lagret. PT kan nå se denne økta.");
     setGroupWorkoutEnergyLevel(3);
@@ -4571,15 +4577,6 @@ export function MemberPortal(props: MemberPortalProps) {
       programId: input.programId,
       programTitle: input.programTitle?.trim() || resolveWorkoutProgramTitle(input.programId),
       completedAt: new Date(),
-    });
-  }
-
-  function handleLogGroupWorkout(input: Parameters<typeof logGroupWorkout>[0]) {
-    logGroupWorkout(input);
-    const completedAt = input.date?.trim() ? parseStoredLogDate(input.date) ?? new Date() : new Date();
-    applyPeriodPlanAutoComplete({
-      programTitle: groupWorkoutLogTitle(input.className),
-      completedAt,
     });
   }
 
