@@ -5480,6 +5480,7 @@ function pickFirstName(value: unknown): string {
                       </div>
                     </div>
 
+                    {customerProgramBuilderFocus === "training" ? (
                     <div className="rounded-xl border-2 border-slate-200 bg-white p-3 sm:p-4 space-y-2 shadow-sm">
                       <div className="flex items-center justify-between gap-2">
                         <div>
@@ -5520,6 +5521,7 @@ function pickFirstName(value: unknown): string {
                         </div>
                       )}
                     </div>
+                    ) : null}
 
                     {customerProgramBuilderFocus === "period" ? (
                     <div className="rounded-xl border-2 border-teal-200/80 bg-white p-3 sm:p-5 space-y-4 shadow-sm">
