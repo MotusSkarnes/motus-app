@@ -2509,9 +2509,29 @@ button {
 }
 
 .motus-progress-weekly-summary-share {
-  margin-top: 0.875rem;
+  margin-top: 1rem;
   width: 100%;
   gap: 0.5rem;
+  min-height: 3rem !important;
+  padding: 0.875rem 1.25rem !important;
+  border-radius: 9999px !important;
+  font-size: 0.9375rem !important;
+  letter-spacing: 0.01em;
+  box-shadow:
+    0 10px 26px -10px rgba(217, 18, 120, 0.45),
+    0 6px 14px -6px rgba(48, 227, 190, 0.4) !important;
+  transition: transform 150ms ease-out, box-shadow 200ms ease-out !important;
+}
+
+.motus-progress-weekly-summary-share:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 14px 30px -10px rgba(217, 18, 120, 0.55),
+    0 8px 16px -6px rgba(48, 227, 190, 0.5) !important;
+}
+
+.motus-progress-weekly-summary-share:active {
+  transform: translateY(0);
 }
 
 .motus-progress-weekly-summary-status {
