@@ -190,6 +190,7 @@ import { MotusChat, type MotusChatQuickAction } from "./MotusChat";
 import { resolveMemberTrainerDisplayName } from "../app/trainerProfile";
 import { MemberPersonalRecordsSection } from "./MemberPersonalRecordsSection";
 import { MemberWeeklySummaryCard } from "./MemberWeeklySummaryCard";
+import { MemberProgressStatusBanner } from "./MemberProgressStatusBanner";
 import {
   computeDailyWeekProgress,
   computeWeeklyProgressDelta,
@@ -926,6 +927,7 @@ export function MemberPortal(props: MemberPortalProps) {
     "Stram opp",
     "Dansemix",
     "Yoga",
+    "HIIT",
     "Tabata",
     "Godt voksen",
     "Step styrke",
@@ -6629,6 +6631,10 @@ export function MemberPortal(props: MemberPortalProps) {
           {!isMemberLimited && memberTab === "progress" ? (
             <div className="motus-progress-page">
               <MemberProgressScoresCard scores={memberProgressScores} memberFirstName={homeFirstName} streakWeeks={streakWeeks} />
+              <MemberProgressStatusBanner
+                workoutsLast7Days={progressShareLast7Days.workouts}
+                trainingDaysLast7Days={progressShareLast7Days.trainingDays}
+              />
               <MemberTrainingFlowCard
                 achievementLevel={achievementLevel}
                 achievementMaxLevel={achievementMaxLevel}

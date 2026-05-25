@@ -1249,6 +1249,83 @@ button {
   line-height: 1;
 }
 
+.motus-progress-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.5rem 0.75rem 0;
+  padding: 0.75rem 0.875rem;
+  border-radius: 1rem;
+  background: #e8fffa;
+  border: 1px solid rgba(48, 227, 190, 0.32);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+@media (min-width: 640px) {
+  .motus-progress-status-banner {
+    margin: 0.625rem 1rem 0;
+  }
+}
+
+.motus-progress-status-banner--neutral {
+  background: #f8fafc;
+  border-color: rgba(148, 163, 184, 0.32);
+}
+
+.motus-progress-status-banner-icon {
+  display: inline-flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: #30e3be;
+  color: #0d1b2a;
+  box-shadow: 0 4px 10px -4px rgba(48, 227, 190, 0.55);
+}
+
+.motus-progress-status-banner--neutral .motus-progress-status-banner-icon {
+  background: #cbd5e1;
+  color: #1e293b;
+  box-shadow: none;
+}
+
+.motus-progress-status-banner-headline {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.15;
+}
+
+.motus-progress-status-banner-subline {
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: #475569;
+  line-height: 1.3;
+}
+
+.motus-progress-status-banner-link {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #d91278;
+  cursor: pointer;
+  padding: 0.25rem 0.375rem;
+  border-radius: 0.5rem;
+}
+
+.motus-progress-status-banner-link:hover {
+  background: rgba(217, 18, 120, 0.08);
+}
+
+.motus-progress-status-banner-link:focus-visible {
+  outline: 2px solid #d91278;
+  outline-offset: 2px;
+}
+
 @media (min-width: 640px) {
   .motus-progress-hero-gradient {
     margin: 0.625rem 1rem 0;
