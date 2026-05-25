@@ -189,6 +189,8 @@ import type { ChatReactionActor, ChatReactionEmoji } from "../app/chatReactions"
 import { MotusChat, type MotusChatQuickAction } from "./MotusChat";
 import { resolveMemberTrainerDisplayName } from "../app/trainerProfile";
 import { MemberPersonalRecordsSection } from "./MemberPersonalRecordsSection";
+import { WorkoutCelebrationModal } from "./WorkoutCelebrationModal";
+import { computeWorkoutCelebrationStats } from "../app/workoutCelebrationStats";
 import { MemberWeeklySummaryCard } from "./MemberWeeklySummaryCard";
 import { MemberProgressStatusBanner } from "./MemberProgressStatusBanner";
 import { MemberConsistencyWeekCard } from "./MemberConsistencyWeekCard";
@@ -316,6 +318,8 @@ type MemberPortalProps = {
   discardPausedWorkoutDraft: (memberId: string, draftId: string) => void;
   workoutCelebration: WorkoutCelebration | null;
   dismissWorkoutCelebration: () => void;
+  recentlyFinishedLogId: string | null;
+  dismissRecentlyFinishedLog: () => void;
   memberFocusWorkoutLogId?: string | null;
   clearMemberFocusWorkoutLogId?: () => void;
   memberFocusProgramId?: string | null;
@@ -979,6 +983,8 @@ export function MemberPortal(props: MemberPortalProps) {
     discardPausedWorkoutDraft,
     workoutCelebration,
     dismissWorkoutCelebration,
+    recentlyFinishedLogId,
+    dismissRecentlyFinishedLog,
     memberFocusWorkoutLogId = null,
     clearMemberFocusWorkoutLogId,
     memberFocusProgramId = null,
@@ -2479,8 +2485,24 @@ export function MemberPortal(props: MemberPortalProps) {
     [completedLogs, exerciseGroupByName, muscleSplitPeriod, nowTimestamp],
   );
   const activeCelebration = liveWorkoutCelebration ?? workoutCelebration;
+  const recentlyFinishedLog = useMemo(() => {
+    if (!recentlyFinishedLogId) return null;
+    return completedLogs.find((log) => log.id === recentlyFinishedLogId) ?? null;
+  }, [recentlyFinishedLogId, completedLogs]);
+  const recentlyFinishedStats = useMemo(() => {
+    if (!recentlyFinishedLog) return null;
+    return computeWorkoutCelebrationStats(recentlyFinishedLog, memberLogs);
+  }, [recentlyFinishedLog, memberLogs]);
+  const showWorkoutCompletionCelebration = Boolean(recentlyFinishedLog && recentlyFinishedStats);
   /** Ny PR / økt rekord: alltid synlig for aktiv bruker (uavhengig av «små feiringer»). */
-  const shouldShowPrCelebration = Boolean(activeCelebration && activeCelebration.memberId === activeMemberId);
+  const shouldShowPrCelebration =
+    Boolean(activeCelebration && activeCelebration.memberId === activeMemberId) && !showWorkoutCompletionCelebration;
+
+  function handleDismissWorkoutCompletionCelebration() {
+    dismissRecentlyFinishedLog();
+    if (workoutCelebration) dismissWorkoutCelebration();
+    setLiveWorkoutCelebration(null);
+  }
 
   const playCelebrationSound = useCallback(() => {
     if (typeof window === "undefined" || !celebrationSoundEnabled) return;
@@ -5538,6 +5560,15 @@ export function MemberPortal(props: MemberPortalProps) {
               />
 
             </div>
+          ) : null}
+
+          {!isMemberLimited && showWorkoutCompletionCelebration && recentlyFinishedStats ? (
+            <WorkoutCelebrationModal
+              open={true}
+              programTitle={recentlyFinishedLog?.programTitle ?? ""}
+              stats={recentlyFinishedStats}
+              onClose={handleDismissWorkoutCompletionCelebration}
+            />
           ) : null}
 
           {!isMemberLimited && shouldShowPrCelebration ? (

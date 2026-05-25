@@ -116,6 +116,8 @@ describe("Stability regressions", () => {
         cancelWorkoutMode={vi.fn()}
         workoutCelebration={null}
         dismissWorkoutCelebration={vi.fn()}
+        recentlyFinishedLogId={null}
+        dismissRecentlyFinishedLog={vi.fn()}
       />,
     );
 

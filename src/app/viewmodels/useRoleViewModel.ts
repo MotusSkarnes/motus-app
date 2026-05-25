@@ -265,6 +265,8 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     resumePausedWorkout: state.resumePausedWorkout,
     discardPausedWorkoutDraft: state.discardPausedWorkoutDraft,
     dismissWorkoutCelebration: state.dismissWorkoutCelebration,
+    recentlyFinishedLogId: state.recentlyFinishedLogId,
+    dismissRecentlyFinishedLog: state.dismissRecentlyFinishedLog,
     memberNotificationsOpen,
     memberUnreadCount,
     memberVisibleAlerts,

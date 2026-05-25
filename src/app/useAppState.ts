@@ -639,6 +639,11 @@ export function useAppState() {
     () => readCachedMemberPeriodPlanRows(),
   );
   const [memberRemoteHydrated, setMemberRemoteHydrated] = useState(false);
+  const [recentlyFinishedLogId, setRecentlyFinishedLogId] = useState<string | null>(null);
+
+  function dismissRecentlyFinishedLog() {
+    setRecentlyFinishedLogId(null);
+  }
 
   function applyMemberSessionBaseState(state: AppState, user: AuthUser): AppState {
     let base = stripDemoSeedCatalog(state);
@@ -2121,6 +2126,7 @@ export function useAppState() {
 
   function finishWorkoutMode(input?: FinishWorkoutInput) {
     let finishAsTrainer = false;
+    let newCompletedLogId: string | null = null;
     setAppState((prev) => {
       finishAsTrainer = prev.currentUser?.role === "trainer";
       const programId = prev.workoutMode?.programId ?? "";
@@ -2133,10 +2139,16 @@ export function useAppState() {
         .filter(Boolean);
       const next = repository.finishWorkoutMode(prev, input);
       if (programId) clearPausedWorkoutForProgram(memberIds[0] ?? "", programId);
+      if (!finishAsTrainer) {
+        const prevIds = new Set(prev.logs.map((log) => log.id));
+        const addedLog = next.logs.find((log) => !prevIds.has(log.id) && log.status === "Fullført");
+        if (addedLog) newCompletedLogId = addedLog.id;
+      }
       return next;
     });
     if (!finishAsTrainer) {
       setMemberTab("progress");
+      if (newCompletedLogId) setRecentlyFinishedLogId(newCompletedLogId);
     }
   }
 
@@ -2516,5 +2528,7 @@ export function useAppState() {
     remoteTrainerPeriodPlansByMemberId,
     remoteMemberPeriodPlanRows,
     memberRemoteHydrated,
+    recentlyFinishedLogId,
+    dismissRecentlyFinishedLog,
   };
 }

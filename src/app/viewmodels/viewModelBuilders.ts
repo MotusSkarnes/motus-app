@@ -100,6 +100,8 @@ export function buildMemberLayoutProps(input: {
   resumePausedWorkout: MemberLayoutProps["resumePausedWorkout"];
   discardPausedWorkoutDraft: MemberLayoutProps["discardPausedWorkoutDraft"];
   dismissWorkoutCelebration: MemberLayoutProps["dismissWorkoutCelebration"];
+  recentlyFinishedLogId: MemberLayoutProps["recentlyFinishedLogId"];
+  dismissRecentlyFinishedLog: MemberLayoutProps["dismissRecentlyFinishedLog"];
   memberNotificationsOpen: boolean;
   memberUnreadCount: number;
   memberVisibleAlerts: MemberLayoutProps["memberVisibleAlerts"];

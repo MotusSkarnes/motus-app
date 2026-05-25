@@ -9584,3 +9584,295 @@ button {
   font-size: 0.68rem;
   color: #94a3b8;
 }
+
+/* ============================================================
+   Workout Celebration Modal
+   ============================================================ */
+
+.motus-workout-celebration-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: motus-celebration-backdrop-in 0.18s ease-out;
+}
+
+@media (min-width: 640px) {
+  .motus-workout-celebration-backdrop {
+    align-items: center;
+  }
+}
+
+@keyframes motus-celebration-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.motus-workout-celebration-card {
+  position: relative;
+  width: 100%;
+  max-width: 26rem;
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(217, 18, 120, 0.18) 0%, rgba(217, 18, 120, 0) 55%),
+    linear-gradient(180deg, #ffffff 0%, #fff6fb 100%);
+  box-shadow:
+    0 24px 60px rgba(15, 23, 42, 0.32),
+    0 0 0 1px rgba(217, 18, 120, 0.08);
+  padding: 1.5rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  animation: motus-celebration-card-in 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+@keyframes motus-celebration-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.motus-workout-celebration-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  color: #475569;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.motus-workout-celebration-close:hover {
+  background: rgba(15, 23, 42, 0.12);
+}
+
+.motus-workout-celebration-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
+}
+
+.motus-workout-celebration-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #d91278 0%, #f472b6 100%);
+  color: #ffffff;
+  box-shadow:
+    0 12px 28px rgba(217, 18, 120, 0.35),
+    0 0 0 6px rgba(217, 18, 120, 0.1);
+  margin-bottom: 0.25rem;
+  animation: motus-celebration-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+@keyframes motus-celebration-pop {
+  0% {
+    transform: scale(0.4) rotate(-12deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.1) rotate(6deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+
+.motus-workout-celebration-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #d91278;
+  background: rgba(217, 18, 120, 0.1);
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+}
+
+.motus-workout-celebration-headline {
+  font-size: 1.625rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.motus-workout-celebration-subline {
+  font-size: 0.9375rem;
+  color: #475569;
+  line-height: 1.4;
+  margin: 0;
+  max-width: 20rem;
+}
+
+.motus-workout-celebration-program {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 600;
+  margin: 0;
+}
+
+.motus-workout-celebration-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem;
+}
+
+.motus-workout-celebration-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  border-radius: 1rem;
+  padding: 0.875rem 0.875rem 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  min-height: 5.5rem;
+}
+
+.motus-workout-celebration-stat--pink {
+  background: linear-gradient(160deg, #ffffff 0%, #fff1f8 100%);
+  border-color: rgba(217, 18, 120, 0.15);
+}
+
+.motus-workout-celebration-stat--mint {
+  background: linear-gradient(160deg, #ffffff 0%, #ecfdf5 100%);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.motus-workout-celebration-stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.625rem;
+  color: #ffffff;
+}
+
+.motus-workout-celebration-stat-icon--pink {
+  background: linear-gradient(135deg, #d91278 0%, #f472b6 100%);
+  box-shadow: 0 4px 12px rgba(217, 18, 120, 0.3);
+}
+
+.motus-workout-celebration-stat-icon--mint {
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.motus-workout-celebration-stat-value {
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.motus-workout-celebration-stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  margin: 0;
+}
+
+.motus-workout-celebration-records {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(217, 18, 120, 0.08) 0%, rgba(244, 114, 182, 0.08) 100%);
+  border: 1px solid rgba(217, 18, 120, 0.15);
+}
+
+.motus-workout-celebration-records-title {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #d91278;
+  margin: 0;
+}
+
+.motus-workout-celebration-records-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.motus-workout-celebration-record-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: 0.3125rem 0.625rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #d91278 0%, #f472b6 100%);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(217, 18, 120, 0.25);
+}
+
+.motus-workout-celebration-confirm {
+  margin-top: 0.25rem;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #10b981 0%, #34d399 60%, #d91278 100%);
+  color: #ffffff;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  padding: 0.875rem 1.25rem;
+  cursor: pointer;
+  box-shadow:
+    0 8px 20px rgba(217, 18, 120, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.motus-workout-celebration-confirm:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 10px 24px rgba(217, 18, 120, 0.32),
+    0 0 0 1px rgba(255, 255, 255, 0.25) inset;
+}
+
+.motus-workout-celebration-confirm:active {
+  transform: translateY(0);
+}
