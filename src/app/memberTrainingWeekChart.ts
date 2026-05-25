@@ -6,66 +6,64 @@ export type DailyWeekProgressPoint = {
   hasSession: boolean;
 };
 
-const DAY_LABELS = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"] as const;
+const DAY_LABELS_BY_DAY = ["Søn", "Man", "Tir", "Ons", "Tor", "Fre", "Lør"] as const;
 
 function startOfLocalDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
+function dayKey(date: Date): string {
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
 export function computeDailyWeekProgress(completedLogDates: Date[], nowTimestamp: number): DailyWeekProgressPoint[] {
   const today = startOfLocalDay(new Date(nowTimestamp));
-  const mondayOffset = (today.getDay() + 6) % 7;
-  const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset);
+  const startDay = new Date(today);
+  startDay.setDate(today.getDate() - 6);
 
   const sessionDays = new Set<string>();
   for (const date of completedLogDates) {
-    const day = startOfLocalDay(date);
-    sessionDays.add(`${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`);
+    sessionDays.add(dayKey(startOfLocalDay(date)));
   }
 
-  return DAY_LABELS.map((label, index) => {
-    const day = new Date(monday);
-    day.setDate(day.getDate() + index);
-    const key = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
-    const hasSession = sessionDays.has(key);
-    const isFuture = day.getTime() > today.getTime();
+  return Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(startDay);
+    day.setDate(startDay.getDate() + index);
+    const hasSession = sessionDays.has(dayKey(day));
     return {
-      label,
+      label: DAY_LABELS_BY_DAY[day.getDay()],
       hasSession,
-      pct: hasSession ? 100 : isFuture ? 0 : 0,
+      pct: hasSession ? 100 : 0,
     };
   });
 }
 
-export function computeWeeklyProgressPct(points: DailyWeekProgressPoint[], nowTimestamp: number): number {
-  const today = startOfLocalDay(new Date(nowTimestamp));
-  const mondayOffset = (today.getDay() + 6) % 7;
-  const daysElapsed = Math.min(7, mondayOffset + 1);
+export function computeWeeklyProgressPct(points: DailyWeekProgressPoint[], _nowTimestamp: number): number {
+  if (points.length === 0) return 0;
   const completedDays = points.filter((point) => point.hasSession).length;
-  if (daysElapsed <= 0) return 0;
-  return Math.min(100, Math.round((completedDays / daysElapsed) * 100));
+  return Math.min(100, Math.round((completedDays / points.length) * 100));
 }
 
 export function computeWeeklyProgressDelta(completedLogDates: Date[], nowTimestamp: number): number | null {
   const today = startOfLocalDay(new Date(nowTimestamp));
-  const mondayOffset = (today.getDay() + 6) % 7;
-  const thisMonday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset);
-  const lastMonday = new Date(thisMonday);
-  lastMonday.setDate(lastMonday.getDate() - 7);
+  const start = new Date(today);
+  start.setDate(today.getDate() - 6);
+  const prevStart = new Date(start);
+  prevStart.setDate(prevStart.getDate() - 7);
+  const todayExclusive = new Date(today);
+  todayExclusive.setDate(today.getDate() + 1);
 
-  const countInRange = (start: Date, days: number) => {
-    const end = new Date(start);
-    end.setDate(end.getDate() + days);
+  const countInRange = (begin: Date, end: Date) => {
     let count = 0;
     for (const date of completedLogDates) {
       const day = startOfLocalDay(date);
-      if (day.getTime() >= start.getTime() && day.getTime() < end.getTime()) count += 1;
+      if (day.getTime() >= begin.getTime() && day.getTime() < end.getTime()) count += 1;
     }
     return count;
   };
 
-  const thisWeek = countInRange(thisMonday, mondayOffset + 1);
-  const lastWeek = countInRange(lastMonday, 7);
+  const thisWeek = countInRange(start, todayExclusive);
+  const lastWeek = countInRange(prevStart, start);
   if (lastWeek <= 0 && thisWeek <= 0) return null;
   if (lastWeek <= 0) return 100;
   return Math.round(((thisWeek - lastWeek) / lastWeek) * 100);
