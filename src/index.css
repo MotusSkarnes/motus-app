@@ -9513,7 +9513,7 @@ button.motus-progress-status-banner {
 
 @media (min-width: 640px) {
   .motus-member-history-heatmap {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

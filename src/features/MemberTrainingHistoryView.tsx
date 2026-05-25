@@ -145,7 +145,7 @@ export function MemberTrainingHistoryView({
   );
   const weeklyBars = useMemo(() => computeWeeklyWorkoutBars(completedLogs, 12, nowTimestamp), [completedLogs, nowTimestamp]);
   const heatmapMonths = useMemo(
-    () => computeConsistencyHeatmap(completedLogs, 3, nowTimestamp),
+    () => computeConsistencyHeatmap(completedLogs, 4, nowTimestamp),
     [completedLogs, nowTimestamp],
   );
   const topExercises = useMemo(() => topLoggedExercises(completedLogs, 12), [completedLogs]);
@@ -359,7 +359,7 @@ export function MemberTrainingHistoryView({
         <section className="motus-member-history-card">
           <div className="motus-member-history-card-head">
             <h3 className="motus-member-history-section-title">Kontinuitet</h3>
-            <span className="motus-member-history-chip">Siste 3 måneder</span>
+            <span className="motus-member-history-chip">Siste 4 måneder</span>
           </div>
 
           {streakWeeks > 0 ? (
