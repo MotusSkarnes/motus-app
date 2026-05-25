@@ -1,4 +1,4 @@
-import { CalendarRange, Dumbbell, History, PlusCircle } from "lucide-react";
+import { CalendarRange, Dumbbell, History, LayoutGrid, PlusCircle } from "lucide-react";
 
 export type TrainingQuickSection = "today" | "period" | "programs" | "custom" | "history";
 
@@ -14,10 +14,11 @@ const ACTIONS: Array<{
   icon: typeof CalendarRange;
   tone: "teal" | "pink";
 }> = [
-  { id: "period", label: "Plan", icon: CalendarRange, tone: "teal" },
-  { id: "programs", label: "Programmer", icon: Dumbbell, tone: "pink" },
-  { id: "custom", label: "Ny økt", icon: PlusCircle, tone: "teal" },
-  { id: "history", label: "Historikk", icon: History, tone: "pink" },
+  { id: "today", label: "Trening", icon: LayoutGrid, tone: "teal" },
+  { id: "period", label: "Plan", icon: CalendarRange, tone: "pink" },
+  { id: "programs", label: "Programmer", icon: Dumbbell, tone: "teal" },
+  { id: "custom", label: "Ny økt", icon: PlusCircle, tone: "pink" },
+  { id: "history", label: "Historikk", icon: History, tone: "teal" },
 ];
 
 export function MemberTrainingQuickActions({ activeSection, onNavigate, hideCustom }: MemberTrainingQuickActionsProps) {
@@ -32,7 +33,7 @@ export function MemberTrainingQuickActions({ activeSection, onNavigate, hideCust
           <button
             key={item.id}
             type="button"
-            onClick={() => onNavigate(isActive ? "today" : item.id)}
+            onClick={() => onNavigate(item.id)}
             className={`motus-training-quick-action motus-pressable ${isActive ? "is-active" : ""}`}
             aria-current={isActive ? "page" : undefined}
           >

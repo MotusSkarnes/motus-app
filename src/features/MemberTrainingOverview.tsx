@@ -263,26 +263,6 @@ export function MemberTrainingOverview({
         </section>
       ) : null}
 
-      <section className="motus-training-section">
-        <div className="motus-training-section-head">
-          <h3 className="motus-training-section-title">Ukens progresjon</h3>
-        </div>
-        <div className="motus-training-week-panel">
-          <WeeklyProgressChart points={weeklyPoints} currentPct={weeklyProgressPct} />
-          {weeklyDeltaLabel ? (
-            <div className="motus-training-week-insight">
-              <span className="motus-training-week-insight-icon" aria-hidden>
-                <Trophy className="h-4 w-4" />
-              </span>
-              <div>
-                <div className="motus-training-week-insight-title">Kjør på!</div>
-                <div className="motus-training-week-insight-copy">{weeklyDeltaLabel}</div>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </section>
-
       {programs.length > 0 ? (
         <section className="motus-training-section">
           <div className="motus-training-section-head">
@@ -316,6 +296,26 @@ export function MemberTrainingOverview({
           </div>
         </section>
       ) : null}
+
+      <section className="motus-training-section">
+        <div className="motus-training-section-head">
+          <h3 className="motus-training-section-title">Ukens progresjon</h3>
+        </div>
+        <div className="motus-training-week-panel">
+          <WeeklyProgressChart points={weeklyPoints} currentPct={weeklyProgressPct} />
+          {weeklyDeltaLabel ? (
+            <div className="motus-training-week-insight">
+              <span className="motus-training-week-insight-icon" aria-hidden>
+                <Trophy className="h-4 w-4" />
+              </span>
+              <div>
+                <div className="motus-training-week-insight-title">Kjør på!</div>
+                <div className="motus-training-week-insight-copy">{weeklyDeltaLabel}</div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </section>
 
       {records.length > 0 ? (
         <section className="motus-training-section">
