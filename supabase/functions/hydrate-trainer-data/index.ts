@@ -12,9 +12,32 @@ type HydratePayload = {
 };
 
 type RowWithId = { id?: string };
+type JwtUser = {
+  id?: string;
+  email?: string | null;
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+};
+
+const TRAINER_EMAIL_DOMAIN = "@motus-skarnes.no";
 
 function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
+}
+
+function readLinkedMemberId(user: JwtUser): string {
+  const appMemberId = typeof user.app_metadata?.member_id === "string" ? user.app_metadata.member_id : "";
+  const userMemberId = typeof user.user_metadata?.member_id === "string" ? user.user_metadata.member_id : "";
+  return String(appMemberId || userMemberId || "").trim();
+}
+
+function isAuthorizedTrainerUser(user: JwtUser): boolean {
+  const appRole = user.app_metadata?.role;
+  if (appRole === "trainer") return true;
+  if (appRole === "member") return false;
+
+  const email = normalizeEmail(user.email);
+  return email.endsWith(TRAINER_EMAIL_DOMAIN) && !readLinkedMemberId(user);
 }
 
 function uniqueById<T extends RowWithId>(rows: T[]): T[] {
@@ -199,6 +222,24 @@ Deno.serve(async (req) => {
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
+  if (!token) {
+    return jsonResponse(401, { error: "Missing bearer token" });
+  }
+
+  const { data: userData, error: userError } = await adminClient.auth.getUser(token);
+  const requester = userData?.user as JwtUser | undefined;
+  const requesterUserId = String(requester?.id ?? "").trim();
+  if (userError || !requester || !requesterUserId) {
+    return jsonResponse(401, { error: "Invalid session token" });
+  }
+  if (requesterUserId !== ownerUserId) {
+    return jsonResponse(403, { error: "Trainer hydrate owner mismatch" });
+  }
+  if (!isAuthorizedTrainerUser(requester)) {
+    return jsonResponse(403, { error: "Trainer access is required" });
+  }
 
   const { data: ownedMembers } = await adminClient.from("members").select("id").eq("owner_user_id", ownerUserId);
   const ownedMemberIds = (ownedMembers ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);
@@ -360,7 +401,7 @@ Deno.serve(async (req) => {
   if (visibleMemberEmails.length > 0) {
     const { data: relatedEmailMembers, error: relatedEmailMembersError } = await adminClient
       .from("members")
-      .select("id, email")
+      .select("id, email, owner_user_id, customer_type")
       .in("email", visibleMemberEmails);
     if (relatedEmailMembersError) {
       console.warn("hydrate-trainer-data: related email member lookup failed:", relatedEmailMembersError.message);
@@ -368,6 +409,7 @@ Deno.serve(async (req) => {
       for (const row of relatedEmailMembers ?? []) {
         const rowEmail = normalizeEmail((row as { email?: string }).email);
         if (!rowEmail || !visibleMemberEmails.includes(rowEmail)) continue;
+        if (!isVisibleToTrainer(row as Record<string, unknown>, ownerUserId)) continue;
         const id = String((row as { id?: string }).id ?? "").trim();
         if (id && id !== "__template__") programLookupMemberIds.add(id);
       }

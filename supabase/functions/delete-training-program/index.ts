@@ -48,12 +48,24 @@ function normalizeId(value: unknown): string {
   return String(value ?? "").trim();
 }
 
+const TRAINER_EMAIL_DOMAIN = "@motus-skarnes.no";
+
+function readLinkedMemberId(user: JwtUser): string {
+  const appMemberId = typeof user.app_metadata?.member_id === "string" ? user.app_metadata.member_id : "";
+  const userMemberId = typeof user.user_metadata?.member_id === "string" ? user.user_metadata.member_id : "";
+  return normalizeId(appMemberId || userMemberId);
+}
+
 function roleFromUser(user: JwtUser): "member" | "trainer" {
   const app = user.app_metadata?.role;
   if (app === "member" || app === "trainer") return app;
-  const meta = user.user_metadata?.role;
-  if (meta === "member" || meta === "trainer") return meta;
-  return "trainer";
+  const email = normalizeEmail(user.email);
+  if (email.endsWith(TRAINER_EMAIL_DOMAIN) && !readLinkedMemberId(user)) return "trainer";
+  return "member";
+}
+
+function isSharedMember(row: Record<string, unknown> | null): boolean {
+  return String(row?.customer_type ?? "").trim().toLowerCase() === "medlem";
 }
 
 function buildProgramFingerprint(input: {
@@ -191,7 +203,7 @@ Deno.serve(async (req) => {
   const requester = userData.user as JwtUser;
   const requesterUserId = normalizeId(requester.id);
   const requesterEmail = normalizeEmail(requester.email);
-  const role = payload.requestedBy ?? roleFromUser(requester);
+  const role = roleFromUser(requester);
   const authMemberId = normalizeId(
     requester.app_metadata?.member_id ?? requester.user_metadata?.member_id,
   );
@@ -224,14 +236,18 @@ Deno.serve(async (req) => {
     if (!relatedMemberIdSet.has(memberId)) {
       return jsonResponse(403, { error: "Members can only delete programs on their own profile" });
     }
-  } else if (ownerUserId && ownerUserId !== requesterUserId) {
-    const { data: memberOwner } = await adminClient
+  } else {
+    const { data: memberOwner, error: memberOwnerError } = await adminClient
       .from("members")
-      .select("owner_user_id")
+      .select("owner_user_id, customer_type")
       .eq("id", memberId)
       .maybeSingle();
-    const rowOwner = normalizeId((memberOwner as { owner_user_id?: string } | null)?.owner_user_id);
-    if (rowOwner !== requesterUserId) {
+    if (memberOwnerError) return jsonResponse(500, { error: memberOwnerError.message });
+    const memberOwnerRow = (memberOwner as Record<string, unknown> | null) ?? null;
+    const rowOwner = normalizeId(memberOwnerRow?.owner_user_id);
+    const ownedProgram = ownerUserId === requesterUserId;
+    const ownedMember = rowOwner === requesterUserId;
+    if (!ownedProgram && !ownedMember && !isSharedMember(memberOwnerRow)) {
       return jsonResponse(403, { error: "Trainer cannot delete this program" });
     }
   }

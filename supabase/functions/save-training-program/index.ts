@@ -56,12 +56,20 @@ type JwtUser = {
   user_metadata?: Record<string, unknown>;
 };
 
+const TRAINER_EMAIL_DOMAIN = "@motus-skarnes.no";
+
+function readLinkedMemberId(user: JwtUser): string {
+  const appMemberId = typeof user.app_metadata?.member_id === "string" ? user.app_metadata.member_id : "";
+  const userMemberId = typeof user.user_metadata?.member_id === "string" ? user.user_metadata.member_id : "";
+  return String(appMemberId || userMemberId || "").trim();
+}
+
 function roleFromUser(user: JwtUser): "member" | "trainer" {
   const app = user.app_metadata?.role;
   if (app === "member" || app === "trainer") return app;
-  const um = user.user_metadata?.role;
-  if (um === "member" || um === "trainer") return um;
-  return "trainer";
+  const email = normalizeEmail(user.email);
+  if (email.endsWith(TRAINER_EMAIL_DOMAIN) && !readLinkedMemberId(user)) return "trainer";
+  return "member";
 }
 
 function trainerDisplayFirstName(user: JwtUser): string {
@@ -268,6 +276,80 @@ async function resolveRelatedMemberIds(
   return { ids: [id], email };
 }
 
+function isSharedMember(row: Record<string, unknown>): boolean {
+  return String(row.customer_type ?? "").trim().toLowerCase() === "medlem";
+}
+
+async function filterTrainerWritableTargetMembers(
+  adminClient: ReturnType<typeof createClient>,
+  requesterUserId: string,
+  memberIds: string[],
+): Promise<{ ok: true; ids: string[] } | { ok: false; status: number; error: string }> {
+  const ids = Array.from(new Set(memberIds.map((id) => id.trim()).filter((id) => id && id !== "__template__")));
+  if (!ids.length) return { ok: true, ids: [] };
+
+  const { data, error } = await adminClient
+    .from("members")
+    .select("id, owner_user_id, customer_type")
+    .in("id", ids);
+  if (error) return { ok: false, status: 500, error: error.message };
+
+  const rowsById = new Map((data ?? []).map((row) => [String((row as { id?: string }).id ?? "").trim(), row as Record<string, unknown>]));
+  const allowedIds: string[] = [];
+  for (const id of ids) {
+    const row = rowsById.get(id);
+    if (!row) continue;
+    const ownerUserId = String(row.owner_user_id ?? "").trim();
+    if (ownerUserId === requesterUserId || isSharedMember(row)) allowedIds.push(id);
+  }
+  return { ok: true, ids: allowedIds };
+}
+
+async function validateExistingProgramWrite(
+  adminClient: ReturnType<typeof createClient>,
+  input: {
+    programId: string;
+    role: "member" | "trainer";
+    requesterUserId: string;
+    programOwnerUserId: string;
+    targetMemberIds: string[];
+    templateWrite?: boolean;
+  },
+): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  if (!input.programId) return { ok: true };
+  const { data, error } = await adminClient
+    .from("training_programs")
+    .select("id, member_id, owner_user_id, program_created_by")
+    .eq("id", input.programId)
+    .maybeSingle();
+  if (error) return { ok: false, status: 500, error: error.message };
+  if (!data) return { ok: true };
+
+  const row = data as Record<string, unknown>;
+  const existingMemberId = String(row.member_id ?? "").trim();
+  const existingOwnerUserId = String(row.owner_user_id ?? "").trim();
+
+  if (input.templateWrite) {
+    if (existingMemberId !== "__template__" || existingOwnerUserId !== input.requesterUserId) {
+      return { ok: false, status: 403, error: "Du kan bare oppdatere egne treningsmaler." };
+    }
+    return { ok: true };
+  }
+
+  const allowedTargetIds = new Set(input.targetMemberIds.map((id) => id.trim()).filter(Boolean));
+  if (!existingMemberId || !allowedTargetIds.has(existingMemberId)) {
+    return { ok: false, status: 403, error: "Du kan bare oppdatere programmer på egne profiler." };
+  }
+  if (input.role === "trainer" && existingOwnerUserId !== input.programOwnerUserId) {
+    return { ok: false, status: 403, error: "Du kan bare oppdatere programmer du eier." };
+  }
+  if (input.role === "member" && existingOwnerUserId && existingOwnerUserId !== input.programOwnerUserId) {
+    return { ok: false, status: 403, error: "Du kan bare oppdatere programmer på egen profil." };
+  }
+
+  return { ok: true };
+}
+
 /** PT som skal eie raden i training_programs — ikke medlemmets auth-id. */
 async function resolveProgramOwnerUserId(
   adminClient: ReturnType<typeof createClient>,
@@ -374,6 +456,19 @@ Deno.serve(async (req) => {
     if (role === "member") {
       return jsonResponse(403, { error: "Medlemmer kan ikke lagre treningsmaler." });
     }
+    if (programId) {
+      const existingProgramAccess = await validateExistingProgramWrite(adminClient, {
+        programId,
+        role,
+        requesterUserId,
+        programOwnerUserId: requesterUserId,
+        targetMemberIds: [memberId],
+        templateWrite: true,
+      });
+      if (!existingProgramAccess.ok) {
+        return jsonResponse(existingProgramAccess.status, { error: existingProgramAccess.error });
+      }
+    }
     const id = programId || crypto.randomUUID();
     const { error } = await upsertTrainingProgramWithAuthorFallback(adminClient, {
       id,
@@ -392,7 +487,7 @@ Deno.serve(async (req) => {
     return jsonResponse(200, { ok: true, ids: [id], targetMemberIds: [memberId] });
   }
 
-  const { ids: targetMemberIds } = await resolveRelatedMemberIds(adminClient, memberId, {
+  let { ids: targetMemberIds } = await resolveRelatedMemberIds(adminClient, memberId, {
     targetEmail,
     targetName,
     customerType,
@@ -406,6 +501,17 @@ Deno.serve(async (req) => {
     requesterUserId,
     targetMemberIds.length ? targetMemberIds : [memberId],
   );
+
+  if (role === "trainer") {
+    const targetAccess = await filterTrainerWritableTargetMembers(adminClient, requesterUserId, targetMemberIds);
+    if (!targetAccess.ok) {
+      return jsonResponse(targetAccess.status, { error: targetAccess.error });
+    }
+    targetMemberIds = targetAccess.ids;
+    if (!targetMemberIds.length || !targetMemberIds.includes(memberId)) {
+      return jsonResponse(403, { error: "Du kan bare lagre programmer på egne kunder." });
+    }
+  }
 
   if (role === "member") {
     const email = normalizeEmail(userData.user.email);
@@ -421,6 +527,19 @@ Deno.serve(async (req) => {
     const allowed = targetMemberIds.some((tid) => myIds.has(tid));
     if (!allowed) {
       return jsonResponse(403, { error: "Du kan bare lagre programmer på din egen profil." });
+    }
+  }
+
+  if (programId) {
+    const existingProgramAccess = await validateExistingProgramWrite(adminClient, {
+      programId,
+      role,
+      requesterUserId,
+      programOwnerUserId,
+      targetMemberIds,
+    });
+    if (!existingProgramAccess.ok) {
+      return jsonResponse(existingProgramAccess.status, { error: existingProgramAccess.error });
     }
   }
 
