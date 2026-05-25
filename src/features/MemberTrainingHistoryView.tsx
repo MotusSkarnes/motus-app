@@ -359,7 +359,7 @@ export function MemberTrainingHistoryView({
 
         <section className="motus-member-history-card">
           <div className="motus-member-history-card-head">
-            <h3 className="motus-member-history-section-title">Konsistens</h3>
+            <h3 className="motus-member-history-section-title">Kontinuitet</h3>
             <span className="motus-member-history-chip">Siste 3 måneder</span>
           </div>
 
