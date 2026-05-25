@@ -306,23 +306,53 @@ export function findPeriodPlanAutoCompleteTargets(input: {
   programs: TrainingProgram[];
   programId?: string;
   completedAt?: Date;
+  /**
+   * Ukedag (mandag–søndag) for `completedAt` — brukes som fallback når planen mangler startdato
+   * eller når dagens dato ikke flukter med en konkret planlagt dag. Speiler logikken i
+   * `resolveTodayPeriodPlanEntryForHome` slik at auto-fullføring fungerer for plan uten startdato.
+   */
+  calendarWeekdayKey?: WeekdayPlanKey;
 }): PeriodPlanAutoCompleteTarget[] {
   const completedAt = input.completedAt ?? new Date();
   const targets: PeriodPlanAutoCompleteTarget[] = [];
   const seen = new Set<string>();
 
+  function pushTarget(planId: string, weekNumber: number, day: WeekdayPlanKey) {
+    const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
+    if (seen.has(key)) return;
+    seen.add(key);
+    targets.push({ planId, weekNumber, day });
+  }
+
   for (const plan of input.plans) {
     const match = findPeriodPlanEntryForCalendarDate(plan, completedAt, input.swapsByPlan);
-    if (!match?.entry.trim()) continue;
+    if (match?.entry.trim()) {
+      if (
+        periodPlanEntryMatchesCompletedProgram(match.entry, input.programTitle, input.programs, input.programId)
+      ) {
+        pushTarget(plan.id, match.weekNumber, match.day);
+      }
+      continue;
+    }
+
+    if (!input.calendarWeekdayKey) continue;
+
+    const weekNumber = resolvePeriodPlanWeekNumberForDate(plan, completedAt);
+    const week = resolvePeriodPlanWeek(plan, weekNumber);
+    if (!week) continue;
+    const start = parsePeriodPlanStartDate(plan);
+    const swaps = getSwapsForWeek(input.swapsByPlan, plan.id, week.weekNumber);
+    const effectiveDays = applyPeriodPlanSwaps(week.days, swaps);
+    const dayFromStart = start ? periodPlanWeekdayKeyForDate(start, completedAt) : null;
+    const day = dayFromStart ?? input.calendarWeekdayKey;
+    const entry = effectiveDays[day]?.trim() ?? "";
+    if (!entry) continue;
     if (
-      !periodPlanEntryMatchesCompletedProgram(match.entry, input.programTitle, input.programs, input.programId)
+      !periodPlanEntryMatchesCompletedProgram(entry, input.programTitle, input.programs, input.programId)
     ) {
       continue;
     }
-    const key = buildPeriodPlanEntryKey(plan.id, match.weekNumber, match.day);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    targets.push({ planId: plan.id, weekNumber: match.weekNumber, day: match.day });
+    pushTarget(plan.id, week.weekNumber, day);
   }
 
   return targets;

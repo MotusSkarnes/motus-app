@@ -4529,6 +4529,7 @@ export function MemberPortal(props: MemberPortalProps) {
       programId: input.programId,
       programs: memberProgramsForPeriodPlan,
       completedAt: input.completedAt,
+      calendarWeekdayKey: currentWeekdayKey,
     });
     if (!targets.length) return;
 
