@@ -919,6 +919,7 @@ function intervalTimerBadgeToneClass(tone: IntervalTimerStep["tone"]): string {
 export function MemberPortal(props: MemberPortalProps) {
   const groupWorkoutClassOptions = [
     "Smilepuls",
+    "Sterk og stram opp",
     "Sykkel 45",
     "Mølle 45",
     "Sterk",
