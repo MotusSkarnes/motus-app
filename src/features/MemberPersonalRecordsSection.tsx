@@ -107,7 +107,9 @@ export function MemberPersonalRecordsSection({
       ) : (
         <>
           <div
-            className={`motus-progress-pr-grid scrollbar-none mt-3 ${showAll ? "motus-progress-pr-grid--all" : ""}`}
+            className={`scrollbar-none mt-3 ${
+              showAll ? "motus-progress-pr-grid motus-progress-pr-grid--all" : "motus-progress-pr-carousel"
+            }`}
             role="list"
             aria-label="Personlige rekorder"
           >
@@ -134,17 +136,18 @@ export function MemberPersonalRecordsSection({
                       </div>
                       {record.isNewRecord ? <span className="motus-progress-pr-new-badge">Ny rekord</span> : null}
                     </div>
-                    <p className="mt-1.5 line-clamp-2 text-[11px] font-bold leading-snug text-slate-900">{record.name}</p>
-                    <p className="mt-0.5 text-[10px] font-semibold tabular-nums text-slate-700">
-                      {record.weight} kg × {record.reps}
+                    <p className="motus-progress-pr-card-name">{record.name}</p>
+                    <p className="motus-progress-pr-card-weight">
+                      <span className="motus-progress-pr-card-weight-value">{record.weight} kg</span>
+                      <span className="motus-progress-pr-card-weight-reps">{record.reps} reps</span>
                     </p>
                     <RecordSparkline tone={index % 2 === 0 ? "mint" : "pink"} />
                   </button>
-                  <div className="mt-1.5 flex items-center justify-center gap-1">
+                  <div className="motus-progress-pr-card-actions">
                     <button
                       type="button"
                       onClick={() => onShare(record)}
-                      className="motus-pressable inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:border-teal-200 hover:text-teal-700"
+                      className="motus-progress-pr-card-action-btn motus-pressable"
                       aria-label={`Del personlig rekord for ${record.name}`}
                     >
                       <Share2 className="h-3 w-3" aria-hidden />
