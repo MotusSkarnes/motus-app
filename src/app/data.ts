@@ -105,7 +105,7 @@ const initialExercises: Exercise[] = [
   { id: "e36", name: "Airbike sprint", category: "Kondisjon", group: "Kondisjon", equipment: "Airbike", level: "Litt øvet", description: "Korte, harde spurter med full innsats og kontrollert hvile." },
   { id: "e37", name: "Burpees", category: "Kondisjon", group: "Helkropp", equipment: "Kroppsvekt", level: "Litt øvet", description: "Hold tempoet jevnt og land mykt for å beskytte knær og ankler." },
   { id: "e38", name: "Jumping jacks", category: "Kondisjon", group: "Helkropp", equipment: "Kroppsvekt", level: "Nybegynner", description: "Rytmisk helkroppsbevegelse med aktiv bruk av armene." },
-  { id: "e39", name: "Mountain climbers", category: "Kondisjon", group: "Kjerne", equipment: "Kroppsvekt", level: "Nybegynner", description: "Trekk knærne raskt mot brystet mens skuldrene holdes over hendene." },
+  { id: "e39", name: "Mountain climbers", category: "Mobilitet", group: "Kjerne", equipment: "Kroppsvekt", level: "Nybegynner", description: "Trekk knærne raskt mot brystet mens skuldrene holdes over hendene. Logg som sekunder per sett." },
   { id: "e40", name: "Hoppetau", category: "Kondisjon", group: "Kondisjon", equipment: "Hoppetau", level: "Nybegynner", description: "Små, effektive hopp med lav belastning og jevn rytme." },
   { id: "e41", name: "Step-up med høy puls", category: "Kondisjon", group: "Bein", equipment: "Benk", level: "Nybegynner", description: "Bytt fot kontinuerlig og jobb i jevnt tempo for å heve pulsen." },
   { id: "e42", name: "Kettlebell swing", category: "Kondisjon", group: "Bakside kjede", equipment: "Kettlebell", level: "Litt øvet", description: "Hofteleddsdrevet bevegelse, ikke løft med armene." },
