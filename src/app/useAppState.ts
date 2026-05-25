@@ -1220,8 +1220,9 @@ export function useAppState() {
 
     void hydrateRemoteData();
     const interval = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       void hydrateRemoteData();
-    }, 8000);
+    }, 30000);
 
     const onVisibility = () => {
       if (document.visibilityState === "visible") void hydrateRemoteData();

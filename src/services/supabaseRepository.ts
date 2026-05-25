@@ -3241,7 +3241,13 @@ export async function fetchProgramsFromSupabase(): Promise<TrainingProgram[] | n
 
   let result = await supabaseClient.from("training_programs").select(selectWithImage).order("created_at", { ascending: false });
 
-  if (result.error && isTrainingProgramImageColumnDbError(result.error.message)) {
+  if (result.error) {
+    if (!isTrainingProgramImageColumnDbError(result.error.message)) {
+      console.warn(
+        "Supabase programs fetch with image_url failed; retrying without image_url:",
+        result.error.message,
+      );
+    }
     result = await supabaseClient.from("training_programs").select(selectWithoutImage).order("created_at", { ascending: false });
   }
 
