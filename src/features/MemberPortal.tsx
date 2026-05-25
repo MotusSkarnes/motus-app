@@ -6648,7 +6648,24 @@ export function MemberPortal(props: MemberPortalProps) {
                 personalRecordsCount={personalRecords.length}
               />
               <MemberNextWorkoutCard
-                program={nextProgram}
+                title={
+                  todayPlanEntry.trim() ||
+                  homeWorkoutProgram?.title ||
+                  null
+                }
+                subline={
+                  todayPlanEntry.trim() && homeWorkoutProgram?.title && homeWorkoutProgram.title !== todayPlanEntry.trim()
+                    ? `Program: ${homeWorkoutProgram.title}`
+                    : homeWorkoutProgram?.goal?.trim() || homeWorkoutProgram?.notes?.trim() || null
+                }
+                source={
+                  todayPlanEntry.trim()
+                    ? "plan"
+                    : homeWorkoutProgram
+                      ? "library"
+                      : "empty"
+                }
+                programId={homeWorkoutProgram?.id ?? null}
                 onStart={(programId) => {
                   const program = memberPrograms.find((p) => p.id === programId);
                   if (!program) return;
