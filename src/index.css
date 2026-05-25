@@ -3006,41 +3006,47 @@ button {
 }
 
 .motus-home-quick-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 0.625rem;
-  overflow-x: auto;
   padding-block: 0.125rem;
-  -webkit-overflow-scrolling: touch;
 }
 
 .motus-home-quick-action {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-height: 2.75rem;
-  border-radius: 9999px;
-  border: 0;
-  background: #ffffff;
-  padding: 0.375rem 0.875rem 0.375rem 0.5rem;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 8px 20px -18px rgba(15, 23, 42, 0.28);
-  transition: box-shadow 160ms ease, border-color 160ms ease;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-height: 5.25rem;
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  padding: 0.7rem 0.85rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 12px 24px -22px rgba(15, 23, 42, 0.32);
+  transition: box-shadow 160ms ease, border-color 160ms ease, transform 120ms ease;
+  cursor: pointer;
 }
 
 .motus-home-quick-action:hover {
-  border-color: rgba(48, 227, 190, 0.22);
-  box-shadow: 0 4px 16px -10px rgba(15, 23, 42, 0.12);
+  border-color: rgba(48, 227, 190, 0.32);
+  box-shadow: 0 6px 18px -10px rgba(15, 23, 42, 0.18);
+  transform: translateY(-1px);
+}
+
+.motus-home-quick-action:active {
+  transform: translateY(0);
 }
 
 .motus-home-quick-action-icon {
   display: inline-flex;
-  height: 2rem;
-  width: 2rem;
+  height: 2.25rem;
+  width: 2.25rem;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
+  border-radius: 0.75rem;
 }
 
 .motus-home-quick-action-icon--brand {

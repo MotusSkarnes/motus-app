@@ -265,7 +265,7 @@ function HomeQuickAction({
       >
         <Icon className="h-5 w-5" strokeWidth={2} />
       </span>
-      <span className="block text-[12px] font-semibold leading-none text-slate-700">{label}</span>
+      <span className="block text-sm font-semibold leading-tight text-slate-800">{label}</span>
     </button>
   );
 }
