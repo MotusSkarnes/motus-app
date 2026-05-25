@@ -1,21 +1,33 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
+  ArrowRight,
   Bold,
-  ChevronLeft,
-  ChevronRight,
+  Brain,
+  CalendarHeart,
   ClipboardList,
+  Dumbbell,
+  Flame,
+  Footprints,
   ImagePlus,
   Italic,
+  LayoutGrid,
+  Leaf,
   Lightbulb,
   Newspaper,
   Pencil,
   Plus,
+  Quote,
   Smartphone,
   Soup,
+  Sparkles,
+  Sun,
   Trash2,
+  Users,
+  UtensilsCrossed,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
+import heroRunnerSrc from "../assets/inspo-hero-runner.webp";
 import { EXERCISE_CATEGORY_OPTIONS, exerciseCategoryAccentColor, isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { EXERCISE_IMAGE_THUMB_CLASS } from "../app/exerciseIllustrations/constants";
 import { getMedicalSketchFallbackDataUri, resolveExerciseImageSrc } from "../app/exerciseIllustrations";
@@ -81,6 +93,82 @@ const CATEGORY_META: Record<InspirationCategory, { label: string; plural: string
 };
 
 const APP_GUIDE_TAG = "app-guide";
+
+type QuickCategory = {
+  id: string;
+  label: string;
+  icon: typeof ClipboardList;
+  scrollToCategory: InspirationCategory;
+  match: (item: InspirationItem) => boolean;
+  tone: "teal" | "pink" | "lime" | "violet";
+};
+
+function textIncludesAny(value: string, terms: string[]): boolean {
+  const lower = value.toLowerCase();
+  return terms.some((term) => lower.includes(term));
+}
+
+const QUICK_CATEGORIES: readonly QuickCategory[] = [
+  {
+    id: "running",
+    label: "Løping",
+    icon: Footprints,
+    scrollToCategory: "programs",
+    tone: "teal",
+    match: (item) =>
+      textIncludesAny(`${item.title} ${item.tag} ${item.description}`, [
+        "løp",
+        "løping",
+        "running",
+        "interval",
+        "5k",
+        "10k",
+        "sub45",
+        "sub60",
+      ]),
+  },
+  {
+    id: "strength",
+    label: "Styrke",
+    icon: Dumbbell,
+    scrollToCategory: "programs",
+    tone: "pink",
+    match: (item) =>
+      textIncludesAny(`${item.title} ${item.tag} ${item.description}`, [
+        "styrke",
+        "strength",
+        "muskel",
+        "strong",
+        "kraft",
+      ]),
+  },
+  {
+    id: "nutrition",
+    label: "Kosthold",
+    icon: Leaf,
+    scrollToCategory: "recipes",
+    tone: "lime",
+    match: (item) => item.category === "recipes",
+  },
+  {
+    id: "motivation",
+    label: "Motivasjon",
+    icon: Brain,
+    scrollToCategory: "tips",
+    tone: "violet",
+    match: (item) => item.category === "tips",
+  },
+];
+
+const NEWS_TONES: Array<{ key: string; bg: string; ring: string; iconBg: string; iconColor: string; icon: typeof Sun }> = [
+  { key: "amber", bg: "#FFF8E2", ring: "#FFE4A1", iconBg: "#FFE08A", iconColor: "#92400E", icon: Sun },
+  { key: "rose", bg: "#FFE5F0", ring: "#FFB8D6", iconBg: "#FFB8D6", iconColor: "#9D174D", icon: Users },
+  { key: "teal", bg: "#D6FBF1", ring: "#9FE7D2", iconBg: "#9FE7D2", iconColor: "#065F46", icon: CalendarHeart },
+];
+
+function pickNewsTone(index: number) {
+  return NEWS_TONES[index % NEWS_TONES.length];
+}
 
 function isAppGuideItem(item: Pick<InspirationItem, "category" | "tag">): boolean {
   if (item.category === "appGuide") return true;
@@ -840,6 +928,66 @@ export function InspirationHub({
     node.scrollBy({ left: direction === "left" ? -amount : amount, behavior: "smooth" });
   }
 
+  function scrollToCategorySection(category: InspirationCategory) {
+    const node = carouselRefs.current[category];
+    if (!node) return;
+    const sectionEl = node.closest("section");
+    const target = sectionEl ?? node;
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function renderNewsCard(item: InspirationItem, index: number) {
+    const tone = pickNewsTone(index);
+    const ToneIcon = tone.icon;
+    return (
+      <article
+        key={item.id}
+        className="motus-inspo-news-card"
+        style={{ background: tone.bg, borderColor: tone.ring }}
+      >
+        {canManage ? (
+          <div className="motus-inspo-card-edit-actions">
+            <button
+              type="button"
+              onClick={() => beginEdit(item)}
+              className="motus-inspo-card-edit-btn"
+              aria-label={`Rediger ${item.title}`}
+              title="Rediger"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => confirmDeleteItem(item.id)}
+              className="motus-inspo-card-edit-btn motus-inspo-card-edit-btn--danger"
+              aria-label={`Slett ${item.title}`}
+              title="Slett"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : null}
+        <button type="button" onClick={() => openInspirationItem(item)} className="motus-inspo-news-button">
+          <span
+            className="motus-inspo-news-icon"
+            style={{ background: tone.iconBg, color: tone.iconColor }}
+            aria-hidden
+          >
+            <ToneIcon className="h-4 w-4" />
+          </span>
+          <div className="motus-inspo-news-body">
+            <div className="motus-inspo-news-title">{item.title}</div>
+            <p className="motus-inspo-news-desc">{item.description}</p>
+            <span className="motus-inspo-news-link">
+              Les mer
+              <ArrowRight className="h-3 w-3" aria-hidden />
+            </span>
+          </div>
+        </button>
+      </article>
+    );
+  }
+
   function renderInspirationCard(item: InspirationItem) {
     const meta = CATEGORY_META[item.category];
     const Icon = meta.icon;
@@ -1454,33 +1602,76 @@ export function InspirationHub({
     );
   }
 
+  const programsCount = (itemsByCategory.programs ?? []).length;
+  const recipesCount = (itemsByCategory.recipes ?? []).length;
+  const showHero = inspoSubView === "overview";
+
   return (
-    <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
-      <div className="motus-card-hero overflow-hidden">
-        <div className="motus-hairline-accent mx-4 mt-4 sm:mx-5 sm:mt-5" aria-hidden />
-        <div className="flex items-start justify-between gap-3 p-4 sm:p-5">
-          <div className="min-w-0">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-950">Inspirasjon</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">
-            {inspoSubView === "appGuide"
-              ? "Guider for hvordan du bruker Motus — øktmodus, egne programmer, hjemskjerm og mer."
-              : "Sveip horisontalt i hver kategori. Trykk les mer for detaljer — der kan du legge treningsprogram og ukesplaner til i treningen din."}
-          </p>
+    <div className="motus-inspo-page min-w-0 max-w-full space-y-4 overflow-x-hidden">
+      {showHero ? (
+        <section className="motus-inspo-hero">
+          <span className="motus-inspo-hero-blob motus-inspo-hero-blob--one" aria-hidden />
+          <span className="motus-inspo-hero-blob motus-inspo-hero-blob--two" aria-hidden />
+          <div className="motus-inspo-hero-content">
+            <span className="motus-inspo-hero-tag">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden />
+              Ukens inspirasjon
+            </span>
+            <h1 className="motus-inspo-hero-title">Bygg vaner som varer</h1>
+            <p className="motus-inspo-hero-subtitle">Små steg i dag — stor forskjell i morgen.</p>
+            <div className="motus-inspo-hero-stats" aria-hidden>
+              <div className="motus-inspo-hero-stat">
+                <span className="motus-inspo-hero-stat-icon" aria-hidden>
+                  <Dumbbell className="h-4 w-4" />
+                </span>
+                <div className="motus-inspo-hero-stat-text">
+                  <span className="motus-inspo-hero-stat-value">{programsCount}</span>
+                  <span className="motus-inspo-hero-stat-label">programmer</span>
+                </div>
+              </div>
+              <div className="motus-inspo-hero-stat">
+                <span className="motus-inspo-hero-stat-icon" aria-hidden>
+                  <UtensilsCrossed className="h-4 w-4" />
+                </span>
+                <div className="motus-inspo-hero-stat-text">
+                  <span className="motus-inspo-hero-stat-value">{recipesCount}</span>
+                  <span className="motus-inspo-hero-stat-label">oppskrifter</span>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="motus-inspo-hero-cta motus-pressable"
+              onClick={() => {
+                const first = INSPIRATION_OVERVIEW_SECTIONS.find((section) => itemsByCategory[section.category].length > 0);
+                if (first) scrollToCategorySection(first.category);
+              }}
+            >
+              Utforsk nå
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </button>
           </div>
+          <img
+            src={heroRunnerSrc}
+            alt=""
+            className="motus-inspo-hero-image"
+            loading="eager"
+            decoding="async"
+            aria-hidden
+          />
           {canManage ? (
             <button
               type="button"
               onClick={openCreateComposer}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm transition hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-teal-200"
-              style={{ background: MOTUS_GRADIENT }}
+              className="motus-inspo-hero-add motus-pressable"
               aria-label="Legg til inspirasjon"
               title="Legg til"
             >
               <Plus className="h-5 w-5" aria-hidden />
             </button>
           ) : null}
-        </div>
-      </div>
+        </section>
+      ) : null}
 
       <div
         className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1"
@@ -1529,6 +1720,45 @@ export function InspirationHub({
             </div>
       ) : null}
 
+      {showHero ? (
+        <section className="motus-inspo-quick-section">
+          <div className="motus-inspo-quick-head">
+            <h2 className="motus-inspo-quick-title">Hva vil du finne inspirasjon til?</h2>
+          </div>
+          <div className="motus-inspo-quick-grid">
+            {QUICK_CATEGORIES.map((cat) => {
+              const Icon = cat.icon;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => scrollToCategorySection(cat.scrollToCategory)}
+                  className={`motus-inspo-quick-pill motus-inspo-quick-pill--${cat.tone} motus-pressable`}
+                >
+                  <span className="motus-inspo-quick-pill-icon" aria-hidden>
+                    <Icon className="h-5 w-5" strokeWidth={2} />
+                  </span>
+                  <span className="motus-inspo-quick-pill-label">{cat.label}</span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => {
+                const first = INSPIRATION_OVERVIEW_SECTIONS.find((section) => itemsByCategory[section.category].length > 0);
+                if (first) scrollToCategorySection(first.category);
+              }}
+              className="motus-inspo-quick-pill motus-inspo-quick-pill--all motus-pressable"
+            >
+              <span className="motus-inspo-quick-pill-icon" aria-hidden>
+                <LayoutGrid className="h-5 w-5" strokeWidth={2} />
+              </span>
+              <span className="motus-inspo-quick-pill-label">Se alle</span>
+            </button>
+          </div>
+        </section>
+      ) : null}
+
       <div className="space-y-4">
         {inspoSubView === "appGuide" && appGuideCount === 0 ? (
           <p className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-600">
@@ -1538,51 +1768,58 @@ export function InspirationHub({
         {activeFeedSections.map(({ category, title }) => {
           const sectionItems = itemsByCategory[category];
           if (!sectionItems.length) return null;
-          const sectionMeta = CATEGORY_META[category];
-          const SectionIcon = sectionMeta.icon;
+          const isNewsLayout = category === "news";
           return (
-            <section key={category} className="min-w-0 overflow-hidden rounded-2xl border bg-white p-3 shadow-sm sm:p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2">
-                  <MotusSectionIcon className="!p-1.5">
-                    <SectionIcon className="h-4 w-4" />
-                  </MotusSectionIcon>
-                  <div className="min-w-0">
-                    <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
-                    <p className="text-xs text-slate-500">{sectionItems.length} innlegg</p>
-                  </div>
+            <section
+              key={category}
+              className={`motus-inspo-section ${isNewsLayout ? "motus-inspo-section--news" : ""}`}
+            >
+              <div className="motus-inspo-section-head">
+                <h2 className="motus-inspo-section-title">{title}</h2>
+                <button
+                  type="button"
+                  onClick={() => scrollSectionCarousel(category, "right")}
+                  className="motus-inspo-section-link"
+                  aria-label={`Bla videre i ${title}`}
+                >
+                  Se alle
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </div>
+              {isNewsLayout ? (
+                <div
+                  ref={(node) => {
+                    carouselRefs.current[category] = node;
+                  }}
+                  className="motus-inspo-news-grid"
+                >
+                  {sectionItems.map((item, index) => renderNewsCard(item, index))}
                 </div>
-                <div className="flex shrink-0 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => scrollSectionCarousel(category, "left")}
-                    className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50"
-                    aria-label={`Forrige i ${title}`}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => scrollSectionCarousel(category, "right")}
-                    className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50"
-                    aria-label={`Neste i ${title}`}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+              ) : (
+                <div
+                  ref={(node) => {
+                    carouselRefs.current[category] = node;
+                  }}
+                  className="motus-inspo-section-scroll scrollbar-none"
+                >
+                  {sectionItems.map(renderInspirationCard)}
                 </div>
-              <div
-                ref={(node) => {
-                  carouselRefs.current[category] = node;
-                }}
-                className="-mx-1 flex min-w-0 items-stretch snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-1 pb-2"
-              >
-                {sectionItems.map(renderInspirationCard)}
-            </div>
+              )}
             </section>
           );
         })}
-        </div>
+
+        {showHero ? (
+          <section className="motus-inspo-quote">
+            <Quote className="motus-inspo-quote-mark" aria-hidden />
+            <div className="motus-inspo-quote-body">
+              <div className="motus-inspo-quote-title">Du er sterkere enn du tror.</div>
+              <div className="motus-inspo-quote-sub">Fortsett å bygge de gode vanene.</div>
+            </div>
+            <Flame className="motus-inspo-quote-flame" aria-hidden />
+          </section>
+        ) : null}
+      </div>
 
 
       {canManage && composerOpen ? (
