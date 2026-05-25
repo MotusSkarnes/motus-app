@@ -2484,6 +2484,24 @@ export function MemberPortal(props: MemberPortalProps) {
       }),
     [completedLogs, exerciseGroupByName, muscleSplitPeriod, nowTimestamp],
   );
+  const previousPersonalBestsByExercise = useMemo(() => {
+    const best = new Map<string, number>();
+    memberLogs.forEach((log) => {
+      if (log.status !== "Fullført") return;
+      (log.results ?? []).forEach((row) => {
+        if (!row.completed) return;
+        if (row.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory)) return;
+        const w = Number(row.performedWeight) || 0;
+        const reps = Number(row.performedReps) || 0;
+        if (w <= 0 || reps <= 0) return;
+        const score = w * Math.max(reps, 1);
+        const key = row.exerciseName.trim().toLowerCase();
+        const current = best.get(key) ?? 0;
+        if (score > current) best.set(key, score);
+      });
+    });
+    return best;
+  }, [memberLogs]);
   const activeCelebration = liveWorkoutCelebration ?? workoutCelebration;
   const recentlyFinishedLog = useMemo(() => {
     if (!recentlyFinishedLogId) return null;
@@ -6852,6 +6870,7 @@ export function MemberPortal(props: MemberPortalProps) {
       finishWorkoutMode={handleFinishWorkoutMode}
       cancelWorkoutMode={cancelWorkoutMode}
       restCountdownEnabled={restCountdownEnabled}
+      previousPersonalBests={previousPersonalBestsByExercise}
       onDismissWorkout={() => {
         dismissWorkoutMode();
         setPausedWorkoutsTick((value) => value + 1);

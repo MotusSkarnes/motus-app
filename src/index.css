@@ -9876,3 +9876,70 @@ button {
 .motus-workout-celebration-confirm:active {
   transform: translateY(0);
 }
+
+/* ============================================================
+   Inline set-level Personal Record badge
+   ============================================================ */
+
+.motus-set-pr {
+  background: linear-gradient(90deg, rgba(217, 18, 120, 0.08) 0%, rgba(244, 114, 182, 0.04) 60%, rgba(217, 18, 120, 0) 100%);
+  box-shadow: inset 3px 0 0 #d91278;
+  animation: motus-set-pr-flash 0.6s ease-out;
+}
+
+@keyframes motus-set-pr-flash {
+  0% {
+    background-color: rgba(217, 18, 120, 0.18);
+  }
+  100% {
+    background-color: rgba(217, 18, 120, 0);
+  }
+}
+
+.motus-set-pr-badge {
+  position: absolute;
+  top: 50%;
+  right: 3rem;
+  transform: translateY(-50%);
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #d91278 0%, #f472b6 100%);
+  color: #ffffff;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow:
+    0 6px 16px rgba(217, 18, 120, 0.35),
+    0 0 0 2px #ffffff;
+  animation: motus-set-pr-pop 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 380px) {
+  .motus-set-pr-badge {
+    right: 2.6rem;
+    padding: 0.15rem 0.4rem;
+    font-size: 0.55rem;
+  }
+}
+
+@keyframes motus-set-pr-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.7);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}

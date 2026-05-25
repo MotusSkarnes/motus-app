@@ -53,6 +53,10 @@ export type LiveWorkoutSessionModalProps = {
   /** Vises som undertittel ved variant trainer */
   trainerSubtitle?: string;
   restCountdownEnabled?: boolean;
+  /** Beste score (vekt × max(reps, 1)) per øvelse fra tidligere logger. Brukes til inline PR-feiring per sett. */
+  previousPersonalBests?: Map<string, number>;
+  /** Kalles når et sett markeres som fullført og slår tidligere rekord. */
+  onSetPersonalRecord?: (exerciseName: string) => void;
 };
 
 type RestCountdownState = {
@@ -95,6 +99,8 @@ export function LiveWorkoutSessionModal({
   trainerSubtitle,
   onWorkoutExerciseIndexChange,
   restCountdownEnabled = true,
+  previousPersonalBests,
+  onSetPersonalRecord,
 }: LiveWorkoutSessionModalProps) {
   const leaveWorkout = onDismissWorkout ?? cancelWorkoutMode;
   const [showReplacementOptions, setShowReplacementOptions] = useState(false);
@@ -717,6 +723,8 @@ export function LiveWorkoutSessionModal({
                                 exerciseByName={exerciseByName}
                                 exerciseLabel={segment.exerciseName}
                                 onUpdate={updateWorkoutExerciseResult}
+                                previousPersonalBests={previousPersonalBests}
+                                onSetPersonalRecord={onSetPersonalRecord}
                               />
                             ) : null,
                           )}
@@ -728,6 +736,8 @@ export function LiveWorkoutSessionModal({
                       rows={currentWorkoutGroup.rows}
                       exerciseByName={exerciseByName}
                       onUpdate={updateWorkoutExerciseResult}
+                      previousPersonalBests={previousPersonalBests}
+                      onSetPersonalRecord={onSetPersonalRecord}
                     />
                   )}
               </div>

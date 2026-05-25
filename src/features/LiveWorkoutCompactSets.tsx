@@ -1,4 +1,5 @@
-import { Check, Minus, Plus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, Minus, Plus, Trophy } from "lucide-react";
 import { motusHaptic } from "../app/haptics";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { GradientButton, TextInput } from "../app/ui";
@@ -20,7 +21,13 @@ type WorkoutCompactSetTableProps = {
   exerciseLabel?: string;
   showExerciseColumn?: boolean;
   onUpdate: (exerciseId: string, field: UpdateField, value: string | boolean) => void;
+  /** Beste poengsum (vekt × max(reps, 1)) per øvelse fra tidligere fullførte logger. Brukes til å vise «Ny rekord!» når et sett slår tidligere historikk. */
+  previousPersonalBests?: Map<string, number>;
+  /** Kalles når et sett markeres som fullført og slår tidligere rekord. */
+  onSetPersonalRecord?: (exerciseName: string) => void;
 };
+
+const PR_BADGE_VISIBLE_MS = 4500;
 
 function parseNumInput(value: string): number {
   const n = Number(String(value ?? "").replace(",", ".").trim());
@@ -70,13 +77,75 @@ function SetCheckToggle({
   );
 }
 
+function rowPersonalRecordScore(row: WorkoutSetRow): number {
+  if (row.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory)) return 0;
+  const weight = parseNumInput(row.performedWeight);
+  const reps = parseNumInput(row.performedReps);
+  if (weight <= 0 || reps <= 0) return 0;
+  return weight * Math.max(reps, 1);
+}
+
+function normalizeExerciseKey(name: string): string {
+  return name.trim().toLowerCase();
+}
+
 export function WorkoutCompactSetTable({
   rows,
   exerciseByName,
   exerciseLabel,
   showExerciseColumn = false,
   onUpdate,
+  previousPersonalBests,
+  onSetPersonalRecord,
 }: WorkoutCompactSetTableProps) {
+  const sessionBestRef = useRef<Map<string, number>>(new Map());
+  const completedRowsRef = useRef<Set<string>>(new Set());
+  const [prRows, setPrRows] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const nextCompleted = new Set<string>();
+    rows.forEach((row) => {
+      if (!row.completed) return;
+      nextCompleted.add(row.exerciseId);
+      if (completedRowsRef.current.has(row.exerciseId)) return;
+      const score = rowPersonalRecordScore(row);
+      if (score <= 0) return;
+      const key = normalizeExerciseKey(row.exerciseName);
+      const historical = previousPersonalBests?.get(key) ?? 0;
+      const sessionBest = sessionBestRef.current.get(key) ?? 0;
+      const previous = Math.max(historical, sessionBest);
+      if (score > previous) {
+        sessionBestRef.current.set(key, score);
+        const expireAt = Date.now() + PR_BADGE_VISIBLE_MS;
+        setPrRows((prev) => ({ ...prev, [row.exerciseId]: expireAt }));
+        try {
+          motusHaptic("success");
+        } catch {
+          // haptic optional
+        }
+        onSetPersonalRecord?.(row.exerciseName);
+      }
+    });
+    completedRowsRef.current = nextCompleted;
+  }, [rows, previousPersonalBests, onSetPersonalRecord]);
+
+  useEffect(() => {
+    if (Object.keys(prRows).length === 0) return;
+    const earliest = Math.min(...Object.values(prRows));
+    const delay = Math.max(0, earliest - Date.now());
+    const timer = window.setTimeout(() => {
+      const now = Date.now();
+      setPrRows((prev) => {
+        const next: Record<string, number> = {};
+        for (const [key, value] of Object.entries(prev)) {
+          if (value > now) next[key] = value;
+        }
+        return next;
+      });
+    }, delay + 60);
+    return () => window.clearTimeout(timer);
+  }, [prRows]);
+
   if (!rows.length) return null;
 
   const activeIndex = rows.findIndex((row) => !row.completed);
@@ -255,6 +324,7 @@ export function WorkoutCompactSetTable({
           const isActive = index === activeIndex;
           const isFuture = activeIndex >= 0 && index > activeIndex;
           const isDone = row.completed;
+          const isPr = Boolean(prRows[row.exerciseId]);
           const displayReps = isDone
             ? row.performedReps || row.plannedReps || "—"
             : isFuture
@@ -283,11 +353,17 @@ export function WorkoutCompactSetTable({
           return (
             <div
               key={row.exerciseId}
-              className={`grid items-center gap-1.5 border-b px-2 py-1.5 last:border-b-0 sm:gap-2 sm:px-3 sm:py-2 ${
+              className={`relative grid items-center gap-1.5 border-b px-2 py-1.5 last:border-b-0 sm:gap-2 sm:px-3 sm:py-2 ${
                 isActive ? "bg-pink-50/40 ring-1 ring-inset ring-pink-200" : ""
-              } ${isFuture ? "opacity-55" : ""} ${isDone ? "motus-set-complete" : ""}`}
+              } ${isFuture ? "opacity-55" : ""} ${isDone ? "motus-set-complete" : ""} ${isPr ? "motus-set-pr" : ""}`}
               style={{ borderColor: "rgba(15,23,42,0.06)", gridTemplateColumns: gridCols }}
             >
+              {isPr ? (
+                <span className="motus-set-pr-badge" role="status" aria-live="polite">
+                  <Trophy className="h-3 w-3" strokeWidth={2.75} aria-hidden />
+                  Ny rekord!
+                </span>
+              ) : null}
               {showExerciseColumn ? (
                 <span className={`truncate text-xs font-medium ${isDone ? "text-slate-900" : "text-slate-500"}`}>
                   {row.exerciseName}
