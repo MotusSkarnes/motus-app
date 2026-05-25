@@ -121,6 +121,8 @@ export function LiveWorkoutSessionModal({
   const [restCountdown, setRestCountdown] = useState<RestCountdownState | null>(null);
   const [pendingIncompleteFinishAction, setPendingIncompleteFinishAction] = useState<FinishWorkoutAction | null>(null);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [blockSwapOpenForProgramExerciseId, setBlockSwapOpenForProgramExerciseId] = useState<string | null>(null);
+  const [blockDetailExercise, setBlockDetailExercise] = useState<Exercise | null>(null);
   const deferredJumpTargetGroupIdRef = useRef<string | null>(null);
   const incompleteWarningSeenRef = useRef(false);
   const completedCountByGroupRef = useRef<Record<string, number>>({});
@@ -241,6 +243,8 @@ export function LiveWorkoutSessionModal({
   useEffect(() => {
     setShowReplacementOptions(false);
     setShowExerciseDetail(false);
+    setBlockDetailExercise(null);
+    setBlockSwapOpenForProgramExerciseId(null);
     setRestCountdown(null);
     lastRestBeepSecondRef.current = null;
     if (currentWorkoutGroupId) {
@@ -321,7 +325,7 @@ export function LiveWorkoutSessionModal({
   useEffect(() => {
     if (!showExerciseDetail) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setShowExerciseDetail(false);
+      if (event.key === "Escape") closeExerciseDetail();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -332,15 +336,8 @@ export function LiveWorkoutSessionModal({
     [exercises],
   );
 
-  const replacementCandidates = useMemo(() => {
-    if (!resolvedProgram || !currentWorkoutGroup || currentWorkoutGroup.blockType) return [] as Exercise[];
-    const sourceExercise =
-      exerciseByName.get(currentWorkoutGroup.exerciseName.trim().toLowerCase()) ??
-      (() => {
-        const sourceProgramExercise = resolvedProgram.exercises.find((exercise) => exercise.id === currentWorkoutGroup.groupId);
-        if (!sourceProgramExercise) return null;
-        return exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
-      })();
+  /** Velg «samme muskelgruppe + samme kategori» — fall tilbake til samme kategori om gruppen er tom. */
+  function computeReplacementCandidatesForExercise(sourceExercise: Exercise | null): Exercise[] {
     if (!sourceExercise) return [];
     const sameGroup = exercises.filter(
       (exercise) =>
@@ -349,8 +346,47 @@ export function LiveWorkoutSessionModal({
         exercise.category === sourceExercise.category,
     );
     if (sameGroup.length > 0) return sameGroup;
-    return exercises.filter((exercise) => exercise.id !== sourceExercise.id && exercise.category === sourceExercise.category);
+    return exercises.filter(
+      (exercise) => exercise.id !== sourceExercise.id && exercise.category === sourceExercise.category,
+    );
+  }
+
+  function resolveExerciseForProgramExerciseId(programExerciseId: string, exerciseName: string): Exercise | null {
+    const byName = exerciseByName.get(exerciseName.trim().toLowerCase());
+    if (byName) return byName;
+    if (!resolvedProgram) return null;
+    const sourceProgramExercise = resolvedProgram.exercises.find((exercise) => exercise.id === programExerciseId);
+    if (!sourceProgramExercise) return null;
+    return exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
+  }
+
+  const replacementCandidates = useMemo(() => {
+    if (!resolvedProgram || !currentWorkoutGroup || currentWorkoutGroup.blockType) return [] as Exercise[];
+    const sourceExercise = resolveExerciseForProgramExerciseId(
+      currentWorkoutGroup.groupId,
+      currentWorkoutGroup.exerciseName,
+    );
+    return computeReplacementCandidatesForExercise(sourceExercise);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolvedProgram, currentWorkoutGroup, exerciseByName, exercises]);
+
+  const blockExerciseInfos = useMemo(() => {
+    if (!currentWorkoutGroup?.blockType) return [];
+    return currentWorkoutGroup.segments.map((segment) => {
+      const exercise = resolveExerciseForProgramExerciseId(segment.programExerciseId, segment.exerciseName);
+      const candidates = computeReplacementCandidatesForExercise(exercise);
+      const imageUrl = exercise ? resolveExerciseImageSrc(exercise) : "";
+      return {
+        programExerciseId: segment.programExerciseId,
+        exerciseName: segment.exerciseName,
+        exercise,
+        imageUrl,
+        candidates,
+        setCount: segment.rows.length,
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentWorkoutGroup, exerciseByName, exercises, resolvedProgram]);
 
   const currentWorkoutExercise = useMemo(() => {
     if (!currentWorkoutGroup) return null;
@@ -365,6 +401,15 @@ export function LiveWorkoutSessionModal({
   const currentWorkoutExerciseImageUrl = currentWorkoutExercise
     ? resolveExerciseImageSrc(currentWorkoutExercise)
     : "";
+
+  /** Foretrukket «detalj»-øvelse: et segment i blokk hvis valgt, ellers gjeldende øvelse. */
+  const detailExercise = blockDetailExercise ?? currentWorkoutExercise;
+  const detailExerciseImageUrl = detailExercise ? resolveExerciseImageSrc(detailExercise) : "";
+
+  function closeExerciseDetail() {
+    setShowExerciseDetail(false);
+    setBlockDetailExercise(null);
+  }
 
   const nextWorkoutExercise = useMemo(() => {
     if (!nextWorkoutGroup) return null;
@@ -444,6 +489,17 @@ export function LiveWorkoutSessionModal({
       nextExerciseName: replacementExercise.name,
     });
     setShowReplacementOptions(false);
+  }
+
+  function handleReplaceBlockSegmentExercise(programExerciseId: string, replacementExerciseId: string) {
+    if (!programExerciseId || !replacementExerciseId) return;
+    const replacementExercise = exercises.find((exercise) => exercise.id === replacementExerciseId);
+    if (!replacementExercise) return;
+    replaceWorkoutExerciseGroup({
+      programExerciseId,
+      nextExerciseName: replacementExercise.name,
+    });
+    setBlockSwapOpenForProgramExerciseId(null);
   }
 
   function buildWorkoutReflection(): WorkoutReflection {
@@ -653,7 +709,7 @@ export function LiveWorkoutSessionModal({
                     ) : null}
                   </div>
                 </div>
-                {currentWorkoutExercise ? (
+                {currentWorkoutExercise && !currentWorkoutGroup.blockType ? (
                   <button
                     type="button"
                     onClick={() => setShowExerciseDetail(true)}
@@ -678,6 +734,96 @@ export function LiveWorkoutSessionModal({
                   </button>
                 ) : null}
               </div>
+              {currentWorkoutGroup.blockType && blockExerciseInfos.length > 0 ? (
+                <div className="mt-2 space-y-2 sm:mt-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
+                    Øvelser i {EXERCISE_BLOCK_LABELS[currentWorkoutGroup.blockType].toLowerCase()}
+                  </div>
+                  <ul className="motus-block-exercise-list">
+                    {blockExerciseInfos.map((info, index) => {
+                      const isSwapOpen = blockSwapOpenForProgramExerciseId === info.programExerciseId;
+                      return (
+                        <li key={info.programExerciseId} className="motus-block-exercise-item">
+                          <div className="motus-block-exercise-row">
+                            <span className="motus-block-exercise-index" aria-hidden>
+                              {index + 1}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (info.exercise) {
+                                  setBlockDetailExercise(info.exercise);
+                                  setShowExerciseDetail(true);
+                                }
+                              }}
+                              className="motus-block-exercise-thumb"
+                              aria-label={info.exercise ? `Vis info om ${info.exerciseName}` : info.exerciseName}
+                              disabled={!info.exercise}
+                            >
+                              {info.imageUrl ? (
+                                <img
+                                  src={info.imageUrl}
+                                  alt=""
+                                  className={EXERCISE_IMAGE_INSET_CLASS}
+                                  loading="lazy"
+                                  decoding="async"
+                                />
+                              ) : (
+                                <span className="motus-block-exercise-thumb-fallback">Info</span>
+                              )}
+                            </button>
+                            <div className="min-w-0 flex-1">
+                              <p className="motus-block-exercise-name">{info.exerciseName}</p>
+                              <p className="motus-block-exercise-meta">
+                                {info.setCount > 0
+                                  ? info.setCount === 1
+                                    ? "1 sett"
+                                    : `${info.setCount} sett`
+                                  : "Sett vises per runde"}
+                              </p>
+                            </div>
+                            {info.candidates.length > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setBlockSwapOpenForProgramExerciseId((prev) =>
+                                    prev === info.programExerciseId ? null : info.programExerciseId,
+                                  )
+                                }
+                                className="motus-block-exercise-swap"
+                                aria-expanded={isSwapOpen}
+                                aria-label={`Bytt ${info.exerciseName}`}
+                              >
+                                <Repeat2 className="h-3.5 w-3.5" aria-hidden />
+                                Bytt
+                              </button>
+                            ) : null}
+                          </div>
+                          {isSwapOpen ? (
+                            <div className="motus-block-exercise-swap-panel">
+                              <div className="motus-block-exercise-swap-title">
+                                Velg ny øvelse (samme muskelgruppe)
+                              </div>
+                              <div className="motus-block-exercise-swap-options">
+                                {info.candidates.map((candidate) => (
+                                  <button
+                                    key={candidate.id}
+                                    type="button"
+                                    onClick={() => handleReplaceBlockSegmentExercise(info.programExerciseId, candidate.id)}
+                                    className="motus-block-exercise-swap-option"
+                                  >
+                                    {candidate.name} · {candidate.group}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ) : null}
               {replacementCandidates.length > 0 && showReplacementOptions ? (
                 <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-xs font-medium text-slate-600">Velg ny øvelse (samme muskelgruppe)</div>
@@ -970,7 +1116,7 @@ export function LiveWorkoutSessionModal({
         </div>
       </div>
 
-      {showExerciseDetail && currentWorkoutExercise && currentWorkoutGroup ? (
+      {showExerciseDetail && detailExercise && currentWorkoutGroup ? (
         <div
           className="motus-modal-insets fixed inset-0 z-[10015] flex flex-col overscroll-contain bg-slate-900/55"
           role="dialog"
@@ -984,7 +1130,7 @@ export function LiveWorkoutSessionModal({
             >
               <button
                 type="button"
-                onClick={() => setShowExerciseDetail(false)}
+                onClick={closeExerciseDetail}
                 className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                 aria-label="Tilbake til øktmodus"
               >
@@ -993,7 +1139,7 @@ export function LiveWorkoutSessionModal({
               </button>
               <button
                 type="button"
-                onClick={() => setShowExerciseDetail(false)}
+                onClick={closeExerciseDetail}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100"
                 aria-label="Lukk"
               >
@@ -1002,15 +1148,15 @@ export function LiveWorkoutSessionModal({
             </div>
 
             <div className="motus-scroll-touch flex-1 overflow-auto p-4">
-              {currentWorkoutExerciseImageUrl ? (
+              {detailExerciseImageUrl ? (
                 <div
                   className="overflow-hidden rounded-2xl border bg-slate-100"
                   style={{ borderColor: "rgba(15,23,42,0.08)" }}
                 >
                   <img
-                    key={currentWorkoutExercise.id}
-                    src={currentWorkoutExerciseImageUrl}
-                    alt={`Illustrasjon av ${currentWorkoutGroup.exerciseName}`}
+                    key={detailExercise.id}
+                    src={detailExerciseImageUrl}
+                    alt={`Illustrasjon av ${detailExercise.name}`}
                     className="max-h-[min(52vh,420px)] w-full object-contain"
                     loading="lazy"
                     decoding="async"
@@ -1023,33 +1169,35 @@ export function LiveWorkoutSessionModal({
               )}
 
               <h2 id="workout-exercise-detail-title" className="mt-4 text-xl font-bold text-slate-900">
-                {currentWorkoutGroup.exerciseName}
+                {detailExercise.name}
               </h2>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{currentWorkoutExercise.category}</span>
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{currentWorkoutExercise.group}</span>
-                {currentWorkoutExercise.equipment ? (
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{currentWorkoutExercise.equipment}</span>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{detailExercise.category}</span>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{detailExercise.group}</span>
+                {detailExercise.equipment ? (
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{detailExercise.equipment}</span>
                 ) : null}
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{currentWorkoutExercise.level}</span>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{detailExercise.level}</span>
               </div>
 
-              <div className="mt-4 rounded-xl border bg-slate-50 px-3 py-3 text-sm text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Plan i dag</div>
-                <div className="mt-1 font-medium">{currentWorkoutPlanLabel}</div>
-              </div>
+              {!blockDetailExercise ? (
+                <div className="mt-4 rounded-xl border bg-slate-50 px-3 py-3 text-sm text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Plan i dag</div>
+                  <div className="mt-1 font-medium">{currentWorkoutPlanLabel}</div>
+                </div>
+              ) : null}
 
-              {currentWorkoutExercise.description?.trim() ? (
+              {detailExercise.description?.trim() ? (
                 <div className="mt-4">
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Om øvelsen</div>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-700">{currentWorkoutExercise.description}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-700">{detailExercise.description}</p>
                 </div>
               ) : null}
             </div>
 
             <div className="shrink-0 border-t p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-              <GradientButton type="button" className="w-full" onClick={() => setShowExerciseDetail(false)}>
+              <GradientButton type="button" className="w-full" onClick={closeExerciseDetail}>
                 Tilbake til øktmodus
               </GradientButton>
             </div>
