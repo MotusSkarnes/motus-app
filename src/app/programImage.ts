@@ -9,6 +9,7 @@ export const SMILEPULS_COVER_IMAGE = "/program-covers/smilepuls.png";
 export const STRONG_TONE_GROUP_COVER_IMAGE = "/program-covers/sterk-og-stram-opp.png";
 export const HIIT_TABATA_GROUP_COVER_IMAGE = "/program-covers/hiit-tabata.png";
 export const CYCLING_GROUP_COVER_IMAGE = "/program-covers/sykkel-gruppetime.png";
+export const TREADMILL_GROUP_COVER_IMAGE = "/program-covers/molle-45.png";
 export const REST_RECOVERY_COVER_IMAGE = "/program-covers/hvile-restitusjon.png";
 export const STRENGTH_TRAINING_COVER_IMAGE = "/program-covers/styrketrening.png";
 export const CONDITIONING_TRAINING_COVER_IMAGE = "/program-covers/kondisjon.png";
@@ -24,6 +25,10 @@ const GROUP_WORKOUT_COVER_IMAGES: Record<string, string> = {
   tabata: HIIT_TABATA_GROUP_COVER_IMAGE,
   sykkel: CYCLING_GROUP_COVER_IMAGE,
   "sykkel 45": CYCLING_GROUP_COVER_IMAGE,
+  mølle: TREADMILL_GROUP_COVER_IMAGE,
+  "mølle 45": TREADMILL_GROUP_COVER_IMAGE,
+  molle: TREADMILL_GROUP_COVER_IMAGE,
+  "molle 45": TREADMILL_GROUP_COVER_IMAGE,
 };
 
 const PROGRAM_TITLE_COVER_IMAGES: Record<string, string> = {
