@@ -1465,9 +1465,9 @@ button {
   width: 2.5rem;
   flex-shrink: 0;
   border-radius: 9999px;
-  background: linear-gradient(135deg, #fed7aa 0%, #fb923c 100%);
-  color: #c2410c;
-  box-shadow: 0 6px 16px -6px rgba(251, 146, 60, 0.55);
+  background: linear-gradient(135deg, #fbcfe8 0%, #d91278 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 16px -6px rgba(217, 18, 120, 0.55);
 }
 
 .motus-progress-highlight-card-value {
