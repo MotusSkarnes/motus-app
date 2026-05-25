@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
-import { BarChart3, Check, ChevronRight, Clock3, Sparkles, Trophy } from "lucide-react";
+import { BarChart3, Check, ChevronRight, Clock3, Flame, Sparkles, Trophy } from "lucide-react";
 import {
   buildHomeWeekFlow,
   buildHomeWeekHeadline,
@@ -156,7 +156,7 @@ export function MemberHomeWeeklyProgress({
   const flowInner: ReactNode = (
     <>
       <span className="motus-home-week-flow-icon" aria-hidden>
-        <MotusFlameIcon className="h-5 w-5" />
+        <Flame className="h-5 w-5" strokeWidth={2.25} />
       </span>
       <span className="min-w-0 flex-1">
         <span className="motus-home-week-flow-title">{flow.title}</span>

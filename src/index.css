@@ -242,6 +242,18 @@ button {
   padding-top: 0.125rem;
 }
 
+.motus-home-streak-ring-fill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 3.25rem;
+  width: 3.25rem;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #fbcfe8 0%, #d91278 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 16px -6px rgba(217, 18, 120, 0.55);
+}
+
 .motus-home-dash-stats {
   display: flex;
   flex-wrap: wrap;
@@ -1077,8 +1089,9 @@ button {
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
-  background: rgba(255, 45, 149, 0.08);
-  box-shadow: 0 0 0 6px rgba(255, 45, 149, 0.04);
+  background: linear-gradient(135deg, #fbcfe8 0%, #d91278 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 16px -6px rgba(217, 18, 120, 0.55);
 }
 
 .motus-home-week-flow-title {

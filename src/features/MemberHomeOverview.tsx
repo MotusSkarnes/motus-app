@@ -7,13 +7,13 @@ import {
   ClipboardList,
   Clock3,
   Dumbbell,
+  Flame,
   MessageSquare,
   Play,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
 import { GradientButton, OutlineButton, TrainingStartButton } from "../app/ui";
-import { MotusFlameIcon } from "./MotusFlameIcon";
 
 export type MemberHomeStatusCard = {
   title: string;
@@ -194,7 +194,9 @@ export function MemberHomeOverview({
               />
             </svg>
             <div className="motus-home-streak-ring-center">
-              <MotusFlameIcon className="h-8 w-8" title="" />
+              <span className="motus-home-streak-ring-fill">
+                <Flame className="h-7 w-7" strokeWidth={2.25} aria-hidden />
+              </span>
               <span className="sr-only">
                 {streakWeeks} {streakWeeks === 1 ? "uke" : "uker"} streak
               </span>
