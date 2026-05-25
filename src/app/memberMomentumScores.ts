@@ -80,14 +80,15 @@ function countWorkoutsBetween(dates: Date[], start: Date, end: Date): number {
   }).length;
 }
 
-function buildMomentumSparkPoints(completedLogDates: Date[], nowDate: Date, weeks = 6): number[] {
-  const weekStart = getWeekStart(nowDate);
+function buildMomentumSparkPoints(completedLogDates: Date[], nowDate: Date, windows = 6): number[] {
+  const today = new Date(nowDate);
+  today.setHours(0, 0, 0, 0);
   const points: number[] = [];
-  for (let index = weeks - 1; index >= 0; index -= 1) {
-    const start = new Date(weekStart);
-    start.setDate(start.getDate() - index * 7);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 7);
+  for (let index = windows - 1; index >= 0; index -= 1) {
+    const end = new Date(today);
+    end.setDate(today.getDate() + 1 - index * 7);
+    const start = new Date(end);
+    start.setDate(end.getDate() - 7);
     points.push(countWorkoutsBetween(completedLogDates, start, end));
   }
   return points;
@@ -102,41 +103,40 @@ export function computeMomentumScore(input: {
   completedLogDates: Date[];
   nowDate: Date;
   plannedThisWeek?: number;
+  /** @deprecated Ikke brukt — flyt regnes nå på rullende siste 7 dager. */
   completedThisWeek?: number;
   sessionsPerWeekTarget?: number;
 }): MomentumScore {
-  const weekStart = getWeekStart(input.nowDate);
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekEnd.getDate() + 7);
-  const prevStart = new Date(weekStart);
-  prevStart.setDate(prevStart.getDate() - 7);
+  const today = new Date(input.nowDate);
+  today.setHours(0, 0, 0, 0);
+  const todayExclusive = new Date(today);
+  todayExclusive.setDate(today.getDate() + 1);
+  const last7Start = new Date(today);
+  last7Start.setDate(today.getDate() - 6);
+  const prev7Start = new Date(last7Start);
+  prev7Start.setDate(last7Start.getDate() - 7);
 
-  const thisWeekSessions = countWorkoutsBetween(input.completedLogDates, weekStart, weekEnd);
-  const lastWeekSessions = countWorkoutsBetween(input.completedLogDates, prevStart, weekStart);
+  const last7Sessions = countWorkoutsBetween(input.completedLogDates, last7Start, todayExclusive);
+  const prev7Sessions = countWorkoutsBetween(input.completedLogDates, prev7Start, last7Start);
 
   const target =
     input.plannedThisWeek && input.plannedThisWeek > 0
       ? input.plannedThisWeek
       : Math.max(1, Number(input.sessionsPerWeekTarget) || 2);
 
-  const completedThisWeek = input.completedThisWeek ?? thisWeekSessions;
-
-  const pct =
-    input.plannedThisWeek && input.plannedThisWeek > 0
-      ? Math.min(100, Math.round((completedThisWeek / input.plannedThisWeek) * 100))
-      : Math.min(100, Math.round((completedThisWeek / target) * 100));
+  const pct = Math.min(100, Math.round((last7Sessions / target) * 100));
 
   const trend: ScoreTrend =
-    thisWeekSessions > lastWeekSessions ? "up" : thisWeekSessions < lastWeekSessions ? "down" : "flat";
+    last7Sessions > prev7Sessions ? "up" : last7Sessions < prev7Sessions ? "down" : "flat";
 
   let subline = "Bygg flyt med én økt til.";
-  if (trend === "up" && thisWeekSessions > 0) {
+  if (trend === "up" && last7Sessions > 0) {
     subline = "Du trener mer konsekvent enn forrige uke 🔥";
-  } else if (trend === "down" && lastWeekSessions > 0) {
+  } else if (trend === "down" && prev7Sessions > 0) {
     subline = "Roligere uke enn før — én økt holder flyten.";
-  } else if (completedThisWeek >= target) {
+  } else if (last7Sessions >= target) {
     subline = "Sterk uke — du holder målet.";
-  } else if (thisWeekSessions > 0) {
+  } else if (last7Sessions > 0) {
     subline = "Du er i gang — fortsett jevnt.";
   }
 
