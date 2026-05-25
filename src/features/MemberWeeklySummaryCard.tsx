@@ -1,6 +1,4 @@
-import { Share2 } from "lucide-react";
-import { PROGRESS_WEEKLY_SUMMARY_IMAGE } from "../app/progressImagery";
-import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
+import { Calendar, Dumbbell, Flame, Layers, Share2 } from "lucide-react";
 import { GradientButton, StatusMessage } from "../app/ui";
 
 type WeeklySummaryStats = {
@@ -19,49 +17,66 @@ type MemberWeeklySummaryCardProps = {
 };
 
 export function MemberWeeklySummaryCard({ stats, onShare, shareStatus }: MemberWeeklySummaryCardProps) {
+  const cells = [
+    {
+      key: "workouts",
+      label: "Økter",
+      value: String(stats.workouts),
+      tone: "mint" as const,
+      icon: <Calendar className="h-4 w-4" strokeWidth={2.25} aria-hidden />,
+    },
+    {
+      key: "trainingDays",
+      label: "Treningsdager",
+      value: String(stats.trainingDays),
+      tone: "pink" as const,
+      icon: <Flame className="h-4 w-4" strokeWidth={2.25} aria-hidden />,
+    },
+    {
+      key: "completedSets",
+      label: "Sett",
+      value: String(stats.completedSets),
+      tone: "mint" as const,
+      icon: <Layers className="h-4 w-4" strokeWidth={2.25} aria-hidden />,
+    },
+    {
+      key: "volumeKg",
+      label: "Totalt løftet",
+      value: `${Math.round(stats.volumeKg).toLocaleString("nb-NO")} kg`,
+      tone: "pink" as const,
+      icon: <Dumbbell className="h-4 w-4" strokeWidth={2.25} aria-hidden />,
+    },
+  ];
+
   return (
-    <section className="motus-progress-weekly-summary">
-      <div className="motus-progress-weekly-summary-body">
-        <div className="motus-progress-weekly-summary-media motus-image-frame shrink-0">
-          <img
-            src={PROGRESS_WEEKLY_SUMMARY_IMAGE}
-            alt=""
-            className="motus-image-media"
-            loading="lazy"
-            style={{ objectPosition: imageObjectPositionFromSrc(PROGRESS_WEEKLY_SUMMARY_IMAGE) }}
-          />
-        </div>
-
-        <div className="motus-progress-weekly-summary-content">
-          <h3 className="text-base font-bold tracking-tight text-slate-950">Ukesoppsummering</h3>
-          <p className="mt-0.5 text-xs text-slate-500">Siste 7 dager</p>
-
-          <div className="mt-3 grid grid-cols-2 gap-1.5">
-            {[
-              { k: "Økter", v: String(stats.workouts) },
-              { k: "Treningsdager", v: String(stats.trainingDays) },
-              { k: "Sett", v: String(stats.completedSets) },
-              { k: "Totalt løftet", v: `${Math.round(stats.volumeKg).toLocaleString("nb-NO")} kg` },
-            ].map((cell) => (
-              <div key={cell.k} className="motus-progress-weekly-stat">
-                <div className="motus-progress-weekly-stat-value">{cell.v}</div>
-                <div className="motus-progress-weekly-stat-label">{cell.k}</div>
-              </div>
-            ))}
-          </div>
-
-          <GradientButton type="button" onClick={onShare} className="mt-3 w-full gap-2">
-            <Share2 className="h-4 w-4 shrink-0" aria-hidden />
-            Last ned eller del bilde
-          </GradientButton>
+    <section className="motus-progress-weekly-summary motus-progress-weekly-summary--minimal">
+      <div className="motus-progress-weekly-summary-header">
+        <div>
+          <h3 className="motus-progress-weekly-summary-title">Ukesoppsummering</h3>
+          <p className="motus-progress-weekly-summary-subline">Siste 7 dager</p>
         </div>
       </div>
+
+      <div className="motus-progress-weekly-summary-grid">
+        {cells.map((cell) => (
+          <div key={cell.key} className={`motus-progress-weekly-stat motus-progress-weekly-stat--${cell.tone}`}>
+            <span className={`motus-progress-weekly-stat-icon motus-progress-weekly-stat-icon--${cell.tone}`}>{cell.icon}</span>
+            <div className="motus-progress-weekly-stat-value">{cell.value}</div>
+            <div className="motus-progress-weekly-stat-label">{cell.label}</div>
+          </div>
+        ))}
+      </div>
+
+      <GradientButton type="button" onClick={onShare} className="motus-progress-weekly-summary-share">
+        <Share2 className="h-4 w-4 shrink-0" aria-hidden />
+        Last ned eller del bilde
+      </GradientButton>
 
       {shareStatus ? (
         <StatusMessage
           message={shareStatus}
           tone={shareStatus.toLowerCase().includes("kunne ikke") ? "error" : "success"}
-          className="mx-4 mb-4 !rounded-xl !px-3 !py-2 !text-xs sm:mx-5"
+          className="motus-progress-weekly-summary-status"
         />
       ) : null}
     </section>
