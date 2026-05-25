@@ -6666,6 +6666,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       : "empty"
                 }
                 programId={homeWorkoutProgram?.id ?? null}
+                coverSrc={homeDisplayCoverSrc}
                 onStart={(programId) => {
                   const program = memberPrograms.find((p) => p.id === programId);
                   if (!program) return;

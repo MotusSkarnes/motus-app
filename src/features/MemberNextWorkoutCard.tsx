@@ -5,10 +5,18 @@ type MemberNextWorkoutCardProps = {
   subline?: string | null;
   source?: "plan" | "library" | "empty";
   programId?: string | null;
+  coverSrc?: string | null;
   onStart?: (programId: string) => void;
 };
 
-export function MemberNextWorkoutCard({ title, subline, source = "library", programId, onStart }: MemberNextWorkoutCardProps) {
+export function MemberNextWorkoutCard({
+  title,
+  subline,
+  source = "library",
+  programId,
+  coverSrc,
+  onStart,
+}: MemberNextWorkoutCardProps) {
   const isEmpty = source === "empty" || !title;
 
   if (isEmpty) {
@@ -27,6 +35,15 @@ export function MemberNextWorkoutCard({ title, subline, source = "library", prog
 
   return (
     <section className="motus-progress-next-workout">
+      {coverSrc ? (
+        <img
+          src={coverSrc}
+          alt=""
+          className="motus-progress-next-workout-image"
+          loading="lazy"
+          aria-hidden
+        />
+      ) : null}
       <div className="motus-progress-next-workout-overlay" aria-hidden />
       <div className="motus-progress-next-workout-content">
         <span className="motus-progress-next-workout-chip">{chipLabel}</span>
