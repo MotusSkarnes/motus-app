@@ -10928,13 +10928,16 @@ button.motus-progress-status-banner {
 .motus-inspo-hero-image {
   position: absolute;
   z-index: 1;
-  right: -22px;
-  bottom: -12px;
-  height: 260px;
+  right: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 92%;
+  max-height: 240px;
   width: auto;
   object-fit: contain;
+  object-position: center;
   pointer-events: none;
-  filter: drop-shadow(0 14px 18px rgba(15, 23, 42, 0.18));
+  filter: drop-shadow(0 14px 18px rgba(15, 23, 42, 0.16));
 }
 
 .motus-inspo-hero-add {
@@ -10966,15 +10969,14 @@ button.motus-progress-status-banner {
   }
 
   .motus-inspo-hero-image {
-    height: 300px;
-    right: -10px;
-    bottom: -16px;
+    max-height: 260px;
+    right: 0;
   }
 }
 
 @media (max-width: 360px) {
   .motus-inspo-hero-content {
-    max-width: 64%;
+    max-width: 60%;
   }
 
   .motus-inspo-hero-title {
@@ -10982,8 +10984,8 @@ button.motus-progress-status-banner {
   }
 
   .motus-inspo-hero-image {
-    height: 220px;
-    right: -36px;
+    max-height: 200px;
+    right: -16px;
   }
 }
 
