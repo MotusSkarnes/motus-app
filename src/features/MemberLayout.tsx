@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppErrorBoundary } from "../app/AppErrorBoundary";
 import type { ComponentProps } from "react";
 import { MOTUS } from "../app/data";
@@ -231,24 +231,10 @@ export function MemberLayout({
       if (welcomeModalOpenRef.current) dismissWelcomeModal();
       if (onboardingGateOpenRef.current) setOnboardingGateOpen(false);
       if (memberCheckInOverlayOpenRef.current) setMemberCheckInOverlayOpen(false);
-      if (appState.workoutMode && tab !== "overview" && tab !== "programs") {
-        dismissWorkoutMode();
-      }
       setMemberTab(tab);
     },
-    [
-      appState.workoutMode,
-      clearMemberFocusProgramId,
-      clearMemberFocusWorkoutLogId,
-      dismissWorkoutMode,
-      memberTab,
-      setMemberCheckInOverlayOpen,
-      setMemberTab,
-    ],
+    [clearMemberFocusProgramId, clearMemberFocusWorkoutLogId, memberTab, setMemberCheckInOverlayOpen, setMemberTab],
   );
-
-  const contentTab = useDeferredValue(memberTab);
-  const isContentPending = contentTab !== memberTab;
 
   const previousMemberTabRef = useRef(memberTab);
   useEffect(() => {
@@ -395,7 +381,7 @@ export function MemberLayout({
     }
   }, [isMemberLimited, memberTab, setMemberTab]);
 
-  const showProgressTab = contentTab === "progress" && !isMemberLimited;
+  const showProgressTab = memberTab === "progress" && !isMemberLimited;
 
   const memberPortalProps: ComponentProps<typeof MemberPortal> = {
     members: appState.members,
@@ -407,7 +393,7 @@ export function MemberLayout({
     logs: appState.logs,
     messages: appState.messages,
     memberViewId: appState.memberViewId,
-    memberTab: contentTab,
+    memberTab,
     memberInteractionTab: memberTab,
     setMemberTab: navigateMemberTab,
     updateMember,
@@ -521,11 +507,8 @@ export function MemberLayout({
     <>
       <div className="space-y-4 sm:space-y-5">
         <MemberDesktopTabNav memberTab={memberTab} setMemberTab={navigateMemberTab} isMemberLimited={isMemberLimited} />
-        <div
-          className={`pb-[calc(5rem+env(safe-area-inset-bottom,0px))] xl:pb-0${isContentPending ? " opacity-95" : ""}`}
-          aria-busy={isContentPending}
-        >
-        {contentTab === "inspiration" ? (
+        <div className="pb-[calc(5rem+env(safe-area-inset-bottom,0px))] xl:pb-0">
+        {memberTab === "inspiration" ? (
           <InspirationHub
             memberId={inspirationMemberId}
             memberName={appState.currentUser?.name ?? "Medlem"}

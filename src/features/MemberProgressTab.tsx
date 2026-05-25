@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { parseStoredLogDate } from "../app/dateFormat";
 import { computeMemberProgressScores } from "../app/memberMomentumScores";
 import { computeMemberProgressState } from "../app/memberProgressGamification";
@@ -73,9 +73,6 @@ export function MemberProgressTab({
   const nowTimestamp = useMemo(() => Date.now(), []);
   const nowDate = useMemo(() => new Date(nowTimestamp), [nowTimestamp]);
 
-  const deferredLogs = useDeferredValue(logs);
-  const deferredExercises = useDeferredValue(exercises);
-
   const relatedMemberIds = useMemo(
     () =>
       collectClientRelatedMemberIds({
@@ -104,8 +101,8 @@ export function MemberProgressTab({
   const relatedMemberIdSet = useMemo(() => new Set(relatedMemberIds), [relatedMemberIds]);
 
   const completedLogs = useMemo(
-    () => deferredLogs.filter((log) => relatedMemberIdSet.has(log.memberId) && log.status === "Fullført"),
-    [deferredLogs, relatedMemberIdSet],
+    () => logs.filter((log) => relatedMemberIdSet.has(log.memberId) && log.status === "Fullført"),
+    [logs, relatedMemberIdSet],
   );
   const completedLogDates = useMemo(
     () => completedLogs.map((log) => parseStoredLogDate(log.date)).filter((date): date is Date => Boolean(date)),
@@ -245,7 +242,7 @@ export function MemberProgressTab({
     return [...favorites, ...fallback].slice(0, 3);
   }, [cleanedFavoritePersonalRecordNames, personalRecords, showAllPersonalRecords]);
 
-  const exerciseGroupByName = useMemo(() => buildExerciseGroupByName(deferredExercises), [deferredExercises]);
+  const exerciseGroupByName = useMemo(() => buildExerciseGroupByName(exercises), [exercises]);
   const muscleSplitStats = useMemo(
     () =>
       computeMuscleGroupStats(completedLogs, exerciseGroupByName, {
@@ -335,7 +332,7 @@ export function MemberProgressTab({
         onToggleFavoritePersonalRecord={toggleFavoritePersonalRecord}
         onOpenProgressExercise={setPrProgressExerciseName}
         onSharePersonalRecord={(record) => void sharePersonalRecordEntry(record)}
-        exercises={deferredExercises}
+        exercises={exercises}
         profileSaveInfo={profileSaveInfo}
         muscleSplitStats={muscleSplitStats}
         muscleSplitMetric={muscleSplitMetric}
