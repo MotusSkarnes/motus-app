@@ -192,6 +192,7 @@ import { MemberPersonalRecordsSection } from "./MemberPersonalRecordsSection";
 import { MemberWeeklySummaryCard } from "./MemberWeeklySummaryCard";
 import { MemberProgressStatusBanner } from "./MemberProgressStatusBanner";
 import { MemberConsistencyWeekCard } from "./MemberConsistencyWeekCard";
+import { MemberProgressHighlightRow } from "./MemberProgressHighlightRow";
 import {
   computeDailyWeekProgress,
   computeWeeklyProgressDelta,
@@ -6639,6 +6640,11 @@ export function MemberPortal(props: MemberPortalProps) {
               <MemberConsistencyWeekCard
                 completedLogs={completedLogs}
                 nowTimestamp={nowTimestamp}
+              />
+              <MemberProgressHighlightRow
+                streakWeeks={streakWeeks}
+                recentStreakWeeks={recentStreakWeeks}
+                personalRecordsCount={personalRecords.length}
               />
               <MemberTrainingFlowCard
                 achievementLevel={achievementLevel}
