@@ -17,7 +17,6 @@ export const MAX_PROGRAM_IMAGE_BYTES = 5 * 1024 * 1024;
 const GROUP_WORKOUT_COVER_IMAGES: Record<string, string> = {
   smilepuls: SMILEPULS_COVER_IMAGE,
   sterk: STRONG_TONE_GROUP_COVER_IMAGE,
-  "sterk og stram opp": STRONG_TONE_GROUP_COVER_IMAGE,
   "stram opp": STRONG_TONE_GROUP_COVER_IMAGE,
 };
 
