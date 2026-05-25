@@ -195,9 +195,9 @@ const INSPO_CARD_TITLE_MAX = 64;
 const INSPO_FEED_CARD_WIDTH_CLASS = "w-52 sm:w-56";
 const INSPO_FEED_CARD_HEIGHT_CLASS = "h-[21rem] sm:h-[21.75rem]";
 const INSPO_FEED_CARD_IMAGE_CLASS = "aspect-square";
-const INSPO_FEED_CARD_TITLE_CLASS = "line-clamp-2 min-h-[2.5rem] max-h-[2.5rem] overflow-hidden text-sm font-semibold leading-[1.25rem] text-slate-950";
+const INSPO_FEED_CARD_TITLE_CLASS = "line-clamp-2 overflow-hidden text-sm font-semibold leading-[1.2] text-slate-950";
 const INSPO_FEED_CARD_DESCRIPTION_CLASS =
-  "line-clamp-2 min-h-[2.25rem] max-h-[2.25rem] overflow-hidden text-xs leading-[1.125rem] text-slate-500";
+  "line-clamp-2 overflow-hidden text-xs leading-[1.15] text-slate-500";
 const INSPO_FEED_CARD_ACTION_CLASS = "!min-h-8 !px-2 !py-1.5 !text-[11px] !leading-tight";
 
 const INSPIRATION_OVERVIEW_SECTIONS: readonly { category: InspirationCategory; title: string }[] = [
