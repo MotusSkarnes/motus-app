@@ -1,1 +1,0 @@
-﻿      <motionlessProgress badge={badge} level={level} />
