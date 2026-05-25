@@ -12,6 +12,12 @@ type MemberProgressHeroCardProps = {
   streakWeeks: number;
 };
 
+function streakChipLabel(streakWeeks: number): string | null {
+  if (streakWeeks <= 0) return null;
+  if (streakWeeks === 1) return "1 uke på rad";
+  return `${streakWeeks} uker på rad`;
+}
+
 function momentumTrendLabel(trend: ScoreTrend): string {
   if (trend === "up") return "Opp fra forrige uke";
   if (trend === "down") return "Under forrige uke";
@@ -119,8 +125,9 @@ function StatHighlight({
   );
 }
 
-export function MemberProgressHeroCard({ scores, memberFirstName }: MemberProgressHeroCardProps) {
+export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks }: MemberProgressHeroCardProps) {
   const { momentum, consistency, weekly, recovery, xp } = scores;
+  const streakLabel = streakChipLabel(streakWeeks);
 
   return (
     <section className="motus-progress-hero motus-fade-in-up">
@@ -146,6 +153,12 @@ export function MemberProgressHeroCard({ scores, memberFirstName }: MemberProgre
               <MomentumSparkline points={momentum.sparkPoints} trend={momentum.trend} />
             </div>
             <p className="mt-1 text-xs font-medium text-white/85">{momentum.subline || momentumTrendLabel(momentum.trend)}</p>
+            {streakLabel ? (
+              <span className="motus-progress-streak-chip">
+                <span className="motus-progress-streak-chip-icon" aria-hidden>🔥</span>
+                <span>{streakLabel}</span>
+              </span>
+            ) : null}
           </div>
 
           <div className="motus-progress-hero-portrait motus-image-frame">
