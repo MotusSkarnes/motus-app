@@ -1117,6 +1117,8 @@ export function MemberPortal(props: MemberPortalProps) {
   const periodPlanCompletedDirtyRef = useRef(false);
   const periodPlanDismissedDirtyRef = useRef(false);
   const periodPlanCompletionHydratedMemberRef = useRef<string | null>(null);
+  const completedPeriodPlanEntryKeysRef = useRef<string[]>([]);
+  const dismissedPeriodPlanEntryKeysRef = useRef<string[]>([]);
   const pendingPeriodPlanWorkoutStartRef = useRef<PeriodPlanWorkoutStartContext | null>(null);
   const periodPlanSwapsDirtyRef = useRef(false);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
@@ -1125,6 +1127,14 @@ export function MemberPortal(props: MemberPortalProps) {
   const [editingMemberProgramId, setEditingMemberProgramId] = useState<string | null>(null);
   const nowTimestamp = useMemo(() => Date.now(), []);
   const nowDate = useMemo(() => new Date(nowTimestamp), [nowTimestamp]);
+
+  useEffect(() => {
+    completedPeriodPlanEntryKeysRef.current = completedPeriodPlanEntryKeys;
+  }, [completedPeriodPlanEntryKeys]);
+
+  useEffect(() => {
+    dismissedPeriodPlanEntryKeysRef.current = dismissedPeriodPlanEntryKeys;
+  }, [dismissedPeriodPlanEntryKeys]);
 
   useEffect(() => {
     if (!programLibraryMenuId) return;
@@ -2980,8 +2990,8 @@ export function MemberPortal(props: MemberPortalProps) {
       storedDismissed = [];
     }
   } else {
-    storedCompleted = completedPeriodPlanEntryKeys;
-    storedDismissed = dismissedPeriodPlanEntryKeys;
+    storedCompleted = completedPeriodPlanEntryKeysRef.current;
+    storedDismissed = dismissedPeriodPlanEntryKeysRef.current;
   }
 
     const remotePrefs = readPeriodPlanCompletionFromPersonalGoals(
@@ -3008,11 +3018,13 @@ export function MemberPortal(props: MemberPortalProps) {
     setCompletedPeriodPlanEntryKeys((prev) => {
       const next = reconciled.completedKeys;
       if (prev.length === next.length && prev.every((key, index) => key === next[index])) return prev;
+      completedPeriodPlanEntryKeysRef.current = next;
       return next;
     });
     setDismissedPeriodPlanEntryKeys((prev) => {
       const next = reconciled.dismissedKeys;
       if (prev.length === next.length && prev.every((key, index) => key === next[index])) return prev;
+      dismissedPeriodPlanEntryKeysRef.current = next;
       return next;
     });
   }, [
@@ -4561,10 +4573,12 @@ export function MemberPortal(props: MemberPortalProps) {
     periodPlanCompletedDirtyRef.current = true;
     periodPlanDismissedDirtyRef.current = true;
     const targetKeys = targets.map((target) => buildPeriodPlanEntryKey(target.planId, target.weekNumber, target.day));
+    dismissedPeriodPlanEntryKeysRef.current = dismissedPeriodPlanEntryKeysRef.current.filter((key) => !targetKeys.includes(key));
     setDismissedPeriodPlanEntryKeys((prev) => {
       const next = prev.filter((key) => !targetKeys.includes(key));
       return next.length === prev.length ? prev : next;
     });
+    completedPeriodPlanEntryKeysRef.current = Array.from(new Set([...completedPeriodPlanEntryKeysRef.current, ...targetKeys]));
     setCompletedPeriodPlanEntryKeys((prev) => {
       const next = [...prev];
       let changed = false;
@@ -4710,12 +4724,16 @@ export function MemberPortal(props: MemberPortalProps) {
   function dismissPeriodPlanDay(planId: string, weekNumber: number, day: WeekdayPlanKey) {
     const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
     periodPlanDismissedDirtyRef.current = true;
+    dismissedPeriodPlanEntryKeysRef.current = dismissedPeriodPlanEntryKeysRef.current.includes(key)
+      ? dismissedPeriodPlanEntryKeysRef.current
+      : [...dismissedPeriodPlanEntryKeysRef.current, key];
     setDismissedPeriodPlanEntryKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
   }
 
   function clearPeriodPlanDayDismissed(planId: string, weekNumber: number, day: WeekdayPlanKey) {
     const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
     periodPlanDismissedDirtyRef.current = true;
+    dismissedPeriodPlanEntryKeysRef.current = dismissedPeriodPlanEntryKeysRef.current.filter((item) => item !== key);
     setDismissedPeriodPlanEntryKeys((prev) => prev.filter((item) => item !== key));
   }
 
@@ -4784,6 +4802,9 @@ export function MemberPortal(props: MemberPortalProps) {
   function markPeriodPlanDayCompleted(planId: string, weekNumber: number, day: WeekdayPlanKey) {
     const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
     periodPlanCompletedDirtyRef.current = true;
+    completedPeriodPlanEntryKeysRef.current = completedPeriodPlanEntryKeysRef.current.includes(key)
+      ? completedPeriodPlanEntryKeysRef.current
+      : [...completedPeriodPlanEntryKeysRef.current, key];
     setCompletedPeriodPlanEntryKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
   }
 
@@ -4847,6 +4868,7 @@ export function MemberPortal(props: MemberPortalProps) {
   function unmarkPeriodPlanDayCompleted(planId: string, weekNumber: number, day: WeekdayPlanKey) {
     const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
     periodPlanCompletedDirtyRef.current = true;
+    completedPeriodPlanEntryKeysRef.current = completedPeriodPlanEntryKeysRef.current.filter((item) => item !== key);
     setCompletedPeriodPlanEntryKeys((prev) => prev.filter((item) => item !== key));
   }
 
