@@ -254,6 +254,30 @@ button {
   box-shadow: 0 6px 16px -6px rgba(217, 18, 120, 0.55);
 }
 
+.motus-streak-flame-bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.625rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, #fbcfe8 0%, #d91278 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 16px -6px rgba(217, 18, 120, 0.55);
+}
+
+.motus-streak-inline-bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.25rem;
+  width: 1.25rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #fbcfe8 0%, #d91278 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 10px -5px rgba(217, 18, 120, 0.55);
+}
+
 .motus-home-dash-stats {
   display: flex;
   flex-wrap: wrap;
@@ -879,8 +903,9 @@ button {
 }
 
 .motus-home-week-stat-icon--streak {
-  background: rgba(251, 146, 60, 0.14);
-  color: #ea580c;
+  background: linear-gradient(135deg, #fbcfe8 0%, #d91278 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 14px -6px rgba(217, 18, 120, 0.55);
 }
 
 .motus-home-week-stat-value {
@@ -3190,6 +3215,12 @@ button {
   border-radius: 0.75rem;
   background: rgba(48, 227, 190, 0.14);
   color: var(--motus-brand-text);
+}
+
+.motus-stat-pill-icon--streak {
+  background: linear-gradient(135deg, #fbcfe8 0%, #d91278 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 14px -6px rgba(217, 18, 120, 0.55);
 }
 
 .motus-home-start-btn {
@@ -5687,6 +5718,11 @@ button {
 
 .motus-training-stat-icon--violet {
   background: linear-gradient(135deg, #a78bfa, #7c3aed);
+}
+
+.motus-training-stat-icon--streak {
+  background: linear-gradient(135deg, #fbcfe8 0%, #d91278 100%);
+  box-shadow: 0 6px 16px -6px rgba(217, 18, 120, 0.55);
 }
 
 .motus-training-stat-value {
@@ -8720,8 +8756,9 @@ button {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: rgba(48, 227, 190, 0.2);
-  color: #0e8f73;
+  background: linear-gradient(135deg, #fbcfe8 0%, #d91278 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 14px -6px rgba(217, 18, 120, 0.55);
   overflow: hidden;
 }
 

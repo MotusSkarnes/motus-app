@@ -1,4 +1,4 @@
-import { MotusFlameIcon } from "./MotusFlameIcon";
+import { Flame } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { RecentStreakWeek } from "../app/memberProgressGamification";
 
@@ -43,8 +43,11 @@ export function MemberWeeklyStreakCard({
             </div>
             <p className={`leading-snug text-slate-600 ${compact ? "mt-1 text-xs" : isFlow ? "mt-1 text-xs" : "mt-2 text-sm"}`}>{streakSubline}</p>
           </div>
-          <div className={`shrink-0 rounded-xl bg-[#F3F5F7] p-2.5 ${streakWeeks > 0 ? "motus-soft-pulse" : ""}`}>
-            <MotusFlameIcon className={compact ? "h-4 w-4" : "h-5 w-5"} />
+          <div
+            className={`motus-streak-flame-bubble shrink-0 ${streakWeeks > 0 ? "motus-soft-pulse" : ""}`}
+            aria-hidden
+          >
+            <Flame className={compact ? "h-4 w-4" : "h-5 w-5"} strokeWidth={2.25} />
           </div>
         </div>
 

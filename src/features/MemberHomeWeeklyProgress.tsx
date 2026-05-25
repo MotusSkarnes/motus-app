@@ -10,7 +10,6 @@ import {
 } from "../app/memberHomeWeekInsights";
 import type { ScoreTrend } from "../app/memberMomentumScores";
 import { getWeekdayShortLabel } from "../app/memberTrainingCalendar";
-import { MotusFlameIcon } from "./MotusFlameIcon";
 import type { TrainingCalendarDayModel } from "./MemberTrainingCalendar";
 
 const RING_RADIUS = 54;
@@ -217,7 +216,7 @@ export function MemberHomeWeeklyProgress({
           <div className="motus-home-week-stat-divider" aria-hidden />
           <div className="motus-home-week-stat">
             <span className="motus-home-week-stat-icon motus-home-week-stat-icon--streak" aria-hidden>
-              <MotusFlameIcon className="h-4 w-4" />
+              <Flame className="h-4 w-4" strokeWidth={2.25} />
             </span>
             <span className="motus-home-week-stat-value">
               {streakWeeks > 0 ? `${streakWeeks} ${streakWeeks === 1 ? "uke" : "uker"}` : "0 uker"}

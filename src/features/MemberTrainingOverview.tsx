@@ -7,7 +7,6 @@ import { STRENGTH_TRAINING_COVER_IMAGE } from "../app/programImage";
 import { resolveProgressExerciseDisplayName, resolveProgressPersonalRecordImage } from "../app/progressImagery";
 import type { Exercise } from "../app/types";
 import { TrainingStartButton } from "../app/ui";
-import { MotusFlameIcon } from "./MotusFlameIcon";
 import type { PersonalRecordEntry } from "./MemberPersonalRecordsSection";
 
 export type TrainingHeroAction = {
@@ -224,8 +223,8 @@ export function MemberTrainingOverview({
           <span className="motus-training-stat-label">Flyt</span>
         </div>
         <div className="motus-training-stat-card">
-          <span className="motus-training-stat-icon motus-training-stat-icon--violet">
-            <MotusFlameIcon className="h-4 w-4" title="" />
+          <span className="motus-training-stat-icon motus-training-stat-icon--streak">
+            <Flame className="h-4 w-4" strokeWidth={2.25} aria-hidden />
           </span>
           <span className="motus-training-stat-value">{streakLabel(streakWeeks)}</span>
           <span className="motus-training-stat-label">Streak</span>

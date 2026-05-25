@@ -30,7 +30,6 @@ import { resolveProgressExerciseDisplayName, resolveProgressPersonalRecordImage 
 import type { Exercise, TrainingProgram, WorkoutLog } from "../app/types";
 import { EmptyState, GradientButton } from "../app/ui";
 import type { PersonalRecordEntry } from "./MemberPersonalRecordsSection";
-import { MotusFlameIcon } from "./MotusFlameIcon";
 import { MuscleSplitCard } from "./MuscleSplitCard";
 import type { MuscleGroupStat, MuscleSplitMetric, MuscleSplitPeriod } from "./muscleSplitStats";
 import {
@@ -288,7 +287,7 @@ export function MemberTrainingHistoryView({
                 />
               </svg>
               <div className="motus-member-history-hero-ring-center">
-                <MotusFlameIcon className="motus-member-history-hero-flame" title="" />
+                <Flame className="motus-member-history-hero-flame" strokeWidth={2.25} aria-hidden />
                 <span className="motus-member-history-hero-ring-value">{streakWeeks}</span>
                 <span className="motus-member-history-hero-ring-label">
                   {streakWeeks === 1 ? "uke" : "uker"}
@@ -366,7 +365,7 @@ export function MemberTrainingHistoryView({
           {streakWeeks > 0 ? (
             <div className="motus-member-history-consistency-banner">
               <span className="motus-member-history-consistency-banner-icon" aria-hidden>
-                <MotusFlameIcon className="h-5 w-5" />
+                <Flame className="h-5 w-5" strokeWidth={2.25} />
               </span>
               <p className="motus-member-history-consistency-banner-text">
                 Du har en streak på {streakLabel}! Utrolig innsats – hold på! 💪

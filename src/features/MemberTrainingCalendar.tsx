@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Flame } from "lucide-react";
 import { MOTUS } from "../app/data";
 import {
   getIsoWeekLabel,
@@ -9,7 +9,6 @@ import {
   toCalendarDateKey,
   type TrainingCalendarDayStatus,
 } from "../app/memberTrainingCalendar";
-import { MotusFlameIcon } from "./MotusFlameIcon";
 import { OutlineButton } from "../app/ui";
 
 export type TrainingCalendarDayModel = {
@@ -178,7 +177,9 @@ export function MemberTrainingCalendar({
             </div>
             {streakWeeks > 0 ? (
               <div className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-slate-700">
-                <MotusFlameIcon className="h-4 w-4" title="" />
+                <span className="motus-streak-inline-bubble" aria-hidden>
+                  <Flame className="h-3 w-3" strokeWidth={2.25} />
+                </span>
                 {streakWeeks} {streakWeeks === 1 ? "uke" : "uker"} streak
               </div>
             ) : null}

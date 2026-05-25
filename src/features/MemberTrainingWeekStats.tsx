@@ -1,5 +1,4 @@
 import { Flame, Zap } from "lucide-react";
-import { MotusFlameIcon } from "./MotusFlameIcon";
 
 type MemberTrainingWeekStatsProps = {
   completedSessions: number;
@@ -32,15 +31,13 @@ export function MemberTrainingWeekStats({
   return (
     <div className="flex gap-3 overflow-x-auto pb-0.5 scrollbar-none" aria-label="Ukeoversikt">
       {items.map((item) => {
-        const Icon = item.label === "streak" ? null : STAT_ICONS[item.label];
+        const Icon = item.label === "streak" ? Flame : STAT_ICONS[item.label];
+        const iconClass =
+          item.label === "streak" ? "motus-stat-pill-icon motus-stat-pill-icon--streak" : "motus-stat-pill-icon";
         return (
           <div key={item.label} className="motus-stat-pill shrink-0">
-            <span className="motus-stat-pill-icon" aria-hidden>
-              {item.label === "streak" ? (
-                <MotusFlameIcon className="h-3.5 w-3.5" />
-              ) : Icon ? (
-                <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
-              ) : null}
+            <span className={iconClass} aria-hidden>
+              {Icon ? <Icon className="h-3.5 w-3.5" strokeWidth={2.25} /> : null}
             </span>
             <span className="min-w-0">
               <span className="block text-[17px] font-semibold tabular-nums leading-none tracking-tight text-slate-800">
