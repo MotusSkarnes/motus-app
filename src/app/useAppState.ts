@@ -165,6 +165,20 @@ function mergeTwoMemberSnapshots(primary: Member, secondary: Member): Member {
   merged.goal = secondary.goal.trim() || primary.goal.trim() || merged.goal;
   merged.focus = secondary.focus.trim() || primary.focus.trim() || merged.focus;
   merged.injuries = secondary.injuries.trim() || primary.injuries.trim() || merged.injuries;
+  // Sky-styrte rolle-/abonnementsfelt: la PT-/Premium-oppgraderinger fra sky vinne hvis de er satt.
+  // Tidligere lot {...primary, ...secondary} stale lokal cache med Medlem/Standard maskere live-data.
+  if (primary.customerType && primary.customerType !== "Medlem") {
+    merged.customerType = primary.customerType;
+  } else if (secondary.customerType && secondary.customerType !== "Medlem") {
+    merged.customerType = secondary.customerType;
+  } else {
+    merged.customerType = primary.customerType || secondary.customerType || merged.customerType;
+  }
+  if (primary.membershipType === "Premium" || secondary.membershipType === "Premium") {
+    merged.membershipType = "Premium";
+  } else {
+    merged.membershipType = primary.membershipType || secondary.membershipType || merged.membershipType;
+  }
   // Aktiv i sky skal ikke overskrives av inaktiv lokal klient-tilstand etter gjenoppretting.
   merged.isActive = primary.isActive !== false || secondary.isActive !== false;
   return merged;
