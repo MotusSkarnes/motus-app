@@ -14,6 +14,7 @@ export const PROGRESS_RECOVERY_FALLBACK_IMAGE = MOBILITY_TRAINING_COVER_IMAGE;
 export const PROGRESS_PR_SQUAT_IMAGE = "/progress/pr-kneboy.png";
 export const PROGRESS_PR_DEADLIFT_IMAGE = "/progress/pr-markloft.png";
 export const PROGRESS_PR_LAT_PULLDOWN_IMAGE = "/progress/pr-nedtrekk.png";
+export const PROGRESS_PR_CLOSE_GRIP_PULLDOWN_IMAGE = "/progress/pr-smal-nedtrekk.png";
 export const PROGRESS_PR_HIP_THRUST_IMAGE = "/progress/pr-hip-thrust.png";
 
 const PROGRESS_PERSONAL_RECORD_IMAGES: Record<string, string> = {
@@ -21,6 +22,8 @@ const PROGRESS_PERSONAL_RECORD_IMAGES: Record<string, string> = {
   markløft: PROGRESS_PR_DEADLIFT_IMAGE,
   nedtrekk: PROGRESS_PR_LAT_PULLDOWN_IMAGE,
   "nedtrekk bredt grep": PROGRESS_PR_LAT_PULLDOWN_IMAGE,
+  "smal nedtrekk": PROGRESS_PR_CLOSE_GRIP_PULLDOWN_IMAGE,
+  "nedtrekk smalt grep": PROGRESS_PR_CLOSE_GRIP_PULLDOWN_IMAGE,
   "hip thrust": PROGRESS_PR_HIP_THRUST_IMAGE,
   "hip-trust": PROGRESS_PR_HIP_THRUST_IMAGE,
 };
