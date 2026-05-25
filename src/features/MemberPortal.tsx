@@ -1015,6 +1015,14 @@ export function MemberPortal(props: MemberPortalProps) {
   const isSendingMemberMessageRef = useRef(false);
   const [isSendingMemberMessage, setIsSendingMemberMessage] = useState(false);
   const [trainingSection, setTrainingSection] = useState<"today" | "programs" | "custom" | "period" | "history">("today");
+  const previousMemberTabRef = useRef(memberTab);
+  useEffect(() => {
+    const previous = previousMemberTabRef.current;
+    if (memberTab === "programs" && previous !== "programs") {
+      setTrainingSection("today");
+    }
+    previousMemberTabRef.current = memberTab;
+  }, [memberTab]);
   const [ptChangeReason, setPtChangeReason] = useState("");
   const [ptChangeRequestStatus, setPtChangeRequestStatus] = useState<string | null>(null);
   const lastMemberSendKeyRef = useRef("");

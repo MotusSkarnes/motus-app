@@ -1,4 +1,4 @@
-import { CalendarRange, Dumbbell, History, LayoutGrid, PlusCircle } from "lucide-react";
+import { CalendarRange, Dumbbell, History, PlusCircle } from "lucide-react";
 
 export type TrainingQuickSection = "today" | "period" | "programs" | "custom" | "history";
 
@@ -14,11 +14,10 @@ const ACTIONS: Array<{
   icon: typeof CalendarRange;
   tone: "teal" | "pink";
 }> = [
-  { id: "today", label: "Trening", icon: LayoutGrid, tone: "teal" },
-  { id: "period", label: "Plan", icon: CalendarRange, tone: "pink" },
-  { id: "programs", label: "Programmer", icon: Dumbbell, tone: "teal" },
-  { id: "custom", label: "Ny økt", icon: PlusCircle, tone: "pink" },
-  { id: "history", label: "Historikk", icon: History, tone: "teal" },
+  { id: "period", label: "Plan", icon: CalendarRange, tone: "teal" },
+  { id: "programs", label: "Programmer", icon: Dumbbell, tone: "pink" },
+  { id: "custom", label: "Ny økt", icon: PlusCircle, tone: "teal" },
+  { id: "history", label: "Historikk", icon: History, tone: "pink" },
 ];
 
 export function MemberTrainingQuickActions({ activeSection, onNavigate, hideCustom }: MemberTrainingQuickActionsProps) {
