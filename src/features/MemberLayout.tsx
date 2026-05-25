@@ -426,6 +426,7 @@ export function MemberLayout({
       ) : null,
   };
   const inspirationMemberId =
+    activeMember?.id ||
     appState.memberViewId ||
     appState.currentUser?.memberId ||
     appState.members.find((member) => member.email.trim().toLowerCase() === appState.currentUser?.email.trim().toLowerCase())?.id ||
