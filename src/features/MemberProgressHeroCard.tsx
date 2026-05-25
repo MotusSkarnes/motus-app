@@ -1,10 +1,8 @@
-import type { ReactNode } from "react";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Shield, Target } from "lucide-react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { ArrowDownRight, ArrowUpRight, Crown, Flame, Shield, Sparkles, Target } from "lucide-react";
 import { MOTUS } from "../app/data";
-import type { ScoreTrend } from "../app/memberMomentumScores";
-import { PROGRESS_HERO_IMAGE } from "../app/progressImagery";
-import type { MemberProgressScores } from "../app/memberMomentumScores";
-import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
+import type { ScoreTrend, MemberProgressScores } from "../app/memberMomentumScores";
+import { getXpLevelLabel } from "../app/memberMomentumScores";
 
 type MemberProgressHeroCardProps = {
   scores: MemberProgressScores;
@@ -12,49 +10,125 @@ type MemberProgressHeroCardProps = {
   streakWeeks: number;
 };
 
-function streakChipLabel(streakWeeks: number): string | null {
-  if (streakWeeks <= 0) return null;
-  if (streakWeeks === 1) return "1 uke på rad";
-  return `${streakWeeks} uker på rad`;
+function useCountUpNumber(target: number, durationMs = 800): number {
+  const [value, setValue] = useState(target);
+  const startRef = useRef<{ from: number; to: number; startTs: number } | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (rafRef.current !== null) {
+      window.cancelAnimationFrame(rafRef.current);
+    }
+    startRef.current = { from: value, to: target, startTs: performance.now() };
+    const tick = (now: number) => {
+      const start = startRef.current;
+      if (!start) return;
+      const progress = Math.min(1, (now - start.startTs) / durationMs);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const next = Math.round(start.from + (start.to - start.from) * eased);
+      setValue(next);
+      if (progress < 1) {
+        rafRef.current = window.requestAnimationFrame(tick);
+      } else {
+        rafRef.current = null;
+      }
+    };
+    rafRef.current = window.requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current !== null) window.cancelAnimationFrame(rafRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, durationMs]);
+
+  return value;
 }
 
-function momentumTrendLabel(trend: ScoreTrend): string {
-  if (trend === "up") return "Opp fra forrige uke";
-  if (trend === "down") return "Under forrige uke";
-  return "Jevn uke";
+function computeMomentumDeltaPct(sparkPoints: number[]): number | null {
+  if (sparkPoints.length < 2) return null;
+  const current = sparkPoints[sparkPoints.length - 1];
+  const previous = sparkPoints[sparkPoints.length - 2];
+  if (previous <= 0 && current <= 0) return null;
+  if (previous <= 0) return 100;
+  return Math.round(((current - previous) / previous) * 100);
 }
 
-function MomentumTrendIcon({ trend }: { trend: ScoreTrend }) {
-  if (trend === "up") return <ArrowUpRight className="h-3.5 w-3.5 text-white/90" aria-hidden />;
-  if (trend === "down") return <ArrowDownRight className="h-3.5 w-3.5 text-white/90" aria-hidden />;
-  return <ArrowRight className="h-3.5 w-3.5 text-white/70" aria-hidden />;
-}
-
-function MomentumSparkline({ points, trend }: { points: number[]; trend: ScoreTrend }) {
-  if (!points.length) return null;
-  const max = Math.max(...points, 1);
-  const width = 76;
-  const height = 32;
-  const polylinePoints = points
-    .map((value, index) => {
-      const x = points.length === 1 ? width / 2 : (index / (points.length - 1)) * (width - 8) + 4;
-      const y = height - 5 - (value / max) * (height - 10);
-      return `${x},${y}`;
-    })
-    .join(" ");
-  const stroke = trend === "down" ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.95)";
+function MomentumRing({ pct, animatedPct }: { pct: number; animatedPct: number }) {
+  const gradientId = useId();
+  const filterId = `${gradientId}-glow`;
+  const radius = 64;
+  const stroke = 14;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.max(0, Math.min(100, animatedPct));
+  const dashOffset = circumference - (circumference * clamped) / 100;
+  const angle = (clamped / 100) * 360 - 90;
+  const headX = 80 + radius * Math.cos((angle * Math.PI) / 180);
+  const headY = 80 + radius * Math.sin((angle * Math.PI) / 180);
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="motus-progress-momentum-spark" aria-hidden>
-      <polyline
-        fill="none"
-        stroke={stroke}
-        strokeWidth="2.25"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points={polylinePoints}
-      />
-    </svg>
+    <div className="motus-progress-momentum-ring" aria-label={`Flyt ${pct} prosent`}>
+      <svg viewBox="0 0 160 160" className="motus-progress-momentum-ring-svg">
+        <defs>
+          <linearGradient id={gradientId} x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#30e3be" />
+            <stop offset="55%" stopColor="#ff6bbb" />
+            <stop offset="100%" stopColor="#d91278" />
+          </linearGradient>
+          <filter id={filterId} x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="2.5" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <circle cx="80" cy="80" r={radius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} />
+        <circle
+          cx="80"
+          cy="80"
+          r={radius}
+          fill="none"
+          stroke={`url(#${gradientId})`}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+          transform="rotate(-90 80 80)"
+          filter={`url(#${filterId})`}
+          className="motus-progress-momentum-ring-fill"
+        />
+        {clamped > 4 ? (
+          <>
+            <circle cx={headX} cy={headY} r="9" fill="#ffffff" opacity="0.18" />
+            <circle cx={headX} cy={headY} r="5.5" fill="#ffffff" className="motus-progress-momentum-ring-head" />
+          </>
+        ) : null}
+      </svg>
+      <span className="motus-progress-momentum-ring-spark motus-progress-momentum-ring-spark--one" aria-hidden>
+        <Sparkles className="h-3.5 w-3.5" strokeWidth={2.5} />
+      </span>
+      <span className="motus-progress-momentum-ring-spark motus-progress-momentum-ring-spark--two" aria-hidden>
+        <Sparkles className="h-3 w-3" strokeWidth={2.5} />
+      </span>
+    </div>
+  );
+}
+
+function MomentumDeltaPill({ delta, trend }: { delta: number | null; trend: ScoreTrend }) {
+  if (delta === null || delta === 0) {
+    if (trend === "flat") return null;
+  }
+  if (delta === null) return null;
+
+  const positive = delta > 0;
+  const Arrow = positive ? ArrowUpRight : ArrowDownRight;
+  const sign = positive ? "+" : "";
+
+  return (
+    <span className={`motus-progress-momentum-delta ${positive ? "is-up" : "is-down"}`}>
+      <Arrow className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+      {sign}
+      {delta}%
+    </span>
   );
 }
 
@@ -94,7 +168,9 @@ function ScoreRing({
             />
           ) : null}
         </svg>
-        <div className="motus-progress-status-value absolute inset-0 flex items-center justify-center font-bold tabular-nums text-slate-900">{value}</div>
+        <div className="motus-progress-status-value absolute inset-0 flex items-center justify-center font-bold tabular-nums text-slate-900">
+          {value}
+        </div>
       </div>
       <p className="motus-progress-status-label mt-1 font-semibold uppercase tracking-wide text-slate-400">{label}</p>
       <p className="motus-progress-status-subline mt-0.5 line-clamp-2 text-slate-600">{subline}</p>
@@ -106,98 +182,184 @@ function StatHighlight({
   label,
   value,
   subline,
+  badge,
   icon,
-  tone = "pink",
 }: {
   label: string;
   value: string;
   subline: string;
+  badge?: string;
   icon: ReactNode;
-  tone?: "mint" | "pink";
 }) {
   return (
-    <div className="motus-progress-status-card">
-      <span className={`motus-progress-status-icon motus-progress-status-icon--${tone}`}>{icon}</span>
-      <p className="motus-progress-status-stat-value mt-1 font-black tabular-nums tracking-tight text-slate-950">{value}</p>
+    <div className="motus-progress-status-card motus-progress-status-card--weekly">
+      <span className="motus-progress-status-icon motus-progress-status-icon--pink">{icon}</span>
+      <p className="motus-progress-status-stat-value mt-1 font-black tabular-nums tracking-tight text-slate-950">
+        {value}
+      </p>
       <p className="motus-progress-status-label mt-0.5 font-semibold uppercase tracking-wide text-slate-400">{label}</p>
       <p className="motus-progress-status-subline mt-0.5 line-clamp-2 text-slate-600">{subline}</p>
+      {badge ? <span className="motus-progress-status-badge">{badge}</span> : null}
+    </div>
+  );
+}
+
+function ConfettiBurst({ active }: { active: boolean }) {
+  if (!active) return null;
+  const pieces = Array.from({ length: 14 }, (_, i) => i);
+  return (
+    <div className="motus-progress-confetti" aria-hidden>
+      {pieces.map((i) => (
+        <span key={i} className={`motus-progress-confetti-piece motus-progress-confetti-piece--${i % 7}`} />
+      ))}
     </div>
   );
 }
 
 export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks }: MemberProgressHeroCardProps) {
   const { momentum, consistency, weekly, recovery, xp } = scores;
-  const streakLabel = streakChipLabel(streakWeeks);
+  const animatedMomentum = useCountUpNumber(momentum.pct);
+  const animatedXp = useCountUpNumber(xp.totalXp, 1100);
+  const animatedXpInLevel = useCountUpNumber(xp.xpInLevel, 1100);
+  const animatedConsistency = useCountUpNumber(consistency.pct);
+  const animatedRecovery = useCountUpNumber(recovery.pct ?? 0);
+  const animatedWeeklyScore = useCountUpNumber(weekly.score);
+
+  const deltaPct = computeMomentumDeltaPct(momentum.sparkPoints);
+  const nextLevel = xp.level + 1;
+  const nextLevelLabel = getXpLevelLabel(nextLevel);
+
+  const flowEmoji = momentum.pct >= 80 ? "🚀" : momentum.pct >= 60 ? "💪" : momentum.pct >= 30 ? "🔥" : "✨";
+  const flowLine = momentum.pct >= 60 ? "Du er i flyt!" : momentum.pct >= 30 ? "Du bygger flyt." : "Start dagens økt.";
+
+  const milestoneRef = useRef<{ level: number; momentum: number }>({ level: xp.level, momentum: momentum.pct });
+  const [confettiActive, setConfettiActive] = useState(false);
+  useEffect(() => {
+    const prev = milestoneRef.current;
+    const leveledUp = xp.level > prev.level;
+    const flowMilestone = momentum.pct >= 100 && prev.momentum < 100;
+    if (leveledUp || flowMilestone) {
+      setConfettiActive(true);
+      const timer = window.setTimeout(() => setConfettiActive(false), 1800);
+      milestoneRef.current = { level: xp.level, momentum: momentum.pct };
+      return () => window.clearTimeout(timer);
+    }
+    milestoneRef.current = { level: xp.level, momentum: momentum.pct };
+    return undefined;
+  }, [xp.level, momentum.pct]);
+
+  const streakChipText = streakWeeks > 0 ? (streakWeeks === 1 ? "1 uke på rad" : `${streakWeeks} uker på rad`) : "Start streak";
 
   return (
     <section className="motus-progress-hero motus-fade-in-up">
-      <div className="px-3 pt-3 sm:px-4 sm:pt-3.5">
-        <h2 className="text-base font-bold tracking-tight text-slate-950">Hei {memberFirstName}! 👋</h2>
-        <p className="text-xs text-slate-600">Her er din fremgang så langt</p>
+      <div className="motus-progress-hero-header">
+        <h2 className="motus-progress-hero-greeting">Hei {memberFirstName}! 👋</h2>
+        <p className="motus-progress-hero-greeting-sub">Her er din fremgang så langt</p>
       </div>
 
-      <div className="motus-progress-hero-gradient">
-        <div className="motus-progress-hero-gradient-inner">
+      <div className="motus-progress-hero-dark">
+        <div className="motus-progress-hero-dark-wave" aria-hidden />
+        <ConfettiBurst active={confettiActive} />
+
+        <div className="motus-progress-hero-dark-top">
           <div className="motus-progress-level-badge">
-            <Shield className="h-5 w-5 text-white/90" strokeWidth={2.25} aria-hidden />
-            <span className="mt-1.5 text-[10px] font-bold uppercase tracking-wide text-white/85">Nivå {xp.level}</span>
-            <span className="mt-0.5 block text-xs font-black uppercase text-white">{xp.levelLabel}</span>
-            <span className="mt-1 block text-[10px] font-semibold tabular-nums text-white/90">{xp.totalXp.toLocaleString("nb-NO")} XP</span>
-          </div>
-
-          <div className="motus-progress-momentum-hero min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-white/75">Flyt</p>
-            <div className="mt-1 flex items-center gap-2">
-              <p className="text-2xl font-black tabular-nums tracking-tight text-white sm:text-3xl">{momentum.pct}%</p>
-              <MomentumTrendIcon trend={momentum.trend} />
-              <MomentumSparkline points={momentum.sparkPoints} trend={momentum.trend} />
+            <Shield className="h-6 w-6 text-white/95" strokeWidth={2.25} aria-hidden />
+            <span className="motus-progress-level-badge-eyebrow">Level {xp.level}</span>
+            <span className="motus-progress-level-badge-label">{xp.levelLabel}</span>
+            <span className="motus-progress-level-badge-xp">
+              <span className="tabular-nums">{animatedXp.toLocaleString("nb-NO")}</span>
+              {" / "}
+              <span className="tabular-nums">{(xp.totalXp - xp.xpInLevel + xp.xpForNextLevel).toLocaleString("nb-NO")}</span>
+              {" XP"}
+            </span>
+            <div className="motus-progress-level-badge-track">
+              <div className="motus-progress-level-badge-fill" style={{ width: `${xp.pctToNext}%` }} />
             </div>
-            <p className="mt-1 text-xs font-medium text-white/85">{momentum.subline || momentumTrendLabel(momentum.trend)}</p>
-            {streakLabel ? (
-              <span className="motus-progress-streak-chip">
-                <span className="motus-progress-streak-chip-icon" aria-hidden>🔥</span>
-                <span>{streakLabel}</span>
-              </span>
-            ) : null}
           </div>
 
-          <div className="motus-progress-hero-portrait motus-image-frame">
-            <img
-              src={PROGRESS_HERO_IMAGE}
-              alt=""
-              className="motus-image-media"
-              loading="lazy"
-              style={{ objectPosition: imageObjectPositionFromSrc(PROGRESS_HERO_IMAGE) }}
-            />
+          <div className="motus-progress-momentum-hero">
+            <div className="motus-progress-momentum-hero-row">
+              <p className="motus-progress-momentum-hero-eyebrow">Flyt</p>
+              <span className="motus-progress-momentum-info" aria-hidden>
+                <span className="motus-progress-momentum-info-dot" />
+              </span>
+            </div>
+            <div className="motus-progress-momentum-hero-value-row">
+              <p className="motus-progress-momentum-hero-value">
+                <span className="tabular-nums">{animatedMomentum}</span>
+                <span className="motus-progress-momentum-hero-percent">%</span>
+              </p>
+              <MomentumDeltaPill delta={deltaPct} trend={momentum.trend} />
+            </div>
+            <p className="motus-progress-momentum-hero-subline">{momentum.subline}</p>
+            <p className="motus-progress-momentum-hero-tagline">
+              {flowLine} <span aria-hidden>{flowEmoji}</span>
+            </p>
           </div>
+
+          <MomentumRing pct={momentum.pct} animatedPct={animatedMomentum} />
         </div>
 
-        <div className="motus-progress-hero-xp">
-          <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold text-white/90">
-            <span>XP til neste nivå</span>
-            <span className="tabular-nums">
-              {xp.xpInLevel}/{xp.xpForNextLevel}
+        <div className="motus-progress-hero-dark-bottom">
+          <div className="motus-progress-hero-bottom-card">
+            <span className="motus-progress-hero-bottom-icon motus-progress-hero-bottom-icon--flame" aria-hidden>
+              <Flame className="h-4 w-4" strokeWidth={2.5} />
             </span>
+            <div className="min-w-0">
+              <p className="motus-progress-hero-bottom-value">{streakChipText}</p>
+              <p className="motus-progress-hero-bottom-sub">
+                {streakWeeks > 0 ? "Hold streaken i live!" : "Logg første økt"}
+              </p>
+            </div>
           </div>
-          <div className="motus-progress-hero-xp-track">
-            <div className="motus-progress-hero-xp-fill" style={{ width: `${xp.pctToNext}%` }} />
+
+          <div className="motus-progress-hero-bottom-card motus-progress-hero-bottom-card--xp">
+            <div className="min-w-0 flex-1">
+              <p className="motus-progress-hero-bottom-label">XP til neste nivå</p>
+              <p className="motus-progress-hero-bottom-value motus-progress-hero-bottom-value--xp">
+                <span className="tabular-nums">{animatedXpInLevel.toLocaleString("nb-NO")}</span>
+                <span className="motus-progress-hero-bottom-value-divider"> / </span>
+                <span className="tabular-nums">{xp.xpForNextLevel.toLocaleString("nb-NO")}</span>
+                <span className="motus-progress-hero-bottom-value-unit"> XP</span>
+              </p>
+              <div className="motus-progress-hero-bottom-track">
+                <div className="motus-progress-hero-bottom-fill" style={{ width: `${xp.pctToNext}%` }} />
+              </div>
+            </div>
+          </div>
+
+          <div className="motus-progress-hero-bottom-card">
+            <span className="motus-progress-hero-bottom-icon motus-progress-hero-bottom-icon--crown" aria-hidden>
+              <Crown className="h-4 w-4" strokeWidth={2.5} />
+            </span>
+            <div className="min-w-0">
+              <p className="motus-progress-hero-bottom-label">Neste nivå</p>
+              <p className="motus-progress-hero-bottom-value motus-progress-hero-bottom-value--level">{nextLevelLabel}</p>
+              <p className="motus-progress-hero-bottom-sub">Nivå {nextLevel}</p>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="motus-progress-status-grid">
-        <h3 className="col-span-full text-xs font-semibold text-slate-900">Din status</h3>
-        <ScoreRing label="Kontinuitet" value={`${consistency.pct}%`} subline={consistency.subline} pct={consistency.pct} tone="mint" />
+        <h3 className="motus-progress-status-grid-title">Din status</h3>
+        <ScoreRing
+          label="Kontinuitet"
+          value={`${animatedConsistency}%`}
+          subline={consistency.subline}
+          pct={consistency.pct}
+          tone="mint"
+        />
         <StatHighlight
           label="Uke-score"
-          value={`${weekly.score}/${weekly.maxScore}`}
+          value={`${animatedWeeklyScore}/${weekly.maxScore}`}
           subline={weekly.subline}
           icon={<Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={2} />}
-          tone="pink"
+          badge={weekly.pct >= 100 ? "Mål nådd" : "Hovedmål"}
         />
         <ScoreRing
           label="Recovery"
-          value={recovery.pct === null ? "—" : `${recovery.pct}%`}
+          value={recovery.pct === null ? "—" : `${animatedRecovery}%`}
           subline={recovery.subline}
           pct={recovery.pct}
           tone="pink"
