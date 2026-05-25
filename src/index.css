@@ -8159,6 +8159,19 @@ button {
   box-shadow: 0 6px 16px -8px rgba(217, 18, 120, 0.45);
 }
 
+.motus-period-plan-day-primary--start {
+  background: linear-gradient(90deg, #30e3be 0%, #14b8a6 100%);
+  color: #0d1b2a;
+  box-shadow: 0 6px 16px -8px rgba(48, 227, 190, 0.55);
+  font-weight: 700;
+}
+
+.motus-period-plan-day-primary--start:hover {
+  background: linear-gradient(90deg, #30e3be 0%, #14b8a6 100%) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px -8px rgba(48, 227, 190, 0.65);
+}
+
 .motus-period-plan-day-swap-link {
   flex-shrink: 0;
   border: none;

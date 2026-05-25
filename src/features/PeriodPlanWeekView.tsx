@@ -238,31 +238,43 @@ export function PeriodPlanWeekView({
 
                   {entry && status !== "rest" ? (
                     <div className="motus-period-plan-day-footer">
-                      <button
-                        type="button"
-                        disabled={!canMarkCompleted}
-                        onClick={() => {
-                          if (!canMarkCompleted) return;
-                          onToggleCompleted({
-                            planId: plan.id,
-                            weekNumber: week.weekNumber,
-                            day: dayKey,
-                            entry: effectiveDays[dayKey],
-                            plannedDate,
-                          });
-                        }}
-                        className={`motus-period-plan-day-primary ${completed ? "motus-period-plan-day-primary--done" : ""}`}
-                        aria-label={
-                          completed
-                            ? `Angre fullført for ${dayLabel}`
-                            : isFutureDate
-                              ? `${dayLabel} kan markeres fra og med planlagt dato`
-                              : `Marker ${dayLabel} som fullført`
-                        }
-                      >
-                        <Check className="h-4 w-4 shrink-0" strokeWidth={completed ? 3 : 2.25} aria-hidden />
-                        {completed ? "Angre fullført" : "Marker fullført"}
-                      </button>
+                      {entryAction.kind === "start-program" && !completed && !isFutureDate ? (
+                        <button
+                          type="button"
+                          onClick={() => onStartProgram(entryAction.program.id)}
+                          className="motus-period-plan-day-primary motus-period-plan-day-primary--start"
+                          aria-label={`Start økt for ${dayLabel}`}
+                        >
+                          <Play className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
+                          Start økt
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={!canMarkCompleted}
+                          onClick={() => {
+                            if (!canMarkCompleted) return;
+                            onToggleCompleted({
+                              planId: plan.id,
+                              weekNumber: week.weekNumber,
+                              day: dayKey,
+                              entry: effectiveDays[dayKey],
+                              plannedDate,
+                            });
+                          }}
+                          className={`motus-period-plan-day-primary ${completed ? "motus-period-plan-day-primary--done" : ""}`}
+                          aria-label={
+                            completed
+                              ? `Angre fullført for ${dayLabel}`
+                              : isFutureDate
+                                ? `${dayLabel} kan markeres fra og med planlagt dato`
+                                : `Marker ${dayLabel} som fullført`
+                          }
+                        >
+                          <Check className="h-4 w-4 shrink-0" strokeWidth={completed ? 3 : 2.25} aria-hidden />
+                          {completed ? "Angre fullført" : "Marker fullført"}
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleSwapButtonClick(dayKey)}
