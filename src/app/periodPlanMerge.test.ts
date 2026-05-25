@@ -330,6 +330,23 @@ describe("period plan auto-complete", () => {
     expect(periodPlanEntryMatchesCompletedProgram("Kondisjon", "Styrke A", programs)).toBe(false);
   });
 
+  it("does not auto-complete period rows from fuzzy program title matches", () => {
+    const similarPrograms: TrainingProgram[] = [
+      ...programs,
+      {
+        id: "p2",
+        memberId: "m1",
+        title: "Styrke B",
+        goal: "",
+        notes: "",
+        createdAt: "01.01.2026",
+        exercises: [],
+      },
+    ];
+    expect(periodPlanEntryMatchesCompletedProgram("Styrke A", "Styrke", similarPrograms)).toBe(false);
+    expect(periodPlanEntryMatchesCompletedProgram("Styrke B", "Styrke", similarPrograms)).toBe(false);
+  });
+
   it("finds plan row for today when program is completed", () => {
     const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, friday: "Styrke A" } }]);
     plan.startDate = "2026-05-22";
@@ -399,6 +416,17 @@ describe("period plan auto-complete", () => {
         completedKeys: ["plan-1:1:monday"],
         dismissedKeys: ["plan-1:1:monday"],
         programs,
+      }),
+    ).toBe(false);
+    expect(
+      isPeriodPlanDayComplete({
+        planId: "plan-1",
+        weekNumber: 1,
+        day: "monday",
+        entry: "Styrke A",
+        completedKeys: ["plan-1:1:monday"],
+        programs,
+        logsForDate: [],
       }),
     ).toBe(false);
     expect(

@@ -224,6 +224,17 @@ export type PeriodPlanAutoCompleteTarget = {
 };
 
 /** Om planlagt periodeplan-rad svarer til et fullført program (tittel / fuzzy match / program-id). */
+function normalizeCompletionLabel(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/[.:;,-]+$/g, "")
+    .trim();
+}
+
 export function periodPlanEntryMatchesCompletedProgram(
   entry: string,
   programTitle: string,
@@ -248,18 +259,13 @@ export function periodPlanEntryMatchesCompletedProgram(
     if (entryProgram?.id === trimmedProgramId) return true;
   }
 
+  const entryNorm = normalizeCompletionLabel(trimmedEntry);
+  const titleNorm = normalizeCompletionLabel(trimmedTitle);
+  if (entryNorm === titleNorm) return true;
+
   const entryProgram = findProgramForPeriodPlanEntry(trimmedEntry, programs);
-  const titleProgram = findProgramForPeriodPlanEntry(trimmedTitle, programs);
-  if (entryProgram && titleProgram) {
-    return entryProgram.id === titleProgram.id;
-  }
-  if (entryProgram) {
-    return entryProgram.title.trim().toLowerCase() === trimmedTitle.toLowerCase();
-  }
-  if (titleProgram) {
-    return trimmedEntry.toLowerCase() === titleProgram.title.trim().toLowerCase();
-  }
-  return trimmedEntry.toLowerCase() === trimmedTitle.toLowerCase();
+  if (entryProgram && normalizeCompletionLabel(entryProgram.title) === titleNorm) return true;
+  return false;
 }
 
 export function buildPeriodPlanEntryKey(planId: string, weekNumber: number, day: WeekdayPlanKey): string {
@@ -278,10 +284,12 @@ export function isPeriodPlanDayComplete(input: {
 }): boolean {
   const key = buildPeriodPlanEntryKey(input.planId, input.weekNumber, input.day);
   if (input.dismissedKeys?.includes(key)) return false;
-  if (input.completedKeys.includes(key)) return true;
 
   const trimmedEntry = input.entry.trim();
-  if (!trimmedEntry || !input.logsForDate?.length) return false;
+  if (!trimmedEntry) return false;
+
+  if (!input.logsForDate) return input.completedKeys.includes(key);
+  if (!input.logsForDate.length) return false;
 
   return input.logsForDate.some(
     (log) =>

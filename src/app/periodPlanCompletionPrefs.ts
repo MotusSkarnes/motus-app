@@ -110,7 +110,7 @@ export function reconcilePeriodPlanCompletionKeys(input: {
     input.remotePrefs,
   );
 
-  const completedKeys = uniqueKeys([...merged.completedEntryKeys, ...input.derivedCompleted]).filter(
+  const completedKeys = uniqueKeys(input.derivedCompleted).filter(
     (key) => !merged.dismissedEntryKeys.includes(key),
   );
 

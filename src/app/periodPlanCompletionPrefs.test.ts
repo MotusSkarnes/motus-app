@@ -52,4 +52,19 @@ describe("periodPlanCompletionPrefs", () => {
     expect(result.completedKeys).toEqual(["plan-1:1:monday"]);
     expect(result.dismissedKeys).toContain("plan-1:1:friday");
   });
+
+  it("ignores stale stored completed keys that are not backed by logs", () => {
+    const result = reconcilePeriodPlanCompletionKeys({
+      storedCompleted: ["plan-1:1:monday", "plan-1:1:tuesday"],
+      storedDismissed: [],
+      remotePrefs: {
+        version: 1,
+        completedEntryKeys: ["plan-1:1:wednesday"],
+        dismissedEntryKeys: [],
+        updatedAt: 500,
+      },
+      derivedCompleted: ["plan-1:1:monday"],
+    });
+    expect(result.completedKeys).toEqual(["plan-1:1:monday"]);
+  });
 });
