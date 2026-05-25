@@ -25,10 +25,14 @@ const PROGRESS_PERSONAL_RECORD_IMAGES: Record<string, string> = {
   "smal nedtrekk": PROGRESS_PR_CLOSE_GRIP_PULLDOWN_IMAGE,
   "nedtrekk smalt grep": PROGRESS_PR_CLOSE_GRIP_PULLDOWN_IMAGE,
   "hip thrust": PROGRESS_PR_HIP_THRUST_IMAGE,
-  "hip-trust": PROGRESS_PR_HIP_THRUST_IMAGE,
   "hip trust": PROGRESS_PR_HIP_THRUST_IMAGE,
-  "single-leg hip trust": PROGRESS_PR_HIP_THRUST_IMAGE,
-  "single-leg hip thrust": PROGRESS_PR_HIP_THRUST_IMAGE,
+  "single leg hip trust": PROGRESS_PR_HIP_THRUST_IMAGE,
+  "single leg hip thrust": PROGRESS_PR_HIP_THRUST_IMAGE,
+};
+
+const PROGRESS_EXERCISE_DISPLAY_NAMES: Record<string, string> = {
+  "hip trust": "Hip thrust",
+  "single leg hip trust": "Single-leg hip thrust",
 };
 
 function normalizeExerciseNameKey(name: string): string {
@@ -43,6 +47,11 @@ function normalizeExerciseNameKey(name: string): string {
 }
 
 /** Lifestyle-bilde for PR på Fremgang; null = bruk vanlig øvelses-skisse. */
+export function resolveProgressExerciseDisplayName(exerciseName: string): string {
+  const trimmed = exerciseName.trim();
+  return PROGRESS_EXERCISE_DISPLAY_NAMES[normalizeExerciseNameKey(trimmed)] ?? trimmed;
+}
+
 export function resolveProgressPersonalRecordImage(exerciseName: string): string | null {
   return PROGRESS_PERSONAL_RECORD_IMAGES[normalizeExerciseNameKey(exerciseName)] ?? null;
 }

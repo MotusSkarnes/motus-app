@@ -26,7 +26,7 @@ import {
   type HistoryPeriodWeeks,
 } from "../app/memberTrainingHistory";
 import { resolveProgramImageSrc, STRENGTH_TRAINING_COVER_IMAGE } from "../app/programImage";
-import { resolveProgressPersonalRecordImage } from "../app/progressImagery";
+import { resolveProgressExerciseDisplayName, resolveProgressPersonalRecordImage } from "../app/progressImagery";
 import type { Exercise, TrainingProgram, WorkoutLog } from "../app/types";
 import { EmptyState, GradientButton } from "../app/ui";
 import type { PersonalRecordEntry } from "./MemberPersonalRecordsSection";
@@ -446,6 +446,7 @@ export function MemberTrainingHistoryView({
               <div className="motus-member-history-pr-scroll scrollbar-none">
                 {recordPreview.map((record) => {
                   const imageSrc = resolveRecordImage(record.name, exercises);
+                  const displayName = resolveProgressExerciseDisplayName(record.name);
                   return (
                     <button
                       key={record.name}
@@ -462,7 +463,7 @@ export function MemberTrainingHistoryView({
                         </span>
                       </div>
                       <div className="motus-member-history-pr-body">
-                        <div className="motus-member-history-pr-name">{record.name}</div>
+                        <div className="motus-member-history-pr-name">{displayName}</div>
                         <div className="motus-member-history-pr-weight">
                           {record.weight} kg{record.reps ? ` · ${record.reps} reps` : ""}
                         </div>

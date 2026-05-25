@@ -2,7 +2,7 @@ import { ChevronRight, Share2, Sparkles, Star } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
-import { resolveProgressPersonalRecordImage } from "../app/progressImagery";
+import { resolveProgressExerciseDisplayName, resolveProgressPersonalRecordImage } from "../app/progressImagery";
 import { STRENGTH_TRAINING_COVER_IMAGE } from "../app/programImage";
 import type { Exercise } from "../app/types";
 import { EmptyState, OutlineButton, StatusMessage } from "../app/ui";
@@ -115,6 +115,7 @@ export function MemberPersonalRecordsSection({
           >
             {previewRecords.map((record, index) => {
               const imageSrc = resolveRecordImage(record.name, exercises);
+              const displayName = resolveProgressExerciseDisplayName(record.name);
               const isFavorite = favoriteNames.includes(record.name);
               return (
                 <article
@@ -136,7 +137,7 @@ export function MemberPersonalRecordsSection({
                       </div>
                       {record.isNewRecord ? <span className="motus-progress-pr-new-badge">Ny rekord</span> : null}
                     </div>
-                    <p className="motus-progress-pr-card-name">{record.name}</p>
+                    <p className="motus-progress-pr-card-name">{displayName}</p>
                     <p className="motus-progress-pr-card-weight">
                       <span className="motus-progress-pr-card-weight-value">{record.weight} kg</span>
                       <span className="motus-progress-pr-card-weight-reps">{record.reps} reps</span>
@@ -148,7 +149,7 @@ export function MemberPersonalRecordsSection({
                       type="button"
                       onClick={() => onShare(record)}
                       className="motus-progress-pr-card-action-btn motus-pressable"
-                      aria-label={`Del personlig rekord for ${record.name}`}
+                      aria-label={`Del personlig rekord for ${displayName}`}
                     >
                       <Share2 className="h-3 w-3" aria-hidden />
                     </button>

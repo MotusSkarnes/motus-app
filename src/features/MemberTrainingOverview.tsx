@@ -4,7 +4,7 @@ import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
 import type { DailyWeekProgressPoint } from "../app/memberTrainingWeekChart";
 import { STRENGTH_TRAINING_COVER_IMAGE } from "../app/programImage";
-import { resolveProgressPersonalRecordImage } from "../app/progressImagery";
+import { resolveProgressExerciseDisplayName, resolveProgressPersonalRecordImage } from "../app/progressImagery";
 import type { Exercise } from "../app/types";
 import { TrainingStartButton } from "../app/ui";
 import { MotusFlameIcon } from "./MotusFlameIcon";
@@ -328,27 +328,31 @@ export function MemberTrainingOverview({
             </button>
           </div>
           <div className="motus-training-scroll-row scrollbar-none">
-            {records.map((record) => (
-              <button
-                key={record.name}
-                type="button"
-                onClick={() => onOpenRecord(record.name)}
-                className="motus-training-pr-card motus-pressable"
-              >
-                <div className="motus-training-pr-image motus-image-frame">
-                  <img
-                    src={resolveRecordImage(record.name, exercises)}
-                    alt=""
-                    className="motus-image-media"
-                    loading="lazy"
-                    style={{ objectPosition: imageObjectPositionFromSrc(resolveRecordImage(record.name, exercises)) }}
-                  />
-                </div>
-                <div className="motus-training-pr-name">{record.name}</div>
-                <div className="motus-training-pr-weight">{record.weight} kg</div>
-                {record.isNewRecord ? <div className="motus-training-pr-badge">Ny rekord!</div> : null}
-              </button>
-            ))}
+            {records.map((record) => {
+              const imageSrc = resolveRecordImage(record.name, exercises);
+              const displayName = resolveProgressExerciseDisplayName(record.name);
+              return (
+                <button
+                  key={record.name}
+                  type="button"
+                  onClick={() => onOpenRecord(record.name)}
+                  className="motus-training-pr-card motus-pressable"
+                >
+                  <div className="motus-training-pr-image motus-image-frame">
+                    <img
+                      src={imageSrc}
+                      alt=""
+                      className="motus-image-media"
+                      loading="lazy"
+                      style={{ objectPosition: imageObjectPositionFromSrc(imageSrc) }}
+                    />
+                  </div>
+                  <div className="motus-training-pr-name">{displayName}</div>
+                  <div className="motus-training-pr-weight">{record.weight} kg</div>
+                  {record.isNewRecord ? <div className="motus-training-pr-badge">Ny rekord!</div> : null}
+                </button>
+              );
+            })}
           </div>
         </section>
       ) : null}
