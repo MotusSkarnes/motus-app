@@ -6667,27 +6667,13 @@ export function MemberPortal(props: MemberPortalProps) {
                 }
                 programId={homeWorkoutProgram?.id ?? null}
                 coverSrc={homeDisplayCoverSrc}
+                journeyStep={achievementLevel ?? null}
+                journeyStepLabel={memberProgress.stepLabel ?? null}
+                journeyNextStepLabel={memberProgress.nextStepLabel ?? null}
                 onStart={(programId) => {
                   const program = memberPrograms.find((p) => p.id === programId);
                   if (!program) return;
                   startWorkoutMode(program.id, buildStartWorkoutOptions(program));
-                }}
-              />
-              <MemberTrainingFlowCard
-                achievementLevel={achievementLevel}
-                achievementMaxLevel={achievementMaxLevel}
-                achievedLevel={achievedLevel}
-                hasCompletedAllLevels={hasCompletedAllAchievementLevels}
-                stepLabel={memberProgress.stepLabel}
-                nextStepLabel={memberProgress.nextStepLabel}
-                goals={achievements}
-                streakWeeks={streakWeeks}
-                streakSubline={streakSubline}
-                recentStreakWeeks={recentStreakWeeks}
-                currentStreakMilestoneTarget={currentStreakMilestoneTarget}
-                onContinue={() => {
-                  setMemberTab("programs");
-                  setTrainingSection("today");
                 }}
               />
 
