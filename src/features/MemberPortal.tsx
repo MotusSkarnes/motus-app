@@ -193,6 +193,7 @@ import { MemberWeeklySummaryCard } from "./MemberWeeklySummaryCard";
 import { MemberProgressStatusBanner } from "./MemberProgressStatusBanner";
 import { MemberConsistencyWeekCard } from "./MemberConsistencyWeekCard";
 import { MemberProgressHighlightRow } from "./MemberProgressHighlightRow";
+import { MemberNextWorkoutCard } from "./MemberNextWorkoutCard";
 import {
   computeDailyWeekProgress,
   computeWeeklyProgressDelta,
@@ -6645,6 +6646,14 @@ export function MemberPortal(props: MemberPortalProps) {
                 streakWeeks={streakWeeks}
                 recentStreakWeeks={recentStreakWeeks}
                 personalRecordsCount={personalRecords.length}
+              />
+              <MemberNextWorkoutCard
+                program={nextProgram}
+                onStart={(programId) => {
+                  const program = memberPrograms.find((p) => p.id === programId);
+                  if (!program) return;
+                  startWorkoutMode(program.id, buildStartWorkoutOptions(program));
+                }}
               />
               <MemberTrainingFlowCard
                 achievementLevel={achievementLevel}
