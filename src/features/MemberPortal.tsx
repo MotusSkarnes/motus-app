@@ -5545,14 +5545,16 @@ export function MemberPortal(props: MemberPortalProps) {
                     ) : (
                       memberHomeCalendarPanel
                     )}
-                    {!isMemberLimited ? (
-                      <MemberBadgesCarousel
-                        collection={memberBadgeCollection}
-                        memberDisplayName={memberShareDisplayName}
-                        shareLogoSrc={motusShareLogoSrc}
-                      />
-                    ) : null}
                   </MemberHomeBelowWorkout>
+                }
+                bottomContent={
+                  !isMemberLimited ? (
+                    <MemberBadgesCarousel
+                      collection={memberBadgeCollection}
+                      memberDisplayName={memberShareDisplayName}
+                      shareLogoSrc={motusShareLogoSrc}
+                    />
+                  ) : null
                 }
                 primaryCta={
                   todayPlanAction.kind === "start-program" ? (

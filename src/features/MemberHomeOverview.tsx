@@ -62,6 +62,7 @@ export type MemberHomeOverviewProps = {
   belowWorkout?: ReactNode;
   onboardingPrompt?: ReactNode;
   monthlyCheckInPrompt?: ReactNode;
+  bottomContent?: ReactNode;
 };
 
 export function MemberHomeOverview({
@@ -88,6 +89,7 @@ export function MemberHomeOverview({
   belowWorkout,
   onboardingPrompt,
   monthlyCheckInPrompt,
+  bottomContent,
 }: MemberHomeOverviewProps) {
   const streakLabel = streakWeeks > 0 ? `${streakWeeks} ${streakWeeks === 1 ? "uke" : "uker"}` : "0 uker";
   const headerLine = headerMotivation?.trim() || todayDateLabel;
@@ -244,6 +246,8 @@ export function MemberHomeOverview({
           <HomeQuickAction label="Meldinger" icon={MessageSquare} tone="pink" onClick={quickActions.onViewMessages} />
         </section>
       ) : null}
+
+      {bottomContent}
     </div>
   );
 }
