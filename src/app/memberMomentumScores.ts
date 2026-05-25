@@ -129,7 +129,7 @@ export function computeMomentumScore(input: {
   const trend: ScoreTrend =
     thisWeekSessions > lastWeekSessions ? "up" : thisWeekSessions < lastWeekSessions ? "down" : "flat";
 
-  let subline = "Bygg momentum med én økt til.";
+  let subline = "Bygg flyt med én økt til.";
   if (trend === "up" && thisWeekSessions > 0) {
     subline = "Du trener mer konsekvent enn forrige uke 🔥";
   } else if (trend === "down" && lastWeekSessions > 0) {

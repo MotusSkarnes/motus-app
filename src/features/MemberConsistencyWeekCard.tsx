@@ -57,7 +57,7 @@ export function MemberConsistencyWeekCard({ completedLogs, nowTimestamp, onSeeHi
   return (
     <section className="motus-progress-consistency-card">
       <div className="motus-progress-consistency-card-header">
-        <h3 className="motus-progress-consistency-card-title">Konsistens</h3>
+        <h3 className="motus-progress-consistency-card-title">Kontinuitet</h3>
         {onSeeHistory ? (
           <button type="button" className="motus-progress-consistency-card-link" onClick={onSeeHistory}>
             Siste 8 uker

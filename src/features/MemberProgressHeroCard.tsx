@@ -146,7 +146,7 @@ export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks }:
           </div>
 
           <div className="motus-progress-momentum-hero min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-white/75">Momentum</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-white/75">Flyt</p>
             <div className="mt-1 flex items-center gap-2">
               <p className="text-2xl font-black tabular-nums tracking-tight text-white sm:text-3xl">{momentum.pct}%</p>
               <MomentumTrendIcon trend={momentum.trend} />
@@ -187,7 +187,7 @@ export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks }:
 
       <div className="motus-progress-status-grid">
         <h3 className="col-span-full text-xs font-semibold text-slate-900">Din status</h3>
-        <ScoreRing label="Consistency" value={`${consistency.pct}%`} subline={consistency.subline} pct={consistency.pct} tone="mint" />
+        <ScoreRing label="Kontinuitet" value={`${consistency.pct}%`} subline={consistency.subline} pct={consistency.pct} tone="mint" />
         <StatHighlight
           label="Uke-score"
           value={`${weekly.score}/${weekly.maxScore}`}
