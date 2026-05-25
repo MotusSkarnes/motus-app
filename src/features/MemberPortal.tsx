@@ -5689,7 +5689,7 @@ export function MemberPortal(props: MemberPortalProps) {
                           completed: todayPeriodPlanCompleted,
                           onClick: () => handlePeriodPlanStartProgram(todayPlanAction.program.id),
                         }
-                      : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPlanPeriodPlanMatch
+                      : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch
                         ? {
                             label: todayPeriodPlanCompleted ? "Fullført" : "Logg gruppetime",
                             disabled: todayPeriodPlanCompleted,
@@ -5699,12 +5699,12 @@ export function MemberPortal(props: MemberPortalProps) {
                                 entry: todayPlanEntry,
                                 plannedDate: resolvePeriodPlanEntryDate(
                                   todayPlanPeriodPlan,
-                                  todayPlanPeriodPlanMatch.weekNumber,
-                                  todayPlanPeriodPlanMatch.day,
+                                  todayPeriodPlanMatch.weekNumber,
+                                  todayPeriodPlanMatch.day,
                                 ),
                                 planId: todayPlanPeriodPlan.id,
-                                weekNumber: todayPlanPeriodPlanMatch.weekNumber,
-                                day: todayPlanPeriodPlanMatch.day,
+                                weekNumber: todayPeriodPlanMatch.weekNumber,
+                                day: todayPeriodPlanMatch.day,
                               }),
                           }
                         : !todayPlanEntry && nextProgram
