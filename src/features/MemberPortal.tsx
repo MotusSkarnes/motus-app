@@ -4605,6 +4605,17 @@ export function MemberPortal(props: MemberPortalProps) {
     });
   }
 
+  function handleCancelWorkoutMode() {
+    pendingPeriodPlanWorkoutStartRef.current = null;
+    cancelWorkoutMode();
+  }
+
+  function handleDismissWorkoutMode() {
+    pendingPeriodPlanWorkoutStartRef.current = null;
+    dismissWorkoutMode();
+    setPausedWorkoutsTick((value) => value + 1);
+  }
+
   function resolvePeriodPlanTargetMemberIds(): string[] {
     return relatedMemberIds.length > 0 ? relatedMemberIds : [primaryMemberIdForPeriodPlans].filter(Boolean);
   }
@@ -4782,6 +4793,57 @@ export function MemberPortal(props: MemberPortalProps) {
     markPeriodPlanDayCompleted(context.planId, context.weekNumber, context.day);
   }
 
+  function resolvePeriodPlanContextForProgram(program: TrainingProgram): PeriodPlanWorkoutStartContext | null {
+    if (todayPeriodPlanMatch && todayPlanEntry.trim()) {
+      const matchesToday = periodPlanEntryMatchesCompletedProgram(
+        todayPlanEntry,
+        program.title,
+        memberProgramsForPeriodPlan,
+        program.id,
+      );
+      if (matchesToday) {
+        return {
+          planId: todayPeriodPlanMatch.plan.id,
+          weekNumber: todayPeriodPlanMatch.weekNumber,
+          day: todayPeriodPlanMatch.day,
+          entry: todayPlanEntry,
+        };
+      }
+    }
+
+    const targets = findPeriodPlanAutoCompleteTargets({
+      plans: visiblePeriodPlans,
+      swapsByPlan: periodPlanSwapsByPlan,
+      programTitle: program.title,
+      programId: program.id,
+      programs: memberProgramsForPeriodPlan,
+      completedAt: getStartOfDay(new Date(nowTimestamp)),
+      calendarWeekdayKey: currentWeekdayKey,
+    });
+    const target = targets[0];
+    if (!target) return null;
+    const plan = visiblePeriodPlans.find((item) => item.id === target.planId);
+    const week = plan ? resolvePeriodPlanWeek(plan, target.weekNumber) : null;
+    if (!plan || !week) return null;
+    const swaps = getSwapsForWeek(periodPlanSwapsByPlan, plan.id, week.weekNumber);
+    const entry = applyPeriodPlanSwaps(week.days, swaps)[target.day]?.trim() ?? "";
+    return {
+      planId: target.planId,
+      weekNumber: target.weekNumber,
+      day: target.day,
+      entry,
+    };
+  }
+
+  function startMemberProgram(program: TrainingProgram, context?: PeriodPlanWorkoutStartContext | null) {
+    pendingPeriodPlanWorkoutStartRef.current = context ?? resolvePeriodPlanContextForProgram(program);
+    if (intervalProgramIdSet.has(program.id)) {
+      openIntervalTimerModal(program.id);
+      return;
+    }
+    startWorkoutMode(program.id, buildStartWorkoutOptions(program));
+  }
+
   function unmarkPeriodPlanDayCompleted(planId: string, weekNumber: number, day: WeekdayPlanKey) {
     const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
     periodPlanCompletedDirtyRef.current = true;
@@ -4793,13 +4855,8 @@ export function MemberPortal(props: MemberPortalProps) {
       memberProgramsForPeriodPlan.find((item) => item.id === programId) ??
       memberProgramsInActiveLibrary.find((item) => item.id === programId);
     if (!program) return;
-    pendingPeriodPlanWorkoutStartRef.current = context ?? null;
     setMemberTab("programs");
-    if (intervalProgramIdSet.has(program.id)) {
-      openIntervalTimerModal(program.id);
-      return;
-    }
-    startWorkoutMode(program.id, buildStartWorkoutOptions(program));
+    startMemberProgram(program, context ?? null);
   }
 
   function handlePeriodPlanLogGroup(input: {
@@ -5632,7 +5689,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : todayPlanIsPassiveDay ? null : homeWorkoutHydrationPending ? null : nextProgram ? (
                     <MemberHomeStartWorkoutButton
                       label="Start dagens økt"
-                      onClick={() => startWorkoutMode(nextProgram.id, buildStartWorkoutOptions(nextProgram))}
+                      onClick={() => startMemberProgram(nextProgram)}
                     />
                   ) : (
                     <GradientButton
@@ -5861,7 +5918,7 @@ export function MemberPortal(props: MemberPortalProps) {
                         : !todayPlanEntry && nextProgram
                           ? {
                               label: "Start neste økt",
-                              onClick: () => startWorkoutMode(nextProgram.id, buildStartWorkoutOptions(nextProgram)),
+                              onClick: () => startMemberProgram(nextProgram),
                             }
                           : undefined
                   }
@@ -6108,16 +6165,12 @@ export function MemberPortal(props: MemberPortalProps) {
 	                              <span className="motus-member-program-progress-label">{programProgressPct}% fullført</span>
 	                            </div>
 	                            <div className="motus-member-program-actions">
-	                            <TrainingStartButton
-	                              className="motus-member-program-start"
-	                              onClick={() => {
-	                                if (intervalProgramIdSet.has(program.id)) {
-	                                  openIntervalTimerModal(program.id);
-	                                  return;
-	                                }
-	                                startWorkoutMode(program.id, buildStartWorkoutOptions(program));
-	                              }}
-	                            >
+                            <TrainingStartButton
+                              className="motus-member-program-start"
+                              onClick={() => {
+                                startMemberProgram(program);
+                              }}
+                            >
 	                              <Play className="h-4 w-4 fill-white text-white" aria-hidden />
 	                                Start økt
 	                            </TrainingStartButton>
@@ -6778,7 +6831,10 @@ export function MemberPortal(props: MemberPortalProps) {
                 exercises={exercises}
                 memberId={activeMemberId}
                 memberEmail={editableMember?.email ?? currentUserEmail}
-                onClose={() => setShowIntervalTimerModal(false)}
+                onClose={() => {
+                  pendingPeriodPlanWorkoutStartRef.current = null;
+                  setShowIntervalTimerModal(false);
+                }}
                 onSaved={() => {
                   setIntervalTimerStatus("Kondisjonsøkten er lagret. PT kan se den i loggen.");
                   setShowIntervalTimerModal(false);
@@ -6830,7 +6886,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 onStart={(programId) => {
                   const program = memberPrograms.find((p) => p.id === programId);
                   if (!program) return;
-                  startWorkoutMode(program.id, buildStartWorkoutOptions(program));
+                  startMemberProgram(program);
                 }}
               />
 
@@ -6976,13 +7032,12 @@ export function MemberPortal(props: MemberPortalProps) {
       updateWorkoutModeNote={updateWorkoutModeNote}
       updateWorkoutExerciseNote={updateWorkoutExerciseNote}
       finishWorkoutMode={handleFinishWorkoutMode}
-      cancelWorkoutMode={cancelWorkoutMode}
+      cancelWorkoutMode={handleCancelWorkoutMode}
       restCountdownEnabled={restCountdownEnabled}
       previousPersonalBests={previousPersonalBestsByExercise}
       lastSessionByExercise={lastSessionResultsByExercise}
       onDismissWorkout={() => {
-        dismissWorkoutMode();
-        setPausedWorkoutsTick((value) => value + 1);
+        handleDismissWorkoutMode();
       }}
     />
     {prProgressExerciseName ? (
