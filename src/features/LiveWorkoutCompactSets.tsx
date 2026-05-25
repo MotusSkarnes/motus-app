@@ -15,6 +15,14 @@ type UpdateField =
   | "performedIncline"
   | "completed";
 
+type LastSessionEntry = {
+  weight?: string;
+  reps?: string;
+  durationMinutes?: string;
+  speed?: string;
+  incline?: string;
+};
+
 type WorkoutCompactSetTableProps = {
   rows: WorkoutSetRow[];
   exerciseByName: Map<string, Exercise>;
@@ -25,6 +33,8 @@ type WorkoutCompactSetTableProps = {
   previousPersonalBests?: Map<string, number>;
   /** Kalles når et sett markeres som fullført og slår tidligere rekord. */
   onSetPersonalRecord?: (exerciseName: string) => void;
+  /** Siste utførte sett per øvelse (lowercase navn) og settnummer. Brukes til å vise «siste gang»-verdier i grått. */
+  lastSessionByExercise?: Map<string, Map<number, LastSessionEntry>>;
 };
 
 const PR_BADGE_VISIBLE_MS = 4500;
@@ -97,7 +107,40 @@ export function WorkoutCompactSetTable({
   onUpdate,
   previousPersonalBests,
   onSetPersonalRecord,
+  lastSessionByExercise,
 }: WorkoutCompactSetTableProps) {
+  function lookupLastSession(row: WorkoutSetRow): LastSessionEntry | null {
+    if (!lastSessionByExercise) return null;
+    const key = normalizeExerciseKey(row.exerciseName);
+    const setMap = lastSessionByExercise.get(key);
+    if (!setMap) return null;
+    const setNumber = row.setNumber ?? row.blockRound ?? 1;
+    const exact = setMap.get(setNumber);
+    if (exact) return exact;
+    // Fallback: any entry from last session (use first available set), so user always sees previous data even if set numbers differ.
+    const first = setMap.values().next();
+    return first.done ? null : first.value;
+  }
+
+  function lastWeightFor(row: WorkoutSetRow): string | undefined {
+    const entry = lookupLastSession(row);
+    return entry?.weight?.trim() ? entry.weight : undefined;
+  }
+
+  function lastRepsFor(row: WorkoutSetRow): string | undefined {
+    const entry = lookupLastSession(row);
+    return entry?.reps?.trim() ? entry.reps : undefined;
+  }
+
+  function lastDurationFor(row: WorkoutSetRow): string | undefined {
+    const entry = lookupLastSession(row);
+    return entry?.durationMinutes?.trim() ? entry.durationMinutes : undefined;
+  }
+
+  function lastSpeedFor(row: WorkoutSetRow): string | undefined {
+    const entry = lookupLastSession(row);
+    return entry?.speed?.trim() ? entry.speed : undefined;
+  }
   const sessionBestRef = useRef<Map<string, number>>(new Map());
   const completedRowsRef = useRef<Set<string>>(new Set());
   const [prRows, setPrRows] = useState<Record<string, number>>({});
@@ -202,6 +245,12 @@ export function WorkoutCompactSetTable({
 
   function renderActiveSetControls(row: WorkoutSetRow) {
     const { isCardio: cardio, isStretch: stretch, isTreadmill: treadmill } = resolveRowKind(row, exerciseByName);
+    const activeLastWeight = lastWeightFor(row);
+    const activeLastDuration = lastDurationFor(row);
+    const activeLastSpeed = lastSpeedFor(row);
+    const activeWeightPlaceholder = activeLastWeight || row.plannedWeight || "0";
+    const activeDurationPlaceholder = activeLastDuration || row.plannedDurationMinutes || "Min";
+    const activeSpeedPlaceholder = activeLastSpeed || row.plannedSpeed || "km/t";
 
     if (cardio) {
       return (
@@ -210,7 +259,7 @@ export function WorkoutCompactSetTable({
             <TextInput
               value={row.performedDurationMinutes ?? ""}
               onChange={(e) => handleInputChange(row, "performedDurationMinutes", e.target.value)}
-              placeholder="Min"
+              placeholder={activeDurationPlaceholder}
               className="h-10 text-center text-sm"
               aria-label="Minutter"
             />
@@ -219,7 +268,7 @@ export function WorkoutCompactSetTable({
                 <TextInput
                   value={row.performedSpeed ?? ""}
                   onChange={(e) => handleInputChange(row, "performedSpeed", e.target.value)}
-                  placeholder="km/t"
+                  placeholder={activeSpeedPlaceholder}
                   className="h-10 text-center text-sm"
                   aria-label="Fart"
                 />
@@ -272,7 +321,7 @@ export function WorkoutCompactSetTable({
             onKeyDown={(e) => handleWeightFieldKeyDown(row, e)}
             enterKeyHint="done"
             data-workout-weight={row.exerciseId}
-            placeholder="0"
+            placeholder={activeWeightPlaceholder}
             className="h-10 w-20 text-center text-lg font-semibold"
             aria-label={stretch ? "Sekunder" : "Kg"}
           />
@@ -325,29 +374,38 @@ export function WorkoutCompactSetTable({
           const isFuture = activeIndex >= 0 && index > activeIndex;
           const isDone = row.completed;
           const isPr = Boolean(prRows[row.exerciseId]);
+          const lastWeight = lastWeightFor(row);
+          const lastReps = lastRepsFor(row);
+          const lastDuration = lastDurationFor(row);
+          const lastSpeed = lastSpeedFor(row);
+          // Last-session values override programmed plan as the inactive/placeholder hint.
+          const repsFallback = lastReps || row.plannedReps || "";
+          const weightFallback = lastWeight || row.plannedWeight || "";
+          const durationFallback = lastDuration || row.plannedDurationMinutes || "";
+          const speedFallback = lastSpeed || row.plannedSpeed || "";
           const displayReps = isDone
-            ? row.performedReps || row.plannedReps || "—"
+            ? row.performedReps || repsFallback || "—"
             : isFuture
-              ? row.plannedReps || "—"
-              : row.performedReps || row.plannedReps || "";
+              ? repsFallback || "—"
+              : row.performedReps || repsFallback || "";
           const displayWeight = isDone
             ? isCardio
-              ? row.performedDurationMinutes || row.plannedDurationMinutes || "—"
-              : row.performedWeight || row.plannedWeight || "—"
+              ? row.performedDurationMinutes || durationFallback || "—"
+              : row.performedWeight || weightFallback || "—"
             : isFuture
               ? isCardio
-                ? row.plannedDurationMinutes || "—"
-                : row.plannedWeight || "—"
+                ? durationFallback || "—"
+                : weightFallback || "—"
               : isCardio
-                ? row.performedDurationMinutes || row.plannedDurationMinutes || ""
-                : row.performedWeight || row.plannedWeight || "";
+                ? row.performedDurationMinutes || durationFallback || ""
+                : row.performedWeight || weightFallback || "";
           const displaySpeed =
             isCardio && isTreadmill
               ? isDone
-                ? row.performedSpeed || row.plannedSpeed || "—"
+                ? row.performedSpeed || speedFallback || "—"
                 : isFuture
-                  ? row.plannedSpeed || "—"
-                  : row.performedSpeed || row.plannedSpeed || ""
+                  ? speedFallback || "—"
+                  : row.performedSpeed || speedFallback || ""
               : "";
 
           return (
@@ -379,13 +437,13 @@ export function WorkoutCompactSetTable({
                   onFocus={(event) => event.currentTarget.select()}
                   onKeyDown={(e) => handleRepsFieldKeyDown(row, e)}
                   enterKeyHint="next"
-                  placeholder={row.plannedReps || "0"}
+                  placeholder={repsFallback || "0"}
                   className="h-9 text-center text-sm"
                   aria-label="Reps"
                 />
               ) : (
                 <span className={`text-center text-sm font-medium ${isDone ? "text-slate-900" : "text-slate-400"}`}>
-                  {isCardio ? (row.plannedDurationMinutes ? `${row.plannedDurationMinutes} min` : "—") : displayReps}
+                  {isCardio ? (durationFallback ? `${durationFallback} min` : "—") : displayReps}
                 </span>
               )}
               {isCardio && isTreadmill ? (
@@ -393,7 +451,7 @@ export function WorkoutCompactSetTable({
                   <TextInput
                     value={row.performedSpeed ?? ""}
                     onChange={(e) => handleInputChange(row, "performedSpeed", e.target.value)}
-                    placeholder={row.plannedSpeed || "0"}
+                    placeholder={speedFallback || "0"}
                     className="h-9 text-center text-sm"
                     aria-label="Fart"
                   />
@@ -407,7 +465,7 @@ export function WorkoutCompactSetTable({
                 <TextInput
                   value={row.performedDurationMinutes ?? ""}
                   onChange={(e) => handleInputChange(row, "performedDurationMinutes", e.target.value)}
-                  placeholder={row.plannedDurationMinutes || "0"}
+                  placeholder={durationFallback || "0"}
                   className="h-9 text-center text-sm"
                   aria-label="Minutter"
                 />
@@ -419,7 +477,7 @@ export function WorkoutCompactSetTable({
                   onKeyDown={(e) => handleWeightFieldKeyDown(row, e)}
                   enterKeyHint="done"
                   data-workout-weight={row.exerciseId}
-                  placeholder={row.plannedWeight || "0"}
+                  placeholder={weightFallback || "0"}
                   className="h-9 text-center text-sm"
                   aria-label={isStretch ? "Sek" : "Kg"}
                 />

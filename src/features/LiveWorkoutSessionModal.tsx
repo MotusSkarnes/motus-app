@@ -57,6 +57,11 @@ export type LiveWorkoutSessionModalProps = {
   previousPersonalBests?: Map<string, number>;
   /** Kalles når et sett markeres som fullført og slår tidligere rekord. */
   onSetPersonalRecord?: (exerciseName: string) => void;
+  /** Siste utførte sett per øvelse (lowercase navn) og settnummer. Vises i grått som placeholder/fallback i øktmodus. */
+  lastSessionByExercise?: Map<
+    string,
+    Map<number, { weight?: string; reps?: string; durationMinutes?: string; speed?: string; incline?: string }>
+  >;
 };
 
 type RestCountdownState = {
@@ -101,6 +106,7 @@ export function LiveWorkoutSessionModal({
   restCountdownEnabled = true,
   previousPersonalBests,
   onSetPersonalRecord,
+  lastSessionByExercise,
 }: LiveWorkoutSessionModalProps) {
   const leaveWorkout = onDismissWorkout ?? cancelWorkoutMode;
   const [showReplacementOptions, setShowReplacementOptions] = useState(false);
@@ -725,6 +731,7 @@ export function LiveWorkoutSessionModal({
                                 onUpdate={updateWorkoutExerciseResult}
                                 previousPersonalBests={previousPersonalBests}
                                 onSetPersonalRecord={onSetPersonalRecord}
+                                lastSessionByExercise={lastSessionByExercise}
                               />
                             ) : null,
                           )}
@@ -738,6 +745,7 @@ export function LiveWorkoutSessionModal({
                       onUpdate={updateWorkoutExerciseResult}
                       previousPersonalBests={previousPersonalBests}
                       onSetPersonalRecord={onSetPersonalRecord}
+                      lastSessionByExercise={lastSessionByExercise}
                     />
                   )}
               </div>
