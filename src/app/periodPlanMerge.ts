@@ -332,8 +332,8 @@ export function findPeriodPlanAutoCompleteTargets(input: {
         periodPlanEntryMatchesCompletedProgram(match.entry, input.programTitle, input.programs, input.programId)
       ) {
         pushTarget(plan.id, match.weekNumber, match.day);
+        continue;
       }
-      continue;
     }
 
     if (!input.calendarWeekdayKey) continue;
@@ -345,15 +345,17 @@ export function findPeriodPlanAutoCompleteTargets(input: {
     const swaps = getSwapsForWeek(input.swapsByPlan, plan.id, week.weekNumber);
     const effectiveDays = applyPeriodPlanSwaps(week.days, swaps);
     const dayFromStart = start ? periodPlanWeekdayKeyForDate(start, completedAt) : null;
-    const day = dayFromStart ?? input.calendarWeekdayKey;
-    const entry = effectiveDays[day]?.trim() ?? "";
-    if (!entry) continue;
-    if (
-      !periodPlanEntryMatchesCompletedProgram(entry, input.programTitle, input.programs, input.programId)
-    ) {
-      continue;
+    const candidateDays = Array.from(new Set([dayFromStart, input.calendarWeekdayKey].filter(Boolean))) as WeekdayPlanKey[];
+    for (const day of candidateDays) {
+      const entry = effectiveDays[day]?.trim() ?? "";
+      if (!entry) continue;
+      if (
+        !periodPlanEntryMatchesCompletedProgram(entry, input.programTitle, input.programs, input.programId)
+      ) {
+        continue;
+      }
+      pushTarget(plan.id, week.weekNumber, day);
     }
-    pushTarget(plan.id, week.weekNumber, day);
   }
 
   return targets;

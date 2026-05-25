@@ -55,7 +55,10 @@ type PeriodPlanWeekViewProps = {
   onSwapDays: (planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) => void;
   onMoveDay: (planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) => void;
   onResetSwaps: (planId: string, weekNumber: number) => void;
-  onStartProgram: (programId: string) => void;
+  onStartProgram: (
+    programId: string,
+    context?: { planId: string; weekNumber: number; day: WeekdayPlanKey; entry: string },
+  ) => void;
   onLogGroup: (input: {
     entry: string;
     plannedDate: string | null;
@@ -88,6 +91,12 @@ export function PeriodPlanWeekView({
   const [swapFromDay, setSwapFromDay] = useState<WeekdayPlanKey | null>(null);
   const [previewProgram, setPreviewProgram] = useState<TrainingProgram | null>(null);
   const [previewCanStart, setPreviewCanStart] = useState(false);
+  const [previewStartContext, setPreviewStartContext] = useState<{
+    planId: string;
+    weekNumber: number;
+    day: WeekdayPlanKey;
+    entry: string;
+  } | null>(null);
   const [pendingOverwriteMove, setPendingOverwriteMove] = useState<{
     dayA: WeekdayPlanKey;
     dayB: WeekdayPlanKey;
@@ -99,16 +108,23 @@ export function PeriodPlanWeekView({
     setPendingOverwriteMove(null);
     setPreviewProgram(null);
     setPreviewCanStart(false);
+    setPreviewStartContext(null);
   }, [plan.id, week.weekNumber]);
 
-  function openProgramPreview(program: TrainingProgram, canStart: boolean) {
+  function openProgramPreview(
+    program: TrainingProgram,
+    canStart: boolean,
+    context: { planId: string; weekNumber: number; day: WeekdayPlanKey; entry: string },
+  ) {
     setPreviewProgram(program);
     setPreviewCanStart(canStart);
+    setPreviewStartContext(context);
   }
 
   function closeProgramPreview() {
     setPreviewProgram(null);
     setPreviewCanStart(false);
+    setPreviewStartContext(null);
   }
 
   function handleSwapButtonClick(dayKey: WeekdayPlanKey) {
@@ -208,7 +224,12 @@ export function PeriodPlanWeekView({
                     disabled={!canOpenPreview}
                     onClick={() => {
                       if (previewProgramForEntry) {
-                        openProgramPreview(previewProgramForEntry, canStartFromPreview);
+                        openProgramPreview(previewProgramForEntry, canStartFromPreview, {
+                          planId: plan.id,
+                          weekNumber: week.weekNumber,
+                          day: dayKey,
+                          entry,
+                        });
                       }
                     }}
                     className={`motus-period-plan-day-main ${canOpenPreview ? "motus-period-plan-day-main--clickable" : ""}`}
@@ -241,7 +262,14 @@ export function PeriodPlanWeekView({
                       {entryAction.kind === "start-program" && !completed && !isFutureDate ? (
                         <button
                           type="button"
-                          onClick={() => onStartProgram(entryAction.program.id)}
+                          onClick={() =>
+                            onStartProgram(entryAction.program.id, {
+                              planId: plan.id,
+                              weekNumber: week.weekNumber,
+                              day: dayKey,
+                              entry,
+                            })
+                          }
                           className="motus-period-plan-day-primary motus-period-plan-day-primary--start"
                           aria-label={`Start økt for ${dayLabel}`}
                         >
@@ -333,7 +361,7 @@ export function PeriodPlanWeekView({
             ? {
                 label: "Start økt",
                 onClick: () => {
-                  onStartProgram(previewProgram.id);
+                  onStartProgram(previewProgram.id, previewStartContext ?? undefined);
                   closeProgramPreview();
                 },
               }

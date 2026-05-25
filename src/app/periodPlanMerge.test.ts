@@ -376,6 +376,20 @@ describe("period plan auto-complete", () => {
     expect(targets).toEqual([{ planId: "plan-1", weekNumber: 1, day: "monday" }]);
   });
 
+  it("falls back to calendar weekday when start-date row does not match completed program", () => {
+    const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "Styrke B", tuesday: "Styrke A" } }]);
+    plan.startDate = "2026-05-18";
+    const targets = findPeriodPlanAutoCompleteTargets({
+      plans: [plan],
+      swapsByPlan: {},
+      programTitle: "Styrke A",
+      programs,
+      completedAt: new Date(2026, 4, 18),
+      calendarWeekdayKey: "tuesday",
+    });
+    expect(targets).toEqual([{ planId: "plan-1", weekNumber: 1, day: "tuesday" }]);
+  });
+
   it("derives completed keys from finished workout logs", () => {
     const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, friday: "Styrke A" } }]);
     plan.startDate = "2026-05-22";

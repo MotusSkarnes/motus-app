@@ -370,6 +370,13 @@ const DEFAULT_HOME_VISIBILITY = {
 } as const;
 type HomeSectionKey = keyof typeof DEFAULT_HOME_VISIBILITY;
 
+type PeriodPlanWorkoutStartContext = {
+  planId: string;
+  weekNumber: number;
+  day: WeekdayPlanKey;
+  entry: string;
+};
+
 /** Stored in members.personal_goals so økt/skritt/mål synkes på tvers av enheter. */
 const PROFILE_METRICS_PREFIX = "MOTUS_PROFILE_V1:";
 
@@ -1110,6 +1117,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const periodPlanCompletedDirtyRef = useRef(false);
   const periodPlanDismissedDirtyRef = useRef(false);
   const periodPlanCompletionHydratedMemberRef = useRef<string | null>(null);
+  const pendingPeriodPlanWorkoutStartRef = useRef<PeriodPlanWorkoutStartContext | null>(null);
   const periodPlanSwapsDirtyRef = useRef(false);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [programLibraryMenuId, setProgramLibraryMenuId] = useState<string | null>(null);
@@ -4573,8 +4581,11 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function handleFinishWorkoutMode(input?: { reflection?: WorkoutReflection }) {
     const snapshot = workoutMode;
+    const periodPlanContext = pendingPeriodPlanWorkoutStartRef.current;
+    pendingPeriodPlanWorkoutStartRef.current = null;
     finishWorkoutMode(input);
     if (!snapshot?.programId) return;
+    markPeriodPlanContextCompleted(periodPlanContext);
     applyPeriodPlanAutoComplete({
       programId: snapshot.programId,
       programTitle: resolveWorkoutProgramTitle(snapshot.programId, snapshot.programTitle),
@@ -4583,7 +4594,10 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   function handleLogIntervalWorkout(input: LogIntervalWorkoutInput) {
+    const periodPlanContext = pendingPeriodPlanWorkoutStartRef.current;
+    pendingPeriodPlanWorkoutStartRef.current = null;
     logIntervalWorkout(input);
+    markPeriodPlanContextCompleted(periodPlanContext);
     applyPeriodPlanAutoComplete({
       programId: input.programId,
       programTitle: input.programTitle?.trim() || resolveWorkoutProgramTitle(input.programId),
@@ -4762,17 +4776,24 @@ export function MemberPortal(props: MemberPortalProps) {
     setCompletedPeriodPlanEntryKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
   }
 
+  function markPeriodPlanContextCompleted(context: PeriodPlanWorkoutStartContext | null) {
+    if (!context) return;
+    clearPeriodPlanDayDismissed(context.planId, context.weekNumber, context.day);
+    markPeriodPlanDayCompleted(context.planId, context.weekNumber, context.day);
+  }
+
   function unmarkPeriodPlanDayCompleted(planId: string, weekNumber: number, day: WeekdayPlanKey) {
     const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
     periodPlanCompletedDirtyRef.current = true;
     setCompletedPeriodPlanEntryKeys((prev) => prev.filter((item) => item !== key));
   }
 
-  function handlePeriodPlanStartProgram(programId: string) {
+  function handlePeriodPlanStartProgram(programId: string, context?: PeriodPlanWorkoutStartContext) {
     const program =
       memberProgramsForPeriodPlan.find((item) => item.id === programId) ??
       memberProgramsInActiveLibrary.find((item) => item.id === programId);
     if (!program) return;
+    pendingPeriodPlanWorkoutStartRef.current = context ?? null;
     setMemberTab("programs");
     if (intervalProgramIdSet.has(program.id)) {
       openIntervalTimerModal(program.id);
@@ -5331,8 +5352,13 @@ export function MemberPortal(props: MemberPortalProps) {
                                 <GradientButton
                                   disabled={selectedCalendarPeriodPlanCompleted}
                                   onClick={() => {
-                                    if (selectedCalendarPeriodPlanCompleted) return;
-                                    handlePeriodPlanStartProgram(selectedCalendarPlanAction.program.id);
+                                    if (selectedCalendarPeriodPlanCompleted || !selectedCalendarPeriodMatch) return;
+                                    handlePeriodPlanStartProgram(selectedCalendarPlanAction.program.id, {
+                                      planId: selectedCalendarPeriodMatch.plan.id,
+                                      weekNumber: selectedCalendarPeriodMatch.weekNumber,
+                                      day: selectedCalendarPeriodMatch.day,
+                                      entry: selectedCalendarPlanEntry,
+                                    });
                                   }}
                                   className="w-full sm:w-auto disabled:cursor-default disabled:opacity-100"
                                 >
@@ -5570,7 +5596,15 @@ export function MemberPortal(props: MemberPortalProps) {
                     ) : (
                       <MemberHomeStartWorkoutButton
                         label="Start dagens økt"
-                        onClick={() => handlePeriodPlanStartProgram(todayPlanAction.program.id)}
+                        onClick={() => {
+                          if (!todayPlanPeriodPlan || !todayPeriodPlanMatch) return;
+                          handlePeriodPlanStartProgram(todayPlanAction.program.id, {
+                            planId: todayPlanPeriodPlan.id,
+                            weekNumber: todayPeriodPlanMatch.weekNumber,
+                            day: todayPeriodPlanMatch.day,
+                            entry: todayPlanEntry,
+                          });
+                        }}
                       />
                     )
                   ) : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch ? (
@@ -5796,7 +5830,15 @@ export function MemberPortal(props: MemberPortalProps) {
                           label: todayPeriodPlanCompleted ? "Fullført" : "Start økt",
                           disabled: todayPeriodPlanCompleted,
                           completed: todayPeriodPlanCompleted,
-                          onClick: () => handlePeriodPlanStartProgram(todayPlanAction.program.id),
+                          onClick: () => {
+                            if (!todayPlanPeriodPlan || !todayPeriodPlanMatch) return;
+                            handlePeriodPlanStartProgram(todayPlanAction.program.id, {
+                              planId: todayPlanPeriodPlan.id,
+                              weekNumber: todayPeriodPlanMatch.weekNumber,
+                              day: todayPeriodPlanMatch.day,
+                              entry: todayPlanEntry,
+                            });
+                          },
                         }
                       : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch
                         ? {
