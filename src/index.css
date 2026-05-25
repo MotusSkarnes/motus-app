@@ -1512,10 +1512,10 @@ button {
   position: relative;
   overflow: hidden;
   border-radius: 1.25rem;
-  background: linear-gradient(135deg, #1f0717 0%, #4a0d2f 55%, #d91278 100%);
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 60%, #1e293b 100%);
   box-shadow:
     0 1px 2px rgba(15, 23, 42, 0.04),
-    0 16px 40px -28px rgba(217, 18, 120, 0.45);
+    0 16px 40px -28px rgba(15, 23, 42, 0.4);
   min-height: 11rem;
 }
 
@@ -1541,9 +1541,7 @@ button {
 .motus-progress-next-workout-overlay {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.05) 0%, rgba(15, 23, 42, 0.55) 65%, rgba(15, 23, 42, 0.85) 100%),
-    linear-gradient(135deg, rgba(217, 18, 120, 0.35) 0%, rgba(74, 13, 47, 0.15) 50%, rgba(217, 18, 120, 0.55) 100%);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.25) 0%, rgba(15, 23, 42, 0.55) 55%, rgba(15, 23, 42, 0.85) 100%);
   pointer-events: none;
   z-index: 1;
 }
@@ -1567,15 +1565,15 @@ button {
 .motus-progress-next-workout-chip {
   align-self: flex-start;
   display: inline-flex;
-  padding: 0.25rem 0.625rem;
+  padding: 0.3125rem 0.75rem;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(6px);
+  background: #d91278;
   color: #ffffff;
   font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 800;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  box-shadow: 0 6px 14px -6px rgba(217, 18, 120, 0.6);
 }
 
 .motus-progress-next-workout--empty .motus-progress-next-workout-chip {
