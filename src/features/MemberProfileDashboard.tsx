@@ -146,13 +146,23 @@ export function MemberProfileDashboard({
           <div className="flex min-w-0 items-center gap-3.5">
             <div className="relative shrink-0">
               <div className="relative h-[4.5rem] w-[4.5rem] overflow-hidden rounded-full ring-[3px] ring-white shadow-[0_4px_16px_-6px_rgba(48,227,190,0.55)]">
+                <span
+                  className="absolute inset-0 flex items-center justify-center text-xl font-bold text-white"
+                  style={{ background: MOTUS.gradient }}
+                >
+                  {memberFirstName.charAt(0).toUpperCase() || "?"}
+                </span>
                 {memberAvatarUrl ? (
-                  <img src={memberAvatarUrl} alt="" className="h-full w-full object-cover" loading="eager" />
-                ) : (
-                  <span className="flex h-full w-full items-center justify-center text-xl font-bold text-white" style={{ background: MOTUS.gradient }}>
-                    {memberFirstName.charAt(0).toUpperCase() || "?"}
-                  </span>
-                )}
+                  <img
+                    src={memberAvatarUrl}
+                    alt=""
+                    className="relative z-10 h-full w-full object-cover"
+                    loading="eager"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : null}
               </div>
               <button
                 type="button"

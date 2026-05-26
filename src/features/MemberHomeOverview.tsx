@@ -106,16 +106,23 @@ export function MemberHomeOverview({
             className="motus-pressable relative h-11 w-11 shrink-0 overflow-hidden rounded-full ring-2 ring-white shadow-[0_2px_10px_-4px_rgba(15,23,42,0.25)] disabled:cursor-default"
             aria-label="Åpne profil"
           >
+            <span
+              className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-white"
+              style={{ background: `${MOTUS.gradient}` }}
+            >
+              {memberFirstName.charAt(0).toUpperCase()}
+            </span>
             {memberAvatarUrl ? (
-              <img src={memberAvatarUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-            ) : (
-              <span
-                className="flex h-full w-full items-center justify-center text-sm font-semibold text-white"
-                style={{ background: `${MOTUS.gradient}` }}
-              >
-                {memberFirstName.charAt(0).toUpperCase()}
-              </span>
-            )}
+              <img
+                src={memberAvatarUrl}
+                alt=""
+                className="relative z-10 h-full w-full object-cover"
+                loading="lazy"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+            ) : null}
           </button>
           <div className="min-w-0 flex-1">
             <h1 className="text-[1.25rem] font-semibold leading-tight tracking-tight text-slate-900">

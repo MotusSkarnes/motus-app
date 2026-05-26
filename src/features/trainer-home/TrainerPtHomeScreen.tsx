@@ -52,12 +52,19 @@ export type TrainerPtHomeScreenProps = {
 
 function ClientAvatar({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
   return (
-    <div className="motus-pt-home-avatar" aria-hidden>
+    <div className="motus-pt-home-avatar relative" aria-hidden>
+      <UserRound className="absolute inset-0 m-auto h-4 w-4 text-slate-400" />
       {avatarUrl ? (
-        <img src={avatarUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-      ) : (
-        <UserRound className="h-4 w-4 text-slate-400" />
-      )}
+        <img
+          src={avatarUrl}
+          alt=""
+          className="relative z-10 h-full w-full object-cover"
+          loading="lazy"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+      ) : null}
       <span className="sr-only">{name}</span>
     </div>
   );

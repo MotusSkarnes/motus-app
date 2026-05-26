@@ -499,8 +499,6 @@ function cardioTargetHrPrescriptionSuffix(targetHrPercent: string | undefined): 
   return ` · målpuls ca. ${raw}% av makspuls`;
 }
 
-const MEMBER_AVATAR_BUCKET = "exercise-images";
-const MEMBER_AVATAR_PREFIX = "member-avatars";
 const PERIOD_PLANS_STORAGE_KEY = "motus.trainer.periodPlansByMemberId";
 const WEEKDAY_PLAN_FIELDS: Array<{ key: WeekdayPlanKey; label: string }> = [
   { key: "monday", label: "Mandag" },
@@ -616,13 +614,6 @@ function createEmptyWeeklyDayPlan(): WeeklyDayPlan {
     saturday: "",
     sunday: "",
   };
-}
-
-function encodeEmailForPath(email: string): string {
-  const normalized = email.trim().toLowerCase();
-  if (!normalized) return "";
-  const base64 = btoa(unescape(encodeURIComponent(normalized)));
-  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 function parseChatCreatedAtMs(value: string): number {
@@ -1210,8 +1201,12 @@ function pickFirstName(value: unknown): string {
     });
     return { byEmail, byIdentity };
   }, [members, memberAvatarById]);
-  const avatarCacheBust = useMemo(() => String(Date.now()), []);
   function resolveMemberAvatarUrl(member: Member): string {
+    // Returnerer kun en URL hvis vi vet at avatar-fil faktisk er lastet opp.
+    // memberAvatarById hydreres ved å liste konkrete objekter i Supabase Storage,
+    // så fravær der => ingen bilde, og vi viser placeholder. Vi GIR IKKE en spekulativ
+    // public URL ut basert på e-post — det forårsaker "ødelagt bilde"-ikon i UI når
+    // medlemmet ikke har lastet opp avatar.
     const direct = memberAvatarById[member.id];
     if (direct) return direct;
     const normalizedEmail = member.email.trim().toLowerCase();
@@ -1221,13 +1216,6 @@ function pickFirstName(value: unknown): string {
     }
     const byIdentity = memberAvatarByEmail.byIdentity[getMemberIdentityKey(member)];
     if (byIdentity) return byIdentity;
-    if (!supabaseClient || !normalizedEmail || !normalizedEmail.includes("@")) return "";
-    const encodedEmail = encodeEmailForPath(normalizedEmail);
-    if (encodedEmail) {
-      const path = `${MEMBER_AVATAR_PREFIX}/email-${encodedEmail}.jpg`;
-      const { data } = supabaseClient.storage.from(MEMBER_AVATAR_BUCKET).getPublicUrl(path);
-      if (data.publicUrl) return `${data.publicUrl}?v=${avatarCacheBust}`;
-    }
     return "";
   }
   const selectedMemberRelatedIds = useMemo(

@@ -84,11 +84,18 @@ function AvatarBubble({
     <div
       className={`relative shrink-0 overflow-hidden rounded-full border border-white/90 shadow-sm ${sizeClass} ${gradient ? "motus-chat-avatar-gradient text-white" : "bg-slate-100 text-slate-500"}`}
     >
+      <span className="absolute inset-0 flex items-center justify-center font-semibold">{initial}</span>
       {avatarUrl ? (
-        <img src={avatarUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-      ) : (
-        <span className="flex h-full w-full items-center justify-center font-semibold">{initial}</span>
-      )}
+        <img
+          src={avatarUrl}
+          alt=""
+          className="relative z-10 h-full w-full object-cover"
+          loading="lazy"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+      ) : null}
     </div>
   );
 }

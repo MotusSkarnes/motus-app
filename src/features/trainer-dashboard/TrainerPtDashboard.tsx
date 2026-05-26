@@ -208,12 +208,21 @@ export function TrainerPtDashboard({
               className={`motus-pt-dash-customer-card ${row.selected ? "motus-pt-dash-customer-card--selected" : ""}`}
               onClick={() => onSelectMember(row.member.id)}
             >
-              <div className="motus-pt-dash-customer-avatar">
+              <div className="motus-pt-dash-customer-avatar relative">
+                <span className="absolute inset-0 flex items-center justify-center">
+                  {row.member.name.charAt(0).toUpperCase()}
+                </span>
                 {row.avatarUrl ? (
-                  <img src={row.avatarUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-                ) : (
-                  <span>{row.member.name.charAt(0).toUpperCase()}</span>
-                )}
+                  <img
+                    src={row.avatarUrl}
+                    alt=""
+                    className="relative z-10 h-full w-full object-cover"
+                    loading="lazy"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : null}
               </div>
               <div className="min-w-0 flex-1 text-left">
                 <div className="flex items-center gap-2">
@@ -248,12 +257,20 @@ export function TrainerPtDashboard({
             <section className="motus-pt-dash-hero">
               <div className="motus-pt-dash-hero-top">
                 <div className="motus-pt-dash-hero-profile">
-                  <div className="motus-pt-dash-hero-avatar">
+                  <div className="motus-pt-dash-hero-avatar relative">
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      {customerName.charAt(0).toUpperCase()}
+                    </span>
                     {customerAvatarUrl ? (
-                      <img src={customerAvatarUrl} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <span>{customerName.charAt(0).toUpperCase()}</span>
-                    )}
+                      <img
+                        src={customerAvatarUrl}
+                        alt=""
+                        className="relative z-10 h-full w-full object-cover"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : null}
                   </div>
                   <div className="min-w-0">
                     <h1 className="motus-pt-dash-hero-name">{customerName}</h1>
