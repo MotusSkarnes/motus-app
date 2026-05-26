@@ -851,6 +851,12 @@ export function InspirationHub({
   const [isUploadingProgramCoverImage, setIsUploadingProgramCoverImage] = useState(false);
   const [heroConfig, setHeroConfig] = useState<InspirationHeroConfig | null>(() => loadInspirationHeroFromLocalStorage());
   const [isUploadingHeroImage, setIsUploadingHeroImage] = useState(false);
+  const [heroTextEditorOpen, setHeroTextEditorOpen] = useState(false);
+  const [heroBadgeDraft, setHeroBadgeDraft] = useState("");
+  const [heroTitleDraft, setHeroTitleDraft] = useState("");
+  const [heroSubtitleDraft, setHeroSubtitleDraft] = useState("");
+  const [heroCtaDraft, setHeroCtaDraft] = useState("");
+  const [isSavingHeroText, setIsSavingHeroText] = useState(false);
   const [programExerciseSearch, setProgramExerciseSearch] = useState("");
   const [programExerciseCategoryFilter, setProgramExerciseCategoryFilter] = useState<"all" | Exercise["category"]>("all");
   const [programExerciseGroupFilter, setProgramExerciseGroupFilter] = useState("all");
@@ -1014,6 +1020,75 @@ export function InspirationHub({
       setIsUploadingHeroImage(false);
     }
   }
+
+  function openHeroTextEditor() {
+    setHeroBadgeDraft(heroConfig?.badge ?? "");
+    setHeroTitleDraft(heroConfig?.title ?? "");
+    setHeroSubtitleDraft(heroConfig?.subtitle ?? "");
+    setHeroCtaDraft(heroConfig?.ctaLabel ?? "");
+    setHeroTextEditorOpen(true);
+    setActionStatus(null);
+  }
+
+  function closeHeroTextEditor() {
+    setHeroTextEditorOpen(false);
+  }
+
+  async function saveHeroText() {
+    setIsSavingHeroText(true);
+    setActionStatus("Lagrer hero-tekst…");
+    try {
+      const next: InspirationHeroConfig = {
+        imageUrl: heroConfig?.imageUrl?.trim() || DEFAULT_INSPO_HERO_IMAGE,
+        badge: heroBadgeDraft.trim() || undefined,
+        title: heroTitleDraft.trim() || undefined,
+        subtitle: heroSubtitleDraft.trim() || undefined,
+        ctaLabel: heroCtaDraft.trim() || undefined,
+      };
+      const result = await persistInspirationHero(next);
+      if (!result.ok) {
+        setActionStatus(result.error);
+        return;
+      }
+      setHeroConfig(result.config);
+      setActionStatus(result.cloudSynced ? "Hero-tekst oppdatert for alle medlemmer." : result.warning ?? "Hero-tekst lagret lokalt.");
+      setHeroTextEditorOpen(false);
+    } finally {
+      setIsSavingHeroText(false);
+    }
+  }
+
+  async function resetHeroTextToDefaults() {
+    setIsSavingHeroText(true);
+    setActionStatus("Tilbakestiller hero-tekst…");
+    try {
+      const next: InspirationHeroConfig = {
+        imageUrl: heroConfig?.imageUrl?.trim() || DEFAULT_INSPO_HERO_IMAGE,
+      };
+      const result = await persistInspirationHero(next);
+      if (!result.ok) {
+        setActionStatus(result.error);
+        return;
+      }
+      setHeroConfig(result.config);
+      setHeroBadgeDraft("");
+      setHeroTitleDraft("");
+      setHeroSubtitleDraft("");
+      setHeroCtaDraft("");
+      setActionStatus("Hero-tekst tilbakestilt til standard.");
+    } finally {
+      setIsSavingHeroText(false);
+    }
+  }
+
+  const heroHasCustomText = Boolean(
+    heroConfig?.title || heroConfig?.subtitle || heroConfig?.badge || heroConfig?.ctaLabel,
+  );
+
+  const previewHeroBadge = (heroBadgeDraft.trim() || DEFAULT_INSPO_HERO_BADGE);
+  const previewHeroTitle = (heroTitleDraft.trim() || DEFAULT_INSPO_HERO_TITLE);
+  const previewHeroSubtitle = (heroSubtitleDraft.trim() || DEFAULT_INSPO_HERO_SUBTITLE);
+  const previewHeroCta = (heroCtaDraft.trim() || DEFAULT_INSPO_HERO_CTA);
 
   useEffect(() => {
     const syncFromRemote = () => {
@@ -2085,6 +2160,16 @@ export function InspirationHub({
               ) : null}
               <button
                 type="button"
+                onClick={openHeroTextEditor}
+                className="motus-inspo-hero-pt-btn"
+                disabled={isUploadingHeroImage || isSavingHeroText}
+                title="Rediger hero-tekst"
+              >
+                <Pencil className="h-4 w-4" aria-hidden />
+                <span>Rediger tekst</span>
+              </button>
+              <button
+                type="button"
                 onClick={openCreateComposer}
                 className="motus-inspo-hero-add motus-pressable"
                 aria-label="Legg til innhold"
@@ -2719,6 +2804,128 @@ export function InspirationHub({
             </div>
           </aside>
           </div>
+          </div>
+        </div>
+      ) : null}
+
+      {canManage && heroTextEditorOpen ? (
+        <div className="fixed inset-0 z-[10020] overflow-y-auto bg-slate-950/45 p-3 backdrop-blur-sm sm:p-6">
+          <div
+            className="mx-auto min-w-0 max-w-[min(56rem,96vw)] rounded-2xl border bg-white p-4 shadow-xl sm:p-5"
+            style={{ borderColor: "rgba(15,23,42,0.08)" }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <MotusSectionIcon className="!p-2">
+                  <Pencil className="h-4 w-4" />
+                </MotusSectionIcon>
+                <div className="min-w-0">
+                  <div className="font-semibold text-slate-900">Rediger hero-tekst</div>
+                  <div className="text-xs text-slate-500">
+                    Endre tag, tittel, undertekst og knappetekst. Lagres for alle som bruker Utforsk.
+                  </div>
+                </div>
+              </div>
+              <OutlineButton type="button" onClick={closeHeroTextEditor} className="shrink-0">
+                Lukk
+              </OutlineButton>
+            </div>
+
+            <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <div className="grid gap-3">
+                <label className="grid gap-1">
+                  <span className="text-xs font-semibold text-slate-700">Tag (badge øverst)</span>
+                  <TextInput
+                    value={heroBadgeDraft}
+                    onChange={(event) => setHeroBadgeDraft(event.target.value.slice(0, 40))}
+                    placeholder={DEFAULT_INSPO_HERO_BADGE}
+                    maxLength={40}
+                  />
+                  <span className="text-[11px] text-slate-500">La stå tomt for å bruke standardteksten «{DEFAULT_INSPO_HERO_BADGE}».</span>
+                </label>
+
+                <label className="grid gap-1">
+                  <span className="text-xs font-semibold text-slate-700">Tittel</span>
+                  <TextInput
+                    value={heroTitleDraft}
+                    onChange={(event) => setHeroTitleDraft(event.target.value.slice(0, 80))}
+                    placeholder={DEFAULT_INSPO_HERO_TITLE}
+                    maxLength={80}
+                  />
+                  <span className="text-[11px] text-slate-500">{heroTitleDraft.length}/80 tegn</span>
+                </label>
+
+                <label className="grid gap-1">
+                  <span className="text-xs font-semibold text-slate-700">Undertekst</span>
+                  <TextArea
+                    value={heroSubtitleDraft}
+                    onChange={(event) => setHeroSubtitleDraft(event.target.value.slice(0, 160))}
+                    placeholder={DEFAULT_INSPO_HERO_SUBTITLE}
+                    className="min-h-[72px]"
+                  />
+                  <span className="text-[11px] text-slate-500">{heroSubtitleDraft.length}/160 tegn</span>
+                </label>
+
+                <label className="grid gap-1">
+                  <span className="text-xs font-semibold text-slate-700">Knappetekst (CTA)</span>
+                  <TextInput
+                    value={heroCtaDraft}
+                    onChange={(event) => setHeroCtaDraft(event.target.value.slice(0, 30))}
+                    placeholder={DEFAULT_INSPO_HERO_CTA}
+                    maxLength={30}
+                  />
+                  <span className="text-[11px] text-slate-500">La stå tomt for «{DEFAULT_INSPO_HERO_CTA}».</span>
+                </label>
+              </div>
+
+              <aside className="rounded-2xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Forhåndsvisning</div>
+                <div className="motus-inspo-hero">
+                  <div className="motus-inspo-hero-media">
+                    <img src={heroImageSrc} alt="" className="motus-inspo-hero-image" />
+                    <span className="motus-inspo-hero-badge motus-inspo-hero-badge--turquoise">
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                      {previewHeroBadge}
+                    </span>
+                  </div>
+                  <div className="motus-inspo-hero-content">
+                    <h1 className="motus-inspo-hero-title">{previewHeroTitle}</h1>
+                    <p className="motus-inspo-hero-subtitle">{previewHeroSubtitle}</p>
+                    <button type="button" className="motus-inspo-hero-cta" disabled>
+                      {previewHeroCta}
+                      <ArrowRight className="h-4 w-4" aria-hidden />
+                    </button>
+                  </div>
+                </div>
+                <p className="mt-3 text-[11px] leading-snug text-slate-500">
+                  Forhåndsvisning bruker dagens hero-bilde. Bytt bilde fra hero-knappen «Bytt bilde».
+                </p>
+              </aside>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+              {heroHasCustomText ? (
+                <OutlineButton
+                  type="button"
+                  onClick={() => void resetHeroTextToDefaults()}
+                  className="w-full sm:w-auto"
+                  disabled={isSavingHeroText}
+                >
+                  Tilbakestill til standard
+                </OutlineButton>
+              ) : null}
+              <OutlineButton type="button" onClick={closeHeroTextEditor} className="w-full sm:w-auto">
+                Avbryt
+              </OutlineButton>
+              <GradientButton
+                type="button"
+                onClick={() => void saveHeroText()}
+                className="w-full sm:w-auto"
+                disabled={isSavingHeroText}
+              >
+                {isSavingHeroText ? "Lagrer…" : "Lagre"}
+              </GradientButton>
+            </div>
           </div>
         </div>
       ) : null}
