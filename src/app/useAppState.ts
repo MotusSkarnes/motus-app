@@ -55,6 +55,7 @@ import {
   unregisterDeletedProgram,
 } from "./deletedProgramTombstones";
 import { enrichMemberWithBestProfile, mergePersonalGoalsFromCandidates } from "./memberOnboarding";
+import { addArchiveTombstone, removeArchiveTombstone } from "./memberArchiveTombstone";
 import { memberMayDeleteProgram, mergeProgramAuthorFields } from "./programAuthor";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import {
@@ -1909,7 +1910,16 @@ export function useAppState() {
   }
 
   function deactivateMember(memberId: string) {
-    setAppState((prev) => repository.deactivateMember(prev, memberId));
+    setAppState((prev) => {
+      // Skriv lokal tombstone for e-posten (inkl. ev. dubletter med samme e-post)
+      // slik at arkivet ikke kan bli "trollet tilbake" av en senere merge fra sky.
+      const target = prev.members.find((m) => m.id === memberId);
+      const emailKey = target?.email.trim().toLowerCase() ?? "";
+      if (emailKey.includes("@")) {
+        addArchiveTombstone(emailKey);
+      }
+      return repository.deactivateMember(prev, memberId);
+    });
   }
 
   function deleteMember(memberId: string) {
@@ -2326,6 +2336,11 @@ export function useAppState() {
       claimForTrainer: options?.claimForTrainer ?? true,
     });
     if (!result.ok) return result;
+
+    // Fjern tombstone nar gjenoppretting har lykkes mot sky.
+    if (normalizedEmail.includes("@")) {
+      removeArchiveTombstone(normalizedEmail);
+    }
 
     setAppState((prev) => {
       const members = prev.members.map((member) => {

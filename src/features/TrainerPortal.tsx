@@ -12,6 +12,10 @@
 import { CalendarRange, ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, MessageSquare, MoreHorizontal, Pencil, Play, Share2, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, periodPlanStartDateForDateInput } from "../app/dateFormat";
+import {
+  getArchiveTombstones,
+  MEMBER_ARCHIVE_TOMBSTONE_EVENT,
+} from "../app/memberArchiveTombstone";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClear";
 import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
@@ -808,6 +812,14 @@ function pickFirstName(value: unknown): string {
   const [inviteTrainerStatus, setInviteTrainerStatus] = useState<string | null>(null);
   const [isInvitingTrainer, setIsInvitingTrainer] = useState(false);
   const [showInactiveMembers, setShowInactiveMembers] = useState(false);
+  const [archiveTombstones, setArchiveTombstones] = useState<Set<string>>(() => getArchiveTombstones());
+  useEffect(() => {
+    function onTombstoneChange() {
+      setArchiveTombstones(getArchiveTombstones());
+    }
+    window.addEventListener(MEMBER_ARCHIVE_TOMBSTONE_EVENT, onTombstoneChange);
+    return () => window.removeEventListener(MEMBER_ARCHIVE_TOMBSTONE_EVENT, onTombstoneChange);
+  }, []);
   const [databaseEmailLookup, setDatabaseEmailLookup] = useState<Awaited<ReturnType<typeof lookupMembersByEmailForTrainer>> | null>(
     null,
   );
@@ -1046,6 +1058,10 @@ function pickFirstName(value: unknown): string {
       const goals = group.map((member) => member.goal);
       const injuries = group.map((member) => member.injuries);
       const personalGoalsList = group.map((member) => member.personalGoals);
+      // Lokal "tombstone" tvinger arkivert tilstand selv om en sky-rad fortsatt
+      // ser aktiv ut (f.eks. fordi archive-member Edge Function ikke har kjort enda).
+      const identityEmail = base.email.trim().toLowerCase();
+      const isTombstoned = identityEmail.includes("@") && archiveTombstones.has(identityEmail);
       merged.push({
         ...base,
         name: pickLatestNonEmpty(names) || base.name,
@@ -1055,11 +1071,11 @@ function pickFirstName(value: unknown): string {
         injuries: pickLatestNonEmpty(injuries) || base.injuries,
         personalGoals: pickBestPersonalGoals(personalGoalsList) || base.personalGoals,
         invitedAt: pickLatestNonEmpty(group.map((member) => member.invitedAt)) || base.invitedAt,
-        isActive: group.some((member) => member.isActive !== false),
+        isActive: !isTombstoned && group.some((member) => member.isActive !== false),
       });
     }
     return merged;
-  }, [members, currentTrainerOwnerUserId, logs]);
+  }, [members, currentTrainerOwnerUserId, logs, archiveTombstones]);
   const activeMembers = useMemo(
     () => deduplicatedMembers.filter((member) => member.isActive !== false),
     [deduplicatedMembers]
@@ -2517,13 +2533,15 @@ function pickFirstName(value: unknown): string {
 
   function handleDeactivateMember(memberId: string) {
     const member = members.find((entry) => entry.id === memberId);
+    const displayName = member?.name?.trim() || "kunden";
     setConfirmDialog({
       title: "Arkiver kunde",
-      message: `Arkivere ${member?.name?.trim() || "kunden"}? Kunden mister tilgang til appen og skjules fra listen, men økter, programmer og meldinger beholdes. Du kan finne vedkommende igjen under «Vis inaktive» eller trykke «Aktiver kunde igjen» på kundekortet.`,
+      message: `Arkivere ${displayName}? Kunden mister tilgang til appen og skjules fra listen, men økter, programmer og meldinger beholdes. Du kan finne vedkommende igjen under «Vis inaktive» eller trykke «Aktiver kunde igjen» på kundekortet.`,
       confirmLabel: "Arkiver",
       tone: "danger",
       onConfirm: () => {
         deactivateMember(memberId);
+        setMemberEditStatus(`${displayName} arkivert. Du finner vedkommende igjen under «Vis inaktive».`);
       },
     });
   }
