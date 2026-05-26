@@ -102,6 +102,7 @@ export function getXpLevelLabel(level: number): string {
 export function computeMomentumScore(input: {
   completedLogDates: Date[];
   nowDate: Date;
+  /** @deprecated Ikke lenger brukt som target — beholdes for bakoverkompatibilitet. */
   plannedThisWeek?: number;
   /** @deprecated Ikke brukt — flyt regnes nå på rullende siste 7 dager. */
   completedThisWeek?: number;
@@ -119,10 +120,11 @@ export function computeMomentumScore(input: {
   const last7Sessions = countWorkoutsBetween(input.completedLogDates, last7Start, todayExclusive);
   const prev7Sessions = countWorkoutsBetween(input.completedLogDates, prev7Start, last7Start);
 
-  const target =
-    input.plannedThisWeek && input.plannedThisWeek > 0
-      ? input.plannedThisWeek
-      : Math.max(1, Number(input.sessionsPerWeekTarget) || 2);
+  // Bruk profilens ukestarget som nevner — det er stabilt på tvers av enheter.
+  // Vi unngår å bruke `plannedThisWeek` (fra periodeplan) fordi den kan variere
+  // mellom enheter avhengig av hydration-rekkefølge fra Supabase, og gir derfor
+  // forskjellig flyt-prosent på samme medlem.
+  const target = Math.max(1, Number(input.sessionsPerWeekTarget) || 3);
 
   const pct = Math.min(100, Math.round((last7Sessions / target) * 100));
 
