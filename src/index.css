@@ -11344,25 +11344,19 @@ button.motus-progress-status-banner {
   gap: 6px;
   padding: 6px 12px;
   border-radius: 9999px;
-  color: #0f172a;
+  color: #ffffff;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  background: #30e3be;
-  box-shadow: 0 8px 20px -8px rgba(48, 227, 190, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  background: linear-gradient(135deg, #30e3be 0%, #0d9488 100%);
+  box-shadow: 0 8px 20px -8px rgba(13, 148, 136, 0.55);
+  text-shadow: 0 1px 1px rgba(15, 23, 42, 0.2);
 }
 
 .motus-inspo-hero-badge--pink {
-  color: #ffffff;
-  background: #d91278;
-  box-shadow: 0 8px 20px -8px rgba(217, 18, 120, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.32);
-}
-
-.motus-inspo-hero-badge--gradient {
-  color: #0f172a;
-  background: linear-gradient(90deg, #30e3be 0%, #d91278 100%);
-  box-shadow: 0 8px 22px -8px rgba(217, 18, 120, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  background: linear-gradient(135deg, #f472b6 0%, #d91278 100%);
+  box-shadow: 0 8px 20px -8px rgba(217, 18, 120, 0.55);
 }
 
 .motus-inspo-hero-content {
@@ -11441,16 +11435,11 @@ button.motus-progress-status-banner {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 9px;
-  background: linear-gradient(135deg, #30e3be 0%, #d91278 140%);
-  color: #ffffff;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
-}
-
-.motus-inspo-hero-stat:nth-child(2) .motus-inspo-hero-stat-icon {
-  background: linear-gradient(135deg, #d91278 0%, #30e3be 160%);
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: rgba(48, 227, 190, 0.18);
+  color: #0d9488;
 }
 
 .motus-inspo-hero-stat-text {
@@ -11476,7 +11465,7 @@ button.motus-progress-status-banner {
   align-items: center;
   gap: 6px;
   margin-top: 6px;
-  background: linear-gradient(135deg, #d91278 0%, #ff5fa6 100%);
+  background: #0f172a;
   color: #ffffff;
   font-size: 13px;
   font-weight: 700;
@@ -11484,13 +11473,12 @@ button.motus-progress-status-banner {
   border-radius: 9999px;
   border: none;
   cursor: pointer;
-  box-shadow: 0 8px 20px rgba(217, 18, 120, 0.28), inset 0 0 0 1px rgba(255, 255, 255, 0.22);
-  transition: transform 120ms ease, box-shadow 120ms ease;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+  transition: transform 120ms ease;
 }
 
 .motus-inspo-hero-cta:hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(217, 18, 120, 0.34), inset 0 0 0 1px rgba(255, 255, 255, 0.32);
 }
 
 /* PT-only controls floating above the hero media. */
@@ -11893,37 +11881,29 @@ button.motus-progress-status-banner {
   white-space: nowrap;
 }
 
-.motus-inspo-quick-pill--mint .motus-inspo-quick-pill-icon {
-  background: linear-gradient(135deg, #30e3be 0%, #6ff0d4 100%);
-  color: #053b32;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+.motus-inspo-quick-pill--teal .motus-inspo-quick-pill-icon {
+  background: rgba(48, 227, 190, 0.18);
+  color: #0f766e;
 }
 
 .motus-inspo-quick-pill--pink .motus-inspo-quick-pill-icon {
-  background: linear-gradient(135deg, #d91278 0%, #ff5fa6 100%);
-  color: #ffffff;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
-}
-
-.motus-inspo-quick-pill--mintSoft .motus-inspo-quick-pill-icon {
-  background: rgba(48, 227, 190, 0.18);
-  color: #0b5c4d;
-}
-
-.motus-inspo-quick-pill--pinkSoft .motus-inspo-quick-pill-icon {
   background: rgba(217, 18, 120, 0.14);
-  color: #9f0d56;
+  color: #be185d;
+}
+
+.motus-inspo-quick-pill--lime .motus-inspo-quick-pill-icon {
+  background: rgba(132, 204, 22, 0.18);
+  color: #4d7c0f;
+}
+
+.motus-inspo-quick-pill--violet .motus-inspo-quick-pill-icon {
+  background: rgba(139, 92, 246, 0.18);
+  color: #6d28d9;
 }
 
 .motus-inspo-quick-pill--all .motus-inspo-quick-pill-icon {
   background: rgba(15, 23, 42, 0.06);
   color: rgba(15, 23, 42, 0.7);
-}
-
-.motus-inspo-quick-pill.is-active,
-.motus-inspo-quick-pill:focus-visible {
-  border-color: rgba(48, 227, 190, 0.6);
-  box-shadow: 0 0 0 3px rgba(48, 227, 190, 0.22);
 }
 
 .motus-inspo-section {
@@ -11954,7 +11934,7 @@ button.motus-progress-status-banner {
   gap: 4px;
   font-size: 12px;
   font-weight: 700;
-  color: #d91278;
+  color: #0f766e;
   background: transparent;
   border: none;
   padding: 4px 6px;
@@ -11964,7 +11944,7 @@ button.motus-progress-status-banner {
 }
 
 .motus-inspo-section-link:hover {
-  background: rgba(217, 18, 120, 0.1);
+  background: rgba(48, 227, 190, 0.12);
 }
 
 .motus-inspo-section-scroll {
@@ -12066,22 +12046,6 @@ button.motus-progress-status-banner {
   color: #0f172a;
 }
 
-.motus-inspo-news-card--dark {
-  color: #f8fafc;
-}
-
-.motus-inspo-news-card--dark .motus-inspo-news-title {
-  color: #ffffff;
-}
-
-.motus-inspo-news-card--dark .motus-inspo-news-desc {
-  color: rgba(255, 255, 255, 0.78);
-}
-
-.motus-inspo-news-card--dark .motus-inspo-news-link {
-  color: #30e3be;
-}
-
 @media (min-width: 480px) {
   .motus-inspo-news-card {
     padding: 12px 12px;
@@ -12150,53 +12114,24 @@ button.motus-progress-status-banner {
 .motus-inspo-quote {
   position: relative;
   border-radius: 18px;
-  padding: 18px 20px;
-  background: #0f172a;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, #0f172a 0%, #134e4a 80%, #047857 110%);
   color: #ffffff;
   display: flex;
   align-items: center;
   gap: 12px;
   overflow: hidden;
-  isolation: isolate;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22);
-}
-
-.motus-inspo-quote::before {
-  content: "";
-  position: absolute;
-  inset: -20% -10% auto auto;
-  width: 60%;
-  aspect-ratio: 1;
-  background: radial-gradient(circle, rgba(48, 227, 190, 0.55) 0%, rgba(48, 227, 190, 0) 70%);
-  filter: blur(8px);
-  z-index: 0;
-  pointer-events: none;
-}
-
-.motus-inspo-quote::after {
-  content: "";
-  position: absolute;
-  inset: auto auto -30% -10%;
-  width: 55%;
-  aspect-ratio: 1;
-  background: radial-gradient(circle, rgba(217, 18, 120, 0.45) 0%, rgba(217, 18, 120, 0) 70%);
-  filter: blur(8px);
-  z-index: 0;
-  pointer-events: none;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
 }
 
 .motus-inspo-quote-mark {
-  position: relative;
-  z-index: 1;
   width: 28px;
   height: 28px;
-  color: #30e3be;
+  color: rgba(48, 227, 190, 0.9);
   flex-shrink: 0;
 }
 
 .motus-inspo-quote-body {
-  position: relative;
-  z-index: 1;
   flex: 1;
   min-width: 0;
 }
@@ -12215,11 +12150,8 @@ button.motus-progress-status-banner {
 }
 
 .motus-inspo-quote-flame {
-  position: relative;
-  z-index: 1;
   width: 22px;
   height: 22px;
-  color: #ff5fa6;
+  color: #ffb6df;
   flex-shrink: 0;
-  filter: drop-shadow(0 0 6px rgba(217, 18, 120, 0.55));
 }

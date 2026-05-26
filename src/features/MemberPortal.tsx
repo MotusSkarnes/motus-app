@@ -3518,9 +3518,10 @@ export function MemberPortal(props: MemberPortalProps) {
     const scrollTargetId = `member-workout-log-${memberFocusWorkoutLogId}`;
     const frame = window.requestAnimationFrame(() => {
       document.getElementById(scrollTargetId)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      clearMemberFocusWorkoutLogId?.();
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [memberFocusWorkoutLogId, completedLogs, memberTab, setMemberTab]);
+  }, [memberFocusWorkoutLogId, completedLogs, memberTab, setMemberTab, clearMemberFocusWorkoutLogId]);
 
   useEffect(() => {
     if (!memberFocusProgramId) return;
@@ -3539,6 +3540,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const scrollTargetId = `member-program-${program.id}`;
     const frame = window.requestAnimationFrame(() => {
       document.getElementById(scrollTargetId)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      clearMemberFocusProgramId?.();
     });
     return () => window.cancelAnimationFrame(frame);
   }, [

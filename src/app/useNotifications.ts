@@ -1162,6 +1162,10 @@ export function useNotifications({
     trainerNotificationsBaselineAt,
   ]);
 
+  const clearMemberFocusInspirationItemId = useCallback(() => setMemberFocusInspirationItemId(null), []);
+  const clearMemberFocusWorkoutLogId = useCallback(() => setMemberFocusWorkoutLogId(null), []);
+  const clearMemberFocusProgramId = useCallback(() => setMemberFocusProgramId(null), []);
+
   return {
     trainerNotificationsOpen,
     setTrainerNotificationsOpen,
@@ -1176,11 +1180,11 @@ export function useNotifications({
     openAlert,
     markMemberInspirationAsSeen,
     memberFocusInspirationItemId,
-    clearMemberFocusInspirationItemId: () => setMemberFocusInspirationItemId(null),
+    clearMemberFocusInspirationItemId,
     memberFocusWorkoutLogId,
-    clearMemberFocusWorkoutLogId: () => setMemberFocusWorkoutLogId(null),
+    clearMemberFocusWorkoutLogId,
     memberFocusProgramId,
-    clearMemberFocusProgramId: () => setMemberFocusProgramId(null),
+    clearMemberFocusProgramId,
     memberCheckInOverlayOpen,
     setMemberCheckInOverlayOpen,
   };
