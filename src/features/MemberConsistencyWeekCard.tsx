@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Check } from "lucide-react";
+import { parseStoredLogDate } from "../app/dateFormat";
 import type { WorkoutLog } from "../app/types";
 
 type MemberConsistencyWeekCardProps = {
@@ -24,19 +25,12 @@ function isSameLocalDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-function parseLogDate(raw: string): Date | null {
-  if (!raw) return null;
-  const parsed = new Date(raw);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed;
-}
-
 export function MemberConsistencyWeekCard({ completedLogs, nowTimestamp, onSeeHistory }: MemberConsistencyWeekCardProps) {
   const weekDays = useMemo(() => {
     const monday = startOfIsoWeek(nowTimestamp);
     const trainedLogDates = completedLogs
       .filter((log) => log.status === "Fullført")
-      .map((log) => parseLogDate(log.date))
+      .map((log) => parseStoredLogDate(log.date))
       .filter((date): date is Date => date !== null);
 
     return Array.from({ length: 7 }, (_, index) => {
