@@ -333,7 +333,7 @@ export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks, x
   const nextLevelLabel = getXpLevelLabel(nextLevel);
 
   const flowEmoji = momentum.pct >= 80 ? "🚀" : momentum.pct >= 60 ? "💪" : momentum.pct >= 30 ? "🔥" : "✨";
-  const flowLine = momentum.pct >= 60 ? "Du er i flyt!" : momentum.pct >= 30 ? "Du bygger flyt." : "Start dagens økt.";
+  const flowLine = momentum.pct >= 60 ? "Du er i flyt!" : momentum.pct >= 30 ? "Du bygger rutiner." : "Start dagens økt.";
 
   const milestoneRef = useRef<{ level: number; momentum: number }>({ level: xp.level, momentum: momentum.pct });
   const [confettiActive, setConfettiActive] = useState(false);
