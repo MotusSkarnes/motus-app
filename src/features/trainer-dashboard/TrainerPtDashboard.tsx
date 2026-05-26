@@ -1,20 +1,17 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import {
   Activity,
-  AlertTriangle,
   BarChart3,
   ChevronRight,
   ClipboardList,
   Dumbbell,
   Filter,
-  Flame,
   IdCard,
   MessageSquare,
   MoreHorizontal,
   Pin,
   Plus,
   Search,
-  Sparkles,
   TrendingUp,
 } from "lucide-react";
 import { MOTUS } from "../../app/data";
@@ -69,9 +66,6 @@ export type TrainerPtDashboardProps = {
   onTodoDraftChange: (value: string) => void;
   onAddTodo: () => void;
   onToggleTodo: (id: string) => void;
-  insightTitle: string;
-  insightDetail: string;
-  coachScore?: number;
   latestNote?: { title: string; preview: string } | null;
   onOpenNote?: () => void;
   aggregateOverview?: ReactNode;
@@ -120,14 +114,6 @@ function MiniRing({ pct, label }: { pct: number; label: string }) {
   );
 }
 
-type CoachAiSuggestion = {
-  id: string;
-  title: string;
-  detail: string;
-  actionLabel: string;
-  onAction?: () => void;
-};
-
 const LIST_TABS: Array<{ id: TrainerListFilterTab; label: string }> = [
   { id: "all", label: "Alle" },
   { id: "active", label: "Aktive" },
@@ -170,88 +156,12 @@ export function TrainerPtDashboard({
   onTodoDraftChange,
   onAddTodo,
   onToggleTodo,
-  insightTitle,
-  insightDetail,
-  coachScore = 9.2,
   latestNote,
   onOpenNote,
   aggregateOverview,
 }: TrainerPtDashboardProps) {
   const openTodos = todos.filter((todo) => !todo.done);
   const showOverviewPanels = !showCustomerChrome || customerSubTab === "overview";
-  const [showCoachSuggestions, setShowCoachSuggestions] = useState(false);
-  const coachSuggestions = useMemo<CoachAiSuggestion[]>(() => {
-    const suggestions: CoachAiSuggestion[] = [];
-    const highPriority = followUpItems.find((item) => item.priority === "high") ?? followUpItems[0];
-
-    if (highPriority) {
-      suggestions.push({
-        id: `followup-${highPriority.id}`,
-        title: highPriority.title,
-        detail: "Dette er det viktigste oppfølgingspunktet akkurat nå.",
-        actionLabel: onNewTask ? "Lag oppgave" : "Åpne notater",
-        onAction: onNewTask ?? onOpenNote,
-      });
-    }
-
-    if (metrics?.programStatusTone === "pink") {
-      suggestions.push({
-        id: "missing-program",
-        title: "Send treningsprogram",
-        detail: "Kunden mangler aktivt program. Lag et konkret neste steg før neste økt.",
-        actionLabel: onNewTask ? "Legg som oppgave" : "Åpne notater",
-        onAction: onNewTask ?? onOpenNote,
-      });
-    }
-
-    if (metrics && metrics.trainingDays === 0) {
-      suggestions.push({
-        id: "first-session",
-        title: "Få kunden i gang",
-        detail: "Ingen treningsdager er registrert siste fire uker. Send en lavterskel innsjekk.",
-        actionLabel: onMessage ? "Send melding" : "Lag oppgave",
-        onAction: onMessage ?? onNewTask,
-      });
-    } else if (metrics && metrics.activityScore <= 3) {
-      suggestions.push({
-        id: "low-activity",
-        title: "Sjekk aktivitetsfallet",
-        detail: "Aktivitetsnivået er lavt. Spør hva som stopper treningen og juster planen.",
-        actionLabel: onMessage ? "Send melding" : "Lag oppgave",
-        onAction: onMessage ?? onNewTask,
-      });
-    } else if (metrics && metrics.completionPct >= 80) {
-      suggestions.push({
-        id: "strong-momentum",
-        title: "Forsterk momentum",
-        detail: "Kunden fullfører mye. Send en kort anerkjennelse eller planlegg neste progresjon.",
-        actionLabel: onMessage ? "Send ros" : "Lag oppgave",
-        onAction: onMessage ?? onNewTask,
-      });
-    }
-
-    if (metrics && metrics.responseRatePct < 60) {
-      suggestions.push({
-        id: "response-rate",
-        title: "Kortere oppfølging",
-        detail: "Responsraten er lav. Bruk én tydelig melding med ett spørsmål.",
-        actionLabel: onMessage ? "Skriv melding" : "Lag oppgave",
-        onAction: onMessage ?? onNewTask,
-      });
-    }
-
-    if (!suggestions.length) {
-      suggestions.push({
-        id: "steady",
-        title: "Hold rytmen",
-        detail: "Alt ser stabilt ut. Planlegg neste lille progresjon eller send en kort check-in.",
-        actionLabel: onMessage ? "Send check-in" : "Lag oppgave",
-        onAction: onMessage ?? onNewTask,
-      });
-    }
-
-    return suggestions.slice(0, 3);
-  }, [followUpItems, metrics, onMessage, onNewTask, onOpenNote]);
 
   return (
     <div className="motus-pt-dash">
@@ -523,57 +433,6 @@ export function TrainerPtDashboard({
                       </li>
                     ))}
                     {!openTodos.length ? <li className="motus-pt-dash-empty text-sm">Ingen åpne oppgaver i dag.</li> : null}
-                  </ul>
-                </section>
-
-                <section className="motus-pt-dash-panel motus-pt-dash-coach-ai">
-                  <div className="flex items-center justify-between gap-2">
-                    <h2 className="motus-pt-dash-panel-title flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-[#D91278]" />
-                      Coach AI
-                    </h2>
-                    <span className="motus-pt-dash-coach-score">{coachScore.toFixed(1)}</span>
-                  </div>
-                  <ul className="mt-3 space-y-3">
-                    <li className="motus-pt-dash-ai-item">
-                      <AlertTriangle className="h-4 w-4 shrink-0 text-[#D91278]" />
-                      <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-slate-900">{insightTitle}</div>
-                        <p className="mt-0.5 text-xs text-slate-500">{insightDetail}</p>
-                        <button
-                          type="button"
-                          className="motus-pt-dash-link-btn mt-1"
-                          onClick={() => setShowCoachSuggestions((value) => !value)}
-                          aria-expanded={showCoachSuggestions}
-                        >
-                          {showCoachSuggestions ? "Skjul forslag" : "Vis forslag"} <ChevronRight className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </li>
-                    {showCoachSuggestions ? (
-                      <li className="rounded-xl bg-white/80 p-2">
-                        <div className="space-y-2">
-                          {coachSuggestions.map((suggestion) => (
-                            <div key={suggestion.id} className="rounded-lg border border-slate-100 bg-white px-3 py-2 shadow-sm">
-                              <div className="text-xs font-bold text-slate-900">{suggestion.title}</div>
-                              <p className="mt-0.5 text-xs leading-snug text-slate-500">{suggestion.detail}</p>
-                              {suggestion.onAction ? (
-                                <button type="button" className="motus-pt-dash-link-btn mt-1.5" onClick={suggestion.onAction}>
-                                  {suggestion.actionLabel} <ChevronRight className="h-3 w-3" />
-                                </button>
-                              ) : null}
-                            </div>
-                          ))}
-                        </div>
-                      </li>
-                    ) : null}
-                    <li className="motus-pt-dash-ai-item">
-                      <Flame className="h-4 w-4 shrink-0 text-[#30E3BE]" />
-                      <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-slate-900">Sterk progresjon</div>
-                        <p className="mt-0.5 text-xs text-slate-500">Kunden holder momentum denne uken.</p>
-                      </div>
-                    </li>
                   </ul>
                 </section>
 

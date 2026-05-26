@@ -4647,10 +4647,6 @@ button.motus-progress-status-banner {
   gap: 0.75rem;
 }
 
-.motus-pt-dash-secondary-row .motus-pt-dash-coach-ai {
-  background: linear-gradient(180deg, rgba(217, 18, 120, 0.06) 0%, #ffffff 40%);
-}
-
 .motus-pt-dash-panel {
   border-radius: 1rem;
   border: 1px solid rgba(15, 23, 42, 0.06);
@@ -4808,32 +4804,6 @@ button.motus-progress-status-banner {
 .motus-pt-dash-todo-check--done {
   border-color: #30e3be;
   background: #30e3be;
-}
-
-.motus-pt-dash-coach-ai {
-  background: linear-gradient(145deg, #ffe6f1 0%, #ffffff 55%);
-  box-shadow: 0 8px 28px rgba(217, 18, 120, 0.1);
-}
-
-.motus-pt-dash-coach-score {
-  display: inline-flex;
-  height: 2rem;
-  width: 2rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9999px;
-  background: linear-gradient(135deg, #30e3be, #d91278);
-  font-size: 0.6875rem;
-  font-weight: 800;
-  color: #ffffff;
-}
-
-.motus-pt-dash-ai-item {
-  display: flex;
-  gap: 0.625rem;
-  border-radius: 0.875rem;
-  background: rgba(255, 255, 255, 0.75);
-  padding: 0.625rem;
 }
 
 .motus-pt-dash-note-preview {

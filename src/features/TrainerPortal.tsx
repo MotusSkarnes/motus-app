@@ -80,7 +80,6 @@ import type { ChatReactionActor, ChatReactionEmoji } from "../app/chatReactions"
 import { MotusChat, type MotusChatQuickAction } from "./MotusChat";
 import {
   buildTrainerFocusItems,
-  buildTrainerInsightText,
   buildTrainerTodayFeed,
   countInactiveLastWeek,
 } from "../app/trainerDashboardFeed";
@@ -3993,10 +3992,6 @@ function pickFirstName(value: unknown): string {
       ),
     [inspirationItemsForHome],
   );
-  const trainerOpsHealthPct = Math.max(
-    12,
-    Math.min(100, 100 - followUpCount * 14 - membersWithoutProgramCount * 10 - dashboardSummary.newMessages24h * 4),
-  );
   const trainerDashboardHeadline =
     followUpCount > 0 || dashboardSummary.newMessages24h > 0 ? "Du har ting å følge opp" : "Alt ser bra ut";
   const trainerDashboardSubline =
@@ -4108,10 +4103,6 @@ function pickFirstName(value: unknown): string {
       }),
     [activeMembers, members, logs, programs, exercises, exercisePopularityScores, statsPeriodPreset],
   );
-  const trainerInsight = useMemo(() => {
-    const atRisk = membersWithPriority.filter((item) => item.priority.tone === "red").length;
-    return buildTrainerInsightText(atRisk, followUpCount);
-  }, [membersWithPriority, followUpCount]);
   const trainerTodosForHome = useMemo(
     (): TrainerTodoModel[] =>
       todoItemsForToday.map((todo) => ({
@@ -4590,9 +4581,6 @@ function pickFirstName(value: unknown): string {
           onTodoDraftChange={setTodoTitle}
           onAddTodo={() => addTodoItem(todayIso)}
           onToggleTodo={toggleTodoDone}
-          insightTitle={trainerInsight.title}
-          insightDetail={trainerInsight.detail}
-          coachScore={Math.min(10, Math.max(6, trainerOpsHealthPct / 10))}
           latestNote={selectedLatestNote}
           onOpenNote={() => setCustomerSubTab("overview")}
           aggregateOverview={
