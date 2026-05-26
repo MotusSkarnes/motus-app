@@ -1,3 +1,5 @@
+import type { Member } from "./types";
+
 /**
  * Lokal "tombstone" for arkiverte medlemmer. Trener-arkivering oppdaterer lokal state
  * umiddelbart, men hvis Edge Function `archive-member` ikke kjorer eller hydration
@@ -53,6 +55,23 @@ export function hasArchiveTombstone(email: string | null | undefined): boolean {
   const normalized = normalizeEmail(email);
   if (!normalized.includes("@")) return false;
   return readSet().has(normalized);
+}
+
+export function emailHasArchiveTombstone(
+  email: string | null | undefined,
+  tombstones: ReadonlySet<string>,
+): boolean {
+  const normalized = normalizeEmail(email);
+  return normalized.includes("@") && tombstones.has(normalized);
+}
+
+export function applyArchiveTombstonesToMembers(
+  members: Member[],
+  tombstones: ReadonlySet<string>,
+): Member[] {
+  return members.map((member) =>
+    emailHasArchiveTombstone(member.email, tombstones) ? { ...member, isActive: false } : member,
+  );
 }
 
 export function addArchiveTombstone(email: string | null | undefined): void {

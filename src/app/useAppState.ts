@@ -60,6 +60,7 @@ import { memberMayDeleteProgram, mergeProgramAuthorFields } from "./programAutho
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import {
   checkMemberAccessBlocked,
+  archiveMemberByEmailFromSupabase,
   createTrainerMemberViaEdgeFunction,
   deleteProgramRemote,
   fetchExercisesFromSupabase,
@@ -1909,7 +1910,14 @@ export function useAppState() {
     return result;
   }
 
-  function deactivateMember(memberId: string) {
+  async function deactivateMember(memberId: string): Promise<{ ok: boolean; message: string }> {
+    const target = appState.members.find((member) => member.id === memberId);
+    const emailKey = target?.email.trim().toLowerCase() ?? "";
+    if (isSupabaseConfigured) {
+      const result = await archiveMemberByEmailFromSupabase(emailKey, memberId);
+      if (!result.ok) return result;
+    }
+
     setAppState((prev) => {
       // Skriv lokal tombstone for e-posten (inkl. ev. dubletter med samme e-post)
       // slik at arkivet ikke kan bli "trollet tilbake" av en senere merge fra sky.
@@ -1920,6 +1928,7 @@ export function useAppState() {
       }
       return repository.deactivateMember(prev, memberId);
     });
+    return { ok: true, message: "Klient arkivert." };
   }
 
   function deleteMember(memberId: string) {

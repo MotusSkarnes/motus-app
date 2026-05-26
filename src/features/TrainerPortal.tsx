@@ -13,6 +13,8 @@ import { CalendarRange, ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, Ey
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, periodPlanStartDateForDateInput } from "../app/dateFormat";
 import {
+  applyArchiveTombstonesToMembers,
+  emailHasArchiveTombstone,
   getArchiveTombstones,
   MEMBER_ARCHIVE_TOMBSTONE_EVENT,
 } from "../app/memberArchiveTombstone";
@@ -244,7 +246,7 @@ type TrainerPortalProps = {
   setTrainerTab: (tab: TrainerTab) => void;
   onSwitchToMemberView?: () => void;
   addMember: (input: CreateMemberInput) => Promise<CreateMemberResult>;
-  deactivateMember: (memberId: string) => void;
+  deactivateMember: (memberId: string) => void | Promise<{ ok: boolean; message: string }>;
   deleteMember: (memberId: string) => void;
   updateMember: (input: UpdateMemberInput) => void;
   markMemberInvited: (memberId: string, invitedAtIso?: string) => void;
@@ -1084,7 +1086,9 @@ function pickFirstName(value: unknown): string {
     const trainerId = currentTrainerOwnerUserId.trim();
     const activeIdentityKeys = new Set(
       members
-        .filter((member) => member.isActive !== false)
+        .filter((member) => {
+          return member.isActive !== false && !emailHasArchiveTombstone(member.email, archiveTombstones);
+        })
         .map((member) => getMemberIdentityKey(member)),
     );
     const byIdentity = new Map<string, Member>();
@@ -1110,7 +1114,11 @@ function pickFirstName(value: unknown): string {
       }
     });
     return Array.from(byIdentity.values()).sort((a, b) => a.name.localeCompare(b.name, "no"));
-  }, [members, currentTrainerOwnerUserId]);
+  }, [members, currentTrainerOwnerUserId, archiveTombstones]);
+  const periodPlanCalendarMembers = useMemo(
+    () => applyArchiveTombstonesToMembers(members, archiveTombstones),
+    [members, archiveTombstones],
+  );
   const visibleMembers = showInactiveMembers
     ? deduplicatedMembers
     : activeMembers;
@@ -2540,8 +2548,15 @@ function pickFirstName(value: unknown): string {
       confirmLabel: "Arkiver",
       tone: "danger",
       onConfirm: () => {
-        deactivateMember(memberId);
-        setMemberEditStatus(`${displayName} arkivert. Du finner vedkommende igjen under «Vis inaktive».`);
+        void (async () => {
+          setMemberEditStatus(`Arkiverer ${displayName}...`);
+          const result = await deactivateMember(memberId);
+          if (result && !result.ok) {
+            setMemberEditStatus(result.message || "Kunne ikke arkivere kunden. Prøv igjen.");
+            return;
+          }
+          setMemberEditStatus(`${displayName} arkivert. Du finner vedkommende igjen under «Vis inaktive».`);
+        })();
       },
     });
   }
@@ -6433,7 +6448,7 @@ function pickFirstName(value: unknown): string {
 
       {trainerTab === "calendar" ? (
         <TrainerPeriodPlanCalendar
-          members={members}
+          members={periodPlanCalendarMembers}
           periodPlansByMemberId={periodPlansByMemberId}
           logs={logs}
           onOpenClient={(memberId) => {
