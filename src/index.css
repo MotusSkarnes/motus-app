@@ -6230,7 +6230,8 @@ button.motus-progress-status-banner {
 }
 
 .motus-training-stat-icon--teal {
-  background: linear-gradient(135deg, #2dd4bf, #0d9488);
+  background: linear-gradient(135deg, #6cf0d6 0%, #30E3BE 100%);
+  box-shadow: 0 6px 16px -6px rgba(48, 227, 190, 0.55);
 }
 
 .motus-training-stat-icon--pink {

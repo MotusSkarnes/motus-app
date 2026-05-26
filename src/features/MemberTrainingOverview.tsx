@@ -31,9 +31,15 @@ export type TrainingProgramPreview = {
   title: string;
   imageSrc: string | null;
   metaLabel: string;
-  progressPct: number;
+  completedCount: number;
   onOpen: () => void;
 };
+
+function completedTimesLabel(count: number): string {
+  if (count <= 0) return "Ikke fullført ennå";
+  if (count === 1) return "1 gang fullført";
+  return `${count} ganger fullført`;
+}
 
 type MemberTrainingOverviewProps = {
   title: string;
@@ -209,21 +215,21 @@ export function MemberTrainingOverview({
 
       <section className="motus-training-stat-grid" aria-label="Ukeoversikt">
         <div className="motus-training-stat-card">
-          <span className="motus-training-stat-icon motus-training-stat-icon--teal">
+          <span className="motus-training-stat-icon motus-training-stat-icon--pink">
             <Flame className="h-4 w-4" aria-hidden />
           </span>
           <span className="motus-training-stat-value">{completedSessions}</span>
           <span className="motus-training-stat-label">Økter</span>
         </div>
         <div className="motus-training-stat-card">
-          <span className="motus-training-stat-icon motus-training-stat-icon--pink">
+          <span className="motus-training-stat-icon motus-training-stat-icon--teal">
             <Zap className="h-4 w-4" aria-hidden />
           </span>
           <span className="motus-training-stat-value">{momentumPct}%</span>
           <span className="motus-training-stat-label">Flyt</span>
         </div>
         <div className="motus-training-stat-card">
-          <span className="motus-training-stat-icon motus-training-stat-icon--streak">
+          <span className="motus-training-stat-icon motus-training-stat-icon--pink">
             <Flame className="h-4 w-4" strokeWidth={2.25} aria-hidden />
           </span>
           <span className="motus-training-stat-value">{streakLabel(streakWeeks)}</span>
@@ -284,12 +290,7 @@ export function MemberTrainingOverview({
                 <div className="motus-training-program-content">
                   <div className="motus-training-program-title">{program.title}</div>
                   <div className="motus-training-program-meta">{program.metaLabel}</div>
-                  <div className="motus-progress-track motus-training-program-progress">
-                    <div
-                      className="motus-progress-fill"
-                      style={{ width: `${program.progressPct}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise}, ${MOTUS.pink})` }}
-                    />
-                  </div>
+                  <div className="motus-training-program-meta">{completedTimesLabel(program.completedCount)}</div>
                 </div>
               </button>
             ))}

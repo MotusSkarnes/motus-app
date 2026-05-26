@@ -48,6 +48,7 @@ import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import {
   enrichMemberWithBestProfile,
   hasSubstantiveOnboardingAnswers,
+  isMemberOnboardingSubmitted,
   parsePersonalGoalsJson,
   pickCanonicalMemberRowForProfile,
   readProfileExtensions,
@@ -852,6 +853,17 @@ function getPeriodPlanDismissedStorageKey(memberId: string): string {
   return `${PERIOD_PLAN_DISMISSED_STORAGE_PREFIX}${memberId}`;
 }
 
+function weekdayKeyForDate(date: Date): WeekdayPlanKey {
+  const day = date.getDay();
+  if (day === 0) return "sunday";
+  if (day === 1) return "monday";
+  if (day === 2) return "tuesday";
+  if (day === 3) return "wednesday";
+  if (day === 4) return "thursday";
+  if (day === 5) return "friday";
+  return "saturday";
+}
+
 function isPeriodPlanWorkoutLog(log: WorkoutLog): boolean {
   const note = log.note?.trim().toLowerCase() ?? "";
   return note.includes("periodeplan");
@@ -1199,6 +1211,10 @@ export function MemberPortal(props: MemberPortalProps) {
     currentUserRole === "member"
       ? currentMemberByEmail ?? viewedMember ?? null
       : viewedMember ?? members[0] ?? null;
+  const onboardingCompleteForHome = useMemo(
+    () => onboardingSubstantivelyComplete || isMemberOnboardingSubmitted(editableMember, members),
+    [editableMember, members, onboardingSubstantivelyComplete],
+  );
   if (editableMember?.id !== periodPlanSwapsOwnerId) {
     setPeriodPlanSwapsOwnerId(editableMember?.id ?? null);
     setPeriodPlanSwapsByPlan(
@@ -1804,14 +1820,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const intervalTimerProgressPercent =
     intervalTimerTotalSeconds > 0 ? Math.min(100, Math.round((intervalTimerElapsedSeconds / intervalTimerTotalSeconds) * 100)) : 0;
   const currentWeekdayKey: WeekdayPlanKey = useMemo(() => {
-    const day = new Date(nowTimestamp).getDay();
-    if (day === 0) return "sunday";
-    if (day === 1) return "monday";
-    if (day === 2) return "tuesday";
-    if (day === 3) return "wednesday";
-    if (day === 4) return "thursday";
-    if (day === 5) return "friday";
-    return "saturday";
+    return weekdayKeyForDate(new Date(nowTimestamp));
   }, [nowTimestamp]);
   const activePeriodPlan =
     visiblePeriodPlans.find((plan) => plan.id === effectiveActiveMemberPeriodPlanId) ?? visiblePeriodPlans[0] ?? null;
@@ -2302,7 +2311,8 @@ export function MemberPortal(props: MemberPortalProps) {
     calendarPlannedEntriesByDay.forEach((_entries, day) => {
       const candidateDate = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day);
       const hasCompleted = calendarDayLoad.has(day);
-      if (hasCompleted) {
+      const isFutureDate = candidateDate.getTime() > todayStart.getTime();
+      if (hasCompleted && !isFutureDate) {
         statusByDay.set(day, "completed");
         return;
       }
@@ -2311,6 +2321,7 @@ export function MemberPortal(props: MemberPortalProps) {
         : null;
       if (
         plannedMatch?.entry.trim() &&
+        !isFutureDate &&
         isPeriodPlanDayComplete({
           planId: activePeriodPlan!.id,
           weekNumber: plannedMatch.weekNumber,
@@ -2332,7 +2343,10 @@ export function MemberPortal(props: MemberPortalProps) {
       }
     });
     calendarDayLoad.forEach((_count, day) => {
-      statusByDay.set(day, "completed");
+      const candidateDate = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day);
+      if (candidateDate.getTime() <= todayStart.getTime()) {
+        statusByDay.set(day, "completed");
+      }
     });
     return statusByDay;
   }, [
@@ -2368,8 +2382,9 @@ export function MemberPortal(props: MemberPortalProps) {
         : null;
       const plannedEntry = plannedMatch?.entry.trim() ?? "";
       const logs = calendarLogsByDateKey.get(dateKey) ?? [];
+      const isFutureDate = date.getTime() > todayStart.getTime();
       const periodCompleted =
-        plannedMatch?.entry.trim() && activePeriodPlan
+        plannedMatch?.entry.trim() && activePeriodPlan && !isFutureDate
           ? isPeriodPlanDayComplete({
               planId: activePeriodPlan.id,
               weekNumber: plannedMatch.weekNumber,
@@ -2382,7 +2397,7 @@ export function MemberPortal(props: MemberPortalProps) {
             })
           : false;
 
-      if (sessionCount > 0 || periodCompleted) {
+      if ((sessionCount > 0 && !isFutureDate) || periodCompleted) {
         statusByDateKey.set(dateKey, "completed");
         workoutLabelByDateKey.set(dateKey, (logs[0]?.programTitle ?? plannedEntry) || "Økt");
       } else if (plannedEntry) {
@@ -2445,6 +2460,9 @@ export function MemberPortal(props: MemberPortalProps) {
   );
   const selectedCalendarPeriodPlanCompleted = useMemo(() => {
     if (!selectedCalendarPeriodMatch || !selectedCalendarPlanEntry) return false;
+    if (selectedCalendarDate && getStartOfDay(selectedCalendarDate).getTime() > getStartOfDay(nowDate).getTime()) {
+      return false;
+    }
     return isPeriodPlanDayComplete({
       planId: selectedCalendarPeriodMatch.plan.id,
       weekNumber: selectedCalendarPeriodMatch.weekNumber,
@@ -2462,6 +2480,8 @@ export function MemberPortal(props: MemberPortalProps) {
     dismissedPeriodPlanEntryKeys,
     memberProgramsForPeriodPlan,
     selectedCalendarLogs,
+    selectedCalendarDate,
+    nowDate,
   ]);
   const selectedCalendarLog = useMemo(() => {
     if (!selectedCalendarLogs.length) return null;
@@ -4342,22 +4362,15 @@ export function MemberPortal(props: MemberPortalProps) {
         const completedProgramLogs = completedLogs.filter(
           (log) => log.programTitle.trim().toLowerCase() === program.title.trim().toLowerCase(),
         ).length;
-        const progressPct = Math.min(100, Math.round((completedProgramLogs / Math.max(1, memberProgress.monthGoal.target)) * 100));
         return {
           id: program.id,
           title: program.title,
           imageSrc,
-          metaLabel: `${program.exercises.length} ${program.exercises.length === 1 ? "øvelse" : "øvelser"} · ${progressPct}%`,
-          progressPct,
+          metaLabel: `${program.exercises.length} ${program.exercises.length === 1 ? "øvelse" : "øvelser"}`,
+          completedCount: completedProgramLogs,
         };
       }),
-    [
-      memberProgramsInActiveLibrary,
-      exercises,
-      exerciseCategoryById,
-      completedLogs,
-      memberProgress.monthGoal.target,
-    ],
+    [memberProgramsInActiveLibrary, exercises, exerciseCategoryById, completedLogs],
   );
   const homeWeeklyMinutes = useMemo(() => {
     const today = getStartOfDay(new Date(nowTimestamp));
@@ -4604,7 +4617,7 @@ export function MemberPortal(props: MemberPortalProps) {
       programId: input.programId,
       programs: memberProgramsForPeriodPlan,
       completedAt: input.completedAt,
-      calendarWeekdayKey: currentWeekdayKey,
+      calendarWeekdayKey: weekdayKeyForDate(input.completedAt),
     });
     if (!targets.length) return;
 
@@ -4744,6 +4757,9 @@ export function MemberPortal(props: MemberPortalProps) {
       return completedPeriodPlanEntryKeys.includes(buildPeriodPlanEntryKey(planId, weekNumber, day));
     }
     const plannedDate = resolvePeriodPlanPlannedDate(plan, weekNumber, day);
+    if (plannedDate && getStartOfDay(plannedDate).getTime() > getStartOfDay(nowDate).getTime()) {
+      return false;
+    }
     const logsForDate = plannedDate
       ? calendarLogsByDateKey.get(toCalendarDateKey(plannedDate)) ?? []
       : day === currentWeekdayKey
@@ -4954,8 +4970,13 @@ export function MemberPortal(props: MemberPortalProps) {
       keepCurrentTab: true,
       date: input.plannedDate ?? undefined,
     });
+    const completedAt = parseStoredLogDate(input.plannedDate ?? "") ?? new Date();
     clearPeriodPlanDayDismissed(input.planId, input.weekNumber, input.day);
     markPeriodPlanDayCompleted(input.planId, input.weekNumber, input.day);
+    applyPeriodPlanAutoComplete({
+      programTitle: groupWorkoutLogTitle(resolveGroupClassNameFromPeriodEntry(trimmed)),
+      completedAt,
+    });
     setPeriodPlanActionStatus(`«${trimmed}» er logget.`);
   }
 
@@ -5771,7 +5792,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   )
                 }
                 onboardingPrompt={
-                  onOpenOnboarding && showOnboardingHomePrompt ? (
+                  onOpenOnboarding && showOnboardingHomePrompt && !onboardingCompleteForHome ? (
                     <MemberHomeCompactPrompt
                       title="Fortell oss litt om deg"
                       detail="Ca. 3–5 min · én gang"
@@ -6171,7 +6192,11 @@ export function MemberPortal(props: MemberPortalProps) {
 	                    const programCoverSrc = resolveProgramImageSrc(program, coverExercise, { subTab: programSubTab });
 	                    const programUsesCustomCover = programCoverUsesPhotoStyle(program, programCoverSrc);
 	                    const completedProgramLogs = completedLogs.filter((log) => log.programTitle.trim().toLowerCase() === program.title.trim().toLowerCase()).length;
-	                    const programProgressPct = Math.min(100, Math.round((completedProgramLogs / Math.max(1, memberProgress.monthGoal.target)) * 100));
+	                    const completedTimesLabel = completedProgramLogs === 0
+	                      ? "Ikke fullført ennå"
+	                      : completedProgramLogs === 1
+	                        ? "1 gang fullført"
+	                        : `${completedProgramLogs} ganger fullført`;
 	                    const linkedPeriodPlan = periodPlanLinkedProgramIds.has(program.id)
 	                      ? findPeriodPlanForProgram(program, visiblePeriodPlans, memberProgramsForPeriodPlan)
 	                      : null;
@@ -6224,15 +6249,9 @@ export function MemberPortal(props: MemberPortalProps) {
 	                                {program.exercises.length} {program.exercises.length === 1 ? "øvelse" : "øvelser"}
 	                              </span>
 	                            </div>
-	                            <div className="motus-member-program-progress">
-	                              <div className="motus-progress-track mt-1.5 rounded-full">
-	                                <div
-	                                  className="motus-progress-fill rounded-full"
-	                                  style={{ width: `${programProgressPct}%`, background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }}
-	                                />
-	                              </div>
-	                              <span className="motus-member-program-progress-label">{programProgressPct}% fullført</span>
-	                            </div>
+                            <div className="motus-member-program-progress">
+                              <span className="motus-member-program-progress-label">{completedTimesLabel}</span>
+                            </div>
 	                            <div className="motus-member-program-actions">
                             <TrainingStartButton
                               className="motus-member-program-start"
