@@ -9,7 +9,7 @@
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { CalendarRange, ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, MessageSquare, MoreHorizontal, Pencil, Play, Share2, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
+import { CalendarRange, ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, Mail, MessageSquare, MoreHorizontal, Pencil, Play, Share2, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, periodPlanStartDateForDateInput } from "../app/dateFormat";
 import {
@@ -1954,6 +1954,40 @@ function pickFirstName(value: unknown): string {
   function inviteSentAtLabel(invitedAt: string): string {
     const formatted = formatInvitedAt(invitedAt);
     return formatted ? `Sendt ${formatted}` : "Ikke sendt ennå";
+  }
+
+  /**
+   * Kompakt label til klient-kortet: "Invitert i dag kl. 14:32",
+   * "Invitert i går kl. 14:32" eller "Invitert 26.05.2026 kl. 14:32".
+   */
+  function inviteSentAtCompactLabel(invitedAt: string): string | null {
+    if (!invitedAt.trim()) return null;
+    const date = new Date(invitedAt);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const now = new Date();
+    const startOfDay = (d: Date) => {
+      const x = new Date(d);
+      x.setHours(0, 0, 0, 0);
+      return x;
+    };
+    const dayDiff = Math.round((startOfDay(now).getTime() - startOfDay(date).getTime()) / 86_400_000);
+    let timePart = "";
+    try {
+      timePart = new Intl.DateTimeFormat("nb-NO", { timeStyle: "short" }).format(date);
+    } catch {
+      timePart = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+    }
+
+    if (dayDiff === 0) return `Invitert i dag kl. ${timePart}`;
+    if (dayDiff === 1) return `Invitert i går kl. ${timePart}`;
+    let datePart = "";
+    try {
+      datePart = new Intl.DateTimeFormat("nb-NO", { dateStyle: "short" }).format(date);
+    } catch {
+      datePart = invitedAt.slice(0, 10);
+    }
+    return `Invitert ${datePart} kl. ${timePart}`;
   }
 
   async function readFileAsDataUrl(file: File): Promise<string> {
@@ -4822,6 +4856,21 @@ function pickFirstName(value: unknown): string {
                                 {activityLabel}
                               </span>
                             </div>
+                            {member.invitedAt ? (
+                              (() => {
+                                const compact = inviteSentAtCompactLabel(member.invitedAt);
+                                if (!compact) return null;
+                                return (
+                                  <div
+                                    className="mt-0.5 flex min-w-0 items-center gap-1 text-[10px] text-slate-400"
+                                    title={inviteSentAtLabel(member.invitedAt)}
+                                  >
+                                    <Mail className="h-3 w-3 shrink-0 text-emerald-500" strokeWidth={2.2} aria-hidden />
+                                    <span className="truncate">{compact}</span>
+                                  </div>
+                                );
+                              })()
+                            ) : null}
                           </div>
                         </div>
                       </button>
