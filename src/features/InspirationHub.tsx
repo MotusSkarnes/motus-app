@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  ArrowDown,
   ArrowLeft,
   ArrowRight,
+  ArrowUp,
   Bold,
   Brain,
   CalendarHeart,
@@ -9,11 +11,16 @@ import {
   Dumbbell,
   Flame,
   Footprints,
+  Heading2,
+  Heading3,
   ImagePlus,
   Italic,
   LayoutGrid,
   Leaf,
   Lightbulb,
+  Link2,
+  List,
+  ListOrdered,
   Newspaper,
   Pencil,
   Plus,
@@ -221,23 +228,42 @@ function bodyStyleClass(style?: InspirationBodyStyle): string {
   return BODY_STYLE_OPTIONS.find((option) => option.value === style)?.className ?? BODY_STYLE_OPTIONS[0].className;
 }
 
-function renderFormattedBody(value: string) {
-  const nodes = [];
-  const pattern = /(\*\*[^*]+?\*\*|\*[^*]+?\*)/g;
+function renderInlineMarkdown(value: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  const pattern = /(\*\*[^*]+?\*\*|\*[^*]+?\*|\[[^\]]+?\]\([^)]+?\))/g;
   let cursor = 0;
   let match: RegExpExecArray | null;
+  let counter = 0;
   while ((match = pattern.exec(value)) !== null) {
     if (match.index > cursor) nodes.push(value.slice(cursor, match.index));
     const token = match[0];
     if (token.startsWith("**")) {
       nodes.push(
-        <strong key={`b-${match.index}`} className="font-bold text-slate-900">
+        <strong key={`b${counter++}`} className="font-bold text-slate-900">
           {token.slice(2, -2)}
         </strong>,
       );
+    } else if (token.startsWith("[")) {
+      const linkMatch = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+      if (linkMatch) {
+        const [, label, url] = linkMatch;
+        nodes.push(
+          <a
+            key={`l${counter++}`}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-teal-700 underline decoration-teal-400 underline-offset-2 hover:text-teal-900"
+          >
+            {label}
+          </a>,
+        );
+      } else {
+        nodes.push(token);
+      }
     } else {
       nodes.push(
-        <em key={`i-${match.index}`} className="italic">
+        <em key={`i${counter++}`} className="italic">
           {token.slice(1, -1)}
         </em>,
       );
@@ -246,6 +272,86 @@ function renderFormattedBody(value: string) {
   }
   if (cursor < value.length) nodes.push(value.slice(cursor));
   return nodes;
+}
+
+function renderFormattedBody(value: string): ReactNode[] {
+  const blocks: ReactNode[] = [];
+  const lines = value.split("\n");
+  let listBuffer: { kind: "ul" | "ol"; items: string[] } | null = null;
+  let paragraphBuffer: string[] = [];
+  let blockIndex = 0;
+
+  const flushList = () => {
+    if (!listBuffer) return;
+    const items = listBuffer.items;
+    if (listBuffer.kind === "ul") {
+      blocks.push(
+        <ul key={`b${blockIndex++}`} className="my-2 list-disc space-y-1 pl-5">
+          {items.map((line, idx) => (
+            <li key={idx}>{renderInlineMarkdown(line)}</li>
+          ))}
+        </ul>,
+      );
+    } else {
+      blocks.push(
+        <ol key={`b${blockIndex++}`} className="my-2 list-decimal space-y-1 pl-5">
+          {items.map((line, idx) => (
+            <li key={idx}>{renderInlineMarkdown(line)}</li>
+          ))}
+        </ol>,
+      );
+    }
+    listBuffer = null;
+  };
+
+  const flushParagraph = () => {
+    if (!paragraphBuffer.length) return;
+    blocks.push(
+      <p key={`b${blockIndex++}`} className="whitespace-pre-wrap">
+        {renderInlineMarkdown(paragraphBuffer.join("\n"))}
+      </p>,
+    );
+    paragraphBuffer = [];
+  };
+
+  lines.forEach((line) => {
+    if (line.startsWith("### ")) {
+      flushList();
+      flushParagraph();
+      blocks.push(
+        <h4 key={`b${blockIndex++}`} className="mt-3 text-base font-bold text-slate-900">
+          {renderInlineMarkdown(line.slice(4))}
+        </h4>,
+      );
+    } else if (line.startsWith("## ")) {
+      flushList();
+      flushParagraph();
+      blocks.push(
+        <h3 key={`b${blockIndex++}`} className="mt-4 text-lg font-bold text-slate-900">
+          {renderInlineMarkdown(line.slice(3))}
+        </h3>,
+      );
+    } else if (line.startsWith("- ")) {
+      flushParagraph();
+      if (listBuffer && listBuffer.kind !== "ul") flushList();
+      if (!listBuffer) listBuffer = { kind: "ul", items: [] };
+      listBuffer.items.push(line.slice(2));
+    } else if (/^\d+\.\s/.test(line)) {
+      flushParagraph();
+      if (listBuffer && listBuffer.kind !== "ol") flushList();
+      if (!listBuffer) listBuffer = { kind: "ol", items: [] };
+      listBuffer.items.push(line.replace(/^\d+\.\s/, ""));
+    } else if (line.trim() === "") {
+      flushList();
+      flushParagraph();
+    } else {
+      flushList();
+      paragraphBuffer.push(line);
+    }
+  });
+  flushList();
+  flushParagraph();
+  return blocks;
 }
 
 function splitMultiValue(value: string): string[] {
@@ -555,9 +661,9 @@ const DEFAULT_ITEMS: InspirationItem[] = [
     id: "default-tip-9",
     category: "appGuide",
     kind: "article",
-    title: "Inspirasjon, oppskrifter og meldinger",
+    title: "Utforsk, oppskrifter og meldinger",
     description: "Finn tips, nyheter og svar fra trener på ett sted.",
-    body: "**Inspirasjon-fanen** har to deler:\n- **Inspirasjon** – oppskrifter, info fra senteret, treningsprogram og råd og tips.\n- **App-guide** – steg-for-steg om hvordan du bruker Motus (øktmodus, egne programmer, hjemskjerm osv.).\n\nBytt mellom dem med knappene øverst under overskriften. Trykk på et kort for å lese hele teksten. Nye innlegg kan også dukke opp som **varsler** – da hopper du rett til innlegget.\n\nHar du spørsmål om program eller skader? Bruk **melding** til trener i stedet for å gjette – da får du svar tilpasset deg.",
+    body: "**Utforsk-fanen** har to deler:\n- **Utforsk** – oppskrifter, info fra senteret, treningsprogram og råd og tips.\n- **App-guide** – steg-for-steg om hvordan du bruker Motus (øktmodus, egne programmer, hjemskjerm osv.).\n\nBytt mellom dem med knappene øverst under overskriften. Trykk på et kort for å lese hele teksten. Nye innlegg kan også dukke opp som **varsler** – da hopper du rett til innlegget.\n\nHar du spørsmål om program eller skader? Bruk **melding** til trener i stedet for å gjette – da får du svar tilpasset deg.",
     tag: "App-guide",
     author: "Motus",
     createdAt: "2026-05-16",
@@ -832,6 +938,26 @@ export function InspirationHub({
     onFocusItemHandled?.();
   }, [focusItemId, items, onFocusItemHandled]);
 
+  async function moveItemWithinCategory(itemId: string, direction: "up" | "down") {
+    const target = items.find((row) => row.id === itemId);
+    if (!target) return;
+    const siblings = items
+      .filter((row) => normalizeInspirationItem(row).category === normalizeInspirationItem(target).category)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const index = siblings.findIndex((row) => row.id === itemId);
+    if (index === -1) return;
+    const neighborIndex = direction === "up" ? index - 1 : index + 1;
+    const neighbor = siblings[neighborIndex];
+    if (!neighbor) return;
+    const next = items.map((row) => {
+      if (row.id === target.id) return { ...row, createdAt: neighbor.createdAt };
+      if (row.id === neighbor.id) return { ...row, createdAt: target.createdAt };
+      return row;
+    });
+    const result = await commitItems(next);
+    if (result.ok) setActionStatus(result.message);
+  }
+
   async function commitItems(next: InspirationItem[]): Promise<{ ok: true; message: string } | { ok: false }> {
     const normalized = normalizeInspirationItems(next);
     const result = await persistInspirationItems(normalized);
@@ -936,7 +1062,7 @@ export function InspirationHub({
     target.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  function renderNewsCard(item: InspirationItem, index: number) {
+  function renderNewsCard(item: InspirationItem, index: number, total: number) {
     const tone = pickNewsTone(index);
     const ToneIcon = tone.icon;
     return (
@@ -947,6 +1073,26 @@ export function InspirationHub({
       >
         {canManage ? (
           <div className="motus-inspo-card-edit-actions">
+            <button
+              type="button"
+              onClick={() => void moveItemWithinCategory(item.id, "up")}
+              className="motus-inspo-card-edit-btn"
+              aria-label={`Flytt ${item.title} opp`}
+              title="Flytt opp"
+              disabled={index === 0}
+            >
+              <ArrowUp className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => void moveItemWithinCategory(item.id, "down")}
+              className="motus-inspo-card-edit-btn"
+              aria-label={`Flytt ${item.title} ned`}
+              title="Flytt ned"
+              disabled={index >= total - 1}
+            >
+              <ArrowDown className="h-3.5 w-3.5" />
+            </button>
             <button
               type="button"
               onClick={() => beginEdit(item)}
@@ -988,7 +1134,7 @@ export function InspirationHub({
     );
   }
 
-  function renderInspirationCard(item: InspirationItem) {
+  function renderInspirationCard(item: InspirationItem, index: number, total: number) {
     const meta = CATEGORY_META[item.category];
     const Icon = meta.icon;
     return (
@@ -998,7 +1144,27 @@ export function InspirationHub({
         style={{ borderColor: "rgba(15,23,42,0.08)" }}
       >
         {canManage ? (
-          <div className="absolute right-2 top-2 z-10 flex gap-1">
+          <div className="absolute right-2 top-2 z-10 flex flex-wrap justify-end gap-1">
+            <button
+              type="button"
+              onClick={() => void moveItemWithinCategory(item.id, "up")}
+              className="rounded-lg border border-white/80 bg-white/95 p-1.5 text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label={`Flytt ${item.title} opp`}
+              title="Flytt opp"
+              disabled={index === 0}
+            >
+              <ArrowUp className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => void moveItemWithinCategory(item.id, "down")}
+              className="rounded-lg border border-white/80 bg-white/95 p-1.5 text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label={`Flytt ${item.title} ned`}
+              title="Flytt ned"
+              disabled={index >= total - 1}
+            >
+              <ArrowDown className="h-3.5 w-3.5" />
+            </button>
             <button
               type="button"
               onClick={() => beginEdit(item)}
@@ -1053,6 +1219,87 @@ export function InspirationHub({
         </button>
         <div className="shrink-0 border-t border-slate-100 px-2.5 py-2">
           <OutlineButton onClick={() => openInspirationItem(item)} className={`w-full ${INSPO_FEED_CARD_ACTION_CLASS}`}>
+            Les mer
+          </OutlineButton>
+        </div>
+      </article>
+    );
+  }
+
+  function renderEditorPreviewCard() {
+    const meta = CATEGORY_META[categoryDraft];
+    const Icon = meta.icon;
+    const previewTitle = title.trim() || "Tittel kommer her";
+    const previewDescription = description.trim() || "Kort beskrivelse vises her under bildet.";
+    const kindLabel =
+      kindDraft === "periodPlan" ? "Ukesplan" : kindDraft === "program" ? "Program" : meta.label;
+    const previewTag = tag.trim() || (categoryDraft === "appGuide" ? "App-guide" : kindLabel);
+    if (categoryDraft === "news") {
+      const tone = pickNewsTone(0);
+      const ToneIcon = tone.icon;
+      return (
+        <article
+          className="motus-inspo-news-card w-full"
+          style={{ background: tone.bg, borderColor: tone.ring }}
+        >
+          <div className="motus-inspo-news-button">
+            <span
+              className="motus-inspo-news-icon"
+              style={{ background: tone.iconBg, color: tone.iconColor }}
+              aria-hidden
+            >
+              <ToneIcon className="h-4 w-4" />
+            </span>
+            <div className="motus-inspo-news-body">
+              <div className="motus-inspo-news-title">{previewTitle}</div>
+              <p className="motus-inspo-news-desc">{previewDescription}</p>
+              <span className="motus-inspo-news-link">
+                Les mer
+                <ArrowRight className="h-3 w-3" aria-hidden />
+              </span>
+            </div>
+          </div>
+        </article>
+      );
+    }
+    return (
+      <article
+        className={`relative flex shrink-0 snap-start flex-col overflow-hidden rounded-xl border bg-white ${INSPO_FEED_CARD_WIDTH_CLASS} ${INSPO_FEED_CARD_HEIGHT_CLASS}`}
+        style={{ borderColor: "rgba(15,23,42,0.08)" }}
+      >
+        <div
+          className={`motus-image-frame motus-image-frame--square w-full shrink-0 ${INSPO_FEED_CARD_IMAGE_CLASS} ${
+            imageUrl ? "bg-slate-100" : "bg-[#F3F5F7]"
+          }`}
+        >
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt=""
+              className="motus-image-media h-full w-full"
+              loading="lazy"
+              decoding="async"
+              style={{ objectPosition: imageObjectPositionFromSrc(imageUrl) }}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-teal-600/80">
+              <Icon className="h-9 w-9" />
+            </div>
+          )}
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col px-2 pb-2 pt-1.5">
+          <div className="flex min-h-[1.125rem] items-center justify-between gap-1.5">
+            <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-1.5 py-0.5 text-[9px] font-bold text-teal-800 ring-1 ring-teal-100">
+              <Icon className="h-2.5 w-2.5" />
+              {kindLabel}
+            </span>
+            <span className="truncate text-[9px] text-slate-400">{previewTag}</span>
+          </div>
+          <h3 className={`mt-0.5 ${INSPO_FEED_CARD_TITLE_CLASS}`}>{previewTitle}</h3>
+          <p className={`mt-0.5 min-w-0 ${INSPO_FEED_CARD_DESCRIPTION_CLASS}`}>{previewDescription}</p>
+        </div>
+        <div className="shrink-0 border-t border-slate-100 px-2.5 py-2">
+          <OutlineButton disabled className={`w-full ${INSPO_FEED_CARD_ACTION_CLASS}`}>
             Les mer
           </OutlineButton>
         </div>
@@ -1172,6 +1419,48 @@ export function InspirationHub({
       const nextEnd = nextStart + (selected || fallback).length;
       bodyTextareaRef.current?.focus();
       bodyTextareaRef.current?.setSelectionRange(nextStart, nextEnd);
+    });
+  }
+
+  /** Prefikser hver linje i markert tekst (eller gjeldende linje) med et tegn — brukes for overskrifter og lister. */
+  function prefixSelectedBodyLines(prefix: string, fallback: string) {
+    const textarea = bodyTextareaRef.current;
+    const start = textarea?.selectionStart ?? body.length;
+    const end = textarea?.selectionEnd ?? body.length;
+    const lineStart = body.lastIndexOf("\n", start - 1) + 1;
+    const lineEnd = body.indexOf("\n", end);
+    const sliceEnd = lineEnd === -1 ? body.length : lineEnd;
+    const block = body.slice(lineStart, sliceEnd);
+    const lines = block.length ? block.split("\n") : [fallback];
+    const transformed = lines
+      .map((line, idx) => {
+        if (prefix === "1. ") return `${idx + 1}. ${line || fallback}`;
+        return `${prefix}${line || fallback}`;
+      })
+      .join("\n");
+    const nextBody = `${body.slice(0, lineStart)}${transformed}${body.slice(sliceEnd)}`;
+    setBody(nextBody);
+    window.requestAnimationFrame(() => {
+      bodyTextareaRef.current?.focus();
+      const nextCaret = lineStart + transformed.length;
+      bodyTextareaRef.current?.setSelectionRange(nextCaret, nextCaret);
+    });
+  }
+
+  function insertLinkAtSelection() {
+    const textarea = bodyTextareaRef.current;
+    const start = textarea?.selectionStart ?? body.length;
+    const end = textarea?.selectionEnd ?? body.length;
+    const selected = body.slice(start, end);
+    const label = selected || "lenketekst";
+    const inserted = `[${label}](https://)`;
+    const nextBody = `${body.slice(0, start)}${inserted}${body.slice(end)}`;
+    setBody(nextBody);
+    window.requestAnimationFrame(() => {
+      bodyTextareaRef.current?.focus();
+      const urlStart = start + label.length + 3;
+      const urlEnd = urlStart + 8;
+      bodyTextareaRef.current?.setSelectionRange(urlStart, urlEnd);
     });
   }
 
@@ -1348,7 +1637,7 @@ export function InspirationHub({
   function confirmDeleteItem(id: string) {
     const item = items.find((entry) => entry.id === id);
     if (!item) return;
-    if (!window.confirm(`Slette «${item.title}» fra inspirasjon?`)) return;
+    if (!window.confirm(`Slette «${item.title}» fra Utforsk?`)) return;
     suppressInspirationItemId(id);
     const next = items.filter((entry) => entry.id !== id);
     void (async () => {
@@ -1445,7 +1734,7 @@ export function InspirationHub({
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
-          Tilbake til inspirasjon
+          Tilbake til Utforsk
         </button>
 
         {actionStatus ? (
@@ -1481,7 +1770,7 @@ export function InspirationHub({
             <h1 className="mt-4 text-2xl font-bold leading-snug tracking-tight text-slate-950 sm:text-3xl">{expandedItem.title}</h1>
             <p className="mt-2 text-base text-slate-600">{expandedItem.description}</p>
             {expandedItem.body.trim() && !showProgramPreview ? (
-              <p className={`mt-5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 sm:text-base ${bodyStyleClass(expandedItem.bodyStyle)}`}>{renderFormattedBody(expandedItem.body)}</p>
+              <div className={`mt-5 space-y-3 text-sm leading-relaxed text-slate-700 sm:text-base ${bodyStyleClass(expandedItem.bodyStyle)}`}>{renderFormattedBody(expandedItem.body)}</div>
             ) : null}
 
             {programPreview ? (
@@ -1615,7 +1904,7 @@ export function InspirationHub({
           <div className="motus-inspo-hero-content">
             <span className="motus-inspo-hero-tag">
               <Sparkles className="h-3.5 w-3.5" aria-hidden />
-              Ukens inspirasjon
+              Ukens utvalgte
             </span>
             <h1 className="motus-inspo-hero-title">Bygg vaner som varer</h1>
             <p className="motus-inspo-hero-subtitle">Små steg i dag — stor forskjell i morgen.</p>
@@ -1664,7 +1953,7 @@ export function InspirationHub({
               type="button"
               onClick={openCreateComposer}
               className="motus-inspo-hero-add motus-pressable"
-              aria-label="Legg til inspirasjon"
+              aria-label="Legg til innhold"
               title="Legg til"
             >
               <Plus className="h-5 w-5" aria-hidden />
@@ -1676,7 +1965,7 @@ export function InspirationHub({
       <div
         className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1"
         role="tablist"
-        aria-label="Inspirasjon undermeny"
+        aria-label="Utforsk undermeny"
       >
         <button
           type="button"
@@ -1687,7 +1976,7 @@ export function InspirationHub({
             inspoSubView === "overview" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
           }`}
         >
-          Inspirasjon
+          Utforsk
         </button>
         <button
           type="button"
@@ -1723,7 +2012,7 @@ export function InspirationHub({
       {showHero ? (
         <section className="motus-inspo-quick-section">
           <div className="motus-inspo-quick-head">
-            <h2 className="motus-inspo-quick-title">Hva vil du finne inspirasjon til?</h2>
+            <h2 className="motus-inspo-quick-title">Hva vil du utforske?</h2>
           </div>
           <div className="motus-inspo-quick-grid">
             {QUICK_CATEGORIES.map((cat) => {
@@ -1793,7 +2082,7 @@ export function InspirationHub({
                   }}
                   className="motus-inspo-news-grid"
                 >
-                  {sectionItems.map((item, index) => renderNewsCard(item, index))}
+                  {sectionItems.map((item, index) => renderNewsCard(item, index, sectionItems.length))}
                 </div>
               ) : (
                 <div
@@ -1802,7 +2091,7 @@ export function InspirationHub({
                   }}
                   className="motus-inspo-section-scroll scrollbar-none"
                 >
-                  {sectionItems.map(renderInspirationCard)}
+                  {sectionItems.map((item, index) => renderInspirationCard(item, index, sectionItems.length))}
                 </div>
               )}
             </section>
@@ -1824,17 +2113,20 @@ export function InspirationHub({
 
       {canManage && composerOpen ? (
         <div className="fixed inset-0 z-[10020] overflow-y-auto bg-slate-950/45 p-3 backdrop-blur-sm sm:p-6">
-          <div className="mx-auto min-w-0 max-w-5xl rounded-2xl border bg-white p-4 shadow-xl" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div
+            className="mx-auto min-w-0 max-w-[min(96rem,96vw)] rounded-2xl border bg-white p-4 shadow-xl sm:p-5"
+            style={{ borderColor: "rgba(15,23,42,0.08)" }}
+          >
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
             <MotusSectionIcon className="!p-2">
               {editingItemId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             </MotusSectionIcon>
             <div className="min-w-0">
-              <div className="font-semibold text-slate-900">{editingItemId ? "Rediger inspirasjon" : "Legg ut inspirasjon"}</div>
+              <div className="font-semibold text-slate-900">{editingItemId ? "Rediger innhold" : "Legg ut innhold"}</div>
               <div className="text-xs text-slate-500">
                 {editingItemId
-                  ? "Endre tekst, bilde, program eller ukesplan. Lagres for alle som bruker inspo."
+                  ? "Endre tekst, bilde, program eller ukesplan. Lagres for alle som bruker Utforsk."
                   : "Velg bilde og kort tekst. Detaljer vises når man trykker les mer."}
             </div>
             </div>
@@ -1843,7 +2135,9 @@ export function InspirationHub({
               Lukk
             </OutlineButton>
           </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="min-w-0">
+          <div className="grid gap-3 md:grid-cols-2">
             <SelectBox
               value={categoryDraft}
               onChange={(value) => {
@@ -1894,7 +2188,7 @@ export function InspirationHub({
                   }
                 }}
                 options={[
-                  { value: "article", label: "Bare inspirasjon" },
+                  { value: "article", label: "Bare innhold" },
                   { value: "program", label: "Treningsprogram som kan legges til" },
                   { value: "periodPlan", label: "Ukesplan som kan legges til" },
                 ]}
@@ -1946,11 +2240,30 @@ export function InspirationHub({
                 : "Detaljer som vises under Les mer"
             }
           />
-          <div className="mt-2 inline-flex rounded-xl border bg-slate-50 p-1" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div className="mt-2 flex flex-wrap items-center gap-1 rounded-xl border bg-slate-50 p-1" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <button
+              type="button"
+              onClick={() => prefixSelectedBodyLines("## ", "Overskrift")}
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-white hover:text-slate-950"
+              aria-label="Stor overskrift"
+              title="Stor overskrift (H2)"
+            >
+              <Heading2 className="h-3.5 w-3.5" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => prefixSelectedBodyLines("### ", "Mellomtittel")}
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-white hover:text-slate-950"
+              aria-label="Mellomtittel"
+              title="Mellomtittel (H3)"
+            >
+              <Heading3 className="h-3.5 w-3.5" aria-hidden />
+            </button>
+            <span className="mx-0.5 hidden h-5 w-px bg-slate-300 sm:inline-block" aria-hidden />
             <button
               type="button"
               onClick={() => wrapSelectedBodyText("**")}
-              className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-white hover:text-slate-950"
+              className="rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-white hover:text-slate-950"
               aria-label="Gjør markert tekst bold"
               title="Bold"
             >
@@ -1959,17 +2272,45 @@ export function InspirationHub({
             <button
               type="button"
               onClick={() => wrapSelectedBodyText("*")}
-              className="rounded-lg px-3 py-1.5 text-xs italic text-slate-700 transition hover:bg-white hover:text-slate-950"
+              className="rounded-lg px-2.5 py-1.5 text-xs italic text-slate-700 transition hover:bg-white hover:text-slate-950"
               aria-label="Gjør markert tekst kursiv"
               title="Kursiv"
             >
               <Italic className="h-3.5 w-3.5" aria-hidden />
             </button>
+            <span className="mx-0.5 hidden h-5 w-px bg-slate-300 sm:inline-block" aria-hidden />
+            <button
+              type="button"
+              onClick={() => prefixSelectedBodyLines("- ", "Punkt")}
+              className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-white hover:text-slate-950"
+              aria-label="Punktliste"
+              title="Punktliste"
+            >
+              <List className="h-3.5 w-3.5" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => prefixSelectedBodyLines("1. ", "Punkt")}
+              className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-white hover:text-slate-950"
+              aria-label="Nummerert liste"
+              title="Nummerert liste"
+            >
+              <ListOrdered className="h-3.5 w-3.5" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={insertLinkAtSelection}
+              className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-white hover:text-slate-950"
+              aria-label="Sett inn lenke"
+              title="Lenke"
+            >
+              <Link2 className="h-3.5 w-3.5" aria-hidden />
+            </button>
             {categoryDraft === "news" && bodyStyle !== "normal" ? (
               <button
                 type="button"
                 onClick={() => setBodyStyle("normal")}
-                className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-white hover:text-slate-950"
+                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-white hover:text-slate-950"
               >
                 Vanlig
               </button>
@@ -2220,6 +2561,28 @@ export function InspirationHub({
                 {editingItemId ? "Lagre endringer" : "Publiser"}
             </GradientButton>
             </div>
+          </div>
+          </div>
+          <aside className="lg:sticky lg:top-4 lg:self-start" aria-label="Forhåndsvisning">
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-3">
+              <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <Sparkles className="h-3.5 w-3.5 text-teal-500" aria-hidden />
+                Forhåndsvisning
+              </div>
+              <div className="flex justify-center">{renderEditorPreviewCard()}</div>
+              {body.trim() ? (
+                <details className="mt-3 rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700">
+                  <summary className="cursor-pointer text-xs font-semibold text-slate-700">Les mer-visning</summary>
+                  <div className={`mt-2 space-y-2 text-xs leading-relaxed text-slate-700 ${bodyStyleClass(bodyStyle)}`}>
+                    {renderFormattedBody(body)}
+                  </div>
+                </details>
+              ) : null}
+              <p className="mt-3 text-[11px] leading-snug text-slate-500">
+                Slik vises kortet i Utforsk-feeden. Endringer oppdateres mens du skriver.
+              </p>
+            </div>
+          </aside>
           </div>
           </div>
         </div>

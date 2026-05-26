@@ -6683,7 +6683,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   >
                     <p className="font-semibold">Alle periodeplaner er skjult fra oversikten</p>
                     <p className="mt-1 leading-relaxed text-amber-900/90">
-                      Planene er ikke slettet. Trykk <strong>Vis igjen</strong> for å ta dem tilbake, eller legg til en ny plan fra Inspirasjon.
+                      Planene er ikke slettet. Trykk <strong>Vis igjen</strong> for å ta dem tilbake, eller legg til en ny plan fra Utforsk.
                     </p>
                     <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                       {hiddenPeriodPlans.length > 1 ? (

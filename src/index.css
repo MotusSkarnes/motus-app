@@ -11223,7 +11223,10 @@ button.motus-progress-status-banner {
   right: 8px;
   z-index: 4;
   display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 4px;
+  max-width: calc(100% - 16px);
 }
 
 .motus-inspo-card-edit-btn {
@@ -11238,6 +11241,16 @@ button.motus-progress-status-banner {
   color: #0f172a;
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.motus-inspo-card-edit-btn:hover {
+  background: #ffffff;
+}
+
+.motus-inspo-card-edit-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .motus-inspo-card-edit-btn--danger {

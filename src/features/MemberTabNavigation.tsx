@@ -12,13 +12,13 @@ export function memberNavTabs(isMemberLimited: boolean): MemberTabNavItem[] {
     return [
       { id: "overview", label: "Hjem", icon: LayoutDashboard },
       { id: "programs", label: "Trening", icon: ClipboardList },
-      { id: "inspiration", label: "Inspo", icon: Sparkles },
+      { id: "inspiration", label: "Utforsk", icon: Sparkles },
     ];
   }
   return [
     { id: "overview", label: "Hjem", icon: LayoutDashboard },
     { id: "programs", label: "Trening", icon: ClipboardList },
-    { id: "inspiration", label: "Inspo", icon: Sparkles },
+    { id: "inspiration", label: "Utforsk", icon: Sparkles },
     { id: "progress", label: "Fremgang", icon: TrendingUp },
     { id: "messages", label: "Meldinger", icon: MessageSquare },
   ];
