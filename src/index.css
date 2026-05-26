@@ -3100,189 +3100,404 @@ button.motus-progress-status-banner {
   font-size: 0.75rem !important;
 }
 
-/* === Ukesoppsummering — delbart kort med foto + statistikk =============== */
-.motus-weekly-summary {
+/* === Ukesoppsummering — mørkt landscape delingskort med foto + statistikk = */
+.motus-weekly-share-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.motus-weekly-share-card {
   position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  background: radial-gradient(140% 100% at 0% 0%, #1a2335 0%, #0d111c 55%, #060912 100%);
+  color: #f1f5f9;
+  isolation: isolate;
+  box-shadow:
+    0 12px 32px -10px rgba(13, 17, 28, 0.55),
+    0 24px 60px -28px rgba(13, 148, 136, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0;
-  overflow: hidden;
-  border-radius: 1.5rem;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: linear-gradient(125deg, #ecfdf5 0%, #ffffff 38%, #fdf2f8 100%);
-  box-shadow: 0 24px 60px -32px rgba(15, 23, 42, 0.22);
+  grid-template-rows: auto 1fr auto;
+  min-height: 280px;
+  aspect-ratio: 3 / 2;
 }
 
-@media (min-width: 640px) {
-  .motus-weekly-summary {
-    grid-template-columns: minmax(260px, 320px) 1fr;
+@media (max-width: 720px) {
+  .motus-weekly-share-card {
+    aspect-ratio: auto;
+    min-height: 460px;
   }
 }
 
-.motus-weekly-summary-photo {
-  position: relative;
-  overflow: hidden;
-  min-height: 200px;
-  background: #0f172a;
+/* Foto i bakgrunnen på høyre side */
+.motus-weekly-share-photo {
+  position: absolute;
+  inset: 0 0 60px auto;
+  width: 56%;
+  z-index: 0;
+  pointer-events: none;
 }
 
-@media (min-width: 640px) {
-  .motus-weekly-summary-photo {
-    min-height: 100%;
+@media (max-width: 720px) {
+  .motus-weekly-share-photo {
+    inset: 0 0 64px auto;
+    width: 100%;
+    opacity: 0.55;
   }
 }
 
-.motus-weekly-summary-photo img {
+.motus-weekly-share-photo img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center;
+  object-position: 60% center;
 }
 
-.motus-weekly-summary-content {
-  position: relative;
-  padding: 1.25rem 1.25rem 1.5rem;
-}
-
-@media (min-width: 640px) {
-  .motus-weekly-summary-content {
-    padding: 1.5rem 1.75rem 1.75rem;
-  }
-}
-
-.motus-weekly-summary-brand {
+.motus-weekly-share-photo-overlay {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
-  height: 2.25rem;
-  width: auto;
-  opacity: 0.6;
-  pointer-events: none;
+  inset: 0;
+  background:
+    linear-gradient(to right, rgba(13, 17, 28, 1) 0%, rgba(13, 17, 28, 0.85) 22%, rgba(13, 17, 28, 0.2) 55%, rgba(13, 17, 28, 0) 100%),
+    linear-gradient(to bottom, rgba(13, 17, 28, 0.25) 0%, rgba(13, 17, 28, 0.05) 30%, rgba(13, 17, 28, 0.45) 100%);
 }
 
-@media (min-width: 640px) {
-  .motus-weekly-summary-brand {
-    top: 1.25rem;
-    right: 1.5rem;
-    height: 2.5rem;
+.motus-weekly-share-quote {
+  position: absolute;
+  right: 18px;
+  bottom: 16px;
+  margin: 0;
+  max-width: 220px;
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+@media (min-width: 720px) {
+  .motus-weekly-share-quote {
+    right: 24px;
+    bottom: 96px;
+    max-width: 200px;
+    font-size: 14px;
   }
 }
 
-.motus-weekly-summary-eyebrow {
+.motus-weekly-share-quote-mark {
+  display: inline;
+  font-size: 22px;
+  font-weight: 800;
+  color: #30e3be;
+  line-height: 0;
+  vertical-align: -0.15em;
+  margin-right: 4px;
+}
+
+.motus-weekly-share-quote-mark--end {
+  margin-right: 0;
+  margin-left: 4px;
+}
+
+.motus-weekly-share-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 0;
+}
+
+.motus-weekly-share-logo {
+  height: 28px;
+  width: auto;
+  filter: brightness(0) invert(1);
+  opacity: 0.95;
+}
+
+.motus-weekly-share-week-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  color: #0d9488;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #f472b6 0%, #d91278 100%);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  box-shadow: 0 6px 16px -6px rgba(217, 18, 120, 0.55);
+}
+
+.motus-weekly-share-body {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 20px 12px;
+  max-width: 64%;
+}
+
+@media (max-width: 720px) {
+  .motus-weekly-share-body {
+    max-width: 100%;
+    padding: 12px 16px 10px;
+  }
+}
+
+.motus-weekly-share-eyebrow {
+  display: inline-block;
+  color: #30e3be;
+  font-size: 11px;
   font-weight: 800;
-  font-size: 0.75rem;
-  letter-spacing: 0.1em;
-  padding-right: 4rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
-.motus-weekly-summary-eyebrow svg {
-  color: #2dd4bf;
+.motus-weekly-share-title {
+  margin: 0;
+  font-size: 38px;
+  line-height: 1.05;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  color: #ffffff;
+  text-wrap: balance;
 }
 
-.motus-weekly-summary-sub {
-  margin-top: 0.5rem;
-  font-size: 0.875rem;
-  line-height: 1.4;
-  color: #475569;
-  padding-right: 4rem;
+@media (min-width: 720px) {
+  .motus-weekly-share-title {
+    font-size: 48px;
+  }
 }
 
-.motus-weekly-summary-stats {
-  margin: 1.25rem 0 0;
+.motus-weekly-share-title-text {
+  position: relative;
+  display: inline;
+  padding-bottom: 4px;
+  background-image: linear-gradient(180deg, transparent 78%, rgba(217, 18, 120, 0.95) 78%, rgba(217, 18, 120, 0.95) 92%, transparent 92%);
+  background-repeat: no-repeat;
+  background-size: 70% 100%;
+  background-position: 0 100%;
+}
+
+.motus-weekly-share-sub {
+  margin: 0;
+  color: rgba(241, 245, 249, 0.78);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+@media (min-width: 720px) {
+  .motus-weekly-share-sub {
+    font-size: 14px;
+  }
+}
+
+.motus-weekly-share-stats {
+  margin: 10px 0 0;
   padding: 0;
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem 1.25rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
 }
 
-@media (min-width: 640px) {
-  .motus-weekly-summary-stats {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.75rem;
+@media (max-width: 720px) {
+  .motus-weekly-share-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 10px;
   }
 }
 
-.motus-weekly-summary-stats li {
+.motus-weekly-share-stat {
   display: flex;
-  align-items: center;
-  gap: 0.625rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   min-width: 0;
 }
 
-.motus-weekly-summary-stat-icon {
+.motus-weekly-share-stat-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 2rem;
-  width: 2rem;
-  border-radius: 0.625rem;
-  background: rgba(45, 212, 191, 0.14);
-  color: #0d9488;
-  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  border: 1.5px solid currentColor;
+  margin-bottom: 2px;
 }
 
-.motus-weekly-summary-stat-text {
-  min-width: 0;
+.motus-weekly-share-stat-icon--teal {
+  color: #30e3be;
 }
 
-.motus-weekly-summary-stat-value {
-  font-size: 1.5rem;
+.motus-weekly-share-stat-icon--pink {
+  color: #f472b6;
+}
+
+.motus-weekly-share-stat-value {
+  font-size: 22px;
   font-weight: 800;
   line-height: 1;
-  color: #0f172a;
+  color: #ffffff;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
 
-.motus-weekly-summary-stat-label {
-  margin-top: 0.25rem;
-  font-size: 0.75rem;
-  color: #64748b;
+.motus-weekly-share-stat-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.motus-weekly-share-stat-label--teal {
+  color: #30e3be;
+}
+
+.motus-weekly-share-stat-label--pink {
+  color: #f472b6;
+}
+
+.motus-weekly-share-stat-sub {
+  font-size: 10px;
   font-weight: 500;
+  line-height: 1.3;
+  color: rgba(241, 245, 249, 0.6);
 }
 
-.motus-weekly-summary-cta {
-  margin-top: 1.25rem;
+.motus-weekly-share-footer {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.motus-weekly-share-trophy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  background: rgba(48, 227, 190, 0.18);
+  color: #30e3be;
+  border: 1.5px solid rgba(48, 227, 190, 0.55);
+}
+
+.motus-weekly-share-seier {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.motus-weekly-share-seier-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #30e3be;
+}
+
+.motus-weekly-share-seier-text {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: rgba(241, 245, 249, 0.92);
+}
+
+.motus-weekly-share-footer-logo {
+  height: 22px;
+  width: auto;
+  filter: brightness(0) invert(1);
+  opacity: 0.85;
+}
+
+/* Del-kort CTA-knappen under det mørke kortet */
+.motus-weekly-share-cta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
   width: 100%;
-  gap: 0.5rem;
-  min-height: 3rem !important;
-  padding: 0.875rem 1.25rem !important;
-  border-radius: 9999px !important;
-  font-size: 0.9375rem !important;
-  letter-spacing: 0.01em;
-  box-shadow:
-    0 10px 26px -10px rgba(217, 18, 120, 0.45),
-    0 6px 14px -6px rgba(48, 227, 190, 0.4) !important;
-  transition: transform 150ms ease-out, box-shadow 200ms ease-out !important;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 24px -12px rgba(15, 23, 42, 0.18);
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 200ms ease;
+  text-align: left;
 }
 
-.motus-weekly-summary-cta:hover {
+.motus-weekly-share-cta:hover {
   transform: translateY(-1px);
-  box-shadow:
-    0 14px 30px -10px rgba(217, 18, 120, 0.55),
-    0 8px 16px -6px rgba(48, 227, 190, 0.5) !important;
+  box-shadow: 0 12px 28px -12px rgba(15, 23, 42, 0.24);
 }
 
-.motus-weekly-summary-cta:active {
+.motus-weekly-share-cta:active {
   transform: translateY(0);
 }
 
-.motus-weekly-summary-caption {
-  margin: 0.75rem 0 0;
-  font-size: 0.75rem;
-  color: #64748b;
-  text-align: center;
+.motus-weekly-share-cta-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #fb923c 0%, #ef4444 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 18px -8px rgba(239, 68, 68, 0.55);
+  flex-shrink: 0;
 }
 
-.motus-weekly-summary-status {
-  margin-top: 0.75rem;
+.motus-weekly-share-cta-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.motus-weekly-share-cta-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.motus-weekly-share-cta-sub {
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.6);
+  line-height: 1.3;
+}
+
+.motus-weekly-share-cta-arrow {
+  color: rgba(15, 23, 42, 0.4);
+  flex-shrink: 0;
+}
+
+.motus-weekly-share-status {
+  margin: 0;
   border-radius: 0.875rem !important;
   padding: 0.5rem 0.75rem !important;
   font-size: 0.75rem !important;

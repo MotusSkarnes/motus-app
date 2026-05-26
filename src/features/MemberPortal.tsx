@@ -735,10 +735,23 @@ function computeLiftVolumeKgWeekAndMonth(
   return { weekKg, monthKg };
 }
 
+type WeeklyShareStats = {
+  workouts: number;
+  strengthWorkouts: number;
+  groupClasses: number;
+  trainingDays: number;
+  volumeKg: number;
+  completedSets: number;
+  /** Estimert kcal forbrukt i uka basert på antall styrkeøkter og gruppetimer. */
+  kcal: number;
+  /** Estimert total aktivitetstid (minutter) i uka. */
+  activityMinutes: number;
+};
+
 function computeShareCardLast7DaysStats(
   completedLogs: WorkoutLog[],
   nowTimestamp: number,
-): { workouts: number; trainingDays: number; volumeKg: number; completedSets: number } {
+): WeeklyShareStats {
   const today = getStartOfDay(new Date(nowTimestamp));
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
 
@@ -748,6 +761,7 @@ function computeShareCardLast7DaysStats(
   };
 
   let workouts = 0;
+  let groupClasses = 0;
   let volumeKg = 0;
   let completedSets = 0;
   const dayKeys = new Set<string>();
@@ -759,6 +773,8 @@ function computeShareCardLast7DaysStats(
     if (day.getTime() < start.getTime() || day.getTime() > today.getTime()) continue;
     workouts += 1;
     dayKeys.add(day.toDateString());
+    const titleNorm = String(log.programTitle ?? "").trim().toLowerCase();
+    if (titleNorm.startsWith("gruppetime")) groupClasses += 1;
     for (const result of log.results ?? []) {
       if (!result.completed) continue;
       completedSets += 1;
@@ -771,12 +787,75 @@ function computeShareCardLast7DaysStats(
     }
   }
 
+  const strengthWorkouts = Math.max(0, workouts - groupClasses);
+  // Forsiktige estimater: 350 kcal / 45 min for styrkeøkt, 450 kcal / 60 min for gruppetime.
+  const kcal = Math.round(strengthWorkouts * 350 + groupClasses * 450);
+  const activityMinutes = strengthWorkouts * 45 + groupClasses * 60;
+
   return {
     workouts,
+    strengthWorkouts,
+    groupClasses,
     trainingDays: dayKeys.size,
     volumeKg,
     completedSets,
+    kcal,
+    activityMinutes,
   };
+}
+
+/** ISO ukenummer (mandag som første dag). */
+function isoWeekNumber(date: Date): number {
+  const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = (target.getUTCDay() + 6) % 7;
+  target.setUTCDate(target.getUTCDate() - dayNum + 3);
+  const firstThursday = new Date(Date.UTC(target.getUTCFullYear(), 0, 4));
+  const diff = target.getTime() - firstThursday.getTime();
+  return 1 + Math.round(diff / (7 * 24 * 60 * 60 * 1000));
+}
+
+/** Bygg en "Uke 20 • 13.–19. mai"-etikett for delingskortet. */
+function buildWeeklyShareLabel(nowTimestamp: number): string {
+  const today = getStartOfDay(new Date(nowTimestamp));
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+  const week = isoWeekNumber(today);
+  const dayFmt = new Intl.DateTimeFormat("nb-NO", { day: "numeric" });
+  const monthFmt = new Intl.DateTimeFormat("nb-NO", { month: "short" });
+  const startDay = dayFmt.format(start);
+  const endDay = dayFmt.format(today);
+  const sameMonth = start.getMonth() === today.getMonth();
+  const startMonth = monthFmt.format(start).replace(".", "");
+  const endMonth = monthFmt.format(today).replace(".", "");
+  const range = sameMonth ? `${startDay}.–${endDay}. ${endMonth}` : `${startDay}. ${startMonth} – ${endDay}. ${endMonth}`;
+  return `Uke ${week} • ${range}`;
+}
+
+/** Velger en kort, motiverende tittel basert på ukens aktivitet. */
+function pickWeeklyShareTitle(stats: WeeklyShareStats): string {
+  if (stats.workouts >= 5) return "Sterk uke!";
+  if (stats.workouts >= 3) return "Bra jobba!";
+  if (stats.workouts >= 1) return "Jeg er i gang!";
+  return "Ny uke, nye sjanser!";
+}
+
+/** Velger en "ukens seier"-quote i førsteperson basert på aktivitet. */
+function pickWeeklyShareSeier(stats: WeeklyShareStats): string {
+  if (stats.groupClasses >= 2) return "Jeg viser opp og bygger fellesskap – det gir energi tilbake!";
+  if (stats.trainingDays >= 5) return "Jeg prioriterer meg selv – og det gjør en forskjell!";
+  if (stats.volumeKg >= 3000) return "Jeg løfter mer i dag enn forrige uke – litt etter litt!";
+  if (stats.workouts >= 3) return "Jeg holder vanen levende – sterke vaner gir sterke uker!";
+  if (stats.workouts >= 1) return "Jeg tok det første steget – nå bygger jeg videre!";
+  return "Ny uke, ny start – jeg har dette!";
+}
+
+/** Formaterer aktivitetstid (min) til "Xt Ym" eller "Y min". */
+function formatActivityTime(minutes: number): string {
+  if (!Number.isFinite(minutes) || minutes <= 0) return "0 min";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h <= 0) return `${m} min`;
+  if (m === 0) return `${h}t`;
+  return `${h}t ${m}m`;
 }
 
 /** Artig «løftevolum»-tekst for skrytekort basert på siste 7 dager. */
@@ -3745,8 +3824,8 @@ export function MemberPortal(props: MemberPortalProps) {
       }
 
       const canvas = document.createElement("canvas");
-      canvas.width = 1080;
-      canvas.height = 1920;
+      canvas.width = 1500;
+      canvas.height = 1000;
       const context = canvas.getContext("2d");
       if (!context) {
         setProgressShareStatus("Kunne ikke lage bilde akkurat nå.");
@@ -3767,192 +3846,300 @@ export function MemberPortal(props: MemberPortalProps) {
         shareCardLogo = null;
       }
 
-      const memberName = viewedMember?.name ?? "Medlem";
-      const displayName = memberName.length > 20 ? `${memberName.slice(0, 20)}…` : memberName;
-      const periodTitle = "Siste 7 dager";
+      let heroImage: HTMLImageElement | null = null;
+      try {
+        heroImage = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const im = new Image();
+          im.crossOrigin = "anonymous";
+          im.onload = () => resolve(im);
+          im.onerror = () => reject(new Error("hero"));
+          im.src = "/share/weekly-summary-hero.png";
+        });
+      } catch {
+        heroImage = null;
+      }
 
-      const bg = context.createLinearGradient(0, 0, canvas.width, canvas.height * 1.05);
-      bg.addColorStop(0, "#30E3BE");
-      bg.addColorStop(0.35, MOTUS.turquoise);
-      bg.addColorStop(0.72, MOTUS.pink);
-      bg.addColorStop(1, "#831843");
+      const W = canvas.width;
+      const H = canvas.height;
+
+      // Mørk bakgrunnsgradient
+      const bg = context.createRadialGradient(W * 0.1, H * 0.1, 100, W * 0.6, H * 0.6, W);
+      bg.addColorStop(0, "#1a2335");
+      bg.addColorStop(0.45, "#0d111c");
+      bg.addColorStop(1, "#060912");
       context.fillStyle = bg;
-      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillRect(0, 0, W, H);
 
-      context.save();
-      context.globalAlpha = 0.14;
-      context.fillStyle = "#ffffff";
-      context.beginPath();
-      context.arc(140, 220, 200, 0, Math.PI * 2);
-      context.fill();
-      context.beginPath();
-      context.arc(980, 420, 260, 0, Math.PI * 2);
-      context.fill();
-      context.beginPath();
-      context.arc(200, 1680, 240, 0, Math.PI * 2);
-      context.fill();
-      context.restore();
-
-      const headerH = 380;
-      context.fillStyle = "rgba(15,23,42,0.28)";
-      context.fillRect(0, 0, canvas.width, headerH);
-
-      context.fillStyle = "rgba(255,255,255,0.92)";
-      context.font = "600 34px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("MOTUS", 72, 95);
-      context.font = "300 30px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText(periodTitle, 72, 145);
-      context.font = "bold 76px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText(displayName, 72, 255);
-      context.font = "26px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.globalAlpha = 0.88;
-      context.fillText("Ukesoppsummering · mine siste 7 dager", 72, 318);
-      context.globalAlpha = 1;
-
-      if (shareCardLogo && shareCardLogo.naturalWidth > 0) {
-        const maxW = 292;
-        const lw = maxW;
-        const lh = (shareCardLogo.naturalHeight / shareCardLogo.naturalWidth) * lw;
-        const lx = canvas.width - 56 - lw;
-        const ly = 56;
+      // Foto på høyre side
+      if (heroImage && heroImage.naturalWidth > 0) {
+        const photoW = Math.round(W * 0.56);
+        const photoH = H - 100;
+        const photoX = W - photoW;
+        const photoY = 0;
+        const scale = Math.max(photoW / heroImage.naturalWidth, photoH / heroImage.naturalHeight);
+        const drawW = heroImage.naturalWidth * scale;
+        const drawH = heroImage.naturalHeight * scale;
+        const drawX = photoX - (drawW - photoW) * 0.4;
+        const drawY = photoY - (drawH - photoH) * 0.5;
         context.save();
-        context.translate(lx, ly);
-        context.globalAlpha = 0.98;
-        context.drawImage(shareCardLogo, 0, 0, lw, lh);
+        context.beginPath();
+        context.rect(photoX, photoY, photoW, photoH);
+        context.clip();
+        context.drawImage(heroImage, drawX, drawY, drawW, drawH);
+        // Fade på venstre kant inn mot mørk bakgrunn
+        const fadeGrad = context.createLinearGradient(photoX, 0, photoX + photoW * 0.55, 0);
+        fadeGrad.addColorStop(0, "rgba(13, 17, 28, 1)");
+        fadeGrad.addColorStop(0.4, "rgba(13, 17, 28, 0.45)");
+        fadeGrad.addColorStop(1, "rgba(13, 17, 28, 0)");
+        context.fillStyle = fadeGrad;
+        context.fillRect(photoX, photoY, photoW, photoH);
+        // Mørk vignett nederst på bildet for kontrast mot quote
+        const bottomGrad = context.createLinearGradient(0, photoY + photoH - 200, 0, photoY + photoH);
+        bottomGrad.addColorStop(0, "rgba(13, 17, 28, 0)");
+        bottomGrad.addColorStop(1, "rgba(13, 17, 28, 0.6)");
+        context.fillStyle = bottomGrad;
+        context.fillRect(photoX, photoY, photoW, photoH);
         context.restore();
       }
 
-      const cardX = 56;
-      const cardY = 420;
-      const cardW = canvas.width - 112;
-      const cardH = 1450;
-      const cardR = 40;
-      context.shadowColor = "rgba(15, 23, 42, 0.22)";
-      context.shadowBlur = 48;
-      context.shadowOffsetY = 28;
-      context.fillStyle = "rgba(255,255,255,0.96)";
-      fillRoundRect(context, cardX, cardY, cardW, cardH, cardR);
-      context.shadowBlur = 0;
-      context.shadowOffsetY = 0;
+      // Topp: MOTUS-logo til venstre
+      if (shareCardLogo && shareCardLogo.naturalWidth > 0) {
+        const lh = 64;
+        const lw = (shareCardLogo.naturalWidth / shareCardLogo.naturalHeight) * lh;
+        context.save();
+        context.globalAlpha = 0.95;
+        context.drawImage(shareCardLogo, 72, 60, lw, lh);
+        context.restore();
+      } else {
+        context.fillStyle = "#ffffff";
+        context.font = "900 44px system-ui, -apple-system, Segoe UI, sans-serif";
+        context.fillText("MOTUS", 72, 110);
+      }
 
-      const pad = 52;
-      let y = cardY + pad + 36;
-      context.fillStyle = MOTUS.ink;
-      context.font = "bold 40px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Mine tall · siste 7 dager", cardX + pad, y);
-      y += 52;
-      context.fillStyle = "#64748b";
-      context.font = "26px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Økter, treningsdager, sett og løftevolum jeg har logget", cardX + pad, y);
-      y += 72;
+      // Topp: Uke-pille til høyre
+      const pillText = progressShareWeekLabel;
+      context.font = "700 22px system-ui, -apple-system, Segoe UI, sans-serif";
+      const pillTextW = context.measureText(pillText).width;
+      const pillW = pillTextW + 44;
+      const pillH = 46;
+      const pillX = W - pillW - 56;
+      const pillY = 60;
+      const pillGrad = context.createLinearGradient(pillX, pillY, pillX + pillW, pillY + pillH);
+      pillGrad.addColorStop(0, "#f472b6");
+      pillGrad.addColorStop(1, "#d91278");
+      context.fillStyle = pillGrad;
+      fillRoundRect(context, pillX, pillY, pillW, pillH, pillH / 2);
+      context.fillStyle = "#ffffff";
+      context.textBaseline = "middle";
+      context.fillText(pillText, pillX + 22, pillY + pillH / 2 + 1);
+      context.textBaseline = "alphabetic";
 
-      const tileGap = 22;
-      const tileW = (cardW - pad * 2 - tileGap) / 2;
-      const tileH = 168;
-      const stats: Array<{ label: string; value: string; accent: string }> = [
-        { label: "Mine økter", value: String(progressShareLast7Days.workouts), accent: MOTUS.turquoise },
-        { label: "Mine treningsdager", value: String(progressShareLast7Days.trainingDays), accent: MOTUS.pink },
-        { label: "Mine sett", value: String(progressShareLast7Days.completedSets), accent: "#30E3BE" },
-        { label: "Mitt volum", value: `${Math.round(progressShareLast7Days.volumeKg).toLocaleString("nb-NO")} kg`, accent: "#db2777" },
+      // UKEN SOM HAR VÆRT eyebrow
+      let yCursor = 220;
+      context.fillStyle = "#30e3be";
+      context.font = "800 22px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText("UKEN SOM HAR VÆRT", 72, yCursor);
+      yCursor += 48;
+
+      // Hovedtittel + rosa understrek
+      const titleText = progressShareTitle;
+      context.fillStyle = "#ffffff";
+      context.font = "900 102px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText(titleText, 72, yCursor);
+      const titleW = context.measureText(titleText).width;
+      context.strokeStyle = "#d91278";
+      context.lineWidth = 8;
+      context.lineCap = "round";
+      context.beginPath();
+      context.moveTo(72, yCursor + 14);
+      context.lineTo(72 + Math.min(titleW * 0.85, titleW), yCursor + 14);
+      context.stroke();
+      yCursor += 70;
+
+      // Subtittel (2 linjer)
+      context.fillStyle = "rgba(241, 245, 249, 0.82)";
+      context.font = "500 28px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText("Se hva jeg har fått til i Motus.", 72, yCursor);
+      yCursor += 38;
+      context.fillText("Små steg hver uke gir store resultater!", 72, yCursor);
+      yCursor += 56;
+
+      // Quote-tekst over fotoet
+      const quoteText = "Fremgang skjer én uke av gangen. Jeg bygger sterke vaner!";
+      context.save();
+      context.fillStyle = "#30e3be";
+      context.font = "900 56px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText("\u201C", W - 320, 290);
+      context.fillStyle = "#f8fafc";
+      context.font = "700 24px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.shadowColor = "rgba(0, 0, 0, 0.55)";
+      context.shadowBlur = 12;
+      fillWrappedCanvasText(context, quoteText, W - 320, 360, 260, 32);
+      context.restore();
+
+      // Stat-fliser
+      const groupCount = progressShareLast7Days.groupClasses;
+      const kcal = progressShareLast7Days.kcal;
+      const minutes = progressShareLast7Days.activityMinutes;
+      const statTiles: Array<{
+        value: string;
+        label: string;
+        sub: string;
+        tone: "teal" | "pink";
+        iconKey: "kg" | "workouts" | "groups" | "kcal" | "time";
+      }> = [
+        {
+          value: Math.round(progressShareLast7Days.volumeKg).toLocaleString("nb-NO"),
+          label: "KG LØFTET",
+          sub: "Totalt løftet denne uken",
+          tone: "teal",
+          iconKey: "kg",
+        },
+        {
+          value: String(progressShareLast7Days.workouts),
+          label: "TRENINGSØKTER",
+          sub: "Jeg har vært skikkelig på!",
+          tone: "pink",
+          iconKey: "workouts",
+        },
+        {
+          value: String(groupCount),
+          label: "GRUPPETIMER",
+          sub: groupCount > 0 ? "Bygger fellesskap!" : "Bli med i en time!",
+          tone: "teal",
+          iconKey: "groups",
+        },
+        {
+          value: Math.round(kcal).toLocaleString("nb-NO"),
+          label: "KCAL FORBRUKT",
+          sub: "Energi brukt på å bli sterkere",
+          tone: "pink",
+          iconKey: "kcal",
+        },
+        {
+          value: formatActivityTime(minutes),
+          label: "AKTIVITETSTID",
+          sub: "Tid investert i meg selv",
+          tone: "teal",
+          iconKey: "time",
+        },
       ];
-      stats.forEach((stat, index) => {
-        const col = index % 2;
-        const row = Math.floor(index / 2);
-        const tx = cardX + pad + col * (tileW + tileGap);
-        const ty = y + row * (tileH + tileGap);
-        context.fillStyle = "#f8fafc";
+
+      const tileGap = 14;
+      const tilesAreaW = 920;
+      const tileW = (tilesAreaW - tileGap * 4) / 5;
+      const tileH = 220;
+      const tilesStartX = 72;
+      const tilesStartY = 560;
+
+      statTiles.forEach((tile, idx) => {
+        const tx = tilesStartX + idx * (tileW + tileGap);
+        const ty = tilesStartY;
+        const toneColor = tile.tone === "teal" ? "#30e3be" : "#f472b6";
+
+        // Flis-bakgrunn
+        context.fillStyle = "rgba(255, 255, 255, 0.05)";
+        fillRoundRect(context, tx, ty, tileW, tileH, 18);
+        context.strokeStyle = "rgba(255, 255, 255, 0.08)";
+        context.lineWidth = 1;
         if (typeof context.roundRect === "function") {
           context.beginPath();
-          context.roundRect(tx, ty, tileW, tileH, 22);
-          context.fill();
-          context.strokeStyle = "rgba(148,163,184,0.45)";
-          context.lineWidth = 1;
+          context.roundRect(tx, ty, tileW, tileH, 18);
           context.stroke();
         } else {
-          context.fillRect(tx, ty, tileW, tileH);
-          context.strokeStyle = "rgba(148,163,184,0.45)";
-          context.lineWidth = 1;
           context.strokeRect(tx, ty, tileW, tileH);
         }
-        context.fillStyle = stat.accent;
-        context.fillRect(tx, ty, 6, tileH);
-        context.fillStyle = "#94a3b8";
-        context.font = "22px system-ui, -apple-system, Segoe UI, sans-serif";
-        context.fillText(stat.label, tx + 28, ty + 48);
-        context.fillStyle = MOTUS.ink;
-        context.font = "bold 48px system-ui, -apple-system, Segoe UI, sans-serif";
-        context.fillText(stat.value, tx + 28, ty + 118);
-      });
-      y += 2 * (tileH + tileGap) + 28;
 
-      const playfulBoxH = 152;
-      context.fillStyle = "#f8fafc";
-      if (typeof context.roundRect === "function") {
+        // Ikon-sirkel
+        const iconCx = tx + 26;
+        const iconCy = ty + 32;
+        context.strokeStyle = toneColor;
+        context.lineWidth = 2.2;
         context.beginPath();
-        context.roundRect(cardX + pad, y, cardW - pad * 2, playfulBoxH, 22);
-        context.fill();
-        context.strokeStyle = "rgba(148,163,184,0.45)";
-        context.lineWidth = 1;
+        context.arc(iconCx, iconCy, 16, 0, Math.PI * 2);
         context.stroke();
-      } else {
-        context.fillRect(cardX + pad, y, cardW - pad * 2, playfulBoxH);
-        context.strokeStyle = "rgba(148,163,184,0.45)";
-        context.lineWidth = 1;
-        context.strokeRect(cardX + pad, y, cardW - pad * 2, playfulBoxH);
-      }
-      context.fillStyle = MOTUS.ink;
-      context.font = "bold 24px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Løftefakta", cardX + pad + 24, y + 42);
-      context.fillStyle = "#475569";
-      context.font = "24px system-ui, -apple-system, Segoe UI, sans-serif";
-      fillWrappedCanvasText(
-        context,
-        progressLiftPlayfulLine,
-        cardX + pad + 24,
-        y + 78,
-        cardW - pad * 2 - 48,
-        30,
-      );
-      y += playfulBoxH + 22;
+        // Liten ikon-glyph (forenklet emoji-fallback for hver type)
+        context.fillStyle = toneColor;
+        context.font = "700 18px system-ui, -apple-system, Segoe UI, sans-serif";
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        const glyph =
+          tile.iconKey === "kg"
+            ? "≡"
+            : tile.iconKey === "workouts"
+              ? "↗"
+              : tile.iconKey === "groups"
+                ? "◯"
+                : tile.iconKey === "kcal"
+                  ? "✦"
+                  : "⏱";
+        context.fillText(glyph, iconCx, iconCy + 1);
+        context.textAlign = "left";
+        context.textBaseline = "alphabetic";
 
-      const stripH = 112;
-      const stripGrad = context.createLinearGradient(cardX + pad, y, cardX + cardW - pad, y + stripH);
-      stripGrad.addColorStop(0, MOTUS.turquoise);
-      stripGrad.addColorStop(1, MOTUS.pink);
-      context.fillStyle = stripGrad;
-      fillRoundRect(context, cardX + pad, y, cardW - pad * 2, stripH, 22);
-      context.fillStyle = "#ffffff";
-      context.font = "bold 28px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText(`Jeg fullførte ${progressShareLast7Days.workouts} økter på ${progressShareLast7Days.trainingDays} dager.`, cardX + pad + 32, y + 72);
-      y += stripH + 28;
+        // Verdi
+        context.fillStyle = "#ffffff";
+        context.font = "900 38px system-ui, -apple-system, Segoe UI, sans-serif";
+        context.fillText(tile.value, tx + 16, ty + 92);
 
-      context.fillStyle = "#f1f5f9";
-      fillRoundRect(context, cardX + pad, y, cardW - pad * 2, 200, 22);
-      context.fillStyle = MOTUS.ink;
-      context.font = "bold 26px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Min siste uke", cardX + pad + 28, y + 48);
-      context.fillStyle = "#475569";
-      context.font = "26px system-ui, -apple-system, Segoe UI, sans-serif";
-      fillWrappedCanvasText(
-        context,
-        `Jeg logget ${progressShareLast7Days.completedSets} sett og ${Math.round(progressShareLast7Days.volumeKg).toLocaleString("nb-NO")} kg i samlet løftevolum siste 7 dager.`,
-        cardX + pad + 28,
-        y + 92,
-        cardW - pad * 2 - 56,
-        36,
-      );
-      y += 220;
+        // Label
+        context.fillStyle = toneColor;
+        context.font = "800 13px system-ui, -apple-system, Segoe UI, sans-serif";
+        context.fillText(tile.label, tx + 16, ty + 122);
 
-      context.strokeStyle = "rgba(148,163,184,0.5)";
+        // Subtekst
+        context.fillStyle = "rgba(241, 245, 249, 0.58)";
+        context.font = "500 13px system-ui, -apple-system, Segoe UI, sans-serif";
+        fillWrappedCanvasText(context, tile.sub, tx + 16, ty + 152, tileW - 28, 18);
+      });
+
+      // Bunn-stripe: UKENS SEIER
+      const footerH = 110;
+      const footerY = H - footerH;
+      context.fillStyle = "rgba(255, 255, 255, 0.04)";
+      context.fillRect(0, footerY, W, footerH);
+      context.strokeStyle = "rgba(255, 255, 255, 0.08)";
       context.lineWidth = 1;
       context.beginPath();
-      context.moveTo(cardX + pad, y);
-      context.lineTo(cardX + cardW - pad, y);
+      context.moveTo(0, footerY);
+      context.lineTo(W, footerY);
       context.stroke();
-      y += 40;
-      context.fillStyle = "#94a3b8";
-      context.font = "22px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("motus · del styrken din", cardX + pad, y);
+
+      // Pokal-sirkel
+      context.save();
+      context.fillStyle = "rgba(48, 227, 190, 0.18)";
+      context.beginPath();
+      context.arc(110, footerY + footerH / 2, 28, 0, Math.PI * 2);
+      context.fill();
+      context.strokeStyle = "rgba(48, 227, 190, 0.65)";
+      context.lineWidth = 2;
+      context.stroke();
+      context.fillStyle = "#30e3be";
+      context.font = "900 28px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText("\u2605", 110, footerY + footerH / 2 + 1);
+      context.textAlign = "left";
+      context.textBaseline = "alphabetic";
+      context.restore();
+
+      // UKENS SEIER tekst
+      context.fillStyle = "#30e3be";
+      context.font = "800 14px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText("UKENS SEIER", 160, footerY + 42);
+      context.fillStyle = "rgba(241, 245, 249, 0.92)";
+      context.font = "600 20px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText(progressShareSeierText, 160, footerY + 72);
+
+      // MOTUS-logo i bunn-høyre
+      if (shareCardLogo && shareCardLogo.naturalWidth > 0) {
+        const lh = 36;
+        const lw = (shareCardLogo.naturalWidth / shareCardLogo.naturalHeight) * lh;
+        context.save();
+        context.globalAlpha = 0.85;
+        context.drawImage(shareCardLogo, W - lw - 56, footerY + (footerH - lh) / 2, lw, lh);
+        context.restore();
+      }
 
       const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) {
@@ -4213,6 +4400,9 @@ export function MemberPortal(props: MemberPortalProps) {
 
   const progressShareLast7Days = computeShareCardLast7DaysStats(completedLogs, nowTimestamp);
   const progressLiftPlayfulLine = buildProgressLiftPlayfulLine(progressShareLast7Days);
+  const progressShareWeekLabel = buildWeeklyShareLabel(nowTimestamp);
+  const progressShareTitle = pickWeeklyShareTitle(progressShareLast7Days);
+  const progressShareSeierText = pickWeeklyShareSeier(progressShareLast7Days);
   const memberShareDisplayName = viewedMember?.name ?? editableMember?.name ?? "Medlem";
   const nextBestAction = useMemo(() => {
     if (!memberAssignedPrograms.length) {
@@ -7038,6 +7228,10 @@ export function MemberPortal(props: MemberPortalProps) {
                 stats={progressShareLast7Days}
                 playfulLine={progressLiftPlayfulLine}
                 logoSrc={motusShareLogoSrc}
+                weekLabel={progressShareWeekLabel}
+                title={progressShareTitle}
+                seierText={progressShareSeierText}
+                formatActivityTime={formatActivityTime}
                 onShare={() => void shareMonthlyProgressSummary()}
                 shareStatus={progressShareStatus}
               />
