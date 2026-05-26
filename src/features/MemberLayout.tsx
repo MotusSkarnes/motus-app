@@ -213,8 +213,17 @@ export function MemberLayout({
     const resolved = resolveMemberOnboarding(activeMember, appState.members);
     if (resolved?.completedAt && onboardingAnswersAreSubstantive(resolved)) {
       markOnboardingCompleteLocally(onboardingIdentityKey, resolved.completedAt);
+      return;
     }
-  }, [activeMember, appState.members, onboardingIdentityKey]);
+    // Seed lokalflagg ogs\u00e5 n\u00e5r vi bare ser at skjemaet er innsendt (uten substantielle svar).
+    // Da slipper kunden \u00e5 se prompten p\u00e5 hjem hvis dataene ble lagret f\u00f8r/skipped p\u00e5 en annen enhet.
+    if (onboardingSubmitted) {
+      markOnboardingCompleteLocally(
+        onboardingIdentityKey,
+        resolved?.completedAt?.trim() || new Date().toISOString(),
+      );
+    }
+  }, [activeMember, appState.members, onboardingIdentityKey, onboardingSubmitted]);
 
   function dismissWelcomeModal() {
     if (!onboardingIdentityKey) return;

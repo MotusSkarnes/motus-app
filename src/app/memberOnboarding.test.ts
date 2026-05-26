@@ -96,6 +96,34 @@ describe("memberOnboarding", () => {
     expect(isMemberOnboardingSubmitted(member, [member])).toBe(true);
   });
 
+  it("treats malformed personal_goals with onboarding marker as submitted (defensiv fallback)", () => {
+    // Personal_goals som ikke parses som ren MOTUS_PROFILE_V1-JSON,
+    // men inneholder onboarding-markørene. Brukes som siste forsvarslinje
+    // mot at kunden ser prompten p\u00e5 hjem etter \u00e5 ha fylt ut skjemaet.
+    const malformed = `Some notes here\n{\"trainingGoals\":[\"Styrke\"]\n\"onboardingCompletedAt\":\"2026-05-16T12:00:00.000Z\"`;
+    const member: Member = {
+      id: "submitted-2",
+      name: "Test",
+      email: "submitted2@test.no",
+      isActive: true,
+      invitedAt: "",
+      phone: "",
+      birthDate: "",
+      weight: "",
+      height: "",
+      level: "Nybegynner",
+      membershipType: "Premium",
+      customerType: "PT-kunde",
+      daysSinceActivity: "",
+      goal: "",
+      focus: "",
+      personalGoals: malformed,
+      injuries: "",
+      coachNotes: "",
+    };
+    expect(isMemberOnboardingSubmitted(member, [member])).toBe(true);
+  });
+
   it("enriches member with personal_goals from duplicate email rows", () => {
     const rich = `MOTUS_PROFILE_V1:${JSON.stringify({
       onboarding: { version: 1, completedAt: "2026-05-01T00:00:00.000Z", skipped: false, trainingGoals: ["Styrke"] },

@@ -429,6 +429,20 @@ export function isMemberOnboardingComplete(
   return onboardingAnswersAreSubstantive(resolveMemberOnboarding(member, allMembers));
 }
 
+/**
+ * Defensiv sjekk: ser direkte etter at oppstartsskjema-markører finnes i en
+ * personal_goals-streng, uten å være avhengig av at JSON-parsing klarer å
+ * bygge en gyldig onboarding-blob. Dekker tilfeller der profilen ble lagret
+ * med en eldre/blandet struktur eller en uventet rad-variant.
+ */
+function personalGoalsHasOnboardingMarker(personalGoals: string | undefined | null): boolean {
+  const trimmed = String(personalGoals ?? "").trim();
+  if (!trimmed) return false;
+  if (trimmed.includes("\"onboardingCompletedAt\"")) return true;
+  if (trimmed.includes("\"onboarding\"")) return true;
+  return false;
+}
+
 export function isMemberOnboardingSubmitted(
   member: Member | null | undefined,
   allMembers?: Member[],
@@ -436,7 +450,12 @@ export function isMemberOnboardingSubmitted(
   if (!member) return false;
   const identityKey = memberOnboardingIdentityKey(member);
   if (hasLocalOnboardingComplete(identityKey)) return true;
-  return Boolean(resolveMemberOnboarding(member, allMembers)?.completedAt?.trim());
+  if (resolveMemberOnboarding(member, allMembers)?.completedAt?.trim()) return true;
+  // Siste forsvarslinje: skann alle e-postrelaterte rader for onboarding-markører —
+  // dekker korrupte/eldre payloads hvor JSON-parsing kunne mistet feltene.
+  const related = allMembers?.length ? findMembersByEmail(member, allMembers) : [member];
+  if (related.some((row) => personalGoalsHasOnboardingMarker(row.personalGoals))) return true;
+  return personalGoalsHasOnboardingMarker(member.personalGoals);
 }
 
 /** Kanonisk rad først (siste lagring); fall tilbake til andre duplikat-rader kun om feltet er tomt der. */
