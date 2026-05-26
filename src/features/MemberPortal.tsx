@@ -141,13 +141,6 @@ import {
   reconcilePeriodPlanCompletionKeys,
 } from "../app/periodPlanCompletionPrefs";
 import {
-  mergeMemberThemeIntoPersonalGoals,
-  readLocalMemberTheme,
-  readMemberThemeFromPersonalGoals,
-  writeLocalMemberTheme,
-  type MemberTheme,
-} from "../app/memberThemePreference";
-import {
   applyPeriodPlanSwaps,
   buildPeriodPlanWeekOverride,
   getPeriodPlanSwapsStorageKey,
@@ -1334,27 +1327,6 @@ export function MemberPortal(props: MemberPortalProps) {
       const personalGoals = patchMemberNotificationPreferencesInPersonalGoals(
         resolveMemberPersonalGoals(anchor, members),
         patch,
-      );
-      updateMember({ memberId: anchor.id, changes: { personalGoals } });
-    },
-    [editableMember, members, updateMember],
-  );
-  // Lys/m\u00f8rk-tema: leser cloud-valg om det finnes, ellers lokalt lagret.
-  const currentMemberTheme = useMemo<MemberTheme>(() => {
-    if (!editableMember) return readLocalMemberTheme();
-    const cloud = readMemberThemeFromPersonalGoals(
-      resolveMemberPersonalGoals(editableMember, members),
-    );
-    return cloud ?? readLocalMemberTheme();
-  }, [editableMember, members]);
-  const handleChangeMemberTheme = useCallback(
-    (theme: MemberTheme) => {
-      writeLocalMemberTheme(theme);
-      if (!editableMember) return;
-      const anchor = pickCanonicalMemberRowForProfile(editableMember, members);
-      const personalGoals = mergeMemberThemeIntoPersonalGoals(
-        resolveMemberPersonalGoals(anchor, members),
-        theme,
       );
       updateMember({ memberId: anchor.id, changes: { personalGoals } });
     },
@@ -7384,8 +7356,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 onRegisterWebPush={() => void handleRegisterWebPush()}
                 pushRegisterBusy={pushRegisterBusy}
                 pushRegisterStatus={pushRegisterStatus}
-                currentTheme={currentMemberTheme}
-                onChangeTheme={handleChangeMemberTheme}
               />
             ) : (
               <Card className="p-5">

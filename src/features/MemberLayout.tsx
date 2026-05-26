@@ -22,14 +22,6 @@ import {
   shouldShowMemberOnboarding,
   type MemberOnboardingAnswers,
 } from "../app/memberOnboarding";
-import {
-  applyMemberThemeToDocument,
-  MEMBER_THEME_CHANGED_EVENT,
-  readLocalMemberTheme,
-  readMemberThemeFromPersonalGoals,
-  writeLocalMemberTheme,
-  type MemberTheme,
-} from "../app/memberThemePreference";
 import { normalizePeriodSchedulePlan, readPeriodPlansByMemberId, writePeriodPlansByMemberId } from "../app/periodPlanMerge";
 import type { AppState, Member, MemberTab, PeriodSchedulePlan } from "../app/types";
 import { applyInviteStampToMembersByEmail } from "../app/memberInviteStatus";
@@ -219,36 +211,6 @@ export function MemberLayout({
     if (hasSeenMemberWelcome(onboardingIdentityKey)) return;
     setWelcomeModalOpen(true);
   }, [activeMember, currentUserRole, onboardingIdentityKey]);
-
-  // Tema (lys/mørk): kun aktivt mens medlemslayouten er montert. Trener-grensesnittet
-  // beholder lys design uansett.
-  const memberThemeFromCloud = useMemo<MemberTheme | null>(() => {
-    if (!activeMember) return null;
-    return readMemberThemeFromPersonalGoals(activeMember.personalGoals);
-  }, [activeMember]);
-
-  useEffect(() => {
-    if (currentUserRole !== "member") {
-      // Fjern dark-klassen når PT-en bytter til sin egen visning, eller når man logger ut.
-      applyMemberThemeToDocument("light");
-      return;
-    }
-    // Cloud-valg vinner over lokalt valg (slik at man får riktig tema også på ny enhet).
-    const cloud = memberThemeFromCloud;
-    const initial: MemberTheme = cloud ?? readLocalMemberTheme();
-    if (cloud) writeLocalMemberTheme(cloud);
-    applyMemberThemeToDocument(initial);
-
-    function onThemeChanged(event: Event) {
-      const detail = (event as CustomEvent<MemberTheme>).detail;
-      applyMemberThemeToDocument(detail === "dark" ? "dark" : "light");
-    }
-    window.addEventListener(MEMBER_THEME_CHANGED_EVENT, onThemeChanged);
-    return () => {
-      window.removeEventListener(MEMBER_THEME_CHANGED_EVENT, onThemeChanged);
-      applyMemberThemeToDocument("light");
-    };
-  }, [currentUserRole, memberThemeFromCloud]);
 
   useEffect(() => {
     if (!activeMember || !onboardingIdentityKey) return;

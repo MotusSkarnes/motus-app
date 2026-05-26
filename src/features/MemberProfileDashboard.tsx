@@ -8,16 +8,13 @@ import {
   HeartPulse,
   Mail,
   MessageSquare,
-  Moon,
   Phone,
-  Sun,
   Target,
   Timer,
   User,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
-import type { MemberTheme } from "../app/memberThemePreference";
 import type { WorkoutLog } from "../app/types";
 import { GradientButton, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput } from "../app/ui";
 
@@ -91,8 +88,6 @@ type MemberProfileDashboardProps = {
   onRegisterWebPush: () => void;
   pushRegisterBusy: boolean;
   pushRegisterStatus: string | null;
-  currentTheme: MemberTheme;
-  onChangeTheme: (theme: MemberTheme) => void;
 };
 
 export function MemberProfileDashboard({
@@ -141,8 +136,6 @@ export function MemberProfileDashboard({
   onRegisterWebPush,
   pushRegisterBusy,
   pushRegisterStatus,
-  currentTheme,
-  onChangeTheme,
 }: MemberProfileDashboardProps) {
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -346,35 +339,6 @@ export function MemberProfileDashboard({
             <SettingToggle label="Lyd når du setter ny PR" checked={celebrationSoundEnabled} onChange={setCelebrationSoundEnabled} />
           </div>
         ) : null}
-
-        <div className="motus-profile-panel space-y-2">
-          <p className="text-sm font-semibold text-slate-900">Tema</p>
-          <p className="text-xs text-slate-600">
-            Velg om appen skal vises med lys eller mørk bakgrunn. Trener-grensesnittet er alltid lyst.
-          </p>
-          <div className="motus-profile-theme-toggle" role="radiogroup" aria-label="Tema">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={currentTheme === "light"}
-              onClick={() => onChangeTheme("light")}
-              className={`motus-profile-theme-option ${currentTheme === "light" ? "motus-profile-theme-option--active" : ""}`}
-            >
-              <Sun className="h-4 w-4" aria-hidden />
-              <span>Lys</span>
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={currentTheme === "dark"}
-              onClick={() => onChangeTheme("dark")}
-              className={`motus-profile-theme-option ${currentTheme === "dark" ? "motus-profile-theme-option--active" : ""}`}
-            >
-              <Moon className="h-4 w-4" aria-hidden />
-              <span>Mørk</span>
-            </button>
-          </div>
-        </div>
 
         {showWebPushSettings ? (
           <div className="motus-profile-panel space-y-2">

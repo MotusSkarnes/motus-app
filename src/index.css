@@ -3100,7 +3100,7 @@ button.motus-progress-status-banner {
   font-size: 0.75rem !important;
 }
 
-/* === Ukesoppsummering â€” mÃ¸rkt landscape delingskort med foto + statistikk = */
+/* === Ukesoppsummering — mørkt landscape delingskort med foto + statistikk = */
 .motus-weekly-share-wrap {
   display: flex;
   flex-direction: column;
@@ -3132,7 +3132,7 @@ button.motus-progress-status-banner {
   }
 }
 
-/* Foto i bakgrunnen pÃ¥ hÃ¸yre side */
+/* Foto i bakgrunnen på høyre side */
 .motus-weekly-share-photo {
   position: absolute;
   inset: 0 0 60px auto;
@@ -3179,9 +3179,9 @@ button.motus-progress-status-banner {
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
-/* PÃ¥ smale skjermer er fotoet en full-bredde bakgrunn og fliseraden er i 2 kolonner.
+/* På smale skjermer er fotoet en full-bredde bakgrunn og fliseraden er i 2 kolonner.
    Sitatet (position: absolute over fotoet) ville da overlappet nederste stat-flis,
-   sÃ¥ vi skjuler det her â€” fotoet (med opacity 0.55) bÃ¦rer fortsatt det visuelle. */
+   så vi skjuler det her — fotoet (med opacity 0.55) bærer fortsatt det visuelle. */
 @media (max-width: 720px) {
   .motus-weekly-share-quote {
     display: none;
@@ -3432,7 +3432,7 @@ button.motus-progress-status-banner {
   opacity: 0.85;
 }
 
-/* Del-kort CTA-knappen under det mÃ¸rke kortet */
+/* Del-kort CTA-knappen under det mørke kortet */
 .motus-weekly-share-cta {
   display: flex;
   align-items: center;
@@ -3892,7 +3892,7 @@ button.motus-progress-status-banner {
 }
 
 .motus-member-program-stat + .motus-member-program-stat::before {
-  content: "â€¢";
+  content: "•";
   margin-right: 0.125rem;
   color: #cbd5e1;
 }
@@ -4643,7 +4643,7 @@ button.motus-progress-status-banner {
   color: #0f766e;
 }
 
-/* PT desktop dashboard â€” 2-column workspace (kundeliste + klient) */
+/* PT desktop dashboard — 2-column workspace (kundeliste + klient) */
 .motus-pt-dash {
   display: none;
   min-height: calc(100dvh - 12rem);
@@ -5359,7 +5359,7 @@ button.motus-progress-status-banner {
   }
 }
 
-/* â€”â€” PT Hjem (oversikt) â€”â€” */
+/* —— PT Hjem (oversikt) —— */
 .motus-trainer-main {
   min-width: 0;
   width: 100%;
@@ -6120,7 +6120,7 @@ button.motus-progress-status-banner {
   overscroll-behavior: contain;
 }
 
-/* Badge-visning: unngÃ¥ vertikal klipping i horisontal scroll. */
+/* Badge-visning: unngå vertikal klipping i horisontal scroll. */
 .motus-badges-section {
   overflow: visible;
 }
@@ -6992,7 +6992,7 @@ button.motus-progress-status-banner {
   border-radius: 0.375rem;
 }
 
-/* â€”â€” Ã˜velsesbank (PT) â€”â€” */
+/* —— Øvelsesbank (PT) —— */
 .motus-exbank {
   display: flex;
   flex-direction: column;
@@ -7756,7 +7756,7 @@ button.motus-progress-status-banner {
   }
 }
 
-/* â€”â€” Programbygger (PT) â€”â€” */
+/* —— Programbygger (PT) —— */
 .motus-prog-builder {
   display: flex;
   flex-direction: column;
@@ -8328,7 +8328,7 @@ button.motus-progress-status-banner {
   color: #0f172a;
 }
 
-/* â€”â€” Premium chat (MotusChat) â€”â€” */
+/* —— Premium chat (MotusChat) —— */
 .motus-chat-shell {
   display: flex;
   flex-direction: column;
@@ -8736,7 +8736,7 @@ button.motus-progress-status-banner {
   border: 1px solid rgba(15, 23, 42, 0.08);
 }
 
-/* â€”â€” Periodeplan premium layout â€”â€” */
+/* —— Periodeplan premium layout —— */
 .motus-period-plan-active {
   display: flex;
   flex-direction: column;
@@ -10127,7 +10127,7 @@ button.motus-progress-status-banner {
   color: #0f766e;
 }
 
-/* PT Statistikk dashboard â€” hvit bakgrunn, kort og grafer */
+/* PT Statistikk dashboard — hvit bakgrunn, kort og grafer */
 .motus-trainer-stats {
   padding: 0.25rem 0 1.5rem;
 }
@@ -11205,7 +11205,7 @@ button.motus-progress-status-banner {
   height: 100%;
   object-fit: cover;
   object-position: center;
-  /* Soft fade fra venstre kant slik at kortets gradient blÃ¸r inn i bildet â€” gir en
+  /* Soft fade fra venstre kant slik at kortets gradient blør inn i bildet — gir en
      "innfelt" look som matcher referansen, og bildet ser mindre/mer integrert ut. */
   -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.6) 12%, #000 32%, #000 100%);
   mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.6) 12%, #000 32%, #000 100%);
@@ -11416,7 +11416,7 @@ button.motus-progress-status-banner {
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.2);
 }
 
-/* Overlay-tag som ligger inne pÃ¥ cover-bilder i feed-kortene. */
+/* Overlay-tag som ligger inne på cover-bilder i feed-kortene. */
 .motus-inspo-overlay-badge {
   position: absolute;
   top: 8px;
@@ -11453,7 +11453,7 @@ button.motus-progress-status-banner {
   }
 }
 
-/* Â«Dagens utvalgteÂ» â€” full bredde artikkel-banner rett under hero. */
+/* «Dagens utvalgte» — full bredde artikkel-banner rett under hero. */
 .motus-inspo-featured-section {
   position: relative;
   display: flex;
@@ -11627,7 +11627,7 @@ button.motus-progress-status-banner {
   box-shadow: 0 8px 18px -6px rgba(15, 23, 42, 0.35);
 }
 
-/* PT-kontroller for Ã¥ pinne / la AI rotere Dagens utvalgte. */
+/* PT-kontroller for å pinne / la AI rotere Dagens utvalgte. */
 .motus-inspo-featured-actions {
   display: flex;
   flex-wrap: wrap;
@@ -12031,254 +12031,4 @@ button.motus-progress-status-banner {
   height: 22px;
   color: #ffb6df;
   flex-shrink: 0;
-}
-
-/* ==========================================================================
-   MOTUS - Dark mode (member only)
-   Aktiveres ved at MemberLayout setter klassen `motus-theme-dark` paa <html>
-   og <body>. Trener-grensesnittet beholder lys design fordi klassen fjernes
-   automatisk naar currentUser.role != "member".
-
-   Strategi: enkle, hoey-spesifisitets overstyringer av de mest brukte
-   Tailwind-utility-klassene + custom .motus-* klasser. Brand-fargene
-   (teal/pink) er beholdt; vi justerer bare flater og tekst.
-   ========================================================================== */
-
-:root.motus-theme-dark,
-:root.motus-theme-dark body.motus-theme-dark {
-  background-color: #0d111c;
-  color: #e2e8f0;
-  color-scheme: dark;
-}
-
-/* ---- Bakgrunner ---- */
-.motus-theme-dark .bg-white,
-.motus-theme-dark .bg-slate-50,
-.motus-theme-dark .bg-neutral-50,
-.motus-theme-dark .bg-stone-50,
-.motus-theme-dark .bg-zinc-50,
-.motus-theme-dark .bg-gray-50 { background-color: #161b27; }
-
-.motus-theme-dark .bg-slate-100,
-.motus-theme-dark .bg-neutral-100,
-.motus-theme-dark .bg-zinc-100,
-.motus-theme-dark .bg-gray-100 { background-color: #1c2230; }
-
-.motus-theme-dark .bg-slate-200,
-.motus-theme-dark .bg-neutral-200,
-.motus-theme-dark .bg-zinc-200,
-.motus-theme-dark .bg-gray-200 { background-color: #232a3a; }
-
-.motus-theme-dark .bg-slate-800 { background-color: #0b0f18; }
-.motus-theme-dark .bg-slate-900 { background-color: #060912; }
-.motus-theme-dark .bg-slate-950 { background-color: #04060c; }
-
-/* Lyse aksenter (teal-50/pink-50 osv.) blir dempede moerke tinter slik at de
-   ikke straaler i et moerkt brukergrensesnitt. */
-.motus-theme-dark .bg-teal-50,
-.motus-theme-dark .bg-emerald-50 { background-color: rgba(48, 227, 190, 0.10); }
-.motus-theme-dark .bg-pink-50,
-.motus-theme-dark .bg-rose-50,
-.motus-theme-dark .bg-fuchsia-50 { background-color: rgba(217, 18, 120, 0.12); }
-.motus-theme-dark .bg-amber-50,
-.motus-theme-dark .bg-yellow-50 { background-color: rgba(245, 158, 11, 0.12); }
-.motus-theme-dark .bg-sky-50,
-.motus-theme-dark .bg-blue-50,
-.motus-theme-dark .bg-indigo-50 { background-color: rgba(56, 189, 248, 0.12); }
-.motus-theme-dark .bg-violet-50,
-.motus-theme-dark .bg-purple-50 { background-color: rgba(167, 139, 250, 0.12); }
-
-/* ---- Tekst ---- */
-.motus-theme-dark .text-slate-950,
-.motus-theme-dark .text-slate-900,
-.motus-theme-dark .text-slate-800,
-.motus-theme-dark .text-black,
-.motus-theme-dark .text-neutral-900,
-.motus-theme-dark .text-gray-900,
-.motus-theme-dark .text-zinc-900 { color: #f1f5f9; }
-
-.motus-theme-dark .text-slate-700,
-.motus-theme-dark .text-neutral-700,
-.motus-theme-dark .text-gray-700,
-.motus-theme-dark .text-zinc-700 { color: #cbd5e1; }
-
-.motus-theme-dark .text-slate-600,
-.motus-theme-dark .text-neutral-600,
-.motus-theme-dark .text-gray-600,
-.motus-theme-dark .text-zinc-600 { color: #94a3b8; }
-
-.motus-theme-dark .text-slate-500,
-.motus-theme-dark .text-neutral-500,
-.motus-theme-dark .text-gray-500,
-.motus-theme-dark .text-zinc-500 { color: #94a3b8; }
-
-.motus-theme-dark .text-slate-400,
-.motus-theme-dark .text-neutral-400,
-.motus-theme-dark .text-gray-400,
-.motus-theme-dark .text-zinc-400 { color: #64748b; }
-
-.motus-theme-dark .text-slate-300 { color: #475569; }
-.motus-theme-dark .text-slate-200 { color: #334155; }
-
-/* ---- Kanter ---- */
-.motus-theme-dark .border-slate-200,
-.motus-theme-dark .border-slate-100,
-.motus-theme-dark .border-neutral-200,
-.motus-theme-dark .border-gray-200,
-.motus-theme-dark .border-zinc-200,
-.motus-theme-dark .border-white,
-.motus-theme-dark .border-white\/80,
-.motus-theme-dark .border-white\/90 { border-color: rgba(255, 255, 255, 0.10); }
-
-.motus-theme-dark .border-slate-300,
-.motus-theme-dark .border-neutral-300,
-.motus-theme-dark .border-gray-300 { border-color: rgba(255, 255, 255, 0.16); }
-
-.motus-theme-dark .border-slate-400 { border-color: rgba(255, 255, 255, 0.22); }
-
-.motus-theme-dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
-.motus-theme-dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
-  border-color: rgba(255, 255, 255, 0.08);
-}
-
-/* ---- Ring (focus / avatar) ---- */
-.motus-theme-dark .ring-white { --tw-ring-color: rgba(255, 255, 255, 0.18); }
-.motus-theme-dark .ring-slate-200 { --tw-ring-color: rgba(255, 255, 255, 0.10); }
-
-/* ---- Motus custom kort/flater ---- */
-.motus-theme-dark .motus-card,
-.motus-theme-dark .motus-card-hero {
-  background: #161b27;
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.35),
-    0 8px 24px rgba(0, 0, 0, 0.25);
-  color: #e2e8f0;
-}
-
-.motus-theme-dark .motus-section-label { color: #94a3b8; }
-.motus-theme-dark .motus-nav-bar,
-.motus-theme-dark .motus-bottom-nav,
-.motus-theme-dark .motus-tab-bar {
-  background-color: rgba(13, 17, 28, 0.92);
-  border-color: rgba(255, 255, 255, 0.08);
-  color: #e2e8f0;
-}
-
-/* ---- Input / textarea / select ---- */
-.motus-theme-dark input,
-.motus-theme-dark textarea,
-.motus-theme-dark select {
-  background-color: #1c2230;
-  color: #f1f5f9;
-  border-color: rgba(255, 255, 255, 0.12);
-}
-.motus-theme-dark input::placeholder,
-.motus-theme-dark textarea::placeholder {
-  color: rgba(203, 213, 225, 0.55);
-}
-.motus-theme-dark input:focus,
-.motus-theme-dark textarea:focus,
-.motus-theme-dark select:focus {
-  border-color: rgba(48, 227, 190, 0.55);
-  box-shadow: 0 0 0 3px rgba(48, 227, 190, 0.18);
-}
-.motus-theme-dark input[type="checkbox"],
-.motus-theme-dark input[type="radio"] {
-  background-color: #1c2230;
-  border-color: rgba(255, 255, 255, 0.25);
-}
-
-/* ---- Hover / shadows ---- */
-.motus-theme-dark .hover\:bg-slate-50:hover { background-color: #1f2535; }
-.motus-theme-dark .hover\:bg-slate-100:hover { background-color: #232a3a; }
-.motus-theme-dark .hover\:bg-white:hover { background-color: #1d2330; }
-.motus-theme-dark .shadow-sm,
-.motus-theme-dark .shadow,
-.motus-theme-dark .shadow-md,
-.motus-theme-dark .shadow-lg { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); }
-
-/* ---- Spesifikke komponenter som har egne lyse flater ---- */
-.motus-theme-dark .motus-image-frame { background-color: #161b27; }
-.motus-theme-dark .motus-brand-surface {
-  background: linear-gradient(135deg, rgba(48, 227, 190, 0.16) 0%, rgba(217, 18, 120, 0.16) 100%);
-  border-color: rgba(255, 255, 255, 0.10);
-  color: #e2e8f0;
-}
-
-/* Bunnavigasjon (medlems-tabs i bunn) */
-.motus-theme-dark nav.fixed,
-.motus-theme-dark .motus-mobile-tabnav,
-.motus-theme-dark .motus-desktop-tabnav {
-  background-color: rgba(13, 17, 28, 0.95);
-  border-color: rgba(255, 255, 255, 0.08);
-}
-
-/* Modaler - dialog/aria-modal containere */
-.motus-theme-dark [role="dialog"],
-.motus-theme-dark [aria-modal="true"] {
-  color: #e2e8f0;
-}
-.motus-theme-dark [role="dialog"] .bg-white,
-.motus-theme-dark [aria-modal="true"] .bg-white { background-color: #161b27; }
-
-/* Code/preformat (chat) */
-.motus-theme-dark pre,
-.motus-theme-dark code {
-  background-color: #1c2230;
-  color: #f1f5f9;
-}
-
-/* ---- Tema-bryter i Min profil ---- */
-.motus-profile-theme-toggle {
-  display: inline-flex;
-  border-radius: 9999px;
-  padding: 4px;
-  background: rgba(15, 23, 42, 0.06);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  gap: 4px;
-}
-
-.motus-profile-theme-option {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border-radius: 9999px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #475569;
-  background: transparent;
-  border: 1px solid transparent;
-  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
-  cursor: pointer;
-}
-
-.motus-profile-theme-option:hover {
-  color: #0f172a;
-}
-
-.motus-profile-theme-option--active {
-  background: #ffffff;
-  color: #0f172a;
-  border-color: rgba(15, 23, 42, 0.10);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
-}
-
-/* Moerk variant av selve bryteren */
-.motus-theme-dark .motus-profile-theme-toggle {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.10);
-}
-.motus-theme-dark .motus-profile-theme-option {
-  color: #94a3b8;
-}
-.motus-theme-dark .motus-profile-theme-option:hover {
-  color: #f1f5f9;
-}
-.motus-theme-dark .motus-profile-theme-option--active {
-  background: #1c2230;
-  color: #f1f5f9;
-  border-color: rgba(255, 255, 255, 0.14);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
