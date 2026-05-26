@@ -4700,10 +4700,12 @@ export function MemberPortal(props: MemberPortalProps) {
     return `${unit} igjen til badgen ${nextBadge.title}`;
   }, [homeDashboardNextBadge, memberProgressScores.momentum.subline]);
   const homeDashboardProgressPct = useMemo(() => {
-    if (homeDashboardNextBadge) {
-      return Math.max(0, Math.min(100, Math.round(homeDashboardNextBadge.progressPct)));
-    }
-    return homeMomentumPct;
+    if (!homeDashboardNextBadge) return homeMomentumPct;
+    const nextLevel = getBadgeNextLevel(homeDashboardNextBadge);
+    if (!nextLevel) return 100;
+    const target = Math.max(1, nextLevel.target);
+    const ratio = (homeDashboardNextBadge.current / target) * 100;
+    return Math.max(0, Math.min(100, Math.round(ratio)));
   }, [homeDashboardNextBadge, homeMomentumPct]);
   const homeDashboardHeadline =
     homeWeeklySummary.completedThisWeek > 0 || streakWeeks > 0 ? "Du er på vei!" : "Klar for en ny uke";
