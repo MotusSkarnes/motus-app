@@ -4682,10 +4682,15 @@ export function MemberPortal(props: MemberPortalProps) {
     profileSessionsPerWeekTarget,
     streakWeeks,
   ]);
+  const homeDashboardNextBadge = useMemo(() => {
+    return (
+      memberBadgeCollection.allBadges
+        .filter((badge) => !badge.secret && !badge.hidden && getBadgeNextLevel(badge))
+        .sort((a, b) => b.progressPct - a.progressPct)[0] ?? null
+    );
+  }, [memberBadgeCollection.allBadges]);
   const homeDashboardSubline = useMemo(() => {
-    const nextBadge = memberBadgeCollection.allBadges
-      .filter((badge) => !badge.secret && !badge.hidden && getBadgeNextLevel(badge))
-      .sort((a, b) => b.progressPct - a.progressPct)[0];
+    const nextBadge = homeDashboardNextBadge;
     if (!nextBadge) return memberProgressScores.momentum.subline;
     const nextLevel = getBadgeNextLevel(nextBadge);
     if (!nextLevel) return memberProgressScores.momentum.subline;
@@ -4693,7 +4698,13 @@ export function MemberPortal(props: MemberPortalProps) {
     const unit = formatBadgeMetricValue(nextBadge.id, remaining);
     if (remaining <= 0) return `Nesten i mål med badgen ${nextBadge.title}`;
     return `${unit} igjen til badgen ${nextBadge.title}`;
-  }, [memberBadgeCollection.allBadges, memberProgressScores.momentum.subline]);
+  }, [homeDashboardNextBadge, memberProgressScores.momentum.subline]);
+  const homeDashboardProgressPct = useMemo(() => {
+    if (homeDashboardNextBadge) {
+      return Math.max(0, Math.min(100, Math.round(homeDashboardNextBadge.progressPct)));
+    }
+    return homeMomentumPct;
+  }, [homeDashboardNextBadge, homeMomentumPct]);
   const homeDashboardHeadline =
     homeWeeklySummary.completedThisWeek > 0 || streakWeeks > 0 ? "Du er på vei!" : "Klar for en ny uke";
   const homeWorkoutSubtitle = useMemo(() => {
@@ -5926,6 +5937,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 streakWeeks={streakWeeks}
                 dashboardHeadline={homeDashboardHeadline}
                 dashboardSubline={homeDashboardSubline}
+                dashboardProgressPct={homeDashboardProgressPct}
                 momentumPct={homeMomentumPct}
                 weekSessionsLabel={homeWeekSessionsLabel}
                 weekMinutesLabel={homeWeekMinutesLabel}

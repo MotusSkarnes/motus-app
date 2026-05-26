@@ -44,6 +44,7 @@ export type MemberHomeOverviewProps = {
   streakWeeks: number;
   dashboardHeadline: string;
   dashboardSubline?: string | null;
+  dashboardProgressPct?: number;
   momentumPct: number;
   weekSessionsLabel?: string | null;
   weekMinutesLabel?: string | null;
@@ -75,6 +76,7 @@ export function MemberHomeOverview({
   streakWeeks,
   dashboardHeadline,
   dashboardSubline,
+  dashboardProgressPct,
   momentumPct,
   weekSessionsLabel,
   weekMinutesLabel,
@@ -219,7 +221,7 @@ export function MemberHomeOverview({
               <div
                 className="motus-progress-fill h-1 rounded-full"
                 style={{
-                  width: `${momentumPct}%`,
+                  width: `${Math.max(0, Math.min(100, dashboardProgressPct ?? momentumPct))}%`,
                   background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
                 }}
               />
