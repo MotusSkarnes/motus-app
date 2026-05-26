@@ -2246,7 +2246,42 @@ export function InspirationHub({
         </section>
       ) : null}
 
-      {showHero && featuredItem ? (
+      <div
+        className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1"
+        role="tablist"
+        aria-label="Utforsk undermeny"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={inspoSubView === "overview"}
+          onClick={() => setInspoSubView("overview")}
+          className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+            inspoSubView === "overview" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          Utforsk
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={inspoSubView === "appGuide"}
+          onClick={() => setInspoSubView("appGuide")}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+            inspoSubView === "appGuide" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          <Smartphone className="h-4 w-4 shrink-0" aria-hidden />
+          App-guide
+          {appGuideCount > 0 ? (
+            <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold leading-none text-slate-700">
+              {appGuideCount}
+            </span>
+          ) : null}
+        </button>
+      </div>
+
+      {showHero && featuredItem && inspoSubView !== "appGuide" ? (
         <section className="motus-inspo-featured-section">
           <button
             type="button"
@@ -2322,41 +2357,6 @@ export function InspirationHub({
         </section>
       ) : null}
 
-      <div
-        className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1"
-        role="tablist"
-        aria-label="Utforsk undermeny"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={inspoSubView === "overview"}
-          onClick={() => setInspoSubView("overview")}
-          className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-            inspoSubView === "overview" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          Utforsk
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={inspoSubView === "appGuide"}
-          onClick={() => setInspoSubView("appGuide")}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-            inspoSubView === "appGuide" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          <Smartphone className="h-4 w-4 shrink-0" aria-hidden />
-          App-guide
-          {appGuideCount > 0 ? (
-            <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold leading-none text-slate-700">
-              {appGuideCount}
-            </span>
-          ) : null}
-        </button>
-      </div>
-
       {actionStatus ? (
         <div
           className={`rounded-xl border px-3 py-2 text-sm font-medium ${
@@ -2415,7 +2415,10 @@ export function InspirationHub({
           </p>
         ) : null}
         {activeFeedSections.map(({ category, title }) => {
-          const sectionItems = itemsByCategory[category];
+          // Filtrer ut "Dagens utvalgte" så samme artikkel ikke vises både som banner og inne i feeden.
+          const sectionItems = featuredItem
+            ? itemsByCategory[category].filter((item) => item.id !== featuredItem.id)
+            : itemsByCategory[category];
           if (!sectionItems.length) return null;
           const isNewsLayout = category === "news";
           return (
