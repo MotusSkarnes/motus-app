@@ -506,7 +506,7 @@ describe("period plan auto-complete", () => {
         programs,
         logsForDate: [{ programTitle: "Styrke A", status: "Fullført" }],
       }),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       isPeriodPlanDayComplete({
         planId: "plan-1",

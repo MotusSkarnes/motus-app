@@ -291,10 +291,20 @@ export function isPeriodPlanDayComplete(input: {
   logsForDate?: Array<{ programTitle: string; status: string }>;
 }): boolean {
   const key = buildPeriodPlanEntryKey(input.planId, input.weekNumber, input.day);
+  const trimmedEntry = input.entry.trim();
+  if (
+    trimmedEntry &&
+    (input.logsForDate ?? []).some(
+      (log) =>
+        log.status.toLowerCase().replace(/ø/g, "o") === "fullfort" &&
+        periodPlanEntryMatchesCompletedProgram(trimmedEntry, log.programTitle, input.programs),
+    )
+  ) {
+    return true;
+  }
   if (input.dismissedKeys?.includes(key)) return false;
   if (input.completedKeys.includes(key)) return true;
 
-  const trimmedEntry = input.entry.trim();
   if (!trimmedEntry) return false;
 
   if (!input.logsForDate) return false;
