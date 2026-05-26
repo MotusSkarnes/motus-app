@@ -101,4 +101,31 @@ describe("periodPlanCompletionPrefs", () => {
     expect(result.completedKeys).toEqual([]);
     expect(result.dismissedKeys).toEqual(["plan-1:1:wednesday"]);
   });
+
+  it("preserves caller-supplied updatedAt when writing to personal_goals", () => {
+    // Regression: tidligere ble updatedAt overskrevet med Date.now() ved
+    // hver persist-write. Det førte til at sky-ekkoet fikk et nyere
+    // timestamp enn det lokale ref-et, og merge anså remote som «nyest»,
+    // som igjen overstyrte en nylig fjernet dismissed-rad.
+    const encoded = mergePeriodPlanCompletionIntoPersonalGoals("", {
+      version: 1,
+      completedEntryKeys: ["plan-1:1:monday"],
+      dismissedEntryKeys: [],
+      updatedAt: 4242,
+    });
+    const read = readPeriodPlanCompletionFromPersonalGoals(encoded);
+    expect(read?.updatedAt).toBe(4242);
+  });
+
+  it("falls back to Date.now() when caller omits updatedAt", () => {
+    const before = Date.now();
+    const encoded = mergePeriodPlanCompletionIntoPersonalGoals("", {
+      version: 1,
+      completedEntryKeys: [],
+      dismissedEntryKeys: [],
+      updatedAt: 0,
+    });
+    const read = readPeriodPlanCompletionFromPersonalGoals(encoded);
+    expect(read?.updatedAt ?? 0).toBeGreaterThanOrEqual(before);
+  });
 });

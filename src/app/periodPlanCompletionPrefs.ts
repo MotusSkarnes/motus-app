@@ -57,13 +57,18 @@ export function mergePeriodPlanCompletionIntoPersonalGoals(
   prefs: PeriodPlanCompletionPrefs,
 ): string {
   const existing = parsePersonalGoalsJson(existingPersonalGoals) ?? {};
+  // Bevarer kallers `prefs.updatedAt` slik at lokalt valgt tidsstempel (typisk
+  // satt da brukeren utførte handlingen) ikke blir bumpet til write-time. Det
+  // hindrer at sky-ekkoet får et nyere timestamp enn lokalt ref og dermed
+  // overstyrer en ferskt fjernet «dismissed»-status.
+  const updatedAt = Number.isFinite(prefs.updatedAt) && prefs.updatedAt > 0 ? prefs.updatedAt : Date.now();
   const payload = {
     ...existing,
     periodPlanCompletion: {
       ...prefs,
       completedEntryKeys: uniqueKeys(prefs.completedEntryKeys),
       dismissedEntryKeys: uniqueKeys(prefs.dismissedEntryKeys),
-      updatedAt: Date.now(),
+      updatedAt,
     },
   };
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;

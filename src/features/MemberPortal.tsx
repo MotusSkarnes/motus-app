@@ -3212,13 +3212,18 @@ export function MemberPortal(props: MemberPortalProps) {
       }
 
       if (currentUserRole === "member") {
+        // Bruk lokalt ref-timestamp slik at sky-ekkoet ikke får et nyere
+        // updatedAt enn local. Uten dette ville `mergePeriodPlanCompletionPrefs`
+        // anse remote som nyest og overstyre en ferskt fjernet «dismissed»-rad
+        // (fix for «Logg dagens økt»-knapp som ikke flipper).
+        const localUpdatedAt = periodPlanCompletionLocalUpdatedAtRef.current || Date.now();
         const encoded = mergePeriodPlanCompletionIntoPersonalGoals(
           resolveBestPersonalGoalsForRelatedMembers(editableMember, members, relatedMemberIdSet),
           {
             version: 1,
             completedEntryKeys: completedPeriodPlanEntryKeys,
             dismissedEntryKeys: dismissedPeriodPlanEntryKeys,
-            updatedAt: Date.now(),
+            updatedAt: localUpdatedAt,
           },
         );
         const targetIds = Array.from(new Set([memberId, ...relatedMemberIds].filter(Boolean)));
