@@ -3828,9 +3828,10 @@ export function MemberPortal(props: MemberPortalProps) {
         }
       }
 
+      // Kortet eksporteres i samme 3:2-format som forhåndsvisningen i appen.
       const canvas = document.createElement("canvas");
-      canvas.width = 1500;
-      canvas.height = 1000;
+      canvas.width = 1200;
+      canvas.height = 800;
       const context = canvas.getContext("2d");
       if (!context) {
         setProgressShareStatus("Kunne ikke lage bilde akkurat nå.");
@@ -3866,21 +3867,24 @@ export function MemberPortal(props: MemberPortalProps) {
 
       const W = canvas.width;
       const H = canvas.height;
+      const footerH = 88;
+      const footerY = H - footerH;
+      const pad = 48;
 
       // Mørk bakgrunnsgradient
-      const bg = context.createRadialGradient(W * 0.1, H * 0.1, 100, W * 0.6, H * 0.6, W);
+      const bg = context.createRadialGradient(W * 0.1, H * 0.1, 80, W * 0.6, H * 0.6, W);
       bg.addColorStop(0, "#1a2335");
       bg.addColorStop(0.45, "#0d111c");
       bg.addColorStop(1, "#060912");
       context.fillStyle = bg;
       context.fillRect(0, 0, W, H);
 
-      // Foto på høyre side
+      // Foto på høyre side (stopper rett over footer slik som i forhåndsvisningen)
+      const photoW = Math.round(W * 0.56);
+      const photoH = footerY;
+      const photoX = W - photoW;
+      const photoY = 0;
       if (heroImage && heroImage.naturalWidth > 0) {
-        const photoW = Math.round(W * 0.56);
-        const photoH = H - 100;
-        const photoX = W - photoW;
-        const photoY = 0;
         const scale = Math.max(photoW / heroImage.naturalWidth, photoH / heroImage.naturalHeight);
         const drawW = heroImage.naturalWidth * scale;
         const drawH = heroImage.naturalHeight * scale;
@@ -3901,7 +3905,7 @@ export function MemberPortal(props: MemberPortalProps) {
         // Mørk vignett nederst på bildet for kontrast mot quote
         const bottomGrad = context.createLinearGradient(0, photoY + photoH - 200, 0, photoY + photoH);
         bottomGrad.addColorStop(0, "rgba(13, 17, 28, 0)");
-        bottomGrad.addColorStop(1, "rgba(13, 17, 28, 0.6)");
+        bottomGrad.addColorStop(1, "rgba(13, 17, 28, 0.7)");
         context.fillStyle = bottomGrad;
         context.fillRect(photoX, photoY, photoW, photoH);
         context.restore();
@@ -3909,26 +3913,26 @@ export function MemberPortal(props: MemberPortalProps) {
 
       // Topp: MOTUS-logo til venstre
       if (shareCardLogo && shareCardLogo.naturalWidth > 0) {
-        const lh = 64;
+        const lh = 50;
         const lw = (shareCardLogo.naturalWidth / shareCardLogo.naturalHeight) * lh;
         context.save();
         context.globalAlpha = 0.95;
-        context.drawImage(shareCardLogo, 72, 60, lw, lh);
+        context.drawImage(shareCardLogo, pad, 44, lw, lh);
         context.restore();
       } else {
         context.fillStyle = "#ffffff";
-        context.font = "900 44px system-ui, -apple-system, Segoe UI, sans-serif";
-        context.fillText("MOTUS", 72, 110);
+        context.font = "900 34px system-ui, -apple-system, Segoe UI, sans-serif";
+        context.fillText("MOTUS", pad, 84);
       }
 
       // Topp: Uke-pille til høyre
       const pillText = progressShareWeekLabel;
-      context.font = "700 22px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.font = "700 17px system-ui, -apple-system, Segoe UI, sans-serif";
       const pillTextW = context.measureText(pillText).width;
-      const pillW = pillTextW + 44;
-      const pillH = 46;
-      const pillX = W - pillW - 56;
-      const pillY = 60;
+      const pillW = pillTextW + 34;
+      const pillH = 36;
+      const pillX = W - pillW - pad;
+      const pillY = 50;
       const pillGrad = context.createLinearGradient(pillX, pillY, pillX + pillW, pillY + pillH);
       pillGrad.addColorStop(0, "#f472b6");
       pillGrad.addColorStop(1, "#d91278");
@@ -3936,53 +3940,41 @@ export function MemberPortal(props: MemberPortalProps) {
       fillRoundRect(context, pillX, pillY, pillW, pillH, pillH / 2);
       context.fillStyle = "#ffffff";
       context.textBaseline = "middle";
-      context.fillText(pillText, pillX + 22, pillY + pillH / 2 + 1);
+      context.fillText(pillText, pillX + 17, pillY + pillH / 2 + 1);
+      context.textAlign = "left";
       context.textBaseline = "alphabetic";
 
       // UKEN SOM HAR VÆRT eyebrow
-      let yCursor = 220;
+      let yCursor = 170;
       context.fillStyle = "#30e3be";
-      context.font = "800 22px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("UKEN SOM HAR VÆRT", 72, yCursor);
-      yCursor += 48;
+      context.font = "800 17px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText("UKEN SOM HAR VÆRT", pad, yCursor);
+      yCursor += 38;
 
       // Hovedtittel + rosa understrek
       const titleText = progressShareTitle;
       context.fillStyle = "#ffffff";
-      context.font = "900 102px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText(titleText, 72, yCursor);
+      context.font = "900 78px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText(titleText, pad, yCursor);
       const titleW = context.measureText(titleText).width;
       context.strokeStyle = "#d91278";
-      context.lineWidth = 8;
+      context.lineWidth = 6;
       context.lineCap = "round";
       context.beginPath();
-      context.moveTo(72, yCursor + 14);
-      context.lineTo(72 + Math.min(titleW * 0.85, titleW), yCursor + 14);
+      context.moveTo(pad, yCursor + 12);
+      context.lineTo(pad + Math.min(titleW * 0.85, titleW), yCursor + 12);
       context.stroke();
-      yCursor += 70;
+      yCursor += 52;
 
       // Subtittel (2 linjer)
       context.fillStyle = "rgba(241, 245, 249, 0.82)";
-      context.font = "500 28px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Se hva jeg har fått til i Motus.", 72, yCursor);
+      context.font = "500 22px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText("Se hva jeg har fått til i Motus.", pad, yCursor);
+      yCursor += 30;
+      context.fillText("Små steg hver uke gir store resultater!", pad, yCursor);
       yCursor += 38;
-      context.fillText("Små steg hver uke gir store resultater!", 72, yCursor);
-      yCursor += 56;
 
-      // Quote-tekst over fotoet
-      const quoteText = "Fremgang skjer én uke av gangen. Jeg bygger sterke vaner!";
-      context.save();
-      context.fillStyle = "#30e3be";
-      context.font = "900 56px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("\u201C", W - 320, 290);
-      context.fillStyle = "#f8fafc";
-      context.font = "700 24px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.shadowColor = "rgba(0, 0, 0, 0.55)";
-      context.shadowBlur = 12;
-      fillWrappedCanvasText(context, quoteText, W - 320, 360, 260, 32);
-      context.restore();
-
-      // Stat-fliser
+      // Stat-fliser (bredden er begrenset til venstre 60 % slik at de ikke trenger inn på fotoet)
       const groupCount = progressShareLast7Days.groupClasses;
       const kcal = progressShareLast7Days.kcal;
       const minutes = progressShareLast7Days.activityMinutes;
@@ -4030,12 +4022,12 @@ export function MemberPortal(props: MemberPortalProps) {
         },
       ];
 
-      const tileGap = 14;
-      const tilesAreaW = 920;
+      const tileGap = 10;
+      const tilesAreaW = 680;
       const tileW = (tilesAreaW - tileGap * 4) / 5;
-      const tileH = 220;
-      const tilesStartX = 72;
-      const tilesStartY = 560;
+      const tileH = 170;
+      const tilesStartX = pad;
+      const tilesStartY = 410;
 
       statTiles.forEach((tile, idx) => {
         const tx = tilesStartX + idx * (tileW + tileGap);
@@ -4044,28 +4036,28 @@ export function MemberPortal(props: MemberPortalProps) {
 
         // Flis-bakgrunn
         context.fillStyle = "rgba(255, 255, 255, 0.05)";
-        fillRoundRect(context, tx, ty, tileW, tileH, 18);
+        fillRoundRect(context, tx, ty, tileW, tileH, 14);
         context.strokeStyle = "rgba(255, 255, 255, 0.08)";
         context.lineWidth = 1;
         if (typeof context.roundRect === "function") {
           context.beginPath();
-          context.roundRect(tx, ty, tileW, tileH, 18);
+          context.roundRect(tx, ty, tileW, tileH, 14);
           context.stroke();
         } else {
           context.strokeRect(tx, ty, tileW, tileH);
         }
 
         // Ikon-sirkel
-        const iconCx = tx + 26;
-        const iconCy = ty + 32;
+        const iconCx = tx + 22;
+        const iconCy = ty + 26;
         context.strokeStyle = toneColor;
-        context.lineWidth = 2.2;
+        context.lineWidth = 1.8;
         context.beginPath();
-        context.arc(iconCx, iconCy, 16, 0, Math.PI * 2);
+        context.arc(iconCx, iconCy, 13, 0, Math.PI * 2);
         context.stroke();
         // Liten ikon-glyph (forenklet emoji-fallback for hver type)
         context.fillStyle = toneColor;
-        context.font = "700 18px system-ui, -apple-system, Segoe UI, sans-serif";
+        context.font = "700 14px system-ui, -apple-system, Segoe UI, sans-serif";
         context.textAlign = "center";
         context.textBaseline = "middle";
         const glyph =
@@ -4084,23 +4076,39 @@ export function MemberPortal(props: MemberPortalProps) {
 
         // Verdi
         context.fillStyle = "#ffffff";
-        context.font = "900 38px system-ui, -apple-system, Segoe UI, sans-serif";
-        context.fillText(tile.value, tx + 16, ty + 92);
+        context.font = "900 30px system-ui, -apple-system, Segoe UI, sans-serif";
+        context.fillText(tile.value, tx + 14, ty + 78);
 
         // Label
         context.fillStyle = toneColor;
-        context.font = "800 13px system-ui, -apple-system, Segoe UI, sans-serif";
-        context.fillText(tile.label, tx + 16, ty + 122);
+        context.font = "800 11px system-ui, -apple-system, Segoe UI, sans-serif";
+        context.fillText(tile.label, tx + 14, ty + 100);
 
         // Subtekst
         context.fillStyle = "rgba(241, 245, 249, 0.58)";
-        context.font = "500 13px system-ui, -apple-system, Segoe UI, sans-serif";
-        fillWrappedCanvasText(context, tile.sub, tx + 16, ty + 152, tileW - 28, 18);
+        context.font = "500 11px system-ui, -apple-system, Segoe UI, sans-serif";
+        fillWrappedCanvasText(context, tile.sub, tx + 14, ty + 124, tileW - 24, 15);
       });
 
+      // Quote nederst på fotoet (matcher CSS-posisjonen til forhåndsvisningen)
+      const quoteText = "Fremgang skjer én uke av gangen. Jeg bygger sterke vaner!";
+      const quoteX = W - 232;
+      const quoteMaxWidth = 184;
+      const quoteLineHeight = 22;
+      const quoteTextY = footerY - 88;
+      const quoteGlyphY = quoteTextY - 26;
+      context.save();
+      context.fillStyle = "#30e3be";
+      context.font = "900 34px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.shadowColor = "rgba(0, 0, 0, 0.55)";
+      context.shadowBlur = 10;
+      context.fillText("\u201C", quoteX, quoteGlyphY);
+      context.fillStyle = "#f8fafc";
+      context.font = "700 17px system-ui, -apple-system, Segoe UI, sans-serif";
+      fillWrappedCanvasText(context, quoteText, quoteX, quoteTextY, quoteMaxWidth, quoteLineHeight);
+      context.restore();
+
       // Bunn-stripe: UKENS SEIER
-      const footerH = 110;
-      const footerY = H - footerH;
       context.fillStyle = "rgba(255, 255, 255, 0.04)";
       context.fillRect(0, footerY, W, footerH);
       context.strokeStyle = "rgba(255, 255, 255, 0.08)";
@@ -4111,38 +4119,49 @@ export function MemberPortal(props: MemberPortalProps) {
       context.stroke();
 
       // Pokal-sirkel
+      const trophyCx = pad + 22;
+      const trophyCy = footerY + footerH / 2;
       context.save();
       context.fillStyle = "rgba(48, 227, 190, 0.18)";
       context.beginPath();
-      context.arc(110, footerY + footerH / 2, 28, 0, Math.PI * 2);
+      context.arc(trophyCx, trophyCy, 22, 0, Math.PI * 2);
       context.fill();
       context.strokeStyle = "rgba(48, 227, 190, 0.65)";
-      context.lineWidth = 2;
+      context.lineWidth = 1.6;
       context.stroke();
       context.fillStyle = "#30e3be";
-      context.font = "900 28px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.font = "900 22px system-ui, -apple-system, Segoe UI, sans-serif";
       context.textAlign = "center";
       context.textBaseline = "middle";
-      context.fillText("\u2605", 110, footerY + footerH / 2 + 1);
+      context.fillText("\u2605", trophyCx, trophyCy + 1);
       context.textAlign = "left";
       context.textBaseline = "alphabetic";
       context.restore();
 
       // UKENS SEIER tekst
+      const seierX = trophyCx + 36;
       context.fillStyle = "#30e3be";
-      context.font = "800 14px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("UKENS SEIER", 160, footerY + 42);
+      context.font = "800 12px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText("UKENS SEIER", seierX, footerY + 32);
       context.fillStyle = "rgba(241, 245, 249, 0.92)";
-      context.font = "600 20px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText(progressShareSeierText, 160, footerY + 72);
+      context.font = "600 17px system-ui, -apple-system, Segoe UI, sans-serif";
+      // Reserver plass for MOTUS-logoen i bunn-høyre slik at lang seier-tekst ikke kolliderer
+      const seierMaxWidth = W - seierX - 160;
+      const seierText = progressShareSeierText;
+      const seierFits = context.measureText(seierText).width <= seierMaxWidth;
+      if (seierFits) {
+        context.fillText(seierText, seierX, footerY + 58);
+      } else {
+        fillWrappedCanvasText(context, seierText, seierX, footerY + 50, seierMaxWidth, 19);
+      }
 
       // MOTUS-logo i bunn-høyre
       if (shareCardLogo && shareCardLogo.naturalWidth > 0) {
-        const lh = 36;
+        const lh = 28;
         const lw = (shareCardLogo.naturalWidth / shareCardLogo.naturalHeight) * lh;
         context.save();
         context.globalAlpha = 0.85;
-        context.drawImage(shareCardLogo, W - lw - 56, footerY + (footerH - lh) / 2, lw, lh);
+        context.drawImage(shareCardLogo, W - lw - pad, footerY + (footerH - lh) / 2, lw, lh);
         context.restore();
       }
 
@@ -4830,6 +4849,23 @@ export function MemberPortal(props: MemberPortalProps) {
       completedAt: input.completedAt,
       calendarWeekdayKey: weekdayKeyForDate(input.completedAt),
     });
+    if (
+      todayPeriodPlanMatch &&
+      todayPlanEntry.trim() &&
+      getStartOfDay(input.completedAt).getTime() === getStartOfDay(nowDate).getTime() &&
+      periodPlanEntryMatchesCompletedProgram(
+        todayPlanEntry,
+        input.programTitle,
+        memberProgramsForPeriodPlan,
+        input.programId,
+      )
+    ) {
+      targets.unshift({
+        planId: todayPeriodPlanMatch.plan.id,
+        weekNumber: todayPeriodPlanMatch.weekNumber,
+        day: todayPeriodPlanMatch.day,
+      });
+    }
     if (!targets.length) return;
 
     bumpPeriodPlanLocalUpdatedAt();
