@@ -4674,8 +4674,8 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!nextLevel) return memberProgressScores.momentum.subline;
     const remaining = Math.max(0, Math.ceil(nextLevel.target - nextBadge.current));
     const unit = formatBadgeMetricValue(nextBadge.id, remaining);
-    if (remaining <= 0) return `Nesten i mål med ${nextBadge.title}`;
-    return `${unit} igjen til ${nextBadge.title}`;
+    if (remaining <= 0) return `Nesten i mål med badgen ${nextBadge.title}`;
+    return `${unit} igjen til badgen ${nextBadge.title}`;
   }, [memberBadgeCollection.allBadges, memberProgressScores.momentum.subline]);
   const homeDashboardHeadline =
     homeWeeklySummary.completedThisWeek > 0 || streakWeeks > 0 ? "Du er på vei!" : "Klar for en ny uke";
