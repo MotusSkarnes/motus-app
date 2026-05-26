@@ -10938,63 +10938,82 @@ button.motus-progress-status-banner {
   position: relative;
   overflow: hidden;
   border-radius: var(--inspo-radius);
-  background: linear-gradient(135deg, #d6fbf1 0%, #b8f2e3 50%, #30e3be 110%);
-  padding: 20px 18px 22px;
-  min-height: 240px;
+  background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 45%, #fdf2f8 100%);
   isolation: isolate;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 12px 32px rgba(15, 23, 42, 0.06);
+  display: grid;
+  grid-template-columns: 1fr;
 }
 
-.motus-inspo-hero-blob {
+@media (min-width: 640px) {
+  .motus-inspo-hero {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  }
+}
+
+.motus-inspo-hero-media {
+  position: relative;
+  order: -1;
+  overflow: hidden;
+  min-height: 180px;
+  background: #0f172a;
+}
+
+@media (min-width: 640px) {
+  .motus-inspo-hero-media {
+    order: 1;
+    min-height: 280px;
+  }
+}
+
+.motus-inspo-hero-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.motus-inspo-hero-badge {
   position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
   border-radius: 9999px;
-  filter: blur(40px);
-  opacity: 0.6;
-  pointer-events: none;
-  z-index: 0;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #30e3be 0%, #0d9488 100%);
+  box-shadow: 0 8px 20px -8px rgba(13, 148, 136, 0.55);
+  text-shadow: 0 1px 1px rgba(15, 23, 42, 0.2);
 }
 
-.motus-inspo-hero-blob--one {
-  width: 220px;
-  height: 220px;
-  top: -60px;
-  left: -40px;
-  background: radial-gradient(circle, rgba(48, 227, 190, 0.55) 0%, rgba(48, 227, 190, 0) 70%);
-}
-
-.motus-inspo-hero-blob--two {
-  width: 260px;
-  height: 260px;
-  bottom: -80px;
-  right: -60px;
-  background: radial-gradient(circle, rgba(217, 18, 120, 0.18) 0%, rgba(217, 18, 120, 0) 70%);
+.motus-inspo-hero-badge--pink {
+  background: linear-gradient(135deg, #f472b6 0%, #d91278 100%);
+  box-shadow: 0 8px 20px -8px rgba(217, 18, 120, 0.55);
 }
 
 .motus-inspo-hero-content {
   position: relative;
   z-index: 2;
-  max-width: 60%;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
+  padding: 20px 18px 22px;
 }
 
-.motus-inspo-hero-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #0f766e;
-  background: rgba(255, 255, 255, 0.7);
-  padding: 5px 9px;
-  border-radius: 9999px;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+@media (min-width: 640px) {
+  .motus-inspo-hero-content {
+    padding: 28px 26px;
+    justify-content: center;
+  }
 }
 
 .motus-inspo-hero-title {
@@ -11008,30 +11027,28 @@ button.motus-progress-status-banner {
 }
 
 .motus-inspo-hero-subtitle {
-  font-size: 13px;
-  line-height: 1.4;
-  color: rgba(15, 23, 42, 0.72);
+  font-size: 14px;
+  line-height: 1.45;
+  color: rgba(15, 23, 42, 0.7);
   margin: 0;
-  max-width: 18em;
+  max-width: 24em;
 }
 
 .motus-inspo-hero-stats {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .motus-inspo-hero-stat {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.95);
   padding: 7px 11px;
   border-radius: 14px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .motus-inspo-hero-stat-icon {
@@ -11041,8 +11058,8 @@ button.motus-progress-status-banner {
   width: 24px;
   height: 24px;
   border-radius: 8px;
-  background: rgba(48, 227, 190, 0.28);
-  color: #0f766e;
+  background: rgba(48, 227, 190, 0.18);
+  color: #0d9488;
 }
 
 .motus-inspo-hero-stat-text {
@@ -11072,7 +11089,7 @@ button.motus-progress-status-banner {
   color: #ffffff;
   font-size: 13px;
   font-weight: 700;
-  padding: 9px 14px;
+  padding: 9px 16px;
   border-radius: 9999px;
   border: none;
   cursor: pointer;
@@ -11084,25 +11101,51 @@ button.motus-progress-status-banner {
   transform: translateY(-1px);
 }
 
-.motus-inspo-hero-image {
+/* PT-only controls floating above the hero media. */
+.motus-inspo-hero-pt-actions {
   position: absolute;
-  z-index: 1;
-  right: 0;
-  bottom: 0;
-  height: 100%;
-  max-height: 280px;
-  width: auto;
-  object-fit: contain;
-  object-position: right bottom;
-  pointer-events: none;
-  filter: drop-shadow(0 8px 18px rgba(15, 23, 42, 0.14));
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.motus-inspo-hero-pt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  padding: 7px 11px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 4px 10px -4px rgba(15, 23, 42, 0.2);
+  transition: background 120ms ease, transform 120ms ease;
+}
+
+.motus-inspo-hero-pt-btn:hover {
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+
+.motus-inspo-hero-pt-btn[disabled],
+.motus-inspo-hero-pt-btn.is-busy {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.motus-inspo-hero-pt-btn--ghost {
+  background: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+  color: #475569;
 }
 
 .motus-inspo-hero-add {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 3;
   width: 40px;
   height: 40px;
   display: inline-flex;
@@ -11116,32 +11159,50 @@ button.motus-progress-status-banner {
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.2);
 }
 
-@media (min-width: 480px) {
-  .motus-inspo-hero {
-    padding: 24px 22px 26px;
-    min-height: 260px;
-  }
+/* Overlay-tag som ligger inne på cover-bilder i feed-kortene. */
+.motus-inspo-overlay-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 9999px;
+  color: #ffffff;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1;
+  max-width: calc(100% - 16px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: linear-gradient(135deg, #30e3be 0%, #0d9488 100%);
+  box-shadow: 0 4px 12px -4px rgba(13, 148, 136, 0.55);
+  text-shadow: 0 1px 1px rgba(15, 23, 42, 0.2);
+}
 
+.motus-inspo-overlay-badge--pink {
+  background: linear-gradient(135deg, #f472b6 0%, #d91278 100%);
+  box-shadow: 0 4px 12px -4px rgba(217, 18, 120, 0.55);
+}
+
+@media (min-width: 480px) {
   .motus-inspo-hero-title {
     font-size: 34px;
   }
 
-  .motus-inspo-hero-image {
-    max-height: 320px;
+  .motus-inspo-overlay-badge {
+    font-size: 10.5px;
+    padding: 5px 10px;
   }
 }
 
 @media (max-width: 360px) {
-  .motus-inspo-hero-content {
-    max-width: 60%;
-  }
-
   .motus-inspo-hero-title {
     font-size: 26px;
-  }
-
-  .motus-inspo-hero-image {
-    max-height: 220px;
   }
 }
 

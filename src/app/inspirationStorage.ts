@@ -4,7 +4,21 @@ import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient
 export const INSPIRATION_STORAGE_KEY = "motus.inspiration.items.v2";
 export const INSPIRATION_CHANGED_EVENT = "motus:inspiration-changed";
 export const INSPIRATION_FEED_ROW_ID = "shared";
+export const INSPIRATION_HERO_ROW_ID = "hero";
 export const INSPIRATION_SUPPRESSED_IDS_KEY = "motus.inspiration.suppressedIds.v1";
+export const INSPIRATION_HERO_STORAGE_KEY = "motus.inspiration.hero.v1";
+export const INSPIRATION_HERO_CHANGED_EVENT = "motus:inspiration-hero-changed";
+
+export type InspirationHeroConfig = {
+  imageUrl: string;
+  title?: string;
+  subtitle?: string;
+  badge?: string;
+  ctaLabel?: string;
+  updatedAt?: number;
+};
+
+const HERO_IMAGE_PREFIX = "inspiration-hero";
 
 const INSPIRATION_IMAGE_BUCKET = "exercise-images";
 const INSPIRATION_IMAGE_PREFIX = "inspiration";
@@ -328,4 +342,145 @@ export async function syncLocalInspirationToSupabaseIfNeeded<T extends { id: str
     items: localItems,
     suppressedItemIds: Array.from(loadSuppressedInspirationIds()),
   });
+}
+
+/* ============================================================================
+ * Hero-bilde for Utforsk — PT-redigerbart, delt på tvers av enheter.
+ * Lagres som egen rad i `inspiration_feed` (id = "hero"), så ingen skjema-endring.
+ * Hero-konfig serialiseres som et enkelt JSON-objekt i `items`-feltet.
+ * ========================================================================== */
+
+export function notifyInspirationHeroChanged() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(INSPIRATION_HERO_CHANGED_EVENT));
+}
+
+function parseHeroConfig(value: unknown): InspirationHeroConfig | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const imageUrl = typeof raw.imageUrl === "string" ? raw.imageUrl.trim() : "";
+  if (!imageUrl) return null;
+  const next: InspirationHeroConfig = { imageUrl };
+  if (typeof raw.title === "string" && raw.title.trim()) next.title = raw.title.trim();
+  if (typeof raw.subtitle === "string" && raw.subtitle.trim()) next.subtitle = raw.subtitle.trim();
+  if (typeof raw.badge === "string" && raw.badge.trim()) next.badge = raw.badge.trim();
+  if (typeof raw.ctaLabel === "string" && raw.ctaLabel.trim()) next.ctaLabel = raw.ctaLabel.trim();
+  if (typeof raw.updatedAt === "number") next.updatedAt = raw.updatedAt;
+  return next;
+}
+
+export function loadInspirationHeroFromLocalStorage(): InspirationHeroConfig | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(INSPIRATION_HERO_STORAGE_KEY);
+    if (!raw) return null;
+    return parseHeroConfig(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+function saveHeroToLocalStorage(config: InspirationHeroConfig): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(INSPIRATION_HERO_STORAGE_KEY, JSON.stringify(config));
+  } catch {
+    /* quota / private mode — non-fatal */
+  }
+}
+
+async function uploadInspirationHeroImage(dataUrl: string): Promise<string> {
+  const compressed = await compressImageDataUrl(dataUrl);
+  if (!supabaseClient) return compressed;
+  const blob = dataUrlToBlob(compressed);
+  if (!blob) return compressed;
+  const path = `${HERO_IMAGE_PREFIX}/hero-${Date.now()}.jpg`;
+  const { error } = await supabaseClient.storage.from(INSPIRATION_IMAGE_BUCKET).upload(path, blob, {
+    cacheControl: "3600",
+    upsert: true,
+    contentType: "image/jpeg",
+  });
+  if (error) {
+    console.warn("inspiration hero upload failed:", error.message);
+    return compressed;
+  }
+  const { data } = supabaseClient.storage.from(INSPIRATION_IMAGE_BUCKET).getPublicUrl(path);
+  return data.publicUrl || compressed;
+}
+
+async function fetchInspirationHeroFromSupabase(): Promise<InspirationHeroConfig | null> {
+  if (!supabaseClient) return null;
+  const { data, error } = await supabaseClient
+    .from("inspiration_feed")
+    .select("items, updated_at")
+    .eq("id", INSPIRATION_HERO_ROW_ID)
+    .maybeSingle();
+  if (error) {
+    console.warn("inspiration hero fetch failed:", error.message);
+    return null;
+  }
+  if (!data) return null;
+  const items = data.items;
+  const payload = Array.isArray(items) ? items[0] : items;
+  return parseHeroConfig(payload);
+}
+
+async function saveInspirationHeroToSupabase(config: InspirationHeroConfig): Promise<boolean> {
+  if (!supabaseClient) return false;
+  const { error } = await supabaseClient.from("inspiration_feed").upsert({
+    id: INSPIRATION_HERO_ROW_ID,
+    items: [config],
+    suppressed_item_ids: [],
+    updated_at: new Date().toISOString(),
+  });
+  if (error) {
+    console.warn("inspiration hero save failed:", error.message);
+    return false;
+  }
+  return true;
+}
+
+/** Hent hero fra skyen, oppdater lokal cache, varsle lyttere. Returnerer konfig hvis funnet. */
+export async function pullInspirationHeroFromRemote(): Promise<InspirationHeroConfig | null> {
+  if (!isSupabaseConfigured) return loadInspirationHeroFromLocalStorage();
+  const remote = await fetchInspirationHeroFromSupabase();
+  if (!remote) return loadInspirationHeroFromLocalStorage();
+  const previous = loadInspirationHeroFromLocalStorage();
+  saveHeroToLocalStorage(remote);
+  if (!previous || previous.imageUrl !== remote.imageUrl) {
+    notifyInspirationHeroChanged();
+  }
+  return remote;
+}
+
+export type InspirationHeroSaveResult =
+  | { ok: true; cloudSynced: boolean; warning?: string; config: InspirationHeroConfig }
+  | { ok: false; error: string };
+
+/** PT lagrer ny hero-konfig: data-URL lastes opp til Storage, deretter persistens i Supabase + lokal cache. */
+export async function persistInspirationHero(input: InspirationHeroConfig): Promise<InspirationHeroSaveResult> {
+  const trimmedImage = input.imageUrl.trim();
+  if (!trimmedImage) return { ok: false, error: "Mangler bildelenke." };
+  let imageUrl = trimmedImage;
+  if (trimmedImage.startsWith("data:image/")) {
+    try {
+      imageUrl = await uploadInspirationHeroImage(trimmedImage);
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "Kunne ikke prosessere bilde." };
+    }
+  }
+  const next: InspirationHeroConfig = { ...input, imageUrl, updatedAt: Date.now() };
+  saveHeroToLocalStorage(next);
+  notifyInspirationHeroChanged();
+  if (!isSupabaseConfigured) return { ok: true, cloudSynced: false, config: next };
+  const cloudSynced = await saveInspirationHeroToSupabase(next);
+  if (!cloudSynced) {
+    return {
+      ok: true,
+      cloudSynced: false,
+      warning: "Lagret lokalt. Kunne ikke synce til skyen — sjekk inspiration_feed-tilgangen.",
+      config: next,
+    };
+  }
+  return { ok: true, cloudSynced: true, config: next };
 }

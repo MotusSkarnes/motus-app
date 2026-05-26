@@ -34,7 +34,6 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
-import heroRunnerSrc from "../assets/inspo-hero-runner.webp";
 import { EXERCISE_CATEGORY_OPTIONS, exerciseCategoryAccentColor, isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { EXERCISE_IMAGE_THUMB_CLASS } from "../app/exerciseIllustrations/constants";
 import { getMedicalSketchFallbackDataUri, resolveExerciseImageSrc } from "../app/exerciseIllustrations";
@@ -45,14 +44,19 @@ import {
   fetchInspirationItemsForHub,
   filterSuppressedInspirationItems,
   INSPIRATION_CHANGED_EVENT,
+  INSPIRATION_HERO_CHANGED_EVENT,
   INSPIRATION_STORAGE_KEY,
+  loadInspirationHeroFromLocalStorage,
   loadInspirationItemsFromLocalStorage,
   mergeDefaultInspirationItems,
   notifyInspirationItemsChanged,
+  persistInspirationHero,
   persistInspirationItems,
   pullInspirationFeedFromRemote,
+  pullInspirationHeroFromRemote,
   suppressInspirationItemId,
   syncLocalInspirationToSupabaseIfNeeded,
+  type InspirationHeroConfig,
 } from "../app/inspirationStorage";
 import { RUNNING_INSPIRATION_ITEMS } from "../app/inspirationRunningPlans";
 import { buildPeriodPlanProgramSelectOptions, WEEKDAY_PLAN_FIELDS } from "../app/periodPlanBuilder";
@@ -90,6 +94,28 @@ type InspirationItem = {
 };
 
 const MOTUS_GRADIENT = `${MOTUS.gradient}`;
+
+/* Standard hero-bilde (PT kan bytte). Filen ligger i /public, så ingen import-bundling. */
+const DEFAULT_INSPO_HERO_IMAGE = "/share/inspo-hero-woman.png";
+const DEFAULT_INSPO_HERO_BADGE = "Ukens utvalgte";
+const DEFAULT_INSPO_HERO_TITLE = "Bygg vaner som varer";
+const DEFAULT_INSPO_HERO_SUBTITLE = "Små steg i dag — stor forskjell i morgen.";
+const DEFAULT_INSPO_HERO_CTA = "Utforsk nå";
+
+type InspoBadgeTone = "turquoise" | "pink";
+
+function badgeToneForCategory(category: InspirationCategory): InspoBadgeTone {
+  switch (category) {
+    case "tips":
+    case "news":
+      return "pink";
+    case "recipes":
+    case "programs":
+    case "appGuide":
+    default:
+      return "turquoise";
+  }
+}
 
 const CATEGORY_META: Record<InspirationCategory, { label: string; plural: string; icon: typeof Soup }> = {
   recipes: { label: "Oppskrift", plural: "Oppskrifter", icon: Soup },
@@ -823,6 +849,8 @@ export function InspirationHub({
   const [isImageProcessing, setIsImageProcessing] = useState(false);
   const [programCoverImageUrl, setProgramCoverImageUrl] = useState("");
   const [isUploadingProgramCoverImage, setIsUploadingProgramCoverImage] = useState(false);
+  const [heroConfig, setHeroConfig] = useState<InspirationHeroConfig | null>(() => loadInspirationHeroFromLocalStorage());
+  const [isUploadingHeroImage, setIsUploadingHeroImage] = useState(false);
   const [programExerciseSearch, setProgramExerciseSearch] = useState("");
   const [programExerciseCategoryFilter, setProgramExerciseCategoryFilter] = useState<"all" | Exercise["category"]>("all");
   const [programExerciseGroupFilter, setProgramExerciseGroupFilter] = useState("all");
@@ -913,11 +941,90 @@ export function InspirationHub({
   }, [canManage]);
 
   useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const remote = await pullInspirationHeroFromRemote();
+      if (!cancelled && remote) setHeroConfig(remote);
+    })();
+    const onHeroChanged = () => {
+      const next = loadInspirationHeroFromLocalStorage();
+      setHeroConfig(next);
+    };
+    window.addEventListener(INSPIRATION_HERO_CHANGED_EVENT, onHeroChanged);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(INSPIRATION_HERO_CHANGED_EVENT, onHeroChanged);
+    };
+  }, []);
+
+  const heroImageSrc = heroConfig?.imageUrl?.trim() || DEFAULT_INSPO_HERO_IMAGE;
+  const heroBadgeLabel = heroConfig?.badge?.trim() || DEFAULT_INSPO_HERO_BADGE;
+  const heroTitleText = heroConfig?.title?.trim() || DEFAULT_INSPO_HERO_TITLE;
+  const heroSubtitleText = heroConfig?.subtitle?.trim() || DEFAULT_INSPO_HERO_SUBTITLE;
+  const heroCtaText = heroConfig?.ctaLabel?.trim() || DEFAULT_INSPO_HERO_CTA;
+
+  async function handleHeroImageFile(file: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setActionStatus("Velg en bildefil (JPG, PNG eller WebP).");
+      return;
+    }
+    setIsUploadingHeroImage(true);
+    setActionStatus("Laster opp nytt hero-bilde…");
+    try {
+      const compressed = await compressImageFile(file);
+      const next: InspirationHeroConfig = {
+        ...(heroConfig ?? {}),
+        imageUrl: compressed,
+        badge: heroConfig?.badge ?? heroBadgeLabel,
+        title: heroConfig?.title ?? heroTitleText,
+        subtitle: heroConfig?.subtitle ?? heroSubtitleText,
+        ctaLabel: heroConfig?.ctaLabel ?? heroCtaText,
+      };
+      const result = await persistInspirationHero(next);
+      if (!result.ok) {
+        setActionStatus(result.error);
+        return;
+      }
+      setHeroConfig(result.config);
+      setActionStatus(result.cloudSynced ? "Hero-bilde oppdatert for alle medlemmer." : result.warning ?? "Hero-bilde lagret lokalt.");
+    } catch {
+      setActionStatus("Kunne ikke lese bildefilen. Prøv et mindre bilde.");
+    } finally {
+      setIsUploadingHeroImage(false);
+    }
+  }
+
+  async function resetHeroImageToDefault() {
+    setIsUploadingHeroImage(true);
+    setActionStatus("Tilbakestiller hero-bilde…");
+    try {
+      const next: InspirationHeroConfig = {
+        ...(heroConfig ?? {}),
+        imageUrl: DEFAULT_INSPO_HERO_IMAGE,
+      };
+      const result = await persistInspirationHero(next);
+      if (!result.ok) {
+        setActionStatus(result.error);
+        return;
+      }
+      setHeroConfig(result.config);
+      setActionStatus("Hero-bilde tilbakestilt til standard.");
+    } finally {
+      setIsUploadingHeroImage(false);
+    }
+  }
+
+  useEffect(() => {
     const syncFromRemote = () => {
       void refreshInspirationFromDatabase();
+      void pullInspirationHeroFromRemote();
     };
     const onVisible = () => {
-      if (document.visibilityState === "visible") void refreshInspirationFromDatabase();
+      if (document.visibilityState === "visible") {
+        void refreshInspirationFromDatabase();
+        void pullInspirationHeroFromRemote();
+      }
     };
     window.addEventListener(INSPIRATION_CHANGED_EVENT, syncFromRemote);
     document.addEventListener("visibilitychange", onVisible);
@@ -1137,6 +1244,9 @@ export function InspirationHub({
   function renderInspirationCard(item: InspirationItem, index: number, total: number) {
     const meta = CATEGORY_META[item.category];
     const Icon = meta.icon;
+    const kindLabel = item.kind === "periodPlan" ? "Ukesplan" : item.kind === "program" ? "Program" : meta.label;
+    const badgeText = (item.tag.trim() || kindLabel).toUpperCase();
+    const badgeTone = badgeToneForCategory(item.category);
     return (
       <article
         key={item.id}
@@ -1187,7 +1297,7 @@ export function InspirationHub({
         ) : null}
         <button type="button" onClick={() => openInspirationItem(item)} className="flex min-h-0 flex-1 flex-col text-left">
           <div
-            className={`motus-image-frame motus-image-frame--square w-full shrink-0 ${INSPO_FEED_CARD_IMAGE_CLASS} ${item.imageUrl ? "bg-slate-100" : "bg-[#F3F5F7]"}`}
+            className={`motus-image-frame motus-image-frame--square w-full shrink-0 relative ${INSPO_FEED_CARD_IMAGE_CLASS} ${item.imageUrl ? "bg-slate-100" : "bg-[#F3F5F7]"}`}
           >
             {item.imageUrl ? (
               <img
@@ -1204,16 +1314,12 @@ export function InspirationHub({
                 <Icon className="h-9 w-9" />
               </div>
             ) : null}
+            <span className={`motus-inspo-overlay-badge motus-inspo-overlay-badge--${badgeTone}`}>
+              {badgeText}
+            </span>
           </div>
           <div className="flex min-h-0 flex-1 flex-col px-2 pb-2 pt-1.5">
-            <div className="flex min-h-[1.125rem] items-center justify-between gap-1.5">
-              <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-1.5 py-0.5 text-[9px] font-bold text-teal-800 ring-1 ring-teal-100">
-                <Icon className="h-2.5 w-2.5" />
-                {item.kind === "periodPlan" ? "Ukesplan" : item.kind === "program" ? "Program" : meta.label}
-              </span>
-              <span className="truncate text-[9px] text-slate-400">{item.tag}</span>
-            </div>
-            <h3 className={`mt-0.5 ${INSPO_FEED_CARD_TITLE_CLASS}`}>{item.title}</h3>
+            <h3 className={`${INSPO_FEED_CARD_TITLE_CLASS}`}>{item.title}</h3>
             <p className={`mt-0.5 min-w-0 ${INSPO_FEED_CARD_DESCRIPTION_CLASS}`}>{item.description || "\u00a0"}</p>
           </div>
         </button>
@@ -1262,13 +1368,15 @@ export function InspirationHub({
         </article>
       );
     }
+    const previewBadgeTone = badgeToneForCategory(categoryDraft);
+    const previewBadgeText = previewTag.toUpperCase();
     return (
       <article
         className={`relative flex shrink-0 snap-start flex-col overflow-hidden rounded-xl border bg-white ${INSPO_FEED_CARD_WIDTH_CLASS} ${INSPO_FEED_CARD_HEIGHT_CLASS}`}
         style={{ borderColor: "rgba(15,23,42,0.08)" }}
       >
         <div
-          className={`motus-image-frame motus-image-frame--square w-full shrink-0 ${INSPO_FEED_CARD_IMAGE_CLASS} ${
+          className={`motus-image-frame motus-image-frame--square w-full shrink-0 relative ${INSPO_FEED_CARD_IMAGE_CLASS} ${
             imageUrl ? "bg-slate-100" : "bg-[#F3F5F7]"
           }`}
         >
@@ -1286,16 +1394,12 @@ export function InspirationHub({
               <Icon className="h-9 w-9" />
             </div>
           )}
+          <span className={`motus-inspo-overlay-badge motus-inspo-overlay-badge--${previewBadgeTone}`}>
+            {previewBadgeText}
+          </span>
         </div>
         <div className="flex min-h-0 flex-1 flex-col px-2 pb-2 pt-1.5">
-          <div className="flex min-h-[1.125rem] items-center justify-between gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-1.5 py-0.5 text-[9px] font-bold text-teal-800 ring-1 ring-teal-100">
-              <Icon className="h-2.5 w-2.5" />
-              {kindLabel}
-            </span>
-            <span className="truncate text-[9px] text-slate-400">{previewTag}</span>
-          </div>
-          <h3 className={`mt-0.5 ${INSPO_FEED_CARD_TITLE_CLASS}`}>{previewTitle}</h3>
+          <h3 className={`${INSPO_FEED_CARD_TITLE_CLASS}`}>{previewTitle}</h3>
           <p className={`mt-0.5 min-w-0 ${INSPO_FEED_CARD_DESCRIPTION_CLASS}`}>{previewDescription}</p>
         </div>
         <div className="shrink-0 border-t border-slate-100 px-2.5 py-2">
@@ -1899,15 +2003,23 @@ export function InspirationHub({
     <div className="motus-inspo-page min-w-0 max-w-full space-y-4 overflow-x-hidden">
       {showHero ? (
         <section className="motus-inspo-hero">
-          <span className="motus-inspo-hero-blob motus-inspo-hero-blob--one" aria-hidden />
-          <span className="motus-inspo-hero-blob motus-inspo-hero-blob--two" aria-hidden />
-          <div className="motus-inspo-hero-content">
-            <span className="motus-inspo-hero-tag">
+          <div className="motus-inspo-hero-media">
+            <img
+              src={heroImageSrc}
+              alt=""
+              className="motus-inspo-hero-image"
+              loading="eager"
+              decoding="async"
+              aria-hidden
+            />
+            <span className="motus-inspo-hero-badge motus-inspo-hero-badge--turquoise">
               <Sparkles className="h-3.5 w-3.5" aria-hidden />
-              Ukens utvalgte
+              {heroBadgeLabel}
             </span>
-            <h1 className="motus-inspo-hero-title">Bygg vaner som varer</h1>
-            <p className="motus-inspo-hero-subtitle">Små steg i dag — stor forskjell i morgen.</p>
+          </div>
+          <div className="motus-inspo-hero-content">
+            <h1 className="motus-inspo-hero-title">{heroTitleText}</h1>
+            <p className="motus-inspo-hero-subtitle">{heroSubtitleText}</p>
             <div className="motus-inspo-hero-stats" aria-hidden>
               <div className="motus-inspo-hero-stat">
                 <span className="motus-inspo-hero-stat-icon" aria-hidden>
@@ -1936,28 +2048,51 @@ export function InspirationHub({
                 if (first) scrollToCategorySection(first.category);
               }}
             >
-              Utforsk nå
+              {heroCtaText}
               <ArrowRight className="h-4 w-4" aria-hidden />
             </button>
           </div>
-          <img
-            src={heroRunnerSrc}
-            alt=""
-            className="motus-inspo-hero-image"
-            loading="eager"
-            decoding="async"
-            aria-hidden
-          />
           {canManage ? (
-            <button
-              type="button"
-              onClick={openCreateComposer}
-              className="motus-inspo-hero-add motus-pressable"
-              aria-label="Legg til innhold"
-              title="Legg til"
-            >
-              <Plus className="h-5 w-5" aria-hidden />
-            </button>
+            <div className="motus-inspo-hero-pt-actions">
+              <label
+                className={`motus-inspo-hero-pt-btn ${isUploadingHeroImage ? "is-busy" : ""}`}
+                title="Bytt hero-bilde"
+              >
+                <ImagePlus className="h-4 w-4" aria-hidden />
+                <span>{isUploadingHeroImage ? "Lagrer…" : "Bytt bilde"}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={isUploadingHeroImage}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    event.target.value = "";
+                    void handleHeroImageFile(file);
+                  }}
+                />
+              </label>
+              {heroConfig?.imageUrl && heroConfig.imageUrl !== DEFAULT_INSPO_HERO_IMAGE ? (
+                <button
+                  type="button"
+                  onClick={() => void resetHeroImageToDefault()}
+                  className="motus-inspo-hero-pt-btn motus-inspo-hero-pt-btn--ghost"
+                  disabled={isUploadingHeroImage}
+                  title="Tilbakestill til standardbilde"
+                >
+                  Tilbakestill
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={openCreateComposer}
+                className="motus-inspo-hero-add motus-pressable"
+                aria-label="Legg til innhold"
+                title="Legg til"
+              >
+                <Plus className="h-5 w-5" aria-hidden />
+              </button>
+            </div>
           ) : null}
         </section>
       ) : null}
