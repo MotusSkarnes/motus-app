@@ -2481,10 +2481,9 @@ export function InspirationHub({
           </p>
         ) : null}
         {activeFeedSections.map(({ category, title }) => {
-          // Filtrer ut "Dagens utvalgte" så samme artikkel ikke vises både som banner og inne i feeden.
-          const sectionItems = featuredItem
-            ? itemsByCategory[category].filter((item) => item.id !== featuredItem.id)
-            : itemsByCategory[category];
+          // "Dagens utvalgte" får ligge på sin faste plass i feeden i tillegg til banneret
+          // øverst — slik at den ikke "forsvinner" fra sin opprinnelige kategori-seksjon.
+          const sectionItems = itemsByCategory[category];
           if (!sectionItems.length) return null;
           const isNewsLayout = category === "news";
           return (
