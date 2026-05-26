@@ -3956,7 +3956,9 @@ export function MemberPortal(props: MemberPortalProps) {
       context.fillStyle = "#30e3be";
       context.font = "800 22px system-ui, -apple-system, Segoe UI, sans-serif";
       context.fillText("UKEN SOM HAR VÆRT", pad, yCursor);
-      yCursor += 70;
+      // Tittelfonten er 110px — vi må gi den nok plass under eyebrow-teksten
+      // slik at de ikke overlapper. Cap-height for 110px font er ca 77px.
+      yCursor += 130;
 
       // Hovedtittel + rosa understrek
       const titleText = progressShareTitle;
@@ -3972,10 +3974,10 @@ export function MemberPortal(props: MemberPortalProps) {
       context.lineWidth = 9;
       context.lineCap = "round";
       context.beginPath();
-      context.moveTo(pad, yCursor + 18);
-      context.lineTo(pad + Math.min(titleW * 0.9, titleW), yCursor + 18);
+      context.moveTo(pad, yCursor + 26);
+      context.lineTo(pad + Math.min(titleW * 0.9, titleW), yCursor + 26);
       context.stroke();
-      yCursor += 72;
+      yCursor += 80;
 
       // Subtittel (2 linjer)
       context.save();
