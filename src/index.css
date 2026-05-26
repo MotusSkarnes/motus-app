@@ -3339,10 +3339,9 @@ button.motus-progress-status-banner {
 }
 
 .motus-weekly-share-logo {
-  height: 28px;
+  height: 32px;
   width: auto;
-  filter: brightness(0) invert(1);
-  opacity: 0.95;
+  opacity: 0.98;
 }
 
 .motus-weekly-share-week-pill {
@@ -3551,10 +3550,9 @@ button.motus-progress-status-banner {
 }
 
 .motus-weekly-share-footer-logo {
-  height: 22px;
+  height: 26px;
   width: auto;
-  filter: brightness(0) invert(1);
-  opacity: 0.85;
+  opacity: 0.95;
 }
 
 /* Del-kort CTA-knappen under det mørke kortet */

@@ -31,7 +31,9 @@ import {
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import motusLogo from "../assets/motus-logo-transparent.svg";
-import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
+// Bruker den originale Motus-merke-PNG-en (samme som banneret) på skrytekortet,
+// slik at logoen vises i merkevarens farger og ikke som en flat hvit silhuett.
+import motusSkrytekortLogo from "../assets/motus-logo-transparent.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
 import { memberBadgeImageSrc } from "../app/badgeAssets";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
@@ -1270,7 +1272,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [calendarWeekStart, setCalendarWeekStart] = useState(() => getMondayStart(new Date()));
   const normalizedCurrentUserEmail = currentUserEmail.trim().toLowerCase();
   const viewedMember = members.find((member) => member.id === memberViewId) ?? null;
-  const motusShareLogoSrc = `${motusSkrytekortLogo}${motusSkrytekortLogo.includes("?") ? "&" : "?"}motus_skrytekort=2026-02`;
+  const motusShareLogoSrc = `${motusSkrytekortLogo}${motusSkrytekortLogo.includes("?") ? "&" : "?"}motus_skrytekort=2026-05-original`;
   const currentMemberByEmail =
     currentUserRole === "member" && normalizedCurrentUserEmail
       ? (() => {
@@ -3839,7 +3841,7 @@ export function MemberPortal(props: MemberPortalProps) {
       }
 
       let shareCardLogo: HTMLImageElement | null = null;
-      const shareLogoSrc = `${motusSkrytekortLogo}${motusSkrytekortLogo.includes("?") ? "&" : "?"}motus_skrytekort=2026-02`;
+      const shareLogoSrc = `${motusSkrytekortLogo}${motusSkrytekortLogo.includes("?") ? "&" : "?"}motus_skrytekort=2026-05-original`;
       try {
         shareCardLogo = await new Promise<HTMLImageElement>((resolve, reject) => {
           const im = new Image();
