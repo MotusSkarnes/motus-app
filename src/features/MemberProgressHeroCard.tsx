@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { ArrowDownRight, ArrowUpRight, Crown, Flame, Shield, Sparkles, Target } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, ChevronDown, Crown, Flame, Info, Shield, Sparkles, Target } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { ScoreTrend, MemberProgressScores } from "../app/memberMomentumScores";
 import { getXpLevelLabel } from "../app/memberMomentumScores";
@@ -8,7 +8,17 @@ type MemberProgressHeroCardProps = {
   scores: MemberProgressScores;
   memberFirstName: string;
   streakWeeks: number;
+  /** Brukes til "Slik fungerer XP"-forklaringen så vi kan vise medlemmets faktiske tall. */
+  xpBreakdown?: {
+    completedSessions: number;
+    streakWeeks: number;
+    achievedLevel: number;
+  };
 };
+
+const XP_PER_SESSION = 100;
+const XP_PER_STREAK_WEEK = 75;
+const XP_PER_ACHIEVED_LEVEL = 250;
 
 function useCountUpNumber(target: number, durationMs = 800): number {
   const [value, setValue] = useState(target);
@@ -216,8 +226,101 @@ function ConfettiBurst({ active }: { active: boolean }) {
   );
 }
 
-export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks }: MemberProgressHeroCardProps) {
+function XpExplainerPanel({
+  id,
+  totalXp,
+  breakdown,
+  xpInLevel,
+  xpForNextLevel,
+  currentLevel,
+  currentLevelLabel,
+  nextLevelLabel,
+}: {
+  id: string;
+  totalXp: number;
+  breakdown: MemberProgressHeroCardProps["xpBreakdown"];
+  xpInLevel: number;
+  xpForNextLevel: number;
+  currentLevel: number;
+  currentLevelLabel: string;
+  nextLevelLabel: string;
+}) {
+  const sessions = breakdown?.completedSessions ?? 0;
+  const weeks = breakdown?.streakWeeks ?? 0;
+  const achieved = breakdown?.achievedLevel ?? 0;
+  const fromSessions = sessions * XP_PER_SESSION;
+  const fromStreak = weeks * XP_PER_STREAK_WEEK;
+  const fromAchieved = achieved * XP_PER_ACHIEVED_LEVEL;
+  const xpToGo = Math.max(0, xpForNextLevel - xpInLevel);
+
+  return (
+    <div id={id} className="motus-progress-xp-explainer" role="region" aria-label="Slik fungerer XP">
+      <p className="motus-progress-xp-explainer-title">Slik tjener du XP</p>
+      <p className="motus-progress-xp-explainer-lead">
+        XP samles inn fra tre ting. Jo mer du logger og holder rytmen, jo raskere stiger nivået ditt.
+      </p>
+      <ul className="motus-progress-xp-explainer-rules">
+        <li>
+          <span className="motus-progress-xp-explainer-rule-amount">+{XP_PER_SESSION} XP</span>
+          <span className="motus-progress-xp-explainer-rule-text">per fullført økt</span>
+        </li>
+        <li>
+          <span className="motus-progress-xp-explainer-rule-amount">+{XP_PER_STREAK_WEEK} XP</span>
+          <span className="motus-progress-xp-explainer-rule-text">for hver uke du holder streaken</span>
+        </li>
+        <li>
+          <span className="motus-progress-xp-explainer-rule-amount">+{XP_PER_ACHIEVED_LEVEL} XP</span>
+          <span className="motus-progress-xp-explainer-rule-text">for hvert milepælnivå du låser opp (maks 10)</span>
+        </li>
+      </ul>
+
+      {breakdown ? (
+        <div className="motus-progress-xp-explainer-breakdown">
+          <p className="motus-progress-xp-explainer-breakdown-title">Dine tall så langt</p>
+          <ul className="motus-progress-xp-explainer-breakdown-list">
+            <li>
+              <span>
+                {sessions} {sessions === 1 ? "fullført økt" : "fullførte økter"}
+              </span>
+              <span className="tabular-nums">{fromSessions.toLocaleString("nb-NO")} XP</span>
+            </li>
+            <li>
+              <span>
+                {weeks} {weeks === 1 ? "uke" : "uker"} streak
+              </span>
+              <span className="tabular-nums">{fromStreak.toLocaleString("nb-NO")} XP</span>
+            </li>
+            <li>
+              <span>
+                {achieved} {achieved === 1 ? "milepælnivå" : "milepælnivåer"} oppnådd
+              </span>
+              <span className="tabular-nums">{fromAchieved.toLocaleString("nb-NO")} XP</span>
+            </li>
+            <li className="motus-progress-xp-explainer-breakdown-total">
+              <span>Totalt</span>
+              <span className="tabular-nums">{totalXp.toLocaleString("nb-NO")} XP</span>
+            </li>
+          </ul>
+        </div>
+      ) : null}
+
+      <div className="motus-progress-xp-explainer-next">
+        <p>
+          Du er på <strong>Level {currentLevel} — {currentLevelLabel}</strong>. Neste nivå er{" "}
+          <strong>{nextLevelLabel}</strong> — <span className="tabular-nums">{xpToGo.toLocaleString("nb-NO")}</span> XP igjen.
+        </p>
+      </div>
+
+      <p className="motus-progress-xp-explainer-tip">
+        Tips: Én økt om dagen i en uke gir <span className="tabular-nums">{(XP_PER_SESSION * 7 + XP_PER_STREAK_WEEK).toLocaleString("nb-NO")}</span> XP — pluss eventuell milepæl-bonus.
+      </p>
+    </div>
+  );
+}
+
+export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks, xpBreakdown }: MemberProgressHeroCardProps) {
   const { momentum, consistency, weekly, recovery, xp } = scores;
+  const [isXpInfoOpen, setIsXpInfoOpen] = useState(false);
   const animatedMomentum = useCountUpNumber(momentum.pct);
   const animatedXp = useCountUpNumber(xp.totalXp, 1100);
   const animatedXpInLevel = useCountUpNumber(xp.xpInLevel, 1100);
@@ -275,6 +378,21 @@ export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks }:
             <div className="motus-progress-level-badge-track">
               <div className="motus-progress-level-badge-fill" style={{ width: `${xp.pctToNext}%` }} />
             </div>
+            <button
+              type="button"
+              onClick={() => setIsXpInfoOpen((open) => !open)}
+              className="motus-progress-level-badge-info"
+              aria-expanded={isXpInfoOpen}
+              aria-controls="motus-progress-xp-explainer"
+            >
+              <Info className="h-3 w-3" strokeWidth={2.4} aria-hidden />
+              Slik fungerer XP
+              <ChevronDown
+                className={`h-3 w-3 transition-transform ${isXpInfoOpen ? "rotate-180" : ""}`}
+                strokeWidth={2.4}
+                aria-hidden
+              />
+            </button>
           </div>
 
           <div className="motus-progress-momentum-hero">
@@ -340,6 +458,19 @@ export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks }:
           </div>
         </div>
       </div>
+
+      {isXpInfoOpen ? (
+        <XpExplainerPanel
+          id="motus-progress-xp-explainer"
+          totalXp={xp.totalXp}
+          breakdown={xpBreakdown}
+          xpInLevel={xp.xpInLevel}
+          xpForNextLevel={xp.xpForNextLevel}
+          nextLevelLabel={nextLevelLabel}
+          currentLevel={xp.level}
+          currentLevelLabel={xp.levelLabel}
+        />
+      ) : null}
 
       <div className="motus-progress-status-grid">
         <h3 className="motus-progress-status-grid-title">Din status</h3>

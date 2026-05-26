@@ -1910,6 +1910,131 @@ button.motus-progress-status-banner {
   transition: width 800ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.motus-progress-level-badge-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.motus-progress-level-badge-info:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+}
+
+.motus-progress-xp-explainer {
+  margin-top: 0.75rem;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(48, 227, 190, 0.07), rgba(217, 18, 120, 0.05));
+  border: 1px solid rgba(48, 227, 190, 0.25);
+  padding: 1rem 1.1rem 1.05rem;
+  color: #0f172a;
+}
+
+.motus-progress-xp-explainer-title {
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #0f172a;
+}
+
+.motus-progress-xp-explainer-lead {
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.motus-progress-xp-explainer-rules {
+  margin-top: 0.7rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.motus-progress-xp-explainer-rules li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+}
+
+.motus-progress-xp-explainer-rule-amount {
+  flex-shrink: 0;
+  min-width: 4.25rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.motus-progress-xp-explainer-rule-text {
+  font-size: 0.78rem;
+  color: #334155;
+}
+
+.motus-progress-xp-explainer-breakdown {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed rgba(15, 23, 42, 0.12);
+}
+
+.motus-progress-xp-explainer-breakdown-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+
+.motus-progress-xp-explainer-breakdown-list {
+  margin-top: 0.45rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.motus-progress-xp-explainer-breakdown-list li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #334155;
+}
+
+.motus-progress-xp-explainer-breakdown-list li.motus-progress-xp-explainer-breakdown-total {
+  margin-top: 0.25rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.12);
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.motus-progress-xp-explainer-next {
+  margin-top: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.75rem;
+  background: rgba(48, 227, 190, 0.13);
+  color: #0f172a;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.motus-progress-xp-explainer-tip {
+  margin-top: 0.55rem;
+  font-size: 0.72rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
 .motus-progress-momentum-hero {
   position: relative;
   min-width: 0;

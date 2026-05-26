@@ -7200,7 +7200,16 @@ export function MemberPortal(props: MemberPortalProps) {
 
           {!isMemberLimited && memberTab === "progress" ? (
             <div className="motus-progress-page">
-              <MemberProgressScoresCard scores={memberProgressScores} memberFirstName={homeFirstName} streakWeeks={streakWeeks} />
+              <MemberProgressScoresCard
+                scores={memberProgressScores}
+                memberFirstName={homeFirstName}
+                streakWeeks={streakWeeks}
+                xpBreakdown={{
+                  completedSessions: completedLogs.length,
+                  streakWeeks: memberProgress.streakWeeks,
+                  achievedLevel: memberProgress.achievedLevel,
+                }}
+              />
               <MemberProgressStatusBanner
                 workoutsLast7Days={progressShareLast7Days.workouts}
                 trainingDaysLast7Days={progressShareLast7Days.trainingDays}
