@@ -246,11 +246,19 @@ export function periodPlanEntryMatchesCompletedProgram(
   if (!trimmedEntry || !trimmedTitle || isPassivePeriodPlanEntry(trimmedEntry)) return false;
 
   if (isGroupPeriodPlanEntry(trimmedEntry)) {
-    const expectedTitle = groupWorkoutLogTitle(resolveGroupClassNameFromPeriodEntry(trimmedEntry));
-    const entryNorm = trimmedEntry.toLowerCase();
-    const logNorm = trimmedTitle.toLowerCase();
-    const expectedNorm = expectedTitle.toLowerCase();
-    return entryNorm === logNorm || expectedNorm === logNorm;
+    const className = resolveGroupClassNameFromPeriodEntry(trimmedEntry);
+    const expectedTitle = groupWorkoutLogTitle(className);
+    const entryNorm = normalizeCompletionLabel(trimmedEntry);
+    const logNorm = normalizeCompletionLabel(trimmedTitle);
+    const expectedNorm = normalizeCompletionLabel(expectedTitle);
+    const classNorm = normalizeCompletionLabel(className);
+    const withoutPrefixNorm = normalizeCompletionLabel(trimmedTitle.replace(/^gruppetime\s*:?\s*/i, ""));
+    return (
+      entryNorm === logNorm ||
+      expectedNorm === logNorm ||
+      classNorm === logNorm ||
+      classNorm === withoutPrefixNorm
+    );
   }
 
   const trimmedProgramId = programId?.trim() ?? "";

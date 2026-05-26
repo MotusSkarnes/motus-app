@@ -333,6 +333,7 @@ describe("period plan auto-complete", () => {
   it("matches logged group workouts to group entries", () => {
     expect(periodPlanEntryMatchesCompletedProgram("Gruppetime: Yoga", "Gruppetime: Yoga", programs)).toBe(true);
     expect(periodPlanEntryMatchesCompletedProgram("Gruppetime", "Gruppetime: Smilepuls", programs)).toBe(true);
+    expect(periodPlanEntryMatchesCompletedProgram("Gruppetime: Smilepuls", "Smilepuls", programs)).toBe(true);
     expect(periodPlanEntryMatchesCompletedProgram("Gruppetime: Yoga", "Gruppetime: Sykkel 45", programs)).toBe(false);
   });
 
