@@ -245,8 +245,8 @@ const INSPO_FEED_CARD_ACTION_CLASS = "!min-h-8 !px-2 !py-1.5 !text-[11px] !leadi
 const INSPIRATION_OVERVIEW_SECTIONS: readonly { category: InspirationCategory; title: string }[] = [
   { category: "programs", title: "Treningsprogram" },
   { category: "recipes", title: "Oppskrifter" },
-  { category: "tips", title: "Råd og tips" },
   { category: "news", title: "Info fra senteret" },
+  { category: "tips", title: "Råd og tips" },
 ];
 
 const INSPIRATION_APP_GUIDE_SECTION: readonly { category: InspirationCategory; title: string }[] = [
