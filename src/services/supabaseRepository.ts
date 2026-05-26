@@ -3971,15 +3971,7 @@ export const supabaseAppRepository: AppRepository = {
     return localAppRepository.addMember(state, input);
   },
   deactivateMember(state: AppState, memberId: string): AppState {
-    const targetMember = state.members.find((member) => member.id === memberId);
-    const emailKey = targetMember?.email.trim().toLowerCase() ?? "";
-    const nextState = localAppRepository.deactivateMember(state, memberId);
-    void archiveMemberByEmailFromSupabase(emailKey, memberId).then((result) => {
-      if (!result.ok) {
-        console.warn("archive-member:", result.message);
-      }
-    });
-    return nextState;
+    return localAppRepository.deactivateMember(state, memberId);
   },
   deleteMember(state: AppState, memberId: string): AppState {
     const targetMember = state.members.find((member) => member.id === memberId);
