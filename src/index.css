@@ -3167,24 +3167,24 @@ button.motus-progress-status-banner {
 
 .motus-weekly-share-quote {
   position: absolute;
-  right: 18px;
-  bottom: 16px;
+  right: 24px;
+  bottom: 96px;
   margin: 0;
-  max-width: 220px;
+  max-width: 200px;
   color: #f8fafc;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: 0.01em;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
-@media (min-width: 720px) {
+/* På smale skjermer er fotoet en full-bredde bakgrunn og fliseraden er i 2 kolonner.
+   Sitatet (position: absolute over fotoet) ville da overlappet nederste stat-flis,
+   så vi skjuler det her — fotoet (med opacity 0.55) bærer fortsatt det visuelle. */
+@media (max-width: 720px) {
   .motus-weekly-share-quote {
-    right: 24px;
-    bottom: 96px;
-    max-width: 200px;
-    font-size: 14px;
+    display: none;
   }
 }
 
