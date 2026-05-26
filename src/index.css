@@ -6467,16 +6467,39 @@ button.motus-progress-status-banner {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
+  transition: transform 150ms ease, box-shadow 200ms ease;
 }
 
 .motus-training-quick-action-icon--teal {
-  background: rgba(48, 227, 190, 0.12);
-  color: #0f766e;
+  background: linear-gradient(135deg, #30e3be 0%, #0d9488 100%);
+  color: #ffffff;
+  box-shadow:
+    0 6px 14px -6px rgba(13, 148, 136, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 .motus-training-quick-action-icon--pink {
-  background: rgba(217, 18, 120, 0.1);
-  color: #be185d;
+  background: linear-gradient(135deg, #f472b6 0%, #d91278 100%);
+  color: #ffffff;
+  box-shadow:
+    0 6px 14px -6px rgba(217, 18, 120, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.motus-training-quick-action.is-active .motus-training-quick-action-icon {
+  transform: translateY(-1px);
+}
+
+.motus-training-quick-action.is-active .motus-training-quick-action-icon--teal {
+  box-shadow:
+    0 10px 22px -8px rgba(13, 148, 136, 0.6),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.motus-training-quick-action.is-active .motus-training-quick-action-icon--pink {
+  box-shadow:
+    0 10px 22px -8px rgba(217, 18, 120, 0.6),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35);
 }
 
 .motus-training-quick-action-label {
