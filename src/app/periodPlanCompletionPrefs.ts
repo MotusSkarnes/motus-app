@@ -69,7 +69,12 @@ export function mergePeriodPlanCompletionIntoPersonalGoals(
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;
 }
 
-/** Slå sammen lokale og sky-verdier — fullførte nøkler unioneres, avhuking følger nyeste `updatedAt`. */
+/**
+ * Slå sammen lokale og sky-verdier.
+ * - `completedEntryKeys` unioneres slik at fullføringer aldri går tapt på tvers av enheter.
+ * - `dismissedEntryKeys` følger nyeste `updatedAt` slik at når brukeren fjerner en avhuking
+ *   lokalt (f.eks. via «Logg dagens økt»), kommer ikke gamle avhukinger fra remote tilbake.
+ */
 export function mergePeriodPlanCompletionPrefs(
   local: PeriodPlanCompletionPrefs,
   remote: PeriodPlanCompletionPrefs | null | undefined,
@@ -83,13 +88,12 @@ export function mergePeriodPlanCompletionPrefs(
   }
 
   const remoteIsNewer = remote.updatedAt > local.updatedAt;
-  const dismissedBase = remoteIsNewer ? remote.dismissedEntryKeys : local.dismissedEntryKeys;
-  const dismissedOther = remoteIsNewer ? local.dismissedEntryKeys : remote.dismissedEntryKeys;
+  const newestDismissed = remoteIsNewer ? remote.dismissedEntryKeys : local.dismissedEntryKeys;
 
   return {
     version: PERIOD_PLAN_COMPLETION_PREFS_VERSION,
     completedEntryKeys: uniqueKeys([...local.completedEntryKeys, ...remote.completedEntryKeys]),
-    dismissedEntryKeys: uniqueKeys([...dismissedBase, ...dismissedOther]),
+    dismissedEntryKeys: uniqueKeys(newestDismissed),
     updatedAt: Math.max(local.updatedAt, remote.updatedAt),
   };
 }
@@ -99,13 +103,19 @@ export function reconcilePeriodPlanCompletionKeys(input: {
   storedDismissed: string[];
   remotePrefs: PeriodPlanCompletionPrefs | null;
   derivedCompleted: string[];
+  /**
+   * Tidsstempel som indikerer hvor «friskt» lokal state er. Settes til `Date.now()` når
+   * brukeren akkurat har gjort en lokal endring (markert/avmarkert/fjernet avhuking) slik
+   * at lokal autoritet overgår eldre verdier i Supabase-cachen.
+   */
+  localUpdatedAt?: number;
 }): { completedKeys: string[]; dismissedKeys: string[] } {
   const merged = mergePeriodPlanCompletionPrefs(
     {
       version: PERIOD_PLAN_COMPLETION_PREFS_VERSION,
       completedEntryKeys: input.storedCompleted,
       dismissedEntryKeys: input.storedDismissed,
-      updatedAt: 0,
+      updatedAt: Math.max(0, Number(input.localUpdatedAt) || 0),
     },
     input.remotePrefs,
   );

@@ -48,6 +48,7 @@ describe("periodPlanCompletionPrefs", () => {
         updatedAt: 500,
       },
       derivedCompleted: ["plan-1:1:monday", "plan-1:1:friday"],
+      localUpdatedAt: 1000,
     });
     expect(result.completedKeys).toEqual(["plan-1:1:monday"]);
     expect(result.dismissedKeys).toContain("plan-1:1:friday");
@@ -66,5 +67,38 @@ describe("periodPlanCompletionPrefs", () => {
       derivedCompleted: ["plan-1:1:monday"],
     });
     expect(result.completedKeys).toEqual(["plan-1:1:monday", "plan-1:1:tuesday", "plan-1:1:wednesday"]);
+  });
+
+  it("local dismissed clear with newer timestamp overrides stale remote dismissed", () => {
+    const result = reconcilePeriodPlanCompletionKeys({
+      storedCompleted: ["plan-1:1:tuesday"],
+      storedDismissed: [],
+      remotePrefs: {
+        version: 1,
+        completedEntryKeys: [],
+        dismissedEntryKeys: ["plan-1:1:tuesday"],
+        updatedAt: 500,
+      },
+      derivedCompleted: ["plan-1:1:tuesday"],
+      localUpdatedAt: 1000,
+    });
+    expect(result.completedKeys).toEqual(["plan-1:1:tuesday"]);
+    expect(result.dismissedKeys).toEqual([]);
+  });
+
+  it("falls back to remote dismissed when local has not been touched", () => {
+    const result = reconcilePeriodPlanCompletionKeys({
+      storedCompleted: [],
+      storedDismissed: [],
+      remotePrefs: {
+        version: 1,
+        completedEntryKeys: [],
+        dismissedEntryKeys: ["plan-1:1:wednesday"],
+        updatedAt: 500,
+      },
+      derivedCompleted: ["plan-1:1:wednesday"],
+    });
+    expect(result.completedKeys).toEqual([]);
+    expect(result.dismissedKeys).toEqual(["plan-1:1:wednesday"]);
   });
 });

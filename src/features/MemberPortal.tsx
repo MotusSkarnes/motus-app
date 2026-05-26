@@ -1141,6 +1141,13 @@ export function MemberPortal(props: MemberPortalProps) {
   const periodPlanCompletionHydratedMemberRef = useRef<string | null>(null);
   const completedPeriodPlanEntryKeysRef = useRef<string[]>([]);
   const dismissedPeriodPlanEntryKeysRef = useRef<string[]>([]);
+  /**
+   * Tidsstempel for siste lokale endring av periodeplan-fullføring/avhuking. Sendes med
+   * til `reconcilePeriodPlanCompletionKeys` slik at fersk lokal intensjon ikke blir
+   * overstyrt av en eldre Supabase-cache (f.eks. når «Logg dagens økt» tømmer en gammel
+   * avhuking lokalt — uten dette ville hydrering trekke avhukingen tilbake fra remote).
+   */
+  const periodPlanCompletionLocalUpdatedAtRef = useRef(0);
   const pendingPeriodPlanWorkoutStartRef = useRef<PeriodPlanWorkoutStartContext | null>(null);
   const periodPlanSwapsDirtyRef = useRef(false);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
@@ -3016,6 +3023,7 @@ export function MemberPortal(props: MemberPortalProps) {
       setCompletedPeriodPlanEntryKeys([]);
       setDismissedPeriodPlanEntryKeys([]);
       periodPlanCompletionHydratedMemberRef.current = null;
+      periodPlanCompletionLocalUpdatedAtRef.current = 0;
       return;
     }
 
@@ -3024,6 +3032,7 @@ export function MemberPortal(props: MemberPortalProps) {
       periodPlanCompletionHydratedMemberRef.current = memberId;
       periodPlanCompletedDirtyRef.current = false;
       periodPlanDismissedDirtyRef.current = false;
+      periodPlanCompletionLocalUpdatedAtRef.current = 0;
     }
 
     let storedCompleted: string[] = [];
@@ -3073,6 +3082,7 @@ export function MemberPortal(props: MemberPortalProps) {
       storedDismissed,
       remotePrefs,
       derivedCompleted: derived,
+      localUpdatedAt: periodPlanCompletionLocalUpdatedAtRef.current,
     });
 
     setCompletedPeriodPlanEntryKeys((prev) => {
@@ -4609,6 +4619,10 @@ export function MemberPortal(props: MemberPortalProps) {
     );
   }
 
+  function bumpPeriodPlanLocalUpdatedAt() {
+    periodPlanCompletionLocalUpdatedAtRef.current = Date.now();
+  }
+
   function applyPeriodPlanAutoComplete(input: { programId?: string; programTitle: string; completedAt: Date }) {
     if (!activeMemberId || !input.programTitle.trim()) return;
 
@@ -4623,6 +4637,7 @@ export function MemberPortal(props: MemberPortalProps) {
     });
     if (!targets.length) return;
 
+    bumpPeriodPlanLocalUpdatedAt();
     periodPlanCompletedDirtyRef.current = true;
     periodPlanDismissedDirtyRef.current = true;
     const targetKeys = targets.map((target) => buildPeriodPlanEntryKey(target.planId, target.weekNumber, target.day));
@@ -4788,6 +4803,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function dismissPeriodPlanDay(planId: string, weekNumber: number, day: WeekdayPlanKey) {
     const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
+    bumpPeriodPlanLocalUpdatedAt();
     periodPlanDismissedDirtyRef.current = true;
     dismissedPeriodPlanEntryKeysRef.current = dismissedPeriodPlanEntryKeysRef.current.includes(key)
       ? dismissedPeriodPlanEntryKeysRef.current
@@ -4797,6 +4813,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function clearPeriodPlanDayDismissed(planId: string, weekNumber: number, day: WeekdayPlanKey) {
     const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
+    bumpPeriodPlanLocalUpdatedAt();
     periodPlanDismissedDirtyRef.current = true;
     dismissedPeriodPlanEntryKeysRef.current = dismissedPeriodPlanEntryKeysRef.current.filter((item) => item !== key);
     setDismissedPeriodPlanEntryKeys((prev) => prev.filter((item) => item !== key));
@@ -4866,6 +4883,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function markPeriodPlanDayCompleted(planId: string, weekNumber: number, day: WeekdayPlanKey) {
     const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
+    bumpPeriodPlanLocalUpdatedAt();
     periodPlanCompletedDirtyRef.current = true;
     completedPeriodPlanEntryKeysRef.current = completedPeriodPlanEntryKeysRef.current.includes(key)
       ? completedPeriodPlanEntryKeysRef.current
@@ -4932,6 +4950,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function unmarkPeriodPlanDayCompleted(planId: string, weekNumber: number, day: WeekdayPlanKey) {
     const key = buildPeriodPlanEntryKey(planId, weekNumber, day);
+    bumpPeriodPlanLocalUpdatedAt();
     periodPlanCompletedDirtyRef.current = true;
     completedPeriodPlanEntryKeysRef.current = completedPeriodPlanEntryKeysRef.current.filter((item) => item !== key);
     setCompletedPeriodPlanEntryKeys((prev) => prev.filter((item) => item !== key));
