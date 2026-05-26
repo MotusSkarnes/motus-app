@@ -335,6 +335,7 @@ type MemberPortalProps = {
   refreshRemoteHydration?: () => void | Promise<void>;
   onOpenMonthlyCheckIn?: () => void;
   onOpenOnboarding?: () => void;
+  onDismissOnboardingHomePrompt?: () => void;
   showOnboardingHomePrompt?: boolean;
   /** Når false: vis knapp for å fylle ut / sende skjema på nytt (f.eks. etter mislykket sky-lagring). */
   onboardingSubstantivelyComplete?: boolean;
@@ -1017,6 +1018,7 @@ export function MemberPortal(props: MemberPortalProps) {
     refreshRemoteHydration,
     onOpenMonthlyCheckIn,
     onOpenOnboarding,
+    onDismissOnboardingHomePrompt,
     showOnboardingHomePrompt = false,
     onboardingSubstantivelyComplete = false,
     homeOverviewHeaderActions,
@@ -5798,6 +5800,8 @@ export function MemberPortal(props: MemberPortalProps) {
                       detail="Ca. 3–5 min · én gang"
                       ctaLabel="Start skjema"
                       onCta={onOpenOnboarding}
+                      onDismiss={onDismissOnboardingHomePrompt}
+                      dismissLabel="Skjul"
                     />
                   ) : undefined
                 }

@@ -10,6 +10,7 @@ import {
   Flame,
   MessageSquare,
   Play,
+  X,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
@@ -309,14 +310,18 @@ export function MemberHomeCompactPrompt({
   detail,
   ctaLabel,
   onCta,
+  onDismiss,
+  dismissLabel = "Skjul",
 }: {
   title: string;
   detail: string;
   ctaLabel: string;
   onCta: () => void;
+  onDismiss?: () => void;
+  dismissLabel?: string;
 }) {
   return (
-    <div className="flex flex-col gap-2.5 rounded-2xl border border-white/70 bg-white/80 px-4 py-3.5 shadow-[0_2px_16px_-10px_rgba(15,23,42,0.14)] backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
+    <div className="relative flex flex-col gap-2.5 rounded-2xl border border-white/70 bg-white/80 px-4 py-3.5 pr-10 shadow-[0_2px_16px_-10px_rgba(15,23,42,0.14)] backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:pr-10">
       <div className="min-w-0">
         <p className="text-sm font-medium text-slate-800">{title}</p>
         <p className="mt-0.5 text-xs text-slate-500">{detail}</p>
@@ -324,6 +329,17 @@ export function MemberHomeCompactPrompt({
       <GradientButton type="button" onClick={onCta} className="h-10 w-full shrink-0 rounded-xl px-4 text-xs font-semibold sm:w-auto">
         {ctaLabel}
       </GradientButton>
+      {onDismiss ? (
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label={dismissLabel}
+          title={dismissLabel}
+          className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+        >
+          <X className="h-4 w-4" aria-hidden />
+        </button>
+      ) : null}
     </div>
   );
 }

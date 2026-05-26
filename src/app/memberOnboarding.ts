@@ -1,4 +1,5 @@
 import { pickBestPersonalGoals } from "./memberProfileGoals";
+import { supabaseClient } from "../services/supabaseClient";
 import type { Level, Member } from "./types";
 
 /** Stored inside members.personal_goals (MOTUS_PROFILE_V1 JSON). */
@@ -599,4 +600,25 @@ export function shouldShowMemberOnboarding(
 ): boolean {
   if (!member || role !== "member") return false;
   return !isMemberOnboardingSubmitted(member, allMembers);
+}
+
+/**
+ * Siste sikkerhetsnett: spør Supabase direkte etter alle members-rader med samme
+ * e-post og sjekk om noen av dem har onboarding-markere i `personal_goals`.
+ * Brukes av MemberLayout ved oppstart hvis lokal-cache / Redux-state ikke har
+ * fanget opp at brukeren har fylt ut skjemaet (f.eks. cache-rot p\u00e5 ny enhet).
+ */
+export async function fetchOnboardingSubmittedFromSupabase(email: string): Promise<boolean> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized.includes("@") || !supabaseClient) return false;
+  try {
+    const { data, error } = await supabaseClient
+      .from("members")
+      .select("personal_goals")
+      .ilike("email", normalized);
+    if (error || !Array.isArray(data)) return false;
+    return data.some((row) => personalGoalsHasOnboardingMarker(String(row?.personal_goals ?? "")));
+  } catch {
+    return false;
+  }
 }

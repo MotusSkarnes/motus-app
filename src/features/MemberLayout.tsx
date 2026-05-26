@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 import { MOTUS } from "../app/data";
 import {
   enrichMemberWithBestProfile,
+  fetchOnboardingSubmittedFromSupabase,
   findMembersByEmail,
   hasSeenMemberWelcome,
   isMemberOnboardingComplete,
@@ -189,13 +190,16 @@ export function MemberLayout({
   }, [appState]);
   const currentUserRole = appState.currentUser?.role;
   const onboardingIdentityKey = activeMember ? memberOnboardingIdentityKey(activeMember) : "";
+  // Brukes bare for å trigge re-render etter at brukeren har skjult prompten manuelt
+  // (lokal flagg-skriving alene oppdaterer ikke useMemo-deps).
+  const [onboardingDismissTick, setOnboardingDismissTick] = useState(0);
   const onboardingCompleted = useMemo(
     () => isMemberOnboardingComplete(activeMember, appState.members),
-    [activeMember, appState.members],
+    [activeMember, appState.members, onboardingDismissTick],
   );
   const onboardingSubmitted = useMemo(
     () => isMemberOnboardingSubmitted(activeMember, appState.members),
-    [activeMember, appState.members],
+    [activeMember, appState.members, onboardingDismissTick],
   );
   const needsOnboardingPrompt = useMemo(
     () => shouldShowMemberOnboarding(activeMember, currentUserRole, appState.members),
@@ -224,6 +228,28 @@ export function MemberLayout({
       );
     }
   }, [activeMember, appState.members, onboardingIdentityKey, onboardingSubmitted]);
+
+  // Direkte Supabase-fallback: hvis vi ikke ser markere i lastet state, sp\u00f8r vi DB
+  // \u00e9n gang per innloggings-\u00f8kt etter `personal_goals` p\u00e5 e-post. Dette hjelper p\u00e5
+  // ny enhet, etter cache-clearing, eller hvis row-merging i lokal state mister radet
+  // med onboarding-blob.
+  useEffect(() => {
+    if (currentUserRole !== "member") return;
+    if (!activeMember || !onboardingIdentityKey) return;
+    if (onboardingSubmitted) return;
+    const email = appState.currentUser?.email?.trim().toLowerCase() ?? "";
+    if (!email.includes("@")) return;
+    let cancelled = false;
+    void (async () => {
+      const found = await fetchOnboardingSubmittedFromSupabase(email);
+      if (cancelled || !found) return;
+      markOnboardingCompleteLocally(onboardingIdentityKey, new Date().toISOString());
+      setOnboardingDismissTick((tick) => tick + 1);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeMember, appState.currentUser?.email, currentUserRole, onboardingIdentityKey, onboardingSubmitted]);
 
   function dismissWelcomeModal() {
     if (!onboardingIdentityKey) return;
@@ -423,6 +449,15 @@ export function MemberLayout({
     refreshRemoteHydration,
     onOpenMonthlyCheckIn: () => setMemberCheckInOverlayOpen(true),
     onOpenOnboarding: () => setOnboardingGateOpen(true),
+    onDismissOnboardingHomePrompt: () => {
+      if (!onboardingIdentityKey) return;
+      // Bruker har trykket X. Marker som ferdig lokalt s\u00e5 prompten ikke kommer tilbake p\u00e5
+      // denne enheten \u2014 dette dekker tilfeller der server-side data finnes,
+      // men v\u00e5re deteksjons-fallbacks likevel ikke klarer \u00e5 se onboarding-markere.
+      markOnboardingCompleteLocally(onboardingIdentityKey, new Date().toISOString());
+      markOnboardingGateSeen(onboardingIdentityKey);
+      setOnboardingDismissTick((tick) => tick + 1);
+    },
     showOnboardingHomePrompt: !welcomeModalOpen && !onboardingGateOpen && !onboardingSubmitted,
     onboardingSubstantivelyComplete: onboardingCompleted,
     homeOverviewHeaderActions: (
