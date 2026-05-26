@@ -330,6 +330,12 @@ describe("period plan auto-complete", () => {
     expect(periodPlanEntryMatchesCompletedProgram("Kondisjon", "Styrke A", programs)).toBe(false);
   });
 
+  it("matches logged group workouts to group entries", () => {
+    expect(periodPlanEntryMatchesCompletedProgram("Gruppetime: Yoga", "Gruppetime: Yoga", programs)).toBe(true);
+    expect(periodPlanEntryMatchesCompletedProgram("Gruppetime", "Gruppetime: Smilepuls", programs)).toBe(true);
+    expect(periodPlanEntryMatchesCompletedProgram("Gruppetime: Yoga", "Gruppetime: Sykkel 45", programs)).toBe(false);
+  });
+
   it("does not auto-complete period rows from fuzzy program title matches", () => {
     const similarPrograms: TrainingProgram[] = [
       ...programs,
@@ -378,16 +384,30 @@ describe("period plan auto-complete", () => {
 
   it("falls back to calendar weekday when start-date row does not match completed program", () => {
     const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "Styrke B", tuesday: "Styrke A" } }]);
-    plan.startDate = "2026-05-18";
+    plan.startDate = "";
     const targets = findPeriodPlanAutoCompleteTargets({
       plans: [plan],
       swapsByPlan: {},
       programTitle: "Styrke A",
       programs,
-      completedAt: new Date(2026, 4, 18),
+      completedAt: new Date(2026, 4, 19),
       calendarWeekdayKey: "tuesday",
     });
     expect(targets).toEqual([{ planId: "plan-1", weekNumber: 1, day: "tuesday" }]);
+  });
+
+  it("does not auto-complete a future period plan row", () => {
+    const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, wednesday: "Gruppetime: Smilepuls" } }]);
+    plan.startDate = "2026-05-18";
+    const targets = findPeriodPlanAutoCompleteTargets({
+      plans: [plan],
+      swapsByPlan: {},
+      programTitle: "Gruppetime: Smilepuls",
+      programs,
+      completedAt: new Date(2026, 4, 19),
+      calendarWeekdayKey: "wednesday",
+    });
+    expect(targets).toEqual([]);
   });
 
   it("derives completed keys from finished workout logs", () => {
@@ -408,6 +428,26 @@ describe("period plan auto-complete", () => {
       ],
     });
     expect(keys).toEqual(["plan-1:1:friday"]);
+  });
+
+  it("derives completed keys from finished group workout logs", () => {
+    const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, tuesday: "Gruppetime: Yoga" } }]);
+    plan.startDate = "2026-05-19";
+    const keys = derivePeriodPlanCompletedEntryKeysFromLogs({
+      plans: [plan],
+      swapsByPlan: {},
+      programs,
+      memberId: "m1",
+      logs: [
+        {
+          memberId: "m1",
+          programTitle: "Gruppetime: Yoga",
+          date: "19.05.2026 kl 18:30",
+          status: "Fullført",
+        },
+      ],
+    });
+    expect(keys).toEqual(["plan-1:1:tuesday"]);
   });
 
   it("isPeriodPlanDayComplete checks keys and matching logs", () => {

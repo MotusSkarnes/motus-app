@@ -429,6 +429,16 @@ export function isMemberOnboardingComplete(
   return onboardingAnswersAreSubstantive(resolveMemberOnboarding(member, allMembers));
 }
 
+export function isMemberOnboardingSubmitted(
+  member: Member | null | undefined,
+  allMembers?: Member[],
+): boolean {
+  if (!member) return false;
+  const identityKey = memberOnboardingIdentityKey(member);
+  if (hasLocalOnboardingComplete(identityKey)) return true;
+  return Boolean(resolveMemberOnboarding(member, allMembers)?.completedAt?.trim());
+}
+
 /** Kanonisk rad først (siste lagring); fall tilbake til andre duplikat-rader kun om feltet er tomt der. */
 function pickProfileScalarField(
   canonicalValue: string | undefined,
@@ -569,5 +579,5 @@ export function shouldShowMemberOnboarding(
   allMembers?: Member[],
 ): boolean {
   if (!member || role !== "member") return false;
-  return !isMemberOnboardingComplete(member, allMembers);
+  return !isMemberOnboardingSubmitted(member, allMembers);
 }

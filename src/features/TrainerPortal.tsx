@@ -1948,6 +1948,11 @@ function pickFirstName(value: unknown): string {
     }
   }
 
+  function inviteSentAtLabel(invitedAt: string): string {
+    const formatted = formatInvitedAt(invitedAt);
+    return formatted ? `Sendt ${formatted}` : "Ikke sendt ennå";
+  }
+
   async function readFileAsDataUrl(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -5097,6 +5102,10 @@ function pickFirstName(value: unknown): string {
                           <div className="font-medium text-slate-900">{selectedMemberProfile?.phone || selectedMember.phone || "Ikke satt"}</div>
                         </div>
                         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                          <div className="text-[11px] text-slate-500">Invitasjon</div>
+                          <div className="font-medium text-slate-900">{inviteSentAtLabel(selectedMember.invitedAt)}</div>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                           <div className="text-[11px] text-slate-500">Fødselsdato</div>
                           <div className="font-medium text-slate-900">{selectedMemberProfile?.birthDate || selectedMember.birthDate || "Ikke satt"}</div>
                         </div>
@@ -5119,11 +5128,6 @@ function pickFirstName(value: unknown): string {
                       </div>
                       <div className="mt-2 text-sm text-slate-600">
                         Sist trening: {latestCompletedLog ? `${latestCompletedLog.date} (${latestCompletedLog.programTitle})` : "Ingen fullførte økter ennå"}
-                      </div>
-                      <div className="mt-1 text-xs text-slate-500">
-                        {selectedMember.invitedAt?.trim()
-                          ? `Invitert ${formatInvitedAt(selectedMember.invitedAt)}`
-                          : "Ikke invitert ennå"}
                       </div>
                     </>
                   )}
@@ -5167,7 +5171,7 @@ function pickFirstName(value: unknown): string {
                       disabled={isInvitingMember}
                       className={`${CUSTOMER_CARD_ACTION_BTN} w-full sm:w-auto`}
                     >
-                      {isInvitingMember ? "Sender..." : "Inviter på nytt"}
+                      {isInvitingMember ? "Sender..." : "Send invitasjon på nytt"}
                     </OutlineButton>
                     {selectedMember.isActive === false ? (
                       <GradientButton

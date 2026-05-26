@@ -325,11 +325,18 @@ export function findPeriodPlanAutoCompleteTargets(input: {
     targets.push({ planId, weekNumber, day });
   }
 
+  function isTargetAfterCompletedAt(plan: PeriodSchedulePlan, weekNumber: number, day: WeekdayPlanKey): boolean {
+    const plannedDate = resolvePeriodPlanPlannedDate(plan, weekNumber, day);
+    if (!plannedDate) return false;
+    return startOfLocalDay(plannedDate).getTime() > startOfLocalDay(completedAt).getTime();
+  }
+
   for (const plan of input.plans) {
     const match = findPeriodPlanEntryForCalendarDate(plan, completedAt, input.swapsByPlan);
     if (match?.entry.trim()) {
       if (
-        periodPlanEntryMatchesCompletedProgram(match.entry, input.programTitle, input.programs, input.programId)
+        periodPlanEntryMatchesCompletedProgram(match.entry, input.programTitle, input.programs, input.programId) &&
+        !isTargetAfterCompletedAt(plan, match.weekNumber, match.day)
       ) {
         pushTarget(plan.id, match.weekNumber, match.day);
         continue;
@@ -354,6 +361,7 @@ export function findPeriodPlanAutoCompleteTargets(input: {
       ) {
         continue;
       }
+      if (isTargetAfterCompletedAt(plan, week.weekNumber, day)) continue;
       pushTarget(plan.id, week.weekNumber, day);
     }
   }

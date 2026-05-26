@@ -5,6 +5,7 @@ import {
   getOnboardingFromPersonalGoals,
   hasSeenMemberWelcome,
   isMemberOnboardingComplete,
+  isMemberOnboardingSubmitted,
   isOnboardingCompleted,
   markMemberWelcomeSeen,
   mergeOnboardingIntoPersonalGoals,
@@ -67,6 +68,32 @@ describe("memberOnboarding", () => {
     const sparse = `MOTUS_PROFILE_V1:${JSON.stringify({ onboardingCompletedAt: "2026-05-16T12:00:00.000Z" })}`;
     expect(isOnboardingCompleted(sparse)).toBe(false);
     expect(getOnboardingFromPersonalGoals(sparse)?.completedAt).toBe("2026-05-16T12:00:00.000Z");
+  });
+
+  it("treats any submitted onboarding as submitted for member prompts", () => {
+    const sparse = `MOTUS_PROFILE_V1:${JSON.stringify({ onboardingCompletedAt: "2026-05-16T12:00:00.000Z" })}`;
+    const member: Member = {
+      id: "submitted",
+      name: "Test",
+      email: "submitted@test.no",
+      isActive: true,
+      invitedAt: "",
+      phone: "",
+      birthDate: "",
+      weight: "",
+      height: "",
+      level: "Nybegynner",
+      membershipType: "Premium",
+      customerType: "PT-kunde",
+      daysSinceActivity: "",
+      goal: "",
+      focus: "",
+      personalGoals: sparse,
+      injuries: "",
+      coachNotes: "",
+    };
+    expect(isMemberOnboardingComplete(member, [member])).toBe(false);
+    expect(isMemberOnboardingSubmitted(member, [member])).toBe(true);
   });
 
   it("enriches member with personal_goals from duplicate email rows", () => {

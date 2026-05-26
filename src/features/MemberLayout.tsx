@@ -6,6 +6,7 @@ import {
   findMembersByEmail,
   hasSeenMemberWelcome,
   isMemberOnboardingComplete,
+  isMemberOnboardingSubmitted,
   markOnboardingCompleteLocally,
   markOnboardingGateSeen,
   markMemberWelcomeSeen,
@@ -190,6 +191,10 @@ export function MemberLayout({
   const onboardingIdentityKey = activeMember ? memberOnboardingIdentityKey(activeMember) : "";
   const onboardingCompleted = useMemo(
     () => isMemberOnboardingComplete(activeMember, appState.members),
+    [activeMember, appState.members],
+  );
+  const onboardingSubmitted = useMemo(
+    () => isMemberOnboardingSubmitted(activeMember, appState.members),
     [activeMember, appState.members],
   );
   const needsOnboardingPrompt = useMemo(
@@ -409,7 +414,7 @@ export function MemberLayout({
     refreshRemoteHydration,
     onOpenMonthlyCheckIn: () => setMemberCheckInOverlayOpen(true),
     onOpenOnboarding: () => setOnboardingGateOpen(true),
-    showOnboardingHomePrompt: !welcomeModalOpen && !onboardingGateOpen && !onboardingCompleted,
+    showOnboardingHomePrompt: !welcomeModalOpen && !onboardingGateOpen && !onboardingSubmitted,
     onboardingSubstantivelyComplete: onboardingCompleted,
     homeOverviewHeaderActions: (
       <MemberHomeHeaderActions
