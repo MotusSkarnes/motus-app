@@ -142,7 +142,7 @@ type QuickCategory = {
   icon: typeof ClipboardList;
   scrollToCategory: InspirationCategory;
   match: (item: InspirationItem) => boolean;
-  tone: "teal" | "pink" | "lime" | "violet";
+  tone: "mint" | "pink" | "mintSoft" | "pinkSoft";
 };
 
 function textIncludesAny(value: string, terms: string[]): boolean {
@@ -156,7 +156,7 @@ const QUICK_CATEGORIES: readonly QuickCategory[] = [
     label: "Løping",
     icon: Footprints,
     scrollToCategory: "programs",
-    tone: "teal",
+    tone: "mint",
     match: (item) =>
       textIncludesAny(`${item.title} ${item.tag} ${item.description}`, [
         "løp",
@@ -189,7 +189,7 @@ const QUICK_CATEGORIES: readonly QuickCategory[] = [
     label: "Kosthold",
     icon: Leaf,
     scrollToCategory: "recipes",
-    tone: "lime",
+    tone: "mintSoft",
     match: (item) => item.category === "recipes",
   },
   {
@@ -197,15 +197,23 @@ const QUICK_CATEGORIES: readonly QuickCategory[] = [
     label: "Motivasjon",
     icon: Brain,
     scrollToCategory: "tips",
-    tone: "violet",
+    tone: "pinkSoft",
     match: (item) => item.category === "tips",
   },
 ];
 
-const NEWS_TONES: Array<{ key: string; bg: string; ring: string; iconBg: string; iconColor: string; icon: typeof Sun }> = [
-  { key: "amber", bg: "#FFF8E2", ring: "#FFE4A1", iconBg: "#FFE08A", iconColor: "#92400E", icon: Sun },
-  { key: "rose", bg: "#FFE5F0", ring: "#FFB8D6", iconBg: "#FFB8D6", iconColor: "#9D174D", icon: Users },
-  { key: "teal", bg: "#D6FBF1", ring: "#9FE7D2", iconBg: "#9FE7D2", iconColor: "#065F46", icon: CalendarHeart },
+const NEWS_TONES: Array<{
+  key: string;
+  bg: string;
+  ring: string;
+  iconBg: string;
+  iconColor: string;
+  icon: typeof Sun;
+  dark?: boolean;
+}> = [
+  { key: "mint", bg: "#D6FBF1", ring: "rgba(48,227,190,0.5)", iconBg: "#30E3BE", iconColor: "#0B5C4D", icon: Sun },
+  { key: "pink", bg: "#FFE5F0", ring: "rgba(217,18,120,0.32)", iconBg: "#D91278", iconColor: "#FFFFFF", icon: Users },
+  { key: "ink", bg: "#0F172A", ring: "rgba(48,227,190,0.6)", iconBg: "#30E3BE", iconColor: "#0F172A", icon: CalendarHeart, dark: true },
 ];
 
 function pickNewsTone(index: number) {
@@ -1384,7 +1392,7 @@ export function InspirationHub({
     return (
       <article
         key={item.id}
-        className="motus-inspo-news-card"
+        className={`motus-inspo-news-card ${tone.dark ? "motus-inspo-news-card--dark" : ""}`}
         style={{ background: tone.bg, borderColor: tone.ring }}
       >
         {canManage ? (
