@@ -62,7 +62,7 @@ export function buildHomeWeekHeadline(
     return { headline: "Sterk uke! 💪", subline: "Du er foran planen denne uka." };
   }
   if (momentumTrend === "up" && completed > 0) {
-    return { headline: "Bygger flyt 🔥", subline: "Du trener mer enn forrige uke." };
+    return { headline: "Bygger rutiner 🔥", subline: "Du trener mer enn forrige uke." };
   }
   if (completed > 0) {
     return { headline: "God start", subline: "Fortsett jevnt — du er på vei." };
