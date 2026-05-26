@@ -15,6 +15,17 @@ export type InspirationHeroConfig = {
   subtitle?: string;
   badge?: string;
   ctaLabel?: string;
+  /**
+   * ID til artikkelen som PT har pinnet som «Dagens utvalgte». Settes til `undefined` når
+   * `featuredAutoRotate` er på (eller default), slik at AI/dag-roteringen velger ny artikkel
+   * hver dag.
+   */
+  featuredItemId?: string;
+  /**
+   * Når true (eller udefinert) rotereres «Dagens utvalgte» automatisk basert på ukedag.
+   * Settes til false når PT manuelt pinner en artikkel via `featuredItemId`.
+   */
+  featuredAutoRotate?: boolean;
   updatedAt?: number;
 };
 
@@ -365,6 +376,10 @@ function parseHeroConfig(value: unknown): InspirationHeroConfig | null {
   if (typeof raw.subtitle === "string" && raw.subtitle.trim()) next.subtitle = raw.subtitle.trim();
   if (typeof raw.badge === "string" && raw.badge.trim()) next.badge = raw.badge.trim();
   if (typeof raw.ctaLabel === "string" && raw.ctaLabel.trim()) next.ctaLabel = raw.ctaLabel.trim();
+  if (typeof raw.featuredItemId === "string" && raw.featuredItemId.trim()) {
+    next.featuredItemId = raw.featuredItemId.trim();
+  }
+  if (typeof raw.featuredAutoRotate === "boolean") next.featuredAutoRotate = raw.featuredAutoRotate;
   if (typeof raw.updatedAt === "number") next.updatedAt = raw.updatedAt;
   return next;
 }

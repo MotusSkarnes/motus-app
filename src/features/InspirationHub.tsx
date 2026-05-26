@@ -97,10 +97,19 @@ const MOTUS_GRADIENT = `${MOTUS.gradient}`;
 
 /* Standard hero-bilde (PT kan bytte). Filen ligger i /public, så ingen import-bundling. */
 const DEFAULT_INSPO_HERO_IMAGE = "/share/inspo-hero-woman.png";
-const DEFAULT_INSPO_HERO_BADGE = "Ukens utvalgte";
 const DEFAULT_INSPO_HERO_TITLE = "Bygg vaner som varer";
 const DEFAULT_INSPO_HERO_SUBTITLE = "Små steg i dag — stor forskjell i morgen.";
 const DEFAULT_INSPO_HERO_CTA = "Utforsk nå";
+const FEATURED_ARTICLE_BADGE = "Dagens utvalgte";
+
+/** Stabil daglig rotasjon — alle medlemmer ser samme artikkel samme dag, ny i morgen. */
+function pickFeaturedItemFromPool<T extends { id: string }>(pool: T[], now = new Date()): T | null {
+  if (!pool.length) return null;
+  const startOfYear = new Date(now.getFullYear(), 0, 0).getTime();
+  const dayOfYear = Math.floor((now.getTime() - startOfYear) / 86_400_000);
+  const idx = ((dayOfYear % pool.length) + pool.length) % pool.length;
+  return pool[idx] ?? null;
+}
 
 type InspoBadgeTone = "turquoise" | "pink";
 
@@ -852,7 +861,6 @@ export function InspirationHub({
   const [heroConfig, setHeroConfig] = useState<InspirationHeroConfig | null>(() => loadInspirationHeroFromLocalStorage());
   const [isUploadingHeroImage, setIsUploadingHeroImage] = useState(false);
   const [heroTextEditorOpen, setHeroTextEditorOpen] = useState(false);
-  const [heroBadgeDraft, setHeroBadgeDraft] = useState("");
   const [heroTitleDraft, setHeroTitleDraft] = useState("");
   const [heroSubtitleDraft, setHeroSubtitleDraft] = useState("");
   const [heroCtaDraft, setHeroCtaDraft] = useState("");
@@ -964,10 +972,71 @@ export function InspirationHub({
   }, []);
 
   const heroImageSrc = heroConfig?.imageUrl?.trim() || DEFAULT_INSPO_HERO_IMAGE;
-  const heroBadgeLabel = heroConfig?.badge?.trim() || DEFAULT_INSPO_HERO_BADGE;
   const heroTitleText = heroConfig?.title?.trim() || DEFAULT_INSPO_HERO_TITLE;
   const heroSubtitleText = heroConfig?.subtitle?.trim() || DEFAULT_INSPO_HERO_SUBTITLE;
   const heroCtaText = heroConfig?.ctaLabel?.trim() || DEFAULT_INSPO_HERO_CTA;
+  const featuredAutoRotate = heroConfig?.featuredAutoRotate ?? true;
+  const pinnedFeaturedItemId = heroConfig?.featuredItemId?.trim() ?? "";
+
+  /** Artikler som kan brukes som «Dagens utvalgte» — tips, news, recipes (ikke app-guide eller program/ukesplan). */
+  const featuredArticlePool = useMemo(() => {
+    return items.filter((item) => {
+      if (item.kind !== "article") return false;
+      if (item.category === "appGuide") return false;
+      return Boolean(item.title.trim());
+    });
+  }, [items]);
+
+  const featuredItem = useMemo(() => {
+    if (!featuredArticlePool.length) return null;
+    if (!featuredAutoRotate && pinnedFeaturedItemId) {
+      const pinned = featuredArticlePool.find((item) => item.id === pinnedFeaturedItemId);
+      if (pinned) return pinned;
+    }
+    return pickFeaturedItemFromPool(featuredArticlePool);
+  }, [featuredArticlePool, featuredAutoRotate, pinnedFeaturedItemId]);
+
+  const [featuredPickerOpen, setFeaturedPickerOpen] = useState(false);
+  const [isSavingFeatured, setIsSavingFeatured] = useState(false);
+
+  async function persistFeaturedSelection(input: { featuredItemId?: string; featuredAutoRotate: boolean }) {
+    setIsSavingFeatured(true);
+    setActionStatus(null);
+    try {
+      const next: InspirationHeroConfig = {
+        imageUrl: heroConfig?.imageUrl?.trim() || DEFAULT_INSPO_HERO_IMAGE,
+        badge: heroConfig?.badge ?? undefined,
+        title: heroConfig?.title ?? undefined,
+        subtitle: heroConfig?.subtitle ?? undefined,
+        ctaLabel: heroConfig?.ctaLabel ?? undefined,
+        featuredItemId: input.featuredItemId?.trim() || undefined,
+        featuredAutoRotate: input.featuredAutoRotate,
+      };
+      const result = await persistInspirationHero(next);
+      if (!result.ok) {
+        setActionStatus(result.error);
+        return;
+      }
+      setHeroConfig(result.config);
+      setActionStatus(
+        input.featuredItemId
+          ? "Dagens utvalgte er låst til valgt artikkel."
+          : "Dagens utvalgte velges automatisk og rotereres daglig.",
+      );
+    } finally {
+      setIsSavingFeatured(false);
+    }
+  }
+
+  async function setFeaturedItemAndPin(itemId: string) {
+    await persistFeaturedSelection({ featuredItemId: itemId, featuredAutoRotate: false });
+    setFeaturedPickerOpen(false);
+  }
+
+  async function clearFeaturedPin() {
+    await persistFeaturedSelection({ featuredItemId: undefined, featuredAutoRotate: true });
+    setFeaturedPickerOpen(false);
+  }
 
   async function handleHeroImageFile(file: File | null) {
     if (!file) return;
@@ -982,7 +1051,6 @@ export function InspirationHub({
       const next: InspirationHeroConfig = {
         ...(heroConfig ?? {}),
         imageUrl: compressed,
-        badge: heroConfig?.badge ?? heroBadgeLabel,
         title: heroConfig?.title ?? heroTitleText,
         subtitle: heroConfig?.subtitle ?? heroSubtitleText,
         ctaLabel: heroConfig?.ctaLabel ?? heroCtaText,
@@ -1022,7 +1090,6 @@ export function InspirationHub({
   }
 
   function openHeroTextEditor() {
-    setHeroBadgeDraft(heroConfig?.badge ?? "");
     setHeroTitleDraft(heroConfig?.title ?? "");
     setHeroSubtitleDraft(heroConfig?.subtitle ?? "");
     setHeroCtaDraft(heroConfig?.ctaLabel ?? "");
@@ -1040,10 +1107,11 @@ export function InspirationHub({
     try {
       const next: InspirationHeroConfig = {
         imageUrl: heroConfig?.imageUrl?.trim() || DEFAULT_INSPO_HERO_IMAGE,
-        badge: heroBadgeDraft.trim() || undefined,
         title: heroTitleDraft.trim() || undefined,
         subtitle: heroSubtitleDraft.trim() || undefined,
         ctaLabel: heroCtaDraft.trim() || undefined,
+        featuredItemId: heroConfig?.featuredItemId ?? undefined,
+        featuredAutoRotate: heroConfig?.featuredAutoRotate ?? undefined,
       };
       const result = await persistInspirationHero(next);
       if (!result.ok) {
@@ -1064,6 +1132,8 @@ export function InspirationHub({
     try {
       const next: InspirationHeroConfig = {
         imageUrl: heroConfig?.imageUrl?.trim() || DEFAULT_INSPO_HERO_IMAGE,
+        featuredItemId: heroConfig?.featuredItemId ?? undefined,
+        featuredAutoRotate: heroConfig?.featuredAutoRotate ?? undefined,
       };
       const result = await persistInspirationHero(next);
       if (!result.ok) {
@@ -1071,7 +1141,6 @@ export function InspirationHub({
         return;
       }
       setHeroConfig(result.config);
-      setHeroBadgeDraft("");
       setHeroTitleDraft("");
       setHeroSubtitleDraft("");
       setHeroCtaDraft("");
@@ -1082,10 +1151,9 @@ export function InspirationHub({
   }
 
   const heroHasCustomText = Boolean(
-    heroConfig?.title || heroConfig?.subtitle || heroConfig?.badge || heroConfig?.ctaLabel,
+    heroConfig?.title || heroConfig?.subtitle || heroConfig?.ctaLabel,
   );
 
-  const previewHeroBadge = (heroBadgeDraft.trim() || DEFAULT_INSPO_HERO_BADGE);
   const previewHeroTitle = (heroTitleDraft.trim() || DEFAULT_INSPO_HERO_TITLE);
   const previewHeroSubtitle = (heroSubtitleDraft.trim() || DEFAULT_INSPO_HERO_SUBTITLE);
   const previewHeroCta = (heroCtaDraft.trim() || DEFAULT_INSPO_HERO_CTA);
@@ -2087,10 +2155,6 @@ export function InspirationHub({
               decoding="async"
               aria-hidden
             />
-            <span className="motus-inspo-hero-badge motus-inspo-hero-badge--turquoise">
-              <Sparkles className="h-3.5 w-3.5" aria-hidden />
-              {heroBadgeLabel}
-            </span>
           </div>
           <div className="motus-inspo-hero-content">
             <h1 className="motus-inspo-hero-title">{heroTitleText}</h1>
@@ -2177,6 +2241,82 @@ export function InspirationHub({
               >
                 <Plus className="h-5 w-5" aria-hidden />
               </button>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {showHero && featuredItem ? (
+        <section className="motus-inspo-featured-section">
+          <button
+            type="button"
+            onClick={() => openInspirationItem(featuredItem)}
+            className="motus-inspo-featured motus-pressable"
+            aria-label={`Les Dagens utvalgte: ${featuredItem.title}`}
+          >
+            {featuredItem.imageUrl ? (
+              <img
+                src={featuredItem.imageUrl}
+                alt=""
+                className="motus-inspo-featured-image"
+                loading="lazy"
+                decoding="async"
+                style={{ objectPosition: imageObjectPositionFromSrc(featuredItem.imageUrl) }}
+              />
+            ) : (
+              <div className="motus-inspo-featured-image motus-inspo-featured-image--placeholder" aria-hidden>
+                <Newspaper className="h-12 w-12" />
+              </div>
+            )}
+            <div className="motus-inspo-featured-overlay" aria-hidden />
+            <span className="motus-inspo-featured-badge">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden />
+              {FEATURED_ARTICLE_BADGE.toUpperCase()}
+            </span>
+            <div className="motus-inspo-featured-content">
+              <span className="motus-inspo-featured-kicker">
+                {(featuredItem.tag.trim() || CATEGORY_META[featuredItem.category].label).toUpperCase()}
+              </span>
+              <h2 className="motus-inspo-featured-title">{featuredItem.title}</h2>
+              {featuredItem.description ? (
+                <p className="motus-inspo-featured-desc">{featuredItem.description}</p>
+              ) : null}
+              <span className="motus-inspo-featured-cta">
+                Les mer
+                <ArrowRight className="h-4 w-4" aria-hidden />
+              </span>
+            </div>
+          </button>
+          {canManage ? (
+            <div className="motus-inspo-featured-actions">
+              <span
+                className={`motus-inspo-featured-mode ${featuredAutoRotate ? "is-auto" : "is-pinned"}`}
+                aria-live="polite"
+              >
+                <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                {featuredAutoRotate ? "AI velger daglig" : "Pinnet av PT"}
+              </span>
+              <button
+                type="button"
+                className="motus-inspo-featured-action"
+                onClick={() => setFeaturedPickerOpen(true)}
+                disabled={isSavingFeatured}
+                title="Velg artikkel for Dagens utvalgte"
+              >
+                <Pencil className="h-3.5 w-3.5" aria-hidden />
+                <span>Velg artikkel</span>
+              </button>
+              {!featuredAutoRotate ? (
+                <button
+                  type="button"
+                  className="motus-inspo-featured-action motus-inspo-featured-action--ghost"
+                  onClick={() => void clearFeaturedPin()}
+                  disabled={isSavingFeatured}
+                  title="La AI rotere daglig"
+                >
+                  La AI rotere
+                </button>
+              ) : null}
             </div>
           ) : null}
         </section>
@@ -2822,7 +2962,7 @@ export function InspirationHub({
                 <div className="min-w-0">
                   <div className="font-semibold text-slate-900">Rediger hero-tekst</div>
                   <div className="text-xs text-slate-500">
-                    Endre tag, tittel, undertekst og knappetekst. Lagres for alle som bruker Utforsk.
+                    Endre tittel, undertekst og knappetekst. Lagres for alle som bruker Utforsk.
                   </div>
                 </div>
               </div>
@@ -2833,17 +2973,6 @@ export function InspirationHub({
 
             <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <div className="grid gap-3">
-                <label className="grid gap-1">
-                  <span className="text-xs font-semibold text-slate-700">Tag (badge øverst)</span>
-                  <TextInput
-                    value={heroBadgeDraft}
-                    onChange={(event) => setHeroBadgeDraft(event.target.value.slice(0, 40))}
-                    placeholder={DEFAULT_INSPO_HERO_BADGE}
-                    maxLength={40}
-                  />
-                  <span className="text-[11px] text-slate-500">La stå tomt for å bruke standardteksten «{DEFAULT_INSPO_HERO_BADGE}».</span>
-                </label>
-
                 <label className="grid gap-1">
                   <span className="text-xs font-semibold text-slate-700">Tittel</span>
                   <TextInput
@@ -2883,10 +3012,6 @@ export function InspirationHub({
                 <div className="motus-inspo-hero">
                   <div className="motus-inspo-hero-media">
                     <img src={heroImageSrc} alt="" className="motus-inspo-hero-image" />
-                    <span className="motus-inspo-hero-badge motus-inspo-hero-badge--turquoise">
-                      <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                      {previewHeroBadge}
-                    </span>
                   </div>
                   <div className="motus-inspo-hero-content">
                     <h1 className="motus-inspo-hero-title">{previewHeroTitle}</h1>
@@ -2926,6 +3051,117 @@ export function InspirationHub({
                 {isSavingHeroText ? "Lagrer…" : "Lagre"}
               </GradientButton>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {canManage && featuredPickerOpen ? (
+        <div className="fixed inset-0 z-[10020] overflow-y-auto bg-slate-950/45 p-3 backdrop-blur-sm sm:p-6">
+          <div
+            className="mx-auto min-w-0 max-w-[min(48rem,96vw)] rounded-2xl border bg-white p-4 shadow-xl sm:p-5"
+            style={{ borderColor: "rgba(15,23,42,0.08)" }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <MotusSectionIcon className="!p-2">
+                  <Sparkles className="h-4 w-4" />
+                </MotusSectionIcon>
+                <div className="min-w-0">
+                  <div className="font-semibold text-slate-900">Velg Dagens utvalgte</div>
+                  <div className="text-xs text-slate-500">
+                    Pin én artikkel, eller la AI rotere automatisk hver dag.
+                  </div>
+                </div>
+              </div>
+              <OutlineButton type="button" onClick={() => setFeaturedPickerOpen(false)} className="shrink-0">
+                Lukk
+              </OutlineButton>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <button
+                type="button"
+                onClick={() => void clearFeaturedPin()}
+                disabled={isSavingFeatured || featuredAutoRotate}
+                className="flex w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3 text-left transition hover:border-teal-300 hover:bg-teal-50/50 disabled:opacity-60"
+              >
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-700">
+                    <Sparkles className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-slate-900">La AI velge automatisk</span>
+                    <span className="block text-[11px] text-slate-500">
+                      Roterer Dagens utvalgte fra alle artikler hver dag.
+                    </span>
+                  </span>
+                </span>
+                {featuredAutoRotate ? (
+                  <span className="rounded-full bg-teal-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                    Aktiv
+                  </span>
+                ) : null}
+              </button>
+            </div>
+
+            {featuredArticlePool.length ? (
+              <div className="mt-3 grid max-h-[min(70vh,28rem)] gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Eller pin én bestemt artikkel
+                </div>
+                {featuredArticlePool.map((item) => {
+                  const meta = CATEGORY_META[item.category];
+                  const Icon = meta.icon;
+                  const isActivePin = !featuredAutoRotate && item.id === pinnedFeaturedItemId;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => void setFeaturedItemAndPin(item.id)}
+                      disabled={isSavingFeatured}
+                      className={`flex w-full items-center gap-3 rounded-lg border p-2.5 text-left transition disabled:opacity-60 ${
+                        isActivePin
+                          ? "border-teal-400 bg-teal-50/70 ring-1 ring-teal-400"
+                          : "border-slate-200 bg-white hover:border-teal-300 hover:bg-teal-50/40"
+                      }`}
+                    >
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                            style={{ objectPosition: imageObjectPositionFromSrc(item.imageUrl) }}
+                          />
+                        ) : (
+                          <Icon className="h-5 w-5 text-teal-600" />
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          {(item.tag.trim() || meta.label).toUpperCase()}
+                        </span>
+                        <span className="block truncate text-sm font-semibold text-slate-900">{item.title}</span>
+                        {item.description ? (
+                          <span className="block truncate text-xs text-slate-500">{item.description}</span>
+                        ) : null}
+                      </span>
+                      {isActivePin ? (
+                        <span className="shrink-0 rounded-full bg-teal-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                          Pinnet
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-sm text-slate-500">
+                Ingen artikler å velge mellom enda. Legg til en artikkel under Utforsk for å låse den som Dagens utvalgte.
+              </div>
+            )}
           </div>
         </div>
       ) : null}
