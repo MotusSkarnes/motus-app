@@ -2281,6 +2281,45 @@ export function InspirationHub({
         </button>
       </div>
 
+      {showHero ? (
+        <section className="motus-inspo-quick-section">
+          <div className="motus-inspo-quick-head">
+            <h2 className="motus-inspo-quick-title">Hva vil du utforske?</h2>
+          </div>
+          <div className="motus-inspo-quick-grid">
+            {QUICK_CATEGORIES.map((cat) => {
+              const Icon = cat.icon;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => scrollToCategorySection(cat.scrollToCategory)}
+                  className={`motus-inspo-quick-pill motus-inspo-quick-pill--${cat.tone} motus-pressable`}
+                >
+                  <span className="motus-inspo-quick-pill-icon" aria-hidden>
+                    <Icon className="h-5 w-5" strokeWidth={2} />
+                  </span>
+                  <span className="motus-inspo-quick-pill-label">{cat.label}</span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => {
+                const first = INSPIRATION_OVERVIEW_SECTIONS.find((section) => itemsByCategory[section.category].length > 0);
+                if (first) scrollToCategorySection(first.category);
+              }}
+              className="motus-inspo-quick-pill motus-inspo-quick-pill--all motus-pressable"
+            >
+              <span className="motus-inspo-quick-pill-icon" aria-hidden>
+                <LayoutGrid className="h-5 w-5" strokeWidth={2} />
+              </span>
+              <span className="motus-inspo-quick-pill-label">Se alle</span>
+            </button>
+          </div>
+        </section>
+      ) : null}
+
       {showHero && featuredItem && inspoSubView !== "appGuide" ? (
         <section className="motus-inspo-featured-section">
           <button
@@ -2367,45 +2406,6 @@ export function InspirationHub({
         >
           {actionStatus}
             </div>
-      ) : null}
-
-      {showHero ? (
-        <section className="motus-inspo-quick-section">
-          <div className="motus-inspo-quick-head">
-            <h2 className="motus-inspo-quick-title">Hva vil du utforske?</h2>
-          </div>
-          <div className="motus-inspo-quick-grid">
-            {QUICK_CATEGORIES.map((cat) => {
-              const Icon = cat.icon;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => scrollToCategorySection(cat.scrollToCategory)}
-                  className={`motus-inspo-quick-pill motus-inspo-quick-pill--${cat.tone} motus-pressable`}
-                >
-                  <span className="motus-inspo-quick-pill-icon" aria-hidden>
-                    <Icon className="h-5 w-5" strokeWidth={2} />
-                  </span>
-                  <span className="motus-inspo-quick-pill-label">{cat.label}</span>
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              onClick={() => {
-                const first = INSPIRATION_OVERVIEW_SECTIONS.find((section) => itemsByCategory[section.category].length > 0);
-                if (first) scrollToCategorySection(first.category);
-              }}
-              className="motus-inspo-quick-pill motus-inspo-quick-pill--all motus-pressable"
-            >
-              <span className="motus-inspo-quick-pill-icon" aria-hidden>
-                <LayoutGrid className="h-5 w-5" strokeWidth={2} />
-              </span>
-              <span className="motus-inspo-quick-pill-label">Se alle</span>
-            </button>
-          </div>
-        </section>
       ) : null}
 
       <div className="space-y-4">
