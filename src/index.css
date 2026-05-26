@@ -3100,6 +3100,194 @@ button.motus-progress-status-banner {
   font-size: 0.75rem !important;
 }
 
+/* === Ukesoppsummering — delbart kort med foto + statistikk =============== */
+.motus-weekly-summary {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: linear-gradient(125deg, #ecfdf5 0%, #ffffff 38%, #fdf2f8 100%);
+  box-shadow: 0 24px 60px -32px rgba(15, 23, 42, 0.22);
+}
+
+@media (min-width: 640px) {
+  .motus-weekly-summary {
+    grid-template-columns: minmax(260px, 320px) 1fr;
+  }
+}
+
+.motus-weekly-summary-photo {
+  position: relative;
+  overflow: hidden;
+  min-height: 200px;
+  background: #0f172a;
+}
+
+@media (min-width: 640px) {
+  .motus-weekly-summary-photo {
+    min-height: 100%;
+  }
+}
+
+.motus-weekly-summary-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.motus-weekly-summary-content {
+  position: relative;
+  padding: 1.25rem 1.25rem 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .motus-weekly-summary-content {
+    padding: 1.5rem 1.75rem 1.75rem;
+  }
+}
+
+.motus-weekly-summary-brand {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  height: 2.25rem;
+  width: auto;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+@media (min-width: 640px) {
+  .motus-weekly-summary-brand {
+    top: 1.25rem;
+    right: 1.5rem;
+    height: 2.5rem;
+  }
+}
+
+.motus-weekly-summary-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #0d9488;
+  font-weight: 800;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  padding-right: 4rem;
+}
+
+.motus-weekly-summary-eyebrow svg {
+  color: #2dd4bf;
+}
+
+.motus-weekly-summary-sub {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: #475569;
+  padding-right: 4rem;
+}
+
+.motus-weekly-summary-stats {
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .motus-weekly-summary-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+}
+
+.motus-weekly-summary-stats li {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+.motus-weekly-summary-stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  width: 2rem;
+  border-radius: 0.625rem;
+  background: rgba(45, 212, 191, 0.14);
+  color: #0d9488;
+  flex-shrink: 0;
+}
+
+.motus-weekly-summary-stat-text {
+  min-width: 0;
+}
+
+.motus-weekly-summary-stat-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.motus-weekly-summary-stat-label {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.motus-weekly-summary-cta {
+  margin-top: 1.25rem;
+  width: 100%;
+  gap: 0.5rem;
+  min-height: 3rem !important;
+  padding: 0.875rem 1.25rem !important;
+  border-radius: 9999px !important;
+  font-size: 0.9375rem !important;
+  letter-spacing: 0.01em;
+  box-shadow:
+    0 10px 26px -10px rgba(217, 18, 120, 0.45),
+    0 6px 14px -6px rgba(48, 227, 190, 0.4) !important;
+  transition: transform 150ms ease-out, box-shadow 200ms ease-out !important;
+}
+
+.motus-weekly-summary-cta:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 14px 30px -10px rgba(217, 18, 120, 0.55),
+    0 8px 16px -6px rgba(48, 227, 190, 0.5) !important;
+}
+
+.motus-weekly-summary-cta:active {
+  transform: translateY(0);
+}
+
+.motus-weekly-summary-caption {
+  margin: 0.75rem 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.motus-weekly-summary-status {
+  margin-top: 0.75rem;
+  border-radius: 0.875rem !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.75rem !important;
+}
+
 .motus-program-exercise-card {
   position: relative;
 }
