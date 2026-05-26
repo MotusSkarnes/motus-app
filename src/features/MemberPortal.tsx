@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Archive,
   CalendarRange,
@@ -31,7 +31,9 @@ import {
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import motusLogo from "../assets/motus-logo-transparent.svg";
-import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
+// Bruker den originale Motus-merke-PNG-en (samme som banneret) pÃ¥ skrytekortet,
+// slik at logoen vises i merkevarens farger og ikke som en flat hvit silhuett.
+import motusSkrytekortLogo from "../assets/motus-logo-transparent.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
 import { memberBadgeImageSrc } from "../app/badgeAssets";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
@@ -264,7 +266,7 @@ function inferStatusTone(message: string): "success" | "error" | "info" {
     normalized.includes("oppdatert") ||
     normalized.includes("slettet") ||
     normalized.includes("aktivert") ||
-    normalized.includes("slått på")
+    normalized.includes("slÃ¥tt pÃ¥")
   ) {
     return "success";
   }
@@ -275,7 +277,7 @@ type MemberPortalProps = {
   members: Member[];
   currentUserRole: "trainer" | "member";
   currentUserEmail: string;
-  /** Supabase auth user id — programs/logs sometimes use this as member_id instead of members.id */
+  /** Supabase auth user id â€” programs/logs sometimes use this as member_id instead of members.id */
   currentUserSupabaseId?: string;
   currentUserMemberId?: string;
   programs: TrainingProgram[];
@@ -328,16 +330,16 @@ type MemberPortalProps = {
   clearMemberFocusProgramId?: () => void;
   /** Periodeplaner fra Supabase (hydrate-member-data). */
   remoteMemberPeriodPlanRows?: Array<{ memberId: string; plan: PeriodSchedulePlan }>;
-  /** Første sky-hydrate for medlem er ferdig — unngår feil «Dagens økt» under lasting. */
+  /** FÃ¸rste sky-hydrate for medlem er ferdig â€” unngÃ¥r feil Â«Dagens Ã¸ktÂ» under lasting. */
   memberRemoteHydrated?: boolean;
   isLocalDemoSession?: boolean;
-  /** Etter lagring: kjør hydrate fra Supabase (persist er asynk) */
+  /** Etter lagring: kjÃ¸r hydrate fra Supabase (persist er asynk) */
   refreshRemoteHydration?: () => void | Promise<void>;
   onOpenMonthlyCheckIn?: () => void;
   onOpenOnboarding?: () => void;
   onDismissOnboardingHomePrompt?: () => void;
   showOnboardingHomePrompt?: boolean;
-  /** Når false: vis knapp for å fylle ut / sende skjema på nytt (f.eks. etter mislykket sky-lagring). */
+  /** NÃ¥r false: vis knapp for Ã¥ fylle ut / sende skjema pÃ¥ nytt (f.eks. etter mislykket sky-lagring). */
   onboardingSubstantivelyComplete?: boolean;
   homeOverviewHeaderActions?: ReactNode;
   homeOverviewNotificationsPanel?: ReactNode;
@@ -350,17 +352,17 @@ const PERIOD_PLAN_COMPLETED_STORAGE_PREFIX = "MOTUS_PERIOD_PLAN_COMPLETED_V1:";
 const PERIOD_PLAN_DISMISSED_STORAGE_PREFIX = "MOTUS_PERIOD_PLAN_DISMISSED_V1:";
 const HIDDEN_BADGE_SEEN_STORAGE_PREFIX = "MOTUS_HIDDEN_BADGE_SEEN_V1:";
 const HIDDEN_BADGE_POPUP_COPY: Record<string, string> = {
-  "may-17-workout": "Du registrerte en økt på 17. mai. Sterk nasjonaldagsinnsats.",
-  "never-two-weeks-without": "Du har holdt treningen i gang i 6 måneder uten pause over 14 dager.",
+  "may-17-workout": "Du registrerte en Ã¸kt pÃ¥ 17. mai. Sterk nasjonaldagsinnsats.",
+  "never-two-weeks-without": "Du har holdt treningen i gang i 6 mÃ¥neder uten pause over 14 dager.",
   "back-again": "Du kom tilbake etter en lang pause. Det teller.",
-  "habit-sticks": "Det har gått 100 dager siden første økt. Vanen sitter.",
+  "habit-sticks": "Det har gÃ¥tt 100 dager siden fÃ¸rste Ã¸kt. Vanen sitter.",
   "before-sunrise": "Du registrerte trening mellom kl. 05:00 og 08:00. Morgenfugl!",
   "evening-trainer": "Du registrerte trening mellom kl. 20:00 og 23:00. Kveldstrener!",
   "summer-loyal": "Du trente i juli. Sommerformen holdes i gang.",
-  "new-start": "Du registrerte årets første økt. Nytt år, ny start.",
-  "easter-pump": "Du trente i påsken. Påskeegget fikk litt pump.",
-  "pinse-trener": "Du trente pinseaften eller på pinse. Pinsetrener!",
-  "football-jersey-friday": "Du trente på fotballtrøyefredag.",
+  "new-start": "Du registrerte Ã¥rets fÃ¸rste Ã¸kt. Nytt Ã¥r, ny start.",
+  "easter-pump": "Du trente i pÃ¥sken. PÃ¥skeegget fikk litt pump.",
+  "pinse-trener": "Du trente pinseaften eller pÃ¥ pinse. Pinsetrener!",
+  "football-jersey-friday": "Du trente pÃ¥ fotballtrÃ¸yefredag.",
   "christmas-pump": "Du trente i jula. Sterk innsats mellom ribbe og ro.",
 };
 const DEFAULT_HOME_VISIBILITY = {
@@ -379,7 +381,7 @@ type PeriodPlanWorkoutStartContext = {
   entry: string;
 };
 
-/** Stored in members.personal_goals so økt/skritt/mål synkes på tvers av enheter. */
+/** Stored in members.personal_goals so Ã¸kt/skritt/mÃ¥l synkes pÃ¥ tvers av enheter. */
 const PROFILE_METRICS_PREFIX = "MOTUS_PROFILE_V1:";
 
 type ProfileMetricsDraft = {
@@ -512,7 +514,7 @@ function resolveBestPersonalGoalsForRelatedMembers(
   return mergePersonalGoalsFromCandidates(candidates.map((member) => member.personalGoals)) || anchor.personalGoals || "";
 }
 
-/** Same canonical choice as useAppState.resolveMemberViewIdForUser — avoids feil rad ved duplikat-e-post. */
+/** Same canonical choice as useAppState.resolveMemberViewIdForUser â€” avoids feil rad ved duplikat-e-post. */
 function pickCanonicalMemberRow(
   emailNormalized: string,
   membersList: Member[],
@@ -625,7 +627,7 @@ function parseChatCreatedAtMs(value: string): number {
 }
 
 function formatLoggedResultTitle(result: NonNullable<WorkoutLog["results"]>[number]): string {
-  const baseName = result.exerciseName.trim() || "Øvelse";
+  const baseName = result.exerciseName.trim() || "Ã˜velse";
   if (result.setNumber && result.setNumber > 0) {
     return `${baseName} - sett ${result.setNumber}`;
   }
@@ -658,7 +660,7 @@ function groupLoggedResultsForDisplay(results: NonNullable<WorkoutLog["results"]
     }
     groups.set(key, {
       key,
-      exerciseName: result.exerciseName.trim() || "Øvelse",
+      exerciseName: result.exerciseName.trim() || "Ã˜velse",
       exerciseNote: result.exerciseNote?.trim() ?? "",
       rows: [{ result, originalIndex }],
     });
@@ -691,7 +693,7 @@ function getStartOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
-/** Kumulativt styrkevolum (kg × reps) per uke og måned — samme logikk som skrytefakta. */
+/** Kumulativt styrkevolum (kg Ã— reps) per uke og mÃ¥ned â€” samme logikk som skrytefakta. */
 function computeLiftVolumeKgWeekAndMonth(
   completedLogs: WorkoutLog[],
   nowDate: Date,
@@ -742,7 +744,7 @@ type WeeklyShareStats = {
   trainingDays: number;
   volumeKg: number;
   completedSets: number;
-  /** Estimert kcal forbrukt i uka basert på antall styrkeøkter og gruppetimer. */
+  /** Estimert kcal forbrukt i uka basert pÃ¥ antall styrkeÃ¸kter og gruppetimer. */
   kcal: number;
   /** Estimert total aktivitetstid (minutter) i uka. */
   activityMinutes: number;
@@ -788,7 +790,7 @@ function computeShareCardLast7DaysStats(
   }
 
   const strengthWorkouts = Math.max(0, workouts - groupClasses);
-  // Forsiktige estimater: 350 kcal / 45 min for styrkeøkt, 450 kcal / 60 min for gruppetime.
+  // Forsiktige estimater: 350 kcal / 45 min for styrkeÃ¸kt, 450 kcal / 60 min for gruppetime.
   const kcal = Math.round(strengthWorkouts * 350 + groupClasses * 450);
   const activityMinutes = strengthWorkouts * 45 + groupClasses * 60;
 
@@ -804,7 +806,7 @@ function computeShareCardLast7DaysStats(
   };
 }
 
-/** ISO ukenummer (mandag som første dag). */
+/** ISO ukenummer (mandag som fÃ¸rste dag). */
 function isoWeekNumber(date: Date): number {
   const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = (target.getUTCDay() + 6) % 7;
@@ -814,7 +816,7 @@ function isoWeekNumber(date: Date): number {
   return 1 + Math.round(diff / (7 * 24 * 60 * 60 * 1000));
 }
 
-/** Bygg en "Uke 20 • 13.–19. mai"-etikett for delingskortet. */
+/** Bygg en "Uke 20 â€¢ 13.â€“19. mai"-etikett for delingskortet. */
 function buildWeeklyShareLabel(nowTimestamp: number): string {
   const today = getStartOfDay(new Date(nowTimestamp));
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
@@ -826,11 +828,11 @@ function buildWeeklyShareLabel(nowTimestamp: number): string {
   const sameMonth = start.getMonth() === today.getMonth();
   const startMonth = monthFmt.format(start).replace(".", "");
   const endMonth = monthFmt.format(today).replace(".", "");
-  const range = sameMonth ? `${startDay}.–${endDay}. ${endMonth}` : `${startDay}. ${startMonth} – ${endDay}. ${endMonth}`;
-  return `Uke ${week} • ${range}`;
+  const range = sameMonth ? `${startDay}.â€“${endDay}. ${endMonth}` : `${startDay}. ${startMonth} â€“ ${endDay}. ${endMonth}`;
+  return `Uke ${week} â€¢ ${range}`;
 }
 
-/** Velger en kort, motiverende tittel basert på ukens aktivitet. */
+/** Velger en kort, motiverende tittel basert pÃ¥ ukens aktivitet. */
 function pickWeeklyShareTitle(stats: WeeklyShareStats): string {
   if (stats.workouts >= 5) return "Sterk uke!";
   if (stats.workouts >= 3) return "Bra jobba!";
@@ -838,14 +840,14 @@ function pickWeeklyShareTitle(stats: WeeklyShareStats): string {
   return "Ny uke, nye sjanser!";
 }
 
-/** Velger en "ukens seier"-quote i førsteperson basert på aktivitet. */
+/** Velger en "ukens seier"-quote i fÃ¸rsteperson basert pÃ¥ aktivitet. */
 function pickWeeklyShareSeier(stats: WeeklyShareStats): string {
-  if (stats.groupClasses >= 2) return "Jeg viser opp og bygger fellesskap – det gir energi tilbake!";
-  if (stats.trainingDays >= 5) return "Jeg prioriterer meg selv – og det gjør en forskjell!";
-  if (stats.volumeKg >= 3000) return "Jeg løfter mer i dag enn forrige uke – litt etter litt!";
-  if (stats.workouts >= 3) return "Jeg holder vanen levende – sterke vaner gir sterke uker!";
-  if (stats.workouts >= 1) return "Jeg tok det første steget – nå bygger jeg videre!";
-  return "Ny uke, ny start – jeg har dette!";
+  if (stats.groupClasses >= 2) return "Jeg viser opp og bygger fellesskap â€“ det gir energi tilbake!";
+  if (stats.trainingDays >= 5) return "Jeg prioriterer meg selv â€“ og det gjÃ¸r en forskjell!";
+  if (stats.volumeKg >= 3000) return "Jeg lÃ¸fter mer i dag enn forrige uke â€“ litt etter litt!";
+  if (stats.workouts >= 3) return "Jeg holder vanen levende â€“ sterke vaner gir sterke uker!";
+  if (stats.workouts >= 1) return "Jeg tok det fÃ¸rste steget â€“ nÃ¥ bygger jeg videre!";
+  return "Ny uke, ny start â€“ jeg har dette!";
 }
 
 /** Formaterer aktivitetstid (min) til "Xt Ym" eller "Y min". */
@@ -858,7 +860,7 @@ function formatActivityTime(minutes: number): string {
   return `${h}t ${m}m`;
 }
 
-/** Artig «løftevolum»-tekst for skrytekort basert på siste 7 dager. */
+/** Artig Â«lÃ¸ftevolumÂ»-tekst for skrytekort basert pÃ¥ siste 7 dager. */
 function buildProgressLiftPlayfulLine(stats: {
   workouts: number;
   trainingDays: number;
@@ -871,7 +873,7 @@ function buildProgressLiftPlayfulLine(stats: {
   const lineFor = (kg: number): string | null => {
     if (!Number.isFinite(kg) || kg < 1) return null;
     if (kg >= 5500) {
-      return `Siste 7 dager har jeg løftet ca. ${fmt(kg)} kg totalt - omtrent som en flodhest`;
+      return `Siste 7 dager har jeg lÃ¸ftet ca. ${fmt(kg)} kg totalt - omtrent som en flodhest`;
     }
     if (kg >= 3200) {
       return `Siste 7 dager har jeg flyttet ca. ${fmt(kg)} kg - omtrent som en liten bil`;
@@ -880,7 +882,7 @@ function buildProgressLiftPlayfulLine(stats: {
       return `Siste 7 dager har jeg logget ca. ${fmt(kg)} kg - omtrent som flere flygel`;
     }
     if (kg >= 700) {
-      return `Siste 7 dager har jeg løftet ca. ${fmt(kg)} kg - omtrent som flere voksne til sammen`;
+      return `Siste 7 dager har jeg lÃ¸ftet ca. ${fmt(kg)} kg - omtrent som flere voksne til sammen`;
     }
     if (kg >= 250) {
       const people = Math.max(2, Math.round(kg / 72));
@@ -900,19 +902,19 @@ function buildProgressLiftPlayfulLine(stats: {
   if (weekLine) return weekLine;
 
   if (completedSets >= 24) {
-    return `Siste 7 dager fullførte jeg ${completedSets} sett fordelt på ${workouts} økter`;
+    return `Siste 7 dager fullfÃ¸rte jeg ${completedSets} sett fordelt pÃ¥ ${workouts} Ã¸kter`;
   }
   if (workouts >= 4 && trainingDays >= 4) {
-    return `Siste 7 dager trente jeg ${workouts} økter fordelt på ${trainingDays} treningsdager`;
+    return `Siste 7 dager trente jeg ${workouts} Ã¸kter fordelt pÃ¥ ${trainingDays} treningsdager`;
   }
   if (workouts >= 3) {
-    return `Siste 7 dager holdt jeg flyten med ${workouts} økter og ${completedSets} fullførte sett`;
+    return `Siste 7 dager holdt jeg flyten med ${workouts} Ã¸kter og ${completedSets} fullfÃ¸rte sett`;
   }
   if (trainingDays >= 2) {
-    return `Siste 7 dager fikk jeg inn ${trainingDays} treningsdager - nå bygger jeg videre`;
+    return `Siste 7 dager fikk jeg inn ${trainingDays} treningsdager - nÃ¥ bygger jeg videre`;
   }
   if (workouts >= 1) {
-    return `Siste 7 dager fikk jeg inn ${workouts} økt og ${completedSets} sett på veien`;
+    return `Siste 7 dager fikk jeg inn ${workouts} Ã¸kt og ${completedSets} sett pÃ¥ veien`;
   }
   return "Siste 7 dager har jeg startet uka mi i riktig retning";
 }
@@ -952,7 +954,7 @@ function isPeriodPlanWorkoutLog(log: WorkoutLog): boolean {
 function cardioHrPrescriptionSuffixForMember(programExercise: ProgramExercise): string {
   const raw = String(programExercise.targetHrPercent ?? "").trim();
   if (!raw) return "";
-  return ` · målpuls ca. ${raw}% av makspuls`;
+  return ` Â· mÃ¥lpuls ca. ${raw}% av makspuls`;
 }
 
 function formatIntervalTimerHrHint(targetHrPercent: string | undefined): string {
@@ -1030,7 +1032,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const groupWorkoutClassOptions = [
     "Smilepuls",
     "Sykkel 45",
-    "Mølle 45",
+    "MÃ¸lle 45",
     "Sterk",
     "Sirkeltrening",
     "Stram opp",
@@ -1188,7 +1190,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [hiddenBadgeCelebration, setHiddenBadgeCelebration] = useState<MemberBadge | null>(null);
   const [locallySeenHiddenBadgeIds, setLocallySeenHiddenBadgeIds] = useState<string[]>([]);
   const [liveWorkoutCelebration, setLiveWorkoutCelebration] = useState<WorkoutCelebration | null>(null);
-  /** Unngår popup ved første lasting; feirer kun når `achievedLevel` faktisk øker. */
+  /** UnngÃ¥r popup ved fÃ¸rste lasting; feirer kun nÃ¥r `achievedLevel` faktisk Ã¸ker. */
   const achievementCelebrationBaselineRef = useRef<number | null>(null);
   const hiddenBadgeUnlockedBaselineRef = useRef<{ memberId: string; badgeIds: Set<string> } | null>(null);
   const hiddenBadgeMigrationDoneRef = useRef(false);
@@ -1213,7 +1215,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [intervalTimerStatus, setIntervalTimerStatus] = useState<string | null>(null);
   const memberMessagesContainerRef = useRef<HTMLDivElement | null>(null);
   const profileAutoSaveInFlightRef = useRef(false);
-  /** Unngår å nullstille toast ved hvert felt-synk fra autosave — kun ved bytte aktiv profil. */
+  /** UnngÃ¥r Ã¥ nullstille toast ved hvert felt-synk fra autosave â€” kun ved bytte aktiv profil. */
   const lastMemberCoreHydrationIdRef = useRef<string | null>(null);
   const periodPlanCompletedDirtyRef = useRef(false);
   const periodPlanDismissedDirtyRef = useRef(false);
@@ -1221,10 +1223,10 @@ export function MemberPortal(props: MemberPortalProps) {
   const completedPeriodPlanEntryKeysRef = useRef<string[]>([]);
   const dismissedPeriodPlanEntryKeysRef = useRef<string[]>([]);
   /**
-   * Tidsstempel for siste lokale endring av periodeplan-fullføring/avhuking. Sendes med
+   * Tidsstempel for siste lokale endring av periodeplan-fullfÃ¸ring/avhuking. Sendes med
    * til `reconcilePeriodPlanCompletionKeys` slik at fersk lokal intensjon ikke blir
-   * overstyrt av en eldre Supabase-cache (f.eks. når «Logg dagens økt» tømmer en gammel
-   * avhuking lokalt — uten dette ville hydrering trekke avhukingen tilbake fra remote).
+   * overstyrt av en eldre Supabase-cache (f.eks. nÃ¥r Â«Logg dagens Ã¸ktÂ» tÃ¸mmer en gammel
+   * avhuking lokalt â€” uten dette ville hydrering trekke avhukingen tilbake fra remote).
    */
   const periodPlanCompletionLocalUpdatedAtRef = useRef(0);
   const pendingPeriodPlanWorkoutStartRef = useRef<PeriodPlanWorkoutStartContext | null>(null);
@@ -1270,7 +1272,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [calendarWeekStart, setCalendarWeekStart] = useState(() => getMondayStart(new Date()));
   const normalizedCurrentUserEmail = currentUserEmail.trim().toLowerCase();
   const viewedMember = members.find((member) => member.id === memberViewId) ?? null;
-  const motusShareLogoSrc = `${motusSkrytekortLogo}${motusSkrytekortLogo.includes("?") ? "&" : "?"}motus_skrytekort=2026-02`;
+  const motusShareLogoSrc = `${motusSkrytekortLogo}${motusSkrytekortLogo.includes("?") ? "&" : "?"}motus_skrytekort=2026-05-original`;
   const currentMemberByEmail =
     currentUserRole === "member" && normalizedCurrentUserEmail
       ? (() => {
@@ -1387,7 +1389,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (currentUserRole === "member") {
       // When several `members` rows share one email (duplicate ids), the assigned program may reference
       // an id that was not picked as `memberViewId`. Link data rows by id + email, and allow orphan ids
-      // (no row in memory) only when we already see duplicate profiles for this login — same pattern as
+      // (no row in memory) only when we already see duplicate profiles for this login â€” same pattern as
       // resolving related member ids server-side.
       const memberRowById = new Map(members.map((member) => [member.id, member]));
       const primaryLower = normalizedCurrentUserEmail;
@@ -1499,7 +1501,7 @@ export function MemberPortal(props: MemberPortalProps) {
     () => members.filter((member) => relatedMemberIdSet.has(member.id)),
     [members, relatedMemberIdSet],
   );
-  /** Stabil på tvers av nye array-referanser — brukes til å hydrate måltall uten å røre tekstutkast. */
+  /** Stabil pÃ¥ tvers av nye array-referanser â€” brukes til Ã¥ hydrate mÃ¥ltall uten Ã¥ rÃ¸re tekstutkast. */
   const relatedProfileGoalsSignature = useMemo(
     () =>
       relatedMembersForProfile.map((member) => `${member.id}:${member.personalGoals ?? ""}`).join("|"),
@@ -1515,7 +1517,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (editableMember) candidates.push(editableMember);
     if (currentUserRole === "member") {
       // Full portal (meldinger, fremgang): alle som ikke bare er ''ren'' Standard-medlem (delt treningssenter-profil).
-      // Inkluderer PT-kunde, Premium, Oppfølging og Egentrening — tidligere ble Oppfølging feilaktig låst ute.
+      // Inkluderer PT-kunde, Premium, OppfÃ¸lging og Egentrening â€” tidligere ble OppfÃ¸lging feilaktig lÃ¥st ute.
       return !candidates.some(
         (member) => member.customerType !== "Medlem" || member.membershipType === "Premium",
       );
@@ -1530,7 +1532,7 @@ export function MemberPortal(props: MemberPortalProps) {
       }
       return null;
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- decode nyttes kun når personalGoals-signaturen endrer seg
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- decode nyttes kun nÃ¥r personalGoals-signaturen endrer seg
     [relatedProfileGoalsSignature],
   );
   const dbHomeVisibility = useMemo(
@@ -1591,7 +1593,7 @@ export function MemberPortal(props: MemberPortalProps) {
     () => memberAssignedPrograms.filter((program) => !programIsInMemberArchive(program.memberLibraryStatus)),
     [memberAssignedPrograms],
   );
-  /** Alle tildelte program (inkl. arkiverte) — brukes til å koble periodeplan-tekst til Start økt. */
+  /** Alle tildelte program (inkl. arkiverte) â€” brukes til Ã¥ koble periodeplan-tekst til Start Ã¸kt. */
   const memberProgramsForPeriodPlan = memberAssignedPrograms;
   const memberProgramsLibraryArchived = useMemo(
     () => memberAssignedPrograms.filter((program) => programIsInMemberArchive(program.memberLibraryStatus)),
@@ -1744,7 +1746,7 @@ export function MemberPortal(props: MemberPortalProps) {
   async function handleMemberShareProgramClick() {
     if (!nextProgram) {
       setMemberTab("programs");
-      setMemberChatSendStatus("Du har ingen aktivt program — gikk til Mine programmer.");
+      setMemberChatSendStatus("Du har ingen aktivt program â€” gikk til Mine programmer.");
       return;
     }
     const message = buildShareProgramChatMessage({
@@ -1757,7 +1759,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
   const memberChatQuickActions = useMemo(
     (): MotusChatQuickAction[] => [
-      { id: "workout", label: "Send økt", icon: Dumbbell, onClick: () => setMemberTab("home") },
+      { id: "workout", label: "Send Ã¸kt", icon: Dumbbell, onClick: () => setMemberTab("home") },
       { id: "program", label: "Del program", icon: Share2, onClick: () => void handleMemberShareProgramClick() },
       { id: "more", label: "Flere", icon: MoreHorizontal },
     ],
@@ -1829,7 +1831,7 @@ export function MemberPortal(props: MemberPortalProps) {
           /\bdrag\b/i.test(exercise.exerciseName) ||
           lowerName.includes("tempo") ||
           lowerName.includes("tabata");
-        // Første blokk bruker ofte samme biblioteksnavn som intervallene (f.eks. «Mølle intervall» uten «oppvarm»).
+        // FÃ¸rste blokk bruker ofte samme biblioteksnavn som intervallene (f.eks. Â«MÃ¸lle intervallÂ» uten Â«oppvarmÂ»).
         if (index === 0 && tone === "work" && !nameImpliesExplicitWorkSegment) {
           tone = "warmup";
         }
@@ -1868,7 +1870,7 @@ export function MemberPortal(props: MemberPortalProps) {
       }
 
       const isClassic4x4Drag = /4x4/i.test(programTitle) && /drag/i.test(exercise.exerciseName);
-      // Eksplisitt "0" = ingen pause (trengs etter siste drag før nedjogg). Tom streng = eldre programmer uten hvilefelt → behold 4×4-fallback.
+      // Eksplisitt "0" = ingen pause (trengs etter siste drag fÃ¸r nedjogg). Tom streng = eldre programmer uten hvilefelt â†’ behold 4Ã—4-fallback.
       const legacy4x4DragPauseSeconds = rawRestStr === "" && isClassic4x4Drag ? 180 : 0;
       const restDurationSeconds = normalizedRestSeconds > 0 ? normalizedRestSeconds : legacy4x4DragPauseSeconds;
       const nextIsCooldown =
@@ -1883,7 +1885,7 @@ export function MemberPortal(props: MemberPortalProps) {
           label: `Pause etter ${afterLabel}`,
           durationSeconds: restDurationSeconds,
           speedHint: "Rolig",
-          inclineHint: "0–1%",
+          inclineHint: "0â€“1%",
           hrHint: "",
           tone: "rest",
         });
@@ -2046,11 +2048,11 @@ export function MemberPortal(props: MemberPortalProps) {
       goal: string;
       focus: string;
       injuries: string;
-      /** MOTUS_PROFILE_V1 + JSON; synker økter/skritt osv. */
+      /** MOTUS_PROFILE_V1 + JSON; synker Ã¸kter/skritt osv. */
       personalGoals: string;
     };
   }): Promise<{ ok: true } | { ok: false; message: string }> => {
-    if (!supabaseClient) return { ok: false, message: "Denne funksjonen er ikke tilgjengelig akkurat nå." };
+    if (!supabaseClient) return { ok: false, message: "Denne funksjonen er ikke tilgjengelig akkurat nÃ¥." };
 
     const invoked = await supabaseClient.functions.invoke("update-member-profile", { body: payload });
     if (!invoked.error) {
@@ -2073,7 +2075,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
     if (!supabaseUrl || !supabaseAnonKey || !accessToken) {
-      return { ok: false, message: invokeDetails || invoked.error.message || "Kunne ikke nå sync-tjenesten." };
+      return { ok: false, message: invokeDetails || invoked.error.message || "Kunne ikke nÃ¥ sync-tjenesten." };
     }
 
     try {
@@ -2137,14 +2139,14 @@ export function MemberPortal(props: MemberPortalProps) {
       if (!directUpdate.error && fallbackUpdated >= payload.expectedMinUpdated) return { ok: true };
       return {
         ok: false,
-        message: `${invokeDetails || invoked.error.message || "Kunne ikke nå sync-tjenesten."} | fallback oppdaterte ${fallbackUpdated} av ${payload.expectedMinUpdated}${
+        message: `${invokeDetails || invoked.error.message || "Kunne ikke nÃ¥ sync-tjenesten."} | fallback oppdaterte ${fallbackUpdated} av ${payload.expectedMinUpdated}${
           directUpdate.error ? ` (${directUpdate.error.message})` : ""
         }`,
       };
     }
   }, []);
 
-  const completedLogs = useMemo(() => memberLogs.filter((log) => log.status === "Fullført"), [memberLogs]);
+  const completedLogs = useMemo(() => memberLogs.filter((log) => log.status === "FullfÃ¸rt"), [memberLogs]);
   const recentCompletedLogs = useMemo(
     () =>
       [...completedLogs]
@@ -2312,7 +2314,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [completedLogs]);
 
   function completedLogMatchesProgramForPeriodEntry(log: WorkoutLog, program: TrainingProgram, entry: string): boolean {
-    if (log.status !== "Fullført") return false;
+    if (log.status !== "FullfÃ¸rt") return false;
     if (periodPlanEntryMatchesCompletedProgram(entry, log.programTitle, memberProgramsForPeriodPlan, program.id)) return true;
 
     const programExerciseIds = new Set(program.exercises.map((exercise) => exercise.exerciseId.trim()).filter(Boolean));
@@ -2487,13 +2489,13 @@ export function MemberPortal(props: MemberPortalProps) {
 
       if ((sessionCount > 0 && !isFutureDate) || periodCompleted) {
         statusByDateKey.set(dateKey, "completed");
-        workoutLabelByDateKey.set(dateKey, (logs[0]?.programTitle ?? plannedEntry) || "Økt");
+        workoutLabelByDateKey.set(dateKey, (logs[0]?.programTitle ?? plannedEntry) || "Ã˜kt");
       } else if (plannedEntry) {
         workoutLabelByDateKey.set(dateKey, plannedEntry);
         statusByDateKey.set(dateKey, date.getTime() < todayStart.getTime() ? "missed" : "planned");
       } else {
         statusByDateKey.set(dateKey, "none");
-        workoutLabelByDateKey.set(dateKey, "—");
+        workoutLabelByDateKey.set(dateKey, "â€”");
       }
     }
 
@@ -2516,7 +2518,7 @@ export function MemberPortal(props: MemberPortalProps) {
     memberProgramsForPeriodPlan,
   ]);
   const calendarWeekCompletedCount = calendarWeekDays.filter((day) => day.status === "completed").length;
-  const calendarWeekPlannedCount = calendarWeekDays.filter((day) => day.workoutLabel !== "—").length;
+  const calendarWeekPlannedCount = calendarWeekDays.filter((day) => day.workoutLabel !== "â€”").length;
   const selectedCalendarDate = useMemo(() => {
     if (!selectedCalendarDateKey) return null;
     const [year, month, day] = selectedCalendarDateKey.split("-").map(Number);
@@ -2593,7 +2595,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const personalRecords = useMemo(() => {
     const best = new Map<string, { weight: number; reps: number; score: number; achievedAt: Date | null }>();
     const sortedLogs = completedLogs
-      .filter((log) => log.status === "Fullført")
+      .filter((log) => log.status === "FullfÃ¸rt")
       .slice()
       .sort((a, b) => {
         const aTime = parseStoredLogDate(a.date)?.getTime() ?? 0;
@@ -2662,7 +2664,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const previousPersonalBestsByExercise = useMemo(() => {
     const best = new Map<string, number>();
     memberLogs.forEach((log) => {
-      if (log.status !== "Fullført") return;
+      if (log.status !== "FullfÃ¸rt") return;
       (log.results ?? []).forEach((row) => {
         if (!row.completed) return;
         if (row.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory)) return;
@@ -2684,7 +2686,7 @@ export function MemberPortal(props: MemberPortalProps) {
     >();
     const capturedFromExercises = new Set<string>();
     const sortedLogs = memberLogs
-      .filter((log) => log.status === "Fullført")
+      .filter((log) => log.status === "FullfÃ¸rt")
       .slice()
       .sort((a, b) => {
         const aTime = parseStoredLogDate(a.date)?.getTime() ?? 0;
@@ -2725,7 +2727,7 @@ export function MemberPortal(props: MemberPortalProps) {
     return computeWorkoutCelebrationStats(recentlyFinishedLog, memberLogs);
   }, [recentlyFinishedLog, memberLogs]);
   const showWorkoutCompletionCelebration = Boolean(recentlyFinishedLog && recentlyFinishedStats);
-  /** Ny PR / økt rekord: alltid synlig for aktiv bruker (uavhengig av «små feiringer»). */
+  /** Ny PR / Ã¸kt rekord: alltid synlig for aktiv bruker (uavhengig av Â«smÃ¥ feiringerÂ»). */
   const shouldShowPrCelebration =
     Boolean(activeCelebration && activeCelebration.memberId === activeMemberId) && !showWorkoutCompletionCelebration;
 
@@ -2770,13 +2772,13 @@ export function MemberPortal(props: MemberPortalProps) {
     let feedback: string;
     if (pruned.includes(normalizedName)) {
       next = pruned.filter((name) => name !== normalizedName);
-      feedback = `Fjernet «${normalizedName}» fra fremhevede PR-er.`;
+      feedback = `Fjernet Â«${normalizedName}Â» fra fremhevede PR-er.`;
     } else if (pruned.length >= 3) {
       next = pruned;
       feedback = "Du kan ha maks tre fremhevede personlige rekorder.";
     } else {
       next = [...pruned, normalizedName];
-      feedback = `La til «${normalizedName}» som fremhevet PR.`;
+      feedback = `La til Â«${normalizedName}Â» som fremhevet PR.`;
     }
     setFavoritePersonalRecordNames(next);
     setFavoritePersonalRecordPreferencesHydrated(true);
@@ -2789,7 +2791,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const trimmedBirthDateDraft = memberBirthDateDraft.trim();
     if (trimmedBirthDateDraft && !isLikelyValidBirthDate(trimmedBirthDateDraft)) {
       if (!silent) {
-        setProfileSaveInfo("Fødselsdato må være en gyldig dato på formatet dd.mm.yyyy.");
+        setProfileSaveInfo("FÃ¸dselsdato mÃ¥ vÃ¦re en gyldig dato pÃ¥ formatet dd.mm.yyyy.");
       }
       return;
     }
@@ -2871,7 +2873,7 @@ export function MemberPortal(props: MemberPortalProps) {
         },
       });
       if (!syncResult.ok) {
-        setProfileSaveInfo("Profil lagret. Synk mot PT er midlertidig forsinket og forsøkes igjen automatisk.");
+        setProfileSaveInfo("Profil lagret. Synk mot PT er midlertidig forsinket og forsÃ¸kes igjen automatisk.");
       } else if (normalizedDraftEmail && !normalizedDraftEmail.includes("@")) {
         if (!silent) {
           setProfileSaveInfo("Profil lagret. E-post ble ikke endret fordi formatet var ugyldig.");
@@ -3035,7 +3037,7 @@ export function MemberPortal(props: MemberPortalProps) {
       applyMetricDrafts(fallback);
     }
     setProfileMetricsHydrated(true);
-    // Avhengigheter bevisst snevre: «members» leses kun når signaturen sier at personalGoals faktisk endret seg.
+    // Avhengigheter bevisst snevre: Â«membersÂ» leses kun nÃ¥r signaturen sier at personalGoals faktisk endret seg.
   }, [editableMember?.id, relatedProfileGoalsSignature, relatedMemberIds, updateMember]);
 
   const previousActivePeriodPlanIdRef = useRef<string | null>(null);
@@ -3212,10 +3214,10 @@ export function MemberPortal(props: MemberPortalProps) {
       }
 
       if (currentUserRole === "member") {
-        // Bruk lokalt ref-timestamp slik at sky-ekkoet ikke får et nyere
+        // Bruk lokalt ref-timestamp slik at sky-ekkoet ikke fÃ¥r et nyere
         // updatedAt enn local. Uten dette ville `mergePeriodPlanCompletionPrefs`
-        // anse remote som nyest og overstyre en ferskt fjernet «dismissed»-rad
-        // (fix for «Logg dagens økt»-knapp som ikke flipper).
+        // anse remote som nyest og overstyre en ferskt fjernet Â«dismissedÂ»-rad
+        // (fix for Â«Logg dagens Ã¸ktÂ»-knapp som ikke flipper).
         const localUpdatedAt = periodPlanCompletionLocalUpdatedAtRef.current || Date.now();
         const encoded = mergePeriodPlanCompletionIntoPersonalGoals(
           resolveBestPersonalGoalsForRelatedMembers(editableMember, members, relatedMemberIdSet),
@@ -3591,7 +3593,7 @@ export function MemberPortal(props: MemberPortalProps) {
         if (!nextStep) {
           setIsIntervalTimerRunning(false);
           setIsIntervalTimerPaused(false);
-          setIntervalTimerStatus("Intervalløkten er fullført. Sterkt jobba!");
+          setIntervalTimerStatus("IntervallÃ¸kten er fullfÃ¸rt. Sterkt jobba!");
           return 0;
         }
         setIntervalTimerStepIndex(nextIndex);
@@ -3727,7 +3729,7 @@ export function MemberPortal(props: MemberPortalProps) {
     setIsIntervalTimerPaused(false);
     setIntervalTimerStepIndex(0);
     setIntervalTimerRemainingSeconds(intervalProgramSteps[0]?.durationSeconds ?? 0);
-    setIntervalTimerStatus("Intervalløkten er nullstilt.");
+    setIntervalTimerStatus("IntervallÃ¸kten er nullstilt.");
   }
   function handleSkipIntervalProgramStep() {
     if (!intervalProgramSteps.length) return;
@@ -3737,7 +3739,7 @@ export function MemberPortal(props: MemberPortalProps) {
       setIsIntervalTimerRunning(false);
       setIsIntervalTimerPaused(false);
       setIntervalTimerRemainingSeconds(0);
-      setIntervalTimerStatus("Siste fase hoppet over. Intervalløkten er fullført.");
+      setIntervalTimerStatus("Siste fase hoppet over. IntervallÃ¸kten er fullfÃ¸rt.");
       return;
     }
     setIntervalTimerStepIndex(nextIndex);
@@ -3762,7 +3764,7 @@ export function MemberPortal(props: MemberPortalProps) {
       });
       setMotusCardShareStatus(motusShareStatusMessage(outcome));
     } catch {
-      setMotusCardShareStatus("Kunne ikke dele akkurat nå.");
+      setMotusCardShareStatus("Kunne ikke dele akkurat nÃ¥.");
     }
   }
 
@@ -3828,18 +3830,18 @@ export function MemberPortal(props: MemberPortalProps) {
         }
       }
 
-      // Kortet eksporteres i samme 3:2-format som forhåndsvisningen i appen.
+      // Kortet eksporteres i samme 3:2-format som forhÃ¥ndsvisningen i appen.
       const canvas = document.createElement("canvas");
       canvas.width = 1200;
       canvas.height = 800;
       const context = canvas.getContext("2d");
       if (!context) {
-        setProgressShareStatus("Kunne ikke lage bilde akkurat nå.");
+        setProgressShareStatus("Kunne ikke lage bilde akkurat nÃ¥.");
         return;
       }
 
       let shareCardLogo: HTMLImageElement | null = null;
-      const shareLogoSrc = `${motusSkrytekortLogo}${motusSkrytekortLogo.includes("?") ? "&" : "?"}motus_skrytekort=2026-02`;
+      const shareLogoSrc = `${motusSkrytekortLogo}${motusSkrytekortLogo.includes("?") ? "&" : "?"}motus_skrytekort=2026-05-original`;
       try {
         shareCardLogo = await new Promise<HTMLImageElement>((resolve, reject) => {
           const im = new Image();
@@ -3871,7 +3873,7 @@ export function MemberPortal(props: MemberPortalProps) {
       const footerY = H - footerH;
       const pad = 48;
 
-      // Mørk bakgrunnsgradient
+      // MÃ¸rk bakgrunnsgradient
       const bg = context.createRadialGradient(W * 0.1, H * 0.1, 80, W * 0.6, H * 0.6, W);
       bg.addColorStop(0, "#1a2335");
       bg.addColorStop(0.45, "#0d111c");
@@ -3879,7 +3881,7 @@ export function MemberPortal(props: MemberPortalProps) {
       context.fillStyle = bg;
       context.fillRect(0, 0, W, H);
 
-      // Foto på høyre side (stopper rett over footer slik som i forhåndsvisningen)
+      // Foto pÃ¥ hÃ¸yre side (stopper rett over footer slik som i forhÃ¥ndsvisningen)
       const photoW = Math.round(W * 0.56);
       const photoH = footerY;
       const photoX = W - photoW;
@@ -3895,14 +3897,14 @@ export function MemberPortal(props: MemberPortalProps) {
         context.rect(photoX, photoY, photoW, photoH);
         context.clip();
         context.drawImage(heroImage, drawX, drawY, drawW, drawH);
-        // Fade på venstre kant inn mot mørk bakgrunn
+        // Fade pÃ¥ venstre kant inn mot mÃ¸rk bakgrunn
         const fadeGrad = context.createLinearGradient(photoX, 0, photoX + photoW * 0.55, 0);
         fadeGrad.addColorStop(0, "rgba(13, 17, 28, 1)");
         fadeGrad.addColorStop(0.4, "rgba(13, 17, 28, 0.45)");
         fadeGrad.addColorStop(1, "rgba(13, 17, 28, 0)");
         context.fillStyle = fadeGrad;
         context.fillRect(photoX, photoY, photoW, photoH);
-        // Mørk vignett nederst på bildet for kontrast mot quote
+        // MÃ¸rk vignett nederst pÃ¥ bildet for kontrast mot quote
         const bottomGrad = context.createLinearGradient(0, photoY + photoH - 200, 0, photoY + photoH);
         bottomGrad.addColorStop(0, "rgba(13, 17, 28, 0)");
         bottomGrad.addColorStop(1, "rgba(13, 17, 28, 0.7)");
@@ -3925,7 +3927,7 @@ export function MemberPortal(props: MemberPortalProps) {
         context.fillText("MOTUS", pad, 84);
       }
 
-      // Topp: Uke-pille til høyre
+      // Topp: Uke-pille til hÃ¸yre
       const pillText = progressShareWeekLabel;
       context.font = "700 17px system-ui, -apple-system, Segoe UI, sans-serif";
       const pillTextW = context.measureText(pillText).width;
@@ -3944,11 +3946,11 @@ export function MemberPortal(props: MemberPortalProps) {
       context.textAlign = "left";
       context.textBaseline = "alphabetic";
 
-      // UKEN SOM HAR VÆRT eyebrow
+      // UKEN SOM HAR VÃ†RT eyebrow
       let yCursor = 170;
       context.fillStyle = "#30e3be";
       context.font = "800 17px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("UKEN SOM HAR VÆRT", pad, yCursor);
+      context.fillText("UKEN SOM HAR VÃ†RT", pad, yCursor);
       yCursor += 38;
 
       // Hovedtittel + rosa understrek
@@ -3969,12 +3971,12 @@ export function MemberPortal(props: MemberPortalProps) {
       // Subtittel (2 linjer)
       context.fillStyle = "rgba(241, 245, 249, 0.82)";
       context.font = "500 22px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Se hva jeg har fått til i Motus.", pad, yCursor);
+      context.fillText("Se hva jeg har fÃ¥tt til i Motus.", pad, yCursor);
       yCursor += 30;
-      context.fillText("Små steg hver uke gir store resultater!", pad, yCursor);
+      context.fillText("SmÃ¥ steg hver uke gir store resultater!", pad, yCursor);
       yCursor += 38;
 
-      // Stat-fliser (bredden er begrenset til venstre 60 % slik at de ikke trenger inn på fotoet)
+      // Stat-fliser (bredden er begrenset til venstre 60 % slik at de ikke trenger inn pÃ¥ fotoet)
       const groupCount = progressShareLast7Days.groupClasses;
       const kcal = progressShareLast7Days.kcal;
       const minutes = progressShareLast7Days.activityMinutes;
@@ -3987,15 +3989,15 @@ export function MemberPortal(props: MemberPortalProps) {
       }> = [
         {
           value: Math.round(progressShareLast7Days.volumeKg).toLocaleString("nb-NO"),
-          label: "KG LØFTET",
-          sub: "Totalt løftet denne uken",
+          label: "KG LÃ˜FTET",
+          sub: "Totalt lÃ¸ftet denne uken",
           tone: "teal",
           iconKey: "kg",
         },
         {
           value: String(progressShareLast7Days.workouts),
-          label: "TRENINGSØKTER",
-          sub: "Jeg har vært skikkelig på!",
+          label: "TRENINGSÃ˜KTER",
+          sub: "Jeg har vÃ¦rt skikkelig pÃ¥!",
           tone: "pink",
           iconKey: "workouts",
         },
@@ -4009,7 +4011,7 @@ export function MemberPortal(props: MemberPortalProps) {
         {
           value: Math.round(kcal).toLocaleString("nb-NO"),
           label: "KCAL FORBRUKT",
-          sub: "Energi brukt på å bli sterkere",
+          sub: "Energi brukt pÃ¥ Ã¥ bli sterkere",
           tone: "pink",
           iconKey: "kcal",
         },
@@ -4062,14 +4064,14 @@ export function MemberPortal(props: MemberPortalProps) {
         context.textBaseline = "middle";
         const glyph =
           tile.iconKey === "kg"
-            ? "≡"
+            ? "â‰¡"
             : tile.iconKey === "workouts"
-              ? "↗"
+              ? "â†—"
               : tile.iconKey === "groups"
-                ? "◯"
+                ? "â—¯"
                 : tile.iconKey === "kcal"
-                  ? "✦"
-                  : "⏱";
+                  ? "âœ¦"
+                  : "â±";
         context.fillText(glyph, iconCx, iconCy + 1);
         context.textAlign = "left";
         context.textBaseline = "alphabetic";
@@ -4090,8 +4092,8 @@ export function MemberPortal(props: MemberPortalProps) {
         fillWrappedCanvasText(context, tile.sub, tx + 14, ty + 124, tileW - 24, 15);
       });
 
-      // Quote nederst på fotoet (matcher CSS-posisjonen til forhåndsvisningen)
-      const quoteText = "Fremgang skjer én uke av gangen. Jeg bygger sterke vaner!";
+      // Quote nederst pÃ¥ fotoet (matcher CSS-posisjonen til forhÃ¥ndsvisningen)
+      const quoteText = "Fremgang skjer Ã©n uke av gangen. Jeg bygger sterke vaner!";
       const quoteX = W - 232;
       const quoteMaxWidth = 184;
       const quoteLineHeight = 22;
@@ -4145,7 +4147,7 @@ export function MemberPortal(props: MemberPortalProps) {
       context.fillText("UKENS SEIER", seierX, footerY + 32);
       context.fillStyle = "rgba(241, 245, 249, 0.92)";
       context.font = "600 17px system-ui, -apple-system, Segoe UI, sans-serif";
-      // Reserver plass for MOTUS-logoen i bunn-høyre slik at lang seier-tekst ikke kolliderer
+      // Reserver plass for MOTUS-logoen i bunn-hÃ¸yre slik at lang seier-tekst ikke kolliderer
       const seierMaxWidth = W - seierX - 160;
       const seierText = progressShareSeierText;
       const seierFits = context.measureText(seierText).width <= seierMaxWidth;
@@ -4155,7 +4157,7 @@ export function MemberPortal(props: MemberPortalProps) {
         fillWrappedCanvasText(context, seierText, seierX, footerY + 50, seierMaxWidth, 19);
       }
 
-      // MOTUS-logo i bunn-høyre
+      // MOTUS-logo i bunn-hÃ¸yre
       if (shareCardLogo && shareCardLogo.naturalWidth > 0) {
         const lh = 28;
         const lw = (shareCardLogo.naturalWidth / shareCardLogo.naturalHeight) * lh;
@@ -4167,7 +4169,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
       const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) {
-        setProgressShareStatus("Kunne ikke lage bilde akkurat nå.");
+        setProgressShareStatus("Kunne ikke lage bilde akkurat nÃ¥.");
         return;
       }
 
@@ -4263,18 +4265,18 @@ export function MemberPortal(props: MemberPortalProps) {
   async function handleRequestPtChange() {
     const reason = ptChangeReason.trim();
     const message = [
-      "Hei! Jeg ønsker å bytte PT.",
-      reason ? `Kort forklaring: ${reason}` : "Kan dere hjelpe meg med å finne riktig løsning?",
+      "Hei! Jeg Ã¸nsker Ã¥ bytte PT.",
+      reason ? `Kort forklaring: ${reason}` : "Kan dere hjelpe meg med Ã¥ finne riktig lÃ¸sning?",
       "Kan dere ta kontakt med meg om veien videre?",
     ].join("\n");
     setPtChangeRequestStatus(null);
     const sent = await dispatchMemberMessageToRelatedMembers(message);
     if (!sent) {
-      setPtChangeRequestStatus("Kunne ikke sende forespørselen akkurat nå. Prøv igjen, eller send vanlig melding til PT.");
+      setPtChangeRequestStatus("Kunne ikke sende forespÃ¸rselen akkurat nÃ¥. PrÃ¸v igjen, eller send vanlig melding til PT.");
       return;
     }
     setPtChangeReason("");
-    setPtChangeRequestStatus("Forespørselen er sendt til PT. Du finner den også under Meldinger.");
+    setPtChangeRequestStatus("ForespÃ¸rselen er sendt til PT. Du finner den ogsÃ¥ under Meldinger.");
   }
 
   async function handleRegisterWebPush() {
@@ -4283,7 +4285,7 @@ export function MemberPortal(props: MemberPortalProps) {
     setPushRegisterStatus(null);
     const result = await registerWebPushWithSupabase(supabaseClient);
     setPushRegisterBusy(false);
-    setPushRegisterStatus(result.ok ? "Push-varsler er slått på for denne enheten." : result.message);
+    setPushRegisterStatus(result.ok ? "Push-varsler er slÃ¥tt pÃ¥ for denne enheten." : result.message);
   }
 
   async function readFileAsDataUrl(file: File): Promise<string> {
@@ -4418,7 +4420,7 @@ export function MemberPortal(props: MemberPortalProps) {
       });
       setProfileSaveInfo("Profilbilde lagret.");
     } catch {
-      setProfileSaveInfo("Kunne ikke lagre profilbildet. Prøv et annet bilde.");
+      setProfileSaveInfo("Kunne ikke lagre profilbildet. PrÃ¸v et annet bilde.");
     }
   }
 
@@ -4431,31 +4433,31 @@ export function MemberPortal(props: MemberPortalProps) {
   const nextBestAction = useMemo(() => {
     if (!memberAssignedPrograms.length) {
       return {
-        title: "Be om første program",
-        description: "Du har ingen program fra trener ennå. Du kan likevel trene: legg din egen økt sammen under Trening, eller send melding til trener.",
-        cta: "Åpne Trening",
+        title: "Be om fÃ¸rste program",
+        description: "Du har ingen program fra trener ennÃ¥. Du kan likevel trene: legg din egen Ã¸kt sammen under Trening, eller send melding til trener.",
+        cta: "Ã…pne Trening",
         action: "programs" as const,
       };
     }
     if (!memberProgramsInActiveLibrary.length) {
       return {
         title: "Program er skjult eller arkivert",
-        description: "Gjenopprett et program under Trening, eller start en egen økt.",
-        cta: "Åpne Trening",
+        description: "Gjenopprett et program under Trening, eller start en egen Ã¸kt.",
+        cta: "Ã…pne Trening",
         action: "programs" as const,
       };
     }
     if (nextProgram) {
       return {
-        title: "Neste økt er klar",
-        description: "Start neste program når du er klar.",
-        cta: "Start neste økt",
+        title: "Neste Ã¸kt er klar",
+        description: "Start neste program nÃ¥r du er klar.",
+        cta: "Start neste Ã¸kt",
         action: "start-workout" as const,
       };
     }
     return {
-      title: "Ukemålet er nådd",
-      description: "Sterkt! Ta en bonusøkt eller sjekk fremgangen din.",
+      title: "UkemÃ¥let er nÃ¥dd",
+      description: "Sterkt! Ta en bonusÃ¸kt eller sjekk fremgangen din.",
       cta: "Se fremgang",
       action: "progress" as const,
     };
@@ -4474,9 +4476,9 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [homeWorkoutHydrationPending, todayPlanAction, todayPlanEntry, memberPrograms, nextProgram, memberHasVisiblePeriodPlan]);
   const homePrimaryFocus = useMemo(() => {
     if (todayPlanEntry && homeWorkoutProgram?.title && todayPlanEntry !== homeWorkoutProgram.title) {
-      return `${homeWorkoutProgram.title} · ${todayPlanEntry}`;
+      return `${homeWorkoutProgram.title} Â· ${todayPlanEntry}`;
     }
-    return todayPlanEntry || homeWorkoutProgram?.title || (memberHasVisiblePeriodPlan ? "Ingen plan i dag" : "Velg program når du er klar");
+    return todayPlanEntry || homeWorkoutProgram?.title || (memberHasVisiblePeriodPlan ? "Ingen plan i dag" : "Velg program nÃ¥r du er klar");
   }, [todayPlanEntry, homeWorkoutProgram, memberHasVisiblePeriodPlan]);
   const homeWorkoutDuration = useMemo(() => {
     if (!homeWorkoutProgram) return null;
@@ -4544,7 +4546,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const trainingWeeklyDeltaLabel = useMemo(() => {
     const delta = computeWeeklyProgressDelta(completedLogDates, nowTimestamp);
     if (delta === null) return null;
-    if (delta === 0) return "Samme nivå som forrige uke";
+    if (delta === 0) return "Samme nivÃ¥ som forrige uke";
     const sign = delta > 0 ? "+" : "";
     return `${sign}${delta}% vs. forrige uke`;
   }, [completedLogDates, nowTimestamp]);
@@ -4570,7 +4572,7 @@ export function MemberPortal(props: MemberPortalProps) {
           title: draft.programTitle,
           imageSrc,
           durationLabel: `${minutes} min`,
-          exerciseCountLabel: `${program?.exercises.length ?? progress.total} ${(program?.exercises.length ?? progress.total) === 1 ? "øvelse" : "øvelser"}`,
+          exerciseCountLabel: `${program?.exercises.length ?? progress.total} ${(program?.exercises.length ?? progress.total) === 1 ? "Ã¸velse" : "Ã¸velser"}`,
           progressPct: progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0,
           onResume: () => resumePausedWorkout(draft.id, draft.memberId),
         };
@@ -4592,7 +4594,7 @@ export function MemberPortal(props: MemberPortalProps) {
           id: program.id,
           title: program.title,
           imageSrc,
-          metaLabel: `${program.exercises.length} ${program.exercises.length === 1 ? "øvelse" : "øvelser"}`,
+          metaLabel: `${program.exercises.length} ${program.exercises.length === 1 ? "Ã¸velse" : "Ã¸velser"}`,
           completedCount: completedProgramLogs,
         };
       }),
@@ -4605,7 +4607,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7);
     let total = 0;
     completedLogs.forEach((log) => {
-      if (log.status !== "Fullført") return;
+      if (log.status !== "FullfÃ¸rt") return;
       const logDay = parseDateOnly(log.date);
       if (!logDay) return;
       const day = getStartOfDay(logDay);
@@ -4655,9 +4657,9 @@ export function MemberPortal(props: MemberPortalProps) {
       planned,
       Number(profileSessionsPerWeekTarget) || undefined,
     );
-    if (completed >= 2 || progressPct >= 50) return "Sterk uke så langt!";
-    if (completed > 0) return "God start på uka!";
-    if (streakWeeks > 0) return `${streakWeeks} uke${streakWeeks === 1 ? "" : "r"} på rad — fortsett!`;
+    if (completed >= 2 || progressPct >= 50) return "Sterk uke sÃ¥ langt!";
+    if (completed > 0) return "God start pÃ¥ uka!";
+    if (streakWeeks > 0) return `${streakWeeks} uke${streakWeeks === 1 ? "" : "r"} pÃ¥ rad â€” fortsett!`;
     return null;
   }, [
     homeWeeklySummary.completedThisWeek,
@@ -4674,11 +4676,11 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!nextLevel) return memberProgressScores.momentum.subline;
     const remaining = Math.max(0, Math.ceil(nextLevel.target - nextBadge.current));
     const unit = formatBadgeMetricValue(nextBadge.id, remaining);
-    if (remaining <= 0) return `Nesten i mål med badgen ${nextBadge.title}`;
+    if (remaining <= 0) return `Nesten i mÃ¥l med badgen ${nextBadge.title}`;
     return `${unit} igjen til badgen ${nextBadge.title}`;
   }, [memberBadgeCollection.allBadges, memberProgressScores.momentum.subline]);
   const homeDashboardHeadline =
-    homeWeeklySummary.completedThisWeek > 0 || streakWeeks > 0 ? "Du er på vei!" : "Klar for en ny uke";
+    homeWeeklySummary.completedThisWeek > 0 || streakWeeks > 0 ? "Du er pÃ¥ vei!" : "Klar for en ny uke";
   const homeWorkoutSubtitle = useMemo(() => {
     const goal = homeWorkoutProgram?.goal?.trim();
     if (goal) return goal;
@@ -4773,11 +4775,11 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [selectedCalendarDateKey]);
 
   function getReflectionEmoji(level: 1 | 2 | 3 | 4 | 5): string {
-    if (level <= 1) return "🥳";
-    if (level === 2) return "🙂";
-    if (level === 3) return "😌";
-    if (level === 4) return "😮‍💨";
-    return "🥵";
+    if (level <= 1) return "ðŸ¥³";
+    if (level === 2) return "ðŸ™‚";
+    if (level === 3) return "ðŸ˜Œ";
+    if (level === 4) return "ðŸ˜®â€ðŸ’¨";
+    return "ðŸ¥µ";
   }
 
   function buildGroupWorkoutReflection(): WorkoutReflection {
@@ -4808,7 +4810,7 @@ export function MemberPortal(props: MemberPortalProps) {
       programTitle: groupWorkoutLogTitle(trimmedClassName),
       completedAt,
     });
-    setGroupWorkoutStatus("Gruppetime lagret. PT kan nå se denne økta.");
+    setGroupWorkoutStatus("Gruppetime lagret. PT kan nÃ¥ se denne Ã¸kta.");
     setGroupWorkoutEnergyLevel(3);
     setGroupWorkoutDifficultyLevel(3);
     setGroupWorkoutMotivationLevel(3);
@@ -4950,7 +4952,7 @@ export function MemberPortal(props: MemberPortalProps) {
         writeActivePeriodPlanIdForMembers(targetMemberIds, null);
       }
     }
-    setPeriodPlanActionStatus("Planen er skjult fra oversikten. Den er ikke slettet — hent den tilbake under «Skjulte planer» nedenfor.");
+    setPeriodPlanActionStatus("Planen er skjult fra oversikten. Den er ikke slettet â€” hent den tilbake under Â«Skjulte planerÂ» nedenfor.");
   }
 
   function unhideTrainerPeriodPlan(planId: string) {
@@ -5207,11 +5209,11 @@ export function MemberPortal(props: MemberPortalProps) {
     const trimmed = input.entry.trim();
     if (!trimmed) return;
     if (isPeriodPlanEntryDateInFuture(input.plannedDate)) {
-      setPeriodPlanActionStatus("Du kan ikke logge gruppetimer fra periodeplanen før selve dagen.");
+      setPeriodPlanActionStatus("Du kan ikke logge gruppetimer fra periodeplanen fÃ¸r selve dagen.");
       return;
     }
     if (isPeriodPlanEntryCompleted(input.planId, input.weekNumber, input.day)) {
-      setPeriodPlanActionStatus("Denne økten er allerede logget.");
+      setPeriodPlanActionStatus("Denne Ã¸kten er allerede logget.");
       return;
     }
     logGroupWorkout({
@@ -5229,7 +5231,7 @@ export function MemberPortal(props: MemberPortalProps) {
       programTitle: groupWorkoutLogTitle(resolveGroupClassNameFromPeriodEntry(trimmed)),
       completedAt,
     });
-    setPeriodPlanActionStatus(`«${trimmed}» er logget.`);
+    setPeriodPlanActionStatus(`Â«${trimmed}Â» er logget.`);
   }
 
   function resolvePeriodPlanLogTitle(entry: string): string {
@@ -5256,7 +5258,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
     if (!isCompleted) {
       if (isPeriodPlanEntryDateInFuture(input.plannedDate)) {
-        setPeriodPlanActionStatus("Du kan bare markere økter med dato i dag eller tidligere.");
+        setPeriodPlanActionStatus("Du kan bare markere Ã¸kter med dato i dag eller tidligere.");
         return;
       }
       clearPeriodPlanDayDismissed(input.planId, input.weekNumber, input.day);
@@ -5264,7 +5266,7 @@ export function MemberPortal(props: MemberPortalProps) {
         logGroupWorkout({
           memberId: activeMemberId,
           className: resolveGroupClassNameFromPeriodEntry(trimmed),
-          note: "Registrert som gjennomført fra periodeplan.",
+          note: "Registrert som gjennomfÃ¸rt fra periodeplan.",
           reflection: defaultPeriodPlanReflection,
           keepCurrentTab: true,
           date: storedDate,
@@ -5273,21 +5275,21 @@ export function MemberPortal(props: MemberPortalProps) {
         logCompletedPlanEntry({
           memberId: activeMemberId,
           programTitle: logTitle,
-          note: "Registrert som gjennomført fra periodeplan.",
+          note: "Registrert som gjennomfÃ¸rt fra periodeplan.",
           reflection: defaultPeriodPlanReflection,
           keepCurrentTab: true,
           date: storedDate,
         });
       }
       markPeriodPlanDayCompleted(input.planId, input.weekNumber, input.day);
-      setPeriodPlanActionStatus(`Registrert «${trimmed}» som gjennomført.`);
+      setPeriodPlanActionStatus(`Registrert Â«${trimmed}Â» som gjennomfÃ¸rt.`);
       return;
     }
 
     const matchingLogs = memberLogs.filter(
       (log) =>
         log.memberId === activeMemberId &&
-        log.status === "Fullført" &&
+        log.status === "FullfÃ¸rt" &&
         storedLogDatesMatch(log.date, storedDate) &&
         periodPlanEntryMatchesCompletedProgram(trimmed, log.programTitle, memberProgramsForPeriodPlan, linkedProgram?.id),
     );
@@ -5314,7 +5316,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
     unmarkPeriodPlanDayCompleted(input.planId, input.weekNumber, input.day);
     dismissPeriodPlanDay(input.planId, input.weekNumber, input.day);
-    setPeriodPlanActionStatus(`Fjernet markering for «${trimmed}».`);
+    setPeriodPlanActionStatus(`Fjernet markering for Â«${trimmed}Â».`);
   }
 
   function estimate1RM(weight: number, reps: number): number {
@@ -5362,9 +5364,9 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function handleDeleteLoggedExercise(logId: string, exerciseId: string) {
     setConfirmDialog({
-      title: "Slette øvelse fra logg",
-      message: "Slette denne øvelsen fra treningsloggen?",
-      confirmLabel: "Slett øvelse",
+      title: "Slette Ã¸velse fra logg",
+      message: "Slette denne Ã¸velsen fra treningsloggen?",
+      confirmLabel: "Slett Ã¸velse",
       tone: "danger",
       onConfirm: () => {
         const log = completedLogs.find((item) => item.id === logId);
@@ -5455,7 +5457,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 exercise && typeof exercise === "object"
                   ? (exercise as Partial<ProgramExercise>)
                   : ({} as Partial<ProgramExercise>);
-              const exerciseName = printField(safeExercise.exerciseName) || "Øvelse";
+              const exerciseName = printField(safeExercise.exerciseName) || "Ã˜velse";
               const exerciseId = printField(safeExercise.exerciseId);
               const libraryMatch =
                 exercises.find((item) => item.id === exerciseId) ??
@@ -5474,17 +5476,17 @@ export function MemberPortal(props: MemberPortalProps) {
               const cardioTimeParts: string[] = [];
               if (durationMinutes) cardioTimeParts.push(`${durationMinutes} min`);
               if (isCardioExercise && cardioHoldSeconds) cardioTimeParts.push(`${cardioHoldSeconds} sek`);
-              const cardioTimeLabel = cardioTimeParts.length ? cardioTimeParts.join(" ") : "—";
+              const cardioTimeLabel = cardioTimeParts.length ? cardioTimeParts.join(" ") : "â€”";
               const prescription = isCardioExercise
-                ? `${setCount} runder × ${cardioTimeLabel}${
-                    speed ? ` · ${speed} km/t` : ""
-                  }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause${cardioHrPrescriptionSuffixForMember(safeExercise as ProgramExercise)}`
+                ? `${setCount} runder Ã— ${cardioTimeLabel}${
+                    speed ? ` Â· ${speed} km/t` : ""
+                  }${incline ? ` Â· ${incline}% incline` : ""} Â· ${restSeconds}s pause${cardioHrPrescriptionSuffixForMember(safeExercise as ProgramExercise)}`
                 : libraryMatch && isHoldBasedExerciseCategory(libraryMatch.category)
-                  ? `${setCount} sett × ${programExerciseHoldSeconds(safeExercise, libraryMatch.category) || "-"} sek · ${restSeconds}s pause`
-                  : `${setCount} x ${reps} · ${weight} kg · ${restSeconds}s pause`;
+                  ? `${setCount} sett Ã— ${programExerciseHoldSeconds(safeExercise, libraryMatch.category) || "-"} sek Â· ${restSeconds}s pause`
+                  : `${setCount} x ${reps} Â· ${weight} kg Â· ${restSeconds}s pause`;
               const rawImageUrl = printField(libraryMatch?.imageUrl);
               const imageUrl = rawImageUrl ? resolvePrintAssetUrl(rawImageUrl) : "";
-              const description = printField(libraryMatch?.description) || "Ingen forklaring tilgjengelig for denne øvelsen.";
+              const description = printField(libraryMatch?.description) || "Ingen forklaring tilgjengelig for denne Ã¸velsen.";
               return `<article class="exercise-card">
   <div class="exercise-image-wrap">
     ${
@@ -5502,7 +5504,7 @@ export function MemberPortal(props: MemberPortalProps) {
 </article>`;
             })
             .join("")
-        : `<div class="empty-state">Ingen øvelser i programmet.</div>`;
+        : `<div class="empty-state">Ingen Ã¸velser i programmet.</div>`;
     const html = `<!doctype html>
 <html lang="no">
 <head>
@@ -5545,8 +5547,8 @@ export function MemberPortal(props: MemberPortalProps) {
     <div class="header-card">
       <div class="header-main">
         <h1>${escapeHtml(program.title)}</h1>
-        <div class="meta">Mål: ${escapeHtml(program.goal || "Ikke satt")} · Opprettet: ${escapeHtml(program.createdAt || "-")}</div>
-        <div class="meta-line">Av: ${escapeHtml(trainerLabel)} · Til: ${escapeHtml(recipientName)}</div>
+        <div class="meta">MÃ¥l: ${escapeHtml(program.goal || "Ikke satt")} Â· Opprettet: ${escapeHtml(program.createdAt || "-")}</div>
+        <div class="meta-line">Av: ${escapeHtml(trainerLabel)} Â· Til: ${escapeHtml(recipientName)}</div>
       </div>
       <div>
         <div class="brand-logo-frame"><img src="${escapeHtml(printLogoUrl)}" alt="Motus logo" class="brand-logo" /></div>
@@ -5557,7 +5559,7 @@ export function MemberPortal(props: MemberPortalProps) {
         ? `<div class="notes-card"><div class="notes-title">Notater</div>${escapeHtml(program.notes)}</div>`
         : ""
     }
-    <div class="section-title">Øvelser</div>
+    <div class="section-title">Ã˜velser</div>
     ${exercisesHtml}
     <div class="footer">Generert fra Motus medlemsportal.</div>
   </div>
@@ -5617,7 +5619,7 @@ export function MemberPortal(props: MemberPortalProps) {
       const detail = unexpectedError instanceof Error ? unexpectedError.message : String(unexpectedError);
       setConfirmDialog({
         title: "Utskrift feilet",
-        message: `Kunne ikke generere utskrift (${detail}). Prøv igjen.`,
+        message: `Kunne ikke generere utskrift (${detail}). PrÃ¸v igjen.`,
         confirmLabel: "OK",
         showCancel: false,
         tone: "default",
@@ -5664,8 +5666,8 @@ export function MemberPortal(props: MemberPortalProps) {
                         <span>On</span>
                         <span>To</span>
                         <span>Fr</span>
-                        <span>Lø</span>
-                        <span>Sø</span>
+                        <span>LÃ¸</span>
+                        <span>SÃ¸</span>
                       </>
                     }
                     monthCells={calendarCells.map((day, index) =>
@@ -5695,12 +5697,12 @@ export function MemberPortal(props: MemberPortalProps) {
                           }`}
                           title={
                             calendarDayStatusByDay.get(day) === "completed"
-                              ? `${calendarDayLoad.get(day)} økt${calendarDayLoad.get(day) === 1 ? "" : "er"} fullført`
+                              ? `${calendarDayLoad.get(day)} Ã¸kt${calendarDayLoad.get(day) === 1 ? "" : "er"} fullfÃ¸rt`
                               : calendarDayStatusByDay.get(day) === "missed"
-                                ? "Planlagt økt ble ikke fullført"
+                                ? "Planlagt Ã¸kt ble ikke fullfÃ¸rt"
                                 : calendarDayStatusByDay.get(day) === "planned"
-                                  ? "Planlagt økt"
-                                  : "Ingen økter logget"
+                                  ? "Planlagt Ã¸kt"
+                                  : "Ingen Ã¸kter logget"
                           }
                         >
                           {day}
@@ -5713,7 +5715,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
                         <div className="inline-flex items-center gap-1.5">
                           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: MOTUS.turquoise }} />
-                          <span>Fullført</span>
+                          <span>FullfÃ¸rt</span>
                         </div>
                         <div className="inline-flex items-center gap-1.5">
                           <span
@@ -5735,12 +5737,12 @@ export function MemberPortal(props: MemberPortalProps) {
                   {selectedCalendarDateKey && selectedCalendarDate ? (
                     <div className="mt-3 rounded-xl bg-slate-50/90 p-3">
                       <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                        Økter {formatDateDdMmYyyy(selectedCalendarDate)}
+                        Ã˜kter {formatDateDdMmYyyy(selectedCalendarDate)}
                       </p>
                       <div className="mt-2 space-y-2">
                         {selectedCalendarPlannedEntries.length > 0 ? (
                           <div className="motus-brand-muted motus-brand-muted-border rounded-lg px-3 py-2 text-xs">
-                            <div className="font-semibold">Planlagt økt</div>
+                            <div className="font-semibold">Planlagt Ã¸kt</div>
                             {selectedCalendarPlannedEntries.map((entry, entryIndex) => (
                               <div key={`${selectedCalendarDateKey}-planned-${entryIndex}`} className="mt-1">
                                 {entry}
@@ -5761,7 +5763,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                   }}
                                   className="w-full sm:w-auto disabled:cursor-default disabled:opacity-100"
                                 >
-                                  {selectedCalendarPeriodPlanCompleted ? "Fullført" : "Start økt"}
+                                  {selectedCalendarPeriodPlanCompleted ? "FullfÃ¸rt" : "Start Ã¸kt"}
                                 </GradientButton>
                               ) : null}
                               {selectedCalendarPlanAction.kind === "log-group" && selectedCalendarPeriodMatch ? (
@@ -5789,7 +5791,7 @@ export function MemberPortal(props: MemberPortalProps) {
                           </div>
                         ) : null}
                         {selectedCalendarLogs.length === 0 ? (
-                          <div className="text-sm text-slate-500">Ingen logg på valgt dag.</div>
+                          <div className="text-sm text-slate-500">Ingen logg pÃ¥ valgt dag.</div>
                         ) : (
                           <>
                             <div className="space-y-2">
@@ -5810,7 +5812,7 @@ export function MemberPortal(props: MemberPortalProps) {
                             </div>
                             {selectedCalendarLog ? (
                               <div className="rounded-lg border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Detaljer fra økta</div>
+                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Detaljer fra Ã¸kta</div>
                                 {selectedCalendarLog.trainerComment ? (
                                   <div className="mt-2 rounded-lg border motus-brand-surface px-3 py-2 text-sm text-emerald-900">
                                     <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Kommentar fra trener</div>
@@ -5824,24 +5826,24 @@ export function MemberPortal(props: MemberPortalProps) {
                                         <div className="text-sm font-medium text-slate-800">{formatLoggedResultTitle(result)}</div>
                                         <div className="mt-1 text-xs text-slate-600">
                                           {result.performedDurationMinutes
-                                            ? `Utført: ${result.performedDurationMinutes || "-"} min${result.performedSpeed ? ` · ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` · ${result.performedIncline}% incline` : ""}`
+                                            ? `UtfÃ¸rt: ${result.performedDurationMinutes || "-"} min${result.performedSpeed ? ` Â· ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` Â· ${result.performedIncline}% incline` : ""}`
                                             : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)
-                                              ? `Utført: ${result.performedWeight || "-"} sek hold`
-                                              : `Utført: ${result.performedReps || "-"} reps @ ${result.performedWeight || "-"} kg`}
+                                              ? `UtfÃ¸rt: ${result.performedWeight || "-"} sek hold`
+                                              : `UtfÃ¸rt: ${result.performedReps || "-"} reps @ ${result.performedWeight || "-"} kg`}
                                         </div>
                                         <div className="text-[11px] text-slate-500">
                                           Plan:{" "}
                                           {result.plannedDurationMinutes
-                                            ? `${result.plannedDurationMinutes} min${result.plannedSpeed ? ` · ${result.plannedSpeed} km/t` : ""}${result.plannedIncline ? ` · ${result.plannedIncline}% incline` : ""}`
+                                            ? `${result.plannedDurationMinutes} min${result.plannedSpeed ? ` Â· ${result.plannedSpeed} km/t` : ""}${result.plannedIncline ? ` Â· ${result.plannedIncline}% incline` : ""}`
                                             : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)
-                                              ? `${result.plannedSets} sett × ${result.plannedWeight || "0"} sek`
+                                              ? `${result.plannedSets} sett Ã— ${result.plannedWeight || "0"} sek`
                                               : `${result.plannedSets}x${result.plannedReps} @ ${result.plannedWeight || "0"} kg`}
                                         </div>
                                       </div>
                                     ))}
                                   </div>
                                 ) : (
-                                  <div className="mt-2 text-sm text-slate-500">Ingen detaljerte sett registrert på denne økten.</div>
+                                  <div className="mt-2 text-sm text-slate-500">Ingen detaljerte sett registrert pÃ¥ denne Ã¸kten.</div>
                                 )}
                               </div>
                             ) : null}
@@ -5891,7 +5893,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="text-sm text-slate-500">{viewedMember.email}</div>
                   </div>
                 </div>
-                <div className="mt-2 text-sm"><span className="font-medium">Mål:</span> {viewedMember.goal}</div>
+                <div className="mt-2 text-sm"><span className="font-medium">MÃ¥l:</span> {viewedMember.goal}</div>
               </div>
             ) : null}
           </div>
@@ -5990,11 +5992,11 @@ export function MemberPortal(props: MemberPortalProps) {
                         className="motus-pressable h-10 w-full rounded-lg px-4 text-sm font-semibold disabled:cursor-default disabled:opacity-100"
                         aria-disabled
                       >
-                        Dagens økt er fullført
+                        Dagens Ã¸kt er fullfÃ¸rt
                       </GradientButton>
                     ) : (
                       <MemberHomeStartWorkoutButton
-                        label="Start dagens økt"
+                        label="Start dagens Ã¸kt"
                         onClick={() => {
                           if (!todayPlanPeriodPlan || !todayPeriodPlanMatch) return;
                           handlePeriodPlanStartProgram(todayPlanAction.program.id, {
@@ -6026,11 +6028,11 @@ export function MemberPortal(props: MemberPortalProps) {
                       className="motus-pressable h-10 rounded-lg px-4 text-sm font-semibold disabled:cursor-default disabled:opacity-100"
                       aria-disabled={todayPeriodPlanCompleted}
                     >
-                      {todayPeriodPlanCompleted ? "Dagens økt er logget" : "Logg dagens økt"}
+                      {todayPeriodPlanCompleted ? "Dagens Ã¸kt er logget" : "Logg dagens Ã¸kt"}
                     </GradientButton>
                   ) : todayPlanIsPassiveDay ? null : homeWorkoutHydrationPending ? null : nextProgram ? (
                     <MemberHomeStartWorkoutButton
-                      label="Start dagens økt"
+                      label="Start dagens Ã¸kt"
                       onClick={() => startMemberProgram(nextProgram)}
                     />
                   ) : (
@@ -6047,7 +6049,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   onOpenOnboarding && showOnboardingHomePrompt && !onboardingCompleteForHome ? (
                     <MemberHomeCompactPrompt
                       title="Fortell oss litt om deg"
-                      detail="Ca. 3–5 min · én gang"
+                      detail="Ca. 3â€“5 min Â· Ã©n gang"
                       ctaLabel="Start skjema"
                       onCta={onOpenOnboarding}
                       onDismiss={onDismissOnboardingHomePrompt}
@@ -6059,7 +6061,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   monthlyCheckInPrompt && onOpenMonthlyCheckIn ? (
                     <MemberHomeCompactPrompt
                       title={monthlyCheckInPrompt.copy.text}
-                      detail={`${monthlyCheckInPrompt.copy.detail} · ${monthlyCheckInPrompt.window.daysRemaining} dager igjen`}
+                      detail={`${monthlyCheckInPrompt.copy.detail} Â· ${monthlyCheckInPrompt.window.daysRemaining} dager igjen`}
                       ctaLabel="Start sjekk-inn"
                       onCta={onOpenMonthlyCheckIn}
                     />
@@ -6094,22 +6096,22 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                   <p className="mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Ny personlig rekord</p>
                   <h2 id="pr-celebration-heading" className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-                    Sterkere enn før
+                    Sterkere enn fÃ¸r
                   </h2>
                   <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-600">
-                    Du satte ny personlig rekord i øvelsen du nettopp gjorde.
+                    Du satte ny personlig rekord i Ã¸velsen du nettopp gjorde.
                   </p>
                   <div className="mt-5 w-full rounded-2xl border border-emerald-200/90 bg-emerald-50 px-4 py-4 text-left shadow-inner" style={{ borderColor: "rgba(48,227,190,0.35)" }}>
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-900/80">Øvelse</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-900/80">Ã˜velse</div>
                     <div className="mt-1 text-lg font-semibold text-slate-900">{activeCelebration?.exerciseName}</div>
                     <div className="mt-3 flex flex-wrap items-baseline gap-2 text-sm">
                       <span className="tabular-nums text-slate-600">{activeCelebration?.previousEstimated1RM.toFixed(1)} kg</span>
-                      <span className="text-slate-400">→</span>
+                      <span className="text-slate-400">â†’</span>
                       <span className="tabular-nums text-lg font-bold text-emerald-800">{activeCelebration?.newEstimated1RM.toFixed(1)} kg</span>
                       <span className="text-xs font-medium text-emerald-900/70">1RM (estimat)</span>
                     </div>
                     <div className="mt-2 text-xs text-slate-600">
-                      Basert på {activeCelebration?.weight}&nbsp;kg × {activeCelebration?.reps} reps i settet du nettopp logget.
+                      Basert pÃ¥ {activeCelebration?.weight}&nbsp;kg Ã— {activeCelebration?.reps} reps i settet du nettopp logget.
                     </div>
                   </div>
                   <div className="mt-6 flex w-full flex-col gap-2">
@@ -6120,7 +6122,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       className="min-h-11 w-full font-semibold"
                     >
                       <Share2 className="mr-2 inline h-4 w-4 shrink-0" aria-hidden />
-                      {isSharingCelebrationPr ? "Lager skrytekort…" : "Del rekorden"}
+                      {isSharingCelebrationPr ? "Lager skrytekortâ€¦" : "Del rekorden"}
                     </OutlineButton>
                     <GradientButton
                       onClick={() => {
@@ -6132,7 +6134,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       }}
                       className="w-full min-h-11 text-base font-semibold"
                     >
-                      Supert — videre
+                      Supert â€” videre
                     </GradientButton>
                   </div>
                 </div>
@@ -6150,7 +6152,7 @@ export function MemberPortal(props: MemberPortalProps) {
               >
                 <div className="h-2" style={{ background: `linear-gradient(90deg, #BA0C2F 0%, #FFFFFF 24%, #00205B 50%, #FFFFFF 76%, #BA0C2F 100%)` }} />
                 <div className="p-6">
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Skjult badge låst opp</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Skjult badge lÃ¥st opp</p>
                   <div className="mx-auto mt-4 flex justify-center overflow-visible">
                     <BadgeImage src={memberBadgeImageSrc(hiddenBadgeCelebration.id)} size="popup" loading="eager" />
                   </div>
@@ -6162,7 +6164,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   </p>
                   <div className="mt-5 rounded-2xl border bg-slate-50 px-4 py-3 text-left" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Hemmelig samling</div>
-                    <div className="mt-1 text-sm font-semibold text-slate-900">Denne badgen vises nå i oversikten din.</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-900">Denne badgen vises nÃ¥ i oversikten din.</div>
                   </div>
                   <GradientButton
                     onClick={() => {
@@ -6171,7 +6173,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     }}
                     className="mt-6 w-full min-h-11 font-semibold"
                   >
-                    Hurra — videre
+                    Hurra â€” videre
                   </GradientButton>
                 </div>
               </div>
@@ -6197,7 +6199,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   {buildCelebrationCopy(achievementCelebration.achievedLevel).body}
                 </p>
                 <p className="mt-3 text-xs leading-snug text-slate-500">
-                  Varsler om ny PR etter økt vises som før og påvirkes ikke av denne innstillingen.
+                  Varsler om ny PR etter Ã¸kt vises som fÃ¸r og pÃ¥virkes ikke av denne innstillingen.
                 </p>
                 <GradientButton onClick={() => setAchievementCelebration(null)} className="mt-6 w-full min-h-11 font-semibold">
                   OK
@@ -6222,13 +6224,13 @@ export function MemberPortal(props: MemberPortalProps) {
                   zoneLabel={homeWorkoutZoneLabel}
                   exerciseCountLabel={
                     homeWorkoutProgram?.exercises.length
-                      ? `${homeWorkoutProgram.exercises.length} ${homeWorkoutProgram.exercises.length === 1 ? "øvelse" : "øvelser"}`
+                      ? `${homeWorkoutProgram.exercises.length} ${homeWorkoutProgram.exercises.length === 1 ? "Ã¸velse" : "Ã¸velser"}`
                       : null
                   }
                   primaryAction={
                     todayPlanAction.kind === "start-program"
                       ? {
-                          label: todayPeriodPlanCompleted ? "Fullført" : "Start økt",
+                          label: todayPeriodPlanCompleted ? "FullfÃ¸rt" : "Start Ã¸kt",
                           disabled: todayPeriodPlanCompleted,
                           completed: todayPeriodPlanCompleted,
                           onClick: () => {
@@ -6243,7 +6245,7 @@ export function MemberPortal(props: MemberPortalProps) {
                         }
                       : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch
                         ? {
-                            label: todayPeriodPlanCompleted ? "Fullført" : "Logg gruppetime",
+                            label: todayPeriodPlanCompleted ? "FullfÃ¸rt" : "Logg gruppetime",
                             disabled: todayPeriodPlanCompleted,
                             completed: todayPeriodPlanCompleted,
                             onClick: () =>
@@ -6261,12 +6263,12 @@ export function MemberPortal(props: MemberPortalProps) {
                           }
                         : !todayPlanEntry && nextProgram
                           ? {
-                              label: "Start neste økt",
+                              label: "Start neste Ã¸kt",
                               onClick: () => startMemberProgram(nextProgram),
                             }
                           : undefined
                   }
-                  completedHint={todayPeriodPlanCompleted ? "Dagens økt er logget" : null}
+                  completedHint={todayPeriodPlanCompleted ? "Dagens Ã¸kt er logget" : null}
                   completedSessions={homeWeeklySummary.completedThisWeek}
                   momentumPct={homeMomentumPct}
                   streakWeeks={streakWeeks}
@@ -6300,7 +6302,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     <h3 className="mt-1 text-lg font-bold text-slate-950">Treningsprogram</h3>
                     <p className="mt-1 text-sm text-slate-600">
                       {showProgramLibraryFilter
-                        ? "Filtrer listen, eller start økter direkte fra Periodeplan-fanen."
+                        ? "Filtrer listen, eller start Ã¸kter direkte fra Periodeplan-fanen."
                         : "Start, vis, skjul eller arkiver programmene dine."}
                     </p>
                   </div>
@@ -6334,7 +6336,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 {secondaryPausedWorkouts.length > 0 ? (
                   <div className="mt-3 space-y-2">
                     <div className="rounded-lg border motus-brand-surface/80 px-3 py-2">
-                      <div className="text-xs font-semibold text-teal-900">Påbegynte økter</div>
+                      <div className="text-xs font-semibold text-teal-900">PÃ¥begynte Ã¸kter</div>
                       <p className="mt-0.5 text-[11px] text-teal-800/90">Lagres i 4 timer. Fortsett der du slapp, eller slett.</p>
                     </div>
                     {secondaryPausedWorkouts.map((draft) => {
@@ -6349,7 +6351,7 @@ export function MemberPortal(props: MemberPortalProps) {
                             <div className="min-w-0">
                               <div className="text-sm font-semibold text-slate-900">{draft.programTitle}</div>
                               <div className="mt-0.5 text-[11px] text-slate-600">
-                                {progress.completed} av {progress.total} sett fullført
+                                {progress.completed} av {progress.total} sett fullfÃ¸rt
                               </div>
                               <div className="mt-0.5 text-[10px] text-slate-400">{formatPausedWorkoutExpiry(draft.expiresAt)}</div>
                             </div>
@@ -6369,8 +6371,8 @@ export function MemberPortal(props: MemberPortalProps) {
                                 className="!min-h-7 !px-1.5 !py-1"
                                 onClick={() => {
                                   setConfirmDialog({
-                                    title: "Slette påbegynt økt?",
-                                    message: "Fremgangen i denne økten fjernes permanent.",
+                                    title: "Slette pÃ¥begynt Ã¸kt?",
+                                    message: "Fremgangen i denne Ã¸kten fjernes permanent.",
                                     confirmLabel: "Slett",
                                     tone: "danger",
                                     onConfirm: () => {
@@ -6379,7 +6381,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                     },
                                   });
                                 }}
-                                aria-label="Slett påbegynt økt"
+                                aria-label="Slett pÃ¥begynt Ã¸kt"
                                 title="Slett"
                               >
                                 <Trash2 className="h-3.5 w-3.5 text-slate-500" />
@@ -6394,12 +6396,12 @@ export function MemberPortal(props: MemberPortalProps) {
                 <div className="mt-4 space-y-3">
                   {memberAssignedPrograms.length === 0 ? (
                     <EmptyState
-                      icon="📋"
-                      title="Du har ikke fått program fra PT ennå"
+                      icon="ðŸ“‹"
+                      title="Du har ikke fÃ¥tt program fra PT ennÃ¥"
                       description={
                         isMemberLimited
                           ? "Treneren din kan tildele et program her."
-                          : "Du kan starte egen økt med en gang, eller sende melding til PT."
+                          : "Du kan starte egen Ã¸kt med en gang, eller sende melding til PT."
                       }
                       className="bg-white"
                       action={
@@ -6411,7 +6413,7 @@ export function MemberPortal(props: MemberPortalProps) {
                               }}
                               className="w-full sm:w-auto"
                             >
-                              Lag egen økt
+                              Lag egen Ã¸kt
                             </GradientButton>
                             <OutlineButton onClick={() => setMemberTab("messages")} className="w-full sm:w-auto">
                               Send melding til PT
@@ -6423,14 +6425,14 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null}
                   {memberAssignedPrograms.length > 0 && memberProgramsInActiveLibrary.length === 0 ? (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-                      Alle program er skjult eller arkivert. Bruk seksjonene nedenfor for å gjenopprette dem i oversikten.
+                      Alle program er skjult eller arkivert. Bruk seksjonene nedenfor for Ã¥ gjenopprette dem i oversikten.
                     </div>
                   ) : null}
                   {memberAssignedPrograms.length > 0 &&
                   memberProgramsInActiveLibrary.length > 0 &&
                   filteredMemberProgramsInActiveLibrary.length === 0 ? (
                     <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                      Ingen program i dette filteret. Prøv et annet filter, eller gå til Periodeplan for å starte planlagte økter.
+                      Ingen program i dette filteret. PrÃ¸v et annet filter, eller gÃ¥ til Periodeplan for Ã¥ starte planlagte Ã¸kter.
                     </div>
                   ) : null}
 	                  {filteredMemberProgramsInActiveLibrary.map((program) => {
@@ -6442,15 +6444,15 @@ export function MemberPortal(props: MemberPortalProps) {
 	                    const programMinutes = Math.max(20, Math.round(estimateProgramMinutes(program) / 5) * 5);
 	                    const programCategory = trainingProgramCategoryLabel(program, exerciseCategoryById, exercises);
 	                    const programSubTab = getTrainingProgramSubTab(program, exerciseCategoryById, exercises);
-	                    const programLevel = coverExercise?.level ?? "Nivå tilpasses";
+	                    const programLevel = coverExercise?.level ?? "NivÃ¥ tilpasses";
 	                    const programCoverSrc = resolveProgramImageSrc(program, coverExercise, { subTab: programSubTab });
 	                    const programUsesCustomCover = programCoverUsesPhotoStyle(program, programCoverSrc);
 	                    const completedProgramLogs = completedLogs.filter((log) => log.programTitle.trim().toLowerCase() === program.title.trim().toLowerCase()).length;
 	                    const completedTimesLabel = completedProgramLogs === 0
-	                      ? "Ikke fullført ennå"
+	                      ? "Ikke fullfÃ¸rt ennÃ¥"
 	                      : completedProgramLogs === 1
-	                        ? "1 gang fullført"
-	                        : `${completedProgramLogs} ganger fullført`;
+	                        ? "1 gang fullfÃ¸rt"
+	                        : `${completedProgramLogs} ganger fullfÃ¸rt`;
 	                    const linkedPeriodPlan = periodPlanLinkedProgramIds.has(program.id)
 	                      ? findPeriodPlanForProgram(program, visiblePeriodPlans, memberProgramsForPeriodPlan)
 	                      : null;
@@ -6483,7 +6485,7 @@ export function MemberPortal(props: MemberPortalProps) {
 	                              {linkedPeriodPlan ? (
 	                                <span
 	                                  className="mt-1 inline-flex max-w-full items-center rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-800 ring-1 ring-teal-200/80"
-	                                  title={`Tilhører periodeplanen «${linkedPeriodPlan.title}»`}
+	                                  title={`TilhÃ¸rer periodeplanen Â«${linkedPeriodPlan.title}Â»`}
 	                                >
 	                                  Periodeplan
 	                                </span>
@@ -6500,7 +6502,7 @@ export function MemberPortal(props: MemberPortalProps) {
 	                              </span>
 	                              <span className="motus-member-program-stat">
 	                                <Dumbbell className="h-3.5 w-3.5 shrink-0" aria-hidden />
-	                                {program.exercises.length} {program.exercises.length === 1 ? "øvelse" : "øvelser"}
+	                                {program.exercises.length} {program.exercises.length === 1 ? "Ã¸velse" : "Ã¸velser"}
 	                              </span>
 	                            </div>
                             <div className="motus-member-program-progress">
@@ -6514,7 +6516,7 @@ export function MemberPortal(props: MemberPortalProps) {
                               }}
                             >
 	                              <Play className="h-4 w-4 fill-white text-white" aria-hidden />
-	                                Start økt
+	                                Start Ã¸kt
 	                            </TrainingStartButton>
 	                              <div className="relative min-w-0" data-program-library-menu>
 	                                <OutlineButton
@@ -6606,7 +6608,7 @@ export function MemberPortal(props: MemberPortalProps) {
 	                                          setProgramLibraryMenuId(null);
 	                                          setConfirmDialog({
 	                                            title: "Slette program?",
-	                                            message: `Dette sletter «${program.title.trim()}» fra biblioteket og tilhørende økter som er logget på dette programmet.`,
+	                                            message: `Dette sletter Â«${program.title.trim()}Â» fra biblioteket og tilhÃ¸rende Ã¸kter som er logget pÃ¥ dette programmet.`,
 	                                            confirmLabel: "Slett",
 	                                            tone: "danger",
 	                                            onConfirm: () => {
@@ -6633,9 +6635,9 @@ export function MemberPortal(props: MemberPortalProps) {
                             <div className="space-y-1.5">
                               {program.exercises.length === 0 ? (
                                 <EmptyState
-                                  icon="🧩"
-                                  title="Ingen øvelser i programmet ennå"
-                                  description="Programmet er tomt akkurat nå."
+                                  icon="ðŸ§©"
+                                  title="Ingen Ã¸velser i programmet ennÃ¥"
+                                  description="Programmet er tomt akkurat nÃ¥."
                                   className="bg-slate-50 py-4"
                                 />
                               ) : null}
@@ -6657,8 +6659,8 @@ export function MemberPortal(props: MemberPortalProps) {
                                         : exercise.blockType === "triset"
                                           ? "Trisett"
                                           : "Sirkel"}
-                                      {" · "}
-                                      {blockPeers.map((peer) => peer.exerciseName).join(" → ")}
+                                      {" Â· "}
+                                      {blockPeers.map((peer) => peer.exerciseName).join(" â†’ ")}
                                     </div>
                                   ) : null}
                                   <div className="text-xs font-medium text-slate-800">{exerciseName}</div>
@@ -6671,18 +6673,18 @@ export function MemberPortal(props: MemberPortalProps) {
                                         const timeParts: string[] = [];
                                         if (cardioMin) timeParts.push(`${cardioMin} min`);
                                         if (cardioSek) timeParts.push(`${cardioSek} sek`);
-                                        const timeLabel = timeParts.length ? timeParts.join(" ") : "—";
-                                        return `${exercise.sets} runder × ${timeLabel}${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s${cardioHrPrescriptionSuffixForMember(exercise)}`;
+                                        const timeLabel = timeParts.length ? timeParts.join(" ") : "â€”";
+                                        return `${exercise.sets} runder Ã— ${timeLabel}${exercise.speed ? ` Â· ${exercise.speed} km/t` : ""}${exercise.incline ? ` Â· ${exercise.incline}% incline` : ""} Â· ${exercise.restSeconds}s${cardioHrPrescriptionSuffixForMember(exercise)}`;
                                       }
                                       if (isStretch) {
-                                        return `${exercise.sets} sett × ${programExerciseHoldSeconds(exercise, lib?.category) || "-"} sek · ${exercise.restSeconds}s`;
+                                        return `${exercise.sets} sett Ã— ${programExerciseHoldSeconds(exercise, lib?.category) || "-"} sek Â· ${exercise.restSeconds}s`;
                                       }
-                                      return `${exercise.sets}×${exercise.reps} · ${exercise.weight}kg · ${exercise.restSeconds}s`;
+                                      return `${exercise.sets}Ã—${exercise.reps} Â· ${exercise.weight}kg Â· ${exercise.restSeconds}s`;
                                     })()}
                                   </div>
                                   {!exercise.durationMinutes && !isStretch && lib?.category !== "Kondisjon" ? (
                                     <div className="mt-1.5 rounded-lg border bg-white px-2 py-1.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                      <div className="text-[10px] text-slate-500">Foreslått vekt fra forrige gang (kan endres)</div>
+                                      <div className="text-[10px] text-slate-500">ForeslÃ¥tt vekt fra forrige gang (kan endres)</div>
                                       <TextInput
                                         value={resolveSuggestedWorkoutWeight(exercise)}
                                         onChange={(event) =>
@@ -6697,7 +6699,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                     </div>
                                   ) : !exercise.durationMinutes && isStretch ? (
                                     <div className="mt-1.5 rounded-lg border bg-white px-2 py-1.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                      <div className="text-[10px] text-slate-500">Foreslått hold fra forrige gang (kan endres)</div>
+                                      <div className="text-[10px] text-slate-500">ForeslÃ¥tt hold fra forrige gang (kan endres)</div>
                                       <TextInput
                                         value={resolveSuggestedWorkoutWeight(exercise)}
                                         onChange={(event) =>
@@ -6731,7 +6733,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       <div className="min-w-0">
                         <div className="text-sm font-semibold text-teal-900">Tips</div>
                         <p className="mt-0.5 text-xs leading-relaxed text-teal-800/90">
-                          Start med dagens program og hold flyten. Små steg hver uke gir størst fremgang over tid.
+                          Start med dagens program og hold flyten. SmÃ¥ steg hver uke gir stÃ¸rst fremgang over tid.
                         </p>
                       </div>
                     </div>
@@ -6792,7 +6794,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     <p className="motus-training-hero-label">Gruppetrening</p>
                     <h2 className="motus-training-hero-title">Logg gruppetrening</h2>
                     <p className="motus-training-hero-meta">
-                      Registrer gruppetimer slik at PT ser all aktivitet. Velg annen dato hvis du glemte å logge.
+                      Registrer gruppetimer slik at PT ser all aktivitet. Velg annen dato hvis du glemte Ã¥ logge.
                     </p>
                     <div className="motus-training-hero-cta">
                       <TrainingStartButton
@@ -6834,7 +6836,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     {[
                       {
                         key: "group-energy",
-                        question: "Hvordan føles energinivået nå?",
+                        question: "Hvordan fÃ¸les energinivÃ¥et nÃ¥?",
                         value: groupWorkoutEnergyLevel,
                         setValue: setGroupWorkoutEnergyLevel,
                       },
@@ -6865,7 +6867,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                 className={`rounded-xl border px-2 py-2 text-lg transition ${
                                   active ? "border-teal-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
                                 }`}
-                                aria-label={`Velg nivå ${level}`}
+                                aria-label={`Velg nivÃ¥ ${level}`}
                               >
                                 {getReflectionEmoji(numericLevel)}
                               </button>
@@ -6921,7 +6923,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="min-w-0">
                       <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Periodeplan</div>
                       <div className="mt-1 text-lg font-bold text-slate-950">Uke for uke</div>
-                      <div className="mt-1 text-sm text-slate-600">Start økter, logg aktivitet og bytt dager når hverdagen krever det.</div>
+                      <div className="mt-1 text-sm text-slate-600">Start Ã¸kter, logg aktivitet og bytt dager nÃ¥r hverdagen krever det.</div>
                     </div>
                   </div>
                   {memberHasVisiblePeriodPlan ? (
@@ -6937,7 +6939,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   >
                     <p className="font-semibold">Alle periodeplaner er skjult fra oversikten</p>
                     <p className="mt-1 leading-relaxed text-amber-900/90">
-                      Planene er ikke slettet. Trykk <strong>Vis igjen</strong> for å ta dem tilbake, eller legg til en ny plan fra Utforsk.
+                      Planene er ikke slettet. Trykk <strong>Vis igjen</strong> for Ã¥ ta dem tilbake, eller legg til en ny plan fra Utforsk.
                     </p>
                     <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                       {hiddenPeriodPlans.length > 1 ? (
@@ -6981,7 +6983,7 @@ export function MemberPortal(props: MemberPortalProps) {
                             >
                               {plan.title}
                               <span className="ml-1 font-normal text-slate-500">
-                                · {memberOwned ? "Din" : "PT"}
+                                Â· {memberOwned ? "Din" : "PT"}
                               </span>
                             </button>
                           );
@@ -7011,7 +7013,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     ) : null}
                   </div>
                 ) : memberHasVisiblePeriodPlan ? (
-                  <p className="mt-4 text-sm text-slate-600">Ukeplanen er minimert. Trykk «Vis ukeplan» for å se dagene.</p>
+                  <p className="mt-4 text-sm text-slate-600">Ukeplanen er minimert. Trykk Â«Vis ukeplanÂ» for Ã¥ se dagene.</p>
                 ) : null}
                 <div className="mt-4 rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.1)" }}>
                   <button
@@ -7027,7 +7029,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   {showPeriodPlanManageSection ? (
                     <div className="mt-3 space-y-2">
                       {visiblePeriodPlans.length === 0 ? (
-                        <p className="text-sm text-slate-600">Ingen synlige planer akkurat nå. Bruk «Skjulte planer» nedenfor.</p>
+                        <p className="text-sm text-slate-600">Ingen synlige planer akkurat nÃ¥. Bruk Â«Skjulte planerÂ» nedenfor.</p>
                       ) : null}
                       {visiblePeriodPlans.map((plan) => {
                               const active = activePeriodPlan?.id === plan.id;
@@ -7046,8 +7048,8 @@ export function MemberPortal(props: MemberPortalProps) {
                                     >
                                       <div className="text-sm font-semibold text-slate-900">{plan.title}</div>
                                       <div className="mt-0.5 text-xs text-slate-500">
-                                        {plan.weeks} {plan.weeks === 1 ? "uke" : "uker"} · start {plan.startDate}
-                                        {active ? " · Aktiv" : ""}
+                                        {plan.weeks} {plan.weeks === 1 ? "uke" : "uker"} Â· start {plan.startDate}
+                                        {active ? " Â· Aktiv" : ""}
                                       </div>
                                     </button>
                                     <div className="flex shrink-0 flex-wrap gap-1.5">
@@ -7058,7 +7060,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                           onClick={() =>
                                             setConfirmDialog({
                                               title: "Slette periodeplan?",
-                                              message: `Dette fjerner «${plan.title.trim()}» fra dine periodeplaner.`,
+                                              message: `Dette fjerner Â«${plan.title.trim()}Â» fra dine periodeplaner.`,
                                               confirmLabel: "Slett",
                                               tone: "danger",
                                               onConfirm: () => deleteMemberOwnedPeriodPlan(plan),
@@ -7138,7 +7140,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     </MotusSectionIcon>
                     <div className="min-w-0">
                       <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Periodeplan</div>
-                      <div className="mt-1 text-lg font-bold text-slate-950">Ingen ukeplan ennå</div>
+                      <div className="mt-1 text-lg font-bold text-slate-950">Ingen ukeplan ennÃ¥</div>
                       <p className="mt-1 text-sm text-slate-600">Legg til en plan fra Inspo, eller be PT om en periodeplan.</p>
                     </div>
                   </div>
@@ -7190,7 +7192,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   setShowIntervalTimerModal(false);
                 }}
                 onSaved={() => {
-                  setIntervalTimerStatus("Kondisjonsøkten er lagret. PT kan se den i loggen.");
+                  setIntervalTimerStatus("KondisjonsÃ¸kten er lagret. PT kan se den i loggen.");
                   setShowIntervalTimerModal(false);
                 }}
                 logIntervalWorkout={handleLogIntervalWorkout}
@@ -7369,13 +7371,13 @@ export function MemberPortal(props: MemberPortalProps) {
             ) : (
               <Card className="p-5">
                 <EmptyState
-                  icon="👤"
+                  icon="ðŸ‘¤"
                   title="Fant ingen medlemsprofil"
-                  description="Prøv å logge ut og inn igjen."
+                  description="PrÃ¸v Ã¥ logge ut og inn igjen."
                   className="mt-4"
                   action={
                     <OutlineButton onClick={() => setMemberTab("overview")} className="w-full sm:w-auto">
-                      Gå til oversikt
+                      GÃ¥ til oversikt
                     </OutlineButton>
                   }
                 />
