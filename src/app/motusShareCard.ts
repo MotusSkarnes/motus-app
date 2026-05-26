@@ -264,7 +264,7 @@ export async function buildBadgeShareCardBlob(input: BadgeShareCardInput): Promi
   ctx.font = "bold 28px system-ui, -apple-system, Segoe UI, sans-serif";
   fillWrappedCanvasText(
     ctx,
-    `Jeg låste opp «${input.badgeTitle}» (${input.levelName}) i Motus.`,
+    `Jeg låste opp «${input.badgeTitle}» (${input.levelName}) på Motus.`,
     cardX + pad + 32,
     y + 56,
     cardW - pad * 2 - 64,
@@ -282,7 +282,7 @@ export async function shareBadgeCard(input: BadgeShareCardInput): Promise<MotusS
     blob,
     `motus-badge-${slug || "badge"}.png`,
     "Min Motus-badge",
-    `Jeg låste opp ${input.badgeTitle} (${input.levelName}) i Motus #Motus`,
+    `Jeg låste opp ${input.badgeTitle} (${input.levelName}) på Motus #Motus`,
   );
 }
 
@@ -320,7 +320,7 @@ export async function buildPersonalRecordShareCardBlob(input: PersonalRecordShar
       eyebrow: "Personlig rekord",
       title: input.exerciseName,
       memberDisplayName: input.memberDisplayName,
-      subtitle: "Ny styrkerekord i Motus",
+      subtitle: "Ny styrkerekord på Motus",
     },
     logo,
   );

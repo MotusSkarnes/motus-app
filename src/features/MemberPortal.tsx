@@ -3985,7 +3985,7 @@ export function MemberPortal(props: MemberPortalProps) {
       context.shadowBlur = 8;
       context.fillStyle = "rgba(241, 245, 249, 0.92)";
       context.font = "500 28px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Se hva jeg har fått til i Motus.", pad, yCursor);
+      context.fillText("Se hva jeg har fått til på Motus.", pad, yCursor);
       yCursor += 38;
       context.fillText("Små steg hver uke gir store resultater!", pad, yCursor);
       context.restore();

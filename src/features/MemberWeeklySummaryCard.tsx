@@ -127,7 +127,7 @@ export function MemberWeeklySummaryCard({
             <span className="motus-weekly-share-title-text">{title}</span>
           </h2>
           <p className="motus-weekly-share-sub">
-            Se hva jeg har fått til i Motus.
+            Se hva jeg har fått til på Motus.
             <br />
             Små steg hver uke gir store resultater!
           </p>
