@@ -6525,21 +6525,33 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null}
                 </div>
               </Card>
-              <div className="rounded-xl border bg-white p-4" style={{ borderColor: "rgba(15,23,42,0.12)" }}>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-start gap-2">
-                    <MotusSectionIcon className="!p-2">
-                      <Users className="h-4 w-4" />
-                    </MotusSectionIcon>
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-slate-800">Logg gruppetrening</div>
-                      <div className="mt-1 text-xs text-slate-500">Registrer gruppetimer slik at PT ser all aktivitet. Velg annen dato hvis du glemte å logge.</div>
+              <div>
+                <article className="motus-training-hero motus-image-frame motus-image-frame--training-hero">
+                  <img
+                    className="motus-training-hero-cover motus-image-media"
+                    src="/program-covers/logg-gruppetrening.png"
+                    alt=""
+                    loading="lazy"
+                  />
+                  <div className="motus-training-hero-overlay" aria-hidden />
+                  <div className="motus-training-hero-content">
+                    <p className="motus-training-hero-label">Gruppetrening</p>
+                    <h2 className="motus-training-hero-title">Logg gruppetrening</h2>
+                    <p className="motus-training-hero-meta">
+                      Registrer gruppetimer slik at PT ser all aktivitet. Velg annen dato hvis du glemte å logge.
+                    </p>
+                    <div className="motus-training-hero-cta">
+                      <TrainingStartButton
+                        onClick={() => setShowGroupWorkoutLogger((prev) => !prev)}
+                        className="w-full sm:w-auto"
+                        aria-expanded={showGroupWorkoutLogger}
+                      >
+                        <Users className="h-4 w-4 text-white" aria-hidden />
+                        Logg gruppetrening
+                      </TrainingStartButton>
                     </div>
                   </div>
-                  <OutlineButton onClick={() => setShowGroupWorkoutLogger((prev) => !prev)} className="w-full sm:w-auto">
-                    {showGroupWorkoutLogger ? "Skjul logging" : "Logg gruppetrening"}
-                  </OutlineButton>
-                </div>
+                </article>
                 {showGroupWorkoutLogger ? (
                   <div className="mt-4 rounded-xl border bg-slate-50 p-4 space-y-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="grid gap-3 md:grid-cols-3">
