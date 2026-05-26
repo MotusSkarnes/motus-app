@@ -10942,28 +10942,23 @@ button.motus-progress-status-banner {
   isolation: isolate;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 12px 32px rgba(15, 23, 42, 0.06);
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  min-height: 210px;
 }
 
 @media (min-width: 640px) {
   .motus-inspo-hero {
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    min-height: 240px;
   }
 }
 
 .motus-inspo-hero-media {
   position: relative;
-  order: -1;
+  order: 1;
   overflow: hidden;
-  min-height: 180px;
-  background: #0f172a;
-}
-
-@media (min-width: 640px) {
-  .motus-inspo-hero-media {
-    order: 1;
-    min-height: 280px;
-  }
+  min-height: 100%;
+  background: transparent;
 }
 
 .motus-inspo-hero-image {
@@ -10972,12 +10967,16 @@ button.motus-progress-status-banner {
   height: 100%;
   object-fit: cover;
   object-position: center;
+  /* Soft fade fra venstre kant slik at kortets gradient blør inn i bildet — gir en
+     "innfelt" look som matcher referansen, og bildet ser mindre/mer integrert ut. */
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.6) 12%, #000 32%, #000 100%);
+  mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.6) 12%, #000 32%, #000 100%);
 }
 
 .motus-inspo-hero-badge {
   position: absolute;
-  top: 14px;
   left: 14px;
+  bottom: 12px;
   z-index: 2;
   display: inline-flex;
   align-items: center;
@@ -11005,20 +11004,21 @@ button.motus-progress-status-banner {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 12px;
-  padding: 20px 18px 22px;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px 12px 18px 18px;
 }
 
 @media (min-width: 640px) {
   .motus-inspo-hero-content {
-    padding: 28px 26px;
-    justify-content: center;
+    padding: 26px 18px 26px 26px;
+    gap: 12px;
   }
 }
 
 .motus-inspo-hero-title {
-  font-size: 30px;
-  line-height: 1.05;
+  font-size: 22px;
+  line-height: 1.1;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: #0f172a;
@@ -11026,12 +11026,31 @@ button.motus-progress-status-banner {
   text-wrap: balance;
 }
 
+@media (min-width: 480px) {
+  .motus-inspo-hero-title {
+    font-size: 26px;
+    line-height: 1.05;
+  }
+}
+
+@media (min-width: 640px) {
+  .motus-inspo-hero-title {
+    font-size: 30px;
+  }
+}
+
 .motus-inspo-hero-subtitle {
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 1.4;
   color: rgba(15, 23, 42, 0.7);
   margin: 0;
-  max-width: 24em;
+}
+
+@media (min-width: 640px) {
+  .motus-inspo-hero-subtitle {
+    font-size: 14px;
+    line-height: 1.45;
+  }
 }
 
 .motus-inspo-hero-stats {
@@ -11190,19 +11209,9 @@ button.motus-progress-status-banner {
 }
 
 @media (min-width: 480px) {
-  .motus-inspo-hero-title {
-    font-size: 34px;
-  }
-
   .motus-inspo-overlay-badge {
     font-size: 10.5px;
     padding: 5px 10px;
-  }
-}
-
-@media (max-width: 360px) {
-  .motus-inspo-hero-title {
-    font-size: 26px;
   }
 }
 
