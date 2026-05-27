@@ -44,7 +44,6 @@ const requiredTables = [
   "training_programs",
   "workout_logs",
   "member_meal_plans",
-  "member_meal_plan_state",
   "trainer_food_bank",
   "shared_food_bank_items",
 ];

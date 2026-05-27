@@ -49,8 +49,6 @@ import {
 import { getPausedWorkoutById, purgeExpiredPausedWorkouts } from "./pausedWorkoutStorage";
 import { syncTrainerFoodBankFromRemote } from "./foodBankCloud";
 import { applyHydratedMealPlan } from "./mealPlanCloud";
-import { applyHydratedMemberMealPlanState } from "./memberMealPlanStateCloud";
-import { MEAL_PLAN_STATE_CHANGED_EVENT } from "./memberMealPlanState";
 import { notifyMealPlanChanged } from "./mealPlanStorage";
 import { notifyInspirationItemsChanged, saveInspirationItemsToStorage } from "./inspirationStorage";
 import {
@@ -1062,14 +1060,6 @@ export function useAppState() {
             applyHydratedMealPlan(mealPlan);
           }
           notifyMealPlanChanged();
-        }
-        if (hydratedMember.mealPlanStates?.length) {
-          for (const row of hydratedMember.mealPlanStates) {
-            applyHydratedMemberMealPlanState(row.memberId, row.state);
-          }
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent(MEAL_PLAN_STATE_CHANGED_EVENT));
-          }
         }
         if (
           !cancelled &&
