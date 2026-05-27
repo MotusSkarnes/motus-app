@@ -1,5 +1,20 @@
+import { normalizeMicronutrients } from "./foodBankMicronutrients";
 import { buildDefaultFoodBankItems } from "./foodBankSeed";
-import type { FoodItem } from "./foodBankTypes";
+import type { FoodItem, FoodNutrition } from "./foodBankTypes";
+
+function normalizeFoodNutrition(nutrition: FoodNutrition): FoodNutrition {
+  return {
+    ...nutrition,
+    micronutrients: normalizeMicronutrients(nutrition.micronutrients),
+  };
+}
+
+function normalizeFoodItem(item: FoodItem): FoodItem {
+  return {
+    ...item,
+    nutritionPer100g: normalizeFoodNutrition(item.nutritionPer100g),
+  };
+}
 
 export const FOOD_BANK_STORAGE_KEY = "motus_food_bank_v1";
 export const FOOD_BANK_FAVORITES_KEY = "motus_food_bank_favorites_v1";
@@ -36,7 +51,7 @@ export function loadFoodBankItems(): FoodItem[] {
 }
 
 export function persistFoodBankItems(items: FoodItem[]): void {
-  writeJson(FOOD_BANK_STORAGE_KEY, items);
+  writeJson(FOOD_BANK_STORAGE_KEY, items.map(normalizeFoodItem));
   notifyFoodBankChanged();
 }
 

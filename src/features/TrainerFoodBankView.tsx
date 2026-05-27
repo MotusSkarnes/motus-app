@@ -42,10 +42,19 @@ import {
   type FoodMacroFilter,
   type FoodSource,
 } from "../app/foodBankTypes";
+import { setMealPlanPendingFood } from "../app/mealPlanPendingFood";
 import { uid } from "../app/storage";
 import { GradientButton, OutlineButton, SelectBox, TextInput } from "../app/ui";
 import { FoodBankImportModal } from "./FoodBankImportModal";
+import {
+  FoodMicronutrientFormFields,
+  FoodMicronutrientTable,
+  micronutrientFormDefaults,
+  micronutrientFormFromNutrition,
+  parseMicronutrientForm,
+} from "./FoodMicronutrientSection";
 import { FoodImageField } from "./FoodImageField";
+import type { FoodMicronutrientKey } from "../app/foodBankMicronutrients";
 import "../foodbank.css";
 
 const MAX_FOOD_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -63,9 +72,16 @@ const FILTER_CHIPS: Array<{ id: FoodBankFilterChip; label: string; icon?: typeof
   })),
 ];
 
+type NutritionMemberOption = {
+  id: string;
+  name: string;
+};
+
 type TrainerFoodBankViewProps = {
   trainerName: string;
   trainerOwnerUserId?: string;
+  nutritionMembers?: NutritionMemberOption[];
+  onOpenMemberMealPlan?: (memberId: string) => void;
 };
 
 type FoodFormState = {
@@ -86,6 +102,7 @@ type FoodFormState = {
   sugar: string;
   saturatedFat: string;
   sodium: string;
+  micronutrients: Record<FoodMicronutrientKey, string>;
 };
 
 function emptyForm(): FoodFormState {
@@ -107,6 +124,7 @@ function emptyForm(): FoodFormState {
     sugar: "0",
     saturatedFat: "0",
     sodium: "0",
+    micronutrients: micronutrientFormDefaults(),
   };
 }
 
@@ -129,6 +147,7 @@ function formFromFood(item: FoodItem): FoodFormState {
     sugar: String(item.nutritionPer100g.sugar),
     saturatedFat: String(item.nutritionPer100g.saturatedFat),
     sodium: String(item.nutritionPer100g.sodium),
+    micronutrients: micronutrientFormFromNutrition(item.nutritionPer100g),
   };
 }
 
@@ -173,7 +192,12 @@ function MacroStrip({ item, compact = false }: { item: FoodItem; compact?: boole
   );
 }
 
-export function TrainerFoodBankView({ trainerName, trainerOwnerUserId }: TrainerFoodBankViewProps) {
+export function TrainerFoodBankView({
+  trainerName,
+  trainerOwnerUserId,
+  nutritionMembers = [],
+  onOpenMemberMealPlan,
+}: TrainerFoodBankViewProps) {
   const [items, setItems] = useState<FoodItem[]>(() => loadFoodBankItems());
   const [favoriteIds, setFavoriteIds] = useState<string[]>(() => loadFavoriteFoodIds());
   const [recentIds, setRecentIds] = useState<string[]>(() => loadRecentFoodIds());
@@ -192,6 +216,8 @@ export function TrainerFoodBankView({ trainerName, trainerOwnerUserId }: Trainer
   const [mineOnly, setMineOnly] = useState(false);
   const [macroFilter, setMacroFilter] = useState<FoodMacroFilter>(EMPTY_MACRO_FILTER);
   const [mealPlanNotice, setMealPlanNotice] = useState<string | null>(null);
+  const [mealPlanPickFood, setMealPlanPickFood] = useState<FoodItem | null>(null);
+  const [mealPlanGrams, setMealPlanGrams] = useState("100");
   const [importOpen, setImportOpen] = useState(false);
 
   const reload = useCallback(() => {
@@ -344,6 +370,7 @@ export function TrainerFoodBankView({ trainerName, trainerOwnerUserId }: Trainer
         sugar: parseNumber(form.sugar),
         saturatedFat: parseNumber(form.saturatedFat),
         sodium: parseNumber(form.sodium),
+        micronutrients: parseMicronutrientForm(form.micronutrients),
       },
     };
     const nextItems = upsertFoodItem(items, nextItem);
@@ -355,9 +382,31 @@ export function TrainerFoodBankView({ trainerName, trainerOwnerUserId }: Trainer
   };
 
 
+  function queueFoodForMember(member: NutritionMemberOption, item: FoodItem, grams: number) {
+    setMealPlanPendingFood({
+      memberId: member.id,
+      memberName: member.name,
+      food: item,
+      grams,
+    });
+    onOpenMemberMealPlan?.(member.id);
+    setMealPlanNotice(`${item.name} sendes til matplanen for ${member.name}.`);
+    window.setTimeout(() => setMealPlanNotice(null), 4500);
+  }
+
   const handleAddToMealPlan = (item: FoodItem) => {
-    setMealPlanNotice(`${item.name} er klar — matplan-redigering kobles på i neste steg.`);
-    window.setTimeout(() => setMealPlanNotice(null), 3500);
+    if (!nutritionMembers.length) {
+      setMealPlanNotice("Aktiver ernæringstilgang for minst én kunde under Klienter først.");
+      window.setTimeout(() => setMealPlanNotice(null), 4500);
+      return;
+    }
+    const grams = item.portionGrams || 100;
+    if (nutritionMembers.length === 1) {
+      queueFoodForMember(nutritionMembers[0], item, grams);
+      return;
+    }
+    setMealPlanGrams(String(grams));
+    setMealPlanPickFood(item);
   };
 
   return (
@@ -548,6 +597,11 @@ export function TrainerFoodBankView({ trainerName, trainerOwnerUserId }: Trainer
             </section>
 
             <section className="motus-foodbank-detail-section">
+              <h3>Mikronæringsstoffer</h3>
+              <FoodMicronutrientTable nutrition={selectedItem.nutritionPer100g} />
+            </section>
+
+            <section className="motus-foodbank-detail-section">
               <h3>Detaljer</h3>
               <dl className="motus-foodbank-meta-table">
                 <div><dt>Matvaregruppe</dt><dd>{foodCategoryMeta(selectedItem.category).label}</dd></div>
@@ -648,6 +702,54 @@ export function TrainerFoodBankView({ trainerName, trainerOwnerUserId }: Trainer
                 Nullstill
               </OutlineButton>
               <GradientButton onClick={() => setFilterOpen(false)}>Bruk filtre</GradientButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {mealPlanPickFood ? (
+        <div className="motus-foodbank-modal-backdrop" role="presentation" onClick={() => setMealPlanPickFood(null)}>
+          <div
+            className="motus-foodbank-modal"
+            role="dialog"
+            aria-labelledby="meal-plan-pick-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="motus-foodbank-modal-head">
+              <h2 id="meal-plan-pick-title">Legg til i matplan</h2>
+              <button type="button" className="motus-foodbank-icon-btn" onClick={() => setMealPlanPickFood(null)} aria-label="Lukk">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="motus-foodbank-modal-body space-y-3">
+              <p className="text-sm text-slate-600">
+                Velg kunde for <span className="font-semibold text-slate-900">{mealPlanPickFood.name}</span>.
+              </p>
+              <label className="motus-foodbank-field">
+                <span className="motus-foodbank-field-label">Gram</span>
+                <TextInput value={mealPlanGrams} onChange={(event) => setMealPlanGrams(event.target.value)} inputMode="decimal" />
+              </label>
+              <div className="max-h-[40vh] space-y-1 overflow-y-auto">
+                {nutritionMembers.map((member) => (
+                  <button
+                    key={member.id}
+                    type="button"
+                    className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-100 px-3 py-2.5 text-left text-sm hover:bg-teal-50"
+                    onClick={() => {
+                      const grams = Number(mealPlanGrams.replace(",", "."));
+                      queueFoodForMember(
+                        member,
+                        mealPlanPickFood,
+                        Number.isFinite(grams) && grams > 0 ? grams : mealPlanPickFood.portionGrams || 100,
+                      );
+                      setMealPlanPickFood(null);
+                    }}
+                  >
+                    <span className="font-medium text-slate-800">{member.name}</span>
+                    <span className="text-xs text-teal-700">Åpne matplan</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -755,6 +857,15 @@ export function TrainerFoodBankView({ trainerName, trainerOwnerUserId }: Trainer
                 <span className="motus-foodbank-field-label">Natrium (mg)</span>
                 <TextInput value={form.sodium} onChange={(event) => setForm((current) => ({ ...current, sodium: event.target.value }))} />
               </label>
+              <FoodMicronutrientFormFields
+                values={form.micronutrients}
+                onChange={(key, value) =>
+                  setForm((current) => ({
+                    ...current,
+                    micronutrients: { ...current.micronutrients, [key]: value },
+                  }))
+                }
+              />
             </div>
             {formStatus ? <p className="motus-foodbank-form-status">{formStatus}</p> : null}
             <div className="motus-foodbank-modal-actions">

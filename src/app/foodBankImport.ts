@@ -1,10 +1,15 @@
+import {
+  micronutrientCsvHeaderColumns,
+  micronutrientsFromCsvRow,
+  micronutrientsFromMatvaretabellen,
+} from "./foodBankMicronutrients";
 import { foodCategoryMeta, type FoodCategoryId, type FoodItem, type FoodSource } from "./foodBankTypes";
 import { uid } from "./storage";
 
 export const MATVARETABELLEN_FOODS_URL = "https://www.matvaretabellen.no/api/nb/foods.json";
 
-export const FOOD_IMPORT_CSV_TEMPLATE = `navn;kategori;kilde;opprinnelse;porsjon;porsjon_gram;kcal;protein;karbohydrater;fett;kostfiber;sukker;mettet_fett;natrium_mg;emoji
-Kyllingbryst;proteinkilder;egen;Kjøtt & fjærkre;100 g;100;165;31;0;3.6;0;0;1;74;🍗`;
+export const FOOD_IMPORT_CSV_TEMPLATE = `navn;kategori;kilde;opprinnelse;porsjon;porsjon_gram;kcal;protein;karbohydrater;fett;kostfiber;sukker;mettet_fett;natrium_mg;${micronutrientCsvHeaderColumns()};emoji
+Kyllingbryst;proteinkilder;egen;Kjøtt & fjærkre;100 g;100;165;31;0;3.6;0;0;1;74;;;;;;;;;;;;;;;;;🍗`;
 
 export type FoodImportMergeMode = "skip" | "update";
 
@@ -92,9 +97,11 @@ function parseSource(value: string): FoodSource {
 function constituentAmount(food: MatvaretabellenFood, nutrientId: string): number {
   const row = food.constituents?.find((entry) => entry.nutrientId === nutrientId);
   if (!row || row.quantity === undefined) return 0;
-  let amount = row.quantity;
-  if (nutrientId === NUTRIENT_IDS.sodium && row.unit === "mg") return amount;
-  if (nutrientId === NUTRIENT_IDS.sodium && row.unit === "g") return amount * 1000;
+  const amount = row.quantity;
+  if (nutrientId === NUTRIENT_IDS.sodium) {
+    if (row.unit === "mg") return amount;
+    if (row.unit === "g") return amount * 1000;
+  }
   return amount;
 }
 
@@ -151,6 +158,7 @@ export function mapMatvaretabellenFood(food: MatvaretabellenFood, trainerName: s
       sugar: constituentAmount(food, NUTRIENT_IDS.sugar),
       saturatedFat: constituentAmount(food, NUTRIENT_IDS.saturatedFat),
       sodium: constituentAmount(food, NUTRIENT_IDS.sodium),
+      micronutrients: micronutrientsFromMatvaretabellen(food.constituents),
     },
   };
 }
@@ -218,6 +226,7 @@ function rowToFoodItem(row: Record<string, string>, trainerName: string, lineNo:
       sugar: parseNumber(row.sukker ?? row.sugar),
       saturatedFat: parseNumber(row.mettet_fett ?? row.saturated_fat),
       sodium: parseNumber(row.natrium_mg ?? row.sodium),
+      micronutrients: micronutrientsFromCsvRow(row),
     },
   };
 }
