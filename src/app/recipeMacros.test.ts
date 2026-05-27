@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_INSPIRATION_RECIPES } from "./defaultInspirationRecipes";
 import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import {
+  applyCanonicalRecipeBodies,
   computeRecipeMacros,
   extractRecipeIngredientLines,
+  parseIngredientLine,
   parseRecipeServings,
 } from "./recipeMacros";
 
@@ -24,7 +27,7 @@ describe("recipeMacros", () => {
 
   it("parser porsjoner og ingredienslinjer", () => {
     expect(parseRecipeServings(OATMEAL_BODY)).toBe(1);
-    expect(extractRecipeIngredientLines(OATMEAL_BODY).length).toBe(5);
+    expect(extractRecipeIngredientLines(OATMEAL_BODY).length).toBe(4);
   });
 
   it("beregner makroer for havregrøt-oppskrift", () => {
@@ -63,5 +66,30 @@ Slik gjør du
     const result = computeRecipeMacros(salmonBody, foods);
     expect(result?.servings).toBe(2);
     expect(result?.perServing.kcal).toBeGreaterThan(300);
+  });
+
+  it("beregner makroer for alle standardoppskrifter", () => {
+    const foods = buildDefaultFoodBankItems();
+    for (const recipe of DEFAULT_INSPIRATION_RECIPES) {
+      const lines = extractRecipeIngredientLines(recipe.body);
+      const result = computeRecipeMacros(recipe.body, foods);
+      expect(result, recipe.title).not.toBeNull();
+      expect(result!.matchedCount, recipe.title).toBeGreaterThanOrEqual(Math.min(lines.length, 3));
+      expect(result!.perServing.kcal, recipe.title).toBeGreaterThan(50);
+      for (const line of lines) {
+        expect(parseIngredientLine(line), line).not.toBeNull();
+      }
+    }
+  });
+
+  it("bytter inn kanonisk oppskriftstekst når lagret versjon mangler ingredienser", () => {
+    const foods = buildDefaultFoodBankItems();
+    const canonical = DEFAULT_INSPIRATION_RECIPES[0];
+    const patched = applyCanonicalRecipeBodies(
+      [{ id: canonical.id, category: "recipes", body: "Kort oppskrift uten ingrediensliste." }],
+      undefined,
+      foods,
+    );
+    expect(computeRecipeMacros(patched[0].body, foods)).not.toBeNull();
   });
 });

@@ -1,11 +1,25 @@
+import { DEFAULT_RECIPE_BODY_BY_ID } from "./defaultInspirationRecipes";
+import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import { computeMacrosForGrams, type MacroTotals } from "./mealPlanMacros";
-import type { FoodItem, FoodNutrition } from "./foodBankTypes";
+import type { FoodCategoryId, FoodItem, FoodNutrition } from "./foodBankTypes";
 
 export type RecipeMacroResult = {
   perServing: MacroTotals;
   servings: number;
   matchedCount: number;
   ingredientCount: number;
+};
+
+export type RecipeIngredient = {
+  key: string;
+  sourceLine: string;
+  displayAmount: string;
+  foodId: string;
+  foodName: string;
+  category: FoodCategoryId;
+  grams: number;
+  macros: MacroTotals;
+  nutritionPer100g: FoodNutrition;
 };
 
 type SyntheticFood = { name: string; nutritionPer100g: FoodNutrition };
@@ -31,6 +45,10 @@ const SYNTHETIC_FOODS: SyntheticFood[] = [
   {
     name: "parmesan",
     nutritionPer100g: { kcal: 392, protein: 35, carbs: 3, fat: 26, fiber: 0, sugar: 0, saturatedFat: 17, sodium: 1200 },
+  },
+  {
+    name: "sitron",
+    nutritionPer100g: { kcal: 29, protein: 1.1, carbs: 9, fat: 0.3, fiber: 2.8, sugar: 2.5, saturatedFat: 0, sodium: 2 },
   },
 ];
 
@@ -76,6 +94,9 @@ const FOOD_ALIASES: Record<string, string> = {
   laks: "laks",
   laksefilet: "laks",
   sotpotet: "søtpotet",
+  potet: "potet kokt",
+  ris: "basmatiris tørr",
+  tørrris: "basmatiris tørr",
   brokkoli: "brokkoli",
   tunfisk: "tunfisk i vann",
   bonner: "bønner kidney",
@@ -84,7 +105,9 @@ const FOOD_ALIASES: Record<string, string> = {
   hvite: "bønner kidney",
   cherrytomater: "tomat",
   olivenolje: "olivenolje",
-  sitron: "appelsin",
+  sitron: "sitron",
+  sitronsaft: "sitron",
+  saft: "sitron",
   tortill: "fullkornstortilla",
   gresk: "gresk yoghurt",
   yoghurt: "gresk yoghurt",
@@ -94,6 +117,13 @@ const FOOD_ALIASES: Record<string, string> = {
 
 const NEGLIGIBLE_PATTERN =
   /^(kanel|salt|pepper|chiliflak|gresslok|persille|basilikum|dill|oregano|paprikakrydder|sukker|valgfritt)/i;
+
+function isNegligibleIngredientLine(line: string): boolean {
+  const withoutQty = line
+    .replace(/^(\d+(?:[.,]\d+)?(?:\s*\/\s*\d+)?)\s*(?:dl|ss|ts|kg|g|stk|skiver?|boks|fedd|håndfull|handfull|lite|stor)?\s*/i, "")
+    .trim();
+  return NEGLIGIBLE_PATTERN.test(line) || NEGLIGIBLE_PATTERN.test(withoutQty);
+}
 
 function aliasKeysFor(name: string): string[] {
   const key = normalizeFoodKey(name);
@@ -138,7 +168,7 @@ export function extractRecipeIngredientLines(body: string): string[] {
     .filter(
       (line) =>
         line.length > 0 &&
-        !NEGLIGIBLE_PATTERN.test(line) &&
+        !isNegligibleIngredientLine(line) &&
         !/\(valgfritt\)/i.test(line),
     );
 }
@@ -181,6 +211,25 @@ export type ParsedIngredient = {
 export function parseIngredientLine(line: string): ParsedIngredient | null {
   let text = line.trim();
   if (!text) return null;
+
+  const juiceFrom = text.match(/^saft\s+fra\s+(.+)$/i);
+  if (juiceFrom) {
+    return parseIngredientLine(juiceFrom[1].trim());
+  }
+
+  text = text
+    .replace(/^(revet|fersk)\s+/i, "")
+    .replace(/\s+til\s+servering.*$/i, "")
+    .replace(/,?\s*(og\s+)?frisk\s+basilikum.*$/i, "")
+    .trim();
+
+  if (/^sitron\b/i.test(text) && /(salt|pepper|dill)/i.test(text)) {
+    return { searchText: "sitron", quantity: 0.5, unit: "stk" };
+  }
+
+  if (/parmesan/i.test(text) && !/^\d/.test(text)) {
+    return { searchText: "parmesan", grams: 15 };
+  }
 
   let explicitGrams: number | null = null;
   const perPiece = text.match(/\(ca\.?\s*(\d+(?:[.,]\d+)?)\s*g\s*per\s*stk/i);
@@ -280,7 +329,7 @@ function convertQuantityToGrams(
     if (key.includes("avokado")) return quantity * 100;
     if (key.includes("laksefilet") || key.includes("laks")) return quantity * 150;
     if (key.includes("tortill")) return quantity * 65;
-    if (key.includes("sitron")) return quantity * 30;
+    if (key.includes("sitron")) return quantity * 40;
     return quantity * 80;
   }
 
@@ -318,6 +367,13 @@ function lookupSynthetic(searchText: string): SyntheticFood | null {
 function lookupFoodBankItem(searchText: string, foodItems: FoodItem[]): FoodItem | null {
   const key = normalizeFoodKey(searchText);
 
+  if (key.includes("eller")) {
+    for (const part of searchText.split(/\s+eller\s+/i)) {
+      const hit = lookupFoodBankItem(part.trim(), foodItems);
+      if (hit) return hit;
+    }
+  }
+
   for (const [aliasKey, targetName] of Object.entries(FOOD_ALIASES)) {
     if (key.includes(aliasKey)) {
       const normalizedTarget = normalizeFoodKey(targetName);
@@ -348,37 +404,125 @@ function lookupFoodBankItem(searchText: string, foodItems: FoodItem[]): FoodItem
   return bestScore >= 4 ? best : null;
 }
 
-export function computeRecipeMacros(body: string, foodItems: FoodItem[]): RecipeMacroResult | null {
+function foodRowId(food: FoodItem | SyntheticFood): string {
+  return "id" in food ? food.id : `synthetic:${normalizeFoodKey(food.name)}`;
+}
+
+function foodRowCategory(food: FoodItem | SyntheticFood): FoodCategoryId {
+  if ("category" in food) return food.category;
+  if (normalizeFoodKey(food.name).includes("pasta") || normalizeFoodKey(food.name).includes("ris")) {
+    return "karbohydrater";
+  }
+  return "karbohydrater";
+}
+
+function formatQuantity(value: number): string {
+  if (Math.abs(value - Math.round(value)) < 0.05) return String(Math.round(value));
+  return value.toFixed(1).replace(".", ",");
+}
+
+const UNIT_LABELS: Record<string, string> = {
+  dl: "dl",
+  ss: "ss",
+  ts: "ts",
+  kg: "kg",
+  g: "g",
+  stk: "stk",
+  skive: "skive",
+  skiver: "skiver",
+  boks: "boks",
+  fedd: "fedd",
+  håndfull: "håndfull",
+  handfull: "håndfull",
+  lite: "lite",
+  stor: "stor",
+};
+
+export function formatIngredientDisplay(
+  parsed: ParsedIngredient,
+  grams: number,
+  foodName: string,
+): string {
+  if (parsed.quantity != null && parsed.unit) {
+    const unit = UNIT_LABELS[parsed.unit] ?? parsed.unit;
+    return `${formatQuantity(parsed.quantity)} ${unit} ${foodName}`;
+  }
+  if (parsed.grams != null && parsed.grams > 0 && !parsed.quantity) {
+    return `${formatQuantity(parsed.grams)} g ${foodName}`;
+  }
+  return `${Math.round(grams)} g ${foodName}`;
+}
+
+export function computeRecipeIngredients(body: string, foodItems: FoodItem[]): RecipeIngredient[] {
   const lines = extractRecipeIngredientLines(body);
-  if (lines.length === 0) return null;
+  const rows: RecipeIngredient[] = [];
 
-  const servings = parseRecipeServings(body);
-  let matchedCount = 0;
-  const totals: MacroTotals = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
-
-  for (const line of lines) {
+  lines.forEach((line, index) => {
     const parsed = parseIngredientLine(line);
-    if (!parsed) continue;
+    if (!parsed) return;
 
     const food = resolveFoodForIngredient(parsed.searchText, foodItems);
-    if (!food) continue;
+    if (!food) return;
 
     const grams =
       parsed.grams ??
       (parsed.quantity != null
         ? convertQuantityToGrams(parsed.quantity, parsed.unit ?? "", parsed.searchText, food)
         : 0);
-    if (grams <= 0) continue;
+    if (grams <= 0) return;
 
-    matchedCount += 1;
-    const macros = computeMacrosForGrams(food.nutritionPer100g, grams);
-    totals.kcal += macros.kcal;
-    totals.protein += macros.protein;
-    totals.carbs += macros.carbs;
-    totals.fat += macros.fat;
-  }
+    const name = food.name;
+    rows.push({
+      key: `ing-${index}`,
+      sourceLine: line,
+      displayAmount: formatIngredientDisplay(parsed, grams, name),
+      foodId: foodRowId(food),
+      foodName: name,
+      category: foodRowCategory(food),
+      grams,
+      macros: computeMacrosForGrams(food.nutritionPer100g, grams),
+      nutritionPer100g: food.nutritionPer100g,
+    });
+  });
 
-  if (matchedCount === 0) return null;
+  return rows;
+}
+
+/** Bytter inn standard oppskriftstekst når lagret versjon mangler ingrediensliste som kan beregnes. */
+export function applyCanonicalRecipeBodies<T extends { id: string; category?: string; body: string }>(
+  items: T[],
+  canonicalBodies: ReadonlyMap<string, string> = DEFAULT_RECIPE_BODY_BY_ID,
+  foodItems?: FoodItem[],
+): T[] {
+  const foods = foodItems ?? buildDefaultFoodBankItems();
+  return items.map((item) => {
+    if (item.category && item.category !== "recipes") return item;
+    const body = item.body.trim();
+    if (body && computeRecipeMacros(body, foods)) return item;
+    const canonical = canonicalBodies.get(item.id);
+    if (!canonical || canonical === body) return item;
+    if (!computeRecipeMacros(canonical, foods)) return item;
+    return { ...item, body: canonical };
+  });
+}
+
+export function computeRecipeMacros(body: string, foodItems: FoodItem[]): RecipeMacroResult | null {
+  const lines = extractRecipeIngredientLines(body);
+  if (lines.length === 0) return null;
+
+  const ingredients = computeRecipeIngredients(body, foodItems);
+  if (ingredients.length === 0) return null;
+
+  const servings = parseRecipeServings(body);
+  const totals = ingredients.reduce(
+    (acc, row) => ({
+      kcal: acc.kcal + row.macros.kcal,
+      protein: acc.protein + row.macros.protein,
+      carbs: acc.carbs + row.macros.carbs,
+      fat: acc.fat + row.macros.fat,
+    }),
+    { kcal: 0, protein: 0, carbs: 0, fat: 0 },
+  );
 
   return {
     perServing: {
@@ -388,7 +532,7 @@ export function computeRecipeMacros(body: string, foodItems: FoodItem[]): Recipe
       fat: totals.fat / servings,
     },
     servings,
-    matchedCount,
+    matchedCount: ingredients.length,
     ingredientCount: lines.length,
   };
 }

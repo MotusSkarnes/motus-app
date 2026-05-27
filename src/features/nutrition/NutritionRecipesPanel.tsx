@@ -9,6 +9,7 @@ import {
 } from "../../app/recipeMealCategory";
 import { useInspirationRecipeItems, type InspirationRecipeItem } from "../../app/inspirationRecipeItems";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
+import { RecipeIngredientList } from "../../components/RecipeIngredientList";
 import { RecipeMacroBlocks } from "../../components/RecipeMacroBlocks";
 import { RecipeMacroSummary } from "../../components/RecipeMacroSummary";
 import { Card, EmptyState, OutlineButton, PillButton } from "../../app/ui";
@@ -57,8 +58,12 @@ function RecipeDetail({ item, onBack }: { item: InspirationRecipeItem; onBack: (
           </div>
           <h2 className="mt-3 text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">{item.title}</h2>
           {item.description ? <p className="mt-2 text-sm text-slate-600 sm:text-base">{item.description}</p> : null}
+          <RecipeIngredientList body={item.body} foodItems={foodItems} />
           {item.body.trim() ? (
-            <div className="mt-5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 sm:text-base">{item.body}</div>
+            <details className="mt-4 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
+              <summary className="cursor-pointer text-xs font-semibold text-slate-600">Vis full oppskriftstekst</summary>
+              <div className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{item.body}</div>
+            </details>
           ) : null}
           {macros ? (
             <div className="mt-6">

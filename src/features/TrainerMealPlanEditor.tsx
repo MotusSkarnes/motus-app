@@ -21,7 +21,11 @@ import {
   suggestFoodsForMacros,
   sumDayMacros,
 } from "../app/mealPlanTrainerMacros";
+import { buildDefaultFoodBankItems } from "../app/foodBankSeed";
 import { formatMacro } from "../app/foodBankTypes";
+import { computeRecipeMacros } from "../app/recipeMacros";
+import { RecipeIngredientList } from "../components/RecipeIngredientList";
+import { RecipeMacroBlocks } from "../components/RecipeMacroBlocks";
 import { MealMacroMiniBar, TrainerMealPlanMacroPanel } from "./TrainerMealPlanMacroPanel";
 import { recipeToMealPlanEntry } from "../app/mealPlanRecipeEntry";
 import type { MealPlan, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "../app/mealPlanTypes";
@@ -53,6 +57,10 @@ export function TrainerMealPlanEditor({
   trainerOwnerUserId,
 }: TrainerMealPlanEditorProps) {
   const foodItems = useFoodBankItems();
+  const foodItemsForMacros = useMemo(
+    () => (foodItems.length > 0 ? foodItems : buildDefaultFoodBankItems()),
+    [foodItems],
+  );
   const { items: recipeItems, loading: recipesLoading } = useInspirationRecipeItems();
   const [plan, setPlan] = useState<MealPlan | null>(null);
   const [activeDayId, setActiveDayId] = useState("");
@@ -62,6 +70,7 @@ export function TrainerMealPlanEditor({
   const [recipePicker, setRecipePicker] = useState<RecipePickerState>(null);
   const [foodSearch, setFoodSearch] = useState("");
   const [recipeSearch, setRecipeSearch] = useState("");
+  const [recipePreviewId, setRecipePreviewId] = useState<string | null>(null);
   const [foodGrams, setFoodGrams] = useState("100");
   const [derivedTargetField, setDerivedTargetField] = useState<MacroTargetField | null>(null);
   const [targetBalanceWarning, setTargetBalanceWarning] = useState<string | null>(null);
@@ -188,6 +197,16 @@ export function TrainerMealPlanEditor({
     return list.slice(0, 40);
   }, [recipeItems, recipeSearch]);
 
+  const previewRecipe = useMemo(
+    () => recipeItems.find((row) => row.id === recipePreviewId) ?? null,
+    [recipeItems, recipePreviewId],
+  );
+
+  const previewRecipeMacros = useMemo(
+    () => (previewRecipe ? computeRecipeMacros(previewRecipe.body, foodItemsForMacros) : null),
+    [previewRecipe, foodItemsForMacros],
+  );
+
   const gramPreviewFood = useMemo(() => {
     if (!foodPicker) return null;
     const q = foodSearch.trim().toLowerCase();
@@ -304,6 +323,7 @@ export function TrainerMealPlanEditor({
     appendEntryToMeal(target, entry, { flushCloud: true });
     setRecipePicker(null);
     setRecipeSearch("");
+    setRecipePreviewId(null);
     const macroOk = entry.nutritionPer100g.kcal > 0;
     setSaveStatus(
       macroOk
@@ -709,7 +729,10 @@ export function TrainerMealPlanEditor({
           className="motus-foodbank-modal-backdrop"
           role="presentation"
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setRecipePicker(null);
+            if (e.target === e.currentTarget) {
+              setRecipePicker(null);
+              setRecipePreviewId(null);
+            }
           }}
         >
           <div
@@ -720,7 +743,15 @@ export function TrainerMealPlanEditor({
           >
             <div className="motus-foodbank-modal-head">
               <h3>Velg oppskrift</h3>
-              <button type="button" className="motus-foodbank-icon-btn" onClick={() => setRecipePicker(null)} aria-label="Lukk">
+              <button
+                type="button"
+                className="motus-foodbank-icon-btn"
+                onClick={() => {
+                  setRecipePicker(null);
+                  setRecipePreviewId(null);
+                }}
+                aria-label="Lukk"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -735,6 +766,7 @@ export function TrainerMealPlanEditor({
                   onClick={() => {
                     setFoodPicker(recipePicker);
                     setRecipePicker(null);
+                    setRecipePreviewId(null);
                     setFoodSearch("");
                   }}
                 >
@@ -746,36 +778,74 @@ export function TrainerMealPlanEditor({
                 <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
                 <input
                   value={recipeSearch}
-                  onChange={(e) => setRecipeSearch(e.target.value)}
+                  onChange={(e) => {
+                    setRecipeSearch(e.target.value);
+                    setRecipePreviewId(null);
+                  }}
                   placeholder="Søk oppskrift …"
                   aria-label="Søk oppskrift"
                 />
               </label>
-              <div className="max-h-[40vh] space-y-1 overflow-y-auto">
-                {recipesLoading ? (
-                  <p className="text-sm text-slate-500">Laster oppskrifter …</p>
-                ) : filteredRecipes.length === 0 ? (
-                  <p className="text-sm text-slate-500">
-                    Ingen oppskrifter funnet. Legg ut oppskrifter under Utforsk først.
-                  </p>
-                ) : (
-                  filteredRecipes.map((recipe) => (
-                    <button
-                      key={recipe.id}
-                      type="button"
-                      className="flex w-full flex-col items-start gap-0.5 rounded-xl border border-slate-100 px-3 py-2 text-left text-sm hover:bg-teal-50"
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        addRecipeToMeal(recipe.id);
-                      }}
-                    >
-                      <span className="font-medium text-slate-800">{recipe.title}</span>
-                      <span className="text-xs text-slate-500">{recipe.tag}</span>
-                    </button>
-                  ))
-                )}
+              <div className="motus-recipe-picker-grid">
+                <div className="max-h-[min(52vh,28rem)] space-y-1 overflow-y-auto">
+                  {recipesLoading ? (
+                    <p className="text-sm text-slate-500">Laster oppskrifter …</p>
+                  ) : filteredRecipes.length === 0 ? (
+                    <p className="text-sm text-slate-500">
+                      Ingen oppskrifter funnet. Legg ut oppskrifter under Utforsk først.
+                    </p>
+                  ) : (
+                    filteredRecipes.map((recipe) => {
+                      const selected = recipePreviewId === recipe.id;
+                      return (
+                        <button
+                          key={recipe.id}
+                          type="button"
+                          className={`flex w-full flex-col items-start gap-0.5 rounded-xl border px-3 py-2 text-left text-sm ${
+                            selected
+                              ? "border-teal-300 bg-teal-50 ring-1 ring-teal-200"
+                              : "border-slate-100 hover:bg-teal-50"
+                          }`}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setRecipePreviewId(recipe.id);
+                          }}
+                        >
+                          <span className="font-medium text-slate-800">{recipe.title}</span>
+                          <span className="text-xs text-slate-500">{recipe.tag}</span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+                <div className="motus-recipe-picker-preview max-h-[min(52vh,28rem)] overflow-y-auto">
+                  {previewRecipe ? (
+                    <div className="space-y-3">
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900">{previewRecipe.title}</h4>
+                        {previewRecipe.description ? (
+                          <p className="mt-1 text-xs text-slate-600">{previewRecipe.description}</p>
+                        ) : null}
+                      </div>
+                      <RecipeIngredientList body={previewRecipe.body} foodItems={foodItemsForMacros} />
+                      {previewRecipeMacros ? <RecipeMacroBlocks result={previewRecipeMacros} /> : null}
+                      <GradientButton
+                        type="button"
+                        className="w-full justify-center text-sm"
+                        onClick={() => addRecipeToMeal(previewRecipe.id)}
+                      >
+                        <Plus className="mr-1.5 h-4 w-4" aria-hidden />
+                        Legg til i måltid (1 porsjon)
+                      </GradientButton>
+                    </div>
+                  ) : (
+                    <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-3 py-6 text-center text-xs text-slate-500">
+                      Velg en oppskrift for å se ingredienser, mengder og bytteforslag før du legger den i matplanen.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>

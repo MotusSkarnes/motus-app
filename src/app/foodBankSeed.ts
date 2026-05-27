@@ -38,6 +38,7 @@ const SEED_ROWS: SeedRow[] = [
 
   { name: "Havregryn", category: "karbohydrater", origin: "Korn", emoji: "🌾", kcal: 379, protein: 13, carbs: 67, fat: 7, fiber: 10, sugar: 1, saturatedFat: 1.2, sodium: 2 },
   { name: "Basmatiris kokt", category: "karbohydrater", origin: "Korn", emoji: "🍚", kcal: 130, protein: 2.7, carbs: 28, fat: 0.3, fiber: 0.4, sugar: 0.1, saturatedFat: 0.1, sodium: 1 },
+  { name: "Basmatiris tørr", category: "karbohydrater", origin: "Korn", emoji: "🍚", kcal: 350, protein: 7.5, carbs: 78, fat: 0.6, fiber: 1.3, sugar: 0.1, saturatedFat: 0.1, sodium: 1 },
   { name: "Fullkornspasta kokt", category: "karbohydrater", origin: "Korn", emoji: "🍝", kcal: 124, protein: 5, carbs: 26, fat: 0.5, fiber: 3.5, sugar: 0.6, saturatedFat: 0.1, sodium: 1 },
   { name: "Søtpotet", category: "karbohydrater", origin: "Rotfrukter", emoji: "🍠", kcal: 86, protein: 1.6, carbs: 20, fat: 0.1, fiber: 3, sugar: 4.2, saturatedFat: 0, sodium: 55 },
   { name: "Potet kokt", category: "karbohydrater", origin: "Rotfrukter", emoji: "🥔", kcal: 87, protein: 2, carbs: 20, fat: 0.1, fiber: 1.8, sugar: 0.8, saturatedFat: 0, sodium: 5 },

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { applyCanonicalRecipeBodies } from "./recipeMacros";
 import {
   fetchInspirationItemsForHub,
   INSPIRATION_CHANGED_EVENT,
@@ -41,7 +42,10 @@ export function filterRecipeInspirationItems(items: unknown[]): InspirationRecip
     if (!normalized) continue;
     if (!byId.has(normalized.id)) byId.set(normalized.id, normalized);
   }
-  return Array.from(byId.values()).sort((a, b) => b.title.localeCompare(a.title, "no"));
+  const patched = applyCanonicalRecipeBodies(
+    Array.from(byId.values()).map((item) => ({ ...item, category: "recipes" })),
+  );
+  return patched.sort((a, b) => b.title.localeCompare(a.title, "no"));
 }
 
 export function useInspirationRecipeItems(): { items: InspirationRecipeItem[]; loading: boolean; reload: () => void } {
