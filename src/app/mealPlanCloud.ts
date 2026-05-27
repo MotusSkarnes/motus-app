@@ -1,5 +1,5 @@
 import { createDefaultMealPlan } from "./mealPlanDefaults";
-import { loadMealPlanForMember, persistMealPlan } from "./mealPlanStorage";
+import { loadMealPlanForMember, persistMealPlan, readAllMealPlans } from "./mealPlanStorage";
 import type { MealPlan, MealPlanDay, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "./mealPlanTypes";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
@@ -30,13 +30,15 @@ function parseTargets(value: unknown): MealPlanTargets | undefined {
 function parseFoodEntry(value: unknown): MealPlanFoodEntry | null {
   if (!value || typeof value !== "object") return null;
   const row = value as Record<string, unknown>;
+  const foodName = String(row.foodName ?? row.food_name ?? "").trim();
+  if (!foodName) return null;
   const nutrition = row.nutritionPer100g ?? row.nutrition_per_100g;
-  if (!nutrition || typeof nutrition !== "object") return null;
-  const n = nutrition as Record<string, unknown>;
+  const n =
+    nutrition && typeof nutrition === "object" ? (nutrition as Record<string, unknown>) : ({} as Record<string, unknown>);
   return {
     id: String(row.id ?? `food-${Math.random().toString(36).slice(2, 9)}`),
     foodId: String(row.foodId ?? row.food_id ?? ""),
-    foodName: String(row.foodName ?? row.food_name ?? "Matvare"),
+    foodName,
     grams: Number(row.grams) > 0 ? Number(row.grams) : 0,
     note: typeof row.note === "string" ? row.note : undefined,
     nutritionPer100g: {
@@ -172,10 +174,53 @@ export async function readLinkedMealPlanMemberIds(primaryMemberId: string): Prom
       const trimmed = id.trim();
       if (trimmed) ids.add(trimmed);
     });
+    const email = String(user.email ?? "")
+      .trim()
+      .toLowerCase();
+    if (email.includes("@")) {
+      const { data: rows } = await supabaseClient.from("members").select("id").ilike("email", email);
+      for (const row of rows ?? []) {
+        const id = String((row as { id?: string }).id ?? "").trim();
+        if (id) ids.add(id);
+      }
+    }
   } catch {
     /* ignore */
   }
   return [...ids];
+}
+
+/** Alle mulige member_id-er for samme person (JWT, e-post, valgt medlem). */
+export async function resolveMealPlanLookupIds(primaryMemberId: string, memberEmail?: string): Promise<string[]> {
+  const ids = new Set<string>();
+  for (const id of await readLinkedMealPlanMemberIds(primaryMemberId)) {
+    if (id) ids.add(id);
+  }
+  const email = memberEmail?.trim().toLowerCase();
+  if (email?.includes("@") && supabaseClient) {
+    try {
+      const { data: rows } = await supabaseClient.from("members").select("id").ilike("email", email);
+      for (const row of rows ?? []) {
+        const id = String((row as { id?: string }).id ?? "").trim();
+        if (id) ids.add(id);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return [...ids];
+}
+
+function loadBestLocalMealPlan(lookupIds: string[]): MealPlan | null {
+  const all = readAllMealPlans();
+  const candidates: MealPlan[] = [];
+  for (const id of lookupIds) {
+    const fromKey = all[id];
+    if (fromKey?.days?.length) candidates.push(fromKey);
+    const loaded = loadMealPlanForMember(id);
+    if (loaded) candidates.push(loaded);
+  }
+  return pickPreferredMealPlan(candidates);
 }
 
 export async function saveMealPlanToSupabase(
@@ -220,51 +265,63 @@ export function scheduleMealPlanCloudSave(ownerUserId: string, plan: MealPlan): 
   }, 700);
 }
 
-/** Sky er kilde når rad finnes; ellers push lokal plan én gang. */
+/** Sky er kilde når rad finnes; overskriver aldri PT-plan med tom standardplan. */
 export async function syncMealPlanForMember(
   memberId: string,
   ownerUserId: string,
+  memberEmail?: string,
 ): Promise<{ plan: MealPlan; cloudSynced: boolean }> {
-  const lookupIds = await readLinkedMealPlanMemberIds(memberId);
+  const lookupIds = await resolveMealPlanLookupIds(memberId, memberEmail);
   const trimmedMemberId = memberId.trim() || lookupIds[0] || "";
   const remote = await fetchMealPlanFromSupabase(lookupIds);
-  const local = loadMealPlanForMember(trimmedMemberId);
+  const local = loadBestLocalMealPlan(lookupIds);
 
   if (remote) {
-    const preferred =
-      local && countMealPlanFoodItems(local) > countMealPlanFoodItems(remote) && planUpdatedAtMs(local) > planUpdatedAtMs(remote)
-        ? local
-        : remote;
-    if (!mealPlansEqual(loadMealPlanForMember(trimmedMemberId), preferred)) {
-      persistMealPlan({ ...preferred, memberId: trimmedMemberId }, { notify: false });
+    const preferred = pickPreferredMealPlan([remote, local].filter((row): row is MealPlan => Boolean(row))) ?? remote;
+    const normalized = { ...preferred, memberId: trimmedMemberId };
+    if (!mealPlansEqual(loadMealPlanForMember(trimmedMemberId), normalized)) {
+      persistMealPlan(normalized, { notify: false });
     }
-    return { plan: preferred, cloudSynced: true };
+    return { plan: normalized, cloudSynced: true };
   }
 
-  let fallback = local;
-  if (!fallback) {
-    fallback = createDefaultMealPlan(trimmedMemberId);
-    persistMealPlan(fallback, { notify: false });
+  if (local && (countMealPlanFoodItems(local) > 0 || local.notes.trim())) {
+    const normalized = { ...local, memberId: trimmedMemberId };
+    persistMealPlan(normalized, { notify: false });
+    return { plan: normalized, cloudSynced: false };
   }
 
-  if (!ownerUserId.trim() || !isSupabaseConfigured) {
-    return { plan: fallback, cloudSynced: false };
+  const fallback = local ?? createDefaultMealPlan(trimmedMemberId);
+  const normalized = { ...fallback, memberId: trimmedMemberId };
+  persistMealPlan(normalized, { notify: false });
+
+  // Medlem skal aldri overskrive PT sin plan i sky med tom standardplan.
+  if (ownerUserId.trim() && isSupabaseConfigured && countMealPlanFoodItems(normalized) > 0) {
+    const uploaded = await saveMealPlanToSupabase(ownerUserId, normalized);
+    return { plan: normalized, cloudSynced: uploaded };
   }
 
-  const uploaded = await saveMealPlanToSupabase(ownerUserId, fallback);
-  return { plan: fallback, cloudSynced: uploaded };
+  return { plan: normalized, cloudSynced: false };
 }
 
-/** Brukes etter hydrate-member-data — lagrer plan lokalt for medlem. */
-export function applyHydratedMealPlan(plan: MealPlan): void {
+/** Brukes etter hydrate-member-data — lagrer plan lokalt for medlem (alle koblede id-er). */
+export function applyHydratedMealPlan(plan: MealPlan, aliasMemberIds: string[] = []): void {
   const memberId = plan.memberId.trim();
   if (!memberId || !plan.days.length) return;
-  const existing = loadMealPlanForMember(memberId);
-  const preferred = pickPreferredMealPlan(
-    [existing, plan].filter((row): row is MealPlan => Boolean(row)),
-  );
-  if (!preferred || mealPlansEqual(existing, preferred)) return;
-  persistMealPlan(preferred);
+  const targetIds = [...new Set([memberId, ...aliasMemberIds.map((id) => id.trim()).filter(Boolean)])];
+  let preferred = plan;
+  for (const id of targetIds) {
+    const existing = loadMealPlanForMember(id);
+    if (existing) {
+      preferred = pickPreferredMealPlan([preferred, existing]) ?? preferred;
+    }
+  }
+  for (const id of targetIds) {
+    const normalized = { ...preferred, memberId: id };
+    if (!mealPlansEqual(loadMealPlanForMember(id), normalized)) {
+      persistMealPlan(normalized, { notify: false });
+    }
+  }
 }
 
 export async function persistMealPlanBundle(

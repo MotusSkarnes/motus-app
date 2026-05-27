@@ -10,11 +10,13 @@ import { NutritionHub } from "./nutrition/NutritionHub";
 type MemberNutritionViewProps = {
   memberId: string;
   memberName: string;
+  memberEmail?: string;
 };
 
-export function MemberNutritionView({ memberId, memberName }: MemberNutritionViewProps) {
+export function MemberNutritionView({ memberId, memberName, memberEmail }: MemberNutritionViewProps) {
   const [plan, setPlan] = useState<MealPlan | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cloudSynced, setCloudSynced] = useState(true);
   const reloadInFlightRef = useRef(false);
 
   const reload = useCallback(async () => {
@@ -22,13 +24,14 @@ export function MemberNutritionView({ memberId, memberName }: MemberNutritionVie
     reloadInFlightRef.current = true;
     setLoading(true);
     try {
-      const result = await syncMealPlanForMember(memberId, "");
+      const result = await syncMealPlanForMember(memberId, "", memberEmail);
       setPlan(result.plan);
+      setCloudSynced(result.cloudSynced);
     } finally {
       reloadInFlightRef.current = false;
       setLoading(false);
     }
-  }, [memberId]);
+  }, [memberId, memberEmail]);
 
   useEffect(() => {
     void reload();
@@ -61,7 +64,17 @@ export function MemberNutritionView({ memberId, memberName }: MemberNutritionVie
         </Card>
       );
     }
-    return <MemberMealPlanDashboard plan={plan} memberId={memberId} memberName={memberName} />;
+    const hasFood = plan.days.some((day) => day.meals.some((meal) => meal.items.length > 0));
+    return (
+      <>
+        {!cloudSynced && !hasFood ? (
+          <Card className="mb-3 border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            Kunne ikke hente matplan fra sky ennå. Sjekk nett og oppdater siden, eller be PT trykke «Lagre» på matplanen din.
+          </Card>
+        ) : null}
+        <MemberMealPlanDashboard plan={plan} memberId={memberId} memberName={memberName} />
+      </>
+    );
   })();
 
   return <NutritionHub mealPlan={mealPlanPanel} />;

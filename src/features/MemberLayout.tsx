@@ -550,7 +550,11 @@ export function MemberLayout({
         <div className="pb-24 lg:pb-0">
         {memberTab === "nutrition" ? (
           hasNutritionAccess && activeMember ? (
-            <MemberNutritionView memberId={activeMember.id} memberName={activeMember.name} />
+            <MemberNutritionView
+              memberId={activeMember.id}
+              memberName={activeMember.name}
+              memberEmail={activeMember.email}
+            />
           ) : (
             <MemberFeatureGate variant="nutrition" />
           )

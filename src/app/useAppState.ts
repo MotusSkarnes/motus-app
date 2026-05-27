@@ -1058,8 +1058,9 @@ export function useAppState() {
         setRemoteMemberPeriodPlanRows(periodPlanRows);
         writeCachedMemberPeriodPlanRows(periodPlanRows);
         if (hydratedMember.mealPlans?.length) {
+          const aliasIds = hydratedMember.members.map((m) => m.id).filter(Boolean);
           for (const mealPlan of hydratedMember.mealPlans) {
-            applyHydratedMealPlan(mealPlan);
+            applyHydratedMealPlan(mealPlan, aliasIds);
           }
           notifyMealPlanChanged();
         }

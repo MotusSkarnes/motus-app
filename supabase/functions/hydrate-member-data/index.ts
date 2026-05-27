@@ -339,6 +339,8 @@ Deno.serve(async (req) => {
       logs: [],
       messages: [],
       periodPlans: [],
+      mealPlans: [],
+      mealPlanStates: [],
       exercises: [],
     });
   }

@@ -4,6 +4,10 @@ import type { MealPlan } from "./mealPlanTypes";
 export const MEAL_PLANS_STORAGE_KEY = "motus_meal_plans_v1";
 export const MEAL_PLAN_CHANGED_EVENT = "motus-meal-plan-changed";
 
+export function readAllMealPlans(): Record<string, MealPlan> {
+  return readPlans();
+}
+
 function readPlans(): Record<string, MealPlan> {
   if (typeof window === "undefined") return {};
   try {
