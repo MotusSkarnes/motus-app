@@ -1579,3 +1579,206 @@
     font-size: 0.6875rem;
   }
 }
+
+/* PT matplan — makronedtelling og verktøy */
+.motus-pt-macro-panel {
+  border-radius: 1rem;
+  border: 1px solid rgba(48, 227, 190, 0.35);
+  background: linear-gradient(135deg, rgba(48, 227, 190, 0.08) 0%, rgba(255, 255, 255, 0.95) 55%);
+  padding: 0.85rem 1rem;
+}
+
+.motus-pt-macro-panel--empty {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: #f8fafc;
+}
+
+.motus-pt-macro-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-bottom: 0.65rem;
+}
+
+.motus-pt-macro-panel-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-pt-macro-panel-sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.6875rem;
+  color: #64748b;
+}
+
+.motus-pt-macro-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.motus-pt-macro-bar-grid {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .motus-pt-macro-bar-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.motus-pt-macro-bar-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin-bottom: 0.2rem;
+}
+
+.motus-pt-macro-bar-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.motus-pt-macro-bar-remaining {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #0d9488;
+}
+
+.motus-pt-macro-bar-remaining.is-over {
+  color: #e11d48;
+}
+
+.motus-pt-macro-bar-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.motus-pt-macro-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+.motus-pt-macro-bar-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.15rem;
+  font-size: 0.625rem;
+  color: #94a3b8;
+}
+
+.motus-pt-meal-budget {
+  margin-top: 0.35rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.motus-pt-meal-budget-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.motus-pt-meal-budget-track {
+  flex: 1;
+  min-width: 4rem;
+  max-width: 8rem;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(48, 227, 190, 0.15);
+  overflow: hidden;
+}
+
+.motus-pt-meal-budget-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: #30e3be;
+  transition: width 0.2s ease;
+}
+
+.motus-pt-meal-budget-text {
+  font-size: 0.625rem;
+  color: #64748b;
+}
+
+.motus-pt-food-remaining {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(48, 227, 190, 0.3);
+  background: rgba(48, 227, 190, 0.1);
+  padding: 0.5rem 0.65rem;
+  font-size: 0.75rem;
+  color: #0f766e;
+}
+
+.motus-pt-food-remaining.is-over {
+  border-color: rgba(244, 63, 94, 0.35);
+  background: rgba(244, 63, 94, 0.08);
+  color: #be123c;
+}
+
+.motus-pt-suggestions {
+  border-radius: 0.75rem;
+  border: 1px dashed rgba(217, 18, 120, 0.35);
+  background: rgba(217, 18, 120, 0.04);
+  padding: 0.5rem 0.55rem;
+}
+
+.motus-pt-suggestions-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #9d174d;
+}
+
+.motus-pt-suggestion-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: 0.55rem;
+  border: 0;
+  background: #fff;
+  padding: 0.35rem 0.45rem;
+  text-align: left;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.motus-pt-suggestion-row:hover {
+  background: rgba(48, 227, 190, 0.12);
+}
+
+.motus-pt-suggestion-meta {
+  font-size: 0.625rem;
+  color: #94a3b8;
+}
+
+.motus-pt-copy-days {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.motus-pt-copy-day-check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8125rem;
+  color: #334155;
+}

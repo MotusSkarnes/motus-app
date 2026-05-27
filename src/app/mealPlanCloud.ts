@@ -64,6 +64,7 @@ function parseMeal(value: unknown, dayIndex: number, mealIndex: number): MealPla
     name: String(row.name ?? "Måltid"),
     time: typeof row.time === "string" ? row.time : undefined,
     items,
+    targets: parseTargets(row.targets ?? row.macro_targets),
   };
 }
 

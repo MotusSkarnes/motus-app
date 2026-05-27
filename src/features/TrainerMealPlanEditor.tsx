@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { balanceMealPlanTargets, describeTargetBalance } from "../app/mealPlanTargetBalance";
 import type { MacroTargetField } from "../app/mealPlanTargetBalance";
-import { Plus, Save, Search, Soup, Trash2, X } from "lucide-react";
+import { Copy, Plus, Save, Search, Soup, Trash2, X } from "lucide-react";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import {
   flushMealPlanCloudSave,
@@ -13,6 +13,16 @@ import {
 import { useInspirationRecipeItems } from "../app/inspirationRecipeItems";
 import { consumeMealPlanPendingFood } from "../app/mealPlanPendingFood";
 import { computeMealMacros, formatMacroTotals } from "../app/mealPlanMacros";
+import {
+  copyMealToDays,
+  distributeDailyTargetsToMeals,
+  previewFoodAddition,
+  remainingMacros,
+  suggestFoodsForMacros,
+  sumDayMacros,
+} from "../app/mealPlanTrainerMacros";
+import { formatMacro } from "../app/foodBankTypes";
+import { MealMacroMiniBar, TrainerMealPlanMacroPanel } from "./TrainerMealPlanMacroPanel";
 import { recipeToMealPlanEntry } from "../app/mealPlanRecipeEntry";
 import type { MealPlan, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "../app/mealPlanTypes";
 import type { FoodItem } from "../app/foodBankTypes";
@@ -55,6 +65,8 @@ export function TrainerMealPlanEditor({
   const [foodGrams, setFoodGrams] = useState("100");
   const [derivedTargetField, setDerivedTargetField] = useState<MacroTargetField | null>(null);
   const [targetBalanceWarning, setTargetBalanceWarning] = useState<string | null>(null);
+  const [copyMeal, setCopyMeal] = useState<{ dayId: string; mealId: string; mealName: string } | null>(null);
+  const [copyTargetDayIds, setCopyTargetDayIds] = useState<string[]>([]);
   const reloadInFlightRef = useRef(false);
 
   const applyPendingFood = useCallback(
@@ -127,6 +139,34 @@ export function TrainerMealPlanEditor({
     [plan, activeDayId],
   );
 
+  const dayUsed = useMemo(() => (activeDay ? sumDayMacros(activeDay) : { kcal: 0, protein: 0, carbs: 0, fat: 0 }), [activeDay]);
+  const dayRemaining = useMemo(
+    () => remainingMacros(plan?.targets, dayUsed),
+    [plan?.targets, dayUsed],
+  );
+
+  const pickerMeal = useMemo(() => {
+    if (!foodPicker || !plan) return null;
+    const day = plan.days.find((d) => d.id === foodPicker.dayId);
+    return day?.meals.find((m) => m.id === foodPicker.mealId) ?? null;
+  }, [foodPicker, plan]);
+
+  const pickerMealUsed = useMemo(() => (pickerMeal ? computeMealMacros(pickerMeal) : null), [pickerMeal]);
+
+  const pickerRemaining = useMemo(() => {
+    if (!foodPicker || !plan) return dayRemaining;
+    const meal = pickerMeal;
+    if (meal?.targets) {
+      return remainingMacros(meal.targets, pickerMealUsed ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+    }
+    return dayRemaining;
+  }, [foodPicker, plan, pickerMeal, pickerMealUsed, dayRemaining]);
+
+  const suggestedFoods = useMemo(
+    () => suggestFoodsForMacros(foodItems, pickerRemaining, 6),
+    [foodItems, pickerRemaining],
+  );
+
   const filteredFoods = useMemo(() => {
     const q = foodSearch.trim().toLowerCase();
     let list = foodItems;
@@ -147,6 +187,20 @@ export function TrainerMealPlanEditor({
     }
     return list.slice(0, 40);
   }, [recipeItems, recipeSearch]);
+
+  const gramPreviewFood = useMemo(() => {
+    if (!foodPicker) return null;
+    const q = foodSearch.trim().toLowerCase();
+    if (!q) return foodItems[0] ?? null;
+    return foodItems.find((item) => item.name.toLowerCase().includes(q)) ?? foodItems[0] ?? null;
+  }, [foodPicker, foodSearch, foodItems]);
+
+  const gramPreview = useMemo(() => {
+    if (!foodPicker || !foodGrams.trim() || !gramPreviewFood) return null;
+    const grams = Number(foodGrams.replace(",", "."));
+    if (!Number.isFinite(grams) || grams <= 0) return null;
+    return previewFoodAddition(gramPreviewFood, grams, pickerRemaining);
+  }, [foodPicker, foodGrams, gramPreviewFood, pickerRemaining]);
 
   function updatePlan(next: MealPlan, options?: { flushCloud?: boolean }) {
     const stamped: MealPlan = { ...next, updatedAt: new Date().toISOString() };
@@ -283,6 +337,54 @@ export function TrainerMealPlanEditor({
     });
   }
 
+  function handleDistributeMeals(mode: "equal" | "standard") {
+    if (!plan || !activeDay || !plan.targets) return;
+    const meals = distributeDailyTargetsToMeals(activeDay, plan.targets, mode);
+    updatePlan({
+      ...plan,
+      days: plan.days.map((day) => (day.id === activeDay.id ? { ...day, meals } : day)),
+    });
+    setSaveStatus(mode === "standard" ? "Makro fordelt på frokost/lunsj/middag/snacks." : "Makro fordelt likt på alle måltid.");
+  }
+
+  function handleClearMealTargets() {
+    if (!plan || !activeDay) return;
+    updatePlan({
+      ...plan,
+      days: plan.days.map((day) =>
+        day.id === activeDay.id
+          ? {
+              ...day,
+              meals: day.meals.map((meal) => {
+                const { targets: _removed, ...rest } = meal;
+                return rest;
+              }),
+            }
+          : day,
+      ),
+    });
+  }
+
+  function openCopyMeal(dayId: string, meal: MealPlanMeal) {
+    if (meal.items.length === 0) {
+      setSaveStatus("Legg til matvarer i måltidet før du kopierer.");
+      return;
+    }
+    setCopyMeal({ dayId, mealId: meal.id, mealName: meal.name });
+    setCopyTargetDayIds(plan?.days.filter((d) => d.id !== dayId).map((d) => d.id) ?? []);
+  }
+
+  function handleConfirmCopyMeal() {
+    if (!plan || !copyMeal || copyTargetDayIds.length === 0) {
+      setCopyMeal(null);
+      return;
+    }
+    const next = copyMealToDays(plan, copyMeal.dayId, copyMeal.mealId, copyTargetDayIds, "append");
+    updatePlan(next);
+    setCopyMeal(null);
+    setSaveStatus(`${copyMeal.mealName} kopiert til ${copyTargetDayIds.length} dag(er).`);
+  }
+
   if (loading || !plan) {
     return <div className="rounded-xl border bg-slate-50 px-4 py-6 text-sm text-slate-600">Laster matplan …</div>;
   }
@@ -362,6 +464,17 @@ export function TrainerMealPlanEditor({
         ) : null}
       </div>
 
+      {activeDay ? (
+        <TrainerMealPlanMacroPanel
+          dayLabel={activeDay.label}
+          dailyTargets={plan.targets}
+          dayUsed={dayUsed}
+          dayRemaining={dayRemaining}
+          onDistribute={handleDistributeMeals}
+          onClearMealTargets={handleClearMealTargets}
+        />
+      ) : null}
+
       <div className="motus-mealplan-day-tabs scrollbar-none flex gap-2 overflow-x-auto pb-1">
         {plan.days.map((day) => {
           const active = day.id === activeDayId;
@@ -404,7 +517,10 @@ export function TrainerMealPlanEditor({
                   }
                   className="max-w-[12rem] font-semibold"
                 />
-                <span className="text-[11px] font-medium text-slate-500">{formatMacroTotals(computeMealMacros(meal))}</span>
+                <div className="flex flex-col items-end gap-0.5">
+                  <span className="text-[11px] font-medium text-slate-500">{formatMacroTotals(computeMealMacros(meal))}</span>
+                  <MealMacroMiniBar mealName={meal.name} used={computeMealMacros(meal)} targets={meal.targets} />
+                </div>
               </div>
               <ul className="mt-2 space-y-2">
                 {meal.items.map((item) => (
@@ -450,6 +566,15 @@ export function TrainerMealPlanEditor({
                   <Soup className="h-4 w-4" aria-hidden />
                   Legg til oppskrift
                 </OutlineButton>
+                <OutlineButton
+                  type="button"
+                  className="flex-1 sm:flex-none"
+                  onClick={() => openCopyMeal(activeDay.id, meal)}
+                  disabled={meal.items.length === 0}
+                >
+                  <Copy className="h-4 w-4" aria-hidden />
+                  Kopier til dager
+                </OutlineButton>
               </div>
             </div>
           ))}
@@ -468,7 +593,13 @@ export function TrainerMealPlanEditor({
       </details>
 
       {foodPicker ? (
-        <div className="motus-foodbank-modal-backdrop" role="presentation" onClick={() => setFoodPicker(null)}>
+        <div
+          className="motus-foodbank-modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setFoodPicker(null);
+          }}
+        >
           <div
             className="motus-foodbank-modal motus-foodbank-modal--wide"
             role="dialog"
@@ -482,6 +613,41 @@ export function TrainerMealPlanEditor({
               </button>
             </div>
             <div className="motus-foodbank-modal-body space-y-3">
+              {pickerRemaining.hasTargets ? (
+                <div
+                  className={`motus-pt-food-remaining ${pickerRemaining.kcal < 0 ? "is-over" : ""}`}
+                  role="status"
+                >
+                  <strong>Gjenstår{pickerMeal?.targets ? ` (${pickerMeal.name})` : " (dagen)"}:</strong>{" "}
+                  {formatMacro(pickerRemaining.kcal, 0)} kcal · P {formatMacro(pickerRemaining.protein, 0)} · K{" "}
+                  {formatMacro(pickerRemaining.carbs, 0)} · F {formatMacro(pickerRemaining.fat, 0)}
+                </div>
+              ) : null}
+              {suggestedFoods.length > 0 ? (
+                <div className="motus-pt-suggestions">
+                  <p className="motus-pt-suggestions-title">Forslag som passer makroene</p>
+                  {suggestedFoods.map(({ food, macros, reason }) => (
+                    <button
+                      key={food.id}
+                      type="button"
+                      className="motus-pt-suggestion-row"
+                      onClick={() => {
+                        setFoodGrams(String(food.portionGrams || 100));
+                        addFoodToMeal(food);
+                      }}
+                    >
+                      <span>
+                        <span className="font-medium text-slate-800">{food.name}</span>
+                        <span className="motus-pt-suggestion-meta">
+                          {" "}
+                          · {formatMacro(macros.kcal, 0)} kcal · {reason}
+                        </span>
+                      </span>
+                      <span className="text-xs text-teal-700">+</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               <div className="flex flex-wrap gap-2">
                 <OutlineButton
                   type="button"
@@ -510,6 +676,12 @@ export function TrainerMealPlanEditor({
                 <span>Gram</span>
                 <TextInput value={foodGrams} onChange={(e) => setFoodGrams(e.target.value)} inputMode="decimal" />
               </label>
+              {gramPreview && pickerRemaining.hasTargets ? (
+                <p className="text-[11px] text-slate-600">
+                  Eksempel ({gramPreviewFood?.name}): etter tillegg ca.{" "}
+                  <strong>{formatMacro(gramPreview.after.kcal, 0)} kcal</strong> igjen på dagen.
+                </p>
+              ) : null}
               <div className="max-h-[40vh] space-y-1 overflow-y-auto">
                 {filteredFoods.length === 0 ? (
                   <p className="text-sm text-slate-500">Ingen matvarer funnet. Utvid matvarebanken først.</p>
@@ -605,6 +777,61 @@ export function TrainerMealPlanEditor({
                   ))
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {copyMeal && plan ? (
+        <div
+          className="motus-foodbank-modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setCopyMeal(null);
+          }}
+        >
+          <div
+            className="motus-foodbank-modal"
+            role="dialog"
+            aria-label="Kopier måltid"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="motus-foodbank-modal-head">
+              <h3>Kopier «{copyMeal.mealName}»</h3>
+              <button type="button" className="motus-foodbank-icon-btn" onClick={() => setCopyMeal(null)} aria-label="Lukk">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="motus-foodbank-modal-body space-y-3">
+              <p className="text-sm text-slate-600">
+                Matvarer legges til samme måltid (frokost/lunsj osv.) på valgte dager. Eksisterende mat beholdes.
+              </p>
+              <div className="motus-pt-copy-days">
+                {plan.days
+                  .filter((d) => d.id !== copyMeal.dayId)
+                  .map((day) => (
+                    <label key={day.id} className="motus-pt-copy-day-check">
+                      <input
+                        type="checkbox"
+                        checked={copyTargetDayIds.includes(day.id)}
+                        onChange={(e) =>
+                          setCopyTargetDayIds((current) =>
+                            e.target.checked ? [...current, day.id] : current.filter((id) => id !== day.id),
+                          )
+                        }
+                      />
+                      {day.label}
+                    </label>
+                  ))}
+              </div>
+            </div>
+            <div className="motus-foodbank-modal-actions">
+              <OutlineButton type="button" onClick={() => setCopyMeal(null)}>
+                Avbryt
+              </OutlineButton>
+              <GradientButton type="button" onClick={handleConfirmCopyMeal}>
+                Kopier
+              </GradientButton>
             </div>
           </div>
         </div>

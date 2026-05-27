@@ -22,6 +22,8 @@ export type MealPlanMeal = {
   name: string;
   time?: string;
   items: MealPlanFoodEntry[];
+  /** PT: makrobudsjett for dette måltidet (valgfritt, fra «Fordel på måltid»). */
+  targets?: MealPlanTargets;
 };
 
 export type MealPlanDay = {
