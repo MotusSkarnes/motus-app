@@ -14,6 +14,7 @@ import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient
 
 const FOOD_IMAGE_BUCKET = "exercise-images";
 const FOOD_IMAGE_PREFIX = "food-bank";
+const SHARED_FOOD_BANK_TABLE = "shared_food_bank_items";
 
 export type TrainerFoodBankSnapshot = {
   items: FoodItem[];
@@ -25,6 +26,12 @@ export type TrainerFoodBankSnapshot = {
 export type TrainerFoodBankSaveResult =
   | { ok: true; cloudSynced: boolean; warning?: string }
   | { ok: false; error: string };
+
+function shouldShareFoodItem(item: FoodItem): boolean {
+  if (item.isCustom === true) return false;
+  if (item.isEdited === true) return false;
+  return item.source === "matvaretabell" || item.source === "usda";
+}
 
 function parseStringIds(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -55,6 +62,55 @@ function cacheTrainerFoodBankSnapshot(snapshot: TrainerFoodBankSnapshot): void {
   persistRecentFoodIds(snapshot.recentIds);
 }
 
+function mergeFoodItems(preferred: FoodItem[], fallback: FoodItem[]): FoodItem[] {
+  const byId = new Map<string, FoodItem>();
+  for (const item of fallback) {
+    const id = item.id?.trim();
+    if (!id) continue;
+    byId.set(id, item);
+  }
+  for (const item of preferred) {
+    const id = item.id?.trim();
+    if (!id) continue;
+    byId.set(id, item);
+  }
+  return Array.from(byId.values());
+}
+
+async function fetchSharedFoodItemsFromSupabase(): Promise<FoodItem[]> {
+  if (!supabaseClient) return [];
+  const { data, error } = await supabaseClient.from(SHARED_FOOD_BANK_TABLE).select("id, item, updated_at").order("updated_at", { ascending: false });
+  if (error) {
+    console.warn("shared_food_bank_items fetch failed:", error.message);
+    return [];
+  }
+  const rows = Array.isArray(data) ? (data as Array<Record<string, unknown>>) : [];
+  const items = rows
+    .map((row) => row.item)
+    .flatMap((value) => parseFoodItems([value]))
+    .filter(Boolean);
+  return items;
+}
+
+async function upsertSharedFoodItemsToSupabase(items: FoodItem[]): Promise<boolean> {
+  if (!supabaseClient) return false;
+  const shared = items.filter(shouldShareFoodItem);
+  if (shared.length === 0) return true;
+  const { error } = await supabaseClient.from(SHARED_FOOD_BANK_TABLE).upsert(
+    shared.map((item) => ({
+      id: item.id,
+      item,
+      updated_at: new Date().toISOString(),
+    })),
+    { onConflict: "id" },
+  );
+  if (error) {
+    console.warn("shared_food_bank_items upsert failed:", error.message);
+    return false;
+  }
+  return true;
+}
+
 export async function fetchTrainerFoodBankFromSupabase(ownerUserId: string): Promise<TrainerFoodBankSnapshot | null> {
   if (!supabaseClient || !ownerUserId.trim()) return null;
   const { data, error } = await supabaseClient
@@ -81,6 +137,8 @@ export async function saveTrainerFoodBankToSupabase(
   snapshot: Pick<TrainerFoodBankSnapshot, "items" | "favoriteIds" | "recentIds">,
 ): Promise<boolean> {
   if (!supabaseClient || !ownerUserId.trim()) return false;
+  // Upsert shared items best-effort; ignore failure so per-PT save still works.
+  void upsertSharedFoodItemsToSupabase(snapshot.items);
   const { error } = await supabaseClient.from("trainer_food_bank").upsert({
     owner_user_id: ownerUserId,
     items: snapshot.items,
@@ -135,9 +193,13 @@ async function prepareItemsWithRemoteImages(items: FoodItem[]): Promise<FoodItem
 /** Hent matvarebank fra skyen, oppdater lokal cache, varsle lyttere. */
 export async function pullTrainerFoodBankFromRemote(ownerUserId: string): Promise<TrainerFoodBankSnapshot | null> {
   if (!isSupabaseConfigured || !ownerUserId.trim()) return null;
-  const snapshot = await fetchTrainerFoodBankFromSupabase(ownerUserId);
+  const [sharedItems, snapshot] = await Promise.all([
+    fetchSharedFoodItemsFromSupabase(),
+    fetchTrainerFoodBankFromSupabase(ownerUserId),
+  ]);
   if (!snapshot) return null;
-  cacheTrainerFoodBankSnapshot(snapshot);
+  const merged = { ...snapshot, items: mergeFoodItems(snapshot.items, sharedItems) };
+  cacheTrainerFoodBankSnapshot(merged);
   return snapshot;
 }
 
@@ -149,13 +211,17 @@ export async function syncTrainerFoodBankFromRemote(
 ): Promise<{ ok: boolean; source: "remote" | "local" | "none" }> {
   if (!isSupabaseConfigured || !ownerUserId.trim()) return { ok: false, source: "none" };
 
-  const remote = await fetchTrainerFoodBankFromSupabase(ownerUserId);
+  const [sharedItems, remote] = await Promise.all([
+    fetchSharedFoodItemsFromSupabase(),
+    fetchTrainerFoodBankFromSupabase(ownerUserId),
+  ]);
   if (!remote) return { ok: false, source: "none" };
 
   if (remote.items.length > 0) {
     const previousRaw =
       typeof window !== "undefined" ? window.localStorage.getItem("motus_food_bank_v1") ?? "" : "";
-    cacheTrainerFoodBankSnapshot(remote);
+    const merged = { ...remote, items: mergeFoodItems(remote.items, sharedItems) };
+    cacheTrainerFoodBankSnapshot(merged);
     if (typeof window !== "undefined") {
       const nextRaw = window.localStorage.getItem("motus_food_bank_v1") ?? "";
       if (nextRaw !== previousRaw) notifyFoodBankChanged();
@@ -163,7 +229,7 @@ export async function syncTrainerFoodBankFromRemote(
     return { ok: true, source: "remote" };
   }
 
-  const localItems = loadFoodBankItems();
+  const localItems = mergeFoodItems(loadFoodBankItems(), sharedItems);
   const favoriteIds = loadFavoriteFoodIds();
   const recentIds = loadRecentFoodIds();
   if (!foodBankShouldUploadLocal(localItems, favoriteIds, recentIds)) {
@@ -215,6 +281,7 @@ export async function persistTrainerFoodBankToCloud(
   }
 
   const prepared = await prepareItemsWithRemoteImages(snapshot.items);
+  void upsertSharedFoodItemsToSupabase(prepared);
   const cloudSynced = await saveTrainerFoodBankToSupabase(ownerUserId, {
     items: prepared,
     favoriteIds: snapshot.favoriteIds,
