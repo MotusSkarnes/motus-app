@@ -20,7 +20,7 @@ import {
 } from "../app/mealPlanCloud";
 import { useInspirationRecipeItems } from "../app/inspirationRecipeItems";
 import { consumeMealPlanPendingFood } from "../app/mealPlanPendingFood";
-import { computeMealMacros, formatMacroTotals } from "../app/mealPlanMacros";
+import { computeEntryMacros, computeMealMacros, formatMacroTotals } from "../app/mealPlanMacros";
 import {
   copyMealToDays,
   distributeDailyTargetsToMeals,
@@ -86,6 +86,7 @@ export function TrainerMealPlanEditor({
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipePreviewId, setRecipePreviewId] = useState<string | null>(null);
   const [foodGrams, setFoodGrams] = useState("100");
+  const [pickerSelectedFood, setPickerSelectedFood] = useState<FoodItem | null>(null);
   const [derivedTargetField, setDerivedTargetField] = useState<MacroTargetField | null>(null);
   const [targetBalanceWarning, setTargetBalanceWarning] = useState<string | null>(null);
   const [copyMeal, setCopyMeal] = useState<{ dayId: string; mealId: string; mealName: string } | null>(null);
@@ -242,19 +243,12 @@ export function TrainerMealPlanEditor({
     ]);
   }, [foodItemsForMacros, memberId, memberName, memberPersonalGoals, previewRecipe]);
 
-  const gramPreviewFood = useMemo(() => {
-    if (!foodPicker) return null;
-    const q = foodSearch.trim().toLowerCase();
-    if (!q) return foodItems[0] ?? null;
-    return foodItems.find((item) => item.name.toLowerCase().includes(q)) ?? foodItems[0] ?? null;
-  }, [foodPicker, foodSearch, foodItems]);
-
   const gramPreview = useMemo(() => {
-    if (!foodPicker || !foodGrams.trim() || !gramPreviewFood) return null;
+    if (!foodPicker || !foodGrams.trim() || !pickerSelectedFood) return null;
     const grams = Number(foodGrams.replace(",", "."));
     if (!Number.isFinite(grams) || grams <= 0) return null;
-    return previewFoodAddition(gramPreviewFood, grams, pickerRemaining);
-  }, [foodPicker, foodGrams, gramPreviewFood, pickerRemaining]);
+    return previewFoodAddition(pickerSelectedFood, grams, pickerRemaining);
+  }, [foodPicker, foodGrams, pickerSelectedFood, pickerRemaining]);
 
   function updatePlan(next: MealPlan, options?: { flushCloud?: boolean }) {
     const stamped: MealPlan = { ...next, updatedAt: new Date().toISOString() };
@@ -369,21 +363,53 @@ export function TrainerMealPlanEditor({
     });
   }
 
-  function addFoodToMeal(food: FoodItem) {
-    if (!plan || !foodPicker) return;
+  function selectFoodForPicker(food: FoodItem) {
+    setPickerSelectedFood(food);
+    setFoodGrams(String(food.portionGrams || 100));
+  }
+
+  function addFoodToMeal(food?: FoodItem) {
+    const chosen = food ?? pickerSelectedFood;
+    if (!plan || !foodPicker || !chosen) return;
     const grams = Number(foodGrams.replace(",", "."));
-    const safeGrams = Number.isFinite(grams) && grams > 0 ? Math.round(grams) : food.portionGrams || 100;
+    const safeGrams = Number.isFinite(grams) && grams > 0 ? Math.round(grams) : chosen.portionGrams || 100;
     const entry: MealPlanFoodEntry = {
       id: uid("meal-food"),
-      foodId: food.id,
-      foodName: food.name,
+      foodId: chosen.id,
+      foodName: chosen.name,
       grams: safeGrams,
-      nutritionPer100g: { ...food.nutritionPer100g },
+      nutritionPer100g: { ...chosen.nutritionPer100g },
     };
     appendEntryToMeal(foodPicker, entry);
     setFoodPicker(null);
     setFoodSearch("");
-    setFoodGrams(String(food.portionGrams || 100));
+    setPickerSelectedFood(null);
+    setFoodGrams("100");
+  }
+
+  function updateFoodEntryGrams(dayId: string, mealId: string, entryId: string, gramsValue: string) {
+    if (!plan) return;
+    const parsed = Number(gramsValue.replace(",", "."));
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    const safeGrams = Math.round(parsed);
+    updatePlan({
+      ...plan,
+      days: plan.days.map((day) => {
+        if (day.id !== dayId) return day;
+        return {
+          ...day,
+          meals: day.meals.map((meal) => {
+            if (meal.id !== mealId) return meal;
+            return {
+              ...meal,
+              items: meal.items.map((item) =>
+                item.id === entryId ? { ...item, grams: safeGrams } : item,
+              ),
+            };
+          }),
+        };
+      }),
+    });
   }
 
   function addRecipeToMeal(recipeId: string) {
@@ -409,6 +435,13 @@ export function TrainerMealPlanEditor({
         ? `${recipe.title} er lagt til i måltidet.`
         : `${recipe.title} er lagt til uten makro — bruk **Ingredienser**-liste under Ernæring for automatisk beregning.`,
     );
+  }
+
+  function openFoodPicker(dayId: string, mealId: string) {
+    setFoodPicker({ dayId, mealId });
+    setFoodSearch("");
+    setPickerSelectedFood(null);
+    setFoodGrams("100");
   }
 
   function removeFoodEntry(dayId: string, mealId: string, entryId: string) {
@@ -630,11 +663,23 @@ export function TrainerMealPlanEditor({
                     key={item.id}
                     className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5 text-sm"
                   >
-                    <span>
+                    <span className="min-w-0 flex-1">
                       <span className="font-medium text-slate-800">{item.foodName}</span>
-                      <span className="text-slate-500">
-                        {item.note?.startsWith("Oppskrift") ? ` · ${item.note}` : ` · ${item.grams} g`}
-                      </span>
+                      {item.note ? <span className="block text-xs text-slate-500">{item.note}</span> : null}
+                      <label className="motus-meal-entry-grams mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-600">
+                        <span className="font-medium">Mengde</span>
+                        <TextInput
+                          value={String(item.grams)}
+                          onChange={(e) => updateFoodEntryGrams(activeDay.id, meal.id, item.id, e.target.value)}
+                          inputMode="decimal"
+                          className="motus-meal-entry-grams-input !py-1 !text-xs"
+                          aria-label={`Gram ${item.foodName}`}
+                        />
+                        <span>g</span>
+                        <span className="text-slate-400">
+                          · {formatMacro(computeEntryMacros(item).kcal, 0)} kcal
+                        </span>
+                      </label>
                     </span>
                     <button
                       type="button"
@@ -650,10 +695,7 @@ export function TrainerMealPlanEditor({
               <div className="mt-2 flex flex-wrap gap-2">
                 <OutlineButton
                   className="flex-1 sm:flex-none"
-                  onClick={() => {
-                    setFoodPicker({ dayId: activeDay.id, mealId: meal.id });
-                    setFoodSearch("");
-                  }}
+                  onClick={() => openFoodPicker(activeDay.id, meal.id)}
                 >
                   <Plus className="h-4 w-4" aria-hidden />
                   Legg til matvare
@@ -734,7 +776,7 @@ export function TrainerMealPlanEditor({
                       type="button"
                       className="motus-pt-suggestion-row"
                       onClick={() => {
-                        setFoodGrams(String(food.portionGrams || 100));
+                        selectFoodForPicker(food);
                         addFoodToMeal(food);
                       }}
                     >
@@ -774,16 +816,60 @@ export function TrainerMealPlanEditor({
                   aria-label="Søk matvare"
                 />
               </label>
-              <label className="space-y-1 text-xs font-medium text-slate-700">
-                <span>Gram</span>
-                <TextInput value={foodGrams} onChange={(e) => setFoodGrams(e.target.value)} inputMode="decimal" />
-              </label>
-              {gramPreview && pickerRemaining.hasTargets ? (
-                <p className="text-[11px] text-slate-600">
-                  Eksempel ({gramPreviewFood?.name}): etter tillegg ca.{" "}
-                  <strong>{formatMacro(gramPreview.after.kcal, 0)} kcal</strong> igjen på dagen.
+              <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+                <p className="text-xs font-medium text-slate-700">
+                  {pickerSelectedFood ? (
+                    <>
+                      Valgt: <strong>{pickerSelectedFood.name}</strong>
+                      {pickerSelectedFood.portionLabel ? (
+                        <span className="font-normal text-slate-500"> ({pickerSelectedFood.portionLabel})</span>
+                      ) : null}
+                    </>
+                  ) : (
+                    "Velg matvare i listen under, juster mengde, og legg til."
+                  )}
                 </p>
-              ) : null}
+                <label className="space-y-1 text-xs font-medium text-slate-700">
+                  <span>Mengde (gram)</span>
+                  <TextInput
+                    value={foodGrams}
+                    onChange={(e) => setFoodGrams(e.target.value)}
+                    inputMode="decimal"
+                    disabled={!pickerSelectedFood}
+                  />
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[50, 100, 150, 200].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:border-teal-300"
+                      disabled={!pickerSelectedFood}
+                      onClick={() => setFoodGrams(String(preset))}
+                    >
+                      {preset} g
+                    </button>
+                  ))}
+                  {pickerSelectedFood?.portionGrams ? (
+                    <button
+                      type="button"
+                      className="rounded-lg border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-medium text-teal-800"
+                      onClick={() => setFoodGrams(String(pickerSelectedFood.portionGrams))}
+                    >
+                      Porsjon ({pickerSelectedFood.portionGrams} g)
+                    </button>
+                  ) : null}
+                </div>
+                {gramPreview && pickerRemaining.hasTargets ? (
+                  <p className="text-[11px] text-slate-600">
+                    Etter tillegg ca. <strong>{formatMacro(gramPreview.after.kcal, 0)} kcal</strong> igjen på dagen.
+                  </p>
+                ) : null}
+                <GradientButton type="button" className="w-full" disabled={!pickerSelectedFood} onClick={() => addFoodToMeal()}>
+                  <Plus className="h-4 w-4" aria-hidden />
+                  Legg til i måltid
+                </GradientButton>
+              </div>
               <div className="max-h-[40vh] space-y-1 overflow-y-auto">
                 {filteredFoods.length === 0 ? (
                   <p className="text-sm text-slate-500">Ingen matvarer funnet. Utvid matvarebanken først.</p>
@@ -792,11 +878,18 @@ export function TrainerMealPlanEditor({
                     <button
                       key={food.id}
                       type="button"
-                      className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-100 px-3 py-2 text-left text-sm hover:bg-teal-50"
-                      onClick={() => addFoodToMeal(food)}
+                      className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-sm hover:bg-teal-50 ${
+                        pickerSelectedFood?.id === food.id
+                          ? "border-teal-400 bg-teal-50/80"
+                          : "border-slate-100"
+                      }`}
+                      onClick={() => selectFoodForPicker(food)}
                     >
                       <span className="font-medium text-slate-800">{food.name}</span>
-                      <span className="text-xs text-slate-500">{food.portionLabel}</span>
+                      <span className="text-xs text-slate-500">
+                        {food.portionLabel}
+                        {food.portionGrams ? ` · ${food.portionGrams} g` : ""}
+                      </span>
                     </button>
                   ))
                 )}

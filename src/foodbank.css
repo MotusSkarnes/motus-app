@@ -2000,6 +2000,13 @@
   transition: width 0.2s ease;
 }
 
+.motus-meal-entry-grams-input {
+  width: 4.5rem;
+  min-width: 4.5rem;
+  max-width: 5.5rem;
+  text-align: right;
+}
+
 .motus-pt-meal-budget {
   margin-top: 0.35rem;
   display: flex;
