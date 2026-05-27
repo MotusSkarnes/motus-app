@@ -1,5 +1,6 @@
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "./exerciseCategories";
 import { mergeProgramAuthorFields } from "./programAuthor";
+import { mergeProgramImageUrl } from "./programImage";
 import type {
   Exercise,
   MemberProgramLibraryStatus,
@@ -81,6 +82,7 @@ export function mergeTrainingProgramDuplicates(existing: TrainingProgram, incomi
   return {
     ...newer,
     ...mergeProgramAuthorFields(newer, older),
+    imageUrl: mergeProgramImageUrl(newer.imageUrl, older.imageUrl),
     memberLibraryStatus: pickRestrictiveMemberLibraryStatus(newer.memberLibraryStatus, older.memberLibraryStatus),
   };
 }

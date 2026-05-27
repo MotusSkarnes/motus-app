@@ -4,6 +4,7 @@ import {
   isMemberAppAccessBlocked,
   isPrivatePtRosterCustomerType,
   isSharedMedlemCustomerType,
+  isSharedMedlemRosterMember,
   memberRecordIsActive,
   resolveOwnerUserIdForPersist,
   scoreMemberProfileSource,
@@ -15,7 +16,13 @@ const TRAINER_B = "dc9e8855-6438-4173-8976-a86c75e16e5f";
 describe("memberAccessRules", () => {
   it("treats Medlem as shared", () => {
     expect(isSharedMedlemCustomerType("Medlem")).toBe(true);
+    expect(isSharedMedlemRosterMember({ customerType: "Medlem", membershipType: "Standard" })).toBe(true);
     expect(isPrivatePtRosterCustomerType("PT-kunde")).toBe(true);
+  });
+
+  it("treats Premium Medlem rows as private", () => {
+    expect(isSharedMedlemRosterMember({ customerType: "Medlem", membershipType: "Premium" })).toBe(false);
+    expect(isPrivatePtRosterCustomerType("Medlem", "Premium")).toBe(true);
   });
 
   it("does not treat PT-kunde as shared Medlem (substring trap)", () => {

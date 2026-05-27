@@ -58,6 +58,7 @@ import {
 import { enrichMemberWithBestProfile, mergePersonalGoalsFromCandidates } from "./memberOnboarding";
 import { addArchiveTombstone, removeArchiveTombstone } from "./memberArchiveTombstone";
 import { memberMayDeleteProgram, mergeProgramAuthorFields } from "./programAuthor";
+import { mergeProgramImageUrl } from "./programImage";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import {
   checkMemberAccessBlocked,
@@ -253,6 +254,7 @@ function mergeTrainingProgramSnapshots(primary: TrainingProgram, secondary: Trai
     ...primary,
     ...secondary,
     ...mergeProgramAuthorFields(primary, secondary),
+    imageUrl: mergeProgramImageUrl(primary.imageUrl, secondary.imageUrl),
     memberLibraryStatus: mergeMemberLibraryStatus(secondary.memberLibraryStatus, primary.memberLibraryStatus),
   };
 }
@@ -336,6 +338,7 @@ function mergeMemberProgramsWithLocalEphemeral(
     if (remote) {
       merged.set(local.id, {
         ...remote,
+        imageUrl: mergeProgramImageUrl(local.imageUrl, remote.imageUrl),
         memberLibraryStatus: pickRestrictiveMemberLibraryStatus(
           local.memberLibraryStatus,
           remote.memberLibraryStatus,
@@ -1105,7 +1108,7 @@ export function useAppState() {
               prevStripped.workoutMode?.programId,
             );
           } else if (isTrainerSession && trainerHydrateOk) {
-            next.programs = mergedProgs;
+            next.programs = mergeRemoteProgramsWithLocal(mergedProgs, prevStripped.programs);
           } else if (mergedProgs.length > 0 || shouldAdoptRemote(mergedProgs, prev.programs)) {
             next.programs = mergeRemoteProgramsWithLocal(mergedProgs, prev.programs);
           }

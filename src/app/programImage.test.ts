@@ -3,6 +3,7 @@ import {
   CONDITIONING_TRAINING_COVER_IMAGE,
   MOBILITY_TRAINING_COVER_IMAGE,
   STRENGTH_TRAINING_COVER_IMAGE,
+  mergeProgramImageUrl,
   programCoverUsesPhotoStyle,
   resolveProgramImageSrc,
 } from "./programImage";
@@ -29,6 +30,16 @@ const cardioExercise: Pick<Exercise, "id" | "imageUrl" | "category" | "group" | 
   group: "Bein",
   imageUrl: "/exercises/treadmill.png",
 };
+
+describe("mergeProgramImageUrl", () => {
+  it("prefers primary when set", () => {
+    expect(mergeProgramImageUrl("/a.png", "/b.png")).toBe("/a.png");
+  });
+
+  it("falls back to secondary when primary is empty", () => {
+    expect(mergeProgramImageUrl("", "/b.png")).toBe("/b.png");
+  });
+});
 
 describe("resolveProgramImageSrc", () => {
   it("prefers custom program cover", () => {

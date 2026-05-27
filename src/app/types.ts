@@ -16,8 +16,8 @@ export type TrainerTab =
   | "badges"
   | "statistics"
   | "settings";
-export type CustomerSubTab = "overview" | "profile" | "programs" | "workouts" | "messages";
-export type MemberTab = "overview" | "programs" | "progress" | "messages" | "profile" | "inspiration";
+export type CustomerSubTab = "overview" | "profile" | "programs" | "workouts" | "messages" | "nutrition";
+export type MemberTab = "overview" | "programs" | "progress" | "messages" | "profile" | "inspiration" | "nutrition";
 
 export type ExerciseBlockType = "superset" | "triset" | "circuit";
 
@@ -101,6 +101,8 @@ export type Member = {
   level: Level;
   membershipType: MembershipType;
   customerType: CustomerType;
+  /** PT aktiverer — medlem får fanen Ernæring og matplan. */
+  nutritionAccess?: boolean;
   daysSinceActivity: string;
   goal: string;
   focus: string;

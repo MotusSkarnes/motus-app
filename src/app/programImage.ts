@@ -75,6 +75,18 @@ export function resolveRestDayCoverImage(): string {
   return REST_RECOVERY_COVER_IMAGE;
 }
 
+/** Behold forsidebilde fra enten kilde ved merge (f.eks. lokal opplasting vs. sky uten kolonne). */
+export function mergeProgramImageUrl(
+  primary?: string,
+  secondary?: string,
+): string | undefined {
+  const primaryTrimmed = primary?.trim();
+  if (primaryTrimmed) return primaryTrimmed;
+  const secondaryTrimmed = secondary?.trim();
+  if (secondaryTrimmed) return secondaryTrimmed;
+  return undefined;
+}
+
 export function resolveProgramImageSrc(
   program: Pick<TrainingProgram, "imageUrl" | "title">,
   coverExercise?: Pick<Exercise, "id" | "imageUrl" | "category" | "group" | "name"> | null,

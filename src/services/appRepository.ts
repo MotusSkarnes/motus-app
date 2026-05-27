@@ -41,6 +41,7 @@ export type CreateMemberInput = {
   focus?: string;
   membershipType?: Member["membershipType"];
   customerType?: Member["customerType"];
+  nutritionAccess?: boolean;
 };
 
 export type SaveProgramInput = {
@@ -187,6 +188,7 @@ export type UpdateMemberInput = {
       | "personalGoals"
       | "membershipType"
       | "customerType"
+      | "nutritionAccess"
       | "ownerUserId"
       | "avatarUrl"
     >
@@ -239,6 +241,7 @@ export function createMember(state: AppState, input: CreateMemberInput): Member 
     level: "Nybegynner",
     membershipType: input.membershipType ?? "Standard",
     customerType: input.customerType ?? "Oppfølging",
+    nutritionAccess: input.nutritionAccess === true,
     daysSinceActivity: "0",
     weight: "",
     height: "",
@@ -334,7 +337,8 @@ export function saveProgramInState(
               goal: input.goal.trim(),
               notes: input.notes.trim(),
               exercises,
-              imageUrl: input.imageUrl?.trim() || undefined,
+              imageUrl:
+                input.imageUrl !== undefined ? input.imageUrl.trim() || undefined : program.imageUrl,
               ...(input.programCreatedBy
                 ? {
                     programCreatedBy: input.programCreatedBy,
@@ -1010,6 +1014,8 @@ export function updateMemberInState(state: AppState, input: UpdateMemberInput): 
             membershipType:
               input.changes.membershipType !== undefined ? input.changes.membershipType : member.membershipType,
             customerType: input.changes.customerType !== undefined ? input.changes.customerType : member.customerType,
+            nutritionAccess:
+              input.changes.nutritionAccess !== undefined ? input.changes.nutritionAccess : member.nutritionAccess,
             ownerUserId:
               input.changes.ownerUserId !== undefined
                 ? String(input.changes.ownerUserId ?? "").trim() || undefined

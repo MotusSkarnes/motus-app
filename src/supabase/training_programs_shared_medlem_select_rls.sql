@@ -15,6 +15,7 @@ create policy "training_programs_select_trainer_or_member"
       from public.members m
       where m.id = training_programs.member_id
         and lower(trim(m.customer_type)) = 'medlem'
+        and lower(trim(coalesce(m.membership_type, ''))) <> 'premium'
         and (
           auth.jwt() -> 'app_metadata' ->> 'role' = 'trainer'
           or auth.jwt() -> 'user_metadata' ->> 'role' = 'trainer'

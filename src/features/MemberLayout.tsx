@@ -38,7 +38,9 @@ import {
 import { MemberMonthlyCheckIn } from "./MemberMonthlyCheckIn";
 import { MemberOnboarding } from "./MemberOnboarding";
 import { MemberWelcomeModal } from "./MemberWelcomeModal";
+import { memberHasNutritionAccess } from "../app/memberNutritionAccess";
 import { MemberPortal } from "./MemberPortal";
+import { MemberNutritionView } from "./MemberNutritionView";
 import { InspirationHub } from "./InspirationHub";
 import { MemberDesktopTabNav, MemberMobileTabNav } from "./MemberTabNavigation";
 import { MemberHomeHeaderActions } from "./MemberHomeHeaderActions";
@@ -388,12 +390,18 @@ export function MemberLayout({
     }
     return candidates.some((member) => member.customerType === "Medlem" && member.membershipType !== "Premium");
   }, [appState.currentUser, appState.members, appState.memberViewId]);
+  const hasNutritionAccess = memberHasNutritionAccess(activeMember);
   useEffect(() => {
     if (!isMemberLimited) return;
     if (memberTab === "messages" || memberTab === "progress") {
       setMemberTab("overview");
     }
   }, [isMemberLimited, memberTab, setMemberTab]);
+  useEffect(() => {
+    if (memberTab === "nutrition" && !hasNutritionAccess) {
+      setMemberTab("overview");
+    }
+  }, [hasNutritionAccess, memberTab, setMemberTab]);
 
   const memberPortalProps: ComponentProps<typeof MemberPortal> = {
     members: appState.members,
@@ -534,9 +542,16 @@ export function MemberLayout({
   return (
     <>
       <div className="space-y-4 sm:space-y-5">
-        <MemberDesktopTabNav memberTab={memberTab} setMemberTab={setMemberTab} isMemberLimited={isMemberLimited} />
+        <MemberDesktopTabNav
+          memberTab={memberTab}
+          setMemberTab={setMemberTab}
+          isMemberLimited={isMemberLimited}
+          hasNutritionAccess={hasNutritionAccess}
+        />
         <div className="pb-24 lg:pb-0">
-        {memberTab === "inspiration" ? (
+        {memberTab === "nutrition" && hasNutritionAccess && activeMember ? (
+          <MemberNutritionView memberId={activeMember.id} memberName={activeMember.name} />
+        ) : memberTab === "inspiration" ? (
           <InspirationHub
             memberId={inspirationMemberId}
             memberName={appState.currentUser?.name ?? "Medlem"}
@@ -556,7 +571,12 @@ export function MemberLayout({
       </div>
 
       {!welcomeModalOpen && !onboardingGateOpen && !memberCheckInOverlayOpen ? (
-        <MemberMobileTabNav memberTab={memberTab} setMemberTab={setMemberTab} isMemberLimited={isMemberLimited} />
+        <MemberMobileTabNav
+          memberTab={memberTab}
+          setMemberTab={setMemberTab}
+          isMemberLimited={isMemberLimited}
+          hasNutritionAccess={hasNutritionAccess}
+        />
       ) : null}
 
       {welcomeModalOpen && activeMember ? (

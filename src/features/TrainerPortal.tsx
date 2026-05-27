@@ -9,13 +9,15 @@
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { CalendarRange, ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, Mail, MessageSquare, MoreHorizontal, Pencil, Play, Share2, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
+import { Apple, CalendarRange, ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, Mail, MessageSquare, MoreHorizontal, Pencil, Play, Share2, ShieldCheck, Star, Trash2, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, periodPlanStartDateForDateInput } from "../app/dateFormat";
 import {
   getArchiveTombstones,
   MEMBER_ARCHIVE_TOMBSTONE_EVENT,
 } from "../app/memberArchiveTombstone";
+import { loadFoodBankItems } from "../app/foodBankStorage";
+import { memberHasNutritionAccess } from "../app/memberNutritionAccess";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClear";
 import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
@@ -73,6 +75,7 @@ import {
   filterMemberIdsForRosterSave,
   isPrivatePtRosterCustomerType,
   isSharedMedlemCustomerType,
+  isSharedMedlemRosterMember,
   scoreMemberProfileSource,
 } from "../services/memberAccessRules";
 import {
@@ -104,6 +107,7 @@ import { TrainerPtDetailPortal } from "./trainer-dashboard/TrainerPtDetailPortal
 import { TrainerStatisticsView } from "./TrainerStatisticsView";
 import { TrainerExerciseBankView } from "./TrainerExerciseBankView";
 import { TrainerPeriodPlanCalendar } from "./TrainerPeriodPlanCalendar";
+import { TrainerMealPlanEditor } from "./TrainerMealPlanEditor";
 import { TrainerProgramBuilderView } from "./TrainerProgramBuilderView";
 import { TrainerPtHomeScreen } from "./trainer-home/TrainerPtHomeScreen";
 import {
@@ -726,6 +730,7 @@ function pickFirstName(value: unknown): string {
   const [programGoal, setProgramGoal] = useState("");
   const [programNotes, setProgramNotes] = useState("");
   const [programFormImageUrl, setProgramFormImageUrl] = useState("");
+  const [programCoverCleared, setProgramCoverCleared] = useState(false);
   const [isUploadingProgramImage, setIsUploadingProgramImage] = useState(false);
   const [trainerMessage, setTrainerMessage] = useState("");
   const [isSendingTrainerMessage, setIsSendingTrainerMessage] = useState(false);
@@ -840,6 +845,8 @@ function pickFirstName(value: unknown): string {
   const [memberEditIsPtCustomer, setMemberEditIsPtCustomer] = useState(false);
   const [memberEditIsPremiumCustomer, setMemberEditIsPremiumCustomer] = useState(false);
   const [memberEditIsSharedMember, setMemberEditIsSharedMember] = useState(false);
+  const [memberEditNutritionAccess, setMemberEditNutritionAccess] = useState(false);
+  const [newMemberNutritionAccess, setNewMemberNutritionAccess] = useState(false);
   const [isEditingCustomerCard, setIsEditingCustomerCard] = useState(false);
   const [memberEditStatus, setMemberEditStatus] = useState<string | null>(null);
   const [restoreEmail, setRestoreEmail] = useState("");
@@ -1075,10 +1082,17 @@ function pickFirstName(value: unknown): string {
     }
     return merged;
   }, [members, currentTrainerOwnerUserId, logs, archiveTombstones]);
-  const activeMembers = useMemo(
-    () => deduplicatedMembers.filter((member) => member.isActive !== false),
-    [deduplicatedMembers]
-  );
+  const activeMembers = useMemo(() => {
+    const trainerId = currentTrainerOwnerUserId.trim();
+    const shouldApplyTrainerVisibility = isSupabaseConfigured && !isLocalDemoSession;
+    return deduplicatedMembers.filter((member) => {
+      if (member.isActive === false) return false;
+      if (!shouldApplyTrainerVisibility) return true;
+      if (!trainerId) return true;
+      if (isSharedMedlemRosterMember(member)) return true;
+      return (member.ownerUserId ?? "").trim() === trainerId;
+    });
+  }, [deduplicatedMembers, currentTrainerOwnerUserId, isLocalDemoSession]);
   const archivedMembersForAdmin = useMemo(() => {
     const trainerId = currentTrainerOwnerUserId.trim();
     const activeIdentityKeys = new Set(
@@ -1093,7 +1107,7 @@ function pickFirstName(value: unknown): string {
       if (activeIdentityKeys.has(identityKey)) return;
       const owner = (member.ownerUserId ?? "").trim();
       if (trainerId) {
-        const visible = isSharedMedlemCustomerType(member.customerType) || owner === trainerId;
+        const visible = isSharedMedlemRosterMember(member) || owner === trainerId;
         if (!visible) return;
       }
       const existing = byIdentity.get(identityKey);
@@ -1113,7 +1127,7 @@ function pickFirstName(value: unknown): string {
     const trainerId = currentTrainerOwnerUserId.trim();
     const source = showInactiveMembers ? deduplicatedMembers : activeMembers;
     return source.filter((member) => {
-      if (isSharedMedlemCustomerType(member.customerType)) return true;
+      if (isSharedMedlemRosterMember(member)) return true;
       const owner = (member.ownerUserId ?? "").trim();
       // Private kunder (PT-kunde / oppfolging) skal kun vises hos eier-PT.
       return Boolean(trainerId) && owner === trainerId;
@@ -1266,6 +1280,7 @@ function pickFirstName(value: unknown): string {
     const relatedMembers = selectedMemberProfileSourceMembers;
     return pickCanonicalMemberProfile(selectedMember, relatedMembers);
   }, [selectedMember, selectedMemberProfileSourceMembers]);
+  const selectedMemberNutritionAccess = memberHasNutritionAccess(selectedMemberProfile ?? selectedMember);
   const selectedMemberCreatedByTrainerLabel = useMemo(() => {
     if (!selectedMember) return null;
     const fromProfile = resolveMemberTrainerDisplayName(selectedMember, programs)?.trim();
@@ -1910,6 +1925,7 @@ function pickFirstName(value: unknown): string {
       setMemberEditIsPtCustomer(false);
       setMemberEditIsPremiumCustomer(false);
       setMemberEditIsSharedMember(false);
+      setMemberEditNutritionAccess(false);
       return;
     }
     setMemberEditName(member.name);
@@ -1920,8 +1936,15 @@ function pickFirstName(value: unknown): string {
     setMemberEditInjuries(member.injuries);
     setMemberEditIsPtCustomer(member.customerType === "PT-kunde");
     setMemberEditIsPremiumCustomer(member.membershipType === "Premium");
-    setMemberEditIsSharedMember(member.customerType === "Medlem");
+    setMemberEditIsSharedMember(isSharedMedlemRosterMember(member));
+    setMemberEditNutritionAccess(member.nutritionAccess === true);
   }
+
+  useEffect(() => {
+    if (!selectedMemberNutritionAccess && customerSubTab === "nutrition") {
+      setCustomerSubTab("overview");
+    }
+  }, [selectedMemberNutritionAccess, customerSubTab]);
 
   useEffect(() => {
     resetMemberEditDraftFromSelected(selectedMemberProfile);
@@ -2124,12 +2147,19 @@ function pickFirstName(value: unknown): string {
     });
   }
 
+  function programSaveImageUrl(): string | undefined {
+    const trimmed = programFormImageUrl.trim();
+    if (trimmed) return trimmed;
+    return programCoverCleared ? "" : undefined;
+  }
+
   function startEditProgram(program: TrainingProgram) {
     setEditingProgramId(program.id);
     setProgramTitle(program.title);
     setProgramGoal(program.goal);
     setProgramNotes(program.notes);
     setProgramFormImageUrl(program.imageUrl ?? "");
+    setProgramCoverCleared(false);
     setProgramExercisesDraft(program.exercises.map((exercise) => ({ ...exercise })));
     setCustomerProgramBuilderFocus("training");
     setCustomerSubTab("programs");
@@ -2142,6 +2172,7 @@ function pickFirstName(value: unknown): string {
     setProgramGoal("");
     setProgramNotes("");
     setProgramFormImageUrl("");
+    setProgramCoverCleared(false);
     setProgramExercisesDraft([]);
   }
 
@@ -2377,7 +2408,7 @@ function pickFirstName(value: unknown): string {
       exercises: editingTemplateProgramId
         ? programExercisesDraft.map((exercise) => ({ ...exercise }))
         : programExercisesDraft.map((exercise) => ({ ...exercise, id: uid("template-ex") })),
-      imageUrl: programFormImageUrl,
+      imageUrl: programSaveImageUrl(),
     });
     if (editingTemplateProgramId) {
       setTemplateAssignStatus("Treningsmal oppdatert.");
@@ -2503,7 +2534,7 @@ function pickFirstName(value: unknown): string {
       goal: input.goal,
       notes: input.notes,
       memberId: persistMemberId,
-      imageUrl: input.imageUrl,
+      imageUrl: input.imageUrl === "" ? "" : input.imageUrl?.trim() ? input.imageUrl.trim() : undefined,
       exercises: (input.id ? input.exercises : input.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") }))).map(
         (exercise) => normalizeProgramExerciseForCategory(exercise, exercisesById.get(exercise.exerciseId)?.category),
       ),
@@ -2567,6 +2598,7 @@ function pickFirstName(value: unknown): string {
       focus: newMemberFocus,
       membershipType: nextMembershipType,
       customerType: nextCustomerType,
+      nutritionAccess: newMemberNutritionAccess,
     });
 
     setIsCreatingMember(false);
@@ -2881,10 +2913,10 @@ function pickFirstName(value: unknown): string {
     const storedCustomerType = selectedMember.customerType;
     const crossOwner =
       Boolean(selectedOwnerUserId && currentTrainerOwnerUserId && selectedOwnerUserId !== currentTrainerOwnerUserId);
-    const nextCustomerType = memberEditIsSharedMember
-      ? "Medlem"
-      : memberEditIsPtCustomer || memberEditIsPremiumCustomer
-        ? "PT-kunde"
+    const nextCustomerType = memberEditIsPremiumCustomer || memberEditIsPtCustomer
+      ? "PT-kunde"
+      : memberEditIsSharedMember
+        ? "Medlem"
         : "Oppfølging";
 
     /** PT-rader skal eies av innlogget trener etter lagring – da kan vi «rette» feil owner etter invitasjon/link. */
@@ -2951,6 +2983,7 @@ function pickFirstName(value: unknown): string {
           injuries: memberEditInjuries,
           membershipType: nextMembershipType,
           customerType: nextCustomerType,
+          nutritionAccess: memberEditNutritionAccess,
           ...(assignOwnerToSession ? { ownerUserId: currentTrainerOwnerUserId } : {}),
         },
       });
@@ -3000,7 +3033,7 @@ function pickFirstName(value: unknown): string {
       if (nextEmail.includes("@")) {
         await ensureMemberAuthLink(nextEmail, selectedMember.id);
       }
-      const typeHint = isSharedMedlemCustomerType(nextCustomerType)
+      const typeHint = isSharedMedlemRosterMember({ customerType: nextCustomerType, membershipType: nextMembershipType })
         ? "Delt medlem – synlig for alle PT-er."
         : "PT-kunde – kun synlig for deg.";
       setMemberEditStatus(`Kundekort oppdatert. ${typeHint}`);
@@ -3347,7 +3380,7 @@ function pickFirstName(value: unknown): string {
       .filter(
         (member) =>
           member.isActive !== false &&
-          isPrivatePtRosterCustomerType(member.customerType) &&
+          isPrivatePtRosterCustomerType(member.customerType, member.membershipType) &&
           (member.ownerUserId ?? "").trim() === trainerId,
       )
       .sort((a, b) => a.name.localeCompare(b.name, "nb"));
@@ -3758,6 +3791,7 @@ function pickFirstName(value: unknown): string {
         return;
       }
       setProgramFormImageUrl(result.publicUrl);
+      setProgramCoverCleared(false);
       setProgramSaveStatus("Programbilde lastet opp. Husk å lagre programmet.");
     } catch {
       setProgramSaveStatus("Kunne ikke laste opp bilde akkurat nå. Prøv igjen senere.");
@@ -4263,11 +4297,11 @@ function pickFirstName(value: unknown): string {
   }, [selectedMemberFollowUpLog]);
 
   function getMemberCustomerTypeDisplay(member: Member): { label: string; badgeClass: string } {
-    if (isSharedMedlemCustomerType(member.customerType)) {
-      return { label: "Medlem", badgeClass: "bg-slate-100 text-slate-700 ring-slate-200" };
-    }
     if (member.membershipType === "Premium") {
       return { label: "Premium-kunde", badgeClass: "bg-pink-50 text-pink-800 ring-pink-200" };
+    }
+    if (isSharedMedlemRosterMember(member)) {
+      return { label: "Medlem", badgeClass: "bg-slate-100 text-slate-700 ring-slate-200" };
     }
     if (member.customerType === "PT-kunde") {
       return { label: "PT-kunde", badgeClass: "bg-teal-50 text-teal-800 ring-teal-200" };
@@ -4475,6 +4509,16 @@ function pickFirstName(value: unknown): string {
             { value: "Medlem", label: "Ny kunde: Medlem (delt)" },
           ]}
         />
+        <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700">
+          <input
+            type="checkbox"
+            checked={newMemberNutritionAccess}
+            onChange={(event) => setNewMemberNutritionAccess(event.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 accent-[#30e3be]"
+          />
+          <Apple className="h-4 w-4 shrink-0" aria-hidden />
+          Tilgang til ernæring (matplan i medlems-app)
+        </label>
         {newMemberError ? <StatusMessage message={newMemberError} tone="error" className="!rounded-xl !px-3 !py-2 !text-xs" /> : null}
         {newMemberSuccess ? (
           <StatusMessage message={newMemberSuccess} tone="success" className="!rounded-xl !px-3 !py-2 !text-xs" />
@@ -4624,6 +4668,11 @@ function pickFirstName(value: unknown): string {
                 >
                   Meldinger
                 </PillButton>
+                {selectedMemberNutritionAccess ? (
+                  <PillButton active={customerSubTab === "nutrition"} onClick={() => setCustomerSubTab("nutrition")}>
+                    Ernæring
+                  </PillButton>
+                ) : null}
               </div>
             ) : null
           }
@@ -5142,6 +5191,22 @@ function pickFirstName(value: unknown): string {
                           />
                           Medlem (vises hos alle PT-er)
                         </label>
+                        <label
+                          className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition sm:col-span-2 ${
+                            memberEditNutritionAccess
+                              ? "border-teal-300 bg-teal-50 text-teal-900"
+                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={memberEditNutritionAccess}
+                            onChange={(event) => setMemberEditNutritionAccess(event.target.checked)}
+                            className="h-4 w-4 rounded border-slate-300 accent-[#30e3be]"
+                          />
+                          <Apple className="h-4 w-4 shrink-0" aria-hidden />
+                          Tilgang til ernæring (matplan i medlems-app)
+                        </label>
                         </div>
                       </div>
                       <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
@@ -5397,6 +5462,11 @@ function pickFirstName(value: unknown): string {
                     </PillButton>
                     <PillButton active={customerSubTab === "workouts"} onClick={() => setCustomerSubTab("workouts")}>Økter</PillButton>
                     <PillButton active={customerSubTab === "messages"} onClick={() => setCustomerSubTab("messages")}>Meldinger</PillButton>
+                    {selectedMemberNutritionAccess ? (
+                      <PillButton active={customerSubTab === "nutrition"} onClick={() => setCustomerSubTab("nutrition")}>
+                        Ernæring
+                      </PillButton>
+                    ) : null}
                   </div>
                 </div>
 
@@ -5856,7 +5926,10 @@ function pickFirstName(value: unknown): string {
                       <TextArea value={programNotes} onChange={(e) => setProgramNotes(e.target.value)} className="min-h-[72px]" placeholder="Notater" />
                       <ProgramCoverImageField
                         imageUrl={programFormImageUrl}
-                        onImageUrlChange={setProgramFormImageUrl}
+                        onImageUrlChange={(url) => {
+                          setProgramFormImageUrl(url);
+                          if (!url.trim()) setProgramCoverCleared(true);
+                        }}
                         onUploadFile={(file) => handleProgramImageUpload(file)}
                         isUploading={isUploadingProgramImage}
                         disabled={isSavingProgram}
@@ -6044,7 +6117,7 @@ function pickFirstName(value: unknown): string {
                             goal: programGoal,
                             notes: programNotes,
                             exercises: programExercisesDraft,
-                            imageUrl: programFormImageUrl,
+                            imageUrl: programSaveImageUrl(),
                           });
                         }}
                         className="w-full"
@@ -6322,6 +6395,15 @@ function pickFirstName(value: unknown): string {
                       )}
                     </div>
                   </div>
+                ) : null}
+
+                {customerSubTab === "nutrition" && selectedMember && selectedMemberNutritionAccess ? (
+                  <TrainerMealPlanEditor
+                    memberId={selectedMember.id}
+                    memberName={selectedMemberProfile?.name ?? selectedMember.name}
+                    trainerOwnerUserId={currentTrainerOwnerUserId}
+                    foodItems={loadFoodBankItems()}
+                  />
                 ) : null}
 
                 {customerSubTab === "messages" ? (

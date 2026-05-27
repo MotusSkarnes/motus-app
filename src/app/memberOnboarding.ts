@@ -483,6 +483,7 @@ export function enrichMemberWithBestProfile(member: Member, allMembers: Member[]
   const name = pickProfileScalarField(canonical.name, candidates.map((row) => row.name));
   return {
     ...canonical,
+    nutritionAccess: candidates.some((row) => row.nutritionAccess === true),
     ...(personalGoals ? { personalGoals } : {}),
     ...(phone ? { phone } : {}),
     ...(birthDate ? { birthDate } : {}),

@@ -30,7 +30,10 @@ function uniqueById<T extends RowWithId>(rows: T[]): T[] {
 }
 
 function isSharedMember(row: Record<string, unknown>): boolean {
-  return String(row.customer_type ?? "").trim().toLowerCase() === "medlem";
+  return (
+    String(row.customer_type ?? "").trim().toLowerCase() === "medlem" &&
+    String(row.membership_type ?? "").trim().toLowerCase() !== "premium"
+  );
 }
 
 function isPrivateRosterMember(row: Record<string, unknown>): boolean {

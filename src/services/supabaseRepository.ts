@@ -86,8 +86,11 @@ function mapCustomerType(value: unknown): Member["customerType"] {
 }
 
 const MEMBERS_SELECT_BASE =
-  "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
+  "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, nutrition_access, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
 const MEMBERS_SELECT_WITH_AVATAR = `${MEMBERS_SELECT_BASE}, avatar_url`;
+const MEMBERS_SELECT_WITHOUT_NUTRITION =
+  "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
+const MEMBERS_SELECT_WITH_AVATAR_WITHOUT_NUTRITION = `${MEMBERS_SELECT_WITHOUT_NUTRITION}, avatar_url`;
 
 function isMissingDbColumnError(message: string, column: string): boolean {
   const lower = message.toLowerCase();
@@ -114,6 +117,7 @@ function mapMemberRowFromSupabase(row: Record<string, unknown>): Member {
     level: row.level === "Litt øvet" || row.level === "Øvet" ? row.level : "Nybegynner",
     membershipType: mapMembershipType(row.membership_type),
     customerType: mapCustomerType(row.customer_type),
+    nutritionAccess: row.nutrition_access === true,
     daysSinceActivity: String(row.days_since_activity ?? "0"),
     goal: String(row.goal ?? ""),
     focus: String(row.focus ?? ""),
@@ -126,6 +130,11 @@ function mapMemberRowFromSupabase(row: Record<string, unknown>): Member {
 
 function stripAvatarUrlField<T extends Record<string, unknown>>(fields: T): Omit<T, "avatar_url"> {
   const { avatar_url: _removed, ...rest } = fields;
+  return rest;
+}
+
+function stripNutritionAccessField<T extends Record<string, unknown>>(fields: T): Omit<T, "nutrition_access"> {
+  const { nutrition_access: _removed, ...rest } = fields;
   return rest;
 }
 
@@ -327,6 +336,16 @@ function programImageDbField(imageUrl?: string): { image_url: string | null } | 
   if (imageUrl === undefined) return {};
   const trimmed = imageUrl.trim();
   return { image_url: trimmed || null };
+}
+
+function omitTrainingProgramOptionalDbFields<T extends Record<string, unknown>>(row: T): Record<string, unknown> {
+  const {
+    program_created_by: _programCreatedBy,
+    program_created_by_name: _programCreatedByName,
+    image_url: _imageUrl,
+    ...rest
+  } = row;
+  return rest;
 }
 
 function isMemberLibraryStatusColumnDbError(message: string): boolean {
@@ -788,9 +807,12 @@ async function persistProgramDirectTrainer(
     created_at: timestamp,
     ...programImageDbField(input.imageUrl),
   };
-  let { error } = await supabaseClient.from("training_programs").upsert({ ...rowBase, ...authorDb }, { onConflict: "id" });
+  const rowWithAuthor = { ...rowBase, ...authorDb };
+  let { error } = await supabaseClient.from("training_programs").upsert(rowWithAuthor, { onConflict: "id" });
   if (error && isTrainingProgramOptionalColumnDbError(error.message)) {
-    ({ error } = await supabaseClient.from("training_programs").upsert(rowBase, { onConflict: "id" }));
+    ({ error } = await supabaseClient.from("training_programs").upsert(omitTrainingProgramOptionalDbFields(rowWithAuthor), {
+      onConflict: "id",
+    }));
   }
   if (error) {
     console.warn("trainer direct program upsert failed:", error.message);
@@ -1639,6 +1661,7 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
     level: member.level,
     membership_type: member.membershipType,
     customer_type: member.customerType,
+    nutrition_access: member.nutritionAccess === true,
     days_since_activity: member.daysSinceActivity,
     goal: member.goal,
     focus: member.focus,
@@ -1653,6 +1676,11 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
     ({ error } = await supabaseClient
       .from("members")
       .upsert(stripAvatarUrlField(memberUpsertPayload), { onConflict: "id" }));
+  }
+  if (error && isMissingDbColumnError(error.message, "nutrition_access")) {
+    ({ error } = await supabaseClient
+      .from("members")
+      .upsert(stripNutritionAccessField(memberUpsertPayload), { onConflict: "id" }));
   }
 
   if (error) {
@@ -2877,6 +2905,7 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
         level: member.level === "Litt øvet" || member.level === "Øvet" ? member.level : "Nybegynner",
         membershipType: mapMembershipType(member.membership_type),
         customerType: mapCustomerType(member.customer_type),
+        nutritionAccess: member.nutrition_access === true,
         daysSinceActivity: String(member.days_since_activity ?? "0"),
         goal: String(member.goal ?? ""),
         focus: String(member.focus ?? ""),
@@ -3083,6 +3112,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
         level: member.level === "Litt øvet" || member.level === "Øvet" ? member.level : "Nybegynner",
         membershipType: mapMembershipType(member.membership_type),
         customerType: mapCustomerType(member.customer_type),
+        nutritionAccess: member.nutrition_access === true,
         daysSinceActivity: String(member.days_since_activity ?? "0"),
         goal: String(member.goal ?? ""),
         focus: String(member.focus ?? ""),
@@ -3302,7 +3332,15 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
   let orderByCreatedAt = true;
   let result = await runQuery(selectFields, orderByCreatedAt);
   if (result.error && isMissingDbColumnError(result.error.message, "avatar_url")) {
-    selectFields = MEMBERS_SELECT_BASE;
+    selectFields = MEMBERS_SELECT_WITH_AVATAR_WITHOUT_NUTRITION;
+    result = await runQuery(selectFields, orderByCreatedAt);
+  }
+  if (result.error && isMissingDbColumnError(result.error.message, "nutrition_access")) {
+    selectFields = selectFields.includes("avatar_url") ? MEMBERS_SELECT_WITH_AVATAR_WITHOUT_NUTRITION : MEMBERS_SELECT_WITHOUT_NUTRITION;
+    result = await runQuery(selectFields, orderByCreatedAt);
+  }
+  if (result.error && isMissingDbColumnError(result.error.message, "avatar_url")) {
+    selectFields = MEMBERS_SELECT_WITHOUT_NUTRITION;
     result = await runQuery(selectFields, orderByCreatedAt);
   }
   if (result.error && isMissingDbColumnError(result.error.message, "created_at")) {

@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp } from "lucide-react";
+import { Apple, ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { motusHaptic } from "../app/haptics";
 import type { MemberTab } from "../app/types";
@@ -7,31 +7,42 @@ import { Card } from "../app/ui";
 
 type MemberTabNavItem = { id: MemberTab; label: string; icon: LucideIcon };
 
-export function memberNavTabs(isMemberLimited: boolean): MemberTabNavItem[] {
+export function memberNavTabs(isMemberLimited: boolean, hasNutritionAccess = false): MemberTabNavItem[] {
+  const nutritionTab: MemberTabNavItem = { id: "nutrition", label: "Ernæring", icon: Apple };
   if (isMemberLimited) {
-    return [
+    const tabs: MemberTabNavItem[] = [
       { id: "overview", label: "Hjem", icon: LayoutDashboard },
       { id: "programs", label: "Trening", icon: ClipboardList },
       { id: "inspiration", label: "Utforsk", icon: Sparkles },
     ];
+    if (hasNutritionAccess) tabs.splice(2, 0, nutritionTab);
+    return tabs;
   }
-  return [
+  const tabs: MemberTabNavItem[] = [
     { id: "overview", label: "Hjem", icon: LayoutDashboard },
     { id: "programs", label: "Trening", icon: ClipboardList },
     { id: "inspiration", label: "Utforsk", icon: Sparkles },
     { id: "progress", label: "Fremgang", icon: TrendingUp },
     { id: "messages", label: "Meldinger", icon: MessageSquare },
   ];
+  if (hasNutritionAccess) tabs.splice(2, 0, nutritionTab);
+  return tabs;
 }
 
 type MemberTabNavigationProps = {
   memberTab: MemberTab;
   setMemberTab: (tab: MemberTab) => void;
   isMemberLimited: boolean;
+  hasNutritionAccess?: boolean;
 };
 
-export function MemberDesktopTabNav({ memberTab, setMemberTab, isMemberLimited }: MemberTabNavigationProps) {
-  const tabs = memberNavTabs(isMemberLimited);
+export function MemberDesktopTabNav({
+  memberTab,
+  setMemberTab,
+  isMemberLimited,
+  hasNutritionAccess = false,
+}: MemberTabNavigationProps) {
+  const tabs = memberNavTabs(isMemberLimited, hasNutritionAccess);
   return (
     <Card className="hidden overflow-hidden border-0 bg-[#F7F8FA] p-1 lg:block">
       <div className="flex flex-wrap gap-1 px-1 py-1">
@@ -92,8 +103,13 @@ function MemberMobileTabButton({
   );
 }
 
-export function MemberMobileTabNav({ memberTab, setMemberTab, isMemberLimited }: MemberTabNavigationProps) {
-  const tabs = memberNavTabs(isMemberLimited);
+export function MemberMobileTabNav({
+  memberTab,
+  setMemberTab,
+  isMemberLimited,
+  hasNutritionAccess = false,
+}: MemberTabNavigationProps) {
+  const tabs = memberNavTabs(isMemberLimited, hasNutritionAccess);
 
   return (
     <div className="motus-mobile-tab-bar fixed inset-x-0 bottom-0 z-[9999] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 lg:hidden">

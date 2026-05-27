@@ -24,9 +24,22 @@ export function isSharedMedlemCustomerType(customerType: string | undefined | nu
   return String(customerType ?? "").trim().toLowerCase() === "medlem";
 }
 
+export function isSharedMedlemRosterMember(member: {
+  customerType?: string | null;
+  membershipType?: string | null;
+}): boolean {
+  return (
+    isSharedMedlemCustomerType(member.customerType) &&
+    String(member.membershipType ?? "").trim().toLowerCase() !== "premium"
+  );
+}
+
 /** PT-kunde / Premium / Oppfølging — only the owning PT sees the row in their client list. */
-export function isPrivatePtRosterCustomerType(customerType: string | undefined | null): boolean {
-  return !isSharedMedlemCustomerType(customerType);
+export function isPrivatePtRosterCustomerType(
+  customerType: string | undefined | null,
+  membershipType?: string | undefined | null,
+): boolean {
+  return !isSharedMedlemRosterMember({ customerType, membershipType });
 }
 
 export function resolveOwnerUserIdForPersist(options: {
@@ -53,10 +66,11 @@ export function scoreMemberProfileSource(member: {
   invitedAt?: string | null;
 }, currentTrainerOwnerUserId: string): number {
   const isOwned = String(member.ownerUserId ?? "").trim() === currentTrainerOwnerUserId.trim();
+  const isShared = isSharedMedlemRosterMember(member);
   let score = 0;
-  if (isOwned && !isSharedMedlemCustomerType(member.customerType)) score += 5000;
+  if (isOwned && !isShared) score += 5000;
   if (isOwned && String(member.membershipType ?? "").trim() === "Premium") score += 3000;
-  if (isSharedMedlemCustomerType(member.customerType)) score += 500;
+  if (isShared) score += 500;
   if (member.isActive !== false) score += 100;
   if (member.invitedAt) score += 10;
   return score;
