@@ -112,6 +112,7 @@ import { TrainerStatisticsView } from "./TrainerStatisticsView";
 import { TrainerExerciseBankView } from "./TrainerExerciseBankView";
 import { TrainerPeriodPlanCalendar } from "./TrainerPeriodPlanCalendar";
 import { TrainerMealPlanEditor } from "./TrainerMealPlanEditor";
+import { NutritionHub } from "./nutrition/NutritionHub";
 import { TrainerProgramBuilderView } from "./TrainerProgramBuilderView";
 import { TrainerPtHomeScreen } from "./trainer-home/TrainerPtHomeScreen";
 import {
@@ -6491,10 +6492,14 @@ function pickFirstName(value: unknown): string {
                 ) : null}
 
                 {customerSubTab === "nutrition" && selectedMember && selectedMemberNutritionAccess ? (
-                  <TrainerMealPlanEditor
-                    memberId={selectedMember.id}
-                    memberName={selectedMemberProfile?.name ?? selectedMember.name}
-                    trainerOwnerUserId={currentTrainerOwnerUserId}
+                  <NutritionHub
+                    mealPlan={
+                      <TrainerMealPlanEditor
+                        memberId={selectedMember.id}
+                        memberName={selectedMemberProfile?.name ?? selectedMember.name}
+                        trainerOwnerUserId={currentTrainerOwnerUserId}
+                      />
+                    }
                   />
                 ) : null}
 
