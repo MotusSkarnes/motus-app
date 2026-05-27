@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Apple } from "lucide-react";
+import { buildDefaultFoodBankItems } from "../app/foodBankSeed";
+import { hydrateMealPlanFoodNutrition } from "../app/mealPlanFoodNutrition";
 import { syncMealPlanForMember } from "../app/mealPlanCloud";
+import { useFoodBankItems } from "../app/useFoodBankItems";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import type { MealPlan } from "../app/mealPlanTypes";
 import { Card } from "../app/ui";
@@ -20,6 +23,11 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
   const memberId = member.id;
   const memberName = member.name;
   const memberEmail = member.email;
+  const foodBankItems = useFoodBankItems();
+  const foodItemsForMacros = useMemo(
+    () => (foodBankItems.length > 0 ? foodBankItems : buildDefaultFoodBankItems()),
+    [foodBankItems],
+  );
   const [plan, setPlan] = useState<MealPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [cloudSynced, setCloudSynced] = useState(true);
@@ -31,13 +39,16 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
     setLoading(true);
     try {
       const result = await syncMealPlanForMember(memberId, "", memberEmail);
-      setPlan(result.plan);
+      const hydrated = result.plan
+        ? hydrateMealPlanFoodNutrition(result.plan, foodItemsForMacros)
+        : null;
+      setPlan(hydrated);
       setCloudSynced(result.cloudSynced);
     } finally {
       reloadInFlightRef.current = false;
       setLoading(false);
     }
-  }, [memberId, memberEmail]);
+  }, [memberId, memberEmail, foodItemsForMacros]);
 
   useEffect(() => {
     void reload();

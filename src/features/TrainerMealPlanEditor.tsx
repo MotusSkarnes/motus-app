@@ -23,6 +23,7 @@ import {
 } from "../app/mealPlanCloud";
 import { useInspirationRecipeItems } from "../app/inspirationRecipeItems";
 import { consumeMealPlanPendingFood } from "../app/mealPlanPendingFood";
+import { hydrateMealPlanFoodNutrition } from "../app/mealPlanFoodNutrition";
 import { computeEntryMacros, computeMealMacros, formatMacroTotals } from "../app/mealPlanMacros";
 import {
   copyMealToDays,
@@ -137,19 +138,23 @@ export function TrainerMealPlanEditor({
     try {
       const result = await syncMealPlanForMember(memberId, trainerOwnerUserId ?? "");
       const withPending = applyPendingFood(result.plan);
+      const hydrated = withPending
+        ? hydrateMealPlanFoodNutrition(withPending, foodItems)
+        : withPending;
       setPlan((prev) => {
-        if (!prev) return withPending;
-        return pickPreferredMealPlan([prev, withPending]) ?? withPending;
+        if (!prev) return hydrated;
+        const picked = pickPreferredMealPlan([prev, hydrated]) ?? hydrated;
+        return picked ? hydrateMealPlanFoodNutrition(picked, foodItems) : picked;
       });
-      if (withPending !== result.plan) {
-        persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, withPending, { notify: false });
+      if (hydrated && hydrated !== result.plan) {
+        persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, hydrated, { notify: false });
       }
-      setActiveDayId((prev) => prev || withPending.days[0]?.id || "");
+      setActiveDayId((prev) => prev || hydrated?.days[0]?.id || "");
     } finally {
       reloadInFlightRef.current = false;
       setLoading(false);
     }
-  }, [memberId, trainerOwnerUserId, applyPendingFood]);
+  }, [memberId, trainerOwnerUserId, applyPendingFood, foodItems]);
 
   useEffect(() => {
     void reload();
@@ -166,7 +171,12 @@ export function TrainerMealPlanEditor({
     [plan, activeDayId],
   );
 
-  const dayUsed = useMemo(() => (activeDay ? sumDayMacros(activeDay) : { kcal: 0, protein: 0, carbs: 0, fat: 0 }), [activeDay]);
+  const foodById = useMemo(() => new Map(foodItems.map((food) => [food.id, food])), [foodItems]);
+
+  const dayUsed = useMemo(
+    () => (activeDay ? sumDayMacros(activeDay, foodById) : { kcal: 0, protein: 0, carbs: 0, fat: 0 }),
+    [activeDay, foodById],
+  );
   const dayRemaining = useMemo(
     () => remainingMacros(plan?.targets, dayUsed),
     [plan?.targets, dayUsed],
@@ -178,7 +188,10 @@ export function TrainerMealPlanEditor({
     return day?.meals.find((m) => m.id === foodPicker.mealId) ?? null;
   }, [foodPicker, plan]);
 
-  const pickerMealUsed = useMemo(() => (pickerMeal ? computeMealMacros(pickerMeal) : null), [pickerMeal]);
+  const pickerMealUsed = useMemo(
+    () => (pickerMeal ? computeMealMacros(pickerMeal, foodById) : null),
+    [pickerMeal, foodById],
+  );
 
   const pickerRemaining = useMemo(() => {
     if (!foodPicker || !plan) return dayRemaining;
@@ -688,8 +701,10 @@ export function TrainerMealPlanEditor({
                   className="max-w-[12rem] font-semibold"
                 />
                 <div className="flex flex-col items-end gap-0.5">
-                  <span className="text-[11px] font-medium text-slate-500">{formatMacroTotals(computeMealMacros(meal))}</span>
-                  <MealMacroMiniBar mealName={meal.name} used={computeMealMacros(meal)} targets={meal.targets} />
+                  <span className="text-[11px] font-medium text-slate-500">
+                    {formatMacroTotals(computeMealMacros(meal, foodById))}
+                  </span>
+                  <MealMacroMiniBar mealName={meal.name} used={computeMealMacros(meal, foodById)} targets={meal.targets} />
                 </div>
               </div>
               <ul className="mt-2 space-y-2">
@@ -712,7 +727,7 @@ export function TrainerMealPlanEditor({
                         />
                         <span>g</span>
                         <span className="text-slate-400">
-                          · {formatMacro(computeEntryMacros(item).kcal, 0)} kcal
+                          · {formatMacro(computeEntryMacros(item, foodById).kcal, 0)} kcal
                         </span>
                       </label>
                     </span>

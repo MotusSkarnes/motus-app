@@ -126,7 +126,16 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
 
   const refreshState = useCallback(async () => {
     if (!memberId.trim()) return;
+    const localBefore = loadMealPlanTracking(memberId);
     const synced = await syncMemberMealPlanState(memberId);
+    const localAfter = loadMealPlanTracking(memberId);
+    const beforeMs = Date.parse(localBefore.updatedAt ?? "") || 0;
+    const afterMs = Date.parse(localAfter.updatedAt ?? "") || 0;
+    const syncedMs = Date.parse(synced.updatedAt ?? "") || 0;
+    if (afterMs > syncedMs && afterMs >= beforeMs) {
+      setTracking(localAfter);
+      return;
+    }
     setTracking(synced);
   }, [memberId]);
 
@@ -178,14 +187,19 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
     [tracking.loggedFoodIds, selectedDateKey],
   );
   const loggedMacrosToday = useMemo(
-    () => sumLoggedMacrosFromFoodItems(todayDayResolved, loggedFoodToday),
-    [todayDayResolved, loggedFoodToday],
+    () => sumLoggedMacrosFromFoodItems(todayDayResolved, loggedFoodToday, foodById),
+    [todayDayResolved, loggedFoodToday, foodById],
   );
+  const loggedMacrosSelected = useMemo(() => {
+    if (!selectedDayResolved) return loggedMacrosToday;
+    return sumLoggedMacrosFromFoodItems(selectedDayResolved, loggedFoodSelected, foodById);
+  }, [selectedDayResolved, loggedFoodSelected, foodById, loggedMacrosToday]);
   const selectedDayFoodCount = selectedMealsResolved.filter((meal) => meal.items.length > 0).length;
 
-  const displayMacros = loggedMacrosToday;
+  const displayMacrosToday = loggedMacrosToday;
+  const displayMacrosProgress = isSelectedToday ? loggedMacrosToday : loggedMacrosSelected;
   const waterLiters = tracking.waterLiters[todayKey] ?? 0;
-  const kcalRemaining = Math.max(0, Math.round(targetKcal - displayMacros.kcal));
+  const kcalRemaining = Math.max(0, Math.round(targetKcal - displayMacrosToday.kcal));
   const streakDays = computeNutritionStreak(tracking.loggedMeals, tracking.loggedFoodIds);
 
   const weekProgress = useMemo(() => {
@@ -247,11 +261,11 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
     if (plan.notes.trim()) tips.push(plan.notes.trim());
     tips.push("Få i deg 20–40 g protein i hvert måltid for jevn energi gjennom dagen.");
     tips.push("Prioriter protein tidlig på dagen — det gjør resten av dagen enklere.");
-    if (targetProtein > 0 && displayMacros.protein < targetProtein * 0.5) {
-      tips.push(`Du har ${formatMacro(targetProtein - displayMacros.protein, 0)} g protein igjen i dag.`);
+    if (targetProtein > 0 && displayMacrosToday.protein < targetProtein * 0.5) {
+      tips.push(`Du har ${formatMacro(targetProtein - displayMacrosToday.protein, 0)} g protein igjen i dag.`);
     }
     return tips;
-  }, [displayMacros.protein, plan.notes, targetProtein]);
+  }, [displayMacrosToday.protein, plan.notes, targetProtein]);
 
   useEffect(() => {
     if (!memberId.trim()) return;
@@ -333,7 +347,7 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
           <div className="motus-matplan-status-card">
             <MacroProgressRing
               label="Protein"
-              current={displayMacros.protein}
+              current={displayMacrosToday.protein}
               target={targetProtein}
               unit="g"
               size="sm"
@@ -342,7 +356,7 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
           <div className="motus-matplan-status-card">
             <MacroProgressRing
               label="Kalorier"
-              current={displayMacros.kcal}
+              current={displayMacrosToday.kcal}
               target={targetKcal}
               size="sm"
               sublabel={kcalRemaining > 0 ? `${kcalRemaining} igjen` : "Mål nådd"}
@@ -473,7 +487,7 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
 
         <div className="motus-matplan-meals">
           {selectedMealsResolved.map((meal) => {
-            const macros = computeMealMacros(meal);
+            const macros = computeMealMacros(meal, foodById);
             const loggedFoodCount = meal.items.filter((item) => loggedFoodSelected.has(item.id)).length;
             const logged = meal.items.length > 0 && loggedFoodCount === meal.items.length;
             const hasPartialLog = loggedFoodCount > 0 && !logged;
@@ -595,25 +609,27 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
 
       {/* 4. Makro-progress */}
       <section className="motus-matplan-section" aria-label="Makro-progress">
-        <h2 className="motus-matplan-section-title">Makro-progress</h2>
+        <h2 className="motus-matplan-section-title">
+          {isSelectedToday ? "Makro-progress" : `Makro-progress — ${selectedDay?.label ?? ""}`}
+        </h2>
         <div className="motus-matplan-macro-rings">
           <MacroProgressRing
             label="Protein"
-            current={displayMacros.protein}
+            current={displayMacrosProgress.protein}
             target={targetProtein}
             unit="g"
             tone="mint"
           />
           <MacroProgressRing
             label="Karbohydrater"
-            current={displayMacros.carbs}
+            current={displayMacrosProgress.carbs}
             target={targetCarbs}
             unit="g"
             tone="mint"
           />
           <MacroProgressRing
             label="Fett"
-            current={displayMacros.fat}
+            current={displayMacrosProgress.fat}
             target={targetFat}
             unit="g"
             tone="pink"
@@ -726,7 +742,7 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Forslag til bytte</p>
                   <ul className="motus-matplan-swap-list">
                     {swapAlternatives.map(({ meal, dayId, dayLabel }) => {
-                      const macros = computeMealMacros(meal);
+                      const macros = computeMealMacros(meal, foodById);
                       const img = resolveMealImage(meal);
                       return (
                         <li key={`${dayLabel}-${meal.id}`}>

@@ -265,11 +265,11 @@ export function previewFoodAddition(
   };
 }
 
-export function sumDayMacros(day: MealPlanDay): MacroTotals {
-  return sumMacroTotals(day.meals.map((meal) => computeMealMacros(meal)));
+export function sumDayMacros(day: MealPlanDay, foodById?: Map<string, FoodItem>): MacroTotals {
+  return sumMacroTotals(day.meals.map((meal) => computeMealMacros(meal, foodById)));
 }
 
-export function mealRemaining(meal: MealPlanMeal): MacroRemaining {
-  const used = computeMealMacros(meal);
+export function mealRemaining(meal: MealPlanMeal, foodById?: Map<string, FoodItem>): MacroRemaining {
+  const used = computeMealMacros(meal, foodById);
   return remainingMacros(meal.targets, used);
 }

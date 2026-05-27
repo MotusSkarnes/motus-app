@@ -1,5 +1,6 @@
-import type { FoodNutrition } from "./foodBankTypes";
+import type { FoodItem, FoodNutrition } from "./foodBankTypes";
 import { formatMacro } from "./foodBankTypes";
+import { resolveEntryNutrition } from "./mealPlanFoodNutrition";
 import type { MealPlanDay, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "./mealPlanTypes";
 
 export type MacroTotals = {
@@ -22,8 +23,11 @@ export function computeMacrosForGrams(nutritionPer100g: FoodNutrition, grams: nu
   };
 }
 
-export function computeEntryMacros(entry: Pick<MealPlanFoodEntry, "grams" | "nutritionPer100g">): MacroTotals {
-  return computeMacrosForGrams(entry.nutritionPer100g, entry.grams);
+export function computeEntryMacros(
+  entry: Pick<MealPlanFoodEntry, "foodId" | "grams" | "nutritionPer100g">,
+  foodById?: Map<string, FoodItem>,
+): MacroTotals {
+  return computeMacrosForGrams(resolveEntryNutrition(entry, foodById), entry.grams);
 }
 
 export function sumMacroTotals(rows: MacroTotals[]): MacroTotals {
@@ -38,19 +42,23 @@ export function sumMacroTotals(rows: MacroTotals[]): MacroTotals {
   );
 }
 
-export function computeMealMacros(meal: MealPlanMeal): MacroTotals {
-  return sumMacroTotals(meal.items.map((item) => computeEntryMacros(item)));
+export function computeMealMacros(meal: MealPlanMeal, foodById?: Map<string, FoodItem>): MacroTotals {
+  return sumMacroTotals(meal.items.map((item) => computeEntryMacros(item, foodById)));
 }
 
-export function computeDayMacros(day: MealPlanDay): MacroTotals {
-  return sumMacroTotals(day.meals.map((meal) => computeMealMacros(meal)));
+export function computeDayMacros(day: MealPlanDay, foodById?: Map<string, FoodItem>): MacroTotals {
+  return sumMacroTotals(day.meals.map((meal) => computeMealMacros(meal, foodById)));
 }
 
-export function sumLoggedMacrosFromFoodItems(day: MealPlanDay, loggedFoodIds: Set<string>): MacroTotals {
+export function sumLoggedMacrosFromFoodItems(
+  day: MealPlanDay,
+  loggedFoodIds: Set<string>,
+  foodById?: Map<string, FoodItem>,
+): MacroTotals {
   const rows: MacroTotals[] = [];
   for (const meal of day.meals) {
     for (const item of meal.items) {
-      if (loggedFoodIds.has(item.id)) rows.push(computeEntryMacros(item));
+      if (loggedFoodIds.has(item.id)) rows.push(computeEntryMacros(item, foodById));
     }
   }
   return sumMacroTotals(rows);
