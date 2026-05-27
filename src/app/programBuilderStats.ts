@@ -1,4 +1,9 @@
-import { programDraftUsesHoldFields, type TrainingSubTab } from "./exerciseCategories";
+import {
+  categoryForSubTab,
+  programDraftUsesHoldFields,
+  programExerciseHoldSeconds,
+  type TrainingSubTab,
+} from "./exerciseCategories";
 import { formatProgramExercisePrescription } from "./programExercisePresentation";
 import type { Exercise, ProgramExercise } from "./types";
 
