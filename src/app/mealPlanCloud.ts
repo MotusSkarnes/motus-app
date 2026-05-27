@@ -252,26 +252,17 @@ export async function saveMealPlanToSupabase(
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingSave: { ownerUserId: string; plan: MealPlan } | null = null;
 
-function runPendingMealPlanCloudSave(): void {
-  const payload = pendingSave;
-  pendingSave = null;
-  saveTimer = null;
-  if (!payload) return;
-  void saveMealPlanToSupabase(payload.ownerUserId, payload.plan);
-}
-
 export function scheduleMealPlanCloudSave(ownerUserId: string, plan: MealPlan): void {
   if (!ownerUserId.trim() || !isSupabaseConfigured) return;
   pendingSave = { ownerUserId, plan };
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(runPendingMealPlanCloudSave, 700);
-}
-
-/** Lagrer matplan til sky med en gang (f.eks. etter PT legger til oppskrift). */
-export function flushMealPlanCloudSave(ownerUserId: string): void {
-  if (!ownerUserId.trim() || !isSupabaseConfigured) return;
-  if (saveTimer) clearTimeout(saveTimer);
-  runPendingMealPlanCloudSave();
+  saveTimer = setTimeout(() => {
+    const payload = pendingSave;
+    pendingSave = null;
+    saveTimer = null;
+    if (!payload) return;
+    void saveMealPlanToSupabase(payload.ownerUserId, payload.plan);
+  }, 700);
 }
 
 /** Sky er kilde når rad finnes; overskriver aldri PT-plan med tom standardplan. */

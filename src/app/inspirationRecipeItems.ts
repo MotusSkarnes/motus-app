@@ -17,18 +17,15 @@ export type InspirationRecipeItem = {
 function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
   if (!raw || typeof raw !== "object") return null;
   const row = raw as Record<string, unknown>;
-  const category = String(row.category ?? "").trim().toLowerCase();
-  if (category !== "recipes" && category !== "oppskrift") return null;
+  if (String(row.category ?? "").trim().toLowerCase() !== "recipes") return null;
   const id = String(row.id ?? "").trim();
   if (!id) return null;
   const imageUrl = String(row.imageUrl ?? "").trim();
-  const body = String(row.body ?? row.content ?? "").trim();
-  const description = String(row.description ?? "").trim();
   return {
     id,
     title: String(row.title ?? "").trim() || "Oppskrift",
-    description,
-    body: body || description,
+    description: String(row.description ?? "").trim(),
+    body: String(row.body ?? ""),
     tag: String(row.tag ?? "").trim() || "Oppskrift",
     ...(imageUrl ? { imageUrl } : {}),
   };

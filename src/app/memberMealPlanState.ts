@@ -7,6 +7,8 @@ export type MealSwapRef = {
 
 export type MemberMealPlanState = {
   loggedMeals: Record<string, string[]>;
+  /** dateKey → meal plan food entry ids (enkeltmatvarer logget i løpet av dagen) */
+  loggedFoodIds: Record<string, string[]>;
   waterLiters: Record<string, number>;
   checkedShopping: string[];
   /** `${dateKey}:${targetMealId}` → kilde-måltid fra planen */
@@ -16,6 +18,7 @@ export type MemberMealPlanState = {
 
 export const EMPTY_MEMBER_MEAL_PLAN_STATE: MemberMealPlanState = {
   loggedMeals: {},
+  loggedFoodIds: {},
   waterLiters: {},
   checkedShopping: [],
   mealSwaps: {},
@@ -55,6 +58,12 @@ export function parseMemberMealPlanState(value: unknown): MemberMealPlanState {
         ? (row.loggedMeals as Record<string, string[]>)
         : row.logged_meals && typeof row.logged_meals === "object"
           ? (row.logged_meals as Record<string, string[]>)
+          : {},
+    loggedFoodIds:
+      row.loggedFoodIds && typeof row.loggedFoodIds === "object"
+        ? (row.loggedFoodIds as Record<string, string[]>)
+        : row.logged_food_ids && typeof row.logged_food_ids === "object"
+          ? (row.logged_food_ids as Record<string, string[]>)
           : {},
     waterLiters:
       row.waterLiters && typeof row.waterLiters === "object"
@@ -187,9 +196,50 @@ export function mergeMemberMealPlanStates(local: MemberMealPlanState, remote: Me
   if (localMs > remoteMs) return local;
   return {
     loggedMeals: { ...remote.loggedMeals, ...local.loggedMeals },
+    loggedFoodIds: { ...remote.loggedFoodIds, ...local.loggedFoodIds },
     waterLiters: { ...remote.waterLiters, ...local.waterLiters },
     checkedShopping: [...new Set([...remote.checkedShopping, ...local.checkedShopping])],
     mealSwaps: { ...remote.mealSwaps, ...local.mealSwaps },
     updatedAt: new Date(Math.max(localMs, remoteMs, Date.now())).toISOString(),
+  };
+}
+
+/** Fyller loggedFoodIds fra eldre loggedMeals (hele måltid) ved behov. */
+export function expandLegacyLoggedFoodIds(
+  state: MemberMealPlanState,
+  dateKey: string,
+  meals: MealPlanMeal[],
+): MemberMealPlanState {
+  const existing = state.loggedFoodIds[dateKey] ?? [];
+  if (existing.length > 0) return state;
+  const mealIds = new Set(state.loggedMeals[dateKey] ?? []);
+  if (mealIds.size === 0) return state;
+  const foodIds: string[] = [];
+  for (const meal of meals) {
+    if (!mealIds.has(meal.id)) continue;
+    for (const item of meal.items) foodIds.push(item.id);
+  }
+  if (foodIds.length === 0) return state;
+  return {
+    ...state,
+    loggedFoodIds: {
+      ...state.loggedFoodIds,
+      [dateKey]: [...new Set([...existing, ...foodIds])],
+    },
+  };
+}
+
+export function syncLoggedMealsFromFoodIds(
+  state: MemberMealPlanState,
+  dateKey: string,
+  meals: MealPlanMeal[],
+): MemberMealPlanState {
+  const loggedFood = new Set(state.loggedFoodIds[dateKey] ?? []);
+  const completeMealIds = meals
+    .filter((meal) => meal.items.length > 0 && meal.items.every((item) => loggedFood.has(item.id)))
+    .map((meal) => meal.id);
+  return {
+    ...state,
+    loggedMeals: { ...state.loggedMeals, [dateKey]: completeMealIds },
   };
 }
