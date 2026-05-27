@@ -555,7 +555,10 @@ export function MemberLayout({
               members={appState.members}
               onSavePersonalGoals={(personalGoals) => {
                 const anchor = pickCanonicalMemberRowForProfile(activeMember, appState.members);
-                updateMember({ memberId: anchor.id, changes: { personalGoals } });
+                const related = findMembersByEmail(anchor, appState.members);
+                for (const row of related) {
+                  updateMember({ memberId: row.id, changes: { personalGoals } });
+                }
               }}
             />
           ) : (

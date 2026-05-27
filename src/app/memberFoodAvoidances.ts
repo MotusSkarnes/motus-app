@@ -1,4 +1,4 @@
-import { parsePersonalGoalsJson } from "./memberOnboarding";
+import { parsePersonalGoalsJson, readProfileExtensions } from "./memberOnboarding";
 import type { FoodItem } from "./foodBankTypes";
 import { computeRecipeIngredients, type RecipeIngredient } from "./recipeMacros";
 
@@ -88,8 +88,10 @@ export function mergeMemberFoodAvoidancesIntoPersonalGoals(
   avoidances: MemberFoodAvoidances,
 ): string {
   const existing = parsePersonalGoalsJson(existingPersonalGoals) ?? {};
+  const extensions = readProfileExtensions(existingPersonalGoals);
   const payload = {
     ...existing,
+    ...extensions,
     foodAvoidances: {
       items: avoidances.items,
       notes: avoidances.notes.trim(),

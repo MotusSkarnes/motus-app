@@ -5,23 +5,33 @@ import {
   gramsFromKcalAndSplit,
   macroSplitFromTargets,
   normalizeMacroSplit,
+  residualFatSplit,
 } from "./mealPlanMacroSplit";
 import { macrosToKcal } from "./mealPlanTargetBalance";
 
 describe("mealPlanMacroSplit", () => {
-  it("normaliserer til 100 %", () => {
-    expect(normalizeMacroSplit({ protein: 33.3, carbs: 33.3, fat: 33.4 })).toEqual({
-      protein: 33,
-      carbs: 33,
-      fat: 34,
-    });
+  it("setter fett som rest av protein og karb", () => {
+    expect(residualFatSplit(30, 40)).toEqual({ protein: 30, carbs: 40, fat: 30 });
+    expect(residualFatSplit(35, 45)).toEqual({ protein: 35, carbs: 45, fat: 20 });
   });
 
-  it("fordeler resten proporsjonalt når protein økes", () => {
+  it("endrer ikke protein når karb økes", () => {
+    const next = adjustMacroSplit({ protein: 30, carbs: 40, fat: 30 }, "carbs", 50);
+    expect(next.protein).toBe(30);
+    expect(next.carbs).toBe(50);
+    expect(next.fat).toBe(20);
+  });
+
+  it("justerer fett når protein økes, karb uendret", () => {
     const next = adjustMacroSplit({ protein: 30, carbs: 40, fat: 30 }, "protein", 40);
     expect(next.protein).toBe(40);
-    expect(next.carbs + next.fat).toBe(60);
-    expect(next.carbs).toBeGreaterThan(next.fat);
+    expect(next.carbs).toBe(40);
+    expect(next.fat).toBe(20);
+  });
+
+  it("ignorerer manuell fett-endring og beregner rest", () => {
+    const next = adjustMacroSplit({ protein: 30, carbs: 40, fat: 30 }, "fat", 10);
+    expect(next).toEqual({ protein: 30, carbs: 40, fat: 30 });
   });
 
   it("beregner gram fra kcal og prosent", () => {
@@ -30,8 +40,16 @@ describe("mealPlanMacroSplit", () => {
   });
 
   it("oppdaterer mål når prosent endres", () => {
-    const targets = applyMacroSplitToTargets({ kcal: 1800 }, { protein: 35, carbs: 35, fat: 30 });
+    const targets = applyMacroSplitToTargets({ kcal: 1800 }, { protein: 35, carbs: 45, fat: 99 });
+    expect(targets.macroSplitPct).toEqual({ protein: 35, carbs: 45, fat: 20 });
     expect(targets.protein).toBeGreaterThan(0);
-    expect(macroSplitFromTargets(targets)).toEqual({ protein: 35, carbs: 35, fat: 30 });
+  });
+
+  it("normaliserer med fett som rest", () => {
+    expect(normalizeMacroSplit({ protein: 33, carbs: 33, fat: 99 })).toEqual({
+      protein: 33,
+      carbs: 33,
+      fat: 34,
+    });
   });
 });

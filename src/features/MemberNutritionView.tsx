@@ -4,7 +4,7 @@ import { syncMealPlanForMember } from "../app/mealPlanCloud";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import type { MealPlan } from "../app/mealPlanTypes";
 import { Card } from "../app/ui";
-import { pickCanonicalMemberRowForProfile } from "../app/memberOnboarding";
+import { pickCanonicalMemberRowForProfile, resolveMemberPersonalGoals } from "../app/memberOnboarding";
 import type { Member } from "../app/types";
 import { MemberFoodAvoidancesPanel } from "./nutrition/MemberFoodAvoidancesPanel";
 import { MemberMealPlanDashboard } from "./nutrition/MemberMealPlanDashboard";
@@ -84,6 +84,10 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
   })();
 
   const profileMember = pickCanonicalMemberRowForProfile(member, members);
+  const resolvedPersonalGoals = useMemo(
+    () => resolveMemberPersonalGoals(profileMember, members),
+    [profileMember, members],
+  );
 
   return (
     <NutritionHub
@@ -91,8 +95,8 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
       mealPlanTargets={plan?.targets}
       avoidances={
         <MemberFoodAvoidancesPanel
-          memberId={memberId}
-          personalGoals={profileMember.personalGoals ?? member.personalGoals ?? ""}
+          memberId={profileMember.id}
+          personalGoals={resolvedPersonalGoals}
           onSavePersonalGoals={onSavePersonalGoals}
         />
       }

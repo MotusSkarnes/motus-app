@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Search, X } from "lucide-react";
 import { buildDefaultFoodBankItems } from "../../app/foodBankSeed";
 import type { FoodItem } from "../../app/foodBankTypes";
@@ -19,6 +19,8 @@ type MemberFoodAvoidancesPanelProps = {
   readOnly?: boolean;
 };
 
+const BROWSE_LIMIT = 14;
+
 export function MemberFoodAvoidancesPanel({
   memberId,
   personalGoals,
@@ -37,55 +39,102 @@ export function MemberFoodAvoidancesPanel({
   );
 
   const [draft, setDraft] = useState<MemberFoodAvoidances>(stored);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
 
   useEffect(() => {
     setDraft(readMemberFoodAvoidancesFromPersonalGoals(personalGoals));
   }, [personalGoals]);
+
   const [search, setSearch] = useState("");
   const [customLabel, setCustomLabel] = useState("");
   const [status, setStatus] = useState<string | null>(null);
 
-  const dirty =
-    JSON.stringify(draft) !== JSON.stringify(stored);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(stored);
 
-  const filteredFoods = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let list = foodItems;
-    if (q) list = list.filter((item) => item.name.toLowerCase().includes(q));
-    const existingIds = new Set(draft.items.map((row) => row.foodId).filter(Boolean));
-    return list.filter((item) => !existingIds.has(item.id)).slice(0, 12);
-  }, [draft.items, foodItems, search]);
+  const persistDraft = useCallback(
+    (nextDraft: MemberFoodAvoidances, successMessage?: string) => {
+      const nextGoals = patchMemberFoodAvoidancesInPersonalGoals(personalGoals, nextDraft);
+      onSavePersonalGoals(nextGoals);
+      if (successMessage) setStatus(successMessage);
+    },
+    [onSavePersonalGoals, personalGoals],
+  );
+
+  const pickBrowsableFoods = useCallback(
+    (query: string, limit: number) => {
+      const q = query.trim().toLowerCase();
+      const existingIds = new Set(draft.items.map((row) => row.foodId).filter(Boolean));
+      const existingKeys = new Set(draft.items.map((row) => row.key));
+      let list = foodItems.filter((item) => !existingIds.has(item.id));
+      if (q) {
+        list = list.filter((item) => item.name.toLowerCase().includes(q));
+      }
+      return list
+        .filter((item) => !existingKeys.has(foodAvoidanceFromFoodItem(item).key))
+        .slice(0, limit);
+    },
+    [draft.items, foodItems],
+  );
+
+  const browseFoods = useMemo(
+    () => pickBrowsableFoods(search, BROWSE_LIMIT),
+    [pickBrowsableFoods, search],
+  );
 
   const addFood = useCallback(
     (food: FoodItem) => {
       const next = foodAvoidanceFromFoodItem(food);
-      if (draft.items.some((row) => row.key === next.key)) return;
-      setDraft((prev) => ({ ...prev, items: [...prev.items, next] }));
+      if (draftRef.current.items.some((row) => row.key === next.key)) {
+        setStatus(`${food.name} finnes allerede i listen.`);
+        return;
+      }
+      const nextDraft: MemberFoodAvoidances = {
+        ...draftRef.current,
+        items: [...draftRef.current.items, next],
+      };
+      setDraft(nextDraft);
       setSearch("");
+      if (readOnly) return;
+      persistDraft(nextDraft, `${food.name} er lagt til.`);
     },
-    [draft.items],
+    [persistDraft, readOnly],
   );
 
   const addCustom = useCallback(() => {
     const next = foodAvoidanceFromLabel(customLabel);
     if (!next) return;
-    if (draft.items.some((row) => row.key === next.key)) {
+    if (draftRef.current.items.some((row) => row.key === next.key)) {
+      setStatus(`${next.label} finnes allerede i listen.`);
       setCustomLabel("");
       return;
     }
-    setDraft((prev) => ({ ...prev, items: [...prev.items, next] }));
+    const nextDraft: MemberFoodAvoidances = {
+      ...draftRef.current,
+      items: [...draftRef.current.items, next],
+    };
+    setDraft(nextDraft);
     setCustomLabel("");
-  }, [customLabel, draft.items]);
+    if (readOnly) return;
+    persistDraft(nextDraft, `${next.label} er lagt til.`);
+  }, [customLabel, persistDraft, readOnly]);
 
-  const removeItem = useCallback((key: string) => {
-    setDraft((prev) => ({ ...prev, items: prev.items.filter((row) => row.key !== key) }));
-  }, []);
+  const removeItem = useCallback(
+    (key: string) => {
+      const nextDraft: MemberFoodAvoidances = {
+        ...draftRef.current,
+        items: draftRef.current.items.filter((row) => row.key !== key),
+      };
+      setDraft(nextDraft);
+      if (readOnly) return;
+      persistDraft(nextDraft, "Listen er oppdatert.");
+    },
+    [persistDraft, readOnly],
+  );
 
   const handleSave = useCallback(() => {
-    const nextGoals = patchMemberFoodAvoidancesInPersonalGoals(personalGoals, draft);
-    onSavePersonalGoals(nextGoals);
-    setStatus("Lagret. Treneren får varsel hvis oppskrifter inneholder dette.");
-  }, [draft, onSavePersonalGoals, personalGoals]);
+    persistDraft(draftRef.current, "Lagret. Treneren får varsel hvis oppskrifter inneholder dette.");
+  }, [persistDraft]);
 
   const handleReset = useCallback(() => {
     setDraft(stored);
@@ -107,7 +156,7 @@ export function MemberFoodAvoidancesPanel({
         <p className="mt-1 text-sm text-slate-600">
           {readOnly
             ? "Medlemmets registrerte matvarer og intoleranser. Du får varsel i oppskrifter og matplan som inneholder dette."
-            : "Legg inn matvarer, allergener eller ingredienser du vil unngå. Treneren får varsel når oppskrifter inneholder dette."}
+            : "Trykk på matvarer under for å legge til. Treneren får varsel når oppskrifter inneholder dette."}
         </p>
       </div>
 
@@ -131,7 +180,7 @@ export function MemberFoodAvoidancesPanel({
         </ul>
       ) : (
         <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-3 py-4 text-center text-xs text-slate-500">
-          Ingen registrert ennå.
+          Ingen registrert ennå — velg matvarer under eller skriv f.eks. gluten, laktose.
         </p>
       )}
 
@@ -146,18 +195,26 @@ export function MemberFoodAvoidancesPanel({
               aria-label="Søk matvare"
             />
           </label>
-          {search.trim() && filteredFoods.length > 0 ? (
-            <ul className="motus-food-avoidances-search-list">
-              {filteredFoods.map((food) => (
-                <li key={food.id}>
-                  <button type="button" className="motus-food-avoidances-search-item" onClick={() => addFood(food)}>
-                    <span>{food.imageEmoji ?? "🍽️"}</span>
-                    <span className="font-medium text-slate-800">{food.name}</span>
-                    <Plus className="ml-auto h-4 w-4 text-teal-700" aria-hidden />
-                  </button>
-                </li>
-              ))}
-            </ul>
+
+          {browseFoods.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-[11px] font-medium text-slate-600">
+                {search.trim() ? "Treff i matvarebanken" : "Vanlige matvarer — trykk for å legge til"}
+              </p>
+              <ul className="motus-food-avoidances-search-list">
+                {browseFoods.map((food) => (
+                  <li key={food.id}>
+                    <button type="button" className="motus-food-avoidances-search-item" onClick={() => addFood(food)}>
+                      <span>{food.imageEmoji ?? "🍽️"}</span>
+                      <span className="font-medium text-slate-800">{food.name}</span>
+                      <Plus className="ml-auto h-4 w-4 text-teal-700" aria-hidden />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : search.trim() ? (
+            <p className="text-xs text-slate-500">Ingen nye treff — prøv et annet søkeord eller legg til som fritekst under.</p>
           ) : null}
 
           <div className="flex flex-wrap gap-2">
@@ -181,20 +238,25 @@ export function MemberFoodAvoidancesPanel({
           <TextArea
             value={draft.notes}
             onChange={(e) => setDraft((prev) => ({ ...prev, notes: e.target.value }))}
+            onBlur={() => {
+              if (!readOnly && draftRef.current.notes !== stored.notes) {
+                persistDraft(draftRef.current);
+              }
+            }}
             placeholder="Valgfritt: allergier, reaksjoner, «liten mengde ok» osv."
             rows={3}
           />
 
-          <div className="flex flex-wrap gap-2">
-            <GradientButton type="button" onClick={handleSave} disabled={!dirty}>
-              Lagre
-            </GradientButton>
-            {dirty ? (
+          {dirty ? (
+            <div className="flex flex-wrap gap-2">
+              <GradientButton type="button" onClick={handleSave}>
+                Lagre notat
+              </GradientButton>
               <OutlineButton type="button" onClick={handleReset}>
-                Avbryt
+                Avbryt endringer
               </OutlineButton>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </>
       ) : stored.notes.trim() ? (
         <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700">

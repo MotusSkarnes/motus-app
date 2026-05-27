@@ -11,55 +11,40 @@ export const DEFAULT_MACRO_SPLIT: MacroSplitPercent = {
 
 const MACRO_FIELDS: MacroSplitField[] = ["protein", "carbs", "fat"];
 
-/** Justerer én andel og fordeler resten proporsjonalt på de to andre — total blir 100. */
+/** Protein og karb styres manuelt; fett = resten til 100 %. */
+export function residualFatSplit(protein: number, carbs: number): MacroSplitPercent {
+  const p = Math.max(0, Math.min(100, Math.round(protein)));
+  const c = Math.max(0, Math.min(100 - p, Math.round(carbs)));
+  return { protein: p, carbs: c, fat: 100 - p - c };
+}
+
+/**
+ * Justerer makrofordeling: protein først, deretter karb — fett fyller alltid resten.
+ * Protein endres aldri når karb justeres.
+ */
 export function adjustMacroSplit(
   split: MacroSplitPercent,
   field: MacroSplitField,
   nextValue: number,
 ): MacroSplitPercent {
+  const protein = Math.round(split.protein);
+  const carbs = Math.round(split.carbs);
   const clamped = Math.max(0, Math.min(100, Math.round(nextValue)));
-  const others = MACRO_FIELDS.filter((key) => key !== field);
-  const remaining = 100 - clamped;
-  const o1 = split[others[0]];
-  const o2 = split[others[1]];
-  const sumOthers = o1 + o2;
 
-  const draft: MacroSplitPercent = { ...split, [field]: clamped };
-  if (sumOthers <= 0) {
-    draft[others[0]] = remaining / 2;
-    draft[others[1]] = remaining / 2;
-  } else {
-    draft[others[0]] = (o1 / sumOthers) * remaining;
-    draft[others[1]] = (o2 / sumOthers) * remaining;
+  if (field === "protein") {
+    const maxProtein = Math.max(0, 100 - carbs);
+    return residualFatSplit(Math.min(clamped, maxProtein), carbs);
   }
-  return normalizeMacroSplit(draft);
+  if (field === "carbs") {
+    const maxCarbs = Math.max(0, 100 - protein);
+    return residualFatSplit(protein, Math.min(clamped, maxCarbs));
+  }
+  return residualFatSplit(protein, carbs);
 }
 
-/** Avrunder til hele prosent og sikrer at summen er nøyaktig 100. */
+/** Avrunder protein/karb og setter fett som rest. */
 export function normalizeMacroSplit(split: MacroSplitPercent): MacroSplitPercent {
-  const floors = MACRO_FIELDS.map((field) => ({
-    field,
-    floor: Math.floor(split[field]),
-    frac: split[field] - Math.floor(split[field]),
-  }));
-  let rounded = floors.map((row) => ({ field: row.field, value: row.floor }));
-  let remainder = 100 - rounded.reduce((sum, row) => sum + row.value, 0);
-
-  const order = [...floors].sort((a, b) => b.frac - a.frac);
-  for (const row of order) {
-    if (remainder <= 0) break;
-    const target = rounded.find((item) => item.field === row.field);
-    if (target) {
-      target.value += 1;
-      remainder -= 1;
-    }
-  }
-
-  return {
-    protein: rounded.find((row) => row.field === "protein")!.value,
-    carbs: rounded.find((row) => row.field === "carbs")!.value,
-    fat: rounded.find((row) => row.field === "fat")!.value,
-  };
+  return residualFatSplit(split.protein, split.carbs);
 }
 
 export function macroSplitFromTargets(targets: MealPlanTargets): MacroSplitPercent | null {
@@ -72,11 +57,9 @@ export function macroSplitFromTargets(targets: MealPlanTargets): MacroSplitPerce
   const macroKcal = pKcal + cKcal + fKcal;
   if (macroKcal <= 0) return { ...DEFAULT_MACRO_SPLIT };
 
-  return normalizeMacroSplit({
-    protein: (pKcal / macroKcal) * 100,
-    carbs: (cKcal / macroKcal) * 100,
-    fat: (fKcal / macroKcal) * 100,
-  });
+  const protein = Math.round((pKcal / macroKcal) * 100);
+  const carbs = Math.round((cKcal / macroKcal) * 100);
+  return residualFatSplit(protein, carbs);
 }
 
 export function resolveMacroSplit(targets: MealPlanTargets | undefined): MacroSplitPercent {
@@ -95,10 +78,11 @@ export function gramsFromKcalAndSplit(
   kcal: number,
   split: MacroSplitPercent,
 ): Pick<MealPlanTargets, "protein" | "carbs" | "fat"> {
+  const normalized = normalizeMacroSplit(split);
   const safeKcal = Math.max(0, kcal);
-  const pKcal = (safeKcal * split.protein) / 100;
-  const cKcal = (safeKcal * split.carbs) / 100;
-  const fKcal = (safeKcal * split.fat) / 100;
+  const pKcal = (safeKcal * normalized.protein) / 100;
+  const cKcal = (safeKcal * normalized.carbs) / 100;
+  const fKcal = (safeKcal * normalized.fat) / 100;
   return {
     protein: Math.round((pKcal / KCAL_PER_G_PROTEIN) * 10) / 10,
     carbs: Math.round((cKcal / KCAL_PER_G_CARB) * 10) / 10,
