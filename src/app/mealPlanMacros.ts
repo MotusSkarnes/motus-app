@@ -46,6 +46,16 @@ export function computeDayMacros(day: MealPlanDay): MacroTotals {
   return sumMacroTotals(day.meals.map((meal) => computeMealMacros(meal)));
 }
 
+export function sumLoggedMacrosFromFoodItems(day: MealPlanDay, loggedFoodIds: Set<string>): MacroTotals {
+  const rows: MacroTotals[] = [];
+  for (const meal of day.meals) {
+    for (const item of meal.items) {
+      if (loggedFoodIds.has(item.id)) rows.push(computeEntryMacros(item));
+    }
+  }
+  return sumMacroTotals(rows);
+}
+
 export function formatMacroTotals(totals: MacroTotals): string {
   return `${formatMacro(totals.kcal)} kcal · P ${formatMacro(totals.protein)} · K ${formatMacro(totals.carbs)} · F ${formatMacro(totals.fat)}`;
 }
