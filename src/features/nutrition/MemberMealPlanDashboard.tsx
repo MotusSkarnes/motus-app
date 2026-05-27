@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Check,
   ChevronRight,
@@ -21,6 +21,17 @@ import {
 } from "../../app/mealPlanMacros";
 import { buildWeeklyShoppingList } from "../../app/mealPlanShoppingList";
 import {
+  MEAL_PLAN_STATE_CHANGED_EVENT,
+  mealSwapKey,
+  resolveMealWithSwaps,
+  setMealSwap,
+  type MemberMealPlanState,
+} from "../../app/memberMealPlanState";
+import {
+  persistMemberMealPlanStateLocalAndScheduleCloud,
+  syncMemberMealPlanState,
+} from "../../app/memberMealPlanStateCloud";
+import {
   computeNutritionStreak,
   getTimeBasedGreeting,
   getWeekdayIndex,
@@ -30,7 +41,6 @@ import {
   toggleMealLogged,
   toggleShoppingChecked,
   toIsoDateKey,
-  type MealPlanTrackingState,
   weekdayShortLabel,
 } from "../../app/memberMealPlanTracking";
 import type { MealPlan, MealPlanDay, MealPlanMeal, MealPlanTargets } from "../../app/mealPlanTypes";
@@ -87,10 +97,26 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
   const todayWeekdayIndex = getWeekdayIndex(today);
   const todayDay = plan.days[todayWeekdayIndex] ?? plan.days[0];
 
-  const [tracking, setTracking] = useState<MealPlanTrackingState>(() => loadMealPlanTracking(memberId));
+  const [tracking, setTracking] = useState<MemberMealPlanState>(() => loadMealPlanTracking(memberId));
   const [swapMeal, setSwapMeal] = useState<MealPlanMeal | null>(null);
   const [showShopping, setShowShopping] = useState(false);
   const [showCoachTips, setShowCoachTips] = useState(false);
+
+  const refreshState = useCallback(async () => {
+    if (!memberId.trim()) return;
+    const synced = await syncMemberMealPlanState(memberId);
+    setTracking(synced);
+  }, [memberId]);
+
+  useEffect(() => {
+    void refreshState();
+  }, [refreshState]);
+
+  useEffect(() => {
+    const handler = () => void refreshState();
+    window.addEventListener(MEAL_PLAN_STATE_CHANGED_EVENT, handler);
+    return () => window.removeEventListener(MEAL_PLAN_STATE_CHANGED_EVENT, handler);
+  }, [refreshState]);
 
   const firstName = memberName.split(/\s+/)[0] || memberName;
   const targets: MealPlanTargets = plan.targets ?? {};
@@ -99,9 +125,19 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
   const targetCarbs = targets.carbs ?? 200;
   const targetFat = targets.fat ?? 65;
 
+  const todayMealsResolved = useMemo(
+    () =>
+      todayDay.meals.map((meal) => resolveMealWithSwaps(plan, meal, todayKey, tracking.mealSwaps)),
+    [plan, todayDay.meals, todayKey, tracking.mealSwaps],
+  );
+  const todayDayResolved = useMemo(
+    () => ({ ...todayDay, meals: todayMealsResolved }),
+    [todayDay, todayMealsResolved],
+  );
+
   const loggedToday = useMemo(() => new Set(tracking.loggedMeals[todayKey] ?? []), [tracking.loggedMeals, todayKey]);
-  const loggedMacrosToday = useMemo(() => sumLoggedMacros(todayDay, loggedToday), [todayDay, loggedToday]);
-  const plannedMacrosToday = useMemo(() => computeDayMacros(todayDay), [todayDay]);
+  const loggedMacrosToday = useMemo(() => sumLoggedMacros(todayDayResolved, loggedToday), [todayDayResolved, loggedToday]);
+  const plannedMacrosToday = useMemo(() => computeDayMacros(todayDayResolved), [todayDayResolved]);
 
   const displayMacros = loggedMacrosToday.kcal > 0 ? loggedMacrosToday : plannedMacrosToday;
   const waterLiters = tracking.waterLiters[todayKey] ?? 0;
@@ -137,17 +173,28 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
   const swapAlternatives = useMemo(() => {
     if (!swapMeal) return [];
     const key = normalizeMealKey(swapMeal.name);
-    const rows: { meal: MealPlanMeal; dayLabel: string }[] = [];
+    const rows: { meal: MealPlanMeal; dayId: string; dayLabel: string }[] = [];
     for (const day of plan.days) {
       for (const meal of day.meals) {
         if (meal.id === swapMeal.id || meal.items.length === 0) continue;
         if (normalizeMealKey(meal.name) === key) {
-          rows.push({ meal, dayLabel: day.label });
+          rows.push({ meal, dayId: day.id, dayLabel: day.label });
         }
       }
     }
     return rows.slice(0, 6);
   }, [plan.days, swapMeal]);
+
+  const handleApplySwap = useCallback(
+    (sourceDayId: string, sourceMealId: string) => {
+      if (!swapMeal) return;
+      const next = setMealSwap(tracking, todayKey, swapMeal.id, sourceDayId, sourceMealId);
+      setTracking(next);
+      persistMemberMealPlanStateLocalAndScheduleCloud(memberId, next);
+      setSwapMeal(null);
+    },
+    [memberId, swapMeal, todayKey, tracking],
+  );
 
   const coachTips = useMemo(() => {
     const tips: string[] = [];
@@ -294,7 +341,7 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
             type="button"
             className="motus-matplan-link-btn"
             onClick={() => {
-              const next = todayDay.meals.find((m) => m.items.length > 0 && !loggedToday.has(m.id));
+              const next = todayMealsResolved.find((m) => m.items.length > 0 && !loggedToday.has(m.id));
               if (next) handleToggleMeal(next.id);
             }}
           >
@@ -303,16 +350,18 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
           </button>
         </div>
         <div className="motus-matplan-meals">
-          {todayDay.meals.map((meal) => {
+          {todayMealsResolved.map((meal) => {
             const macros = computeMealMacros(meal);
             const logged = loggedToday.has(meal.id);
             const hasFood = meal.items.length > 0;
             const imageSrc = resolveMealImage(meal);
+            const isSwapped = Boolean(tracking.mealSwaps[mealSwapKey(todayKey, meal.id)]);
 
             return (
               <article key={meal.id} className={`motus-matplan-meal-card ${logged ? "motus-matplan-meal-card--logged" : ""}`}>
                 <div className="motus-matplan-meal-body">
                   <span className="motus-matplan-meal-slot">{mealSlotLabel(meal.name)}</span>
+                  {isSwapped ? <span className="motus-matplan-meal-swapped">Byttet måltid</span> : null}
                   <h3 className="motus-matplan-meal-title">
                     {hasFood ? mealDisplayTitle(meal) : meal.name}
                   </h3>
@@ -507,7 +556,7 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
                 <>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Forslag til bytte</p>
                   <ul className="motus-matplan-swap-list">
-                    {swapAlternatives.map(({ meal, dayLabel }) => {
+                    {swapAlternatives.map(({ meal, dayId, dayLabel }) => {
                       const macros = computeMealMacros(meal);
                       const img = resolveMealImage(meal);
                       return (
@@ -515,10 +564,7 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
                           <button
                             type="button"
                             className="motus-matplan-swap-item motus-pressable"
-                            onClick={() => {
-                              handleToggleMeal(swapMeal.id);
-                              setSwapMeal(null);
-                            }}
+                            onClick={() => handleApplySwap(dayId, meal.id)}
                           >
                             {img ? (
                               <img src={img} alt="" className="motus-matplan-swap-thumb" />

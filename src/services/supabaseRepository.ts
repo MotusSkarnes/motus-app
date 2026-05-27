@@ -48,6 +48,7 @@ import {
 } from "../app/programBlocks";
 import { isContaminatedDemoMemberProfile } from "../app/memberLocalCatalog";
 import { mealPlanFromRow } from "../app/mealPlanCloud";
+import { parseMemberMealPlanState, type MemberMealPlanState } from "../app/memberMealPlanState";
 import type { MealPlan } from "../app/mealPlanTypes";
 import { detectNewMemberFormSubmissions } from "../app/memberFormNotifications";
 import { ensureMemberAuthLink, resolveSessionAuthRole } from "./supabaseAuth";
@@ -2816,6 +2817,7 @@ export type HydratedMemberData = {
   logs: WorkoutLog[];
   periodPlanRows: Array<{ memberId: string; plan: PeriodSchedulePlan }>;
   mealPlans: MealPlan[];
+  mealPlanStates: Array<{ memberId: string; state: MemberMealPlanState }>;
   exercises: Exercise[];
   inspirationItems: unknown[];
   accessDenied?: MemberAccessDenied;
@@ -2828,6 +2830,7 @@ const EMPTY_HYDRATED_MEMBER_DATA: HydratedMemberData = {
   logs: [],
   periodPlanRows: [],
   mealPlans: [],
+  mealPlanStates: [],
   exercises: [],
   inspirationItems: [],
 };
@@ -2902,6 +2905,17 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
     if (plan.days.length) mealPlans.push(plan);
   }
 
+  const mealPlanStatesRaw = Array.isArray(payload.mealPlanStates) ? payload.mealPlanStates : [];
+  const mealPlanStates: Array<{ memberId: string; state: MemberMealPlanState }> = [];
+  for (const row of mealPlanStatesRaw) {
+    const r = row as Record<string, unknown>;
+    const memberId = String(r.member_id ?? "").trim();
+    if (!memberId) continue;
+    const parsed = parseMemberMealPlanState(r.state);
+    if (typeof r.updated_at === "string") parsed.updatedAt = r.updated_at;
+    mealPlanStates.push({ memberId, state: parsed });
+  }
+
   return {
     members: membersRows.map((row) => {
       const member = row as Record<string, unknown>;
@@ -2960,6 +2974,7 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
     }),
     periodPlanRows,
     mealPlans,
+    mealPlanStates,
     inspirationItems: Array.isArray(payload.inspirationItems) ? payload.inspirationItems : [],
     exercises: exercisesRows.map((row) => {
       const exercise = row as Record<string, unknown>;

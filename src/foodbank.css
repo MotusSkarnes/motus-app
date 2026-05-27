@@ -1081,6 +1081,16 @@
   color: #d91278;
 }
 
+.motus-matplan-meal-swapped {
+  display: inline-block;
+  margin-top: 0.15rem;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  color: #30e3be;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .motus-matplan-meal-title {
   font-size: 0.9375rem;
   font-weight: 700;
