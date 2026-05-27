@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { balanceMealPlanTargets, describeTargetBalance } from "../app/mealPlanTargetBalance";
+import type { MacroTargetField } from "../app/mealPlanTargetBalance";
 import { Plus, Save, Search, Soup, Trash2, X } from "lucide-react";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import {
@@ -49,6 +51,8 @@ export function TrainerMealPlanEditor({
   const [foodSearch, setFoodSearch] = useState("");
   const [recipeSearch, setRecipeSearch] = useState("");
   const [foodGrams, setFoodGrams] = useState("100");
+  const [derivedTargetField, setDerivedTargetField] = useState<MacroTargetField | null>(null);
+  const [targetBalanceWarning, setTargetBalanceWarning] = useState<string | null>(null);
   const reloadInFlightRef = useRef(false);
 
   const applyPendingFood = useCallback(
@@ -281,6 +285,9 @@ export function TrainerMealPlanEditor({
 
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
         <div className="text-xs font-medium text-slate-700">Daglige makromål (valgfritt)</div>
+        <p className="mt-1 text-[11px] text-slate-500">
+          Skriv kalorier og to makroer — den tredje beregnes automatisk (4 kcal/g protein og karb, 9 kcal/g fett).
+        </p>
         <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {(
             [
@@ -289,17 +296,29 @@ export function TrainerMealPlanEditor({
               ["carbs", "Karbohydrater (g)"],
               ["fat", "Fett (g)"],
             ] as const
-          ).map(([field, label]) => (
-            <label key={field} className="space-y-1 text-[11px] font-medium text-slate-600">
-              <span>{label}</span>
-              <TextInput
-                value={plan.targets?.[field] !== undefined ? String(plan.targets[field]) : ""}
-                onChange={(e) => updateTargets(field, e.target.value)}
-                inputMode="decimal"
-              />
-            </label>
-          ))}
+          ).map(([field, label]) => {
+            const isDerived = derivedTargetField === field;
+            return (
+              <label key={field} className="space-y-1 text-[11px] font-medium text-slate-600">
+                <span>
+                  {label}
+                  {isDerived ? <span className="ml-1 font-normal text-teal-700">(beregnet)</span> : null}
+                </span>
+                <TextInput
+                  value={plan.targets?.[field] !== undefined ? String(plan.targets[field]) : ""}
+                  onChange={(e) => updateTargets(field, e.target.value)}
+                  inputMode="decimal"
+                  className={isDerived ? "border-teal-200 bg-teal-50/50" : undefined}
+                />
+              </label>
+            );
+          })}
         </div>
+        {targetBalanceWarning ? (
+          <p className="mt-2 text-[11px] font-medium text-rose-700">{targetBalanceWarning}</p>
+        ) : targetBalanceHint ? (
+          <p className="mt-2 text-[11px] text-slate-600">{targetBalanceHint}</p>
+        ) : null}
       </div>
 
       <div className="motus-mealplan-day-tabs scrollbar-none flex gap-2 overflow-x-auto pb-1">
