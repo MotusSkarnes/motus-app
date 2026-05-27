@@ -50,6 +50,8 @@ export function buildTrainerLayoutProps(input: {
   setOpenCustomerMessagesSignal: Dispatch<SetStateAction<number>>;
   openCustomerOverviewSignal: number;
   setOpenCustomerOverviewSignal: Dispatch<SetStateAction<number>>;
+  openCustomerNutritionSignal: number;
+  setOpenCustomerNutritionSignal: Dispatch<SetStateAction<number>>;
   memberAvatarById: TrainerLayoutProps["memberAvatarById"];
   setMemberAvatarUrlForMember: TrainerLayoutProps["setMemberAvatarUrlForMember"];
   isLocalDemoSession: boolean;
@@ -105,6 +107,8 @@ export function buildMemberLayoutProps(input: {
   dismissRecentlyFinishedLog: MemberLayoutProps["dismissRecentlyFinishedLog"];
   memberNotificationsOpen: boolean;
   memberUnreadCount: number;
+  memberUnreadMessageCount: number;
+  onMemberMessagesClick: MemberLayoutProps["onMemberMessagesClick"];
   memberVisibleAlerts: MemberLayoutProps["memberVisibleAlerts"];
   handleMemberBellToggle: () => void;
   openAlert: MemberLayoutProps["openAlert"];

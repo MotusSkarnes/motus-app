@@ -40,6 +40,7 @@ import { MemberOnboarding } from "./MemberOnboarding";
 import { MemberWelcomeModal } from "./MemberWelcomeModal";
 import { memberHasNutritionAccess } from "../app/memberNutritionAccess";
 import { MemberPortal } from "./MemberPortal";
+import { MemberFeatureGate } from "./MemberFeatureGate";
 import { MemberNutritionView } from "./MemberNutritionView";
 import { InspirationHub } from "./InspirationHub";
 import { MemberDesktopTabNav, MemberMobileTabNav } from "./MemberTabNavigation";
@@ -103,6 +104,8 @@ type MemberLayoutProps = {
   dismissRecentlyFinishedLog: ComponentProps<typeof MemberPortal>["dismissRecentlyFinishedLog"];
   memberNotificationsOpen: boolean;
   memberUnreadCount: number;
+  memberUnreadMessageCount: number;
+  onMemberMessagesClick: () => void;
   memberVisibleAlerts: MemberAlert[];
   handleMemberBellToggle: () => void;
   openAlert: (alert: MemberAlert) => void;
@@ -161,6 +164,8 @@ export function MemberLayout({
   dismissRecentlyFinishedLog,
   memberNotificationsOpen,
   memberUnreadCount,
+  memberUnreadMessageCount,
+  onMemberMessagesClick,
   memberVisibleAlerts,
   handleMemberBellToggle,
   openAlert,
@@ -391,17 +396,6 @@ export function MemberLayout({
     return candidates.some((member) => member.customerType === "Medlem" && member.membershipType !== "Premium");
   }, [appState.currentUser, appState.members, appState.memberViewId]);
   const hasNutritionAccess = memberHasNutritionAccess(activeMember);
-  useEffect(() => {
-    if (!isMemberLimited) return;
-    if (memberTab === "messages" || memberTab === "progress") {
-      setMemberTab("overview");
-    }
-  }, [isMemberLimited, memberTab, setMemberTab]);
-  useEffect(() => {
-    if (memberTab === "nutrition" && !hasNutritionAccess) {
-      setMemberTab("overview");
-    }
-  }, [hasNutritionAccess, memberTab, setMemberTab]);
 
   const memberPortalProps: ComponentProps<typeof MemberPortal> = {
     members: appState.members,
@@ -473,9 +467,12 @@ export function MemberLayout({
     homeOverviewHeaderActions: (
       <MemberHomeHeaderActions
         showNotifications={!isMemberLimited}
+        showMessages
         memberUnreadCount={memberUnreadCount}
+        memberUnreadMessageCount={memberUnreadMessageCount}
         memberNotificationsOpen={memberNotificationsOpen}
         onMemberBellToggle={handleMemberBellToggle}
+        onMemberMessagesClick={onMemberMessagesClick}
         onLogout={onLogout}
       />
     ),
@@ -549,8 +546,12 @@ export function MemberLayout({
           hasNutritionAccess={hasNutritionAccess}
         />
         <div className="pb-24 lg:pb-0">
-        {memberTab === "nutrition" && hasNutritionAccess && activeMember ? (
-          <MemberNutritionView memberId={activeMember.id} memberName={activeMember.name} />
+        {memberTab === "nutrition" ? (
+          hasNutritionAccess && activeMember ? (
+            <MemberNutritionView memberId={activeMember.id} memberName={activeMember.name} />
+          ) : (
+            <MemberFeatureGate variant="nutrition" />
+          )
         ) : memberTab === "inspiration" ? (
           <InspirationHub
             memberId={inspirationMemberId}

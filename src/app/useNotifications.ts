@@ -867,6 +867,10 @@ export function useNotifications({
     () => trainerUnreadAlerts.filter((alert) => alert.kind === "message").length,
     [trainerUnreadAlerts],
   );
+  const memberUnreadMessageCount = useMemo(
+    () => memberUnreadAlerts.filter((alert) => alert.kind === "message").length,
+    [memberUnreadAlerts],
+  );
   const memberUnreadCount = memberUnreadAlerts.length;
 
   function markMemberInspirationAsSeen() {
@@ -903,6 +907,12 @@ export function useNotifications({
   function handleMemberBellToggle() {
     setMemberNotificationsOpen((open) => !open);
   }
+
+  const markMemberMessagesAsRead = useCallback(() => {
+    if (!memberTrainerMessages.length) return;
+    const latestTimestamp = Math.max(...memberTrainerMessages.map((message) => message._effectiveTimestamp));
+    setMemberAlertsSeenAt((prev) => Math.max(prev, latestTimestamp));
+  }, [memberTrainerMessages]);
 
   const markAllTrainerAlertsAsRead = useCallback(() => {
     if (!trainerUnreadAlerts.length) return;
@@ -1259,9 +1269,11 @@ export function useNotifications({
     memberVisibleAlerts: memberRecentAlerts,
     trainerUnreadCount,
     trainerUnreadMessageCount,
+    memberUnreadMessageCount,
     memberUnreadCount,
     handleTrainerBellToggle,
     handleMemberBellToggle,
+    markMemberMessagesAsRead,
     markAllTrainerAlertsAsRead,
     markAllMemberAlertsAsRead,
     openTrainerAlert,

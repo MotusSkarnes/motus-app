@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Apple, ClipboardList, LayoutDashboard, MessageSquare, Sparkles, TrendingUp } from "lucide-react";
+import { Apple, ClipboardList, LayoutDashboard, Sparkles, TrendingUp } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { motusHaptic } from "../app/haptics";
 import type { MemberTab } from "../app/types";
@@ -7,26 +7,14 @@ import { Card } from "../app/ui";
 
 type MemberTabNavItem = { id: MemberTab; label: string; icon: LucideIcon };
 
-export function memberNavTabs(isMemberLimited: boolean, hasNutritionAccess = false): MemberTabNavItem[] {
-  const nutritionTab: MemberTabNavItem = { id: "nutrition", label: "Ernæring", icon: Apple };
-  if (isMemberLimited) {
-    const tabs: MemberTabNavItem[] = [
-      { id: "overview", label: "Hjem", icon: LayoutDashboard },
-      { id: "programs", label: "Trening", icon: ClipboardList },
-      { id: "inspiration", label: "Utforsk", icon: Sparkles },
-    ];
-    if (hasNutritionAccess) tabs.splice(2, 0, nutritionTab);
-    return tabs;
-  }
-  const tabs: MemberTabNavItem[] = [
+export function memberNavTabs(_isMemberLimited: boolean, _hasNutritionAccess = false): MemberTabNavItem[] {
+  return [
     { id: "overview", label: "Hjem", icon: LayoutDashboard },
     { id: "programs", label: "Trening", icon: ClipboardList },
+    { id: "nutrition", label: "Ernæring", icon: Apple },
     { id: "inspiration", label: "Utforsk", icon: Sparkles },
     { id: "progress", label: "Fremgang", icon: TrendingUp },
-    { id: "messages", label: "Meldinger", icon: MessageSquare },
   ];
-  if (hasNutritionAccess) tabs.splice(2, 0, nutritionTab);
-  return tabs;
 }
 
 type MemberTabNavigationProps = {

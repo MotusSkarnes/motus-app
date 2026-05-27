@@ -21,6 +21,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
 
   const [openCustomerMessagesSignal, setOpenCustomerMessagesSignal] = useState(0);
   const [openCustomerOverviewSignal, setOpenCustomerOverviewSignal] = useState(0);
+  const [openCustomerNutritionSignal, setOpenCustomerNutritionSignal] = useState(0);
   const { memberAvatarById, currentMemberAvatarUrl, setMemberAvatarUrlForMember, setCurrentMemberAvatarUrl } =
     useMemberAvatarStore({
       currentUser: state.appState.currentUser,
@@ -65,9 +66,11 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     memberVisibleAlerts,
     trainerUnreadCount,
     trainerUnreadMessageCount,
+    memberUnreadMessageCount,
     memberUnreadCount,
     handleTrainerBellToggle,
     handleMemberBellToggle,
+    markMemberMessagesAsRead,
     markAllTrainerAlertsAsRead,
     markAllMemberAlertsAsRead,
     openTrainerAlert,
@@ -175,12 +178,20 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     onResetData: handleResetData,
     onLogout: state.handleLogout,
     memberUnreadCount,
+    memberUnreadMessageCount,
     memberNotificationsOpen,
     memberVisibleAlerts,
     onMemberBellToggle: handleMemberBellToggle,
+    onMemberMessagesClick: () => {
+      if (layoutRole === "member" && !isMemberLimited) {
+        markMemberMessagesAsRead();
+      }
+      state.setMemberTab("messages");
+    },
     onOpenMemberAlert: openAlert,
     onMarkAllMemberAlertsAsRead: markAllMemberAlertsAsRead,
     showMemberNotifications: layoutRole === "member" && !isMemberLimited,
+    showMemberMessages: layoutRole === "member",
     trainerUnreadCount,
     trainerNotificationsOpen,
     trainerVisibleAlerts,
@@ -231,6 +242,8 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     setOpenCustomerMessagesSignal,
     openCustomerOverviewSignal,
     setOpenCustomerOverviewSignal,
+    openCustomerNutritionSignal,
+    setOpenCustomerNutritionSignal,
     memberAvatarById,
     setMemberAvatarUrlForMember,
     isLocalDemoSession: state.isLocalDemoSession,
@@ -286,6 +299,13 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     dismissRecentlyFinishedLog: state.dismissRecentlyFinishedLog,
     memberNotificationsOpen,
     memberUnreadCount,
+    memberUnreadMessageCount,
+    onMemberMessagesClick: () => {
+      if (!isMemberLimited) {
+        markMemberMessagesAsRead();
+      }
+      state.setMemberTab("messages");
+    },
     memberVisibleAlerts,
     handleMemberBellToggle,
     openAlert,

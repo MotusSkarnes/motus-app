@@ -17,12 +17,15 @@ export function AppHeader({
   onResetData,
   onLogout,
   memberUnreadCount = 0,
+  memberUnreadMessageCount = 0,
   memberNotificationsOpen = false,
   memberVisibleAlerts = [],
   onMemberBellToggle,
+  onMemberMessagesClick,
   onOpenMemberAlert,
   onMarkAllMemberAlertsAsRead,
   showMemberNotifications = false,
+  showMemberMessages = false,
   trainerUnreadCount = 0,
   trainerNotificationsOpen = false,
   trainerVisibleAlerts = [],
@@ -43,12 +46,15 @@ export function AppHeader({
   onResetData: () => void;
   onLogout: () => void;
   memberUnreadCount?: number;
+  memberUnreadMessageCount?: number;
   memberNotificationsOpen?: boolean;
   memberVisibleAlerts?: MemberAlert[];
   onMemberBellToggle?: () => void;
+  onMemberMessagesClick?: () => void;
   onOpenMemberAlert?: (alert: MemberAlert) => void;
   onMarkAllMemberAlertsAsRead?: () => void;
   showMemberNotifications?: boolean;
+  showMemberMessages?: boolean;
   trainerUnreadCount?: number;
   trainerNotificationsOpen?: boolean;
   trainerVisibleAlerts?: TrainerAlert[];
@@ -65,9 +71,12 @@ export function AppHeader({
   const actions = (
     <MemberHomeHeaderActions
       showNotifications={isTrainer ? showTrainerNotifications : showMemberNotifications}
+      showMessages={!isTrainer && showMemberMessages}
       memberUnreadCount={isTrainer ? trainerUnreadCount : memberUnreadCount}
+      memberUnreadMessageCount={memberUnreadMessageCount}
       memberNotificationsOpen={isTrainer ? trainerNotificationsOpen : memberNotificationsOpen}
       onMemberBellToggle={isTrainer ? onTrainerBellToggle : onMemberBellToggle}
+      onMemberMessagesClick={onMemberMessagesClick}
       onLogout={onLogout}
     />
   );

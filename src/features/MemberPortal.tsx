@@ -179,6 +179,7 @@ import { computeMemberProgressScores } from "../app/memberMomentumScores";
 import { getTrainingProgramSubTab, trainingProgramCategoryLabel, isConditioningTrainingProgram } from "../app/trainingProgramKind";
 import { programsAttributedToMember } from "../app/memberActivity";
 import { BadgeImage } from "./BadgeImage";
+import { MemberFeatureGate } from "./MemberFeatureGate";
 import { MemberBadgesCarousel } from "./MemberBadgesCarousel";
 import { MemberProfileDashboard } from "./MemberProfileDashboard";
 import { CustomWorkoutBuilder } from "./CustomWorkoutBuilder";
@@ -1768,11 +1769,6 @@ export function MemberPortal(props: MemberPortalProps) {
     [nextProgram, setMemberTab],
   );
 
-  useEffect(() => {
-    if (!isMemberLimited) return;
-    if (memberTab === "overview" || memberTab === "programs" || memberTab === "profile" || memberTab === "inspiration") return;
-    setMemberTab("overview");
-  }, [isMemberLimited, memberTab, setMemberTab]);
   const workoutResultGroups = useMemo(
     () => (workoutMode ? buildWorkoutResultGroups(workoutMode.results, activeWorkoutProgram) : []),
     [workoutMode, activeWorkoutProgram],
@@ -7197,7 +7193,10 @@ export function MemberPortal(props: MemberPortalProps) {
             </>
           ) : null}
 
-          {!isMemberLimited && memberTab === "progress" ? (
+          {memberTab === "progress" ? (
+            isMemberLimited ? (
+              <MemberFeatureGate variant="premium" />
+            ) : (
             <div className="motus-progress-page">
               <MemberProgressScoresCard
                 scores={memberProgressScores}
@@ -7285,9 +7284,13 @@ export function MemberPortal(props: MemberPortalProps) {
                 shareStatus={progressShareStatus}
               />
             </div>
+            )
           ) : null}
 
-          {!isMemberLimited && memberTab === "messages" ? (
+          {memberTab === "messages" ? (
+            isMemberLimited ? (
+              <MemberFeatureGate variant="premium" />
+            ) : (
             <MotusChat
               variant="member"
               messages={memberMessages}
@@ -7311,6 +7314,7 @@ export function MemberPortal(props: MemberPortalProps) {
               quickActions={memberChatQuickActions}
               onToggleReaction={toggleChatMessageReaction}
             />
+            )
           ) : null}
 
           {memberTab === "profile" ? (
