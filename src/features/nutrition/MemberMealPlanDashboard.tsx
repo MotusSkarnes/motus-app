@@ -317,7 +317,17 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
                     {hasFood ? mealDisplayTitle(meal) : meal.name}
                   </h3>
                   {hasFood ? (
-                    <p className="motus-matplan-meal-macros">{mealMacroLine(macros)}</p>
+                    <>
+                      <p className="motus-matplan-meal-macros">{mealMacroLine(macros)}</p>
+                      <ul className="motus-matplan-meal-foods">
+                        {meal.items.map((item) => (
+                          <li key={item.id} className="motus-matplan-meal-food">
+                            <span className="motus-matplan-meal-food-name">{item.foodName}</span>
+                            <span className="motus-matplan-meal-food-grams">{item.grams} g</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
                   ) : (
                     <p className="motus-matplan-meal-macros motus-matplan-meal-macros--muted">
                       Treneren fyller ut dette måltidet

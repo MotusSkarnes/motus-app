@@ -423,6 +423,19 @@ Deno.serve(async (req) => {
     }
   }
 
+  let mealPlans: Array<Record<string, unknown>> = [];
+  if (memberDataLookupList.length > 0) {
+    const { data: mealPlanRows, error: mealPlansError } = await adminClient
+      .from("member_meal_plans")
+      .select("member_id, title, notes, days, targets, updated_at")
+      .in("member_id", memberDataLookupList);
+    if (mealPlansError) {
+      console.warn("hydrate-member-data: member_meal_plans query failed (table may be missing):", mealPlansError.message);
+    } else {
+      mealPlans = (mealPlanRows ?? []) as Array<Record<string, unknown>>;
+    }
+  }
+
   let exercises: Array<Record<string, unknown>> = [];
   const { data: exerciseRows, error: exercisesError } = await adminClient
     .from("exercise_bank")
@@ -534,6 +547,7 @@ Deno.serve(async (req) => {
     logs: logs ?? [],
     messages: dedupedMessages ?? [],
     periodPlans,
+    mealPlans,
     exercises,
     inspirationItems,
   });

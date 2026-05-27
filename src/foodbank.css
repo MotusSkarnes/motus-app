@@ -1098,6 +1098,34 @@
   font-style: italic;
 }
 
+.motus-matplan-meal-foods {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.motus-matplan-meal-food {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.6875rem;
+  color: #475569;
+}
+
+.motus-matplan-meal-food-name {
+  font-weight: 600;
+  color: #334155;
+}
+
+.motus-matplan-meal-food-grams {
+  flex-shrink: 0;
+  color: #94a3b8;
+}
+
 .motus-matplan-meal-actions {
   display: flex;
   flex-wrap: wrap;

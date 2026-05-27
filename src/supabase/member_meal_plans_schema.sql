@@ -18,6 +18,8 @@ create policy "member_meal_plans_select"
   to authenticated
   using (
     auth.uid() = owner_user_id
+    or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+    or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
     or member_id in (
       select m.id::text
       from public.members m

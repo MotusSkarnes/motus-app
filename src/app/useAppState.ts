@@ -48,6 +48,8 @@ import {
 } from "./pausedWorkoutSession";
 import { getPausedWorkoutById, purgeExpiredPausedWorkouts } from "./pausedWorkoutStorage";
 import { syncTrainerFoodBankFromRemote } from "./foodBankCloud";
+import { applyHydratedMealPlan } from "./mealPlanCloud";
+import { notifyMealPlanChanged } from "./mealPlanStorage";
 import { notifyInspirationItemsChanged, saveInspirationItemsToStorage } from "./inspirationStorage";
 import {
   filterDeletedPrograms,
@@ -1053,6 +1055,12 @@ export function useAppState() {
         const periodPlanRows = hydratedMember.periodPlanRows ?? [];
         setRemoteMemberPeriodPlanRows(periodPlanRows);
         writeCachedMemberPeriodPlanRows(periodPlanRows);
+        if (hydratedMember.mealPlans?.length) {
+          for (const mealPlan of hydratedMember.mealPlans) {
+            applyHydratedMealPlan(mealPlan);
+          }
+          notifyMealPlanChanged();
+        }
         if (
           !cancelled &&
           Array.isArray(hydratedMember.inspirationItems) &&

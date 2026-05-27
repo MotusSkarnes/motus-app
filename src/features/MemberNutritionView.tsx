@@ -40,6 +40,14 @@ export function MemberNutritionView({ memberId, memberName }: MemberNutritionVie
     return () => window.removeEventListener(MEAL_PLAN_CHANGED_EVENT, handler);
   }, [reload]);
 
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void reload();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [reload]);
+
   const mealPlanPanel = (() => {
     if (loading) {
       return <Card className="p-6 text-center text-sm text-slate-600">Laster din matplan …</Card>;

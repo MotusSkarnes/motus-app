@@ -47,6 +47,8 @@ import {
   programIsInMemberArchive,
 } from "../app/programBlocks";
 import { isContaminatedDemoMemberProfile } from "../app/memberLocalCatalog";
+import { mealPlanFromRow } from "../app/mealPlanCloud";
+import type { MealPlan } from "../app/mealPlanTypes";
 import { detectNewMemberFormSubmissions } from "../app/memberFormNotifications";
 import { ensureMemberAuthLink, resolveSessionAuthRole } from "./supabaseAuth";
 import { supabaseClient } from "./supabaseClient";
@@ -2813,6 +2815,7 @@ export type HydratedMemberData = {
   programs: TrainingProgram[];
   logs: WorkoutLog[];
   periodPlanRows: Array<{ memberId: string; plan: PeriodSchedulePlan }>;
+  mealPlans: MealPlan[];
   exercises: Exercise[];
   inspirationItems: unknown[];
   accessDenied?: MemberAccessDenied;
@@ -2824,6 +2827,7 @@ const EMPTY_HYDRATED_MEMBER_DATA: HydratedMemberData = {
   programs: [],
   logs: [],
   periodPlanRows: [],
+  mealPlans: [],
   exercises: [],
   inspirationItems: [],
 };
@@ -2888,6 +2892,16 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
     }
   }
 
+  const mealPlansRaw = Array.isArray(payload.mealPlans) ? payload.mealPlans : [];
+  const mealPlans: MealPlan[] = [];
+  for (const row of mealPlansRaw) {
+    const r = row as Record<string, unknown>;
+    const memberId = String(r.member_id ?? "").trim();
+    if (!memberId) continue;
+    const plan = mealPlanFromRow(memberId, r);
+    if (plan.days.length) mealPlans.push(plan);
+  }
+
   return {
     members: membersRows.map((row) => {
       const member = row as Record<string, unknown>;
@@ -2945,6 +2959,7 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
       } as WorkoutLog;
     }),
     periodPlanRows,
+    mealPlans,
     inspirationItems: Array.isArray(payload.inspirationItems) ? payload.inspirationItems : [],
     exercises: exercisesRows.map((row) => {
       const exercise = row as Record<string, unknown>;

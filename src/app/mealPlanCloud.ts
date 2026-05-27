@@ -1,12 +1,12 @@
 import { createDefaultMealPlan } from "./mealPlanDefaults";
 import { loadMealPlanForMember, persistMealPlan } from "./mealPlanStorage";
-import type { MealPlan, MealPlanDay, MealPlanTargets } from "./mealPlanTypes";
+import type { MealPlan, MealPlanDay, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "./mealPlanTypes";
+import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
 function mealPlansEqual(a: MealPlan | null | undefined, b: MealPlan | null | undefined): boolean {
   if (!a || !b) return false;
   return JSON.stringify(a) === JSON.stringify(b);
 }
-import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
 function isMealPlanTableMissing(message: string): boolean {
   const m = message.toLowerCase();
@@ -27,12 +27,91 @@ function parseTargets(value: unknown): MealPlanTargets | undefined {
   return Object.keys(targets).length ? targets : undefined;
 }
 
-function parseDays(value: unknown): MealPlanDay[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((day): day is MealPlanDay => Boolean(day && typeof day === "object" && typeof (day as MealPlanDay).label === "string"));
+function parseFoodEntry(value: unknown): MealPlanFoodEntry | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  const nutrition = row.nutritionPer100g ?? row.nutrition_per_100g;
+  if (!nutrition || typeof nutrition !== "object") return null;
+  const n = nutrition as Record<string, unknown>;
+  return {
+    id: String(row.id ?? `food-${Math.random().toString(36).slice(2, 9)}`),
+    foodId: String(row.foodId ?? row.food_id ?? ""),
+    foodName: String(row.foodName ?? row.food_name ?? "Matvare"),
+    grams: Number(row.grams) > 0 ? Number(row.grams) : 0,
+    note: typeof row.note === "string" ? row.note : undefined,
+    nutritionPer100g: {
+      kcal: Number(n.kcal) || 0,
+      protein: Number(n.protein) || 0,
+      carbs: Number(n.carbs) || 0,
+      fat: Number(n.fat) || 0,
+      fiber: Number(n.fiber) || 0,
+      sugar: Number(n.sugar) || 0,
+      saturatedFat: Number(n.saturatedFat ?? n.saturated_fat) || 0,
+      sodium: Number(n.sodium) || 0,
+    },
+  };
 }
 
-function mealPlanFromRow(memberId: string, row: Record<string, unknown>): MealPlan {
+function parseMeal(value: unknown, dayIndex: number, mealIndex: number): MealPlanMeal | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  const itemsRaw = Array.isArray(row.items) ? row.items : [];
+  const items = itemsRaw.map(parseFoodEntry).filter((item): item is MealPlanFoodEntry => item !== null);
+  return {
+    id: String(row.id ?? `meal-${dayIndex}-${mealIndex}`),
+    name: String(row.name ?? "Måltid"),
+    time: typeof row.time === "string" ? row.time : undefined,
+    items,
+  };
+}
+
+function parseDays(value: unknown): MealPlanDay[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((day, dayIndex) => {
+      if (!day || typeof day !== "object") return null;
+      const row = day as Record<string, unknown>;
+      const mealsRaw = Array.isArray(row.meals) ? row.meals : [];
+      const meals = mealsRaw
+        .map((meal, mealIndex) => parseMeal(meal, dayIndex, mealIndex))
+        .filter((meal): meal is MealPlanMeal => meal !== null);
+      return {
+        id: String(row.id ?? `day-${dayIndex}`),
+        label: String(row.label ?? `Dag ${dayIndex + 1}`),
+        meals,
+      };
+    })
+    .filter((day): day is MealPlanDay => day !== null);
+}
+
+export function countMealPlanFoodItems(plan: MealPlan | null | undefined): number {
+  if (!plan) return 0;
+  return plan.days.reduce(
+    (sum, day) => sum + day.meals.reduce((mealSum, meal) => mealSum + meal.items.length, 0),
+    0,
+  );
+}
+
+function planUpdatedAtMs(plan: MealPlan | null | undefined): number {
+  const raw = plan?.updatedAt?.trim();
+  if (!raw) return 0;
+  const ms = Date.parse(raw);
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+/** Velg plan med flest matvarer; ved likt antall nyeste updated_at. */
+export function pickPreferredMealPlan(candidates: MealPlan[]): MealPlan | null {
+  if (!candidates.length) return null;
+  return candidates.reduce((best, current) => {
+    const bestFood = countMealPlanFoodItems(best);
+    const currentFood = countMealPlanFoodItems(current);
+    if (currentFood > bestFood) return current;
+    if (currentFood < bestFood) return best;
+    return planUpdatedAtMs(current) >= planUpdatedAtMs(best) ? current : best;
+  });
+}
+
+export function mealPlanFromRow(memberId: string, row: Record<string, unknown>): MealPlan {
   return {
     id: String(row.id ?? `mealplan-${memberId}`),
     memberId,
@@ -45,7 +124,7 @@ function mealPlanFromRow(memberId: string, row: Record<string, unknown>): MealPl
   };
 }
 
-export async function fetchMealPlanFromSupabase(memberId: string): Promise<MealPlan | null> {
+async function fetchMealPlanRow(memberId: string): Promise<MealPlan | null> {
   if (!supabaseClient || !memberId.trim()) return null;
   const { data, error } = await supabaseClient
     .from("member_meal_plans")
@@ -54,14 +133,49 @@ export async function fetchMealPlanFromSupabase(memberId: string): Promise<MealP
     .maybeSingle();
   if (error) {
     if (!isMealPlanTableMissing(error.message)) {
-      console.warn("member_meal_plans fetch failed:", error.message);
+      console.warn("member_meal_plans fetch failed:", memberId, error.message);
     }
     return null;
   }
   if (!data) return null;
-  const plan = mealPlanFromRow(memberId, data as Record<string, unknown>);
+  const rowMemberId = String((data as { member_id?: string }).member_id ?? memberId).trim() || memberId;
+  const plan = mealPlanFromRow(rowMemberId, data as Record<string, unknown>);
   if (!plan.days.length) return null;
   return plan;
+}
+
+export async function fetchMealPlanFromSupabase(memberIds: string | string[]): Promise<MealPlan | null> {
+  const ids = [...new Set((Array.isArray(memberIds) ? memberIds : [memberIds]).map((id) => id.trim()).filter(Boolean))];
+  if (!ids.length) return null;
+  const plans: MealPlan[] = [];
+  for (const id of ids) {
+    const plan = await fetchMealPlanRow(id);
+    if (plan) plans.push(plan);
+  }
+  return pickPreferredMealPlan(plans);
+}
+
+export async function readLinkedMealPlanMemberIds(primaryMemberId: string): Promise<string[]> {
+  const ids = new Set<string>();
+  const primary = primaryMemberId.trim();
+  if (primary) ids.add(primary);
+  if (!supabaseClient) return [...ids];
+  try {
+    const { data } = await supabaseClient.auth.getUser();
+    const user = data?.user;
+    if (!user) return [...ids];
+    const metaIds = [
+      typeof user.app_metadata?.member_id === "string" ? user.app_metadata.member_id : "",
+      typeof user.user_metadata?.member_id === "string" ? user.user_metadata.member_id : "",
+    ];
+    metaIds.forEach((id) => {
+      const trimmed = id.trim();
+      if (trimmed) ids.add(trimmed);
+    });
+  } catch {
+    /* ignore */
+  }
+  return [...ids];
 }
 
 export async function saveMealPlanToSupabase(
@@ -111,28 +225,46 @@ export async function syncMealPlanForMember(
   memberId: string,
   ownerUserId: string,
 ): Promise<{ plan: MealPlan; cloudSynced: boolean }> {
-  const trimmedMemberId = memberId.trim();
-  const remote = await fetchMealPlanFromSupabase(trimmedMemberId);
+  const lookupIds = await readLinkedMealPlanMemberIds(memberId);
+  const trimmedMemberId = memberId.trim() || lookupIds[0] || "";
+  const remote = await fetchMealPlanFromSupabase(lookupIds);
+  const local = loadMealPlanForMember(trimmedMemberId);
+
   if (remote) {
-    const cached = loadMealPlanForMember(trimmedMemberId);
-    if (!mealPlansEqual(cached, remote)) {
-      persistMealPlan(remote, { notify: false });
+    const preferred =
+      local && countMealPlanFoodItems(local) > countMealPlanFoodItems(remote) && planUpdatedAtMs(local) > planUpdatedAtMs(remote)
+        ? local
+        : remote;
+    if (!mealPlansEqual(loadMealPlanForMember(trimmedMemberId), preferred)) {
+      persistMealPlan({ ...preferred, memberId: trimmedMemberId }, { notify: false });
     }
-    return { plan: remote, cloudSynced: true };
+    return { plan: preferred, cloudSynced: true };
   }
 
-  let local = loadMealPlanForMember(trimmedMemberId);
-  if (!local) {
-    local = createDefaultMealPlan(trimmedMemberId);
-    persistMealPlan(local, { notify: false });
+  let fallback = local;
+  if (!fallback) {
+    fallback = createDefaultMealPlan(trimmedMemberId);
+    persistMealPlan(fallback, { notify: false });
   }
 
   if (!ownerUserId.trim() || !isSupabaseConfigured) {
-    return { plan: local, cloudSynced: false };
+    return { plan: fallback, cloudSynced: false };
   }
 
-  const uploaded = await saveMealPlanToSupabase(ownerUserId, local);
-  return { plan: local, cloudSynced: uploaded };
+  const uploaded = await saveMealPlanToSupabase(ownerUserId, fallback);
+  return { plan: fallback, cloudSynced: uploaded };
+}
+
+/** Brukes etter hydrate-member-data — lagrer plan lokalt for medlem. */
+export function applyHydratedMealPlan(plan: MealPlan): void {
+  const memberId = plan.memberId.trim();
+  if (!memberId || !plan.days.length) return;
+  const existing = loadMealPlanForMember(memberId);
+  const preferred = pickPreferredMealPlan(
+    [existing, plan].filter((row): row is MealPlan => Boolean(row)),
+  );
+  if (!preferred || mealPlansEqual(existing, preferred)) return;
+  persistMealPlan(preferred);
 }
 
 export async function persistMealPlanBundle(
