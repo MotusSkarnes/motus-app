@@ -15,10 +15,9 @@ import { formatMacro } from "../../app/foodBankTypes";
 import type { FoodItem } from "../../app/foodBankTypes";
 import { countMealPlanFoodItems } from "../../app/mealPlanCloud";
 import {
-  computeDayMacros,
   computeMealMacros,
+  sumLoggedMacrosFromFoodItems,
   type MacroTotals,
-  sumMacroTotals,
 } from "../../app/mealPlanMacros";
 import { MealPlanDisplay } from "../MealPlanDisplay";
 import { buildWeeklyShoppingList } from "../../app/mealPlanShoppingList";
@@ -37,9 +36,11 @@ import {
   computeNutritionStreak,
   getTimeBasedGreeting,
   getWeekdayIndex,
-  isMealLogged,
   loadMealPlanTracking,
+  prepareMealPlanTracking,
+  removeFoodLogged,
   setWaterLiters,
+  toggleFoodLogged,
   toggleMealLogged,
   toggleShoppingChecked,
   toIsoDateKey,
@@ -82,13 +83,6 @@ function mealMacroLine(macros: MacroTotals): string {
 
 function normalizeMealKey(name: string): string {
   return name.toLowerCase().replace(/\s+/g, "");
-}
-
-function sumLoggedMacros(day: MealPlanDay, loggedIds: Set<string>): MacroTotals {
-  const rows = day.meals
-    .filter((meal) => loggedIds.has(meal.id) && meal.items.length > 0)
-    .map((meal) => computeMealMacros(meal));
-  return sumMacroTotals(rows);
 }
 
 function dateKeyForPlanDayIndex(today: Date, todayWeekdayIndex: number, dayIndex: number): string {
@@ -175,19 +169,24 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
     [selectedDay, selectedMealsResolved],
   );
 
-  const loggedToday = useMemo(() => new Set(tracking.loggedMeals[todayKey] ?? []), [tracking.loggedMeals, todayKey]);
-  const loggedSelected = useMemo(
-    () => new Set(tracking.loggedMeals[selectedDateKey] ?? []),
-    [tracking.loggedMeals, selectedDateKey],
+  const loggedFoodToday = useMemo(
+    () => new Set(tracking.loggedFoodIds[todayKey] ?? []),
+    [tracking.loggedFoodIds, todayKey],
   );
-  const loggedMacrosToday = useMemo(() => sumLoggedMacros(todayDayResolved, loggedToday), [todayDayResolved, loggedToday]);
-  const plannedMacrosToday = useMemo(() => computeDayMacros(todayDayResolved), [todayDayResolved]);
+  const loggedFoodSelected = useMemo(
+    () => new Set(tracking.loggedFoodIds[selectedDateKey] ?? []),
+    [tracking.loggedFoodIds, selectedDateKey],
+  );
+  const loggedMacrosToday = useMemo(
+    () => sumLoggedMacrosFromFoodItems(todayDayResolved, loggedFoodToday),
+    [todayDayResolved, loggedFoodToday],
+  );
   const selectedDayFoodCount = selectedMealsResolved.filter((meal) => meal.items.length > 0).length;
 
-  const displayMacros = loggedMacrosToday.kcal > 0 ? loggedMacrosToday : plannedMacrosToday;
+  const displayMacros = loggedMacrosToday;
   const waterLiters = tracking.waterLiters[todayKey] ?? 0;
   const kcalRemaining = Math.max(0, Math.round(targetKcal - displayMacros.kcal));
-  const streakDays = computeNutritionStreak(tracking.loggedMeals);
+  const streakDays = computeNutritionStreak(tracking.loggedMeals, tracking.loggedFoodIds);
 
   const weekProgress = useMemo(() => {
     let logged = 0;
@@ -197,14 +196,16 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
       d.setDate(today.getDate() - (todayWeekdayIndex - i));
       const key = toIsoDateKey(d);
       const day = plan.days[i];
-      const mealsWithFood = day?.meals.filter((m) => m.items.length > 0).length ?? 0;
-      planned += mealsWithFood;
-      logged += (tracking.loggedMeals[key] ?? []).filter((id) =>
-        day?.meals.some((m) => m.id === id && m.items.length > 0),
-      ).length;
+      const loggedFood = new Set(tracking.loggedFoodIds[key] ?? []);
+      for (const meal of day?.meals ?? []) {
+        for (const item of meal.items) {
+          planned += 1;
+          if (loggedFood.has(item.id)) logged += 1;
+        }
+      }
     }
     return { logged, planned };
-  }, [plan.days, today, todayWeekdayIndex, tracking.loggedMeals]);
+  }, [plan.days, today, todayWeekdayIndex, tracking.loggedFoodIds]);
 
   const weekStatusLine =
     weekProgress.planned > 0 && weekProgress.logged >= weekProgress.planned * 0.6
@@ -252,11 +253,42 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
     return tips;
   }, [displayMacros.protein, plan.notes, targetProtein]);
 
+  useEffect(() => {
+    if (!memberId.trim()) return;
+    setTracking((prev) => {
+      let next = prepareMealPlanTracking(prev, todayKey, todayMealsResolved);
+      next = prepareMealPlanTracking(next, selectedDateKey, selectedMealsResolved);
+      if (next === prev) return prev;
+      persistMemberMealPlanStateLocalAndScheduleCloud(memberId, next);
+      return next;
+    });
+  }, [memberId, todayKey, selectedDateKey, todayMealsResolved, selectedMealsResolved]);
+
   const handleToggleMeal = useCallback(
-    (mealId: string) => {
-      setTracking((prev) => toggleMealLogged(memberId, prev, selectedDateKey, mealId));
+    (meal: MealPlanMeal) => {
+      setTracking((prev) =>
+        toggleMealLogged(memberId, prev, selectedDateKey, meal.id, meal, selectedMealsResolved),
+      );
     },
-    [memberId, selectedDateKey],
+    [memberId, selectedDateKey, selectedMealsResolved],
+  );
+
+  const handleToggleFood = useCallback(
+    (foodEntryId: string) => {
+      setTracking((prev) =>
+        toggleFoodLogged(memberId, prev, selectedDateKey, selectedMealsResolved, foodEntryId),
+      );
+    },
+    [memberId, selectedDateKey, selectedMealsResolved],
+  );
+
+  const handleRemoveFood = useCallback(
+    (foodEntryId: string) => {
+      setTracking((prev) =>
+        removeFoodLogged(memberId, prev, selectedDateKey, selectedMealsResolved, foodEntryId),
+      );
+    },
+    [memberId, selectedDateKey, selectedMealsResolved],
   );
 
   const handleWaterAdjust = useCallback(
@@ -342,14 +374,14 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
             const d = new Date(today);
             d.setDate(today.getDate() - (todayWeekdayIndex - index));
             const dateKey = toIsoDateKey(d);
-            const logged = tracking.loggedMeals[dateKey] ?? [];
+            const loggedFood = new Set(tracking.loggedFoodIds[dateKey] ?? []);
             const mealsWithFood = day.meals.filter((m) => m.items.length > 0);
+            const foodItems = mealsWithFood.flatMap((m) => m.items);
             const complete =
-              mealsWithFood.length > 0 &&
-              mealsWithFood.every((m) => logged.includes(m.id));
+              foodItems.length > 0 && foodItems.every((item) => loggedFood.has(item.id));
             const isToday = index === todayWeekdayIndex;
             const isPast = index < todayWeekdayIndex;
-            const hasActivity = logged.length > 0;
+            const hasActivity = loggedFood.size > 0;
 
             const dayHasFood = mealsWithFood.length > 0;
             const isSelected = index === selectedDayIndex;
@@ -415,8 +447,10 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
                 type="button"
                 className="motus-matplan-link-btn"
                 onClick={() => {
-                  const next = selectedMealsResolved.find((m) => m.items.length > 0 && !loggedSelected.has(m.id));
-                  if (next) handleToggleMeal(next.id);
+                  const next = selectedMealsResolved.find(
+                    (m) => m.items.length > 0 && !m.items.every((item) => loggedFoodSelected.has(item.id)),
+                  );
+                  if (next) handleToggleMeal(next);
                 }}
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden />
@@ -440,13 +474,18 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
         <div className="motus-matplan-meals">
           {selectedMealsResolved.map((meal) => {
             const macros = computeMealMacros(meal);
-            const logged = loggedSelected.has(meal.id);
+            const loggedFoodCount = meal.items.filter((item) => loggedFoodSelected.has(item.id)).length;
+            const logged = meal.items.length > 0 && loggedFoodCount === meal.items.length;
+            const hasPartialLog = loggedFoodCount > 0 && !logged;
             const hasFood = meal.items.length > 0;
             const imageSrc = resolveMealImage(meal);
             const isSwapped = Boolean(tracking.mealSwaps[mealSwapKey(selectedDateKey, meal.id)]);
 
             return (
-              <article key={meal.id} className={`motus-matplan-meal-card ${logged ? "motus-matplan-meal-card--logged" : ""}`}>
+              <article
+                key={meal.id}
+                className={`motus-matplan-meal-card ${logged ? "motus-matplan-meal-card--logged" : ""} ${hasPartialLog ? "motus-matplan-meal-card--partial" : ""}`}
+              >
                 <div className="motus-matplan-meal-body">
                   <span className="motus-matplan-meal-slot">{mealSlotLabel(meal.name)}</span>
                   {isSwapped ? <span className="motus-matplan-meal-swapped">Byttet måltid</span> : null}
@@ -457,12 +496,49 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
                     <>
                       <p className="motus-matplan-meal-macros">{mealMacroLine(macros)}</p>
                       <ul className="motus-matplan-meal-foods">
-                        {meal.items.map((item) => (
-                          <li key={item.id} className="motus-matplan-meal-food">
-                            <span className="motus-matplan-meal-food-name">{item.foodName}</span>
-                            <span className="motus-matplan-meal-food-grams">{item.grams} g</span>
-                          </li>
-                        ))}
+                        {meal.items.map((item) => {
+                          const foodLogged = loggedFoodSelected.has(item.id);
+                          return (
+                            <li
+                              key={item.id}
+                              className={`motus-matplan-meal-food ${foodLogged ? "motus-matplan-meal-food--logged" : ""}`}
+                            >
+                              <div className="motus-matplan-meal-food-main">
+                                <span className="motus-matplan-meal-food-name">{item.foodName}</span>
+                                <span className="motus-matplan-meal-food-grams">{item.grams} g</span>
+                              </div>
+                              {hasFood ? (
+                                <div className="motus-matplan-meal-food-actions">
+                                  {foodLogged ? (
+                                    <button
+                                      type="button"
+                                      className="motus-matplan-food-remove motus-pressable"
+                                      onClick={() => handleRemoveFood(item.id)}
+                                      aria-label={`Fjern ${item.foodName} fra logg`}
+                                    >
+                                      <X className="h-3.5 w-3.5" aria-hidden />
+                                      Fjern
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="motus-matplan-food-log motus-pressable"
+                                      onClick={() => handleToggleFood(item.id)}
+                                      aria-label={`Logg ${item.foodName}`}
+                                    >
+                                      <Plus className="h-3.5 w-3.5" aria-hidden />
+                                      Logg
+                                    </button>
+                                  )}
+                                </div>
+                              ) : foodLogged ? (
+                                <span className="motus-matplan-meal-food-check" aria-label="Logget">
+                                  <Check className="h-3.5 w-3.5" aria-hidden />
+                                </span>
+                              ) : null}
+                            </li>
+                          );
+                        })}
                       </ul>
                     </>
                   ) : (
@@ -472,10 +548,15 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
                   )}
                   <div className="motus-matplan-meal-actions">
                     {logged ? (
-                      <span className="motus-matplan-logged-badge">
+                      <button
+                        type="button"
+                        className="motus-matplan-logged-badge motus-pressable"
+                        onClick={() => handleToggleMeal(meal)}
+                        aria-label="Fjern hele måltidet fra logg"
+                      >
                         <Check className="h-3.5 w-3.5" aria-hidden />
-                        Logget
-                      </span>
+                        Logget · trykk for å fjerne
+                      </button>
                     ) : hasFood ? (
                       <>
                         <button
@@ -488,10 +569,10 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
                         <button
                           type="button"
                           className="motus-matplan-btn motus-matplan-btn--pink-outline motus-pressable"
-                          onClick={() => handleToggleMeal(meal.id)}
+                          onClick={() => handleToggleMeal(meal)}
                         >
                           <Plus className="h-3.5 w-3.5" aria-hidden />
-                          Logg måltid
+                          {hasPartialLog ? "Logg resten" : "Logg alt"}
                         </button>
                       </>
                     ) : null}
