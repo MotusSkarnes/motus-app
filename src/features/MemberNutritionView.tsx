@@ -4,7 +4,7 @@ import { syncMealPlanForMember } from "../app/mealPlanCloud";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import type { MealPlan } from "../app/mealPlanTypes";
 import { Card } from "../app/ui";
-import { MealPlanDisplay } from "./MealPlanDisplay";
+import { MemberMealPlanDashboard } from "./nutrition/MemberMealPlanDashboard";
 import { NutritionHub } from "./nutrition/NutritionHub";
 
 type MemberNutritionViewProps = {
@@ -14,7 +14,6 @@ type MemberNutritionViewProps = {
 
 export function MemberNutritionView({ memberId, memberName }: MemberNutritionViewProps) {
   const [plan, setPlan] = useState<MealPlan | null>(null);
-  const [activeDayId, setActiveDayId] = useState("");
   const [loading, setLoading] = useState(true);
   const reloadInFlightRef = useRef(false);
 
@@ -25,7 +24,6 @@ export function MemberNutritionView({ memberId, memberName }: MemberNutritionVie
     try {
       const result = await syncMealPlanForMember(memberId, "");
       setPlan(result.plan);
-      setActiveDayId((prev) => prev || result.plan.days[0]?.id || "");
     } finally {
       reloadInFlightRef.current = false;
       setLoading(false);
@@ -55,23 +53,7 @@ export function MemberNutritionView({ memberId, memberName }: MemberNutritionVie
         </Card>
       );
     }
-    const hasFood = plan.days.some((day) => day.meals.some((meal) => meal.items.length > 0));
-    return (
-      <div className="space-y-4">
-        <div className="rounded-2xl border bg-gradient-to-br from-teal-50 to-white p-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-          <div className="flex items-center gap-2 text-teal-800">
-            <Apple className="h-5 w-5" aria-hidden />
-            <span className="text-sm font-semibold">Din matplan</span>
-          </div>
-          <p className="mt-1 text-sm text-slate-600">
-            {hasFood
-              ? `Hei ${memberName.split(" ")[0] || memberName} — her er måltidene treneren har satt opp.`
-              : "Planen er opprettet, men måltidene fylles fortsatt ut av treneren."}
-          </p>
-        </div>
-        <MealPlanDisplay plan={plan} activeDayId={activeDayId} onActiveDayIdChange={setActiveDayId} readOnly />
-      </div>
-    );
+    return <MemberMealPlanDashboard plan={plan} memberId={memberId} memberName={memberName} />;
   })();
 
   return <NutritionHub mealPlan={mealPlanPanel} />;

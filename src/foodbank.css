@@ -866,3 +866,578 @@
   border-color: rgba(250, 204, 21, 0.45);
   color: #854d0e;
 }
+
+/* ── Medlems matplan (dashboard) ─────────────────────────────────────────── */
+
+.motus-matplan {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-bottom: 1.5rem;
+}
+
+.motus-matplan-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.motus-matplan-greeting {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.motus-matplan-week-status {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #30e3be;
+}
+
+.motus-matplan-streak-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 1px solid rgba(217, 18, 120, 0.15);
+  background: linear-gradient(135deg, rgba(217, 18, 120, 0.08) 0%, rgba(48, 227, 190, 0.08) 100%);
+  padding: 0.35rem 0.65rem 0.35rem 0.5rem;
+}
+
+.motus-matplan-streak-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.motus-matplan-streak-value {
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: #d91278;
+}
+
+.motus-matplan-streak-label {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.motus-matplan-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.motus-matplan-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.motus-matplan-section-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.motus-matplan-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #d91278;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.motus-matplan-status-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.motus-matplan-status-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  padding: 0.65rem 0.35rem 0.5rem;
+  box-shadow: 0 2px 12px -6px rgba(15, 23, 42, 0.12);
+}
+
+.motus-matplan-water-icon {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: #30e3be;
+  opacity: 0.7;
+}
+
+.motus-matplan-week-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.25rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  padding: 0.75rem 0.5rem;
+  box-shadow: 0 2px 12px -6px rgba(15, 23, 42, 0.1);
+}
+
+.motus-matplan-week-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.motus-matplan-week-day-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.motus-matplan-week-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  border: 2px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.motus-matplan-week-dot--done {
+  border-color: #30e3be;
+  background: #30e3be;
+}
+
+.motus-matplan-week-dot--today {
+  border-color: #30e3be;
+  background: rgba(48, 227, 190, 0.15);
+  box-shadow: 0 0 0 3px rgba(48, 227, 190, 0.2);
+}
+
+.motus-matplan-week-day--today .motus-matplan-week-day-label {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.motus-matplan-meals {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.motus-matplan-meal-card {
+  display: flex;
+  align-items: stretch;
+  gap: 0.65rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  padding: 0.85rem;
+  box-shadow: 0 2px 14px -8px rgba(15, 23, 42, 0.14);
+}
+
+.motus-matplan-meal-card--logged {
+  border-color: rgba(48, 227, 190, 0.35);
+  background: linear-gradient(135deg, rgba(48, 227, 190, 0.04) 0%, #fff 60%);
+}
+
+.motus-matplan-meal-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.motus-matplan-meal-slot {
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #d91278;
+}
+
+.motus-matplan-meal-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.motus-matplan-meal-macros {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.1rem;
+}
+
+.motus-matplan-meal-macros--muted {
+  font-style: italic;
+}
+
+.motus-matplan-meal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.motus-matplan-meal-media {
+  flex-shrink: 0;
+  width: 5.5rem;
+  align-self: stretch;
+}
+
+.motus-matplan-meal-img {
+  width: 100%;
+  height: 100%;
+  min-height: 5rem;
+  border-radius: 0.75rem;
+  object-fit: cover;
+}
+
+.motus-matplan-meal-img--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #30e3be 0%, #d91278 100%);
+}
+
+.motus-matplan-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.motus-matplan-btn--mint {
+  background: #30e3be;
+  color: #0f172a;
+}
+
+.motus-matplan-btn--pink-outline {
+  background: #fff;
+  border-color: rgba(217, 18, 120, 0.35);
+  color: #d91278;
+}
+
+.motus-matplan-logged-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #0d9488;
+}
+
+.motus-matplan-macro-rings {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  padding: 1rem 0.5rem;
+  box-shadow: 0 2px 14px -8px rgba(15, 23, 42, 0.12);
+}
+
+.motus-matplan-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.25rem;
+}
+
+.motus-matplan-ring__graphic {
+  position: relative;
+}
+
+.motus-matplan-ring__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+}
+
+.motus-matplan-ring__value {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.motus-matplan-ring__target {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.motus-matplan-ring__sm-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 0.15rem;
+}
+
+.motus-matplan-ring__sm-value {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.motus-matplan-ring__sm-target {
+  font-size: 0.5625rem;
+  color: #94a3b8;
+}
+
+.motus-matplan-ring__label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-matplan-ring--lg .motus-matplan-ring__label {
+  font-size: 0.625rem;
+  margin-top: 0.15rem;
+}
+
+.motus-matplan-ring__sublabel {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  color: #30e3be;
+}
+
+.motus-matplan-coach-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: linear-gradient(135deg, rgba(48, 227, 190, 0.08) 0%, #fff 50%, rgba(217, 18, 120, 0.05) 100%);
+  padding: 0.85rem 1rem;
+  box-shadow: 0 2px 14px -8px rgba(15, 23, 42, 0.1);
+}
+
+.motus-matplan-coach-avatar {
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #30e3be, #d91278);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.motus-matplan-coach-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.motus-matplan-coach-quote {
+  margin-top: 0.15rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.4;
+}
+
+.motus-matplan-coach-play {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  border: 0;
+  background: #d91278;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px -4px rgba(217, 18, 120, 0.5);
+}
+
+.motus-matplan-shopping-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.motus-matplan-shopping {
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  padding: 0.85rem 1rem;
+  box-shadow: 0 2px 12px -6px rgba(15, 23, 42, 0.1);
+}
+
+.motus-matplan-shopping-group + .motus-matplan-shopping-group {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.motus-matplan-shopping-group-title {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  margin-bottom: 0.4rem;
+}
+
+.motus-matplan-shopping-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.motus-matplan-shopping-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: 0;
+  background: none;
+  padding: 0.35rem 0;
+  font-size: 0.8125rem;
+  color: #0f172a;
+  text-align: left;
+  cursor: pointer;
+}
+
+.motus-matplan-shopping-check {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 0.3rem;
+  border: 2px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.motus-matplan-shopping-check--on {
+  border-color: #30e3be;
+  background: #30e3be;
+}
+
+.motus-matplan-swap-modal,
+.motus-matplan-tips-modal {
+  max-width: 24rem;
+}
+
+.motus-matplan-swap-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.motus-matplan-swap-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #f8fafc;
+  padding: 0.5rem 0.65rem;
+  cursor: pointer;
+}
+
+.motus-matplan-swap-thumb {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.5rem;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.motus-matplan-swap-thumb--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #30e3be, #d91278);
+}
+
+.motus-matplan-swap-add {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  background: #30e3be;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.motus-matplan-tip-card {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(48, 227, 190, 0.25);
+  background: rgba(48, 227, 190, 0.06);
+  padding: 0.75rem 0.85rem;
+}
+
+.motus-nutrition-hub-tabs {
+  margin-bottom: 0.25rem;
+}
+
+@media (max-width: 380px) {
+  .motus-matplan-macro-rings {
+    gap: 0.25rem;
+    padding: 0.75rem 0.25rem;
+  }
+
+  .motus-matplan-ring--lg .motus-matplan-ring__value {
+    font-size: 0.6875rem;
+  }
+}
