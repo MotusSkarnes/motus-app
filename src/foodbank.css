@@ -737,3 +737,74 @@
   font-size: 0.8125rem;
   color: #e11d48;
 }
+
+/* Oppskrifter — makroblokker per porsjon */
+
+.motus-recipe-macros-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@media (min-width: 480px) {
+  .motus-recipe-macros-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.motus-recipe-macro-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  border-radius: 0.85rem;
+  padding: 0.65rem 0.55rem;
+  text-align: center;
+  border: 1px solid transparent;
+}
+
+.motus-recipe-macro-block__label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+.motus-recipe-macro-block__value {
+  font-size: 1.125rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.motus-recipe-macro-block__unit {
+  display: block;
+  font-size: 0.625rem;
+  font-weight: 600;
+  opacity: 0.75;
+  margin-top: 0.1rem;
+}
+
+.motus-recipe-macro-block--kcal {
+  background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
+  border-color: rgba(251, 146, 60, 0.35);
+  color: #9a3412;
+}
+
+.motus-recipe-macro-block--protein {
+  background: linear-gradient(180deg, #fff1f2 0%, #ffe4e6 100%);
+  border-color: rgba(251, 113, 133, 0.35);
+  color: #9f1239;
+}
+
+.motus-recipe-macro-block--carbs {
+  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+  border-color: rgba(96, 165, 250, 0.35);
+  color: #1e40af;
+}
+
+.motus-recipe-macro-block--fat {
+  background: linear-gradient(180deg, #fefce8 0%, #fef9c3 100%);
+  border-color: rgba(250, 204, 21, 0.45);
+  color: #854d0e;
+}

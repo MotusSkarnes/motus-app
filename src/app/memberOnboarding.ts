@@ -1,4 +1,5 @@
 import { pickBestPersonalGoals } from "./memberProfileGoals";
+import { mergeRosterFieldsFromMemberCandidates } from "../services/memberAccessRules";
 import { supabaseClient } from "../services/supabaseClient";
 import type { Level, Member } from "./types";
 
@@ -362,6 +363,7 @@ export function markMemberWelcomeSeen(identityKey: string): void {
 function scoreMemberRowForCanonicalPick(member: Member): number {
   let score = 0;
   if (!member.id.trim().startsWith("auth-")) score += 10_000;
+  if (member.nutritionAccess === true) score += 2_000;
   if (member.customerType === "PT-kunde") score += 1_000;
   if (member.membershipType === "Premium") score += 500;
   if (hasSubstantiveOnboardingAnswers(member.personalGoals)) score += 200;
@@ -481,9 +483,11 @@ export function enrichMemberWithBestProfile(member: Member, allMembers: Member[]
   const focus = pickProfileScalarField(canonical.focus, candidates.map((row) => row.focus));
   const injuries = pickProfileScalarField(canonical.injuries, candidates.map((row) => row.injuries));
   const name = pickProfileScalarField(canonical.name, candidates.map((row) => row.name));
+  const roster = mergeRosterFieldsFromMemberCandidates(candidates);
   return {
     ...canonical,
-    nutritionAccess: candidates.some((row) => row.nutritionAccess === true),
+    ...roster,
+    nutritionAccess: candidates.some((row) => row.nutritionAccess === true) || roster.nutritionAccess === true,
     ...(personalGoals ? { personalGoals } : {}),
     ...(phone ? { phone } : {}),
     ...(birthDate ? { birthDate } : {}),

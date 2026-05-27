@@ -27,6 +27,8 @@ type UpdatePayload = {
     customerType?: string;
     /** ISO 8601 — trener setter invitasjonstidspunkt */
     invitedAt?: string;
+    /** Trener aktiverer kosthold/ernæring for medlem */
+    nutritionAccess?: boolean;
   };
 };
 
@@ -122,7 +124,7 @@ function isMissingAvatarColumnError(message: string): boolean {
 
 async function updateMembersById(
   adminClient: ReturnType<typeof createClient>,
-  fields: Record<string, string>,
+  fields: Record<string, string | boolean>,
   ids: string[],
 ) {
   if (!ids.length) return { data: [] as { id?: string }[], error: null as null };
@@ -214,7 +216,7 @@ Deno.serve(async (req) => {
   // Email is an identity/routing key here, not a profile field. Never rewrite an
   // existing member row's email from this endpoint; stale auth member_id metadata
   // can otherwise overwrite an unrelated member with the logged-in user's email.
-  const updateFields: Record<string, string> = {};
+  const updateFields: Record<string, string | boolean> = {};
   if (changes.name !== undefined) updateFields.name = normalizeString(changes.name);
   if (changes.phone !== undefined) updateFields.phone = normalizeString(changes.phone);
   if (normalizedBirthDate !== undefined) updateFields.birth_date = normalizedBirthDate;
@@ -242,10 +244,13 @@ Deno.serve(async (req) => {
       const iso = normalizeString(changes.invitedAt);
       if (iso) updateFields.invited_at = iso;
     }
+    if (changes.nutritionAccess !== undefined) {
+      updateFields.nutrition_access = changes.nutritionAccess === true;
+    }
   }
 
-  const profileUpdateFields: Record<string, string> = { ...updateFields };
-  const rosterUpdateFields: Record<string, string> = {};
+  const profileUpdateFields: Record<string, string | boolean> = { ...updateFields };
+  const rosterUpdateFields: Record<string, string | boolean> = {};
   if (profileUpdateFields.membership_type !== undefined) {
     rosterUpdateFields.membership_type = profileUpdateFields.membership_type;
     delete profileUpdateFields.membership_type;
@@ -431,6 +436,37 @@ Deno.serve(async (req) => {
     }
   }
 
+  if (
+    canEditMembershipFields &&
+    changes.nutritionAccess !== undefined &&
+    normalizedTargetEmails.size > 0
+  ) {
+    const nutritionFields = { nutrition_access: changes.nutritionAccess === true };
+    const emailSet = new Set(Array.from(normalizedTargetEmails).filter((value) => value.includes("@")));
+    const { data: allMemberRows, error: nutritionFanoutError } = await adminClient.from("members").select("id,email");
+    if (nutritionFanoutError) {
+      return jsonResponse(500, { error: `Could not fan out nutrition access: ${nutritionFanoutError.message}` });
+    }
+    const nutritionFanoutIds = Array.from(
+      new Set(
+        (allMemberRows ?? [])
+          .filter((row) => {
+            const rowEmail = normalizeEmail((row as { email?: string }).email);
+            return Boolean(rowEmail && emailSet.has(rowEmail));
+          })
+          .map((row) => normalizeString((row as { id?: string }).id))
+          .filter(Boolean),
+      ),
+    );
+    if (nutritionFanoutIds.length) {
+      const nutritionResult = await updateMembersById(adminClient, nutritionFields, nutritionFanoutIds);
+      if (nutritionResult.error) {
+        return jsonResponse(500, { error: `Could not update nutrition access: ${nutritionResult.error.message}` });
+      }
+      mergeUpdated(nutritionResult.data);
+    }
+  }
+
   if (canEditMembershipFields && Object.keys(rosterUpdateFields).length > 0) {
     const trainerId = user.id;
     const nextCustomerType = normalizeString(rosterUpdateFields.customer_type).toLowerCase();
@@ -461,9 +497,10 @@ Deno.serve(async (req) => {
         mergeUpdated(medlemResult.data);
       }
     } else {
-      const editableAnchorIds = new Set(
-        visibleAnchors
+      const rosterEditableIds = new Set(
+        [...visibleAnchors, ...visibleExpandedRows]
           .filter((row) => {
+            if (isSharedMedlem(row.customer_type)) return true;
             const ownerUserId = normalizeString(row.owner_user_id);
             return ownerUserId === trainerId || !ownerUserId;
           })
@@ -471,9 +508,14 @@ Deno.serve(async (req) => {
           .filter(Boolean),
       );
       let rosterIds = requestedMemberIds.length
-        ? requestedMemberIds.map((value) => normalizeString(value)).filter((id) => editableAnchorIds.has(id))
-        : Array.from(editableAnchorIds);
+        ? requestedMemberIds.map((value) => normalizeString(value)).filter((id) => rosterEditableIds.has(id))
+        : Array.from(rosterEditableIds);
       rosterIds = Array.from(new Set(rosterIds));
+      if (!rosterIds.length && requestedMemberIds.length) {
+        rosterIds = Array.from(
+          new Set(requestedMemberIds.map((value) => normalizeString(value)).filter(Boolean)),
+        );
+      }
       if (rosterIds.length) {
         const privateRosterPayload = {
           ...rosterUpdateFields,

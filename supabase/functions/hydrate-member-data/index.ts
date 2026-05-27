@@ -81,12 +81,28 @@ function harmonizeMemberProfilesByEmail(rows: Array<Record<string, unknown>>): A
   for (const [, group] of byEmail) {
     if (group.length <= 1) continue;
     const bestPersonalGoals = pickBestPersonalGoalsFromRows(group);
-    if (!bestPersonalGoals) continue;
-    for (const row of group) {
-      row.personal_goals = bestPersonalGoals;
+    if (bestPersonalGoals) {
+      for (const row of group) {
+        row.personal_goals = bestPersonalGoals;
+      }
+    }
+    const anyNutritionAccess = group.some((row) => row.nutrition_access === true);
+    if (anyNutritionAccess) {
+      for (const row of group) {
+        row.nutrition_access = true;
+      }
     }
   }
   return rows;
+}
+
+function isMissingMembersColumnError(message: string, column: string): boolean {
+  const lower = message.toLowerCase();
+  const col = column.toLowerCase();
+  return (
+    lower.includes(col) &&
+    (lower.includes("does not exist") || lower.includes("schema cache") || lower.includes("could not find"))
+  );
 }
 
 Deno.serve(async (req) => {
@@ -141,25 +157,37 @@ Deno.serve(async (req) => {
   }
   const hasEmailRoster = emailRosterEarly.length > 0;
 
-  const membersSelectWithAvatar =
-    "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url, created_at";
-  const membersSelectWithoutAvatar =
-    "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, created_at";
+  const membersSelectBase =
+    "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, nutrition_access, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
+  const membersSelectWithAvatar = `${membersSelectBase}, avatar_url, created_at`;
+  const membersSelectWithoutAvatar = `${membersSelectBase}, created_at`;
+  const membersSelectWithoutNutrition = membersSelectWithAvatar.replace(", nutrition_access", "");
+  const membersSelectLegacy = membersSelectWithoutNutrition.replace(", avatar_url", "");
 
-  let allMembers: Array<Record<string, unknown>> | null = null;
-  let membersError: { message: string } | null = null;
-  const membersWithAvatar = await adminClient.from("members").select(membersSelectWithAvatar).order("created_at", { ascending: false });
-  if (membersWithAvatar.error && membersWithAvatar.error.message.includes("avatar_url")) {
-    const membersWithoutAvatar = await adminClient
-      .from("members")
-      .select(membersSelectWithoutAvatar)
-      .order("created_at", { ascending: false });
-    allMembers = (membersWithoutAvatar.data ?? []) as Array<Record<string, unknown>>;
-    membersError = membersWithoutAvatar.error;
-  } else {
-    allMembers = (membersWithAvatar.data ?? []) as Array<Record<string, unknown>>;
-    membersError = membersWithAvatar.error;
+  async function fetchAllMembersRows(): Promise<{ rows: Array<Record<string, unknown>>; error: { message: string } | null }> {
+    const attempt = await adminClient.from("members").select(membersSelectWithAvatar).order("created_at", { ascending: false });
+    if (!attempt.error) {
+      return { rows: (attempt.data ?? []) as Array<Record<string, unknown>>, error: null };
+    }
+    if (isMissingMembersColumnError(attempt.error.message, "nutrition_access")) {
+      const withoutNutrition = await adminClient.from("members").select(membersSelectWithoutNutrition).order("created_at", { ascending: false });
+      if (!withoutNutrition.error) {
+        return { rows: (withoutNutrition.data ?? []) as Array<Record<string, unknown>>, error: null };
+      }
+      if (isMissingMembersColumnError(withoutNutrition.error.message, "avatar_url")) {
+        const legacy = await adminClient.from("members").select(membersSelectLegacy).order("created_at", { ascending: false });
+        return { rows: (legacy.data ?? []) as Array<Record<string, unknown>>, error: legacy.error };
+      }
+      return { rows: [], error: withoutNutrition.error };
+    }
+    if (isMissingMembersColumnError(attempt.error.message, "avatar_url")) {
+      const withoutAvatar = await adminClient.from("members").select(membersSelectWithoutAvatar).order("created_at", { ascending: false });
+      return { rows: (withoutAvatar.data ?? []) as Array<Record<string, unknown>>, error: withoutAvatar.error };
+    }
+    return { rows: [], error: attempt.error };
   }
+
+  const { rows: allMembers, error: membersError } = await fetchAllMembersRows();
   if (membersError) return jsonResponse(500, { error: membersError.message });
 
   const members = (allMembers ?? []).filter((row) => {
@@ -201,18 +229,25 @@ Deno.serve(async (req) => {
   }
   // DB-side email match catches rows even if in-memory normalize/allMembers path missed them.
   let rowsByLoginEmail: Array<Record<string, unknown>> | null = null;
-  const emailRowsWithAvatar = await adminClient.from("members").select(membersSelectWithAvatar).ilike("email", requesterEmail);
-  if (emailRowsWithAvatar.error && emailRowsWithAvatar.error.message.includes("avatar_url")) {
+  const emailRowsAttempt = await adminClient.from("members").select(membersSelectWithAvatar).ilike("email", requesterEmail);
+  if (!emailRowsAttempt.error) {
+    rowsByLoginEmail = (emailRowsAttempt.data ?? []) as Array<Record<string, unknown>>;
+  } else if (isMissingMembersColumnError(emailRowsAttempt.error.message, "nutrition_access")) {
+    const emailFallback = await adminClient.from("members").select(membersSelectWithoutNutrition).ilike("email", requesterEmail);
+    if (emailFallback.error) {
+      console.warn("hydrate-member-data: members ilike email failed:", emailFallback.error.message);
+    } else {
+      rowsByLoginEmail = (emailFallback.data ?? []) as Array<Record<string, unknown>>;
+    }
+  } else if (isMissingMembersColumnError(emailRowsAttempt.error.message, "avatar_url")) {
     const emailRowsNoAvatar = await adminClient.from("members").select(membersSelectWithoutAvatar).ilike("email", requesterEmail);
     if (emailRowsNoAvatar.error) {
       console.warn("hydrate-member-data: members ilike email failed:", emailRowsNoAvatar.error.message);
     } else {
       rowsByLoginEmail = (emailRowsNoAvatar.data ?? []) as Array<Record<string, unknown>>;
     }
-  } else if (emailRowsWithAvatar.error) {
-    console.warn("hydrate-member-data: members ilike email failed:", emailRowsWithAvatar.error.message);
   } else {
-    rowsByLoginEmail = (emailRowsWithAvatar.data ?? []) as Array<Record<string, unknown>>;
+    console.warn("hydrate-member-data: members ilike email failed:", emailRowsAttempt.error.message);
   }
   if (rowsByLoginEmail) {
     for (const row of rowsByLoginEmail) {

@@ -31,9 +31,7 @@ import {
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import motusLogo from "../assets/motus-logo-transparent.svg";
-// Bruker den originale Motus-merke-PNG-en (samme som banneret) på skrytekortet,
-// slik at logoen vises i merkevarens farger og ikke som en flat hvit silhuett.
-import motusSkrytekortLogo from "../assets/motus-logo-transparent.png";
+import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
 import { memberBadgeImageSrc } from "../app/badgeAssets";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
@@ -76,14 +74,9 @@ import {
   buildTrainingProgramDisplayKey,
   buildWorkoutResultGroups,
   dedupeTrainingPrograms,
+  isLegacyIntervalCooldownDrag,
   programIsInMemberArchive,
 } from "../app/programBlocks";
-import {
-  formatProgramExercisePrescription,
-  formatWorkoutResultPerformedLabel,
-  formatWorkoutResultSetPlanLabel,
-  resolveProgramExerciseName,
-} from "../app/programExercisePresentation";
 import { memberMayDeleteProgram, memberMayEditProgram } from "../app/programAuthor";
 import {
   buildCheckInNotificationCopy,
@@ -179,7 +172,6 @@ import { computeMemberProgressScores } from "../app/memberMomentumScores";
 import { getTrainingProgramSubTab, trainingProgramCategoryLabel, isConditioningTrainingProgram } from "../app/trainingProgramKind";
 import { programsAttributedToMember } from "../app/memberActivity";
 import { BadgeImage } from "./BadgeImage";
-import { MemberFeatureGate } from "./MemberFeatureGate";
 import { MemberBadgesCarousel } from "./MemberBadgesCarousel";
 import { MemberProfileDashboard } from "./MemberProfileDashboard";
 import { CustomWorkoutBuilder } from "./CustomWorkoutBuilder";
@@ -306,14 +298,7 @@ type MemberPortalProps = {
   updateProgramMemberLibraryStatus: (programId: string, status: MemberProgramLibraryStatus | undefined) => void;
   updateWorkoutExerciseResult: (
     exerciseId: string,
-    field:
-      | "performedWeight"
-      | "performedReps"
-      | "performedDurationMinutes"
-      | "performedSpeed"
-      | "performedIncline"
-      | "performedLoadUnit"
-      | "completed",
+    field: "performedWeight" | "performedReps" | "performedDurationMinutes" | "performedSpeed" | "performedIncline" | "completed",
     value: string | boolean,
   ) => void;
   replaceWorkoutExerciseGroup: (input: ReplaceWorkoutExerciseGroupInput) => void;
@@ -964,6 +949,12 @@ function isPeriodPlanWorkoutLog(log: WorkoutLog): boolean {
   return note.includes("periodeplan");
 }
 
+function cardioHrPrescriptionSuffixForMember(programExercise: ProgramExercise): string {
+  const raw = String(programExercise.targetHrPercent ?? "").trim();
+  if (!raw) return "";
+  return ` · målpuls ca. ${raw}% av makspuls`;
+}
+
 function formatIntervalTimerHrHint(targetHrPercent: string | undefined): string {
   const raw = String(targetHrPercent ?? "").trim();
   if (!raw) return "";
@@ -974,6 +965,10 @@ function formatIntervalTimerHrHint(targetHrPercent: string | undefined): string 
 function isMemberIntervalCooldownName(name: string): boolean {
   const lower = name.trim().toLowerCase();
   return lower.includes("nedjogg") || lower.includes("nedtrapp") || lower.includes("cooldown");
+}
+
+function memberProgramExerciseName(program: TrainingProgram, index: number): string {
+  return isLegacyIntervalCooldownDrag(program.exercises, index) ? "Nedjogg" : program.exercises[index]?.exerciseName ?? "";
 }
 
 function firstNameFromDisplayName(name: string): string {
@@ -1275,7 +1270,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [calendarWeekStart, setCalendarWeekStart] = useState(() => getMondayStart(new Date()));
   const normalizedCurrentUserEmail = currentUserEmail.trim().toLowerCase();
   const viewedMember = members.find((member) => member.id === memberViewId) ?? null;
-  const motusShareLogoSrc = `${motusSkrytekortLogo}${motusSkrytekortLogo.includes("?") ? "&" : "?"}motus_skrytekort=2026-05-original`;
+  const motusShareLogoSrc = `${motusSkrytekortLogo}${motusSkrytekortLogo.includes("?") ? "&" : "?"}motus_skrytekort=2026-02`;
   const currentMemberByEmail =
     currentUserRole === "member" && normalizedCurrentUserEmail
       ? (() => {
@@ -1769,6 +1764,11 @@ export function MemberPortal(props: MemberPortalProps) {
     [nextProgram, setMemberTab],
   );
 
+  useEffect(() => {
+    if (!isMemberLimited) return;
+    if (memberTab === "overview" || memberTab === "programs" || memberTab === "profile" || memberTab === "inspiration") return;
+    setMemberTab("overview");
+  }, [isMemberLimited, memberTab, setMemberTab]);
   const workoutResultGroups = useMemo(
     () => (workoutMode ? buildWorkoutResultGroups(workoutMode.results, activeWorkoutProgram) : []),
     [workoutMode, activeWorkoutProgram],
@@ -3516,10 +3516,9 @@ export function MemberPortal(props: MemberPortalProps) {
     const scrollTargetId = `member-workout-log-${memberFocusWorkoutLogId}`;
     const frame = window.requestAnimationFrame(() => {
       document.getElementById(scrollTargetId)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      clearMemberFocusWorkoutLogId?.();
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [memberFocusWorkoutLogId, completedLogs, memberTab, setMemberTab, clearMemberFocusWorkoutLogId]);
+  }, [memberFocusWorkoutLogId, completedLogs, memberTab, setMemberTab]);
 
   useEffect(() => {
     if (!memberFocusProgramId) return;
@@ -3538,7 +3537,6 @@ export function MemberPortal(props: MemberPortalProps) {
     const scrollTargetId = `member-program-${program.id}`;
     const frame = window.requestAnimationFrame(() => {
       document.getElementById(scrollTargetId)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      clearMemberFocusProgramId?.();
     });
     return () => window.cancelAnimationFrame(frame);
   }, [
@@ -3830,12 +3828,10 @@ export function MemberPortal(props: MemberPortalProps) {
         }
       }
 
-      // Kortet eksporteres i samme portrett-format (3:4) som forhåndsvisningen
-      // viser på mobil — foto fyller hele bakgrunnen, tekst og stat-fliser ligger
-      // overlay, og en mørk footer-stripe sitter nederst.
+      // Kortet eksporteres i samme 3:2-format som forhåndsvisningen i appen.
       const canvas = document.createElement("canvas");
-      canvas.width = 1080;
-      canvas.height = 1440;
+      canvas.width = 1200;
+      canvas.height = 800;
       const context = canvas.getContext("2d");
       if (!context) {
         setProgressShareStatus("Kunne ikke lage bilde akkurat nå.");
@@ -3843,7 +3839,7 @@ export function MemberPortal(props: MemberPortalProps) {
       }
 
       let shareCardLogo: HTMLImageElement | null = null;
-      const shareLogoSrc = `${motusSkrytekortLogo}${motusSkrytekortLogo.includes("?") ? "&" : "?"}motus_skrytekort=2026-05-original`;
+      const shareLogoSrc = `${motusSkrytekortLogo}${motusSkrytekortLogo.includes("?") ? "&" : "?"}motus_skrytekort=2026-02`;
       try {
         shareCardLogo = await new Promise<HTMLImageElement>((resolve, reject) => {
           const im = new Image();
@@ -3871,75 +3867,72 @@ export function MemberPortal(props: MemberPortalProps) {
 
       const W = canvas.width;
       const H = canvas.height;
-      const footerH = 130;
+      const footerH = 88;
       const footerY = H - footerH;
-      const pad = 56;
+      const pad = 48;
 
-      // Mørk bakgrunnsgradient (synlig i kanter/fades)
-      const bg = context.createRadialGradient(W * 0.1, H * 0.1, 100, W * 0.6, H * 0.7, W);
+      // Mørk bakgrunnsgradient
+      const bg = context.createRadialGradient(W * 0.1, H * 0.1, 80, W * 0.6, H * 0.6, W);
       bg.addColorStop(0, "#1a2335");
       bg.addColorStop(0.45, "#0d111c");
       bg.addColorStop(1, "#060912");
       context.fillStyle = bg;
       context.fillRect(0, 0, W, H);
 
-      // Foto som fyller hele kortet bak innholdet
+      // Foto på høyre side (stopper rett over footer slik som i forhåndsvisningen)
+      const photoW = Math.round(W * 0.56);
+      const photoH = footerY;
+      const photoX = W - photoW;
+      const photoY = 0;
       if (heroImage && heroImage.naturalWidth > 0) {
-        const photoH = footerY; // stopper rett over footer
-        const scale = Math.max(W / heroImage.naturalWidth, photoH / heroImage.naturalHeight);
+        const scale = Math.max(photoW / heroImage.naturalWidth, photoH / heroImage.naturalHeight);
         const drawW = heroImage.naturalWidth * scale;
         const drawH = heroImage.naturalHeight * scale;
-        const drawX = (W - drawW) / 2;
-        const drawY = -(drawH - photoH) * 0.35;
+        const drawX = photoX - (drawW - photoW) * 0.4;
+        const drawY = photoY - (drawH - photoH) * 0.5;
         context.save();
         context.beginPath();
-        context.rect(0, 0, W, photoH);
+        context.rect(photoX, photoY, photoW, photoH);
         context.clip();
         context.drawImage(heroImage, drawX, drawY, drawW, drawH);
-
-        // Mørkning øverst (rundt header) for kontrast mot logo + pill
-        const topGrad = context.createLinearGradient(0, 0, 0, 260);
-        topGrad.addColorStop(0, "rgba(13, 17, 28, 0.72)");
-        topGrad.addColorStop(1, "rgba(13, 17, 28, 0)");
-        context.fillStyle = topGrad;
-        context.fillRect(0, 0, W, 260);
-
-        // Mørkning mellom photo og stat-fliser (midten)
-        const midGrad = context.createLinearGradient(0, 360, 0, 700);
-        midGrad.addColorStop(0, "rgba(13, 17, 28, 0)");
-        midGrad.addColorStop(1, "rgba(13, 17, 28, 0.78)");
-        context.fillStyle = midGrad;
-        context.fillRect(0, 360, W, 340);
-
-        // Solid mørk over stat-fliser-området for lesbarhet
-        context.fillStyle = "rgba(13, 17, 28, 0.78)";
-        context.fillRect(0, 700, W, photoH - 700);
-
+        // Fade på venstre kant inn mot mørk bakgrunn
+        const fadeGrad = context.createLinearGradient(photoX, 0, photoX + photoW * 0.55, 0);
+        fadeGrad.addColorStop(0, "rgba(13, 17, 28, 1)");
+        fadeGrad.addColorStop(0.4, "rgba(13, 17, 28, 0.45)");
+        fadeGrad.addColorStop(1, "rgba(13, 17, 28, 0)");
+        context.fillStyle = fadeGrad;
+        context.fillRect(photoX, photoY, photoW, photoH);
+        // Mørk vignett nederst på bildet for kontrast mot quote
+        const bottomGrad = context.createLinearGradient(0, photoY + photoH - 200, 0, photoY + photoH);
+        bottomGrad.addColorStop(0, "rgba(13, 17, 28, 0)");
+        bottomGrad.addColorStop(1, "rgba(13, 17, 28, 0.7)");
+        context.fillStyle = bottomGrad;
+        context.fillRect(photoX, photoY, photoW, photoH);
         context.restore();
       }
 
       // Topp: MOTUS-logo til venstre
       if (shareCardLogo && shareCardLogo.naturalWidth > 0) {
-        const lh = 64;
+        const lh = 50;
         const lw = (shareCardLogo.naturalWidth / shareCardLogo.naturalHeight) * lh;
         context.save();
-        context.globalAlpha = 0.98;
-        context.drawImage(shareCardLogo, pad, 56, lw, lh);
+        context.globalAlpha = 0.95;
+        context.drawImage(shareCardLogo, pad, 44, lw, lh);
         context.restore();
       } else {
         context.fillStyle = "#ffffff";
-        context.font = "900 40px system-ui, -apple-system, Segoe UI, sans-serif";
-        context.fillText("MOTUS", pad, 102);
+        context.font = "900 34px system-ui, -apple-system, Segoe UI, sans-serif";
+        context.fillText("MOTUS", pad, 84);
       }
 
       // Topp: Uke-pille til høyre
       const pillText = progressShareWeekLabel;
-      context.font = "700 22px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.font = "700 17px system-ui, -apple-system, Segoe UI, sans-serif";
       const pillTextW = context.measureText(pillText).width;
-      const pillW = pillTextW + 44;
-      const pillH = 48;
+      const pillW = pillTextW + 34;
+      const pillH = 36;
       const pillX = W - pillW - pad;
-      const pillY = 64;
+      const pillY = 50;
       const pillGrad = context.createLinearGradient(pillX, pillY, pillX + pillW, pillY + pillH);
       pillGrad.addColorStop(0, "#f472b6");
       pillGrad.addColorStop(1, "#d91278");
@@ -3947,51 +3940,41 @@ export function MemberPortal(props: MemberPortalProps) {
       fillRoundRect(context, pillX, pillY, pillW, pillH, pillH / 2);
       context.fillStyle = "#ffffff";
       context.textBaseline = "middle";
-      context.fillText(pillText, pillX + 22, pillY + pillH / 2 + 1);
+      context.fillText(pillText, pillX + 17, pillY + pillH / 2 + 1);
       context.textAlign = "left";
       context.textBaseline = "alphabetic";
 
       // UKEN SOM HAR VÆRT eyebrow
-      let yCursor = 220;
+      let yCursor = 170;
       context.fillStyle = "#30e3be";
-      context.font = "800 22px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.font = "800 17px system-ui, -apple-system, Segoe UI, sans-serif";
       context.fillText("UKEN SOM HAR VÆRT", pad, yCursor);
-      // Tittelfonten er 110px — vi må gi den nok plass under eyebrow-teksten
-      // slik at de ikke overlapper. Cap-height for 110px font er ca 77px.
-      yCursor += 130;
+      yCursor += 38;
 
       // Hovedtittel + rosa understrek
       const titleText = progressShareTitle;
-      context.save();
-      context.shadowColor = "rgba(0, 0, 0, 0.55)";
-      context.shadowBlur = 14;
       context.fillStyle = "#ffffff";
-      context.font = "900 110px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.font = "900 78px system-ui, -apple-system, Segoe UI, sans-serif";
       context.fillText(titleText, pad, yCursor);
-      context.restore();
       const titleW = context.measureText(titleText).width;
       context.strokeStyle = "#d91278";
-      context.lineWidth = 9;
+      context.lineWidth = 6;
       context.lineCap = "round";
       context.beginPath();
-      context.moveTo(pad, yCursor + 26);
-      context.lineTo(pad + Math.min(titleW * 0.9, titleW), yCursor + 26);
+      context.moveTo(pad, yCursor + 12);
+      context.lineTo(pad + Math.min(titleW * 0.85, titleW), yCursor + 12);
       context.stroke();
-      yCursor += 80;
+      yCursor += 52;
 
       // Subtittel (2 linjer)
-      context.save();
-      context.shadowColor = "rgba(0, 0, 0, 0.5)";
-      context.shadowBlur = 8;
-      context.fillStyle = "rgba(241, 245, 249, 0.92)";
-      context.font = "500 28px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("Se hva jeg har fått til på Motus.", pad, yCursor);
-      yCursor += 38;
+      context.fillStyle = "rgba(241, 245, 249, 0.82)";
+      context.font = "500 22px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText("Se hva jeg har fått til i Motus.", pad, yCursor);
+      yCursor += 30;
       context.fillText("Små steg hver uke gir store resultater!", pad, yCursor);
-      context.restore();
-      yCursor += 50;
+      yCursor += 38;
 
-      // Stat-fliser (2 kolonner, 3 rader — 5 fliser, siste flis tar full bredde)
+      // Stat-fliser (bredden er begrenset til venstre 60 % slik at de ikke trenger inn på fotoet)
       const groupCount = progressShareLast7Days.groupClasses;
       const kcal = progressShareLast7Days.kcal;
       const minutes = progressShareLast7Days.activityMinutes;
@@ -4039,44 +4022,42 @@ export function MemberPortal(props: MemberPortalProps) {
         },
       ];
 
-      const tileGap = 16;
-      const tilesAreaW = W - pad * 2;
-      const tileW = (tilesAreaW - tileGap) / 2;
-      const tileH = 158;
+      const tileGap = 10;
+      const tilesAreaW = 680;
+      const tileW = (tilesAreaW - tileGap * 4) / 5;
+      const tileH = 170;
       const tilesStartX = pad;
-      const tilesStartY = 760;
+      const tilesStartY = 410;
 
-      function drawStatTile(tile: (typeof statTiles)[number], tx: number, ty: number, width: number) {
+      statTiles.forEach((tile, idx) => {
+        const tx = tilesStartX + idx * (tileW + tileGap);
+        const ty = tilesStartY;
         const toneColor = tile.tone === "teal" ? "#30e3be" : "#f472b6";
-        const toneGlow = tile.tone === "teal" ? "rgba(48, 227, 190, 0.18)" : "rgba(244, 114, 182, 0.18)";
 
         // Flis-bakgrunn
-        context.fillStyle = "rgba(255, 255, 255, 0.06)";
-        fillRoundRect(context, tx, ty, width, tileH, 18);
-        context.strokeStyle = "rgba(255, 255, 255, 0.1)";
+        context.fillStyle = "rgba(255, 255, 255, 0.05)";
+        fillRoundRect(context, tx, ty, tileW, tileH, 14);
+        context.strokeStyle = "rgba(255, 255, 255, 0.08)";
         context.lineWidth = 1;
         if (typeof context.roundRect === "function") {
           context.beginPath();
-          context.roundRect(tx, ty, width, tileH, 18);
+          context.roundRect(tx, ty, tileW, tileH, 14);
           context.stroke();
         } else {
-          context.strokeRect(tx, ty, width, tileH);
+          context.strokeRect(tx, ty, tileW, tileH);
         }
 
         // Ikon-sirkel
-        const iconCx = tx + 32;
-        const iconCy = ty + 36;
-        context.fillStyle = toneGlow;
-        context.beginPath();
-        context.arc(iconCx, iconCy, 19, 0, Math.PI * 2);
-        context.fill();
+        const iconCx = tx + 22;
+        const iconCy = ty + 26;
         context.strokeStyle = toneColor;
         context.lineWidth = 1.8;
         context.beginPath();
-        context.arc(iconCx, iconCy, 19, 0, Math.PI * 2);
+        context.arc(iconCx, iconCy, 13, 0, Math.PI * 2);
         context.stroke();
+        // Liten ikon-glyph (forenklet emoji-fallback for hver type)
         context.fillStyle = toneColor;
-        context.font = "700 20px system-ui, -apple-system, Segoe UI, sans-serif";
+        context.font = "700 14px system-ui, -apple-system, Segoe UI, sans-serif";
         context.textAlign = "center";
         context.textBaseline = "middle";
         const glyph =
@@ -4095,36 +4076,40 @@ export function MemberPortal(props: MemberPortalProps) {
 
         // Verdi
         context.fillStyle = "#ffffff";
-        context.font = "900 42px system-ui, -apple-system, Segoe UI, sans-serif";
-        context.fillText(tile.value, tx + 20, ty + 96);
+        context.font = "900 30px system-ui, -apple-system, Segoe UI, sans-serif";
+        context.fillText(tile.value, tx + 14, ty + 78);
 
         // Label
         context.fillStyle = toneColor;
-        context.font = "800 14px system-ui, -apple-system, Segoe UI, sans-serif";
-        context.fillText(tile.label, tx + 20, ty + 122);
+        context.font = "800 11px system-ui, -apple-system, Segoe UI, sans-serif";
+        context.fillText(tile.label, tx + 14, ty + 100);
 
         // Subtekst
-        context.fillStyle = "rgba(241, 245, 249, 0.6)";
-        context.font = "500 13px system-ui, -apple-system, Segoe UI, sans-serif";
-        fillWrappedCanvasText(context, tile.sub, tx + 20, ty + 144, width - 30, 16);
-      }
-
-      statTiles.forEach((tile, idx) => {
-        if (idx < 4) {
-          const col = idx % 2;
-          const row = Math.floor(idx / 2);
-          const tx = tilesStartX + col * (tileW + tileGap);
-          const ty = tilesStartY + row * (tileH + tileGap);
-          drawStatTile(tile, tx, ty, tileW);
-        } else {
-          // Femte flis tar venstre kolonne på siste rad
-          const ty = tilesStartY + 2 * (tileH + tileGap);
-          drawStatTile(tile, tilesStartX, ty, tileW);
-        }
+        context.fillStyle = "rgba(241, 245, 249, 0.58)";
+        context.font = "500 11px system-ui, -apple-system, Segoe UI, sans-serif";
+        fillWrappedCanvasText(context, tile.sub, tx + 14, ty + 124, tileW - 24, 15);
       });
 
+      // Quote nederst på fotoet (matcher CSS-posisjonen til forhåndsvisningen)
+      const quoteText = "Fremgang skjer én uke av gangen. Jeg bygger sterke vaner!";
+      const quoteX = W - 232;
+      const quoteMaxWidth = 184;
+      const quoteLineHeight = 22;
+      const quoteTextY = footerY - 88;
+      const quoteGlyphY = quoteTextY - 26;
+      context.save();
+      context.fillStyle = "#30e3be";
+      context.font = "900 34px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.shadowColor = "rgba(0, 0, 0, 0.55)";
+      context.shadowBlur = 10;
+      context.fillText("\u201C", quoteX, quoteGlyphY);
+      context.fillStyle = "#f8fafc";
+      context.font = "700 17px system-ui, -apple-system, Segoe UI, sans-serif";
+      fillWrappedCanvasText(context, quoteText, quoteX, quoteTextY, quoteMaxWidth, quoteLineHeight);
+      context.restore();
+
       // Bunn-stripe: UKENS SEIER
-      context.fillStyle = "rgba(13, 17, 28, 0.92)";
+      context.fillStyle = "rgba(255, 255, 255, 0.04)";
       context.fillRect(0, footerY, W, footerH);
       context.strokeStyle = "rgba(255, 255, 255, 0.08)";
       context.lineWidth = 1;
@@ -4134,18 +4119,18 @@ export function MemberPortal(props: MemberPortalProps) {
       context.stroke();
 
       // Pokal-sirkel
-      const trophyCx = pad + 30;
+      const trophyCx = pad + 22;
       const trophyCy = footerY + footerH / 2;
       context.save();
-      context.fillStyle = "rgba(48, 227, 190, 0.2)";
+      context.fillStyle = "rgba(48, 227, 190, 0.18)";
       context.beginPath();
-      context.arc(trophyCx, trophyCy, 30, 0, Math.PI * 2);
+      context.arc(trophyCx, trophyCy, 22, 0, Math.PI * 2);
       context.fill();
-      context.strokeStyle = "rgba(48, 227, 190, 0.7)";
-      context.lineWidth = 1.8;
+      context.strokeStyle = "rgba(48, 227, 190, 0.65)";
+      context.lineWidth = 1.6;
       context.stroke();
       context.fillStyle = "#30e3be";
-      context.font = "900 30px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.font = "900 22px system-ui, -apple-system, Segoe UI, sans-serif";
       context.textAlign = "center";
       context.textBaseline = "middle";
       context.fillText("\u2605", trophyCx, trophyCy + 1);
@@ -4154,28 +4139,28 @@ export function MemberPortal(props: MemberPortalProps) {
       context.restore();
 
       // UKENS SEIER tekst
-      const seierX = trophyCx + 50;
+      const seierX = trophyCx + 36;
       context.fillStyle = "#30e3be";
-      context.font = "800 15px system-ui, -apple-system, Segoe UI, sans-serif";
-      context.fillText("UKENS SEIER", seierX, footerY + 44);
-      context.fillStyle = "rgba(241, 245, 249, 0.95)";
-      context.font = "600 22px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.font = "800 12px system-ui, -apple-system, Segoe UI, sans-serif";
+      context.fillText("UKENS SEIER", seierX, footerY + 32);
+      context.fillStyle = "rgba(241, 245, 249, 0.92)";
+      context.font = "600 17px system-ui, -apple-system, Segoe UI, sans-serif";
       // Reserver plass for MOTUS-logoen i bunn-høyre slik at lang seier-tekst ikke kolliderer
-      const seierMaxWidth = W - seierX - 180;
+      const seierMaxWidth = W - seierX - 160;
       const seierText = progressShareSeierText;
       const seierFits = context.measureText(seierText).width <= seierMaxWidth;
       if (seierFits) {
-        context.fillText(seierText, seierX, footerY + 80);
+        context.fillText(seierText, seierX, footerY + 58);
       } else {
-        fillWrappedCanvasText(context, seierText, seierX, footerY + 72, seierMaxWidth, 24);
+        fillWrappedCanvasText(context, seierText, seierX, footerY + 50, seierMaxWidth, 19);
       }
 
       // MOTUS-logo i bunn-høyre
       if (shareCardLogo && shareCardLogo.naturalWidth > 0) {
-        const lh = 38;
+        const lh = 28;
         const lw = (shareCardLogo.naturalWidth / shareCardLogo.naturalHeight) * lh;
         context.save();
-        context.globalAlpha = 0.95;
+        context.globalAlpha = 0.85;
         context.drawImage(shareCardLogo, W - lw - pad, footerY + (footerH - lh) / 2, lw, lh);
         context.restore();
       }
@@ -4680,31 +4665,18 @@ export function MemberPortal(props: MemberPortalProps) {
     profileSessionsPerWeekTarget,
     streakWeeks,
   ]);
-  const homeDashboardNextBadge = useMemo(() => {
-    return (
-      memberBadgeCollection.allBadges
-        .filter((badge) => !badge.secret && !badge.hidden && getBadgeNextLevel(badge))
-        .sort((a, b) => b.progressPct - a.progressPct)[0] ?? null
-    );
-  }, [memberBadgeCollection.allBadges]);
   const homeDashboardSubline = useMemo(() => {
-    const nextBadge = homeDashboardNextBadge;
+    const nextBadge = memberBadgeCollection.allBadges
+      .filter((badge) => !badge.secret && !badge.hidden && getBadgeNextLevel(badge))
+      .sort((a, b) => b.progressPct - a.progressPct)[0];
     if (!nextBadge) return memberProgressScores.momentum.subline;
     const nextLevel = getBadgeNextLevel(nextBadge);
     if (!nextLevel) return memberProgressScores.momentum.subline;
     const remaining = Math.max(0, Math.ceil(nextLevel.target - nextBadge.current));
     const unit = formatBadgeMetricValue(nextBadge.id, remaining);
-    if (remaining <= 0) return `Nesten i mål med badgen ${nextBadge.title}`;
-    return `${unit} igjen til badgen ${nextBadge.title}`;
-  }, [homeDashboardNextBadge, memberProgressScores.momentum.subline]);
-  const homeDashboardProgressPct = useMemo(() => {
-    if (!homeDashboardNextBadge) return homeMomentumPct;
-    const nextLevel = getBadgeNextLevel(homeDashboardNextBadge);
-    if (!nextLevel) return 100;
-    const target = Math.max(1, nextLevel.target);
-    const ratio = (homeDashboardNextBadge.current / target) * 100;
-    return Math.max(0, Math.min(100, Math.round(ratio)));
-  }, [homeDashboardNextBadge, homeMomentumPct]);
+    if (remaining <= 0) return `Nesten i mål med ${nextBadge.title}`;
+    return `${unit} igjen til ${nextBadge.title}`;
+  }, [memberBadgeCollection.allBadges, memberProgressScores.momentum.subline]);
   const homeDashboardHeadline =
     homeWeeklySummary.completedThisWeek > 0 || streakWeeks > 0 ? "Du er på vei!" : "Klar for en ny uke";
   const homeWorkoutSubtitle = useMemo(() => {
@@ -5483,23 +5455,33 @@ export function MemberPortal(props: MemberPortalProps) {
                 exercise && typeof exercise === "object"
                   ? (exercise as Partial<ProgramExercise>)
                   : ({} as Partial<ProgramExercise>);
-              const exerciseName =
-                resolveProgramExerciseName(safeExercises as ProgramExercise[], index) ||
-                printField(safeExercise.exerciseName) ||
-                "Øvelse";
+              const exerciseName = printField(safeExercise.exerciseName) || "Øvelse";
               const exerciseId = printField(safeExercise.exerciseId);
               const libraryMatch =
                 exercises.find((item) => item.id === exerciseId) ??
                 exercises.find((item) => printField(item.name).toLowerCase() === exerciseName.toLowerCase()) ??
                 null;
+              const setCount = printField(safeExercise.sets) || "-";
+              const reps = printField(safeExercise.reps) || "-";
+              const weight = printField(safeExercise.weight) || "-";
+              const durationMinutes = printField(safeExercise.durationMinutes);
+              const cardioHoldSeconds = printField(safeExercise.holdSeconds);
+              const speed = printField(safeExercise.speed);
+              const incline = printField(safeExercise.incline);
+              const restSeconds = printField(safeExercise.restSeconds) || "0";
               const notes = printField(safeExercise.notes);
-              const prescription = formatProgramExercisePrescription(
-                safeExercise as ProgramExercise,
-                index,
-                safeExercises as ProgramExercise[],
-                exercises,
-                { includePauseLabel: true },
-              );
+              const isCardioExercise = libraryMatch?.category === "Kondisjon" || Boolean(durationMinutes);
+              const cardioTimeParts: string[] = [];
+              if (durationMinutes) cardioTimeParts.push(`${durationMinutes} min`);
+              if (isCardioExercise && cardioHoldSeconds) cardioTimeParts.push(`${cardioHoldSeconds} sek`);
+              const cardioTimeLabel = cardioTimeParts.length ? cardioTimeParts.join(" ") : "—";
+              const prescription = isCardioExercise
+                ? `${setCount} runder × ${cardioTimeLabel}${
+                    speed ? ` · ${speed} km/t` : ""
+                  }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause${cardioHrPrescriptionSuffixForMember(safeExercise as ProgramExercise)}`
+                : libraryMatch && isHoldBasedExerciseCategory(libraryMatch.category)
+                  ? `${setCount} sett × ${programExerciseHoldSeconds(safeExercise, libraryMatch.category) || "-"} sek · ${restSeconds}s pause`
+                  : `${setCount} x ${reps} · ${weight} kg · ${restSeconds}s pause`;
               const rawImageUrl = printField(libraryMatch?.imageUrl);
               const imageUrl = rawImageUrl ? resolvePrintAssetUrl(rawImageUrl) : "";
               const description = printField(libraryMatch?.description) || "Ingen forklaring tilgjengelig for denne øvelsen.";
@@ -5841,10 +5823,19 @@ export function MemberPortal(props: MemberPortalProps) {
                                       <div key={`${selectedCalendarLog.id}-${result.exerciseId}-${index}`} className="rounded-lg border bg-white p-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                                         <div className="text-sm font-medium text-slate-800">{formatLoggedResultTitle(result)}</div>
                                         <div className="mt-1 text-xs text-slate-600">
-                                          Utført: {formatWorkoutResultPerformedLabel(result, exercises)}
+                                          {result.performedDurationMinutes
+                                            ? `Utført: ${result.performedDurationMinutes || "-"} min${result.performedSpeed ? ` · ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` · ${result.performedIncline}% incline` : ""}`
+                                            : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)
+                                              ? `Utført: ${result.performedWeight || "-"} sek hold`
+                                              : `Utført: ${result.performedReps || "-"} reps @ ${result.performedWeight || "-"} kg`}
                                         </div>
                                         <div className="text-[11px] text-slate-500">
-                                          Plan: {formatWorkoutResultSetPlanLabel(result, exercises)}
+                                          Plan:{" "}
+                                          {result.plannedDurationMinutes
+                                            ? `${result.plannedDurationMinutes} min${result.plannedSpeed ? ` · ${result.plannedSpeed} km/t` : ""}${result.plannedIncline ? ` · ${result.plannedIncline}% incline` : ""}`
+                                            : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)
+                                              ? `${result.plannedSets} sett × ${result.plannedWeight || "0"} sek`
+                                              : `${result.plannedSets}x${result.plannedReps} @ ${result.plannedWeight || "0"} kg`}
                                         </div>
                                       </div>
                                     ))}
@@ -5918,7 +5909,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 streakWeeks={streakWeeks}
                 dashboardHeadline={homeDashboardHeadline}
                 dashboardSubline={homeDashboardSubline}
-                dashboardProgressPct={homeDashboardProgressPct}
                 momentumPct={homeMomentumPct}
                 weekSessionsLabel={homeWeekSessionsLabel}
                 weekMinutesLabel={homeWeekMinutesLabel}
@@ -6650,7 +6640,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                 />
                               ) : null}
                               {program.exercises.map((exercise, exerciseIndex) => {
-                                const exerciseName = resolveProgramExerciseName(program.exercises, exerciseIndex);
+                                const exerciseName = memberProgramExerciseName(program, exerciseIndex);
                                 const lib = exercises.find((e) => e.id === exercise.exerciseId);
                                 const isStretch = Boolean(lib?.category && isHoldBasedExerciseCategory(lib.category));
                                 const blockPeers = exercise.blockId
@@ -6673,7 +6663,22 @@ export function MemberPortal(props: MemberPortalProps) {
                                   ) : null}
                                   <div className="text-xs font-medium text-slate-800">{exerciseName}</div>
                                   <div className="mt-0.5 text-[11px] text-slate-500">
-                                    {formatProgramExercisePrescription(exercise, exerciseIndex, program.exercises, exercises)}
+                                    {(() => {
+                                      const cardioMin = String(exercise.durationMinutes ?? "").trim();
+                                      const cardioSek = String(exercise.holdSeconds ?? "").trim();
+                                      const isCardio = lib?.category === "Kondisjon" || Boolean(cardioMin);
+                                      if (isCardio) {
+                                        const timeParts: string[] = [];
+                                        if (cardioMin) timeParts.push(`${cardioMin} min`);
+                                        if (cardioSek) timeParts.push(`${cardioSek} sek`);
+                                        const timeLabel = timeParts.length ? timeParts.join(" ") : "—";
+                                        return `${exercise.sets} runder × ${timeLabel}${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s${cardioHrPrescriptionSuffixForMember(exercise)}`;
+                                      }
+                                      if (isStretch) {
+                                        return `${exercise.sets} sett × ${programExerciseHoldSeconds(exercise, lib?.category) || "-"} sek · ${exercise.restSeconds}s`;
+                                      }
+                                      return `${exercise.sets}×${exercise.reps} · ${exercise.weight}kg · ${exercise.restSeconds}s`;
+                                    })()}
                                   </div>
                                   {!exercise.durationMinutes && !isStretch && lib?.category !== "Kondisjon" ? (
                                     <div className="mt-1.5 rounded-lg border bg-white px-2 py-1.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -7193,21 +7198,9 @@ export function MemberPortal(props: MemberPortalProps) {
             </>
           ) : null}
 
-          {memberTab === "progress" ? (
-            isMemberLimited ? (
-              <MemberFeatureGate variant="premium" />
-            ) : (
+          {!isMemberLimited && memberTab === "progress" ? (
             <div className="motus-progress-page">
-              <MemberProgressScoresCard
-                scores={memberProgressScores}
-                memberFirstName={homeFirstName}
-                streakWeeks={streakWeeks}
-                xpBreakdown={{
-                  completedSessions: completedLogs.length,
-                  streakWeeks: memberProgress.streakWeeks,
-                  achievedLevel: memberProgress.achievedLevel,
-                }}
-              />
+              <MemberProgressScoresCard scores={memberProgressScores} memberFirstName={homeFirstName} streakWeeks={streakWeeks} />
               <MemberProgressStatusBanner
                 workoutsLast7Days={progressShareLast7Days.workouts}
                 trainingDaysLast7Days={progressShareLast7Days.trainingDays}
@@ -7284,13 +7277,9 @@ export function MemberPortal(props: MemberPortalProps) {
                 shareStatus={progressShareStatus}
               />
             </div>
-            )
           ) : null}
 
-          {memberTab === "messages" ? (
-            isMemberLimited ? (
-              <MemberFeatureGate variant="premium" />
-            ) : (
+          {!isMemberLimited && memberTab === "messages" ? (
             <MotusChat
               variant="member"
               messages={memberMessages}
@@ -7314,7 +7303,6 @@ export function MemberPortal(props: MemberPortalProps) {
               quickActions={memberChatQuickActions}
               onToggleReaction={toggleChatMessageReaction}
             />
-            )
           ) : null}
 
           {memberTab === "profile" ? (

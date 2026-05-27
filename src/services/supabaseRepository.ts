@@ -1546,6 +1546,7 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
       avatarUrl: memberForPersist.avatarUrl ?? "",
       membershipType: memberForPersist.membershipType,
       customerType: memberForPersist.customerType,
+      nutritionAccess: memberForPersist.nutritionAccess === true,
       ...(memberForPersist.invitedAt?.trim() ? { invitedAt: memberForPersist.invitedAt.trim() } : {}),
     },
   };

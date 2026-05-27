@@ -6,6 +6,8 @@ import {
   isSharedMedlemCustomerType,
   isSharedMedlemRosterMember,
   memberRecordIsActive,
+  isMemberIdentityVisibleToTrainer,
+  mergeRosterFieldsFromMemberCandidates,
   resolveOwnerUserIdForPersist,
   scoreMemberProfileSource,
 } from "./memberAccessRules";
@@ -101,6 +103,79 @@ describe("memberAccessRules", () => {
       selectedMemberId: "m1",
       selectedOwnerUserId: TRAINER_A,
     });
-    expect(ids).toEqual(["m1"]);
+    expect(ids.sort()).toEqual(["m1"]);
+  });
+
+  it("includes all shared Medlem duplicates when upgrading to PT-kunde", () => {
+    const ids = filterMemberIdsForRosterSave({
+      memberRows: [
+        { id: "m1", email: "karen@example.com", ownerUserId: TRAINER_B, customerType: "Medlem" },
+        { id: "m2", email: "karen@example.com", ownerUserId: TRAINER_A, customerType: "Medlem" },
+      ],
+      previousEmail: "karen@example.com",
+      nextCustomerType: "PT-kunde",
+      currentTrainerOwnerUserId: TRAINER_A,
+      selectedMemberId: "m1",
+      selectedOwnerUserId: TRAINER_B,
+    });
+    expect(ids.sort()).toEqual(["m1", "m2"]);
+  });
+
+  it("prefers PT-kunde over Medlem when merging roster fields for duplicates", () => {
+    const merged = mergeRosterFieldsFromMemberCandidates(
+      [
+        { customerType: "Medlem", membershipType: "Standard", ownerUserId: TRAINER_B },
+        { customerType: "PT-kunde", membershipType: "Standard", ownerUserId: TRAINER_A },
+      ],
+      TRAINER_A,
+    );
+    expect(merged.customerType).toBe("PT-kunde");
+    expect(merged.ownerUserId).toBe(TRAINER_A);
+  });
+
+  it("uses trainer-owned PT row for visibility when deduped owner is stale", () => {
+    const allMembers = [
+      {
+        id: "karen-a",
+        email: "karen@setergard.no",
+        customerType: "PT-kunde" as const,
+        membershipType: "Standard" as const,
+        ownerUserId: TRAINER_A,
+        isActive: true,
+      },
+      {
+        id: "karen-b",
+        email: "karen@setergard.no",
+        customerType: "Medlem" as const,
+        membershipType: "Standard" as const,
+        ownerUserId: TRAINER_B,
+        isActive: true,
+      },
+    ];
+    const dedupedStub = {
+      id: "karen-b",
+      email: "karen@setergard.no",
+      customerType: "PT-kunde" as const,
+      membershipType: "Standard" as const,
+      ownerUserId: TRAINER_B,
+      isActive: true,
+    };
+    expect(isMemberIdentityVisibleToTrainer(dedupedStub, allMembers, TRAINER_A)).toBe(true);
+  });
+
+  it("shows private PT linked by programs for this trainer", () => {
+    const member = {
+      id: "karen-1",
+      email: "karen@setergard.no",
+      customerType: "PT-kunde" as const,
+      membershipType: "Standard" as const,
+      ownerUserId: "",
+      isActive: true,
+    };
+    expect(
+      isMemberIdentityVisibleToTrainer(member, [member], TRAINER_A, {
+        programMemberIds: new Set(["karen-1"]),
+      }),
+    ).toBe(true);
   });
 });

@@ -89,13 +89,14 @@ export function resolveSessionAuthRole(user: {
 
   if (appRole === "member" || userRole === "member") return "member";
 
-  if (isTrainerStaffEmail(email) && hasLinkedCustomerMemberId(memberId)) {
+  if (hasLinkedCustomerMemberId(memberId)) {
     return "member";
   }
 
   if (appRole === "trainer" || userRole === "trainer") return "trainer";
   if (isTrainerStaffEmail(email)) return "trainer";
-  return "trainer";
+  // Inviterte kunder har ofte tom metadata — de skal inn som medlem, ikke PT-visning.
+  return "member";
 }
 
 function resolveAuthRole(user: {

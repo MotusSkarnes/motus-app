@@ -59,6 +59,8 @@ function resolveActiveMemberForUser(appState: AppState): Member | null {
   });
   if (!candidates.length) return null;
   return (
+    candidates.find((member) => member.nutritionAccess === true && member.customerType === "PT-kunde") ??
+    candidates.find((member) => member.nutritionAccess === true) ??
     candidates.find((member) => member.customerType === "PT-kunde") ??
     candidates.find((member) => member.membershipType === "Premium") ??
     candidates.find((member) => member.customerType !== "Medlem") ??

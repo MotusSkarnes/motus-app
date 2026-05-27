@@ -34,6 +34,9 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
+import { computeRecipeMacros } from "../app/recipeMacros";
+import { useFoodBankItems } from "../app/useFoodBankItems";
+import { RecipeMacroBlocks } from "../components/RecipeMacroBlocks";
 import { EXERCISE_CATEGORY_OPTIONS, exerciseCategoryAccentColor } from "../app/exerciseCategories";
 import { formatProgramExercisePrescription, resolveProgramExerciseName } from "../app/programExercisePresentation";
 import { EXERCISE_IMAGE_THUMB_CLASS } from "../app/exerciseIllustrations/constants";
@@ -885,6 +888,7 @@ export function InspirationHub({
   focusItemId = null,
   onFocusItemHandled,
 }: InspirationHubProps) {
+  const foodBankItems = useFoodBankItems();
   const [items, setItems] = useState<InspirationItem[]>(() => loadInspirationItems());
   const [inspoSubView, setInspoSubView] = useState<InspoSubView>("overview");
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
@@ -2066,6 +2070,8 @@ export function InspirationHub({
             {expandedItem.body.trim() && !showProgramPreview ? (
               <div className={`mt-5 space-y-3 text-sm leading-relaxed text-slate-700 sm:text-base ${bodyStyleClass(expandedItem.bodyStyle)}`}>{renderFormattedBody(expandedItem.body)}</div>
             ) : null}
+
+            {expandedRecipeMacros ? <RecipeMacroBlocks result={expandedRecipeMacros} /> : null}
 
             {programPreview ? (
               <div className="mt-6 space-y-3 rounded-xl border border-sky-100 bg-sky-50/40 p-4">

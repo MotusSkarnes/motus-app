@@ -75,3 +75,22 @@ export function removeArchiveTombstone(email: string | null | undefined): void {
 export function clearArchiveTombstones(): void {
   writeSet(new Set());
 }
+
+/** Fjern tombstone når sky sier at kunden er aktiv igjen (unngår «forsvunnet i listen» etter SQL/gjenoppretting). */
+export function reconcileArchiveTombstonesWithRemoteMembers(
+  members: Array<{ email?: string | null; isActive?: boolean | null }>,
+): void {
+  const activeEmails = new Set<string>();
+  for (const member of members) {
+    if (member.isActive === false) continue;
+    const email = normalizeEmail(member.email);
+    if (email.includes("@")) activeEmails.add(email);
+  }
+  if (!activeEmails.size) return;
+  const tombstones = readSet();
+  let changed = false;
+  for (const email of activeEmails) {
+    if (tombstones.delete(email)) changed = true;
+  }
+  if (changed) writeSet(tombstones);
+}

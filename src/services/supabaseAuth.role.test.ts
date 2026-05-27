@@ -41,4 +41,24 @@ describe("resolveSessionAuthRole", () => {
       }),
     ).toBe("member");
   });
+
+  it("treats invited customer email without metadata as member", () => {
+    expect(
+      resolveSessionAuthRole({
+        email: "kunde@example.com",
+        app_metadata: {},
+        user_metadata: {},
+      }),
+    ).toBe("member");
+  });
+
+  it("treats customer with linked member_id as member without explicit role", () => {
+    expect(
+      resolveSessionAuthRole({
+        email: "lene@example.com",
+        app_metadata: { member_id: "member-uuid-123" },
+        user_metadata: {},
+      }),
+    ).toBe("member");
+  });
 });

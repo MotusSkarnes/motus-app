@@ -1,4 +1,4 @@
-﻿import {
+import {
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -14,7 +14,10 @@ import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, periodPlanStartDateForDateInput } from "../app/dateFormat";
 import {
   getArchiveTombstones,
+  hasArchiveTombstone,
   MEMBER_ARCHIVE_TOMBSTONE_EVENT,
+  reconcileArchiveTombstonesWithRemoteMembers,
+  removeArchiveTombstone,
 } from "../app/memberArchiveTombstone";
 import { memberHasNutritionAccess } from "../app/memberNutritionAccess";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
@@ -72,9 +75,11 @@ import type {
 } from "../services/appRepository";
 import {
   filterMemberIdsForRosterSave,
+  isMemberIdentityVisibleToTrainer,
   isPrivatePtRosterCustomerType,
   isSharedMedlemCustomerType,
   isSharedMedlemRosterMember,
+  mergeRosterFieldsFromMemberCandidates,
   scoreMemberProfileSource,
 } from "../services/memberAccessRules";
 import {
@@ -972,11 +977,6 @@ function pickFirstName(value: unknown): string {
   useToastStatus(exerciseFormStatus, { title: "Øvelse", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   useToastStatus(trainerWorkoutCommentStatus, { title: "Øktkommentar", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   useToastStatus(trainerLiveWorkoutSaveStatus, { title: "Live økt", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
-  const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
-  const selectedMemberHasMessagingAccess = selectedMember
-    ? selectedMember.customerType === "PT-kunde" || selectedMember.membershipType === "Premium"
-    : false;
-  const selectedMemberMessagesLocked = Boolean(selectedMember && !selectedMemberHasMessagingAccess);
   function getMemberIdentityKey(member: Member): string {
     const emailKey = member.email.trim().toLowerCase();
     return emailKey || `id:${member.id}`;
@@ -1000,8 +1000,10 @@ function pickFirstName(value: unknown): string {
     const injuries = prioritized.map((member) => member.injuries);
     const focuses = prioritized.map((member) => member.focus);
     const personalGoalsList = candidates.map((member) => member.personalGoals);
+    const roster = mergeRosterFieldsFromMemberCandidates(candidates, currentTrainerOwnerUserId);
     return {
       ...base,
+      ...roster,
       name: pickPreferredNonEmpty(names) || base.name,
       phone: pickPreferredNonEmpty(phones) || base.phone,
       birthDate: pickPreferredNonEmpty(birthDates) || base.birthDate,
@@ -1017,12 +1019,12 @@ function pickFirstName(value: unknown): string {
       const isOwned = (member.ownerUserId ?? "").trim() === currentTrainerOwnerUserId;
       if (isOwned && member.customerType === "PT-kunde") score += 5000;
       if (isOwned && member.membershipType === "Premium") score += 3000;
-      if (member.customerType === "Medlem") score += 2000;
+      if (member.customerType === "PT-kunde") score += 2500;
+      if (member.membershipType === "Premium") score += 800;
+      if (isSharedMedlemRosterMember(member)) score += 400;
       if (isOwned) score += 1000;
       if (member.isActive !== false) score += 8;
       if (member.invitedAt) score += 2;
-      if (member.customerType === "PT-kunde") score += 1;
-      if (member.membershipType === "Premium") score += 1;
       const days = trainerActivitySortKey(member, members, logs);
       if (days < 999999 && Number.isFinite(days)) {
         score += Math.max(0, 100 - Math.min(100, days));
@@ -1065,12 +1067,27 @@ function pickFirstName(value: unknown): string {
       const goals = group.map((member) => member.goal);
       const injuries = group.map((member) => member.injuries);
       const personalGoalsList = group.map((member) => member.personalGoals);
-      // Lokal "tombstone" tvinger arkivert tilstand selv om en sky-rad fortsatt
-      // ser aktiv ut (f.eks. fordi archive-member Edge Function ikke har kjort enda).
+      // Lokal tombstone gjelder bare når ingen rader i gruppen er aktive — ellers skjules kunden
+      // fra listen mens kundekortet fortsatt vises (selectedMemberId i rå members).
       const identityEmail = base.email.trim().toLowerCase();
-      const isTombstoned = identityEmail.includes("@") && archiveTombstones.has(identityEmail);
+      const groupHasActiveRow = group.some((member) => member.isActive !== false);
+      const isTombstoned =
+        identityEmail.includes("@") && archiveTombstones.has(identityEmail) && !groupHasActiveRow;
+      const roster = mergeRosterFieldsFromMemberCandidates(group, currentTrainerOwnerUserId);
+      const trainerId = currentTrainerOwnerUserId.trim();
+      const canonicalId =
+        (selectedMemberId && group.some((member) => member.id === selectedMemberId) ? selectedMemberId : "") ||
+        group.find(
+          (member) =>
+            member.customerType === "PT-kunde" &&
+            trainerId &&
+            String(member.ownerUserId ?? "").trim() === trainerId,
+        )?.id ||
+        base.id;
       merged.push({
         ...base,
+        id: canonicalId,
+        ...roster,
         name: pickLatestNonEmpty(names) || base.name,
         phone: pickLatestNonEmpty(phones) || base.phone,
         birthDate: pickLatestNonEmpty(birthDates) || base.birthDate,
@@ -1082,18 +1099,71 @@ function pickFirstName(value: unknown): string {
       });
     }
     return merged;
-  }, [members, currentTrainerOwnerUserId, logs, archiveTombstones]);
+  }, [members, currentTrainerOwnerUserId, logs, archiveTombstones, selectedMemberId]);
+  const selectedMember = useMemo(() => {
+    const byId =
+      deduplicatedMembers.find((member) => member.id === selectedMemberId) ??
+      members.find((member) => member.id === selectedMemberId);
+    if (byId) return byId;
+    const raw = members.find((member) => member.id === selectedMemberId);
+    const email = raw?.email.trim().toLowerCase() ?? "";
+    if (!email.includes("@")) return null;
+    return deduplicatedMembers.find((member) => member.email.trim().toLowerCase() === email) ?? raw ?? null;
+  }, [deduplicatedMembers, members, selectedMemberId]);
+  const selectedMemberHasMessagingAccess = selectedMember
+    ? selectedMember.customerType === "PT-kunde" || selectedMember.membershipType === "Premium"
+    : false;
+  const selectedMemberMessagesLocked = Boolean(selectedMember && !selectedMemberHasMessagingAccess);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || isLocalDemoSession) return;
+    reconcileArchiveTombstonesWithRemoteMembers(members);
+  }, [members, isLocalDemoSession]);
+
+  useEffect(() => {
+    if (!selectedMember?.email) return;
+    const email = selectedMember.email.trim().toLowerCase();
+    if (!email.includes("@")) return;
+    if (!hasArchiveTombstone(email)) return;
+    if (members.some((m) => m.email.trim().toLowerCase() === email && m.isActive !== false)) {
+      removeArchiveTombstone(email);
+    }
+  }, [selectedMember?.email, members]);
+
+  useEffect(() => {
+    if (!selectedMember?.id || selectedMember.id === selectedMemberId) return;
+    setSelectedMemberId(selectedMember.id);
+  }, [selectedMember?.id, selectedMemberId, setSelectedMemberId]);
+
+  const trainerProgramMemberIds = useMemo(() => {
+    const trainerId = currentTrainerOwnerUserId.trim();
+    if (!trainerId) return new Set<string>();
+    const ids = new Set<string>();
+    programs.forEach((program) => {
+      if ((program.ownerUserId ?? "").trim() !== trainerId) return;
+      const memberId = program.memberId.trim();
+      if (memberId && memberId !== "__template__") ids.add(memberId);
+    });
+    return ids;
+  }, [programs, currentTrainerOwnerUserId]);
+
   const activeMembers = useMemo(() => {
     const trainerId = currentTrainerOwnerUserId.trim();
     const shouldApplyTrainerVisibility = isSupabaseConfigured && !isLocalDemoSession;
     return deduplicatedMembers.filter((member) => {
       if (member.isActive === false) return false;
       if (!shouldApplyTrainerVisibility) return true;
-      if (!trainerId) return true;
-      if (isSharedMedlemRosterMember(member)) return true;
-      return (member.ownerUserId ?? "").trim() === trainerId;
+      return isMemberIdentityVisibleToTrainer(member, members, trainerId, {
+        programMemberIds: trainerProgramMemberIds,
+      });
     });
-  }, [deduplicatedMembers, currentTrainerOwnerUserId, isLocalDemoSession]);
+  }, [
+    deduplicatedMembers,
+    members,
+    currentTrainerOwnerUserId,
+    isLocalDemoSession,
+    trainerProgramMemberIds,
+  ]);
   const archivedMembersForAdmin = useMemo(() => {
     const trainerId = currentTrainerOwnerUserId.trim();
     const activeIdentityKeys = new Set(
@@ -1126,14 +1196,23 @@ function pickFirstName(value: unknown): string {
   }, [members, currentTrainerOwnerUserId]);
   const visibleMembers = useMemo(() => {
     const trainerId = currentTrainerOwnerUserId.trim();
-    const source = showInactiveMembers ? deduplicatedMembers : activeMembers;
-    return source.filter((member) => {
-      if (isSharedMedlemRosterMember(member)) return true;
-      const owner = (member.ownerUserId ?? "").trim();
-      // Private kunder (PT-kunde / oppfolging) skal kun vises hos eier-PT.
-      return Boolean(trainerId) && owner === trainerId;
-    });
-  }, [showInactiveMembers, deduplicatedMembers, activeMembers, currentTrainerOwnerUserId]);
+    if (showInactiveMembers) {
+      return deduplicatedMembers.filter((member) =>
+        isMemberIdentityVisibleToTrainer(member, members, trainerId, {
+          includeInactive: true,
+          programMemberIds: trainerProgramMemberIds,
+        }),
+      );
+    }
+    return activeMembers;
+  }, [
+    showInactiveMembers,
+    deduplicatedMembers,
+    activeMembers,
+    members,
+    currentTrainerOwnerUserId,
+    trainerProgramMemberIds,
+  ]);
   const unreadMessagesByIdentityKey = useMemo(() => {
     const counts = new Map<string, number>();
     Object.entries(unreadMessagesByMemberId).forEach(([memberId, count]) => {
@@ -3019,6 +3098,7 @@ function pickFirstName(value: unknown): string {
             injuries: memberEditInjuries,
             membershipType: nextMembershipType,
             customerType: nextCustomerType,
+            nutritionAccess: memberEditNutritionAccess,
           },
         },
       });
@@ -4233,15 +4313,22 @@ function pickFirstName(value: unknown): string {
       return sortedMembers.filter((m) => m.isActive === false);
     }
     const activeSorted = sortedMembers.filter((m) => m.isActive !== false);
-    if (ptListFilterTab === "all") return activeSorted;
-    if (ptListFilterTab === "active") {
-      return activeSorted.filter((m) => memberPriorityTone(m, members, logs) === "green");
+    let base: Member[];
+    if (ptListFilterTab === "all") base = activeSorted;
+    else if (ptListFilterTab === "active") {
+      base = activeSorted.filter((m) => memberPriorityTone(m, members, logs) === "green");
+    } else {
+      base = activeSorted.filter((m) => {
+        const tone = memberPriorityTone(m, members, logs);
+        return tone === "red" || tone === "orange";
+      });
     }
-    return activeSorted.filter((m) => {
-      const tone = memberPriorityTone(m, members, logs);
-      return tone === "red" || tone === "orange";
-    });
-  }, [sortedMembers, ptListFilterTab, members, logs]);
+    if (!selectedMemberId || base.some((m) => m.id === selectedMemberId)) return base;
+    const pinned =
+      deduplicatedMembers.find((m) => m.id === selectedMemberId && m.isActive !== false) ??
+      members.find((m) => m.id === selectedMemberId && m.isActive !== false);
+    return pinned ? [pinned, ...base] : base;
+  }, [sortedMembers, ptListFilterTab, members, logs, selectedMemberId, deduplicatedMembers]);
 
   const ptListMembers = useMemo((): TrainerPtListMember[] => {
     return ptFilteredMembers.map((member) => {

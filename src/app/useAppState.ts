@@ -56,7 +56,11 @@ import {
   unregisterDeletedProgram,
 } from "./deletedProgramTombstones";
 import { enrichMemberWithBestProfile, mergePersonalGoalsFromCandidates } from "./memberOnboarding";
-import { addArchiveTombstone, removeArchiveTombstone } from "./memberArchiveTombstone";
+import {
+  addArchiveTombstone,
+  reconcileArchiveTombstonesWithRemoteMembers,
+  removeArchiveTombstone,
+} from "./memberArchiveTombstone";
 import { memberMayDeleteProgram, mergeProgramAuthorFields } from "./programAuthor";
 import { mergeProgramImageUrl } from "./programImage";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
@@ -81,7 +85,11 @@ import {
   type HydratedMemberData,
   type RestoreMemberOptions,
 } from "../services/supabaseRepository";
-import { isMemberAppAccessBlocked, MEMBER_ARCHIVED_APP_MESSAGE } from "../services/memberAccessRules";
+import {
+  isMemberAppAccessBlocked,
+  isPrivatePtRosterCustomerType,
+  MEMBER_ARCHIVED_APP_MESSAGE,
+} from "../services/memberAccessRules";
 import {
   ensureAuthSessionForPasswordUpdate,
   ensureMemberAuthLink,
@@ -182,6 +190,18 @@ function mergeTwoMemberSnapshots(primary: Member, secondary: Member): Member {
   } else {
     merged.membershipType = primary.membershipType || secondary.membershipType || merged.membershipType;
   }
+  const primaryOwner = String(primary.ownerUserId ?? "").trim();
+  const secondaryOwner = String(secondary.ownerUserId ?? "").trim();
+  const primaryPrivate = isPrivatePtRosterCustomerType(primary.customerType, primary.membershipType);
+  const secondaryPrivate = isPrivatePtRosterCustomerType(secondary.customerType, secondary.membershipType);
+  if (primaryPrivate && primaryOwner) {
+    merged.ownerUserId = primary.ownerUserId;
+  } else if (secondaryPrivate && secondaryOwner) {
+    merged.ownerUserId = secondary.ownerUserId;
+  } else if (primaryOwner || secondaryOwner) {
+    merged.ownerUserId = primaryOwner || secondaryOwner;
+  }
+  merged.nutritionAccess = primary.nutritionAccess === true || secondary.nutritionAccess === true;
   // Aktiv i sky skal ikke overskrives av inaktiv lokal klient-tilstand etter gjenoppretting.
   merged.isActive = primary.isActive !== false || secondary.isActive !== false;
   return merged;
@@ -819,6 +839,13 @@ export function useAppState() {
   }, [appState]);
 
   useEffect(() => {
+    const user = appState.currentUser;
+    if (!user || user.role !== "member") return;
+    if (appState.role === "member") return;
+    setAppState((prev) => ({ ...prev, role: "member" }));
+  }, [appState.currentUser?.role, appState.currentUser?.id, appState.role]);
+
+  useEffect(() => {
     purgeExpiredPausedWorkouts();
   }, []);
 
@@ -892,12 +919,14 @@ export function useAppState() {
       const isTrainerSession = sessionRole === "trainer";
       const isMemberLikeSession = Boolean(sessionUser) && !isTrainerSession;
       const hydratedTrainer = isTrainerSession && ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
-      const [hydratedMember, directMemberPrograms, directMemberLogs, directTrainerPrograms] = await Promise.all([
-        isMemberLikeSession ? fetchHydratedMemberData() : Promise.resolve(null),
-        isMemberLikeSession ? fetchProgramsFromSupabase() : Promise.resolve(null),
-        isMemberLikeSession ? fetchLogsFromSupabase() : Promise.resolve(null),
-        isTrainerSession ? fetchProgramsFromSupabase() : Promise.resolve(null),
-      ]);
+      const [hydratedMember, directMemberPrograms, directMemberLogs, directTrainerPrograms, directMemberMembers] =
+        await Promise.all([
+          isMemberLikeSession ? fetchHydratedMemberData() : Promise.resolve(null),
+          isMemberLikeSession ? fetchProgramsFromSupabase() : Promise.resolve(null),
+          isMemberLikeSession ? fetchLogsFromSupabase() : Promise.resolve(null),
+          isTrainerSession ? fetchProgramsFromSupabase() : Promise.resolve(null),
+          isMemberLikeSession ? fetchMembersFromSupabase() : Promise.resolve(null),
+        ]);
       const sessionEmail = sessionUser?.email?.trim().toLowerCase() ?? "";
       const archivedMessage = hydratedMemberAccessDenied(hydratedMember);
       const accessBlocked =
@@ -911,9 +940,13 @@ export function useAppState() {
         return;
       }
       const directTrainerMembers = isTrainerSession ? await fetchMembersFromSupabase() : null;
-      const remoteMembers = hydratedTrainer
-        ? mergeMembersById(hydratedTrainer.members, directTrainerMembers)
-        : hydratedMember?.members ?? directTrainerMembers ?? (await fetchMembersFromSupabase());
+      const remoteMembers = isTrainerSession
+        ? hydratedTrainer
+          ? mergeMembersById(hydratedTrainer.members, directTrainerMembers)
+          : directTrainerMembers
+        : mergeMembersById(hydratedMember?.members ?? null, directMemberMembers) ??
+          directMemberMembers ??
+          (await fetchMembersFromSupabase());
       const remoteMessages = hydratedTrainer?.messages ?? hydratedMember?.messages ?? (await fetchMessagesFromSupabase());
       // Edge hydrate and RLS-backed selects can disagree; merge by id so new devices still see programs/logs
       // the member can read directly from Postgres even when hydrate returns a partial list.
@@ -1062,18 +1095,31 @@ export function useAppState() {
             );
           }
           if (currentUser?.role === "trainer") {
-            // Behold nylig opprettede kunder til sky-lagring er ferdig — ellers forsvinner de ved neste hydrate.
-            mergedMembers = mergeMembersById(mergedMembers, prevStripped.members) ?? mergedMembers;
-            // Remote kan ha tom invitedAt på raden (RLS/direkte fetch vs hydrate) rett etter invitasjon — ikke overskriv optimistisk/lokal verdi.
+            mergedMembers = mergeTrainerMembersWithLocalAndPinned(
+              mergedMembers,
+              prevStripped.members,
+              readPinnedTrainerMembers(),
+            );
+            mergedMembers = preserveTrainerInvitedAtFromLocal(mergedMembers, prev.members);
             mergedMembers = mergedMembers.map((remote) => {
               const prevRow = prev.members.find((m) => m.id === remote.id);
-              const prevInv = prevRow?.invitedAt?.trim();
-              const remoteInv = remote.invitedAt?.trim();
-              if (prevInv && !remoteInv) {
-                return { ...remote, invitedAt: prevInv };
+              if (!prevRow) return remote;
+              const prevPrivate =
+                prevRow.customerType === "PT-kunde" ||
+                prevRow.membershipType === "Premium" ||
+                (prevRow.customerType !== "Medlem" && Boolean(prevRow.customerType));
+              const remoteShared = remote.customerType === "Medlem" && remote.membershipType !== "Premium";
+              if (prevPrivate && remoteShared) {
+                return {
+                  ...remote,
+                  customerType: prevRow.customerType,
+                  membershipType: prevRow.membershipType,
+                  ownerUserId: prevRow.ownerUserId || remote.ownerUserId,
+                };
               }
               return remote;
             });
+            reconcileArchiveTombstonesWithRemoteMembers(mergedMembers);
           }
           next.members = mergedMembers;
         }
@@ -1936,6 +1982,15 @@ export function useAppState() {
   function updateMember(input: UpdateMemberInput) {
     setAppState((prev) => {
       const nextState = repository.updateMember(prev, input);
+      if (
+        prev.currentUser?.role === "trainer" &&
+        (input.changes.customerType !== undefined ||
+          input.changes.membershipType !== undefined ||
+          input.changes.ownerUserId !== undefined)
+      ) {
+        const updatedMember = nextState.members.find((member) => member.id === input.memberId);
+        if (updatedMember) pinTrainerMember(updatedMember);
+      }
       const currentUser = prev.currentUser;
       if (!currentUser || currentUser.role !== "member") return nextState;
       const updatedMember = nextState.members.find((member) => member.id === input.memberId);
@@ -2307,6 +2362,7 @@ export function useAppState() {
     const remoteLogs = hydratedTrainer?.logs ?? (await fetchLogsFromSupabase());
 
     if (remoteMembers) {
+      reconcileArchiveTombstonesWithRemoteMembers(remoteMembers);
       setAppState((prev) => ({
         ...prev,
         members: mergeTrainerMembersWithLocalAndPinned(

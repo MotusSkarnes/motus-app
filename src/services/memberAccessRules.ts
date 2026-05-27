@@ -73,7 +73,85 @@ export function scoreMemberProfileSource(member: {
   if (isShared) score += 500;
   if (member.isActive !== false) score += 100;
   if (member.invitedAt) score += 10;
+  if (member.customerType === "PT-kunde") score += 2500;
+  if (member.membershipType === "Premium") score += 800;
   return score;
+}
+
+/** Slå sammen kundetype/medlemskap på tvers av duplikat-rader (samme e-post). */
+export function mergeRosterFieldsFromMemberCandidates(
+  candidates: Array<Pick<Member, "customerType" | "membershipType" | "ownerUserId" | "nutritionAccess">>,
+  currentTrainerOwnerUserId = "",
+): Pick<Member, "customerType" | "membershipType" | "ownerUserId" | "nutritionAccess"> {
+  if (!candidates.length) {
+    return { customerType: "Medlem", membershipType: "Standard", ownerUserId: undefined, nutritionAccess: false };
+  }
+  const trainerId = currentTrainerOwnerUserId.trim();
+  const sorted = [...candidates].sort(
+    (a, b) => scoreMemberProfileSource(b, trainerId) - scoreMemberProfileSource(a, trainerId),
+  );
+  const best = sorted[0]!;
+  let customerType = best.customerType;
+  if (candidates.some((row) => row.customerType === "PT-kunde")) customerType = "PT-kunde";
+  else if (candidates.some((row) => row.customerType === "Oppfølging")) customerType = "Oppfølging";
+  else if (candidates.some((row) => row.customerType === "Egentrening")) customerType = "Egentrening";
+
+  const membershipType = candidates.some((row) => row.membershipType === "Premium") ? "Premium" : best.membershipType;
+  const ownedPrivate = sorted.find(
+    (row) =>
+      isPrivatePtRosterCustomerType(row.customerType, row.membershipType) &&
+      (!trainerId || String(row.ownerUserId ?? "").trim() === trainerId),
+  );
+  const ptOwnedByTrainer = candidates.find(
+    (row) =>
+      row.customerType === "PT-kunde" &&
+      (!trainerId || String(row.ownerUserId ?? "").trim() === trainerId),
+  );
+  const ptAny = candidates.find((row) => row.customerType === "PT-kunde");
+  let ownerUserId =
+    ptOwnedByTrainer?.ownerUserId ??
+    ownedPrivate?.ownerUserId ??
+    ptAny?.ownerUserId ??
+    best.ownerUserId;
+  if (
+    isPrivatePtRosterCustomerType(customerType, membershipType) &&
+    trainerId &&
+    !String(ownerUserId ?? "").trim()
+  ) {
+    ownerUserId = trainerId;
+  }
+  const nutritionAccess = candidates.some((row) => row.nutritionAccess === true);
+  return { customerType, membershipType, ownerUserId, nutritionAccess };
+}
+
+export function isMemberIdentityVisibleToTrainer(
+  member: Pick<Member, "id" | "email" | "customerType" | "membershipType" | "ownerUserId" | "isActive">,
+  allMembers: Array<Pick<Member, "id" | "email" | "customerType" | "membershipType" | "ownerUserId" | "isActive">>,
+  trainerId: string,
+  options?: { includeInactive?: boolean; programMemberIds?: ReadonlySet<string> },
+): boolean {
+  const tid = trainerId.trim();
+  const email = member.email.trim().toLowerCase();
+  const group = email.includes("@")
+    ? allMembers.filter((row) => row.email.trim().toLowerCase() === email)
+    : allMembers.filter((row) => row.id === member.id);
+  const rows = group.length ? group : [member];
+  const activeRows = options?.includeInactive ? rows : rows.filter((row) => row.isActive !== false);
+  if (!activeRows.length) return false;
+
+  if (activeRows.some((row) => isSharedMedlemRosterMember(row))) return true;
+  if (!tid) return true;
+
+  const linkedIds = options?.programMemberIds;
+  return activeRows.some((row) => {
+    if (!options?.includeInactive && row.isActive === false) return false;
+    if (isSharedMedlemRosterMember(row)) return true;
+    if (!isPrivatePtRosterCustomerType(row.customerType, row.membershipType)) return false;
+    const owner = String(row.ownerUserId ?? "").trim();
+    if (owner === tid) return true;
+    if (linkedIds?.has(row.id)) return true;
+    return false;
+  });
 }
 
 export function filterMemberIdsForRosterSave(options: {
@@ -104,6 +182,16 @@ export function filterMemberIdsForRosterSave(options: {
     if (selectedOwner && owner === selectedOwner) return true;
     return false;
   });
-  const ids = owned.map((row) => String(row.id ?? "").trim()).filter(Boolean);
-  return Array.from(new Set(ids.length ? ids : [options.selectedMemberId]));
+  const ids = new Set(owned.map((row) => String(row.id ?? "").trim()).filter(Boolean));
+  const selectedId = options.selectedMemberId.trim();
+  if (selectedId) ids.add(selectedId);
+  if (isPrivatePtRosterCustomerType(options.nextCustomerType)) {
+    byEmail.forEach((row) => {
+      if (isSharedMedlemCustomerType(row.customerType)) {
+        const id = String(row.id ?? "").trim();
+        if (id) ids.add(id);
+      }
+    });
+  }
+  return Array.from(ids.size ? ids : [options.selectedMemberId]);
 }

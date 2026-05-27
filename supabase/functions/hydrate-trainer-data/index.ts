@@ -160,6 +160,12 @@ function harmonizeMemberProfilesByEmail(rows: Array<Record<string, unknown>>): A
         if (preferred) row[field] = preferred;
         else if (canonical[field]) row[field] = canonical[field];
       }
+      const anyNutritionAccess = group.some((row) => row.nutrition_access === true);
+      if (anyNutritionAccess) {
+        for (const row of group) {
+          row.nutrition_access = true;
+        }
+      }
     }
   }
   return rows;
@@ -223,9 +229,9 @@ Deno.serve(async (req) => {
   }
 
   const membersSelectWithAvatar =
-    "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url, created_at";
+    "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, nutrition_access, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url, created_at";
   const membersSelectWithoutAvatar =
-    "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, created_at";
+    "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, nutrition_access, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, created_at";
   let members: Array<Record<string, unknown>> | null = null;
   let membersError: { message: string } | null = null;
   const ownedMembersWithAvatar = await adminClient
