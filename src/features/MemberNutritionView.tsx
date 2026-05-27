@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Apple } from "lucide-react";
 import { syncMealPlanForMember } from "../app/mealPlanCloud";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
