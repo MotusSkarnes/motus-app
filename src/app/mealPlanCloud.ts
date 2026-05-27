@@ -1,6 +1,11 @@
 import { createDefaultMealPlan } from "./mealPlanDefaults";
 import { loadMealPlanForMember, persistMealPlan } from "./mealPlanStorage";
 import type { MealPlan, MealPlanDay, MealPlanTargets } from "./mealPlanTypes";
+
+function mealPlansEqual(a: MealPlan | null | undefined, b: MealPlan | null | undefined): boolean {
+  if (!a || !b) return false;
+  return JSON.stringify(a) === JSON.stringify(b);
+}
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
 function isMealPlanTableMissing(message: string): boolean {
@@ -109,12 +114,18 @@ export async function syncMealPlanForMember(
   const trimmedMemberId = memberId.trim();
   const remote = await fetchMealPlanFromSupabase(trimmedMemberId);
   if (remote) {
-    persistMealPlan(remote);
+    const cached = loadMealPlanForMember(trimmedMemberId);
+    if (!mealPlansEqual(cached, remote)) {
+      persistMealPlan(remote, { notify: false });
+    }
     return { plan: remote, cloudSynced: true };
   }
 
-  const local = loadMealPlanForMember(trimmedMemberId) ?? createDefaultMealPlan(trimmedMemberId);
-  persistMealPlan(local);
+  let local = loadMealPlanForMember(trimmedMemberId);
+  if (!local) {
+    local = createDefaultMealPlan(trimmedMemberId);
+    persistMealPlan(local, { notify: false });
+  }
 
   if (!ownerUserId.trim() || !isSupabaseConfigured) {
     return { plan: local, cloudSynced: false };

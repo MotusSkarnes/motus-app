@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Save, Search, Trash2, X } from "lucide-react";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import {
@@ -40,6 +40,7 @@ export function TrainerMealPlanEditor({
   const [foodPicker, setFoodPicker] = useState<FoodPickerState>(null);
   const [foodSearch, setFoodSearch] = useState("");
   const [foodGrams, setFoodGrams] = useState("100");
+  const reloadInFlightRef = useRef(false);
 
   const applyPendingFood = useCallback(
     (currentPlan: MealPlan) => {
@@ -76,16 +77,21 @@ export function TrainerMealPlanEditor({
   );
 
   const reload = useCallback(async () => {
-    if (!memberId.trim()) return;
+    if (!memberId.trim() || reloadInFlightRef.current) return;
+    reloadInFlightRef.current = true;
     setLoading(true);
-    const result = await syncMealPlanForMember(memberId, trainerOwnerUserId ?? "");
-    const withPending = applyPendingFood(result.plan);
-    setPlan(withPending);
-    if (withPending !== result.plan) {
-      persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, withPending);
+    try {
+      const result = await syncMealPlanForMember(memberId, trainerOwnerUserId ?? "");
+      const withPending = applyPendingFood(result.plan);
+      setPlan(withPending);
+      if (withPending !== result.plan) {
+        persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, withPending);
+      }
+      setActiveDayId((prev) => prev || withPending.days[0]?.id || "");
+    } finally {
+      reloadInFlightRef.current = false;
+      setLoading(false);
     }
-    setActiveDayId((prev) => prev || withPending.days[0]?.id || "");
-    setLoading(false);
   }, [memberId, trainerOwnerUserId, applyPendingFood]);
 
   useEffect(() => {

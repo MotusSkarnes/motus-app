@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Apple } from "lucide-react";
 import { syncMealPlanForMember } from "../app/mealPlanCloud";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
@@ -15,14 +15,20 @@ export function MemberNutritionView({ memberId, memberName }: MemberNutritionVie
   const [plan, setPlan] = useState<MealPlan | null>(null);
   const [activeDayId, setActiveDayId] = useState("");
   const [loading, setLoading] = useState(true);
+  const reloadInFlightRef = useRef(false);
 
   const reload = useCallback(async () => {
-    if (!memberId.trim()) return;
+    if (!memberId.trim() || reloadInFlightRef.current) return;
+    reloadInFlightRef.current = true;
     setLoading(true);
-    const result = await syncMealPlanForMember(memberId, "");
-    setPlan(result.plan);
-    setActiveDayId((prev) => prev || result.plan.days[0]?.id || "");
-    setLoading(false);
+    try {
+      const result = await syncMealPlanForMember(memberId, "");
+      setPlan(result.plan);
+      setActiveDayId((prev) => prev || result.plan.days[0]?.id || "");
+    } finally {
+      reloadInFlightRef.current = false;
+      setLoading(false);
+    }
   }, [memberId]);
 
   useEffect(() => {

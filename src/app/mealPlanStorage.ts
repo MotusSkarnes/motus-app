@@ -34,13 +34,15 @@ export function loadMealPlanForMember(memberId: string): MealPlan | null {
   return stored;
 }
 
-export function persistMealPlan(plan: MealPlan): void {
+export function persistMealPlan(plan: MealPlan, options?: { notify?: boolean }): void {
   const memberId = plan.memberId.trim();
   if (!memberId) return;
   const all = readPlans();
   all[memberId] = { ...plan, memberId, updatedAt: new Date().toISOString() };
   writePlans(all);
-  notifyMealPlanChanged();
+  if (options?.notify !== false) {
+    notifyMealPlanChanged();
+  }
 }
 
 export function loadOrCreateMealPlanForMember(memberId: string): MealPlan {
