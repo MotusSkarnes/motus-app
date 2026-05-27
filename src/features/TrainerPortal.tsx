@@ -240,6 +240,8 @@ type TrainerPortalProps = {
   exercises: Exercise[];
   selectedMemberId: string;
   setSelectedMemberId: (id: string) => void;
+  /** Uleste melding-alerts fra notifications, per memberId. */
+  unreadMessagesByMemberId?: Record<string, number>;
   trainerTab: TrainerTab;
   setTrainerTab: (tab: TrainerTab) => void;
   onSwitchToMemberView?: () => void;
@@ -679,6 +681,7 @@ function pickFirstName(value: unknown): string {
     exercises,
     selectedMemberId,
     setSelectedMemberId,
+    unreadMessagesByMemberId = {},
     trainerTab,
     setTrainerTab,
     onSwitchToMemberView,
@@ -1094,8 +1097,7 @@ function pickFirstName(value: unknown): string {
       if (activeIdentityKeys.has(identityKey)) return;
       const owner = (member.ownerUserId ?? "").trim();
       if (trainerId) {
-        const visible =
-          isSharedMedlemCustomerType(member.customerType) || !owner || owner === trainerId;
+        const visible = isSharedMedlemCustomerType(member.customerType) || owner === trainerId;
         if (!visible) return;
       }
       const existing = byIdentity.get(identityKey);
@@ -1111,9 +1113,26 @@ function pickFirstName(value: unknown): string {
     });
     return Array.from(byIdentity.values()).sort((a, b) => a.name.localeCompare(b.name, "no"));
   }, [members, currentTrainerOwnerUserId]);
-  const visibleMembers = showInactiveMembers
-    ? deduplicatedMembers
-    : activeMembers;
+  const visibleMembers = useMemo(() => {
+    const trainerId = currentTrainerOwnerUserId.trim();
+    const source = showInactiveMembers ? deduplicatedMembers : activeMembers;
+    return source.filter((member) => {
+      if (isSharedMedlemCustomerType(member.customerType)) return true;
+      const owner = (member.ownerUserId ?? "").trim();
+      // Private kunder (PT-kunde / oppfolging) skal kun vises hos eier-PT.
+      return Boolean(trainerId) && owner === trainerId;
+    });
+  }, [showInactiveMembers, deduplicatedMembers, activeMembers, currentTrainerOwnerUserId]);
+  const unreadMessagesByIdentityKey = useMemo(() => {
+    const counts = new Map<string, number>();
+    Object.entries(unreadMessagesByMemberId).forEach(([memberId, count]) => {
+      const member = members.find((m) => m.id === memberId);
+      if (!member) return;
+      const key = getMemberIdentityKey(member);
+      counts.set(key, (counts.get(key) ?? 0) + Math.max(0, Number(count) || 0));
+    });
+    return counts;
+  }, [unreadMessagesByMemberId, members]);
   const filteredMembers = useMemo(() => {
     const query = memberSearch.trim().toLowerCase();
     return visibleMembers
@@ -2025,6 +2044,7 @@ function pickFirstName(value: unknown): string {
   function addExerciseToDraft(exercise: Exercise) {
     const isCardio = exercise.category === "Kondisjon";
     const isStretch = isHoldBasedExerciseCategory(exercise.category);
+    const isStrength = exercise.category === "Styrke";
     const isTreadmill = exercise.equipment.trim().toLowerCase().includes("tredem");
     setProgramExercisesDraft((prev) => [
       ...prev,
@@ -2033,7 +2053,9 @@ function pickFirstName(value: unknown): string {
         exerciseId: exercise.id,
         exerciseName: exercise.name,
         sets: isStretch ? "2" : "3",
+        repsUnit: isStrength ? "reps" : undefined,
         reps: isCardio ? "" : isStretch ? "1" : "10",
+        weightUnit: isStrength ? "kg" : undefined,
         weight: isCardio || isStretch ? "" : "0",
         holdSeconds: isStretch ? "30" : "",
         durationMinutes: isCardio ? "20" : "",
@@ -2712,13 +2734,15 @@ function pickFirstName(value: unknown): string {
               if (durationMinutes) cardioTimeParts.push(`${durationMinutes} min`);
               if (isCardioExercise && cardioHoldSeconds) cardioTimeParts.push(`${cardioHoldSeconds} sek`);
               const cardioTimeLabel = cardioTimeParts.length ? cardioTimeParts.join(" ") : "—";
+              const repsUnit = safeExercise.repsUnit === "minutes" ? "min" : "reps";
+              const weightUnit = safeExercise.weightUnit === "seconds" ? "sek" : "kg";
               const prescription = isCardioExercise
                 ? `${setCount} ${/^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder"} × ${cardioTimeLabel}${
                     speed ? ` · ${speed} km/t` : ""
                   }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause${cardioTargetHrPrescriptionSuffix(safeExercise.targetHrPercent)}`
                 : libraryMatch && isHoldBasedExerciseCategory(libraryMatch.category)
                   ? `${setCount} sett × ${programExerciseHoldSeconds(safeExercise, libraryMatch.category) || "-"} sek hold · ${restSeconds}s pause`
-                  : `${setCount} x ${reps} · ${weight} kg · ${restSeconds}s pause`;
+                  : `${setCount} x ${reps} ${repsUnit} · ${weight} ${weightUnit} · ${restSeconds}s pause`;
               const imageUrl = libraryMatch?.imageUrl?.trim() || "";
               const description = libraryMatch?.description?.trim() || "Ingen forklaring tilgjengelig for denne øvelsen.";
               return `<article class="exercise-card">
@@ -4791,6 +4815,8 @@ function pickFirstName(value: unknown): string {
                     const needsFollowUp = daysSinceWorkout !== null && daysSinceWorkout >= 7;
                     const hasProgram = programsAttributedToMember(member, members, programs).length > 0;
                     const priorityTone = memberPriorityTone(member, members, logs);
+                    const unreadMessageCount =
+                      unreadMessagesByIdentityKey.get(getMemberIdentityKey(member)) ?? 0;
                     const activityLabel =
                       daysSinceWorkout !== null
                         ? daysSinceWorkout === 0
@@ -4842,6 +4868,14 @@ function pickFirstName(value: unknown): string {
                                   title="7+ dager siden siste økt"
                                 >
                                   Følg opp
+                                </span>
+                              ) : null}
+                              {unreadMessageCount > 0 ? (
+                                <span
+                                  className="shrink-0 rounded-full bg-[#d91278] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-white"
+                                  title={`${unreadMessageCount} uleste meldinger`}
+                                >
+                                  Mld {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
                                 </span>
                               ) : null}
                             </div>

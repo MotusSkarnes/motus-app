@@ -26,6 +26,7 @@ export function buildTrainerLayoutProps(input: {
   setTrainerTab: TrainerLayoutProps["setTrainerTab"];
   patchState: TrainerLayoutProps["patchState"];
   messageBadgeCount?: TrainerLayoutProps["messageBadgeCount"];
+  unreadMessagesByMemberId?: TrainerLayoutProps["unreadMessagesByMemberId"];
   addMember: TrainerLayoutProps["addMember"];
   deactivateMember: TrainerLayoutProps["deactivateMember"];
   deleteMember: TrainerLayoutProps["deleteMember"];

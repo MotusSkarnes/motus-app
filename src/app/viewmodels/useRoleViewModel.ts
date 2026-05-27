@@ -185,12 +185,24 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     showTrainerNotifications: layoutRole === "trainer",
   });
 
+  const trainerUnreadMessagesByMemberId = useMemo(() => {
+    const counts: Record<string, number> = {};
+    trainerVisibleAlerts.forEach((alert) => {
+      if (alert.kind !== "message" || !alert.isUnread) return;
+      const memberId = String(alert.memberId ?? "").trim();
+      if (!memberId) return;
+      counts[memberId] = (counts[memberId] ?? 0) + 1;
+    });
+    return counts;
+  }, [trainerVisibleAlerts]);
+
   const trainerLayoutProps: ComponentProps<typeof TrainerLayout> = buildTrainerLayoutProps({
     appState: state.appState,
     trainerTab: state.trainerTab,
     setTrainerTab: state.setTrainerTab,
     patchState: state.patchState,
     messageBadgeCount: trainerUnreadCount,
+    unreadMessagesByMemberId: trainerUnreadMessagesByMemberId,
     addMember: state.addMember,
     deactivateMember: state.deactivateMember,
     deleteMember: state.deleteMember,

@@ -53,6 +53,7 @@ type TrainerLayoutProps = {
   setTrainerTab: ComponentProps<typeof TrainerPortal>["setTrainerTab"];
   patchState: (patch: Partial<AppState>) => void;
   messageBadgeCount?: number;
+  unreadMessagesByMemberId?: Record<string, number>;
   addMember: ComponentProps<typeof TrainerPortal>["addMember"];
   deactivateMember: ComponentProps<typeof TrainerPortal>["deactivateMember"];
   deleteMember: ComponentProps<typeof TrainerPortal>["deleteMember"];
@@ -129,6 +130,7 @@ export function TrainerLayout({
   setTrainerTab,
   patchState,
   messageBadgeCount = 0,
+  unreadMessagesByMemberId = {},
   addMember,
   deactivateMember,
   deleteMember,
@@ -191,6 +193,7 @@ export function TrainerLayout({
     exercises: appState.exercises,
     selectedMemberId: appState.selectedMemberId,
     setSelectedMemberId: (id) => patchState({ selectedMemberId: id }),
+    unreadMessagesByMemberId,
     trainerTab,
     setTrainerTab,
     onSwitchToMemberView: () =>
