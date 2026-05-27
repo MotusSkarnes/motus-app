@@ -4,8 +4,10 @@ import type { MacroTargetField } from "../app/mealPlanTargetBalance";
 import { Plus, Save, Search, Soup, Trash2, X } from "lucide-react";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import {
+  flushMealPlanCloudSave,
   persistMealPlanBundle,
   persistMealPlanLocalAndScheduleCloud,
+  pickPreferredMealPlan,
   syncMealPlanForMember,
 } from "../app/mealPlanCloud";
 import { useInspirationRecipeItems } from "../app/inspirationRecipeItems";
@@ -96,9 +98,12 @@ export function TrainerMealPlanEditor({
     try {
       const result = await syncMealPlanForMember(memberId, trainerOwnerUserId ?? "");
       const withPending = applyPendingFood(result.plan);
-      setPlan(withPending);
+      setPlan((prev) => {
+        if (!prev) return withPending;
+        return pickPreferredMealPlan([prev, withPending]) ?? withPending;
+      });
       if (withPending !== result.plan) {
-        persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, withPending);
+        persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, withPending, { notify: false });
       }
       setActiveDayId((prev) => prev || withPending.days[0]?.id || "");
     } finally {
@@ -143,23 +148,30 @@ export function TrainerMealPlanEditor({
     return list.slice(0, 40);
   }, [recipeItems, recipeSearch]);
 
-  function updatePlan(next: MealPlan) {
-    setPlan(next);
-    persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, next, { notify: false });
+  function updatePlan(next: MealPlan, options?: { flushCloud?: boolean }) {
+    const stamped: MealPlan = { ...next, updatedAt: new Date().toISOString() };
+    setPlan(stamped);
+    persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, stamped, { notify: false });
+    if (options?.flushCloud) flushMealPlanCloudSave(trainerOwnerUserId ?? "");
   }
 
-  function appendEntryToMeal(target: MealPickerTarget, entry: MealPlanFoodEntry) {
-    if (!plan) return;
-    const nextDays = plan.days.map((day) => {
-      if (day.id !== target.dayId) return day;
-      return {
-        ...day,
-        meals: day.meals.map((meal) =>
-          meal.id === target.mealId ? { ...meal, items: [...meal.items, entry] } : meal,
-        ),
-      };
+  function appendEntryToMeal(target: MealPickerTarget, entry: MealPlanFoodEntry, options?: { flushCloud?: boolean }) {
+    setPlan((current) => {
+      if (!current) return current;
+      const nextDays = current.days.map((day) => {
+        if (day.id !== target.dayId) return day;
+        return {
+          ...day,
+          meals: day.meals.map((meal) =>
+            meal.id === target.mealId ? { ...meal, items: [...meal.items, entry] } : meal,
+          ),
+        };
+      });
+      const next: MealPlan = { ...current, days: nextDays, updatedAt: new Date().toISOString() };
+      persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, next, { notify: false });
+      if (options?.flushCloud) flushMealPlanCloudSave(trainerOwnerUserId ?? "");
+      return next;
     });
-    updatePlan({ ...plan, days: nextDays });
   }
 
   async function handleSave() {
@@ -203,18 +215,23 @@ export function TrainerMealPlanEditor({
   }
 
   function addRecipeToMeal(recipeId: string) {
-    if (!plan || !recipePicker) return;
+    const target = recipePicker;
+    if (!target) return;
     const recipe = recipeItems.find((row) => row.id === recipeId);
-    if (!recipe) return;
-    const entry = recipeToMealPlanEntry(recipe, foodItems);
-    if (!entry) {
-      setSaveStatus(`Kunne ikke beregne makroer for «${recipe.title}». Sjekk ingredienslisten i Utforsk.`);
+    if (!recipe) {
+      setSaveStatus("Fant ikke oppskriften. Prøv å laste siden på nytt.");
       return;
     }
-    appendEntryToMeal(recipePicker, entry);
+    const entry = recipeToMealPlanEntry(recipe, foodItems);
+    appendEntryToMeal(target, entry, { flushCloud: true });
     setRecipePicker(null);
     setRecipeSearch("");
-    setSaveStatus(`${recipe.title} lagt til som 1 porsjon.`);
+    const macroOk = entry.nutritionPer100g.kcal > 0;
+    setSaveStatus(
+      macroOk
+        ? `${recipe.title} er lagt til i måltidet.`
+        : `${recipe.title} er lagt til uten makro — bruk **Ingredienser**-liste i Utforsk for automatisk beregning.`,
+    );
   }
 
   function removeFoodEntry(dayId: string, mealId: string, entryId: string) {
@@ -492,7 +509,13 @@ export function TrainerMealPlanEditor({
       ) : null}
 
       {recipePicker ? (
-        <div className="motus-foodbank-modal-backdrop" role="presentation" onClick={() => setRecipePicker(null)}>
+        <div
+          className="motus-foodbank-modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setRecipePicker(null);
+          }}
+        >
           <div
             className="motus-foodbank-modal motus-foodbank-modal--wide"
             role="dialog"
@@ -545,7 +568,12 @@ export function TrainerMealPlanEditor({
                       key={recipe.id}
                       type="button"
                       className="flex w-full flex-col items-start gap-0.5 rounded-xl border border-slate-100 px-3 py-2 text-left text-sm hover:bg-teal-50"
-                      onClick={() => addRecipeToMeal(recipe.id)}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        addRecipeToMeal(recipe.id);
+                      }}
                     >
                       <span className="font-medium text-slate-800">{recipe.title}</span>
                       <span className="text-xs text-slate-500">{recipe.tag}</span>

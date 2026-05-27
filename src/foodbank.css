@@ -1159,28 +1159,11 @@
 
 .motus-matplan-meal-food {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
   font-size: 0.6875rem;
   color: #475569;
-  padding: 0.35rem 0.4rem;
-  border-radius: 0.5rem;
-  border: 1px solid transparent;
-}
-
-.motus-matplan-meal-food--logged {
-  border-color: rgba(48, 227, 190, 0.35);
-  background: rgba(48, 227, 190, 0.08);
-}
-
-.motus-matplan-meal-food-main {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-  flex: 1;
-  min-width: 0;
 }
 
 .motus-matplan-meal-food-name {
@@ -1191,49 +1174,6 @@
 .motus-matplan-meal-food-grams {
   flex-shrink: 0;
   color: #94a3b8;
-}
-
-.motus-matplan-meal-food-actions {
-  flex-shrink: 0;
-}
-
-.motus-matplan-food-log,
-.motus-matplan-food-remove {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  border-radius: 999px;
-  padding: 0.2rem 0.45rem;
-  font-size: 0.625rem;
-  font-weight: 700;
-  border: 1px solid transparent;
-  cursor: pointer;
-}
-
-.motus-matplan-food-log {
-  color: #be185d;
-  border-color: rgba(217, 18, 120, 0.35);
-  background: #fff;
-}
-
-.motus-matplan-food-remove {
-  color: #64748b;
-  border-color: rgba(100, 116, 139, 0.35);
-  background: #fff;
-}
-
-.motus-matplan-meal-food-check {
-  display: inline-flex;
-  color: #30e3be;
-  flex-shrink: 0;
-}
-
-.motus-matplan-meal-card--partial {
-  border-color: rgba(217, 18, 120, 0.2);
-}
-
-.motus-matplan-ring__graphic circle:last-of-type {
-  transition: stroke-dasharray 0.35s ease;
 }
 
 .motus-matplan-meal-actions {
