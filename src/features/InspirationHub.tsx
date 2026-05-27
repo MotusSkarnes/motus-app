@@ -1309,6 +1309,10 @@ export function InspirationHub({
   const appGuideCount = itemsByCategory.appGuide.length;
 
   const expandedItem = items.find((item) => item.id === expandedItemId) ?? null;
+  const expandedRecipeMacros = useMemo(() => {
+    if (!expandedItem || expandedItem.category !== "recipes") return null;
+    return computeRecipeMacros(expandedItem.body, foodBankItems);
+  }, [expandedItem, foodBankItems]);
   const composerKind = resolveComposerKind(categoryDraft, kindDraft);
   const publishValidation = useMemo(
     () =>
