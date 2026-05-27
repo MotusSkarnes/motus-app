@@ -342,7 +342,11 @@ export async function persistMealPlanBundle(
   return { cloudSynced: true };
 }
 
-export function persistMealPlanLocalAndScheduleCloud(ownerUserId: string | undefined, plan: MealPlan): void {
-  persistMealPlan(plan);
+export function persistMealPlanLocalAndScheduleCloud(
+  ownerUserId: string | undefined,
+  plan: MealPlan,
+  options?: { notify?: boolean },
+): void {
+  persistMealPlan(plan, options);
   if (ownerUserId?.trim()) scheduleMealPlanCloudSave(ownerUserId, plan);
 }

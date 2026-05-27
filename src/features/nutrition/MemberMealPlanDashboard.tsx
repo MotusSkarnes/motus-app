@@ -13,12 +13,14 @@ import {
 import { MOTUS } from "../../app/data";
 import { formatMacro } from "../../app/foodBankTypes";
 import type { FoodItem } from "../../app/foodBankTypes";
+import { countMealPlanFoodItems } from "../../app/mealPlanCloud";
 import {
   computeDayMacros,
   computeMealMacros,
   type MacroTotals,
   sumMacroTotals,
 } from "../../app/mealPlanMacros";
+import { MealPlanDisplay } from "../MealPlanDisplay";
 import { buildWeeklyShoppingList } from "../../app/mealPlanShoppingList";
 import {
   MEAL_PLAN_STATE_CHANGED_EVENT,
@@ -45,6 +47,7 @@ import {
 } from "../../app/memberMealPlanTracking";
 import type { MealPlan, MealPlanDay, MealPlanMeal, MealPlanTargets } from "../../app/mealPlanTypes";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
+import { Card } from "../../app/ui";
 import { MotusFlameIcon } from "../MotusFlameIcon";
 import { MacroProgressRing } from "./MacroProgressRing";
 import "../../foodbank.css";
@@ -88,6 +91,12 @@ function sumLoggedMacros(day: MealPlanDay, loggedIds: Set<string>): MacroTotals 
   return sumMacroTotals(rows);
 }
 
+function dateKeyForPlanDayIndex(today: Date, todayWeekdayIndex: number, dayIndex: number): string {
+  const d = new Date(today);
+  d.setDate(today.getDate() - (todayWeekdayIndex - dayIndex));
+  return toIsoDateKey(d);
+}
+
 export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMealPlanDashboardProps) {
   const foodItems = useFoodBankItems();
   const foodById = useMemo(() => new Map(foodItems.map((f) => [f.id, f])), [foodItems]);
@@ -97,10 +106,29 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
   const todayWeekdayIndex = getWeekdayIndex(today);
   const todayDay = plan.days[todayWeekdayIndex] ?? plan.days[0];
 
+  const [selectedDayIndex, setSelectedDayIndex] = useState(todayWeekdayIndex);
+  const [showFullWeekView, setShowFullWeekView] = useState(false);
+  const [fullWeekDayId, setFullWeekDayId] = useState(plan.days[todayWeekdayIndex]?.id ?? plan.days[0]?.id ?? "");
   const [tracking, setTracking] = useState<MemberMealPlanState>(() => loadMealPlanTracking(memberId));
   const [swapMeal, setSwapMeal] = useState<MealPlanMeal | null>(null);
   const [showShopping, setShowShopping] = useState(false);
   const [showCoachTips, setShowCoachTips] = useState(false);
+
+  const totalFoodInPlan = useMemo(() => countMealPlanFoodItems(plan), [plan]);
+
+  useEffect(() => {
+    const todayHasFood = todayDay.meals.some((meal) => meal.items.length > 0);
+    if (todayHasFood) {
+      setSelectedDayIndex(todayWeekdayIndex);
+      return;
+    }
+    const firstWithFood = plan.days.findIndex((day) => day.meals.some((meal) => meal.items.length > 0));
+    setSelectedDayIndex(firstWithFood >= 0 ? firstWithFood : todayWeekdayIndex);
+  }, [plan.id, plan.updatedAt, todayDay.meals, todayWeekdayIndex]);
+
+  const selectedDay = plan.days[selectedDayIndex] ?? plan.days[0];
+  const selectedDateKey = dateKeyForPlanDayIndex(today, todayWeekdayIndex, selectedDayIndex);
+  const isSelectedToday = selectedDayIndex === todayWeekdayIndex;
 
   const refreshState = useCallback(async () => {
     if (!memberId.trim()) return;
@@ -135,9 +163,26 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
     [todayDay, todayMealsResolved],
   );
 
+  const selectedMealsResolved = useMemo(
+    () =>
+      (selectedDay?.meals ?? []).map((meal) =>
+        resolveMealWithSwaps(plan, meal, selectedDateKey, tracking.mealSwaps),
+      ),
+    [plan, selectedDay?.meals, selectedDateKey, tracking.mealSwaps],
+  );
+  const selectedDayResolved = useMemo(
+    () => (selectedDay ? { ...selectedDay, meals: selectedMealsResolved } : null),
+    [selectedDay, selectedMealsResolved],
+  );
+
   const loggedToday = useMemo(() => new Set(tracking.loggedMeals[todayKey] ?? []), [tracking.loggedMeals, todayKey]);
+  const loggedSelected = useMemo(
+    () => new Set(tracking.loggedMeals[selectedDateKey] ?? []),
+    [tracking.loggedMeals, selectedDateKey],
+  );
   const loggedMacrosToday = useMemo(() => sumLoggedMacros(todayDayResolved, loggedToday), [todayDayResolved, loggedToday]);
   const plannedMacrosToday = useMemo(() => computeDayMacros(todayDayResolved), [todayDayResolved]);
+  const selectedDayFoodCount = selectedMealsResolved.filter((meal) => meal.items.length > 0).length;
 
   const displayMacros = loggedMacrosToday.kcal > 0 ? loggedMacrosToday : plannedMacrosToday;
   const waterLiters = tracking.waterLiters[todayKey] ?? 0;
@@ -188,12 +233,12 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
   const handleApplySwap = useCallback(
     (sourceDayId: string, sourceMealId: string) => {
       if (!swapMeal) return;
-      const next = setMealSwap(tracking, todayKey, swapMeal.id, sourceDayId, sourceMealId);
+      const next = setMealSwap(tracking, selectedDateKey, swapMeal.id, sourceDayId, sourceMealId);
       setTracking(next);
       persistMemberMealPlanStateLocalAndScheduleCloud(memberId, next);
       setSwapMeal(null);
     },
-    [memberId, swapMeal, todayKey, tracking],
+    [memberId, selectedDateKey, swapMeal, tracking],
   );
 
   const coachTips = useMemo(() => {
@@ -209,9 +254,9 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
 
   const handleToggleMeal = useCallback(
     (mealId: string) => {
-      setTracking((prev) => toggleMealLogged(memberId, prev, todayKey, mealId));
+      setTracking((prev) => toggleMealLogged(memberId, prev, selectedDateKey, mealId));
     },
-    [memberId, todayKey],
+    [memberId, selectedDateKey],
   );
 
   const handleWaterAdjust = useCallback(
@@ -306,19 +351,30 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
             const isPast = index < todayWeekdayIndex;
             const hasActivity = logged.length > 0;
 
+            const dayHasFood = mealsWithFood.length > 0;
+            const isSelected = index === selectedDayIndex;
+
             return (
-              <div
+              <button
                 key={day.id}
-                className={`motus-matplan-week-day ${isToday ? "motus-matplan-week-day--today" : ""}`}
+                type="button"
+                className={`motus-matplan-week-day motus-pressable ${isToday ? "motus-matplan-week-day--today" : ""} ${isSelected ? "motus-matplan-week-day--selected" : ""}`}
+                onClick={() => setSelectedDayIndex(index)}
+                aria-label={`Vis matplan for ${day.label}`}
+                aria-pressed={isSelected}
               >
                 <span className="motus-matplan-week-day-label">{weekdayShortLabel(index)}</span>
                 <div
                   className={`motus-matplan-week-dot ${
                     complete || (isPast && hasActivity)
                       ? "motus-matplan-week-dot--done"
-                      : isToday
-                        ? "motus-matplan-week-dot--today"
-                        : ""
+                      : isSelected
+                        ? "motus-matplan-week-dot--selected"
+                        : isToday
+                          ? "motus-matplan-week-dot--today"
+                          : dayHasFood
+                            ? "motus-matplan-week-dot--planned"
+                            : ""
                   }`}
                 >
                   {complete || (isPast && hasActivity) ? (
@@ -327,35 +383,67 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
                     <Flame className="h-3.5 w-3.5" style={{ color: MOTUS.pink }} aria-hidden />
                   ) : null}
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
+        <p className="motus-matplan-week-hint">Trykk på en dag for å se måltidene PT har lagt inn.</p>
       </section>
 
-      {/* 3. Dagens måltider */}
-      <section className="motus-matplan-section" aria-label="Dagens måltider">
+      {totalFoodInPlan > 0 && selectedDayFoodCount === 0 && !isSelectedToday ? (
+        <Card className="border-teal-200 bg-teal-50/80 p-3 text-sm text-teal-900">
+          Ingen matvarer på {selectedDay?.label ?? "denne dagen"}. PT har lagt inn mat på andre dager — velg dem i ukeoversikten over.
+        </Card>
+      ) : null}
+
+      {/* 3. Måltider for valgt dag */}
+      <section className="motus-matplan-section" aria-label="Måltider">
         <div className="motus-matplan-section-head">
-          <h2 className="motus-matplan-section-title">Dagens måltider</h2>
-          <button
-            type="button"
-            className="motus-matplan-link-btn"
-            onClick={() => {
-              const next = todayMealsResolved.find((m) => m.items.length > 0 && !loggedToday.has(m.id));
-              if (next) handleToggleMeal(next.id);
-            }}
-          >
-            <Plus className="h-3.5 w-3.5" aria-hidden />
-            Logg måltid
-          </button>
+          <h2 className="motus-matplan-section-title">
+            {isSelectedToday ? "Dagens måltider" : `Måltider — ${selectedDay?.label ?? ""}`}
+          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="motus-matplan-link-btn"
+              onClick={() => setShowFullWeekView((v) => !v)}
+            >
+              {showFullWeekView ? "Skjul ukesvisning" : "Hele matplanen"}
+            </button>
+            {isSelectedToday ? (
+              <button
+                type="button"
+                className="motus-matplan-link-btn"
+                onClick={() => {
+                  const next = selectedMealsResolved.find((m) => m.items.length > 0 && !loggedSelected.has(m.id));
+                  if (next) handleToggleMeal(next.id);
+                }}
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden />
+                Logg måltid
+              </button>
+            ) : null}
+          </div>
         </div>
+
+        {showFullWeekView ? (
+          <div className="motus-matplan-full-week">
+            <MealPlanDisplay
+              plan={plan}
+              readOnly
+              activeDayId={fullWeekDayId}
+              onActiveDayIdChange={setFullWeekDayId}
+            />
+          </div>
+        ) : null}
+
         <div className="motus-matplan-meals">
-          {todayMealsResolved.map((meal) => {
+          {selectedMealsResolved.map((meal) => {
             const macros = computeMealMacros(meal);
-            const logged = loggedToday.has(meal.id);
+            const logged = loggedSelected.has(meal.id);
             const hasFood = meal.items.length > 0;
             const imageSrc = resolveMealImage(meal);
-            const isSwapped = Boolean(tracking.mealSwaps[mealSwapKey(todayKey, meal.id)]);
+            const isSwapped = Boolean(tracking.mealSwaps[mealSwapKey(selectedDateKey, meal.id)]);
 
             return (
               <article key={meal.id} className={`motus-matplan-meal-card ${logged ? "motus-matplan-meal-card--logged" : ""}`}>

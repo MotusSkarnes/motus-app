@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Save, Search, Trash2, X } from "lucide-react";
+import { Plus, Save, Search, Soup, Trash2, X } from "lucide-react";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import {
   persistMealPlanBundle,
   persistMealPlanLocalAndScheduleCloud,
   syncMealPlanForMember,
 } from "../app/mealPlanCloud";
+import { useInspirationRecipeItems } from "../app/inspirationRecipeItems";
 import { consumeMealPlanPendingFood } from "../app/mealPlanPendingFood";
 import { computeMealMacros, formatMacroTotals } from "../app/mealPlanMacros";
+import { recipeToMealPlanEntry } from "../app/mealPlanRecipeEntry";
 import type { MealPlan, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "../app/mealPlanTypes";
 import type { FoodItem } from "../app/foodBankTypes";
 import { useFoodBankItems } from "../app/useFoodBankItems";
@@ -22,10 +24,14 @@ type TrainerMealPlanEditorProps = {
   trainerOwnerUserId?: string;
 };
 
-type FoodPickerState = {
+type MealPickerTarget = {
   dayId: string;
   mealId: string;
-} | null;
+};
+
+type FoodPickerState = MealPickerTarget | null;
+
+type RecipePickerState = MealPickerTarget | null;
 
 export function TrainerMealPlanEditor({
   memberId,
@@ -33,12 +39,15 @@ export function TrainerMealPlanEditor({
   trainerOwnerUserId,
 }: TrainerMealPlanEditorProps) {
   const foodItems = useFoodBankItems();
+  const { items: recipeItems, loading: recipesLoading } = useInspirationRecipeItems();
   const [plan, setPlan] = useState<MealPlan | null>(null);
   const [activeDayId, setActiveDayId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [foodPicker, setFoodPicker] = useState<FoodPickerState>(null);
+  const [recipePicker, setRecipePicker] = useState<RecipePickerState>(null);
   const [foodSearch, setFoodSearch] = useState("");
+  const [recipeSearch, setRecipeSearch] = useState("");
   const [foodGrams, setFoodGrams] = useState("100");
   const reloadInFlightRef = useRef(false);
 
@@ -116,9 +125,37 @@ export function TrainerMealPlanEditor({
     return list.slice(0, 40);
   }, [foodItems, foodSearch]);
 
+  const filteredRecipes = useMemo(() => {
+    const q = recipeSearch.trim().toLowerCase();
+    let list = recipeItems;
+    if (q) {
+      list = list.filter(
+        (item) =>
+          item.title.toLowerCase().includes(q) ||
+          item.tag.toLowerCase().includes(q) ||
+          item.description.toLowerCase().includes(q),
+      );
+    }
+    return list.slice(0, 40);
+  }, [recipeItems, recipeSearch]);
+
   function updatePlan(next: MealPlan) {
     setPlan(next);
-    persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, next);
+    persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, next, { notify: false });
+  }
+
+  function appendEntryToMeal(target: MealPickerTarget, entry: MealPlanFoodEntry) {
+    if (!plan) return;
+    const nextDays = plan.days.map((day) => {
+      if (day.id !== target.dayId) return day;
+      return {
+        ...day,
+        meals: day.meals.map((meal) =>
+          meal.id === target.mealId ? { ...meal, items: [...meal.items, entry] } : meal,
+        ),
+      };
+    });
+    updatePlan({ ...plan, days: nextDays });
   }
 
   async function handleSave() {
@@ -155,19 +192,25 @@ export function TrainerMealPlanEditor({
       grams: safeGrams,
       nutritionPer100g: { ...food.nutritionPer100g },
     };
-    const nextDays = plan.days.map((day) => {
-      if (day.id !== foodPicker.dayId) return day;
-      return {
-        ...day,
-        meals: day.meals.map((meal) =>
-          meal.id === foodPicker.mealId ? { ...meal, items: [...meal.items, entry] } : meal,
-        ),
-      };
-    });
-    updatePlan({ ...plan, days: nextDays });
+    appendEntryToMeal(foodPicker, entry);
     setFoodPicker(null);
     setFoodSearch("");
     setFoodGrams(String(food.portionGrams || 100));
+  }
+
+  function addRecipeToMeal(recipeId: string) {
+    if (!plan || !recipePicker) return;
+    const recipe = recipeItems.find((row) => row.id === recipeId);
+    if (!recipe) return;
+    const entry = recipeToMealPlanEntry(recipe, foodItems);
+    if (!entry) {
+      setSaveStatus(`Kunne ikke beregne makroer for «${recipe.title}». Sjekk ingredienslisten i Utforsk.`);
+      return;
+    }
+    appendEntryToMeal(recipePicker, entry);
+    setRecipePicker(null);
+    setRecipeSearch("");
+    setSaveStatus(`${recipe.title} lagt til som 1 porsjon.`);
   }
 
   function removeFoodEntry(dayId: string, mealId: string, entryId: string) {
@@ -215,7 +258,7 @@ export function TrainerMealPlanEditor({
       {saveStatus ? (
         <StatusMessage
           message={saveStatus}
-          tone={saveStatus.toLowerCase().includes("lagret") ? "success" : "error"}
+          tone={/lagret|lagt til/i.test(saveStatus) ? "success" : "error"}
           className="!rounded-xl !px-3 !py-2 !text-xs"
         />
       ) : null}
@@ -311,7 +354,9 @@ export function TrainerMealPlanEditor({
                   >
                     <span>
                       <span className="font-medium text-slate-800">{item.foodName}</span>
-                      <span className="text-slate-500"> · {item.grams} g</span>
+                      <span className="text-slate-500">
+                        {item.note?.startsWith("Oppskrift") ? ` · ${item.note}` : ` · ${item.grams} g`}
+                      </span>
                     </span>
                     <button
                       type="button"
@@ -324,16 +369,28 @@ export function TrainerMealPlanEditor({
                   </li>
                 ))}
               </ul>
-              <OutlineButton
-                className="mt-2 w-full sm:w-auto"
-                onClick={() => {
-                  setFoodPicker({ dayId: activeDay.id, mealId: meal.id });
-                  setFoodSearch("");
-                }}
-              >
-                <Plus className="h-4 w-4" aria-hidden />
-                Legg til matvare
-              </OutlineButton>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <OutlineButton
+                  className="flex-1 sm:flex-none"
+                  onClick={() => {
+                    setFoodPicker({ dayId: activeDay.id, mealId: meal.id });
+                    setFoodSearch("");
+                  }}
+                >
+                  <Plus className="h-4 w-4" aria-hidden />
+                  Legg til matvare
+                </OutlineButton>
+                <OutlineButton
+                  className="flex-1 sm:flex-none"
+                  onClick={() => {
+                    setRecipePicker({ dayId: activeDay.id, mealId: meal.id });
+                    setRecipeSearch("");
+                  }}
+                >
+                  <Soup className="h-4 w-4" aria-hidden />
+                  Legg til oppskrift
+                </OutlineButton>
+              </div>
             </div>
           ))}
           <OutlineButton onClick={addMealToActiveDay}>
@@ -365,6 +422,21 @@ export function TrainerMealPlanEditor({
               </button>
             </div>
             <div className="motus-foodbank-modal-body space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <OutlineButton
+                  type="button"
+                  className="text-xs"
+                  onClick={() => {
+                    if (!foodPicker) return;
+                    setRecipePicker(foodPicker);
+                    setFoodPicker(null);
+                    setRecipeSearch("");
+                  }}
+                >
+                  <Soup className="h-3.5 w-3.5" aria-hidden />
+                  Velg oppskrift i stedet
+                </OutlineButton>
+              </div>
               <label className="motus-foodbank-search">
                 <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
                 <input
@@ -391,6 +463,73 @@ export function TrainerMealPlanEditor({
                     >
                       <span className="font-medium text-slate-800">{food.name}</span>
                       <span className="text-xs text-slate-500">{food.portionLabel}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {recipePicker ? (
+        <div className="motus-foodbank-modal-backdrop" role="presentation" onClick={() => setRecipePicker(null)}>
+          <div
+            className="motus-foodbank-modal motus-foodbank-modal--wide"
+            role="dialog"
+            aria-label="Velg oppskrift"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="motus-foodbank-modal-head">
+              <h3>Velg oppskrift</h3>
+              <button type="button" className="motus-foodbank-icon-btn" onClick={() => setRecipePicker(null)} aria-label="Lukk">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="motus-foodbank-modal-body space-y-3">
+              <p className="text-xs text-slate-600">
+                Oppskrifter fra Utforsk legges inn som 1 porsjon med beregnet makro fra ingredienslisten.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <OutlineButton
+                  type="button"
+                  className="text-xs"
+                  onClick={() => {
+                    setFoodPicker(recipePicker);
+                    setRecipePicker(null);
+                    setFoodSearch("");
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden />
+                  Velg matvare i stedet
+                </OutlineButton>
+              </div>
+              <label className="motus-foodbank-search">
+                <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                <input
+                  value={recipeSearch}
+                  onChange={(e) => setRecipeSearch(e.target.value)}
+                  placeholder="Søk oppskrift …"
+                  aria-label="Søk oppskrift"
+                />
+              </label>
+              <div className="max-h-[40vh] space-y-1 overflow-y-auto">
+                {recipesLoading ? (
+                  <p className="text-sm text-slate-500">Laster oppskrifter …</p>
+                ) : filteredRecipes.length === 0 ? (
+                  <p className="text-sm text-slate-500">
+                    Ingen oppskrifter funnet. Legg ut oppskrifter under Utforsk først.
+                  </p>
+                ) : (
+                  filteredRecipes.map((recipe) => (
+                    <button
+                      key={recipe.id}
+                      type="button"
+                      className="flex w-full flex-col items-start gap-0.5 rounded-xl border border-slate-100 px-3 py-2 text-left text-sm hover:bg-teal-50"
+                      onClick={() => addRecipeToMeal(recipe.id)}
+                    >
+                      <span className="font-medium text-slate-800">{recipe.title}</span>
+                      <span className="text-xs text-slate-500">{recipe.tag}</span>
                     </button>
                   ))
                 )}

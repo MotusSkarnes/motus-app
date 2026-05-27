@@ -13,8 +13,8 @@ export function NutritionHub({ mealPlan, defaultTab = "mealPlan" }: NutritionHub
   const [tab, setTab] = useState<NutritionHubTab>(defaultTab);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
+    <div className="motus-nutrition-hub space-y-4">
+      <div className="motus-nutrition-hub-tabs flex flex-wrap gap-2">
         <PillButton active={tab === "mealPlan"} onClick={() => setTab("mealPlan")}>
           Matplan
         </PillButton>

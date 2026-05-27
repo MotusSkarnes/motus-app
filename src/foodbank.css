@@ -738,7 +738,11 @@
   color: #e11d48;
 }
 
-/* Oppskrifter — makroblokker per porsjon */
+/* Oppskrifter — makroblokker per porsjon (Motus mint #30e3be + pink #d91278) */
+
+.motus-recipe-macros {
+  border-top-color: rgba(48, 227, 190, 0.2) !important;
+}
 
 .motus-recipe-macros-grid {
   display: grid;
@@ -760,14 +764,15 @@
   padding: 0.65rem 0.55rem;
   text-align: center;
   border: 1px solid transparent;
+  box-shadow: 0 2px 10px -6px rgba(15, 23, 42, 0.1);
 }
 
 .motus-recipe-macro-block__label {
   font-size: 0.65rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .motus-recipe-macro-block__value {
@@ -781,32 +786,32 @@
   display: block;
   font-size: 0.625rem;
   font-weight: 600;
-  opacity: 0.75;
+  opacity: 0.8;
   margin-top: 0.1rem;
 }
 
 .motus-recipe-macro-block--kcal {
-  background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
-  border-color: rgba(251, 146, 60, 0.35);
-  color: #9a3412;
+  background: linear-gradient(145deg, rgba(48, 227, 190, 0.28) 0%, rgba(48, 227, 190, 0.1) 55%, rgba(217, 18, 120, 0.06) 100%);
+  border-color: rgba(48, 227, 190, 0.45);
+  color: #0f766e;
 }
 
 .motus-recipe-macro-block--protein {
-  background: linear-gradient(180deg, #fff1f2 0%, #ffe4e6 100%);
-  border-color: rgba(251, 113, 133, 0.35);
-  color: #9f1239;
+  background: linear-gradient(145deg, rgba(217, 18, 120, 0.16) 0%, rgba(217, 18, 120, 0.06) 100%);
+  border-color: rgba(217, 18, 120, 0.38);
+  color: #9d174d;
 }
 
 .motus-recipe-macro-block--carbs {
-  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
-  border-color: rgba(96, 165, 250, 0.35);
-  color: #1e40af;
+  background: linear-gradient(180deg, #d6fbf1 0%, rgba(48, 227, 190, 0.14) 100%);
+  border-color: rgba(48, 227, 190, 0.4);
+  color: #0d9488;
 }
 
 .motus-recipe-macro-block--fat {
-  background: linear-gradient(180deg, #fefce8 0%, #fef9c3 100%);
-  border-color: rgba(250, 204, 21, 0.45);
-  color: #854d0e;
+  background: linear-gradient(180deg, #fde8f3 0%, rgba(217, 18, 120, 0.1) 100%);
+  border-color: rgba(217, 18, 120, 0.32);
+  color: #be185d;
 }
 
 .motus-recipe-macro-summary {
@@ -826,8 +831,8 @@
 
 .motus-recipe-macro-chip__label {
   font-size: 0.625rem;
-  font-weight: 600;
-  opacity: 0.85;
+  font-weight: 700;
+  opacity: 0.9;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -839,32 +844,32 @@
 .motus-recipe-macro-chip__unit {
   font-size: 0.6rem;
   font-weight: 600;
-  opacity: 0.75;
+  opacity: 0.8;
   margin-left: 0.05rem;
 }
 
 .motus-recipe-macro-chip--kcal {
-  background: #fff7ed;
-  border-color: rgba(251, 146, 60, 0.35);
-  color: #9a3412;
+  background: rgba(48, 227, 190, 0.18);
+  border-color: rgba(48, 227, 190, 0.45);
+  color: #0f766e;
 }
 
 .motus-recipe-macro-chip--protein {
-  background: #fff1f2;
-  border-color: rgba(251, 113, 133, 0.35);
-  color: #9f1239;
+  background: rgba(217, 18, 120, 0.1);
+  border-color: rgba(217, 18, 120, 0.35);
+  color: #9d174d;
 }
 
 .motus-recipe-macro-chip--carbs {
-  background: #eff6ff;
-  border-color: rgba(96, 165, 250, 0.35);
-  color: #1e40af;
+  background: #d6fbf1;
+  border-color: rgba(48, 227, 190, 0.4);
+  color: #0d9488;
 }
 
 .motus-recipe-macro-chip--fat {
-  background: #fefce8;
-  border-color: rgba(250, 204, 21, 0.45);
-  color: #854d0e;
+  background: #fde8f3;
+  border-color: rgba(217, 18, 120, 0.32);
+  color: #be185d;
 }
 
 /* ── Medlems matplan (dashboard) ─────────────────────────────────────────── */
@@ -1007,6 +1012,41 @@
   gap: 0.35rem;
   flex: 1;
   min-width: 0;
+  border: 0;
+  background: none;
+  padding: 0.15rem;
+  cursor: pointer;
+  border-radius: 0.65rem;
+}
+
+.motus-matplan-week-day--selected {
+  background: rgba(48, 227, 190, 0.12);
+}
+
+.motus-matplan-week-hint {
+  margin: 0;
+  font-size: 0.6875rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.motus-matplan-week-dot--selected {
+  border-color: #30e3be;
+  background: #30e3be;
+  box-shadow: 0 0 0 3px rgba(48, 227, 190, 0.25);
+}
+
+.motus-matplan-week-dot--planned {
+  border-color: rgba(217, 18, 120, 0.35);
+  background: rgba(217, 18, 120, 0.12);
+}
+
+.motus-matplan-full-week {
+  border-radius: 1rem;
+  border: 1px solid rgba(48, 227, 190, 0.25);
+  background: #fff;
+  padding: 0.85rem;
+  margin-bottom: 0.75rem;
 }
 
 .motus-matplan-week-day-label {
@@ -1079,6 +1119,16 @@
   font-weight: 800;
   letter-spacing: 0.06em;
   color: #d91278;
+}
+
+.motus-matplan-meal-swapped {
+  display: inline-block;
+  margin-top: 0.15rem;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  color: #30e3be;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .motus-matplan-meal-title {
