@@ -504,6 +504,7 @@ describe("useNotifications workout comment alerts", () => {
     await waitFor(() => {
       expect(result.current.trainerUnreadCount).toBe(1);
     });
+    expect(result.current.trainerUnreadMessageCount).toBe(0);
     expect(result.current.trainerVisibleAlerts.some((a) => a.kind === "member-form" && a.title === "Nytt oppstartsskjema")).toBe(true);
   });
 

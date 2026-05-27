@@ -34,7 +34,8 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
-import { EXERCISE_CATEGORY_OPTIONS, exerciseCategoryAccentColor, isHoldBasedExerciseCategory } from "../app/exerciseCategories";
+import { EXERCISE_CATEGORY_OPTIONS, exerciseCategoryAccentColor } from "../app/exerciseCategories";
+import { formatProgramExercisePrescription, resolveProgramExerciseName } from "../app/programExercisePresentation";
 import { EXERCISE_IMAGE_THUMB_CLASS } from "../app/exerciseIllustrations/constants";
 import { getMedicalSketchFallbackDataUri, resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { compressImageDataUrl, compressImageFile } from "../app/imageCompress";
@@ -470,34 +471,6 @@ function resolveLinkedExerciseForPreview(
   const byId = exercisesById.get(exercise.exerciseId);
   if (byId) return byId;
   return exerciseBank.find((entry) => entry.name.trim().toLowerCase() === exercise.exerciseName.trim().toLowerCase());
-}
-
-function formatProgramExercisePrescription(exercise: ProgramExercise, linked?: Exercise): string {
-  const sets = exercise.sets?.trim() || "—";
-  const isCardio = linked?.category === "Kondisjon";
-  const isStretch = Boolean(linked?.category && isHoldBasedExerciseCategory(linked.category));
-  const isTreadmill = (linked?.equipment ?? "").trim().toLowerCase().includes("tredem");
-
-  if (isCardio) {
-    const minutes = exercise.durationMinutes?.trim();
-    const seconds = exercise.holdSeconds?.trim();
-    const timeParts: string[] = [];
-    if (minutes) timeParts.push(`${minutes} min`);
-    if (seconds) timeParts.push(`${seconds} sek`);
-    const parts: Array<string | null> = [`${sets} sett`, timeParts.length ? timeParts.join(" ") : null];
-    if (exercise.speed?.trim()) parts.push(`${exercise.speed} km/t`);
-    if (isTreadmill && exercise.incline?.trim()) parts.push(`${exercise.incline}% stigning`);
-    return parts.filter(Boolean).join(" · ");
-  }
-
-  if (isStretch) {
-    const hold = exercise.holdSeconds?.trim() || exercise.reps?.trim();
-    return `${sets} sett · ${hold || "—"} sek`;
-  }
-
-  const weight = exercise.weight?.trim();
-  const weightPart = weight && weight !== "0" ? ` · ${weight} kg` : "";
-  return `${sets} sett × ${exercise.reps?.trim() || "—"} reps${weightPart}`;
 }
 
 function makeExercise(name: string, sets = "3", reps = "10", notes = ""): ProgramExercise {
@@ -2129,13 +2102,17 @@ export function InspirationHub({
                             {index + 1}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <div className="font-medium text-slate-900">{exercise.exerciseName}</div>
+                            <div className="font-medium text-slate-900">
+                              {resolveProgramExerciseName(programPreview.exercises, index)}
+                            </div>
                             {linked ? (
                               <div className="mt-0.5 text-xs text-slate-500">
                                 {linked.category} · {linked.group}
                               </div>
                             ) : null}
-                            <div className="mt-1 text-sm text-slate-700">{formatProgramExercisePrescription(exercise, linked)}</div>
+                            <div className="mt-1 text-sm text-slate-700">
+                              {formatProgramExercisePrescription(exercise, index, programPreview.exercises, exerciseBank)}
+                            </div>
                             {exercise.restSeconds?.trim() ? (
                               <div className="mt-0.5 text-xs text-slate-500">Hvile {exercise.restSeconds} sek</div>
                             ) : null}

@@ -24,3 +24,27 @@ export function isSecondsBasedWorkoutResult(
 ): boolean {
   return resolveWorkoutLoadUnit(row) === "sec";
 }
+
+export function formatWorkoutPlannedRepsDisplay(
+  row: Pick<WorkoutExerciseResult, "plannedReps" | "plannedRepsUnit">,
+): string {
+  const raw = String(row.plannedReps ?? "").trim();
+  if (!raw) return "—";
+  return resolveWorkoutRepsUnit(row) === "min" ? `${raw} min` : raw;
+}
+
+export function formatWorkoutPlannedLoadDisplay(
+  row: Pick<
+    WorkoutExerciseResult,
+    "plannedWeight" | "plannedWeightUnit" | "plannedDurationMinutes" | "exerciseCategory" | "performedLoadUnit"
+  >,
+  options?: { isCardio?: boolean },
+): string {
+  if (options?.isCardio) {
+    const minutes = String(row.plannedDurationMinutes ?? "").trim();
+    return minutes ? `${minutes} min` : "—";
+  }
+  const raw = String(row.plannedWeight ?? "").trim();
+  if (!raw) return "—";
+  return resolveWorkoutLoadUnit(row) === "sec" ? `${raw} sek` : `${raw} kg`;
+}

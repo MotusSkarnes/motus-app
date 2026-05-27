@@ -1,10 +1,5 @@
-import {
-  categoryForSubTab,
-  isHoldBasedExerciseCategory,
-  programDraftUsesHoldFields,
-  programExerciseHoldSeconds,
-  type TrainingSubTab,
-} from "./exerciseCategories";
+import { programDraftUsesHoldFields, type TrainingSubTab } from "./exerciseCategories";
+import { formatProgramExercisePrescription } from "./programExercisePresentation";
 import type { Exercise, ProgramExercise } from "./types";
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
@@ -84,29 +79,10 @@ export function draftExercisePrescriptionLabel(
     linkedExercise?.category === "Kondisjon" ||
     Boolean(String(item.durationMinutes ?? "").trim());
   const isStretch = programDraftUsesHoldFields(linkedExercise?.category, programsSubTab);
-  const name = item.exerciseName.trim();
-
-  if (isCardio) {
-    const dragLabel = /^drag\b/i.test(name) ? "drag" : "runder";
-    const minutes = String(item.durationMinutes ?? "").trim();
-    const seconds = String(item.holdSeconds ?? "").trim();
-    let timeLabel: string;
-    if (minutes && seconds) {
-      timeLabel = `${minutes} min ${seconds} sek`;
-    } else if (seconds) {
-      timeLabel = `${seconds} sek`;
-    } else {
-      timeLabel = `${minutes || "—"} min`;
-    }
-    return `${item.sets || "1"} ${dragLabel} × ${timeLabel}`;
-  }
-  if (isStretch) {
-    const hold = programExerciseHoldSeconds(item, linkedExercise?.category) || item.holdSeconds || "30";
-    return `Hold: ${hold} sek`;
-  }
-  const repsUnit = item.repsUnit === "minutes" ? "min" : "reps";
-  const weightUnit = item.weightUnit === "seconds" ? "sek" : "kg";
-  return `${item.sets || "—"}×${item.reps || "—"} ${repsUnit} · ${item.weight || "0"} ${weightUnit}`;
+  return formatProgramExercisePrescription(item, index, draft, linkedExercise ? [linkedExercise] : [], {
+    treatAsCardio: isCardio,
+    treatAsHold: isStretch,
+  });
 }
 
 export function programCategoryLabel(subTab: TrainingSubTab): string {

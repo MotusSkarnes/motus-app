@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "./exerciseCategories";
+import { formatProgramExercisePrescription } from "./programExercisePresentation";
 import type { Exercise, ProgramExercise, TrainingProgram } from "./types";
 
 function printField(value: unknown): string {
@@ -10,21 +10,12 @@ function buildMemberPrintPrescription(
   safeExercise: Partial<ProgramExercise>,
   libraryMatch: Exercise | null,
 ): string {
-  const setCount = printField(safeExercise.sets) || "-";
-  const reps = printField(safeExercise.reps) || "-";
-  const weight = printField(safeExercise.weight) || "-";
-  const durationMinutes = printField(safeExercise.durationMinutes);
-  const speed = printField(safeExercise.speed);
-  const incline = printField(safeExercise.incline);
-  const restSeconds = printField(safeExercise.restSeconds) || "0";
-
-  if (durationMinutes) {
-    return `${setCount} runder × ${durationMinutes} min${speed ? ` · ${speed} km/t` : ""}${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause`;
-  }
-  if (libraryMatch && isHoldBasedExerciseCategory(libraryMatch.category)) {
-    return `${setCount} sett × ${programExerciseHoldSeconds(safeExercise, libraryMatch.category) || "-"} sek · ${restSeconds}s pause`;
-  }
-  return `${setCount} x ${reps} · ${weight} kg · ${restSeconds}s pause`;
+  const exercise = safeExercise as ProgramExercise;
+  const library = libraryMatch ? [libraryMatch] : [];
+  return formatProgramExercisePrescription(exercise, 0, [exercise], library, {
+    includePauseLabel: true,
+    treatAsHold: Boolean(libraryMatch?.category === "Mobilitet" || libraryMatch?.category === "Rehab"),
+  });
 }
 
 describe("member program print helpers", () => {
@@ -64,13 +55,24 @@ describe("member program print helpers", () => {
     const exercise = program.exercises[0];
     const prescription = buildMemberPrintPrescription(exercise, library);
     expect(prescription).toContain("45 sek");
+    expect(prescription).toContain("60s pause");
     expect(prescription).not.toContain("30 kg");
     expect(printField(library.imageUrl)).toBe("123");
   });
 
   it("ignores weight column for Mobilitet when holdSeconds is empty", () => {
     const prescription = buildMemberPrintPrescription(
-      { sets: "2", reps: "1", weight: "30", holdSeconds: "", restSeconds: "20" },
+      {
+        id: "e1",
+        exerciseId: "e1",
+        exerciseName: "Rotasjon",
+        sets: "2",
+        reps: "1",
+        weight: "30",
+        holdSeconds: "",
+        restSeconds: "20",
+        notes: "",
+      },
       {
         id: "e1",
         name: "Rotasjon",
@@ -82,6 +84,7 @@ describe("member program print helpers", () => {
       },
     );
     expect(prescription).toContain("- sek");
-    expect(prescription).not.toContain("30");
+    expect(prescription).toContain("20s pause");
+    expect(prescription).not.toContain("30 kg");
   });
 });

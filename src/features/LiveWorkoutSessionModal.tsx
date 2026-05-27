@@ -6,11 +6,14 @@ import { useScreenWakeLock } from "../app/useScreenWakeLock";
 import { playWorkoutRestTone, primeWorkoutRestAudio } from "../app/workoutRestAudio";
 import { WorkoutCompactSetTable } from "./LiveWorkoutCompactSets";
 import { MOTUS } from "../app/data";
-import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { EXERCISE_IMAGE_INSET_CLASS, EXERCISE_IMAGE_SMALL_CLASS } from "../app/exerciseIllustrations/constants";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { buildWorkoutResultGroups, EXERCISE_BLOCK_LABELS } from "../app/programBlocks";
-import { resolveWorkoutLoadUnit, resolveWorkoutRepsUnit } from "../app/workoutResultUnits";
+import {
+  formatWorkoutGroupPlanLabel,
+  formatWorkoutSegmentPlanLabel,
+  resolveWorkoutGroupExerciseName,
+} from "../app/programExercisePresentation";
 import { GradientButton, OutlineButton, TextArea, TextInput } from "../app/ui";
 import type { Exercise, TrainingProgram, WorkoutModeState, WorkoutReflection } from "../app/types";
 import type { ReplaceWorkoutExerciseGroupInput } from "../services/appRepository";
@@ -381,6 +384,12 @@ export function LiveWorkoutSessionModal({
       return {
         programExerciseId: segment.programExerciseId,
         exerciseName: segment.exerciseName,
+        planLabel: formatWorkoutSegmentPlanLabel(
+          segment.programExerciseId,
+          segment.rows,
+          resolvedProgram,
+          exercises,
+        ),
         exercise,
         imageUrl,
         candidates,
@@ -446,47 +455,20 @@ export function LiveWorkoutSessionModal({
     return `Sett ${Math.min(completed + 1, currentWorkoutGroup.rows.length)} av ${currentWorkoutGroup.rows.length}`;
   }, [currentWorkoutGroup]);
 
+  const currentWorkoutDisplayName = useMemo(() => {
+    if (!currentWorkoutGroup) return "";
+    return resolveWorkoutGroupExerciseName(currentWorkoutGroup, resolvedProgram);
+  }, [currentWorkoutGroup, resolvedProgram]);
+
   const currentWorkoutPlanLabel = useMemo(() => {
     if (!currentWorkoutGroup) return "";
-    if (currentWorkoutGroup.blockType) {
-      const label = EXERCISE_BLOCK_LABELS[currentWorkoutGroup.blockType];
-      const rounds = currentWorkoutGroup.blockRounds ?? currentWorkoutGroup.rounds.length;
-      return `${label} · ${rounds} runde${rounds === 1 ? "" : "r"} · ${currentWorkoutGroup.exerciseNames.join(" → ")}`;
-    }
-    const row = currentWorkoutGroup.rows[0];
-    if (row?.exerciseCategory === "Kondisjon") {
-      return `${currentWorkoutGroup.rows.length} runder × ${row.plannedDurationMinutes || "0"} min${
-        row.plannedSpeed ? ` · ${row.plannedSpeed} km/t` : ""
-      }${row.plannedIncline ? ` · ${row.plannedIncline}% incline` : ""}`;
-    }
-    if (row?.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory)) {
-      return `${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedWeight} sek`;
-    }
-    if (!row) return "";
-    const repsUnitLabel = resolveWorkoutRepsUnit(row);
-    const loadUnitLabel = resolveWorkoutLoadUnit(row);
-    return `${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedReps} ${repsUnitLabel} · ${currentWorkoutGroup.plannedWeight} ${loadUnitLabel}`;
-  }, [currentWorkoutGroup]);
+    return formatWorkoutGroupPlanLabel(currentWorkoutGroup, resolvedProgram, exercises);
+  }, [currentWorkoutGroup, resolvedProgram, exercises]);
 
   const nextWorkoutPlanLabel = useMemo(() => {
     if (!nextWorkoutGroup) return "";
-    if (nextWorkoutGroup.blockType) {
-      const blockLabel = EXERCISE_BLOCK_LABELS[nextWorkoutGroup.blockType];
-      const rounds = nextWorkoutGroup.blockRounds ?? nextWorkoutGroup.rounds.length;
-      return `${blockLabel} · ${rounds} runde${rounds === 1 ? "" : "r"}`;
-    }
-    const row = nextWorkoutGroup.rows[0];
-    if (row?.exerciseCategory === "Kondisjon") {
-      return `${nextWorkoutGroup.rows.length} runder × ${row.plannedDurationMinutes || "0"} min`;
-    }
-    if (row?.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory)) {
-      return `${nextWorkoutGroup.rows.length} sett × ${nextWorkoutGroup.plannedWeight} sek`;
-    }
-    if (!row) return "";
-    const repsUnitLabel = resolveWorkoutRepsUnit(row);
-    const loadUnitLabel = resolveWorkoutLoadUnit(row);
-    return `${nextWorkoutGroup.rows.length} sett × ${nextWorkoutGroup.plannedReps} ${repsUnitLabel} · ${nextWorkoutGroup.plannedWeight} ${loadUnitLabel}`;
-  }, [nextWorkoutGroup]);
+    return formatWorkoutGroupPlanLabel(nextWorkoutGroup, resolvedProgram, exercises);
+  }, [nextWorkoutGroup, resolvedProgram, exercises]);
 
   function handleReplaceCurrentWorkoutExercise(replacementExerciseId: string) {
     if (!currentWorkoutGroup || !replacementExerciseId) return;
@@ -656,7 +638,7 @@ export function LiveWorkoutSessionModal({
             <div className="min-w-0 text-center sm:text-left">
               <div className="text-xs font-black uppercase tracking-wide motus-brand-on-dark-muted">Nå</div>
               <div className="mt-1 truncate text-3xl font-black tracking-tight text-white sm:text-4xl">
-                {currentWorkoutGroup?.exerciseName ?? "Økt i gang"}
+                {currentWorkoutDisplayName || currentWorkoutGroup?.exerciseName || "Økt i gang"}
               </div>
               <div className="mt-2 flex flex-wrap justify-center gap-2 text-xs font-semibold text-white/70 sm:justify-start">
                 <span className="rounded-full bg-white/10 px-3 py-1">{workoutExerciseIndex + 1} av {workoutResultGroups.length} øvelser</span>
@@ -696,7 +678,9 @@ export function LiveWorkoutSessionModal({
                       {currentWorkoutGroup.blockRounds ? ` · ${currentWorkoutGroup.blockRounds} runder` : ""}
                     </div>
                   ) : null}
-                  <h2 className="mt-0.5 text-lg font-bold leading-tight text-slate-900 sm:text-xl">{currentWorkoutGroup.exerciseName}</h2>
+                  <h2 className="mt-0.5 text-lg font-bold leading-tight text-slate-900 sm:text-xl">
+                    {currentWorkoutDisplayName || currentWorkoutGroup.exerciseName}
+                  </h2>
                   {activeSetProgressLabel ? (
                     <div className="mt-0.5 text-xs font-medium text-slate-600 sm:mt-1 sm:text-sm">{activeSetProgressLabel}</div>
                   ) : null}
@@ -782,13 +766,7 @@ export function LiveWorkoutSessionModal({
                             </button>
                             <div className="min-w-0 flex-1">
                               <p className="motus-block-exercise-name">{info.exerciseName}</p>
-                              <p className="motus-block-exercise-meta">
-                                {info.setCount > 0
-                                  ? info.setCount === 1
-                                    ? "1 sett"
-                                    : `${info.setCount} sett`
-                                  : "Sett vises per runde"}
-                              </p>
+                              <p className="motus-block-exercise-meta">{info.planLabel || "—"}</p>
                             </div>
                             {info.candidates.length > 0 ? (
                               <button
@@ -883,6 +861,12 @@ export function LiveWorkoutSessionModal({
                                 rows={[segment.row]}
                                 exerciseByName={exerciseByName}
                                 exerciseLabel={segment.exerciseName}
+                                planHint={formatWorkoutSegmentPlanLabel(
+                                  segment.programExerciseId,
+                                  [segment.row],
+                                  resolvedProgram,
+                                  exercises,
+                                )}
                                 onUpdate={updateWorkoutExerciseResult}
                                 previousPersonalBests={previousPersonalBests}
                                 onSetPersonalRecord={onSetPersonalRecord}

@@ -78,7 +78,12 @@ import {
   dedupeTrainingPrograms,
   programIsInMemberArchive,
 } from "../app/programBlocks";
-import { formatProgramExercisePrescription, resolveProgramExerciseName } from "../app/programExercisePresentation";
+import {
+  formatProgramExercisePrescription,
+  formatWorkoutResultPerformedLabel,
+  formatWorkoutResultSetPlanLabel,
+  resolveProgramExerciseName,
+} from "../app/programExercisePresentation";
 import { memberMayDeleteProgram, memberMayEditProgram } from "../app/programAuthor";
 import {
   buildCheckInNotificationCopy,
@@ -5840,19 +5845,10 @@ export function MemberPortal(props: MemberPortalProps) {
                                       <div key={`${selectedCalendarLog.id}-${result.exerciseId}-${index}`} className="rounded-lg border bg-white p-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                                         <div className="text-sm font-medium text-slate-800">{formatLoggedResultTitle(result)}</div>
                                         <div className="mt-1 text-xs text-slate-600">
-                                          {result.performedDurationMinutes
-                                            ? `Utført: ${result.performedDurationMinutes || "-"} min${result.performedSpeed ? ` · ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` · ${result.performedIncline}% incline` : ""}`
-                                            : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)
-                                              ? `Utført: ${result.performedWeight || "-"} sek hold`
-                                              : `Utført: ${result.performedReps || "-"} reps @ ${result.performedWeight || "-"} kg`}
+                                          Utført: {formatWorkoutResultPerformedLabel(result, exercises)}
                                         </div>
                                         <div className="text-[11px] text-slate-500">
-                                          Plan:{" "}
-                                          {result.plannedDurationMinutes
-                                            ? `${result.plannedDurationMinutes} min${result.plannedSpeed ? ` · ${result.plannedSpeed} km/t` : ""}${result.plannedIncline ? ` · ${result.plannedIncline}% incline` : ""}`
-                                            : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)
-                                              ? `${result.plannedSets} sett × ${result.plannedWeight || "0"} sek`
-                                              : `${result.plannedSets}x${result.plannedReps} @ ${result.plannedWeight || "0"} kg`}
+                                          Plan: {formatWorkoutResultSetPlanLabel(result, exercises)}
                                         </div>
                                       </div>
                                     ))}

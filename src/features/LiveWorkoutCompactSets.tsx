@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Minus, Plus, Trophy } from "lucide-react";
 import { motusHaptic } from "../app/haptics";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
-import { resolveWorkoutLoadUnit, resolveWorkoutRepsUnit } from "../app/workoutResultUnits";
+import {
+  formatWorkoutPlannedLoadDisplay,
+  formatWorkoutPlannedRepsDisplay,
+  resolveWorkoutLoadUnit,
+  resolveWorkoutRepsUnit,
+} from "../app/workoutResultUnits";
 import { GradientButton, TextInput } from "../app/ui";
 import type { Exercise, WorkoutModeState } from "../app/types";
 
@@ -29,6 +34,8 @@ type WorkoutCompactSetTableProps = {
   rows: WorkoutSetRow[];
   exerciseByName: Map<string, Exercise>;
   exerciseLabel?: string;
+  /** Full planlinje (samme format som programforhåndsvisning). */
+  planHint?: string;
   showExerciseColumn?: boolean;
   onUpdate: (exerciseId: string, field: UpdateField, value: string | boolean) => void;
   /** Beste poengsum (vekt × max(reps, 1)) per øvelse fra tidligere fullførte logger. Brukes til å vise «Ny rekord!» når et sett slår tidligere historikk. */
@@ -107,6 +114,7 @@ export function WorkoutCompactSetTable({
   rows,
   exerciseByName,
   exerciseLabel,
+  planHint,
   showExerciseColumn = false,
   onUpdate,
   previousPersonalBests,
@@ -381,6 +389,7 @@ export function WorkoutCompactSetTable({
   return (
     <div className="space-y-0">
       {exerciseLabel ? <div className="mb-2 text-xs font-semibold text-slate-700">{exerciseLabel}</div> : null}
+      {planHint ? <div className="mb-2 text-[11px] leading-snug text-slate-500">Plan: {planHint}</div> : null}
       <div className="overflow-hidden rounded-xl border bg-white" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
         <div
           className="grid items-center gap-1.5 border-b px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 sm:gap-2 sm:px-3 sm:py-2"
@@ -413,24 +422,35 @@ export function WorkoutCompactSetTable({
           const weightFallback = lastWeight || row.plannedWeight || "";
           const durationFallback = lastDuration || row.plannedDurationMinutes || "";
           const speedFallback = lastSpeed || row.plannedSpeed || "";
+          const plannedRepsDisplay = formatWorkoutPlannedRepsDisplay(row);
+          const plannedLoadDisplay = formatWorkoutPlannedLoadDisplay(row, { isCardio: rowCardio });
           const displayRepsRaw = isDone
             ? row.performedReps || repsFallback || "—"
             : isFuture
-              ? repsFallback || "—"
+              ? plannedRepsDisplay
               : row.performedReps || repsFallback || "";
           const displayReps =
-            rowRepsUnit === "min" && displayRepsRaw && displayRepsRaw !== "—"
+            !isFuture && rowRepsUnit === "min" && displayRepsRaw && displayRepsRaw !== "—"
               ? `${displayRepsRaw} min`
               : displayRepsRaw;
+          const performedLoadRaw = row.performedWeight.trim();
+          const performedLoadDisplay =
+            performedLoadRaw && rowLoadUnit === "sec"
+              ? `${performedLoadRaw} sek`
+              : performedLoadRaw
+                ? `${performedLoadRaw} kg`
+                : "—";
           const displayWeight = isDone
-            ? isCardio
-              ? row.performedDurationMinutes || durationFallback || "—"
-              : row.performedWeight || weightFallback || "—"
+            ? rowCardio
+              ? row.performedDurationMinutes?.trim()
+                ? `${row.performedDurationMinutes} min`
+                : durationFallback
+                  ? `${durationFallback} min`
+                  : "—"
+              : performedLoadDisplay
             : isFuture
-              ? isCardio
-                ? durationFallback || "—"
-                : weightFallback || "—"
-              : isCardio
+              ? plannedLoadDisplay
+              : rowCardio
                 ? row.performedDurationMinutes || durationFallback || ""
                 : row.performedWeight || weightFallback || "";
           const displaySpeed =
@@ -477,7 +497,7 @@ export function WorkoutCompactSetTable({
                 />
               ) : (
                 <span className={`text-center text-sm font-medium ${isDone ? "text-slate-900" : "text-slate-400"}`}>
-                  {rowCardio ? (durationFallback ? `${durationFallback} min` : "—") : rowStrengthSeconds ? "—" : displayReps}
+                  {rowCardio ? plannedLoadDisplay : rowStrengthSeconds ? "—" : displayReps}
                 </span>
               )}
               {isCardio && isTreadmill ? (

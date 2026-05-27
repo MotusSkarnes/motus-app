@@ -47,7 +47,12 @@ import {
   type ExerciseBankSubTab,
   type TrainingSubTab,
 } from "../app/exerciseCategories";
-import { formatProgramExercisePrescription, resolveProgramExerciseName } from "../app/programExercisePresentation";
+import {
+  formatProgramExercisePrescription,
+  formatWorkoutResultPerformedLabel,
+  formatWorkoutResultSetPlanLabel,
+  resolveProgramExerciseName,
+} from "../app/programExercisePresentation";
 import {
   buildExerciseCategoryById,
   filterTemplateProgramsBySubTab,
@@ -6296,21 +6301,9 @@ function pickFirstName(value: unknown): string {
                                   </div>
                                   <div className="mt-2 grid gap-1.5 text-xs text-slate-600 md:grid-cols-2">
                                     <div className="min-w-0">
-                                      Plan:{" "}
-                                      {result.exerciseCategory === "Kondisjon" && (result.plannedDurationMinutes ?? "").trim()
-                                        ? `${result.plannedSets} runder × ${result.plannedDurationMinutes} min`
-                                        : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)
-                                          ? `${result.plannedSets} sett × ${result.plannedWeight || "0"} sek`
-                                          : `${result.plannedSets} x ${result.plannedReps} @ ${result.plannedWeight || "0"} kg`}
+                                      Plan: {formatWorkoutResultSetPlanLabel(result, exercises)}
                                     </div>
-                                    <div>
-                                      Utført:{" "}
-                                      {result.exerciseCategory === "Kondisjon" && (result.performedDurationMinutes ?? "").trim()
-                                        ? `${result.performedDurationMinutes || "-"} min`
-                                        : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)
-                                          ? `${result.performedWeight || "-"} sek`
-                                          : `${result.performedReps || "-"} reps @ ${result.performedWeight || "-"} kg`}
-                                    </div>
+                                    <div>Utført: {formatWorkoutResultPerformedLabel(result, exercises)}</div>
                                   </div>
                                 </div>
                               ))}

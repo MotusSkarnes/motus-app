@@ -496,7 +496,7 @@ export function useNotifications({
   const trainerMessageAlerts = useMemo(
     () =>
       messages
-        .filter((message) => message.sender === "member")
+        .filter((message) => message.sender === "member" && message.text.trim().length > 0)
         .map((message, index) => {
           const timestamp = parseTimestamp(message.createdAt, index + 1);
           const member = memberById.get(message.memberId);
@@ -863,6 +863,10 @@ export function useNotifications({
     [trainerRecentAlerts],
   );
   const trainerUnreadCount = trainerUnreadAlerts.length;
+  const trainerUnreadMessageCount = useMemo(
+    () => trainerUnreadAlerts.filter((alert) => alert.kind === "message").length,
+    [trainerUnreadAlerts],
+  );
   const memberUnreadCount = memberUnreadAlerts.length;
 
   function markMemberInspirationAsSeen() {
@@ -1254,6 +1258,7 @@ export function useNotifications({
     trainerVisibleAlerts: trainerRecentAlerts,
     memberVisibleAlerts: memberRecentAlerts,
     trainerUnreadCount,
+    trainerUnreadMessageCount,
     memberUnreadCount,
     handleTrainerBellToggle,
     handleMemberBellToggle,

@@ -1,6 +1,15 @@
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "./exerciseCategories";
-import { isLegacyIntervalCooldownDrag } from "./programBlocks";
-import type { Exercise, ProgramExercise } from "./types";
+import { EXERCISE_BLOCK_LABELS, isLegacyIntervalCooldownDrag, type WorkoutResultGroup } from "./programBlocks";
+import { resolveWorkoutLoadUnit, resolveWorkoutRepsUnit } from "./workoutResultUnits";
+import type { Exercise, ProgramExercise, TrainingProgram, WorkoutExerciseResult } from "./types";
+
+export type ProgramExercisePrescriptionOptions = {
+  includePauseLabel?: boolean;
+  /** Programbygger: kondisjon-fane uten Kondisjon-kategori i banken. */
+  treatAsCardio?: boolean;
+  /** Programbygger: mobilitet/rehab-fane. */
+  treatAsHold?: boolean;
+};
 
 function cardioTargetHrPrescriptionSuffix(targetHrPercent: string | undefined): string {
   const raw = String(targetHrPercent ?? "").trim();
@@ -29,7 +38,7 @@ export function formatProgramExercisePrescription(
   exerciseIndex: number,
   exercises: ProgramExercise[],
   exerciseLibrary: Exercise[],
-  options?: { includePauseLabel?: boolean },
+  options?: ProgramExercisePrescriptionOptions,
 ): string {
   const exerciseName = resolveProgramExerciseName(exercises, exerciseIndex);
   const linkedExercise = findLinkedExercise(exercise, exerciseName, exerciseLibrary);
@@ -38,7 +47,7 @@ export function formatProgramExercisePrescription(
   const cardioSeconds = String(exercise.holdSeconds ?? "").trim();
   const restSeconds = String(exercise.restSeconds ?? "").trim() || "0";
   const pauseLabel = options?.includePauseLabel ? " pause" : "";
-  const isCardio = category === "Kondisjon" || Boolean(cardioMinutes);
+  const isCardio = options?.treatAsCardio ?? (category === "Kondisjon" || Boolean(cardioMinutes));
 
   if (isCardio) {
     const dragLabel = /^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder";
@@ -49,11 +58,190 @@ export function formatProgramExercisePrescription(
     return `${exercise.sets || "-"} ${dragLabel} × ${timeLabel}${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${restSeconds}s${pauseLabel}${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}`;
   }
 
-  if (category && isHoldBasedExerciseCategory(category)) {
+  const isHold =
+    options?.treatAsHold ?? Boolean(category && isHoldBasedExerciseCategory(category));
+  if (isHold && category) {
     return `${exercise.sets || "-"} sett × ${programExerciseHoldSeconds(exercise, category) || "-"} sek · ${restSeconds}s${pauseLabel}`;
+  }
+  if (isHold) {
+    const hold = programExerciseHoldSeconds(exercise, undefined) || exercise.holdSeconds || exercise.weight || "-";
+    return `${exercise.sets || "-"} sett × ${hold} sek · ${restSeconds}s${pauseLabel}`;
   }
 
   const repsUnit = exercise.repsUnit === "minutes" ? "min" : "reps";
   const weightUnit = exercise.weightUnit === "seconds" ? "sek" : "kg";
   return `${exercise.sets || "-"}×${exercise.reps || "-"} ${repsUnit} · ${exercise.weight || "0"} ${weightUnit} · ${restSeconds}s${pauseLabel}`;
+}
+
+function workoutRowsToProgramExercise(rows: WorkoutExerciseResult[]): ProgramExercise | null {
+  const row = rows[0];
+  if (!row) return null;
+  const isHold =
+    row.plannedWeightUnit === "seconds" ||
+    Boolean(row.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory));
+  return {
+    id: row.programExerciseId ?? row.exerciseId,
+    exerciseId: row.exerciseId,
+    exerciseName: row.exerciseName,
+    sets: String(rows.length || row.plannedSets || ""),
+    reps: row.plannedReps,
+    repsUnit: row.plannedRepsUnit,
+    weight: isHold ? "" : row.plannedWeight,
+    weightUnit: row.plannedWeightUnit,
+    holdSeconds: isHold ? row.plannedWeight : undefined,
+    durationMinutes: row.plannedDurationMinutes,
+    speed: row.plannedSpeed,
+    incline: row.plannedIncline,
+    restSeconds: "",
+    notes: "",
+  };
+}
+
+function formatPrescriptionForProgramExercise(
+  programExercise: ProgramExercise,
+  exerciseIndex: number,
+  programExercises: ProgramExercise[],
+  exerciseLibrary: Exercise[],
+  liveSetCount?: number,
+): string {
+  const plannedSets = Number(String(programExercise.sets ?? "").trim()) || 0;
+  const adjusted =
+    liveSetCount && liveSetCount > plannedSets ? { ...programExercise, sets: String(liveSetCount) } : programExercise;
+  return formatProgramExercisePrescription(adjusted, exerciseIndex, programExercises, exerciseLibrary);
+}
+
+/** Planlinje for en øvelse/gruppe i live-økt — samme format som programforhåndsvisning. */
+export function formatWorkoutGroupPlanLabel(
+  group: Pick<WorkoutResultGroup, "groupId" | "blockType" | "blockRounds" | "exerciseNames" | "rows" | "rounds">,
+  program: TrainingProgram | null | undefined,
+  exerciseLibrary: Exercise[],
+): string {
+  if (group.blockType) {
+    const label = EXERCISE_BLOCK_LABELS[group.blockType];
+    const rounds = group.blockRounds ?? group.rounds.length;
+    const names = group.exerciseNames.join(" → ");
+    return names
+      ? `${label} · ${rounds} runde${rounds === 1 ? "" : "r"} · ${names}`
+      : `${label} · ${rounds} runde${rounds === 1 ? "" : "r"}`;
+  }
+
+  const programExercise = program?.exercises.find((exercise) => exercise.id === group.groupId);
+  const exerciseIndex = program?.exercises.findIndex((exercise) => exercise.id === group.groupId) ?? -1;
+
+  if (programExercise && program && exerciseIndex >= 0) {
+    return formatPrescriptionForProgramExercise(
+      programExercise,
+      exerciseIndex,
+      program.exercises,
+      exerciseLibrary,
+      group.rows.length,
+    );
+  }
+
+  const pseudo = workoutRowsToProgramExercise(group.rows);
+  return pseudo ? formatProgramExercisePrescription(pseudo, 0, [pseudo], exerciseLibrary) : "";
+}
+
+/** Plan for ett segment i supersett/trisett/sirkel. */
+export function formatWorkoutSegmentPlanLabel(
+  programExerciseId: string,
+  segmentRows: WorkoutExerciseResult[],
+  program: TrainingProgram | null | undefined,
+  exerciseLibrary: Exercise[],
+): string {
+  const programExercise = program?.exercises.find((exercise) => exercise.id === programExerciseId);
+  const exerciseIndex = program?.exercises.findIndex((exercise) => exercise.id === programExerciseId) ?? -1;
+
+  if (programExercise && program && exerciseIndex >= 0) {
+    return formatPrescriptionForProgramExercise(
+      programExercise,
+      exerciseIndex,
+      program.exercises,
+      exerciseLibrary,
+      segmentRows.length,
+    );
+  }
+
+  const pseudo = workoutRowsToProgramExercise(segmentRows);
+  return pseudo ? formatProgramExercisePrescription(pseudo, 0, [pseudo], exerciseLibrary) : "";
+}
+
+export function resolveWorkoutGroupExerciseName(
+  group: Pick<WorkoutResultGroup, "groupId" | "exerciseName">,
+  program: TrainingProgram | null | undefined,
+): string {
+  if (!program) return group.exerciseName;
+  const exerciseIndex = program.exercises.findIndex((exercise) => exercise.id === group.groupId);
+  if (exerciseIndex < 0) return group.exerciseName;
+  return resolveProgramExerciseName(program.exercises, exerciseIndex);
+}
+
+function findLinkedExerciseForResult(result: WorkoutExerciseResult, exerciseLibrary: Exercise[]): Exercise | undefined {
+  const byId = exerciseLibrary.find((item) => item.id === result.exerciseId);
+  if (byId) return byId;
+  const normalizedName = result.exerciseName.trim().toLowerCase();
+  if (!normalizedName) return undefined;
+  return exerciseLibrary.find((item) => item.name.trim().toLowerCase() === normalizedName);
+}
+
+function resultIsCardio(result: WorkoutExerciseResult, linked?: Exercise): boolean {
+  return linked?.category === "Kondisjon" || result.exerciseCategory === "Kondisjon" || Boolean(result.plannedDurationMinutes?.trim());
+}
+
+function resultIsHold(result: WorkoutExerciseResult, linked?: Exercise): boolean {
+  const category = linked?.category ?? result.exerciseCategory;
+  return Boolean(category && isHoldBasedExerciseCategory(category));
+}
+
+/** Plan for ett logget sett (volum per sett, samme språk som programmet). */
+export function formatWorkoutResultSetPlanLabel(result: WorkoutExerciseResult, exerciseLibrary: Exercise[] = []): string {
+  const linked = findLinkedExerciseForResult(result, exerciseLibrary);
+  if (resultIsCardio(result, linked)) {
+    const parts: string[] = [];
+    const minutes = String(result.plannedDurationMinutes ?? "").trim();
+    if (minutes) parts.push(`${minutes} min`);
+    if (result.plannedSpeed?.trim()) parts.push(`${result.plannedSpeed} km/t`);
+    if (result.plannedIncline?.trim()) parts.push(`${result.plannedIncline}% incline`);
+    return parts.length ? parts.join(" · ") : "—";
+  }
+  if (resultIsHold(result, linked)) {
+    return `${result.plannedWeight || "—"} sek`;
+  }
+  const repsUnit = resolveWorkoutRepsUnit(result) === "min" ? "min" : "reps";
+  const loadUnit = resolveWorkoutLoadUnit(result) === "sec" ? "sek" : "kg";
+  return `${result.plannedReps || "—"} ${repsUnit} · ${result.plannedWeight || "0"} ${loadUnit}`;
+}
+
+/** Full plan for en øvelse i treningslogg (alle sett for samme programExerciseId). */
+export function formatWorkoutResultExercisePlanLabel(
+  rows: WorkoutExerciseResult[],
+  exerciseLibrary: Exercise[] = [],
+): string {
+  const pseudo = workoutRowsToProgramExercise(rows);
+  if (!pseudo) return "";
+  const linked = rows[0] ? findLinkedExerciseForResult(rows[0], exerciseLibrary) : undefined;
+  return formatProgramExercisePrescription(pseudo, 0, [pseudo], linked ? [linked] : [], {
+    treatAsCardio: rows[0] ? resultIsCardio(rows[0], linked) : false,
+    treatAsHold: rows[0] ? resultIsHold(rows[0], linked) : false,
+  });
+}
+
+/** Utført volum for ett logget sett. */
+export function formatWorkoutResultPerformedLabel(result: WorkoutExerciseResult, exerciseLibrary: Exercise[] = []): string {
+  const linked = findLinkedExerciseForResult(result, exerciseLibrary);
+  if (resultIsCardio(result, linked)) {
+    const parts: string[] = [];
+    const minutes = String(result.performedDurationMinutes ?? "").trim();
+    if (minutes) parts.push(`${minutes} min`);
+    else parts.push("—");
+    if (result.performedSpeed?.trim()) parts.push(`${result.performedSpeed} km/t`);
+    if (result.performedIncline?.trim()) parts.push(`${result.performedIncline}% incline`);
+    return parts.join(" · ");
+  }
+  const loadUnit = resolveWorkoutLoadUnit(result);
+  if (resultIsHold(result, linked) || loadUnit === "sec") {
+    return `${result.performedWeight || "—"} sek`;
+  }
+  const repsUnit = resolveWorkoutRepsUnit(result) === "min" ? "min" : "reps";
+  return `${result.performedReps || "—"} ${repsUnit} · ${result.performedWeight || "—"} kg`;
 }
