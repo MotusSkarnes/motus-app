@@ -551,9 +551,12 @@ export function MemberLayout({
         {memberTab === "nutrition" ? (
           hasNutritionAccess && activeMember ? (
             <MemberNutritionView
-              memberId={activeMember.id}
-              memberName={activeMember.name}
-              memberEmail={activeMember.email}
+              member={activeMember}
+              members={appState.members}
+              onSavePersonalGoals={(personalGoals) => {
+                const anchor = pickCanonicalMemberRowForProfile(activeMember, appState.members);
+                updateMember({ memberId: anchor.id, changes: { personalGoals } });
+              }}
             />
           ) : (
             <MemberFeatureGate variant="nutrition" />

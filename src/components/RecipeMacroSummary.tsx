@@ -5,20 +5,24 @@ import "../foodbank.css";
 type RecipeMacroSummaryProps = {
   result: RecipeMacroResult;
   compact?: boolean;
+  hint?: string;
 };
 
-export function RecipeMacroSummary({ result, compact = false }: RecipeMacroSummaryProps) {
+export function RecipeMacroSummary({ result, compact = false, hint }: RecipeMacroSummaryProps) {
   const { perServing } = result;
 
   return (
-    <div
-      className={`motus-recipe-macro-summary flex flex-wrap gap-1.5 ${compact ? "mt-2" : "mt-3"}`}
-      aria-label="Næringsinnhold per porsjon"
-    >
+    <div className={compact ? "mt-2" : "mt-3"}>
+      {hint ? <p className="mb-1 text-[10px] font-medium text-teal-800">{hint}</p> : null}
+      <div
+        className="motus-recipe-macro-summary flex flex-wrap gap-1.5"
+        aria-label={hint ? `Næringsinnhold per porsjon — ${hint}` : "Næringsinnhold per porsjon"}
+      >
       <MacroChip tone="kcal" label="kcal" value={perServing.kcal} decimals={0} />
       <MacroChip tone="protein" label="P" value={perServing.protein} decimals={0} unit="g" />
       <MacroChip tone="carbs" label="K" value={perServing.carbs} decimals={0} unit="g" />
       <MacroChip tone="fat" label="F" value={perServing.fat} decimals={0} unit="g" />
+      </div>
     </div>
   );
 }

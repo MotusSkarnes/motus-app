@@ -1,4 +1,5 @@
 import { compressImageDataUrl, dataUrlToBlob } from "./imageCompress";
+import { isInspirationRecipeItem } from "./inspirationHubItems";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
 export const INSPIRATION_STORAGE_KEY = "motus.inspiration.items.v2";
@@ -159,6 +160,7 @@ export function saveInspirationItemsToStorage(
 export function mapRawToInspirationNotificationItems(items: unknown[]): InspirationNotificationItem[] {
   return items
     .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .filter((item) => !isInspirationRecipeItem(item as { category?: string }))
     .map((item) => ({
       id: String(item.id ?? ""),
       title: String(item.title ?? ""),

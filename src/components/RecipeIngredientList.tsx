@@ -2,6 +2,13 @@ import { useMemo, useState } from "react";
 import { ArrowLeftRight, X } from "lucide-react";
 import type { FoodItem } from "../app/foodBankTypes";
 import { formatMacro } from "../app/foodBankTypes";
+import type { MealPlanTargets } from "../app/mealPlanTypes";
+import {
+  buildScaledRecipeView,
+  resolveRecipeScalingMode,
+  type RecipeScalingMode,
+} from "../app/recipeMealScaling";
+import type { RecipeMealSlot } from "../app/recipeMealCategory";
 import {
   computeRecipeIngredients,
   parseRecipeServings,
@@ -22,6 +29,10 @@ type DisplayIngredient = RecipeIngredient & {
 type RecipeIngredientListProps = {
   body: string;
   foodItems: FoodItem[];
+  dailyTargets?: MealPlanTargets;
+  mealSlot?: RecipeMealSlot | null;
+  scalingMode?: RecipeScalingMode;
+  recipeId?: string;
 };
 
 function formatGramsLabel(grams: number, servings: number): string {
@@ -123,9 +134,34 @@ function SwapOptionRow({
   );
 }
 
-export function RecipeIngredientList({ body, foodItems }: RecipeIngredientListProps) {
+export function RecipeIngredientList({
+  body,
+  foodItems,
+  dailyTargets,
+  mealSlot = null,
+  scalingMode: scalingModeProp,
+  recipeId,
+}: RecipeIngredientListProps) {
   const servings = useMemo(() => parseRecipeServings(body), [body]);
-  const ingredients = useMemo(() => computeRecipeIngredients(body, foodItems), [body, foodItems]);
+  const scalingMode = useMemo(
+    () =>
+      scalingModeProp ??
+      resolveRecipeScalingMode({ id: recipeId, body }),
+    [scalingModeProp, recipeId, body, mealSlot],
+  );
+  const scaledView = useMemo(
+    () =>
+      buildScaledRecipeView(body, foodItems, {
+        scalingMode,
+        dailyTargets,
+        mealSlot,
+      }),
+    [body, foodItems, scalingMode, dailyTargets, mealSlot],
+  );
+  const ingredients = useMemo(
+    () => scaledView?.ingredients ?? computeRecipeIngredients(body, foodItems),
+    [scaledView, body, foodItems],
+  );
   const [swaps, setSwaps] = useState<Record<string, string>>({});
   const [swapTarget, setSwapTarget] = useState<RecipeIngredient | null>(null);
 
@@ -162,6 +198,17 @@ export function RecipeIngredientList({ body, foodItems }: RecipeIngredientListPr
           </span>
         ) : null}
       </div>
+      {scaledView?.adjusted && scaledView.targetMealKcal ? (
+        <p className="mt-2 rounded-xl border border-teal-100 bg-teal-50/80 px-3 py-2 text-xs text-teal-900">
+          Mengdene er tilpasset ca. <strong>{scaledView.targetMealKcal} kcal</strong> for dette måltidet
+          {dailyTargets?.kcal ? ` (matplan: ${Math.round(dailyTargets.kcal)} kcal/dag)` : ""}. Du kan fortsatt bytte
+          ingredienser.
+        </p>
+      ) : scalingMode === "fixed" && dailyTargets?.kcal ? (
+        <p className="mt-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+          Denne oppskriften har <strong>faste mengder</strong> for best resultat og skaleres ikke automatisk.
+        </p>
+      ) : null}
       <ul className="motus-recipe-ingredient-list">
         {displayRows.map((row) => (
           <li key={row.key} className="motus-recipe-ingredient-row">

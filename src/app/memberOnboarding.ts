@@ -217,6 +217,9 @@ export function readProfileExtensions(personalGoals: string | undefined): Record
   if (payload.notificationPreferences && typeof payload.notificationPreferences === "object") {
     extensions.notificationPreferences = payload.notificationPreferences;
   }
+  if (payload.foodAvoidances && typeof payload.foodAvoidances === "object") {
+    extensions.foodAvoidances = payload.foodAvoidances;
+  }
   return extensions;
 }
 

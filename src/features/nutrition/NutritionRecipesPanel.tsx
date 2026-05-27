@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, Soup } from "lucide-react";
 import { buildDefaultFoodBankItems } from "../../app/foodBankSeed";
+import type { MealPlanTargets } from "../../app/mealPlanTypes";
+import { buildScaledRecipeView, resolveRecipeScalingMode } from "../../app/recipeMealScaling";
 import { computeRecipeMacros, extractRecipeIngredientLines } from "../../app/recipeMacros";
 import {
   RECIPE_MEAL_SLOTS,
@@ -23,11 +25,35 @@ function useFoodItemsForMacros() {
   );
 }
 
-function RecipeDetail({ item, onBack }: { item: InspirationRecipeItem; onBack: () => void }) {
+function RecipeDetail({
+  item,
+  onBack,
+  dailyTargets,
+}: {
+  item: InspirationRecipeItem;
+  onBack: () => void;
+  dailyTargets?: MealPlanTargets;
+}) {
   const foodItems = useFoodItemsForMacros();
-  const macros = useMemo(() => computeRecipeMacros(item.body, foodItems), [item.body, foodItems]);
-  const hasIngredientSection = useMemo(() => extractRecipeIngredientLines(item.body).length > 0, [item.body]);
   const mealSlot = resolveRecipeMealSlot(item.tag, item.title, item.description);
+  const scalingMode = resolveRecipeScalingMode({
+    id: item.id,
+    scalingMode: item.scalingMode,
+    body: item.body,
+    title: item.title,
+    tag: item.tag,
+  });
+  const scaledView = useMemo(
+    () =>
+      buildScaledRecipeView(item.body, foodItems, {
+        scalingMode,
+        dailyTargets,
+        mealSlot,
+      }),
+    [item.body, foodItems, scalingMode, dailyTargets, mealSlot],
+  );
+  const macros = scaledView?.macros ?? computeRecipeMacros(item.body, foodItems);
+  const hasIngredientSection = useMemo(() => extractRecipeIngredientLines(item.body).length > 0, [item.body]);
 
   return (
     <div className="space-y-4">
@@ -58,7 +84,14 @@ function RecipeDetail({ item, onBack }: { item: InspirationRecipeItem; onBack: (
           </div>
           <h2 className="mt-3 text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">{item.title}</h2>
           {item.description ? <p className="mt-2 text-sm text-slate-600 sm:text-base">{item.description}</p> : null}
-          <RecipeIngredientList body={item.body} foodItems={foodItems} />
+          <RecipeIngredientList
+            body={item.body}
+            foodItems={foodItems}
+            dailyTargets={dailyTargets}
+            mealSlot={mealSlot}
+            scalingMode={scalingMode}
+            recipeId={item.id}
+          />
           {item.body.trim() ? (
             <details className="mt-4 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
               <summary className="cursor-pointer text-xs font-semibold text-slate-600">Vis full oppskriftstekst</summary>
@@ -84,10 +117,12 @@ function RecipeDetail({ item, onBack }: { item: InspirationRecipeItem; onBack: (
 function RecipeCard({
   item,
   macros,
+  adjusted,
   onSelect,
 }: {
   item: InspirationRecipeItem;
   macros: ReturnType<typeof computeRecipeMacros>;
+  adjusted?: boolean;
   onSelect: () => void;
 }) {
   const mealSlot = resolveRecipeMealSlot(item.tag, item.title, item.description);
@@ -121,25 +156,52 @@ function RecipeCard({
         {item.description ? (
           <span className="mt-1 line-clamp-2 text-xs text-slate-500 sm:text-sm">{item.description}</span>
         ) : null}
-        {macros ? <RecipeMacroSummary result={macros} compact /> : null}
+        {macros ? (
+          <RecipeMacroSummary
+            result={macros}
+            compact
+            hint={adjusted ? "Tilpasset ditt måltidsmål" : undefined}
+          />
+        ) : null}
       </div>
     </button>
   );
 }
 
-export function NutritionRecipesPanel() {
+type NutritionRecipesPanelProps = {
+  mealPlanTargets?: MealPlanTargets;
+};
+
+export function NutritionRecipesPanel({ mealPlanTargets }: NutritionRecipesPanelProps) {
   const { items, loading } = useInspirationRecipeItems();
   const foodItems = useFoodItemsForMacros();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mealTab, setMealTab] = useState<RecipeMealSlot>("frokost");
 
-  const macrosById = useMemo(() => {
-    const map = new Map<string, ReturnType<typeof computeRecipeMacros>>();
+  const scaledById = useMemo(() => {
+    const map = new Map<
+      string,
+      { macros: ReturnType<typeof computeRecipeMacros>; adjusted: boolean }
+    >();
     for (const item of items) {
-      map.set(item.id, computeRecipeMacros(item.body, foodItems));
+      const mealSlot = resolveRecipeMealSlot(item.tag, item.title, item.description);
+      const scalingMode = resolveRecipeScalingMode({
+        id: item.id,
+        scalingMode: item.scalingMode,
+        body: item.body,
+        title: item.title,
+        tag: item.tag,
+      });
+      const view = buildScaledRecipeView(item.body, foodItems, {
+        scalingMode,
+        dailyTargets: mealPlanTargets,
+        mealSlot,
+      });
+      const macros = view?.macros ?? computeRecipeMacros(item.body, foodItems);
+      map.set(item.id, { macros, adjusted: view?.adjusted ?? false });
     }
     return map;
-  }, [items, foodItems]);
+  }, [items, foodItems, mealPlanTargets]);
 
   const itemsByMeal = useMemo(() => {
     const grouped = new Map<RecipeMealSlot, InspirationRecipeItem[]>(
@@ -163,7 +225,7 @@ export function NutritionRecipesPanel() {
   }
 
   if (selected) {
-    return <RecipeDetail item={selected} onBack={() => setSelectedId(null)} />;
+    return <RecipeDetail item={selected} onBack={() => setSelectedId(null)} dailyTargets={mealPlanTargets} />;
   }
 
   if (!items.length) {
@@ -171,7 +233,7 @@ export function NutritionRecipesPanel() {
       <EmptyState
         icon="🥗"
         title="Ingen oppskrifter ennå"
-        description="Oppskrifter fra Utforsk vises her når PT har lagt dem ut."
+        description="Treneren legger ut oppskrifter under Ernæring. De vises her når de er publisert."
         className="bg-white"
       />
     );
@@ -180,8 +242,18 @@ export function NutritionRecipesPanel() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600">
-        Oppskrifter fra Motus med makronæringsstoffer per porsjon der ingredienslisten er strukturert med{" "}
-        <strong className="font-semibold text-slate-700">Ingredienser</strong>.
+        Oppskrifter med makronæringsstoffer per porsjon.{" "}
+        {mealPlanTargets?.kcal ? (
+          <>
+            Fleksible middager tilpasses ca. måltidsmålet fra matplanen din ({Math.round(mealPlanTargets.kcal)} kcal/dag).
+            Faste oppskrifter (f.eks. brødskive, batch-retter) beholder opprinnelige mengder.
+          </>
+        ) : (
+          <>
+            Når du har matplan med kalorimål, tilpasses enkle middager automatisk — oppskrifter med faste mengder
+            endres ikke.
+          </>
+        )}
       </p>
       <div className="flex flex-wrap gap-2">
         {RECIPE_MEAL_SLOTS.map((slot) => {
@@ -205,7 +277,12 @@ export function NutritionRecipesPanel() {
         <ul className="grid gap-3 sm:grid-cols-2">
           {visibleItems.map((item) => (
             <li key={item.id}>
-              <RecipeCard item={item} macros={macrosById.get(item.id) ?? null} onSelect={() => setSelectedId(item.id)} />
+              <RecipeCard
+                item={item}
+                macros={scaledById.get(item.id)?.macros ?? null}
+                adjusted={scaledById.get(item.id)?.adjusted}
+                onSelect={() => setSelectedId(item.id)}
+              />
             </li>
           ))}
         </ul>

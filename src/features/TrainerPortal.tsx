@@ -1,4 +1,4 @@
-import {
+﻿import {
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -112,6 +112,7 @@ import { TrainerStatisticsView } from "./TrainerStatisticsView";
 import { TrainerExerciseBankView } from "./TrainerExerciseBankView";
 import { TrainerPeriodPlanCalendar } from "./TrainerPeriodPlanCalendar";
 import { TrainerMealPlanEditor } from "./TrainerMealPlanEditor";
+import { MemberFoodAvoidancesPanel } from "./nutrition/MemberFoodAvoidancesPanel";
 import { NutritionHub } from "./nutrition/NutritionHub";
 import { TrainerProgramBuilderView } from "./TrainerProgramBuilderView";
 import { TrainerPtHomeScreen } from "./trainer-home/TrainerPtHomeScreen";
@@ -169,7 +170,7 @@ import { memberEffectivelyInvited } from "../app/memberInviteStatus";
 import { resolveMemberTrainerDisplayName } from "../app/trainerProfile";
 import { printHtmlDocument } from "../app/printHtmlDocument";
 import { findProgramForPeriodPlanEntry } from "../app/periodPlanEntryActions";
-import { syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
+import { dedupePeriodPlansById, syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { buildDefaultStartWorkoutOptions } from "../app/buildStartWorkoutOptions";
 import { MemberMonthlyCheckInSummary } from "./MemberMonthlyCheckInSummary";
 import { MemberOnboardingSummary } from "./MemberOnboardingSummary";
@@ -1477,13 +1478,7 @@ function pickFirstName(value: unknown): string {
   const selectedPeriodPlans = useMemo(() => {
     if (!selectedMemberRelatedIds.length) return [] as PeriodSchedulePlan[];
     const merged = selectedMemberRelatedIds.flatMap((memberId) => periodPlansByMemberId[memberId] ?? []);
-    const deduplicated = new Map<string, PeriodSchedulePlan>();
-    merged.forEach((plan) => {
-      if (!deduplicated.has(plan.id)) {
-        deduplicated.set(plan.id, plan);
-      }
-    });
-    return Array.from(deduplicated.values());
+    return dedupePeriodPlansById(merged);
   }, [periodPlansByMemberId, selectedMemberRelatedIds]);
   const templatePrograms = useMemo(
     () => programs.filter((program) => program.memberId === "__template__"),
@@ -1822,7 +1817,7 @@ function pickFirstName(value: unknown): string {
       keys.forEach((memberId) => {
         const remotePlans = remoteTrainerPeriodPlansByMemberId[memberId] ?? [];
         const localPlans = next[memberId] ?? [];
-        next[memberId] = remotePlans.length > 0 ? remotePlans : localPlans;
+        next[memberId] = dedupePeriodPlansById([...localPlans, ...remotePlans]);
       });
       return next;
     });
@@ -2408,6 +2403,7 @@ function pickFirstName(value: unknown): string {
       createdAt: existingPeriodPlan?.createdAt ?? formatDateDdMmYyyy(new Date()),
       weeklyPlans,
       periodPlanAddedBy: "trainer",
+      trainerSavedAtIso: new Date().toISOString(),
     };
     setPeriodPlanStatus("Lagrer periodeplan...");
     setPeriodPlansByMemberId((prev) => {
@@ -4665,7 +4661,7 @@ function pickFirstName(value: unknown): string {
           quickActions={{
             onCreateProgram: () => setTrainerTab("programs"),
             onOpenExerciseBank: () => setTrainerTab("exerciseBank"),
-            onOpenNutrition: () => setTrainerTab("nutrition"),
+            onOpenNutrition: () => setTrainerTab("mealPlan"),
             onShareContent: () => setTrainerTab("inspiration"),
             onBulkMessage: () => {
               setTrainerTab("customers");
@@ -4764,7 +4760,7 @@ function pickFirstName(value: unknown): string {
                 </PillButton>
                 {selectedMemberNutritionAccess ? (
                   <PillButton active={customerSubTab === "nutrition"} onClick={() => setCustomerSubTab("nutrition")}>
-                    Ernæring
+                    Matplan
                   </PillButton>
                 ) : null}
               </div>
@@ -5558,7 +5554,7 @@ function pickFirstName(value: unknown): string {
                     <PillButton active={customerSubTab === "messages"} onClick={() => setCustomerSubTab("messages")}>Meldinger</PillButton>
                     {selectedMemberNutritionAccess ? (
                       <PillButton active={customerSubTab === "nutrition"} onClick={() => setCustomerSubTab("nutrition")}>
-                        Ernæring
+                        Matplan
                       </PillButton>
                     ) : null}
                   </div>
@@ -6493,10 +6489,19 @@ function pickFirstName(value: unknown): string {
 
                 {customerSubTab === "nutrition" && selectedMember && selectedMemberNutritionAccess ? (
                   <NutritionHub
+                    avoidances={
+                      <MemberFoodAvoidancesPanel
+                        memberId={selectedMember.id}
+                        personalGoals={selectedMemberProfile?.personalGoals ?? selectedMember.personalGoals ?? ""}
+                        onSavePersonalGoals={() => {}}
+                        readOnly
+                      />
+                    }
                     mealPlan={
                       <TrainerMealPlanEditor
                         memberId={selectedMember.id}
                         memberName={selectedMemberProfile?.name ?? selectedMember.name}
+                        memberPersonalGoals={selectedMemberProfile?.personalGoals ?? selectedMember.personalGoals ?? ""}
                         trainerOwnerUserId={currentTrainerOwnerUserId}
                       />
                     }

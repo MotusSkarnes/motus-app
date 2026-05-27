@@ -13,6 +13,7 @@ export type TrainerTab =
   | "admin"
   | "inspiration"
   | "nutrition"
+  | "mealPlan"
   | "badges"
   | "statistics"
   | "settings";

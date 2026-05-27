@@ -436,6 +436,43 @@ export type PeriodPlanWeekNavItem = {
   usesGradientPlan?: boolean;
 };
 
+/** Nyeste lagringstid for planinnhold (PT-oppdatering slår opprettelsesdato). */
+export function periodPlanContentRevisionMs(plan: PeriodSchedulePlan): number {
+  const savedIso = plan.trainerSavedAtIso?.trim();
+  if (savedIso) {
+    const savedMs = Date.parse(savedIso);
+    if (Number.isFinite(savedMs)) return savedMs;
+  }
+  const created = plan.createdAt?.trim() ?? "";
+  if (created) {
+    const isoMs = Date.parse(created);
+    if (Number.isFinite(isoMs)) return isoMs;
+    const stored = parseStoredLogDate(created);
+    if (stored) return stored.getTime();
+  }
+  return 0;
+}
+
+export function preferNewerPeriodPlan(a: PeriodSchedulePlan, b: PeriodSchedulePlan): PeriodSchedulePlan {
+  const aMs = periodPlanContentRevisionMs(a);
+  const bMs = periodPlanContentRevisionMs(b);
+  if (aMs !== bMs) return aMs > bMs ? a : b;
+  const aWeeks = a.weeklyPlans?.length ?? 0;
+  const bWeeks = b.weeklyPlans?.length ?? 0;
+  if (aWeeks !== bWeeks) return aWeeks > bWeeks ? a : b;
+  return a;
+}
+
+export function dedupePeriodPlansById(plans: PeriodSchedulePlan[]): PeriodSchedulePlan[] {
+  const byId = new Map<string, PeriodSchedulePlan>();
+  for (const plan of plans) {
+    const normalized = normalizePeriodSchedulePlan(plan);
+    const existing = byId.get(normalized.id);
+    byId.set(normalized.id, existing ? preferNewerPeriodPlan(existing, normalized) : normalized);
+  }
+  return Array.from(byId.values());
+}
+
 function planStartTimeMs(plan: PeriodSchedulePlan): number {
   const value = plan.startDate?.trim() ?? "";
   if (!value) return 0;
@@ -708,12 +745,16 @@ export function mergedPeriodPlanListForMember(
   const idSet = new Set(relatedMemberIds.map((id) => id.trim()).filter(Boolean));
   for (const memberId of idSet) {
     for (const plan of localByMember[memberId] ?? []) {
-      if (!merged.has(plan.id)) merged.set(plan.id, normalizePeriodSchedulePlan(plan));
+      const normalized = normalizePeriodSchedulePlan(plan);
+      const existing = merged.get(normalized.id);
+      merged.set(normalized.id, existing ? preferNewerPeriodPlan(existing, normalized) : normalized);
     }
   }
   for (const row of remoteRows) {
     if (!idSet.has(row.memberId.trim())) continue;
-    merged.set(row.plan.id, normalizePeriodSchedulePlan(row.plan));
+    const normalized = normalizePeriodSchedulePlan(row.plan);
+    const existing = merged.get(normalized.id);
+    merged.set(normalized.id, existing ? preferNewerPeriodPlan(existing, normalized) : normalized);
   }
   return Array.from(merged.values()).sort((a, b) => planStartTimeMs(b) - planStartTimeMs(a));
 }

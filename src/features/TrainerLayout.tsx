@@ -13,6 +13,7 @@ import {
   Settings,
   ShieldCheck,
   Users,
+  UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
@@ -21,6 +22,7 @@ import { Card } from "../app/ui";
 import { TrainerPortal } from "./TrainerPortal";
 import type { MemberPortal } from "./MemberPortal";
 import { TrainerFoodBankView } from "./TrainerFoodBankView";
+import { TrainerMealPlanHubView } from "./TrainerMealPlanHubView";
 import { InspirationHub } from "./InspirationHub";
 import { TrainerBadgeCatalog } from "./TrainerBadgeCatalog";
 
@@ -94,7 +96,8 @@ function buildTrainerMenuItems(messageBadgeCount: number, includeAdmin: boolean)
     { key: "programs", label: "Programmer", icon: ClipboardList },
     { key: "exerciseBank", label: "Øvelsesbank", icon: Dumbbell },
     { key: "inspiration", label: "Innhold", icon: FileText },
-    { key: "nutrition", label: "Ernæring", icon: Apple },
+    { key: "nutrition", label: "Matvarebank", icon: Apple },
+    { key: "mealPlan", label: "Matplan", icon: UtensilsCrossed },
     { key: "customers", label: "Meldinger", icon: MessageSquare, badge: messageBadgeCount, action: "messages" },
     { key: "calendar", label: "Kalender", icon: CalendarDays },
     { key: "statistics", label: "Statistikk", icon: BarChart3 },
@@ -116,7 +119,8 @@ const mobileTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
 
 const mobileMoreTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
   { id: "calendar", label: "Kalender", icon: CalendarDays },
-  { id: "nutrition", label: "Ernæring", icon: Apple },
+  { id: "nutrition", label: "Matvarebank", icon: Apple },
+  { id: "mealPlan", label: "Matplan", icon: UtensilsCrossed },
   { id: "statistics", label: "Statistikk", icon: BarChart3 },
   { id: "settings", label: "Innstillinger", icon: Settings },
   { id: "admin", label: "Admin", icon: ShieldCheck },
@@ -199,9 +203,26 @@ export function TrainerLayout({
     [appState.members],
   );
 
+  const recipeMembers = useMemo(
+    () =>
+      appState.members
+        .filter((member) => memberRecordIsActive(member) && member.nutritionAccess === true)
+        .sort((a, b) => a.name.localeCompare(b.name, "nb")),
+    [appState.members],
+  );
+
+  const mealPlanMembers = useMemo(
+    () =>
+      appState.members
+        .filter((member) => memberRecordIsActive(member) && member.nutritionAccess === true)
+        .sort((a, b) => a.name.localeCompare(b.name, "nb")),
+    [appState.members],
+  );
+
+  const [mealPlanMemberSearch, setMealPlanMemberSearch] = useState("");
+
   const openMemberMealPlan = (memberId: string) => {
-    patchState({ trainerTab: "customers", selectedMemberId: memberId });
-    setOpenCustomerNutritionSignal((value) => value + 1);
+    patchState({ trainerTab: "mealPlan", selectedMemberId: memberId });
   };
 
   const trainerPortalProps: ComponentProps<typeof TrainerPortal> = {
@@ -315,7 +336,17 @@ export function TrainerLayout({
                 trainerName={appState.currentUser?.name ?? "Motus PT"}
                 trainerOwnerUserId={appState.currentUser?.id}
                 nutritionMembers={nutritionMembers}
+                recipeMembers={recipeMembers}
                 onOpenMemberMealPlan={openMemberMealPlan}
+              />
+            ) : trainerTab === "mealPlan" ? (
+              <TrainerMealPlanHubView
+                members={mealPlanMembers}
+                selectedMemberId={appState.selectedMemberId}
+                onSelectMember={(memberId) => patchState({ selectedMemberId: memberId })}
+                trainerOwnerUserId={appState.currentUser?.id}
+                memberSearch={mealPlanMemberSearch}
+                onMemberSearchChange={setMealPlanMemberSearch}
               />
             ) : trainerTab === "badges" ? (
               <TrainerBadgeCatalog />

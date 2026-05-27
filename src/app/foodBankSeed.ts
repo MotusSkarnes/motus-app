@@ -31,6 +31,8 @@ const SEED_ROWS: SeedRow[] = [
   { name: "Cottage cheese", category: "proteinkilder", origin: "Meieri", emoji: "🧀", kcal: 98, protein: 11, carbs: 3.4, fat: 4.3, fiber: 0, sugar: 2.7, saturatedFat: 1.7, sodium: 364 },
   { name: "Tofu fast", category: "proteinkilder", origin: "Plantebasert", emoji: "🧈", kcal: 144, protein: 17, carbs: 3, fat: 8, fiber: 2, sugar: 0.7, saturatedFat: 1.2, sodium: 14 },
   { name: "Kalkunkjøtt", category: "proteinkilder", origin: "Kjøtt & fjærkre", emoji: "🦃", kcal: 135, protein: 30, carbs: 0, fat: 1, fiber: 0, sugar: 0, saturatedFat: 0.3, sodium: 68 },
+  { name: "Skinke", category: "proteinkilder", origin: "Pålegg", emoji: "🥓", kcal: 120, protein: 20, carbs: 1, fat: 4, fiber: 0, sugar: 0.5, saturatedFat: 1.5, sodium: 900, portionLabel: "30 g", portionGrams: 30 },
+  { name: "Leverpostei", category: "proteinkilder", origin: "Pålegg", emoji: "🍖", kcal: 270, protein: 12, carbs: 4, fat: 22, fiber: 0, sugar: 2, saturatedFat: 8, sodium: 650, portionLabel: "20 g", portionGrams: 20 },
   { name: "Reker", category: "proteinkilder", origin: "Fisk & sjømat", emoji: "🦐", kcal: 99, protein: 24, carbs: 0.2, fat: 0.3, fiber: 0, sugar: 0, saturatedFat: 0.1, sodium: 111 },
   { name: "Svin indrefilet", category: "proteinkilder", origin: "Kjøtt", emoji: "🥩", kcal: 143, protein: 26, carbs: 0, fat: 3.5, fiber: 0, sugar: 0, saturatedFat: 1.2, sodium: 62 },
   { name: "Proteinpulver whey", category: "proteinkilder", origin: "Kosttilskudd", emoji: "🥤", kcal: 400, protein: 80, carbs: 8, fat: 6, fiber: 0, sugar: 4, saturatedFat: 2, sodium: 200, portionLabel: "30 g", portionGrams: 30 },

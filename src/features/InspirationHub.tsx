@@ -16,7 +16,6 @@ import {
   ImagePlus,
   Italic,
   LayoutGrid,
-  Leaf,
   Lightbulb,
   Link2,
   List,
@@ -31,14 +30,12 @@ import {
   Sun,
   Trash2,
   Users,
-  UtensilsCrossed,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
-import { DEFAULT_INSPIRATION_RECIPES } from "../app/defaultInspirationRecipes";
-import { applyCanonicalRecipeBodies, computeRecipeMacros } from "../app/recipeMacros";
-import { useFoodBankItems } from "../app/useFoodBankItems";
-import { RecipeIngredientList } from "../components/RecipeIngredientList";
-import { RecipeMacroBlocks } from "../components/RecipeMacroBlocks";
+import {
+  filterRecipesFromInspirationHub,
+  mergeHubItemsPreservingRecipes,
+} from "../app/inspirationHubItems";
 import { EXERCISE_CATEGORY_OPTIONS, exerciseCategoryAccentColor } from "../app/exerciseCategories";
 import { formatProgramExercisePrescription, resolveProgramExerciseName } from "../app/programExercisePresentation";
 import { EXERCISE_IMAGE_THUMB_CLASS } from "../app/exerciseIllustrations/constants";
@@ -72,7 +69,7 @@ import { EmptyState, GradientButton, MotusSectionIcon, OutlineButton, SelectBox,
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { ProgramCoverImageField } from "./ProgramCoverImageField";
 import { ExerciseBankListCard } from "./ExerciseBankListCard";
-import type { Exercise, PeriodSchedulePlan, ProgramExercise, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "../app/types";
+import type { Exercise, Member, PeriodSchedulePlan, ProgramExercise, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "../app/types";
 import type { SaveProgramInput } from "../services/appRepository";
 
 type InspirationCategory = "recipes" | "programs" | "tips" | "news" | "appGuide";
@@ -191,14 +188,6 @@ const QUICK_CATEGORIES: readonly QuickCategory[] = [
       ]),
   },
   {
-    id: "nutrition",
-    label: "Kosthold",
-    icon: Leaf,
-    scrollToCategory: "recipes",
-    tone: "mintSoft",
-    match: (item) => item.category === "recipes",
-  },
-  {
     id: "motivation",
     label: "Motivasjon",
     icon: Brain,
@@ -258,7 +247,6 @@ const INSPO_FEED_CARD_ACTION_CLASS = "!min-h-8 !px-2 !py-1.5 !text-[11px] !leadi
 
 const INSPIRATION_OVERVIEW_SECTIONS: readonly { category: InspirationCategory; title: string }[] = [
   { category: "programs", title: "Treningsprogram" },
-  { category: "recipes", title: "Oppskrifter" },
   { category: "news", title: "Info fra senteret" },
   { category: "tips", title: "Råd og tips" },
 ];
@@ -554,15 +542,7 @@ function createDefaultPeriodPlan(title: string, body: string): PeriodSchedulePla
   };
 }
 
-const DEFAULT_RECIPE_ITEMS: InspirationItem[] = DEFAULT_INSPIRATION_RECIPES.map((recipe) => ({
-  ...recipe,
-  category: "recipes" as const,
-  kind: "article" as const,
-  author: "Motus",
-}));
-
 const DEFAULT_ITEMS: InspirationItem[] = [
-  ...DEFAULT_RECIPE_ITEMS,
   {
     id: "default-program-1",
     category: "programs",
@@ -679,9 +659,9 @@ const DEFAULT_ITEMS: InspirationItem[] = [
     id: "default-tip-9",
     category: "appGuide",
     kind: "article",
-    title: "Utforsk, oppskrifter og meldinger",
+    title: "Utforsk og meldinger",
     description: "Finn tips, nyheter og svar fra trener på ett sted.",
-    body: "**Utforsk-fanen** har to deler:\n- **Utforsk** – oppskrifter, info fra senteret, treningsprogram og råd og tips.\n- **App-guide** – steg-for-steg om hvordan du bruker Motus (øktmodus, egne programmer, hjemskjerm osv.).\n\nBytt mellom dem med knappene øverst under overskriften. Trykk på et kort for å lese hele teksten. Nye innlegg kan også dukke opp som **varsler** – da hopper du rett til innlegget.\n\nHar du spørsmål om program eller skader? Bruk **melding** til trener i stedet for å gjette – da får du svar tilpasset deg.",
+    body: "**Utforsk-fanen** har to deler:\n- **Utforsk** – info fra senteret, treningsprogram og råd og tips.\n- **App-guide** – steg-for-steg om hvordan du bruker Motus (øktmodus, egne programmer, hjemskjerm osv.).\n\nOppskrifter finner du under **Mat / Ernæring**.\n\nBytt mellom dem med knappene øverst under overskriften. Trykk på et kort for å lese hele teksten. Nye innlegg kan også dukke opp som **varsler** – da hopper du rett til innlegget.\n\nHar du spørsmål om program eller skader? Bruk **melding** til trener i stedet for å gjette – da får du svar tilpasset deg.",
     tag: "App-guide",
     author: "Motus",
     createdAt: "2026-05-16",
@@ -778,9 +758,8 @@ function resolveInspirationHubItems(fetched: InspirationItem[] | null): Inspirat
   if (!withoutSuppressed.length) {
     return normalizeInspirationItems(filterSuppressedInspirationItems(DEFAULT_ITEMS));
   }
-  return normalizeInspirationItems(
-    applyCanonicalRecipeBodies(mergeDefaultInspirationItems(withoutSuppressed, DEFAULT_ITEMS)),
-  );
+  const merged = mergeDefaultInspirationItems(withoutSuppressed, DEFAULT_ITEMS);
+  return normalizeInspirationItems(filterRecipesFromInspirationHub(merged));
 }
 
 function loadInspirationItems(): InspirationItem[] {
@@ -823,7 +802,6 @@ export function InspirationHub({
   focusItemId = null,
   onFocusItemHandled,
 }: InspirationHubProps) {
-  const foodBankItems = useFoodBankItems();
   const [items, setItems] = useState<InspirationItem[]>(() => loadInspirationItems());
   const [inspoSubView, setInspoSubView] = useState<InspoSubView>("overview");
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
@@ -834,7 +812,7 @@ export function InspirationHub({
   const [bodyStyle, setBodyStyle] = useState<InspirationBodyStyle>("normal");
   const [tag, setTag] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-  const [categoryDraft, setCategoryDraft] = useState<InspirationCategory>("recipes");
+  const [categoryDraft, setCategoryDraft] = useState<InspirationCategory>("tips");
   const [kindDraft, setKindDraft] = useState<InspirationKind>("article");
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -964,7 +942,7 @@ export function InspirationHub({
   const featuredAutoRotate = heroConfig?.featuredAutoRotate ?? true;
   const pinnedFeaturedItemId = heroConfig?.featuredItemId?.trim() ?? "";
 
-  /** Artikler som kan brukes som «Dagens utvalgte» — tips, news, recipes (ikke app-guide eller program/ukesplan). */
+  /** Artikler som kan brukes som «Dagens utvalgte» — tips og news (ikke app-guide eller program/ukesplan). */
   const featuredArticlePool = useMemo(() => {
     return items.filter((item) => {
       if (item.kind !== "article") return false;
@@ -1195,7 +1173,10 @@ export function InspirationHub({
   }
 
   async function commitItems(next: InspirationItem[]): Promise<{ ok: true; message: string } | { ok: false }> {
-    const normalized = normalizeInspirationItems(next);
+    const existingFeed = loadInspirationItemsFromLocalStorage<InspirationItem>() ?? items;
+    const normalized = normalizeInspirationItems(
+      mergeHubItemsPreservingRecipes(next, existingFeed),
+    );
     const result = await persistInspirationItems(normalized);
     if (!result.ok) {
       setActionStatus(result.error);
@@ -1244,10 +1225,6 @@ export function InspirationHub({
   const appGuideCount = itemsByCategory.appGuide.length;
 
   const expandedItem = items.find((item) => item.id === expandedItemId) ?? null;
-  const expandedRecipeMacros = useMemo(() => {
-    if (!expandedItem || expandedItem.category !== "recipes") return null;
-    return computeRecipeMacros(expandedItem.body, foodBankItems);
-  }, [expandedItem, foodBankItems]);
   const composerKind = resolveComposerKind(categoryDraft, kindDraft);
   const publishValidation = useMemo(
     () =>
@@ -1552,7 +1529,7 @@ export function InspirationHub({
     setBodyStyle("normal");
     setTag("");
     setImageUrl("");
-    setCategoryDraft("recipes");
+    setCategoryDraft("tips");
     setKindDraft("article");
     setProgramTemplateDraft(null);
     setPeriodPlanTemplateDraft(null);
@@ -2006,17 +1983,9 @@ export function InspirationHub({
         </div>
             <h1 className="mt-4 text-2xl font-bold leading-snug tracking-tight text-slate-950 sm:text-3xl">{expandedItem.title}</h1>
             <p className="mt-2 text-base text-slate-600">{expandedItem.description}</p>
-            {expandedItem.category === "recipes" ? (
-              <div className="mt-5">
-                <RecipeIngredientList body={expandedItem.body} foodItems={foodBankItems} />
-              </div>
-            ) : null}
-
             {expandedItem.body.trim() && !showProgramPreview ? (
               <div className={`mt-5 space-y-3 text-sm leading-relaxed text-slate-700 sm:text-base ${bodyStyleClass(expandedItem.bodyStyle)}`}>{renderFormattedBody(expandedItem.body)}</div>
             ) : null}
-
-            {expandedRecipeMacros ? <RecipeMacroBlocks result={expandedRecipeMacros} /> : null}
 
             {programPreview ? (
               <div className="mt-6 space-y-3 rounded-xl border border-sky-100 bg-sky-50/40 p-4">
@@ -2141,7 +2110,6 @@ export function InspirationHub({
   }
 
   const programsCount = (itemsByCategory.programs ?? []).length;
-  const recipesCount = (itemsByCategory.recipes ?? []).length;
   const showHero = inspoSubView === "overview";
 
   return (
@@ -2169,15 +2137,6 @@ export function InspirationHub({
                 <div className="motus-inspo-hero-stat-text">
                   <span className="motus-inspo-hero-stat-value">{programsCount}</span>
                   <span className="motus-inspo-hero-stat-label">programmer</span>
-                </div>
-              </div>
-              <div className="motus-inspo-hero-stat">
-                <span className="motus-inspo-hero-stat-icon" aria-hidden>
-                  <UtensilsCrossed className="h-4 w-4" />
-                </span>
-                <div className="motus-inspo-hero-stat-text">
-                  <span className="motus-inspo-hero-stat-value">{recipesCount}</span>
-                  <span className="motus-inspo-hero-stat-label">oppskrifter</span>
                 </div>
               </div>
             </div>
@@ -2523,7 +2482,6 @@ export function InspirationHub({
                 }
               }}
               options={[
-                { value: "recipes", label: "Oppskrift" },
                 { value: "programs", label: "Trening / program / ukesplan" },
                 { value: "tips", label: "Råd og tips" },
                 { value: "appGuide", label: "App-guide" },

@@ -11,6 +11,8 @@ import {
   resolveTodayPeriodPlanEntryForHome,
   isMemberOwnedPeriodPlan,
   normalizePeriodSchedulePlan,
+  dedupePeriodPlansById,
+  preferNewerPeriodPlan,
   periodPlanEntryMatchesCompletedProgram,
   readActivePeriodPlanIdForMembers,
   readHiddenPeriodPlanIdsForMembers,
@@ -518,5 +520,24 @@ describe("period plan auto-complete", () => {
         logsForDate: [{ programTitle: "Annet program", status: "Fullført" }],
       }),
     ).toBe(false);
+  });
+});
+
+describe("dedupePeriodPlansById", () => {
+  it("beholder nyeste versjon når samme plan_id finnes på flere member-rader", () => {
+    const older: PeriodSchedulePlan = {
+      ...makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "Gammel økt" } }]),
+      id: "plan-a",
+      trainerSavedAtIso: "2026-05-01T10:00:00.000Z",
+    };
+    const newer: PeriodSchedulePlan = {
+      ...makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "Ny økt fra PT" } }]),
+      id: "plan-a",
+      trainerSavedAtIso: "2026-05-20T14:00:00.000Z",
+    };
+    const result = dedupePeriodPlansById([older, newer]);
+    expect(result).toHaveLength(1);
+    expect(preferNewerPeriodPlan(older, newer).weeklyPlans[0]?.days.monday).toBe("Ny økt fra PT");
+    expect(result[0]?.weeklyPlans[0]?.days.monday).toBe("Ny økt fra PT");
   });
 });

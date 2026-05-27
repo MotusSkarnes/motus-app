@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
+import { DEFAULT_INSPIRATION_RECIPES, DEFAULT_RECIPE_SCALING_BY_ID } from "./defaultInspirationRecipes";
+import type { RecipeScalingMode } from "./recipeMealScaling";
 import { applyCanonicalRecipeBodies } from "./recipeMacros";
 import {
   fetchInspirationItemsForHub,
   INSPIRATION_CHANGED_EVENT,
   loadInspirationItemsFromLocalStorage,
 } from "./inspirationStorage";
+
+const DEFAULT_RECIPE_FEED_ROWS: unknown[] = DEFAULT_INSPIRATION_RECIPES.map((recipe) => ({
+  ...recipe,
+  category: "recipes",
+  kind: "article",
+  author: "Motus",
+}));
 
 export type InspirationRecipeItem = {
   id: string;
@@ -25,19 +34,23 @@ function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
   const imageUrl = String(row.imageUrl ?? "").trim();
   const body = String(row.body ?? row.content ?? "").trim();
   const description = String(row.description ?? "").trim();
+  const scalingMode =
+    (row.scalingMode === "flexible" || row.scalingMode === "fixed" ? row.scalingMode : undefined) ??
+    DEFAULT_RECIPE_SCALING_BY_ID.get(id);
   return {
     id,
     title: String(row.title ?? "").trim() || "Oppskrift",
     description,
     body: body || description,
     tag: String(row.tag ?? "").trim() || "Oppskrift",
+    ...(scalingMode ? { scalingMode } : {}),
     ...(imageUrl ? { imageUrl } : {}),
   };
 }
 
 export function filterRecipeInspirationItems(items: unknown[]): InspirationRecipeItem[] {
   const byId = new Map<string, InspirationRecipeItem>();
-  for (const raw of items) {
+  for (const raw of [...DEFAULT_RECIPE_FEED_ROWS, ...items]) {
     const normalized = normalizeRecipeItem(raw);
     if (!normalized) continue;
     if (!byId.has(normalized.id)) byId.set(normalized.id, normalized);

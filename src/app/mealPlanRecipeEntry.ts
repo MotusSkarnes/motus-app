@@ -1,8 +1,10 @@
 import type { InspirationRecipeItem } from "./inspirationRecipeItems";
 import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import type { FoodItem } from "./foodBankTypes";
-import type { MealPlanFoodEntry } from "./mealPlanTypes";
-import { computeRecipeMacros, extractRecipeIngredientLines } from "./recipeMacros";
+import type { MealPlanFoodEntry, MealPlanTargets } from "./mealPlanTypes";
+import { buildScaledRecipeView, resolveRecipeScalingMode } from "./recipeMealScaling";
+import type { RecipeMealSlot } from "./recipeMealCategory";
+import { extractRecipeIngredientLines } from "./recipeMacros";
 import { uid } from "./storage";
 
 /** Én matplanrad = 1 porsjon oppskrift (100 g brukes som visningsenhet for makroene). */
@@ -27,24 +29,47 @@ function resolveFoodBank(foodItems: FoodItem[]): FoodItem[] {
 export function recipeToMealPlanEntry(
   recipe: InspirationRecipeItem,
   foodItems: FoodItem[],
+  options?: {
+    dailyTargets?: MealPlanTargets;
+    mealSlot?: RecipeMealSlot | null;
+  },
 ): MealPlanFoodEntry {
   const bank = resolveFoodBank(foodItems);
   const body = recipe.body.trim() || recipe.description.trim();
-  const result = body ? computeRecipeMacros(body, bank) : null;
+  const scalingMode = resolveRecipeScalingMode({
+    id: recipe.id,
+    scalingMode: recipe.scalingMode,
+    body,
+    title: recipe.title,
+    tag: recipe.tag,
+  });
+  const scaled = body
+    ? buildScaledRecipeView(body, bank, {
+        scalingMode,
+        dailyTargets: options?.dailyTargets,
+        mealSlot: options?.mealSlot ?? null,
+      })
+    : null;
   const ingredientLines = body ? extractRecipeIngredientLines(body) : [];
 
-  if (result) {
-    const per = result.perServing;
+  if (scaled) {
+    const per = scaled.macros.perServing;
+    const adjustedNote =
+      scaled.adjusted && scaled.targetMealKcal
+        ? ` · tilpasset ca. ${scaled.targetMealKcal} kcal`
+        : "";
     const partial =
-      result.matchedCount < result.ingredientCount
-        ? `${result.matchedCount}/${result.ingredientCount} ingredienser`
+      scaled.macros.matchedCount < scaled.macros.ingredientCount
+        ? `${scaled.macros.matchedCount}/${scaled.macros.ingredientCount} ingredienser`
         : undefined;
     return {
       id: uid("meal-food"),
       foodId: `inspo-recipe-${recipe.id}`,
       foodName: recipe.title,
       grams: RECIPE_PORTION_GRAMS,
-      note: partial ? `Oppskrift · ${partial}` : "Oppskrift · 1 porsjon",
+      note: partial
+        ? `Oppskrift · ${partial}${adjustedNote}`
+        : `Oppskrift · 1 porsjon${adjustedNote}`,
       nutritionPer100g: {
         kcal: Math.round(per.kcal),
         protein: Math.round(per.protein * 10) / 10,
@@ -60,7 +85,7 @@ export function recipeToMealPlanEntry(
 
   const note =
     ingredientLines.length === 0
-      ? "Oppskrift · legg til **Ingredienser** med punktliste i Utforsk for makro"
+      ? "Oppskrift · legg til **Ingredienser** med punktliste under Ernæring for makro"
       : "Oppskrift · makro ikke beregnet (sjekk ingrediensformat)";
 
   return {

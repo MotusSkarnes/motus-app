@@ -456,6 +456,9 @@ function encodeMemberProfileMetrics(
     ...(profileExtensions.notificationPreferences && typeof profileExtensions.notificationPreferences === "object"
       ? { notificationPreferences: profileExtensions.notificationPreferences }
       : {}),
+    ...(profileExtensions.foodAvoidances && typeof profileExtensions.foodAvoidances === "object"
+      ? { foodAvoidances: profileExtensions.foodAvoidances }
+      : {}),
   };
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;
 }

@@ -4,16 +4,22 @@ import { syncMealPlanForMember } from "../app/mealPlanCloud";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import type { MealPlan } from "../app/mealPlanTypes";
 import { Card } from "../app/ui";
+import { pickCanonicalMemberRowForProfile } from "../app/memberOnboarding";
+import type { Member } from "../app/types";
+import { MemberFoodAvoidancesPanel } from "./nutrition/MemberFoodAvoidancesPanel";
 import { MemberMealPlanDashboard } from "./nutrition/MemberMealPlanDashboard";
 import { NutritionHub } from "./nutrition/NutritionHub";
 
 type MemberNutritionViewProps = {
-  memberId: string;
-  memberName: string;
-  memberEmail?: string;
+  member: Member;
+  members: Member[];
+  onSavePersonalGoals: (personalGoals: string) => void;
 };
 
-export function MemberNutritionView({ memberId, memberName, memberEmail }: MemberNutritionViewProps) {
+export function MemberNutritionView({ member, members, onSavePersonalGoals }: MemberNutritionViewProps) {
+  const memberId = member.id;
+  const memberName = member.name;
+  const memberEmail = member.email;
   const [plan, setPlan] = useState<MealPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [cloudSynced, setCloudSynced] = useState(true);
@@ -77,5 +83,19 @@ export function MemberNutritionView({ memberId, memberName, memberEmail }: Membe
     );
   })();
 
-  return <NutritionHub mealPlan={mealPlanPanel} />;
+  const profileMember = pickCanonicalMemberRowForProfile(member, members);
+
+  return (
+    <NutritionHub
+      mealPlan={mealPlanPanel}
+      mealPlanTargets={plan?.targets}
+      avoidances={
+        <MemberFoodAvoidancesPanel
+          memberId={memberId}
+          personalGoals={profileMember.personalGoals ?? member.personalGoals ?? ""}
+          onSavePersonalGoals={onSavePersonalGoals}
+        />
+      }
+    />
+  );
 }

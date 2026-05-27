@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  BookOpen,
   ChevronLeft,
   ChevronRight,
   Clock3,
@@ -55,7 +56,11 @@ import {
 } from "./FoodMicronutrientSection";
 import { FoodImageField } from "./FoodImageField";
 import type { FoodMicronutrientKey } from "../app/foodBankMicronutrients";
+import type { Member } from "../app/types";
+import { TrainerRecipesPanel } from "./nutrition/TrainerRecipesPanel";
 import "../foodbank.css";
+
+type NutritionSection = "foods" | "recipes";
 
 const MAX_FOOD_IMAGE_BYTES = 5 * 1024 * 1024;
 
@@ -81,6 +86,7 @@ type TrainerFoodBankViewProps = {
   trainerName: string;
   trainerOwnerUserId?: string;
   nutritionMembers?: NutritionMemberOption[];
+  recipeMembers?: Member[];
   onOpenMemberMealPlan?: (memberId: string) => void;
 };
 
@@ -196,8 +202,10 @@ export function TrainerFoodBankView({
   trainerName,
   trainerOwnerUserId,
   nutritionMembers = [],
+  recipeMembers = [],
   onOpenMemberMealPlan,
 }: TrainerFoodBankViewProps) {
+  const [section, setSection] = useState<NutritionSection>("foods");
   const [items, setItems] = useState<FoodItem[]>(() => loadFoodBankItems());
   const [favoriteIds, setFavoriteIds] = useState<string[]>(() => loadFavoriteFoodIds());
   const [recentIds, setRecentIds] = useState<string[]>(() => loadRecentFoodIds());
@@ -390,7 +398,7 @@ export function TrainerFoodBankView({
       grams,
     });
     onOpenMemberMealPlan?.(member.id);
-    setMealPlanNotice(`${item.name} sendes til matplanen for ${member.name}.`);
+    setMealPlanNotice(`${item.name} sendes til matplan for ${member.name}.`);
     window.setTimeout(() => setMealPlanNotice(null), 4500);
   }
 
@@ -414,20 +422,55 @@ export function TrainerFoodBankView({
       <header className="motus-foodbank-header">
         <div>
           <h1 className="motus-foodbank-title">Matvarebank</h1>
-          <p className="motus-foodbank-subtitle">Din komplette database med matvarer og næringsinnhold.</p>
+          <p className="motus-foodbank-subtitle">
+            {section === "foods"
+              ? "Din database med matvarer og næringsinnhold."
+              : "Oppskrifter for medlemmer og matplan — ikke i Utforsk."}
+          </p>
         </div>
-        <div className="motus-foodbank-header-actions">
-          <GradientButton onClick={openCreateForm} className="motus-foodbank-add-btn">
-            <Plus className="h-4 w-4" aria-hidden />
-            Legg til matvare
-          </GradientButton>
-          <OutlineButton onClick={() => setImportOpen(true)}>
-            <Upload className="h-4 w-4" aria-hidden />
-            Importer matvarer
-          </OutlineButton>
-        </div>
+        {section === "foods" ? (
+          <div className="motus-foodbank-header-actions">
+            <GradientButton onClick={openCreateForm} className="motus-foodbank-add-btn">
+              <Plus className="h-4 w-4" aria-hidden />
+              Legg til matvare
+            </GradientButton>
+            <OutlineButton onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4" aria-hidden />
+              Importer matvarer
+            </OutlineButton>
+          </div>
+        ) : null}
       </header>
 
+      <div className="motus-foodbank-chips scrollbar-none" role="tablist" aria-label="Matvarebank-seksjoner">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={section === "foods"}
+          className={`motus-foodbank-chip ${section === "foods" ? "is-active" : ""}`}
+          onClick={() => setSection("foods")}
+        >
+          <Grid3X3 className="h-3.5 w-3.5" aria-hidden />
+          Matvarer
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={section === "recipes"}
+          className={`motus-foodbank-chip ${section === "recipes" ? "is-active" : ""}`}
+          onClick={() => setSection("recipes")}
+        >
+          <BookOpen className="h-3.5 w-3.5" aria-hidden />
+          Oppskrifter
+        </button>
+      </div>
+
+      {section === "recipes" ? (
+        <TrainerRecipesPanel members={recipeMembers} authorName={trainerName} />
+      ) : null}
+
+      {section !== "foods" ? null : (
+        <>
       {mealPlanNotice ? <div className="motus-foodbank-notice">{mealPlanNotice}</div> : null}
 
       <div className="motus-foodbank-toolbar">
@@ -637,6 +680,8 @@ export function TrainerFoodBankView({
           </aside>
         ) : null}
       </div>
+        </>
+      ) : null}
 
       {filterOpen ? (
         <div className="motus-foodbank-modal-backdrop" role="presentation" onClick={() => setFilterOpen(false)}>

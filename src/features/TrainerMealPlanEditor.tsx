@@ -23,11 +23,15 @@ import {
 } from "../app/mealPlanTrainerMacros";
 import { buildDefaultFoodBankItems } from "../app/foodBankSeed";
 import { formatMacro } from "../app/foodBankTypes";
+import { findRecipeFoodAvoidanceConflicts } from "../app/memberFoodAvoidances";
 import { computeRecipeMacros } from "../app/recipeMacros";
+import { RecipeAvoidanceWarning } from "../components/RecipeAvoidanceWarning";
 import { RecipeIngredientList } from "../components/RecipeIngredientList";
 import { RecipeMacroBlocks } from "../components/RecipeMacroBlocks";
 import { MealMacroMiniBar, TrainerMealPlanMacroPanel } from "./TrainerMealPlanMacroPanel";
 import { recipeToMealPlanEntry } from "../app/mealPlanRecipeEntry";
+import { resolveRecipeMealSlot } from "../app/recipeMealCategory";
+import { buildScaledRecipeView, resolveRecipeScalingMode } from "../app/recipeMealScaling";
 import type { MealPlan, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "../app/mealPlanTypes";
 import type { FoodItem } from "../app/foodBankTypes";
 import { useFoodBankItems } from "../app/useFoodBankItems";
@@ -39,6 +43,7 @@ import "../foodbank.css";
 type TrainerMealPlanEditorProps = {
   memberId: string;
   memberName: string;
+  memberPersonalGoals?: string;
   trainerOwnerUserId?: string;
 };
 
@@ -54,6 +59,7 @@ type RecipePickerState = MealPickerTarget | null;
 export function TrainerMealPlanEditor({
   memberId,
   memberName,
+  memberPersonalGoals = "",
   trainerOwnerUserId,
 }: TrainerMealPlanEditorProps) {
   const foodItems = useFoodBankItems();
@@ -202,10 +208,31 @@ export function TrainerMealPlanEditor({
     [recipeItems, recipePreviewId],
   );
 
-  const previewRecipeMacros = useMemo(
-    () => (previewRecipe ? computeRecipeMacros(previewRecipe.body, foodItemsForMacros) : null),
-    [previewRecipe, foodItemsForMacros],
-  );
+  const previewRecipeScaled = useMemo(() => {
+    if (!previewRecipe) return null;
+    const mealSlot = resolveRecipeMealSlot(previewRecipe.tag, previewRecipe.title, previewRecipe.description);
+    const scalingMode = resolveRecipeScalingMode({
+      id: previewRecipe.id,
+      scalingMode: previewRecipe.scalingMode,
+      body: previewRecipe.body,
+      title: previewRecipe.title,
+      tag: previewRecipe.tag,
+    });
+    return buildScaledRecipeView(previewRecipe.body, foodItemsForMacros, {
+      scalingMode,
+      dailyTargets: plan?.targets,
+      mealSlot,
+    });
+  }, [previewRecipe, foodItemsForMacros, plan?.targets]);
+
+  const previewRecipeMacros = previewRecipeScaled?.macros ?? null;
+
+  const previewRecipeAvoidanceConflicts = useMemo(() => {
+    if (!previewRecipe) return [];
+    return findRecipeFoodAvoidanceConflicts(previewRecipe.body, foodItemsForMacros, [
+      { id: memberId, name: memberName, personalGoals: memberPersonalGoals, isActive: true },
+    ]);
+  }, [foodItemsForMacros, memberId, memberName, memberPersonalGoals, previewRecipe]);
 
   const gramPreviewFood = useMemo(() => {
     if (!foodPicker) return null;
@@ -319,7 +346,11 @@ export function TrainerMealPlanEditor({
       setSaveStatus("Fant ikke oppskriften. Prøv å laste siden på nytt.");
       return;
     }
-    const entry = recipeToMealPlanEntry(recipe, foodItems);
+    const mealSlot = resolveRecipeMealSlot(recipe.tag, recipe.title, recipe.description);
+    const entry = recipeToMealPlanEntry(recipe, foodItems, {
+      dailyTargets: plan?.targets,
+      mealSlot,
+    });
     appendEntryToMeal(target, entry, { flushCloud: true });
     setRecipePicker(null);
     setRecipeSearch("");
@@ -328,7 +359,7 @@ export function TrainerMealPlanEditor({
     setSaveStatus(
       macroOk
         ? `${recipe.title} er lagt til i måltidet.`
-        : `${recipe.title} er lagt til uten makro — bruk **Ingredienser**-liste i Utforsk for automatisk beregning.`,
+        : `${recipe.title} er lagt til uten makro — bruk **Ingredienser**-liste under Ernæring for automatisk beregning.`,
     );
   }
 
@@ -757,7 +788,7 @@ export function TrainerMealPlanEditor({
             </div>
             <div className="motus-foodbank-modal-body space-y-3">
               <p className="text-xs text-slate-600">
-                Oppskrifter fra Utforsk legges inn som 1 porsjon med beregnet makro fra ingredienslisten.
+                Oppskrifter fra Ernæring legges inn som 1 porsjon med beregnet makro fra ingredienslisten.
               </p>
               <div className="flex flex-wrap gap-2">
                 <OutlineButton
@@ -792,7 +823,7 @@ export function TrainerMealPlanEditor({
                     <p className="text-sm text-slate-500">Laster oppskrifter …</p>
                   ) : filteredRecipes.length === 0 ? (
                     <p className="text-sm text-slate-500">
-                      Ingen oppskrifter funnet. Legg ut oppskrifter under Utforsk først.
+                      Ingen oppskrifter funnet. Legg ut oppskrifter under Ernæring først.
                     </p>
                   ) : (
                     filteredRecipes.map((recipe) => {
@@ -829,7 +860,30 @@ export function TrainerMealPlanEditor({
                           <p className="mt-1 text-xs text-slate-600">{previewRecipe.description}</p>
                         ) : null}
                       </div>
-                      <RecipeIngredientList body={previewRecipe.body} foodItems={foodItemsForMacros} />
+                      <RecipeIngredientList
+                        body={previewRecipe.body}
+                        foodItems={foodItemsForMacros}
+                        dailyTargets={plan?.targets}
+                        mealSlot={resolveRecipeMealSlot(
+                          previewRecipe.tag,
+                          previewRecipe.title,
+                          previewRecipe.description,
+                        )}
+                        scalingMode={resolveRecipeScalingMode({
+                          id: previewRecipe.id,
+                          scalingMode: previewRecipe.scalingMode,
+                          body: previewRecipe.body,
+                          title: previewRecipe.title,
+                          tag: previewRecipe.tag,
+                        })}
+                        recipeId={previewRecipe.id}
+                      />
+                      {previewRecipeAvoidanceConflicts.length > 0 ? (
+                        <RecipeAvoidanceWarning
+                          conflicts={previewRecipeAvoidanceConflicts}
+                          title={`${memberName} unngår ingredienser i denne oppskriften`}
+                        />
+                      ) : null}
                       {previewRecipeMacros ? <RecipeMacroBlocks result={previewRecipeMacros} /> : null}
                       <GradientButton
                         type="button"

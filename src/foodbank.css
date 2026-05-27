@@ -1716,6 +1716,70 @@
   }
 }
 
+.motus-food-avoidances-panel {
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+.motus-food-avoidances-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.motus-food-avoidances-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(48, 227, 190, 0.35);
+  background: rgba(48, 227, 190, 0.1);
+  padding: 0.25rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0f766e;
+}
+
+.motus-food-avoidances-chip-remove {
+  display: inline-flex;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.motus-food-avoidances-search-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 10rem;
+  overflow-y: auto;
+}
+
+.motus-food-avoidances-search-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.motus-food-avoidances-search-item:hover {
+  background: rgba(48, 227, 190, 0.08);
+}
+
 .motus-recipe-picker-preview {
   border-radius: 0.85rem;
   border: 1px solid rgba(15, 23, 42, 0.08);

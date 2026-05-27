@@ -453,6 +453,55 @@ function periodPlanRowsToByMemberId(rows: Array<{ member_id: string; plan: unkno
 
 export type UpsertMemberPeriodPlanResult = { ok: boolean; message: string };
 
+function scoreMemberRowForPeriodPlanCanonical(row: {
+  id: string;
+  customer_type?: string | null;
+  membership_type?: string | null;
+  nutrition_access?: boolean | null;
+  personal_goals?: string | null;
+  is_active?: boolean | null;
+}): number {
+  let score = 0;
+  const id = String(row.id ?? "").trim();
+  if (id.startsWith("member-")) score += 20_000;
+  else if (!/^m\d+$/i.test(id)) score += 10_000;
+  if (row.is_active !== false) score += 5_000;
+  if (row.nutrition_access === true) score += 2_000;
+  if (String(row.customer_type ?? "").trim() === "PT-kunde") score += 1_000;
+  if (String(row.membership_type ?? "").trim() === "Premium") score += 500;
+  const goals = String(row.personal_goals ?? "");
+  if (goals.includes("onboardingCompletedAt")) score += 80;
+  return score;
+}
+
+/** Én kanonisk members.id for lagring — unngår duplikat-rader (m1 + member-nmn08uu) med ulikt innhold. */
+async function resolveCanonicalMemberIdForPeriodPlanStorage(
+  memberIds: string[],
+  hints?: { targetEmail?: string },
+): Promise<string> {
+  const expanded = new Set<string>();
+  for (const rawId of memberIds) {
+    const trimmed = rawId.trim();
+    if (!trimmed) continue;
+    expanded.add(trimmed);
+    const related = await resolveRelatedMemberIds(trimmed, hints);
+    related.forEach((id) => expanded.add(id));
+  }
+  const ids = Array.from(expanded).filter((id) => id && id !== "__template__" && !id.startsWith("auth-"));
+  if (!ids.length) return memberIds.map((id) => id.trim()).find(Boolean) ?? "";
+  if (ids.length === 1) return ids[0];
+  if (!supabaseClient) return ids[0];
+  const { data: rows, error } = await supabaseClient
+    .from("members")
+    .select("id, customer_type, membership_type, nutrition_access, personal_goals, is_active, created_at")
+    .in("id", ids);
+  if (error || !rows?.length) return ids[0];
+  const sorted = [...rows].sort(
+    (a, b) => scoreMemberRowForPeriodPlanCanonical(b as { id: string }) - scoreMemberRowForPeriodPlanCanonical(a as { id: string }),
+  );
+  return String((sorted[0] as { id?: string }).id ?? "").trim() || ids[0];
+}
+
 export async function upsertMemberPeriodPlansForTrainer(
   memberIds: string[],
   plan: PeriodSchedulePlan,
@@ -465,35 +514,33 @@ export async function upsertMemberPeriodPlansForTrainer(
   if (!sessionOwnerUserId) {
     return { ok: false, message: "Kunne ikke lagre periodeplan: logg inn på nytt som trener." };
   }
-  const {
-    data: { session },
-  } = await supabaseClient.auth.getSession();
-  const sessionUser = session?.user ?? null;
   const trimmedIds = Array.from(new Set(memberIds.map((id) => id.trim()).filter(Boolean)));
   if (!trimmedIds.length) {
     return { ok: false, message: "Mangler kunde-ID for periodeplan." };
   }
 
-  const rows: Array<{
-    member_id: string;
-    plan_id: string;
-    owner_user_id: string;
-    plan: Record<string, unknown>;
-  }> = [];
-
-  for (const rawMemberId of trimmedIds) {
-    const memberId = await resolveCanonicalMemberIdForPersistence(rawMemberId, hints, sessionUser);
-    const ownerUserId =
-      (await resolveOwnerUserIdForMember(memberId, sessionOwnerUserId)) ?? sessionOwnerUserId;
-    rows.push({
-      member_id: memberId,
-      plan_id: plan.id,
-      owner_user_id: ownerUserId,
-      plan: plan as unknown as Record<string, unknown>,
-    });
+  const canonicalMemberId = await resolveCanonicalMemberIdForPeriodPlanStorage(trimmedIds, hints);
+  if (!canonicalMemberId) {
+    return { ok: false, message: "Mangler kunde-ID for periodeplan." };
   }
+  const ownerUserId =
+    (await resolveOwnerUserIdForMember(canonicalMemberId, sessionOwnerUserId)) ?? sessionOwnerUserId;
+  const planPayload = {
+    ...plan,
+    trainerSavedAtIso: plan.trainerSavedAtIso?.trim() || new Date().toISOString(),
+  };
 
-  const { error } = await supabaseClient.from("member_period_plans").upsert(rows, { onConflict: "member_id,plan_id" });
+  const { error } = await supabaseClient.from("member_period_plans").upsert(
+    [
+      {
+        member_id: canonicalMemberId,
+        plan_id: plan.id,
+        owner_user_id: ownerUserId,
+        plan: planPayload as unknown as Record<string, unknown>,
+      },
+    ],
+    { onConflict: "member_id,plan_id" },
+  );
   if (error) {
     console.warn("Supabase member_period_plans upsert failed:", error.message);
     const detail = error.message.trim();
@@ -512,10 +559,21 @@ export async function upsertMemberPeriodPlansForTrainer(
     }
     return { ok: false, message: `Kunne ikke lagre periodeplan: ${detail || "Ukjent feil."}` };
   }
-  void notifyMemberPeriodPlanPush(
-    rows.map((row) => row.member_id),
-    plan,
-  );
+
+  const relatedIds = await resolveRelatedMemberIds(canonicalMemberId, hints);
+  const duplicateMemberIds = relatedIds.filter((id) => id !== canonicalMemberId);
+  if (duplicateMemberIds.length > 0) {
+    const { error: cleanupError } = await supabaseClient
+      .from("member_period_plans")
+      .delete()
+      .eq("plan_id", plan.id)
+      .in("member_id", duplicateMemberIds);
+    if (cleanupError) {
+      console.warn("Supabase member_period_plans duplicate cleanup failed:", cleanupError.message);
+    }
+  }
+
+  void notifyMemberPeriodPlanPush([canonicalMemberId], planPayload);
   return { ok: true, message: "Periodeplan lagret." };
 }
 
