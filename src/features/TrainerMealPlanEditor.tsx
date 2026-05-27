@@ -6,9 +6,11 @@ import {
   persistMealPlanLocalAndScheduleCloud,
   syncMealPlanForMember,
 } from "../app/mealPlanCloud";
+import { consumeMealPlanPendingFood } from "../app/mealPlanPendingFood";
 import { computeMealMacros, formatMacroTotals } from "../app/mealPlanMacros";
 import type { MealPlan, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "../app/mealPlanTypes";
 import type { FoodItem } from "../app/foodBankTypes";
+import { useFoodBankItems } from "../app/useFoodBankItems";
 import { uid } from "../app/storage";
 import { GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { MealPlanDisplay } from "./MealPlanDisplay";
@@ -18,7 +20,6 @@ type TrainerMealPlanEditorProps = {
   memberId: string;
   memberName: string;
   trainerOwnerUserId?: string;
-  foodItems: FoodItem[];
 };
 
 type FoodPickerState = {
@@ -30,8 +31,8 @@ export function TrainerMealPlanEditor({
   memberId,
   memberName,
   trainerOwnerUserId,
-  foodItems,
 }: TrainerMealPlanEditorProps) {
+  const foodItems = useFoodBankItems();
   const [plan, setPlan] = useState<MealPlan | null>(null);
   const [activeDayId, setActiveDayId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -40,14 +41,52 @@ export function TrainerMealPlanEditor({
   const [foodSearch, setFoodSearch] = useState("");
   const [foodGrams, setFoodGrams] = useState("100");
 
+  const applyPendingFood = useCallback(
+    (currentPlan: MealPlan) => {
+      const pending = consumeMealPlanPendingFood(memberId);
+      if (!pending) return currentPlan;
+      const day = currentPlan.days[0];
+      const meal = day?.meals[0];
+      if (!day || !meal) return currentPlan;
+      const grams =
+        Number.isFinite(pending.grams) && pending.grams > 0
+          ? Math.round(pending.grams)
+          : pending.food.portionGrams || 100;
+      const entry: MealPlanFoodEntry = {
+        id: uid("meal-food"),
+        foodId: pending.food.id,
+        foodName: pending.food.name,
+        grams,
+        nutritionPer100g: { ...pending.food.nutritionPer100g },
+      };
+      const nextDays = currentPlan.days.map((row) =>
+        row.id === day.id
+          ? {
+              ...row,
+              meals: row.meals.map((rowMeal) =>
+                rowMeal.id === meal.id ? { ...rowMeal, items: [...rowMeal.items, entry] } : rowMeal,
+              ),
+            }
+          : row,
+      );
+      setSaveStatus(`${pending.food.name} er lagt til i ${meal.name}.`);
+      return { ...currentPlan, days: nextDays };
+    },
+    [memberId],
+  );
+
   const reload = useCallback(async () => {
     if (!memberId.trim()) return;
     setLoading(true);
     const result = await syncMealPlanForMember(memberId, trainerOwnerUserId ?? "");
-    setPlan(result.plan);
-    setActiveDayId((prev) => prev || result.plan.days[0]?.id || "");
+    const withPending = applyPendingFood(result.plan);
+    setPlan(withPending);
+    if (withPending !== result.plan) {
+      persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, withPending);
+    }
+    setActiveDayId((prev) => prev || withPending.days[0]?.id || "");
     setLoading(false);
-  }, [memberId, trainerOwnerUserId]);
+  }, [memberId, trainerOwnerUserId, applyPendingFood]);
 
   useEffect(() => {
     void reload();

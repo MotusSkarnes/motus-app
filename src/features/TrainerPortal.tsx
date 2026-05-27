@@ -16,7 +16,6 @@ import {
   getArchiveTombstones,
   MEMBER_ARCHIVE_TOMBSTONE_EVENT,
 } from "../app/memberArchiveTombstone";
-import { loadFoodBankItems } from "../app/foodBankStorage";
 import { memberHasNutritionAccess } from "../app/memberNutritionAccess";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClear";
@@ -311,6 +310,7 @@ type TrainerPortalProps = {
   openCustomerMessagesSignal?: number;
   setOpenCustomerMessagesSignal?: Dispatch<SetStateAction<number>>;
   openCustomerOverviewSignal?: number;
+  openCustomerNutritionSignal?: number;
   memberAvatarById?: Record<string, string>;
   setMemberAvatarUrlForMember?: (memberId: string, avatarUrl: string) => void;
   isLocalDemoSession?: boolean;
@@ -707,6 +707,7 @@ function pickFirstName(value: unknown): string {
     openCustomerMessagesSignal = 0,
     setOpenCustomerMessagesSignal,
     openCustomerOverviewSignal = 0,
+    openCustomerNutritionSignal = 0,
     memberAvatarById = {},
     setMemberAvatarUrlForMember,
     isLocalDemoSession = false,
@@ -1839,6 +1840,11 @@ function pickFirstName(value: unknown): string {
     if (!selectedMemberId || selectedMemberId === "__template__") return;
     setCustomerSubTab("overview");
   }, [openCustomerOverviewSignal, selectedMemberId]);
+
+  useEffect(() => {
+    if (!selectedMemberId || selectedMemberId === "__template__") return;
+    setCustomerSubTab("nutrition");
+  }, [openCustomerNutritionSignal, selectedMemberId]);
 
   useEffect(() => {
     if (!filteredWorkoutLogs.length) {
@@ -6402,7 +6408,6 @@ function pickFirstName(value: unknown): string {
                     memberId={selectedMember.id}
                     memberName={selectedMemberProfile?.name ?? selectedMember.name}
                     trainerOwnerUserId={currentTrainerOwnerUserId}
-                    foodItems={loadFoodBankItems()}
                   />
                 ) : null}
 

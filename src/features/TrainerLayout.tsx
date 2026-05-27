@@ -1,4 +1,5 @@
-import { useState, type ComponentProps, type Dispatch, type SetStateAction } from "react";
+import { useMemo, useState, type ComponentProps, type Dispatch, type SetStateAction } from "react";
+import { memberRecordIsActive } from "../services/memberAccessRules";
 import {
   Apple,
   BarChart3,
@@ -77,6 +78,8 @@ type TrainerLayoutProps = {
   setOpenCustomerMessagesSignal: Dispatch<SetStateAction<number>>;
   openCustomerOverviewSignal: number;
   setOpenCustomerOverviewSignal: Dispatch<SetStateAction<number>>;
+  openCustomerNutritionSignal: number;
+  setOpenCustomerNutritionSignal: Dispatch<SetStateAction<number>>;
   memberAvatarById: Record<string, string>;
   setMemberAvatarUrlForMember: ComponentProps<typeof TrainerPortal>["setMemberAvatarUrlForMember"];
   isLocalDemoSession: boolean;
@@ -154,6 +157,8 @@ export function TrainerLayout({
   setOpenCustomerMessagesSignal,
   openCustomerOverviewSignal,
   setOpenCustomerOverviewSignal,
+  openCustomerNutritionSignal,
+  setOpenCustomerNutritionSignal,
   memberAvatarById,
   setMemberAvatarUrlForMember,
   isLocalDemoSession,
@@ -183,6 +188,20 @@ export function TrainerLayout({
       return;
     }
     setTrainerTab(item.key);
+  };
+
+  const nutritionMembers = useMemo(
+    () =>
+      appState.members
+        .filter((member) => memberRecordIsActive(member) && member.nutritionAccess === true)
+        .map((member) => ({ id: member.id, name: member.name.trim() || member.email.trim() || "Kunde" }))
+        .sort((a, b) => a.name.localeCompare(b.name, "nb")),
+    [appState.members],
+  );
+
+  const openMemberMealPlan = (memberId: string) => {
+    patchState({ trainerTab: "customers", selectedMemberId: memberId });
+    setOpenCustomerNutritionSignal((value) => value + 1);
   };
 
   const trainerPortalProps: ComponentProps<typeof TrainerPortal> = {
@@ -226,6 +245,7 @@ export function TrainerLayout({
     openCustomerMessagesSignal,
     setOpenCustomerMessagesSignal,
     openCustomerOverviewSignal,
+    openCustomerNutritionSignal,
     memberAvatarById,
     setMemberAvatarUrlForMember,
     isLocalDemoSession,
@@ -294,6 +314,8 @@ export function TrainerLayout({
               <TrainerFoodBankView
                 trainerName={appState.currentUser?.name ?? "Motus PT"}
                 trainerOwnerUserId={appState.currentUser?.id}
+                nutritionMembers={nutritionMembers}
+                onOpenMemberMealPlan={openMemberMealPlan}
               />
             ) : trainerTab === "badges" ? (
               <TrainerBadgeCatalog />

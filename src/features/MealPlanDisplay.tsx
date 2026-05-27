@@ -1,4 +1,10 @@
-import { computeDayMacros, computeMealMacros, formatMacroTotals, formatTargetsSummary } from "../app/mealPlanMacros";
+import {
+  computeDayMacros,
+  computeEntryMacros,
+  computeMealMacros,
+  formatMacroTotals,
+  formatTargetsSummary,
+} from "../app/mealPlanMacros";
 import type { MealPlan, MealPlanDay } from "../app/mealPlanTypes";
 import { Card } from "../app/ui";
 import "../foodbank.css";
@@ -78,6 +84,9 @@ function MealPlanDayPanel({ day }: { day: MealPlanDay }) {
                     <div>
                       <div className="font-medium text-slate-800">{item.foodName}</div>
                       <div className="text-xs text-slate-500">{item.grams} g{item.note ? ` · ${item.note}` : ""}</div>
+                    </div>
+                    <div className="shrink-0 text-right text-[10px] font-medium text-slate-500">
+                      {formatMacroTotals(computeEntryMacros(item))}
                     </div>
                   </li>
                 ))}

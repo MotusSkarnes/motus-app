@@ -38,7 +38,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-const requiredTables = ["members", "chat_messages", "training_programs", "workout_logs"];
+const requiredTables = [
+  "members",
+  "chat_messages",
+  "training_programs",
+  "workout_logs",
+  "member_meal_plans",
+  "trainer_food_bank",
+  "shared_food_bank_items",
+];
 
 async function checkTable(tableName) {
   const { error } = await supabase.from(tableName).select("*", { head: true, count: "exact" });
