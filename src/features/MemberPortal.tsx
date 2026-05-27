@@ -130,6 +130,7 @@ import {
   writeActivePeriodPlanIdForMembers,
   buildPeriodPlanPlannedEntriesByMonth,
   parsePeriodPlanStartDate,
+  periodPlanContentRevisionMs,
   resolvePeriodPlanPlannedDate,
   resolvePeriodPlanWeek,
   resolveTodayPeriodPlanEntryForHome,
@@ -1443,7 +1444,11 @@ export function MemberPortal(props: MemberPortalProps) {
   const periodPlans = useMemo(() => {
     const localByMember = readPeriodPlansByMemberId();
     const combined = mergedPeriodPlanListForMember(relatedMemberIds, localByMember, remoteMemberPeriodPlanRows);
-    return combined.sort((a, b) => (parseDateOnly(b.startDate)?.getTime() ?? 0) - (parseDateOnly(a.startDate)?.getTime() ?? 0));
+    return combined.sort(
+      (a, b) =>
+        periodPlanContentRevisionMs(b) - periodPlanContentRevisionMs(a) ||
+        (parseDateOnly(b.startDate)?.getTime() ?? 0) - (parseDateOnly(a.startDate)?.getTime() ?? 0),
+    );
   }, [relatedMemberIds, remoteMemberPeriodPlanRows, periodPlanStorageRevision]);
   const hiddenPeriodPlanIds = useMemo(
     () => readHiddenPeriodPlanIdsForMembers(relatedMemberIds),

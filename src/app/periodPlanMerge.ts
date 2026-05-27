@@ -473,6 +473,53 @@ export function dedupePeriodPlansById(plans: PeriodSchedulePlan[]): PeriodSchedu
   return Array.from(byId.values());
 }
 
+/** Nyeste PT-lagring / startdato først — samme prioritering som medlem ser. */
+export function sortPeriodPlansByRecency(plans: PeriodSchedulePlan[]): PeriodSchedulePlan[] {
+  return [...plans].sort((a, b) => {
+    const rev = periodPlanContentRevisionMs(b) - periodPlanContentRevisionMs(a);
+    if (rev !== 0) return rev;
+    return planStartTimeMs(b) - planStartTimeMs(a);
+  });
+}
+
+function scoreMemberRowForCanonical(member: { id: string; nutritionAccess?: boolean; customerType?: string; membershipType?: string; personalGoals?: string; isActive?: boolean }): number {
+  let score = 0;
+  const id = member.id.trim();
+  if (id.startsWith("member-")) score += 20_000;
+  else if (!/^m\d+$/i.test(id)) score += 10_000;
+  if (member.isActive !== false) score += 5_000;
+  if (member.nutritionAccess === true) score += 2_000;
+  if (member.customerType === "PT-kunde") score += 1_000;
+  if (member.membershipType === "Premium") score += 500;
+  if (String(member.personalGoals ?? "").includes("onboardingCompletedAt")) score += 80;
+  return score;
+}
+
+/** Velg én members.id for lagring (unngå m1 + member-nmn08uu duplikat). */
+export function pickCanonicalMemberIdForPeriodPlans(
+  relatedMemberIds: string[],
+  members: Array<{ id: string; nutritionAccess?: boolean; customerType?: string; membershipType?: string; personalGoals?: string; isActive?: boolean }>,
+): string {
+  const idSet = new Set(relatedMemberIds.map((id) => id.trim()).filter(Boolean));
+  const rows = members.filter((member) => idSet.has(member.id.trim()));
+  if (!rows.length) return relatedMemberIds.find((id) => id.trim()) ?? "";
+  const sorted = [...rows].sort((a, b) => scoreMemberRowForCanonical(b) - scoreMemberRowForCanonical(a));
+  return sorted[0]?.id.trim() ?? "";
+}
+
+/** Utelat demo-m1 når kanonisk member-* finnes for samme kunde. */
+export function memberIdsForPeriodPlanMerge(relatedMemberIds: string[], canonicalMemberId: string): string[] {
+  const canonical = canonicalMemberId.trim();
+  if (!canonical.startsWith("member-")) return relatedMemberIds;
+  return relatedMemberIds.filter((id) => {
+    const trimmed = id.trim();
+    if (!trimmed) return false;
+    if (trimmed === canonical) return true;
+    if (/^m\d+$/i.test(trimmed)) return false;
+    return true;
+  });
+}
+
 function planStartTimeMs(plan: PeriodSchedulePlan): number {
   const value = plan.startDate?.trim() ?? "";
   if (!value) return 0;

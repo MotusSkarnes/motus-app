@@ -67,5 +67,9 @@ export function formatTargetsSummary(targets?: MealPlanTargets): string | null {
   if (targets.protein) parts.push(`P ${formatMacro(targets.protein)}`);
   if (targets.carbs) parts.push(`K ${formatMacro(targets.carbs)}`);
   if (targets.fat) parts.push(`F ${formatMacro(targets.fat)}`);
+  if (targets.macroSplitPct) {
+    const { protein, carbs, fat } = targets.macroSplitPct;
+    parts.push(`fordeling ${protein}/${carbs}/${fat} %`);
+  }
   return parts.length ? parts.join(" · ") : null;
 }

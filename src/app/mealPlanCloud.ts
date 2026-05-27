@@ -24,6 +24,16 @@ function parseTargets(value: unknown): MealPlanTargets | undefined {
   if (typeof row.protein === "number") targets.protein = row.protein;
   if (typeof row.carbs === "number") targets.carbs = row.carbs;
   if (typeof row.fat === "number") targets.fat = row.fat;
+  const split = row.macroSplitPct ?? row.macro_split_pct;
+  if (split && typeof split === "object") {
+    const s = split as Record<string, unknown>;
+    const protein = Number(s.protein);
+    const carbs = Number(s.carbs);
+    const fat = Number(s.fat);
+    if ([protein, carbs, fat].every((n) => Number.isFinite(n))) {
+      targets.macroSplitPct = { protein, carbs, fat };
+    }
+  }
   return Object.keys(targets).length ? targets : undefined;
 }
 

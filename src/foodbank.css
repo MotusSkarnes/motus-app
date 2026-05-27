@@ -1908,6 +1908,79 @@
   color: #94a3b8;
 }
 
+.motus-macro-split {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(48, 227, 190, 0.25);
+  background: rgba(255, 255, 255, 0.85);
+  padding: 0.65rem 0.75rem;
+}
+
+.motus-macro-split-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.motus-macro-split-total {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #0f766e;
+}
+
+.motus-macro-split-grid {
+  display: grid;
+  gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .motus-macro-split-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.motus-macro-split-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.motus-macro-split-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.motus-macro-split-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.motus-macro-split-input {
+  max-width: 4rem;
+  text-align: right;
+}
+
+.motus-macro-split-suffix {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.motus-macro-split-range {
+  width: 100%;
+  accent-color: #30e3be;
+}
+
+.motus-macro-split-hint {
+  margin-top: 0.5rem;
+  font-size: 0.625rem;
+  color: #64748b;
+}
+
 .motus-pt-meal-budget {
   margin-top: 0.35rem;
   display: flex;

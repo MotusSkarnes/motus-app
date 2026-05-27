@@ -681,7 +681,7 @@ export function TrainerFoodBankView({
         ) : null}
       </div>
         </>
-      ) : null}
+      )}
 
       {filterOpen ? (
         <div className="motus-foodbank-modal-backdrop" role="presentation" onClick={() => setFilterOpen(false)}>

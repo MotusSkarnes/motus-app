@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  adjustMacroSplit,
+  applyMacroSplitToTargets,
+  macroSplitFromTargets,
+  resolveMacroSplit,
+} from "../app/mealPlanMacroSplit";
+import type { MacroSplitField } from "../app/mealPlanMacroSplit";
 import { balanceMealPlanTargets, describeTargetBalance } from "../app/mealPlanTargetBalance";
 import type { MacroTargetField } from "../app/mealPlanTargetBalance";
+import { MacroSplitPercentControls } from "../components/MacroSplitPercentControls";
 import { Copy, Plus, Save, Search, Soup, Trash2, X } from "lucide-react";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import {
@@ -290,6 +298,30 @@ export function TrainerMealPlanEditor({
     return describeTargetBalance(plan.targets, derivedTargetField);
   }, [plan?.targets, derivedTargetField]);
 
+  const macroSplit = useMemo(() => resolveMacroSplit(plan?.targets), [plan?.targets]);
+
+  function updateMacroSplit(field: MacroSplitField, value: string) {
+    if (!plan) return;
+    const parsed = Number(value.replace(",", "."));
+    const current = resolveMacroSplit(plan.targets);
+    const nextSplit =
+      value.trim() && Number.isFinite(parsed) ? adjustMacroSplit(current, field, parsed) : current;
+
+    const base: MealPlanTargets = { ...(plan.targets ?? {}), macroSplitPct: nextSplit };
+    const hasKcal = typeof base.kcal === "number" && base.kcal > 0;
+    const nextTargets = hasKcal ? applyMacroSplitToTargets(base, nextSplit) : base;
+
+    if (hasKcal) {
+      setDerivedTargetField(null);
+      setTargetBalanceWarning(null);
+    }
+
+    updatePlan({
+      ...plan,
+      targets: Object.keys(nextTargets).length ? nextTargets : undefined,
+    });
+  }
+
   function updateTargets(field: keyof MealPlanTargets, value: string) {
     if (!plan) return;
     const parsed = Number(value.replace(",", "."));
@@ -313,11 +345,27 @@ export function TrainerMealPlanEditor({
     }
 
     const balanced = balanceMealPlanTargets(nextTargets, field);
-    setDerivedTargetField(balanced.derivedField);
-    setTargetBalanceWarning(balanced.warning);
+    let finalTargets = balanced.targets;
+    const hasKcal = typeof finalTargets.kcal === "number" && finalTargets.kcal > 0;
+
+    if (hasKcal && field === "kcal") {
+      const split = resolveMacroSplit(finalTargets);
+      finalTargets = applyMacroSplitToTargets({ ...finalTargets, macroSplitPct: split }, split);
+      setDerivedTargetField(null);
+      setTargetBalanceWarning(null);
+    } else if (hasKcal && (field === "protein" || field === "carbs" || field === "fat")) {
+      const split = macroSplitFromTargets(finalTargets);
+      if (split) finalTargets = { ...finalTargets, macroSplitPct: split };
+      setDerivedTargetField(balanced.derivedField);
+      setTargetBalanceWarning(balanced.warning);
+    } else {
+      setDerivedTargetField(balanced.derivedField);
+      setTargetBalanceWarning(balanced.warning);
+    }
+
     updatePlan({
       ...plan,
-      targets: Object.keys(balanced.targets).length ? balanced.targets : undefined,
+      targets: Object.keys(finalTargets).length ? finalTargets : undefined,
     });
   }
 
@@ -480,9 +528,12 @@ export function TrainerMealPlanEditor({
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
         <div className="text-xs font-medium text-slate-700">Daglige makromål (valgfritt)</div>
         <p className="mt-1 text-[11px] text-slate-500">
-          Skriv kalorier og to makroer — den tredje beregnes automatisk (4 kcal/g protein og karb, 9 kcal/g fett).
+          Sett kalorier og makrofordeling i prosent, eller skriv gram direkte — den tredje kan beregnes automatisk.
         </p>
-        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="mt-3">
+          <MacroSplitPercentControls split={macroSplit} onChange={updateMacroSplit} />
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {(
             [
               ["kcal", "Kalorier"],

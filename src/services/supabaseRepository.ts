@@ -14,6 +14,7 @@ import type {
   WorkoutLog,
 } from "../app/types";
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate } from "../app/dateFormat";
+import { dedupePeriodPlansById } from "../app/periodPlanMerge";
 import { programExerciseUsesBankExercise } from "../app/exerciseBankUsage";
 import { normalizeStoredExerciseCategory } from "../app/exerciseCategories";
 import {
@@ -441,12 +442,7 @@ function periodPlanRowsToByMemberId(rows: Array<{ member_id: string; plan: unkno
     out[memberId] = list;
   }
   for (const memberId of Object.keys(out)) {
-    const seen = new Set<string>();
-    out[memberId] = out[memberId].filter((p) => {
-      if (seen.has(p.id)) return false;
-      seen.add(p.id);
-      return true;
-    });
+    out[memberId] = dedupePeriodPlansById(out[memberId] ?? []);
   }
   return out;
 }

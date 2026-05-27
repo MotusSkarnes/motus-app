@@ -170,7 +170,13 @@ import { memberEffectivelyInvited } from "../app/memberInviteStatus";
 import { resolveMemberTrainerDisplayName } from "../app/trainerProfile";
 import { printHtmlDocument } from "../app/printHtmlDocument";
 import { findProgramForPeriodPlanEntry } from "../app/periodPlanEntryActions";
-import { dedupePeriodPlansById, syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
+import {
+  dedupePeriodPlansById,
+  memberIdsForPeriodPlanMerge,
+  pickCanonicalMemberIdForPeriodPlans,
+  sortPeriodPlansByRecency,
+  syncGradientMarkedWeekDays,
+} from "../app/periodPlanMerge";
 import { buildDefaultStartWorkoutOptions } from "../app/buildStartWorkoutOptions";
 import { MemberMonthlyCheckInSummary } from "./MemberMonthlyCheckInSummary";
 import { MemberOnboardingSummary } from "./MemberOnboardingSummary";
@@ -1475,11 +1481,19 @@ function pickFirstName(value: unknown): string {
     });
   }
 
+  const canonicalPeriodPlanMemberId = useMemo(
+    () => pickCanonicalMemberIdForPeriodPlans(selectedMemberRelatedIds, members),
+    [selectedMemberRelatedIds, members],
+  );
+  const periodPlanMemberIdsForMerge = useMemo(
+    () => memberIdsForPeriodPlanMerge(selectedMemberRelatedIds, canonicalPeriodPlanMemberId),
+    [selectedMemberRelatedIds, canonicalPeriodPlanMemberId],
+  );
   const selectedPeriodPlans = useMemo(() => {
-    if (!selectedMemberRelatedIds.length) return [] as PeriodSchedulePlan[];
-    const merged = selectedMemberRelatedIds.flatMap((memberId) => periodPlansByMemberId[memberId] ?? []);
-    return dedupePeriodPlansById(merged);
-  }, [periodPlansByMemberId, selectedMemberRelatedIds]);
+    if (!periodPlanMemberIdsForMerge.length) return [] as PeriodSchedulePlan[];
+    const merged = periodPlanMemberIdsForMerge.flatMap((memberId) => periodPlansByMemberId[memberId] ?? []);
+    return sortPeriodPlansByRecency(dedupePeriodPlansById(merged));
+  }, [periodPlansByMemberId, periodPlanMemberIdsForMerge]);
   const templatePrograms = useMemo(
     () => programs.filter((program) => program.memberId === "__template__"),
     [programs],
@@ -2406,18 +2420,23 @@ function pickFirstName(value: unknown): string {
       trainerSavedAtIso: new Date().toISOString(),
     };
     setPeriodPlanStatus("Lagrer periodeplan...");
+    const storageMemberId =
+      pickCanonicalMemberIdForPeriodPlans(selectedMemberRelatedIds, members) || selectedMemberId;
     setPeriodPlansByMemberId((prev) => {
       const next = { ...prev };
-      selectedMemberRelatedIds.forEach((memberId) => {
-        const previous = next[memberId] ?? [];
-        if (isNewPlan) {
-          next[memberId] = [...previous.filter((plan) => plan.id !== periodPlanId), newPeriodPlan];
-        } else {
-          next[memberId] = previous.some((plan) => plan.id === periodPlanId)
-            ? previous.map((plan) => (plan.id === periodPlanId ? newPeriodPlan : plan))
-            : [newPeriodPlan];
-        }
-      });
+      const applyToId = storageMemberId.trim();
+      const previous = next[applyToId] ?? [];
+      next[applyToId] = isNewPlan
+        ? [...previous.filter((plan) => plan.id !== periodPlanId), newPeriodPlan]
+        : previous.some((plan) => plan.id === periodPlanId)
+          ? previous.map((plan) => (plan.id === periodPlanId ? newPeriodPlan : plan))
+          : [newPeriodPlan];
+      for (const memberId of selectedMemberRelatedIds) {
+        if (memberId === applyToId) continue;
+        const list = next[memberId];
+        if (!list?.length) continue;
+        next[memberId] = list.filter((plan) => plan.id !== periodPlanId);
+      }
       return next;
     });
     if (isSupabaseConfigured && !isLocalDemoSession) {

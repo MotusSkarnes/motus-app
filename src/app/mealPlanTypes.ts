@@ -1,10 +1,18 @@
 import type { FoodNutrition } from "./foodBankTypes";
 
+export type MacroSplitPercent = {
+  protein: number;
+  carbs: number;
+  fat: number;
+};
+
 export type MealPlanTargets = {
   kcal?: number;
   protein?: number;
   carbs?: number;
   fat?: number;
+  /** Andel av daglige kalorier fra P/K/F (summerer til 100). */
+  macroSplitPct?: MacroSplitPercent;
 };
 
 export type MealPlanFoodEntry = {

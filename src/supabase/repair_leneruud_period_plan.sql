@@ -39,3 +39,12 @@ select member_id, plan_id, plan->>'title' as title, plan->>'trainerSavedAtIso' a
 from public.member_period_plans
 where member_id in ('m1', 'member-nmn08uu')
 order by plan_id;
+
+-- 5) (Valgfritt) Rett auth member_id hvis det fortsatt peker på m1
+-- select raw_app_meta_data from auth.users where lower(trim(email)) = lower('leneruud@msn.com');
+-- update auth.users
+-- set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
+--   || jsonb_build_object('role', 'member', 'member_id', 'member-nmn08uu'),
+--   raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb)
+--     || jsonb_build_object('role', 'member', 'member_id', 'member-nmn08uu')
+-- where lower(trim(email)) = lower('leneruud@msn.com');
