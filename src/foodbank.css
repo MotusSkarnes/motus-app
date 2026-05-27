@@ -1947,10 +1947,47 @@
   gap: 0.25rem;
 }
 
+.motus-macro-split-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+
 .motus-macro-split-label {
   font-size: 0.625rem;
   font-weight: 600;
   color: #64748b;
+}
+
+.motus-macro-split-lock-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem;
+  border: none;
+  border-radius: 0.35rem;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.motus-macro-split-lock-btn:hover:not(:disabled) {
+  color: #0f766e;
+  background: rgba(48, 227, 190, 0.12);
+}
+
+.motus-macro-split-lock-btn--active {
+  color: #0f766e;
+}
+
+.motus-macro-split-lock-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.motus-macro-split-field--locked .motus-macro-split-label {
+  color: #0f766e;
 }
 
 .motus-macro-split-input-wrap {

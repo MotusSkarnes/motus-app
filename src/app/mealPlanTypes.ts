@@ -13,6 +13,8 @@ export type MealPlanTargets = {
   fat?: number;
   /** Andel av daglige kalorier fra P/K/F (summerer til 100). */
   macroSplitPct?: MacroSplitPercent;
+  /** Låste makroer (maks 2) — justeres ikke automatisk når andre endres. */
+  macroSplitLocked?: Array<keyof MacroSplitPercent>;
 };
 
 export type MealPlanFoodEntry = {

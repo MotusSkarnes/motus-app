@@ -3,7 +3,10 @@ import {
   adjustMacroSplit,
   applyMacroSplitToTargets,
   macroSplitFromTargets,
+  normalizeMacroSplit,
+  normalizeMacroSplitLocks,
   resolveMacroSplit,
+  toggleMacroSplitLock,
 } from "../app/mealPlanMacroSplit";
 import type { MacroSplitField } from "../app/mealPlanMacroSplit";
 import { balanceMealPlanTargets, describeTargetBalance } from "../app/mealPlanTargetBalance";
@@ -293,15 +296,18 @@ export function TrainerMealPlanEditor({
   }, [plan?.targets, derivedTargetField]);
 
   const macroSplit = useMemo(() => resolveMacroSplit(plan?.targets), [plan?.targets]);
+  const macroSplitLocked = useMemo(
+    () => normalizeMacroSplitLocks(plan?.targets?.macroSplitLocked),
+    [plan?.targets?.macroSplitLocked],
+  );
 
-  function updateMacroSplit(field: MacroSplitField, value: string) {
+  function applyMacroSplitState(nextSplit: ReturnType<typeof resolveMacroSplit>, locks: MacroSplitField[]) {
     if (!plan) return;
-    const parsed = Number(value.replace(",", "."));
-    const current = resolveMacroSplit(plan.targets);
-    const nextSplit =
-      value.trim() && Number.isFinite(parsed) ? adjustMacroSplit(current, field, parsed) : current;
-
-    const base: MealPlanTargets = { ...(plan.targets ?? {}), macroSplitPct: nextSplit };
+    const base: MealPlanTargets = {
+      ...(plan.targets ?? {}),
+      macroSplitPct: nextSplit,
+      macroSplitLocked: locks.length ? locks : undefined,
+    };
     const hasKcal = typeof base.kcal === "number" && base.kcal > 0;
     const nextTargets = hasKcal ? applyMacroSplitToTargets(base, nextSplit) : base;
 
@@ -314,6 +320,30 @@ export function TrainerMealPlanEditor({
       ...plan,
       targets: Object.keys(nextTargets).length ? nextTargets : undefined,
     });
+  }
+
+  function updateMacroSplit(field: MacroSplitField, value: string) {
+    if (!plan) return;
+    const parsed = Number(value.replace(",", "."));
+    const locks = normalizeMacroSplitLocks(plan.targets?.macroSplitLocked);
+    const current = resolveMacroSplit(plan.targets);
+    const nextSplit =
+      value.trim() && Number.isFinite(parsed)
+        ? adjustMacroSplit(current, field, parsed, locks)
+        : current;
+
+    applyMacroSplitState(nextSplit, locks);
+  }
+
+  function handleToggleMacroSplitLock(field: MacroSplitField) {
+    if (!plan) return;
+    const locks = normalizeMacroSplitLocks(plan.targets?.macroSplitLocked);
+    const nextLocks = toggleMacroSplitLock(locks, field);
+    if (nextLocks.length === locks.length && !locks.includes(field)) return;
+
+    const current = resolveMacroSplit(plan.targets);
+    const normalized = normalizeMacroSplit(current, nextLocks);
+    applyMacroSplitState(normalized, nextLocks);
   }
 
   function updateTargets(field: keyof MealPlanTargets, value: string) {
@@ -564,7 +594,12 @@ export function TrainerMealPlanEditor({
           Sett kalorier og makrofordeling i prosent, eller skriv gram direkte — den tredje kan beregnes automatisk.
         </p>
         <div className="mt-3">
-          <MacroSplitPercentControls split={macroSplit} onChange={updateMacroSplit} />
+          <MacroSplitPercentControls
+            split={macroSplit}
+            locked={macroSplitLocked}
+            onChange={updateMacroSplit}
+            onToggleLock={handleToggleMacroSplitLock}
+          />
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {(

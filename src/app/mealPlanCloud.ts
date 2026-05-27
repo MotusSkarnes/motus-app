@@ -34,6 +34,14 @@ function parseTargets(value: unknown): MealPlanTargets | undefined {
       targets.macroSplitPct = { protein, carbs, fat };
     }
   }
+  const lockedRaw = row.macroSplitLocked ?? row.macro_split_locked;
+  if (Array.isArray(lockedRaw)) {
+    const allowed = new Set(["protein", "carbs", "fat"]);
+    const locked = lockedRaw
+      .map((v) => String(v))
+      .filter((v): v is "protein" | "carbs" | "fat" => allowed.has(v));
+    if (locked.length) targets.macroSplitLocked = locked.slice(0, 2);
+  }
   return Object.keys(targets).length ? targets : undefined;
 }
 
