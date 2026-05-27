@@ -120,17 +120,21 @@ export function parseRecipeServings(body: string): number {
   return Number.isFinite(n) && n > 0 ? n : 1;
 }
 
+const INGREDIENT_SECTION_MARKER =
+  /\*\*Ingredienser\*\*|(?:^|\n)#{1,3}\s*Ingredienser\b|(?:^|\n)Ingredienser\s*:?\s*(?:\n|$)/i;
+
 export function extractRecipeIngredientLines(body: string): string[] {
-  const marker = body.match(/\*\*Ingredienser\*\*/i);
+  const normalized = body.replace(/\r\n/g, "\n");
+  const marker = normalized.match(INGREDIENT_SECTION_MARKER);
   if (!marker || marker.index === undefined) return [];
-  const after = body.slice(marker.index + marker[0].length);
+  const after = normalized.slice(marker.index + marker[0].length);
   const nextSection = after.search(/\n\*\*[^*]+\*\*/);
   const section = nextSection >= 0 ? after.slice(0, nextSection) : after;
   return section
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line.startsWith("- "))
-    .map((line) => line.replace(/^-\s+/, "").trim())
+    .filter((line) => /^[-*•]\s+/.test(line))
+    .map((line) => line.replace(/^[-*•]\s+/, "").trim())
     .filter(
       (line) =>
         line.length > 0 &&

@@ -35,6 +35,19 @@ describe("recipeMacros", () => {
     expect(result!.perServing.protein).toBeGreaterThan(15);
   });
 
+  it("finner ingredienser uten fet skrift på overskrift", () => {
+    const body = `Til 1 porsjon
+
+Ingredienser:
+- 1 dl havregryn
+- 2 dl melk
+
+Slik gjør du
+1. Kok.`;
+    expect(extractRecipeIngredientLines(body).length).toBe(2);
+    expect(computeRecipeMacros(body, foods)).not.toBeNull();
+  });
+
   it("deler på antall porsjoner", () => {
     const salmonBody = `**Til 2 porsjoner · ca. 30 min**
 

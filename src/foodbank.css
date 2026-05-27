@@ -808,3 +808,61 @@
   border-color: rgba(250, 204, 21, 0.45);
   color: #854d0e;
 }
+
+.motus-recipe-macro-summary {
+  align-items: center;
+}
+
+.motus-recipe-macro-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.motus-recipe-macro-chip__label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  opacity: 0.85;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.motus-recipe-macro-chip__value {
+  font-weight: 800;
+}
+
+.motus-recipe-macro-chip__unit {
+  font-size: 0.6rem;
+  font-weight: 600;
+  opacity: 0.75;
+  margin-left: 0.05rem;
+}
+
+.motus-recipe-macro-chip--kcal {
+  background: #fff7ed;
+  border-color: rgba(251, 146, 60, 0.35);
+  color: #9a3412;
+}
+
+.motus-recipe-macro-chip--protein {
+  background: #fff1f2;
+  border-color: rgba(251, 113, 133, 0.35);
+  color: #9f1239;
+}
+
+.motus-recipe-macro-chip--carbs {
+  background: #eff6ff;
+  border-color: rgba(96, 165, 250, 0.35);
+  color: #1e40af;
+}
+
+.motus-recipe-macro-chip--fat {
+  background: #fefce8;
+  border-color: rgba(250, 204, 21, 0.45);
+  color: #854d0e;
+}
