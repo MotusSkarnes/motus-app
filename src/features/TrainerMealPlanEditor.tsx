@@ -185,16 +185,40 @@ export function TrainerMealPlanEditor({
     }
   }
 
+  const targetBalanceHint = useMemo(() => {
+    if (!plan?.targets) return null;
+    return describeTargetBalance(plan.targets, derivedTargetField);
+  }, [plan?.targets, derivedTargetField]);
+
   function updateTargets(field: keyof MealPlanTargets, value: string) {
     if (!plan) return;
     const parsed = Number(value.replace(",", "."));
     const nextTargets: MealPlanTargets = { ...(plan.targets ?? {}) };
     if (!value.trim() || !Number.isFinite(parsed)) {
       delete nextTargets[field];
+      if (field === derivedTargetField) setDerivedTargetField(null);
     } else {
-      nextTargets[field] = parsed;
+      nextTargets[field] = field === "kcal" ? Math.round(parsed) : parsed;
     }
-    updatePlan({ ...plan, targets: Object.keys(nextTargets).length ? nextTargets : undefined });
+
+    const hasAny =
+      Object.keys(nextTargets).length > 0 &&
+      Object.values(nextTargets).some((v) => typeof v === "number" && Number.isFinite(v));
+
+    if (!hasAny) {
+      setDerivedTargetField(null);
+      setTargetBalanceWarning(null);
+      updatePlan({ ...plan, targets: undefined });
+      return;
+    }
+
+    const balanced = balanceMealPlanTargets(nextTargets, field);
+    setDerivedTargetField(balanced.derivedField);
+    setTargetBalanceWarning(balanced.warning);
+    updatePlan({
+      ...plan,
+      targets: Object.keys(balanced.targets).length ? balanced.targets : undefined,
+    });
   }
 
   function addFoodToMeal(food: FoodItem) {
