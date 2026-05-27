@@ -22,6 +22,7 @@ export type InspirationRecipeItem = {
   body: string;
   tag: string;
   imageUrl?: string;
+  scalingMode?: "flexible" | "fixed";
 };
 
 function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
@@ -50,10 +51,13 @@ function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
 
 export function filterRecipeInspirationItems(items: unknown[]): InspirationRecipeItem[] {
   const byId = new Map<string, InspirationRecipeItem>();
-  for (const raw of [...DEFAULT_RECIPE_FEED_ROWS, ...items]) {
+  for (const raw of DEFAULT_RECIPE_FEED_ROWS) {
     const normalized = normalizeRecipeItem(raw);
-    if (!normalized) continue;
-    if (!byId.has(normalized.id)) byId.set(normalized.id, normalized);
+    if (normalized) byId.set(normalized.id, normalized);
+  }
+  for (const raw of items) {
+    const normalized = normalizeRecipeItem(raw);
+    if (normalized) byId.set(normalized.id, normalized);
   }
   const patched = applyCanonicalRecipeBodies(
     Array.from(byId.values()).map((item) => ({ ...item, category: "recipes" })),
