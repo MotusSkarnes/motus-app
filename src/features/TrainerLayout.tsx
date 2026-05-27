@@ -2,6 +2,7 @@ import { useMemo, useState, type ComponentProps, type Dispatch, type SetStateAct
 import { memberRecordIsActive } from "../services/memberAccessRules";
 import {
   Apple,
+  Award,
   BarChart3,
   CalendarDays,
   ClipboardList,
@@ -98,6 +99,7 @@ function buildTrainerMenuItems(messageBadgeCount: number, includeAdmin: boolean)
     { key: "inspiration", label: "Innhold", icon: FileText },
     { key: "nutrition", label: "Matvarebank", icon: Apple },
     { key: "mealPlan", label: "Matplan", icon: UtensilsCrossed },
+    { key: "badges", label: "Badges", icon: Award },
     { key: "customers", label: "Meldinger", icon: MessageSquare, badge: messageBadgeCount, action: "messages" },
     { key: "calendar", label: "Kalender", icon: CalendarDays },
     { key: "statistics", label: "Statistikk", icon: BarChart3 },
@@ -121,6 +123,7 @@ const mobileMoreTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }>
   { id: "calendar", label: "Kalender", icon: CalendarDays },
   { id: "nutrition", label: "Matvarebank", icon: Apple },
   { id: "mealPlan", label: "Matplan", icon: UtensilsCrossed },
+  { id: "badges", label: "Badges", icon: Award },
   { id: "statistics", label: "Statistikk", icon: BarChart3 },
   { id: "settings", label: "Innstillinger", icon: Settings },
   { id: "admin", label: "Admin", icon: ShieldCheck },
