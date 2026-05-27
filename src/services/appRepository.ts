@@ -67,7 +67,14 @@ export type DeleteProgramContext = {
 
 export type UpdateWorkoutResultInput = {
   exerciseId: string;
-  field: "performedWeight" | "performedReps" | "performedDurationMinutes" | "performedSpeed" | "performedIncline" | "completed";
+  field:
+    | "performedWeight"
+    | "performedReps"
+    | "performedDurationMinutes"
+    | "performedSpeed"
+    | "performedIncline"
+    | "performedLoadUnit"
+    | "completed";
   value: string | boolean;
 };
 
@@ -456,7 +463,14 @@ export function startWorkoutModeInState(state: AppState, programId: string, opti
 export function updateWorkoutResultInState(
   state: AppState,
   exerciseId: string,
-  field: "performedWeight" | "performedReps" | "performedDurationMinutes" | "performedSpeed" | "performedIncline" | "completed",
+  field:
+    | "performedWeight"
+    | "performedReps"
+    | "performedDurationMinutes"
+    | "performedSpeed"
+    | "performedIncline"
+    | "performedLoadUnit"
+    | "completed",
   value: string | boolean
 ): AppState {
   if (!state.workoutMode) return state;

@@ -108,6 +108,7 @@ export function buildMemberLayoutProps(input: {
   memberVisibleAlerts: MemberLayoutProps["memberVisibleAlerts"];
   handleMemberBellToggle: () => void;
   openAlert: MemberLayoutProps["openAlert"];
+  markAllMemberAlertsAsRead: MemberLayoutProps["markAllMemberAlertsAsRead"];
   markMemberInspirationAsSeen: MemberLayoutProps["markMemberInspirationAsSeen"];
   memberFocusInspirationItemId: MemberLayoutProps["memberFocusInspirationItemId"];
   clearMemberFocusInspirationItemId: MemberLayoutProps["clearMemberFocusInspirationItemId"];

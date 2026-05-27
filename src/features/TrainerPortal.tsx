@@ -47,6 +47,7 @@ import {
   type ExerciseBankSubTab,
   type TrainingSubTab,
 } from "../app/exerciseCategories";
+import { formatProgramExercisePrescription, resolveProgramExerciseName } from "../app/programExercisePresentation";
 import {
   buildExerciseCategoryById,
   filterTemplateProgramsBySubTab,
@@ -151,6 +152,7 @@ import {
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
 import { memberEffectivelyInvited } from "../app/memberInviteStatus";
+import { resolveMemberTrainerDisplayName } from "../app/trainerProfile";
 import { printHtmlDocument } from "../app/printHtmlDocument";
 import { findProgramForPeriodPlanEntry } from "../app/periodPlanEntryActions";
 import { syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
@@ -162,7 +164,6 @@ import {
   dedupeTrainingPrograms,
   countExercisesInBlock,
   isFirstExerciseInBlock,
-  isLegacyIntervalCooldownDrag,
   programIsInMemberArchive,
   unlinkProgramExerciseBlock,
 } from "../app/programBlocks";
@@ -470,10 +471,6 @@ function hasCardioNedjoggRow(draft: ProgramExercise[]): boolean {
   return draft.some((row) => row.exerciseName.trim().toLowerCase().startsWith("nedjogg"));
 }
 
-function cardioProgramExerciseName(rows: ProgramExercise[], index: number): string {
-  return isLegacyIntervalCooldownDrag(rows, index) ? "Nedjogg" : rows[index]?.exerciseName ?? "";
-}
-
 function countCardioDragRows(draft: ProgramExercise[]): number {
   return draft.filter((row) => /^drag\b/i.test(row.exerciseName.trim())).length;
 }
@@ -497,12 +494,6 @@ function isCardioDraftRow(
   const name = item.exerciseName.trim();
   if (/^oppvarming$/i.test(name) || /^nedjogg/i.test(name) || /^drag\b/i.test(name)) return true;
   return Boolean(String(item.durationMinutes ?? "").trim());
-}
-
-function cardioTargetHrPrescriptionSuffix(targetHrPercent: string | undefined): string {
-  const raw = String(targetHrPercent ?? "").trim();
-  if (!raw) return "";
-  return ` · målpuls ca. ${raw}% av makspuls`;
 }
 
 const PERIOD_PLANS_STORAGE_KEY = "motus.trainer.periodPlansByMemberId";
@@ -1270,6 +1261,17 @@ function pickFirstName(value: unknown): string {
     const relatedMembers = selectedMemberProfileSourceMembers;
     return pickCanonicalMemberProfile(selectedMember, relatedMembers);
   }, [selectedMember, selectedMemberProfileSourceMembers]);
+  const selectedMemberCreatedByTrainerLabel = useMemo(() => {
+    if (!selectedMember) return null;
+    const fromProfile = resolveMemberTrainerDisplayName(selectedMember, programs)?.trim();
+    if (fromProfile) return fromProfile;
+    const ownerId = (selectedMember.ownerUserId ?? "").trim();
+    if (ownerId && ownerId === currentTrainerOwnerUserId.trim()) {
+      const selfName = trainerAccountName.trim();
+      if (selfName) return selfName;
+    }
+    return null;
+  }, [selectedMember, programs, currentTrainerOwnerUserId, trainerAccountName]);
   const selectedMemberEditSnapshot = useMemo(() => {
     if (!selectedMemberProfile) return null;
     return {
@@ -2714,35 +2716,23 @@ function pickFirstName(value: unknown): string {
                 exercise && typeof exercise === "object"
                   ? (exercise as Partial<ProgramExercise>)
                   : ({} as Partial<ProgramExercise>);
-              const exerciseName = cardioProgramExerciseName(safeExercises, index) || String(safeExercise.exerciseName ?? "Øvelse").trim() || "Øvelse";
+              const exerciseName =
+                resolveProgramExerciseName(safeExercises, index) ||
+                String(safeExercise.exerciseName ?? "Øvelse").trim() ||
+                "Øvelse";
               const exerciseId = String(safeExercise.exerciseId ?? "").trim();
               const libraryMatch =
                 exercises.find((item) => item.id === exerciseId) ??
                 exercises.find((item) => String(item.name ?? "").trim().toLowerCase() === exerciseName.toLowerCase()) ??
                 null;
-              const setCount = String(safeExercise.sets ?? "").trim() || "-";
-              const reps = String(safeExercise.reps ?? "").trim() || "-";
-              const weight = String(safeExercise.weight ?? "").trim() || "-";
-              const durationMinutes = String(safeExercise.durationMinutes ?? "").trim();
-              const cardioHoldSeconds = String(safeExercise.holdSeconds ?? "").trim();
-              const speed = String(safeExercise.speed ?? "").trim();
-              const incline = String(safeExercise.incline ?? "").trim();
-              const restSeconds = String(safeExercise.restSeconds ?? "").trim() || "0";
               const notes = String(safeExercise.notes ?? "").trim();
-              const isCardioExercise = libraryMatch?.category === "Kondisjon" || Boolean(durationMinutes);
-              const cardioTimeParts: string[] = [];
-              if (durationMinutes) cardioTimeParts.push(`${durationMinutes} min`);
-              if (isCardioExercise && cardioHoldSeconds) cardioTimeParts.push(`${cardioHoldSeconds} sek`);
-              const cardioTimeLabel = cardioTimeParts.length ? cardioTimeParts.join(" ") : "—";
-              const repsUnit = safeExercise.repsUnit === "minutes" ? "min" : "reps";
-              const weightUnit = safeExercise.weightUnit === "seconds" ? "sek" : "kg";
-              const prescription = isCardioExercise
-                ? `${setCount} ${/^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder"} × ${cardioTimeLabel}${
-                    speed ? ` · ${speed} km/t` : ""
-                  }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause${cardioTargetHrPrescriptionSuffix(safeExercise.targetHrPercent)}`
-                : libraryMatch && isHoldBasedExerciseCategory(libraryMatch.category)
-                  ? `${setCount} sett × ${programExerciseHoldSeconds(safeExercise, libraryMatch.category) || "-"} sek hold · ${restSeconds}s pause`
-                  : `${setCount} x ${reps} ${repsUnit} · ${weight} ${weightUnit} · ${restSeconds}s pause`;
+              const prescription = formatProgramExercisePrescription(
+                safeExercise as ProgramExercise,
+                index,
+                safeExercises,
+                exercises,
+                { includePauseLabel: true },
+              );
               const imageUrl = libraryMatch?.imageUrl?.trim() || "";
               const description = libraryMatch?.description?.trim() || "Ingen forklaring tilgjengelig for denne øvelsen.";
               return `<article class="exercise-card">
@@ -5051,6 +5041,11 @@ function pickFirstName(value: unknown): string {
                     </div>
                   </div>
                   <div className="mt-1 text-2xl font-bold tracking-tight text-slate-950">{selectedMemberProfile?.name ?? selectedMember.name}</div>
+                  {selectedMemberCreatedByTrainerLabel ? (
+                    <p className="mt-1 text-sm text-slate-600">
+                      Kunde lagt til av PT {selectedMemberCreatedByTrainerLabel}
+                    </p>
+                  ) : null}
                   {isEditingCustomerCard ? (
                     <div className="mt-3 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                       <div className="grid gap-3 md:grid-cols-2">
@@ -5889,7 +5884,7 @@ function pickFirstName(value: unknown): string {
                           />
                         ) : null}
                         {programExercisesDraft.map((item, index) => {
-                          const itemExerciseName = cardioProgramExerciseName(programExercisesDraft, index);
+                          const itemExerciseName = resolveProgramExerciseName(programExercisesDraft, index);
                           return (
                           <div
                             key={item.id}

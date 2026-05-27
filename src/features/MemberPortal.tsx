@@ -76,9 +76,9 @@ import {
   buildTrainingProgramDisplayKey,
   buildWorkoutResultGroups,
   dedupeTrainingPrograms,
-  isLegacyIntervalCooldownDrag,
   programIsInMemberArchive,
 } from "../app/programBlocks";
+import { formatProgramExercisePrescription, resolveProgramExerciseName } from "../app/programExercisePresentation";
 import { memberMayDeleteProgram, memberMayEditProgram } from "../app/programAuthor";
 import {
   buildCheckInNotificationCopy,
@@ -300,7 +300,14 @@ type MemberPortalProps = {
   updateProgramMemberLibraryStatus: (programId: string, status: MemberProgramLibraryStatus | undefined) => void;
   updateWorkoutExerciseResult: (
     exerciseId: string,
-    field: "performedWeight" | "performedReps" | "performedDurationMinutes" | "performedSpeed" | "performedIncline" | "completed",
+    field:
+      | "performedWeight"
+      | "performedReps"
+      | "performedDurationMinutes"
+      | "performedSpeed"
+      | "performedIncline"
+      | "performedLoadUnit"
+      | "completed",
     value: string | boolean,
   ) => void;
   replaceWorkoutExerciseGroup: (input: ReplaceWorkoutExerciseGroupInput) => void;
@@ -951,12 +958,6 @@ function isPeriodPlanWorkoutLog(log: WorkoutLog): boolean {
   return note.includes("periodeplan");
 }
 
-function cardioHrPrescriptionSuffixForMember(programExercise: ProgramExercise): string {
-  const raw = String(programExercise.targetHrPercent ?? "").trim();
-  if (!raw) return "";
-  return ` · målpuls ca. ${raw}% av makspuls`;
-}
-
 function formatIntervalTimerHrHint(targetHrPercent: string | undefined): string {
   const raw = String(targetHrPercent ?? "").trim();
   if (!raw) return "";
@@ -967,10 +968,6 @@ function formatIntervalTimerHrHint(targetHrPercent: string | undefined): string 
 function isMemberIntervalCooldownName(name: string): boolean {
   const lower = name.trim().toLowerCase();
   return lower.includes("nedjogg") || lower.includes("nedtrapp") || lower.includes("cooldown");
-}
-
-function memberProgramExerciseName(program: TrainingProgram, index: number): string {
-  return isLegacyIntervalCooldownDrag(program.exercises, index) ? "Nedjogg" : program.exercises[index]?.exerciseName ?? "";
 }
 
 function firstNameFromDisplayName(name: string): string {
@@ -5485,33 +5482,23 @@ export function MemberPortal(props: MemberPortalProps) {
                 exercise && typeof exercise === "object"
                   ? (exercise as Partial<ProgramExercise>)
                   : ({} as Partial<ProgramExercise>);
-              const exerciseName = printField(safeExercise.exerciseName) || "Øvelse";
+              const exerciseName =
+                resolveProgramExerciseName(safeExercises as ProgramExercise[], index) ||
+                printField(safeExercise.exerciseName) ||
+                "Øvelse";
               const exerciseId = printField(safeExercise.exerciseId);
               const libraryMatch =
                 exercises.find((item) => item.id === exerciseId) ??
                 exercises.find((item) => printField(item.name).toLowerCase() === exerciseName.toLowerCase()) ??
                 null;
-              const setCount = printField(safeExercise.sets) || "-";
-              const reps = printField(safeExercise.reps) || "-";
-              const weight = printField(safeExercise.weight) || "-";
-              const durationMinutes = printField(safeExercise.durationMinutes);
-              const cardioHoldSeconds = printField(safeExercise.holdSeconds);
-              const speed = printField(safeExercise.speed);
-              const incline = printField(safeExercise.incline);
-              const restSeconds = printField(safeExercise.restSeconds) || "0";
               const notes = printField(safeExercise.notes);
-              const isCardioExercise = libraryMatch?.category === "Kondisjon" || Boolean(durationMinutes);
-              const cardioTimeParts: string[] = [];
-              if (durationMinutes) cardioTimeParts.push(`${durationMinutes} min`);
-              if (isCardioExercise && cardioHoldSeconds) cardioTimeParts.push(`${cardioHoldSeconds} sek`);
-              const cardioTimeLabel = cardioTimeParts.length ? cardioTimeParts.join(" ") : "—";
-              const prescription = isCardioExercise
-                ? `${setCount} runder × ${cardioTimeLabel}${
-                    speed ? ` · ${speed} km/t` : ""
-                  }${incline ? ` · ${incline}% incline` : ""} · ${restSeconds}s pause${cardioHrPrescriptionSuffixForMember(safeExercise as ProgramExercise)}`
-                : libraryMatch && isHoldBasedExerciseCategory(libraryMatch.category)
-                  ? `${setCount} sett × ${programExerciseHoldSeconds(safeExercise, libraryMatch.category) || "-"} sek · ${restSeconds}s pause`
-                  : `${setCount} x ${reps} · ${weight} kg · ${restSeconds}s pause`;
+              const prescription = formatProgramExercisePrescription(
+                safeExercise as ProgramExercise,
+                index,
+                safeExercises as ProgramExercise[],
+                exercises,
+                { includePauseLabel: true },
+              );
               const rawImageUrl = printField(libraryMatch?.imageUrl);
               const imageUrl = rawImageUrl ? resolvePrintAssetUrl(rawImageUrl) : "";
               const description = printField(libraryMatch?.description) || "Ingen forklaring tilgjengelig for denne øvelsen.";
@@ -6671,7 +6658,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                 />
                               ) : null}
                               {program.exercises.map((exercise, exerciseIndex) => {
-                                const exerciseName = memberProgramExerciseName(program, exerciseIndex);
+                                const exerciseName = resolveProgramExerciseName(program.exercises, exerciseIndex);
                                 const lib = exercises.find((e) => e.id === exercise.exerciseId);
                                 const isStretch = Boolean(lib?.category && isHoldBasedExerciseCategory(lib.category));
                                 const blockPeers = exercise.blockId
@@ -6694,22 +6681,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                   ) : null}
                                   <div className="text-xs font-medium text-slate-800">{exerciseName}</div>
                                   <div className="mt-0.5 text-[11px] text-slate-500">
-                                    {(() => {
-                                      const cardioMin = String(exercise.durationMinutes ?? "").trim();
-                                      const cardioSek = String(exercise.holdSeconds ?? "").trim();
-                                      const isCardio = lib?.category === "Kondisjon" || Boolean(cardioMin);
-                                      if (isCardio) {
-                                        const timeParts: string[] = [];
-                                        if (cardioMin) timeParts.push(`${cardioMin} min`);
-                                        if (cardioSek) timeParts.push(`${cardioSek} sek`);
-                                        const timeLabel = timeParts.length ? timeParts.join(" ") : "—";
-                                        return `${exercise.sets} runder × ${timeLabel}${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${exercise.restSeconds}s${cardioHrPrescriptionSuffixForMember(exercise)}`;
-                                      }
-                                      if (isStretch) {
-                                        return `${exercise.sets} sett × ${programExerciseHoldSeconds(exercise, lib?.category) || "-"} sek · ${exercise.restSeconds}s`;
-                                      }
-                                      return `${exercise.sets}×${exercise.reps} · ${exercise.weight}kg · ${exercise.restSeconds}s`;
-                                    })()}
+                                    {formatProgramExercisePrescription(exercise, exerciseIndex, program.exercises, exercises)}
                                   </div>
                                   {!exercise.durationMinutes && !isStretch && lib?.category !== "Kondisjon" ? (
                                     <div className="mt-1.5 rounded-lg border bg-white px-2 py-1.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>

@@ -10,6 +10,7 @@ import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { EXERCISE_IMAGE_INSET_CLASS, EXERCISE_IMAGE_SMALL_CLASS } from "../app/exerciseIllustrations/constants";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { buildWorkoutResultGroups, EXERCISE_BLOCK_LABELS } from "../app/programBlocks";
+import { resolveWorkoutLoadUnit, resolveWorkoutRepsUnit } from "../app/workoutResultUnits";
 import { GradientButton, OutlineButton, TextArea, TextInput } from "../app/ui";
 import type { Exercise, TrainingProgram, WorkoutModeState, WorkoutReflection } from "../app/types";
 import type { ReplaceWorkoutExerciseGroupInput } from "../services/appRepository";
@@ -35,6 +36,7 @@ export type LiveWorkoutSessionModalProps = {
       | "performedDurationMinutes"
       | "performedSpeed"
       | "performedIncline"
+      | "performedLoadUnit"
       | "completed",
     value: string | boolean,
   ) => void;
@@ -460,7 +462,10 @@ export function LiveWorkoutSessionModal({
     if (row?.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory)) {
       return `${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedWeight} sek`;
     }
-    return `${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedReps} reps · ${currentWorkoutGroup.plannedWeight} kg`;
+    if (!row) return "";
+    const repsUnitLabel = resolveWorkoutRepsUnit(row);
+    const loadUnitLabel = resolveWorkoutLoadUnit(row);
+    return `${currentWorkoutGroup.rows.length} sett × ${currentWorkoutGroup.plannedReps} ${repsUnitLabel} · ${currentWorkoutGroup.plannedWeight} ${loadUnitLabel}`;
   }, [currentWorkoutGroup]);
 
   const nextWorkoutPlanLabel = useMemo(() => {
@@ -477,7 +482,10 @@ export function LiveWorkoutSessionModal({
     if (row?.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory)) {
       return `${nextWorkoutGroup.rows.length} sett × ${nextWorkoutGroup.plannedWeight} sek`;
     }
-    return `${nextWorkoutGroup.rows.length} sett × ${nextWorkoutGroup.plannedReps} reps`;
+    if (!row) return "";
+    const repsUnitLabel = resolveWorkoutRepsUnit(row);
+    const loadUnitLabel = resolveWorkoutLoadUnit(row);
+    return `${nextWorkoutGroup.rows.length} sett × ${nextWorkoutGroup.plannedReps} ${repsUnitLabel} · ${nextWorkoutGroup.plannedWeight} ${loadUnitLabel}`;
   }, [nextWorkoutGroup]);
 
   function handleReplaceCurrentWorkoutExercise(replacementExerciseId: string) {

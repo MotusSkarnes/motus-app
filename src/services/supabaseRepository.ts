@@ -1721,7 +1721,10 @@ function buildTrainingProgramPersistenceFingerprint(input: {
 }): string {
   const exercises = Array.isArray(input.exercises) ? (input.exercises as ProgramExercise[]) : [];
   const exerciseFingerprint = exercises
-    .map((item) => `${item.exerciseName}|${item.sets}|${item.reps}|${item.weight}|${item.holdSeconds ?? ""}|${item.durationMinutes ?? ""}|${item.speed ?? ""}|${item.incline ?? ""}|${item.restSeconds}|${item.targetHrPercent ?? ""}|${item.notes}`)
+    .map(
+      (item) =>
+        `${item.exerciseName}|${item.sets}|${item.reps}|${item.repsUnit ?? ""}|${item.weight}|${item.weightUnit ?? ""}|${item.holdSeconds ?? ""}|${item.durationMinutes ?? ""}|${item.speed ?? ""}|${item.incline ?? ""}|${item.restSeconds}|${item.targetHrPercent ?? ""}|${item.notes}`,
+    )
     .join("||");
   return `${String(input.title ?? "").trim()}::${String(input.goal ?? "").trim()}::${String(input.notes ?? "").trim()}::${exerciseFingerprint}`;
 }

@@ -33,12 +33,16 @@ export type WorkoutExerciseResult = {
   exerciseCategory?: Exercise["category"];
   exerciseEquipment?: string;
   plannedSets: string;
+  plannedRepsUnit?: "reps" | "minutes";
   plannedReps: string;
+  plannedWeightUnit?: "kg" | "seconds";
   plannedWeight: string;
   plannedDurationMinutes?: string;
   plannedSpeed?: string;
   plannedIncline?: string;
   performedWeight: string;
+  /** Midlertidig enhetsvalg i live-økt for styrke (kg/sek). */
+  performedLoadUnit?: "kg" | "sec";
   performedReps: string;
   performedDurationMinutes?: string;
   performedSpeed?: string;
@@ -122,7 +126,11 @@ export type ProgramExercise = {
   exerciseId: string;
   exerciseName: string;
   sets: string;
+  /** Enhet for volum-feltet (reps/minutter) i styrkeøvelser. */
+  repsUnit?: "reps" | "minutes";
   reps: string;
+  /** Enhet for belastning-feltet (kg/sekunder) i styrkeøvelser. */
+  weightUnit?: "kg" | "seconds";
   weight: string;
   /** Hold/strekk: sekunder per sett (mobilitet, rehab, uttøyning). */
   holdSeconds?: string;

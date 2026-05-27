@@ -1,4 +1,5 @@
 import type { WorkoutLog } from "./types";
+import { isKgBasedWorkoutResult } from "./workoutResultUnits";
 
 export type WorkoutCelebrationStats = {
   totalVolumeKg: number;
@@ -39,6 +40,7 @@ export function computeWorkoutCelebrationStats(log: WorkoutLog, otherLogs: Worko
     if (other.status !== "Fullført") continue;
     for (const row of other.results ?? []) {
       if (!row.completed) continue;
+      if (!isKgBasedWorkoutResult(row)) continue;
       const score = workoutScore(Number(row.performedWeight) || 0, Number(row.performedReps) || 0);
       const current = previousBestByExercise.get(row.exerciseName) ?? 0;
       if (score > current) previousBestByExercise.set(row.exerciseName, score);
@@ -52,6 +54,7 @@ export function computeWorkoutCelebrationStats(log: WorkoutLog, otherLogs: Worko
 
   for (const row of results) {
     if (!row.completed) continue;
+    if (!isKgBasedWorkoutResult(row)) continue;
     const weight = Number(row.performedWeight) || 0;
     const reps = Number(row.performedReps) || 0;
     completedSets += 1;

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Minus, Plus, Trophy } from "lucide-react";
 import { motusHaptic } from "../app/haptics";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
+import { resolveWorkoutLoadUnit, resolveWorkoutRepsUnit } from "../app/workoutResultUnits";
 import { GradientButton, TextInput } from "../app/ui";
 import type { Exercise, WorkoutModeState } from "../app/types";
 
@@ -13,6 +14,7 @@ type UpdateField =
   | "performedDurationMinutes"
   | "performedSpeed"
   | "performedIncline"
+  | "performedLoadUnit"
   | "completed";
 
 type LastSessionEntry = {
@@ -56,7 +58,9 @@ function resolveRowKind(row: WorkoutSetRow, exerciseByName: Map<string, Exercise
   const holdCategory = row.exerciseCategory ?? resolvedExercise?.category;
   const isStretch = Boolean(holdCategory && isHoldBasedExerciseCategory(holdCategory));
   const isTreadmill = (row.exerciseEquipment ?? resolvedExercise?.equipment ?? "").toLowerCase().includes("tredem");
-  return { isCardio, isStretch, isTreadmill };
+  const loadUnit = resolveWorkoutLoadUnit(row);
+  const isStrengthSeconds = !isCardio && !isStretch && loadUnit === "sec";
+  return { isCardio, isStretch, isTreadmill, loadUnit, isStrengthSeconds };
 }
 
 function SetCheckToggle({
@@ -193,8 +197,10 @@ export function WorkoutCompactSetTable({
 
   const activeIndex = rows.findIndex((row) => !row.completed);
   const firstRow = rows[0]!;
-  const { isCardio, isStretch, isTreadmill } = resolveRowKind(firstRow, exerciseByName);
-  const col3Label = isCardio ? (isTreadmill ? "FART" : "MIN") : isStretch ? "SEK" : "VEKT (KG)";
+  const { isCardio, isStretch, isTreadmill, isStrengthSeconds } = resolveRowKind(firstRow, exerciseByName);
+  const repsUnitLabel = resolveWorkoutRepsUnit(firstRow) === "min" ? "MIN" : "REPS";
+  const loadUnitLabel = isStretch || isStrengthSeconds ? "SEK" : "KG";
+  const col3Label = isCardio ? (isTreadmill ? "FART" : "MIN") : `VEKT (${loadUnitLabel})`;
   const gridCols = showExerciseColumn
     ? isCardio && isTreadmill
       ? "minmax(0,1.2fr) 2.5rem 1fr 1fr 1fr 2.5rem"
@@ -233,18 +239,19 @@ export function WorkoutCompactSetTable({
   }
 
   function rowIsLoggable(row: WorkoutSetRow): boolean {
-    const { isCardio: cardio, isStretch: stretch, isTreadmill: treadmill } = resolveRowKind(row, exerciseByName);
+    const { isCardio: cardio, isStretch: stretch, isTreadmill: treadmill, isStrengthSeconds } = resolveRowKind(row, exerciseByName);
     if (cardio) {
       const duration = (row.performedDurationMinutes ?? "").trim();
       const speed = (row.performedSpeed ?? "").trim();
       return Number(duration) > 0 && (!treadmill || Number(speed) > 0);
     }
+    if (isStrengthSeconds) return Number(row.performedWeight.trim()) > 0;
     if (stretch) return Number(row.performedWeight.trim()) > 0;
     return Number(row.performedWeight.trim()) > 0 && Number(row.performedReps.trim()) > 0;
   }
 
   function renderActiveSetControls(row: WorkoutSetRow) {
-    const { isCardio: cardio, isStretch: stretch, isTreadmill: treadmill } = resolveRowKind(row, exerciseByName);
+    const { isCardio: cardio, isStretch: stretch, isTreadmill: treadmill, isStrengthSeconds } = resolveRowKind(row, exerciseByName);
     const activeLastWeight = lastWeightFor(row);
     const activeLastDuration = lastDurationFor(row);
     const activeLastSpeed = lastSpeedFor(row);
@@ -301,16 +308,33 @@ export function WorkoutCompactSetTable({
       );
     }
 
-    const step = stretch ? 5 : 2.5;
+    const step = stretch || isStrengthSeconds ? 5 : 2.5;
     return (
       <div className="mt-2 space-y-1.5 rounded-lg border border-pink-200 bg-white p-2 sm:mt-3 sm:space-y-2 sm:rounded-xl sm:p-3">
+        {!stretch ? (
+          <div className="grid gap-1">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Måleenhet</label>
+            <select
+              value={isStrengthSeconds ? "sec" : "kg"}
+              onChange={(event) => {
+                const next = event.target.value === "sec" ? "sec" : "kg";
+                onUpdate(row.exerciseId, "performedLoadUnit", next);
+              }}
+              className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700"
+              aria-label="Velg måleenhet"
+            >
+              <option value="kg">Kg</option>
+              <option value="sec">Sekunder</option>
+            </select>
+          </div>
+        ) : null}
         <div className="flex items-center justify-center gap-3">
           <button
             type="button"
             onClick={() => handleInputChange(row, "performedWeight", stepWeightValue(row.performedWeight, -step))}
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg border bg-slate-50"
             style={{ borderColor: "rgba(15,23,42,0.12)" }}
-            aria-label={stretch ? "Trekk fra 5 sek" : "Trekk fra 2,5 kg"}
+            aria-label={stretch || isStrengthSeconds ? "Trekk fra 5 sek" : "Trekk fra 2,5 kg"}
           >
             <Minus className="h-4 w-4" aria-hidden />
           </button>
@@ -323,14 +347,14 @@ export function WorkoutCompactSetTable({
             data-workout-weight={row.exerciseId}
             placeholder={activeWeightPlaceholder}
             className="h-10 w-20 text-center text-lg font-semibold"
-            aria-label={stretch ? "Sekunder" : "Kg"}
+            aria-label={stretch || isStrengthSeconds ? "Sekunder" : "Kg"}
           />
           <button
             type="button"
             onClick={() => handleInputChange(row, "performedWeight", stepWeightValue(row.performedWeight, step))}
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg border bg-slate-50"
             style={{ borderColor: "rgba(15,23,42,0.12)" }}
-            aria-label={stretch ? "Legg til 5 sek" : "Legg til 2,5 kg"}
+            aria-label={stretch || isStrengthSeconds ? "Legg til 5 sek" : "Legg til 2,5 kg"}
           >
             <Plus className="h-4 w-4" aria-hidden />
           </button>
@@ -364,7 +388,7 @@ export function WorkoutCompactSetTable({
         >
           {showExerciseColumn ? <span>Øvelse</span> : null}
           <span>Sett</span>
-          <span className="text-center">{isCardio ? "PLAN" : "Reps"}</span>
+          <span className="text-center">{isCardio ? "PLAN" : repsUnitLabel}</span>
           {isCardio && isTreadmill ? <span className="text-center">Km/t</span> : null}
           <span className="text-center">{col3Label}</span>
           <span className="sr-only">Fullført</span>
@@ -374,6 +398,12 @@ export function WorkoutCompactSetTable({
           const isFuture = activeIndex >= 0 && index > activeIndex;
           const isDone = row.completed;
           const isPr = Boolean(prRows[row.exerciseId]);
+          const { isStrengthSeconds: rowStrengthSeconds, isStretch: rowStretch, isCardio: rowCardio } = resolveRowKind(
+            row,
+            exerciseByName,
+          );
+          const rowRepsUnit = resolveWorkoutRepsUnit(row);
+          const rowLoadUnit = resolveWorkoutLoadUnit(row);
           const lastWeight = lastWeightFor(row);
           const lastReps = lastRepsFor(row);
           const lastDuration = lastDurationFor(row);
@@ -383,11 +413,15 @@ export function WorkoutCompactSetTable({
           const weightFallback = lastWeight || row.plannedWeight || "";
           const durationFallback = lastDuration || row.plannedDurationMinutes || "";
           const speedFallback = lastSpeed || row.plannedSpeed || "";
-          const displayReps = isDone
+          const displayRepsRaw = isDone
             ? row.performedReps || repsFallback || "—"
             : isFuture
               ? repsFallback || "—"
               : row.performedReps || repsFallback || "";
+          const displayReps =
+            rowRepsUnit === "min" && displayRepsRaw && displayRepsRaw !== "—"
+              ? `${displayRepsRaw} min`
+              : displayRepsRaw;
           const displayWeight = isDone
             ? isCardio
               ? row.performedDurationMinutes || durationFallback || "—"
@@ -430,7 +464,7 @@ export function WorkoutCompactSetTable({
               <span className={`text-sm font-semibold ${isDone ? "text-slate-900" : "text-slate-500"}`}>
                 {row.setNumber ?? row.blockRound ?? index + 1}
               </span>
-              {isActive && !isCardio ? (
+              {isActive && !isCardio && !rowStrengthSeconds ? (
                 <TextInput
                   value={row.performedReps}
                   onChange={(e) => handleInputChange(row, "performedReps", e.target.value)}
@@ -439,11 +473,11 @@ export function WorkoutCompactSetTable({
                   enterKeyHint="next"
                   placeholder={repsFallback || "0"}
                   className="h-9 text-center text-sm"
-                  aria-label="Reps"
+                  aria-label={rowRepsUnit === "min" ? "Minutter" : "Reps"}
                 />
               ) : (
                 <span className={`text-center text-sm font-medium ${isDone ? "text-slate-900" : "text-slate-400"}`}>
-                  {isCardio ? (durationFallback ? `${durationFallback} min` : "—") : displayReps}
+                  {rowCardio ? (durationFallback ? `${durationFallback} min` : "—") : rowStrengthSeconds ? "—" : displayReps}
                 </span>
               )}
               {isCardio && isTreadmill ? (
@@ -479,7 +513,7 @@ export function WorkoutCompactSetTable({
                   data-workout-weight={row.exerciseId}
                   placeholder={weightFallback || "0"}
                   className="h-9 text-center text-sm"
-                  aria-label={isStretch ? "Sek" : "Kg"}
+                  aria-label={rowStretch || rowStrengthSeconds || rowLoadUnit === "sec" ? "Sekunder" : "Kg"}
                 />
               ) : (
                 <span className={`text-center text-sm font-medium ${isDone ? "text-slate-900" : "text-slate-400"}`}>

@@ -53,9 +53,14 @@ export function loadRecentFoodIds(): string[] {
   return readJson<string[]>(FOOD_BANK_RECENT_KEY) ?? [];
 }
 
+export function persistRecentFoodIds(ids: string[]): void {
+  writeJson(FOOD_BANK_RECENT_KEY, ids);
+  notifyFoodBankChanged();
+}
+
 export function touchRecentFoodId(foodId: string): string[] {
   const next = [foodId, ...loadRecentFoodIds().filter((id) => id !== foodId)].slice(0, 12);
-  writeJson(FOOD_BANK_RECENT_KEY, next);
+  persistRecentFoodIds(next);
   return next;
 }
 

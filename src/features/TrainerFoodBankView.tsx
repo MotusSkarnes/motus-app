@@ -15,13 +15,16 @@ import {
 } from "lucide-react";
 import { filterFoodBankItems, sortFoodBankItems } from "../app/foodBankFilter";
 import {
+  persistTrainerFoodBankBundle,
+  scheduleTrainerFoodBankCloudSave,
+  syncTrainerFoodBankFromRemote,
+} from "../app/foodBankCloud";
+import {
   FOOD_BANK_CHANGED_EVENT,
   deleteFoodItem,
   loadFavoriteFoodIds,
   loadFoodBankItems,
   loadRecentFoodIds,
-  persistFavoriteFoodIds,
-  persistFoodBankItems,
   touchRecentFoodId,
   upsertFoodItem,
 } from "../app/foodBankStorage";
@@ -62,6 +65,7 @@ const FILTER_CHIPS: Array<{ id: FoodBankFilterChip; label: string; icon?: typeof
 
 type TrainerFoodBankViewProps = {
   trainerName: string;
+  trainerOwnerUserId?: string;
 };
 
 type FoodFormState = {
@@ -169,7 +173,7 @@ function MacroStrip({ item, compact = false }: { item: FoodItem; compact?: boole
   );
 }
 
-export function TrainerFoodBankView({ trainerName }: TrainerFoodBankViewProps) {
+export function TrainerFoodBankView({ trainerName, trainerOwnerUserId }: TrainerFoodBankViewProps) {
   const [items, setItems] = useState<FoodItem[]>(() => loadFoodBankItems());
   const [favoriteIds, setFavoriteIds] = useState<string[]>(() => loadFavoriteFoodIds());
   const [recentIds, setRecentIds] = useState<string[]>(() => loadRecentFoodIds());
@@ -196,12 +200,36 @@ export function TrainerFoodBankView({ trainerName }: TrainerFoodBankViewProps) {
     setRecentIds(loadRecentFoodIds());
   }, []);
 
+  const persistBundle = useCallback(
+    (nextItems: FoodItem[], nextFavoriteIds = favoriteIds, nextRecentIds = recentIds) => {
+      persistTrainerFoodBankBundle(trainerOwnerUserId ?? "", {
+        items: nextItems,
+        favoriteIds: nextFavoriteIds,
+        recentIds: nextRecentIds,
+        updatedAt: Date.now(),
+      });
+    },
+    [trainerOwnerUserId, favoriteIds, recentIds],
+  );
+
   useEffect(() => {
     reload();
     const handler = () => reload();
     window.addEventListener(FOOD_BANK_CHANGED_EVENT, handler);
     return () => window.removeEventListener(FOOD_BANK_CHANGED_EVENT, handler);
   }, [reload]);
+
+  useEffect(() => {
+    if (!trainerOwnerUserId?.trim()) return;
+    let cancelled = false;
+    void (async () => {
+      const result = await syncTrainerFoodBankFromRemote(trainerOwnerUserId);
+      if (!cancelled && (result.source === "remote" || result.source === "local")) reload();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [trainerOwnerUserId, reload]);
 
   useEffect(() => {
     setPage(1);
@@ -234,12 +262,21 @@ export function TrainerFoodBankView({ trainerName }: TrainerFoodBankViewProps) {
       ? favoriteIds.filter((id) => id !== foodId)
       : [foodId, ...favoriteIds];
     setFavoriteIds(next);
-    persistFavoriteFoodIds(next);
+    persistBundle(items, next, recentIds);
   };
 
   const openFood = (item: FoodItem) => {
     setSelectedId(item.id);
-    setRecentIds(touchRecentFoodId(item.id));
+    const nextRecent = touchRecentFoodId(item.id);
+    setRecentIds(nextRecent);
+    if (trainerOwnerUserId?.trim()) {
+      scheduleTrainerFoodBankCloudSave(trainerOwnerUserId, {
+        items,
+        favoriteIds,
+        recentIds: nextRecent,
+        updatedAt: Date.now(),
+      });
+    }
   };
 
   const openCreateForm = () => {
@@ -311,7 +348,7 @@ export function TrainerFoodBankView({ trainerName }: TrainerFoodBankViewProps) {
     };
     const nextItems = upsertFoodItem(items, nextItem);
     setItems(nextItems);
-    persistFoodBankItems(nextItems);
+    persistBundle(nextItems);
     setSelectedId(nextItem.id);
     setFormOpen(false);
     setFormStatus(null);
@@ -535,7 +572,7 @@ export function TrainerFoodBankView({ trainerName }: TrainerFoodBankViewProps) {
                   onClick={() => {
                     const nextItems = deleteFoodItem(items, selectedItem.id);
                     setItems(nextItems);
-                    persistFoodBankItems(nextItems);
+                    persistBundle(nextItems);
                     setSelectedId(null);
                   }}
                 >
@@ -623,7 +660,7 @@ export function TrainerFoodBankView({ trainerName }: TrainerFoodBankViewProps) {
           onClose={() => setImportOpen(false)}
           onImported={(nextItems, summary) => {
             setItems(nextItems);
-            persistFoodBankItems(nextItems);
+            persistBundle(nextItems);
             setMealPlanNotice(summary);
             window.setTimeout(() => setMealPlanNotice(null), 5000);
           }}

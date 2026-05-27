@@ -373,8 +373,11 @@ export function TrainerProgramBuilderView({
               const isExpanded = expandedDraftId === item.id;
               const isCardio = isCardioProgramRow(item, linkedExercise, programsSubTab);
               const isStretch = programDraftUsesHoldFields(linkedExercise?.category, programsSubTab);
+              const isStrength = !isCardio && !isStretch;
               const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
               const prescription = draftExercisePrescriptionLabel(item, index, programExercisesDraft, linkedExercise, programsSubTab);
+              const repsUnit = item.repsUnit === "minutes" ? "minutes" : "reps";
+              const weightUnit = item.weightUnit === "seconds" ? "seconds" : "kg";
 
               return (
                 <div
@@ -470,6 +473,45 @@ export function TrainerProgramBuilderView({
                             <span className="motus-exbank-field-label">Hold (sek)</span>
                             <TextInput value={item.holdSeconds ?? ""} onChange={(e) => onUpdateDraftExercise(item.id, "holdSeconds", e.target.value)} placeholder="Sek" />
                           </label>
+                        ) : isStrength ? (
+                          <>
+                            <label className="motus-exbank-field">
+                              <span className="motus-exbank-field-label">Reps/minutter</span>
+                              <div className="grid grid-cols-2 gap-2">
+                                <SelectBox
+                                  value={repsUnit}
+                                  onChange={(value) => onUpdateDraftExercise(item.id, "repsUnit", value)}
+                                  options={[
+                                    { value: "reps", label: "Reps" },
+                                    { value: "minutes", label: "Minutter" },
+                                  ]}
+                                />
+                                <TextInput
+                                  value={item.reps}
+                                  onChange={(e) => onUpdateDraftExercise(item.id, "reps", e.target.value)}
+                                  placeholder={repsUnit === "minutes" ? "Min" : "Reps"}
+                                />
+                              </div>
+                            </label>
+                            <label className="motus-exbank-field">
+                              <span className="motus-exbank-field-label">Belastning</span>
+                              <div className="grid grid-cols-2 gap-2">
+                                <SelectBox
+                                  value={weightUnit}
+                                  onChange={(value) => onUpdateDraftExercise(item.id, "weightUnit", value)}
+                                  options={[
+                                    { value: "kg", label: "Kg" },
+                                    { value: "seconds", label: "Sekunder" },
+                                  ]}
+                                />
+                                <TextInput
+                                  value={item.weight}
+                                  onChange={(e) => onUpdateDraftExercise(item.id, "weight", e.target.value)}
+                                  placeholder={weightUnit === "seconds" ? "Sek" : "Kg"}
+                                />
+                              </div>
+                            </label>
+                          </>
                         ) : (
                           <>
                             <label className="motus-exbank-field">

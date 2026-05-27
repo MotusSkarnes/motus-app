@@ -1,5 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
+import { isSecondsBasedWorkoutResult } from "../app/workoutResultUnits";
 import type { WorkoutLog } from "../app/types";
 import { EmptyState, TextInput } from "../app/ui";
 
@@ -282,7 +283,9 @@ export function MemberWorkoutHistoryLogList({
                                         ? `Utført: ${result.performedDurationMinutes || "0"} min${result.performedSpeed ? ` · ${result.performedSpeed} km/t` : ""}${result.performedIncline ? ` · ${result.performedIncline}% incline` : ""}`
                                         : result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)
                                           ? `Utført: ${result.performedWeight || "0"} sek`
-                                          : `Utført: ${result.performedWeight || "0"} kg x ${result.performedReps || "0"} reps`}
+                                          : isSecondsBasedWorkoutResult(result)
+                                            ? `Utført: ${result.performedWeight || "0"} sek`
+                                            : `Utført: ${result.performedWeight || "0"} kg x ${result.performedReps || "0"} reps`}
                                       {result.completed ? " - Fullført" : " - Ikke markert fullført"}
                                     </div>
                                   )}

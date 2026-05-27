@@ -104,6 +104,7 @@ type MemberLayoutProps = {
   memberVisibleAlerts: MemberAlert[];
   handleMemberBellToggle: () => void;
   openAlert: (alert: MemberAlert) => void;
+  markAllMemberAlertsAsRead: () => void;
   markMemberInspirationAsSeen: () => void;
   memberFocusInspirationItemId: string | null;
   clearMemberFocusInspirationItemId: () => void;
@@ -161,6 +162,7 @@ export function MemberLayout({
   memberVisibleAlerts,
   handleMemberBellToggle,
   openAlert,
+  markAllMemberAlertsAsRead,
   markMemberInspirationAsSeen,
   memberFocusInspirationItemId,
   clearMemberFocusInspirationItemId,
@@ -471,7 +473,12 @@ export function MemberLayout({
     ),
     homeOverviewNotificationsPanel:
       !isMemberLimited && memberNotificationsOpen ? (
-        <MemberNotificationsPanel alerts={memberVisibleAlerts} onOpenAlert={openAlert} />
+        <MemberNotificationsPanel
+          alerts={memberVisibleAlerts}
+          unreadCount={memberUnreadCount}
+          onOpenAlert={openAlert}
+          onMarkAllAsRead={markAllMemberAlertsAsRead}
+        />
       ) : null,
   };
   const inspirationMemberId =

@@ -291,7 +291,10 @@ export function TrainerLayout({
                   .map((program) => ({ id: program.id, title: program.title }))}
               />
             ) : trainerTab === "nutrition" ? (
-              <TrainerFoodBankView trainerName={appState.currentUser?.name ?? "Motus PT"} />
+              <TrainerFoodBankView
+                trainerName={appState.currentUser?.name ?? "Motus PT"}
+                trainerOwnerUserId={appState.currentUser?.id}
+              />
             ) : trainerTab === "badges" ? (
               <TrainerBadgeCatalog />
             ) : (

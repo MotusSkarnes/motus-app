@@ -104,7 +104,9 @@ export function draftExercisePrescriptionLabel(
     const hold = programExerciseHoldSeconds(item, linkedExercise?.category) || item.holdSeconds || "30";
     return `Hold: ${hold} sek`;
   }
-  return `${item.sets || "—"}×${item.reps || "—"} · ${item.weight || "0"} kg`;
+  const repsUnit = item.repsUnit === "minutes" ? "min" : "reps";
+  const weightUnit = item.weightUnit === "seconds" ? "sek" : "kg";
+  return `${item.sets || "—"}×${item.reps || "—"} ${repsUnit} · ${item.weight || "0"} ${weightUnit}`;
 }
 
 export function programCategoryLabel(subTab: TrainingSubTab): string {

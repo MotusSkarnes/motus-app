@@ -1,6 +1,7 @@
 import { parseStoredLogDate } from "./dateFormat";
 import { getWeekKey } from "./memberProgressGamification";
 import { parseLogDateMs } from "./workoutLogDate";
+import { isKgBasedWorkoutResult } from "./workoutResultUnits";
 import type { WorkoutLog } from "./types";
 
 export type HistoryPeriodWeeks = 4 | 12 | 26;
@@ -78,6 +79,7 @@ function countPersonalRecordsInRange(logs: WorkoutLog[], rangeStart: Date, range
 
     for (const result of log.results ?? []) {
       if (!result.completed) continue;
+      if (!isKgBasedWorkoutResult(result)) continue;
       const weight = Number(result.performedWeight) || 0;
       const reps = Number(result.performedReps) || 0;
       const score = weight * Math.max(reps, 1);

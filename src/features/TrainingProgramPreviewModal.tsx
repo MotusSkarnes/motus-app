@@ -1,46 +1,10 @@
 import { X } from "lucide-react";
 import { MOTUS } from "../app/data";
-import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "../app/exerciseCategories";
-import { isLegacyIntervalCooldownDrag } from "../app/programBlocks";
+import { formatProgramExercisePrescription, resolveProgramExerciseName } from "../app/programExercisePresentation";
 import { GradientButton, OutlineButton } from "../app/ui";
-import type { Exercise, ProgramExercise, TrainingProgram } from "../app/types";
+import type { Exercise, TrainingProgram } from "../app/types";
 
 const MOTUS_GRADIENT = `${MOTUS.gradient}`;
-
-function cardioProgramExerciseName(rows: ProgramExercise[], index: number): string {
-  return isLegacyIntervalCooldownDrag(rows, index) ? "Nedjogg" : rows[index]?.exerciseName ?? "";
-}
-
-function cardioTargetHrPrescriptionSuffix(targetHrPercent: string | undefined): string {
-  const raw = String(targetHrPercent ?? "").trim();
-  if (!raw) return "";
-  return ` · målpuls ca. ${raw}% av makspuls`;
-}
-
-function formatExercisePrescription(
-  exercise: ProgramExercise,
-  exerciseIndex: number,
-  exercises: ProgramExercise[],
-  exerciseLibrary: Exercise[],
-): string {
-  const exerciseName = cardioProgramExerciseName(exercises, exerciseIndex);
-  const category = exerciseLibrary.find((item) => item.id === exercise.exerciseId)?.category;
-  const cardioMinutes = String(exercise.durationMinutes ?? "").trim();
-  const cardioSeconds = String(exercise.holdSeconds ?? "").trim();
-  const isCardio = category === "Kondisjon" || Boolean(cardioMinutes);
-  if (isCardio) {
-    const dragLabel = /^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder";
-    const parts: string[] = [];
-    if (cardioMinutes) parts.push(`${cardioMinutes} min`);
-    if (cardioSeconds) parts.push(`${cardioSeconds} sek`);
-    const timeLabel = parts.length ? parts.join(" ") : "—";
-    return `${exercise.sets || "-"} ${dragLabel} × ${timeLabel}${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}%` : ""} · ${exercise.restSeconds || "0"}s${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}`;
-  }
-  if (category && isHoldBasedExerciseCategory(category)) {
-    return `${exercise.sets || "-"} sett × ${programExerciseHoldSeconds(exercise, category) || "-"} sek · ${exercise.restSeconds || "0"}s`;
-  }
-  return `${exercise.sets || "-"}×${exercise.reps || "-"} · ${exercise.weight || "0"}kg · ${exercise.restSeconds || "0"}s`;
-}
 
 type TrainingProgramPreviewModalProps = {
   program: TrainingProgram | null;
@@ -107,7 +71,7 @@ export function TrainingProgramPreviewModal({
           ) : (
             <ol className="space-y-2">
               {safeExercises.map((exercise, exerciseIndex) => {
-                const exerciseName = cardioProgramExerciseName(safeExercises, exerciseIndex);
+                const exerciseName = resolveProgramExerciseName(safeExercises, exerciseIndex);
                 return (
                   <li
                     key={exercise.id}
@@ -116,7 +80,7 @@ export function TrainingProgramPreviewModal({
                   >
                     <div className="font-medium text-slate-900">{exerciseName}</div>
                     <div className="mt-0.5 text-xs text-slate-600">
-                      {formatExercisePrescription(exercise, exerciseIndex, safeExercises, exerciseLibrary)}
+                      {formatProgramExercisePrescription(exercise, exerciseIndex, safeExercises, exerciseLibrary)}
                     </div>
                     {exercise.notes?.trim() ? <div className="mt-1 text-xs text-slate-500">{exercise.notes}</div> : null}
                   </li>

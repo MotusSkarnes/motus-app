@@ -21,12 +21,14 @@ export function AppHeader({
   memberVisibleAlerts = [],
   onMemberBellToggle,
   onOpenMemberAlert,
+  onMarkAllMemberAlertsAsRead,
   showMemberNotifications = false,
   trainerUnreadCount = 0,
   trainerNotificationsOpen = false,
   trainerVisibleAlerts = [],
   onTrainerBellToggle,
   onOpenTrainerAlert,
+  onMarkAllTrainerAlertsAsRead,
   showTrainerNotifications = false,
   showTrainerMemberPreviewBar = false,
   onExitTrainerMemberPreview,
@@ -45,12 +47,14 @@ export function AppHeader({
   memberVisibleAlerts?: MemberAlert[];
   onMemberBellToggle?: () => void;
   onOpenMemberAlert?: (alert: MemberAlert) => void;
+  onMarkAllMemberAlertsAsRead?: () => void;
   showMemberNotifications?: boolean;
   trainerUnreadCount?: number;
   trainerNotificationsOpen?: boolean;
   trainerVisibleAlerts?: TrainerAlert[];
   onTrainerBellToggle?: () => void;
   onOpenTrainerAlert?: (alert: TrainerAlert) => void;
+  onMarkAllTrainerAlertsAsRead?: () => void;
   showTrainerNotifications?: boolean;
   showTrainerMemberPreviewBar?: boolean;
   onExitTrainerMemberPreview?: () => void;
@@ -70,9 +74,19 @@ export function AppHeader({
 
   const notificationsPanel =
     isTrainer && showTrainerNotifications && trainerNotificationsOpen && onOpenTrainerAlert ? (
-      <TrainerNotificationsPanel alerts={trainerVisibleAlerts} onOpenAlert={onOpenTrainerAlert} />
+      <TrainerNotificationsPanel
+        alerts={trainerVisibleAlerts}
+        unreadCount={trainerUnreadCount}
+        onOpenAlert={onOpenTrainerAlert}
+        onMarkAllAsRead={onMarkAllTrainerAlertsAsRead}
+      />
     ) : !isTrainer && showMemberNotifications && memberNotificationsOpen && onOpenMemberAlert ? (
-      <MemberNotificationsPanel alerts={memberVisibleAlerts} onOpenAlert={onOpenMemberAlert} />
+      <MemberNotificationsPanel
+        alerts={memberVisibleAlerts}
+        unreadCount={memberUnreadCount}
+        onOpenAlert={onOpenMemberAlert}
+        onMarkAllAsRead={onMarkAllMemberAlertsAsRead}
+      />
     ) : null;
 
   const devFooter = showProductionSafeQuickTools ? (

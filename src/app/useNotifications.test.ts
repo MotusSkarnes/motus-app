@@ -95,6 +95,26 @@ describe("useNotifications workout comment alerts", () => {
     expect(result.current.memberVisibleAlerts.length).toBe(0);
   });
 
+  it("marks all member alerts as read without opening each one", () => {
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [],
+        logs: [makeLog()],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+        memberViewId: "member-1",
+        setMemberTab: () => {},
+      }),
+    );
+
+    expect(result.current.memberUnreadCount).toBe(1);
+    act(() => {
+      result.current.markAllMemberAlertsAsRead();
+    });
+    expect(result.current.memberUnreadCount).toBe(0);
+    expect(result.current.memberVisibleAlerts.length).toBe(0);
+  });
+
   it("sorts newest trainer message alerts first among unread", async () => {
     const members = [
       { id: "member-1", name: "Kari", email: "kari@example.com", invitedAt: "2026-01-01" } as never,

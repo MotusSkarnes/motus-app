@@ -46,7 +46,7 @@ export function buildTrainingProgramDisplayKey(program: Pick<TrainingProgram, "t
   const exerciseFingerprint = program.exercises
     .map(
       (item) =>
-        `${item.exerciseName}|${item.sets}|${item.reps}|${item.weight}|${item.holdSeconds ?? ""}|${item.durationMinutes ?? ""}|${item.speed ?? ""}|${item.incline ?? ""}|${item.restSeconds}|${item.targetHrPercent ?? ""}|${item.notes}`,
+        `${item.exerciseName}|${item.sets}|${item.reps}|${item.repsUnit ?? ""}|${item.weight}|${item.weightUnit ?? ""}|${item.holdSeconds ?? ""}|${item.durationMinutes ?? ""}|${item.speed ?? ""}|${item.incline ?? ""}|${item.restSeconds}|${item.targetHrPercent ?? ""}|${item.notes}`,
     )
     .join("||");
   return `${program.title.trim()}::${program.goal.trim()}::${program.notes.trim()}::${exerciseFingerprint}`;
@@ -230,12 +230,15 @@ function buildWorkoutRow(
     exerciseCategory: meta?.category,
     exerciseEquipment: meta?.equipment,
     plannedSets: ex.sets,
+    plannedRepsUnit: ex.repsUnit ?? "reps",
     plannedReps: plannedRepsForRow,
+    plannedWeightUnit: isStretch ? "seconds" : (ex.weightUnit ?? "kg"),
     plannedWeight: initialWeight,
     plannedDurationMinutes: ex.durationMinutes ?? "",
     plannedSpeed: ex.speed ?? "",
     plannedIncline: ex.incline ?? "",
     performedWeight: initialWeight,
+    performedLoadUnit: isStretch ? "sec" : (ex.weightUnit === "seconds" ? "sec" : "kg"),
     performedReps: plannedRepsForRow,
     performedDurationMinutes: ex.durationMinutes ?? "",
     performedSpeed: ex.speed ?? "",

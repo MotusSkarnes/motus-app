@@ -5,10 +5,19 @@ import type { MemberAlert } from "../app/useNotifications";
 
 type MemberNotificationsPanelProps = {
   alerts: MemberAlert[];
+  unreadCount?: number;
   onOpenAlert: (alert: MemberAlert) => void;
+  onMarkAllAsRead?: () => void;
 };
 
-export function MemberNotificationsPanel({ alerts, onOpenAlert }: MemberNotificationsPanelProps) {
+export function MemberNotificationsPanel({
+  alerts,
+  unreadCount = 0,
+  onOpenAlert,
+  onMarkAllAsRead,
+}: MemberNotificationsPanelProps) {
+  const hasUnread = unreadCount > 0;
+
   if (!alerts.length) {
     return (
       <div className="rounded-xl border border-dashed border-slate-200/80 bg-white/80 px-3 py-2.5 text-sm text-slate-500">
@@ -18,7 +27,29 @@ export function MemberNotificationsPanel({ alerts, onOpenAlert }: MemberNotifica
   }
 
   return (
-    <div className="max-h-[min(22rem,70vh)] space-y-2 overflow-y-auto pr-1">
+    <div className="space-y-2">
+      {onMarkAllAsRead ? (
+        <label
+          className={`flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 text-sm transition ${
+            hasUnread
+              ? "border-slate-200/90 bg-white hover:bg-slate-50"
+              : "border-slate-200/70 bg-slate-50/80 text-slate-500"
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={!hasUnread}
+            disabled={!hasUnread}
+            onChange={() => {
+              if (hasUnread) onMarkAllAsRead();
+            }}
+            className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 disabled:opacity-60"
+            aria-label="Merk alle varsler som lest"
+          />
+          <span className={hasUnread ? "font-medium text-slate-800" : "text-slate-500"}>Merk alle som lest</span>
+        </label>
+      ) : null}
+      <div className="max-h-[min(22rem,70vh)] space-y-2 overflow-y-auto pr-1">
       {alerts.map((alert) => {
         const AlertIcon =
           alert.kind === "message"
@@ -100,6 +131,7 @@ export function MemberNotificationsPanel({ alerts, onOpenAlert }: MemberNotifica
           </button>
         );
       })}
+      </div>
     </div>
   );
 }

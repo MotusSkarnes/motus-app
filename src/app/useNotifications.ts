@@ -900,6 +900,87 @@ export function useNotifications({
     setMemberNotificationsOpen((open) => !open);
   }
 
+  const markAllTrainerAlertsAsRead = useCallback(() => {
+    if (!trainerUnreadAlerts.length) return;
+
+    let nextTrainerAlertsSeenAt = trainerAlertsSeenAt;
+    const nextOpenedIds = new Set(openedTrainerAlertIds);
+    const nextMemberFormKeys = new Set(seenTrainerMemberFormKeys);
+
+    for (const alert of trainerUnreadAlerts) {
+      nextOpenedIds.add(alert.id);
+      if (alert.kind === "message") {
+        nextTrainerAlertsSeenAt = Math.max(nextTrainerAlertsSeenAt, alert.timestamp);
+      } else if (alert.kind === "member-form") {
+        nextMemberFormKeys.add(alert.id);
+      }
+    }
+
+    setTrainerAlertsSeenAt(nextTrainerAlertsSeenAt);
+    setOpenedTrainerAlertIds(Array.from(nextOpenedIds));
+    setSeenTrainerMemberFormKeys(Array.from(nextMemberFormKeys));
+    setSeenTrainerOperationalAlertKey(trainerOperationalAlertKey);
+  }, [
+    openedTrainerAlertIds,
+    seenTrainerMemberFormKeys,
+    trainerAlertsSeenAt,
+    trainerOperationalAlertKey,
+    trainerUnreadAlerts,
+  ]);
+
+  const markAllMemberAlertsAsRead = useCallback(() => {
+    if (!memberUnreadAlerts.length) return;
+
+    let nextMemberAlertsSeenAt = memberAlertsSeenAt;
+    const nextOpenedIds = new Set(openedMemberAlertIds);
+    const nextProgramIds = new Set(seenMemberProgramIds);
+    const nextWorkoutCommentKeys = new Set(seenMemberWorkoutCommentKeys);
+    const nextInspirationIds = new Set(seenMemberInspirationIds);
+    const nextPeriodPlanKeys = new Set(seenMemberPeriodPlanKeys);
+    const nextDismissedCheckInMonths = new Set(dismissedMemberCheckInMonths);
+
+    for (const alert of memberUnreadAlerts) {
+      nextOpenedIds.add(alert.id);
+      if (alert.kind === "message") {
+        nextMemberAlertsSeenAt = Math.max(nextMemberAlertsSeenAt, alert.timestamp);
+      } else if (alert.kind === "program") {
+        const programId = alert.id.replace(/^member-program-/, "");
+        if (programId) nextProgramIds.add(programId);
+      } else if (alert.kind === "workout-comment") {
+        const workoutAlert = memberWorkoutCommentAlerts.find((item) => item.id === alert.id);
+        if (workoutAlert?.seenKey) nextWorkoutCommentKeys.add(workoutAlert.seenKey);
+      } else if (alert.kind === "inspiration") {
+        const inspirationId = alert.inspirationItemId ?? alert.id.replace(/^member-inspiration-/, "");
+        if (inspirationId) nextInspirationIds.add(inspirationId);
+      } else if (alert.kind === "check-in") {
+        const monthKey = alert.id.replace(/^member-check-in-/, "");
+        if (monthKey) nextDismissedCheckInMonths.add(monthKey);
+      } else if (alert.kind === "period-plan") {
+        const periodAlert = memberPeriodPlanAlerts.find((item) => item.id === alert.id);
+        if (periodAlert?.seenKey) nextPeriodPlanKeys.add(periodAlert.seenKey);
+      }
+    }
+
+    setMemberAlertsSeenAt(nextMemberAlertsSeenAt);
+    setOpenedMemberAlertIds(Array.from(nextOpenedIds));
+    setSeenMemberProgramIds(Array.from(nextProgramIds));
+    setSeenMemberWorkoutCommentKeys(Array.from(nextWorkoutCommentKeys));
+    setSeenMemberInspirationIds(Array.from(nextInspirationIds));
+    setSeenMemberPeriodPlanKeys(Array.from(nextPeriodPlanKeys));
+    setDismissedMemberCheckInMonths(Array.from(nextDismissedCheckInMonths));
+  }, [
+    dismissedMemberCheckInMonths,
+    memberAlertsSeenAt,
+    memberPeriodPlanAlerts,
+    memberUnreadAlerts,
+    memberWorkoutCommentAlerts,
+    openedMemberAlertIds,
+    seenMemberInspirationIds,
+    seenMemberPeriodPlanKeys,
+    seenMemberProgramIds,
+    seenMemberWorkoutCommentKeys,
+  ]);
+
   function openAlert(alert: MemberAlert) {
     if (alert.kind === "message") {
       setMemberAlertsSeenAt((prev) => Math.max(prev, alert.timestamp));
@@ -1176,6 +1257,8 @@ export function useNotifications({
     memberUnreadCount,
     handleTrainerBellToggle,
     handleMemberBellToggle,
+    markAllTrainerAlertsAsRead,
+    markAllMemberAlertsAsRead,
     openTrainerAlert,
     openAlert,
     markMemberInspirationAsSeen,

@@ -47,6 +47,7 @@ import {
   resumePausedWorkoutInState,
 } from "./pausedWorkoutSession";
 import { getPausedWorkoutById, purgeExpiredPausedWorkouts } from "./pausedWorkoutStorage";
+import { syncTrainerFoodBankFromRemote } from "./foodBankCloud";
 import { notifyInspirationItemsChanged, saveInspirationItemsToStorage } from "./inspirationStorage";
 import {
   filterDeletedPrograms,
@@ -1008,6 +1009,9 @@ export function useAppState() {
         if (trainerHydrateStatus !== "invoke_error" && trainerHydrateStatus !== "invalid_payload") {
           setRemoteTrainerPeriodPlansByMemberId(hydratedTrainer.periodPlansByMemberId ?? {});
         }
+      }
+      if (isTrainerSession && ownerUserId) {
+        void syncTrainerFoodBankFromRemote(ownerUserId);
       }
       if (hydratedMember) {
         const periodPlanRows = hydratedMember.periodPlanRows ?? [];
@@ -2061,7 +2065,14 @@ export function useAppState() {
 
   function updateWorkoutExerciseResult(
     exerciseId: string,
-    field: "performedWeight" | "performedReps" | "performedDurationMinutes" | "performedSpeed" | "performedIncline" | "completed",
+    field:
+      | "performedWeight"
+      | "performedReps"
+      | "performedDurationMinutes"
+      | "performedSpeed"
+      | "performedIncline"
+      | "performedLoadUnit"
+      | "completed",
     value: string | boolean,
   ) {
     setAppState((prev) => repository.updateWorkoutResult(prev, { exerciseId, field, value }));
