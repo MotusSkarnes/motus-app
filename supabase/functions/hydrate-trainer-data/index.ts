@@ -54,11 +54,9 @@ function canIncludeLinkedMemberRow(
   const id = String((row as { id?: string }).id ?? "").trim();
   if (!id || !linkedMemberIds.has(id)) return false;
   if (isVisibleToTrainer(row, ownerUserId)) return true;
-  const rowOwnerUserId = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
-  if (isPrivateRosterMember(row) && rowOwnerUserId && rowOwnerUserId !== ownerUserId) {
-    return false;
-  }
-  return !rowOwnerUserId || rowOwnerUserId === ownerUserId;
+  // Security-first: never surface private roster rows through link-based fallback
+  // unless they are already visible to the trainer via ownership/shared rules above.
+  return false;
 }
 
 function rowBelongsToOwner(row: Record<string, unknown>, ownerUserId: string): boolean {
