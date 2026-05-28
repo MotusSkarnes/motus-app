@@ -132,6 +132,7 @@ import { loadInspirationItemsFromLocalStorage } from "../app/inspirationStorage"
 import type {
   AuthUser,
   ChatMessage,
+  CUSTOMER_NUTRITION_TAB_LABEL,
   CustomerSubTab,
   Exercise,
   Member,
@@ -4825,7 +4826,7 @@ function pickFirstName(value: unknown): string {
                 </PillButton>
                 {selectedMemberNutritionAccess ? (
                   <PillButton active={customerSubTab === "nutrition"} onClick={() => setCustomerSubTab("nutrition")}>
-                    Ernæring
+                    {CUSTOMER_NUTRITION_TAB_LABEL}
                   </PillButton>
                 ) : null}
               </div>
@@ -5619,7 +5620,7 @@ function pickFirstName(value: unknown): string {
                     <PillButton active={customerSubTab === "messages"} onClick={() => setCustomerSubTab("messages")}>Meldinger</PillButton>
                     {selectedMemberNutritionAccess ? (
                       <PillButton active={customerSubTab === "nutrition"} onClick={() => setCustomerSubTab("nutrition")}>
-                        Ernæring
+                        {CUSTOMER_NUTRITION_TAB_LABEL}
                       </PillButton>
                     ) : null}
                   </div>
@@ -6555,6 +6556,7 @@ function pickFirstName(value: unknown): string {
                 {customerSubTab === "nutrition" && selectedMember && selectedMemberNutritionAccess ? (
                   <div className="space-y-3">
                     <NutritionHub
+                      mealPlanTabLabel="Ukeplan"
                       avoidances={
                         <MemberFoodAvoidancesPanel
                           memberId={selectedMember.id}

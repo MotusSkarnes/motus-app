@@ -18,6 +18,9 @@ export type TrainerTab =
   | "statistics"
   | "settings";
 export type CustomerSubTab = "overview" | "profile" | "programs" | "workouts" | "messages" | "nutrition";
+
+/** Vist på klientfane-raden i trenervisning (Klienter → valgt kunde). */
+export const CUSTOMER_NUTRITION_TAB_LABEL = "Ernæring";
 export type MemberTab = "overview" | "programs" | "progress" | "messages" | "profile" | "inspiration" | "nutrition";
 
 export type ExerciseBlockType = "superset" | "triset" | "circuit";

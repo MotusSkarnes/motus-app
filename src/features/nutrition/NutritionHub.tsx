@@ -12,6 +12,8 @@ type NutritionHubProps = {
   tab?: NutritionHubTab;
   onTabChange?: (tab: NutritionHubTab) => void;
   mealPlanTargets?: MealPlanTargets;
+  /** Standard «Matplan» (medlem). Trener bruker f.eks. «Ukeplan». */
+  mealPlanTabLabel?: string;
 };
 
 export function NutritionHub({
@@ -21,6 +23,7 @@ export function NutritionHub({
   tab: controlledTab,
   onTabChange,
   mealPlanTargets,
+  mealPlanTabLabel = "Matplan",
 }: NutritionHubProps) {
   const [internalTab, setInternalTab] = useState<NutritionHubTab>(defaultTab);
   const tab = controlledTab ?? internalTab;
@@ -33,7 +36,7 @@ export function NutritionHub({
     <div className="motus-nutrition-hub motus-nutrition-hub--member space-y-4">
       <div className="motus-nutrition-hub-tabs flex flex-wrap gap-1 border-b border-slate-200/80 pb-0">
         <PillButton active={tab === "mealPlan"} onClick={() => setTab("mealPlan")}>
-          Matplan
+          {mealPlanTabLabel}
         </PillButton>
         <PillButton active={tab === "recipes"} onClick={() => setTab("recipes")}>
           Oppskrifter
