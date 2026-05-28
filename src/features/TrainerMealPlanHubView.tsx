@@ -85,6 +85,7 @@ export function TrainerMealPlanHubView({
   const [templates, setTemplates] = useState<MealPlanTemplateItem[]>([]);
   const [activeTemplateId, setActiveTemplateId] = useState(DEFAULT_TEMPLATE_ID);
   const [templateAssignStatus, setTemplateAssignStatus] = useState<string | null>(null);
+  const [templateTargetMemberId, setTemplateTargetMemberId] = useState("");
 
   useEffect(() => {
     const loaded = readTemplateLibrary();
@@ -125,11 +126,37 @@ export function TrainerMealPlanHubView({
     return pickCanonicalMemberRowForProfile(filteredMembers[0], members);
   }, [filteredMembers, members, selectedMemberId]);
 
+  const assignableMembers = useMemo(
+    () =>
+      [...members]
+        .sort((a, b) => a.name.localeCompare(b.name, "nb"))
+        .map((member) => pickCanonicalMemberRowForProfile(member, members))
+        .filter((member, index, arr) => arr.findIndex((row) => row.id === member.id) === index),
+    [members],
+  );
+
+  const templateTargetMember = useMemo(
+    () => assignableMembers.find((member) => member.id === templateTargetMemberId) ?? null,
+    [assignableMembers, templateTargetMemberId],
+  );
+
   useEffect(() => {
     if (!filteredMembers.length) return;
     const stillVisible = filteredMembers.some((member) => member.id === selectedMemberId);
     if (!stillVisible) onSelectMember(filteredMembers[0].id);
   }, [filteredMembers, onSelectMember, selectedMemberId]);
+
+  useEffect(() => {
+    if (!assignableMembers.length) {
+      setTemplateTargetMemberId("");
+      return;
+    }
+    setTemplateTargetMemberId((prev) => {
+      if (prev && assignableMembers.some((member) => member.id === prev)) return prev;
+      if (selectedMember && assignableMembers.some((member) => member.id === selectedMember.id)) return selectedMember.id;
+      return assignableMembers[0].id;
+    });
+  }, [assignableMembers, selectedMember]);
 
   return (
     <div className="motus-foodbank motus-pt-planner-hub">
@@ -272,24 +299,39 @@ export function TrainerMealPlanHubView({
               </div>
               <div className="rounded-xl border border-slate-200 bg-white p-2.5">
                 <p className="text-xs font-semibold text-slate-700">Bruk mal på valgt klient</p>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  {selectedMember
-                    ? `${selectedMember.name.trim() || selectedMember.email.trim() || "Kunde"}`
-                    : "Velg en klient i «Lag ny plan»-fanen først."}
-                </p>
+                {assignableMembers.length ? (
+                  <label className="mt-1 block">
+                    <span className="sr-only">Velg klient</span>
+                    <select
+                      value={templateTargetMemberId}
+                      onChange={(event) => setTemplateTargetMemberId(event.target.value)}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700"
+                    >
+                      {assignableMembers.map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.name.trim() || member.email.trim() || "Kunde"}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <p className="mt-0.5 text-xs text-slate-500">Ingen klienter tilgjengelig.</p>
+                )}
                 <button
                   type="button"
-                  disabled={!selectedMember}
+                  disabled={!templateTargetMember}
                   onClick={() => {
-                    if (!activeTemplate || !selectedMember) return;
+                    if (!activeTemplate || !templateTargetMember) return;
                     const templatePlan = loadMealPlanForMember(activeTemplate.id);
                     if (!templatePlan) {
                       setTemplateAssignStatus("Fant ingen lagret plan i valgt mal ennå.");
                       return;
                     }
-                    const nextPlan = cloneTemplateToMember(templatePlan, selectedMember.id);
+                    const nextPlan = cloneTemplateToMember(templatePlan, templateTargetMember.id);
                     persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, nextPlan);
-                    setTemplateAssignStatus(`Malen «${activeTemplate.name}» er kopiert til ${selectedMember.name.trim() || "kunden"}.`);
+                    setTemplateAssignStatus(
+                      `Malen «${activeTemplate.name}» er kopiert til ${templateTargetMember.name.trim() || "kunden"}.`,
+                    );
                   }}
                   className="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-900 transition hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-50"
                 >

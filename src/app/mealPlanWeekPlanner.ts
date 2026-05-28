@@ -7,6 +7,7 @@ import type { MealPlan, MealPlanDay, MealPlanMeal } from "./mealPlanTypes";
 import { uid } from "./storage";
 
 export const PLANNER_MEAL_SLOTS = ["Frokost", "Lunsj", "Middag", "Snacks"] as const;
+const WEEKDAY_LABELS = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"] as const;
 
 export function normalizeMealSlotName(name: string): string {
   const n = name.trim().toLowerCase();
@@ -75,12 +76,13 @@ export function averageWeekMacros(plan: MealPlan, foodById: Map<string, FoodItem
 }
 
 export function autoFillWeekFromMonday(plan: MealPlan): MealPlan {
-  const monday = plan.days[0];
-  if (!monday) return plan;
+  if (!plan.days.length) return plan;
   return {
     ...plan,
     days: plan.days.map((day, dayIndex) => {
-      if (dayIndex === 0) return day;
+      if (dayIndex % 7 === 0) return day;
+      const monday = plan.days[dayIndex - (dayIndex % 7)];
+      if (!monday) return day;
       return {
         ...day,
         meals: day.meals.map((meal) => {
@@ -100,6 +102,53 @@ export function autoFillWeekFromMonday(plan: MealPlan): MealPlan {
         }),
       };
     }),
+  };
+}
+
+function dayLabelForIndex(dayIndex: number, totalWeeks: number): string {
+  const weekday = WEEKDAY_LABELS[dayIndex % 7];
+  if (totalWeeks <= 1) return weekday;
+  return `${weekday} (uke ${Math.floor(dayIndex / 7) + 1})`;
+}
+
+function createEmptyMealsFromTemplate(templateDay?: MealPlanDay): MealPlanMeal[] {
+  if (templateDay?.meals?.length) {
+    return templateDay.meals.map((meal) => ({
+      ...meal,
+      id: uid("meal"),
+      items: [],
+    }));
+  }
+  return PLANNER_MEAL_SLOTS.map((slot) => ({
+    id: uid("meal"),
+    name: slot,
+    items: [],
+  }));
+}
+
+export function resizeMealPlanWeeks(plan: MealPlan, requestedWeeks: number): MealPlan {
+  const weeks = Math.max(1, Math.min(12, Math.round(requestedWeeks)));
+  const dayCount = weeks * 7;
+  const nextDays: MealPlanDay[] = [];
+  for (let index = 0; index < dayCount; index += 1) {
+    const existingDay = plan.days[index];
+    if (existingDay) {
+      nextDays.push({
+        ...existingDay,
+        label: dayLabelForIndex(index, weeks),
+      });
+      continue;
+    }
+    const templateDay = plan.days[index % 7];
+    nextDays.push({
+      id: uid("day"),
+      label: dayLabelForIndex(index, weeks),
+      meals: createEmptyMealsFromTemplate(templateDay),
+    });
+  }
+  return {
+    ...plan,
+    days: nextDays,
   };
 }
 

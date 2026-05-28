@@ -45,7 +45,7 @@ import { RecipeMacroBlocks } from "../components/RecipeMacroBlocks";
 import { MealMacroMiniBar, TrainerMealPlanMacroPanel } from "./TrainerMealPlanMacroPanel";
 import { TrainerMealPlanNutritionOverview } from "./nutrition/TrainerMealPlanNutritionOverview";
 import { TrainerMealPlanWeekGrid, type MealGridSelection } from "./nutrition/TrainerMealPlanWeekGrid";
-import { autoFillWeekFromMonday, averageWeekMacros } from "../app/mealPlanWeekPlanner";
+import { autoFillWeekFromMonday, averageWeekMacros, resizeMealPlanWeeks } from "../app/mealPlanWeekPlanner";
 import { parseInspirationRecipeFoodId, recipeToMealPlanEntry } from "../app/mealPlanRecipeEntry";
 import { resolveRecipeMealSlot } from "../app/recipeMealCategory";
 import { buildScaledRecipeView, resolveRecipeScalingMode } from "../app/recipeMealScaling";
@@ -106,7 +106,7 @@ export function TrainerMealPlanEditor({
   const [gridSelection, setGridSelection] = useState<MealGridSelection | null>(null);
   const [previewSelection, setPreviewSelection] = useState<MealGridSelection | null>(null);
   const [recipeReadOnlyId, setRecipeReadOnlyId] = useState<string | null>(null);
-  const [planWeeks, setPlanWeeks] = useState<"1" | "2" | "4" | "custom">("1");
+  const [planWeeks, setPlanWeeks] = useState<number>(1);
   const reloadInFlightRef = useRef(false);
   const hasLoadedOnceRef = useRef(false);
   const recipesById = useMemo(() => new Map(recipeItems.map((recipe) => [recipe.id, recipe])), [recipeItems]);
@@ -194,6 +194,12 @@ export function TrainerMealPlanEditor({
     () => plan?.days.find((day) => day.id === activeDayId) ?? plan?.days[0] ?? null,
     [plan, activeDayId],
   );
+
+  useEffect(() => {
+    if (!plan?.days.length) return;
+    const inferredWeeks = Math.max(1, Math.min(12, Math.round(plan.days.length / 7)));
+    setPlanWeeks((prev) => (prev === inferredWeeks ? prev : inferredWeeks));
+  }, [plan?.days.length]);
 
   const foodById = useMemo(() => new Map(foodItems.map((food) => [food.id, food])), [foodItems]);
 
@@ -828,7 +834,16 @@ export function TrainerMealPlanEditor({
     if (!plan) return;
     const next = autoFillWeekFromMonday(plan);
     updatePlan(next);
-    setSaveStatus("Mandagens måltider er kopiert til resten av uken.");
+    setSaveStatus("Mandagens måltider er kopiert til resten av hver uke.");
+  }
+
+  function handleSetPlanWeeks(nextWeeks: number) {
+    if (!plan) return;
+    const clamped = Math.max(1, Math.min(12, nextWeeks));
+    setPlanWeeks(clamped);
+    const resized = resizeMealPlanWeeks(plan, clamped);
+    updatePlan(resized);
+    setSaveStatus(`Perioden er satt til ${clamped} ${clamped === 1 ? "uke" : "uker"}.`);
   }
 
   if ((loading && !hasLoadedOnceRef.current) || !plan) {
@@ -925,25 +940,28 @@ export function TrainerMealPlanEditor({
             <div className="motus-pt-planner-period">
               {(
                 [
-                  ["1", "1 uke"],
-                  ["2", "2 uker"],
-                  ["4", "4 uker"],
-                  ["custom", "Tilpasset"],
+                  [1, "1 uke"],
+                  [2, "2 uker"],
+                  [4, "4 uker"],
+                  [6, "6 uker"],
+                  [8, "8 uker"],
+                  [10, "10 uker"],
+                  [12, "12 uker"],
                 ] as const
               ).map(([id, label]) => (
                 <button
                   key={id}
                   type="button"
                   className={`motus-pt-planner-period__btn ${planWeeks === id ? "is-active" : ""}`}
-                  onClick={() => setPlanWeeks(id)}
+                  onClick={() => handleSetPlanWeeks(id)}
                 >
                   {label}
                 </button>
               ))}
             </div>
             <p className="motus-pt-planner-period__dates">
-              <Calendar className="inline h-3.5 w-3.5" aria-hidden /> Uke 1 · {plan.days[0]?.label} – {plan.days[plan.days.length - 1]?.label}
-              {planWeeks !== "1" ? " (flere uker kommer snart)" : ""}
+              <Calendar className="inline h-3.5 w-3.5" aria-hidden /> {planWeeks} {planWeeks === 1 ? "uke" : "uker"} · {plan.days[0]?.label} –{" "}
+              {plan.days[plan.days.length - 1]?.label}
             </p>
           </section>
 
