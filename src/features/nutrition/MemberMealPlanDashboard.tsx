@@ -111,18 +111,18 @@ function firstRecipeIdFromMeal(meal: MealPlanMeal): string | null {
   return null;
 }
 
-function isRecipeEntry(foodId: string, note?: string): boolean {
+export function isRecipeEntry(foodId: string, note?: string): boolean {
   if (Boolean(parseInspirationRecipeFoodId(foodId))) return true;
   return String(note ?? "").toLowerCase().includes("oppskrift");
 }
 
-function formatMealEntryAmount(foodId: string, grams: number, note?: string): string {
+export function formatMealEntryAmount(foodId: string, grams: number, note?: string): string {
   if (!isRecipeEntry(foodId, note)) return `${formatMacro(grams, 0)} g`;
   const portions = Math.max(0.1, Math.round((grams / RECIPE_PORTION_GRAMS) * 10) / 10);
   return portions === 1 ? "1 porsjon" : `${formatMacro(portions, 1)} porsjoner`;
 }
 
-function extractRecipeMethodSteps(body: string): string[] {
+export function extractRecipeMethodSteps(body: string): string[] {
   const lines = body.split(/\r?\n/);
   const start = lines.findIndex((line) => /slik gjør du/i.test(line));
   if (start < 0) return [];
