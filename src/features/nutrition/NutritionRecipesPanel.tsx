@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, Pencil, Soup } from "lucide-react";
+import { ArrowLeft, Copy, Pencil, Soup } from "lucide-react";
 import { buildDefaultFoodBankItems } from "../../app/foodBankSeed";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { buildScaledRecipeView, resolveRecipeScalingMode } from "../../app/recipeMealScaling";
@@ -31,12 +31,14 @@ function RecipeDetail({
   dailyTargets,
   canManage,
   onEdit,
+  onDuplicate,
 }: {
   item: InspirationRecipeItem;
   onBack: () => void;
   dailyTargets?: MealPlanTargets;
   canManage?: boolean;
   onEdit?: (item: InspirationRecipeItem) => void;
+  onDuplicate?: (item: InspirationRecipeItem) => void;
 }) {
   const foodItems = useFoodItemsForMacros();
   const mealSlot = resolveRecipeMealSlot(item.tag, item.title, item.description);
@@ -70,6 +72,12 @@ function RecipeDetail({
           <OutlineButton type="button" className="text-sm" onClick={() => onEdit(item)}>
             <Pencil className="mr-1.5 inline h-4 w-4" aria-hidden />
             Rediger oppskrift
+          </OutlineButton>
+        ) : null}
+        {canManage && onDuplicate ? (
+          <OutlineButton type="button" className="text-sm" onClick={() => onDuplicate(item)}>
+            <Copy className="mr-1.5 inline h-4 w-4" aria-hidden />
+            Dupliser oppskrift
           </OutlineButton>
         ) : null}
       </div>
@@ -133,6 +141,7 @@ function RecipeCard({
   onSelect,
   canManage,
   onEdit,
+  onDuplicate,
 }: {
   item: InspirationRecipeItem;
   macros: ReturnType<typeof computeRecipeMacros>;
@@ -140,6 +149,7 @@ function RecipeCard({
   onSelect: () => void;
   canManage?: boolean;
   onEdit?: (item: InspirationRecipeItem) => void;
+  onDuplicate?: (item: InspirationRecipeItem) => void;
 }) {
   const mealSlot = resolveRecipeMealSlot(item.tag, item.title, item.description);
 
@@ -182,17 +192,32 @@ function RecipeCard({
       </button>
       {canManage && onEdit ? (
         <div className="border-t px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
-          <button
-            type="button"
-            className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-white"
-            onClick={(event) => {
-              event.stopPropagation();
-              onEdit(item);
-            }}
-          >
-            <Pencil className="h-3.5 w-3.5" aria-hidden />
-            Rediger
-          </button>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-white"
+              onClick={(event) => {
+                event.stopPropagation();
+                onEdit(item);
+              }}
+            >
+              <Pencil className="h-3.5 w-3.5" aria-hidden />
+              Rediger
+            </button>
+            {onDuplicate ? (
+              <button
+                type="button"
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-white"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDuplicate(item);
+                }}
+              >
+                <Copy className="h-3.5 w-3.5" aria-hidden />
+                Dupliser
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </article>
@@ -203,9 +228,10 @@ type NutritionRecipesPanelProps = {
   mealPlanTargets?: MealPlanTargets;
   canManage?: boolean;
   onEdit?: (item: InspirationRecipeItem) => void;
+  onDuplicate?: (item: InspirationRecipeItem) => void;
 };
 
-export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit }: NutritionRecipesPanelProps) {
+export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDuplicate }: NutritionRecipesPanelProps) {
   const { items, loading } = useInspirationRecipeItems();
   const foodItems = useFoodItemsForMacros();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -258,7 +284,16 @@ export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit }: Nu
   }
 
   if (selected) {
-    return <RecipeDetail item={selected} onBack={() => setSelectedId(null)} dailyTargets={mealPlanTargets} />;
+    return (
+      <RecipeDetail
+        item={selected}
+        onBack={() => setSelectedId(null)}
+        dailyTargets={mealPlanTargets}
+        canManage={canManage}
+        onEdit={onEdit}
+        onDuplicate={onDuplicate}
+      />
+    );
   }
 
   if (!items.length) {
@@ -317,6 +352,7 @@ export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit }: Nu
                 onSelect={() => setSelectedId(item.id)}
                 canManage={canManage}
                 onEdit={onEdit}
+                onDuplicate={onDuplicate}
               />
             </li>
           ))}

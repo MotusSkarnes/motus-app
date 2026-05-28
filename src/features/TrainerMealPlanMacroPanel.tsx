@@ -56,6 +56,7 @@ type TrainerMealPlanMacroPanelProps = {
   onDistribute: (mode: "equal" | "standard") => void;
   onClearMealTargets: () => void;
   adjustmentSuggestions?: MealMacroAdjustmentSuggestion[];
+  onApplySuggestion?: (suggestion: MealMacroAdjustmentSuggestion) => void;
 };
 
 export function TrainerMealPlanMacroPanel({
@@ -66,6 +67,7 @@ export function TrainerMealPlanMacroPanel({
   onDistribute,
   onClearMealTargets,
   adjustmentSuggestions = [],
+  onApplySuggestion,
 }: TrainerMealPlanMacroPanelProps) {
   if (!dayRemaining.hasTargets || !dailyTargets) {
     return (
@@ -117,8 +119,19 @@ export function TrainerMealPlanMacroPanel({
           <p className="text-xs font-semibold text-amber-900">Forslag for å nå makromål</p>
           <ul className="mt-1 space-y-1 text-xs text-amber-900">
             {adjustmentSuggestions.map((row) => (
-              <li key={`${row.mealId}-${row.foodName}`}>
-                Legg til ca. {formatMacro(row.grams, 0)} g {row.foodName} i {row.mealName.toLowerCase()} {row.reason}.
+              <li key={`${row.mealId}-${row.foodId}`} className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  Legg til ca. {formatMacro(row.grams, 0)} g {row.foodName} i {row.mealName.toLowerCase()} {row.reason}.
+                </span>
+                {onApplySuggestion ? (
+                  <OutlineButton
+                    type="button"
+                    className="text-[11px] !px-2 !py-1"
+                    onClick={() => onApplySuggestion(row)}
+                  >
+                    Legg til
+                  </OutlineButton>
+                ) : null}
               </li>
             ))}
           </ul>

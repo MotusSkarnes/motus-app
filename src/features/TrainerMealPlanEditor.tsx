@@ -323,94 +323,145 @@ export function TrainerMealPlanEditor({
     return previewFoodAddition(pickerSelectedFood, grams, pickerRemaining);
   }, [foodPicker, foodGrams, pickerSelectedFood, pickerRemaining]);
 
+  const suggestAiPlanForDay = useCallback(
+    (dayId: string): MealPlan | null => {
+      if (!plan || recipeItems.length === 0) return null;
+      const day = plan.days.find((row) => row.id === dayId);
+      if (!day) return null;
+
+      const mealTargets = day.meals.length
+        ? distributeDailyTargetsToMeals(day, plan.targets, "standard")
+        : day.meals;
+      const targetByMealId = new Map(mealTargets.map((meal) => [meal.id, meal.targets]));
+
+      const pickRecipeForMeal = (meal: MealPlanMeal): (typeof recipeItems)[number] | null => {
+        const mealNameKey = meal.name.trim().toLowerCase();
+        const preferredSlot =
+          mealNameKey.includes("frokost")
+            ? "frokost"
+            : mealNameKey.includes("lunsj")
+              ? "lunsj"
+              : mealNameKey.includes("middag")
+                ? "middag"
+                : mealNameKey.includes("kveld")
+                  ? "kveldsmat"
+                  : null;
+
+        const scoped = preferredSlot
+          ? recipeItems.filter(
+              (recipe) => resolveRecipeMealSlot(recipe.tag, recipe.title, recipe.description) === preferredSlot,
+            )
+          : recipeItems;
+        const candidates = scoped.length > 0 ? scoped : recipeItems;
+        if (!candidates.length) return null;
+
+        const mealTargetKcal =
+          targetByMealId.get(meal.id)?.kcal ??
+          (typeof plan.targets?.kcal === "number" && day.meals.length > 0
+            ? plan.targets.kcal / day.meals.length
+            : 0);
+
+        const ranked = candidates
+          .map((recipe) => {
+            const mealSlot = resolveRecipeMealSlot(recipe.tag, recipe.title, recipe.description);
+            const scalingMode = resolveRecipeScalingMode({
+              id: recipe.id,
+              scalingMode: recipe.scalingMode,
+              body: recipe.body,
+              title: recipe.title,
+              tag: recipe.tag,
+            });
+            const scaled = buildScaledRecipeView(recipe.body, foodItemsForMacros, {
+              scalingMode,
+              dailyTargets: plan.targets,
+              mealSlot,
+            });
+            const kcal = scaled?.macros?.perServing.kcal ?? computeRecipeMacros(recipe.body, foodItemsForMacros)?.perServing.kcal ?? 0;
+            const distance = mealTargetKcal > 0 ? Math.abs(kcal - mealTargetKcal) : 0;
+            return { recipe, distance };
+          })
+          .sort((a, b) => a.distance - b.distance);
+
+        return ranked[0]?.recipe ?? null;
+      };
+
+      const nextDayMeals = day.meals.map((meal) => {
+        const picked = pickRecipeForMeal(meal);
+        if (!picked) return meal;
+        const mealSlot = resolveRecipeMealSlot(picked.tag, picked.title, picked.description);
+        const entry = recipeToMealPlanEntry(picked, foodItems, {
+          dailyTargets: plan.targets,
+          mealSlot,
+        });
+        return {
+          ...meal,
+          items: [entry],
+        };
+      });
+
+      return {
+        ...plan,
+        days: plan.days.map((row) =>
+          row.id === day.id
+            ? {
+                ...row,
+                meals: nextDayMeals,
+              }
+            : row,
+        ),
+      };
+    },
+    [plan, recipeItems, foodItemsForMacros, foodItems],
+  );
+
   function suggestAiDayPlan() {
-    if (!plan || !activeDay || recipeItems.length === 0) {
-      setSaveStatus("AI-forslag krever en aktiv dag og tilgjengelige oppskrifter.");
+    if (!activeDay) {
+      setSaveStatus("AI-forslag krever en aktiv dag.");
       return;
     }
-
-    const mealTargets = activeDay.meals.length
-      ? distributeDailyTargetsToMeals(activeDay, plan.targets, "standard")
-      : activeDay.meals;
-    const targetByMealId = new Map(mealTargets.map((meal) => [meal.id, meal.targets]));
-
-    const pickRecipeForMeal = (meal: MealPlanMeal): (typeof recipeItems)[number] | null => {
-      const mealNameKey = meal.name.trim().toLowerCase();
-      const preferredSlot =
-        mealNameKey.includes("frokost")
-          ? "frokost"
-          : mealNameKey.includes("lunsj")
-            ? "lunsj"
-            : mealNameKey.includes("middag")
-              ? "middag"
-              : mealNameKey.includes("kveld")
-                ? "kveldsmat"
-                : null;
-
-      const scoped = preferredSlot
-        ? recipeItems.filter(
-            (recipe) => resolveRecipeMealSlot(recipe.tag, recipe.title, recipe.description) === preferredSlot,
-          )
-        : recipeItems;
-      const candidates = scoped.length > 0 ? scoped : recipeItems;
-      if (!candidates.length) return null;
-
-      const mealTargetKcal =
-        targetByMealId.get(meal.id)?.kcal ??
-        (typeof plan.targets?.kcal === "number" && activeDay.meals.length > 0
-          ? plan.targets.kcal / activeDay.meals.length
-          : 0);
-
-      const ranked = candidates
-        .map((recipe) => {
-          const mealSlot = resolveRecipeMealSlot(recipe.tag, recipe.title, recipe.description);
-          const scalingMode = resolveRecipeScalingMode({
-            id: recipe.id,
-            scalingMode: recipe.scalingMode,
-            body: recipe.body,
-            title: recipe.title,
-            tag: recipe.tag,
-          });
-          const scaled = buildScaledRecipeView(recipe.body, foodItemsForMacros, {
-            scalingMode,
-            dailyTargets: plan.targets,
-            mealSlot,
-          });
-          const kcal = scaled?.macros?.perServing.kcal ?? computeRecipeMacros(recipe.body, foodItemsForMacros)?.perServing.kcal ?? 0;
-          const distance = mealTargetKcal > 0 ? Math.abs(kcal - mealTargetKcal) : 0;
-          return { recipe, distance };
-        })
-        .sort((a, b) => a.distance - b.distance);
-
-      return ranked[0]?.recipe ?? null;
-    };
-
-    const nextDayMeals = activeDay.meals.map((meal) => {
-      const picked = pickRecipeForMeal(meal);
-      if (!picked) return meal;
-      const mealSlot = resolveRecipeMealSlot(picked.tag, picked.title, picked.description);
-      const entry = recipeToMealPlanEntry(picked, foodItems, {
-        dailyTargets: plan.targets,
-        mealSlot,
-      });
-      return {
-        ...meal,
-        items: [entry],
-      };
-    });
-
-    updatePlan({
-      ...plan,
-      days: plan.days.map((day) =>
-        day.id === activeDay.id
-          ? {
-              ...day,
-              meals: nextDayMeals,
-            }
-          : day,
-      ),
-    });
+    const next = suggestAiPlanForDay(activeDay.id);
+    if (!next) {
+      setSaveStatus("AI-forslag krever tilgjengelige oppskrifter.");
+      return;
+    }
+    updatePlan(next);
     setSaveStatus(`AI-forslag la inn oppskriftsforslag for ${activeDay.label}.`);
+  }
+
+  function suggestAiWeekPlan() {
+    if (!plan || recipeItems.length === 0) {
+      setSaveStatus("AI-generer uke krever tilgjengelige oppskrifter.");
+      return;
+    }
+    let nextPlan: MealPlan = plan;
+    for (const day of plan.days) {
+      nextPlan = suggestAiPlanForDay(day.id) ?? nextPlan;
+    }
+    updatePlan(nextPlan);
+    setSaveStatus("AI-genererte forslag lagt inn for hele uken.");
+  }
+
+  function applyMacroSuggestion(suggestion: {
+    mealId: string;
+    foodId: string;
+    foodName: string;
+    grams: number;
+  }) {
+    if (!activeDay) return;
+    const food = foodById.get(suggestion.foodId) ?? foodItems.find((row) => row.id === suggestion.foodId);
+    if (!food) {
+      setSaveStatus(`Fant ikke ${suggestion.foodName} i matvarebanken.`);
+      return;
+    }
+    const entry: MealPlanFoodEntry = {
+      id: uid("meal-food"),
+      foodId: food.id,
+      foodName: food.name,
+      grams: suggestion.grams,
+      nutritionPer100g: { ...food.nutritionPer100g },
+    };
+    appendEntryToMeal({ dayId: activeDay.id, mealId: suggestion.mealId }, entry);
+    setSaveStatus(`La til ${suggestion.grams} g ${food.name} i ${activeDay.label}.`);
   }
 
   function updatePlan(next: MealPlan, options?: { flushCloud?: boolean }) {
@@ -977,6 +1028,7 @@ export function TrainerMealPlanEditor({
                 onDistribute={handleDistributeMeals}
                 onClearMealTargets={handleClearMealTargets}
                 adjustmentSuggestions={macroAdjustmentSuggestions}
+                onApplySuggestion={applyMacroSuggestion}
               />
             ) : null}
           </section>
@@ -1019,7 +1071,7 @@ export function TrainerMealPlanEditor({
               <div className="font-bold text-sm">AI-assistent for matplanlegging</div>
               <div className="text-xs opacity-90">Kommer snart — generer hele uken basert på mål og preferanser.</div>
             </div>
-            <OutlineButton type="button" disabled className="!border-white/40 !text-white opacity-80">
+            <OutlineButton type="button" className="!border-white/40 !text-white opacity-90" onClick={suggestAiWeekPlan}>
               AI-generer hele uken
             </OutlineButton>
           </div>

@@ -134,6 +134,7 @@ export type FoodSuggestion = {
 
 export type MealMacroAdjustmentSuggestion = {
   mealId: string;
+  foodId: string;
   mealName: string;
   foodName: string;
   grams: number;
@@ -368,6 +369,7 @@ export function suggestMealMacroAdjustments(
 
     suggestions.push({
       mealId: meal.id,
+      foodId: chosen.id,
       mealName: meal.name,
       foodName: chosen.name,
       grams,

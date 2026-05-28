@@ -28,6 +28,7 @@ type TrainerRecipeComposerProps = {
   members: Member[];
   existingItems: unknown[];
   editItem?: InspirationRecipeItem | null;
+  duplicateFromItem?: InspirationRecipeItem | null;
   authorName?: string;
   onClose: () => void;
   onSaved: () => void;
@@ -38,34 +39,38 @@ export function TrainerRecipeComposer({
   members,
   existingItems,
   editItem = null,
+  duplicateFromItem = null,
   authorName = "Motus",
   onClose,
   onSaved,
 }: TrainerRecipeComposerProps) {
+  const sourceItem = duplicateFromItem ?? editItem;
   const foodBankItems = useFoodBankItems();
   const foodItemsForMacros = useMemo(
     () => (foodBankItems.length > 0 ? foodBankItems : buildDefaultFoodBankItems()),
     [foodBankItems],
   );
 
-  const [title, setTitle] = useState(editItem?.title ?? "");
-  const [description, setDescription] = useState(editItem?.description ?? "");
-  const [tag, setTag] = useState(editItem?.tag ?? "Oppskrift");
-  const [body, setBody] = useState(editItem?.body ?? "");
-  const [imageUrl, setImageUrl] = useState(editItem?.imageUrl ?? "");
+  const [title, setTitle] = useState(sourceItem?.title ?? "");
+  const [description, setDescription] = useState(sourceItem?.description ?? "");
+  const [tag, setTag] = useState(sourceItem?.tag ?? "Oppskrift");
+  const [body, setBody] = useState(sourceItem?.body ?? "");
+  const [imageUrl, setImageUrl] = useState(sourceItem?.imageUrl ?? "");
   const [isImageProcessing, setIsImageProcessing] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setTitle(editItem?.title ?? "");
-    setDescription(editItem?.description ?? "");
-    setTag(editItem?.tag ?? "Oppskrift");
-    setBody(editItem?.body ?? "");
-    setImageUrl(editItem?.imageUrl ?? "");
+    const source = duplicateFromItem ?? editItem;
+    const duplicateTitle = duplicateFromItem?.title?.trim() ? `${duplicateFromItem.title.trim()} (kopi)` : "";
+    setTitle(duplicateTitle || source?.title ?? "");
+    setDescription(source?.description ?? "");
+    setTag(source?.tag ?? "Oppskrift");
+    setBody(source?.body ?? "");
+    setImageUrl(source?.imageUrl ?? "");
     setStatus(null);
-  }, [open, editItem]);
+  }, [open, editItem, duplicateFromItem]);
 
   const draftBody = useMemo(
     () =>
@@ -127,10 +132,10 @@ export function TrainerRecipeComposer({
     setSaving(true);
     setStatus(null);
 
-    const recipeId = editItem?.id ?? uid("recipe");
+    const recipeId = editItem && !duplicateFromItem ? editItem.id : uid("recipe");
     const storedImageUrl = await resolveInspirationImageForStorage(imageUrl);
     const scalingMode =
-      editItem?.scalingMode ?? DEFAULT_RECIPE_SCALING_BY_ID.get(recipeId);
+      sourceItem?.scalingMode ?? DEFAULT_RECIPE_SCALING_BY_ID.get(recipeId);
 
     const recipeRow: Record<string, unknown> = {
       id: recipeId,
@@ -141,7 +146,9 @@ export function TrainerRecipeComposer({
       body: body.trim(),
       tag: tag.trim() || "Oppskrift",
       author: authorName,
-      ...(editItem?.createdAt ? { createdAt: editItem.createdAt } : { createdAt: new Date().toISOString().slice(0, 10) }),
+      ...(editItem?.createdAt && !duplicateFromItem
+        ? { createdAt: editItem.createdAt }
+        : { createdAt: new Date().toISOString().slice(0, 10) }),
       ...(storedImageUrl ? { imageUrl: storedImageUrl } : {}),
       ...(scalingMode ? { scalingMode } : {}),
     };
@@ -177,11 +184,11 @@ export function TrainerRecipeComposer({
       <div
         className="motus-foodbank-modal motus-foodbank-modal--wide"
         role="dialog"
-        aria-label={editItem ? "Rediger oppskrift" : "Ny oppskrift"}
+        aria-label={editItem && !duplicateFromItem ? "Rediger oppskrift" : "Ny oppskrift"}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="motus-foodbank-modal-head">
-          <h3>{editItem ? "Rediger oppskrift" : "Ny oppskrift"}</h3>
+          <h3>{editItem && !duplicateFromItem ? "Rediger oppskrift" : duplicateFromItem ? "Dupliser oppskrift" : "Ny oppskrift"}</h3>
           <button type="button" className="motus-foodbank-icon-btn" onClick={onClose} aria-label="Lukk">
             <X className="h-4 w-4" />
           </button>
@@ -233,7 +240,7 @@ export function TrainerRecipeComposer({
               Avbryt
             </OutlineButton>
             <GradientButton type="button" onClick={() => void handleSave()} disabled={saving || isImageProcessing}>
-              {saving ? "Lagrer…" : editItem ? "Lagre endringer" : "Publiser oppskrift"}
+              {saving ? "Lagrer…" : editItem && !duplicateFromItem ? "Lagre endringer" : duplicateFromItem ? "Opprett kopi" : "Publiser oppskrift"}
             </GradientButton>
           </div>
         </div>
