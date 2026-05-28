@@ -386,6 +386,9 @@ function lookupFoodBankItem(searchText: string, foodItems: FoodItem[]): FoodItem
     }
   }
 
+  const exact = foodItems.find((item) => normalizeFoodKey(item.name) === key);
+  if (exact) return exact;
+
   for (const [aliasKey, targetName] of Object.entries(FOOD_ALIASES)) {
     if (key.includes(aliasKey)) {
       const normalizedTarget = normalizeFoodKey(targetName);

@@ -26,4 +26,18 @@ describe("pickBestPersonalGoals", () => {
     })}`;
     expect(pickBestPersonalGoals([checkInOnly, onboarding])).toBe(onboarding);
   });
+
+  it("prefers blob with foodAvoidances over notification-only", () => {
+    const withAvoidances = `MOTUS_PROFILE_V1:${JSON.stringify({
+      foodAvoidances: {
+        items: [{ label: "Gluten", key: "gluten" }],
+        notes: "",
+        updatedAt: 200,
+      },
+    })}`;
+    const notificationOnly = `MOTUS_PROFILE_V1:${JSON.stringify({
+      notificationPreferences: { seenHiddenBadgeIds: ["badge-1"] },
+    })}`;
+    expect(pickBestPersonalGoals([notificationOnly, withAvoidances])).toBe(withAvoidances);
+  });
 });

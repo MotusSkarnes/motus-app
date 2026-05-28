@@ -3,6 +3,7 @@ import { DEFAULT_INSPIRATION_RECIPES } from "./defaultInspirationRecipes";
 import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import {
   applyCanonicalRecipeBodies,
+  computeRecipeIngredients,
   computeRecipeMacros,
   extractRecipeIngredientLines,
   parseIngredientLine,
@@ -80,6 +81,20 @@ Slik gjør du
         expect(parseIngredientLine(line), line).not.toBeNull();
       }
     }
+  });
+
+  it("foretrekker helt egg over Eggewite ved match på 'egg'", () => {
+    const recipe = `**Til 1 porsjon**
+
+**Ingredienser**
+- 2 egg
+
+**Slik gjør du**
+1. Kok.`;
+    const orderedFoods = [...buildDefaultFoodBankItems()].sort((a, b) => a.name.localeCompare(b.name, "no"));
+    const ingredients = computeRecipeIngredients(recipe, orderedFoods);
+    expect(ingredients[0]?.foodName).toBe("Egg");
+    expect(Math.round(ingredients[0]?.grams ?? 0)).toBe(100);
   });
 
   it("bytter inn kanonisk oppskriftstekst når lagret versjon mangler ingredienser", () => {

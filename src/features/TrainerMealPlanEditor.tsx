@@ -16,6 +16,7 @@ import { Calendar, Copy, HelpCircle, Plus, Save, Search, ShoppingCart, Soup, Spa
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import {
   flushMealPlanCloudSave,
+  mealPlansEqual,
   persistMealPlanBundle,
   persistMealPlanLocalAndScheduleCloud,
   pickPreferredMealPlan,
@@ -103,6 +104,7 @@ export function TrainerMealPlanEditor({
   const [gridSelection, setGridSelection] = useState<MealGridSelection | null>(null);
   const [planWeeks, setPlanWeeks] = useState<"1" | "2" | "4" | "custom">("1");
   const reloadInFlightRef = useRef(false);
+  const hasLoadedOnceRef = useRef(false);
   const recipesById = useMemo(() => new Map(recipeItems.map((recipe) => [recipe.id, recipe])), [recipeItems]);
 
   const applyPendingFood = useCallback(
@@ -142,27 +144,37 @@ export function TrainerMealPlanEditor({
   const reload = useCallback(async () => {
     if (!memberId.trim() || reloadInFlightRef.current) return;
     reloadInFlightRef.current = true;
-    setLoading(true);
+    const showLoading = !hasLoadedOnceRef.current;
+    if (showLoading) setLoading(true);
     try {
       const result = await syncMealPlanForMember(memberId, trainerOwnerUserId ?? "");
       const withPending = applyPendingFood(result.plan);
-      const hydrated = withPending
-        ? hydrateMealPlanFoodNutrition(withPending, foodItems)
+      const hydratedRaw = withPending
+        ? hydrateMealPlanFoodNutrition(withPending, foodItemsForMacros)
         : withPending;
       setPlan((prev) => {
-        if (!prev) return hydrated;
-        const picked = pickPreferredMealPlan([prev, hydrated]) ?? hydrated;
-        return picked ? hydrateMealPlanFoodNutrition(picked, foodItems) : picked;
+        if (!prev) return hydratedRaw;
+        const picked = pickPreferredMealPlan([prev, hydratedRaw]) ?? hydratedRaw;
+        const next = picked ? hydrateMealPlanFoodNutrition(picked, foodItemsForMacros) : picked;
+        return mealPlansEqual(prev, next) ? prev : next;
       });
-      if (hydrated && hydrated !== result.plan) {
-        persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, hydrated, { notify: false });
+      if (hydratedRaw && !mealPlansEqual(hydratedRaw, result.plan)) {
+        persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, hydratedRaw, { notify: false });
       }
-      setActiveDayId((prev) => prev || hydrated?.days[0]?.id || "");
+      setActiveDayId((prev) => prev || hydratedRaw?.days[0]?.id || "");
+      hasLoadedOnceRef.current = true;
     } finally {
       reloadInFlightRef.current = false;
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
-  }, [memberId, trainerOwnerUserId, applyPendingFood, foodItems]);
+  }, [memberId, trainerOwnerUserId, applyPendingFood, foodItemsForMacros]);
+
+  useEffect(() => {
+    hasLoadedOnceRef.current = false;
+    setPlan(null);
+    setActiveDayId("");
+    setLoading(true);
+  }, [memberId]);
 
   useEffect(() => {
     void reload();
@@ -614,7 +626,7 @@ export function TrainerMealPlanEditor({
     setSaveStatus("Mandagens måltider er kopiert til resten av uken.");
   }
 
-  if (loading || !plan) {
+  if ((loading && !hasLoadedOnceRef.current) || !plan) {
     return <div className="rounded-xl border bg-slate-50 px-4 py-6 text-sm text-slate-600">Laster matplan …</div>;
   }
 

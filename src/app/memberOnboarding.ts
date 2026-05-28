@@ -1,3 +1,7 @@
+import {
+  mergeFoodAvoidancesAcrossCandidates,
+  mergeFoodAvoidancesIntoPersonalGoals,
+} from "./memberFoodAvoidances";
 import { readMemberAppUiState, readProfileDisplayName } from "./memberAppUiState";
 import { pickBestPersonalGoals } from "./memberProfileGoals";
 import { mergeRosterFieldsFromMemberCandidates } from "../services/memberAccessRules";
@@ -412,15 +416,20 @@ function pickPreferredNonEmptyProfileField(values: Array<string | undefined | nu
 export function mergePersonalGoalsFromCandidates(candidates: Array<string | undefined | null>): string {
   const values = candidates.map((value) => String(value ?? "").trim()).filter(Boolean);
   if (!values.length) return "";
-  const best = pickBestPersonalGoals(values);
-  if (onboardingAnswersAreSubstantive(getOnboardingFromPersonalGoals(best))) return best;
+  const mergedAvoidances = mergeFoodAvoidancesAcrossCandidates(values);
+  let merged = pickBestPersonalGoals(values);
+  if (onboardingAnswersAreSubstantive(getOnboardingFromPersonalGoals(merged))) {
+    merged = mergeFoodAvoidancesIntoPersonalGoals(merged, mergedAvoidances);
+    return merged;
+  }
   for (const value of values) {
     const onboarding = getOnboardingFromPersonalGoals(value);
     if (onboardingAnswersAreSubstantive(onboarding)) {
-      return mergeOnboardingIntoPersonalGoals(best, onboarding);
+      merged = mergeOnboardingIntoPersonalGoals(merged, onboarding);
+      break;
     }
   }
-  return best;
+  return mergeFoodAvoidancesIntoPersonalGoals(merged, mergedAvoidances);
 }
 
 export function resolveMemberPersonalGoals(

@@ -41,9 +41,15 @@ export function MemberFoodAvoidancesPanel({
   const [draft, setDraft] = useState<MemberFoodAvoidances>(stored);
   const draftRef = useRef(draft);
   draftRef.current = draft;
+  const personalGoalsRef = useRef(personalGoals);
+  personalGoalsRef.current = personalGoals;
 
   useEffect(() => {
-    setDraft(readMemberFoodAvoidancesFromPersonalGoals(personalGoals));
+    const fromProps = readMemberFoodAvoidancesFromPersonalGoals(personalGoals);
+    const local = draftRef.current;
+    if (fromProps.updatedAt < local.updatedAt) return;
+    if (JSON.stringify(fromProps) === JSON.stringify(local)) return;
+    setDraft(fromProps);
   }, [personalGoals]);
 
   const [search, setSearch] = useState("");
@@ -54,11 +60,12 @@ export function MemberFoodAvoidancesPanel({
 
   const persistDraft = useCallback(
     (nextDraft: MemberFoodAvoidances, successMessage?: string) => {
-      const nextGoals = patchMemberFoodAvoidancesInPersonalGoals(personalGoals, nextDraft);
+      const nextGoals = patchMemberFoodAvoidancesInPersonalGoals(personalGoalsRef.current, nextDraft);
+      personalGoalsRef.current = nextGoals;
       onSavePersonalGoals(nextGoals);
       if (successMessage) setStatus(successMessage);
     },
-    [onSavePersonalGoals, personalGoals],
+    [onSavePersonalGoals],
   );
 
   const pickBrowsableFoods = useCallback(

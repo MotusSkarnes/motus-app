@@ -111,6 +111,53 @@ export function patchMemberFoodAvoidancesInPersonalGoals(
   });
 }
 
+/** Slå sammen mat unngås fra alle personal_goals-rader (duplikat e-post / hydrate). */
+export function mergeFoodAvoidancesAcrossCandidates(
+  candidates: Array<string | undefined | null>,
+): MemberFoodAvoidances {
+  let merged = emptyMemberFoodAvoidances();
+  for (const raw of candidates) {
+    const row = readMemberFoodAvoidancesFromPersonalGoals(raw);
+    if (!row.items.length && !row.notes.trim()) continue;
+
+    const byKey = new Map(merged.items.map((item) => [item.key, item]));
+    for (const item of row.items) byKey.set(item.key, item);
+
+    const nextUpdatedAt = Math.max(merged.updatedAt, row.updatedAt);
+    const notes =
+      row.updatedAt >= merged.updatedAt && row.notes.trim()
+        ? row.notes
+        : merged.notes.trim()
+          ? merged.notes
+          : row.notes;
+
+    merged = {
+      items: Array.from(byKey.values()),
+      notes,
+      updatedAt: nextUpdatedAt,
+    };
+  }
+  return merged;
+}
+
+export function mergeFoodAvoidancesIntoPersonalGoals(
+  personalGoals: string,
+  avoidances: MemberFoodAvoidances,
+): string {
+  if (!avoidances.items.length && !avoidances.notes.trim() && !avoidances.updatedAt) {
+    return personalGoals;
+  }
+  const existing = readMemberFoodAvoidancesFromPersonalGoals(personalGoals);
+  if (
+    existing.updatedAt >= avoidances.updatedAt &&
+    JSON.stringify(existing.items) === JSON.stringify(avoidances.items) &&
+    existing.notes === avoidances.notes
+  ) {
+    return personalGoals;
+  }
+  return mergeMemberFoodAvoidancesIntoPersonalGoals(personalGoals, avoidances);
+}
+
 export type RecipeFoodAvoidanceConflict = {
   memberId: string;
   memberName: string;
