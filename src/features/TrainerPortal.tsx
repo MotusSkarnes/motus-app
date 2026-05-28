@@ -5216,7 +5216,7 @@ function pickFirstName(value: unknown): string {
             </div>
           </Card>
 
-          <Card className="motus-pt-customers-detail-card p-4 sm:p-5 w-full max-xl:block xl:hidden">
+          <Card className="motus-pt-customers-detail-card p-4 sm:p-5 w-full block">
             {selectedMember ? (
               <div className="space-y-5">
                 <div className="lg:hidden rounded-xl border bg-slate-50 p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
