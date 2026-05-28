@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { memberPriorityScore, memberPriorityTone } from "./memberActivity";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { daysSinceLastCompletedWorkout, memberPriorityScore, memberPriorityTone } from "./memberActivity";
 import type { Member, WorkoutLog } from "./types";
 
 const member: Member = {
@@ -35,5 +35,29 @@ describe("memberPriorityTone", () => {
 
   it("returns green when no completed logs", () => {
     expect(memberPriorityTone(member, [member], [])).toBe("green");
+  });
+});
+
+describe("daysSinceLastCompletedWorkout", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("counts yesterday correctly even when workout has late clock time", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 4, 28, 12, 0, 0));
+
+    const logs: WorkoutLog[] = [
+      {
+        id: "l-late-yesterday",
+        memberId: "m1",
+        programTitle: "P",
+        date: "27.05.2026 kl 23:30",
+        status: "Fullført",
+        exercises: [],
+      },
+    ];
+
+    expect(daysSinceLastCompletedWorkout(member, [member], logs)).toBe(1);
   });
 });

@@ -82,8 +82,10 @@ export function daysSinceLastCompletedWorkout(member: Member, allMembers: Member
   if (maxMs <= 0) return null;
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const latest = new Date(maxMs);
+  const latestDayStart = new Date(latest.getFullYear(), latest.getMonth(), latest.getDate()).getTime();
   const dayMs = 24 * 60 * 60 * 1000;
-  return Math.max(0, Math.floor((todayStart - maxMs) / dayMs));
+  return Math.max(0, Math.floor((todayStart - latestDayStart) / dayMs));
 }
 
 /** Lavere tall = nyligere aktivitet. Mangler logger og DB har «0» → havner bakerst ved sortering. */
