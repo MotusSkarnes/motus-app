@@ -192,7 +192,86 @@ function parseCsvLine(line: string, delimiter: string): string[] {
 function detectDelimiter(headerLine: string): string {
   const semicolons = (headerLine.match(/;/g) ?? []).length;
   const commas = (headerLine.match(/,/g) ?? []).length;
+  const tabs = (headerLine.match(/\t/g) ?? []).length;
+  if (tabs >= semicolons && tabs >= commas) return "\t";
   return semicolons >= commas ? ";" : ",";
+}
+
+function normalizeHeaderKey(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+const CSV_HEADER_ALIASES: Record<string, string> = {
+  navn: "navn",
+  name: "navn",
+  matvare: "navn",
+  matvare_id: "matvare_id",
+  kategori: "kategori",
+  category: "kategori",
+  kilde: "kilde",
+  source: "kilde",
+  opprinnelse: "opprinnelse",
+  origin: "opprinnelse",
+  porsjon: "porsjon",
+  portion: "porsjon",
+  porsjon_gram: "porsjon_gram",
+  portion_grams: "porsjon_gram",
+  kilokalorier_kcal: "kcal",
+  kcal: "kcal",
+  protein_g: "protein",
+  protein: "protein",
+  karbohydrat_g: "karbohydrater",
+  karbohydrater: "karbohydrater",
+  carbs: "karbohydrater",
+  fett_g: "fett",
+  fett: "fett",
+  kostfiber_g: "kostfiber",
+  kostfiber: "kostfiber",
+  sukkerarter_g: "sukker",
+  sukker_g: "sukker",
+  sukker: "sukker",
+  mettede_fettsyrer_g: "mettet_fett",
+  mettet_fett: "mettet_fett",
+  natrium_na_mg: "natrium_mg",
+  natrium_mg: "natrium_mg",
+  salt_nacl_g: "salt_g",
+  vitamin_a_rae_rae: "vitamin_a_ug",
+  vitamin_d_ug: "vitamin_d_ug",
+  vitamin_e_mg_ate: "vitamin_e_mg",
+  vitamin_b1_tiamin_mg: "vitamin_b1_mg",
+  vitamin_b2_riboflavin_mg: "vitamin_b2_mg",
+  vitamin_b3_niacin_mg: "niacin_mg",
+  vitamin_b6_pyridoksin_mg: "vitamin_b6_mg",
+  vitamin_b9_folat_ug: "folat_ug",
+  vitamin_b12_kobalamin_ug: "vitamin_b12_ug",
+  vitamin_c_askorbinsyre_mg: "vitamin_c_mg",
+  kalsium_ca_mg: "kalsium_mg",
+  jern_fe_mg: "jern_mg",
+  kalium_k_mg: "kalium_mg",
+  magnesium_mg_mg: "magnesium_mg",
+  sink_zn_mg: "sink_mg",
+  selen_se_ug: "selen_ug",
+  kobber_cu_mg: "kobber_mg",
+  fosfor_p_mg: "fosfor_mg",
+  jod_i_ug: "jod_ug",
+  emoji: "emoji",
+};
+
+function remapCsvRow(row: Record<string, string>): Record<string, string> {
+  const normalized: Record<string, string> = {};
+  for (const [key, value] of Object.entries(row)) {
+    const mapped = CSV_HEADER_ALIASES[normalizeHeaderKey(key)] ?? normalizeHeaderKey(key);
+    if (!(mapped in normalized) || !normalized[mapped]) {
+      normalized[mapped] = value;
+    }
+  }
+  return normalized;
 }
 
 function rowToFoodItem(row: Record<string, string>, trainerName: string, lineNo: number, errors: string[]): FoodItem | null {
@@ -225,7 +304,9 @@ function rowToFoodItem(row: Record<string, string>, trainerName: string, lineNo:
       fiber: parseNumber(row.kostfiber ?? row.fiber),
       sugar: parseNumber(row.sukker ?? row.sugar),
       saturatedFat: parseNumber(row.mettet_fett ?? row.saturated_fat),
-      sodium: parseNumber(row.natrium_mg ?? row.sodium),
+      sodium:
+        parseNumber(row.natrium_mg ?? row.sodium) ||
+        Math.round(parseNumber(row.salt_g) * 393),
       micronutrients: micronutrientsFromCsvRow(row),
     },
   };
@@ -237,7 +318,7 @@ export function parseMotusCsv(text: string, trainerName: string): FoodImportPars
   if (!lines.length) return { items: [], errors: ["Filen er tom."], format: "motus-csv" };
 
   const delimiter = detectDelimiter(lines[0]);
-  const headers = parseCsvLine(lines[0], delimiter).map((cell) => cell.trim().toLowerCase());
+  const headers = parseCsvLine(lines[0], delimiter).map((cell) => cell.trim());
   const items: FoodItem[] = [];
 
   for (let i = 1; i < lines.length; i += 1) {
@@ -247,7 +328,7 @@ export function parseMotusCsv(text: string, trainerName: string): FoodImportPars
     headers.forEach((header, index) => {
       row[header] = cells[index] ?? "";
     });
-    const item = rowToFoodItem(row, trainerName, i + 1, errors);
+    const item = rowToFoodItem(remapCsvRow(row), trainerName, i + 1, errors);
     if (item) items.push(item);
   }
 

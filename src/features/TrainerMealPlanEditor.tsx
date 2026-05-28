@@ -112,6 +112,7 @@ export function TrainerMealPlanEditor({
   const [previewSelection, setPreviewSelection] = useState<MealGridSelection | null>(null);
   const [recipeReadOnlyId, setRecipeReadOnlyId] = useState<string | null>(null);
   const [planWeeks, setPlanWeeks] = useState<number>(1);
+  const [visibleWeekIndex, setVisibleWeekIndex] = useState(0);
   const reloadInFlightRef = useRef(false);
   const hasLoadedOnceRef = useRef(false);
   const recipesById = useMemo(() => new Map(recipeItems.map((recipe) => [recipe.id, recipe])), [recipeItems]);
@@ -206,6 +207,16 @@ export function TrainerMealPlanEditor({
     setPlanWeeks((prev) => (prev === inferredWeeks ? prev : inferredWeeks));
   }, [plan?.days.length]);
 
+  useEffect(() => {
+    setVisibleWeekIndex((prev) => Math.min(prev, Math.max(0, totalWeeks - 1)));
+  }, [totalWeeks]);
+
+  useEffect(() => {
+    if (!gridSelection || visibleWeekDays.length === 0) return;
+    const isVisible = visibleWeekDays.some((day) => day.id === gridSelection.dayId);
+    if (!isVisible) setGridSelection(null);
+  }, [gridSelection, visibleWeekDays]);
+
   const foodById = useMemo(() => new Map(foodItems.map((food) => [food.id, food])), [foodItems]);
 
   const weekAverageMacros = useMemo(
@@ -255,6 +266,17 @@ export function TrainerMealPlanEditor({
     if (!plan || !gridSelection) return null;
     return plan.days.find((row) => row.id === gridSelection.dayId) ?? null;
   }, [plan, gridSelection]);
+
+  const totalWeeks = useMemo(() => Math.max(1, Math.ceil((plan?.days.length ?? 0) / 7)), [plan?.days.length]);
+  const visibleWeekStart = visibleWeekIndex * 7;
+  const visibleWeekDays = useMemo(
+    () => (plan ? plan.days.slice(visibleWeekStart, visibleWeekStart + 7) : []),
+    [plan, visibleWeekStart],
+  );
+  const visibleWeekPlan = useMemo(
+    () => (plan ? { ...plan, days: visibleWeekDays } : null),
+    [plan, visibleWeekDays],
+  );
 
   const previewMeal = useMemo(() => {
     if (!plan || !previewSelection) return null;
@@ -880,6 +902,9 @@ export function TrainerMealPlanEditor({
     setPlanWeeks(clamped);
     const resized = resizeMealPlanWeeks(plan, clamped);
     updatePlan(resized);
+    setVisibleWeekIndex(0);
+    setGridSelection(null);
+    setPreviewSelection(null);
     setSaveStatus(`Perioden er satt til ${clamped} ${clamped === 1 ? "uke" : "uker"}.`);
   }
 
@@ -1020,21 +1045,46 @@ export function TrainerMealPlanEditor({
                 Auto-fyll uke
               </OutlineButton>
             </div>
-            <TrainerMealPlanWeekGrid
-              plan={plan}
-              foodById={foodById}
-              recipesById={recipesById}
-              selection={gridSelection}
-              onSelect={selectGridCell}
-              onPreview={previewGridCell}
-              onCloseMenu={() => setGridSelection(null)}
-              onAddFood={(sel) => openFoodPicker(sel.dayId, sel.mealId)}
-              onAddRecipe={(sel) => {
-                setRecipePicker(sel);
-                setRecipeSearch("");
-              }}
-              onClearMeal={clearGridMeal}
-            />
+            {totalWeeks > 1 ? (
+              <div className="mb-2 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <OutlineButton
+                  type="button"
+                  className="text-xs"
+                  onClick={() => setVisibleWeekIndex((prev) => Math.max(0, prev - 1))}
+                  disabled={visibleWeekIndex <= 0}
+                >
+                  Forrige uke
+                </OutlineButton>
+                <span className="text-xs font-medium text-slate-700">
+                  Viser uke {visibleWeekIndex + 1} av {totalWeeks}
+                </span>
+                <OutlineButton
+                  type="button"
+                  className="text-xs"
+                  onClick={() => setVisibleWeekIndex((prev) => Math.min(totalWeeks - 1, prev + 1))}
+                  disabled={visibleWeekIndex >= totalWeeks - 1}
+                >
+                  Neste uke
+                </OutlineButton>
+              </div>
+            ) : null}
+            {visibleWeekPlan ? (
+              <TrainerMealPlanWeekGrid
+                plan={visibleWeekPlan}
+                foodById={foodById}
+                recipesById={recipesById}
+                selection={gridSelection}
+                onSelect={selectGridCell}
+                onPreview={previewGridCell}
+                onCloseMenu={() => setGridSelection(null)}
+                onAddFood={(sel) => openFoodPicker(sel.dayId, sel.mealId)}
+                onAddRecipe={(sel) => {
+                  setRecipePicker(sel);
+                  setRecipeSearch("");
+                }}
+                onClearMeal={clearGridMeal}
+              />
+            ) : null}
 
             {selectedGridMeal && selectedGridDay && gridSelection ? (
               <div className="motus-pt-planner-detail">

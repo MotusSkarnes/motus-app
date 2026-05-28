@@ -69,4 +69,19 @@ describe("foodBankImport", () => {
   it("builds stable match keys", () => {
     expect(foodMatchKey({ name: "  Egg ", source: "egen" })).toBe("egen::egg");
   });
+
+  it("parses Matvaretabellen-style tab-delimited headers in any order", () => {
+    const text = [
+      "Matvare ID\tMatvare\tKilokalorier (kcal)\tFett (g)\tMettede fettsyrer (g)\tKarbohydrat (g)\tSukkerarter (g)\tKostfiber (g)\tProtein (g)\tNatrium (Na) (mg)\tVitamin C (askorbinsyre) (mg)\tJern (Fe) (mg)",
+      "123\tKyllingfilet\t165\t3,6\t1,0\t0\t0\t0\t31\t74\t0\t0,7",
+    ].join("\n");
+    const result = parseMotusCsv(text, "Trener");
+    expect(result.errors).toEqual([]);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.name).toBe("Kyllingfilet");
+    expect(result.items[0]?.nutritionPer100g.kcal).toBe(165);
+    expect(result.items[0]?.nutritionPer100g.protein).toBe(31);
+    expect(result.items[0]?.nutritionPer100g.micronutrients?.vitaminC).toBe(0);
+    expect(result.items[0]?.nutritionPer100g.micronutrients?.iron).toBe(0.7);
+  });
 });
