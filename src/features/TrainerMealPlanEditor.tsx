@@ -1142,7 +1142,11 @@ export function TrainerMealPlanEditor({
               <div className="font-bold text-sm">AI-assistent for matplanlegging</div>
               <div className="text-xs opacity-90">Generer hele uken basert på mål og preferanser.</div>
             </div>
-            <OutlineButton type="button" className="!border-white/40 !text-white opacity-90" onClick={suggestAiWeekPlan}>
+            <OutlineButton
+              type="button"
+              className="!border-white/40 !bg-white/10 !text-white hover:!bg-white/20"
+              onClick={suggestAiWeekPlan}
+            >
               AI-generer hele uken
             </OutlineButton>
           </div>
