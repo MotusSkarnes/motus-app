@@ -18,8 +18,26 @@ export type MemberMonthlyCheckInAnswers = {
   trainingNeedsNotes: string;
   challengingNotes: string;
   coachNotes: string;
+  tanitaMetrics?: Partial<Record<TanitaMetricKey, number>>;
   completedAt: string;
 };
+
+export type TanitaMetricKey =
+  | "weightKg"
+  | "bodyFatPct"
+  | "muscleMassKg"
+  | "visceralFatLevel"
+  | "bodyWaterPct"
+  | "bmrKcal";
+
+export const TANITA_METRIC_FIELDS: Array<{ key: TanitaMetricKey; label: string; unit: string }> = [
+  { key: "weightKg", label: "Vekt", unit: "kg" },
+  { key: "bodyFatPct", label: "Fettprosent", unit: "%" },
+  { key: "muscleMassKg", label: "Muskelmasse", unit: "kg" },
+  { key: "visceralFatLevel", label: "Visceralt fett", unit: "nivå" },
+  { key: "bodyWaterPct", label: "Kroppsvann", unit: "%" },
+  { key: "bmrKcal", label: "BMR", unit: "kcal" },
+];
 
 export const TRAINING_GOING_LABELS = ["Svært dårlig", "Dårlig", "OK", "Bra", "Svært bra"] as const;
 export const MET_EXPECTATIONS_LABELS = ["Langt under", "Under", "Som forventet", "Over", "Over forventning"] as const;
@@ -87,6 +105,20 @@ function normalizeStringArray(value: unknown): string[] {
   return Array.from(new Set(value.map((item) => String(item ?? "").trim()).filter(Boolean)));
 }
 
+function normalizeTanitaMetrics(value: unknown): Partial<Record<TanitaMetricKey, number>> {
+  if (!value || typeof value !== "object") return {};
+  const row = value as Record<string, unknown>;
+  const next: Partial<Record<TanitaMetricKey, number>> = {};
+  for (const field of TANITA_METRIC_FIELDS) {
+    const raw = row[field.key];
+    const n = typeof raw === "number" ? raw : Number(raw);
+    if (Number.isFinite(n) && n >= 0) {
+      next[field.key] = Math.round(n * 100) / 100;
+    }
+  }
+  return next;
+}
+
 function normalizeCheckInEntry(raw: unknown): MemberMonthlyCheckInAnswers | null {
   if (!raw || typeof raw !== "object") return null;
   const data = raw as Partial<MemberMonthlyCheckInAnswers>;
@@ -100,6 +132,7 @@ function normalizeCheckInEntry(raw: unknown): MemberMonthlyCheckInAnswers | null
     trainingNeedsNotes: String(data.trainingNeedsNotes ?? "").trim(),
     challengingNotes: String(data.challengingNotes ?? "").trim(),
     coachNotes: String(data.coachNotes ?? "").trim(),
+    tanitaMetrics: normalizeTanitaMetrics(data.tanitaMetrics),
     completedAt: String(data.completedAt),
   };
 }
@@ -161,6 +194,7 @@ export function createEmptyCheckInDraft(monthKey: string): Omit<MemberMonthlyChe
     trainingNeedsNotes: "",
     challengingNotes: "",
     coachNotes: "",
+    tanitaMetrics: {},
   };
 }
 
@@ -213,6 +247,11 @@ export function buildCheckInNotificationCopy(window: CheckInWindow): { title: st
 }
 
 export function formatCheckInSummaryLines(checkIn: MemberMonthlyCheckInAnswers): Array<{ label: string; value: string }> {
+  const tanitaLines = TANITA_METRIC_FIELDS.flatMap((field) => {
+    const value = checkIn.tanitaMetrics?.[field.key];
+    if (value === undefined || value === null || !Number.isFinite(value)) return [];
+    return [{ label: `Tanita · ${field.label}`, value: `${String(value).replace(".", ",")} ${field.unit}` }];
+  });
   return [
     { label: "Periode", value: monthLabelFromKey(checkIn.monthKey) },
     {
@@ -227,6 +266,7 @@ export function formatCheckInSummaryLines(checkIn: MemberMonthlyCheckInAnswers):
     { label: "Utfordrende", value: checkIn.challengingNotes || "Ikke oppgitt" },
     ...(checkIn.trainingNeedsNotes.trim() ? [{ label: "Behov (notat)", value: checkIn.trainingNeedsNotes.trim() }] : []),
     ...(checkIn.coachNotes.trim() ? [{ label: "Til trener", value: checkIn.coachNotes.trim() }] : []),
+    ...tanitaLines,
   ];
 }
 

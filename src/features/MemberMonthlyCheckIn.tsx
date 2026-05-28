@@ -5,13 +5,15 @@ import {
   CHECK_IN_PAGE_COUNT,
   CHECK_IN_PAGE_THEMES,
   MET_EXPECTATIONS_LABELS,
+  TANITA_METRIC_FIELDS,
+  type TanitaMetricKey,
   TRAINING_GOING_LABELS,
   TRAINING_NEED_OPTIONS,
   type CheckInWindow,
   type MemberMonthlyCheckInAnswers,
   createEmptyCheckInDraft,
 } from "../app/memberMonthlyCheckIn";
-import { Card, GradientButton, OutlineButton, TextArea } from "../app/ui";
+import { Card, GradientButton, OutlineButton, TextArea, TextInput } from "../app/ui";
 
 type Draft = Omit<MemberMonthlyCheckInAnswers, "completedAt" | "version">;
 
@@ -100,6 +102,23 @@ export function MemberMonthlyCheckIn({ memberName, window, onComplete, onClose }
       trainingNeeds: prev.trainingNeeds.includes(value)
         ? prev.trainingNeeds.filter((item) => item !== value)
         : [...prev.trainingNeeds, value],
+    }));
+  }
+
+  function patchTanitaMetric(key: TanitaMetricKey, raw: string) {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      setDraft((prev) => ({
+        ...prev,
+        tanitaMetrics: { ...(prev.tanitaMetrics ?? {}), [key]: undefined },
+      }));
+      return;
+    }
+    const parsed = Number(trimmed.replace(",", "."));
+    if (!Number.isFinite(parsed) || parsed < 0) return;
+    setDraft((prev) => ({
+      ...prev,
+      tanitaMetrics: { ...(prev.tanitaMetrics ?? {}), [key]: Math.round(parsed * 100) / 100 },
     }));
   }
 
@@ -198,6 +217,25 @@ export function MemberMonthlyCheckIn({ memberName, window, onComplete, onClose }
                     placeholder="F.eks. mer fokus på core, færre tunge knebøy…"
                   />
                 </label>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-sm font-medium text-slate-800">Tanita-målinger (valgfritt)</p>
+                  <p className="mt-0.5 text-xs text-slate-500">Legg inn måleparametere fra siste Tanita-veiing.</p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    {TANITA_METRIC_FIELDS.map((field) => (
+                      <label key={field.key} className="space-y-1">
+                        <span className="text-xs font-medium text-slate-700">
+                          {field.label} ({field.unit})
+                        </span>
+                        <TextInput
+                          inputMode="decimal"
+                          value={draft.tanitaMetrics?.[field.key] !== undefined ? String(draft.tanitaMetrics?.[field.key] ?? "") : ""}
+                          onChange={(event) => patchTanitaMetric(field.key, event.target.value)}
+                          placeholder="Valgfritt"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : null}
 
