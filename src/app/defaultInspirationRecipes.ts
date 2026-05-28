@@ -186,6 +186,33 @@ export const DEFAULT_INSPIRATION_RECIPES: DefaultInspirationRecipe[] = [
     scalingMode: "flexible",
     createdAt: "2026-05-27",
   },
+  {
+    id: "default-recipe-21",
+    title: "Skyr-bowl med banan og mandler",
+    description: "Rask snack med protein, karbohydrater og sunt fett.",
+    body: "**Til 1 porsjon · ca. 3 min**\n\n**Ingredienser**\n- 200 g skyr naturell\n- 1/2 banan\n- 15 g mandler\n- 1 ts honning\n\n**Slik gjør du**\n1. Ha skyr i en liten bolle.\n2. Topp med banan i skiver, hakkede mandler og honning.\n3. Server med en gang.\n\n**Tips:** Strø over litt kanel hvis du vil ha mer smak.",
+    tag: "3 min · Snacks",
+    scalingMode: "fixed",
+    createdAt: "2026-05-28",
+  },
+  {
+    id: "default-recipe-22",
+    title: "Riskaker med cottage cheese og bær",
+    description: "Lett mellommåltid som gir jevn energi.",
+    body: "**Til 1 porsjon · ca. 4 min**\n\n**Ingredienser**\n- 2 stk riskaker\n- 120 g cottage cheese\n- 1 håndfull blåbær\n\n**Slik gjør du**\n1. Smør cottage cheese på riskakene.\n2. Topp med blåbær.\n3. Spis med en gang for best crunch.\n\n**Tips:** Bytt blåbær med jordbær eller bringebær.",
+    tag: "4 min · Snacks",
+    scalingMode: "fixed",
+    createdAt: "2026-05-28",
+  },
+  {
+    id: "default-recipe-23",
+    title: "Yoghurtglass med müsli",
+    description: "Kjapp snack før eller etter trening.",
+    body: "**Til 1 porsjon · ca. 2 min**\n\n**Ingredienser**\n- 150 g gresk yoghurt\n- 30 g müsli\n- 1 ts honning\n\n**Slik gjør du**\n1. Legg yoghurt i et glass.\n2. Topp med müsli og honning.\n3. Spis med en gang eller la stå 5 minutter for mykere konsistens.\n\n**Tips:** Tilsett litt bær hvis du vil ha mer volum.",
+    tag: "2 min · Snacks",
+    scalingMode: "fixed",
+    createdAt: "2026-05-28",
+  },
 ];
 
 export const DEFAULT_RECIPE_SCALING_BY_ID = new Map(
