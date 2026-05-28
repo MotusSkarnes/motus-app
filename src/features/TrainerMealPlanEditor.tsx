@@ -73,6 +73,7 @@ type MealPickerTarget = {
 type FoodPickerState = MealPickerTarget | null;
 
 type RecipePickerState = MealPickerTarget | null;
+const RECIPE_PORTION_GRAMS = 100;
 
 export function TrainerMealPlanEditor({
   memberId,
@@ -658,11 +659,17 @@ export function TrainerMealPlanEditor({
     setFoodGrams("100");
   }
 
-  function updateFoodEntryGrams(dayId: string, mealId: string, entryId: string, gramsValue: string) {
+  function updateFoodEntryAmount(
+    dayId: string,
+    mealId: string,
+    entryId: string,
+    amountValue: string,
+    isRecipe: boolean,
+  ) {
     if (!plan) return;
-    const parsed = Number(gramsValue.replace(",", "."));
+    const parsed = Number(amountValue.replace(",", "."));
     if (!Number.isFinite(parsed) || parsed <= 0) return;
-    const safeGrams = Math.round(parsed);
+    const safeGrams = isRecipe ? Math.round(parsed * RECIPE_PORTION_GRAMS) : Math.round(parsed);
     updatePlan({
       ...plan,
       days: plan.days.map((day) => {
@@ -997,17 +1004,33 @@ export function TrainerMealPlanEditor({
                         <span className="font-medium text-slate-800">{item.foodName}</span>
                         {item.note ? <span className="block text-xs text-slate-500">{item.note}</span> : null}
                         <label className="motus-meal-entry-grams mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-600">
-                          <span className="font-medium">Mengde</span>
-                          <TextInput
-                            value={String(item.grams)}
-                            onChange={(e) =>
-                              updateFoodEntryGrams(gridSelection.dayId, gridSelection.mealId, item.id, e.target.value)
-                            }
-                            inputMode="decimal"
-                            className="motus-meal-entry-grams-input !py-1 !text-xs"
-                            aria-label={`Gram ${item.foodName}`}
-                          />
-                          <span>g</span>
+                          {(() => {
+                            const isRecipe = Boolean(parseInspirationRecipeFoodId(item.foodId));
+                            const amountValue = isRecipe
+                              ? String(Math.max(0.1, Math.round((item.grams / RECIPE_PORTION_GRAMS) * 10) / 10))
+                              : String(item.grams);
+                            return (
+                              <>
+                                <span className="font-medium">{isRecipe ? "Porsjoner" : "Mengde"}</span>
+                                <TextInput
+                                  value={amountValue}
+                                  onChange={(e) =>
+                                    updateFoodEntryAmount(
+                                      gridSelection.dayId,
+                                      gridSelection.mealId,
+                                      item.id,
+                                      e.target.value,
+                                      isRecipe,
+                                    )
+                                  }
+                                  inputMode="decimal"
+                                  className="motus-meal-entry-grams-input !py-1 !text-xs"
+                                  aria-label={`${isRecipe ? "Porsjoner" : "Gram"} ${item.foodName}`}
+                                />
+                                <span>{isRecipe ? "stk" : "g"}</span>
+                              </>
+                            );
+                          })()}
                         </label>
                       </span>
                       <button
@@ -1582,7 +1605,12 @@ export function TrainerMealPlanEditor({
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-slate-900">{item.foodName}</div>
                           <div className="text-xs text-slate-600">
-                            {formatMacro(item.grams, 0)} g{item.note ? ` · ${item.note}` : ""}
+                            {parseInspirationRecipeFoodId(item.foodId)
+                              ? item.grams === 100
+                                ? "1 porsjon"
+                                : `${formatMacro(Math.max(0.1, item.grams / 100), 1)} porsjoner`
+                              : `${formatMacro(item.grams, 0)} g`}
+                            {item.note ? ` · ${item.note}` : ""}
                           </div>
                         </div>
                         {hasRecipe && recipeId ? (

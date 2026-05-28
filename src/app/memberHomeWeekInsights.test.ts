@@ -40,6 +40,32 @@ describe("memberHomeWeekInsights", () => {
     expect(motivation?.title).toBe("Én økt unna full uke");
   });
 
+  it("uses next planned day for one-away message", () => {
+    const now = new Date(2026, 4, 21); // Thu
+    const weekDays = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(2026, 4, 18 + index); // Mon..Sun
+      const status =
+        index <= 3 ? "completed" : index === 5 ? "planned" : "none";
+      return {
+        status,
+        isToday: index === 3,
+        date,
+      };
+    });
+    const motivation = buildHomeWeekMotivation({
+      completed: 4,
+      planned: 5,
+      progressPct: 80,
+      momentumTrend: "flat",
+      thisWeekSessions: 4,
+      lastWeekSessions: 3,
+      streakWeeks: 1,
+      weekDays,
+      nowDate: now,
+    });
+    expect(motivation?.detail).toContain("Lør avgjør");
+  });
+
   it("finds most consistent weekdays from recent logs", () => {
     const now = new Date(2026, 4, 24);
     const dates = [

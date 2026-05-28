@@ -5,6 +5,8 @@ import {
   formatMacroTotals,
   formatTargetsSummary,
 } from "../app/mealPlanMacros";
+import { formatMacro } from "../app/foodBankTypes";
+import { parseInspirationRecipeFoodId } from "../app/mealPlanRecipeEntry";
 import type { MealPlan, MealPlanDay } from "../app/mealPlanTypes";
 import { Card } from "../app/ui";
 import "../foodbank.css";
@@ -15,6 +17,14 @@ type MealPlanDisplayProps = {
   activeDayId?: string;
   onActiveDayIdChange?: (dayId: string) => void;
 };
+
+const RECIPE_PORTION_GRAMS = 100;
+
+function formatMealEntryAmount(foodId: string, grams: number): string {
+  if (!parseInspirationRecipeFoodId(foodId)) return `${formatMacro(grams, 0)} g`;
+  const portions = Math.max(0.1, Math.round((grams / RECIPE_PORTION_GRAMS) * 10) / 10);
+  return portions === 1 ? "1 porsjon" : `${formatMacro(portions, 1)} porsjoner`;
+}
 
 export function MealPlanDisplay({ plan, readOnly = true, activeDayId, onActiveDayIdChange }: MealPlanDisplayProps) {
   const selectedDay =
@@ -93,7 +103,10 @@ function MealPlanDayPanel({ day }: { day: MealPlanDay }) {
                       ) : null}
                       <div className="min-w-0">
                       <div className="font-medium text-slate-800">{item.foodName}</div>
-                      <div className="text-xs text-slate-500">{item.grams} g{item.note ? ` · ${item.note}` : ""}</div>
+                      <div className="text-xs text-slate-500">
+                        {formatMealEntryAmount(item.foodId, item.grams)}
+                        {item.note ? ` · ${item.note}` : ""}
+                      </div>
                       </div>
                     </div>
                     <div className="shrink-0 text-right text-[10px] font-medium text-slate-500">

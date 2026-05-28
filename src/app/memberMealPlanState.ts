@@ -30,6 +30,14 @@ export const EMPTY_MEMBER_MEAL_PLAN_STATE: MemberMealPlanState = {
 export const MEAL_PLAN_STATE_CHANGED_EVENT = "motus-meal-plan-state-changed";
 
 const STORAGE_PREFIX = "motus.member.mealPlanState.v1";
+const STATE_KEYS: Array<keyof MemberMealPlanState> = [
+  "loggedMeals",
+  "loggedFoodIds",
+  "waterLiters",
+  "checkedShopping",
+  "recipePortions",
+  "mealSwaps",
+];
 
 function storageKey(memberId: string): string {
   return `${STORAGE_PREFIX}:${memberId.trim()}`;
@@ -100,6 +108,15 @@ export function parseMemberMealPlanState(value: unknown): MemberMealPlanState {
   };
 }
 
+function needsStateNormalization(raw: unknown): boolean {
+  if (!raw || typeof raw !== "object") return false;
+  const row = raw as Record<string, unknown>;
+  if ("logged_meals" in row || "logged_food_ids" in row || "water_liters" in row || "checked_shopping" in row || "recipe_portions" in row || "meal_swaps" in row) {
+    return true;
+  }
+  return STATE_KEYS.some((key) => !(key in row));
+}
+
 export function loadMemberMealPlanState(memberId: string): MemberMealPlanState {
   if (!memberId.trim() || typeof window === "undefined") {
     return { ...EMPTY_MEMBER_MEAL_PLAN_STATE };
@@ -107,7 +124,12 @@ export function loadMemberMealPlanState(memberId: string): MemberMealPlanState {
   try {
     const raw = window.localStorage.getItem(storageKey(memberId));
     if (!raw) return { ...EMPTY_MEMBER_MEAL_PLAN_STATE };
-    return parseMemberMealPlanState(JSON.parse(raw));
+    const parsedJson = JSON.parse(raw);
+    const parsed = parseMemberMealPlanState(parsedJson);
+    if (needsStateNormalization(parsedJson)) {
+      window.localStorage.setItem(storageKey(memberId), JSON.stringify(parsed));
+    }
+    return parsed;
   } catch {
     return { ...EMPTY_MEMBER_MEAL_PLAN_STATE };
   }
@@ -218,6 +240,7 @@ export function mergeMemberMealPlanStates(local: MemberMealPlanState, remote: Me
     loggedFoodIds: { ...remote.loggedFoodIds, ...local.loggedFoodIds },
     waterLiters: { ...remote.waterLiters, ...local.waterLiters },
     checkedShopping: [...new Set([...remote.checkedShopping, ...local.checkedShopping])],
+    recipePortions: { ...remote.recipePortions, ...local.recipePortions },
     mealSwaps: { ...remote.mealSwaps, ...local.mealSwaps },
     updatedAt: new Date(Math.max(localMs, remoteMs, Date.now())).toISOString(),
   };

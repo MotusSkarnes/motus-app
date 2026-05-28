@@ -3125,11 +3125,49 @@ function pickFirstName(value: unknown): string {
           },
         },
       });
-      const updated =
+      let updated =
         syncResult.data && typeof syncResult.data === "object" && "updated" in syncResult.data
           ? Number((syncResult.data as { updated?: unknown }).updated ?? 0)
           : 0;
-      const primaryError = syncResult.error?.message ?? "";
+      let primaryError = syncResult.error?.message ?? "";
+      if (updated === 0) {
+        const dbChanges: Record<string, unknown> = {
+          name: nextName,
+          email: nextEmail,
+          phone: normalizePhone(memberEditPhone),
+          birth_date: normalizedBirthDate,
+          goal: memberEditGoal,
+          injuries: memberEditInjuries,
+          membership_type: nextMembershipType,
+          customer_type: nextCustomerType,
+          nutrition_access: memberEditNutritionAccess === true,
+          personal_goals: patchMemberAppUiStateInPersonalGoals(selectedMember.personalGoals, {
+            profileDisplayName: nextName,
+          }),
+        };
+        if (assignOwnerToSession) dbChanges.owner_user_id = currentTrainerOwnerUserId;
+        const targetIds = uniqueTargetIds.filter((id) => id && !id.startsWith("auth-"));
+        if (targetIds.length > 0) {
+          const direct = await supabaseClient.from("members").update(dbChanges).in("id", targetIds).select("id");
+          if (!direct.error) {
+            updated = Math.max(updated, direct.data?.length ?? 0);
+          } else if (!primaryError) {
+            primaryError = direct.error.message;
+          }
+        }
+        if (updated === 0) {
+          const byEmail = await supabaseClient
+            .from("members")
+            .update(dbChanges)
+            .ilike("email", nextEmail)
+            .select("id");
+          if (!byEmail.error) {
+            updated = Math.max(updated, byEmail.data?.length ?? 0);
+          } else if (!primaryError) {
+            primaryError = byEmail.error.message;
+          }
+        }
+      }
       const syncSucceeded = updated > 0;
       if (!syncSucceeded) {
         if (primaryError) {

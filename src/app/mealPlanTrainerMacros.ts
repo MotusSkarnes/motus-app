@@ -309,6 +309,29 @@ function gramsForDeficit(deficit: number, per100g: number): number {
   return Math.max(10, Math.min(250, rounded));
 }
 
+function macroPer100(food: FoodItem, macro: "protein" | "carbs" | "fat"): number {
+  return macro === "protein"
+    ? food.nutritionPer100g.protein
+    : macro === "carbs"
+      ? food.nutritionPer100g.carbs
+      : food.nutritionPer100g.fat;
+}
+
+function findMealExistingFoodByMacro(
+  meal: MealPlanMeal,
+  foodsById: Map<string, FoodItem>,
+  macro: "protein" | "carbs" | "fat",
+): FoodItem | undefined {
+  const uniqueFoodIds = Array.from(new Set(meal.items.map((item) => item.foodId)));
+  const candidates = uniqueFoodIds
+    .map((id) => foodsById.get(id))
+    .filter((food): food is FoodItem => Boolean(food));
+  if (!candidates.length) return undefined;
+  return candidates
+    .filter((food) => macroPer100(food, macro) > 0)
+    .sort((a, b) => macroPer100(b, macro) - macroPer100(a, macro))[0];
+}
+
 export function suggestMealMacroAdjustments(
   day: MealPlanDay,
   dailyTargets: MealPlanTargets | undefined,
@@ -316,6 +339,7 @@ export function suggestMealMacroAdjustments(
   foodById?: Map<string, FoodItem>,
 ): MealMacroAdjustmentSuggestion[] {
   if (!dailyTargets || !day.meals.length || !foods.length) return [];
+  const foodsById = new Map(foods.map((food) => [food.id, food]));
   const distributed = distributeDailyTargetsToMeals(day, dailyTargets, "standard");
   const distributedById = new Map(distributed.map((meal) => [meal.id, meal.targets]));
   const suggestions: MealMacroAdjustmentSuggestion[] = [];
@@ -336,36 +360,20 @@ export function suggestMealMacroAdjustments(
     const primary = macroNeeds.find((key) => rem[key] > (key === "protein" ? 8 : key === "carbs" ? 12 : 5));
     if (!primary) continue;
 
-    const fallbackByMacro: Record<"protein" | "carbs" | "fat", string> = {
-      protein: "skyr naturell",
-      carbs: "basmatiris tørr",
-      fat: "mandler",
-    };
-    const slotPreference: Record<"frokost" | "lunsj" | "middag" | "snacks", Record<"protein" | "carbs" | "fat", string>> = {
-      frokost: { protein: "skyr naturell", carbs: "havregryn", fat: "mandler" },
-      lunsj: { protein: "cottage cheese", carbs: "grovt brød", fat: "mandler" },
-      middag: { protein: "kyllingbryst", carbs: "basmatiris tørr", fat: "olivenolje" },
-      snacks: { protein: "skyr naturell", carbs: "banana", fat: "mandler" },
-    };
-    const preferredName = slotPreference[slot][primary];
-    const chosen = findFoodByName(foods, preferredName) ?? findFoodByName(foods, fallbackByMacro[primary]);
+    const chosenFromMeal = findMealExistingFoodByMacro(meal, foodsById, primary);
+    const chosen = chosenFromMeal;
     if (!chosen) continue;
 
-    const per100 =
-      primary === "protein"
-        ? chosen.nutritionPer100g.protein
-        : primary === "carbs"
-          ? chosen.nutritionPer100g.carbs
-          : chosen.nutritionPer100g.fat;
+    const per100 = macroPer100(chosen, primary);
     const grams = gramsForDeficit(rem[primary], per100);
     if (!grams) continue;
 
     const reason =
       primary === "protein"
-        ? "for å treffe proteinmålet"
+        ? "for å treffe proteinmålet med matvare som allerede er i måltidet"
         : primary === "carbs"
-          ? "for å treffe karbohydratmålet"
-          : "for å treffe fettmålet";
+          ? "for å treffe karbohydratmålet med matvare som allerede er i måltidet"
+          : "for å treffe fettmålet med matvare som allerede er i måltidet";
 
     suggestions.push({
       mealId: meal.id,

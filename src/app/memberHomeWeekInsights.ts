@@ -85,7 +85,12 @@ export function buildHomeWeekMotivation(input: {
   const today = getStartOfDay(input.nowDate);
 
   if (remaining === 1) {
-    const nextPending = input.weekDays.find((day) => {
+    const nextPlanned = input.weekDays.find((day) => {
+      if (day.status !== "planned") return false;
+      const dayStart = getStartOfDay(day.date);
+      return dayStart.getTime() >= today.getTime();
+    });
+    const nextPending = nextPlanned ?? input.weekDays.find((day) => {
       if (day.status === "completed") return false;
       const dayStart = getStartOfDay(day.date);
       return dayStart.getTime() >= today.getTime();

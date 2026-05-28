@@ -351,6 +351,7 @@ const EMPTY_REMOTE_PERIOD_PLAN_ROWS: Array<{ memberId: string; plan: PeriodSched
 const PERIOD_PLAN_COMPLETED_STORAGE_PREFIX = "MOTUS_PERIOD_PLAN_COMPLETED_V1:";
 const PERIOD_PLAN_DISMISSED_STORAGE_PREFIX = "MOTUS_PERIOD_PLAN_DISMISSED_V1:";
 const HIDDEN_BADGE_SEEN_STORAGE_PREFIX = "MOTUS_HIDDEN_BADGE_SEEN_V1:";
+const WORKOUT_COUNT_BADGE_IDS = new Set(["sessions", "workout-club", "month-sessions"]);
 const HIDDEN_BADGE_POPUP_COPY: Record<string, string> = {
   "may-17-workout": "Du registrerte en økt på 17. mai. Sterk nasjonaldagsinnsats.",
   "never-two-weeks-without": "Du har holdt treningen i gang i 6 måneder uten pause over 14 dager.",
@@ -4686,7 +4687,13 @@ export function MemberPortal(props: MemberPortalProps) {
   ]);
   const homeDashboardSubline = useMemo(() => {
     const nextBadge = memberBadgeCollection.allBadges
-      .filter((badge) => !badge.secret && !badge.hidden && getBadgeNextLevel(badge))
+      .filter(
+        (badge) =>
+          !badge.secret &&
+          !badge.hidden &&
+          WORKOUT_COUNT_BADGE_IDS.has(badge.id) &&
+          getBadgeNextLevel(badge),
+      )
       .sort((a, b) => b.progressPct - a.progressPct)[0];
     if (!nextBadge) return memberProgressScores.momentum.subline;
     const nextLevel = getBadgeNextLevel(nextBadge);

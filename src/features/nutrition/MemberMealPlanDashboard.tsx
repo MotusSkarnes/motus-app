@@ -28,6 +28,10 @@ import {
 import { MealPlanDisplay } from "../MealPlanDisplay";
 import { buildWeeklyShoppingList } from "../../app/mealPlanShoppingList";
 import { useInspirationRecipeItems } from "../../app/inspirationRecipeItems";
+import { computeRecipeMacros } from "../../app/recipeMacros";
+import { RecipeIngredientList } from "../../components/RecipeIngredientList";
+import { RecipeMacroBlocks } from "../../components/RecipeMacroBlocks";
+import { parseInspirationRecipeFoodId } from "../../app/mealPlanRecipeEntry";
 import {
   MEAL_PLAN_STATE_CHANGED_EVENT,
   mealSwapKey,
@@ -65,6 +69,7 @@ import "../../foodbank.css";
 
 const WATER_TARGET_L = 2.5;
 const WATER_STEP_L = 0.2;
+const RECIPE_PORTION_GRAMS = 100;
 
 type MemberMealPlanDashboardProps = {
   plan: MealPlan;
@@ -96,6 +101,25 @@ function mealDisplayTitle(meal: MealPlanMeal): string {
 
 function mealMacroLine(macros: MacroTotals): string {
   return `${formatMacro(macros.kcal, 0)} kcal · ${formatMacro(macros.protein, 0)}g protein`;
+}
+
+function firstRecipeIdFromMeal(meal: MealPlanMeal): string | null {
+  for (const item of meal.items) {
+    const recipeId = parseInspirationRecipeFoodId(item.foodId);
+    if (recipeId) return recipeId;
+  }
+  return null;
+}
+
+function isRecipeEntry(foodId: string, note?: string): boolean {
+  if (Boolean(parseInspirationRecipeFoodId(foodId))) return true;
+  return String(note ?? "").toLowerCase().includes("oppskrift");
+}
+
+function formatMealEntryAmount(foodId: string, grams: number, note?: string): string {
+  if (!isRecipeEntry(foodId, note)) return `${formatMacro(grams, 0)} g`;
+  const portions = Math.max(0.1, Math.round((grams / RECIPE_PORTION_GRAMS) * 10) / 10);
+  return portions === 1 ? "1 porsjon" : `${formatMacro(portions, 1)} porsjoner`;
 }
 
 function normalizeMealKey(name: string): string {
@@ -131,6 +155,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
   const [showCoachTips, setShowCoachTips] = useState(false);
   const [expandedMealId, setExpandedMealId] = useState<string | null>(null);
   const [mealMenuId, setMealMenuId] = useState<string | null>(null);
+  const [activeRecipeId, setActiveRecipeId] = useState<string | null>(null);
 
   const totalFoodInPlan = useMemo(() => countMealPlanFoodItems(plan), [plan]);
 
@@ -263,6 +288,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
       : weekProgress.logged > 0
         ? "God fremgang denne uken"
         : "Logg måltider for å følge planen";
+  const recipePortions = tracking.recipePortions ?? {};
 
   const shoppingList = useMemo(
     () =>
@@ -271,11 +297,12 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
         foodById,
         foodItems,
         recipesById,
-        recipePortions: tracking.recipePortions,
+        recipePortions,
       }),
-    [plan, foodById, foodItems, recipesById, tracking.recipePortions],
+    [plan, foodById, foodItems, recipesById, recipePortions],
   );
   const shoppingGroups = shoppingList.groups;
+  const activeRecipe = activeRecipeId ? recipesById.get(activeRecipeId) ?? null : null;
 
   const handleRecipePortionChange = useCallback(
     (entryId: string, next: number) => {
@@ -558,6 +585,8 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
             const logged = meal.items.length > 0 && loggedFoodCount === meal.items.length;
             const hasPartialLog = loggedFoodCount > 0 && !logged;
             const hasFood = meal.items.length > 0;
+            const recipeId = firstRecipeIdFromMeal(meal);
+            const hasRecipe = Boolean(recipeId && recipesById.has(recipeId));
             const imageSrc = resolveMealImage(meal);
             const isSwapped = Boolean(tracking.mealSwaps[mealSwapKey(selectedDateKey, meal.id)]);
             const prepMeta = mealPrepMeta(meal.items.length);
@@ -626,6 +655,16 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                         </span>
                         <span>{prepMeta.difficulty}</span>
                       </div>
+                      {hasRecipe && recipeId ? (
+                        <button
+                          type="button"
+                          className="motus-matplan-food-log motus-pressable mt-2"
+                          onClick={() => setActiveRecipeId(recipeId)}
+                          aria-label={`Se oppskrift for ${mealDisplayTitle(meal)}`}
+                        >
+                          Se oppskrift
+                        </button>
+                      ) : null}
                     </>
                   ) : (
                     <p className="motus-matplan-meal-card__macros motus-matplan-meal-card__macros--muted">
@@ -643,9 +682,26 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                           >
                             <div className="motus-matplan-meal-food-main">
                               <span className="motus-matplan-meal-food-name">{item.foodName}</span>
-                              <span className="motus-matplan-meal-food-grams">{item.grams} g</span>
+                              <span className="motus-matplan-meal-food-grams">
+                                {formatMealEntryAmount(item.foodId, item.grams, item.note)}
+                              </span>
                             </div>
                             <div className="motus-matplan-meal-food-actions">
+                              {(() => {
+                                const recipeId = parseInspirationRecipeFoodId(item.foodId);
+                                const hasRecipe = Boolean(recipeId && recipesById.has(recipeId));
+                                if (!hasRecipe || !recipeId) return null;
+                                return (
+                                  <button
+                                    type="button"
+                                    className="motus-matplan-food-log motus-pressable"
+                                    onClick={() => setActiveRecipeId(recipeId)}
+                                    aria-label={`Se oppskrift for ${item.foodName}`}
+                                  >
+                                    Se oppskrift
+                                  </button>
+                                );
+                              })()}
                               {foodLogged ? (
                                 <button
                                   type="button"
@@ -772,7 +828,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                   </p>
                   <ul className="motus-matplan-shopping-portions-list">
                     {shoppingList.recipeControls.map((row) => {
-                      const portionValue = tracking.recipePortions[row.entryId] ?? row.portionMultiplier;
+                      const portionValue = recipePortions[row.entryId] ?? row.portionMultiplier;
                       return (
                       <li key={`${row.entryId}-${row.dayLabel}`} className="motus-matplan-shopping-portion-row">
                         <div className="min-w-0 flex-1">
@@ -935,6 +991,37 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                   <p className="text-sm leading-relaxed text-slate-700">{tip}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Recipe modal */}
+      {activeRecipe ? (
+        <div className="motus-foodbank-modal-backdrop" role="presentation" onClick={() => setActiveRecipeId(null)}>
+          <div
+            className="motus-foodbank-modal motus-foodbank-modal--wide"
+            role="dialog"
+            aria-label="Se oppskrift"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="motus-foodbank-modal-head">
+              <h3>{activeRecipe.title}</h3>
+              <button
+                type="button"
+                className="motus-foodbank-icon-btn"
+                onClick={() => setActiveRecipeId(null)}
+                aria-label="Lukk"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="motus-foodbank-modal-body space-y-3">
+              {activeRecipe.description ? <p className="text-sm text-slate-600">{activeRecipe.description}</p> : null}
+              <RecipeIngredientList body={activeRecipe.body} foodItems={foodItems} recipeId={activeRecipe.id} />
+              {computeRecipeMacros(activeRecipe.body, foodItems) ? (
+                <RecipeMacroBlocks result={computeRecipeMacros(activeRecipe.body, foodItems)!} />
+              ) : null}
             </div>
           </div>
         </div>
