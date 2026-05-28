@@ -106,22 +106,31 @@ export function notifyFoodBankChanged(): void {
 }
 
 export function loadFoodBankItems(): FoodItem[] {
-  const stored = readJson<FoodItem[]>(FOOD_BANK_STORAGE_KEY);
-  if (stored?.length) {
-    const deduped = dedupeFoodBankItems(stored);
-    if (deduped.length !== stored.length) {
-      persistFoodBankItems(deduped);
+  try {
+    const stored = readJson<FoodItem[]>(FOOD_BANK_STORAGE_KEY);
+    if (stored?.length) {
+      const deduped = dedupeFoodBankItems(stored);
+      if (deduped.length !== stored.length) {
+        persistFoodBankItems(deduped);
+      }
+      return deduped;
     }
-    return deduped;
+    const seeded = buildDefaultFoodBankItems();
+    persistFoodBankItems(seeded);
+    return seeded;
+  } catch {
+    // Never block app startup on foodbank hydration.
+    return buildDefaultFoodBankItems();
   }
-  const seeded = buildDefaultFoodBankItems();
-  persistFoodBankItems(seeded);
-  return seeded;
 }
 
 export function persistFoodBankItems(items: FoodItem[]): void {
-  const deduped = dedupeFoodBankItems(items);
-  writeJson(FOOD_BANK_STORAGE_KEY, deduped);
+  try {
+    const deduped = dedupeFoodBankItems(items);
+    writeJson(FOOD_BANK_STORAGE_KEY, deduped);
+  } catch {
+    writeJson(FOOD_BANK_STORAGE_KEY, items.map(normalizeFoodItem));
+  }
   notifyFoodBankChanged();
 }
 
@@ -130,9 +139,14 @@ export function loadFavoriteFoodIds(): string[] {
 }
 
 export function persistFavoriteFoodIds(ids: string[]): void {
-  const validIds = new Set(loadFoodBankItems().map((item) => item.id));
-  const filtered = ids.filter((id) => validIds.has(id));
-  writeJson(FOOD_BANK_FAVORITES_KEY, filtered);
+  try {
+    const stored = readJson<FoodItem[]>(FOOD_BANK_STORAGE_KEY) ?? [];
+    const validIds = new Set(dedupeFoodBankItems(stored).map((item) => item.id));
+    const filtered = ids.filter((id) => validIds.has(id));
+    writeJson(FOOD_BANK_FAVORITES_KEY, filtered);
+  } catch {
+    writeJson(FOOD_BANK_FAVORITES_KEY, ids);
+  }
   notifyFoodBankChanged();
 }
 
@@ -141,9 +155,14 @@ export function loadRecentFoodIds(): string[] {
 }
 
 export function persistRecentFoodIds(ids: string[]): void {
-  const validIds = new Set(loadFoodBankItems().map((item) => item.id));
-  const filtered = ids.filter((id) => validIds.has(id));
-  writeJson(FOOD_BANK_RECENT_KEY, filtered);
+  try {
+    const stored = readJson<FoodItem[]>(FOOD_BANK_STORAGE_KEY) ?? [];
+    const validIds = new Set(dedupeFoodBankItems(stored).map((item) => item.id));
+    const filtered = ids.filter((id) => validIds.has(id));
+    writeJson(FOOD_BANK_RECENT_KEY, filtered);
+  } catch {
+    writeJson(FOOD_BANK_RECENT_KEY, ids);
+  }
   notifyFoodBankChanged();
 }
 
