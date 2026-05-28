@@ -17,4 +17,20 @@ describe("filterRecipeInspirationItems", () => {
     expect(hit?.title).toBe("Min tilpassede frokost");
     expect(hit?.description).toBe("Endret");
   });
+
+  it("beholder oppdatert imageUrl for eksisterende oppskrift-id", () => {
+    const merged = filterRecipeInspirationItems([
+      {
+        id: "default-recipe-11",
+        category: "recipes",
+        title: "Kokt egg med grovbrød",
+        description: "Oppdatert",
+        body: "**Til 1 porsjon**\n\n**Ingredienser**\n- 2 egg\n\n**Slik gjør du**\n1. Kok.",
+        tag: "Frokost",
+        imageUrl: "https://example.com/new-image.jpg",
+      },
+    ]);
+    const hit = merged.find((row) => row.id === "default-recipe-11");
+    expect(hit?.imageUrl).toBe("https://example.com/new-image.jpg");
+  });
 });

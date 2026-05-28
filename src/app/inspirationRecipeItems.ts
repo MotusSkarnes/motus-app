@@ -64,6 +64,27 @@ export function filterRecipeInspirationItems(items: unknown[]): InspirationRecip
   return patched.sort((a, b) => b.title.localeCompare(a.title, "no"));
 }
 
+function recipeItemListsEqual(a: InspirationRecipeItem[], b: InspirationRecipeItem[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    const left = a[i];
+    const right = b[i];
+    if (!right) return false;
+    if (
+      left.id !== right.id ||
+      left.title !== right.title ||
+      left.description !== right.description ||
+      left.body !== right.body ||
+      left.tag !== right.tag ||
+      left.imageUrl !== right.imageUrl ||
+      left.scalingMode !== right.scalingMode
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export function useInspirationRecipeItems(): { items: InspirationRecipeItem[]; loading: boolean; reload: () => void } {
   const [items, setItems] = useState<InspirationRecipeItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,12 +99,7 @@ export function useInspirationRecipeItems(): { items: InspirationRecipeItem[]; l
       const remote = (await fetchInspirationItemsForHub<unknown>()) ?? local;
       const merged = filterRecipeInspirationItems(remote.length ? remote : local);
       if (!cancelled) {
-        setItems((prev) => {
-          if (prev.length === merged.length && prev.every((row, index) => row.id === merged[index]?.id)) {
-            return prev;
-          }
-          return merged;
-        });
+        setItems((prev) => (recipeItemListsEqual(prev, merged) ? prev : merged));
         setLoading(false);
       }
     })();
