@@ -1,4 +1,4 @@
-import { parsePersonalGoalsJson, readProfileExtensions } from "./memberOnboarding";
+import { parsePersonalGoalsJson, readProfileExtensions } from "./memberProfilePayload";
 import type { FoodItem } from "./foodBankTypes";
 import { computeRecipeIngredients, type RecipeIngredient } from "./recipeMacros";
 

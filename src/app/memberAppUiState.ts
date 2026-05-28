@@ -1,4 +1,4 @@
-import { parsePersonalGoalsJson } from "./memberOnboarding";
+import { parsePersonalGoalsJson } from "./memberProfilePayload";
 
 const PROFILE_METRICS_PREFIX = "MOTUS_PROFILE_V1:";
 
