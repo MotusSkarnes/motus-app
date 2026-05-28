@@ -296,7 +296,7 @@ export function TrainerPtHomeScreen({
             <span className="motus-pt-home-tool-icon motus-pt-home-tool-icon--purple">
               <Apple className="h-5 w-5" aria-hidden />
             </span>
-            <span>Matplan</span>
+            <span>Ernæring</span>
           </button>
           <button type="button" className="motus-pt-home-tool motus-pressable" onClick={quickActions.onShareContent}>
             <span className="motus-pt-home-tool-icon motus-pt-home-tool-icon--mint">

@@ -98,7 +98,7 @@ function buildTrainerMenuItems(messageBadgeCount: number, includeAdmin: boolean)
     { key: "exerciseBank", label: "Øvelsesbank", icon: Dumbbell },
     { key: "inspiration", label: "Innhold", icon: FileText },
     { key: "nutrition", label: "Matvarebank", icon: Apple },
-    { key: "mealPlan", label: "Matplan", icon: UtensilsCrossed },
+    { key: "mealPlan", label: "Ernæring", icon: UtensilsCrossed },
     { key: "badges", label: "Badges", icon: Award },
     { key: "customers", label: "Meldinger", icon: MessageSquare, badge: messageBadgeCount, action: "messages" },
     { key: "calendar", label: "Kalender", icon: CalendarDays },
@@ -122,7 +122,7 @@ const mobileTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
 const mobileMoreTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
   { id: "calendar", label: "Kalender", icon: CalendarDays },
   { id: "nutrition", label: "Matvarebank", icon: Apple },
-  { id: "mealPlan", label: "Matplan", icon: UtensilsCrossed },
+  { id: "mealPlan", label: "Ernæring", icon: UtensilsCrossed },
   { id: "badges", label: "Badges", icon: Award },
   { id: "statistics", label: "Statistikk", icon: BarChart3 },
   { id: "settings", label: "Innstillinger", icon: Settings },
