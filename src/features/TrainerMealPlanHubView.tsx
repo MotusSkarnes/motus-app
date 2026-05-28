@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Copy, Pencil, Plus, Search, Trash2, UserRound } from "lucide-react";
-import { loadMealPlanForMember } from "../app/mealPlanStorage";
+import { loadMealPlanForMember, readMealPlanHistoryForMember, type MealPlanHistoryEntry } from "../app/mealPlanStorage";
 import { persistMealPlanLocalAndScheduleCloud } from "../app/mealPlanCloud";
 import type { MealPlan } from "../app/mealPlanTypes";
 import { pickCanonicalMemberRowForProfile } from "../app/memberOnboarding";
@@ -34,6 +34,18 @@ type TemplateApplyPreview = {
 
 const MEAL_PLAN_TEMPLATE_LIST_KEY = "motus_meal_plan_templates_v1";
 const DEFAULT_TEMPLATE_ID = "__mealplan_template_library__";
+
+function formatHistoryTimestamp(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString("nb-NO", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function readTemplateLibrary(): MealPlanTemplateItem[] {
   if (typeof window === "undefined") return [];
@@ -153,6 +165,7 @@ export function TrainerMealPlanHubView({
   const [templateAssignStatus, setTemplateAssignStatus] = useState<string | null>(null);
   const [templateTargetMemberId, setTemplateTargetMemberId] = useState("");
   const [templateApplyMode, setTemplateApplyMode] = useState<TemplateApplyMode>("replace");
+  const [historyStatus, setHistoryStatus] = useState<string | null>(null);
 
   useEffect(() => {
     const loaded = readTemplateLibrary();
@@ -218,6 +231,7 @@ export function TrainerMealPlanHubView({
     () => (templatePlan ? buildTemplateApplyPreview(templatePlan, targetExistingPlan) : null),
     [templatePlan, targetExistingPlan],
   );
+  const selectedMemberHistory: MealPlanHistoryEntry[] = selectedMember ? readMealPlanHistoryForMember(selectedMember.id) : [];
 
   useEffect(() => {
     if (!filteredMembers.length) return;
@@ -255,18 +269,106 @@ export function TrainerMealPlanHubView({
         <PillButton active={hubTab === "templates"} onClick={() => setHubTab("templates")}>
           Malbibliotek
         </PillButton>
-        <PillButton active={hubTab === "history"} onClick={() => setHubTab("history")} disabled>
+        <PillButton active={hubTab === "history"} onClick={() => setHubTab("history")}>
           Tidligere planer
         </PillButton>
       </div>
 
       {hubTab === "history" ? (
-        <EmptyState
-          icon="🍽️"
-          title="Kommer snart"
-          description="Historikk er under utvikling."
-          className="mt-4"
-        />
+        !members.length ? (
+          <EmptyState
+            icon="🍽️"
+            title="Ingen klienter med ernæringstilgang"
+            description="Aktiver ernæring under Klienter → Profil for kundene du vil lage matplan til."
+            className="mt-4"
+          />
+        ) : (
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
+            <aside className="space-y-3 lg:sticky lg:top-4 lg:self-start">
+              <label className="motus-foodbank-search">
+                <Search className="h-4 w-4 text-slate-400" aria-hidden />
+                <input
+                  value={memberSearch}
+                  onChange={(event) => onMemberSearchChange(event.target.value)}
+                  placeholder="Søk klient…"
+                  aria-label="Søk klient"
+                />
+              </label>
+              <ul className="max-h-[min(70vh,28rem)] space-y-1 overflow-y-auto rounded-2xl border border-slate-100 bg-white p-1.5 shadow-sm">
+                {filteredMembers.map((member) => {
+                  const active = selectedMember?.id === member.id;
+                  return (
+                    <li key={member.id}>
+                      <button
+                        type="button"
+                        onClick={() => onSelectMember(member.id)}
+                        className={`flex w-full items-start gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition ${
+                          active ? "bg-teal-50 text-teal-950 ring-1 ring-teal-200" : "text-slate-800 hover:bg-slate-50"
+                        }`}
+                      >
+                        <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                        <span className="min-w-0">
+                          <span className="block truncate font-semibold">{member.name.trim() || "Kunde"}</span>
+                          <span className="block truncate text-xs text-slate-500">{member.email}</span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </aside>
+            <section className="min-w-0 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
+              <h3 className="text-sm font-semibold text-slate-900">
+                Tidligere planer {selectedMember ? `· ${selectedMember.name.trim() || "Kunde"}` : ""}
+              </h3>
+              {historyStatus ? <p className="mt-2 text-xs text-teal-700">{historyStatus}</p> : null}
+              {!selectedMember ? (
+                <p className="mt-3 text-sm text-slate-500">Velg en klient for å se historikk.</p>
+              ) : selectedMemberHistory.length === 0 ? (
+                <p className="mt-3 text-sm text-slate-500">Ingen snapshots ennå. Historikk lagres automatisk når planer oppdateres.</p>
+              ) : (
+                <ul className="mt-3 space-y-2">
+                  {selectedMemberHistory.map((entry) => {
+                    const mealCount = entry.plan.days.reduce((sum, day) => sum + day.meals.length, 0);
+                    const itemCount = entry.plan.days.reduce(
+                      (sum, day) => sum + day.meals.reduce((mealSum, meal) => mealSum + meal.items.length, 0),
+                      0,
+                    );
+                    return (
+                      <li key={entry.id} className="rounded-xl border border-slate-100 bg-slate-50 p-2.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-xs font-semibold text-slate-800">{formatHistoryTimestamp(entry.savedAt)}</p>
+                            <p className="text-[11px] text-slate-500">
+                              {entry.plan.days.length} dager · {mealCount} måltider · {itemCount} matvalg
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            className="rounded-lg border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-semibold text-teal-900 hover:bg-teal-100"
+                            onClick={() => {
+                              if (!selectedMember) return;
+                              const restored: MealPlan = {
+                                ...entry.plan,
+                                id: `mealplan-${selectedMember.id}`,
+                                memberId: selectedMember.id,
+                                updatedAt: new Date().toISOString(),
+                              };
+                              persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, restored);
+                              setHistoryStatus(`Plan fra ${formatHistoryTimestamp(entry.savedAt)} er gjenopprettet.`);
+                            }}
+                          >
+                            Gjenopprett
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          </div>
+        )
       ) : hubTab === "templates" ? (
         !activeTemplate ? (
           <EmptyState
