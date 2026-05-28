@@ -110,10 +110,16 @@ export async function syncMemberMealPlanState(memberId: string): Promise<MemberM
   return merged;
 }
 
-export function applyHydratedMemberMealPlanState(memberId: string, state: MemberMealPlanState): void {
+function memberMealPlanStatesEqual(a: MemberMealPlanState, b: MemberMealPlanState): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+export function applyHydratedMemberMealPlanState(memberId: string, state: MemberMealPlanState): boolean {
   const id = memberId.trim();
-  if (!id) return;
+  if (!id) return false;
   const local = loadMemberMealPlanState(id);
   const merged = mergeMemberMealPlanStates(local, state);
+  if (memberMealPlanStatesEqual(local, merged)) return false;
   saveMemberMealPlanState(id, merged);
+  return true;
 }

@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_INSPIRATION_RECIPES, DEFAULT_RECIPE_SCALING_BY_ID } from "./defaultInspirationRecipes";
-import type { RecipeScalingMode } from "./recipeMealScaling";
 import { applyCanonicalRecipeBodies } from "./recipeMacros";
 import {
   fetchInspirationItemsForHub,
@@ -68,16 +67,23 @@ export function filterRecipeInspirationItems(items: unknown[]): InspirationRecip
 export function useInspirationRecipeItems(): { items: InspirationRecipeItem[]; loading: boolean; reload: () => void } {
   const [items, setItems] = useState<InspirationRecipeItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const hasItemsRef = useRef(false);
+  hasItemsRef.current = items.length > 0;
 
-  const reload = useCallback(() => {
+  const reload = useCallback((options?: { silent?: boolean }) => {
     let cancelled = false;
-    setLoading(true);
+    if (!options?.silent) setLoading(true);
     void (async () => {
       const local = loadInspirationItemsFromLocalStorage<unknown>() ?? [];
       const remote = (await fetchInspirationItemsForHub<unknown>()) ?? local;
       const merged = filterRecipeInspirationItems(remote.length ? remote : local);
       if (!cancelled) {
-        setItems(merged);
+        setItems((prev) => {
+          if (prev.length === merged.length && prev.every((row, index) => row.id === merged[index]?.id)) {
+            return prev;
+          }
+          return merged;
+        });
         setLoading(false);
       }
     })();
@@ -90,7 +96,7 @@ export function useInspirationRecipeItems(): { items: InspirationRecipeItem[]; l
     const cancel = reload();
     const onChanged = () => {
       cancel();
-      reload();
+      reload({ silent: hasItemsRef.current });
     };
     window.addEventListener(INSPIRATION_CHANGED_EVENT, onChanged);
     return () => {

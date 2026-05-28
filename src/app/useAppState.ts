@@ -1059,16 +1059,18 @@ export function useAppState() {
         writeCachedMemberPeriodPlanRows(periodPlanRows);
         if (hydratedMember.mealPlans?.length) {
           const aliasIds = hydratedMember.members.map((m) => m.id).filter(Boolean);
+          let mealPlanChanged = false;
           for (const mealPlan of hydratedMember.mealPlans) {
-            applyHydratedMealPlan(mealPlan, aliasIds);
+            if (applyHydratedMealPlan(mealPlan, aliasIds)) mealPlanChanged = true;
           }
-          notifyMealPlanChanged();
+          if (mealPlanChanged) notifyMealPlanChanged();
         }
         if (hydratedMember.mealPlanStates?.length) {
+          let mealPlanStateChanged = false;
           for (const row of hydratedMember.mealPlanStates) {
-            applyHydratedMemberMealPlanState(row.memberId, row.state);
+            if (applyHydratedMemberMealPlanState(row.memberId, row.state)) mealPlanStateChanged = true;
           }
-          if (typeof window !== "undefined") {
+          if (mealPlanStateChanged && typeof window !== "undefined") {
             window.dispatchEvent(new CustomEvent(MEAL_PLAN_STATE_CHANGED_EVENT));
           }
         }

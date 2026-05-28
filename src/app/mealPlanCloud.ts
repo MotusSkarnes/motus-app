@@ -3,7 +3,7 @@ import { loadMealPlanForMember, persistMealPlan, readAllMealPlans } from "./meal
 import type { MealPlan, MealPlanDay, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "./mealPlanTypes";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
-function mealPlansEqual(a: MealPlan | null | undefined, b: MealPlan | null | undefined): boolean {
+export function mealPlansEqual(a: MealPlan | null | undefined, b: MealPlan | null | undefined): boolean {
   if (!a || !b) return false;
   return JSON.stringify(a) === JSON.stringify(b);
 }
@@ -333,9 +333,9 @@ export async function syncMealPlanForMember(
 }
 
 /** Brukes etter hydrate-member-data — lagrer plan lokalt for medlem (alle koblede id-er). */
-export function applyHydratedMealPlan(plan: MealPlan, aliasMemberIds: string[] = []): void {
+export function applyHydratedMealPlan(plan: MealPlan, aliasMemberIds: string[] = []): boolean {
   const memberId = plan.memberId.trim();
-  if (!memberId || !plan.days.length) return;
+  if (!memberId || !plan.days.length) return false;
   const targetIds = [...new Set([memberId, ...aliasMemberIds.map((id) => id.trim()).filter(Boolean)])];
   let preferred = plan;
   for (const id of targetIds) {
@@ -344,12 +344,15 @@ export function applyHydratedMealPlan(plan: MealPlan, aliasMemberIds: string[] =
       preferred = pickPreferredMealPlan([preferred, existing]) ?? preferred;
     }
   }
+  let changed = false;
   for (const id of targetIds) {
     const normalized = { ...preferred, memberId: id };
     if (!mealPlansEqual(loadMealPlanForMember(id), normalized)) {
       persistMealPlan(normalized, { notify: false });
+      changed = true;
     }
   }
+  return changed;
 }
 
 export async function persistMealPlanBundle(

@@ -25,11 +25,13 @@ import {
   MEAL_PLAN_STATE_CHANGED_EVENT,
   mealSwapKey,
   resolveMealWithSwaps,
+  saveMemberMealPlanState,
   setMealSwap,
   type MemberMealPlanState,
 } from "../../app/memberMealPlanState";
 import {
   persistMemberMealPlanStateLocalAndScheduleCloud,
+  scheduleMemberMealPlanStateCloudSave,
   syncMemberMealPlanState,
 } from "../../app/memberMealPlanStateCloud";
 import {
@@ -273,7 +275,8 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
       let next = prepareMealPlanTracking(prev, todayKey, todayMealsResolved);
       next = prepareMealPlanTracking(next, selectedDateKey, selectedMealsResolved);
       if (next === prev) return prev;
-      persistMemberMealPlanStateLocalAndScheduleCloud(memberId, next);
+      saveMemberMealPlanState(memberId, next, { notify: false });
+      scheduleMemberMealPlanStateCloudSave(memberId, next);
       return next;
     });
   }, [memberId, todayKey, selectedDateKey, todayMealsResolved, selectedMealsResolved]);

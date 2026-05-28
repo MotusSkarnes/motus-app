@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Apple } from "lucide-react";
 import { buildDefaultFoodBankItems } from "../app/foodBankSeed";
 import { hydrateMealPlanFoodNutrition } from "../app/mealPlanFoodNutrition";
-import { syncMealPlanForMember } from "../app/mealPlanCloud";
+import { mealPlansEqual, syncMealPlanForMember } from "../app/mealPlanCloud";
 import { useFoodBankItems } from "../app/useFoodBankItems";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import type { MealPlan } from "../app/mealPlanTypes";
@@ -32,27 +32,33 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
   const [loading, setLoading] = useState(true);
   const [cloudSynced, setCloudSynced] = useState(true);
   const reloadInFlightRef = useRef(false);
+  const hasLoadedOnceRef = useRef(false);
 
   const reload = useCallback(async () => {
     if (!memberId.trim() || reloadInFlightRef.current) return;
     reloadInFlightRef.current = true;
-    setLoading(true);
+    const showLoading = !hasLoadedOnceRef.current;
+    if (showLoading) setLoading(true);
     try {
       const result = await syncMealPlanForMember(memberId, "", memberEmail);
       const hydrated = result.plan
         ? hydrateMealPlanFoodNutrition(result.plan, foodItemsForMacros)
         : null;
-      setPlan(hydrated);
+      setPlan((prev) => (mealPlansEqual(prev, hydrated) ? prev : hydrated));
       setCloudSynced(result.cloudSynced);
+      hasLoadedOnceRef.current = true;
     } finally {
       reloadInFlightRef.current = false;
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [memberId, memberEmail, foodItemsForMacros]);
 
   useEffect(() => {
+    hasLoadedOnceRef.current = false;
+    setPlan(null);
+    setLoading(true);
     void reload();
-  }, [reload]);
+  }, [memberId, memberEmail, reload]);
 
   useEffect(() => {
     const handler = () => void reload();
@@ -60,16 +66,8 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
     return () => window.removeEventListener(MEAL_PLAN_CHANGED_EVENT, handler);
   }, [reload]);
 
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void reload();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [reload]);
-
-  const mealPlanPanel = (() => {
-    if (loading) {
+  const mealPlanPanel = useMemo(() => {
+    if (loading && !hasLoadedOnceRef.current) {
       return <Card className="p-6 text-center text-sm text-slate-600">Laster din matplan …</Card>;
     }
     if (!plan) {
@@ -92,7 +90,7 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
         <MemberMealPlanDashboard plan={plan} memberId={memberId} memberName={memberName} />
       </>
     );
-  })();
+  }, [loading, plan, cloudSynced, memberId, memberName]);
 
   const profileMember = pickCanonicalMemberRowForProfile(member, members);
   const resolvedPersonalGoals = useMemo(
