@@ -129,10 +129,10 @@ import {
   countProgramsCreatedThisWeek,
 } from "../app/buildTrainerPtHomeData";
 import { loadInspirationItemsFromLocalStorage } from "../app/inspirationStorage";
+import { CUSTOMER_NUTRITION_TAB_LABEL } from "../app/types";
 import type {
   AuthUser,
   ChatMessage,
-  CUSTOMER_NUTRITION_TAB_LABEL,
   CustomerSubTab,
   Exercise,
   Member,
