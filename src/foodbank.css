@@ -1500,6 +1500,67 @@
   color: #fff;
 }
 
+.motus-matplan-shopping-portions {
+  border-radius: 1rem;
+  border: 1px solid rgba(48, 227, 190, 0.25);
+  background: rgba(48, 227, 190, 0.06);
+  padding: 0.75rem;
+}
+
+.motus-matplan-shopping-portions-hint {
+  margin: 0.25rem 0 0.65rem;
+  font-size: 0.6875rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.motus-matplan-shopping-portions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.motus-matplan-shopping-portion-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  border-radius: 0.75rem;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  padding: 0.55rem 0.65rem;
+}
+
+.motus-matplan-shopping-portion-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.motus-matplan-shopping-portion-btn {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(48, 227, 190, 0.45);
+  background: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #0f766e;
+  cursor: pointer;
+}
+
+.motus-matplan-shopping-portion-value {
+  min-width: 2.25rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
 .motus-matplan-shopping-check--on {
   border-color: #30e3be;
   background: #30e3be;
@@ -2147,4 +2208,800 @@
   gap: 0.45rem;
   font-size: 0.8125rem;
   color: #334155;
+}
+
+/* ── Medlems matplan v2 (mockup-layout) ─────────────────────────────────── */
+
+.motus-matplan--v2 {
+  gap: 1rem;
+  padding-bottom: 7.5rem;
+}
+
+.motus-matplan-progress-head__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.motus-matplan-progress-head__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-matplan-progress-head__streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #d91278;
+}
+
+.motus-matplan-progress-bar {
+  margin-top: 0.45rem;
+  height: 0.35rem;
+  border-radius: 9999px;
+  background: rgba(48, 227, 190, 0.18);
+  overflow: hidden;
+}
+
+.motus-matplan-progress-bar__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #30e3be 0%, #2bc4a8 100%);
+  transition: width 0.35s ease;
+}
+
+.motus-matplan-progress-head__hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.motus-matplan-progress-card {
+  border-radius: 1.15rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  padding: 1rem;
+  box-shadow: 0 4px 24px -12px rgba(15, 23, 42, 0.14);
+}
+
+.motus-matplan-progress-card__title {
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-matplan-progress-card__body {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.motus-matplan-progress-card__macros {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.motus-matplan-macro-bar__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-bottom: 0.3rem;
+}
+
+.motus-matplan-macro-bar__label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.motus-matplan-macro-bar__icon {
+  display: inline-flex;
+  color: #30e3be;
+  flex-shrink: 0;
+}
+
+.motus-matplan-macro-bar__label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.motus-matplan-macro-bar__values {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.motus-matplan-macro-bar__pct {
+  color: #30e3be;
+  font-weight: 700;
+}
+
+.motus-matplan-macro-bar__track {
+  height: 0.3rem;
+  border-radius: 9999px;
+  background: rgba(48, 227, 190, 0.14);
+  overflow: hidden;
+}
+
+.motus-matplan-macro-bar__fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.35s ease;
+}
+
+.motus-matplan-water-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(48, 227, 190, 0.35);
+  background: rgba(48, 227, 190, 0.08);
+  padding: 0.3rem 0.65rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #0f766e;
+  cursor: pointer;
+}
+
+.motus-matplan-ring__value--xl {
+  font-size: 1.125rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.motus-matplan-ring__target--xl {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.motus-matplan-meals--v2 {
+  gap: 0.65rem;
+}
+
+.motus-matplan-meal-card--v2 {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  box-shadow: 0 2px 14px -8px rgba(15, 23, 42, 0.12);
+}
+
+.motus-matplan-meal-card--v2.motus-matplan-meal-card--logged {
+  border-color: rgba(48, 227, 190, 0.45);
+  background: linear-gradient(135deg, rgba(48, 227, 190, 0.06) 0%, #fff 55%);
+}
+
+.motus-matplan-meal-card__media {
+  width: 4.5rem;
+  height: 4.5rem;
+  flex-shrink: 0;
+}
+
+.motus-matplan-meal-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0.75rem;
+}
+
+.motus-matplan-meal-card__img--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #30e3be 0%, #d91278 100%);
+}
+
+.motus-matplan-meal-card__body {
+  min-width: 0;
+}
+
+.motus-matplan-meal-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+
+.motus-matplan-meal-card__slot {
+  font-size: 0.5625rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #e11d48;
+  text-transform: uppercase;
+}
+
+.motus-matplan-meal-card__menu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  padding: 0.15rem;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.motus-matplan-meal-card__dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 20;
+  margin-top: 0.2rem;
+  min-width: 8.5rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  padding: 0.25rem;
+  box-shadow: 0 8px 24px -8px rgba(15, 23, 42, 0.2);
+}
+
+.motus-matplan-meal-card__dropdown button {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: none;
+  padding: 0.45rem 0.55rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #334155;
+  border-radius: 0.45rem;
+  cursor: pointer;
+}
+
+.motus-matplan-meal-card__dropdown button:hover {
+  background: rgba(48, 227, 190, 0.1);
+}
+
+.motus-matplan-meal-card__title {
+  margin: 0.15rem 0 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.motus-matplan-meal-card__macros {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.motus-matplan-meal-card__macros--muted {
+  font-weight: 500;
+  font-style: italic;
+}
+
+.motus-matplan-meal-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.35rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.motus-matplan-meal-card__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.motus-matplan-meal-card__check {
+  width: 1.65rem;
+  height: 1.65rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 2px solid #cbd5e1;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  cursor: pointer;
+}
+
+.motus-matplan-meal-card__check--done {
+  border-color: #30e3be;
+  background: #30e3be;
+}
+
+.motus-matplan-meal-card__check:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.motus-matplan-footer {
+  position: sticky;
+  bottom: 0.5rem;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.25rem;
+}
+
+.motus-matplan-footer__secondary {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.motus-matplan-footer__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  padding: 0.4rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #334155;
+  box-shadow: 0 4px 16px -8px rgba(15, 23, 42, 0.15);
+  cursor: pointer;
+}
+
+.motus-matplan-footer__ai {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  border: 0;
+  border-radius: 9999px;
+  padding: 0.85rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(90deg, #d91278 0%, #30e3be 100%);
+  box-shadow: 0 8px 24px -8px rgba(217, 18, 120, 0.45);
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.motus-matplan-footer__ai-badge {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
+}
+
+.motus-nutrition-hub--member .motus-nutrition-hub-tabs {
+  margin-bottom: 0.25rem;
+}
+
+/* ── PT matplanlegger (mockup-layout) ───────────────────────────────────── */
+
+.motus-pt-planner-hub__header {
+  margin-bottom: 0.5rem;
+}
+
+.motus-pt-planner-hub__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.motus-pt-planner__top-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.motus-pt-planner__layout {
+  display: grid;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (min-width: 1100px) {
+  .motus-pt-planner__layout {
+    grid-template-columns: minmax(0, 1fr) minmax(14rem, 16rem);
+  }
+}
+
+.motus-pt-planner__main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.motus-pt-planner-step {
+  border-radius: 1.15rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 4px 24px -14px rgba(15, 23, 42, 0.12);
+}
+
+.motus-pt-planner-step__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-pt-planner-step__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: rgba(48, 227, 190, 0.2);
+  color: #0f766e;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.motus-pt-planner-client-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(48, 227, 190, 0.25);
+  background: rgba(48, 227, 190, 0.06);
+  padding: 0.75rem;
+}
+
+.motus-pt-planner-client-macros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.motus-pt-planner-period {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.motus-pt-planner-period__btn {
+  border-radius: 9999px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #fff;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+}
+
+.motus-pt-planner-period__btn.is-active {
+  border-color: rgba(217, 18, 120, 0.35);
+  background: rgba(217, 18, 120, 0.08);
+  color: #be185d;
+}
+
+.motus-pt-planner-period__dates {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.motus-pt-planner-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.motus-pt-planner-grid-wrap {
+  overflow-x: auto;
+  margin: 0 -0.25rem;
+  padding: 0 0.25rem 0.25rem;
+}
+
+.motus-pt-planner-grid {
+  display: grid;
+  grid-template-columns: 4.5rem repeat(7, minmax(5.5rem, 1fr));
+  gap: 0.35rem;
+  min-width: 44rem;
+}
+
+.motus-pt-planner-grid__corner {
+  min-height: 1.5rem;
+}
+
+.motus-pt-planner-grid__day-head {
+  text-align: center;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  padding: 0.25rem 0;
+}
+
+.motus-pt-planner-grid__row-head {
+  display: flex;
+  align-items: center;
+  font-size: 0.625rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #94a3b8;
+  padding-right: 0.25rem;
+}
+
+.motus-pt-planner-grid__cell {
+  position: relative;
+  min-height: 4.75rem;
+}
+
+.motus-pt-planner-grid__cell--selected .motus-pt-planner-grid__card {
+  outline: 2px solid #30e3be;
+  outline-offset: 1px;
+}
+
+.motus-pt-planner-grid__card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 4.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  padding: 0.35rem;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.motus-pt-planner-grid__cell--filled .motus-pt-planner-grid__card {
+  border-color: rgba(48, 227, 190, 0.35);
+}
+
+.motus-pt-planner-grid__img {
+  width: 100%;
+  height: 2.5rem;
+  object-fit: cover;
+  border-radius: 0.45rem;
+}
+
+.motus-pt-planner-grid__img--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #30e3be, #d91278);
+}
+
+.motus-pt-planner-grid__card-body {
+  margin-top: 0.25rem;
+  min-width: 0;
+}
+
+.motus-pt-planner-grid__card-title {
+  display: block;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.motus-pt-planner-grid__card-meta {
+  font-size: 0.5625rem;
+  color: #64748b;
+}
+
+.motus-pt-planner-grid__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  height: 100%;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.motus-pt-planner-grid__menu {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.2rem;
+}
+
+.motus-pt-planner-grid__menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 9999px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.92);
+  color: #64748b;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+}
+
+.motus-pt-planner-grid__dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 10;
+  margin-top: 0.15rem;
+  min-width: 7rem;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  padding: 0.2rem;
+  box-shadow: 0 8px 20px -8px rgba(15, 23, 42, 0.2);
+}
+
+.motus-pt-planner-grid__dropdown button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.35rem;
+  border: 0;
+  background: none;
+  padding: 0.4rem 0.45rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #334155;
+  border-radius: 0.4rem;
+  cursor: pointer;
+}
+
+.motus-pt-planner-grid__dropdown button:hover {
+  background: rgba(48, 227, 190, 0.1);
+}
+
+.motus-pt-planner-detail {
+  margin-top: 0.85rem;
+  border-radius: 0.85rem;
+  border: 1px dashed rgba(48, 227, 190, 0.45);
+  background: rgba(48, 227, 190, 0.04);
+  padding: 0.75rem;
+}
+
+.motus-pt-planner-detail__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+
+.motus-pt-planner-nutrition {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #f8fafc;
+  padding: 0.85rem;
+}
+
+.motus-pt-planner-nutrition__body {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.motus-pt-planner-nutrition__bars {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.motus-pt-planner-nutrition__status {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.65rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.motus-pt-planner-nutrition__status.is-ok {
+  color: #0f766e;
+}
+
+.motus-pt-planner-ai-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  border-radius: 1rem;
+  padding: 0.85rem 1rem;
+  color: #fff;
+  background: linear-gradient(90deg, #d91278 0%, #30e3be 100%);
+}
+
+.motus-pt-planner-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.motus-pt-planner-sidebar-card {
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  padding: 0.85rem;
+  box-shadow: 0 2px 14px -8px rgba(15, 23, 42, 0.1);
+}
+
+.motus-pt-planner-sidebar-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-pt-planner-tools {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.motus-pt-planner-tool {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.45rem;
+  border: 0;
+  background: none;
+  padding: 0.45rem 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #334155;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.motus-pt-planner-tool:hover:not(:disabled) {
+  background: rgba(48, 227, 190, 0.1);
+}
+
+.motus-pt-planner-tool:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }

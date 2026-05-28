@@ -150,6 +150,22 @@ export function setWaterLiters(
   return nextState;
 }
 
+export function setRecipePortionMultiplier(
+  memberId: string,
+  state: MemberMealPlanState,
+  entryId: string,
+  multiplier: number,
+): MemberMealPlanState {
+  const safe = Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1;
+  const nextState: MemberMealPlanState = {
+    ...state,
+    recipePortions: { ...state.recipePortions, [entryId]: safe },
+    updatedAt: new Date().toISOString(),
+  };
+  persistMemberMealPlanStateLocalAndScheduleCloud(memberId, nextState);
+  return nextState;
+}
+
 export function toggleShoppingChecked(
   memberId: string,
   state: MemberMealPlanState,

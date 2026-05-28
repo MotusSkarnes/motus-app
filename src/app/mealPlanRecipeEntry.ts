@@ -10,6 +10,18 @@ import { uid } from "./storage";
 /** Én matplanrad = 1 porsjon oppskrift (100 g brukes som visningsenhet for makroene). */
 const RECIPE_PORTION_GRAMS = 100;
 
+export const INSPIRATION_RECIPE_FOOD_PREFIX = "inspo-recipe-";
+
+export function parseInspirationRecipeFoodId(foodId: string): string | null {
+  if (!foodId.startsWith(INSPIRATION_RECIPE_FOOD_PREFIX)) return null;
+  const id = foodId.slice(INSPIRATION_RECIPE_FOOD_PREFIX.length).trim();
+  return id || null;
+}
+
+export function isInspirationRecipeFoodEntry(foodId: string): boolean {
+  return Boolean(parseInspirationRecipeFoodId(foodId));
+}
+
 const EMPTY_NUTRITION = {
   kcal: 0,
   protein: 0,

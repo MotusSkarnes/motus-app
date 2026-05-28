@@ -11,6 +11,8 @@ export type MemberMealPlanState = {
   loggedFoodIds: Record<string, string[]>;
   waterLiters: Record<string, number>;
   checkedShopping: string[];
+  /** meal plan food entry id → porsjonsmultiplikator for handleliste (f.eks. 4 for familie). */
+  recipePortions: Record<string, number>;
   /** `${dateKey}:${targetMealId}` → kilde-måltid fra planen */
   mealSwaps: Record<string, MealSwapRef>;
   updatedAt?: string;
@@ -21,6 +23,7 @@ export const EMPTY_MEMBER_MEAL_PLAN_STATE: MemberMealPlanState = {
   loggedFoodIds: {},
   waterLiters: {},
   checkedShopping: [],
+  recipePortions: {},
   mealSwaps: {},
 };
 
@@ -76,6 +79,22 @@ export function parseMemberMealPlanState(value: unknown): MemberMealPlanState {
       : Array.isArray(row.checked_shopping)
         ? row.checked_shopping.map(String)
         : [],
+    recipePortions:
+      row.recipePortions && typeof row.recipePortions === "object"
+        ? Object.fromEntries(
+            Object.entries(row.recipePortions as Record<string, unknown>).map(([key, value]) => [
+              key,
+              Number(value),
+            ]),
+          )
+        : row.recipe_portions && typeof row.recipe_portions === "object"
+          ? Object.fromEntries(
+              Object.entries(row.recipe_portions as Record<string, unknown>).map(([key, value]) => [
+                key,
+                Number(value),
+              ]),
+            )
+          : {},
     mealSwaps,
     updatedAt: typeof row.updatedAt === "string" ? row.updatedAt : typeof row.updated_at === "string" ? row.updated_at : undefined,
   };

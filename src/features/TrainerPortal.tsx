@@ -6527,6 +6527,7 @@ function pickFirstName(value: unknown): string {
                       <TrainerMealPlanEditor
                         memberId={selectedMember.id}
                         memberName={selectedMemberProfile?.name ?? selectedMember.name}
+                        memberGoal={selectedMemberProfile?.goal ?? selectedMember.goal}
                         memberPersonalGoals={selectedMemberProfile?.personalGoals ?? selectedMember.personalGoals ?? ""}
                         trainerOwnerUserId={currentTrainerOwnerUserId}
                       />

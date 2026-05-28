@@ -1,8 +1,8 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, UserRound } from "lucide-react";
 import { pickCanonicalMemberRowForProfile } from "../app/memberOnboarding";
 import type { Member } from "../app/types";
-import { EmptyState } from "../app/ui";
+import { EmptyState, PillButton } from "../app/ui";
 import { TrainerMealPlanEditor } from "./TrainerMealPlanEditor";
 import "../foodbank.css";
 
@@ -15,6 +15,8 @@ type TrainerMealPlanHubViewProps = {
   onMemberSearchChange: (value: string) => void;
 };
 
+type PlannerHubTab = "new" | "templates" | "history";
+
 export function TrainerMealPlanHubView({
   members,
   selectedMemberId,
@@ -23,6 +25,8 @@ export function TrainerMealPlanHubView({
   memberSearch,
   onMemberSearchChange,
 }: TrainerMealPlanHubViewProps) {
+  const [hubTab, setHubTab] = useState<PlannerHubTab>("new");
+
   const filteredMembers = useMemo(() => {
     const query = memberSearch.trim().toLowerCase();
     const sorted = [...members].sort((a, b) => a.name.localeCompare(b.name, "nb"));
@@ -48,17 +52,36 @@ export function TrainerMealPlanHubView({
   }, [filteredMembers, onSelectMember, selectedMemberId]);
 
   return (
-    <div className="motus-foodbank">
-      <header className="motus-foodbank-header">
+    <div className="motus-foodbank motus-pt-planner-hub">
+      <header className="motus-foodbank-header motus-pt-planner-hub__header">
         <div>
-          <h1 className="motus-foodbank-title">Matplan</h1>
+          <h1 className="motus-foodbank-title">Planlegg matplan</h1>
           <p className="motus-foodbank-subtitle">
-            Lag og rediger ukemeny per klient. Medlemmet ser planen under Ernæring når tilgang er aktivert.
+            Bygg ukemeny i rutenett — medlemmet ser planen under Ernæring når tilgang er aktivert.
           </p>
         </div>
       </header>
 
-      {!members.length ? (
+      <div className="motus-pt-planner-hub__tabs">
+        <PillButton active={hubTab === "new"} onClick={() => setHubTab("new")}>
+          Lag ny plan
+        </PillButton>
+        <PillButton active={hubTab === "templates"} onClick={() => setHubTab("templates")} disabled>
+          Malbibliotek
+        </PillButton>
+        <PillButton active={hubTab === "history"} onClick={() => setHubTab("history")} disabled>
+          Tidligere planer
+        </PillButton>
+      </div>
+
+      {hubTab !== "new" ? (
+        <EmptyState
+          icon="🍽️"
+          title="Kommer snart"
+          description="Malbibliotek og historikk er under utvikling."
+          className="mt-4"
+        />
+      ) : !members.length ? (
         <EmptyState
           icon="🍽️"
           title="Ingen klienter med ernæringstilgang"
@@ -66,7 +89,7 @@ export function TrainerMealPlanHubView({
           className="mt-4"
         />
       ) : (
-        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
           <aside className="space-y-3 lg:sticky lg:top-4 lg:self-start">
             <label className="motus-foodbank-search">
               <Search className="h-4 w-4 text-slate-400" aria-hidden />
@@ -110,6 +133,7 @@ export function TrainerMealPlanHubView({
                 key={selectedMember.id}
                 memberId={selectedMember.id}
                 memberName={selectedMember.name.trim() || selectedMember.email.trim() || "Kunde"}
+                memberGoal={selectedMember.goal}
                 memberPersonalGoals={selectedMember.personalGoals ?? ""}
                 trainerOwnerUserId={trainerOwnerUserId}
               />

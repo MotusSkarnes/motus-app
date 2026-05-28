@@ -2,12 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Check,
   ChevronRight,
+  Clock,
+  Dumbbell,
   Droplets,
   Flame,
+  MoreHorizontal,
   Play,
   Plus,
+  Share2,
   ShoppingCart,
+  Sparkles,
   UtensilsCrossed,
+  Wheat,
   X,
 } from "lucide-react";
 import { MOTUS } from "../../app/data";
@@ -21,6 +27,7 @@ import {
 } from "../../app/mealPlanMacros";
 import { MealPlanDisplay } from "../MealPlanDisplay";
 import { buildWeeklyShoppingList } from "../../app/mealPlanShoppingList";
+import { useInspirationRecipeItems } from "../../app/inspirationRecipeItems";
 import {
   MEAL_PLAN_STATE_CHANGED_EVENT,
   mealSwapKey,
@@ -36,7 +43,6 @@ import {
 } from "../../app/memberMealPlanStateCloud";
 import {
   computeNutritionStreak,
-  getTimeBasedGreeting,
   getWeekdayIndex,
   loadMealPlanTracking,
   prepareMealPlanTracking,
@@ -44,6 +50,7 @@ import {
   setWaterLiters,
   toggleFoodLogged,
   toggleMealLogged,
+  setRecipePortionMultiplier,
   toggleShoppingChecked,
   toIsoDateKey,
   weekdayShortLabel,
@@ -52,6 +59,7 @@ import type { MealPlan, MealPlanDay, MealPlanMeal, MealPlanTargets } from "../..
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { Card } from "../../app/ui";
 import { MotusFlameIcon } from "../MotusFlameIcon";
+import { MacroProgressBar } from "./MacroProgressBar";
 import { MacroProgressRing } from "./MacroProgressRing";
 import "../../foodbank.css";
 
@@ -62,6 +70,7 @@ type MemberMealPlanDashboardProps = {
   plan: MealPlan;
   memberId: string;
   memberName: string;
+  onOpenAvoidances?: () => void;
 };
 
 function mealSlotLabel(name: string): string {
@@ -69,8 +78,14 @@ function mealSlotLabel(name: string): string {
   if (n.includes("frokost")) return "FROKOST";
   if (n.includes("lunsj")) return "LUNSJ";
   if (n.includes("middag")) return "MIDDAG";
-  if (n.includes("snack") || n.includes("mellom")) return "MELLOMMÅLTID";
+  if (n.includes("snack") || n.includes("mellom")) return "SNACKS";
   return name.toUpperCase();
+}
+
+function mealPrepMeta(itemCount: number): { minutes: number; difficulty: string } {
+  if (itemCount <= 1) return { minutes: 10, difficulty: "Enkelt" };
+  if (itemCount <= 3) return { minutes: 15, difficulty: "Enkelt" };
+  return { minutes: 20, difficulty: "Middels" };
 }
 
 function mealDisplayTitle(meal: MealPlanMeal): string {
@@ -93,9 +108,14 @@ function dateKeyForPlanDayIndex(today: Date, todayWeekdayIndex: number, dayIndex
   return toIsoDateKey(d);
 }
 
-export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMealPlanDashboardProps) {
+export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: MemberMealPlanDashboardProps) {
   const foodItems = useFoodBankItems();
+  const { items: inspirationRecipes } = useInspirationRecipeItems();
   const foodById = useMemo(() => new Map(foodItems.map((f) => [f.id, f])), [foodItems]);
+  const recipesById = useMemo(
+    () => new Map(inspirationRecipes.map((recipe) => [recipe.id, recipe])),
+    [inspirationRecipes],
+  );
 
   const today = useMemo(() => new Date(), []);
   const todayKey = toIsoDateKey(today);
@@ -109,6 +129,8 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
   const [swapMeal, setSwapMeal] = useState<MealPlanMeal | null>(null);
   const [showShopping, setShowShopping] = useState(false);
   const [showCoachTips, setShowCoachTips] = useState(false);
+  const [expandedMealId, setExpandedMealId] = useState<string | null>(null);
+  const [mealMenuId, setMealMenuId] = useState<string | null>(null);
 
   const totalFoodInPlan = useMemo(() => countMealPlanFoodItems(plan), [plan]);
 
@@ -151,7 +173,6 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
     return () => window.removeEventListener(MEAL_PLAN_STATE_CHANGED_EVENT, handler);
   }, [refreshState]);
 
-  const firstName = memberName.split(/\s+/)[0] || memberName;
   const targets: MealPlanTargets = plan.targets ?? {};
   const targetKcal = targets.kcal ?? 1900;
   const targetProtein = targets.protein ?? 140;
@@ -203,6 +224,19 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
   const waterLiters = tracking.waterLiters[todayKey] ?? 0;
   const kcalRemaining = Math.max(0, Math.round(targetKcal - displayMacrosToday.kcal));
   const streakDays = computeNutritionStreak(tracking.loggedMeals, tracking.loggedFoodIds);
+  const todayMealsWithFood = useMemo(
+    () => todayMealsResolved.filter((meal) => meal.items.length > 0),
+    [todayMealsResolved],
+  );
+  const mealsCompletedCount = useMemo(
+    () =>
+      todayMealsWithFood.filter((meal) =>
+        meal.items.every((item) => loggedFoodToday.has(item.id)),
+      ).length,
+    [todayMealsWithFood, loggedFoodToday],
+  );
+  const mealsTotalCount = todayMealsWithFood.length;
+  const mealsProgressPct = mealsTotalCount > 0 ? (mealsCompletedCount / mealsTotalCount) * 100 : 0;
 
   const weekProgress = useMemo(() => {
     let logged = 0;
@@ -230,7 +264,25 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
         ? "God fremgang denne uken"
         : "Logg måltider for å følge planen";
 
-  const shoppingGroups = useMemo(() => buildWeeklyShoppingList(plan, foodById), [plan, foodById]);
+  const shoppingList = useMemo(
+    () =>
+      buildWeeklyShoppingList({
+        plan,
+        foodById,
+        foodItems,
+        recipesById,
+        recipePortions: tracking.recipePortions,
+      }),
+    [plan, foodById, foodItems, recipesById, tracking.recipePortions],
+  );
+  const shoppingGroups = shoppingList.groups;
+
+  const handleRecipePortionChange = useCallback(
+    (entryId: string, next: number) => {
+      setTracking((prev) => setRecipePortionMultiplier(memberId, prev, entryId, next));
+    },
+    [memberId],
+  );
 
   const swapAlternatives = useMemo(() => {
     if (!swapMeal) return [];
@@ -324,323 +376,340 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
     return null;
   };
 
+  const displayMeals = isSelectedToday ? todayMealsResolved : selectedMealsResolved;
+  const displayLoggedFood = isSelectedToday ? loggedFoodToday : loggedFoodSelected;
+  const displayMacros = isSelectedToday ? displayMacrosToday : displayMacrosProgress;
+
+  const handleShareDay = useCallback(async () => {
+    const summary = `${isSelectedToday ? "I dag" : selectedDay?.label ?? "Dagen"}: ${mealsCompletedCount}/${mealsTotalCount || 0} måltider logget · ${formatMacro(displayMacrosToday.kcal, 0)} kcal · ${formatMacro(displayMacrosToday.protein, 0)} g protein`;
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: "Motus matplan", text: summary });
+        return;
+      } catch {
+        /* user cancelled */
+      }
+    }
+    if (typeof navigator.clipboard?.writeText === "function") {
+      await navigator.clipboard.writeText(summary);
+    }
+  }, [
+    displayMacrosToday.kcal,
+    displayMacrosToday.protein,
+    isSelectedToday,
+    mealsCompletedCount,
+    mealsTotalCount,
+    selectedDay?.label,
+  ]);
+
   return (
-    <div className="motus-matplan motus-fade-in-up">
-      {/* Header */}
-      <header className="motus-matplan-header">
-        <div className="min-w-0 flex-1">
-          <h1 className="motus-matplan-greeting">
-            {getTimeBasedGreeting()}, {firstName} 👋
-          </h1>
-          <p className="motus-matplan-week-status">{weekStatusLine}</p>
+    <div className="motus-matplan motus-matplan--v2 motus-fade-in-up">
+      <div className="motus-matplan-progress-head" aria-label="Måltidsfremdrift i dag">
+        <div className="motus-matplan-progress-head__row">
+          <p className="motus-matplan-progress-head__title">
+            {mealsCompletedCount}/{mealsTotalCount || 0} måltider fullført
+          </p>
+          {streakDays > 0 ? (
+            <span className="motus-matplan-progress-head__streak" aria-label={`${streakDays} dager på rad`}>
+              <MotusFlameIcon className="h-4 w-4" />
+              {streakDays}
+            </span>
+          ) : null}
         </div>
-        <div className="motus-matplan-streak-pill" aria-label={`${streakDays} dager på rad`}>
-          <MotusFlameIcon className="h-5 w-5" />
-          <div className="motus-matplan-streak-text">
-            <span className="motus-matplan-streak-value">{streakDays}</span>
-            <span className="motus-matplan-streak-label">dager på rad</span>
-          </div>
+        <div className="motus-matplan-progress-bar" aria-hidden>
+          <div className="motus-matplan-progress-bar__fill" style={{ width: `${mealsProgressPct}%` }} />
         </div>
-      </header>
+        <p className="motus-matplan-progress-head__hint">{weekStatusLine}</p>
+      </div>
 
-      {/* 1. Dagens status */}
-      <section className="motus-matplan-section" aria-label="Dagens status">
-        <h2 className="motus-matplan-section-title">Dagens status</h2>
-        <div className="motus-matplan-status-row">
-          <div className="motus-matplan-status-card">
-            <MacroProgressRing
+      <section className="motus-matplan-progress-card" aria-label="Dagens fremdrift">
+        <h2 className="motus-matplan-progress-card__title">Dagens fremdrift</h2>
+        <div className="motus-matplan-progress-card__body">
+          <MacroProgressRing
+            label="Kalorier"
+            current={displayMacros.kcal}
+            target={targetKcal}
+            unit="kcal"
+            size="xl"
+            hideLabel
+            sublabel={kcalRemaining > 0 ? `${kcalRemaining} igjen` : null}
+          />
+          <div className="motus-matplan-progress-card__macros">
+            <MacroProgressBar
               label="Protein"
-              current={displayMacrosToday.protein}
+              current={displayMacros.protein}
               target={targetProtein}
-              unit="g"
-              size="sm"
+              icon={<Dumbbell className="h-4 w-4" aria-hidden />}
+            />
+            <MacroProgressBar
+              label="Karbohydrater"
+              current={displayMacros.carbs}
+              target={targetCarbs}
+              icon={<Wheat className="h-4 w-4" aria-hidden />}
+            />
+            <MacroProgressBar
+              label="Fett"
+              current={displayMacros.fat}
+              target={targetFat}
+              icon={<Droplets className="h-4 w-4" aria-hidden />}
             />
           </div>
-          <div className="motus-matplan-status-card">
-            <MacroProgressRing
-              label="Kalorier"
-              current={displayMacrosToday.kcal}
-              target={targetKcal}
-              size="sm"
-              sublabel={kcalRemaining > 0 ? `${kcalRemaining} igjen` : "Mål nådd"}
-            />
-          </div>
-          <button
-            type="button"
-            className="motus-matplan-status-card motus-pressable"
-            onClick={() => handleWaterAdjust(WATER_STEP_L)}
-            aria-label={`Vann ${waterLiters} av ${WATER_TARGET_L} liter, trykk for å legge til`}
-          >
-            <MacroProgressRing
-              label="Vann"
-              current={waterLiters}
-              target={WATER_TARGET_L}
-              unit="L"
-              size="sm"
-            />
-            <Droplets className="motus-matplan-water-icon" aria-hidden />
-          </button>
         </div>
+        <button
+          type="button"
+          className="motus-matplan-water-chip motus-pressable"
+          onClick={() => handleWaterAdjust(WATER_STEP_L)}
+          aria-label={`Vann ${waterLiters} av ${WATER_TARGET_L} liter, trykk for å legge til`}
+        >
+          <Droplets className="h-3.5 w-3.5" aria-hidden />
+          Vann {waterLiters.toFixed(1)} / {WATER_TARGET_L} L
+        </button>
       </section>
 
-      {/* 2. Ukeoversikt */}
-      <section className="motus-matplan-section" aria-label="Ukeoversikt">
-        <h2 className="motus-matplan-section-title">Ukeoversikt</h2>
-        <div className="motus-matplan-week-row">
-          {plan.days.map((day, index) => {
-            const d = new Date(today);
-            d.setDate(today.getDate() - (todayWeekdayIndex - index));
-            const dateKey = toIsoDateKey(d);
-            const loggedFood = new Set(tracking.loggedFoodIds[dateKey] ?? []);
-            const mealsWithFood = day.meals.filter((m) => m.items.length > 0);
-            const foodItems = mealsWithFood.flatMap((m) => m.items);
-            const complete =
-              foodItems.length > 0 && foodItems.every((item) => loggedFood.has(item.id));
-            const isToday = index === todayWeekdayIndex;
-            const isPast = index < todayWeekdayIndex;
-            const hasActivity = loggedFood.size > 0;
-
-            const dayHasFood = mealsWithFood.length > 0;
-            const isSelected = index === selectedDayIndex;
-
-            return (
-              <button
-                key={day.id}
-                type="button"
-                className={`motus-matplan-week-day motus-pressable ${isToday ? "motus-matplan-week-day--today" : ""} ${isSelected ? "motus-matplan-week-day--selected" : ""}`}
-                onClick={() => setSelectedDayIndex(index)}
-                aria-label={`Vis matplan for ${day.label}`}
-                aria-pressed={isSelected}
-              >
-                <span className="motus-matplan-week-day-label">{weekdayShortLabel(index)}</span>
-                <div
-                  className={`motus-matplan-week-dot ${
-                    complete || (isPast && hasActivity)
-                      ? "motus-matplan-week-dot--done"
-                      : isSelected
-                        ? "motus-matplan-week-dot--selected"
-                        : isToday
-                          ? "motus-matplan-week-dot--today"
-                          : dayHasFood
-                            ? "motus-matplan-week-dot--planned"
-                            : ""
-                  }`}
-                >
-                  {complete || (isPast && hasActivity) ? (
-                    <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} aria-hidden />
-                  ) : isToday ? (
-                    <Flame className="h-3.5 w-3.5" style={{ color: MOTUS.pink }} aria-hidden />
-                  ) : null}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-        <p className="motus-matplan-week-hint">Trykk på en dag for å se måltidene PT har lagt inn.</p>
-      </section>
-
-      {totalFoodInPlan > 0 && selectedDayFoodCount === 0 && !isSelectedToday ? (
-        <Card className="border-teal-200 bg-teal-50/80 p-3 text-sm text-teal-900">
-          Ingen matvarer på {selectedDay?.label ?? "denne dagen"}. PT har lagt inn mat på andre dager — velg dem i ukeoversikten over.
-        </Card>
-      ) : null}
-
-      {/* 3. Måltider for valgt dag */}
       <section className="motus-matplan-section" aria-label="Måltider">
         <div className="motus-matplan-section-head">
           <h2 className="motus-matplan-section-title">
             {isSelectedToday ? "Dagens måltider" : `Måltider — ${selectedDay?.label ?? ""}`}
           </h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className="motus-matplan-link-btn"
-              onClick={() => setShowFullWeekView((v) => !v)}
-            >
-              {showFullWeekView ? "Skjul ukesvisning" : "Hele matplanen"}
-            </button>
-            {isSelectedToday ? (
-              <button
-                type="button"
-                className="motus-matplan-link-btn"
-                onClick={() => {
-                  const next = selectedMealsResolved.find(
-                    (m) => m.items.length > 0 && !m.items.every((item) => loggedFoodSelected.has(item.id)),
-                  );
-                  if (next) handleToggleMeal(next);
-                }}
-              >
-                <Plus className="h-3.5 w-3.5" aria-hidden />
-                Logg måltid
-              </button>
-            ) : null}
-          </div>
+          <button
+            type="button"
+            className="motus-matplan-link-btn"
+            onClick={() => setShowFullWeekView((v) => !v)}
+          >
+            {showFullWeekView ? "Skjul uke" : "Se alle måltider"}
+            <ChevronRight className={`h-3.5 w-3.5 ${showFullWeekView ? "rotate-90" : ""}`} aria-hidden />
+          </button>
         </div>
 
         {showFullWeekView ? (
-          <div className="motus-matplan-full-week">
-            <MealPlanDisplay
-              plan={plan}
-              readOnly
-              activeDayId={fullWeekDayId}
-              onActiveDayIdChange={setFullWeekDayId}
-            />
-          </div>
+          <>
+            <div className="motus-matplan-week-row">
+              {plan.days.map((day, index) => {
+                const d = new Date(today);
+                d.setDate(today.getDate() - (todayWeekdayIndex - index));
+                const dateKey = toIsoDateKey(d);
+                const loggedFood = new Set(tracking.loggedFoodIds[dateKey] ?? []);
+                const mealsWithFood = day.meals.filter((m) => m.items.length > 0);
+                const foodItems = mealsWithFood.flatMap((m) => m.items);
+                const complete =
+                  foodItems.length > 0 && foodItems.every((item) => loggedFood.has(item.id));
+                const isToday = index === todayWeekdayIndex;
+                const isPast = index < todayWeekdayIndex;
+                const hasActivity = loggedFood.size > 0;
+                const dayHasFood = mealsWithFood.length > 0;
+                const isSelected = index === selectedDayIndex;
+
+                return (
+                  <button
+                    key={day.id}
+                    type="button"
+                    className={`motus-matplan-week-day motus-pressable ${isToday ? "motus-matplan-week-day--today" : ""} ${isSelected ? "motus-matplan-week-day--selected" : ""}`}
+                    onClick={() => setSelectedDayIndex(index)}
+                    aria-label={`Vis matplan for ${day.label}`}
+                    aria-pressed={isSelected}
+                  >
+                    <span className="motus-matplan-week-day-label">{weekdayShortLabel(index)}</span>
+                    <div
+                      className={`motus-matplan-week-dot ${
+                        complete || (isPast && hasActivity)
+                          ? "motus-matplan-week-dot--done"
+                          : isSelected
+                            ? "motus-matplan-week-dot--selected"
+                            : isToday
+                              ? "motus-matplan-week-dot--today"
+                              : dayHasFood
+                                ? "motus-matplan-week-dot--planned"
+                                : ""
+                      }`}
+                    >
+                      {complete || (isPast && hasActivity) ? (
+                        <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} aria-hidden />
+                      ) : isToday ? (
+                        <Flame className="h-3.5 w-3.5" style={{ color: MOTUS.pink }} aria-hidden />
+                      ) : null}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="motus-matplan-full-week">
+              <MealPlanDisplay
+                plan={plan}
+                readOnly
+                activeDayId={fullWeekDayId}
+                onActiveDayIdChange={setFullWeekDayId}
+              />
+            </div>
+          </>
         ) : null}
 
-        <div className="motus-matplan-meals">
-          {selectedMealsResolved.map((meal) => {
+        {totalFoodInPlan > 0 && selectedDayFoodCount === 0 && !isSelectedToday ? (
+          <Card className="border-teal-200 bg-teal-50/80 p-3 text-sm text-teal-900">
+            Ingen matvarer på {selectedDay?.label ?? "denne dagen"}. PT har lagt inn mat på andre dager — velg dem i
+            ukeoversikten.
+          </Card>
+        ) : null}
+
+        <div className="motus-matplan-meals motus-matplan-meals--v2">
+          {displayMeals.map((meal) => {
             const macros = computeMealMacros(meal, foodById);
-            const loggedFoodCount = meal.items.filter((item) => loggedFoodSelected.has(item.id)).length;
+            const loggedFoodCount = meal.items.filter((item) => displayLoggedFood.has(item.id)).length;
             const logged = meal.items.length > 0 && loggedFoodCount === meal.items.length;
             const hasPartialLog = loggedFoodCount > 0 && !logged;
             const hasFood = meal.items.length > 0;
             const imageSrc = resolveMealImage(meal);
             const isSwapped = Boolean(tracking.mealSwaps[mealSwapKey(selectedDateKey, meal.id)]);
+            const prepMeta = mealPrepMeta(meal.items.length);
+            const isExpanded = expandedMealId === meal.id;
+            const menuOpen = mealMenuId === meal.id;
 
             return (
               <article
                 key={meal.id}
-                className={`motus-matplan-meal-card ${logged ? "motus-matplan-meal-card--logged" : ""} ${hasPartialLog ? "motus-matplan-meal-card--partial" : ""}`}
+                className={`motus-matplan-meal-card motus-matplan-meal-card--v2 ${logged ? "motus-matplan-meal-card--logged" : ""} ${hasPartialLog ? "motus-matplan-meal-card--partial" : ""}`}
               >
-                <div className="motus-matplan-meal-body">
-                  <span className="motus-matplan-meal-slot">{mealSlotLabel(meal.name)}</span>
-                  {isSwapped ? <span className="motus-matplan-meal-swapped">Byttet måltid</span> : null}
-                  <h3 className="motus-matplan-meal-title">
-                    {hasFood ? mealDisplayTitle(meal) : meal.name}
-                  </h3>
-                  {hasFood ? (
-                    <>
-                      <p className="motus-matplan-meal-macros">{mealMacroLine(macros)}</p>
-                      <ul className="motus-matplan-meal-foods">
-                        {meal.items.map((item) => {
-                          const foodLogged = loggedFoodSelected.has(item.id);
-                          return (
-                            <li
-                              key={item.id}
-                              className={`motus-matplan-meal-food ${foodLogged ? "motus-matplan-meal-food--logged" : ""}`}
-                            >
-                              <div className="motus-matplan-meal-food-main">
-                                <span className="motus-matplan-meal-food-name">{item.foodName}</span>
-                                <span className="motus-matplan-meal-food-grams">{item.grams} g</span>
-                              </div>
-                              {hasFood ? (
-                                <div className="motus-matplan-meal-food-actions">
-                                  {foodLogged ? (
-                                    <button
-                                      type="button"
-                                      className="motus-matplan-food-remove motus-pressable"
-                                      onClick={() => handleRemoveFood(item.id)}
-                                      aria-label={`Fjern ${item.foodName} fra logg`}
-                                    >
-                                      <X className="h-3.5 w-3.5" aria-hidden />
-                                      Fjern
-                                    </button>
-                                  ) : (
-                                    <button
-                                      type="button"
-                                      className="motus-matplan-food-log motus-pressable"
-                                      onClick={() => handleToggleFood(item.id)}
-                                      aria-label={`Logg ${item.foodName}`}
-                                    >
-                                      <Plus className="h-3.5 w-3.5" aria-hidden />
-                                      Logg
-                                    </button>
-                                  )}
-                                </div>
-                              ) : foodLogged ? (
-                                <span className="motus-matplan-meal-food-check" aria-label="Logget">
-                                  <Check className="h-3.5 w-3.5" aria-hidden />
-                                </span>
-                              ) : null}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </>
-                  ) : (
-                    <p className="motus-matplan-meal-macros motus-matplan-meal-macros--muted">
-                      Treneren fyller ut dette måltidet
-                    </p>
-                  )}
-                  <div className="motus-matplan-meal-actions">
-                    {logged ? (
-                      <button
-                        type="button"
-                        className="motus-matplan-logged-badge motus-pressable"
-                        onClick={() => handleToggleMeal(meal)}
-                        aria-label="Fjern hele måltidet fra logg"
-                      >
-                        <Check className="h-3.5 w-3.5" aria-hidden />
-                        Logget · trykk for å fjerne
-                      </button>
-                    ) : hasFood ? (
-                      <>
-                        <button
-                          type="button"
-                          className="motus-matplan-btn motus-matplan-btn--mint motus-pressable"
-                          onClick={() => setSwapMeal(meal)}
-                        >
-                          Bytt
-                        </button>
-                        <button
-                          type="button"
-                          className="motus-matplan-btn motus-matplan-btn--pink-outline motus-pressable"
-                          onClick={() => handleToggleMeal(meal)}
-                        >
-                          <Plus className="h-3.5 w-3.5" aria-hidden />
-                          {hasPartialLog ? "Logg resten" : "Logg alt"}
-                        </button>
-                      </>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="motus-matplan-meal-media">
+                <div className="motus-matplan-meal-card__media">
                   {imageSrc ? (
-                    <img src={imageSrc} alt="" className="motus-matplan-meal-img" loading="lazy" />
+                    <img src={imageSrc} alt="" className="motus-matplan-meal-card__img" loading="lazy" />
                   ) : (
-                    <div className="motus-matplan-meal-img motus-matplan-meal-img--placeholder" aria-hidden>
-                      <UtensilsCrossed className="h-8 w-8 text-white/70" strokeWidth={1.5} />
+                    <div className="motus-matplan-meal-card__img motus-matplan-meal-card__img--placeholder" aria-hidden>
+                      <UtensilsCrossed className="h-7 w-7 text-white/75" strokeWidth={1.5} />
                     </div>
                   )}
                 </div>
+                <div className="motus-matplan-meal-card__body">
+                  <div className="motus-matplan-meal-card__top">
+                    <span className="motus-matplan-meal-card__slot">{mealSlotLabel(meal.name)}</span>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        className="motus-matplan-meal-card__menu motus-pressable"
+                        aria-label={`Meny for ${meal.name}`}
+                        aria-expanded={menuOpen}
+                        onClick={() => setMealMenuId(menuOpen ? null : meal.id)}
+                      >
+                        <MoreHorizontal className="h-4 w-4" aria-hidden />
+                      </button>
+                      {menuOpen ? (
+                        <div className="motus-matplan-meal-card__dropdown">
+                          {hasFood ? (
+                            <>
+                              <button type="button" className="motus-pressable" onClick={() => { setSwapMeal(meal); setMealMenuId(null); }}>
+                                Bytt måltid
+                              </button>
+                              <button
+                                type="button"
+                                className="motus-pressable"
+                                onClick={() => {
+                                  setExpandedMealId(isExpanded ? null : meal.id);
+                                  setMealMenuId(null);
+                                }}
+                              >
+                                {isExpanded ? "Skjul detaljer" : "Vis matvarer"}
+                              </button>
+                            </>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  {isSwapped ? <span className="motus-matplan-meal-swapped">Byttet måltid</span> : null}
+                  <h3 className="motus-matplan-meal-card__title">{hasFood ? mealDisplayTitle(meal) : meal.name}</h3>
+                  {hasFood ? (
+                    <>
+                      <p className="motus-matplan-meal-card__macros">{mealMacroLine(macros)}</p>
+                      <div className="motus-matplan-meal-card__meta">
+                        <span>
+                          <Clock className="h-3.5 w-3.5" aria-hidden />
+                          {prepMeta.minutes} min
+                        </span>
+                        <span>{prepMeta.difficulty}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="motus-matplan-meal-card__macros motus-matplan-meal-card__macros--muted">
+                      Treneren fyller ut dette måltidet
+                    </p>
+                  )}
+                  {isExpanded && hasFood ? (
+                    <ul className="motus-matplan-meal-foods">
+                      {meal.items.map((item) => {
+                        const foodLogged = displayLoggedFood.has(item.id);
+                        return (
+                          <li
+                            key={item.id}
+                            className={`motus-matplan-meal-food ${foodLogged ? "motus-matplan-meal-food--logged" : ""}`}
+                          >
+                            <div className="motus-matplan-meal-food-main">
+                              <span className="motus-matplan-meal-food-name">{item.foodName}</span>
+                              <span className="motus-matplan-meal-food-grams">{item.grams} g</span>
+                            </div>
+                            <div className="motus-matplan-meal-food-actions">
+                              {foodLogged ? (
+                                <button
+                                  type="button"
+                                  className="motus-matplan-food-remove motus-pressable"
+                                  onClick={() => handleRemoveFood(item.id)}
+                                  aria-label={`Fjern ${item.foodName} fra logg`}
+                                >
+                                  <X className="h-3.5 w-3.5" aria-hidden />
+                                  Fjern
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="motus-matplan-food-log motus-pressable"
+                                  onClick={() => handleToggleFood(item.id)}
+                                  aria-label={`Logg ${item.foodName}`}
+                                >
+                                  <Plus className="h-3.5 w-3.5" aria-hidden />
+                                  Logg
+                                </button>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  className={`motus-matplan-meal-card__check motus-pressable ${logged ? "motus-matplan-meal-card__check--done" : ""}`}
+                  onClick={() => hasFood && handleToggleMeal(meal)}
+                  disabled={!hasFood}
+                  aria-label={logged ? `Fjern ${meal.name} fra logg` : `Logg ${meal.name}`}
+                >
+                  {logged ? <Check className="h-4 w-4" strokeWidth={3} aria-hidden /> : null}
+                </button>
               </article>
             );
           })}
         </div>
       </section>
 
-      {/* 4. Makro-progress */}
-      <section className="motus-matplan-section" aria-label="Makro-progress">
-        <h2 className="motus-matplan-section-title">
-          {isSelectedToday ? "Makro-progress" : `Makro-progress — ${selectedDay?.label ?? ""}`}
-        </h2>
-        <div className="motus-matplan-macro-rings">
-          <MacroProgressRing
-            label="Protein"
-            current={displayMacrosProgress.protein}
-            target={targetProtein}
-            unit="g"
-            tone="mint"
-          />
-          <MacroProgressRing
-            label="Karbohydrater"
-            current={displayMacrosProgress.carbs}
-            target={targetCarbs}
-            unit="g"
-            tone="mint"
-          />
-          <MacroProgressRing
-            label="Fett"
-            current={displayMacrosProgress.fat}
-            target={targetFat}
-            unit="g"
-            tone="pink"
-          />
+      <div className="motus-matplan-footer">
+        <div className="motus-matplan-footer__secondary">
+          <button
+            type="button"
+            className="motus-matplan-footer__chip motus-pressable"
+            onClick={() => onOpenAvoidances?.()}
+          >
+            Rediger
+          </button>
+          <button type="button" className="motus-matplan-footer__chip motus-pressable" onClick={() => void handleShareDay()}>
+            <Share2 className="h-3.5 w-3.5" aria-hidden />
+            Del
+          </button>
         </div>
-      </section>
+        <button type="button" className="motus-matplan-footer__ai motus-pressable" disabled aria-disabled="true">
+          <Sparkles className="h-4 w-4" aria-hidden />
+          AI-generer dagens matplan
+          <span className="motus-matplan-footer__ai-badge">Kommer snart</span>
+        </button>
+      </div>
 
-      {/* 5. Coach */}
+      {/* Coach */}
       {plan.notes.trim() || coachTips.length > 0 ? (
         <section className="motus-matplan-section" aria-label="Coach">
           <h2 className="motus-matplan-section-title">Coach</h2>
@@ -669,7 +738,7 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
       ) : null}
 
       {/* Handleliste */}
-      {shoppingGroups.length > 0 ? (
+      {shoppingGroups.length > 0 || shoppingList.recipeControls.length > 0 ? (
         <section className="motus-matplan-section" aria-label="Ukens handleliste">
           <button
             type="button"
@@ -685,35 +754,91 @@ export function MemberMealPlanDashboard({ plan, memberId, memberName }: MemberMe
           </button>
           {showShopping ? (
             <div className="motus-matplan-shopping">
-              {shoppingGroups.map((group) => (
-                <div key={group.id} className="motus-matplan-shopping-group">
-                  <h3 className="motus-matplan-shopping-group-title">{group.label}</h3>
-                  <ul className="motus-matplan-shopping-list">
-                    {group.items.map((item) => {
-                      const checked = tracking.checkedShopping.includes(item.key);
+              {shoppingList.warnings.length > 0 ? (
+                <Card className="border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+                  {shoppingList.warnings.map((warning) => (
+                    <p key={warning} className="mt-1 first:mt-0">
+                      {warning}
+                    </p>
+                  ))}
+                </Card>
+              ) : null}
+              {shoppingList.recipeControls.length > 0 ? (
+                <div className="motus-matplan-shopping-portions">
+                  <h3 className="motus-matplan-shopping-group-title">Porsjoner (familie / ekstra)</h3>
+                  <p className="motus-matplan-shopping-portions-hint">
+                    Juster hvor mange ganger du skal lage hver oppskrift — ingrediensene oppdateres under.
+                  </p>
+                  <ul className="motus-matplan-shopping-portions-list">
+                    {shoppingList.recipeControls.map((row) => {
+                      const portionValue = tracking.recipePortions[row.entryId] ?? row.portionMultiplier;
                       return (
-                        <li key={item.key}>
+                      <li key={`${row.entryId}-${row.dayLabel}`} className="motus-matplan-shopping-portion-row">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-sm text-slate-900">{row.title}</div>
+                          <div className="text-xs text-slate-500">
+                            {row.dayLabel} · {row.mealName}
+                          </div>
+                        </div>
+                        <div className="motus-matplan-shopping-portion-stepper" role="group" aria-label={`Porsjoner for ${row.title}`}>
                           <button
                             type="button"
-                            className={`motus-matplan-shopping-item motus-pressable ${checked ? "motus-matplan-shopping-item--checked" : ""}`}
-                            onClick={() =>
-                              setTracking((prev) => toggleShoppingChecked(memberId, prev, item.key))
-                            }
+                            className="motus-matplan-shopping-portion-btn motus-pressable"
+                            onClick={() => handleRecipePortionChange(row.entryId, portionValue - 0.5)}
+                            aria-label="Færre porsjoner"
                           >
-                            <span className={`motus-matplan-shopping-check ${checked ? "motus-matplan-shopping-check--on" : ""}`}>
-                              {checked ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
-                            </span>
-                            <span className={checked ? "line-through opacity-60" : ""}>
-                              {item.name}
-                              {item.grams > 0 ? ` (${item.grams} g)` : ""}
-                            </span>
+                            −
                           </button>
-                        </li>
+                          <span className="motus-matplan-shopping-portion-value">
+                            {portionValue.toString().replace(".", ",")}×
+                          </span>
+                          <button
+                            type="button"
+                            className="motus-matplan-shopping-portion-btn motus-pressable"
+                            onClick={() => handleRecipePortionChange(row.entryId, portionValue + 0.5)}
+                            aria-label="Flere porsjoner"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </li>
                       );
                     })}
                   </ul>
                 </div>
-              ))}
+              ) : null}
+              {shoppingGroups.length > 0 ? (
+                shoppingGroups.map((group) => (
+                  <div key={group.id} className="motus-matplan-shopping-group">
+                    <h3 className="motus-matplan-shopping-group-title">{group.label}</h3>
+                    <ul className="motus-matplan-shopping-list">
+                      {group.items.map((item) => {
+                        const checked = tracking.checkedShopping.includes(item.key);
+                        return (
+                          <li key={item.key}>
+                            <button
+                              type="button"
+                              className={`motus-matplan-shopping-item motus-pressable ${checked ? "motus-matplan-shopping-item--checked" : ""}`}
+                              onClick={() =>
+                                setTracking((prev) => toggleShoppingChecked(memberId, prev, item.key))
+                              }
+                            >
+                              <span className={`motus-matplan-shopping-check ${checked ? "motus-matplan-shopping-check--on" : ""}`}>
+                                {checked ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
+                              </span>
+                              <span className={checked ? "line-through opacity-60" : ""}>{item.displayLabel}</span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-600">
+                  Ingen ingredienser kunne beregnes ennå. Sjekk at oppskriftene har en ingrediensliste under Ernæring.
+                </p>
+              )}
             </div>
           ) : null}
         </section>

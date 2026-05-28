@@ -12,7 +12,7 @@ import type { MacroSplitField } from "../app/mealPlanMacroSplit";
 import { balanceMealPlanTargets, describeTargetBalance } from "../app/mealPlanTargetBalance";
 import type { MacroTargetField } from "../app/mealPlanTargetBalance";
 import { MacroSplitPercentControls } from "../components/MacroSplitPercentControls";
-import { Copy, Plus, Save, Search, Soup, Trash2, X } from "lucide-react";
+import { Calendar, Copy, HelpCircle, Plus, Save, Search, ShoppingCart, Soup, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import {
   flushMealPlanCloudSave,
@@ -41,6 +41,9 @@ import { RecipeAvoidanceWarning } from "../components/RecipeAvoidanceWarning";
 import { RecipeIngredientList } from "../components/RecipeIngredientList";
 import { RecipeMacroBlocks } from "../components/RecipeMacroBlocks";
 import { MealMacroMiniBar, TrainerMealPlanMacroPanel } from "./TrainerMealPlanMacroPanel";
+import { TrainerMealPlanNutritionOverview } from "./nutrition/TrainerMealPlanNutritionOverview";
+import { TrainerMealPlanWeekGrid, type MealGridSelection } from "./nutrition/TrainerMealPlanWeekGrid";
+import { autoFillWeekFromMonday, averageWeekMacros } from "../app/mealPlanWeekPlanner";
 import { recipeToMealPlanEntry } from "../app/mealPlanRecipeEntry";
 import { resolveRecipeMealSlot } from "../app/recipeMealCategory";
 import { buildScaledRecipeView, resolveRecipeScalingMode } from "../app/recipeMealScaling";
@@ -55,6 +58,7 @@ import "../foodbank.css";
 type TrainerMealPlanEditorProps = {
   memberId: string;
   memberName: string;
+  memberGoal?: string;
   memberPersonalGoals?: string;
   trainerOwnerUserId?: string;
 };
@@ -71,6 +75,7 @@ type RecipePickerState = MealPickerTarget | null;
 export function TrainerMealPlanEditor({
   memberId,
   memberName,
+  memberGoal = "",
   memberPersonalGoals = "",
   trainerOwnerUserId,
 }: TrainerMealPlanEditorProps) {
@@ -95,7 +100,10 @@ export function TrainerMealPlanEditor({
   const [targetBalanceWarning, setTargetBalanceWarning] = useState<string | null>(null);
   const [copyMeal, setCopyMeal] = useState<{ dayId: string; mealId: string; mealName: string } | null>(null);
   const [copyTargetDayIds, setCopyTargetDayIds] = useState<string[]>([]);
+  const [gridSelection, setGridSelection] = useState<MealGridSelection | null>(null);
+  const [planWeeks, setPlanWeeks] = useState<"1" | "2" | "4" | "custom">("1");
   const reloadInFlightRef = useRef(false);
+  const recipesById = useMemo(() => new Map(recipeItems.map((recipe) => [recipe.id, recipe])), [recipeItems]);
 
   const applyPendingFood = useCallback(
     (currentPlan: MealPlan) => {
@@ -172,6 +180,22 @@ export function TrainerMealPlanEditor({
   );
 
   const foodById = useMemo(() => new Map(foodItems.map((food) => [food.id, food])), [foodItems]);
+
+  const weekAverageMacros = useMemo(
+    () => (plan ? averageWeekMacros(plan, foodById) : { kcal: 0, protein: 0, carbs: 0, fat: 0 }),
+    [plan, foodById],
+  );
+
+  const selectedGridMeal = useMemo(() => {
+    if (!plan || !gridSelection) return null;
+    const day = plan.days.find((row) => row.id === gridSelection.dayId);
+    return day?.meals.find((meal) => meal.id === gridSelection.mealId) ?? null;
+  }, [plan, gridSelection]);
+
+  const selectedGridDay = useMemo(() => {
+    if (!plan || !gridSelection) return null;
+    return plan.days.find((row) => row.id === gridSelection.dayId) ?? null;
+  }, [plan, gridSelection]);
 
   const dayUsed = useMemo(
     () => (activeDay ? sumDayMacros(activeDay, foodById) : { kcal: 0, protein: 0, carbs: 0, fat: 0 }),
@@ -560,17 +584,47 @@ export function TrainerMealPlanEditor({
     setSaveStatus(`${copyMeal.mealName} kopiert til ${copyTargetDayIds.length} dag(er).`);
   }
 
+  function selectGridCell(selection: MealGridSelection) {
+    setGridSelection(selection);
+    setActiveDayId(selection.dayId);
+  }
+
+  function clearGridMeal(selection: MealGridSelection) {
+    if (!plan) return;
+    updatePlan({
+      ...plan,
+      days: plan.days.map((day) =>
+        day.id === selection.dayId
+          ? {
+              ...day,
+              meals: day.meals.map((meal) =>
+                meal.id === selection.mealId ? { ...meal, items: [] } : meal,
+              ),
+            }
+          : day,
+      ),
+    });
+    setSaveStatus("Måltid tømt.");
+  }
+
+  function handleAutoFillWeek() {
+    if (!plan) return;
+    const next = autoFillWeekFromMonday(plan);
+    updatePlan(next);
+    setSaveStatus("Mandagens måltider er kopiert til resten av uken.");
+  }
+
   if (loading || !plan) {
     return <div className="rounded-xl border bg-slate-50 px-4 py-6 text-sm text-slate-600">Laster matplan …</div>;
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold text-slate-900">Matplan · {memberName}</h2>
-          <p className="text-sm text-slate-600">Bygg ukens måltider fra matvarebanken. Medlem ser planen i appen.</p>
-        </div>
+    <div className="motus-pt-planner">
+      <div className="motus-pt-planner__top-actions">
+        <OutlineButton type="button" className="text-xs" onClick={() => setSaveStatus("Hjelp: Bygg uken i rutenettet. Klikk en celle for detaljer.")}>
+          <HelpCircle className="h-4 w-4" aria-hidden />
+          Hjelp
+        </OutlineButton>
         <GradientButton onClick={() => void handleSave()} className="shrink-0">
           <Save className="h-4 w-4" aria-hidden />
           Lagre matplan
@@ -580,204 +634,315 @@ export function TrainerMealPlanEditor({
       {saveStatus ? (
         <StatusMessage
           message={saveStatus}
-          tone={/lagret|lagt til/i.test(saveStatus) ? "success" : "error"}
+          tone={/lagret|lagt til|kopiert|tømt/i.test(saveStatus) ? "success" : "error"}
           className="!rounded-xl !px-3 !py-2 !text-xs"
         />
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="space-y-1 text-xs font-medium text-slate-700">
-          <span>Planens navn</span>
-          <TextInput value={plan.title} onChange={(e) => updatePlan({ ...plan, title: e.target.value })} />
-        </label>
-        <label className="space-y-1 text-xs font-medium text-slate-700 sm:col-span-2">
-          <span>Notater til medlem</span>
-          <TextArea
-            value={plan.notes}
-            onChange={(e) => updatePlan({ ...plan, notes: e.target.value })}
-            className="min-h-[72px]"
-            placeholder="Valgfrie instruksjoner …"
-          />
-        </label>
-      </div>
-
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-        <div className="text-xs font-medium text-slate-700">Daglige makromål (valgfritt)</div>
-        <p className="mt-1 text-[11px] text-slate-500">
-          Sett kalorier og makrofordeling i prosent, eller skriv gram direkte — den tredje kan beregnes automatisk.
-        </p>
-        <div className="mt-3">
-          <MacroSplitPercentControls
-            split={macroSplit}
-            locked={macroSplitLocked}
-            onChange={updateMacroSplit}
-            onToggleLock={handleToggleMacroSplitLock}
-          />
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {(
-            [
-              ["kcal", "Kalorier"],
-              ["protein", "Protein (g)"],
-              ["carbs", "Karbohydrater (g)"],
-              ["fat", "Fett (g)"],
-            ] as const
-          ).map(([field, label]) => {
-            const isDerived = derivedTargetField === field;
-            return (
-              <label key={field} className="space-y-1 text-[11px] font-medium text-slate-600">
-                <span>
-                  {label}
-                  {isDerived ? <span className="ml-1 font-normal text-teal-700">(beregnet)</span> : null}
-                </span>
-                <TextInput
-                  value={plan.targets?.[field] !== undefined ? String(plan.targets[field]) : ""}
-                  onChange={(e) => updateTargets(field, e.target.value)}
-                  inputMode="decimal"
-                  className={isDerived ? "border-teal-200 bg-teal-50/50" : undefined}
-                />
-              </label>
-            );
-          })}
-        </div>
-        {targetBalanceWarning ? (
-          <p className="mt-2 text-[11px] font-medium text-rose-700">{targetBalanceWarning}</p>
-        ) : targetBalanceHint ? (
-          <p className="mt-2 text-[11px] text-slate-600">{targetBalanceHint}</p>
-        ) : null}
-      </div>
-
-      {activeDay ? (
-        <TrainerMealPlanMacroPanel
-          dayLabel={activeDay.label}
-          dailyTargets={plan.targets}
-          dayUsed={dayUsed}
-          dayRemaining={dayRemaining}
-          onDistribute={handleDistributeMeals}
-          onClearMealTargets={handleClearMealTargets}
-        />
-      ) : null}
-
-      <div className="motus-mealplan-day-tabs scrollbar-none flex gap-2 overflow-x-auto pb-1">
-        {plan.days.map((day) => {
-          const active = day.id === activeDayId;
-          return (
-            <button
-              key={day.id}
-              type="button"
-              onClick={() => setActiveDayId(day.id)}
-              className={`shrink-0 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
-                active ? "border-teal-300 bg-teal-50 text-teal-900" : "border-slate-200 bg-white text-slate-700"
-              }`}
-            >
-              {day.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {activeDay ? (
-        <div className="space-y-3">
-          {activeDay.meals.map((meal) => (
-            <div key={meal.id} className="rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <TextInput
-                  value={meal.name}
-                  onChange={(e) =>
-                    updatePlan({
-                      ...plan,
-                      days: plan.days.map((day) =>
-                        day.id === activeDay.id
-                          ? {
-                              ...day,
-                              meals: day.meals.map((row) =>
-                                row.id === meal.id ? { ...row, name: e.target.value } : row,
-                              ),
-                            }
-                          : day,
-                      ),
-                    })
-                  }
-                  className="max-w-[12rem] font-semibold"
-                />
-                <div className="flex flex-col items-end gap-0.5">
-                  <span className="text-[11px] font-medium text-slate-500">
-                    {formatMacroTotals(computeMealMacros(meal, foodById))}
-                  </span>
-                  <MealMacroMiniBar mealName={meal.name} used={computeMealMacros(meal, foodById)} targets={meal.targets} />
-                </div>
+      <div className="motus-pt-planner__layout">
+        <div className="motus-pt-planner__main">
+          <section className="motus-pt-planner-step">
+            <h2 className="motus-pt-planner-step__title">
+              <span className="motus-pt-planner-step__num">1</span> Velg klient
+            </h2>
+            <div className="motus-pt-planner-client-card">
+              <div>
+                <div className="font-bold text-slate-900">{memberName}</div>
+                <div className="text-sm text-slate-600">{memberGoal.trim() || "Ingen mål satt"}</div>
               </div>
-              <ul className="mt-2 space-y-2">
-                {meal.items.map((item) => (
-                  <li
-                    key={item.id}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5 text-sm"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="font-medium text-slate-800">{item.foodName}</span>
-                      {item.note ? <span className="block text-xs text-slate-500">{item.note}</span> : null}
-                      <label className="motus-meal-entry-grams mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-600">
-                        <span className="font-medium">Mengde</span>
-                        <TextInput
-                          value={String(item.grams)}
-                          onChange={(e) => updateFoodEntryGrams(activeDay.id, meal.id, item.id, e.target.value)}
-                          inputMode="decimal"
-                          className="motus-meal-entry-grams-input !py-1 !text-xs"
-                          aria-label={`Gram ${item.foodName}`}
-                        />
-                        <span>g</span>
-                        <span className="text-slate-400">
-                          · {formatMacro(computeEntryMacros(item, foodById).kcal, 0)} kcal
-                        </span>
-                      </label>
-                    </span>
-                    <button
-                      type="button"
-                      className="rounded-lg p-1 text-slate-400 hover:bg-white hover:text-red-600"
-                      aria-label={`Fjern ${item.foodName}`}
-                      onClick={() => removeFoodEntry(activeDay.id, meal.id, item.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <OutlineButton
-                  className="flex-1 sm:flex-none"
-                  onClick={() => openFoodPicker(activeDay.id, meal.id)}
-                >
-                  <Plus className="h-4 w-4" aria-hidden />
-                  Legg til matvare
-                </OutlineButton>
-                <OutlineButton
-                  className="flex-1 sm:flex-none"
-                  onClick={() => {
-                    setRecipePicker({ dayId: activeDay.id, mealId: meal.id });
-                    setRecipeSearch("");
-                  }}
-                >
-                  <Soup className="h-4 w-4" aria-hidden />
-                  Legg til oppskrift
-                </OutlineButton>
-                <OutlineButton
-                  type="button"
-                  className="flex-1 sm:flex-none"
-                  onClick={() => openCopyMeal(activeDay.id, meal)}
-                  disabled={meal.items.length === 0}
-                >
-                  <Copy className="h-4 w-4" aria-hidden />
-                  Kopier til dager
-                </OutlineButton>
+              <div className="motus-pt-planner-client-macros">
+                {plan.targets?.kcal ? <span>{formatMacro(plan.targets.kcal, 0)} kcal</span> : null}
+                {plan.targets?.protein ? <span>{formatMacro(plan.targets.protein, 0)} g protein</span> : null}
+                {plan.targets?.carbs ? <span>{formatMacro(plan.targets.carbs, 0)} g karbo</span> : null}
+                {plan.targets?.fat ? <span>{formatMacro(plan.targets.fat, 0)} g fett</span> : null}
               </div>
             </div>
-          ))}
-          <OutlineButton onClick={addMealToActiveDay}>
-            <Plus className="h-4 w-4" aria-hidden />
-            Legg til måltid
-          </OutlineButton>
+            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="text-xs font-medium text-slate-700">Daglige makromål</div>
+              <div className="mt-2">
+                <MacroSplitPercentControls
+                  split={macroSplit}
+                  locked={macroSplitLocked}
+                  onChange={updateMacroSplit}
+                  onToggleLock={handleToggleMacroSplitLock}
+                />
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {(
+                  [
+                    ["kcal", "Kalorier"],
+                    ["protein", "Protein (g)"],
+                    ["carbs", "Karbohydrater (g)"],
+                    ["fat", "Fett (g)"],
+                  ] as const
+                ).map(([field, label]) => {
+                  const isDerived = derivedTargetField === field;
+                  return (
+                    <label key={field} className="space-y-1 text-[11px] font-medium text-slate-600">
+                      <span>
+                        {label}
+                        {isDerived ? <span className="ml-1 font-normal text-teal-700">(beregnet)</span> : null}
+                      </span>
+                      <TextInput
+                        value={plan.targets?.[field] !== undefined ? String(plan.targets[field]) : ""}
+                        onChange={(e) => updateTargets(field, e.target.value)}
+                        inputMode="decimal"
+                        className={isDerived ? "border-teal-200 bg-teal-50/50" : undefined}
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+              {targetBalanceWarning ? (
+                <p className="mt-2 text-[11px] font-medium text-rose-700">{targetBalanceWarning}</p>
+              ) : targetBalanceHint ? (
+                <p className="mt-2 text-[11px] text-slate-600">{targetBalanceHint}</p>
+              ) : null}
+            </div>
+          </section>
+
+          <section className="motus-pt-planner-step">
+            <h2 className="motus-pt-planner-step__title">
+              <span className="motus-pt-planner-step__num">2</span> Velg periode
+            </h2>
+            <div className="motus-pt-planner-period">
+              {(
+                [
+                  ["1", "1 uke"],
+                  ["2", "2 uker"],
+                  ["4", "4 uker"],
+                  ["custom", "Tilpasset"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`motus-pt-planner-period__btn ${planWeeks === id ? "is-active" : ""}`}
+                  onClick={() => setPlanWeeks(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="motus-pt-planner-period__dates">
+              <Calendar className="inline h-3.5 w-3.5" aria-hidden /> Uke 1 · {plan.days[0]?.label} – {plan.days[plan.days.length - 1]?.label}
+              {planWeeks !== "1" ? " (flere uker kommer snart)" : ""}
+            </p>
+          </section>
+
+          <section className="motus-pt-planner-step">
+            <h2 className="motus-pt-planner-step__title">
+              <span className="motus-pt-planner-step__num">3</span> Bygg matplan
+            </h2>
+            <div className="motus-pt-planner-toolbar">
+              <OutlineButton type="button" disabled className="opacity-60">
+                <Sparkles className="h-4 w-4" aria-hidden />
+                AI-forslag
+              </OutlineButton>
+              <OutlineButton type="button" disabled className="opacity-60">
+                <Copy className="h-4 w-4" aria-hidden />
+                Kopier fra mal
+              </OutlineButton>
+              <OutlineButton type="button" onClick={handleAutoFillWeek}>
+                <Wand2 className="h-4 w-4" aria-hidden />
+                Auto-fyll uke
+              </OutlineButton>
+            </div>
+            <TrainerMealPlanWeekGrid
+              plan={plan}
+              foodById={foodById}
+              recipesById={recipesById}
+              selection={gridSelection}
+              onSelect={selectGridCell}
+              onAddFood={(sel) => openFoodPicker(sel.dayId, sel.mealId)}
+              onAddRecipe={(sel) => {
+                setRecipePicker(sel);
+                setRecipeSearch("");
+              }}
+              onClearMeal={clearGridMeal}
+            />
+
+            {selectedGridMeal && selectedGridDay && gridSelection ? (
+              <div className="motus-pt-planner-detail">
+                <div className="motus-pt-planner-detail__head">
+                  <h3 className="font-bold text-slate-900">
+                    {selectedGridMeal.name} · {selectedGridDay.label}
+                  </h3>
+                  <span className="text-xs text-slate-500">{formatMacroTotals(computeMealMacros(selectedGridMeal, foodById))}</span>
+                </div>
+                <MealMacroMiniBar
+                  mealName={selectedGridMeal.name}
+                  used={computeMealMacros(selectedGridMeal, foodById)}
+                  targets={selectedGridMeal.targets}
+                />
+                <ul className="mt-2 space-y-2">
+                  {selectedGridMeal.items.map((item) => (
+                    <li
+                      key={item.id}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5 text-sm"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="font-medium text-slate-800">{item.foodName}</span>
+                        {item.note ? <span className="block text-xs text-slate-500">{item.note}</span> : null}
+                        <label className="motus-meal-entry-grams mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-600">
+                          <span className="font-medium">Mengde</span>
+                          <TextInput
+                            value={String(item.grams)}
+                            onChange={(e) =>
+                              updateFoodEntryGrams(gridSelection.dayId, gridSelection.mealId, item.id, e.target.value)
+                            }
+                            inputMode="decimal"
+                            className="motus-meal-entry-grams-input !py-1 !text-xs"
+                            aria-label={`Gram ${item.foodName}`}
+                          />
+                          <span>g</span>
+                        </label>
+                      </span>
+                      <button
+                        type="button"
+                        className="rounded-lg p-1 text-slate-400 hover:bg-white hover:text-red-600"
+                        aria-label={`Fjern ${item.foodName}`}
+                        onClick={() => removeFoodEntry(gridSelection.dayId, gridSelection.mealId, item.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <OutlineButton onClick={() => openFoodPicker(gridSelection.dayId, gridSelection.mealId)}>
+                    <Plus className="h-4 w-4" aria-hidden />
+                    Matvare
+                  </OutlineButton>
+                  <OutlineButton
+                    onClick={() => {
+                      setRecipePicker(gridSelection);
+                      setRecipeSearch("");
+                    }}
+                  >
+                    <Soup className="h-4 w-4" aria-hidden />
+                    Oppskrift
+                  </OutlineButton>
+                  <OutlineButton
+                    type="button"
+                    onClick={() => openCopyMeal(gridSelection.dayId, selectedGridMeal)}
+                    disabled={selectedGridMeal.items.length === 0}
+                  >
+                    <Copy className="h-4 w-4" aria-hidden />
+                    Kopier til dager
+                  </OutlineButton>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">Klikk en celle i rutenettet for å redigere måltidet.</p>
+            )}
+
+            {activeDay ? (
+              <TrainerMealPlanMacroPanel
+                dayLabel={activeDay.label}
+                dailyTargets={plan.targets}
+                dayUsed={dayUsed}
+                dayRemaining={dayRemaining}
+                onDistribute={handleDistributeMeals}
+                onClearMealTargets={handleClearMealTargets}
+              />
+            ) : null}
+          </section>
+
+          <section className="motus-pt-planner-step">
+            <h2 className="motus-pt-planner-step__title">
+              <span className="motus-pt-planner-step__num">4</span> Ernæringsoversikt
+            </h2>
+            <p className="text-xs text-slate-500 mb-2">Gjennomsnitt per dag</p>
+            <TrainerMealPlanNutritionOverview averageUsed={weekAverageMacros} targets={plan.targets} />
+          </section>
+
+          <section className="motus-pt-planner-step">
+            <h2 className="motus-pt-planner-step__title">
+              <span className="motus-pt-planner-step__num">5</span> Planinnstillinger
+            </h2>
+            <div className="grid gap-3">
+              <label className="space-y-1 text-xs font-medium text-slate-700">
+                <span>Planens navn</span>
+                <TextInput value={plan.title} onChange={(e) => updatePlan({ ...plan, title: e.target.value })} />
+              </label>
+              <label className="space-y-1 text-xs font-medium text-slate-700">
+                <span>Notat til klienten</span>
+                <TextArea
+                  value={plan.notes}
+                  onChange={(e) => updatePlan({ ...plan, notes: e.target.value })}
+                  className="min-h-[72px]"
+                  placeholder="Valgfrie instruksjoner …"
+                />
+              </label>
+              <p className="text-xs text-slate-500">
+                Planen deles automatisk med klienten når ernæringstilgang er aktivert.
+              </p>
+            </div>
+          </section>
+
+          <div className="motus-pt-planner-ai-banner">
+            <Sparkles className="h-5 w-5 shrink-0" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <div className="font-bold text-sm">AI-assistent for matplanlegging</div>
+              <div className="text-xs opacity-90">Kommer snart — generer hele uken basert på mål og preferanser.</div>
+            </div>
+            <OutlineButton type="button" disabled className="!border-white/40 !text-white opacity-80">
+              AI-generer hele uken
+            </OutlineButton>
+          </div>
         </div>
-      ) : null}
+
+        <aside className="motus-pt-planner-sidebar">
+          <div className="motus-pt-planner-sidebar-card">
+            <h3 className="motus-pt-planner-sidebar-title">Klientoversikt</h3>
+            <div className="font-bold text-slate-900">{memberName}</div>
+            <p className="mt-1 text-sm text-slate-600">{memberGoal.trim() || "Mål ikke angitt"}</p>
+            {plan.targets?.kcal ? (
+              <ul className="mt-3 space-y-1 text-xs text-slate-600">
+                <li>Kalorier: {formatMacro(plan.targets.kcal, 0)}</li>
+                <li>Protein: {formatMacro(plan.targets.protein ?? 0, 0)} g</li>
+                <li>Karbohydrater: {formatMacro(plan.targets.carbs ?? 0, 0)} g</li>
+                <li>Fett: {formatMacro(plan.targets.fat ?? 0, 0)} g</li>
+              </ul>
+            ) : null}
+          </div>
+          <div className="motus-pt-planner-sidebar-card">
+            <h3 className="motus-pt-planner-sidebar-title">Verktøy</h3>
+            <ul className="motus-pt-planner-tools">
+              <li>
+                <button type="button" disabled className="motus-pt-planner-tool">
+                  <Sparkles className="h-4 w-4" /> AI-generer dag
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className="motus-pt-planner-tool"
+                  disabled={!gridSelection}
+                  onClick={() => gridSelection && setRecipePicker(gridSelection)}
+                >
+                  <Soup className="h-4 w-4" /> Bytt måltid
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className="motus-pt-planner-tool"
+                  onClick={() => gridSelection && openFoodPicker(gridSelection.dayId, gridSelection.mealId)}
+                >
+                  <Plus className="h-4 w-4" /> Matvarebank
+                </button>
+              </li>
+              <li>
+                <button type="button" className="motus-pt-planner-tool" onClick={handleAutoFillWeek}>
+                  <ShoppingCart className="h-4 w-4" /> Forbered handleliste
+                </button>
+              </li>
+            </ul>
+          </div>
+        </aside>
+      </div>
 
       <details className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
         <summary className="cursor-pointer text-sm font-semibold text-slate-800">Forhåndsvisning (som medlem)</summary>

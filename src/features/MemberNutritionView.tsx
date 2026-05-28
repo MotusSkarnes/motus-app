@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { NutritionHubTab } from "./nutrition/NutritionHub";
 import { Apple } from "lucide-react";
 import { buildDefaultFoodBankItems } from "../app/foodBankSeed";
 import { hydrateMealPlanFoodNutrition } from "../app/mealPlanFoodNutrition";
@@ -20,6 +21,7 @@ type MemberNutritionViewProps = {
 };
 
 export function MemberNutritionView({ member, members, onSavePersonalGoals }: MemberNutritionViewProps) {
+  const [nutritionTab, setNutritionTab] = useState<NutritionHubTab>("mealPlan");
   const memberId = member.id;
   const memberName = member.name;
   const memberEmail = member.email;
@@ -87,10 +89,15 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
             Kunne ikke hente matplan fra sky ennå. Sjekk nett og oppdater siden, eller be PT trykke «Lagre» på matplanen din.
           </Card>
         ) : null}
-        <MemberMealPlanDashboard plan={plan} memberId={memberId} memberName={memberName} />
+        <MemberMealPlanDashboard
+          plan={plan}
+          memberId={memberId}
+          memberName={memberName}
+          onOpenAvoidances={() => setNutritionTab("avoidances")}
+        />
       </>
     );
-  }, [loading, plan, cloudSynced, memberId, memberName]);
+  }, [loading, plan, cloudSynced, memberId, memberName, setNutritionTab]);
 
   const profileMember = pickCanonicalMemberRowForProfile(member, members);
   const resolvedPersonalGoals = useMemo(
@@ -100,6 +107,8 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
 
   return (
     <NutritionHub
+      tab={nutritionTab}
+      onTabChange={setNutritionTab}
       mealPlan={mealPlanPanel}
       mealPlanTargets={plan?.targets}
       avoidances={
