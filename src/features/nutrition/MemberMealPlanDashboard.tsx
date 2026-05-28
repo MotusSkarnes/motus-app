@@ -38,6 +38,7 @@ import {
   resolveMealWithSwaps,
   saveMemberMealPlanState,
   setMealSwap,
+  type MemberQuickFoodLogEntry,
   type MemberMealPlanState,
 } from "../../app/memberMealPlanState";
 import {
@@ -106,6 +107,22 @@ function mealDisplayTitle(meal: MealPlanMeal): string {
 
 function mealMacroLine(macros: MacroTotals): string {
   return `${formatMacro(macros.kcal, 0)} kcal · ${formatMacro(macros.protein, 0)}g protein`;
+}
+
+export function sumQuickFoodLogMacros(logs: MemberQuickFoodLogEntry[] | undefined): MacroTotals {
+  if (!logs?.length) return { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+  return logs.reduce(
+    (acc, entry) => {
+      const scale = entry.grams > 0 ? entry.grams / 100 : 0;
+      return {
+        kcal: acc.kcal + entry.nutritionPer100g.kcal * scale,
+        protein: acc.protein + entry.nutritionPer100g.protein * scale,
+        carbs: acc.carbs + entry.nutritionPer100g.carbs * scale,
+        fat: acc.fat + entry.nutritionPer100g.fat * scale,
+      };
+    },
+    { kcal: 0, protein: 0, carbs: 0, fat: 0 },
+  );
 }
 
 function normalizeRecipeLookupKey(value: string): string {
@@ -339,10 +356,36 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
     if (!selectedDayResolved) return loggedMacrosToday;
     return sumLoggedMacrosFromFoodItems(selectedDayResolved, loggedFoodSelected, foodById);
   }, [selectedDayResolved, loggedFoodSelected, foodById, loggedMacrosToday]);
+  const quickLogMacrosToday = useMemo(
+    () => sumQuickFoodLogMacros(tracking.quickFoodLogs[todayKey]),
+    [tracking.quickFoodLogs, todayKey],
+  );
+  const quickLogMacrosSelected = useMemo(
+    () => sumQuickFoodLogMacros(tracking.quickFoodLogs[selectedDateKey]),
+    [tracking.quickFoodLogs, selectedDateKey],
+  );
+  const combinedMacrosToday = useMemo(
+    () => ({
+      kcal: loggedMacrosToday.kcal + quickLogMacrosToday.kcal,
+      protein: loggedMacrosToday.protein + quickLogMacrosToday.protein,
+      carbs: loggedMacrosToday.carbs + quickLogMacrosToday.carbs,
+      fat: loggedMacrosToday.fat + quickLogMacrosToday.fat,
+    }),
+    [loggedMacrosToday, quickLogMacrosToday],
+  );
+  const combinedMacrosSelected = useMemo(
+    () => ({
+      kcal: loggedMacrosSelected.kcal + quickLogMacrosSelected.kcal,
+      protein: loggedMacrosSelected.protein + quickLogMacrosSelected.protein,
+      carbs: loggedMacrosSelected.carbs + quickLogMacrosSelected.carbs,
+      fat: loggedMacrosSelected.fat + quickLogMacrosSelected.fat,
+    }),
+    [loggedMacrosSelected, quickLogMacrosSelected],
+  );
   const selectedDayFoodCount = selectedMealsResolved.filter((meal) => meal.items.length > 0).length;
 
-  const displayMacrosToday = loggedMacrosToday;
-  const displayMacrosProgress = isSelectedToday ? loggedMacrosToday : loggedMacrosSelected;
+  const displayMacrosToday = combinedMacrosToday;
+  const displayMacrosProgress = isSelectedToday ? combinedMacrosToday : combinedMacrosSelected;
   const waterLiters = tracking.waterLiters[todayKey] ?? 0;
   const kcalRemaining = Math.max(0, Math.round(targetKcal - displayMacrosToday.kcal));
   const streakDays = computeNutritionStreak(tracking.loggedMeals, tracking.loggedFoodIds);
