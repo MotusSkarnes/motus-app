@@ -122,6 +122,25 @@ function formatMealEntryAmount(foodId: string, grams: number, note?: string): st
   return portions === 1 ? "1 porsjon" : `${formatMacro(portions, 1)} porsjoner`;
 }
 
+function extractRecipeMethodSteps(body: string): string[] {
+  const lines = body.split(/\r?\n/);
+  const start = lines.findIndex((line) => /slik gjør du/i.test(line));
+  if (start < 0) return [];
+  const steps: string[] = [];
+  for (let i = start + 1; i < lines.length; i += 1) {
+    const raw = lines[i]?.trim() ?? "";
+    if (!raw) continue;
+    if (/^\*\*.*\*\*$/.test(raw)) break;
+    if (/^tips\s*:?/i.test(raw.replace(/^\*\*|\*\*$/g, "").trim())) break;
+    const cleaned = raw
+      .replace(/^[-*]\s+/, "")
+      .replace(/^\d+[\).]?\s+/, "")
+      .trim();
+    if (cleaned) steps.push(cleaned);
+  }
+  return steps;
+}
+
 function normalizeMealKey(name: string): string {
   return name.toLowerCase().replace(/\s+/g, "");
 }
@@ -303,6 +322,10 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
   );
   const shoppingGroups = shoppingList.groups;
   const activeRecipe = activeRecipeId ? recipesById.get(activeRecipeId) ?? null : null;
+  const activeRecipeSteps = useMemo(
+    () => (activeRecipe ? extractRecipeMethodSteps(activeRecipe.body) : []),
+    [activeRecipe],
+  );
 
   const handleRecipePortionChange = useCallback(
     (entryId: string, next: number) => {
@@ -429,6 +452,19 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
     mealsTotalCount,
     selectedDay?.label,
   ]);
+
+  useEffect(() => {
+    const modalOpen = Boolean(activeRecipe || showCoachTips || swapMeal);
+    if (!modalOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscroll = document.body.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "contain";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscroll;
+    };
+  }, [activeRecipe, showCoachTips, swapMeal]);
 
   return (
     <div className="motus-matplan motus-matplan--v2 motus-fade-in-up">
@@ -1016,9 +1052,19 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="motus-foodbank-modal-body space-y-3">
+            <div className="motus-foodbank-modal-body max-h-[min(80vh,40rem)] space-y-3 overflow-y-auto overscroll-contain">
               {activeRecipe.description ? <p className="text-sm text-slate-600">{activeRecipe.description}</p> : null}
               <RecipeIngredientList body={activeRecipe.body} foodItems={foodItems} recipeId={activeRecipe.id} />
+              {activeRecipeSteps.length > 0 ? (
+                <section className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                  <h4 className="text-sm font-semibold text-slate-900">Slik gjør du</h4>
+                  <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm text-slate-700">
+                    {activeRecipeSteps.map((step, index) => (
+                      <li key={`${activeRecipe.id}-step-${index}`}>{step}</li>
+                    ))}
+                  </ol>
+                </section>
+              ) : null}
               {computeRecipeMacros(activeRecipe.body, foodItems) ? (
                 <RecipeMacroBlocks result={computeRecipeMacros(activeRecipe.body, foodItems)!} />
               ) : null}

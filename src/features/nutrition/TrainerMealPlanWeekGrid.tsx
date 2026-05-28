@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useEffect, useRef } from "react";
 import { Eye, MoreHorizontal, Plus, Soup, UtensilsCrossed } from "lucide-react";
 import type { InspirationRecipeItem } from "../../app/inspirationRecipeItems";
 import {
@@ -39,10 +39,23 @@ export function TrainerMealPlanWeekGrid({
   onAddRecipe,
   onClearMeal,
 }: TrainerMealPlanWeekGridProps) {
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const weekdayShort = (label: string) => label.slice(0, 3);
+  useEffect(() => {
+    if (!selection) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      const root = rootRef.current;
+      if (!root) return;
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (!root.contains(target)) onCloseMenu();
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [selection, onCloseMenu]);
 
   return (
-    <div className="motus-pt-planner-grid-wrap">
+    <div className="motus-pt-planner-grid-wrap" ref={rootRef}>
       <div className="motus-pt-planner-grid" role="grid" aria-label="Ukematplan">
         <div className="motus-pt-planner-grid__corner" />
         {plan.days.map((day) => (
